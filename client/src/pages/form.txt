@@ -1,0 +1,104 @@
+<Form className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+              <div className="mb-4">
+                <TextField
+                  fullWidth
+                  label="Full Name"
+                  name="fullName"
+                  value={values.fullName}
+                  onChange={handleChange}
+                  error={touched.fullName && Boolean(errors.fullName)}
+                  helperText={touched.fullName && errors.fullName}
+                  variant="outlined"
+                />
+              </div>
+
+              <div className="mb-4">
+                <TextField
+                  fullWidth
+                  label="Username"
+                  name="username"
+                  value={values.username}
+                  onChange={handleChange}
+                  error={touched.username && Boolean(errors.username)}
+                  helperText={touched.username && errors.username}
+                  variant="outlined"
+                />
+              </div>
+
+              <div className="mb-4">
+                <TextField
+                  fullWidth
+                  label="Email"
+                  name="email"
+                  value={values.email}
+                  onChange={handleChange}
+                  error={touched.email && Boolean(errors.email)}
+                  helperText={touched.email && errors.email}
+                  variant="outlined"
+                />
+              </div>
+
+              <div className="mb-4">
+                <TextField
+                  fullWidth
+                  label="Password"
+                  type="password"
+                  name="password"
+                  value={values.password}
+                  onChange={handleChange}
+                  error={touched.password && Boolean(errors.password)}
+                  helperText={touched.password && errors.password}
+                  variant="outlined"
+                />
+              </div>
+
+              <div className="mb-4">
+                <TextField
+                  fullWidth
+                  label="Confirm Password"
+                  type="password"
+                  name="confirmPassword"
+                  value={values.confirmPassword}
+                  onChange={handleChange}
+                  error={touched.confirmPassword && Boolean(errors.confirmPassword)}
+                  helperText={touched.confirmPassword && errors.confirmPassword}
+                  variant="outlined"
+                />
+              </div>
+
+              <Button
+                type="submit"
+                onClick={handleSubmit}
+                fullWidth
+                variant="contained"
+                color="primary"
+                sx={{ marginTop: '16px', borderRadius: '8px', backgroundColor: 'black' }}
+              >
+                Register
+              </Button>
+
+              <div className="flex justify-center mt-4">
+                <Link to="/login" className="text-blue-500 hover:underline">
+                  Already have an account? Login here.
+                </Link>
+              </div>
+
+              <div className="flex justify-center mt-4">
+      <Button
+        variant="contained"
+        color="primary"
+        startIcon={<GoogleIcon />}
+        onClick={google}
+        style={{
+          backgroundColor: '#4285F4', // Google Blue
+          color: '#ffffff',
+          textTransform: 'none',
+          fontWeight: 'bold',
+          padding: '10px 20px',
+          borderRadius: '8px',
+        }}
+      >
+        Sign in with Google
+      </Button>
+    </div>
+            </Form>

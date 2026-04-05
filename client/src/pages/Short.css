@@ -1,0 +1,210 @@
+@font-face {
+    font-family: 'Charter';
+    src: url('../fonts/charter_regular-webfont.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+  }
+  
+  
+  @font-face {
+    font-family: 'Charter';
+    src: url('../fonts/charter_bold-webfont.woff') format('woff');
+    font-weight: bold;
+    font-style: normal;
+  }
+  
+  @font-face {
+    font-family: 'Graphik';
+    src: url('..fonts/charter_italic-webfont.woff') format('opentype');
+    font-weight: normal;
+    font-style: italic;
+  }
+
+.fontNeed {
+    font-family: 'Noto Sans' !important;
+    font-size: 16px !important;
+    font-weight: 480;
+    
+    @media  (max-width: 1280px) {
+        font-family: 'Nunito Sans' !important;
+        font-weight: 400;
+
+      font-size: 17px !important;
+        
+    }
+  }
+
+  .hide-scrollbar {
+    /* Firefox */
+    scrollbar-width: none;
+    /* IE 10+ */
+    -ms-overflow-style: none; 
+  }
+  
+  /* Webkit browsers (Chrome, Safari) */
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+/* Hide scrollbars */
+.scrollbar-hidden {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Modal animations */
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalSlideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(50px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes modalBounceIn {
+  0% { 
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  70% { 
+    transform: scale(1.05);
+  }
+  100% { 
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-modal-fade-in {
+  animation: modalFadeIn 0.3s ease forwards;
+}
+
+.animate-modal-slide-up {
+  animation: modalSlideUp 0.35s ease-out forwards;
+}
+
+.animate-modal-bounce-in {
+  animation: modalBounceIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* Ensure modals remain visible on small screens */
+@media (max-height: 600px) {
+  .animate-modal-slide-up {
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+}
+
+/* Slide animations for shorts navigation */
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutUp {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+}
+
+@keyframes slideOutDown {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.4s cubic-bezier(0.33, 1, 0.68, 1) forwards;
+}
+
+.animate-slide-down {
+  animation: slideDown 0.4s cubic-bezier(0.33, 1, 0.68, 1) forwards;
+}
+
+.animate-slide-out-up {
+  animation: slideOutUp 0.4s cubic-bezier(0.33, 1, 0.68, 1) forwards;
+}
+
+.animate-slide-out-down {
+  animation: slideOutDown 0.4s cubic-bezier(0.33, 1, 0.68, 1) forwards;
+}
+
+.shorts-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.shorts-slide {
+  will-change: transform;
+  transform: translateY(0);
+  transition: transform 0.4s cubic-bezier(0.33, 1, 0.68, 1);
+}
+/* Hide scrollbar for all browsers */
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
+/* Add this to your index.css */
+@media (min-width: 768px) {
+  .scrollba-hidden {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollba-hidden::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.scrollbar-hidden {
+  -ms-overflow-style: none;  /* IE 10+ */
+  scrollbar-width: none;  /* Firefox */
+}

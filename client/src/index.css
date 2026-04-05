@@ -1,0 +1,315 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+
+
+/* Hide scrollbar for all browsers */
+.scroll-wrapper::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+.scroll-wrapper {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+
+/* Hide scrollbar for all browsers */
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hidden {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Hide scrollbar for scroll pickers */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+
+/* Add this to your index.css */
+@media (min-width: 768px) {
+  .scrollba-hidden {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollba-hidden::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.scrollbar-hidden {
+  -ms-overflow-style: none;  /* IE 10+ */
+  scrollbar-width: none;  /* Firefox */
+}
+.scrollable-container {
+  /* Enable scrolling without showing scrollbar */
+  overflow-y: auto;
+  height: 100%;
+
+  /* Hide scrollbar for Firefox, IE, and Edge */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Hide scrollbar for Chrome, Safari, and Opera */
+.scrollable-container::-webkit-scrollbar {
+  display: none;
+}
+/* Custom dark scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a1a; /* Dark background */
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #444444; /* Darker scrollbar thumb */
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #666666; /* Lighter thumb on hover */
+}
+
+::-webkit-scrollbar:horizontal {
+  height: 0;
+  display: none;
+}
+
+/* Add this to your existing CSS file */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #666 #222;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #222;
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #666;
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #888;
+}
+
+:root {
+  --color-1: 0 85% 60%;  
+  --color-2: 155 85% 60%; 
+  --color-3: 240 85% 60%; 
+  --color-4: 290 85% 60%;
+  --color-5: 45 85% 60%;  
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  
+  color-scheme: light dark;
+  background-color: #0a0a0a !important;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+}
+
+
+@keyframes rainbow {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+/* If you're using custom CSS, add the following styles */
+.navbar-expanded {
+  width: 13rem; /* Expanded width (sm:w-52 equivalent) */
+}
+
+.navbar-collapsed {
+  width: 4.5rem; /* Collapsed width (w-16 or w-[75px]) */
+}
+
+.transition-width {
+  transition: width 0.3s ease-in-out;
+}
+
+.aspect-ratio-3-2 {
+  position: relative;
+  width: 100%;
+  padding-bottom: 66.67%; /* 3/2 = 0.6667 */
+}
+
+.aspect-ratio-3-2 img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.90);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.animate-fadeIn {
+  animation: fadeIn 0.28s ease-out forwards;
+}
+
+.message {
+  overflow-wrap: break-word; /* Ensures long words break */
+  word-break: break-word; /* Forces breaking of long unbroken words */
+  white-space: pre-wrap; /* Keeps normal words wrapping naturally */
+  display: inline-block; /* Ensures proper word wrapping */
+  max-width: 100%; /* Ensures it doesn’t exceed the container */
+  font-family: "Inter", sans-serif;
+}
+@media (max-width: 500px) {
+  .md\:bg-currentStory {
+    background: var(--current-story-bg, #000);
+  }
+}
+
+.fontNeedle {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+/* Add to your Profile.css file */
+.nav-button {
+  transition: transform 0.1s ease;
+}
+
+.nav-button:active {
+  transform: scale(0.9);
+}
+
+.short-media-container {
+  transition: opacity 0.15s ease;
+}
+
+.short-media-container.media-changing {
+  opacity: 0.8;
+}
+html, body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  position: relative;
+}
+/* Add this new media query for mobile screens */
+@media (max-width: 767px) {
+  .max-md\:scrollbar-hidden {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .max-md\:scrollbar-hidden::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+img {
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+@keyframes upvoteSuccess {
+  0% { 
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+  50% { 
+    transform: scale(1.1) translateY(-8px);
+    opacity: 0.8;
+  }
+  100% { 
+    transform: scale(1) translateY(0);
+    opacity: 0;
+  }
+}
+
+.upvote-success {
+  animation: upvoteSuccess 0.6s ease-out forwards;
+}
+
+/* Add this to your existing CSS file */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+
+/* Additional scrollbar hide utilities for scroll pickers */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+
+/* Smooth scrolling for scroll pickers */
+.snap-y {
+  scroll-snap-type: y mandatory;
+}
+
+.snap-center {
+  scroll-snap-align: center;
+}
+
+/* Line clamp utility for text truncation */
+.line-clamp-2 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+@media (max-width: 767px) {
+  .max-md\:scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .max-md\:scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (max-width: 767px) {
+  body.no-scroll,
+  html.no-scroll {
+    overflow: hidden !important;
+    height: 100vh !important;
+  }
+}

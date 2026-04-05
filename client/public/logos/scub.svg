@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="951" height="462" viewBox="0 0 951 462">
+  <defs>
+    <clipPath id="clip-scub">
+      <rect width="951" height="462"/>
+    </clipPath>
+  </defs>
+  <g id="scub" clip-path="url(#clip-scub)">
+    <path id="Path_7" data-name="Path 7" d="M989.211,810.06c26.841,12.208,64.12-9.156,64.12-9.156s35.072-31.894,113.182-135.17,200.844-264.459,199.972-277.945c-.406-6.285-11.669-22.179-11.669-22.179l-11.742-5.978s-12.329-5-32.731,2.84-48.876,28.5-48.876,28.5-56.126,52.532-61.338,82.265c-5.218,29.763,3.816,48.427,3.816,48.427L989.211,778.014Z" transform="translate(-989.211 -355.328)" fill="#3d3d3d" stroke="#707070" stroke-width="1"/>
+    <path id="Path_8" data-name="Path 8" d="M1285.486,506.829s-3.287-7.2,5.1-19.606,11.824-18.293,25.594-33.832c11.627-12.5,33.235-30.747,33.235-30.747s5.021-4.341,7.094-4.373c3.3.389-1.555,7.58-1.555,7.58s-32.194,37.221-32.508,37.558C1310.128,476.6,1285.486,506.829,1285.486,506.829Z" transform="translate(-1036.047 -365.252)" fill="#0a0a0a" stroke="#0a0a0a" stroke-width="1"/>
+    <path id="Path_9" data-name="Path 9" d="M1253.177,612.995l60.928,43.772s42.932,31.279,41.161,49.611-36.983,34.173-36.983,34.173l-167.161,69.713s-2.343,16.518,5.917,13.669,20.38-5.337,18.36-6.582,21.581,14.783,21.581,14.783,98.575-42.47,147.761-65.366c30.742-14.31,46.454-23.017,51.188-28.281,12.624-14.037,15.92-16.049,8.153-40.312s-43.8-52.912-43.8-52.912l-85.978-61.587" transform="translate(-999.231 -404.26)" fill="#727272" stroke="#707070" stroke-width="1"/>
+    <text id="cubiee" transform="translate(408.789 292.911)" fill="#707070" font-size="225" font-family="Sitka Banner"><tspan x="0" y="0">cubiee</tspan></text>
+    <g id="Rectangle_1" data-name="Rectangle 1" transform="translate(56 2)" fill="#fff" stroke="#707070" stroke-width="1">
+      <rect width="2" height="1" stroke="none"/>
+      <rect x="0.5" y="0.5" width="1" fill="none"/>
+    </g>
+  </g>
+</svg>

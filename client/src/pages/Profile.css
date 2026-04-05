@@ -1,0 +1,45 @@
+@keyframes borderShift {
+    0% {
+      background-position: 0% 50%;
+    }
+    100% {
+      background-position: 200% 50%;
+    }
+  }
+  
+  .rainbow-tag {
+    position: relative; /* for pseudo-elements */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 16px;
+    color: #fff;
+    background-color: #181818;
+    border-radius: 9999px;
+    font-size: 14px;
+    border: 2px solid transparent;
+
+    
+    background:
+      linear-gradient(#1b1b1b, #181818) padding-box,
+      linear-gradient(90deg,#65307a, #411f85, #232872, #3b1a7c, #663399) border-box; /*     linear-gradient(90deg,#232324, #414040, #2e2e2e, #414040, #353536, #2d2d2d, #2e2e2e) border-box;*/
+    background-clip: padding-box, border-box;
+    background-size: 200% 100%;
+    animation: borderShift 3s linear infinite;
+    isolation: isolate; /* ensure the glow stays behind */
+  }
+  
+  /* Add a subtle reflective glow behind the tag */
+  .rainbow-tag::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    box-shadow: 
+      0 0 8px 2px rgba(102, 51, 153, 0.3), /* Purple glow */
+      0 0 12px 3px rgba(50, 50, 80, 0.2);   /* Subtle deeper glow */
+    opacity: 0.8;
+    filter: blur(3px);
+  }
+   

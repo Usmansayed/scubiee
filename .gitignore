@@ -1,0 +1,19 @@
+node_modules/
+.env
+.env.local
+.env.*.local
+*.log
+dist/
+build/
+.DS_Store
+Thumbs.db
+
+# Sensitive credentials - never commit these
+server/config/gcloud-key.json
+server/config/gai-key.json
+server/config/*-key.json
+server/mykeys/
+server/SSL/
+*.pem
+*.key
+*-key.json

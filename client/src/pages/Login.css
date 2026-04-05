@@ -1,0 +1,52 @@
+.custom-textfieldd .MuiInputBase-input {
+  color: #b8b8b8;
+}
+
+.custom-textfieldd .MuiInputLabel-root {
+  color: #9ca3af; /* text-zinc-400 */
+}
+
+.custom-textfieldd .MuiOutlinedInput-root {
+  border-radius: 13px;
+  font: #b8b8b8;
+}
+
+.custom-textfieldd .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+    border: 2px solid #b8b8b8;
+    
+    
+}
+
+.custom-textfieldd .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+    border: 2px solid #b8b8b8;
+    
+
+}
+
+.custom-textfieldd .MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline {
+    border: 2px solid #303541;
+    border-radius: 20px ;
+    @media (max-width: 500px) {
+        border: 1px solid #303541;
+      
+    }
+
+}
+.custom-textfieldd .MuiFormControl-fullWidth .MuiTextField-root .custom-textfield .css-cmpglg-MuiFormControl-root-MuiTextField-root {
+
+border: 2px solid #b8b8b8;
+}
+
+.login label{
+    color: rgb(209, 209, 209) !important;
+background: #111 !important;
+padding-inline: 4px !important;
+
+}
+.changeBorder{
+    border: 2px solid #b8b8b8;
+    @media (max-width: 500px) {
+        border: 1px solid #b8b8b8;
+      
+    }
+}

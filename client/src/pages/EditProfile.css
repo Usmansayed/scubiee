@@ -1,0 +1,31 @@
+.custom-textfield .MuiInputBase-input {
+  color: white;
+}
+
+.custom-textfield .MuiInputLabel-root {
+  color: #9ca3af; /* text-zinc-400 */
+}
+
+.custom-textfield .MuiOutlinedInput-root {
+    border: 1px solid rgb(59, 56, 50);
+  border-radius: 13px;
+  font: white;
+}
+
+.custom-textfield .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+    border: 2px solid white;
+}
+
+.custom-textfield .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+    border: 2px solid white;
+}
+.custom-textfield .MuiFormControl-fullWidth .MuiTextField-root .custom-textfield .css-cmpglg-MuiFormControl-root-MuiTextField-root {
+
+border: 2px solid white;
+}
+.editprofile label{
+  color: rgb(209, 209, 209) !important;
+background: #0a0a0a !important;
+padding-inline: 4px !important;
+
+}

@@ -1,0 +1,92 @@
+.formContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 20px;
+  border: 1px solid #292929;
+  border-radius: 8px;
+  background-color: rgba(0, 0, 0, 0.8);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+/* Custom dark scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a1a; /* Dark background */
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #444444; /* Darker scrollbar thumb */
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #666666; /* Lighter thumb on hover */
+}
+
+.scrollbar-hidden {
+  -ms-overflow-style: none;  /* Internet Explorer 10+ */
+  scrollbar-width: none;  /* Firefox */
+}
+
+
+/* Target the generated class with an attribute selector */
+[class^="react-scroll-to-bottom"] {
+  -ms-overflow-style: none;  /* Internet Explorer 10+ */
+  scrollbar-width: none;      /* Firefox */
+}
+
+[class^="react-scroll-to-bottom"]::-webkit-scrollbar {
+  display: none;              /* Safari and Chrome */
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: gray;
+}
+
+.status-dot.online {
+  background-color: green;
+}
+
+.status-dot.offline {
+  background-color: red;
+}
+
+.custom-editor {
+  border: none;
+  padding: 0;
+}
+
+.custom-content {
+  padding: 0;
+}
+
+/* Infinite scroll smooth loading */
+.loading-more-container {
+  min-height: 64px; /* Reserve space to prevent layout shifts */
+  transition: all 0.2s ease-out;
+}
+
+/* Prevent scroll jumping during content loading */
+html {
+  scroll-behavior: auto !important; /* Override smooth scrolling during loading */
+}
+
+/* Ensure content containers maintain their dimensions during loading */
+.posts-container {
+  position: relative;
+}
+
+.posts-container.loading-more {
+  /* Prevent container from changing dimensions during load */
+  min-height: 100vh;
+}
+

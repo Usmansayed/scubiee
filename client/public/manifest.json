@@ -1,0 +1,83 @@
+{
+    "name": "scubiee",
+    "short_name": "scubiee",
+    "lang": "en-IN",
+    "dir": "auto",
+    "id": "com.scubiee",
+    "display": "standalone",
+    "orientation": "portrait",
+    "theme_color": "#0a0a0a",
+    "background_color": "#0a0a0a",
+      "start_url": "/",
+    "scope": "/",
+    
+    "categories": ["social", "entertainment"],
+    "description": "A social media platform for food lovers and culinary enthusiasts",
+    
+    "offline_enabled": true,
+    "prefer_related_applications": false,
+    
+    "screenshots": [
+        {
+            "src": "screenshots/desktop1.png",
+            "sizes": "1280x800",
+            "type": "image/png",
+            "form_factor": "wide"
+        },
+        {
+            "src": "screenshots/desktop2.png",
+            "sizes": "1280x800",
+            "type": "image/png",
+            "form_factor": "wide"
+        },
+        {
+            "src": "screenshots/mobile1.png",
+            "sizes": "390x844",
+            "type": "image/png"
+        },
+        {
+            "src": "screenshots/mobile2.png",
+            "sizes": "390x844",
+            "type": "image/png"
+        }
+    ],
+    
+    "icons": [
+        {
+            "src": "logo192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "logo256.png",
+            "sizes": "256x256",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "logo384.png",
+            "sizes": "384x384",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "logo512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "logo512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "logo144.png",
+            "sizes": "144x144",
+            "type": "image/png",
+            "purpose": "any"
+        }
+    ]
+}

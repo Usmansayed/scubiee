@@ -1,0 +1,121 @@
+button:has(.lucide-redo2) {
+  display: none !important;
+}
+button:has(.lucide-undo2) {
+  display: none !important;
+}
+
+body.create-post-mode {
+  background-color: #111 !important;
+}
+
+.createPost .tiptap.ProseMirror {
+  flex-grow: 1 !important; /* Take up remaining space */
+  overflow-y: auto !important; /* Enable vertical scrolling */
+  color: #c0c0c0 !important;
+
+ 
+  position: relative; /* Positioning needed for z-index to work */
+  padding-inline: 42px !important;
+  padding-bottom :20px !important;
+
+   /* Media query for devices less than 1200px */
+   
+   @media (max-width: 768px) {
+     margin-bottom: 30px !important;
+      padding-inline: 14px !important;
+      padding-left: 18px !important;
+      padding-top :15px !important;
+      
+        &::-webkit-scrollbar {
+    display: none;
+}
+   }
+}
+ .createPost .reactjs-tiptap-editor div:first-child {
+   
+  outline:#444!important;
+  background-color: #0a0a0a !important;
+  @media (max-width: 768px) {
+    background-color: #0a0a0a !important;
+
+  }
+  
+}
+
+
+.createPost .richtext-flex.richtext-flex-col.richtext-w-full.richtext-max-h-full {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+ overflow: hidden !important; /* Hide any overflowing content */
+  margin-top: 0px !important; /* Optional: Remove top margin */
+  border:1px solid #464646 !important;
+  border-radius: 10px !important; /* Rounded corners for a smoother look */
+  @media (max-width: 768px) {
+    border: none !important; /* Remove border for smaller screens */
+  }
+}
+
+.createPost p{
+  color: #b8b8b8 !important;
+  font-size:18.7px !important;
+  font-family: "Nunito Sans",serif !important; 
+  font-weight: 420 !important;
+
+}
+
+@media only screen and (max-width: 1080px) {
+  .createPost p {
+    color: #b8b8b8 !important;
+    font-weight: 380 !important;
+
+    font-size: 17px !important;
+    letter-spacing: 0px; /* Adjust the value as needed */
+  
+
+  }}
+
+.createPost h1{
+  margin-top: 10px !important;
+  margin-bottom: 10px !important;
+}
+
+.createPost h2{
+    margin-top: 7px !important;
+    margin-bottom: 7px !important;
+
+}
+.createPost h3{
+  margin-top: 5px !important;
+  margin-bottom: 5px !important;
+
+}
+
+.createPost ul{
+margin-top: 5px !important;
+margin-bottom: 14px !important;
+
+}
+
+.preview-container {
+  display: flex;
+  width: 200%;
+  transition: transform 0.5s ease;
+  height: 100%;
+}
+
+.preview-container.show-preview {
+  transform: translateX(-50%);
+}
+
+.editor-section,
+.preview-section {
+  width: 50%;
+  flex-shrink: 0;
+}
+
+.preview-section {
+  padding: 20px;
+  background: #070708;
+}

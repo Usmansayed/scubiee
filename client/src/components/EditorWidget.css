@@ -1,0 +1,302 @@
+
+.Toastify .Toastify__toast{
+    background-color: #08070a;
+    border-radius: 30px;
+    border-color: #616161;
+    border-width: 1px;
+    margin-top: 90px;
+    z-index: 2001001 !important;
+    @media screen and (max-width: 768px) {
+    
+      margin-left: 10px !important;
+      color: #c9c9c9 !important;
+  
+    }
+  }
+  
+  
+  
+  
+    
+    .EditorWidget p{
+      color: #f0f0f0 !important;
+      font-size: 18px !important;
+      font-family:'Times New Roman', Times, serif;
+   
+        @media (max-width: 1080px) {
+            
+          font-size: 16px !important;
+    
+        }
+  
+    }
+  
+  .EditorWidget h1{
+    margin-top: 5px !important;
+    margin-bottom: 5px !important;
+  }
+  
+  .EditorWidget h2{
+      margin-top: 4px !important;
+      margin-bottom: 4px !important;
+  
+  }
+  .EditorWidget h3{
+    margin-top: 3px !important;
+    margin-bottom: 3px !important;
+  
+  }
+  
+  .EditorWidget ul,ol{
+    margin-top: 5px !important;
+    margin-bottom: 14px !important;
+  
+  }
+  
+  
+  .Toastify__toast-container .Toastify__toast-container--top-center{
+  
+    margin-top: 100px !important;
+  }
+  /* Ensure italic styles are applied correctly in the editor */
+  .EditorWidget .reactjs-tiptap-editor em,
+  .EditorWidget .reactjs-tiptap-editor i {
+    font-style: italic !important;
+  }
+  
+  .Toastify .Toastify__toast .button{
+    background-color: #09070c;
+    border-radius: 30px;
+    border-color: #616161;
+    border-width: 1px;
+    margin-top: 200x !important;
+    
+  }
+  
+  
+  
+  div.react-renderer.node-videoUpload {
+    /* Your styles here */
+    visibility: hidden;
+    width: none !important;
+   height: 0px !important;
+   
+  }
+  div[style="flex: 1;padding-bottom: 56.25%;"] {
+    display: none !important;
+  }
+  
+  
+    .custom-editor {
+      border: none !important;
+      padding: 0 !important;
+    }
+    
+    .custom-content {
+      padding: 0;
+    
+    }
+    .EditorWidget.richtext-px-1.richtext-py-2.\!richtext-border-b {
+      border-bottom: 0px solid !important;
+      margin-right: 20px !important;
+      background-color: pink ;
+      @media (max-width: 768px) {
+          
+        border-bottom: 1px solid #2b2b2b !important;
+  
+      }
+  
+    }
+    
+    .svg.lucide.lucide-bold.richtext-w-4.richtext-h-4{
+         color: #b91717 !important;
+         height: 20px !important;
+    }
+  
+    .EditorWidget .reactjs-tiptap-editor{
+     
+      border-radius: 8px;
+     padding: 0px !important;
+     
+     outline: 0px solid !important;
+
+    
+      @media (max-width: 768px) {
+        margin-left: 0px !important;
+        outline: 0px solid !important;
+        max-width: 100% !important;
+        border: none !important;
+      }
+    
+      
+    }
+  
+   .thetopone {
+      z-index: 2000 !important;
+      height: px !important;
+    }
+  
+    
+    .richtext-relative.richtext-flex.richtext-flex-wrap.richtext-h-auto.richtext-gap-y-1.richtext-gap-x-1 {
+      gap: 2px !important;
+      margin-right: 10px !important;
+background: transparent !important;     
+      @media (max-width: 1024px ) { /* Correct media query syntax */
+      margin-top: 5px !important;
+      margin-right: 0px !important;
+      margin-left: 8px !important;
+  
+      }
+    }
+    
+    div[data-orientation="vertical"][role="none"].richtext-shrink-0.richtext-bg-border {
+      display: none !important;
+  }
+  
+  
+   
+    
+     .EditorWidget .reactjs-tiptap-editor div:first-child {
+       outline: 0px solid !important;
+       background-color: #121214;
+       padding-inline: 0px !important;
+       @media (max-width: px ) { /* Correct media query syntax */
+        padding-inline: 0px !important;
+      }
+       
+       
+     }
+  
+     .EditorWidget .reactjs-tiptap-editor .richtext-relative {
+      border-radius: 0px !important;
+      padding-inline: 40px !important;
+      padding-right: 40px !important;
+
+      @media (max-width: 768px ) { /* Correct media query syntax */
+        padding-inline: 13px !important;
+        margin-top: -20px !important;
+  
+      }
+     }
+  
+     p[data-placeholder="Press '/' for commands"].is-empty::before {
+      content: attr(data-placeholder); /* Ensure placeholder content */
+      color: transparent !important; /* Make it invisible */
+  }
+  
+   
+  
+  
+  
+  .EditorWidget .reactjs-tiptap-editor .tiptap.ProseMirror {
+    margin-top: -10px;
+    
+   
+    /* Media query for devices less than 1200px */
+    
+    @media (max-width: 768px) {
+      border: none !important; /* Remove border for smaller screens */
+  
+  
+    }
+   
+  }
+  
+  
+  
+  div.richtext-p-2.richtext-bg-white.richtext-rounded-lg.richtext-shadow-sm.dark\:richtext-bg-black {
+    padding-inline: 10px !important;
+  }
+  
+/* ...existing code... */
+.EditorWidget .richtext-px-1.richtext-py-2.\!richtext-border-b {
+  position: fixed;
+  bottom: 0 !important;
+  width: 100% !important;
+  background-color: #070708 !important;
+  padding-top: 20px !important;
+  padding-bottom: 4px !important;
+  animation: slideInTop 0.5s ease-out forwards;
+  z-index: 9999;
+  height: fit-content;
+  
+  @media (max-width: 768px) {
+      border-bottom: 0px solid !important;
+      padding-top: 4px !important;
+      padding-bottom: 6px !important;
+      margin-top: 0px !important;
+      margin-left: -5px !important;
+  }
+}
+/* Slide-in-from-top animation */
+.slide-in-top {
+
+}
+
+@keyframes slideInTop {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+    
+    .EditorWidget .reactjs-tiptap-editor .richtext-px-1 {
+    position: fixed;
+      top: 0; /* Adjust this value to control where the div sticks */
+      z-index: 10; /* Make sure it appears on top if needed */
+      background-color: #ffffff;
+     
+      
+      
+    }
+  
+  
+    .EditorWidget ._blockInfo_17npv_18{
+      margin-bottom:12px !important; 
+      margin-top: -4px;
+     
+    }
+  
+    div[data-radix-popper-content-wrapper] {
+      max-width: 100% !important;
+      overflow-x: hidden !important;
+      left: -4px !important;
+    }
+    
+    /* Ensure child elements do not cause layout issues */
+    div[data-radix-popper-content-wrapper] > div {
+      max-width: 100% !important;
+      overflow-x: hidden !important;
+      margin-right: 0 !important; /* Remove any right margin */
+    }
+    .EditorWidget .react-renderer.node-tableOfContents{
+      display: none !important;
+    }
+  
+    div[data-node-view-content-react] {
+      background-color: #171717 !important;
+  
+    }
+    
+  ._blockInfo_17npv_18{
+    background-color: #171717 !important;
+  }
+  
+  .richtext-flex-grow.richtext-text-sm.richtext-text-left.richtext-truncate:hover {
+   background-color: #272727 !important;
+    
+  }
+  
+  .richtext-flex-grow.richtext-text-sm.richtext-text-left.richtext-truncate {
+    background-color: inherit !important;
+    
+   }
+   
+   .tippy{
+    display: none !important;
+   }

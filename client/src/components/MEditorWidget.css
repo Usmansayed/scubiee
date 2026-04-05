@@ -1,0 +1,114 @@
+
+
+.MEditor .tiptap.ProseMirror {
+  flex-grow: 1 !important; /* Take up remaining space */
+  overflow-y: auto !important; /* Enable vertical scrolling */
+  color: #c0c0c0 !important;
+  border-top: 10px !important; /* Ensure no extra border from parent */
+  position: relative; /* Positioning needed for z-index to work */
+  padding-inline: 40px !important;
+  padding-bottom :20px !important;
+ 
+
+
+   /* Media query for devices less than 1200px */
+   
+   @media (max-width: 768px) {
+     border: none !important; /* Remove border for smaller screens */
+     margin-bottom: 30px !important;
+      padding-inline: 24px !important;
+       padding-top :15px !important;
+        &::-webkit-scrollbar {
+    display: none;
+
+}
+
+   }
+}
+ .MEditor .reactjs-tiptap-editor div:first-child {
+   
+  outline:#444!important;
+  background-color: #101011 !important;
+  @media (max-width: 768px) {
+    background-color: #101011 !important;
+
+  }
+  
+}
+
+.MEditor .reactjs-tiptap-editor{
+    @media (max-width: 1280px) {
+      max-width: 100% !important;
+
+    }
+}
+
+ 
+
+
+.scrollbar-hide {
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+  scrollbar-width: none; /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* WebKit */
+}
+
+
+
+
+.MEditor .richtext-flex.richtext-flex-col.richtext-w-full.richtext-max-h-full {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+ overflow: hidden !important; /* Hide any overflowing content */
+  margin-top: 0px !important; /* Optional: Remove top margin */
+  border:1px solid #464646 !important;
+  border-radius: 10px !important; /* Rounded corners for a smoother look */
+  @media (max-width: 768px) {
+    border: none !important; /* Remove border for smaller screens */
+  }
+
+
+}
+
+.MEditor p{
+  color: #b8b8b8 !important;
+    font-size:18.7px !important;
+    font-family: "Nunito Sans",serif !important; 
+    font-weight: 420 !important;
+
+  }
+  
+  @media only screen and (max-width: 1080px) {
+    .MEditor p {
+      color: #b8b8b8 !important;
+      font-weight: 380 !important;
+
+      font-size: 17px !important;
+      letter-spacing: 0px; /* Adjust the value as needed */
+    
+
+    }}
+
+.MEditor h1{
+  margin-top: 5px !important;
+  margin-bottom: 5px !important;
+}
+
+.MEditor h2{
+    margin-top: 4px !important;
+    margin-bottom: 4px !important;
+
+}
+.MEditor h3{
+  margin-top: 3px !important;
+  margin-bottom: 3px !important;
+
+}
+
+.MEditor ul{
+margin-top: 5px !important;
+margin-bottom: 14px !important;
+
+}

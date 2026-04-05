@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="631" height="651" viewBox="0 0 631 651">
+  <defs>
+    <clipPath id="clip-Logo3">
+      <rect width="631" height="651"/>
+    </clipPath>
+  </defs>
+  <g id="Logo3" clip-path="url(#clip-Logo3)">
+    <path id="Path_25" data-name="Path 25" d="M3314.852,450.762l63.574-73.016s-208.982-199.13-175.349-239.374,333.3,44.8,333.3,44.8l65.566-73.016s-207.974-92.882-319.191-90.785S3127.785,73.233,3102.5,110.156s-22.53,110.785,32.73,197.585S3314.852,450.762,3314.852,450.762Z" transform="matrix(-0.996, 0.087, -0.087, -0.996, 3673.813, 346.348)" fill="none" stroke="#fff" stroke-width="25"/>
+    <path id="Path_26" data-name="Path 26" d="M3314.852,450.762l63.574-73.016s-208.982-199.13-175.349-239.374,333.3,44.8,333.3,44.8l65.566-73.016s-207.974-92.882-319.191-90.785S3127.785,73.233,3102.5,110.156s-37.172,105.665,18.088,192.465S3314.852,450.762,3314.852,450.762Z" transform="translate(-3065 -6.359)" fill="none" stroke="#fff" stroke-width="25"/>
+  </g>
+</svg>

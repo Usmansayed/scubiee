@@ -1,0 +1,344 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
+body {
+  font-family: 'Roboto', sans-serif;
+}
+
+body{
+  background-color: #0a0a0a !important;
+}
+
+
+
+  /* Hide scrollbars but allow scrolling */
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .hide-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  .custom-editor {
+    border: none !important;
+    padding: 0 !important;
+  }
+  
+  .custom-content {
+    padding: 0;
+  
+  }
+  .viewPost .reactjs-tiptap-editor{
+   
+    outline: 0px solid !important;
+ 
+  
+
+  
+    
+  }
+  .viewPost .reactjs-tiptap-editor .richtext-relative {
+    border-radius: 0px !important;
+    
+    padding-inline: 50px !important;
+    @media (max-width: 768px ) { /* Correct media query syntax */
+      padding-inline: 8px !important;
+    }
+   }
+
+
+   .thetopone{
+    z-index: 2000000;
+   }
+
+
+  .viewPost .reactjs-tiptap-editor{
+    z-index: 90 !important;
+  }
+  
+  
+  .viewPost .reactjs-tiptap-editor .richtext{
+    background-color: aqua !important;
+  }
+
+   .viewPost .reactjs-tiptap-editor div:first-child {
+   
+     outline: 0px solid !important;
+     border: 2px white !important;
+     
+   }
+
+   .viewContribution .reactjs-tiptap-editor div:first-child {
+   
+    outline: 0px solid !important;
+    border: 2px white !important;
+    
+  }
+
+
+   .viewPost .reactjs-tiptap-editor{
+     background-color: #0a0a0a !important; 
+
+       @media (max-width: 1280px) {
+        max-width: 100% !important;
+
+       }
+   }
+
+ 
+  
+.viewPost .richtext-relative {
+ 
+  background-color: #0a0a0a !important;
+}
+
+.viewContribution .richtext-relative {
+ 
+  background-color: #0a0a0a !important;
+}
+
+   .viewPost .reactjs-tiptap-editor .tiptap.ProseMirror {
+    border-radius: 8px; /* Rounded corners for a smoother look */
+    border: 1px solid #0a0a0a !important; /* Add a border around the content */
+    transition: box-shadow 0.3s ease !important; /* Smooth transition when hovering */
+    z-index: 10 !important;
+    background-color: #0a0a0a !important;
+    color: #c0c0c0 !important;
+    position: relative; /* Positioning needed for z-index to work */
+   padding: 0px !important;
+   margin-inline: 00px !important;
+
+  
+   
+   
+    /* Media query for devices less than 1200px */
+    
+    @media (max-width: 1280px) {
+      border: none !important; /* Remove border for smaller screens */
+    
+      margin-bottom: 30px !important;
+
+    }
+   
+  }
+
+  .viewContribution .richtext-px-1.richtext-py-2.\!richtext-border-b {
+    width: 100% !important;
+    background-color: #0a0a0a !important;
+    
+      @media (max-width: 1024) {
+      
+  
+     border-bottom: 0px solid !important;
+       }
+    }
+    .viewContribution .reactjs-tiptap-editor .richtext-relative {
+      border-radius: 0px !important;
+      padding-inline: 40px !important;
+      
+      background-color: #141414 !important;
+      @media (max-width: 768px ) { /* Correct media query syntax */
+        padding-inline: 0px !important;
+        margin-top: -20px !important;
+  
+      }
+     }
+
+  .viewContribution .reactjs-tiptap-editor .tiptap.ProseMirror {
+    border-radius: 8px; /* Rounded corners for a smoother look */
+    transition: box-shadow 0.3s ease !important; /* Smooth transition when hovering */
+    z-index: 10 !important;
+    background-color: #141414 !important;
+    color: #c0c0c0 !important;
+
+    position: relative; /* Positioning needed for z-index to work */
+   padding: 0px !important;
+   margin-top: 18px !important;
+   margin-inline: 00px !important;
+
+    /* Media query for devices less than 1200px */
+    
+    @media (max-width: 1280px) {
+      border: none !important; /* Remove border for smaller screens */
+      margin-bottom: 30px !important;
+       margin-inline: 4px !important;
+       margin-left: 8px !important;
+    }
+  }
+
+  .viewContribution p {
+    color: #b8b8b8 !important;
+    font-size:18.7px !important;
+    font-family: "Nunito Sans",serif !important; 
+    font-weight: 420 !important;
+
+  }
+  
+  @media only screen and (max-width: 1080px) {
+    .viewContribution p {
+      color: #b8b8b8 !important;
+      font-weight: 380 !important;
+
+      font-size: 17px !important;
+      letter-spacing: 0px; /* Adjust the value as needed */
+    
+
+    }
+    
+    }
+  div[data-orientation="vertical"][role="none"].richtext-shrink-0.richtext-bg-border {
+    display: none !important;
+}
+
+  [data-tippy-root] {
+    z-index: 1000 !important; /* Increase specificity with !important */
+    visibility: visible !important;
+    background-color: rgb(0, 0, 0) !important;
+    
+    @media (max-width: 768px) {
+      margin-top: 100px !important;
+      margin-left: 20px !important;
+      font-size: 16px !important;
+
+    }
+}
+
+  ._blockInfo_17npv_18{
+    margin-bottom:12px !important; 
+    margin-top: -6px;
+    font-size: 15px !important;
+    @media (max-width: 1024px ) { /* Correct media query syntax */
+      font-size: 14px !important;
+
+  
+      }
+  }
+  .viewContribution .richtext-relative.richtext-flex.richtext-flex-wrap.richtext-h-auto.richtext-gap-y-1.richtext-gap-x-1 {
+    gap: 0px !important;
+    
+    @media (max-width: 1024px ) { /* Correct media query syntax */
+    margin-top: 5px !important;
+    margin-right: 0px !important;
+
+
+    }
+  }
+
+   .viewContribution .richtext-px-1.richtext-py-2.\!richtext-border-b {
+    border-bottom: 0px solid !important;
+    margin-inline: 00px !important;
+    background-color: pink ;
+    gap: 0px !important;
+    padding: 0px !important;
+
+    @media (max-width: 768px) {
+        
+      border-bottom: 1px solid #2b2b2b !important;
+
+    }
+
+  }
+  
+  .viewPost ._btnCopy_17npv_13{
+    @media  (max-width: 1280px) {
+      display: none !important;
+      
+    }
+    
+  }
+
+  .viewContribution .reactjs-tiptap-editor .richtext-px-1 {
+    position: fixed;
+      bottom: 10; /* Adjust this value to control where the div sticks */
+      z-index: 90; /* Make sure it appears on top if needed */
+      background-color: #ffffff;
+      autofocus: false;
+      
+    }
+
+    @font-face {
+      font-family: 'Charter';
+      src: url('../fonts/charter_regular-webfont.woff') format('woff');
+      font-weight: normal;
+      font-style: normal;
+    }
+    
+    
+    @font-face {
+      font-family: 'Charter';
+      src: url('../fonts/charter_bold-webfont.woff') format('woff');
+      font-weight: bold;
+      font-style: normal;
+    }
+    
+    @font-face {
+      font-family: 'Graphik';
+      src: url('..fonts/charter_italic-webfont.woff') format('opentype');
+      font-weight: normal;
+      font-style: italic;
+    }
+    
+    .viewPost p {
+      color: #b8b8b8 !important;
+      font-size:18.79px !important;
+      font-family: "Nunito Sans",serif !important; 
+      font-weight: 420 !important;
+
+    }
+    
+    @media only screen and (max-width: 1080px) {
+      .viewPost p {
+        color: #b8b8b8 !important;
+        font-weight: 380 !important;
+
+        font-size: 17px !important;
+        letter-spacing: 0px; /* Adjust the value as needed */
+      
+
+      }
+      
+      }
+
+      
+  .viewPost h1{
+    margin-top: 8px !important;
+    margin-bottom: 8px !important;
+
+  }
+  
+  .viewPost h2{
+      margin-top: 4px !important;
+      margin-bottom: 4px !important;
+  
+  }
+  .viewPost h3{
+    margin-top: 3px !important;
+    margin-bottom: 3px !important;
+  
+  }
+  
+.viewPost ul{
+  margin-top: 0px !important;
+  
+}
+
+
+  .viewPost ._btnDelete_17npv_14{
+ 
+      display: none !important;
+    
+  }
+
+  .description-container {
+    transition: all 0.2s ease-out;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    margin-top: 0;
+  }
+  
+  .description-container.show {
+    max-height: 500px;
+    opacity: 1;
+    margin-top: 6px;
+  }
