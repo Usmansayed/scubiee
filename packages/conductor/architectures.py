@@ -48,6 +48,30 @@ def _query_key_tokens(query: str) -> set[str]:
     return f95mod.query_key_tokens(query)
 
 
+def _ident_tokens(query: str) -> set[str]:
+    # Snake_case / camelCase identifiers named in the query, so an explicit
+    # symbol name in the question can bias chunk selection toward its definition.
+    return {
+        t.lower()
+        for t in re.findall(r"[A-Za-z_][A-Za-z0-9_]{5,}", query or "")
+        if "_" in t or any(c.isupper() for c in t[1:])
+    }
+
+
+def _znorm(vals: dict[str, float]) -> dict[str, float]:
+    """Z-score a channel over the pool so channels mix on a common scale.
+
+    Absent signal (score 0) maps to 0 rather than a negative z, so a channel that
+    simply did not fire cannot push a candidate below one it never scored.
+    """
+    xs = [v for v in vals.values() if v > 0]
+    if len(xs) < 2:
+        return dict.fromkeys(vals, 0.0)
+    mu = sum(xs) / len(xs)
+    sd = (sum((x - mu) ** 2 for x in xs) / len(xs)) ** 0.5 or 1.0
+    return {k: ((v - mu) / sd if v > 0 else 0.0) for k, v in vals.items()}
+
+
 class MultiArchConductor(Conductor):
     """Conductor with five retrieve_* architectures."""
 
@@ -66,13 +90,28 @@ class MultiArchConductor(Conductor):
             )
         return g_aff, b_all, d_all, hybrid_chunk, seed_files
 
-    def _best_chunk(self, f: str, g_aff, b_all, d_all) -> int:
+    def _best_chunk(
+        self, f: str, g_aff, b_all, d_all, query: str = ""
+    ) -> int:
+        # Pick the chunk inside a file. When the query names an identifier,
+        # prefer the chunk whose body defines it over a nearby helper.
         cids = self._file_chunks.get(f, [])
         if not cids:
             return -1
-        best_i, best_s = cids[0], -1.0
+        idents = _ident_tokens(query)
+        qtoks = set(tokenize(query)) if query else set()
+        # Long underscore tokens are strong intent (function / route names).
+        strong = {t for t in (idents | qtoks) if "_" in t and len(t) >= 8}
+        best_i, best_s = cids[0], -1e18
+        docs = getattr(self.bm25, "docs", None)
         for i in cids:
             s = float(g_aff[i]) + float(b_all[i]) + 40.0 * float(d_all[i])
+            if docs is not None and 0 <= i < len(docs):
+                doc_set = set(docs[i])
+                if strong and any(t in doc_set for t in strong):
+                    s += 80.0
+                elif idents and any(t in doc_set for t in idents):
+                    s += 25.0
             if s > best_s:
                 best_s, best_i = s, i
         return best_i
@@ -86,10 +125,11 @@ class MultiArchConductor(Conductor):
         top_k: int,
         source: str,
         scores: dict[str, float] | None = None,
+        query: str = "",
     ) -> list[Hit]:
         out: list[Hit] = []
         for rank, f in enumerate(ordered):
-            i = self._best_chunk(f, g_aff, b_all, d_all)
+            i = self._best_chunk(f, g_aff, b_all, d_all, query=query)
             if i < 0:
                 continue
             sc = scores.get(f, 1.0 / (rank + 1)) if scores else 1.0 / (rank + 1)
@@ -322,7 +362,7 @@ class MultiArchConductor(Conductor):
 
         for f in g_files:
             if f not in by_file:
-                cid = self._best_chunk(f, g_aff, b_all, d_all)
+                cid = self._best_chunk(f, g_aff, b_all, d_all, query=query)
                 if cid < 0:
                     continue
                 by_file[f] = Hit(
@@ -396,6 +436,301 @@ class MultiArchConductor(Conductor):
         pool = self.retrieve_A_minrank_expand(query, query_vec, top_k=40)
         return self._hits_from_pool_d_score(query, pool, top_k, "D_rerank")
 
+    def retrieve_V2_adaptive(
+        self,
+        query: str,
+        query_vec: np.ndarray,
+        top_k: int = 10,
+        *,
+        dense_n: int = 40,
+        lex_n: int = 15,
+    ) -> list[Hit]:
+        """Dense-led pool with query-adaptive channel weights.
+
+        Min-rank fusion lets a channel that scored a file zero outvote one that
+        ranked it first, which on natural-language queries drops rank-1 dense hits
+        out of the pool entirely. Here the dense top-N is guaranteed a seat, and
+        lexical influence scales with path_likeness instead of being fixed, so
+        identifier queries still get their lexical boost while prose does not.
+        """
+        g_aff, b_all, d_all, _hybrid, _seeds = self._channel_maps(query, query_vec)
+        d_files = self._file_rank_from_scores(d_all)[:dense_n]
+        b_files = self._file_rank_from_scores(b_all)[:lex_n]
+        g_files = self._file_rank_from_scores(g_aff)[:lex_n]
+
+        pool: list[str] = []
+        seen: set[str] = set()
+        for lst in (d_files, b_files, g_files):
+            for f in lst:
+                f = f.replace("\\", "/")
+                if f not in seen:
+                    seen.add(f)
+                    pool.append(f)
+        if not pool:
+            return self.retrieve_D_rerank(query, query_vec, top_k=top_k)
+
+        # Chunk choice uses the same objective as the ranking, so a file is never
+        # scored on a chunk selected by a different formula.
+        best: dict[str, int] = {}
+        for f in pool:
+            cids = self._file_chunks.get(f, [])
+            if cids:
+                best[f] = max(
+                    cids, key=lambda i: float(d_all[i]) + 0.02 * float(b_all[i])
+                )
+        pool = [f for f in pool if f in best]
+        if not pool:
+            return self.retrieve_D_rerank(query, query_vec, top_k=top_k)
+
+        p = path_likeness(query)
+        w_bm25 = 0.15 + 0.55 * p
+        w_graph = 0.05 + 0.35 * p
+        w_path = 0.10 + 0.70 * p
+
+        zd = _znorm({f: float(d_all[best[f]]) for f in pool})
+        zb = _znorm({f: float(b_all[best[f]]) for f in pool})
+        zg = _znorm({f: float(g_aff[best[f]]) for f in pool})
+
+        qtoks = _query_key_tokens(query)
+        qset = set(tokenize(query))
+        scores: dict[str, float] = {}
+        for f in pool:
+            ftoks = _path_tokens(f)
+            overlap = len(qtoks & ftoks) + len(qset & ftoks)
+            exact = 2.0 if Path(f).stem.lower() in qtoks else 0.0
+            scores[f] = (
+                zd[f]
+                + w_bm25 * zb[f]
+                + w_graph * zg[f]
+                + w_path * (exact + 0.5 * overlap)
+            )
+
+        ordered = sorted(pool, key=lambda f: -scores[f])
+        out: list[Hit] = []
+        for f in ordered[:top_k]:
+            i = best[f]
+            out.append(
+                Hit(
+                    chunk_id=i,
+                    score=float(scores[f]),
+                    file=f,
+                    source=f"V2_adaptive:p{p:.2f}",
+                    graph=float(g_aff[i]),
+                    bm25=float(b_all[i]),
+                    dense=float(d_all[i]),
+                )
+            )
+        return out
+
+    def retrieve_V3_evidence(
+        self,
+        query: str,
+        query_vec: np.ndarray,
+        top_k: int = 10,
+        *,
+        dense_n: int = 40,
+        lex_n: int = 20,
+        floor: float = 0.25,
+    ) -> list[Hit]:
+        """Fuse channels by how decisively each one points, measured per query.
+
+        Which channel holds the signal moves from query to query: prose questions
+        are usually dense's to win, but a graph hub or an exact term can carry one
+        outright. Any fixed weighting -- including one keyed off the query's
+        surface form -- suppresses the right answer whenever it guesses wrong.
+        So each channel's weight comes from how far its own leader stands above
+        its own distribution over the pool, and the pool unions every channel so
+        no candidate is dropped before that judgement is made.
+        """
+        g_aff, b_all, d_all, _hybrid, seed_files = self._channel_maps(query, query_vec)
+        d_files = self._file_rank_from_scores(d_all)[:dense_n]
+        b_files = self._file_rank_from_scores(b_all)[:lex_n]
+        g_files = self._file_rank_from_scores(g_aff)[:lex_n]
+        try:
+            nbrs = list(
+                self.graph.neighbor_files(
+                    seed_files + g_files[:5] + d_files[:5],
+                    cap=self.config.expand_file_cap,
+                )
+            )
+        except Exception:  # noqa: BLE001
+            nbrs = []
+
+        pool: list[str] = []
+        seen: set[str] = set()
+        for lst in (d_files, b_files, g_files, nbrs):
+            for f in lst:
+                f = f.replace("\\", "/")
+                if f not in seen and self._file_chunks.get(f):
+                    seen.add(f)
+                    pool.append(f)
+        if not pool:
+            return self.retrieve_D_rerank(query, query_vec, top_k=top_k)
+
+        chan = {"dense": d_all, "bm25": b_all, "graph": g_aff}
+        file_scores: dict[str, dict[str, float]] = {}
+        for f in pool:
+            cids = self._file_chunks[f]
+            file_scores[f] = {
+                name: max(float(arr[i]) for i in cids) for name, arr in chan.items()
+            }
+
+        z = {
+            name: _znorm({f: file_scores[f][name] for f in pool}) for name in chan
+        }
+        # A channel earns weight by standing its leader clear of its own spread.
+        conf: dict[str, float] = {}
+        for name in chan:
+            nonzero = [f for f in pool if file_scores[f][name] > 0]
+            conf[name] = max(z[name].values()) if len(nonzero) >= 2 else 0.0
+        top_conf = max(conf.values()) or 1.0
+        w = {name: floor + (1.0 - floor) * (c / top_conf) for name, c in conf.items()}
+
+        p = path_likeness(query)
+        w_path = 0.15 + 0.55 * p
+        qtoks = _query_key_tokens(query)
+        qset = set(tokenize(query))
+
+        scores: dict[str, float] = {}
+        for f in pool:
+            ftoks = _path_tokens(f)
+            overlap = len(qtoks & ftoks) + len(qset & ftoks)
+            exact = 2.0 if Path(f).stem.lower() in qtoks else 0.0
+            scores[f] = sum(w[n] * z[n][f] for n in chan) + w_path * (
+                exact + 0.5 * overlap
+            )
+
+        # Chunk choice follows the same weights, so the span shown is the span ranked.
+        maxes = {n: (max(float(v) for v in arr) or 1.0) for n, arr in chan.items()}
+        best: dict[str, int] = {}
+        for f in pool:
+            best[f] = max(
+                self._file_chunks[f],
+                key=lambda i: sum(w[n] * float(chan[n][i]) / maxes[n] for n in chan),
+            )
+
+        tag = "+".join(n[0] for n in sorted(w, key=lambda n: -w[n]))
+        out: list[Hit] = []
+        for f in sorted(pool, key=lambda f: -scores[f])[:top_k]:
+            i = best[f]
+            out.append(
+                Hit(
+                    chunk_id=i,
+                    score=float(scores[f]),
+                    file=f,
+                    source=f"V3_evidence:{tag}",
+                    graph=float(g_aff[i]),
+                    bm25=float(b_all[i]),
+                    dense=float(d_all[i]),
+                )
+            )
+        return out
+
+    def retrieve_D_channel_best(
+        self,
+        query: str,
+        query_vec: np.ndarray,
+        top_k: int = 10,
+        *,
+        per_channel: int = 4,
+    ) -> list[Hit]:
+        """Union channel leaders, then D-score.
+
+        Soft (low path_likeness) queries widen the dense shortlist so gold that
+        sits just outside the top-4 is still eligible. Hub stems with no path
+        overlap are lightly demoted so graphify/serve.py cannot monopolize NL hits.
+        """
+        g_aff, b_all, d_all, _, _ = self._channel_maps(query, query_vec)
+        plike = path_likeness(query)
+        if plike <= 0.35:
+            d_n, b_n, g_n = 20, 8, 6
+        elif plike <= 0.50:
+            d_n, b_n, g_n = 10, 6, 5
+        else:
+            d_n = b_n = g_n = per_channel
+
+        g_files = self._file_rank_from_scores(g_aff)[:g_n]
+        b_files = self._file_rank_from_scores(b_all)[:b_n]
+        d_files = self._file_rank_from_scores(d_all)[:d_n]
+
+        channels: dict[str, set[str]] = defaultdict(set)
+        for f in g_files:
+            channels[f.replace("\\", "/")].add("graph")
+        for f in b_files:
+            channels[f.replace("\\", "/")].add("bm25")
+        for f in d_files:
+            channels[f.replace("\\", "/")].add("dense")
+
+        hub_stems = frozenset({"serve", "llm"})
+        qtoks = _query_key_tokens(query)
+
+        pool: list[Hit] = []
+        for f, chans in channels.items():
+            cid = self._best_chunk(f, g_aff, b_all, d_all, query=query)
+            if cid < 0:
+                continue
+            tag = "+".join(sorted(chans))
+            pool.append(
+                Hit(
+                    chunk_id=cid,
+                    score=0.0,
+                    file=f,
+                    source=f"D_channel_best:{tag}",
+                    graph=float(g_aff[cid]) if 0 <= cid < len(g_aff) else 0.0,
+                    bm25=float(b_all[cid]) if 0 <= cid < len(b_all) else 0.0,
+                    dense=float(d_all[cid]) if 0 <= cid < len(d_all) else 0.0,
+                )
+            )
+
+        strong_idents = {
+            t for t in (set(tokenize(query)) | _ident_tokens(query)) if "_" in t and len(t) >= 8
+        }
+        docs = getattr(self.bm25, "docs", None)
+
+        def _score(h: Hit) -> float:
+            # Soft NL queries: raw BM25 magnitudes (often 5–10) with the default
+            # 0.15 weight outvote dense leaders (~0.2). Scale lexical channels by
+            # path_likeness so paraphrase ranking stays dense-led.
+            qtoks_l = qtoks
+            ftoks = _path_tokens(h.file)
+            path_ov = len(qtoks_l & ftoks)
+            bn = Path(h.file).stem.lower()
+            exact = 2.0 if bn in qtoks_l else 0.0
+            if plike <= 0.35:
+                s = exact + 0.35 * path_ov + 10.0 * h.dense + 0.02 * h.bm25 + 0.005 * h.graph
+            elif plike <= 0.50:
+                s = exact + 0.5 * path_ov + 9.0 * h.dense + 0.06 * h.bm25 + 0.01 * h.graph
+            else:
+                s = self._d_rerank_score(query, h)
+            # Identifier in chunk body (route/fn name) beats path-token coincidence
+            # like query "BM25" → bm25_index.py.
+            if (
+                strong_idents
+                and docs is not None
+                and 0 <= h.chunk_id < len(docs)
+                and any(t in set(docs[h.chunk_id]) for t in strong_idents)
+            ):
+                s += 8.0
+            if bn in hub_stems and bn not in qtoks_l and path_ov == 0:
+                s *= 0.4
+            return s
+
+        ranked = sorted(pool, key=lambda h: -_score(h))
+        out: list[Hit] = []
+        for h in ranked[:top_k]:
+            out.append(
+                Hit(
+                    chunk_id=h.chunk_id,
+                    score=_score(h),
+                    file=h.file,
+                    source=h.source,
+                    graph=h.graph,
+                    bm25=h.bm25,
+                    dense=h.dense,
+                )
+            )
+        return out
+
     def retrieve_D_floor(self, query: str, query_vec: np.ndarray, top_k: int = 10) -> list[Hit]:
         """D_rerank + Graphify top-2 floor (cannot leave final top-5)."""
         base = self.retrieve_D_rerank(query, query_vec, top_k=40)
@@ -431,7 +766,7 @@ class MultiArchConductor(Conductor):
                     dense=by_file[f].dense,
                 )
                 continue
-            cid = self._best_chunk(f, g_aff, b_all, d_all)
+            cid = self._best_chunk(f, g_aff, b_all, d_all, query=query)
             if cid < 0:
                 continue
             by_file[f] = Hit(
@@ -575,6 +910,138 @@ class MultiArchConductor(Conductor):
             )
             for h in base[:top_k]
         ]
+
+    # ----- R_plan: GRASP-lite + BM25-lead + soft flat second-pass -----
+    def _score_margin_flat(self, hits: list[Hit], *, ratio: float = 1.22) -> bool:
+        """True when top-1 is not clearly ahead of top-2 (low confidence)."""
+        if not hits:
+            return True
+        if len(hits) < 2:
+            return False
+        s0 = float(hits[0].score)
+        s1 = float(hits[1].score)
+        if s0 <= 1e-9:
+            return True
+        return (s0 / (abs(s1) + 1e-9)) < ratio
+
+    def _keyword_probe_queries(self, query: str) -> list[str]:
+        """Surface probes from the query only — no repo-specific vocabulary."""
+        from conductor.query_router import _FUNC
+
+        keys = [t for t in _query_key_tokens(query) if len(t) >= 4]
+        words = [t for t in tokenize(query) if t not in _FUNC and len(t) >= 4]
+        probes: list[str] = []
+        if keys:
+            probes.append(" ".join(keys[:8]))
+        for w in words[:8]:
+            if w not in probes:
+                probes.append(w)
+        for i in range(min(len(words) - 1, 6)):
+            bigram = f"{words[i]} {words[i + 1]}"
+            if bigram not in probes:
+                probes.append(bigram)
+        return probes[:12]
+
+    def _bm25_probe_hits(
+        self, query: str, query_vec: np.ndarray, *, pool_cap: int = 30
+    ) -> list[Hit]:
+        """BM25-led candidate files from keyword/bigram probes → Hit pool."""
+        g_aff, b_all, d_all, _, _ = self._channel_maps(query, query_vec)
+        file_best: dict[str, float] = {}
+        for probe in self._keyword_probe_queries(query):
+            for cid, sc in self.bm25.search(probe, top_k=24):
+                f = self._file_of(int(cid)).replace("\\", "/")
+                file_best[f] = max(file_best.get(f, -1.0), float(sc))
+        # Also plain BM25 on full query
+        for cid, sc in self.bm25.search(query, top_k=40):
+            f = self._file_of(int(cid)).replace("\\", "/")
+            file_best[f] = max(file_best.get(f, -1.0), float(sc))
+        ordered = sorted(file_best.keys(), key=lambda f: (-file_best[f], f))[:pool_cap]
+        out: list[Hit] = []
+        for f in ordered:
+            cid = self._best_chunk(f, g_aff, b_all, d_all, query=query)
+            if cid < 0:
+                continue
+            out.append(
+                Hit(
+                    chunk_id=cid,
+                    score=0.0,
+                    file=f,
+                    source="bm25_probe",
+                    graph=float(g_aff[cid]),
+                    bm25=float(b_all[cid]),
+                    dense=float(d_all[cid]),
+                )
+            )
+        return out
+
+    def retrieve_D_bm25_lead(self, query: str, query_vec: np.ndarray, top_k: int = 10) -> list[Hit]:
+        """SYMBOL/API path: BM25-weighted hybrid + light graph, then D rerank."""
+        cfg = self.config
+        g_aff, b_all, d_all, _, seed_files = self._channel_maps(query, query_vec)
+        hybrid = np.zeros(self._n, dtype=np.float64)
+        rb = {
+            int(i): r
+            for r, (i, _) in enumerate(self.bm25.search(query, top_k=cfg.candidate_pool), 1)
+        }
+        rd = {
+            int(i): r
+            for r, (i, _) in enumerate(self.dense.search(query_vec, top_k=cfg.candidate_pool), 1)
+        }
+        # BM25-led RRF (exact/API queries)
+        for cid in set(rb) | set(rd):
+            hybrid[cid] = (2.0 / (cfg.rrf_k + rb.get(cid, 10_000))) + (
+                0.35 / (cfg.rrf_k + rd.get(cid, 10_000))
+            )
+        g_files = self._file_rank_from_scores(g_aff)
+        h_files = self._file_rank_from_scores(hybrid)
+        ordered = self._minrank_files(g_files, h_files, seed_files)
+        pool = self._hits_from_files(ordered, g_aff, b_all, d_all, 40, "D_bm25_lead")
+        return self._hits_from_pool_d_score(query, pool, top_k, "D_bm25_lead")
+
+    def retrieve_R_plan(self, query: str, query_vec: np.ndarray, top_k: int = 10) -> list[Hit]:
+        """Production planner: BM25-lead for SYMBOL; SOFT Hippo + flat second-pass.
+
+        1. SYMBOL + high path_likeness → BM25-lead D (skip heavy dual-seed)
+        2. Else R_complex (SOFT→Hippo, else D)
+        3. If SOFT and top margin flat → keyword/bigram BM25 probe → merge → D rerank
+        """
+        state = query_state(query)
+        plike = path_likeness(query)
+
+        if state == "SYMBOL" and plike >= 0.55:
+            return self.retrieve_D_bm25_lead(query, query_vec, top_k=top_k)
+
+        base = self.retrieve_R_complex(query, query_vec, top_k=max(top_k, 8))
+        tag = (base[0].source if base else "R_plan") + "+plan"
+
+        if state != "SOFT" or not self._score_margin_flat(base):
+            return [
+                Hit(
+                    chunk_id=h.chunk_id,
+                    score=h.score,
+                    file=h.file,
+                    source=tag if state != "SOFT" else h.source,
+                    graph=h.graph,
+                    bm25=h.bm25,
+                    dense=h.dense,
+                )
+                for h in base[:top_k]
+            ]
+
+        # Second pass: surface keyword probes (no repo lexicon)
+        probe_hits = self._bm25_probe_hits(query, query_vec, pool_cap=35)
+        by_file: dict[str, Hit] = {}
+        for h in base:
+            by_file[h.file.replace("\\", "/")] = h
+        for h in probe_hits:
+            f = h.file.replace("\\", "/")
+            if f not in by_file:
+                by_file[f] = h
+        merged = self._hits_from_pool_d_score(
+            query, list(by_file.values()), top_k, "R_plan:SOFT+probe"
+        )
+        return merged
 
     # ----- D2: R&D — union C expand pool + A pool, then D-style rerank -----
     def retrieve_D2_pool_from_c(self, query: str, query_vec: np.ndarray, top_k: int = 10) -> list[Hit]:
@@ -911,11 +1378,16 @@ class MultiArchConductor(Conductor):
         "B_ppr": "retrieve_B_ppr",
         "C_gear": "retrieve_C_gear",
         "D_rerank": "retrieve_D_rerank",
+        "V2_adaptive": "retrieve_V2_adaptive",
+        "V3_evidence": "retrieve_V3_evidence",
+        "D_channel_best": "retrieve_D_channel_best",
         "D_floor": "retrieve_D_floor",
         "D_hippo": "retrieve_D_hippo",
         "X_soft": "retrieve_X_soft",
         "R_gated_floor": "retrieve_R_gated_floor",
         "R_complex": "retrieve_R_complex",
+        "R_plan": "retrieve_R_plan",
+        "D_bm25_lead": "retrieve_D_bm25_lead",
         "D2_pool_from_c": "retrieve_D2_pool_from_c",
         "E_multiprobe": "retrieve_E_multiprobe",
         "F_f95": "retrieve_F_f95",

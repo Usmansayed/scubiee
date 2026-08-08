@@ -1,0 +1,25 @@
+{
+  "title": "OpenCode MCP token-savings A/B — multi-hop agentic locate",
+  "repo": "testdata/frontend-mcp",
+  "min_wall_s": 600,
+  "turns": [
+    {
+      "id": "T1",
+      "prompt": "MULTI-HOP investigation via MCP only (no inventing paths). Step 1: find where the AGENT is instructed what to do when a browser session vanished/unreachable — quote the guidance file + a short snippet. Step 2: from that answer, follow to the lease/queue owner that prevents two perception tools sharing one browser unsafely — name that file. Step 3: after an executor picks a tool name, where are MCP callables bound — name the registry and one importer. Prefer small spans / graph neighbors over dumping whole files. End with a compact answer listing the three paths. Avoid SEO/Figma/dribbble rabbit holes unless they are the true answer.",
+      "must_touch": ["agent_guidance.py", "browser_session_manager.py", "dispatch_registry.py"],
+      "must_avoid": ["seo/", "dribbble/"]
+    },
+    {
+      "id": "T2",
+      "prompt": "Continue the same investigation via MCP. For each of the three files you named, pull a SMALL span (or graph neighbor evidence) proving the connection: guidance → session lease → dispatch registry. If unsure, re-search — do not dump entire files. Then answer: what is the one-sentence wiring story across the three? Keep the answer short.",
+      "must_touch": ["agent_guidance.py", "browser_session_manager.py", "dispatch_registry.py"],
+      "must_avoid": ["seo/", "dribbble/"]
+    },
+    {
+      "id": "T3",
+      "prompt": "Final MCP check: name one concrete symbol/function in browser_session_manager that implements acquire/lease, and one symbol in dispatch_registry that maps tool name → callable. Quote ~3-8 lines total via span tools if available. Do not open unrelated Figma/SEO trees.",
+      "must_touch": ["browser_session_manager.py", "dispatch_registry.py"],
+      "must_avoid": ["seo/", "dribbble/"]
+    }
+  ]
+}

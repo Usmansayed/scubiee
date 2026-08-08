@@ -1,0 +1,708 @@
+"""CLI: python -m pipeline index|search|status|serve"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+import time
+import urllib.request
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT / "packages") not in sys.path:
+    sys.path.insert(0, str(ROOT / "packages"))
+
+from pipeline.indexer import IndexDeferred, index_repo
+from pipeline.searcher import search_repo
+from pipeline.store import PipelineStore
+
+
+def _progress(phase: str, frac: float) -> None:
+    pct = int(max(0.0, min(1.0, float(frac) if isinstance(frac, (int, float)) else 0)) * 100)
+    print(f"[{pct:3d}%] {phase}", file=sys.stderr)
+
+
+def cmd_index(args: argparse.Namespace) -> int:
+    root = Path(args.path).resolve()
+
+    def progress(phase, frac=0.0):
+        if isinstance(phase, str) and isinstance(frac, (int, float)):
+            _progress(phase, frac)
+        else:
+            print(str(phase), file=sys.stderr)
+
+    roots = None
+    if getattr(args, "roots", None):
+        roots = [r.strip() for r in str(args.roots).split(",") if r.strip()]
+
+    fast = bool(getattr(args, "fast", False))
+    if roots and not fast:
+        # --roots only narrows the fast path. Honouring it literally would mean a
+        # full index of every supported extension, which is the opposite of what
+        # someone restricting roots is asking for.
+        print(
+            "[index] --roots implies --fast; indexing .py under "
+            f"{', '.join(roots)} only",
+            file=sys.stderr,
+        )
+        fast = True
+    args.fast = fast
+
+    # CLI index always registers the project (shared pipeline)
+    from pipeline.registration import register_project
+
+    reg = register_project(
+        root,
+        always_allow=True,
+        index=False,  # index via index_repo below for progress hooks
+        fast=fast,
+    )
+    if not reg.ok:
+        print(json.dumps(reg.to_dict(), indent=2))
+        return 1
+
+    try:
+        stats = index_repo(
+            root,
+            force=args.force,
+            bits=args.bits,
+            embed_model=args.model,
+            fast=fast,
+            fast_roots=roots,
+            progress=progress,
+        )
+    except IndexDeferred as exc:
+        print(
+            json.dumps(
+                {
+                    "ok": False,
+                    "deferred": True,
+                    "error": str(exc.reason),
+                    "pressure": exc.pressure,
+                },
+                indent=2,
+            )
+        )
+        return 1
+    out = stats.__dict__.copy()
+    out["project_id"] = reg.project_id
+    out["registered"] = True
+    print(json.dumps(out, indent=2))
+    return 0
+
+
+def cmd_resources(args: argparse.Namespace) -> int:
+    """Show hardware snapshot + live resource pressure / budgets."""
+    from pipeline.hardware import ensure_hardware_snapshot, load_hardware, save_hardware
+    from pipeline.resources import get_resource_manager, reset_resource_manager_for_tests
+
+    if args.refresh:
+        snap = ensure_hardware_snapshot(force=True)
+    else:
+        snap = load_hardware() or ensure_hardware_snapshot(force=False)
+    if args.save:
+        save_hardware(snap)
+
+    if args.reset_rm:
+        reset_resource_manager_for_tests()
+
+    rm = get_resource_manager()
+    status = rm.status()
+    print(
+        json.dumps(
+            {
+                "hardware": {
+                    "os": snap.get("os"),
+                    "cpu_model": snap.get("cpu_model"),
+                    "cpu_count": snap.get("cpu_count_logical") or snap.get("cpu_count"),
+                    "ram_total_gb": round((snap.get("ram_total_bytes") or 0) / 1e9, 2)
+                    if snap.get("ram_total_bytes")
+                    else None,
+                    "recommended_accel": snap.get("recommended_accel"),
+                    "libraries": snap.get("libraries"),
+                },
+                "resources": status,
+            },
+            indent=2,
+            default=str,
+        )
+    )
+    return 0
+
+
+def cmd_register(args: argparse.Namespace) -> int:
+    from pipeline.registration import register_project
+
+    root = Path(args.path).resolve()
+    result = register_project(
+        root,
+        always_allow=bool(args.always_allow),
+        index=not bool(args.no_index),
+        fast=bool(args.fast),
+        force_reindex=bool(args.force),
+    )
+    print(json.dumps(result.to_dict(), indent=2))
+    return 0 if result.ok else 1
+
+
+def cmd_settings(args: argparse.Namespace) -> int:
+    from pipeline.settings import (
+        get_registration_mode,
+        load_prefs,
+        prefs_path,
+        save_prefs,
+        set_registration_mode,
+    )
+
+    if args.show or (not args.mode and args.incremental is None and args.watching is None):
+        prefs = load_prefs()
+        prefs["prefs_path"] = str(prefs_path())
+        print(json.dumps(prefs, indent=2))
+        return 0
+
+    prefs = load_prefs()
+    if args.mode:
+        set_registration_mode(args.mode)
+        prefs = load_prefs()
+    if args.incremental is not None:
+        prefs["incremental_indexing"] = bool(args.incremental)
+    if args.watching is not None:
+        prefs["file_watching"] = bool(args.watching)
+    save_prefs(prefs)
+    print(json.dumps(load_prefs(), indent=2))
+    print(
+        f"[settings] registration_mode={get_registration_mode()} "
+        f"(dashboard: ctx serve . → http://127.0.0.1:8765/dashboard)",
+        file=sys.stderr,
+    )
+    return 0
+
+
+def cmd_search(args: argparse.Namespace) -> int:
+    root = Path(args.path).resolve()
+    t0 = time.perf_counter()
+    hits = search_repo(
+        root,
+        args.query,
+        top_k=args.top_k,
+        use_server=not args.local,
+        server_url=args.url,
+    )
+    ms = (time.perf_counter() - t0) * 1000
+    print(
+        json.dumps(
+            {
+                "latency_ms": round(ms, 1),
+                "hits": [
+                    {
+                        "rank": h.rank,
+                        "file": h.file,
+                        "score": h.score,
+                        "chunk_id": h.chunk_id,
+                        "preview": h.preview,
+                        "source": h.source,
+                    }
+                    for h in hits
+                ],
+            },
+            indent=2,
+        )
+    )
+    return 0
+
+
+def cmd_status(args: argparse.Namespace) -> int:
+    root = Path(args.path).resolve()
+    store = PipelineStore(root)
+    meta = store.load_meta()
+    col = store.get_collection()
+    from pipeline.freshness import check_freshness
+    from pipeline.vectordb import VectorDatabase
+
+    freshness = check_freshness(
+        root,
+        store.load_merkle(),
+        indexed_head=meta.get("git_head"),
+        file_mtimes=store.load_mtimes(),
+    ).to_dict()
+    vdb = VectorDatabase()
+    warm = None
+    try:
+        with urllib.request.urlopen(
+            (args.url or "http://127.0.0.1:8765").rstrip("/") + "/health", timeout=2
+        ) as resp:
+            warm = json.loads(resp.read().decode("utf-8"))
+    except Exception:
+        warm = {"ok": False, "warm": False}
+
+    print(
+        json.dumps(
+            {
+                "root": str(root),
+                "store": str(store.base),
+                "collection": store.collection_name,
+                "meta": meta,
+                "chunks": len(store.load_chunks()),
+                "vectors": col.stats() if col else None,
+                "merkle_files": len(store.load_merkle()),
+                "freshness": freshness,
+                "vectordb": {
+                    "root": str(vdb.root),
+                    "collections": vdb.list_collections(),
+                },
+                "server": warm,
+            },
+            indent=2,
+        )
+    )
+    return 0
+
+
+def cmd_sync(args: argparse.Namespace) -> int:
+    from pipeline.incremental import incremental_sync
+
+    root = Path(args.path).resolve()
+    result = incremental_sync(root)
+    print(json.dumps(result.to_dict(), indent=2))
+    return 0 if result.error is None else 1
+
+
+def cmd_serve(args: argparse.Namespace) -> int:
+    """Alias for Context Engine daemon (foreground)."""
+    from pipeline.server import run_server
+
+    run_server(Path(args.path).resolve(), host=args.host, port=args.port)
+    return 0
+
+
+def cmd_engine(args: argparse.Namespace) -> int:
+    """Context Engine daemon control: start | stop | status | run | ensure | watchdog."""
+    from pipeline.client import EngineClient, engine_url
+    from pipeline.daemon import ensure_daemon, is_running, start_daemon, stop_daemon
+    from pipeline.watchdog import (
+        start_watchdog,
+        stop_watchdog,
+        watchdog_loop,
+        watchdog_status,
+    )
+
+    action = args.action
+    if action == "run":
+        from pipeline.server import run_server
+
+        run_server(
+            Path(args.path).resolve(),
+            host=args.host,
+            port=args.port,
+            open_on_start=not args.no_open,
+        )
+        return 0
+    if action == "watchdog":
+        # Foreground loop for the detached sidecar child
+        watchdog_loop()
+        return 0
+    if action == "start":
+        result = start_daemon(
+            Path(args.path).resolve() if args.path else None,
+            host=args.host,
+            port=args.port,
+            wait_s=float(args.wait),
+        )
+        # Start watchdog if daemon is usable (health may race past wait timeout)
+        from pipeline.daemon import is_running as _ir
+
+        wd: dict
+        if result.get("ok") or _ir():
+            wd = start_watchdog()
+            result["ok"] = True
+        else:
+            wd = {"ok": False, "skipped": True}
+        out = {**result, "watchdog": wd}
+        print(json.dumps(out, indent=2))
+        return 0 if result.get("ok") else 1
+    if action == "stop":
+        wd = stop_watchdog()
+        eng = stop_daemon()
+        print(json.dumps({"ok": True, "watchdog": wd, "engine": eng}, indent=2))
+        return 0
+    if action == "status":
+        client = EngineClient()
+        healthy = is_running()
+        payload = {
+            "url": engine_url(),
+            "running": healthy,
+            "health": client.get("/health") if healthy else None,
+            "watchdog": watchdog_status(),
+        }
+        if healthy:
+            payload["status"] = client.status(str(Path(args.path or ".").resolve()))
+        print(json.dumps(payload, indent=2, default=str))
+        return 0 if healthy else 1
+    if action == "ensure":
+        result = ensure_daemon(Path(args.path or ".").resolve())
+        if result.get("ok"):
+            result["watchdog"] = start_watchdog()
+        print(json.dumps(result, indent=2))
+        return 0 if result.get("ok") else 1
+    print(f"unknown action {action}", file=sys.stderr)
+    return 2
+
+
+def cmd_mcp(args: argparse.Namespace) -> int:
+    import os
+
+    if args.path:
+        os.environ["CTX_REPO"] = str(Path(args.path).resolve())
+    from pipeline.mcp_locate import main as mcp_main
+
+    mcp_main()
+    return 0
+
+
+def cmd_init(args: argparse.Namespace) -> int:
+    """Detect hardware, install ORT wheel + FastEmbed, download CodeRank, microbench."""
+    from pipeline.accel import ACCEL_PATH, configure, detect_hardware, load_accel
+
+    if args.status:
+        prof = load_accel()
+        print(
+            json.dumps(
+                {
+                    "accel_path": str(ACCEL_PATH),
+                    "profile": None if prof is None else prof.__dict__,
+                    "detected_now": detect_hardware(),
+                },
+                indent=2,
+                default=str,
+            )
+        )
+        return 0
+
+    prof = configure(
+        force_profile=args.profile,
+        install_pkgs=not args.skip_install,
+        download_model=not args.skip_model,
+        bench=not args.skip_bench,
+    )
+    print(json.dumps(prof.__dict__, indent=2, default=str))
+    return 0
+
+
+def cmd_setup(args: argparse.Namespace) -> int:
+    """One user-facing install: package config + local service + Cursor MCP."""
+    import os
+
+    if getattr(args, "status", False):
+        return cmd_init(args)
+
+    print("[setup] 1/4 graphify …", file=sys.stderr, flush=True)
+    try:
+        from graphify.extract import extract  # noqa: F401
+        from graphify.build import build  # noqa: F401
+    except Exception as exc:  # noqa: BLE001
+        print(f"[setup] graphify missing/broken: {exc}", file=sys.stderr)
+        return 1
+    print("[setup] graphify OK", file=sys.stderr, flush=True)
+
+    print("[setup] 2/4 hardware + accel …", file=sys.stderr, flush=True)
+    if not args.skip_accel:
+        rc = cmd_init(args)
+        if rc != 0:
+            return rc
+    else:
+        try:
+            from pipeline.hardware import ensure_hardware_snapshot
+
+            ensure_hardware_snapshot(force=True)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[setup] hardware snapshot: {exc}", file=sys.stderr)
+
+    repo = Path(args.repo or args.index_path or ".").resolve()
+    os.environ["CTX_REPO"] = str(repo)
+    host = args.host
+    port = int(args.port)
+    os.environ["CTX_ENGINE_URL"] = f"http://{host}:{port}"
+
+    print("[setup] 3/4 start local service …", file=sys.stderr, flush=True)
+    from pipeline.daemon import start_daemon
+    from pipeline.watchdog import start_watchdog
+
+    eng = start_daemon(repo, host=host, port=port, wait_s=float(args.wait))
+    if eng.get("ok"):
+        print(f"[setup] service ready at {eng.get('url') or os.environ['CTX_ENGINE_URL']}", file=sys.stderr)
+        wd = start_watchdog()
+        print(f"[setup] watchdog: {wd}", file=sys.stderr)
+    else:
+        print(
+            "[setup] WARNING: service health timed out — MCP will retry on first use",
+            file=sys.stderr,
+        )
+
+    print("[setup] 4/4 register Cursor MCP …", file=sys.stderr, flush=True)
+    _write_mcp_config(repo, host, port)
+    install = Path(__file__).resolve().parents[2] / "scripts" / "install_mcp.py"
+    if install.is_file():
+        try:
+            import importlib.util
+
+            spec = importlib.util.spec_from_file_location("install_mcp", install)
+            mod = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
+            assert spec and spec.loader
+            spec.loader.exec_module(mod)
+            mod.merge_mcp_json(Path.cwd() / ".cursor" / "mcp.json", repo=repo)
+            mod.merge_mcp_json(Path.home() / ".cursor" / "mcp.json", repo=repo)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[setup] install_mcp merge note: {exc}", file=sys.stderr)
+
+    if args.index_path or args.register:
+        print(f"[setup] register/index {repo} …", file=sys.stderr, flush=True)
+        from pipeline.client import EngineClient
+
+        client = EngineClient()
+        if client.healthy():
+            print(
+                json.dumps(
+                    client.register(str(repo), always_allow=True, index=True),
+                    indent=2,
+                )
+            )
+        else:
+            from pipeline.registration import register_project
+
+            print(
+                json.dumps(
+                    register_project(repo, always_allow=True, index=True, fast=True).to_dict(),
+                    indent=2,
+                )
+            )
+
+    print(
+        "\n[setup] DONE — Context Engine MCP is ready\n"
+        "  Reload MCP in Cursor (Settings → MCP → refresh)\n"
+        f"  Optional dashboard: {os.environ['CTX_ENGINE_URL']}/dashboard\n",
+        file=sys.stderr,
+        flush=True,
+    )
+    return 0
+
+
+def _write_mcp_config(repo: Path, host: str, port: int) -> None:
+    """Minimal MCP write when install_mcp import fails."""
+    py = Path(sys.executable).resolve()
+    root = Path(__file__).resolve().parents[2]
+    entry = {
+        "command": str(py).replace("\\", "/"),
+        "args": ["-u", "-m", "pipeline.mcp_locate"],
+        "env": {
+            "PYTHONPATH": str(root / "packages").replace("\\", "/"),
+            "CTX_REPO": str(repo).replace("\\", "/"),
+            "CTX_ENGINE_URL": f"http://{host}:{port}",
+            "CTX_TOKEN_MODE": "savings",
+            "CTX_BACKGROUND_SYNC": "1",
+            "CTX_ALLOW_BG_FULL": "0",
+            "CTX_AUTO_INDEX": "1",
+            "CTX_SYNC_INTERVAL_MS": "300000",
+            "CTX_REGISTRATION_MODE": "automatic",
+            "PYTHONUTF8": "1",
+        },
+    }
+    # Project-scoped only: a user-level entry pins one CTX_REPO for every
+    # workspace and shadows the per-project config.
+    for path in (Path.cwd() / ".cursor" / "mcp.json",):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        data: dict = {"mcpServers": {}}
+        if path.is_file():
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                pass
+        data.setdefault("mcpServers", {})["context-engine"] = entry
+        path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        print(f"[setup] wrote {path}", file=sys.stderr)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="pipeline",
+        description="Context Engine — Merkle + Graphify + TurboQuant + FAISS + D_rerank",
+    )
+    sub = parser.add_subparsers(dest="cmd", required=True)
+
+    p_index = sub.add_parser("index", help="Index a repository")
+    p_index.add_argument("path", nargs="?", default=".", help="Repo path")
+    p_index.add_argument("--force", action="store_true")
+    p_index.add_argument(
+        "--bits",
+        type=int,
+        default=8,
+        help="TurboQuant bits (default 8; 4 is too lossy for CodeRank quality)",
+    )
+    p_index.add_argument(
+        "--model",
+        default="nomic-ai/CodeRankEmbed",
+        help="Embedding model (default CodeRankEmbed)",
+    )
+    p_index.add_argument(
+        "--fast",
+        action="store_true",
+        help="Fast config: .py under CTX_FAST_ROOTS / --roots only",
+    )
+    p_index.add_argument(
+        "--roots",
+        default=None,
+        help="Comma-separated fast roots (default: src,lib,app,packages,testdata,...)",
+    )
+    p_index.set_defaults(func=cmd_index)
+
+    p_res = sub.add_parser(
+        "resources",
+        help="Hardware snapshot + live CPU/RAM pressure and adaptive budgets",
+    )
+    p_res.add_argument("--refresh", action="store_true", help="Re-detect hardware")
+    p_res.add_argument("--save", action="store_true", help="Write hardware.json")
+    p_res.add_argument(
+        "--reset-rm",
+        action="store_true",
+        help="Reset in-process ResourceManager singleton",
+    )
+    p_res.set_defaults(func=cmd_resources)
+
+    p_reg = sub.add_parser(
+        "register",
+        help="Register a project (id + optional index). Same pipeline as MCP consent.",
+    )
+    p_reg.add_argument("path", nargs="?", default=".")
+    p_reg.add_argument(
+        "--always-allow",
+        action="store_true",
+        help="Skip future MCP registration prompts for this project",
+    )
+    p_reg.add_argument("--no-index", action="store_true", help="Only write id/registry")
+    p_reg.add_argument("--fast", action="store_true", help="Fast index roots only")
+    p_reg.add_argument("--force", action="store_true", help="Force reindex")
+    p_reg.set_defaults(func=cmd_register)
+
+    p_set = sub.add_parser(
+        "settings",
+        help="Show/set registration mode (automatic | mcp_cli) and indexing prefs",
+    )
+    p_set.add_argument("--show", action="store_true", help="Print prefs.json")
+    p_set.add_argument(
+        "--mode",
+        choices=["automatic", "mcp_cli"],
+        default=None,
+        help="Project registration mode",
+    )
+    p_set.add_argument(
+        "--incremental",
+        type=lambda s: str(s).lower() in {"1", "true", "yes", "on"},
+        default=None,
+        help="Enable incremental keeper after register (true/false)",
+    )
+    p_set.add_argument(
+        "--watching",
+        type=lambda s: str(s).lower() in {"1", "true", "yes", "on"},
+        default=None,
+        help="Enable file watching / keeper (true/false)",
+    )
+    p_set.set_defaults(func=cmd_settings)
+
+    p_search = sub.add_parser("search", help="Search with D_rerank (uses warm server if up)")
+    p_search.add_argument("query")
+    p_search.add_argument("path", nargs="?", default=".")
+    p_search.add_argument("--top-k", type=int, default=8)
+    p_search.add_argument(
+        "--local",
+        action="store_true",
+        help="Skip HTTP server; use in-process warm cache",
+    )
+    p_search.add_argument("--url", default="http://127.0.0.1:8765")
+    p_search.set_defaults(func=cmd_search)
+
+    p_status = sub.add_parser("status", help="Show index + freshness status")
+    p_status.add_argument("path", nargs="?", default=".")
+    p_status.add_argument("--url", default="http://127.0.0.1:8765")
+    p_status.set_defaults(func=cmd_status)
+
+    p_sync = sub.add_parser("sync", help="Incremental re-embed files changed since last index")
+    p_sync.add_argument("path", nargs="?", default=".")
+    p_sync.set_defaults(func=cmd_sync)
+
+    p_serve = sub.add_parser("serve", help="Alias: run Context Engine HTTP daemon (foreground)")
+    p_serve.add_argument("path", nargs="?", default=".")
+    p_serve.add_argument("--host", default="127.0.0.1")
+    p_serve.add_argument("--port", type=int, default=8765)
+    p_serve.set_defaults(func=cmd_serve)
+
+    p_eng = sub.add_parser("engine", help="Context Engine daemon: start|stop|status|run|ensure")
+    p_eng.add_argument(
+        "action",
+        choices=["start", "stop", "status", "run", "ensure", "watchdog"],
+        help="Daemon action (watchdog = sidecar poll loop)",
+    )
+    p_eng.add_argument("path", nargs="?", default=".", help="Default repo for open")
+    p_eng.add_argument("--host", default="127.0.0.1")
+    p_eng.add_argument("--port", type=int, default=8765)
+    p_eng.add_argument("--wait", type=float, default=90.0, help="Health wait seconds (start)")
+    p_eng.add_argument("--no-open", action="store_true", help="run: do not open repo on start")
+    p_eng.set_defaults(func=cmd_engine)
+
+    p_mcp = sub.add_parser("mcp", help="Thin MCP adapter (forwards to Context Engine daemon)")
+    p_mcp.add_argument("path", nargs="?", default=None, help="Repo CTX_REPO")
+    p_mcp.set_defaults(func=cmd_mcp)
+
+    p_init = sub.add_parser(
+        "init",
+        help="Detect GPU (CUDA/DML/CPU), install matching ORT + FastEmbed, download CodeRank",
+    )
+    p_init.add_argument(
+        "--profile",
+        choices=["cuda", "dml", "cpu"],
+        default=None,
+        help="Force accel profile (default: auto-detect)",
+    )
+    p_init.add_argument("--skip-install", action="store_true", help="Do not pip install wheels")
+    p_init.add_argument("--skip-model", action="store_true", help="Skip CodeRank download/warm")
+    p_init.add_argument("--skip-bench", action="store_true", help="Skip microbench")
+    p_init.add_argument("--status", action="store_true", help="Print saved accel.json + detect")
+    p_init.set_defaults(func=cmd_init)
+
+    p_setup = sub.add_parser(
+        "setup",
+        help="Full MCP install: accel + local service + Cursor mcp.json",
+    )
+    p_setup.add_argument(
+        "--profile",
+        choices=["cuda", "dml", "cpu"],
+        default=None,
+        help="Force accel profile (default: auto-detect)",
+    )
+    p_setup.add_argument("--skip-install", action="store_true")
+    p_setup.add_argument("--skip-model", action="store_true")
+    p_setup.add_argument("--skip-bench", action="store_true")
+    p_setup.add_argument("--skip-accel", action="store_true", help="Skip pip/ORT install")
+    p_setup.add_argument(
+        "--index",
+        dest="index_path",
+        default=None,
+        help="Also register+index this path after setup",
+    )
+    p_setup.add_argument(
+        "--repo",
+        default=".",
+        help="Default repo for engine + MCP (default: cwd)",
+    )
+    p_setup.add_argument("--register", action="store_true", help="Register --repo after start")
+    p_setup.add_argument("--host", default="127.0.0.1")
+    p_setup.add_argument("--port", type=int, default=8765)
+    p_setup.add_argument("--wait", type=float, default=120.0)
+    p_setup.add_argument("--status", action="store_true", help="Delegate to init --status")
+    p_setup.set_defaults(func=cmd_setup)
+
+    args = parser.parse_args(argv)
+    return int(args.func(args))
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

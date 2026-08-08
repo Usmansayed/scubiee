@@ -8,11 +8,13 @@ from seir.ast_tree import render_ast_tree
 from seir.baseline import render_baseline
 from seir.caps import DEFAULT_MAX_CHARS
 from seir.importance import render_importance
+from seir.mix_rels import render_mix_rels
 from seir.rels import render_rels
 from seir.semantic import render_semantic
 from seir.types import SpanContext
 
-ARMS = ("baseline", "ast_tree", "rels", "semantic", "importance")
+ARMS = ("baseline", "ast_tree", "rels", "semantic", "importance", "mix_rels")
+MATRIX_ARMS = ("baseline", "ast_tree", "mix_rels")
 
 
 def render(
@@ -34,4 +36,8 @@ def render(
         return render_semantic(span, max_chars=max_chars)
     if key == "importance":
         return render_importance(span, max_chars=max_chars)
+    if key == "mix_rels":
+        return render_mix_rels(
+            span, max_chars=max_chars, graph=graph, baseline_text=baseline_text
+        )
     raise ValueError(f"unknown SEIR arm: {arm!r}; expected one of {ARMS}")

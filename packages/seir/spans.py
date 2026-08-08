@@ -1,4 +1,4 @@
-"""Derive function/class spans from Python source via stdlib ast (post-parse)."""
+"""Derive embeddable spans from Python AST by chunk unit."""
 
 from __future__ import annotations
 
@@ -6,6 +6,8 @@ import ast
 from pathlib import Path
 
 from seir.types import SpanContext
+
+CHUNK_UNITS = ("function", "class", "file")
 
 _SKIP_DIR_NAMES = frozenset(
     {
@@ -45,7 +47,8 @@ def _source_segment(src: str, node: ast.AST) -> str:
     return "\n".join(lines[start:end])
 
 
-def _walk_module(file_rel: str, src: str) -> list[SpanContext]:
+def _walk_functions(file_rel: str, src: str) -> list[SpanContext]:
+    """Function + method + top-level class (previous default)."""
     try:
         tree = ast.parse(src)
     except SyntaxError:
@@ -81,12 +84,95 @@ def _walk_module(file_rel: str, src: str) -> list[SpanContext]:
     return out
 
 
+def _walk_classes(file_rel: str, src: str) -> list[SpanContext]:
+    """One span per class (methods folded into class body). Module-level funcs kept."""
+    try:
+        tree = ast.parse(src)
+    except SyntaxError:
+        return []
+    out: list[SpanContext] = []
+    for node in tree.body:
+        if isinstance(node, ast.ClassDef):
+            start = int(node.lineno or 1)
+            end = int(node.end_lineno or start)
+            out.append(
+                SpanContext(
+                    file=file_rel,
+                    start_line=start,
+                    end_line=end,
+                    symbol=node.name,
+                    source=_source_segment(src, node),
+                    node_kind="class",
+                )
+            )
+        elif isinstance(node, ast.FunctionDef):
+            start = int(node.lineno or 1)
+            end = int(node.end_lineno or start)
+            out.append(
+                SpanContext(
+                    file=file_rel,
+                    start_line=start,
+                    end_line=end,
+                    symbol=node.name,
+                    source=_source_segment(src, node),
+                    node_kind="function",
+                )
+            )
+        elif isinstance(node, ast.AsyncFunctionDef):
+            start = int(node.lineno or 1)
+            end = int(node.end_lineno or start)
+            out.append(
+                SpanContext(
+                    file=file_rel,
+                    start_line=start,
+                    end_line=end,
+                    symbol=node.name,
+                    source=_source_segment(src, node),
+                    node_kind="async_function",
+                )
+            )
+    return out
+
+
+def _walk_file(file_rel: str, src: str) -> list[SpanContext]:
+    lines = src.splitlines()
+    end = max(len(lines), 1)
+    stem = Path(file_rel).stem
+    return [
+        SpanContext(
+            file=file_rel,
+            start_line=1,
+            end_line=end,
+            symbol=stem,
+            source=src,
+            node_kind="file",
+        )
+    ]
+
+
 def iter_python_spans(
     repo: Path,
     *,
     limit: int | None = None,
+    chunk_unit: str = "function",
 ) -> list[SpanContext]:
-    """Walk ``repo`` for ``.py`` files and return function/class spans."""
+    """Walk ``repo`` for ``.py`` files and return spans for ``chunk_unit``.
+
+    chunk_unit:
+      function — defs + methods + classes (original SEIR default)
+      class    — class bodies + module-level functions (no per-method rows)
+      file     — one span per file
+    """
+    unit = (chunk_unit or "function").strip().lower()
+    if unit not in CHUNK_UNITS:
+        raise ValueError(f"unknown chunk_unit {chunk_unit!r}; expected {CHUNK_UNITS}")
+
+    walker = {
+        "function": _walk_functions,
+        "class": _walk_classes,
+        "file": _walk_file,
+    }[unit]
+
     root = repo.resolve()
     spans: list[SpanContext] = []
     for path in sorted(root.rglob("*.py")):
@@ -96,7 +182,7 @@ def iter_python_spans(
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
-        spans.extend(_walk_module(_rel(root, path), text))
+        spans.extend(walker(_rel(root, path), text))
         if limit is not None and len(spans) >= limit:
             return spans[:limit]
     return spans

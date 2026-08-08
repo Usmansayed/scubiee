@@ -1,14 +1,59 @@
+# ---- Python -----------------------------------------------------------------
 .venv/
+.venv-*/
+.venv-proof/
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 .pytest_cache/
-out/
-graphify-out/
-vendor/claude-context/
-vendor/graphify/
-testdata/scubiee-news-flow/
+.mypy_cache/
+.ruff_cache/
+.cache/
+build/
+dist/
 *.egg-info/
-.DS_Store
+packages/*.egg-info/
+
+# ---- Local secrets / editor -------------------------------------------------
 .env
 .env.*
 !.env.example
+.DS_Store
+Thumbs.db
+.cursor/
+.idea/
+.vscode/
+
+# ---- Generated / build output -----------------------------------------------
+out/
+graphify-out/
+
+# ---- Local engine & session state (regenerated at runtime) ------------------
+.context-engine/
+.sim-ce-home/
+.sim-ce-home-*/
+
+# ---- Agent tooling scratch --------------------------------------------------
+.agents/
+.superpowers/
+
+# ---- Heavy data / research artifacts ---------------------------------------
+# Regenerable trace/eval data; some files exceed GitHub's 100MB limit
+# (e.g. research/tracelab/raw/*.duckdb ~150MB). Excluded to keep the repo lean.
+research/
+*.duckdb
+*.parquet
+*.sqlite
+*.sqlite3
+
+# ---- Eval / test-data clones (large; re-clone if needed) --------------------
+testdata/
+
+# ---- Upstream vendor git metadata -------------------------------------------
+vendor/graphify/.git/
+
+# ---- One-off dumps ----------------------------------------------------------
+*_raw.json
+*_benchmark.json
+test_graph_speed_output.json

@@ -1,0 +1,9 @@
+{
+  "name": "cursor_sdk_ab",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@cursor/sdk": "^1.0.26"
+  }
+}

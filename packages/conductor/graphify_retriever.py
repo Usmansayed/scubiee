@@ -51,6 +51,35 @@ def build_and_save_graph(extraction: dict, root: Path, out_json: Path) -> nx.Gra
     return _load_graph(str(out_json))
 
 
+def patch_and_save_graph(
+    extraction: dict,
+    root: Path,
+    out_json: Path,
+    *,
+    prune_sources: list[str] | None = None,
+) -> nx.Graph:
+    """Incremental graph update: merge extraction into existing graph.json.
+
+    Re-extracted sources replace prior nodes; prune_sources drops deleted files.
+    Caller must pass extraction for *changed* files only (not full corpus).
+    """
+    from graphify.build import build_merge
+
+    out_json = Path(out_json)
+    out_json.parent.mkdir(parents=True, exist_ok=True)
+    chunks = [extraction] if extraction else [{}]
+    G = build_merge(
+        chunks,
+        graph_path=out_json,
+        prune_sources=prune_sources or None,
+        directed=False,
+        dedup=True,
+        root=root,
+    )
+    graphify_to_json(G, {}, str(out_json), force=True)
+    return _load_graph(str(out_json))
+
+
 def load_or_build_graph(extraction: dict, root: Path, out_json: Path) -> nx.Graph:
     if out_json.exists():
         return _load_graph(str(out_json))

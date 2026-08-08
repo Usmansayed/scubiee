@@ -1,0 +1,24 @@
+{
+  "title": "Soft A/B — graphify+grep vs CE R_plan vs CE D (encourage MCP, don't force)",
+  "repo": "testdata/frontend-mcp",
+  "turns": [
+    {
+      "id": "T1",
+      "prompt": "Investigate this codebase. Find: (1) where the AGENT is told what to do when a browser session vanished/unreachable, (2) the lease/queue owner that stops two perception tools sharing one browser unsafely, (3) where MCP tool names are bound to callables after an executor picks a name. You may use built-in read/grep/glob freely. When you need to locate unfamiliar code by meaning (not an exact string), prefer the available search MCP. End with the three repo-relative paths. Avoid SEO/Figma/dribbble rabbit holes.",
+      "must_touch": ["agent_guidance.py", "browser_session_manager.py", "dispatch_registry.py"],
+      "must_avoid": ["seo/", "dribbble/"]
+    },
+    {
+      "id": "T2",
+      "prompt": "Continue. For each of those three files, show a SMALL snippet (a few lines) that supports the wiring story: guidance → session lease → dispatch registry. Use read/grep as needed; use search MCP again if you lose the trail. One-sentence wiring story at the end. Keep it short.",
+      "must_touch": ["agent_guidance.py", "browser_session_manager.py", "dispatch_registry.py"],
+      "must_avoid": ["seo/", "dribbble/"]
+    },
+    {
+      "id": "T3",
+      "prompt": "Final check: name one concrete symbol/function in browser_session_manager for acquire/lease, and one in dispatch_registry that maps tool name → callable. Quote a few lines. Do not wander into Figma/SEO trees.",
+      "must_touch": ["browser_session_manager.py", "dispatch_registry.py"],
+      "must_avoid": ["seo/", "dribbble/"]
+    }
+  ]
+}

@@ -1,0 +1,217 @@
+"""Tests for hybrid project identity + incremental graph patch."""
+
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "packages"))
+
+from pipeline.project_id import (
+    id_file_path,
+    index_is_usable,
+    load_registry,
+    mint_project_id,
+    read_id_file,
+    resolve_project,
+    write_id_file,
+)
+from pipeline.store import ChunkRecord, PipelineStore
+
+
+@pytest.fixture
+def ce_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    home = tmp_path / "ce-home"
+    home.mkdir()
+    monkeypatch.setenv("CTX_HOME", str(home))
+    return home
+
+
+def test_mint_unique(tmp_path: Path):
+    a = mint_project_id(tmp_path)
+    b = mint_project_id(tmp_path)
+    assert a.startswith("ce_")
+    assert a != b
+
+
+def test_resolve_mints_and_writes(ce_home: Path, tmp_path: Path):
+    repo = tmp_path / "myrepo"
+    repo.mkdir()
+    ref = resolve_project(repo)
+    assert ref.project_id.startswith("ce_")
+    assert id_file_path(repo).is_file()
+    assert read_id_file(repo) == ref.project_id
+    assert ref.store_dir == (ce_home / "projects" / ref.project_id).resolve()
+    assert ref.store_dir.is_dir()
+    reg = load_registry()
+    assert ref.project_id in reg["projects"]
+    assert str(repo.resolve()) in reg["projects"][ref.project_id]["paths"]
+
+
+def test_resolve_reuses_id_file(ce_home: Path, tmp_path: Path):
+    repo = tmp_path / "r"
+    repo.mkdir()
+    write_id_file(repo, "ce_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    ref = resolve_project(repo)
+    assert ref.project_id == "ce_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+
+def test_path_recovery_rewrites_id_file(ce_home: Path, tmp_path: Path):
+    repo = tmp_path / "r"
+    repo.mkdir()
+    ref1 = resolve_project(repo)
+    pid = ref1.project_id
+    id_file_path(repo).unlink()
+    assert read_id_file(repo) is None
+    ref2 = resolve_project(repo)
+    assert ref2.project_id == pid
+    assert read_id_file(repo) == pid
+
+
+def test_both_missing_mints_new(ce_home: Path, tmp_path: Path):
+    repo = tmp_path / "r"
+    repo.mkdir()
+    ref1 = resolve_project(repo)
+    id_file_path(repo).unlink()
+    from pipeline.project_id import save_registry
+
+    save_registry({"projects": {}})
+    ref2 = resolve_project(repo)
+    assert ref2.project_id != ref1.project_id
+
+
+def test_legacy_migration(ce_home: Path, tmp_path: Path):
+    from pipeline.project_id import legacy_indexes_root, legacy_repo_key
+
+    repo = tmp_path / "legacyrepo"
+    repo.mkdir()
+    legacy = legacy_indexes_root() / legacy_repo_key(repo)
+    legacy.mkdir(parents=True)
+    (legacy / "chunks.jsonl").write_text("{}\n", encoding="utf-8")
+    (legacy / "meta.json").write_text("{}", encoding="utf-8")
+    ref = resolve_project(repo, migrate=True)
+    assert (ref.store_dir / "chunks.jsonl").is_file()
+    assert not legacy.exists()
+
+
+def test_index_is_usable(tmp_path: Path):
+    assert index_is_usable(tmp_path) is False
+    (tmp_path / "chunks.jsonl").write_text('{"id":0}\n', encoding="utf-8")
+    assert index_is_usable(tmp_path) is False
+    (tmp_path / "graph.json").write_text("{}", encoding="utf-8")
+    assert index_is_usable(tmp_path) is True
+
+
+def _seed_store(repo: Path, store: PipelineStore, rel: str, body: str) -> None:
+    (repo / rel).write_text(body, encoding="utf-8")
+    store.save_chunks(
+        [
+            ChunkRecord(
+                id=0,
+                file=rel,
+                start_line=1,
+                end_line=2,
+                symbol="f",
+                text=body[:40],
+                enriched=body[:40],
+            )
+        ]
+    )
+    store.save_meta(
+        {
+            "dim": 8,
+            "bits": 4,
+            "chunks": 1,
+            "fast": True,
+            "collection": "test_col",
+            "embed_model": "nomic-ai/CodeRankEmbed",
+        }
+    )
+    store.save_merkle({rel: "oldhash"})
+
+
+def test_incremental_uses_patch_not_full_extract(ce_home: Path, tmp_path: Path):
+    from pipeline.incremental import incremental_sync
+
+    repo = tmp_path / "code"
+    repo.mkdir()
+    ref = resolve_project(repo)
+    store = PipelineStore(repo, base_dir=ref.store_dir, project_id=ref.project_id)
+    _seed_store(repo, store, "a.py", "def a():\n    return 1\n")
+    (store.base / "graph.json").write_text(
+        json.dumps({"directed": False, "multigraph": False, "graph": {}, "nodes": [], "links": []}),
+        encoding="utf-8",
+    )
+    (repo / "a.py").write_text("def a():\n    return 2\n", encoding="utf-8")
+
+    extract_calls: list = []
+
+    def fake_extract(paths, root=None, cache_root=None):
+        extract_calls.append(list(paths))
+        return {"nodes": [], "edges": [], "hyperedges": []}
+
+    fake_patch = MagicMock()
+    with patch("pipeline.incremental.extract", side_effect=fake_extract), patch(
+        "pipeline.incremental.patch_and_save_graph", fake_patch
+    ), patch("pipeline.incremental.build_and_save_graph") as fake_full, patch(
+        "pipeline.incremental.chunk_file_from_ir", return_value=[]
+    ), patch("pipeline.incremental.graphify_to_repo_ir", return_value=MagicMock()), patch.object(
+        PipelineStore, "get_collection", return_value=None
+    ), patch.object(PipelineStore, "upsert_vectors", return_value=MagicMock()), patch.object(
+        PipelineStore, "save_chunks"
+    ), patch.object(PipelineStore, "save_merkle"), patch.object(
+        PipelineStore, "save_meta"
+    ), patch("pipeline.capability.ensure_cards", return_value=0):
+        incremental_sync(repo, force_files=["a.py"], base_dir=ref.store_dir)
+
+    assert fake_patch.called
+    assert not fake_full.called
+    assert len(extract_calls) == 1
+    assert all(Path(p).name == "a.py" for p in extract_calls[0])
+
+
+def test_incremental_missing_graph_falls_back(ce_home: Path, tmp_path: Path):
+    from pipeline.incremental import incremental_sync
+
+    repo = tmp_path / "code2"
+    repo.mkdir()
+    ref = resolve_project(repo)
+    store = PipelineStore(repo, base_dir=ref.store_dir, project_id=ref.project_id)
+    _seed_store(repo, store, "b.py", "x=1\n")
+    # deliberately no graph.json
+
+    with patch(
+        "pipeline.incremental.extract",
+        return_value={"nodes": [], "edges": [], "hyperedges": []},
+    ), patch("pipeline.incremental.build_and_save_graph") as fake_full, patch(
+        "pipeline.incremental.patch_and_save_graph"
+    ) as fake_patch, patch(
+        "pipeline.incremental.chunk_file_from_ir", return_value=[]
+    ), patch("pipeline.incremental.graphify_to_repo_ir", return_value=MagicMock()), patch(
+        "pipeline.incremental.collect_index_paths",
+        return_value=[repo / "b.py"],
+    ), patch.object(PipelineStore, "get_collection", return_value=None), patch.object(
+        PipelineStore, "upsert_vectors", return_value=MagicMock()
+    ), patch.object(PipelineStore, "save_chunks"), patch.object(
+        PipelineStore, "save_merkle"
+    ), patch.object(PipelineStore, "save_meta"), patch(
+        "pipeline.capability.ensure_cards", return_value=0
+    ):
+        incremental_sync(repo, force_files=["b.py"], base_dir=ref.store_dir)
+
+    assert fake_full.called
+    assert not fake_patch.called
+
+
+def test_auto_index_gate(monkeypatch: pytest.MonkeyPatch):
+    from pipeline.sync_loop import auto_index_enabled
+
+    monkeypatch.setenv("CTX_AUTO_INDEX", "0")
+    assert auto_index_enabled() is False
+    monkeypatch.setenv("CTX_AUTO_INDEX", "1")
+    assert auto_index_enabled() is True

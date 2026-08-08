@@ -34,7 +34,8 @@ class ClaudeContextCapabilities:
         "No named symbols / imports / call edges. Unsupported langs fall back to LangChain splitter."
     )
     source_file: str = (
-        "vendor/claude-context/packages/core/src/splitter/ast-splitter.ts"
+        "(historical) Claude Context AstCodeSplitter — not vendored; "
+        "product uses Graphify extract + packages/pipeline Merkle sync"
     )
 
 

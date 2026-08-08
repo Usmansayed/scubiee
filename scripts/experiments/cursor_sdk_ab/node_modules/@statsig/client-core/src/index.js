@@ -1,0 +1,70 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Storage = exports.Log = exports.EventLogger = exports.Diagnostics = void 0;
+/** Statsig Global should go first */
+require("./$_StatsigGlobal");
+const __StatsigGlobal_1 = require("./$_StatsigGlobal");
+const Diagnostics_1 = require("./Diagnostics");
+Object.defineProperty(exports, "Diagnostics", { enumerable: true, get: function () { return Diagnostics_1.Diagnostics; } });
+const EventLogger_1 = require("./EventLogger");
+Object.defineProperty(exports, "EventLogger", { enumerable: true, get: function () { return EventLogger_1.EventLogger; } });
+const Log_1 = require("./Log");
+Object.defineProperty(exports, "Log", { enumerable: true, get: function () { return Log_1.Log; } });
+const StatsigMetadata_1 = require("./StatsigMetadata");
+const StorageProvider_1 = require("./StorageProvider");
+Object.defineProperty(exports, "Storage", { enumerable: true, get: function () { return StorageProvider_1.Storage; } });
+__exportStar(require("./$_StatsigGlobal"), exports);
+__exportStar(require("./CacheKey"), exports);
+__exportStar(require("./ClientInterfaces"), exports);
+__exportStar(require("./DataAdapterCore"), exports);
+__exportStar(require("./Diagnostics"), exports);
+__exportStar(require("./DownloadConfigSpecsResponse"), exports);
+__exportStar(require("./ErrorBoundary"), exports);
+__exportStar(require("./EvaluationOptions"), exports);
+__exportStar(require("./EvaluationTypes"), exports);
+__exportStar(require("./Hashing"), exports);
+__exportStar(require("./InitializeResponse"), exports);
+__exportStar(require("./Log"), exports);
+__exportStar(require("./MemoKey"), exports);
+__exportStar(require("./NetworkConfig"), exports);
+__exportStar(require("./NetworkCore"), exports);
+__exportStar(require("./OverrideAdapter"), exports);
+__exportStar(require("./ParamStoreTypes"), exports);
+__exportStar(require("./SafeJs"), exports);
+__exportStar(require("./SDKType"), exports);
+__exportStar(require("./SessionID"), exports);
+__exportStar(require("./SizeOf"), exports);
+__exportStar(require("./StableID"), exports);
+__exportStar(require("./StatsigClientBase"), exports);
+__exportStar(require("./StatsigClientEventEmitter"), exports);
+__exportStar(require("./StatsigDataAdapter"), exports);
+__exportStar(require("./StatsigEvent"), exports);
+__exportStar(require("./StatsigMetadata"), exports);
+__exportStar(require("./StatsigOptionsCommon"), exports);
+__exportStar(require("./StatsigPlugin"), exports);
+__exportStar(require("./StatsigTypeFactories"), exports);
+__exportStar(require("./StatsigTypes"), exports);
+__exportStar(require("./StatsigUser"), exports);
+__exportStar(require("./StorageProvider"), exports);
+__exportStar(require("./TypedJsonParse"), exports);
+__exportStar(require("./TypingUtils"), exports);
+__exportStar(require("./UrlConfiguration"), exports);
+__exportStar(require("./UUID"), exports);
+__exportStar(require("./VisibilityObserving"), exports);
+__exportStar(require("./StatsigUpdateDetails"), exports);
+__exportStar(require("./SDKFlags"), exports);
+Object.assign((0, __StatsigGlobal_1._getStatsigGlobal)(), { Log: Log_1.Log, SDK_VERSION: StatsigMetadata_1.SDK_VERSION });

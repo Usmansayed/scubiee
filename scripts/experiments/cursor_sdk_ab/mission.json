@@ -1,0 +1,18 @@
+{
+  "title": "Cursor SDK Graphify vs D_rerank+Graphify MCP — complex feature A/B",
+  "metric": "result.usage.totalTokens (Cursor SDK; real LLM tokens)",
+  "model": "composer-2.5",
+  "prompt": "hey — when a couple of our browser tools try to grab chromium at the same time the agent totally loses the plot. can you add some kind of busy / contention signal in the guidance stuff so it knows to slow down and retry, and a tiny helper that hints who currently owns the shared lease? also toss in a couple of tests so we don't regress. stay in this folder, explore with the search tools you've got, and actually ship the change.",
+  "rubric": {
+    "must_contain_in_guidance": ["browser_session_busy", "def contention_hint"],
+    "test_file_glob": "**/test*busy*.py",
+    "pytest_hint": "tests related to busy/contention guidance"
+  },
+  "arms": ["graphify", "d_channel_best"],
+  "notes": [
+    "CE MCP = mcp_d_rerank_only (search_code) + native Read on hits (yesterday-style)",
+    "Graphify arm still MCP-forced (deny native Read)",
+    "Hard timeout via SDK_AB_TIMEOUT_MS (default 12m)",
+    "Primary metric: usage.totalTokens among finished quality-pass runs"
+  ]
+}
