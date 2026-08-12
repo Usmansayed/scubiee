@@ -1,0 +1,24 @@
+{
+  "title": "Raw vs CE_search — vague soft queries, token efficiency A/B",
+  "repo": "testdata/frontend-mcp",
+  "turns": [
+    {
+      "id": "T1_vague_locate",
+      "prompt": "I don't know this codebase. Something handles what the agent should do when a browser session disappears or becomes unreachable. Find that logic and tell me the repo-relative path. Also find where multiple perception tools are prevented from fighting over one browser at the same time. Give me both paths.",
+      "must_touch": ["agent_guidance.py", "browser_session_manager.py"],
+      "must_avoid": ["seo/", "dribbble/", "figma/"]
+    },
+    {
+      "id": "T2_wiring",
+      "prompt": "Now trace the wiring: after the guidance tells the agent what to do, how does work actually get dispatched? Find the registry or dispatcher that maps tool names to real callables. Give me the path and show the key function signature.",
+      "must_touch": ["dispatch_registry.py"],
+      "must_avoid": ["seo/", "dribbble/"]
+    },
+    {
+      "id": "T3_summary",
+      "prompt": "Summarize the flow: guidance -> session management -> dispatch. Quote one short snippet from each of the three files that proves the chain. Keep it under 20 lines total.",
+      "must_touch": ["agent_guidance.py", "browser_session_manager.py", "dispatch_registry.py"],
+      "must_avoid": ["seo/", "figma/"]
+    }
+  ]
+}
