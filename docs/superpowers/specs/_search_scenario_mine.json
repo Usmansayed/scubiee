@@ -1,0 +1,581 @@
+[
+  {
+    "run": "20260810T214438Z",
+    "path": "C:\\Users\\usman\\AppData\\Local\\Temp\\ce_iso_trial\\20260810T214438Z\\ce_nav-arm.json",
+    "arm": "ce_nav",
+    "work_tokens": 7807353,
+    "complete": true,
+    "quality": true,
+    "n_search": 24,
+    "n_mcp_read": 312,
+    "n_nat_read": 0,
+    "scenarios": {
+      "structural": 6,
+      "soft_meaning": 9,
+      "symbolish": 9
+    },
+    "fetch_true": 0,
+    "k_vals": {
+      "8": 15,
+      "default": 9
+    },
+    "modes": {
+      "soft": 15,
+      "exact": 9
+    },
+    "dup_queries": 16,
+    "uniq_queries": 8,
+    "mcp_read_dup_targets": 272,
+    "mcp_read_uniq_targets": 40,
+    "sample_queries": [
+      "Where are perception MCP tools defined with schemas handlers and runtime dispatch by name?",
+      "Where are perception MCP tools defined with schemas handlers and runtime dispatch by name?",
+      "Where is codebase intelligence or code graph perception tool and env toggle for perception features?",
+      "Where is codebase intelligence or code graph perception tool and env toggle for perception features?",
+      "Where is session evidence stored or observed verified evidence recalled for perception agents?",
+      "Where is session evidence stored or observed verified evidence recalled for perception agents?",
+      "How do env toggles gate perception tools with degraded envelopes when disabled?",
+      "How do env toggles gate perception tools with degraded envelopes when disabled?",
+      "Where is AGENT_GUIDE or coordinator briefing text that tells agents how to use observe and verify?",
+      "Where is AGENT_GUIDE or coordinator briefing text that tells agents how to use observe and verify?",
+      "CODEBASE_INTELLIGENCE",
+      "CODEBASE_INTELLIGENCE",
+      "session_evidence",
+      "session_evidence",
+      "perception_code_graph",
+      "perception_code_graph",
+      "Where are perception MCP tools defined with schemas handlers and runtime dispatch by name?",
+      "Where is codebase intelligence or code graph perception tool and env toggle for perception features?",
+      "Where is session evidence stored or observed verified evidence recalled for perception agents?",
+      "How do env toggles gate perception tools with degraded envelopes when disabled?"
+    ],
+    "mcp_names": [
+      [
+        "read",
+        312
+      ],
+      [
+        "files",
+        33
+      ],
+      [
+        "search",
+        24
+      ],
+      [
+        "expand",
+        21
+      ],
+      [
+        "recall",
+        3
+      ]
+    ],
+    "native_names": [
+      [
+        "edit",
+        133
+      ],
+      [
+        "shell",
+        24
+      ],
+      [
+        "updateTodos",
+        18
+      ]
+    ]
+  },
+  {
+    "run": "20260810T214438Z",
+    "path": "C:\\Users\\usman\\AppData\\Local\\Temp\\ce_iso_trial\\20260810T214438Z\\ce_search-arm.json",
+    "arm": "ce_search",
+    "work_tokens": 3096363,
+    "complete": true,
+    "quality": true,
+    "n_search": 60,
+    "n_mcp_read": 0,
+    "n_nat_read": 133,
+    "scenarios": {
+      "structural": 15,
+      "soft_meaning": 42,
+      "symbolish": 3
+    },
+    "fetch_true": 24,
+    "k_vals": {
+      "10": 36,
+      "8": 6,
+      "5": 18
+    },
+    "modes": {
+      "default": 60
+    },
+    "dup_queries": 40,
+    "uniq_queries": 20,
+    "mcp_read_dup_targets": 0,
+    "mcp_read_uniq_targets": 0,
+    "sample_queries": [
+      "perception MCP tools schema handler dispatch",
+      "codebase intelligence code graph perception",
+      "session evidence observed verified recall",
+      "perception MCP tools schema handler dispatch",
+      "codebase intelligence code graph perception",
+      "session evidence observed verified recall",
+      "env toggle perception tool degraded envelope PERCEPTION_",
+      "env toggle perception tool degraded envelope PERCEPTION_",
+      "agent guidance coordinator briefing perception observe verify thrash",
+      "agent guidance coordinator briefing perception observe verify thrash",
+      "perception_codebase session_evidence recall tool name",
+      "perception_codebase session_evidence recall tool name",
+      "env_flag FEATURE_ENABLED degraded envelope when disabled",
+      "env_flag FEATURE_ENABLED degraded envelope when disabled",
+      "handle_code_context codebase graph query related files",
+      "handle_code_context codebase graph query related files",
+      "tool count EXPECTED_TOOL perception_tools len assert",
+      "tool count EXPECTED_TOOL perception_tools len assert",
+      "perception_code_graph perception_session_evidence CODEBASE_INTELLIGENCE_ENABLED",
+      "perception_code_graph perception_session_evidence CODEBASE_INTELLIGENCE_ENABLED"
+    ],
+    "mcp_names": [
+      [
+        "search",
+        60
+      ]
+    ],
+    "native_names": [
+      [
+        "edit",
+        146
+      ],
+      [
+        "read",
+        133
+      ],
+      [
+        "grep",
+        69
+      ],
+      [
+        "shell",
+        24
+      ],
+      [
+        "glob",
+        21
+      ],
+      [
+        "updateTodos",
+        20
+      ]
+    ]
+  },
+  {
+    "run": "20260810T202752Z",
+    "path": "C:\\Users\\usman\\AppData\\Local\\Temp\\ce_iso_trial\\20260810T202752Z\\cbm_ce-arm.json",
+    "arm": "cbm_ce",
+    "work_tokens": 4534660,
+    "complete": false,
+    "quality": false,
+    "n_search": 1,
+    "n_mcp_read": 0,
+    "n_nat_read": 0,
+    "scenarios": {
+      "structural": 1
+    },
+    "fetch_true": 0,
+    "k_vals": {
+      "8": 1
+    },
+    "modes": {
+      "default": 1
+    },
+    "dup_queries": 0,
+    "uniq_queries": 1,
+    "mcp_read_dup_targets": 0,
+    "mcp_read_uniq_targets": 0,
+    "sample_queries": [
+      "perception MCP tool schema handler dispatch envelope"
+    ],
+    "mcp_names": [
+      [
+        "search",
+        1
+      ],
+      [
+        "status",
+        1
+      ],
+      [
+        "search_graph",
+        1
+      ]
+    ],
+    "native_names": [
+      [
+        "shell",
+        246
+      ],
+      [
+        "edit",
+        30
+      ],
+      [
+        "updateTodos",
+        14
+      ]
+    ]
+  },
+  {
+    "run": "20260810T202752Z",
+    "path": "C:\\Users\\usman\\AppData\\Local\\Temp\\ce_iso_trial\\20260810T202752Z\\raw-arm.json",
+    "arm": "raw",
+    "work_tokens": 2934184,
+    "complete": false,
+    "quality": false,
+    "n_search": 0,
+    "n_mcp_read": 0,
+    "n_nat_read": 159,
+    "scenarios": {},
+    "fetch_true": 0,
+    "k_vals": {},
+    "modes": {},
+    "dup_queries": 0,
+    "uniq_queries": 0,
+    "mcp_read_dup_targets": 0,
+    "mcp_read_uniq_targets": 0,
+    "sample_queries": [],
+    "mcp_names": [],
+    "native_names": [
+      [
+        "read",
+        159
+      ],
+      [
+        "edit",
+        150
+      ],
+      [
+        "grep",
+        123
+      ],
+      [
+        "shell",
+        39
+      ],
+      [
+        "glob",
+        34
+      ],
+      [
+        "updateTodos",
+        14
+      ]
+    ]
+  },
+  {
+    "run": "20260810T175138Z",
+    "path": "C:\\Users\\usman\\AppData\\Local\\Temp\\ce_iso_trial\\20260810T175138Z\\ce_nav-arm.json",
+    "arm": "ce_nav",
+    "work_tokens": 4837752,
+    "complete": false,
+    "quality": false,
+    "n_search": 162,
+    "n_mcp_read": 285,
+    "n_nat_read": 3,
+    "scenarios": {
+      "structural": 21,
+      "soft_meaning": 21,
+      "symbolish": 93,
+      "other": 27
+    },
+    "fetch_true": 0,
+    "k_vals": {
+      "10": 117,
+      "15": 27,
+      "20": 3,
+      "5": 15
+    },
+    "modes": {
+      "default": 42,
+      "exact": 120
+    },
+    "dup_queries": 109,
+    "uniq_queries": 53,
+    "mcp_read_dup_targets": 246,
+    "mcp_read_uniq_targets": 39,
+    "sample_queries": [
+      "perception tool schema handler dispatch env toggle",
+      "codebase intelligence code graph search related files neighbors",
+      "perception tool schema handler dispatch env toggle",
+      "codebase intelligence code graph search related files neighbors",
+      "design graph consistency fix proposals perception tool",
+      "env toggle PERCEPTION degraded envelope feature flag",
+      "design graph consistency fix proposals perception tool",
+      "env toggle PERCEPTION degraded envelope feature flag",
+      "code_graph",
+      "code_graph",
+      "perception_code",
+      "propose_fix consistency session note proposed applied",
+      "perception_code",
+      "propose_fix consistency session note proposed applied",
+      "perception_codebase_graph or code graph MCP tool gap",
+      "NAV_ENABLE",
+      "perception_codebase_graph or code graph MCP tool gap",
+      "NAV_ENABLE",
+      "env_bool",
+      "env_bool"
+    ],
+    "mcp_names": [
+      [
+        "read",
+        285
+      ],
+      [
+        "search",
+        162
+      ],
+      [
+        "files",
+        27
+      ],
+      [
+        "expand",
+        6
+      ],
+      [
+        "recall",
+        3
+      ]
+    ],
+    "native_names": [
+      [
+        "edit",
+        136
+      ],
+      [
+        "shell",
+        21
+      ],
+      [
+        "updateTodos",
+        12
+      ],
+      [
+        "read",
+        3
+      ]
+    ]
+  },
+  {
+    "run": "20260810T175138Z",
+    "path": "C:\\Users\\usman\\AppData\\Local\\Temp\\ce_iso_trial\\20260810T175138Z\\raw-arm.json",
+    "arm": "raw",
+    "work_tokens": 3180656,
+    "complete": true,
+    "quality": true,
+    "n_search": 0,
+    "n_mcp_read": 0,
+    "n_nat_read": 183,
+    "scenarios": {},
+    "fetch_true": 0,
+    "k_vals": {},
+    "modes": {},
+    "dup_queries": 0,
+    "uniq_queries": 0,
+    "mcp_read_dup_targets": 0,
+    "mcp_read_uniq_targets": 0,
+    "sample_queries": [],
+    "mcp_names": [],
+    "native_names": [
+      [
+        "read",
+        183
+      ],
+      [
+        "edit",
+        156
+      ],
+      [
+        "grep",
+        129
+      ],
+      [
+        "glob",
+        45
+      ],
+      [
+        "shell",
+        27
+      ],
+      [
+        "updateTodos",
+        16
+      ]
+    ]
+  },
+  {
+    "run": "20260810T191029Z",
+    "path": "C:\\Users\\usman\\AppData\\Local\\Temp\\ce_iso_trial\\20260810T191029Z\\ce_nav-arm.json",
+    "arm": "ce_nav",
+    "work_tokens": 8262626,
+    "complete": true,
+    "quality": false,
+    "n_search": 16,
+    "n_mcp_read": 134,
+    "n_nat_read": 0,
+    "scenarios": {
+      "structural": 6,
+      "soft_meaning": 4,
+      "symbolish": 6
+    },
+    "fetch_true": 0,
+    "k_vals": {
+      "8": 10,
+      "default": 6
+    },
+    "modes": {
+      "soft": 10,
+      "exact": 6
+    },
+    "dup_queries": 8,
+    "uniq_queries": 8,
+    "mcp_read_dup_targets": 94,
+    "mcp_read_uniq_targets": 40,
+    "sample_queries": [
+      "Where are perception MCP tools defined with schemas handlers and runtime dispatch by name?",
+      "Where are perception MCP tools defined with schemas handlers and runtime dispatch by name?",
+      "Where is codebase intelligence or code graph perception tool and session evidence recall?",
+      "Where is codebase intelligence or code graph perception tool and session evidence recall?",
+      "Where are perception env toggles and degraded envelopes for optional tools?",
+      "Where are perception env toggles and degraded envelopes for optional tools?",
+      "Where does agent guidance or coordinator briefing tell agents about observe verify and session evidence?",
+      "Where does agent guidance or coordinator briefing tell agents about observe verify and session evidence?",
+      "Where is perception_code_context tool schema and what query types does code graph support?",
+      "Where is perception_code_context tool schema and what query types does code graph support?",
+      "perception_code_context",
+      "perception_code_context",
+      "session_evidence",
+      "session_evidence",
+      "PERCEPTION_",
+      "PERCEPTION_"
+    ],
+    "mcp_names": [
+      [
+        "read",
+        134
+      ],
+      [
+        "files",
+        36
+      ],
+      [
+        "expand",
+        20
+      ],
+      [
+        "search",
+        16
+      ],
+      [
+        "recall",
+        2
+      ]
+    ],
+    "native_names": [
+      [
+        "edit",
+        97
+      ],
+      [
+        "shell",
+        24
+      ],
+      [
+        "updateTodos",
+        15
+      ]
+    ]
+  },
+  {
+    "run": "ce_private_f4133b33991447e7ae34aa26737f6f38",
+    "path": "C:\\Users\\usman\\AppData\\Local\\Temp\\ce_private_f4133b33991447e7ae34aa26737f6f38\\ce_search-arm.json",
+    "arm": "ce_search",
+    "work_tokens": 507695,
+    "complete": true,
+    "quality": true,
+    "n_search": 66,
+    "n_mcp_read": 0,
+    "n_nat_read": 144,
+    "scenarios": {
+      "structural": 15,
+      "soft_meaning": 48,
+      "other": 3
+    },
+    "fetch_true": 0,
+    "k_vals": {
+      "10": 63,
+      "8": 3
+    },
+    "modes": {
+      "default": 66
+    },
+    "dup_queries": 44,
+    "uniq_queries": 22,
+    "mcp_read_dup_targets": 0,
+    "mcp_read_uniq_targets": 0,
+    "sample_queries": [
+      "perception MCP tool schemas handlers dispatch",
+      "codebase intelligence code graph perception tool",
+      "session evidence observe verify recall agent guidance",
+      "perception MCP tool schemas handlers dispatch",
+      "codebase intelligence code graph perception tool",
+      "session evidence observe verify recall agent guidance",
+      "env toggle perception tool gate degraded envelope FEATURE",
+      "env toggle perception tool gate degraded envelope FEATURE",
+      "session store evidence observe verify already collected",
+      "session store evidence observe verify already collected",
+      "coordinator briefing agent guidance recall browser thrashing",
+      "coordinator briefing agent guidance recall browser thrashing",
+      "perception_codebase OR code_graph tool OR session_evidence recall",
+      "perception_codebase OR code_graph tool OR session_evidence recall",
+      "os.environ ENABLED degraded make_envelope feature gate perception",
+      "os.environ ENABLED degraded make_envelope feature gate perception",
+      "tool count EXPECTED_TOOL perception_tools len dispatch",
+      "tool count EXPECTED_TOOL perception_tools len dispatch",
+      "handle_design_knowledge_query CODEBASE_INTELLIGENCE_DISABLED env gate",
+      "handle_design_knowledge_query CODEBASE_INTELLIGENCE_DISABLED env gate"
+    ],
+    "mcp_names": [
+      [
+        "search",
+        66
+      ]
+    ],
+    "native_names": [
+      [
+        "edit",
+        170
+      ],
+      [
+        "read",
+        144
+      ],
+      [
+        "grep",
+        45
+      ],
+      [
+        "glob",
+        21
+      ],
+      [
+        "shell",
+        15
+      ],
+      [
+        "updateTodos",
+        14
+      ]
+    ]
+  }
+]

@@ -32,6 +32,7 @@ def _empty(repo: Path) -> dict[str, Any]:
         "ledger": {"served_handles": [], "approx_prompt_tokens": 0},
         "by_hash": {},  # content_hash -> handle
         "by_key": {},  # path:start:end -> handle
+        "locate_thrash": {"soft": [], "exact": [], "seen": []},
     }
 
 

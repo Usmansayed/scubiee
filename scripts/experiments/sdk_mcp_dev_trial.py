@@ -41,7 +41,8 @@ def _load_smoke_module():
 
 smoke = _load_smoke_module()
 
-SHARED_PROMPT = (
+# Default self-trial prompt (ce profile).
+CE_PROMPT = (
     "Hey, the code search in this project is kind of dumb about short or "
     "abbreviated queries. If I search for something like 'auth cfg' or 'db conn' "
     "or 'req handler', it doesn't seem to realise that 'cfg' means config, 'db "
@@ -56,6 +57,159 @@ SHARED_PROMPT = (
     "regress, and jot down a short note in the docs. Make it an actual working "
     "change, not a stub."
 )
+
+# Fairness: both arms must stay single-agent. Task/explore subagents made the
+# previous raw run incomparable (raw offloaded discovery; CE did not).
+# Public SDK name is lowercase "task" (disallowing it blocks subagents).
+DISALLOWED_TOOLS = ("task",)
+
+# Shared fairness clause appended into every arm's staged rule so the agent is
+# told the same constraint even if the SDK flag is ignored.
+FAIRNESS_RULE_SUFFIX = """
+
+## Fairness constraints for this run (do not violate)
+
+- Do **NOT** use the Task / explore / subagent tools. Stay in one agent.
+- Do the discovery yourself with the tools available to this arm.
+"""
+
+
+# Task for the frontend-mcp repo (a real MCP server codebase). Deliberately
+# vague about layout so the agent must DISCOVER where tools are declared, where
+# handlers live, and how they get dispatched — which is exactly what the
+# retrieval MCP is being compared on.
+FRONTEND_PROMPT_THRASH = (
+    "Hey — agents using our perception MCP keep thrashing. They re-run the same "
+    "expensive observation / verify steps even when that evidence was already "
+    "collected earlier in the session, and when a tool comes back degraded they "
+    "often just plow ahead instead of noticing. Also the codebase-intelligence / "
+    "code-graph side still isn't reachable as its own first-class perception "
+    "tool the way the other perception tools are.\n\n"
+    "I need you to fix both of these, as one coherent change:\n"
+    "1) Add a first-class perception tool that queries the pure-Python codebase "
+    "intelligence / code graph (search / related files / neighbors style), wired "
+    "the same way other perception tools are — schema, handler, and runtime "
+    "dispatch by name. Gate it behind an env toggle (default on) with a graceful "
+    "degraded envelope when it's off.\n"
+    "2) Add a small session-evidence recall path so an agent can ask what was "
+    "already observed / verified this session (or get a clear empty answer), and "
+    "make sure agent-guidance / coordinator-facing text actually points agents at "
+    "that instead of redoing the same browser work. Also env-gated if that fits "
+    "the project's toggle patterns.\n\n"
+    "I don't know the layout at all — you'll need to poke around and find where "
+    "tool schemas live, where handlers live, how dispatch works, where envelopes "
+    "are built, where session/store state lives, and where agent guidance / "
+    "coordinator briefing text is authored. Touch the real integration points, "
+    "not stubs. Add tests so this doesn't regress, bump any tool-count / contract "
+    "expectations the repo already guards, and leave a short docs note. Make it "
+    "actually work across multiple sides of the codebase."
+)
+
+# Alternate vague multi-file tasks for variance rematches (same scoring shape).
+FRONTEND_PROMPT_DEGRADED = (
+    "Hey — when a perception tool comes back degraded or partial, agents usually "
+    "just ignore it and keep going, which wastes the next few steps. Separately, "
+    "there's no first-class way for an agent to ask \"what expensive browser / "
+    "observe work did I already pay for this session?\" without redoing it.\n\n"
+    "Please do both as one coherent change:\n"
+    "1) Add a clear degraded-result path: when a tool result is degraded / partial, "
+    "the envelope (or guidance attached to it) should tell the agent what failed "
+    "and what a sensible next step is — not just a silent half-result. Wire this "
+    "through the real envelope / guidance path the project already uses, with an "
+    "env toggle if that matches existing patterns (default on).\n"
+    "2) Add a session-spend / prior-evidence recall tool (or path) so an agent can "
+    "list what was already observed / verified / navigated this session (or get a "
+    "clear empty answer), and point agent-facing guidance at that instead of "
+    "blindly re-running browser work. Env-gated if that fits.\n\n"
+    "I don't know the layout — find where envelopes are built, where tool results "
+    "are post-processed, where session/store state lives, where tool schemas and "
+    "handlers are registered, and where agent guidance is authored. Touch real "
+    "integration points, not stubs. Add tests, bump any tool-count / contract "
+    "guards, and leave a short docs note."
+)
+
+FRONTEND_PROMPT_CONSISTENCY = (
+    "Hey — agents keep asking for a single \"what UI consistency issues should I "
+    "fix?\" move, but today that seems scattered across design-graph / audit / "
+    "propose-fix style pieces and isn't easy to hit as one first-class perception "
+    "tool. Also the agent guidance doesn't clearly tell them when to use that "
+    "path vs jumping straight into edits.\n\n"
+    "I need one coherent change:\n"
+    "1) Add (or finish wiring) a first-class perception tool that returns a short "
+    "list of consistency / design-graph fix proposals for the current session or "
+    "page context — schema, handler, and runtime dispatch like the other "
+    "perception tools. Gate it behind an env toggle (default on) with a graceful "
+    "degraded envelope when the graph/audit side isn't available.\n"
+    "2) Update agent-guidance / coordinator-facing text so agents are pointed at "
+    "that tool before large UI edits, and add a tiny session note path if the "
+    "project already stores session state (what was proposed / applied), or a "
+    "clear empty answer if nothing is there yet.\n\n"
+    "I don't know the layout at all — poke around for tool schemas, handlers, "
+    "dispatch, envelopes, design-graph / consistency pieces, session store, and "
+    "guidance text. Touch real integration points, not stubs. Add tests, bump "
+    "tool-count / contract expectations if the repo guards them, and leave a "
+    "short docs note."
+)
+
+# Heavier dual-feature prompt for 4–10 min rematch batteries: two distinct
+# subsystems (code-graph locate + consistency fix proposals) in one ask.
+FRONTEND_PROMPT_COMBO = (
+    "Hey — two related gaps are slowing agents down on this perception MCP, and "
+    "I'd like them fixed together as one coherent change.\n\n"
+    "First: the codebase-intelligence / code-graph side still isn't reachable as "
+    "its own first-class perception tool the way the other perception tools are. "
+    "Agents need a real tool that can query the pure-Python code graph "
+    "(search / related files / neighbors style) — schema, handler, and runtime "
+    "dispatch by name, same patterns as the rest of the server. Gate it behind "
+    "an env toggle (default on) with a graceful degraded envelope when it's off "
+    "or unavailable.\n\n"
+    "Second: agents keep asking for a single \"what UI consistency issues should "
+    "I fix?\" move, but that seems scattered across design-graph / audit / "
+    "propose-fix style pieces. Add (or finish wiring) a first-class perception "
+    "tool that returns a short list of consistency / design-graph fix proposals "
+    "for the current session or page context — again schema, handler, dispatch, "
+    "env-gated (default on), degraded envelope when the graph/audit side isn't "
+    "ready. Update agent-guidance / coordinator-facing text so agents are pointed "
+    "at that tool before large UI edits, and add a tiny session note path if the "
+    "project already stores session state (what was proposed / applied), or a "
+    "clear empty answer if nothing is there yet.\n\n"
+    "I don't know the layout at all — you'll need to poke around for tool "
+    "schemas, handlers, dispatch, envelopes, code-graph / codebase-intelligence "
+    "pieces, design-graph / consistency pieces, session store, and guidance "
+    "text. Touch real integration points on both features, not stubs. Add tests "
+    "(at least one new test file), bump any tool-count / contract expectations "
+    "the repo already guards, and leave a short docs note covering both. Make "
+    "both features actually work."
+)
+
+FRONTEND_PROMPTS = {
+    "thrash": FRONTEND_PROMPT_THRASH,
+    "degraded": FRONTEND_PROMPT_DEGRADED,
+    "consistency": FRONTEND_PROMPT_CONSISTENCY,
+    "combo": FRONTEND_PROMPT_COMBO,
+}
+
+# Back-compat alias used by older docs/tests.
+FRONTEND_PROMPT = FRONTEND_PROMPT_THRASH
+
+# Which target the trial runs against. "ce" (default) = self-trial on THIS repo
+# with the pytest-gated query-expansion task. "frontend" = the frontend-mcp repo
+# with a vague tool-wiring task, scored on task shape (no pytest gate, since
+# that repo's heavy deps aren't installed in this tooling venv). Set via
+# CTX_TRIAL_PROFILE; tooling (pipeline/graphify/venv) always stays this repo.
+# CTX_FRONTEND_PROMPT selects thrash|degraded|consistency|combo when profile=frontend.
+TRIAL_PROFILE = (os.environ.get("CTX_TRIAL_PROFILE") or "ce").strip().lower()
+
+
+def resolve_shared_prompt() -> str:
+    """Pick the active trial prompt from profile + CTX_FRONTEND_PROMPT."""
+    if TRIAL_PROFILE != "frontend":
+        return CE_PROMPT
+    pid = (os.environ.get("CTX_FRONTEND_PROMPT") or "thrash").strip().lower()
+    return FRONTEND_PROMPTS.get(pid, FRONTEND_PROMPT_THRASH)
+
+
+SHARED_PROMPT = resolve_shared_prompt()
 
 COPY_EXCLUDED_NAMES = {
     ".git",
@@ -86,8 +240,9 @@ _NULL_DEV = "NUL" if os.name == "nt" else "/dev/null"
 # Local SDK runs frequently do not self-finalize: after the agent completes its
 # turn, neither the stream nor GetRun reports terminal, so a long stream idle is
 # the practical "agent is done" signal. Kept generous so a slow silent tool call
-# is not mistaken for completion.
-IDLE_TIMEOUT_S = 120.0
+# is not mistaken for completion. CBM graph tools can stay quiet for minutes —
+# override via CTX_TRIAL_IDLE_S.
+IDLE_TIMEOUT_S = float(os.environ.get("CTX_TRIAL_IDLE_S") or 300.0)
 HEARTBEAT_S = 30.0
 # After cancelling the run the stream should close promptly.
 CANCEL_DRAIN_GRACE_S = 60.0
@@ -216,16 +371,21 @@ def changed_files(diff_text: str) -> list[str]:
 
 
 def added_test_files(diff_text: str) -> list[str]:
-    """Discover test files that appear in the diff (agent-named, adaptive).
+    """Discover *new* test files the agent created (not merely modified).
 
-    The feature task tells the agent to add tests at tests/test_query_expand.py,
-    but scoring should not hard-code that name — any tests/test_*.py the agent
-    creates is picked up here, run by run_post_tests, and required to pass.
+    Counts only paths that appear as brand-new in the diff (--- /dev/null or
+    --- NUL). Modified existing tests/test_*.py files do not count — that was
+    inflating work_complete on the frontend profile.
     """
-    found = {m.replace("\\", "/") for m in _TEST_FILE_RE.findall(diff_text.replace("\\", "/"))}
-    # Never let the discovered set re-add the regression module twice.
-    found.discard(REGRESSION_TEST_MODULE)
-    return sorted(found)
+    norm = diff_text.replace("\\", "/")
+    new_paths: set[str] = set()
+    for m in re.finditer(
+        r"--- (?:/dev/null|NUL)\n\+\+\+ b/(tests/test_[\w./-]+\.py)",
+        norm,
+    ):
+        new_paths.add(m.group(1))
+    new_paths.discard(REGRESSION_TEST_MODULE)
+    return sorted(new_paths)
 
 
 def _hashable_files(repo: Path) -> list[tuple[str, Path]]:
@@ -290,6 +450,55 @@ def usage_dict(usage: Any) -> dict[str, int | None] | None:
     }
 
 
+def _thrash_metrics(all_calls: list[dict]) -> dict[str, Any]:
+    """Locate thrash KPIs from ordered tool calls."""
+    first_edit: int | None = None
+    locate_pre = 0
+    locate_post = 0
+    seen_edit = False
+    native_locate = 0
+    locate_native = {"grep", "glob", "read"}
+    locate_mcp = {
+        "search",
+        "read",
+        "files",
+        "recall",
+        "expand",
+        "outline",
+        "grep",
+        "neighbors",
+        "graph",
+        "query_graph",
+    }
+    for i, call in enumerate(all_calls, 1):
+        name = str(call.get("name") or "").lower()
+        kind = str(call.get("kind") or "").lower()
+        is_mcp = kind == "mcp" or bool(call.get("provider"))
+        if name in {"edit", "write"} or kind in {"edit", "write"}:
+            if first_edit is None:
+                first_edit = i
+            seen_edit = True
+            continue
+        is_locate = False
+        if is_mcp and name in locate_mcp:
+            is_locate = True
+        elif (not is_mcp) and name in locate_native:
+            is_locate = True
+            native_locate += 1
+        if not is_locate:
+            continue
+        if seen_edit:
+            locate_post += 1
+        else:
+            locate_pre += 1
+    return {
+        "first_edit_step": first_edit,
+        "pre_locate_calls": locate_pre,
+        "post_locate_calls": locate_post,
+        "native_locate_count": native_locate,
+    }
+
+
 def evaluate_development_arm(
     name: str,
     status: str,
@@ -300,11 +509,13 @@ def evaluate_development_arm(
 ) -> dict[str, Any]:
     # An arm may legitimately expose more than one MCP provider (e.g.
     # graphify_grep = graphify graph tools + a grep-only Context Engine server).
+    # ``raw`` is the no-MCP baseline — expected providers are empty.
     expected_providers = {
+        "raw": set(),
         "graphify": {"graphify"},
         "graphify_grep": {"graphify", "context-engine"},
     }.get(name, {"context-engine"})
-    expected_provider = ",".join(sorted(expected_providers))
+    expected_provider = ",".join(sorted(expected_providers)) or "(none)"
     all_calls = [
         call for event in events for call in event.get("tool_calls", [])
     ]
@@ -328,33 +539,105 @@ def evaluate_development_arm(
     # dictating it.
     files = changed_files(diff_text)
     new_tests = added_test_files(diff_text)
+    # The frontend-mcp repo keeps its source under src/; this repo uses packages/.
+    # Read profile at call time so tests/monkeypatch can override CTX_TRIAL_PROFILE.
+    profile = (os.environ.get("CTX_TRIAL_PROFILE") or "ce").strip().lower()
+    src_prefix = "src/" if profile == "frontend" else "packages/"
     source_files = [
         f
         for f in files
-        if f.startswith("packages/")
+        if f.startswith(src_prefix)
         and f.endswith(".py")
         and not f.rsplit("/", 1)[-1].startswith("test_")
     ]
     docs_touched = any(
         f.startswith("docs/") and f.endswith(".md") for f in files
     )
-    implementation_present = len(source_files) >= 2 and bool(new_tests)
-    # Whether the agent actually did the asked work. This is judged from the
-    # diff, the focused tests, and MCP attribution, so a bridge that keeps the
-    # event stream open after the agent is done cannot mask a completed task.
-    # expected_provider in providers requires the arm to actually USE its MCP at
-    # least once — an arm that ignores its tool cannot pass.
-    used_expected_mcp = bool(set(providers) & expected_providers)
+    # Frontend: require a multi-side change (schemas/handlers/dispatch-ish) —
+    # at least 3 source files + a brand-new test file + a docs note.
+    if profile == "frontend":
+        implementation_present = (
+            len(source_files) >= 3 and bool(new_tests) and docs_touched
+        )
+    else:
+        implementation_present = len(source_files) >= 2 and bool(new_tests)
+
+    task_calls = [
+        call
+        for call in all_calls
+        if str(call.get("name") or "").lower() == "task"
+        or str(call.get("kind") or "").lower() == "task"
+    ]
+    used_task = bool(task_calls)
+
+    # MCP arms must actually USE their MCP at least once. The raw baseline has
+    # no MCP — it "uses" the empty set as long as it didn't sneak one in.
+    if not expected_providers:
+        used_expected_mcp = not providers
+    else:
+        used_expected_mcp = bool(set(providers) & expected_providers)
+
+    # CE arms must actually lean on the MCP for discovery — a single token
+    # search while doing 100 native greps doesn't count as using CE.
+    mcp_discovery_count = sum(
+        1
+        for n in (str(c.get("name") or "") for c in mcp_calls)
+        if n
+        in {
+            "search",
+            "read",
+            "outline",
+            "grep",
+            "files",
+            "recall",
+            "expand",
+            "neighbors",
+            "graph",
+            "query_graph",
+        }
+    )
+    mcp_used_enough = (
+        True
+        if name == "raw"
+        else (used_expected_mcp and mcp_discovery_count >= 5)
+    )
+
+    thrash = _thrash_metrics(all_calls)
+    seal_locate = (os.environ.get("CTX_TRIAL_SEAL_LOCATE") or "").strip() in {
+        "1",
+        "true",
+        "yes",
+    }
+    # Under seal, CE arms must not use native Grep/Glob/Read for locate.
+    seal_ok = True
+    if seal_locate and name != "raw":
+        seal_ok = int(thrash.get("native_locate_count") or 0) == 0
+
+    # ce profile gates on the repo's pytest; frontend profile scores on task
+    # shape only (its deps aren't installed in the tooling venv), per the trial's
+    # "did it do the assigned work" definition.
+    tests_ok = True if profile == "frontend" else bool(tests.get("passed"))
     work_complete = all(
         [
             used_expected_mcp,
+            mcp_used_enough,
             not unexpected,
+            not used_task,  # fairness: no Task/subagent offload
             normalized_usage is not None,
             implementation_present,
-            bool(tests.get("passed")),
+            tests_ok,
+            seal_ok,
         ]
     )
     quality_pass = work_complete and status == "finished"
+    usage_map = normalized_usage or {}
+    input_t = usage_map.get("input_tokens")
+    output_t = usage_map.get("output_tokens")
+    work_tokens = (
+        (input_t or 0) + (output_t or 0)
+        if input_t is not None and output_t is not None
+        else None
+    )
     return {
         "work_complete": work_complete,
         "name": name,
@@ -362,6 +645,10 @@ def evaluate_development_arm(
         "expected_provider": expected_provider,
         "observed_providers": providers,
         "expected_mcp_used": used_expected_mcp,
+        "mcp_used_enough": mcp_used_enough,
+        "mcp_discovery_count": mcp_discovery_count,
+        "used_task": used_task,
+        "task_call_count": len(task_calls),
         "unexpected_mcp_providers": unexpected,
         "mcp_call_names": [
             str(call.get("name") or "") for call in mcp_calls
@@ -369,12 +656,19 @@ def evaluate_development_arm(
         "native_tool_names": [
             str(call.get("name") or "") for call in native_calls
         ],
+        "native_locate_count": thrash["native_locate_count"],
+        "first_edit_step": thrash["first_edit_step"],
+        "pre_locate_calls": thrash["pre_locate_calls"],
+        "post_locate_calls": thrash["post_locate_calls"],
+        "seal_locate": seal_locate,
+        "seal_ok": seal_ok,
         "implementation_present": implementation_present,
         "source_files_changed": source_files,
         "docs_touched": docs_touched,
         "new_test_files": new_tests,
         "quality_pass": quality_pass,
         "usage": normalized_usage,
+        "work_tokens": work_tokens,
         "diff_size": len(diff_text),
         "tests": dict(tests),
     }
@@ -418,6 +712,8 @@ def render_report(data: Mapping[str, Any]) -> str:
         "",
         f"- Model: {data.get('model', 'unknown')}",
         f"- SDK version: {data.get('sdk_version', 'unknown')}",
+        f"- Trial profile: {data.get('trial_profile', TRIAL_PROFILE)}",
+        f"- Prompt id: {data.get('prompt_id', 'unknown')}",
         f"- Source tree hash: {data.get('source_tree_hash', 'unknown')}",
         f"- Source unchanged: {data.get('source_unchanged', 'unknown')}",
     ]
@@ -438,9 +734,9 @@ def render_report(data: Mapping[str, Any]) -> str:
     lines += [
         "## Results",
         "",
-        "| Arm | Status | Usage source | Input | Output | Cache read | "
-        "Cache write | Reasoning | Total | Tests | Work complete | Quality |",
-        "|---|---|---|---:|---:|---:|---:|---:|---:|---|---|---:|",
+        "| Arm | Status | Input | Output | Work (in+out) | Cache read | "
+        "Total | MCP disc. | Task? | Work complete | Quality |",
+        "|---|---|---:|---:|---:|---:|---:|---:|---|---|---:|",
     ]
 
     for arm_name in arm_names:
@@ -448,16 +744,20 @@ def render_report(data: Mapping[str, Any]) -> str:
         usage_map = arm.get("usage") or {}
         if not isinstance(usage_map, Mapping):
             usage_map = {}
+        work = arm.get("work_tokens")
+        if work is None:
+            inp = usage_map.get("input_tokens")
+            out = usage_map.get("output_tokens")
+            work = (inp or 0) + (out or 0) if inp is not None and out is not None else None
         lines.append(
             f"| {arm_name} | {arm.get('status', '')} | "
-            f"{arm.get('usage_source', 'none')} | "
             f"{_format_usage_cell(usage_map.get('input_tokens'))} | "
             f"{_format_usage_cell(usage_map.get('output_tokens'))} | "
+            f"{_format_usage_cell(work)} | "
             f"{_format_usage_cell(usage_map.get('cache_read_tokens'))} | "
-            f"{_format_usage_cell(usage_map.get('cache_write_tokens'))} | "
-            f"{_format_usage_cell(usage_map.get('reasoning_tokens'))} | "
             f"{_format_usage_cell(usage_map.get('total_tokens'))} | "
-            f"{_format_tests_cell(arm.get('tests'))} | "
+            f"{arm.get('mcp_discovery_count', 0)} | "
+            f"{'YES' if arm.get('used_task') else 'no'} | "
             f"{arm.get('work_complete', False)} | "
             f"{arm.get('quality_pass', False)} |"
         )
@@ -468,7 +768,31 @@ def render_report(data: Mapping[str, Any]) -> str:
         "focused tests pass, and only the arm's own MCP was used. `Status` is "
         "the SDK run status, which can read `cancelled` when the bridge keeps "
         "the event stream open after the agent has already finished.",
+        "",
+        "## Locate thrash / seal",
+        "",
+        "| Arm | native_locate | first_edit | pre_locate | post_locate | seal | seal_ok | cross_arm |",
+        "| --- | ---: | ---: | ---: | ---: | --- | --- | --- |",
     ]
+    for arm_name in arm_names:
+        arm = arms.get(arm_name, {})
+        contam = arm.get("cross_arm_contamination") or []
+        contam_s = ",".join(str(x) for x in contam) if contam else "none"
+        lines.append(
+            f"| {arm_name} | {arm.get('native_locate_count', 0)} | "
+            f"{arm.get('first_edit_step', '')} | "
+            f"{arm.get('pre_locate_calls', '')} | "
+            f"{arm.get('post_locate_calls', '')} | "
+            f"{'ON' if arm.get('seal_locate') else 'off'} | "
+            f"{arm.get('seal_ok', True)} | "
+            f"{contam_s} |"
+        )
+    if data.get("arm_isolation"):
+        lines += [
+            "",
+            f"Arm isolation mode: `{data.get('arm_isolation')}` "
+            "(finished arm workspaces/sidecars are vaulted before the next arm).",
+        ]
 
     lines += ["", "## Providers", ""]
     for arm_name in arm_names:
@@ -561,6 +885,22 @@ def index_workspace(workspace: Path, python: Path, root: Path) -> Path:
     return graph
 
 
+def index_cbm_workspace(workspace: Path) -> dict[str, object]:
+    """Index the same workspace into stock CBM (required for cbm_ce arm)."""
+    from hybrid_cbm.proxy import ensure_indexed, make_proxy, resolve_project_name
+
+    proxy = make_proxy()
+    if not proxy.available():
+        raise RuntimeError(
+            "CBM binary not found (install codebase-memory-mcp or set CTX_CBM_BIN)"
+        )
+    result = ensure_indexed(proxy, workspace)
+    if not result.get("ok"):
+        raise RuntimeError(f"CBM index failed: {result}")
+    project = resolve_project_name(proxy, workspace)
+    return {"ok": True, "project": project, "result": result}
+
+
 REGRESSION_TEST_MODULE = "tests/test_mcp_locate.py"
 # Environment-dependent live retrieval-quality check: it asserts on daemon
 # results for a freshly copied workspace and fails for reasons unrelated to the
@@ -592,6 +932,25 @@ def run_post_tests(
     extra_tests: list[str] | None = None,
 ) -> dict[str, Any]:
     del root  # Kept in the public interface for source-root provenance.
+    # frontend profile: the target repo's heavy deps (mcp, browser-use, CRG)
+    # aren't installed in this tooling venv, so we can't run its suite. Scoring is
+    # by task shape (see evaluate_development_arm), so return a neutral skip.
+    if TRIAL_PROFILE == "frontend":
+        return {
+            "skipped": True,
+            "passed": None,
+            "exit_code": None,
+            "reason": "frontend profile: target-repo deps absent; scored on task shape",
+        }
+    # Alternate --source trees (fixtures / other repos) often lack CE regression
+    # modules; score those runs on MCP probe + task shape instead.
+    if not (workspace / REGRESSION_TEST_MODULE).is_file():
+        return {
+            "skipped": True,
+            "passed": None,
+            "exit_code": None,
+            "reason": f"workspace missing {REGRESSION_TEST_MODULE}; scored on task shape",
+        }
     # Only the Context Engine arm needs the repo-scoped daemon; repointing it
     # for graphify would evict the other arm's engine as a scoring side effect.
     if arm == "context_engine":
@@ -930,10 +1289,17 @@ async def run_arm(
 
     source = source or ROOT
     python = python or _source_python(source)
-    # Most arms expose exactly one MCP provider. graphify_grep deliberately pairs
-    # two (graphify graph tools + a grep-only Context Engine server), so allow it.
+    # Most arms expose exactly one MCP provider. graphify_grep pairs two;
+    # raw is the no-MCP baseline (zero providers).
     _multi_provider_arms = {"graphify_grep"}
-    if config.name in _multi_provider_arms:
+    _no_mcp_arms = {"raw"}
+    if config.name in _no_mcp_arms:
+        if config.mcp_servers:
+            raise ValueError(
+                f"{config.name} must expose zero MCP providers, "
+                f"got {sorted(config.mcp_servers)}"
+            )
+    elif config.name in _multi_provider_arms:
         if not config.mcp_servers:
             raise ValueError(f"{config.name} must expose at least one MCP provider")
     elif len(config.mcp_servers) != 1:
@@ -971,7 +1337,9 @@ async def run_arm(
                 cwd=workspace,
                 setting_sources=config.setting_sources,
             ),
-            mcp_servers=config.mcp_servers,
+            mcp_servers=config.mcp_servers or None,
+            # Keep both arms single-agent — Task/explore made prior raw runs unfair.
+            disallowed_tools=list(DISALLOWED_TOOLS),
         )
         create_agent = getattr(client, "create_agent", None)
         if create_agent is None:
@@ -1106,10 +1474,143 @@ KNOWN_ARMS = (
     "graphify",
     "graphify_grep",
     "ce_read",
+    "ce_nav",
     "ce_graph",
     "ce_rich",
     "ce_search",
+    "cbm_ce",
+    "raw",
 )
+
+
+def arm_sidecar_names(name: str) -> tuple[str, ...]:
+    """Files written next to ``{name}_workspace`` after an arm finishes."""
+    return (
+        f"{name}.diff",
+        f"{name}-tests.log",
+        f"{name}-conversation.json",
+        f"{name}-arm.json",
+    )
+
+
+def trial_vault_dir(output: Path) -> Path:
+    """Private folder outside the shared run dir (agents must not see siblings).
+
+    Uses a random directory name (not the run timestamp) so a later arm cannot
+    guess ``…/ce_dev_trial_vault/<same-ts>`` and reopen the finished tree.
+    """
+    import uuid
+
+    return Path(tempfile.gettempdir()) / f"ce_private_{uuid.uuid4().hex}"
+
+
+def _move_path(src: Path, dest: Path) -> None:
+    if dest.exists():
+        if dest.is_dir():
+            shutil.rmtree(dest)
+        else:
+            dest.unlink()
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.move(str(src), str(dest))
+
+
+def quarantine_arm_artifacts(output: Path, vault: Path, name: str) -> None:
+    """Hide a finished arm's workspace + sidecars so the next arm cannot copy them.
+
+    Agents run with cwd ``{output}/{name}_workspace`` and can walk up to ``output``.
+    Moving finished trees into ``vault`` (a separate temp tree) removes the cheat
+    sheet before the next arm starts.
+    """
+    vault.mkdir(parents=True, exist_ok=True)
+    workspace = output / f"{name}_workspace"
+    if workspace.exists():
+        last_exc: OSError | None = None
+        for attempt in range(1, 6):
+            try:
+                _move_path(workspace, vault / f"{name}_workspace")
+                last_exc = None
+                break
+            except OSError as exc:
+                last_exc = exc
+                time.sleep(min(2.0 * attempt, 8.0))
+        if last_exc is not None:
+            # Windows often keeps .git / MCP / indexer handles open briefly after
+            # the arm ends — fail soft so the next arm still runs, but rename in
+            # place so sibling peeks cannot use the obvious {name}_workspace path.
+            hidden = output / f".quarantined_{name}_workspace"
+            try:
+                if hidden.exists():
+                    shutil.rmtree(hidden, ignore_errors=True)
+                workspace.rename(hidden)
+                _step(
+                    f"quarantine WARN: move failed ({last_exc}); "
+                    f"renamed to {hidden.name}"
+                )
+            except OSError as exc2:
+                _step(
+                    f"quarantine WARN: could not hide {workspace.name} "
+                    f"({last_exc}; rename={exc2}); leaving in place"
+                )
+    for sid in arm_sidecar_names(name):
+        src = output / sid
+        if not src.exists():
+            continue
+        last_exc = None
+        for attempt in range(1, 4):
+            try:
+                _move_path(src, vault / sid)
+                last_exc = None
+                break
+            except OSError as exc:
+                last_exc = exc
+                time.sleep(1.0 * attempt)
+        if last_exc is not None:
+            alt = output / f".quarantined_{sid}"
+            try:
+                if alt.exists():
+                    alt.unlink()
+                src.rename(alt)
+                _step(f"quarantine WARN: moved {sid} aside as {alt.name}")
+            except OSError as exc2:
+                _step(f"quarantine WARN: could not hide {sid} ({last_exc}; {exc2})")
+
+
+def restore_quarantined_arm_artifacts(vault: Path, output: Path) -> None:
+    """Move quarantined artifacts back into the run folder for REPORT / humans."""
+    if not vault.exists():
+        return
+    output.mkdir(parents=True, exist_ok=True)
+    for item in list(vault.iterdir()):
+        _move_path(item, output / item.name)
+    try:
+        vault.rmdir()
+    except OSError:
+        pass
+
+
+def detect_cross_arm_contamination(
+    *,
+    text: str | None,
+    arm_name: str,
+    arm_names: tuple[str, ...] | list[str],
+) -> list[str]:
+    """Return sibling markers found in conversation/shell text (copy / peek)."""
+    if not text:
+        return []
+    hits: list[str] = []
+    for other in arm_names:
+        if other == arm_name:
+            continue
+        for marker in (
+            f"{other}_workspace",
+            f"{other}.diff",
+            f"{other}-conversation.json",
+            f"{other}-arm.json",
+            f"{other}-tests.log",
+        ):
+            if marker in text and marker not in hits:
+                hits.append(marker)
+    return hits
 
 
 def _step(message: str) -> None:
@@ -1129,47 +1630,83 @@ async def run_trial(
 
     source = source.resolve()
     output = output.resolve()
+    vault = trial_vault_dir(output)
     _step(f"hashing source tree {source}")
     source_hash_before = source_tree_hash(source)
     output.mkdir(parents=True, exist_ok=True)
-    workspaces = {
-        name: output / f"{name}_workspace" for name in arm_names
-    }
+    _step(
+        f"arm isolation ON — finished arms move to private vault "
+        f"(not under the run folder) before the next arm starts"
+    )
 
+    # Tooling (pipeline/graphify/venv) always lives in THIS repo, even when the
+    # copied/indexed source is a different repo (frontend profile). Only the
+    # workspace being indexed + given to the agent changes.
+    tooling_root = ROOT
+    python = _source_python(tooling_root)
+
+    # Lazy workspaces: create each arm only when it starts, then quarantine it
+    # before the next arm can see sibling trees / diffs under ``output``.
+    workspaces: dict[str, Path] = {}
     baseline_commits: dict[str, str] = {}
-    for name, workspace in workspaces.items():
+    baseline_hashes: dict[str, str] = {}
+    arms: dict[str, dict[str, Any]] = {}
+    reference_baseline_hash: str | None = None
+
+    for name in arm_names:
+        workspace = output / f"{name}_workspace"
+        workspaces[name] = workspace
         _step(f"copying workspace for {name}")
         baseline_commits[name] = copy_workspace(source, workspace)
-    baseline_hashes = {
-        name: source_tree_hash(workspace)
-        for name, workspace in workspaces.items()
-    }
-    if len(set(baseline_hashes.values())) != 1:
-        raise RuntimeError(
-            f"copied baseline tree hashes differ: {baseline_hashes}"
-        )
+        baseline_hashes[name] = source_tree_hash(workspace)
+        if reference_baseline_hash is None:
+            reference_baseline_hash = baseline_hashes[name]
+        elif baseline_hashes[name] != reference_baseline_hash:
+            raise RuntimeError(
+                f"copied baseline tree hashes differ: {baseline_hashes}"
+            )
 
-    python = _source_python(source)
-    graphs = {}
-    for name, workspace in workspaces.items():
-        _step(f"indexing workspace for {name}")
-        graphs[name] = index_workspace(workspace, python, source)
-    configs = {
-        name: smoke.build_configs(
-            source,
+        if name == "raw":
+            graph = workspace / ".context-engine" / "graph.json"
+            _step(f"skipping index for {name} (no MCP)")
+        else:
+            _step(f"indexing workspace for {name}")
+            graph = index_workspace(workspace, python, tooling_root)
+            if name == "cbm_ce":
+                _step(f"indexing CBM graph for {name}")
+                index_cbm_workspace(workspace)
+        config = smoke.build_configs(
+            tooling_root,
             workspace,
             python,
-            graphs[name],
+            graph,
         )[name]
-        for name, workspace in workspaces.items()
-    }
 
-    arms: dict[str, dict[str, Any]] = {}
-    for name in arm_names:
-        workspace = workspaces[name]
         _step(f"starting arm {name} (ceiling {timeout_s:g}s)")
         with smoke.stage_retrieval_rule(workspace, name):
-            if name != "graphify":
+            # Prove the rule actually landed before spending on the agent.
+            rule_path = workspace / ".cursor" / "rules" / "context-agent.mdc"
+            if name == "raw":
+                rule_path = workspace / ".cursor" / "rules" / "context-agent.mdc"
+                expected_snip = "no MCP servers"
+            elif name in {"graphify"}:
+                rule_path = workspace / ".cursor" / "rules" / "graphify-agent.mdc"
+                expected_snip = "query_graph"
+            elif name == "cbm_ce":
+                expected_snip = "cbm-ce = ONLY code locate"
+            elif smoke.arm_surface(name) == "nav":
+                expected_snip = "ONLY code locate"
+            else:
+                expected_snip = "Context Engine"
+            if not rule_path.is_file() or expected_snip not in rule_path.read_text(
+                encoding="utf-8"
+            ):
+                raise RuntimeError(
+                    f"staged rule missing/wrong for {name}: {rule_path}"
+                )
+            _step(f"{name}: staged rule OK ({rule_path.name})")
+            # Only CE / hybrid arms need the engine daemon; graphify/raw skip it.
+            if name not in {"graphify", "raw"}:
                 _clear_context_state(workspace)
                 smoke.ensure_engine_repo(workspace)
             async with await AsyncClient.launch_bridge(
@@ -1178,14 +1715,37 @@ async def run_trial(
             ) as client:
                 arms[name] = await run_arm(
                     client,
-                    configs[name],
+                    config,
                     workspace,
                     model,
                     timeout_s,
-                    source=source,
+                    source=tooling_root,
                     python=python,
                 )
         _finalize_arm_outcome(workspace, arms[name])
+
+        conversation_raw = arms[name].get("conversation_json")
+        contam_blob = "\n".join(
+            [
+                str(conversation_raw or ""),
+                json.dumps(arms[name].get("events") or [], default=str),
+                json.dumps(arms[name].get("tool_calls") or [], default=str),
+            ]
+        )
+        contam = detect_cross_arm_contamination(
+            text=contam_blob,
+            arm_name=name,
+            arm_names=arm_names,
+        )
+        arms[name]["cross_arm_contamination"] = contam
+        if contam:
+            arms[name]["work_complete"] = False
+            arms[name]["quality_pass"] = False
+            _step(
+                f"arm {name} FAILED isolation — peeked at sibling artifacts: "
+                f"{contam}"
+            )
+
         (output / f"{name}.diff").write_text(
             str(arms[name].get("diff") or ""),
             encoding="utf-8",
@@ -1194,7 +1754,6 @@ async def run_trial(
             _test_log(arms[name].get("tests") or {}),
             encoding="utf-8",
         )
-        conversation_raw = arms[name].get("conversation_json")
         if conversation_raw:
             (output / f"{name}-conversation.json").write_text(
                 str(conversation_raw),
@@ -1212,10 +1771,21 @@ async def run_trial(
             f"input={arm_usage.get('input_tokens')} "
             f"output={arm_usage.get('output_tokens')}"
         )
+        _step(f"quarantining {name} artifacts into vault (hide from next arm)")
+        quarantine_arm_artifacts(output, vault, name)
+
+    _step("restoring quarantined artifacts into run folder for REPORT")
+    restore_quarantined_arm_artifacts(vault, output)
 
     source_hash_after = source_tree_hash(source)
     data: dict[str, Any] = {
         "prompt": SHARED_PROMPT,
+        "prompt_id": (
+            (os.environ.get("CTX_FRONTEND_PROMPT") or "thrash")
+            if TRIAL_PROFILE == "frontend"
+            else "ce"
+        ),
+        "trial_profile": TRIAL_PROFILE,
         "model": model,
         "sdk_version": _sdk_version(),
         "source_tree_hash": source_hash_before,
@@ -1224,6 +1794,7 @@ async def run_trial(
         "source_unchanged": source_hash_before == source_hash_after,
         "baseline_commits": baseline_commits,
         "baseline_tree_hashes": baseline_hashes,
+        "arm_isolation": "vault_quarantine",
         "workspaces": {
             name: str(workspace) for name, workspace in workspaces.items()
         },
@@ -1249,7 +1820,7 @@ def _default_output() -> Path:
     # Engine arm semantically blind (it silently falls back to grep). Placing the
     # workspaces in the system temp dir keeps every path component non-noise so
     # the index is actually built. See docs/sdk-dev-trial-runbook.md §3.
-    return Path(tempfile.gettempdir()) / "ce_dev_trial" / timestamp
+    return Path(tempfile.gettempdir()) / "ce_iso_trial" / timestamp
 
 
 def main() -> int:
@@ -1264,7 +1835,60 @@ def main() -> int:
         default=",".join(ARM_NAMES),
         help="comma separated arms to run (for single-arm shakedowns)",
     )
+    parser.add_argument(
+        "--prompt-id",
+        default="",
+        help="frontend prompt variant: thrash|degraded|consistency|combo "
+        "(sets CTX_FRONTEND_PROMPT; ignored unless CTX_TRIAL_PROFILE=frontend)",
+    )
+    parser.add_argument(
+        "--surface",
+        default="",
+        help="force CE locate surface for ce_read/ce_nav/context_engine "
+        "(e.g. nav → CTX_MCP_SURFACE=nav)",
+    )
+    parser.add_argument(
+        "--seal-locate",
+        action="store_true",
+        help="fail CE arms that use native Grep/Glob/Read (sealed locate trial)",
+    )
     args = parser.parse_args()
+
+    if args.prompt_id:
+        pid = str(args.prompt_id).strip().lower()
+        if pid not in FRONTEND_PROMPTS:
+            print(
+                f"ERROR: --prompt-id must be one of {sorted(FRONTEND_PROMPTS)}",
+                file=sys.stderr,
+                flush=True,
+            )
+            return 2
+        os.environ["CTX_FRONTEND_PROMPT"] = pid
+
+    surface = str(args.surface or "").strip().lower()
+    if surface:
+        if surface not in {"read", "nav", "graph", "rich", "search", "grep"}:
+            print(
+                "ERROR: --surface must be one of read|nav|graph|rich|search|grep",
+                file=sys.stderr,
+                flush=True,
+            )
+            return 2
+        os.environ["CTX_MCP_SURFACE"] = surface
+        os.environ["CTX_TRIAL_FORCE_SURFACE"] = surface
+        _step(f"forced CE surface={surface}")
+
+    if args.seal_locate:
+        os.environ["CTX_TRIAL_SEAL_LOCATE"] = "1"
+        _step("seal-locate ON (native Grep/Glob/Read fail CE arms)")
+
+    global SHARED_PROMPT
+    SHARED_PROMPT = resolve_shared_prompt()
+    _step(
+        f"prompt profile={TRIAL_PROFILE} "
+        f"id={(os.environ.get('CTX_FRONTEND_PROMPT') or 'ce')} "
+        f"chars={len(SHARED_PROMPT)}"
+    )
 
     arm_names = tuple(
         name.strip() for name in str(args.arms).split(",") if name.strip()

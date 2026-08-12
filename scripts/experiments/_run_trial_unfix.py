@@ -32,24 +32,41 @@ def _load(name: str, path: Path):
 smoke = _load("_smoke_unfix", Path(__file__).with_name("sdk_mcp_smoke.py"))
 trial = _load("_trial_unfix", Path(__file__).with_name("sdk_mcp_dev_trial.py"))
 
+# Profile-specific live probes for the preflight. "ce" self-trial edits this
+# repo's own MCP source (so we can assert source parity); "frontend" runs against
+# a different repo, so we probe with repo-appropriate queries and skip the
+# self-edit parity guard.
+_PROFILE = (os.environ.get("CTX_TRIAL_PROFILE") or "ce").strip().lower()
+_PROBES = {
+    "ce": {
+        "search": "focus function query and path handling",
+        "grep": "def search",
+        "files": "mcp_locate.py",
+        "self_edit": True,
+    },
+    "frontend": {
+        "search": "where MCP tools are registered and dispatched by name",
+        "grep": "def handle_",
+        "files": "tools.py",
+        "self_edit": False,
+    },
+}
+_PROBE = _PROBES.get(_PROFILE, _PROBES["ce"])
+
 
 _SURFACE_TOOLS = {
     "read": {"search", "read", "status"},
+    "nav": {"search", "files", "read", "recall", "expand", "status"},
     "graph": {"search", "neighbors", "graph", "status"},
-    "rich": {
-        "search", "grep", "usages", "read", "expand", "outline",
-        "neighbors", "graph", "imports", "status",
-    },
+    "rich": {"search", "read", "outline", "status"},
     "search": {"search", "status"},
     "grep": {"grep", "status"},
 }
 _SURFACE_MARKERS = {
     "read": ('_tool("search"', '_tool("read"'),
+    "nav": ('_tool("search"', '_tool("files"', '_tool("read"', '_tool("recall"', '_tool("expand"'),
     "graph": ('_tool("search"', '_tool("neighbors"', '_tool("graph"'),
-    "rich": (
-        '_tool("search"', '_tool("grep"', '_tool("usages"', '_tool("read"',
-        '_tool("outline"', '_tool("imports"',
-    ),
+    "rich": ('_tool("search"', '_tool("read"', '_tool("outline"'),
     "search": ('_tool("search"', '_tool("status"'),
     "grep": ('_tool("grep"', '_tool("status"'),
 }
@@ -86,21 +103,24 @@ def verify_mcp_search(ws: Path, surface: str) -> None:
                 f"{sorted(expected)}, got {sorted(tools)}"
             )
         # Assert the COPY the agent edits has the tools (source parity guard).
-        copy_src = (ws / "packages" / "pipeline" / "mcp_locate.py").read_text(
-            encoding="utf-8"
-        )
-        for needed in _SURFACE_MARKERS[surface]:
-            if needed not in copy_src:
-                raise SystemExit(
-                    f"ABORT: workspace copy of mcp_locate.py lacks {needed}"
-                )
+        # Only meaningful when the workspace IS this repo (ce self-trial); the
+        # frontend profile edits a different repo with no mcp_locate.py.
+        if _PROBE["self_edit"]:
+            copy_src = (ws / "packages" / "pipeline" / "mcp_locate.py").read_text(
+                encoding="utf-8"
+            )
+            for needed in _SURFACE_MARKERS[surface]:
+                if needed not in copy_src:
+                    raise SystemExit(
+                        f"ABORT: workspace copy of mcp_locate.py lacks {needed}"
+                    )
 
         deadline = time.time() + 180.0
         if surface == "grep":
             # No search tool on this surface — prove the live grep works instead.
             grep_fn = mcp._tool_manager._tools["grep"].fn
             while time.time() < deadline:
-                res = _json.loads(grep_fn(pattern="def search", glob="*.py"))
+                res = _json.loads(grep_fn(pattern=_PROBE["grep"], glob="*.py"))
                 if res.get("ok") and res.get("count"):
                     break
                 time.sleep(5.0)
@@ -114,7 +134,7 @@ def verify_mcp_search(ws: Path, surface: str) -> None:
             # until a live semantic search returns hits (or abort loudly).
             while time.time() < deadline:
                 res = _json.loads(
-                    search_fn(query="focus function query and path handling", k=5)
+                    search_fn(query=_PROBE["search"], k=5)
                 )
                 if res.get("ok") and res.get("results"):
                     break
@@ -129,6 +149,35 @@ def verify_mcp_search(ws: Path, surface: str) -> None:
                 probe2 = _json.loads(gph_fn(question="how is a search query processed"))
                 probe_ok = bool(probe1.get("ok") and probe2.get("ok"))
                 note = f"neighbors={probe1.get('count')} graph={probe2.get('count')}"
+            elif surface == "nav":
+                read_fn = mcp._tool_manager._tools["read"].fn
+                files_fn = mcp._tool_manager._tools["files"].fn
+                recall_fn = mcp._tool_manager._tools["recall"].fn
+                expand_fn = mcp._tool_manager._tools["expand"].fn
+                probe1 = _json.loads(read_fn(target=str(top_file)))
+                probe2 = _json.loads(read_fn(target=str(top_file)))
+                files_res = _json.loads(files_fn(pattern="."))
+                recall_res = _json.loads(recall_fn())
+                expand_ok = True
+                if probe1.get("handle"):
+                    expand_res = _json.loads(expand_fn(handle=str(probe1["handle"])))
+                    expand_ok = bool(expand_res.get("ok"))
+                exact = _json.loads(search_fn(query=_PROBE["grep"], mode="exact", k=5))
+                probe_ok = bool(
+                    probe1.get("ok")
+                    and probe1.get("handle")
+                    and probe2.get("handle") == probe1.get("handle")
+                    and probe2.get("unchanged") is True
+                    and files_res.get("ok")
+                    and recall_res.get("ok")
+                    and expand_ok
+                    and exact.get("ok")
+                )
+                note = (
+                    f"read_handle={probe1.get('handle')} dedupe=unchanged "
+                    f"files_ok={files_res.get('ok')} recall={recall_res.get('count')} "
+                    f"exact_hits={exact.get('count')} expand_ok={expand_ok}"
+                )
             elif surface in {"read", "rich"}:
                 read_fn = mcp._tool_manager._tools["read"].fn
                 probe1 = _json.loads(read_fn(target=str(top_file)))
@@ -141,10 +190,22 @@ def verify_mcp_search(ws: Path, surface: str) -> None:
                 )
                 note = f"read_handle={probe1.get('handle')} dedupe=unchanged"
                 if surface == "rich":
-                    grep_fn = mcp._tool_manager._tools["grep"].fn
-                    grep_res = _json.loads(grep_fn(pattern="def search", glob="*.py"))
-                    probe_ok = probe_ok and bool(grep_res.get("ok"))
-                    note += f" grep_hits={grep_res.get('count')}"
+                    # Value-add surface: prove outline (structure) + the graph via
+                    # read(neighbors=true). grep/files are gone — native handles
+                    # exact strings / filenames now.
+                    outline_fn = mcp._tool_manager._tools["outline"].fn
+                    outline_res = _json.loads(outline_fn(path=str(top_file)))
+                    nbr_res = _json.loads(
+                        read_fn(path=str(top_file), neighbors=True, max_neighbors=3)
+                    )
+                    nbr_ok = bool(nbr_res.get("ok")) and (
+                        "neighbors" in nbr_res or "neighbors_note" in nbr_res
+                    )
+                    probe_ok = probe_ok and bool(outline_res.get("ok")) and nbr_ok
+                    note += (
+                        f" outline_ok={outline_res.get('ok')} "
+                        f"read_neighbors={nbr_res.get('neighbors_count', 0)}"
+                    )
             else:  # search-only: the live search above is the whole surface
                 probe_ok = bool(res.get("ok"))
     finally:
@@ -172,7 +233,68 @@ def verify_mcp_search(ws: Path, surface: str) -> None:
     )
 
 
-TRIAL_MARKER = "ce_dev_trial"
+def verify_cbm_ce(ws: Path) -> None:
+    """Prove hybrid facade: CE soft search + one CBM graph call."""
+    import json as _json
+
+    from hybrid_cbm.proxy import make_proxy, resolve_project_name
+    from hybrid_cbm.server import create_mcp
+
+    prev = os.environ.get("CTX_REPO")
+    os.environ["CTX_REPO"] = str(ws)
+    try:
+        mcp = create_mcp()
+        tools = set(mcp._tool_manager._tools)
+        expected = {
+            "search",
+            "search_graph",
+            "trace_path",
+            "get_code_snippet",
+            "status",
+        }
+        if tools != expected:
+            raise SystemExit(
+                f"ABORT: cbm_ce surface drifted; expected {sorted(expected)}, "
+                f"got {sorted(tools)}"
+            )
+        search_fn = mcp._tool_manager._tools["search"].fn
+        deadline = time.time() + 180.0
+        res: dict = {}
+        while time.time() < deadline:
+            res = _json.loads(search_fn(query=_PROBE["search"], k=5))
+            if res.get("ok") and res.get("results"):
+                break
+            time.sleep(5.0)
+        if not res.get("ok") or not res.get("results"):
+            raise SystemExit(
+                f"ABORT: cbm_ce soft search returned no results after warm wait: {res}"
+            )
+        proxy = make_proxy()
+        if not proxy.available():
+            raise SystemExit(
+                "ABORT: CBM binary not found for cbm_ce preflight "
+                "(install codebase-memory-mcp or set CTX_CBM_BIN)"
+            )
+        project = resolve_project_name(proxy, ws)
+        sg_fn = mcp._tool_manager._tools["search_graph"].fn
+        # Broad pattern so tiny fixtures still return something after index.
+        sg = _json.loads(sg_fn(name_pattern=".*", project=project, limit=5))
+        if not sg.get("ok"):
+            raise SystemExit(f"ABORT: cbm_ce search_graph failed: {sg}")
+        print(
+            f"[preflight] MCP cbm_ce OK: soft_hits={res.get('count')} "
+            f"top={res['results'][0].get('file')} "
+            f"graph_total={sg.get('total')} project={project}",
+            flush=True,
+        )
+    finally:
+        if prev is None:
+            os.environ.pop("CTX_REPO", None)
+        else:
+            os.environ["CTX_REPO"] = prev
+
+
+TRIAL_MARKER = "ce_iso_trial"
 
 
 def kill_stale_trial_engines() -> None:
@@ -185,7 +307,7 @@ def kill_stale_trial_engines() -> None:
     ``CTX_REPO`` **environment variable**, not the command line, so a cmdline-only
     match silently misses it (only graphify's graph_json path is on the cmdline).
     We therefore inspect each process's cmdline AND environment, keying on the
-    trial temp root (``ce_dev_trial``). Cursor's own MCP — whose ``CTX_REPO`` is
+    trial temp root (``ce_iso_trial``). Cursor's own MCP — whose ``CTX_REPO`` is
     the real repo — never matches, so it is left untouched.
     """
     killed = 0
@@ -232,24 +354,28 @@ def kill_stale_trial_engines() -> None:
     )
 
 
-def preflight(arm_names: tuple[str, ...]) -> int:
+def preflight(arm_names: tuple[str, ...], source: Path | None = None) -> int:
     """Exercise the ENTIRE non-agent path for each arm, for free, so setup bugs
     surface without spending on a paid agent run:
-      copy + un-fix -> baseline hash parity -> index -> (context_engine) ensure
-      engine repo -> baseline pytest -> git diff -> evaluate. No agent.send.
+      copy -> baseline hash parity -> index -> (context_engine) ensure engine repo
+      -> live MCP probe -> post-tests -> git diff -> evaluate. No agent.send.
+
+    ``source`` is the repo copied/indexed/given to the agent (default: this repo).
+    Tooling (pipeline/graphify/venv) always comes from ROOT.
     """
+    source = (source or ROOT).resolve()
     kill_stale_trial_engines()
     output = trial._default_output().resolve()
     output = output.parent / (output.name + "_preflight")
     output.mkdir(parents=True, exist_ok=True)
     python = trial._source_python(ROOT)
-    print(f"[preflight] output={output} arms={arm_names}", flush=True)
+    print(f"[preflight] output={output} arms={arm_names} source={source}", flush=True)
 
     workspaces: dict[str, Path] = {}
     for name in arm_names:
         ws = output / f"{name}_workspace"
         print(f"[preflight] {name}: copy", flush=True)
-        trial.copy_workspace(ROOT, ws)
+        trial.copy_workspace(source, ws)
         workspaces[name] = ws
 
     hashes = {n: trial.source_tree_hash(w) for n, w in workspaces.items()}
@@ -262,12 +388,31 @@ def preflight(arm_names: tuple[str, ...]) -> int:
     for name, ws in workspaces.items():
         t0 = time.perf_counter()
         try:
-            graph = trial.index_workspace(ws, python, ROOT)
-            cfg = smoke.build_configs(ROOT, ws, python, graph)[name]
-            if name != "graphify":
-                trial._clear_context_state(ws)
-                smoke.ensure_engine_repo(ws)
-                verify_mcp_search(ws, smoke.arm_surface(name))
+            if name == "raw":
+                # No MCP / no graph — skip index + engine; prove empty providers.
+                graph = ws / ".context-engine" / "graph.json"
+                cfg = smoke.build_configs(ROOT, ws, python, graph)[name]
+                if cfg.mcp_servers:
+                    raise RuntimeError(
+                        f"raw arm must have zero MCP servers, "
+                        f"got {sorted(cfg.mcp_servers)}"
+                    )
+                print(
+                    "[preflight] raw: no MCP servers (native-only baseline) OK",
+                    flush=True,
+                )
+            else:
+                graph = trial.index_workspace(ws, python, ROOT)
+                if name == "cbm_ce":
+                    trial.index_cbm_workspace(ws)
+                cfg = smoke.build_configs(ROOT, ws, python, graph)[name]
+                if name != "graphify":
+                    trial._clear_context_state(ws)
+                    smoke.ensure_engine_repo(ws)
+                    if name == "cbm_ce":
+                        verify_cbm_ce(ws)
+                    else:
+                        verify_mcp_search(ws, smoke.arm_surface(name))
             tests = trial.run_post_tests(ws, python, ROOT, arm=name)
             diff = trial.git_diff(ws)
             outcome = trial.evaluate_development_arm(
@@ -279,9 +424,12 @@ def preflight(arm_names: tuple[str, ...]) -> int:
                 tests,
             )
             dt = time.perf_counter() - t0
-            passed = bool(tests.get("passed"))
+            # A skipped suite (frontend profile: target-repo deps absent) is not a
+            # failure — scoring there is by task shape, verified live above.
+            skipped = bool(tests.get("skipped"))
+            passed = True if skipped else bool(tests.get("passed"))
             print(
-                f"[preflight] {name}: pytest_passed={passed} "
+                f"[preflight] {name}: pytest_passed={'skipped' if skipped else passed} "
                 f"exit={tests.get('exit_code')} baseline_diff_empty={not diff.strip()} "
                 f"mcp_servers={sorted(cfg.mcp_servers)} took={dt:.1f}s",
                 flush=True,
@@ -305,12 +453,37 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--arms", default=",".join(trial.ARM_NAMES))
     parser.add_argument("--timeout", type=float, default=900.0)
+    parser.add_argument("--model", default="auto")
     parser.add_argument("--preflight", action="store_true")
+    parser.add_argument(
+        "--prompt-id",
+        default="",
+        help="frontend prompt: thrash|degraded|consistency|combo (sets CTX_FRONTEND_PROMPT)",
+    )
+    parser.add_argument(
+        "--source",
+        type=Path,
+        default=ROOT,
+        help="Repo to copy/index/give the agent (default: this repo). Tooling "
+        "always stays this repo; set CTX_TRIAL_PROFILE=frontend to match.",
+    )
     args = parser.parse_args()
     arm_names = tuple(a.strip() for a in str(args.arms).split(",") if a.strip())
+    source = args.source.resolve()
+
+    if args.prompt_id:
+        pid = str(args.prompt_id).strip().lower()
+        if pid not in trial.FRONTEND_PROMPTS:
+            print(
+                f"ERROR: --prompt-id must be one of {sorted(trial.FRONTEND_PROMPTS)}",
+                file=sys.stderr,
+                flush=True,
+            )
+            return 2
+        os.environ["CTX_FRONTEND_PROMPT"] = pid
 
     if args.preflight:
-        return preflight(arm_names)
+        return preflight(arm_names, source)
 
     api_key = smoke.load_cursor_api_key(ROOT)
     if not api_key:
@@ -319,17 +492,29 @@ def main() -> int:
     os.environ["CURSOR_API_KEY"] = api_key
     kill_stale_trial_engines()
     output = trial._default_output().resolve()
-    print(f"[trial] output={output} arms={arm_names} timeout={args.timeout:g}s", flush=True)
+    print(
+        f"[trial] output={output} arms={arm_names} source={source} "
+        f"model={args.model} timeout={args.timeout:g}s "
+        f"prompt={(os.environ.get('CTX_FRONTEND_PROMPT') or '')}",
+        flush=True,
+    )
     data = asyncio.run(
-        trial.run_trial(ROOT, output, "composer-2.5", args.timeout, arm_names=arm_names)
+        trial.run_trial(source, output, args.model, args.timeout, arm_names=arm_names)
     )
     for name, arm in data["arms"].items():
         usage = arm.get("usage") or {}
+        work = arm.get("work_tokens")
+        if work is None:
+            inp, out = usage.get("input_tokens"), usage.get("output_tokens")
+            work = (inp or 0) + (out or 0) if inp is not None and out is not None else None
         print(
             f"[trial] {name}: status={arm.get('status')} "
             f"work_complete={arm.get('work_complete')} "
             f"quality_pass={arm.get('quality_pass')} "
+            f"work_tokens={work} "
             f"total_tokens={usage.get('total_tokens')} "
+            f"mcp_disc={arm.get('mcp_discovery_count')} "
+            f"used_task={arm.get('used_task')} "
             f"error={str(arm.get('error') or '')[:80]!r}",
             flush=True,
         )
