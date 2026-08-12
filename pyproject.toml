@@ -45,6 +45,7 @@ build-backend = "setuptools.build_meta"
 where = ["packages"]
 include = [
   "pipeline*",
+  "hybrid_cbm*",
   "conductor*",
   "enrich*",
   "metadata*",

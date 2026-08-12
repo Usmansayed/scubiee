@@ -147,6 +147,7 @@ def test_untracked_diff_git_calls_use_command_scoped_long_paths(
 def _valid_graphify_diff() -> str:
     # A complete multi-area feature diff: core module + new tests + >=2 wiring
     # surfaces (retrieval, MCP, docs) — matches the new implementation_present.
+    # New tests must appear as brand-new (--- /dev/null); modified tests do not count.
     return (
         "diff --git a/packages/pipeline/query_expand.py "
         "b/packages/pipeline/query_expand.py\n"
@@ -154,23 +155,23 @@ def _valid_graphify_diff() -> str:
         "diff --git a/packages/pipeline/mcp_locate.py "
         "b/packages/pipeline/mcp_locate.py\n"
         "diff --git a/tests/test_query_expand.py b/tests/test_query_expand.py\n"
+        "--- /dev/null\n"
+        "+++ b/tests/test_query_expand.py\n"
         "diff --git a/docs/query-expansion.md b/docs/query-expansion.md\n"
     )
 
 
 def _valid_graphify_events() -> list[dict]:
+    # CE/graphify arms require >=5 discovery MCP calls for mcp_used_enough.
+    call = {
+        "kind": "mcp",
+        "provider": "graphify",
+        "name": "query_graph",
+        "arguments": {},
+    }
     return [
-        {
-            "tool_calls": [
-                {
-                    "kind": "mcp",
-                    "provider": "graphify",
-                    "name": "query_graph",
-                    "arguments": {},
-                }
-            ],
-            "tool_results": [],
-        }
+        {"tool_calls": [call], "tool_results": []}
+        for _ in range(5)
     ]
 
 
@@ -218,9 +219,12 @@ def test_usage_dict_returns_none_for_incomplete_mapping():
     assert trial.usage_dict({"input_tokens": 10}) is None
 
 
-def test_shared_prompt_is_vague_and_discovery_bound():
+def test_shared_prompt_is_vague_and_discovery_bound(monkeypatch):
+    monkeypatch.delenv("CTX_TRIAL_PROFILE", raising=False)
+    monkeypatch.delenv("CTX_FRONTEND_PROMPT", raising=False)
     trial = _load_trial()
-    prompt = trial.SHARED_PROMPT
+    # Force ce-profile prompt regardless of ambient env from other tests/shells.
+    prompt = trial.CE_PROMPT
     # The prompt must describe the goal in human terms and force discovery.
     for marker in ("query expansion", "auth cfg", "camelCase", "turn it off"):
         assert marker in prompt
@@ -235,6 +239,33 @@ def test_shared_prompt_is_vague_and_discovery_bound():
         "query_expand.py",
     ):
         assert leak not in prompt
+
+
+def test_frontend_prompt_variants_are_vague_and_distinct():
+    trial = _load_trial()
+    assert set(trial.FRONTEND_PROMPTS) >= {
+        "thrash",
+        "degraded",
+        "consistency",
+        "combo",
+    }
+    for pid, prompt in trial.FRONTEND_PROMPTS.items():
+        assert "don't know the layout" in prompt.lower()
+        assert "docs" in prompt.lower()
+        assert "test" in prompt.lower()
+        for leak in ("src/navigation/mcp/tools.py", "dispatch_registry.py"):
+            assert leak not in prompt, pid
+    assert "code graph" in trial.FRONTEND_PROMPTS["thrash"].lower()
+    assert "degraded" in trial.FRONTEND_PROMPTS["degraded"].lower()
+    assert "consistency" in trial.FRONTEND_PROMPTS["consistency"].lower()
+    combo = trial.FRONTEND_PROMPTS["combo"].lower()
+    assert "code graph" in combo or "code-graph" in combo
+    assert "consistency" in combo
+    assert "new test file" in combo
+    # Combo must be a heavier dual-feature ask than single-theme variants.
+    assert len(trial.FRONTEND_PROMPTS["combo"]) > len(
+        trial.FRONTEND_PROMPTS["consistency"]
+    )
 
 
 def test_arm_requires_expected_provider_usage_diff_and_passing_tests():
@@ -277,7 +308,15 @@ def test_added_test_files_discovers_agent_named_tests():
     trial = _load_trial()
     diff = (
         "diff --git a/tests/test_query_expand.py b/tests/test_query_expand.py\n"
+        "--- /dev/null\n"
+        "+++ b/tests/test_query_expand.py\n"
         "diff --git a/tests/test_extra_thing.py b/tests/test_extra_thing.py\n"
+        "--- /dev/null\n"
+        "+++ b/tests/test_extra_thing.py\n"
+        # Modified existing test must NOT count as a new test file.
+        "diff --git a/tests/test_mcp_locate.py b/tests/test_mcp_locate.py\n"
+        "--- a/tests/test_mcp_locate.py\n"
+        "+++ b/tests/test_mcp_locate.py\n"
     )
     assert trial.added_test_files(diff) == [
         "tests/test_extra_thing.py",
@@ -1184,6 +1223,8 @@ def test_run_trial_persists_both_arms_and_preserves_source(
     monkeypatch, tmp_path
 ):
     trial = _load_trial()
+    monkeypatch.delenv("CTX_TRIAL_FORCE_SURFACE", raising=False)
+    monkeypatch.setenv("CTX_TRIAL_PROFILE", "ce")
     source = tmp_path / "source"
     source.mkdir()
     (source / "product.py").write_text("VALUE = 1\n", encoding="utf-8")
@@ -1203,22 +1244,42 @@ def test_run_trial_persists_both_arms_and_preserves_source(
     monkeypatch.setattr(trial.smoke, "build_configs", lambda *_args: configs)
 
     class StagedRule:
-        def __init__(self, workspace):
-            self.path = workspace / ".cursor" / "rules" / "transient.mdc"
+        def __init__(self, workspace, name):
+            self.workspace = workspace
+            self.name = name
+            self.paths: list[Path] = []
 
         def __enter__(self):
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-            self.path.write_text("transient control rule\n", encoding="utf-8")
+            rules = self.workspace / ".cursor" / "rules"
+            rules.mkdir(parents=True, exist_ok=True)
+            if self.name == "graphify":
+                path = rules / "graphify-agent.mdc"
+                path.write_text(
+                    "Use Graphify MCP query_graph for structure.\n",
+                    encoding="utf-8",
+                )
+            else:
+                path = rules / "context-agent.mdc"
+                path.write_text(
+                    "Context Engine search then read.\n",
+                    encoding="utf-8",
+                )
+            self.paths.append(path)
+            # Keep the transient marker the test asserts is cleaned from diffs.
+            transient = rules / "transient.mdc"
+            transient.write_text("transient control rule\n", encoding="utf-8")
+            self.paths.append(transient)
             return self
 
         def __exit__(self, *_args):
-            self.path.unlink()
+            for path in self.paths:
+                path.unlink(missing_ok=True)
             return None
 
     monkeypatch.setattr(
         trial.smoke,
         "stage_retrieval_rule",
-        lambda workspace, _name: StagedRule(workspace),
+        lambda workspace, name: StagedRule(workspace, name),
     )
     monkeypatch.setattr(trial, "_clear_context_state", lambda _workspace: None)
     monkeypatch.setattr(trial, "_sdk_version", lambda: "1.2.3")
@@ -1305,6 +1366,8 @@ def test_run_trial_switches_engine_before_context_engine_agent(
     monkeypatch, tmp_path
 ):
     trial = _load_trial()
+    monkeypatch.delenv("CTX_TRIAL_FORCE_SURFACE", raising=False)
+    monkeypatch.setenv("CTX_TRIAL_PROFILE", "ce")
     source = tmp_path / "source"
     source.mkdir()
     (source / "product.py").write_text("VALUE = 1\n", encoding="utf-8")
@@ -1328,10 +1391,31 @@ def test_run_trial_switches_engine_before_context_engine_agent(
         return f"{dst.name}-baseline"
 
     class StagedRule:
+        def __init__(self, workspace, name):
+            self.workspace = workspace
+            self.name = name
+            self.path = None
+
         def __enter__(self):
+            rules = self.workspace / ".cursor" / "rules"
+            rules.mkdir(parents=True, exist_ok=True)
+            if self.name == "graphify":
+                self.path = rules / "graphify-agent.mdc"
+                self.path.write_text(
+                    "Use Graphify MCP query_graph for structure.\n",
+                    encoding="utf-8",
+                )
+            else:
+                self.path = rules / "context-agent.mdc"
+                self.path.write_text(
+                    "Context Engine search then read.\n",
+                    encoding="utf-8",
+                )
             return self
 
         def __exit__(self, *_args):
+            if self.path is not None:
+                self.path.unlink(missing_ok=True)
             return None
 
     class FakeBridge:
@@ -1360,7 +1444,7 @@ def test_run_trial_switches_engine_before_context_engine_agent(
     monkeypatch.setattr(
         trial.smoke,
         "stage_retrieval_rule",
-        lambda *_args: StagedRule(),
+        lambda workspace, name: StagedRule(workspace, name),
     )
     monkeypatch.setattr(
         trial,
@@ -1399,5 +1483,308 @@ def test_run_trial_switches_engine_before_context_engine_agent(
         "run:context_engine"
     )
     assert "ensure:graphify_workspace" not in order
+
+
+def test_arm_surface_nav_and_force(monkeypatch):
+    trial = _load_trial()
+    assert trial.smoke.arm_surface("ce_nav") == "nav"
+    monkeypatch.setenv("CTX_TRIAL_FORCE_SURFACE", "nav")
+    assert trial.smoke.arm_surface("ce_read") == "nav"
+    assert trial.smoke.arm_surface("context_engine") == "nav"
+    monkeypatch.delenv("CTX_TRIAL_FORCE_SURFACE", raising=False)
+    assert trial.smoke.arm_surface("ce_read") == "read"
+
+
+def test_seal_locate_fails_ce_arm_on_native_grep(monkeypatch):
+    trial = _load_trial()
+    monkeypatch.setenv("CTX_TRIAL_PROFILE", "ce")
+    monkeypatch.setenv("CTX_TRIAL_SEAL_LOCATE", "1")
+    calls = [
+        {
+            "kind": "mcp",
+            "provider": "context-engine",
+            "name": "search",
+            "arguments": {},
+        }
+        for _ in range(5)
+    ]
+    calls.append({"kind": "native", "name": "grep", "arguments": {"pattern": "x"}})
+    calls.append({"kind": "native", "name": "edit", "arguments": {}})
+    events = [{"tool_calls": calls, "tool_results": []}]
+    outcome = trial.evaluate_development_arm(
+        name="ce_nav",
+        status="finished",
+        events=events,
+        usage=_valid_usage_dict(),
+        diff_text=_valid_graphify_diff(),
+        tests={"exit_code": 0, "passed": True},
+    )
+    assert outcome["seal_locate"] is True
+    assert outcome["native_locate_count"] >= 1
+    assert outcome["seal_ok"] is False
+    assert outcome["work_complete"] is False
+    assert outcome["first_edit_step"] == 7
+    assert outcome["pre_locate_calls"] == 6  # 5 search + 1 grep before edit
+
+
+def test_seal_locate_passes_when_mcp_only(monkeypatch):
+    trial = _load_trial()
+    monkeypatch.setenv("CTX_TRIAL_PROFILE", "ce")
+    monkeypatch.setenv("CTX_TRIAL_SEAL_LOCATE", "1")
+    calls = [
+        {
+            "kind": "mcp",
+            "provider": "context-engine",
+            "name": n,
+            "arguments": {},
+        }
+        for n in ("search", "files", "read", "recall", "expand")
+    ]
+    calls.append({"kind": "native", "name": "edit", "arguments": {}})
+    events = [{"tool_calls": calls, "tool_results": []}]
+    outcome = trial.evaluate_development_arm(
+        name="ce_nav",
+        status="finished",
+        events=events,
+        usage=_valid_usage_dict(),
+        diff_text=_valid_graphify_diff(),
+        tests={"exit_code": 0, "passed": True},
+    )
+    assert outcome["seal_ok"] is True
+    assert outcome["native_locate_count"] == 0
+    assert outcome["first_edit_step"] == 6
+    assert outcome["pre_locate_calls"] == 5
+
+
+def test_build_configs_includes_ce_nav(tmp_path, monkeypatch):
+    trial = _load_trial()
+    monkeypatch.setenv("CTX_TRIAL_FORCE_SURFACE", "")
+    # Stdio may be None if cursor-sdk missing — skip if so
+    if trial.smoke.StdioMcpServerConfig is None:
+        return
+    configs = trial.smoke.build_configs(
+        ROOT, tmp_path, Path(sys.executable), tmp_path / "g.json"
+    )
+    assert "ce_nav" in configs
+    env = configs["ce_nav"].mcp_servers["context-engine"].env
+    assert env["CTX_MCP_SURFACE"] == "nav"
+
+
+def test_build_configs_includes_cbm_ce(tmp_path, monkeypatch):
+    trial = _load_trial()
+    if trial.smoke.StdioMcpServerConfig is None:
+        return
+    monkeypatch.setenv("CTX_CBM_BIN", r"C:\fake\codebase-memory-mcp.exe")
+    configs = trial.smoke.build_configs(
+        ROOT, tmp_path, Path(sys.executable), tmp_path / "g.json"
+    )
+    assert "cbm_ce" in configs
+    assert "cbm_ce" in trial.KNOWN_ARMS
+    server = configs["cbm_ce"].mcp_servers["cbm-ce"]
+    assert server.args[-1] == "hybrid_cbm" or "hybrid_cbm" in server.args
+    assert server.env["CTX_CBM_BIN"].endswith("codebase-memory-mcp.exe")
+    with trial.smoke.stage_retrieval_rule(tmp_path, "cbm_ce"):
+        rule = (tmp_path / ".cursor" / "rules" / "context-agent.mdc").read_text(
+            encoding="utf-8"
+        )
+    assert "cbm-ce = ONLY code locate" in rule
+    assert "search_graph" in rule
+
+
+def test_quarantine_arm_artifacts_hides_workspace_and_sidecar_files(tmp_path):
+    trial = _load_trial()
+    output = tmp_path / "run"
+    vault = tmp_path / "vault"
+    output.mkdir()
+    ws = output / "ce_nav_workspace"
+    ws.mkdir()
+    (ws / "done.py").write_text("ok\n", encoding="utf-8")
+    (output / "ce_nav.diff").write_text("DIFF\n", encoding="utf-8")
+    (output / "ce_nav-tests.log").write_text("log\n", encoding="utf-8")
+    (output / "ce_nav-conversation.json").write_text("[]\n", encoding="utf-8")
+    (output / "ce_nav-arm.json").write_text("{}\n", encoding="utf-8")
+    (output / "raw_workspace").mkdir()
+
+    trial.quarantine_arm_artifacts(output, vault, "ce_nav")
+
+    assert not (output / "ce_nav_workspace").exists()
+    assert not (output / "ce_nav.diff").exists()
+    assert not (output / "ce_nav-arm.json").exists()
+    assert (output / "raw_workspace").is_dir()
+    assert (vault / "ce_nav_workspace" / "done.py").read_text(encoding="utf-8") == "ok\n"
+    assert (vault / "ce_nav.diff").read_text(encoding="utf-8") == "DIFF\n"
+    assert (vault / "ce_nav-arm.json").read_text(encoding="utf-8") == "{}\n"
+
+
+def test_restore_quarantined_arm_artifacts_puts_files_back(tmp_path):
+    trial = _load_trial()
+    output = tmp_path / "run"
+    vault = tmp_path / "vault"
+    output.mkdir()
+    vault.mkdir()
+    (vault / "ce_nav.diff").write_text("DIFF\n", encoding="utf-8")
+    (vault / "ce_nav_workspace").mkdir()
+    (vault / "ce_nav_workspace" / "x.py").write_text("1\n", encoding="utf-8")
+
+    trial.restore_quarantined_arm_artifacts(vault, output)
+
+    assert (output / "ce_nav.diff").read_text(encoding="utf-8") == "DIFF\n"
+    assert (output / "ce_nav_workspace" / "x.py").read_text(encoding="utf-8") == "1\n"
+    assert not vault.exists() or not any(vault.iterdir())
+
+
+def test_detect_cross_arm_contamination_flags_sibling_paths():
+    trial = _load_trial()
+    hits = trial.detect_cross_arm_contamination(
+        text=(
+            "copy from "
+            r"C:\tmp\ce_dev_trial\x\ce_nav_workspace\src\a.py "
+            "and also ce_nav.diff"
+        ),
+        arm_name="raw",
+        arm_names=("ce_nav", "raw"),
+    )
+    assert "ce_nav_workspace" in hits
+    assert "ce_nav.diff" in hits
+    assert trial.detect_cross_arm_contamination(
+        text="only raw_workspace and own files",
+        arm_name="raw",
+        arm_names=("ce_nav", "raw"),
+    ) == []
+
+
+def test_run_trial_hides_finished_arm_before_next_arm_starts(
+    tmp_path, monkeypatch
+):
+    """Finished arm workspace must not sit beside the next arm's cwd."""
+    trial = _load_trial()
+    monkeypatch.delenv("CTX_TRIAL_FORCE_SURFACE", raising=False)
+    monkeypatch.setenv("CTX_TRIAL_PROFILE", "ce")
+    source = tmp_path / "source"
+    source.mkdir()
+    (source / "product.py").write_text("print(1)\n", encoding="utf-8")
+    output = tmp_path / "out"
+    visible_when_started: list[tuple[str, list[str]]] = []
+
+    def fake_copy(_src, dst):
+        dst.mkdir(parents=True)
+        (dst / "product.py").write_text("print(1)\n", encoding="utf-8")
+        return f"{dst.name}-baseline"
+
+    class StagedRule:
+        def __init__(self, workspace, name):
+            self.workspace = workspace
+            self.name = name
+            self.path = None
+
+        def __enter__(self):
+            rules = self.workspace / ".cursor" / "rules"
+            rules.mkdir(parents=True, exist_ok=True)
+            if self.name == "graphify":
+                self.path = rules / "graphify-agent.mdc"
+                self.path.write_text(
+                    "Use Graphify MCP query_graph for structure.\n",
+                    encoding="utf-8",
+                )
+            else:
+                self.path = rules / "context-agent.mdc"
+                self.path.write_text(
+                    "Context Engine search then read.\n",
+                    encoding="utf-8",
+                )
+            return self
+
+        def __exit__(self, *_args):
+            if self.path is not None:
+                self.path.unlink(missing_ok=True)
+            return None
+
+    class FakeBridge:
+        def __init__(self, workspace):
+            self.workspace = workspace
+
+        async def __aenter__(self):
+            return object()
+
+        async def __aexit__(self, *_args):
+            return None
+
+    class FakeAsyncClient:
+        @staticmethod
+        async def launch_bridge(*, workspace, **_kwargs):
+            return FakeBridge(workspace)
+
+    configs = {
+        "context_engine": SimpleNamespace(
+            name="context_engine",
+            mcp_servers={"context-engine": object()},
+            setting_sources=["project"],
+        ),
+        "graphify": SimpleNamespace(
+            name="graphify",
+            mcp_servers={"graphify": object()},
+            setting_sources=["project"],
+        ),
+    }
+
+    sdk = _install_fake_cursor_sdk(monkeypatch)
+    sdk.AsyncClient = FakeAsyncClient
+    monkeypatch.setattr(trial, "copy_workspace", fake_copy)
+    monkeypatch.setattr(
+        trial, "index_workspace", lambda workspace, *_a: workspace / "graph.json"
+    )
+    monkeypatch.setattr(trial.smoke, "build_configs", lambda *_a: configs)
+    monkeypatch.setattr(
+        trial.smoke,
+        "stage_retrieval_rule",
+        lambda workspace, name: StagedRule(workspace, name),
+    )
+    monkeypatch.setattr(trial, "_clear_context_state", lambda _w: None)
+    monkeypatch.setattr(trial.smoke, "ensure_engine_repo", lambda _w: None)
+    monkeypatch.setattr(
+        trial, "_finalize_arm_outcome", lambda _w, outcome: outcome
+    )
+
+    async def fake_run_arm(_client, config, workspace, *_args, **_kwargs):
+        names = sorted(p.name for p in output.iterdir()) if output.exists() else []
+        visible_when_started.append((config.name, names))
+        (workspace / "touched.py").write_text("x\n", encoding="utf-8")
+        return {
+            "name": config.name,
+            "status": "finished",
+            "usage": _valid_usage_dict(),
+            "usage_source": "sdk",
+            "diff": "diff --git a/touched.py b/touched.py\n",
+            "tests": {"passed": True},
+            "conversation_json": "[]",
+            "work_complete": True,
+        }
+
+    monkeypatch.setattr(trial, "run_arm", fake_run_arm)
+
+    data = asyncio.run(
+        trial.run_trial(
+            source,
+            output,
+            "composer-2.5",
+            1200,
+            arm_names=("context_engine", "graphify"),
+        )
+    )
+
+    assert visible_when_started[0][0] == "context_engine"
+    assert "context_engine_workspace" in visible_when_started[0][1]
+    assert "graphify_workspace" not in visible_when_started[0][1]
+
+    assert visible_when_started[1][0] == "graphify"
+    assert "context_engine_workspace" not in visible_when_started[1][1]
+    assert "context_engine.diff" not in visible_when_started[1][1]
+    assert "graphify_workspace" in visible_when_started[1][1]
+
+    # After the trial, artifacts are restored for humans / REPORT.
+    assert (output / "context_engine_workspace").is_dir()
+    assert (output / "context_engine.diff").is_file()
+    assert (output / "graphify_workspace").is_dir()
+    assert data["arms"]["context_engine"]["status"] == "finished"
 
 

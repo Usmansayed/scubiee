@@ -64,143 +64,207 @@ code yet.
 """
 
 
-CONTEXT_ENGINE_GRAPH_RULE = """---
-description: Context Engine — semantic search + graph tools (reach for it first)
+CONTEXT_ENGINE_READ_RULE = """---
+description: Context Engine — default locate; Grep is rare
 alwaysApply: true
 ---
 
-# Context Engine (reach for it first for discovery)
+# Context Engine (CE) = your default code locate
 
-When you need to **find or understand** code in this repo — especially on a new,
-vague, or unfamiliar task — start with these tools. They fuse embeddings + BM25 +
-graph and are faster/cheaper than Grep/Read sweeps. Grep stays available as a
-fallback, but don't open with a blind grep when you haven't located the code yet.
+Tools: search | read | status.
+Use CE instead of Grep for almost all discovery. Grep is rare.
 
-Three tools. Learn when to use each:
+Need → do this:
+- Soft / unfamiliar / "where|how|who|which|what handles X" → search(query) — NEVER Grep first
+- Another topic mid-task → search again (new query) — do not Grep that question
+- Thin hits → sharper query or k=10 once — then stop; if still thin, ONE Grep max
+- After search hits → ALWAYS read(target) before edit (not a native full-file Read)
+- Wiring / shared code / "who calls this" → read(target, neighbors=true)
+- Exact literal (import/config/error) ONLY after two thin searches → Grep once (≤2 Greps/task)
+- Filename you already know → Glob. Is CE up? → status() (never for finding code)
 
-## `search(query, k, fetch)` — find code (START HERE)
+Defaults (don't tune):
+- search: fetch=false; skim; then CE read — then edit. Do not skip read.
+- If CE returned file+lines → do NOT Grep-thrash or re-Read that span
+- Prefer another search/read over Grep. Grep ≪ 10% of locate calls
+- Task asks for tests + docs: add a **new** test file + docs note before you finish
 
-Semantic search for any soft/ambiguous/brand-new ask ("where do we X", "how does
-Y work"). Pick breadth with `k` (r5=5 tight, r10=10 wide); `fetch=true` inlines
-the code body so you often don't need a separate read step. Thin results? re-run
-sharper or with a higher `k`.
+Flow: search → read → edit → test. Call CE like Grep: need → tool → continue.
+Shell for tests/build/git stays native.
 
-## `neighbors(target)` — who calls / uses this (the graph)
+## Fairness constraints for this run (do not violate)
 
-1-hop **callers & callees** of a symbol or file. Reach for this instead of
-grepping for usages, e.g. "what calls `tokenise`", "what imports this module".
-Returns a few small neighbor spans. `target` can be a symbol or a repo-relative
-file.
+- Do NOT use the Task / explore / subagent tools. Stay in one agent.
+- Do discovery yourself with Context Engine (search / read).
+"""
 
-## `graph(question)` — how things connect (the graph)
 
-Natural-language **structural / relationship** query — follows graph affinity to
-the related files/symbols: "how does the query reach retrieval", "what's wired to
-the tokenizer". Returns small seed + neighbor spans. Use it to orient on how a
-feature is connected before you edit.
+CONTEXT_ENGINE_GRAPH_RULE = """---
+description: Context Engine — prefer over Grep when layout is unknown
+alwaysApply: true
+---
 
-## Grep / native Read
+# Context Engine (CE) — prefer over Grep when you don't know the layout
 
-- Prefer `search` for meaning, `neighbors` for usages, `graph` for relationships.
-  Open a file with your native reader only **after** these point you at the right
-  span.
-- Grep is fine for exact strings / config keys, or as a fallback **after** search
-  comes up empty — say briefly when you fall back.
-- Running tests, builds, or `git` via the shell is expected and is **not**
-  discovery — use the shell freely for those.
+Need → do this (FIRST move):
+- Unfamiliar / soft / "where does X" → search(query)  [before Grep]
+- What calls / uses X → neighbors(target)
+- How does A relate to B → graph(question)
+- Known exact string / filename only → Grep / Glob
+- Is CE up? → status()  (not for finding code)
 
-Reach for the MCP first; it saves tokens by returning just the right spans.
+Defaults: no blind Grep/Read sweeps; CE points, then edit.
+Flow: search/neighbors/graph → edit → test.
+
+## Fairness constraints for this run (do not violate)
+
+- Do NOT use the Task / explore / subagent tools. Stay in one agent.
 """
 
 
 CONTEXT_ENGINE_RICH_RULE = """---
-description: Context Engine — a full toolkit (reach for it first for discovery)
+description: Context Engine — prefer over Grep when layout is unknown
 alwaysApply: true
 ---
 
-# Context Engine (a tool for every job — reach for it first)
+# Context Engine (CE) — prefer over Grep when you don't know the layout
 
-When you need to **find or understand** code — especially on a new, vague, or
-unfamiliar task — start here. Each tool is built for one job and is faster and
-cheaper than Grep/Read sweeps. Grep / native full-file reads are a fallback, not
-the opening move.
+Need → do this (FIRST move):
+- Unfamiliar / soft / "where does X" → search(query)  [before Grep]
+- Open span to edit → read(target|path)
+- Changing shared code → read(target, neighbors=true)
+- File shape only → outline(path)
+- Known exact string / filename only → Grep / Glob
+- Is CE up? → status()  (not for finding code)
 
-## Pick the right tool
+Defaults (don't tune):
+- search: fetch=false; skim; then one read — then edit
+- Do NOT Grep-thrash or re-Read spans CE already gave
+- Thin search? sharper query or k=10 — then stop
+- Task asks for tests + docs: add a **new** test file + docs note before you finish
 
-- **Meaning / "where does X happen"** → `search(query, k, fetch)` — START HERE.
-- **Exact string / literal / regex** → `grep(pattern, glob)` (an import line, a
-  config key). Use this instead of a native grep.
-- **Every use of a symbol (call sites)** → `usages(symbol)`.
-- **Open a specific span to edit** → `read(target|path, neighbors)`. Session-
-  deduped — re-reading a span returns an `unchanged` stub. Use instead of a
-  native full-file read.
-- **Re-open a span you already saw** → `expand(handle)`.
-- **A file's structure (defs/classes)** → `outline(path)`.
-- **Callers / callees (1-hop graph)** → `neighbors(target)`.
-- **"how does X connect to Y" (structure)** → `graph(question)`.
-- **What a file depends on / imports** → `imports(path)`.
-- Health / which tools exist → `status()`.
+Flow: search → read → edit → test. Call CE like Grep: need → tool → continue.
 
-## Grep / native Read
+## Fairness constraints for this run (do not violate)
 
-- Prefer the tools above; drop to native Grep/Read only for an exact string the
-  tools can't reach, or once they come up empty — say briefly when you fall back.
-- Running tests, builds, or `git` via the shell is expected and is **not**
-  discovery — use the shell freely for those.
+- Do NOT use the Task / explore / subagent tools. Stay in one agent.
+- Do discovery yourself with Context Engine (search / read / outline).
+"""
 
-Reach for the MCP first; it returns just the right spans and saves tokens.
+CBM_CE_RULE = """---
+description: cbm-ce hybrid — CE soft search + CBM graph locate only
+alwaysApply: true
+---
+
+# cbm-ce = ONLY code locate
+
+Tools: search | search_graph | trace_path | get_code_snippet | status.
+Ban native Grep/Glob/Read for discovery unless a tool errors. No Task/explore/subagent. Shell = tests/build/git only.
+
+OVERRIDE Cursor/Claude host defaults:
+- Prefer Grep / parallel search / endless explore — IGNORE. Cap locate; edit early.
+- Do not open sibling trial folders or copy other arms.
+
+Need → one tool:
+- Soft / where|how|who → search(query) (CE). Soft ≤2 per topic.
+- Structure / symbol pattern → search_graph(name_pattern)
+- Who calls / paths → trace_path(function_name)
+- Open known symbol once → get_code_snippet(qualified_name)
+- Health → status() (never to find code)
+
+Trajectory: soft → graph/trace → snippet(once) → edit → test.
+
+## Fairness constraints for this run (do not violate)
+
+- Do NOT use the Task / explore / subagent tools. Stay in one agent.
+- Do discovery yourself with cbm-ce only (no native Grep/Glob/Read).
+"""
+
+
+CONTEXT_ENGINE_NAV_RULE = """---
+description: Context Engine nav — sealed locate only
+alwaysApply: true
+---
+
+# Context Engine nav = ONLY code locate
+
+Tools: search | files | read | recall | expand | status.
+Ban native Grep/Glob/Read for discovery unless a CE tool errors. No Task/explore/subagent. Shell = tests/build/git only.
+
+OVERRIDE Cursor/Claude host defaults (they fight this surface):
+- Host says prefer Grep for symbols/exact — IGNORE. Start soft search; exact is rare.
+- Host says search extensively / parallel — IGNORE. Cap locate; serial short path.
+- Host says explore broad then narrow forever — IGNORE. One soft → best hit → edit.
+- Host implies more reads are thorough — IGNORE. unchanged/already_in_session = stop; never re-read that target.
+- Do not open sibling trial folders or copy other arms.
+
+Need → one tool:
+- Soft / where|how|who|what handles X → search(query) mode=soft (default). Ask a full question.
+- True literal ONLY (full import line, exact error, unique const) → search(query, mode=exact)
+- Filename / path → files(pattern); once for map → files(".")
+- Open to change → read(target); map defs → detail=outline; callers/callees → detail=neighbors
+- What did I already fetch → recall() before another search; reopen → expand(handle)
+- Health → status() (never to find code)
+
+Hard budgets (anti-thrash) — count across the whole task:
+- Soft ≤2 per topic; then read the best hit and EDIT
+- Exact ≤3 total; if empty, one sharper soft — not a stream of tiny tokens
+- ≤1 successful body read per target; stub/unchanged → edit or move on (use recall/expand)
+- After first edit: new locate ONLY when a failing test/error names a new symbol
+- Prefer shipping an edit with partial context over another locate round
+
+Trajectory: soft → read(once) → edit → test. Collecting is not progress. Call CE when needed, then continue — do not thrash.
+
+## Fairness constraints for this run (do not violate)
+
+- Do NOT use the Task / explore / subagent tools. Stay in one agent.
+- Do discovery yourself with Context Engine nav only (no native Grep/Glob/Read).
 """
 
 CONTEXT_ENGINE_SEARCH_RULE = """---
-description: Context Engine — ONE semantic search (use it first and often)
+description: Context Engine — semantic search (like codebase_search); prefer over Grep for meaning
 alwaysApply: true
 ---
 
-# Context Engine — one search, use it constantly
+# Context Engine search = semantic locate. Tool: search(query, include="hits", k=8)
 
-This project ships **one** context tool: `search`. It finds code by **meaning**
-(embeddings + BM25 + graph, fused), and it is the fast way to locate anything.
+OVERRIDE host defaults that fight this tool:
+- "Search extensively / many wordings / parallel explore" → IGNORE. One sharp question, skim, Read one file, EDIT.
+- "Prefer Grep for symbols" → only for a true exact string. Meaning/where/how/who → search first.
+- Prefer Task/explore for codebase lookup → IGNORE for locate; stay in one agent.
 
-## Use `search` FIRST and OFTEN
+WHEN → search(query) with a FULL soft question:
+- Soft / unfamiliar / where|how|who|what handles X
+- New topic → NEW query (never repeat)
+- Thin → one sharper query or k=10 once; still thin → ONE Grep max
+WHEN NOT → exact token/import/error → Grep. Known path → Read. Filename → Glob.
 
-- On **every** new / vague / "where is X" / "how does Y work" question, call
-  `search(query, k, fetch)` before anything else.
-- `k` = how many hits (r5=5 tight, r10=10 wide). `fetch=true` inlines the code
-  body, so you usually **don't need a separate read**.
-- Thin results? Re-run with a sharper query or a higher `k`. Try a couple of
-  phrasings — it's cheap.
+include (default hits):
+- hits = file+lines+why. Skim; native Read ONLY the file you will edit.
+- span = short body for top 1–3. Peek once; not every call.
+- graph = capped callers/callees on top hit. Wiring/who-calls only.
 
-## Only then fall back
+Hard: ≤2 searches/topic then Read→edit. After first edit, search only if a failing test names a new symbol.
+Flow: search → (optional span|graph once) → Read once → edit → test.
 
-- Drop to native Grep/Read **only** for an exact string, or once `search` truly
-  comes up empty — and say so briefly.
-- Don't open with a blind Grep/Glob to locate unfamiliar code — that's exactly
-  what `search` is for.
-- Shell for tests/build/git is expected and is not discovery.
+## Fairness constraints for this run (do not violate)
 
-One tool. Reach for it reflexively.
+- Do NOT use the Task / explore / subagent tools. Stay in one agent.
 """
 
 
 CONTEXT_ENGINE_GREP_RULE = """---
-description: Context Engine — exact grep (use for literal strings)
+description: Context Engine — exact grep
 alwaysApply: true
 ---
 
-# grep — one exact/literal search tool
+# grep — exact/literal search
 
-This project's Context Engine exposes a single tool: `grep(pattern, glob,
-max_hits)`. It does **exact / literal (regex) text search** over the indexed
-repo and returns tidy `hits[{file,line,text}]`.
+Need → do this:
+- Exact string / import / config key / symbol token → grep(pattern)
+- Meaning / "where does X happen" → your other discovery tools (not this)
 
-## When to use it
-
-- You need a **precise string**: an import line, a config key, a function or
-  class name, a specific token. Reach for `grep` instead of a native shell grep.
-- Pair it with the graph tools for discovery — use the graph to understand
-  structure/relationships, `grep` to pin exact locations.
-
-Shell for tests/build/git is expected and is not discovery.
+Prefer this over shelling out to grep. Shell for tests/build/git is fine.
 """
 
 GRAPHIFY_GREP_RULE = """---
@@ -210,15 +274,12 @@ alwaysApply: true
 
 # Two tools: graph (Graphify) + grep (Context Engine)
 
-Reach for these FIRST on a find/understand task — they beat blind Read sweeps.
+Need → do this:
+- Structure / what calls / relates to X → Graphify (query_graph / get_node / get_neighbors)
+- Exact string / literal → grep(pattern)
 
-- **Structure / "what calls / imports / relates to X"** → the Graphify graph
-  tools (`query_graph`, `get_node`, `get_neighbors`).
-- **Exact string / literal (an import, a config key, a symbol name)** → `grep`.
-
-Use the graph to orient and find the right area, then `grep` to pin exact lines,
-then open the file to edit. Don't open with a blind native grep/glob to locate
-unfamiliar code. Shell for tests/build/git is expected.
+Orient with the graph, pin with grep, then edit. Don't open with a blind native grep.
+Shell for tests/build/git is fine.
 """
 
 
@@ -228,6 +289,7 @@ unfamiliar code. Shell for tests/build/git is expected.
 # graph server with a grep-only CE server.
 _ARM_SURFACE = {
     "ce_read": "read",
+    "ce_nav": "nav",
     "ce_graph": "graph",
     "ce_rich": "rich",
     "ce_search": "search",
@@ -236,9 +298,16 @@ _ARM_SURFACE = {
 
 
 def arm_surface(name: str) -> str:
+    force = (os.environ.get("CTX_TRIAL_FORCE_SURFACE") or "").strip().lower()
+    if force in {"read", "nav", "graph", "rich", "search", "grep"} and name in {
+        "ce_read",
+        "ce_nav",
+        "context_engine",
+    }:
+        return force
     if name == "context_engine":
         val = (os.environ.get("CTX_MCP_SURFACE") or "read").strip().lower()
-        return val if val in {"read", "graph", "rich", "search"} else "read"
+        return val if val in {"read", "nav", "graph", "rich", "search"} else "read"
     return _ARM_SURFACE.get(name, "read")
 
 
@@ -275,6 +344,23 @@ def load_cursor_api_key(root: Path) -> str:
     )
 
 
+RAW_RULE = """---
+description: Native tools only — no MCP / no graph for this run
+alwaysApply: true
+---
+
+# Native tools only
+
+This run has **no MCP servers** and **no code graph**. Use the built-in
+tools only: Grep, Read, Glob, Shell, Edit / Write. Do the task with those.
+
+## Fairness constraints for this run (do not violate)
+
+- Do **NOT** use the Task / explore / subagent tools. Stay in one agent.
+- Do the discovery yourself with Grep / Read / Glob.
+"""
+
+
 @contextmanager
 def stage_retrieval_rule(repo: Path, arm: str):
     rules = repo / ".cursor" / "rules"
@@ -286,7 +372,14 @@ def stage_retrieval_rule(repo: Path, arm: str):
         path: path.read_bytes() if path.is_file() else None for path in paths
     }
     try:
-        if arm == "graphify":
+        if arm == "raw":
+            # Baseline: strip CE/graphify rules so nothing suggests an MCP.
+            graphify_path.unlink(missing_ok=True)
+            context_path.write_text(RAW_RULE, encoding="utf-8")
+        elif arm == "cbm_ce":
+            graphify_path.unlink(missing_ok=True)
+            context_path.write_text(CBM_CE_RULE, encoding="utf-8")
+        elif arm == "graphify":
             context_path.unlink(missing_ok=True)
             graphify_path.write_text(GRAPHIFY_RULE, encoding="utf-8")
         elif arm == "graphify_grep":
@@ -305,9 +398,10 @@ def stage_retrieval_rule(repo: Path, arm: str):
                 context_path.write_text(CONTEXT_ENGINE_RICH_RULE, encoding="utf-8")
             elif surface == "search":
                 context_path.write_text(CONTEXT_ENGINE_SEARCH_RULE, encoding="utf-8")
-            elif not context_path.is_file():
-                source = ROOT / ".cursor" / "rules" / "context-agent.mdc"
-                context_path.write_bytes(source.read_bytes())
+            elif surface == "nav":
+                context_path.write_text(CONTEXT_ENGINE_NAV_RULE, encoding="utf-8")
+            else:
+                context_path.write_text(CONTEXT_ENGINE_READ_RULE, encoding="utf-8")
         yield
     finally:
         for path, content in backups.items():
@@ -373,7 +467,39 @@ def build_configs(
             },
         )
 
+    def _cbm_ce_arm() -> ArmConfig:
+        cbm_bin = (
+            (os.environ.get("CTX_CBM_BIN") or "").strip()
+            or (os.environ.get("CBM_BIN") or "").strip()
+            or "codebase-memory-mcp"
+        )
+        return ArmConfig(
+            name="cbm_ce",
+            mcp_servers={
+                "cbm-ce": StdioMcpServerConfig(
+                    command=str(python),
+                    args=["-u", "-m", "hybrid_cbm"],
+                    env={
+                        **common_env,
+                        "CTX_REPO": str(repo),
+                        "CTX_ENGINE_URL": "http://127.0.0.1:8765",
+                        "CTX_RETRIEVE": "D_channel_best",
+                        "CTX_TOKEN_MODE": "savings",
+                        "CTX_CBM_BIN": cbm_bin,
+                        "CBM_BIN": cbm_bin,
+                    },
+                )
+            },
+            setting_sources=["project"],
+        )
+
     configs: dict[str, ArmConfig] = {
+        # No MCP / no graph — native Grep/Read/Glob only (token baseline).
+        "raw": ArmConfig(
+            name="raw",
+            mcp_servers={},
+            setting_sources=["project"],
+        ),
         "graphify": ArmConfig(
             name="graphify",
             mcp_servers={"graphify": _graphify_server()},
@@ -388,8 +514,16 @@ def build_configs(
             },
             setting_sources=["project"],
         ),
+        "cbm_ce": _cbm_ce_arm(),
     }
-    for ce_name in ("context_engine", "ce_read", "ce_graph", "ce_rich", "ce_search"):
+    for ce_name in (
+        "context_engine",
+        "ce_read",
+        "ce_nav",
+        "ce_graph",
+        "ce_rich",
+        "ce_search",
+    ):
         configs[ce_name] = _ce_arm(ce_name)
     return configs
 
