@@ -93,3 +93,48 @@ def test_keeper_tick_root_clean_no_refresh(tmp_path: Path, monkeypatch):
     assert out.get("strategy") == "root_clean"
     assert out.get("refreshed") is False
     assert called["n"] == 0
+
+
+def test_debounced_dirty_sync_coalesces_rewrites(monkeypatch, tmp_path: Path):
+    from pipeline.sync_loop import BackgroundSyncLoop
+
+    loop = BackgroundSyncLoop(tmp_path, debounce_ms=10, rewrite_debounce_ms=20)
+    calls = []
+    monkeypatch.setattr(
+        loop,
+        "_sync_paths",
+        lambda paths, **_: calls.append(paths) or {"refreshed": True},
+    )
+
+    loop.mark_dirty(["pkg/a.py"], reason="write")
+    loop.mark_dirty(["pkg/a.py"], reason="write")
+    loop.drain_due(now=time.monotonic() + 0.03)
+
+    assert calls == [["pkg/a.py"]]
+
+
+def test_locate_streak_holds_publish_then_promotes(monkeypatch, tmp_path: Path):
+    from pipeline.sync_loop import BackgroundSyncLoop
+
+    published = []
+    loop = BackgroundSyncLoop(
+        tmp_path,
+        debounce_ms=0,
+        locate_streak_ms=100,
+        on_refresh=lambda payload: published.append(payload),
+    )
+    monkeypatch.setattr(loop, "_sync_paths", lambda paths, **_: {"refreshed": True})
+    now = time.monotonic()
+
+    loop.note_locate(now=now)
+    loop.mark_dirty(["pkg/a.py"], reason="write")
+    loop.drain_due(now=now + 0.001)
+
+    assert published == []
+    assert loop.status()["overlay_ready"] is True
+    assert loop.status()["publish_pending"] is True
+
+    loop.drain_publish(now=now + 0.11)
+
+    assert len(published) == 1
+    assert loop.status()["publish_pending"] is False

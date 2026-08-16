@@ -1,0 +1,90 @@
+"""Thread-safe bookkeeping for debounced incremental index updates."""
+
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass
+import threading
+import time
+from typing import Any, Iterable
+
+
+@dataclass
+class DirtyEntry:
+    path: str
+    reason: str
+    state: str = "queued"
+    due_at: float = 0.0
+    rewrites: int = 0
+
+
+class DirtyLedger:
+    """Coalesce changed paths and track their processing/publication state."""
+
+    def __init__(
+        self,
+        *,
+        debounce_ms: int = 1500,
+        rewrite_debounce_ms: int = 2500,
+    ) -> None:
+        self.debounce_ms = debounce_ms
+        self.rewrite_debounce_ms = rewrite_debounce_ms
+        self._entries: dict[str, DirtyEntry] = {}
+        self._lock = threading.Lock()
+
+    def mark(
+        self,
+        paths: Iterable[str],
+        *,
+        reason: str,
+        now: float | None = None,
+    ) -> None:
+        current_time = time.monotonic() if now is None else now
+        with self._lock:
+            for path in paths:
+                entry = self._entries.get(path)
+                if entry is None or entry.state != "queued":
+                    self._entries[path] = DirtyEntry(
+                        path=path,
+                        reason=reason,
+                        due_at=current_time + self.debounce_ms / 1000,
+                    )
+                    continue
+
+                entry.reason = reason
+                entry.rewrites += 1
+                entry.due_at = current_time + self.rewrite_debounce_ms / 1000
+
+    def due_paths(self, *, now: float | None = None) -> list[str]:
+        current_time = time.monotonic() if now is None else now
+        with self._lock:
+            paths = [
+                path
+                for path, entry in self._entries.items()
+                if entry.state == "queued" and entry.due_at <= current_time
+            ]
+            for path in paths:
+                self._entries[path].state = "due"
+            return paths
+
+    def begin(self, paths: Iterable[str]) -> None:
+        with self._lock:
+            for path in paths:
+                entry = self._entries.get(path)
+                if entry is not None:
+                    entry.state = "processing"
+
+    def complete(self, paths: Iterable[str], *, published: bool) -> None:
+        state = "published" if published else "overlay_ready"
+        with self._lock:
+            for path in paths:
+                entry = self._entries.get(path)
+                if entry is not None:
+                    entry.state = state
+
+    def snapshot(self) -> dict[str, Any]:
+        with self._lock:
+            return {
+                "paths": {
+                    path: asdict(entry) for path, entry in self._entries.items()
+                }
+            }
