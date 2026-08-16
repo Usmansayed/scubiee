@@ -492,7 +492,15 @@ def _client_for(repo: Path):
     from pipeline.daemon import ensure_daemon
 
     ensure_daemon(repo, force_if_hung=False)
-    return EngineClient()
+    client = EngineClient()
+    # Locate availability must not depend on the optional live reindex daemon.
+    # This is deliberately best-effort: the next query still gets the normal
+    # unreachable response if the daemon could not be started.
+    try:
+        client.note_locate(path=str(repo))
+    except Exception:  # noqa: BLE001
+        pass
+    return client
 
 
 # ---- arg models ------------------------------------------------------------

@@ -1,0 +1,11 @@
+# Reindexing — decision docs
+
+Working folder for **when / how** Context Engine refreshes graph + semantic indexes while agents rely on CE tools.
+
+| Doc | Status | What it is |
+|-----|--------|------------|
+| **[live-reindexing-system-design.md](./live-reindexing-system-design.md)** | **LOCKED** | Final live reindexing system design (source of truth) |
+| [index-freshness-agent-trajectory.md](./index-freshness-agent-trajectory.md) | Research appendix | Options menu / recipes A–D |
+| [agent-write-patterns-and-channel-conflicts.md](./agent-write-patterns-and-channel-conflicts.md) | Research appendix | Agent write frequencies; dirty-set; BM25 vs dense conflicts |
+
+Implement against the locked design only.

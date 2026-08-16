@@ -21,6 +21,8 @@ DEFAULT_INITIAL_DELAY_MS = int(os.environ.get("CTX_SYNC_INITIAL_DELAY_MS", "5000
 DEFAULT_DEBOUNCE_MS = int(os.environ.get("CTX_DEBOUNCE_MS", "1500"))
 DEFAULT_REWRITE_DEBOUNCE_MS = int(os.environ.get("CTX_REWRITE_DEBOUNCE_MS", "2500"))
 DEFAULT_LOCATE_STREAK_MS = int(os.environ.get("CTX_LOCATE_STREAK_MS", "8000"))
+DEFAULT_LIVE_MAX_FILES = int(os.environ.get("CTX_LIVE_MAX_FILES", "40"))
+DEFAULT_LIVE_MAX_CHUNKS = int(os.environ.get("CTX_LIVE_MAX_CHUNKS", "100"))
 TRIGGER_NAME = ".sync-trigger"
 
 # Process-wide registry for atexit final_check
@@ -77,11 +79,15 @@ class BackgroundSyncLoop:
         debounce_ms: int = DEFAULT_DEBOUNCE_MS,
         rewrite_debounce_ms: int = DEFAULT_REWRITE_DEBOUNCE_MS,
         locate_streak_ms: int = DEFAULT_LOCATE_STREAK_MS,
+        live_max_files: int = DEFAULT_LIVE_MAX_FILES,
+        live_max_chunks: int = DEFAULT_LIVE_MAX_CHUNKS,
     ):
         self.repo = repo.resolve()
         self.interval_ms = max(1000, interval_ms)
         self.on_refresh = on_refresh
         self.locate_streak_ms = max(0, locate_streak_ms)
+        self.live_max_files = max(1, live_max_files)
+        self.live_max_chunks = max(1, live_max_chunks)
         self.dirty_ledger = DirtyLedger(
             debounce_ms=debounce_ms,
             rewrite_debounce_ms=rewrite_debounce_ms,
@@ -95,6 +101,10 @@ class BackgroundSyncLoop:
         self._pending_paths: set[str] = set()
         self.last_result: dict | None = None
         self.last_probe: dict | None = None
+        self.needs_full = False
+        self.catchup_chunked = False
+        self.live_batches = 0
+        self.live_invalidations = 0
         self.running = False
 
     def status(self) -> dict:
@@ -110,6 +120,12 @@ class BackgroundSyncLoop:
             "overlay_ready": "overlay_ready" in states,
             "publish_pending": self._pending_publish is not None,
             "locate_streak_active": self._locate_streak_active(),
+            "live_max_files": self.live_max_files,
+            "live_max_chunks": self.live_max_chunks,
+            "needs_full": self.needs_full,
+            "catchup_chunked": self.catchup_chunked,
+            "live_batches": self.live_batches,
+            "session_invalidations": self.live_invalidations,
         }
 
     def mark_dirty(self, paths: Iterable[str], *, reason: str = "write") -> None:
@@ -125,23 +141,45 @@ class BackgroundSyncLoop:
             self.drain_publish(now=current_time)
             return []
 
-        self.dirty_ledger.begin(paths)
+        batch = paths[: self.live_max_files]
+        deferred = paths[self.live_max_files :]
+        if deferred:
+            self.catchup_chunked = True
+            self.needs_full = True
+            self.dirty_ledger.defer(deferred, now=current_time)
+        self.dirty_ledger.begin(batch)
         try:
-            payload = self._sync_paths(paths, reason="dirty")
+            payload = self._sync_paths(batch, reason="dirty")
         except Exception:
-            self.dirty_ledger.mark(paths, reason="retry", now=current_time)
+            self.dirty_ledger.mark(batch, reason="retry", now=current_time)
             raise
+        self.live_batches += 1
+        chunk_count = int(payload.get("chunks_upserted") or 0) + int(payload.get("chunks_removed") or 0)
+        if deferred or chunk_count > self.live_max_chunks:
+            self.catchup_chunked = True
+            self.needs_full = True
+            payload["strategy"] = "catchup_chunked"
+            payload["needs_full"] = True
+            payload["live_limits"] = {
+                "max_files": self.live_max_files,
+                "max_chunks": self.live_max_chunks,
+                "deferred_paths": len(deferred),
+                "chunks": chunk_count,
+            }
         self.last_result = payload
         if payload.get("refreshed"):
-            self._publish_or_hold(payload, paths=paths, now=current_time)
+            self._invalidate_session_paths(batch)
+            self._publish_or_hold(payload, paths=batch, now=current_time)
         else:
-            self.dirty_ledger.complete(paths, published=True)
+            self.dirty_ledger.complete(batch, published=True)
         self.drain_publish(now=current_time)
         return [payload]
 
-    def drain_publish(self, *, now: float | None = None) -> bool:
+    def drain_publish(self, *, now: float | None = None, force: bool = False) -> bool:
         current_time = time.monotonic() if now is None else now
-        if self._pending_publish is None or self._locate_streak_active(now=current_time):
+        if self._pending_publish is None or (
+            not force and self._locate_streak_active(now=current_time)
+        ):
             return False
 
         payload = self._pending_publish
@@ -252,7 +290,12 @@ class BackgroundSyncLoop:
             return {"skipped": True, "reason": "final_already_done"}
         self._final_done = True
         try:
-            return self.keeper_tick(reason=reason)
+            result = self.keeper_tick(reason=reason)
+            forced_paths = self.dirty_ledger.force_due()
+            if forced_paths:
+                self.drain_due()
+            result["publish_delivered"] = self.drain_publish(force=True)
+            return result
         except Exception as exc:  # noqa: BLE001
             print(f"[keeper] final_check failed: {exc}", file=sys.stderr, flush=True)
             return {"error": str(exc), "reason": reason}
@@ -286,6 +329,15 @@ class BackgroundSyncLoop:
         payload["reason"] = reason
         payload["dirty_paths"] = paths
         return payload
+
+    def _invalidate_session_paths(self, paths: list[str]) -> None:
+        try:
+            from pipeline.session_store import invalidate_paths
+
+            result = invalidate_paths(self.repo, paths)
+            self.live_invalidations += int(result.get("removed") or 0)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[keeper] session invalidation failed: {exc}", file=sys.stderr, flush=True)
 
     def _publish_or_hold(
         self,

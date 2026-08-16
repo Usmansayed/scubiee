@@ -66,6 +66,24 @@ class DirtyLedger:
                 self._entries[path].state = "due"
             return paths
 
+    def defer(self, paths: Iterable[str], *, now: float | None = None) -> None:
+        """Return unprocessed paths to the queue without scheduling a full index."""
+        current_time = time.monotonic() if now is None else now
+        with self._lock:
+            for path in paths:
+                entry = self._entries.get(path)
+                if entry is not None:
+                    entry.state = "queued"
+                    entry.due_at = current_time
+
+    def force_due(self) -> list[str]:
+        """Make queued paths available for the final shutdown drain."""
+        with self._lock:
+            paths = [path for path, entry in self._entries.items() if entry.state == "queued"]
+            for path in paths:
+                self._entries[path].due_at = 0.0
+            return paths
+
     def begin(self, paths: Iterable[str]) -> None:
         with self._lock:
             for path in paths:

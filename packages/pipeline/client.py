@@ -105,6 +105,14 @@ class EngineClient:
     def sync(self, path: str = "") -> dict[str, Any]:
         return self.post("/v1/sync", {"path": path})
 
+    def mark_dirty(
+        self, paths: list[str], *, reason: str = "changed_file", path: str = ""
+    ) -> dict[str, Any]:
+        return self.post("/v1/dirty", {"paths": paths, "reason": reason, "path": path})
+
+    def note_locate(self, *, path: str = "") -> dict[str, Any]:
+        return self.post("/v1/note_locate", {"path": path})
+
     def grep(
         self, pattern: str, *, glob: str = "*.py", max_hits: int = 20, path: str = ""
     ) -> dict[str, Any]:

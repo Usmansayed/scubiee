@@ -60,6 +60,22 @@ def test_keeper_on_refresh_wired(runtime, tmp_path: Path):
             loop.start.assert_called_once()
 
 
+def test_runtime_routes_live_events_to_active_keeper(runtime, tmp_path: Path):
+    repo = tmp_path / "r"
+    repo.mkdir()
+    runtime.repo = repo
+    loop = MagicMock()
+    runtime.sync_loop = loop
+
+    dirty = runtime.mark_dirty(["pkg/a.py"], reason="write")
+    located = runtime.note_locate()
+
+    assert dirty == {"ok": True, "paths": ["pkg/a.py"], "reason": "write"}
+    assert located == {"ok": True}
+    loop.mark_dirty.assert_called_once_with(["pkg/a.py"], reason="write")
+    loop.note_locate.assert_called_once()
+
+
 def test_sync_publishes_when_refreshed(runtime, tmp_path: Path, monkeypatch):
     repo = tmp_path / "r"
     repo.mkdir()

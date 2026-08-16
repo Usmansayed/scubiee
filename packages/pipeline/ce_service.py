@@ -104,6 +104,23 @@ class RuntimeManager:
             "api": "/v1/*",
         }
 
+    def mark_dirty(self, paths: list[str], *, reason: str = "write") -> dict[str, Any]:
+        """Queue changed files for the active keeper's debounced sync path."""
+        normalized = sorted({str(path).replace("\\", "/") for path in paths if str(path)})
+        loop = self.sync_loop
+        if loop is None:
+            return {"ok": False, "error": "keeper not running", "paths": normalized}
+        loop.mark_dirty(normalized, reason=reason)
+        return {"ok": True, "paths": normalized, "reason": reason}
+
+    def note_locate(self) -> dict[str, Any]:
+        """Keep publication stable while CE locate tools are in active use."""
+        loop = self.sync_loop
+        if loop is None:
+            return {"ok": False, "error": "keeper not running"}
+        loop.note_locate()
+        return {"ok": True}
+
     # --- lifecycle ---------------------------------------------------------
 
     def open_repo(self, root: Path | str, *, background: bool = False) -> dict[str, Any]:

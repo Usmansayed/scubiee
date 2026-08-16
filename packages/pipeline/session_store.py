@@ -84,6 +84,38 @@ def clear_store(repo: Path | str) -> dict[str, Any]:
     return empty
 
 
+def invalidate_paths(repo: Path | str, paths: list[str]) -> dict[str, Any]:
+    """Drop cached session spans for files rewritten by incremental sync."""
+    repo_p = Path(repo).resolve()
+    normalized = {str(path).replace("\", "/").lstrip("./") for path in paths if str(path)}
+    store = load_store(repo_p)
+    spans = store.get("spans") or {}
+    removed_handles = [
+        handle
+        for handle, span in spans.items()
+        if str((span or {}).get("path") or "").replace("\", "/") in normalized
+    ]
+    for handle in removed_handles:
+        spans.pop(handle, None)
+    store["by_hash"] = {
+        str(span.get("content_hash")): handle
+        for handle, span in spans.items()
+        if span.get("content_hash")
+    }
+    store["by_key"] = {
+        f"{span.get('path')}:{span.get('start_line')}:{span.get('end_line')}": handle
+        for handle, span in spans.items()
+    }
+    focus_seen = store.get("focus_seen") or {}
+    store["focus_seen"] = {
+        key: value
+        for key, value in focus_seen.items()
+        if key.split(":", 1)[-1].replace("\", "/") not in normalized
+    }
+    save_store(repo_p, store)
+    return {"ok": True, "paths": sorted(normalized), "removed": len(removed_handles)}
+
+
 def content_hash(text: str) -> str:
     return "sha256:" + hashlib.sha256((text or "").encode("utf-8", errors="replace")).hexdigest()[:24]
 

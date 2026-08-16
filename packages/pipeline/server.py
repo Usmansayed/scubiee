@@ -118,6 +118,22 @@ class Handler(BaseHTTPRequestHandler):
             _json(self, 200, ce.status(data.get("path")))
             return
 
+        if path == "/v1/dirty":
+            paths = data.get("paths")
+            if not isinstance(paths, list) or not paths:
+                _json(self, 400, {"ok": False, "error": "paths list required"})
+                return
+            _json(
+                self,
+                200,
+                ce.mark_dirty([str(item) for item in paths], reason=str(data.get("reason") or "changed_file")),
+            )
+            return
+
+        if path == "/v1/note_locate":
+            _json(self, 200, ce.note_locate())
+            return
+
         if path in ("/v1/search", "/search"):
             query = str(data.get("query") or "").strip()
             if not query:
