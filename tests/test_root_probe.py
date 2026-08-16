@@ -126,8 +126,8 @@ def test_locate_streak_holds_publish_then_promotes(monkeypatch, tmp_path: Path):
     monkeypatch.setattr(loop, "_sync_paths", lambda paths, **_: {"refreshed": True})
     now = time.monotonic()
 
-    loop.note_locate(now=now)
     loop.mark_dirty(["pkg/a.py"], reason="write")
+    loop.note_locate(now=now)
     loop.drain_due(now=now + 0.001)
 
     assert published == []

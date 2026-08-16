@@ -118,8 +118,9 @@ def test_final_check_forces_held_publish(monkeypatch, tmp_path: Path):
     monkeypatch.setattr(loop, "_sync_paths", lambda paths, **_: {"refreshed": True, "chunks_upserted": 1})
     monkeypatch.setattr(loop, "keeper_tick", lambda **_: {"refreshed": False, "strategy": "root_clean"})
     now = time.monotonic()
-    loop.note_locate(now=now)
+    # Queue first, then note locate so the streak is active during drain.
     loop.mark_dirty(["pkg/a.py"], reason="write")
+    loop.note_locate(now=now)
     loop.drain_due(now=now + 0.01)
 
     out = loop.final_check(reason="test")
@@ -148,3 +149,83 @@ def test_live_path_bypasses_root_probe_while_old_path_probes(monkeypatch, tmp_pa
 
     assert live_calls == [["pkg/a.py"]]
     assert old_out["strategy"] == "old_root_probe"
+
+
+def test_disk_edit_clears_locate_streak_so_publish_can_proceed(monkeypatch, tmp_path: Path):
+    from pipeline.sync_loop import BackgroundSyncLoop
+
+    published: list[dict] = []
+    loop = BackgroundSyncLoop(
+        tmp_path,
+        debounce_ms=0,
+        locate_streak_ms=60_000,
+        on_refresh=published.append,
+    )
+    monkeypatch.setattr(loop, "_sync_paths", lambda paths, **_: {"refreshed": True, "chunks_upserted": 1})
+    now = time.monotonic()
+    loop.note_locate(now=now)
+    assert loop.status()["locate_streak_active"] is True
+
+    loop.mark_dirty(["pkg/a.py"], reason="disk_poll")
+    assert loop.status()["locate_streak_active"] is False
+    loop.drain_due(now=now + 0.01)
+
+    assert len(published) == 1
+    assert loop.status()["publish_pending"] is False
+    from pipeline.sync_loop import BackgroundSyncLoop
+
+    loop = BackgroundSyncLoop(tmp_path, debounce_ms=1500, change_poll_ms=1000)
+    sync_calls: list[list[str]] = []
+    monkeypatch.setattr(loop, "_sync_paths", lambda paths, **_: sync_calls.append(paths) or {"refreshed": True})
+    monkeypatch.setattr(
+        "pipeline.root_probe.root_probe",
+        lambda *_a, **_k: type(
+            "Probe",
+            (),
+            {
+                "clean": False,
+                "added": ["pkg/new.py"],
+                "modified": ["pkg/a.py"],
+                "removed": [],
+                "ms": 1.0,
+                "files_checked": 2,
+                "changed_count": 2,
+                "to_dict": lambda self: {"clean": False},
+            },
+        )(),
+    )
+
+    queued = loop.poll_repo_changes(now=0.0)
+
+    assert queued == ["pkg/a.py", "pkg/new.py"]
+    assert sync_calls == []
+    assert loop.dirty_ledger.due_paths(now=0.5) == []
+    assert loop.dirty_ledger.due_paths(now=1.6) == ["pkg/a.py", "pkg/new.py"]
+
+
+def test_change_poll_does_not_starve_queued_debounce(monkeypatch, tmp_path: Path):
+    from pipeline.sync_loop import BackgroundSyncLoop
+
+    loop = BackgroundSyncLoop(tmp_path, debounce_ms=1000, rewrite_debounce_ms=5000, change_poll_ms=1000)
+    monkeypatch.setattr(
+        "pipeline.root_probe.root_probe",
+        lambda *_a, **_k: type(
+            "Probe",
+            (),
+            {
+                "clean": False,
+                "added": [],
+                "modified": ["pkg/a.py"],
+                "removed": [],
+                "ms": 1.0,
+                "files_checked": 1,
+                "changed_count": 1,
+                "to_dict": lambda self: {"clean": False},
+            },
+        )(),
+    )
+
+    assert loop.poll_repo_changes(now=0.0) == ["pkg/a.py"]
+    assert loop.poll_repo_changes(now=0.5) == []
+    # Still due on the original debounce, not slid by later polls.
+    assert loop.dirty_ledger.due_paths(now=1.01) == ["pkg/a.py"]

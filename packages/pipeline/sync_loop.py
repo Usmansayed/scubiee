@@ -23,6 +23,7 @@ DEFAULT_REWRITE_DEBOUNCE_MS = int(os.environ.get("CTX_REWRITE_DEBOUNCE_MS", "250
 DEFAULT_LOCATE_STREAK_MS = int(os.environ.get("CTX_LOCATE_STREAK_MS", "8000"))
 DEFAULT_LIVE_MAX_FILES = int(os.environ.get("CTX_LIVE_MAX_FILES", "40"))
 DEFAULT_LIVE_MAX_CHUNKS = int(os.environ.get("CTX_LIVE_MAX_CHUNKS", "100"))
+DEFAULT_CHANGE_POLL_MS = int(os.environ.get("CTX_CHANGE_POLL_MS", "1000"))
 TRIGGER_NAME = ".sync-trigger"
 
 # Process-wide registry for atexit final_check
@@ -36,6 +37,7 @@ def enable_session_keeper_defaults() -> None:
     os.environ.setdefault("CTX_ALLOW_BG_FULL", "0")
     os.environ.setdefault("CTX_AUTO_INDEX", "1")
     os.environ.setdefault("CTX_SYNC_INTERVAL_MS", str(5 * 60 * 1000))
+    os.environ.setdefault("CTX_CHANGE_POLL_MS", "1000")
 
 
 def auto_index_enabled() -> bool:
@@ -81,6 +83,7 @@ class BackgroundSyncLoop:
         locate_streak_ms: int = DEFAULT_LOCATE_STREAK_MS,
         live_max_files: int = DEFAULT_LIVE_MAX_FILES,
         live_max_chunks: int = DEFAULT_LIVE_MAX_CHUNKS,
+        change_poll_ms: int = DEFAULT_CHANGE_POLL_MS,
     ):
         self.repo = repo.resolve()
         self.interval_ms = max(1000, interval_ms)
@@ -88,6 +91,7 @@ class BackgroundSyncLoop:
         self.locate_streak_ms = max(0, locate_streak_ms)
         self.live_max_files = max(1, live_max_files)
         self.live_max_chunks = max(1, live_max_chunks)
+        self.change_poll_ms = max(250, change_poll_ms)
         self.dirty_ledger = DirtyLedger(
             debounce_ms=debounce_ms,
             rewrite_debounce_ms=rewrite_debounce_ms,
@@ -129,10 +133,55 @@ class BackgroundSyncLoop:
         }
 
     def mark_dirty(self, paths: Iterable[str], *, reason: str = "write") -> None:
+        # An edit ends the locate streak: process+publish freshness beats mid-thought
+        # stability once the agent has changed disk.
+        if str(reason) in {"write", "disk_poll", "changed_file", "editor_save", "probe_write", "after_kiro_write", "watch"}:
+            self._last_locate_at = None
         self.dirty_ledger.mark(paths, reason=reason)
 
     def note_locate(self, *, now: float | None = None) -> None:
         self._last_locate_at = time.monotonic() if now is None else now
+
+    def poll_repo_changes(self, *, now: float | None = None) -> list[str]:
+        """Cheap disk poll → enqueue changed paths for the debounced live path.
+
+        This is the agent-write producer: Kiro/Cursor edits do not need to call
+        /v1/dirty explicitly. The 5-minute keeper tick remains the backup.
+        """
+        from pipeline.root_probe import root_probe
+
+        current_time = time.monotonic() if now is None else now
+        try:
+            probe = root_probe(self.repo)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[keeper] change poll failed: {exc}", file=sys.stderr, flush=True)
+            return []
+        if probe.clean:
+            return []
+        paths = sorted(
+            {
+                str(p).replace("\\", "/")
+                for p in [*probe.added, *probe.modified, *probe.removed]
+                if str(p).strip()
+            }
+        )
+        if not paths:
+            return []
+        # Do not re-mark already queued/processing paths — that would slide the
+        # rewrite debounce forever while the file remains dirty on disk.
+        snap = self.dirty_ledger.snapshot().get("paths") or {}
+        fresh = [
+            path
+            for path in paths
+            if str((snap.get(path) or {}).get("state") or "")
+            not in {"queued", "due", "processing", "overlay_ready"}
+        ]
+        if not fresh:
+            self.last_probe = {**probe.to_dict(), "reason": "change_poll"}
+            return []
+        self.dirty_ledger.mark(fresh, reason="disk_poll", now=current_time)
+        self.last_probe = {**probe.to_dict(), "reason": "change_poll"}
+        return fresh
 
     def drain_due(self, *, now: float | None = None) -> list[dict]:
         current_time = time.monotonic() if now is None else now
@@ -369,9 +418,13 @@ class BackgroundSyncLoop:
         if self._stop.wait(max(0, delay) / 1000.0):
             return
         next_probe = time.monotonic()
+        next_change_poll = time.monotonic()
         while not self._stop.is_set():
             try:
                 now = time.monotonic()
+                if now >= next_change_poll:
+                    self.poll_repo_changes(now=now)
+                    next_change_poll = now + self.change_poll_ms / 1000.0
                 if now >= next_probe:
                     self.keeper_tick(reason="interval")
                     next_probe = now + self.interval_ms / 1000.0
