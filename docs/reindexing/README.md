@@ -5,6 +5,7 @@ Working folder for **when / how** Context Engine refreshes graph + semantic inde
 | Doc | Status | What it is |
 |-----|--------|------------|
 | **[live-reindexing-system-design.md](./live-reindexing-system-design.md)** | **LOCKED** | Final live reindexing system design (source of truth) |
+| **[chunk-level-incremental-indexing.md](./chunk-level-incremental-indexing.md)** | **IMPLEMENTED** | File-level dirty detection; chunk-level vector reuse and embedding |
 | [index-freshness-agent-trajectory.md](./index-freshness-agent-trajectory.md) | Research appendix | Options menu / recipes A–D |
 | [agent-write-patterns-and-channel-conflicts.md](./agent-write-patterns-and-channel-conflicts.md) | Research appendix | Agent write frequencies; dirty-set; BM25 vs dense conflicts |
 

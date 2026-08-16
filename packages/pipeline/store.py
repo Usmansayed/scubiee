@@ -60,6 +60,7 @@ class PipelineStore:
             self.base.mkdir(parents=True, exist_ok=True)
 
         self.merkle_path = self.base / "merkle.json"
+        self.chunk_merkle_path = self.base / "chunk_merkle.json"
         self.meta_path = self.base / "meta.json"
         self.chunks_path = self.base / "chunks.jsonl"
         self.graph_path = self.base / "graph_ir.json"
@@ -112,6 +113,21 @@ class PipelineStore:
 
     def save_merkle(self, file_hashes: dict[str, str]) -> None:
         save_snapshot(self.merkle_path, file_hashes, root=self.root)
+
+    def load_chunk_merkle(self) -> dict[str, dict[str, str]]:
+        if not self.chunk_merkle_path.is_file():
+            return {}
+        try:
+            data = json.loads(self.chunk_merkle_path.read_text(encoding="utf-8"))
+            return data if isinstance(data, dict) else {}
+        except (OSError, json.JSONDecodeError):
+            return {}
+
+    def save_chunk_merkle(self, hashes: dict[str, dict[str, str]]) -> None:
+        self.chunk_merkle_path.write_text(
+            json.dumps(hashes, indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
 
     def get_collection(self) -> FaissCollection | None:
         if self.vdb.has_collection(self.collection_name):
