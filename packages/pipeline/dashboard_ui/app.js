@@ -12,7 +12,7 @@
     graph: "Graph",
     settings: "Settings",
   };
-  const state = { repositories: [], forgetRepo: null, pathAction: null };
+  const state = { repositories: [], forgetRepo: null, pathAction: null, graphProjectId: null };
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
@@ -59,6 +59,25 @@
     item.textContent = message;
     $("#toast-region").append(item);
     window.setTimeout(() => item.remove(), 4200);
+  }
+
+  function refreshIcons() {
+    if (globalThis.lucide?.createIcons) globalThis.lucide.createIcons();
+  }
+
+  function emptyState(icon, title, copy, { actionLabel = "", goPage = "", openAdd = false } = {}) {
+    let action = "";
+    if (openAdd) {
+      action = `<button class="button primary small" type="button" data-open-add>${escapeHtml(actionLabel || "Add repository")}</button>`;
+    } else if (actionLabel && goPage) {
+      action = `<button class="button primary small" type="button" data-go="${escapeHtml(goPage)}">${escapeHtml(actionLabel)}</button>`;
+    }
+    return `<div class="empty-state">
+      <div class="empty-icon" data-lucide="${escapeHtml(icon)}"></div>
+      <strong>${escapeHtml(title)}</strong>
+      <p>${escapeHtml(copy)}</p>
+      ${action}
+    </div>`;
   }
 
   function setServiceState(healthy) {
@@ -115,12 +134,18 @@
             ${statusBadge(name)}
             <strong>${Number(count)}</strong>
           </div>`).join("")
-        : '<div class="empty-cell">No managed repositories yet.</div>';
+        : emptyState(
+            "folder-git-2",
+            "No managed repositories yet",
+            "Add a repository to start indexing and monitoring presence.",
+            { actionLabel: "Add repository", openAdd: true }
+          );
       const dashboard = payload.dashboard || {};
       $("#overview-service").innerHTML = `
         <div><dt>Network</dt><dd>Loopback only</dd></div>
         <div><dt>Base path</dt><dd><code>/ce-dashboard</code></dd></div>
         <div><dt>Process</dt><dd>${escapeHtml(dashboard.pid || "Current")}</dd></div>`;
+      refreshIcons();
       setServiceState(true);
     } catch (error) {
       setServiceState(false);
@@ -164,7 +189,17 @@
             </div></td>
           </tr>`;
         }).join("")
-      : '<tr><td colspan="5" class="empty-cell">No repositories match this view.</td></tr>';
+      : `<tr><td colspan="5">${emptyState(
+          "search",
+          "No repositories match this view",
+          state.repositories.length
+            ? "Try a different search term."
+            : "Add a repository to get started.",
+          state.repositories.length
+            ? {}
+            : { actionLabel: "Add repository", openAdd: true }
+        )}</td></tr>`;
+    refreshIcons();
   }
 
   function renderSync() {
@@ -189,7 +224,13 @@
             </div>
           </article>`;
         }).join("")
-      : '<article class="data-card"><h3>No repositories to index</h3><p>Add a repository from the Repositories page.</p></article>';
+      : `<article class="data-card">${emptyState(
+          "refresh-cw",
+          "No repositories to index",
+          "Add a repository from the Repositories page to sync and rebuild indexes.",
+          { actionLabel: "Go to repositories", goPage: "repositories" }
+        )}</article>`;
+    refreshIcons();
   }
 
   function flattenObject(value, prefix = "", output = []) {
@@ -253,12 +294,111 @@
     }
   }
 
+  function graphNodeLabel(node) {
+    return String(node.label || node.name || node.id || "Unnamed");
+  }
+
+  function renderGraph(payload) {
+    const allNodes = Array.isArray(payload.nodes) ? payload.nodes : [];
+    const allEdges = Array.isArray(payload.edges) ? payload.edges : [];
+    const nodes = allNodes.slice(0, 60);
+    const nodeIds = new Set(nodes.map((node) => String(node.id)));
+    const edges = allEdges.filter((edge) =>
+      nodeIds.has(String(edge.source)) && nodeIds.has(String(edge.target))
+    );
+    const positions = new Map();
+    const centerX = 360;
+    const centerY = 235;
+    const radius = Math.min(185, 58 + nodes.length * 3.2);
+    nodes.forEach((node, index) => {
+      const angle = (index / Math.max(nodes.length, 1)) * Math.PI * 2 - Math.PI / 2;
+      positions.set(String(node.id), {
+        x: centerX + Math.cos(angle) * radius,
+        y: centerY + Math.sin(angle) * radius,
+      });
+    });
+    const edgeMarkup = edges.map((edge) => {
+      const source = positions.get(String(edge.source));
+      const target = positions.get(String(edge.target));
+      return `<line x1="${source.x.toFixed(1)}" y1="${source.y.toFixed(1)}" x2="${target.x.toFixed(1)}" y2="${target.y.toFixed(1)}"></line>`;
+    }).join("");
+    const nodeMarkup = nodes.map((node) => {
+      const point = positions.get(String(node.id));
+      const label = graphNodeLabel(node);
+      const short = label.length > 18 ? `${label.slice(0, 17)}…` : label;
+      return `<g class="graph-node" transform="translate(${point.x.toFixed(1)} ${point.y.toFixed(1)})">
+        <circle r="8"></circle>
+        <text y="22" text-anchor="middle">${escapeHtml(short)}</text>
+        <title>${escapeHtml(label)}</title>
+      </g>`;
+    }).join("");
+    $("#graph-canvas").innerHTML = nodes.length
+      ? `<svg viewBox="0 0 720 470" role="img" aria-label="Repository graph with ${nodes.length} visible nodes and ${edges.length} visible edges">
+          <g class="graph-edges">${edgeMarkup}</g>
+          <g>${nodeMarkup}</g>
+        </svg>`
+      : '<div class="graph-empty"><p>This graph artifact contains no nodes.</p></div>';
+    $("#graph-edge-list").innerHTML = allEdges.length
+      ? allEdges.slice(0, 100).map((edge) => `
+        <div class="graph-edge-row">
+          <strong>${escapeHtml(edge.source)}</strong>
+          <span>${escapeHtml(edge.type || edge.relationship || "links to")}</span>
+          <strong>${escapeHtml(edge.target)}</strong>
+        </div>`).join("")
+      : '<p class="empty-cell">This graph has no links.</p>';
+    $("#graph-node-count").textContent = allNodes.length;
+    $("#graph-edge-count").textContent = allEdges.length;
+    $("#graph-status").textContent = [
+      nodes.length < allNodes.length
+        ? `Showing 60 of ${allNodes.length} nodes`
+        : `Showing ${allNodes.length} nodes`,
+      allEdges.length > 100
+        ? `listing 100 of ${allEdges.length} links`
+        : `listing ${allEdges.length} links`,
+    ].join("; ") + ".";
+  }
+
+  async function loadGraph() {
+    const select = $("#graph-repository");
+    try {
+      const reposPayload = await api("repos");
+      state.repositories = Array.isArray(reposPayload.repositories) ? reposPayload.repositories : [];
+      const available = state.repositories.filter((repo) => repo.project_id);
+      if (!available.length) {
+        select.innerHTML = '<option value="">No repositories</option>';
+        select.disabled = true;
+        $("#graph-canvas").innerHTML = '<div class="graph-empty"><p>Add and index a repository to view its graph.</p></div>';
+        $("#graph-edge-list").innerHTML = '<p class="empty-cell">No links loaded.</p>';
+        $("#graph-status").textContent = "No managed repositories are available.";
+        return;
+      }
+      select.disabled = false;
+      const selected = available.some((repo) => String(repo.project_id) === state.graphProjectId)
+        ? state.graphProjectId
+        : String(available[0].project_id);
+      state.graphProjectId = selected;
+      select.innerHTML = available.map((repo) =>
+        `<option value="${escapeHtml(repo.project_id)}" ${String(repo.project_id) === selected ? "selected" : ""}>${escapeHtml(repoName(repo))}</option>`
+      ).join("");
+      $("#graph-status").textContent = "Loading graph artifact…";
+      renderGraph(await api(`graph/${encodeURIComponent(selected)}`));
+      setServiceState(true);
+    } catch (error) {
+      $("#graph-canvas").innerHTML = errorCard(error);
+      $("#graph-edge-list").innerHTML = '<p class="empty-cell">No links available.</p>';
+      $("#graph-node-count").textContent = "—";
+      $("#graph-edge-count").textContent = "—";
+      $("#graph-status").textContent = error.message;
+    }
+  }
+
   function loadPage(page) {
     if (page === "overview") loadOverview();
     else if (page === "repositories" || page === "sync") loadRepositories();
     else if (page === "storage") loadStorage();
     else if (page === "health") loadDataPage("health", "#health-content", "Health");
     else if (page === "runtime") loadDataPage("runtime", "#runtime-content", "Runtime");
+    else if (page === "graph") loadGraph();
     else if (page === "settings") loadSettings();
   }
 
@@ -312,6 +452,10 @@
   }
 
   document.addEventListener("click", async (event) => {
+    if (event.target.closest("[data-open-add]")) {
+      openPathDialog("initialize");
+      return;
+    }
     const nav = event.target.closest("[data-page]");
     if (nav) showPage(nav.dataset.page);
     const go = event.target.closest("[data-go]");
@@ -333,6 +477,10 @@
   $("#menu-button").addEventListener("click", () => $("#sidebar").classList.toggle("open"));
   $("#add-repository-button").addEventListener("click", () => openPathDialog("initialize"));
   $("#refresh-button").addEventListener("click", () => loadPage(location.hash.slice(1) || "overview"));
+  $("#graph-repository").addEventListener("change", (event) => {
+    state.graphProjectId = event.target.value;
+    loadGraph();
+  });
   window.addEventListener("hashchange", () => showPage(location.hash.slice(1), false));
 
   $("#forget-confirmation").addEventListener("input", (event) => {
@@ -389,5 +537,7 @@
     }
   });
 
+  window.addEventListener("load", () => refreshIcons());
+  refreshIcons();
   showPage(location.hash.slice(1) || "overview", false);
 })();

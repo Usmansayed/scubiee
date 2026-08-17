@@ -52,6 +52,12 @@ def test_ce_dashboard_serves_light_sidebar_shell_and_assets():
         assert js_status == 200
         assert js_type in {"application/javascript", "text/javascript"}
         assert '"/ce-dashboard/api"' in javascript
+
+        lucide_status, lucide_type, lucide = _get(f"{base}/lucide.min.js")
+        assert lucide_status == 200
+        assert lucide_type in {"application/javascript", "text/javascript"}
+        assert "lucide" in lucide.lower()
+        assert "/ce-dashboard/lucide.min.js" in html
     finally:
         server.shutdown()
         server.server_close()

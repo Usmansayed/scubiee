@@ -42,6 +42,10 @@ _STATIC_ASSETS = {
         "application/javascript; charset=utf-8",
     ),
     f"{DASHBOARD_BASE}/app.js": ("app.js", "application/javascript; charset=utf-8"),
+    f"{DASHBOARD_BASE}/lucide.min.js": (
+        "lucide.min.js",
+        "application/javascript; charset=utf-8",
+    ),
 }
 _START_LOCK_NAME = "dashboard.starting"
 
@@ -72,6 +76,30 @@ def _repo_path(project_id: str, repositories: list[dict[str, Any]]) -> Path:
         if value:
             return Path(str(value))
     raise FileNotFoundError(f"unknown project_id: {project_id}")
+
+
+def _load_graph_artifact(
+    project_id: str, repositories: list[dict[str, Any]]
+) -> dict[str, Any]:
+    from graphify.paths import GRAPHIFY_OUT
+
+    root = _repo_path(project_id, repositories)
+    output = Path(GRAPHIFY_OUT)
+    graph_path = (output if output.is_absolute() else root / output) / "graph.json"
+    with graph_path.open("r", encoding="utf-8") as handle:
+        document = json.load(handle)
+    if not isinstance(document, dict):
+        raise ValueError("graph artifact must be a JSON object")
+    nodes = document.get("nodes", [])
+    edges = document.get("links", document.get("edges", []))
+    if not isinstance(nodes, list) or not isinstance(edges, list):
+        raise ValueError("graph artifact nodes and edges must be lists")
+    return {
+        "ok": True,
+        "project_id": project_id,
+        "nodes": nodes,
+        "edges": edges,
+    }
 
 
 class DashboardAPI:
@@ -156,6 +184,10 @@ class DashboardAPI:
             }
         if suffix == "repos":
             return 200, {"ok": True, "repositories": list_managed_repos()}
+        parts = [unquote(part) for part in suffix.split("/") if part]
+        if len(parts) == 2 and parts[0] == "graph":
+            repositories = list_managed_repos()
+            return 200, _load_graph_artifact(parts[1], repositories)
         if suffix == "health":
             from pipeline.doctor import doctor_report
 

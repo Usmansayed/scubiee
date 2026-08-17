@@ -22,6 +22,52 @@ Use the gates below. **Do not claim rollout readiness unless `ctx certify --skip
 5. Reload MCP in Cursor
 6. Prefer `map` → `focus` → `workspace` → `status` (phase surface)
 
+## Local operator dashboard
+
+Start the loopback-only operator UI with:
+
+```text
+ctx dashboard
+```
+
+The equivalent module command is `python -m pipeline dashboard`. Both commands
+start the dashboard in the background and open its `/ce-dashboard` page on
+`127.0.0.1`. Use `ctx dashboard --no-open` (or
+`python -m pipeline dashboard --no-open`) when no browser should be opened.
+Check the managed process with `ctx dashboard --status` and stop it with
+`ctx dashboard stop`; the same arguments work with `python -m pipeline
+dashboard`.
+
+The dashboard is an operator view over existing Context Engine state. Its Graph
+page reads the selected repository's existing `graphify-out/graph.json`
+artifact; viewing a graph never builds, rewrites, or deletes graph data.
+
+### Missing is not Forget
+
+- **Missing** means the repository is not currently present at its registered
+  path. The path may be temporarily unavailable or the repository may have
+  moved. Use **Locate** when the same repository identity exists at a new path.
+- **Forget** removes Context Engine's managed identity and local index
+  artifacts. It does not delete source files. Forget remains unavailable until
+  presence validation has classified the missing repository as eligible after
+  the configured retention period, and the operator types the repository ID to
+  confirm.
+- A path occupied by a different or unidentifiable repository is
+  **Replaced/Conflict**, not safely deleted. Resolve or locate it; do not force a
+  Forget from the dashboard.
+
+### Automatic and Manual admission
+
+- **Automatic** admission registers repositories as Context Engine encounters
+  them, subject to the configured admission limits. Use it for normal local
+  development where discovered repositories should become managed.
+- **Manual** admission (`mcp_cli`) registers repositories only through explicit
+  MCP or CLI actions. Use it on controlled machines where repository enrollment
+  must be deliberate.
+
+Change the mode on the dashboard **Settings** page. The selection controls
+future admission; it does not forget repositories that are already managed.
+
 ## Runtime profile commands
 
 - `ctx init` is the first-time setup path. It detects hardware, installs the

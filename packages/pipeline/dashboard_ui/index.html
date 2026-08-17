@@ -6,6 +6,7 @@
     <meta name="color-scheme" content="light">
     <title>Context Engine</title>
     <link rel="stylesheet" href="/ce-dashboard/styles.css">
+    <script src="/ce-dashboard/lucide.min.js" defer></script>
     <script src="/ce-dashboard/storage_render.js" defer></script>
     <script src="/ce-dashboard/app.js" defer></script>
   </head>
@@ -14,34 +15,36 @@
       <aside class="sidebar" id="sidebar">
         <div class="brand">
           <span class="brand-mark" aria-hidden="true">
-            <span></span><span></span><span></span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-6"/><path d="M22 20V8"/>
+            </svg>
           </span>
           <div><strong>Context Engine</strong><small>Operator console</small></div>
         </div>
         <nav class="navigation" aria-label="Dashboard">
           <button class="nav-item active" data-page="overview">
-            <span class="nav-icon">⌂</span><span>Overview</span>
+            <span class="nav-icon" data-lucide="layout-dashboard"></span><span>Overview</span>
           </button>
           <button class="nav-item" data-page="repositories">
-            <span class="nav-icon">◇</span><span>Repositories</span>
+            <span class="nav-icon" data-lucide="folder-git-2"></span><span>Repositories</span>
           </button>
           <button class="nav-item" data-page="sync">
-            <span class="nav-icon">↻</span><span>Index &amp; Sync</span>
+            <span class="nav-icon" data-lucide="refresh-cw"></span><span>Index &amp; Sync</span>
           </button>
           <button class="nav-item" data-page="storage">
-            <span class="nav-icon">▱</span><span>Storage</span>
+            <span class="nav-icon" data-lucide="hard-drive"></span><span>Storage</span>
           </button>
           <button class="nav-item" data-page="health">
-            <span class="nav-icon">♡</span><span>Health</span>
+            <span class="nav-icon" data-lucide="heart-pulse"></span><span>Health</span>
           </button>
           <button class="nav-item" data-page="runtime">
-            <span class="nav-icon">⌁</span><span>Runtime</span>
+            <span class="nav-icon" data-lucide="cpu"></span><span>Runtime</span>
           </button>
           <button class="nav-item" data-page="graph">
-            <span class="nav-icon">⌘</span><span>Graph</span>
+            <span class="nav-icon" data-lucide="share-2"></span><span>Graph</span>
           </button>
           <button class="nav-item" data-page="settings">
-            <span class="nav-icon">⚙</span><span>Settings</span>
+            <span class="nav-icon" data-lucide="settings"></span><span>Settings</span>
           </button>
         </nav>
         <div class="sidebar-status">
@@ -52,14 +55,19 @@
 
       <main class="main">
         <header class="topbar">
-          <button class="menu-button" id="menu-button" aria-label="Toggle navigation">☰</button>
+          <button class="menu-button" id="menu-button" aria-label="Toggle navigation">
+            <span data-lucide="menu"></span>
+          </button>
           <div>
             <p class="eyebrow">Local operator workspace</p>
             <h1 id="page-title">Overview</h1>
           </div>
           <div class="topbar-actions">
             <span class="local-badge"><span></span>127.0.0.1</span>
-            <button class="button secondary" id="refresh-button">Refresh</button>
+            <button class="button secondary" id="refresh-button">
+              <span data-lucide="refresh-cw"></span>
+              Refresh
+            </button>
           </div>
         </header>
 
@@ -71,7 +79,7 @@
             </div>
             <div class="metric-grid">
               <article class="metric-card">
-                <div class="metric-label">Managed repositories <span class="metric-symbol">◇</span></div>
+                <div class="metric-label">Managed repositories <span class="metric-symbol" data-lucide="folder-git-2"></span></div>
                 <strong id="metric-managed">—</strong>
                 <p id="metric-managed-detail">Loading registry</p>
               </article>
@@ -93,7 +101,7 @@
               </article>
               <article class="panel system-panel">
                 <div class="panel-header"><div><h3>Operator service</h3><p>Dashboard process and access boundary</p></div></div>
-                <div class="system-orbit" aria-hidden="true"><span></span><i></i></div>
+                <div class="system-orbit" aria-hidden="true"><span></span></div>
                 <dl class="detail-list" id="overview-service">
                   <div><dt>Network</dt><dd>Loopback only</dd></div>
                   <div><dt>Base path</dt><dd><code>/ce-dashboard</code></dd></div>
@@ -106,12 +114,18 @@
           <section class="page" id="page-repositories" aria-labelledby="repositories-heading">
             <div class="page-heading">
               <div><h2 id="repositories-heading">Repositories</h2><p>Manage identity, presence, and safe lifecycle actions.</p></div>
-              <button class="button primary" id="add-repository-button">Add repository</button>
+              <button class="button primary" id="add-repository-button">
+                <span data-lucide="plus"></span>
+                Add repository
+              </button>
             </div>
             <div class="notice"><span>i</span><p><strong>Missing is not deleted.</strong> Forget is available only after Context Engine validates the repository as eligible.</p></div>
             <article class="panel table-panel">
               <div class="table-toolbar">
-                <label class="search"><span>⌕</span><input id="repo-search" type="search" placeholder="Search repositories" aria-label="Search repositories"></label>
+                <label class="search">
+                  <span data-lucide="search"></span>
+                  <input id="repo-search" type="search" placeholder="Search repositories" aria-label="Search repositories">
+                </label>
                 <span id="repo-count">0 repositories</span>
               </div>
               <div class="table-scroll">
@@ -144,15 +158,38 @@
           </section>
 
           <section class="page" id="page-graph" aria-labelledby="graph-heading">
-            <div class="page-heading"><div><h2 id="graph-heading">Graph</h2><p>Explore code relationships from indexed repositories.</p></div></div>
-            <article class="panel placeholder">
-              <div class="graph-placeholder" aria-hidden="true">
-                <span class="node n1"></span><span class="node n2"></span><span class="node n3"></span><span class="node n4"></span>
-                <i class="edge e1"></i><i class="edge e2"></i><i class="edge e3"></i>
-              </div>
-              <h3>Graph explorer is next</h3>
-              <p>The operator shell is ready. Repository graph data and interactive traversal arrive in Task 6.</p>
-            </article>
+            <div class="page-heading">
+              <div><h2 id="graph-heading">Graph</h2><p>Explore code relationships from an indexed repository.</p></div>
+              <label class="graph-repo-picker" for="graph-repository">
+                <span>Repository</span>
+                <select id="graph-repository" aria-label="Graph repository"></select>
+              </label>
+            </div>
+            <div class="graph-metrics" aria-live="polite">
+              <div><span>Nodes</span><strong id="graph-node-count">—</strong></div>
+              <div><span>Edges</span><strong id="graph-edge-count">—</strong></div>
+              <p id="graph-status">Choose an indexed repository to inspect its graph artifact.</p>
+            </div>
+            <div class="graph-layout">
+              <article class="panel graph-panel">
+                <div class="panel-header"><div><h3>Relationship map</h3><p>Up to 60 nodes are arranged for a readable overview.</p></div></div>
+                <div id="graph-canvas" class="graph-canvas">
+                  <div class="graph-empty">
+                    <div class="empty-state">
+                      <div class="empty-icon" data-lucide="share-2"></div>
+                      <strong>No graph selected</strong>
+                      <p>Choose an indexed repository to inspect its relationship map.</p>
+                    </div>
+                  </div>
+                </div>
+              </article>
+              <article class="panel graph-links-panel">
+                <div class="panel-header"><div><h3>Links</h3><p>Source → relationship → target</p></div></div>
+                <div id="graph-edge-list" class="graph-edge-list">
+                  <p class="empty-cell">No links loaded.</p>
+                </div>
+              </article>
+            </div>
           </section>
 
           <section class="page" id="page-settings" aria-labelledby="settings-heading">

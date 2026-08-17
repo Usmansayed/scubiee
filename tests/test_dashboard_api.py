@@ -99,6 +99,56 @@ def test_forget_route_requires_confirm(dashboard_http):
     assert "confirm" in payload["error"].lower()
 
 
+def test_graph_api_returns_nodes_for_indexed_repo(
+    dashboard_http, tmp_path, monkeypatch
+):
+    from pipeline import repo_lifecycle
+
+    root = tmp_path / "indexed-repo"
+    graph_dir = root / "graphify-out"
+    graph_dir.mkdir(parents=True)
+    graph_path = graph_dir / "graph.json"
+    graph_document = {
+        "directed": True,
+        "multigraph": False,
+        "graph": {},
+        "nodes": [
+            {"id": "module:api", "label": "api.py", "type": "file"},
+            {"id": "function:serve", "label": "serve", "type": "function"},
+        ],
+        "links": [
+            {
+                "source": "module:api",
+                "target": "function:serve",
+                "type": "defines",
+            }
+        ],
+    }
+    original = json.dumps(graph_document, sort_keys=True)
+    graph_path.write_text(original, encoding="utf-8")
+    monkeypatch.setattr(
+        repo_lifecycle,
+        "list_managed_repos",
+        lambda: [
+            {
+                "project_id": "ce_indexed",
+                "primary_path": str(root),
+                "indexed": True,
+            }
+        ],
+    )
+
+    status, payload = _request(
+        f"{dashboard_http}/ce-dashboard/api/graph/ce_indexed"
+    )
+
+    assert status == 200
+    assert payload["project_id"] == "ce_indexed"
+    assert payload["nodes"] == graph_document["nodes"]
+    assert payload["edges"] == graph_document["links"]
+    assert graph_path.read_text(encoding="utf-8") == original
+
+
 def test_pin_route_updates_registry(isolated_ce_home, monkeypatch):
     from pipeline.dashboard_server import DashboardAPI
     from pipeline import project_id, repo_lifecycle
@@ -224,6 +274,9 @@ def test_background_server_reuses_pid_and_stops(isolated_ce_home):
         assert first["ok"] is True
         assert first["running"] is True
         assert first["url"].startswith("http://127.0.0.1:")
+        status, overview = _request(f"{first['url']}/api/overview")
+        assert status == 200
+        assert overview["ok"] is True
 
         second = start_dashboard(open_browser=False)
         assert second["pid"] == first["pid"]
