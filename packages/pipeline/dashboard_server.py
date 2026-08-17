@@ -32,11 +32,17 @@ DASHBOARD_BASE = "/ce-dashboard"
 API_BASE = f"{DASHBOARD_BASE}/api"
 DASHBOARD_IDENTITY = "context-engine-operator-dashboard-v1"
 _LOGGER = logging.getLogger(__name__)
-_LANDING = b"""<!doctype html>
-<html><head><meta charset="utf-8"><title>Context Engine Dashboard</title></head>
-<body><main><h1>Dashboard running</h1><p>Context Engine operator API is ready.</p></main></body>
-</html>
-"""
+_UI_ROOT = Path(__file__).with_name("dashboard_ui")
+_STATIC_ASSETS = {
+    f"{DASHBOARD_BASE}/": ("index.html", "text/html; charset=utf-8"),
+    f"{DASHBOARD_BASE}/index.html": ("index.html", "text/html; charset=utf-8"),
+    f"{DASHBOARD_BASE}/styles.css": ("styles.css", "text/css; charset=utf-8"),
+    f"{DASHBOARD_BASE}/storage_render.js": (
+        "storage_render.js",
+        "application/javascript; charset=utf-8",
+    ),
+    f"{DASHBOARD_BASE}/app.js": ("app.js", "application/javascript; charset=utf-8"),
+}
 _START_LOCK_NAME = "dashboard.starting"
 
 
@@ -322,6 +328,33 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _write_static(self, path: str) -> bool:
+        asset = _STATIC_ASSETS.get(path)
+        if asset is None:
+            return False
+        filename, content_type = asset
+        try:
+            body = (_UI_ROOT / filename).read_bytes()
+        except OSError:
+            _LOGGER.exception("dashboard UI asset unavailable: %s", filename)
+            self._write_json(
+                500,
+                {
+                    "ok": False,
+                    "code": "ui_asset_unavailable",
+                    "error": "dashboard UI asset unavailable",
+                },
+            )
+            return True
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.end_headers()
+        self.wfile.write(body)
+        return True
+
     def _read_json(self) -> dict[str, Any]:
         length = int(self.headers.get("Content-Length") or 0)
         if length > 1_048_576:
@@ -342,12 +375,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_header("Location", f"{DASHBOARD_BASE}/")
             self.end_headers()
             return
-        if path in {DASHBOARD_BASE, f"{DASHBOARD_BASE}/"}:
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
-            self.send_header("Content-Length", str(len(_LANDING)))
+        if path == DASHBOARD_BASE:
+            self.send_response(302)
+            self.send_header("Location", f"{DASHBOARD_BASE}/")
             self.end_headers()
-            self.wfile.write(_LANDING)
+            return
+        if self._write_static(path):
             return
         status, payload = self.api.dispatch(
             "GET", path, client_host=str(self.client_address[0])
