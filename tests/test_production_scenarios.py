@@ -21,6 +21,7 @@ def test_scenario_checks_cover_core_faults(tmp_path: Path, monkeypatch) -> None:
         "provider_warmup_fail_closed",
         "watcher_overflow_recovery",
         "publication_coherence",
+        "doctor_safe_repair_classification",
     }
     assert required <= checks.keys()
     failed = {name: checks[name] for name in required if checks[name]["status"] != "passed"}

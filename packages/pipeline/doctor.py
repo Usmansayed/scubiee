@@ -34,7 +34,7 @@ def doctor_report() -> dict[str, Any]:
             "backup_reason": state.backup_reason,
             "envelope": envelope,
             "recommended_command": (
-                "python -m pipeline init --repair"
+                "python -m pipeline setup --repair"
                 if state.backup_reason
                 else recommended_server_command(
                     installed.preferred if installed else None
@@ -42,6 +42,112 @@ def doctor_report() -> dict[str, Any]:
             ),
         }
     }
+
+
+def _journal_pending(project_id: str) -> dict[str, Any]:
+    try:
+        from pipeline.dirty_journal import load_dirty_journal
+
+        document = load_dirty_journal(project_id)
+    except Exception as exc:  # noqa: BLE001
+        return {"pending": False, "error": str(exc)}
+    if not isinstance(document, dict) or document.get("ok") is False:
+        return {"pending": False, "document": document}
+    snapshot = document.get("snapshot") or {}
+    paths = snapshot.get("paths") if isinstance(snapshot, dict) else {}
+    return {"pending": bool(paths), "paths": sorted(paths) if isinstance(paths, dict) else []}
+
+
+def _managed_root(entry: dict[str, Any]) -> Path | None:
+    value = entry.get("root") or entry.get("primary_path") or entry.get("path")
+    if not value:
+        paths = entry.get("paths")
+        value = paths[0] if isinstance(paths, list) and paths else None
+    if not value:
+        return None
+    return Path(str(value)).resolve()
+
+
+def plan_repairs(
+    root: Path | str | None = None,
+    report: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Classify repairs as safe (auto-applicable) or manual."""
+    if report is None:
+        report = doctor_repo(root)
+    actions: list[dict[str, Any]] = []
+    caps = report.get("capabilities") or {}
+    missing = [str(item) for item in (caps.get("missing_required") or [])]
+    if missing:
+        actions.append(
+            {
+                "id": "install_deps",
+                "kind": "manual",
+                "detail": "install missing deps: " + ", ".join(missing),
+            }
+        )
+    accel = report.get("accel") or {}
+    if accel and accel.get("ok") is False:
+        actions.append(
+            {
+                "id": "init_repair",
+                "kind": "manual",
+                "detail": str(
+                    accel.get("hint") or "run: python -m pipeline setup --repair"
+                ),
+            }
+        )
+    binding = report.get("binding") or {}
+    if binding.get("ok") is False:
+        actions.append(
+            {
+                "id": "bind_daemon",
+                "kind": "safe",
+                "detail": str(
+                    binding.get("repair")
+                    or "ctx engine ensure .  # reopen so soft search binds this workspace"
+                ),
+            }
+        )
+    readiness = report.get("readiness") or {}
+    manifest = readiness.get("manifest") if isinstance(readiness.get("manifest"), dict) else {}
+    if manifest.get("ok") is False:
+        actions.append(
+            {
+                "id": "rebuild_index",
+                "kind": "manual",
+                "detail": (
+                    f"corrupt publication ({manifest.get('reason')}) — rebuild index"
+                ),
+            }
+        )
+    elif not readiness.get("index_usable"):
+        actions.append(
+            {
+                "id": "initialize_index",
+                "kind": "safe",
+                "detail": "run: python -m pipeline init .",
+            }
+        )
+    journal = report.get("journal") or {}
+    if journal.get("pending"):
+        actions.append(
+            {
+                "id": "replay_dirty_journal",
+                "kind": "safe",
+                "detail": "replay dirty journal then sync-now",
+            }
+        )
+    duplicates = report.get("git_family") or {}
+    if duplicates.get("needs_reconcile"):
+        actions.append(
+            {
+                "id": "reconcile_git_family",
+                "kind": "safe",
+                "detail": "merge duplicate git worktree indexes into one project store",
+            }
+        )
+    return actions
 
 
 def doctor_repo(root: Path | str | None = None) -> dict[str, Any]:
@@ -72,26 +178,16 @@ def doctor_repo(root: Path | str | None = None) -> dict[str, Any]:
     except Exception as exc:  # noqa: BLE001
         binding = {"ok": False, "error": str(exc)}
 
-    repairs: list[str] = []
-    if not caps.get("ok"):
-        repairs.append(
-            "install missing deps: " + ", ".join(caps.get("missing_required") or [])
-        )
     accel = {
         **(caps.get("accel") or {}),
         **doctor_report()["accel"],
     }
-    if accel and not accel.get("ok"):
-        repairs.append(str(accel.get("hint") or "run: python -m pipeline init"))
-    if not usable:
-        repairs.append("run: python -m pipeline register --force .")
-    if manifest.get("ok") is False:
-        repairs.append(f"corrupt publication ({manifest.get('reason')}) — rebuild index")
-    if binding.get("ok") is False and binding.get("repair"):
-        repairs.append(str(binding["repair"]))
+    journal = _journal_pending(ref.project_id)
+    from pipeline.project_id import detect_git_family_duplicates
 
-    return {
-        "ok": bool(caps.get("ok") and usable and not repairs),
+    git_family = detect_git_family_duplicates()
+    report: dict[str, Any] = {
+        "ok": False,
         "repo": str(repo),
         "project_id": ref.project_id,
         "capabilities": caps,
@@ -105,11 +201,119 @@ def doctor_repo(root: Path | str | None = None) -> dict[str, Any]:
             "embed_tps": accel.get("texts_per_sec"),
         },
         "binding": binding,
+        "journal": journal,
+        "git_family": git_family,
         "meta": {
             k: meta.get(k)
             for k in ("chunks", "files_indexed", "collection", "embed_model", "project_id")
             if isinstance(meta, dict)
         },
-        "repairs": repairs,
+        "checked_at": time.time(),
+    }
+    planned = plan_repairs(report=report)
+    report["repair_plan"] = planned
+    report["repairs"] = [item["detail"] for item in planned]
+    report["ok"] = bool(
+        caps.get("ok")
+        and usable
+        and not git_family.get("needs_reconcile")
+        and not planned
+    )
+    return report
+
+
+def doctor_all() -> dict[str, Any]:
+    """Doctor every managed repository."""
+    from pipeline.repo_lifecycle import list_managed_repos
+
+    repositories: list[dict[str, Any]] = []
+    for entry in list_managed_repos():
+        root = _managed_root(entry)
+        if root is None:
+            continue
+        report = doctor_repo(root)
+        report["presence"] = entry.get("presence")
+        repositories.append(report)
+    planned = [
+        {**action, "repo": item["repo"], "project_id": item.get("project_id")}
+        for item in repositories
+        for action in (item.get("repair_plan") or [])
+    ]
+    return {
+        "ok": all(item.get("ok") for item in repositories) if repositories else True,
+        "repositories": repositories,
+        "repair_plan": planned,
+        "repairs": planned,
+        "checked_at": time.time(),
+    }
+
+
+def apply_safe_repairs(root: Path | str | None = None) -> dict[str, Any]:
+    """Apply only safe repairs for one repository, then re-doctor."""
+    repo = Path(root).resolve() if root else Path.cwd()
+    before = doctor_repo(repo)
+    applied: list[dict[str, Any]] = []
+    manual: list[dict[str, Any]] = []
+    for action in plan_repairs(report=before):
+        if action.get("kind") != "safe":
+            manual.append(action)
+            continue
+        action_id = action.get("id")
+        if action_id == "bind_daemon":
+            from pipeline.daemon import ensure_daemon
+
+            result = ensure_daemon(repo)
+        elif action_id == "initialize_index":
+            from pipeline.repo_lifecycle import initialize_repo
+
+            result = initialize_repo(repo, index=True)
+        elif action_id == "replay_dirty_journal":
+            from pipeline.dirty_journal import restore_ledger_from_journal
+            from pipeline.dirty_ledger import DirtyLedger
+            from pipeline.repo_lifecycle import sync_now_repo
+
+            ledger = DirtyLedger(debounce_ms=0)
+            restore = restore_ledger_from_journal(ledger, str(before.get("project_id") or ""))
+            result = {"restore": restore, "sync": sync_now_repo(repo)}
+        elif action_id == "reconcile_git_family":
+            from pipeline.git_family import reconcile_git_families
+
+            result = reconcile_git_families(prefer_root=repo).to_dict()
+        else:
+            manual.append({**action, "kind": "manual"})
+            continue
+        applied.append({**action, "result": result})
+    after = doctor_repo(repo)
+    remaining_manual = [
+        item for item in plan_repairs(report=after) if item.get("kind") == "manual"
+    ]
+    return {
+        "ok": bool(after.get("ok")),
+        "repo": str(repo),
+        "project_id": after.get("project_id"),
+        "applied": applied,
+        "manual": remaining_manual or manual,
+        "before": before,
+        "after": after,
+    }
+
+
+def apply_safe_repairs_all() -> dict[str, Any]:
+    """Apply safe repairs across every managed repository."""
+    from pipeline.repo_lifecycle import list_managed_repos
+
+    results: list[dict[str, Any]] = []
+    for entry in list_managed_repos():
+        root = _managed_root(entry)
+        if root is None:
+            continue
+        results.append(apply_safe_repairs(root))
+    applied = [item for result in results for item in result.get("applied") or []]
+    manual = [item for result in results for item in result.get("manual") or []]
+    return {
+        "ok": all(result.get("ok") for result in results) if results else True,
+        "repositories": results,
+        "applied": applied,
+        "manual": manual,
         "checked_at": time.time(),
     }

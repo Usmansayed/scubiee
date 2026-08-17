@@ -148,7 +148,10 @@
           </section>
 
           <section class="page" id="page-health" aria-labelledby="health-heading">
-            <div class="page-heading"><div><h2 id="health-heading">Health</h2><p>Doctor checks for the dashboard and indexing environment.</p></div></div>
+            <div class="page-heading">
+              <div><h2 id="health-heading">Health</h2><p>Doctor checks for the dashboard and indexing environment. Safe repairs rebind the daemon, initialize an empty index, or replay the dirty journal. Rebuild, Forget, and package installs stay manual.</p></div>
+              <button class="button primary" id="apply-safe-repairs" type="button">Apply safe repairs</button>
+            </div>
             <div id="health-content" class="stack-list loading-block">Running health checks…</div>
           </section>
 

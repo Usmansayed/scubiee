@@ -15,12 +15,54 @@ Use the gates below. **Do not claim rollout readiness unless `ctx certify --skip
 
 ## Proper daily use
 
-1. `python -m pipeline preflight .`
-2. `python -m pipeline engine ensure .`
-3. `python -m pipeline doctor .`
-4. Install / refresh MCP (`python scripts/install_mcp.py` or `python -m pipeline setup`) so `CTX_MCP_SURFACE=phase`
-5. Reload MCP in Cursor
-6. Prefer `map` → `focus` → `workspace` → `status` (phase surface)
+1. `ctx setup` once per machine
+2. `ctx init <repo>` for each codebase
+3. Use Cursor. Do not start/stop the engine by hand.
+
+Optional: `ctx doctor --fix`, `ctx dashboard`.
+
+## Install once, then init each repo
+
+From a published package (no clone):
+
+```text
+pip install scubiee && ctx setup
+```
+
+or
+
+```text
+npm install -g scubiee
+```
+
+Then `ctx init [path]`. `ctx setup` still does **not** start the GPU engine.
+
+1. `pip install -e .`
+2. `ctx setup` — one machine command: detect CPU/DML/CUDA, install the matching
+   runtime, download the model, calibrate batch size, register a **logon
+   supervisor** (no GPU at boot or logon), write Cursor MCP.
+3. `ctx init [path]` — put that codebase under management, index it, and start
+   the engine on demand.
+4. After that, watching/sync plus idle-stop/sleep-wake keep it managed.
+
+`ctx setup --repair` redoes hardware/profile/batch. `ctx setup --status` prints
+the saved profile. `ctx init` does **not** install runtimes.
+
+Power behavior:
+
+- **Boot:** nothing GPU-related starts.
+- **Logon:** a tiny supervisor starts in standby. The engine stays off.
+- **First `ctx init` or Cursor MCP use:** engine starts and warms that repo.
+- **Idle 30 minutes** (no user/MCP/CLI requests; `/health` does not count):
+  engine stops. Supervisor stays.
+- **Sleep/wake:** supervisor reconciles dirty files; it does not full-reindex.
+- **Logoff:** supervisor ends; the engine is stopped (Windows job object and/or supervisor SIGTERM → `ctx engine` stop). macOS uses LaunchAgent `com.contextengine.supervisor`.
+- Unregister: `ctx engine autostart --off`.
+- **macOS runtime** uses CoreML (`CoreMLExecutionProvider`) so embeddings run on
+  Metal GPU and, on Apple Silicon, the Neural Engine. `onnxruntime` macOS wheels
+  already ship this provider — no CUDA/DirectML package. If CoreML cannot warm
+  the model, CE falls back to CPU for that process without changing the saved
+  preference. Force CPU with `ctx setup --profile cpu --repair`.
 
 ## Local operator dashboard
 
@@ -70,19 +112,23 @@ future admission; it does not forget repositories that are already managed.
 
 ## Runtime profile commands
 
-- `ctx init` is the first-time setup path. It detects hardware, installs the
-  matching provider, warms the model, calibrates the batch ceiling, and saves
-  the preferred profile. If a profile is already saved, plain `ctx init`
-  reuses it without detecting or recalibrating.
-- `ctx init --repair` is the explicit recovery path. It may detect hardware
-  again, repair provider packages/model state, recalibrate, and replace the
-  saved profile.
-- `ctx doctor .` is read-only. It checks the saved provider, performs an
-  offline warm-up of the already-cached saved model, and reports readiness and
-  repair guidance. It never chooses a profile, installs packages, or
-  recalibrates.
+- `ctx setup` is the first-time machine install. If a profile is already saved,
+  plain `ctx setup` reuses it without detecting or recalibrating.
+- `ctx setup --repair` is the explicit hardware recovery path.
+- `ctx init [path]` enrolls a repository and indexes it. It refuses if `ctx setup`
+  has not saved a profile.
+- `ctx doctor .` is read-only by default. It checks the saved provider, performs
+  an offline warm-up of the already-cached saved model, and reports readiness
+  plus a classified repair plan. It never chooses a profile, installs packages,
+  or recalibrates.
+- `ctx doctor --all` doctors every managed repository.
+- `ctx doctor --fix` (or `ctx doctor --all --fix`) applies **safe** repairs
+  only: rebind the running daemon to this workspace, initialize an unusable
+  index, and replay a dirty journal. It does not pip-install, run
+  `setup --repair`, rebuild a corrupt publication, or Forget a repository.
+- Dashboard Health exposes the same plan and an **Apply safe repairs** button.
 - `ctx serve .` starts from the saved profile only. If no profile exists,
-  startup requires `ctx init`; it does not auto-select or install. A transient
+  startup requires `ctx setup`; it does not auto-select or install. A transient
   accelerated embedding failure may activate the bounded in-process CPU
   backup without changing the saved preference.
 
@@ -113,8 +159,8 @@ future admission; it does not forget repositories that are already managed.
 
 | Symptom | Action |
 |---------|--------|
-| `soft_search_ready=false` | `doctor` → `register --force` / reopen |
-| Corrupt manifest | rebuild index |
-| Wrong repo bound | `engine ensure <path>` |
+| `soft_search_ready=false` | `doctor --fix` (initialize) or dashboard Apply safe repairs |
+| Corrupt manifest | rebuild index (manual) |
+| Wrong repo bound | `doctor --fix` or `engine ensure <path>` |
 | MCP tools are search/read | set `CTX_MCP_SURFACE=phase`, reinstall MCP, reload |
 | Storm `needs_full` | idle `rebuild` when safe |

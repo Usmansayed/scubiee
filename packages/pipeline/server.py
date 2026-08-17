@@ -20,6 +20,15 @@ DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
 
 
+def _note_user_activity() -> None:
+    try:
+        from pipeline.lifecycle_runtime import note_activity
+
+        note_activity()
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _json(handler: BaseHTTPRequestHandler, code: int, payload: dict) -> None:
     context = getattr(handler, "_request_context", None)
     if isinstance(context, dict):
@@ -63,6 +72,7 @@ class Handler(BaseHTTPRequestHandler):
         if path in ("/health", "/"):
             _json(self, 200, ce.health())
             return
+        _note_user_activity()
         if path == "/dashboard":
             from pipeline.dashboard import DASHBOARD_HTML
 
@@ -91,6 +101,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
+        if path not in ("/v1/shutdown", "/shutdown"):
+            _note_user_activity()
         data = _read_json(self)
         ce = get_context_engine()
 
@@ -112,6 +124,7 @@ class Handler(BaseHTTPRequestHandler):
                     if isinstance(data.get("metadata"), dict)
                     else None
                 ),
+                explicit=bool(data.get("explicit") or data.get("wait")),
             )
 
         if path in ("/api/settings", "/v1/settings"):
@@ -138,6 +151,39 @@ class Handler(BaseHTTPRequestHandler):
                     index=data.get("index", True) is not False,
                 ),
             )
+            return
+
+        if path == "/v1/client/register":
+            from pipeline.lifecycle_runtime import register_client
+
+            client_id = str(data.get("client_id") or "").strip()
+            if not client_id:
+                _json(self, 400, {"ok": False, "error": "client_id required"})
+                return
+            pid_raw = data.get("pid")
+            try:
+                pid = int(pid_raw) if pid_raw is not None else None
+            except (TypeError, ValueError):
+                pid = None
+            _json(
+                self,
+                200,
+                register_client(
+                    client_id,
+                    pid=pid,
+                    kind=str(data.get("kind") or "mcp"),
+                ),
+            )
+            return
+
+        if path == "/v1/client/unregister":
+            from pipeline.lifecycle_runtime import unregister_client
+
+            client_id = str(data.get("client_id") or "").strip()
+            if not client_id:
+                _json(self, 400, {"ok": False, "error": "client_id required"})
+                return
+            _json(self, 200, unregister_client(client_id))
             return
 
         if path == "/v1/lifecycle":
@@ -491,6 +537,16 @@ def run_server(
     from pipeline.sync_loop import enable_session_keeper_defaults
 
     enable_session_keeper_defaults()
+    from pipeline.git_family import reconcile_git_families
+
+    family = reconcile_git_families(prefer_root=repo)
+    if family.superseded_project_ids:
+        print(
+            f"[engine] git-family reconcile: canonical={family.canonical_project_ids} "
+            f"superseded={family.superseded_project_ids}",
+            file=sys.stderr,
+            flush=True,
+        )
     ce = get_context_engine()
     repo = repo.resolve()
     print(
@@ -504,6 +560,12 @@ def run_server(
         flush=True,
     )
     print(f"[engine] dashboard http://{host}:{port}/dashboard", file=sys.stderr, flush=True)
+    try:
+        from pipeline.process_job import attach_engine_on_start
+
+        attach_engine_on_start()
+    except Exception as exc:  # noqa: BLE001
+        print(f"[engine] job join note: {exc}", file=sys.stderr, flush=True)
 
     if open_on_start:
         print(f"[engine] opening {repo} …", file=sys.stderr, flush=True)

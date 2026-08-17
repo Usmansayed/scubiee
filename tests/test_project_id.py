@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -13,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "packages"))
 
 from pipeline.project_id import (
+    git_common_dir,
     id_file_path,
     index_is_usable,
     load_registry,
@@ -238,6 +240,87 @@ def test_incremental_missing_graph_falls_back(ce_home: Path, tmp_path: Path):
 
     assert fake_full.called
     assert not fake_patch.called
+
+
+def test_reinstall_recovers_id_from_usable_store(
+    ce_home: Path, tmp_path: Path
+) -> None:
+    repo = tmp_path / "r"
+    repo.mkdir()
+    ref1 = resolve_project(repo)
+    pid = ref1.project_id
+    (ref1.store_dir / "chunks.jsonl").write_text('{"id":0}\n', encoding="utf-8")
+    (ref1.store_dir / "graph.json").write_text("{}", encoding="utf-8")
+    (ref1.store_dir / "meta.json").write_text(
+        json.dumps({"root": str(repo.resolve()), "chunks": 1}),
+        encoding="utf-8",
+    )
+
+    id_file_path(repo).unlink()
+    assert read_id_file(repo) is None
+
+    ref2 = resolve_project(repo)
+    assert ref2.project_id == pid
+    assert read_id_file(repo) == pid
+
+
+def test_git_family_reconciles_existing_duplicate_id_files(
+    ce_home: Path, tmp_path: Path,
+) -> None:
+    from pipeline.project_id import mint_project_id, projects_root, save_registry
+
+    repo = tmp_path / "main"
+    linked = tmp_path / "linked"
+    repo.mkdir()
+    subprocess.run(["git", "init", str(repo)], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "config", "user.email", "test@example.invalid"],
+        check=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(repo), "config", "user.name", "Test User"], check=True
+    )
+    (repo / "a.txt").write_text("a\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", "a.txt"], check=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "commit", "-m", "seed"], check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "-C", str(repo), "worktree", "add", str(linked), "-b", "linked"],
+        check=True,
+        capture_output=True,
+    )
+
+    main_id = mint_project_id(repo)
+    duplicate_id = mint_project_id(linked)
+    write_id_file(repo, main_id)
+    write_id_file(linked, duplicate_id)
+    common = git_common_dir(repo)
+    assert common is not None
+    save_registry(
+        {
+            "projects": {
+                main_id: {
+                    "paths": [str(repo.resolve())],
+                    "managed": True,
+                    "git_common_dir": str(common),
+                    "last_access_at": 100.0,
+                },
+                duplicate_id: {
+                    "paths": [str(linked.resolve())],
+                    "managed": True,
+                    "git_common_dir": str(common),
+                    "last_access_at": 1.0,
+                },
+            }
+        }
+    )
+    (projects_root() / main_id).mkdir(parents=True, exist_ok=True)
+    (projects_root() / duplicate_id).mkdir(parents=True, exist_ok=True)
+
+    reconciled = resolve_project(linked)
+    assert reconciled.project_id == main_id
+    assert read_id_file(linked) == main_id
 
 
 def test_auto_index_gate(monkeypatch: pytest.MonkeyPatch):

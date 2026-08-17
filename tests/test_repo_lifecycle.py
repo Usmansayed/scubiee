@@ -14,10 +14,15 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "packages"))
 
-from pipeline.project_id import id_file_path, load_registry, resolve_project
-from pipeline.repo_lifecycle import (
-    activate_repo,
+from pipeline.project_id import (
     git_common_dir,
+    id_file_path,
+    load_registry,
+    projects_root,
+    resolve_project,
+    write_id_file,
+)
+from pipeline.repo_lifecycle import (
     initialize_repo,
     list_managed_repos,
     managed_state,
@@ -27,6 +32,7 @@ from pipeline.repo_lifecycle import (
     remove_repo,
     resume_repo,
     sync_now_repo,
+    activate_repo,
 )
 
 
@@ -151,7 +157,7 @@ def test_empty_context_engine_dir_does_not_inherit_moved_id(
     assert relocated["project_id"] == first["project_id"]
 
 
-def test_linked_worktrees_are_separate_but_share_git_family(
+def test_linked_worktrees_share_one_project_identity(
     ce_home: Path, tmp_path: Path
 ) -> None:
     repo = tmp_path / "main"
@@ -179,9 +185,72 @@ def test_linked_worktrees_are_separate_but_share_git_family(
     main = initialize_repo(repo, index=False)
     other = initialize_repo(linked, index=False)
 
-    assert main["project_id"] != other["project_id"]
+    assert main["project_id"] == other["project_id"]
     assert Path(main["git_common_dir"]) == Path(other["git_common_dir"])
     assert git_common_dir(repo) == git_common_dir(linked)
+    assert len(load_registry()["projects"]) == 1
+    paths = load_registry()["projects"][main["project_id"]]["paths"]
+    assert str(repo.resolve()) in paths
+    assert str(linked.resolve()) in paths
+
+
+def test_initialize_supersedes_preexisting_git_family_duplicate(
+    ce_home: Path, tmp_path: Path,
+) -> None:
+    from pipeline.project_id import mint_project_id, projects_root, save_registry
+
+    repo = tmp_path / "main"
+    linked = tmp_path / "linked"
+    repo.mkdir()
+    subprocess.run(["git", "init", str(repo)], check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "config", "user.email", "test@example.invalid"],
+        check=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(repo), "config", "user.name", "Test User"], check=True
+    )
+    (repo / "a.txt").write_text("a\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", "a.txt"], check=True)
+    subprocess.run(
+        ["git", "-C", str(repo), "commit", "-m", "seed"], check=True, capture_output=True
+    )
+    subprocess.run(
+        ["git", "-C", str(repo), "worktree", "add", str(linked), "-b", "linked"],
+        check=True,
+        capture_output=True,
+    )
+
+    main_id = mint_project_id(repo)
+    dup_id = mint_project_id(linked)
+    write_id_file(repo, main_id)
+    write_id_file(linked, dup_id)
+    common = git_common_dir(repo)
+    save_registry(
+        {
+            "projects": {
+                main_id: {
+                    "paths": [str(repo.resolve())],
+                    "managed": True,
+                    "git_common_dir": str(common),
+                    "last_access_at": 100.0,
+                },
+                dup_id: {
+                    "paths": [str(linked.resolve())],
+                    "managed": True,
+                    "git_common_dir": str(common),
+                    "last_access_at": 1.0,
+                },
+            }
+        }
+    )
+    (projects_root() / main_id).mkdir(parents=True, exist_ok=True)
+    (projects_root() / dup_id).mkdir(parents=True, exist_ok=True)
+
+    result = initialize_repo(linked, index=False)
+    assert result["project_id"] == main_id
+    assert load_registry()["projects"][dup_id]["superseded_by"] == main_id
+    assert len(list_managed_repos()) == 1
 
 
 def test_pause_resume_sync_rebuild_and_activate(

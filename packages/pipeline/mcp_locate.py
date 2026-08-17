@@ -42,8 +42,9 @@ from pathlib import Path
 from typing import Annotated, Any, Literal
 
 ROOT = Path(__file__).resolve().parents[2]
-if str(ROOT / "packages") not in sys.path:
-    sys.path.insert(0, str(ROOT / "packages"))
+_src = ROOT / "packages"
+if _src.is_dir() and str(_src) not in sys.path:
+    sys.path.insert(0, str(_src))
 
 try:
     from mcp.server.fastmcp import FastMCP
@@ -313,11 +314,80 @@ def _stderr(*args, **kwargs) -> None:
     print(*args, **kwargs)
 
 
+def _register_mcp_client(repo: Path) -> str:
+    """Tell the daemon an MCP front-end is connected; unload after it exits."""
+    import atexit
+
+    client_id = f"mcp:{os.getpid()}"
+    try:
+        from pipeline.client import EngineClient
+
+        EngineClient(workspace_path=str(repo), timeout=3.0).post(
+            "/v1/client/register",
+            {
+                "client_id": client_id,
+                "pid": os.getpid(),
+                "kind": "mcp",
+            },
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
+    def _leave() -> None:
+        try:
+            from pipeline.client import EngineClient
+
+            EngineClient(workspace_path=str(repo), timeout=2.0).post(
+                "/v1/client/unregister",
+                {"client_id": client_id},
+            )
+        except Exception:  # noqa: BLE001
+            pass
+
+    atexit.register(_leave)
+    return client_id
+
+
 def _default_repo() -> Path:
     env = os.environ.get("CTX_REPO") or os.environ.get("CONTEXT_ENGINE_REPO")
     if env:
         return Path(env).resolve()
-    return Path.cwd().resolve()
+
+    for key in (
+        "CURSOR_PROJECT_DIR",
+        "CURSOR_WORKSPACE",
+        "VSCODE_CWD",
+        "WORKSPACE_FOLDER",
+        "INIT_CWD",
+    ):
+        hint = os.environ.get(key)
+        if not hint:
+            continue
+        try:
+            candidate = Path(hint).resolve()
+        except OSError:
+            continue
+        if (candidate / ".context-engine" / "id.json").is_file() or (
+            candidate / ".git"
+        ).exists():
+            return candidate
+
+    cwd = Path.cwd().resolve()
+    for candidate in (cwd, *cwd.parents):
+        if (candidate / ".context-engine" / "id.json").is_file():
+            return candidate
+
+    try:
+        from pipeline.client import EngineClient
+
+        health = EngineClient(timeout=2.0).get("/health")
+        bound = health.get("repo")
+        if bound:
+            return Path(str(bound)).resolve()
+    except Exception:  # noqa: BLE001
+        pass
+
+    return cwd
 
 
 def _dumps(obj: Any) -> str:
@@ -656,7 +726,7 @@ def _client_for(repo: Path):
     from pipeline.daemon import ensure_daemon
 
     ensure_daemon(repo, force_if_hung=False)
-    client = EngineClient()
+    client = EngineClient(workspace_path=str(repo))
     # Locate availability must not depend on the optional live reindex daemon.
     # This is deliberately best-effort: the next query still gets the normal
     # unreachable response if the daemon could not be started.
@@ -1637,11 +1707,11 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
         try:
             # MCP status must never block an agent behind the HTTP client's
             # long request timeout when the daemon is wedged.
-            eng = EngineClient(timeout=3.0)
             repo = _default_repo()
+            eng = EngineClient(timeout=3.0, workspace_path=str(repo))
             store = load_store(repo)
             try:
-                daemon_status = eng.status()
+                daemon_status = eng.status(str(repo))
             except Exception:  # daemon liveness is still useful to expose
                 daemon_status = {}
             soft_search_ready = bool(
@@ -1749,6 +1819,8 @@ def main() -> None:
     os.environ.setdefault("CTX_REPO", str(repo))
     os.environ.setdefault("CTX_TOKEN_MODE", "savings")
     os.environ.setdefault("CTX_SESSION_GOVERNOR", "1")
+    os.environ.setdefault("CTX_ENGINE_IDLE_S", "120")
+    _register_mcp_client(repo)
     surface = _active_surface()
     tool_lists = {
         "read": "search,read,status",

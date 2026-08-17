@@ -1,9 +1,10 @@
 """Hardware acceleration probe + install profile for CodeRank FastEmbed.
 
 Profiles (mutually exclusive ORT wheels):
-  - cuda  → onnxruntime-gpu
-  - dml   → onnxruntime-directml  (Windows AMD/Intel/NVIDIA without CUDA stack)
-  - cpu   → onnxruntime
+  - cuda    → onnxruntime-gpu
+  - dml     → onnxruntime-directml  (Windows AMD/Intel/NVIDIA without CUDA stack)
+  - coreml  → onnxruntime  (macOS Metal GPU + Apple Neural Engine)
+  - cpu     → onnxruntime
 
 Persists choice to ``~/.context-engine/accel.json``.
 """
@@ -40,8 +41,8 @@ BATCH_CALIBRATE_N = int(os.environ.get("CTX_BATCH_CALIBRATE_N", "64"))
 
 @dataclass
 class AccelProfile:
-    profile: str  # cuda | dml | cpu
-    provider: str  # CUDAExecutionProvider | DmlExecutionProvider | CPUExecutionProvider
+    profile: str  # cuda | dml | coreml | cpu
+    provider: str  # CUDAExecutionProvider | DmlExecutionProvider | CoreMLExecutionProvider | CPUExecutionProvider
     device_id: int = 0
     batch_size: int = 16
     backend: str = "fastembed"
@@ -56,11 +57,29 @@ class AccelProfile:
     envelope: dict[str, Any] = field(default_factory=dict)
     hardware_fingerprint: str = ""
 
+    def _coreml_options(self) -> dict[str, str]:
+        units = "ALL"
+        detected = self.detected if isinstance(self.detected, dict) else {}
+        raw = detected.get("coreml_compute_units")
+        if raw:
+            units = str(raw)
+        elif str(detected.get("machine") or "").lower() not in {"arm64", "aarch64"}:
+            if detected.get("os") == "Darwin" and detected.get("machine"):
+                units = "CPUAndGPU"
+        return {
+            "ModelFormat": "MLProgram",
+            "MLComputeUnits": units,
+            "RequireStaticInputShapes": "0",
+            "EnableOnSubgraphs": "0",
+        }
+
     def providers(self) -> list:
         if self.profile == "cuda":
             return [("CUDAExecutionProvider", {"device_id": self.device_id}), "CPUExecutionProvider"]
         if self.profile == "dml":
             return [("DmlExecutionProvider", {"device_id": self.device_id}), "CPUExecutionProvider"]
+        if self.profile == "coreml":
+            return [("CoreMLExecutionProvider", self._coreml_options()), "CPUExecutionProvider"]
         return ["CPUExecutionProvider"]
 
 
@@ -155,14 +174,21 @@ def detect_hardware() -> dict[str, Any]:
         scored.sort(reverse=True)
         if scored and scored[0][0] >= 0:
             dml_id = scored[0][1]
+    machine = platform.machine()
+    apple_silicon = platform.system() == "Darwin" and machine.lower() in {"arm64", "aarch64"}
+    if apple_silicon and not gpus:
+        gpus = [{"name": "Apple Silicon GPU", "adapter_ram": 0, "backend": "metal"}]
+    coreml_units = "ALL" if apple_silicon else "CPUAndGPU"
     return {
         "os": platform.system(),
-        "machine": platform.machine(),
+        "machine": machine,
         "python": sys.version.split()[0],
         "nvidia": nvidia,
         "gpus": gpus,
         "cpu_count": os.cpu_count() or 4,
         "suggested_dml_device_id": dml_id,
+        "apple_silicon": apple_silicon,
+        "coreml_compute_units": coreml_units if platform.system() == "Darwin" else None,
     }
 
 
@@ -186,6 +212,27 @@ def recommend_profile(detected: dict[str, Any] | None = None) -> AccelProfile:
             batch_size=BATCH_PREFER,
             reason="Windows GPU via DirectML — use onnxruntime-directml + FastEmbed",
             detected=d,
+        )
+    if d.get("os") == "Darwin":
+        machine = str(d.get("machine") or "").lower()
+        apple_silicon = bool(d.get("apple_silicon")) or machine in {"arm64", "aarch64"}
+        units = str(d.get("coreml_compute_units") or ("ALL" if apple_silicon or not machine else "CPUAndGPU"))
+        detected = {
+            **d,
+            "apple_silicon": apple_silicon,
+            "coreml_compute_units": units,
+        }
+        why = "macOS CoreML (Metal GPU"
+        if apple_silicon or units == "ALL":
+            why += " + Neural Engine"
+        why += ") — onnxruntime CoreML EP + FastEmbed"
+        return AccelProfile(
+            profile="coreml",
+            provider="CoreMLExecutionProvider",
+            device_id=0,
+            batch_size=BATCH_PREFER,
+            reason=why,
+            detected=detected,
         )
     return AccelProfile(
         profile="cpu",
@@ -212,35 +259,101 @@ def conflicting_ort_packages(profile: str) -> list[str]:
         "cuda": "onnxruntime-gpu",
         "dml": "onnxruntime-directml",
         "cpu": "onnxruntime",
+        "coreml": "onnxruntime",
     }[profile]
     return sorted(all_ort - {keep})
 
 
-def pip_install(pkgs: list[str], *, upgrade: bool = True) -> None:
-    cmd = [sys.executable, "-m", "pip", "install"]
+def pip_install(
+    pkgs: list[str],
+    *,
+    upgrade: bool = True,
+    progress: Any | None = None,
+    start_pct: int = 0,
+    end_pct: int = 0,
+    phase: str = "Installing packages",
+) -> None:
+    cmd = [
+        sys.executable,
+        "-m",
+        "pip",
+        "install",
+        "--progress-bar",
+        "off",
+        "--disable-pip-version-check",
+    ]
     if upgrade:
         cmd.append("-U")
     cmd.extend(pkgs)
-    print(f"[accel] {' '.join(cmd)}", file=sys.stderr, flush=True)
-    subprocess.check_call(cmd)
+    env = os.environ.copy()
+    env["PIP_PROGRESS_BAR"] = "off"
+    env["PIP_DISABLE_PIP_VERSION_CHECK"] = "1"
+    if progress is not None:
+        progress.set(start_pct, phase)
+    else:
+        print(f"[accel] {' '.join(cmd)}", file=sys.stderr, flush=True)
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        env=env,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    while proc.poll() is None:
+        if progress is not None:
+            progress.pulse(phase, until=max(start_pct, end_pct - 1) if end_pct else start_pct)
+        time.sleep(0.15)
+    out, _ = proc.communicate()
+    if proc.returncode:
+        detail = (out or "").strip() or f"pip exited {proc.returncode}"
+        last = detail.splitlines()[-1] if detail else "pip failed"
+        if progress is not None:
+            progress.fail(f"{phase}: {last}")
+        else:
+            print(detail, file=sys.stderr)
+        raise subprocess.CalledProcessError(proc.returncode, cmd, output=out)
+    if progress is not None and end_pct:
+        progress.set(end_pct, phase)
 
 
-def pip_uninstall(pkgs: list[str]) -> None:
+def pip_uninstall(pkgs: list[str], *, progress: Any | None = None) -> None:
     cmd = [sys.executable, "-m", "pip", "uninstall", "-y", *pkgs]
-    print(f"[accel] {' '.join(cmd)}", file=sys.stderr, flush=True)
-    subprocess.run(cmd, check=False)
+    if progress is None:
+        print(f"[accel] {' '.join(cmd)}", file=sys.stderr, flush=True)
+    subprocess.run(
+        cmd,
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
 
 
-def install_profile_packages(profile: str) -> None:
+def install_profile_packages(profile: str, progress: Any | None = None) -> None:
     """Install FastEmbed + matching ORT wheel for profile.
 
     FastEmbed depends on ``onnxruntime`` (CPU). For cuda/dml we install FastEmbed
     first, then *replace* the ORT wheel with the accelerator build.
     """
-    pip_install(["fastembed>=0.4", "huggingface_hub>=0.20"])
-    # Drop whatever ORT FastEmbed pulled; install the profile-specific wheel.
-    pip_uninstall(["onnxruntime", "onnxruntime-gpu", "onnxruntime-directml"])
-    pip_install(ort_packages_for(profile))
+    pip_install(
+        ["fastembed>=0.4", "huggingface_hub>=0.20"],
+        progress=progress,
+        start_pct=18,
+        end_pct=32,
+        phase="Installing embedding runtime",
+    )
+    pip_uninstall(
+        ["onnxruntime", "onnxruntime-gpu", "onnxruntime-directml"],
+        progress=progress,
+    )
+    pip_install(
+        ort_packages_for(profile),
+        progress=progress,
+        start_pct=32,
+        end_pct=55,
+        phase="Installing GPU/CPU engine",
+    )
 
 
 def ort_available_providers() -> list[str]:
@@ -276,45 +389,85 @@ def configure(
     download_model: bool = True,
     bench: bool = True,
     force_install: bool = False,
+    progress: Any | None = None,
 ) -> AccelProfile:
     detected = detect_hardware()
     hardware_snapshot: dict[str, Any] = detected
+    if progress is not None:
+        progress.set(12, "Detecting hardware")
     try:
         from pipeline.hardware import ensure_hardware_snapshot
 
         hardware_snapshot = ensure_hardware_snapshot(force=True)
     except Exception as exc:  # noqa: BLE001
-        print(f"[accel] hardware snapshot skipped: {exc}", file=sys.stderr, flush=True)
+        if progress is None:
+            print(f"[accel] hardware snapshot skipped: {exc}", file=sys.stderr, flush=True)
     profile = recommend_profile(detected)
     if force_profile:
         fp = force_profile.lower().strip()
-        if fp not in {"cuda", "dml", "cpu"}:
+        if fp not in {"cuda", "dml", "cpu", "coreml"}:
             raise ValueError(f"unknown profile {force_profile}")
         profile.profile = fp
         profile.provider = {
             "cuda": "CUDAExecutionProvider",
             "dml": "DmlExecutionProvider",
             "cpu": "CPUExecutionProvider",
+            "coreml": "CoreMLExecutionProvider",
         }[fp]
         profile.reason = f"forced profile={fp}"
         profile.detected = detected
         if fp == "dml":
             profile.device_id = int(detected.get("suggested_dml_device_id") or 0)
+        if fp == "coreml":
+            machine = str(detected.get("machine") or platform.machine()).lower()
+            apple = machine in {"arm64", "aarch64"}
+            detected = {
+                **detected,
+                "apple_silicon": apple,
+                "coreml_compute_units": "ALL" if apple else "CPUAndGPU",
+            }
+            profile.detected = detected
         profile.batch_size = BATCH_PREFER
 
-    print(f"[accel] profile={profile.profile} reason={profile.reason}", file=sys.stderr, flush=True)
+    if progress is not None:
+        progress.set(16, f"Using {profile.profile} profile")
+    else:
+        print(f"[accel] profile={profile.profile} reason={profile.reason}", file=sys.stderr, flush=True)
     if install_pkgs:
         if not force_install and profile_packages_satisfied(profile):
-            print(
-                f"[accel] packages already satisfy profile={profile.profile} — skip ORT reinstall",
-                file=sys.stderr,
-                flush=True,
-            )
+            if progress is not None:
+                progress.set(55, "Runtime already installed")
+            else:
+                print(
+                    f"[accel] packages already satisfy profile={profile.profile} — skip ORT reinstall",
+                    file=sys.stderr,
+                    flush=True,
+                )
         else:
-            install_profile_packages(profile.profile)
+            install_profile_packages(profile.profile, progress=progress)
+            if profile.profile == "coreml":
+                available = ort_available_providers()
+                if available and "CoreMLExecutionProvider" not in available:
+                    if progress is None:
+                        print(
+                            "[accel] CoreML EP not in this onnxruntime wheel — CPU fallback",
+                            file=sys.stderr,
+                            flush=True,
+                        )
+                    else:
+                        progress.set(55, "CoreML unavailable — using CPU")
+                    profile.profile = "cpu"
+                    profile.provider = "CPUExecutionProvider"
+                    profile.reason = (
+                        "macOS GPU requested but CoreMLExecutionProvider is missing"
+                    )
     if download_model:
-        ensure_coderank_model(profile)
+        if progress is not None:
+            progress.set(56, "Downloading embedding model")
+        ensure_coderank_model(profile, progress=progress)
     if bench:
+        if progress is not None:
+            progress.set(86, "Calibrating speed")
         try:
             calibration = calibrate_batch(profile)
             profile.batch_size = int(calibration["winner"])
@@ -323,15 +476,16 @@ def configure(
                 profile.texts_per_sec is not None and profile.texts_per_sec >= TARGET_TPS
             )
             profile.batch_calibration = calibration
-            print(
-                f"[accel] batch={profile.batch_size} "
-                f"{profile.texts_per_sec or 0:.2f} t/s "
-                f"(target {TARGET_TPS}+) meet={profile.meets_target} "
-                f"reason={calibration.get('reason')}",
-                file=sys.stderr,
-                flush=True,
-            )
-            if not profile.meets_target:
+            if progress is None:
+                print(
+                    f"[accel] batch={profile.batch_size} "
+                    f"{profile.texts_per_sec or 0:.2f} t/s "
+                    f"(target {TARGET_TPS}+) meet={profile.meets_target} "
+                    f"reason={calibration.get('reason')}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+            if not profile.meets_target and progress is None:
                 print(
                     "[accel] WARNING: below 10 t/s target — indexing will still work; "
                     "consider a stronger GPU or shorter embed recipe.",
@@ -339,7 +493,8 @@ def configure(
                     flush=True,
                 )
         except Exception as exc:  # noqa: BLE001
-            print(f"[accel] batch calibration failed: {exc}", file=sys.stderr, flush=True)
+            if progress is None:
+                print(f"[accel] batch calibration failed: {exc}", file=sys.stderr, flush=True)
             profile.texts_per_sec = None
             profile.meets_target = None
             profile.batch_calibration = {"ok": False, "error": str(exc)}
@@ -389,8 +544,12 @@ def configure(
         }
         save_hardware(hardware_snapshot)
     except Exception as exc:  # noqa: BLE001
-        print(f"[accel] hardware snapshot update skipped: {exc}", file=sys.stderr, flush=True)
-    print(f"[accel] wrote {ACCEL_PATH}", file=sys.stderr, flush=True)
+        if progress is None:
+            print(f"[accel] hardware snapshot update skipped: {exc}", file=sys.stderr, flush=True)
+    if progress is not None:
+        progress.set(92, "Saving machine profile")
+    else:
+        print(f"[accel] wrote {ACCEL_PATH}", file=sys.stderr, flush=True)
     return profile
 
 
@@ -415,21 +574,55 @@ def register_coderank() -> None:
             raise
 
 
-def ensure_coderank_model(profile: AccelProfile | None = None) -> None:
+def ensure_coderank_model(
+    profile: AccelProfile | None = None,
+    progress: Any | None = None,
+) -> None:
     """Download/warm CodeRank ONNX via FastEmbed."""
+    import threading
+
     register_coderank()
     from fastembed import TextEmbedding
 
     prof = profile or load_accel() or recommend_profile()
-    print(f"[accel] ensuring CodeRank model ({CODERANK_HF_ONNX}) ...", file=sys.stderr, flush=True)
-    m = TextEmbedding(
-        model_name=CODERANK_MODEL,
-        threads=1,
-        providers=prof.providers(),
-        lazy_load=True,
-    )
-    list(m.embed(["warmup coderank"], batch_size=1, parallel=None))
-    print("[accel] CodeRank model ready", file=sys.stderr, flush=True)
+    previous = {
+        name: os.environ.get(name)
+        for name in ("HF_HUB_DISABLE_PROGRESS_BARS", "TQDM_DISABLE")
+    }
+    os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+    os.environ["TQDM_DISABLE"] = "1"
+    if progress is None:
+        print(f"[accel] ensuring CodeRank model ({CODERANK_HF_ONNX}) ...", file=sys.stderr, flush=True)
+    stop = threading.Event()
+
+    def _pulse() -> None:
+        while not stop.wait(0.2):
+            if progress is not None:
+                progress.pulse("Downloading embedding model", until=84)
+
+    worker: threading.Thread | None = None
+    if progress is not None:
+        worker = threading.Thread(target=_pulse, daemon=True)
+        worker.start()
+    try:
+        m = TextEmbedding(
+            model_name=CODERANK_MODEL,
+            threads=1,
+            providers=prof.providers(),
+            lazy_load=True,
+        )
+        list(m.embed(["warmup coderank"], batch_size=1, parallel=None))
+    finally:
+        stop.set()
+        for name, value in previous.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+    if progress is not None:
+        progress.set(85, "Embedding model ready")
+    else:
+        print("[accel] CodeRank model ready", file=sys.stderr, flush=True)
 
 
 def _calibration_corpus(n: int) -> list[str]:
@@ -586,5 +779,5 @@ def resolve_runtime() -> AccelProfile:
     """Load the installed preference without detection or selection."""
     profile = load_accel()
     if profile is None:
-        raise RuntimeError("acceleration profile is not configured; run `ctx init`")
+        raise RuntimeError("acceleration profile is not configured; run `ctx setup`")
     return profile

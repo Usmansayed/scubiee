@@ -168,6 +168,12 @@ def watchdog_loop(*, stop_after: float | None = None) -> None:
     interval = max(0.5, interval)
     _home().mkdir(parents=True, exist_ok=True)
     watchdog_pid_path().write_text(str(os.getpid()), encoding="utf-8")
+    try:
+        from pipeline.process_job import attach_supervisor_job
+
+        attach_supervisor_job()
+    except Exception as exc:  # noqa: BLE001
+        _log(f"job attach note: {exc}")
     _log(f"started pid={os.getpid()} interval={interval}s")
 
     fails = 0
@@ -203,9 +209,32 @@ def watchdog_loop(*, stop_after: float | None = None) -> None:
                     )
                     _log(f"sleep/wake reconcile failed: {exc}")
             last_tick = monotonic_now
+            from pipeline.lifecycle_runtime import (
+                engine_should_be_running,
+                enter_standby,
+                should_idle_stop,
+            )
+
+            if should_idle_stop():
+                from pipeline.daemon import is_running
+
+                if is_running():
+                    _log("idle timeout — entering standby, engine stop")
+                    enter_standby(stop_engine=True)
+                else:
+                    enter_standby(stop_engine=False)
+                fails = 0
+                time.sleep(interval)
+                continue
+
             if _health_ok():
                 fails = 0
                 backoff_i = 0
+                time.sleep(interval)
+                continue
+
+            if not engine_should_be_running():
+                fails = 0
                 time.sleep(interval)
                 continue
 
@@ -278,7 +307,9 @@ def start_watchdog() -> dict[str, Any]:
             getattr(subprocess, "DETACHED_PROCESS", 0)
             | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
         )
-    else:
+    elif sys.platform != "darwin":
+        # Linux fallback may outlive the installing terminal. Darwin must not
+        # orphan: LaunchAgent is the parent, and GUI logout should reap us.
         kwargs["start_new_session"] = True
 
     proc = subprocess.Popen(cmd, **kwargs)  # noqa: S603

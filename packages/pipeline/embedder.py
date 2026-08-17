@@ -106,8 +106,8 @@ def _choose_backend(model: str, backend: str | None) -> str:
 
         raise CapabilityError(
             "Context Engine accel profile requires FastEmbed + ONNX Runtime, but "
-            "fastembed is not installed in this Python. Run: python -m pipeline init "
-            "(or pip install -e \".[dml|cuda|cpu]\"). Refusing silent PyTorch/CPU fallback."
+            "fastembed is not installed in this Python. Run: python -m pipeline setup "
+            "(or pip install -e \".[dml|cuda|coreml|cpu]\"). Refusing silent PyTorch/CPU fallback."
         )
     return chosen
 
@@ -126,8 +126,10 @@ class Embedder:
         max_seq_length: int = 512,
         device: str | None = None,
         cache_flush_every: int = 256,
+        quiet: bool = False,
     ):
         self.model = model
+        self.quiet = quiet
         self.max_seq_length = max_seq_length
         self.dim = dim
         self.cache_path = cache_path
@@ -181,17 +183,18 @@ class Embedder:
         else:
             self.batch_size = default_batch
 
-        print(
-            f"[embed] plan backend={self.backend} device={self.device} "
-            f"batch={self.batch_size} model={self.model}"
-            + (
-                f" accel={self._accel.profile}@{self._accel.texts_per_sec}t/s"
-                if self._accel
-                else ""
-            ),
-            file=sys.stderr,
-            flush=True,
-        )
+        if not self.quiet:
+            print(
+                f"[embed] plan backend={self.backend} device={self.device} "
+                f"batch={self.batch_size} model={self.model}"
+                + (
+                    f" accel={self._accel.profile}@{self._accel.texts_per_sec}t/s"
+                    if self._accel
+                    else ""
+                ),
+                file=sys.stderr,
+                flush=True,
+            )
 
         if cache_path and cache_path.exists():
             self._load_cache()
@@ -508,7 +511,11 @@ class Embedder:
             rate = len(batch) / max(batch_ms / 1000.0, 1e-6)
             if progress:
                 progress(min(start + bs, len(pending_text)), len(texts))
-            if start == 0 or (start // max(bs, 1)) % 5 == 0 or start + bs >= len(pending_text):
+            if not progress and (
+                start == 0
+                or (start // max(bs, 1)) % 5 == 0
+                or start + bs >= len(pending_text)
+            ):
                 print(
                     f"[embed] {done_new}/{len(pending_text)} new "
                     f"(+{len(encoded)-done_new} cached) "
@@ -543,12 +550,13 @@ class Embedder:
             "batch_size": bs,
             "backend": self.backend,
         }
-        print(
-            f"[embed] done: {self._last_stats['embedded']} new / {self._last_stats['cached']} cached "
-            f"in {elapsed:.1f}s ({self._last_stats['chunk_per_s']:.1f} chunk/s) on {self.device}",
-            file=sys.stderr,
-            flush=True,
-        )
+        if not progress:
+            print(
+                f"[embed] done: {self._last_stats['embedded']} new / {self._last_stats['cached']} cached "
+                f"in {elapsed:.1f}s ({self._last_stats['chunk_per_s']:.1f} chunk/s) on {self.device}",
+                file=sys.stderr,
+                flush=True,
+            )
         return matrix
 
     def _ollama_embed(self, text: str) -> list[float]:

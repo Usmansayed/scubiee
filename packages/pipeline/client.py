@@ -108,7 +108,10 @@ class EngineClient:
         return self.post("/v1/status", {"path": path or self.workspace_path})
 
     def open_repo(self, path: str, *, wait: bool = False) -> dict[str, Any]:
-        return self.post("/v1/open", {"path": path, "wait": wait})
+        return self.post(
+            "/v1/open",
+            {"path": path, "wait": wait, "explicit": True},
+        )
 
     def lifecycle(self, action: str, path: str = "", **options: Any) -> dict[str, Any]:
         return self.post(

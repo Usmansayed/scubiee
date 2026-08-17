@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import shutil
-import subprocess
 import time
 from pathlib import Path
 from typing import Any
@@ -11,6 +10,7 @@ from typing import Any
 from pipeline.project_id import (
     RegistryConflictError,
     find_id_by_path,
+    git_common_dir,
     index_is_usable,
     load_registry,
     mutate_registry,
@@ -121,35 +121,6 @@ def _observed_presence(
     return entry, presence
 
 
-def git_common_dir(root: Path) -> Path | None:
-    """Return the shared Git administration directory for a checkout."""
-    root = _root(root)
-    try:
-        completed = subprocess.run(
-            [
-                "git",
-                "-C",
-                str(root),
-                "rev-parse",
-                "--path-format=absolute",
-                "--git-common-dir",
-            ],
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return None
-    value = completed.stdout.strip()
-    if not value:
-        return None
-    path = Path(value)
-    if not path.is_absolute():
-        path = root / path
-    return path.resolve()
-
-
 def managed_state(root: Path) -> str:
     """Return active, paused, never_index, or unmanaged."""
     project_id, entry = _project(_root(root))
@@ -188,6 +159,7 @@ def initialize_repo(
     *,
     index: bool = True,
     always_allow: bool = True,
+    progress: Any = None,
 ) -> dict[str, Any]:
     """Admit a repository and reconcile an existing usable index."""
     root = _root(root)
@@ -224,6 +196,18 @@ def initialize_repo(
     if lifecycle_state == ACTIVE:
         lifecycle_values.update(last_activated_at=now, pause_reason=None)
     entry = _update(ref.project_id, **lifecycle_values)
+    from pipeline.git_family import reconcile_git_families
+
+    family = reconcile_git_families(prefer_root=root, prefer_project_id=ref.project_id)
+    if family.canonical_project_ids:
+        ref_pid = read_id_file(root) or ref.project_id
+        if ref_pid != ref.project_id:
+            ref = resolve_project(root, migrate=False)
+        else:
+            ref_pid = ref.project_id
+    else:
+        ref_pid = ref.project_id
+    entry = _entry_by_id(ref_pid) or entry
 
     indexed = False
     reconciled = False
@@ -249,7 +233,7 @@ def initialize_repo(
             else:
                 from pipeline.indexer import index_repo
 
-                stats = index_repo(root, force=False, fast=False)
+                stats = index_repo(root, force=False, fast=False, progress=progress)
                 chunks = int(stats.chunks)
                 indexed = True
         except Exception as exc:  # noqa: BLE001
@@ -274,6 +258,7 @@ def initialize_repo(
         indexed=indexed,
         reconciled=reconciled,
         chunks=chunks,
+        git_family=family.to_dict(),
     )
 
 
@@ -679,6 +664,8 @@ def list_managed_repos() -> list[dict[str, Any]]:
     retention_s = _missing_retention_seconds()
     for project_id, raw in (registry.get("projects") or {}).items():
         if not isinstance(raw, dict) or not raw.get("managed"):
+            continue
+        if raw.get("superseded_by"):
             continue
         project_id = str(project_id)
         entry, presence = _observed_presence(

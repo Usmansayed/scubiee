@@ -160,6 +160,7 @@ class RuntimeManager:
         client: str | None = None,
         session_id: str | None = None,
         metadata: dict[str, Any] | None = None,
+        explicit: bool = False,
     ) -> dict[str, Any]:
         """Admit a path-bearing CE request without creating managed state."""
         from pipeline import repo_lifecycle as lifecycle
@@ -179,7 +180,7 @@ class RuntimeManager:
 
         existing = self.hub.get(str(admission["project_id"]))
         max_repositories, large_repo_files = self._auto_limits()
-        if existing is None:
+        if existing is None and not explicit:
             file_count = self._repo_file_count(repo, stop_after=large_repo_files)
             if large_repo_files and file_count > large_repo_files:
                 self._admission_pauses[str(repo)] = {
@@ -673,7 +674,7 @@ class RuntimeManager:
                 "backup_reason": profile_state.backup_reason,
                 "envelope": envelope,
                 "recommended_command": (
-                    "python -m pipeline init --repair"
+                    "python -m pipeline setup --repair"
                     if profile_state.backup_reason
                     else "python -m pipeline serve"
                 ),

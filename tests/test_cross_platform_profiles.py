@@ -35,8 +35,8 @@ from pipeline.accel import AccelProfile, recommend_profile
             "Darwin",
             False,
             [{"name": "Apple M3", "adapter_ram": 8_000_000_000}],
-            ["CPUExecutionProvider"],
-            "cpu",
+            ["CoreMLExecutionProvider", "CPUExecutionProvider"],
+            "coreml",
         ),
     ],
 )
@@ -75,7 +75,7 @@ def test_simulated_platform_profile_is_provider_validated_and_warmed(
 
 @pytest.mark.parametrize(
     ("os_name", "gpu_name"),
-    [("Linux", "AMD Radeon 7900"), ("Darwin", "Apple M3 Max")],
+    [("Linux", "AMD Radeon 7900")],
 )
 def test_os_or_unsupported_gpu_name_alone_never_claims_gpu_support(
     os_name: str,
@@ -91,6 +91,37 @@ def test_os_or_unsupported_gpu_name_alone_never_claims_gpu_support(
 
     assert profile.profile == "cpu"
     assert profile.provider == "CPUExecutionProvider"
+
+
+def test_darwin_apple_silicon_uses_coreml_metal_and_ane() -> None:
+    profile = recommend_profile(
+        {
+            "os": "Darwin",
+            "machine": "arm64",
+            "nvidia": False,
+            "gpus": [{"name": "Apple M3 Max", "adapter_ram": 16_000_000_000}],
+        }
+    )
+    providers = profile.providers()
+
+    assert profile.profile == "coreml"
+    assert profile.provider == "CoreMLExecutionProvider"
+    assert providers[0][0] == "CoreMLExecutionProvider"
+    assert providers[0][1]["MLComputeUnits"] == "ALL"
+    assert "CPUExecutionProvider" in providers
+
+
+def test_darwin_intel_uses_coreml_gpu() -> None:
+    profile = recommend_profile(
+        {
+            "os": "Darwin",
+            "machine": "x86_64",
+            "nvidia": False,
+            "gpus": [{"name": "Intel Iris", "adapter_ram": 1_500_000_000}],
+        }
+    )
+    assert profile.profile == "coreml"
+    assert profile.providers()[0][1]["MLComputeUnits"] == "CPUAndGPU"
 
 
 def test_provider_presence_without_model_warmup_fails_validation() -> None:
@@ -144,7 +175,7 @@ def test_validation_and_recommendation_do_not_reconfigure(
 
     assert validation.ok is True
     assert recommended_server_command(profile) == "python -m pipeline serve"
-    assert recommended_server_command(None) == "python -m pipeline init"
+    assert recommended_server_command(None) == "python -m pipeline setup"
 
 
 def test_missing_hardware_lane_is_skipped_not_passed() -> None:

@@ -11,22 +11,29 @@ from pipeline.resource_envelope import derive_envelope
 from pipeline.resources import ResourceManager, SystemSample
 
 
-def test_low_memory_envelope_caps_batch_and_workers() -> None:
-    env = derive_envelope(16_000, 2_500, calibrated_batch=16, cpu_count=8)
+def test_low_memory_envelope_only_for_tiny_total_ram() -> None:
+    env = derive_envelope(4_096, 500, calibrated_batch=16, cpu_count=4)
 
     assert env.tier == "low"
-    assert env.batch_ceiling <= 4
+    assert env.batch_ceiling <= 8
     assert env.embed_workers == 1
     assert env.index_workers == 1
     assert env.aggressive_unload is True
     assert env.queue_limit == 1
 
 
-def test_standard_memory_envelope_caps_batch_at_16() -> None:
+def test_windows_cache_looking_full_is_not_a_low_envelope() -> None:
+    env = derive_envelope(16_000, 2_500, calibrated_batch=16, cpu_count=8)
+
+    assert env.tier != "low"
+    assert env.batch_ceiling >= 16
+
+
+def test_standard_memory_envelope_keeps_calibrated_batch() -> None:
     env = derive_envelope(16_000, 6_000, calibrated_batch=20, cpu_count=8)
 
     assert env.tier == "standard"
-    assert env.batch_ceiling == 16
+    assert env.batch_ceiling == 20
     assert env.embed_workers == 1
     assert env.index_workers == 2
     assert env.aggressive_unload is False
@@ -97,9 +104,9 @@ def test_resource_manager_requires_two_samples_each_way_for_hysteresis() -> None
     rm._base_batch = 16
     low = SystemSample(
         cpu_percent=40.0,
-        ram_available_mb=2_500,
-        ram_total_mb=16_000,
-        ram_percent=84.4,
+        ram_available_mb=1_500,
+        ram_total_mb=4_096,
+        ram_percent=63.0,
     )
     standard = SystemSample(
         cpu_percent=40.0,
@@ -119,8 +126,8 @@ def test_resource_manager_requires_two_samples_each_way_for_hysteresis() -> None
         second_healthy = rm.budget("embed")
 
     assert first_low.batch_size == 16
-    assert second_low.batch_size == 4
-    assert first_healthy.batch_size == 4
+    assert second_low.batch_size == 8
+    assert first_healthy.batch_size == 8
     assert second_healthy.batch_size == 16
 
 
@@ -129,9 +136,9 @@ def test_cached_sample_does_not_count_twice_for_demotion() -> None:
     rm._base_batch = 16
     low = SystemSample(
         cpu_percent=40.0,
-        ram_available_mb=2_500,
-        ram_total_mb=16_000,
-        ram_percent=84.4,
+        ram_available_mb=1_500,
+        ram_total_mb=4_096,
+        ram_percent=63.0,
     )
 
     with patch.object(rm, "sample", side_effect=[low, low, replace(low)]):
@@ -141,7 +148,7 @@ def test_cached_sample_does_not_count_twice_for_demotion() -> None:
 
     assert first.batch_size == 16
     assert repeated.batch_size == 16
-    assert fresh.batch_size == 4
+    assert fresh.batch_size == 8
 
 
 def test_cached_sample_does_not_count_twice_for_promotion() -> None:
@@ -149,9 +156,9 @@ def test_cached_sample_does_not_count_twice_for_promotion() -> None:
     rm._base_batch = 16
     low = SystemSample(
         cpu_percent=40.0,
-        ram_available_mb=2_500,
-        ram_total_mb=16_000,
-        ram_percent=84.4,
+        ram_available_mb=1_500,
+        ram_total_mb=4_096,
+        ram_percent=63.0,
     )
     standard = SystemSample(
         cpu_percent=40.0,
@@ -171,7 +178,7 @@ def test_cached_sample_does_not_count_twice_for_promotion() -> None:
         repeated = rm.budget("embed")
         fresh = rm.budget("embed")
 
-    assert demoted.batch_size == 4
-    assert first_healthy.batch_size == 4
-    assert repeated.batch_size == 4
+    assert demoted.batch_size == 8
+    assert first_healthy.batch_size == 8
+    assert repeated.batch_size == 8
     assert fresh.batch_size == 16

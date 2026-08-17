@@ -121,7 +121,7 @@ def test_missing_installed_profile_cannot_report_valid_cpu(
     assert report["accel"]["ok"] is False
     assert report["accel"]["profile"] is None
     assert "not_configured" in report["accel"]["missing"]
-    assert "ctx init" in report["accel"]["hint"]
+    assert "ctx setup" in report["accel"]["hint"]
 
 
 def test_explicit_installed_cpu_profile_remains_valid(

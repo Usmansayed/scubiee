@@ -4,10 +4,9 @@ Standalone subsystem (not MCP-specific). Every heavy indexing job should
 call ``get_resource_manager().wait_for_capacity(...)`` or use ``throttle``.
 
 Pressure levels:
-  idle     → boost batch size, minimal pause
-  normal   → baseline from AccelProfile
-  busy     → shrink batch, pause between batches
-  critical → wait / skip background work; protect interactive UX
+  idle     → slight batch boost
+  normal   → run at the calibrated batch (default)
+  critical → only when free RAM is near-OOM; everything else keeps working
 """
 
 from __future__ import annotations
@@ -98,8 +97,8 @@ class ResourceManager:
         # thresholds (overridable)
         self.max_cpu_busy = _env_float("CTX_RM_MAX_CPU", 70.0)
         self.max_cpu_critical = _env_float("CTX_RM_CRITICAL_CPU", 90.0)
-        self.min_free_ram_mb = _env_float("CTX_RM_MIN_FREE_RAM_MB", 512.0)
-        self.max_ram_percent = _env_float("CTX_RM_MAX_RAM_PCT", 90.0)
+        self.min_free_ram_mb = _env_float("CTX_RM_MIN_FREE_RAM_MB", 256.0)
+        self.max_ram_percent = _env_float("CTX_RM_MAX_RAM_PCT", 99.5)
         self.poll_s = max(0.05, _env_float("CTX_RM_POLL_MS", 250.0) / 1000.0)
         self._load_prefs()
 
@@ -232,21 +231,17 @@ class ResourceManager:
         if self.is_disabled():
             return "idle"
         sample = sample or self.sample()
-        # Memory critical
-        if sample.ram_available_mb is not None and sample.ram_available_mb < self.min_free_ram_mb:
-            return "critical"
-        if sample.ram_percent is not None and sample.ram_percent >= self.max_ram_percent:
+        # Only a real near-OOM stop. CPU spikes and Windows "RAM % used"
+        # (file cache) must not freeze indexing.
+        if (
+            sample.ram_available_mb is not None
+            and sample.ram_available_mb < self.min_free_ram_mb
+        ):
             return "critical"
         cpu = sample.cpu_percent
         if cpu is None:
             return "normal"
-        if cpu >= self.max_cpu_critical:
-            return "critical"
-        if cpu >= self.max_cpu_busy:
-            return "busy"
-        if cpu < 25.0 and (
-            sample.ram_available_mb is None or sample.ram_available_mb > self.min_free_ram_mb * 2
-        ):
+        if cpu < 25.0:
             return "idle"
         return "normal"
 
@@ -259,14 +254,16 @@ class ResourceManager:
             base = self._base_batch
             workers = self._base_workers
 
-        # Job weight: graph/index slightly more cautious than embed.
-        # Embed must honor the hardware accel batch floor on idle/normal — shrinking
-        # to 1 on a healthy machine is what turned a 2-minute DML index into 13 minutes.
         heavy = job in {"index", "graph"}
 
-        if pressure == "idle":
+        if pressure == "critical":
+            batch = 1
+            pause = 0.5
+            allow = False
+            workers = 1
+            reason = "almost no free RAM — pause to avoid OOM"
+        elif pressure == "idle":
             if job == "embed":
-                # Honor accel floor; allow a small boost but never invent huge ST-style batches.
                 boost_cap = 32 if base <= 16 else 64
                 batch = max(base, min(base * 2, boost_cap))
             else:
@@ -275,28 +272,11 @@ class ResourceManager:
             allow = True
             workers = min(workers + 1, 4)
             reason = "system idle — boost throughput"
-        elif pressure == "normal":
+        else:
             batch = base
-            pause = 0.0 if job == "embed" else 0.05
+            pause = 0.0
             allow = True
-            reason = "normal load — baseline budget"
-        elif pressure == "busy":
-            batch = max(base // 2, 4 if job == "embed" else 1)
-            pause = 0.35 if heavy else 0.2
-            allow = True
-            workers = 1
-            reason = "user load — throttle indexing"
-        else:  # critical
-            batch = 1
-            pause = 1.5
-            # Interactive-ish jobs still may proceed slowly; background sync pauses
-            allow = job in {"embed"} and sample.ram_available_mb is not None and (
-                sample.ram_available_mb >= self.min_free_ram_mb * 0.5
-            )
-            if job in {"sync", "index", "graph"}:
-                allow = False
-            workers = 1
-            reason = "resource pressure — pause / minimal work"
+            reason = "run at calibrated budget"
 
         worker_ceiling = envelope.embed_workers if job == "embed" else envelope.index_workers
         return AdaptiveBudget(

@@ -2,11 +2,14 @@
 
 Resolve order:
   1. ``<repo>/.context-engine/id.json`` → project_id
-  2. Registry lookup by absolute path
-  3. Mint new id, write both
+  2. Registry lookup by absolute path (requires live id.json trust)
+  3. Recover from a usable store whose ``meta.json`` root matches this path
+  4. Reuse an existing git-family project (shared ``git_common_dir``)
+  5. Mint new id, write both
 
 Path moves: id file wins; registry paths updated.
-Id deleted but path known: recover from registry and rewrite id file.
+Id deleted but store proves ownership: recover durable id (reinstall-safe).
+Git worktrees share one project_id / index store (deduped by ``git_common_dir``).
 Both gone: mint (caller reindexes into empty store).
 """
 
@@ -17,6 +20,7 @@ import json
 import os
 import secrets
 import shutil
+import subprocess
 import threading
 import time
 from contextlib import contextmanager
@@ -220,6 +224,135 @@ def _registry_path_identity_trusted(project_id: str, path: Path) -> bool:
     return read_id_file(path) == project_id
 
 
+def git_common_dir(root: Path) -> Path | None:
+    """Return the shared Git administration directory for a checkout."""
+    root = root.resolve()
+    try:
+        completed = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(root),
+                "rev-parse",
+                "--path-format=absolute",
+                "--git-common-dir",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    value = completed.stdout.strip()
+    if not value:
+        return None
+    path = Path(value)
+    if not path.is_absolute():
+        path = root / path
+    return path.resolve()
+
+
+def find_recoverable_by_store(
+    root: Path, registry: dict[str, Any] | None = None
+) -> str | None:
+    """Recover durable id when id.json is gone but the index store proves this path."""
+    abs_root = _norm_path(root)
+    reg = registry if registry is not None else load_registry()
+    for pid, meta in (reg.get("projects") or {}).items():
+        if not isinstance(meta, dict):
+            continue
+        store = (projects_root() / str(pid)).resolve()
+        if not index_is_usable(store):
+            continue
+        store_meta = _read_json(store / "meta.json")
+        store_root = store_meta.get("root")
+        if not isinstance(store_root, str) or not store_root.strip():
+            continue
+        try:
+            if _norm_path(store_root) != abs_root:
+                continue
+        except OSError:
+            continue
+        return str(pid)
+    return None
+
+
+def find_id_by_git_common_dir(
+    common_dir: Path | str, registry: dict[str, Any] | None = None
+) -> str | None:
+    """Return the best existing project_id for a git worktree family."""
+    common = _norm_path(common_dir)
+    reg = registry if registry is not None else load_registry()
+    best: tuple[tuple[int, float], str] | None = None
+    for pid, meta in (reg.get("projects") or {}).items():
+        if not isinstance(meta, dict):
+            continue
+        raw = meta.get("git_common_dir")
+        if not raw:
+            continue
+        try:
+            if _norm_path(raw) != common:
+                continue
+        except OSError:
+            continue
+        store = (projects_root() / str(pid)).resolve()
+        score = 0
+        if meta.get("managed"):
+            score += 4
+        if index_is_usable(store):
+            score += 2
+        if meta.get("registered"):
+            score += 1
+        last = float(meta.get("last_access_at") or meta.get("updated_at") or 0.0)
+        key = (score, last)
+        if best is None or key > best[0]:
+            best = (key, str(pid))
+    return best[1] if best else None
+
+
+def detect_git_family_duplicates() -> dict[str, Any]:
+    """Return duplicate git-family groups that still need reconciliation."""
+    registry = load_registry()
+    projects = registry.get("projects")
+    if not isinstance(projects, dict):
+        return {"needs_reconcile": False, "groups": []}
+
+    groups: dict[str, list[str]] = {}
+    for project_id, raw in projects.items():
+        if not isinstance(raw, dict) or raw.get("superseded_by"):
+            continue
+        common = raw.get("git_common_dir")
+        if not common:
+            paths = raw.get("paths")
+            if isinstance(paths, list):
+                for item in paths:
+                    try:
+                        common = git_common_dir(Path(str(item)))
+                    except OSError:
+                        common = None
+                    if common is not None:
+                        break
+        if not common:
+            continue
+        try:
+            key = _norm_path(common)
+        except OSError:
+            continue
+        groups.setdefault(key, []).append(str(project_id))
+
+    duplicate_groups = [
+        {"git_common_dir": key, "project_ids": ids}
+        for key, ids in groups.items()
+        if len(ids) > 1
+    ]
+    return {
+        "needs_reconcile": bool(duplicate_groups),
+        "groups": duplicate_groups,
+        "duplicate_count": sum(len(item["project_ids"]) - 1 for item in duplicate_groups),
+    }
+
+
 def find_id_by_path(abs_path: str, registry: dict[str, Any] | None = None) -> str | None:
     reg = registry if registry is not None else load_registry()
     target = _norm_path(abs_path)
@@ -321,17 +454,46 @@ def resolve_project(root: Path, *, migrate: bool = True) -> ProjectRef:
     root = root.resolve()
     abs_root = _norm_path(root)
     migrated = False
+    common = git_common_dir(root)
 
     pid = read_id_file(root)
     if not pid:
         pid = find_id_by_path(abs_root)
         if pid:
             write_id_file(root, pid)
-        else:
-            pid = mint_project_id(root)
+
+    if not pid:
+        pid = find_recoverable_by_store(root)
+        if pid:
             write_id_file(root, pid)
 
+    if not pid and common:
+        pid = find_id_by_git_common_dir(common)
+        if pid:
+            write_id_file(root, pid)
+
+    if pid and common:
+        canonical = find_id_by_git_common_dir(common)
+        if canonical and canonical != pid:
+            entry = (load_registry().get("projects") or {}).get(pid)
+            if isinstance(entry, dict) and entry.get("git_common_dir"):
+                try:
+                    if _norm_path(entry["git_common_dir"]) == _norm_path(common):
+                        pid = canonical
+                        write_id_file(root, pid)
+                except OSError:
+                    pass
+
+    if not pid:
+        pid = mint_project_id(root)
+        write_id_file(root, pid)
+
     update_registry(pid, root)
+    from pipeline.git_family import reconcile_git_families
+
+    reconcile_git_families(prefer_root=root, prefer_project_id=pid)
+    pid = read_id_file(root) or pid
+
     store_dir = (projects_root() / pid).resolve()
     store_dir.mkdir(parents=True, exist_ok=True)
 

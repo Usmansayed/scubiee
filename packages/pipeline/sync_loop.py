@@ -1,5 +1,7 @@
 """Keeper sync loop — Cursor/Claude Context session lifecycle.
 
+CE_LIVE_PROBE_20260818_mcp_verify
+
 While MCP / ``ctx serve`` is open: periodic root-hash probe → incremental sync
 only when dirty. On cwd switch or process exit: one final check, then stop.
 """

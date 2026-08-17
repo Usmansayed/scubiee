@@ -14,6 +14,22 @@ def test_quick_plan_contains_only_local_deterministic_checks(tmp_path) -> None:
     assert plan.requires_external_client is False
     assert "tests/test_source_integrity.py" in plan.pytest_targets
     assert "tests/test_preflight.py" in plan.pytest_targets
+    assert "tests/test_lifecycle_runtime.py" in plan.pytest_targets
+    assert "tests/test_package_install_entry.py" in plan.pytest_targets
+    assert "tests/test_progress_ui.py" in plan.pytest_targets
+
+
+def test_core_plan_includes_dashboard_operator_suite(tmp_path) -> None:
+    from pipeline.test_runner import build_test_plan
+
+    plan = build_test_plan("core", root=tmp_path)
+    for target in (
+        "tests/test_dashboard_api.py",
+        "tests/test_dashboard_ui_contract.py",
+        "tests/test_dashboard_port.py",
+        "tests/test_repo_lifecycle_dashboard_actions.py",
+    ):
+        assert target in plan.pytest_targets
 
 
 def test_fault_and_client_tiers_are_opt_in(tmp_path) -> None:

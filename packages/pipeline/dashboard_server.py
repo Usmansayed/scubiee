@@ -65,6 +65,27 @@ def _is_loopback(host: str) -> bool:
     return host in {"127.0.0.1", "::1", "localhost"}
 
 
+def _loopback_hostname(hostname: str | None) -> bool:
+    return (hostname or "").lower() in {"127.0.0.1", "localhost", "::1"}
+
+
+def _origin_matches(origin: str | None, server_origin: str | None) -> bool:
+    """Allow missing Origin (CLI) and localhost aliases of the same loopback port."""
+    if not origin:
+        return True
+    if not server_origin:
+        return False
+    if origin == server_origin:
+        return True
+    left, right = urlparse(origin), urlparse(server_origin)
+    return (
+        left.scheme == right.scheme
+        and left.port == right.port
+        and _loopback_hostname(left.hostname)
+        and _loopback_hostname(right.hostname)
+    )
+
+
 def _repo_path(project_id: str, repositories: list[dict[str, Any]]) -> Path:
     for repo in repositories:
         if str(repo.get("project_id")) != project_id:
@@ -119,7 +140,7 @@ class DashboardAPI:
         data = data or {}
         if method != "GET" and not _is_loopback(client_host):
             return 403, {"ok": False, "error": "loopback client required"}
-        if method != "GET" and origin and origin != server_origin:
+        if method != "GET" and not _origin_matches(origin, server_origin):
             return 403, {
                 "ok": False,
                 "code": "cross_origin_forbidden",
@@ -205,6 +226,20 @@ class DashboardAPI:
                 "dashboard_pid": os.getpid(),
                 "doctor": doctor_report(),
             }
+        if suffix == "doctor":
+            from pipeline.doctor import doctor_all, plan_repairs
+
+            fleet = doctor_all()
+            repairs = list(fleet.get("repair_plan") or [])
+            if not repairs:
+                repairs = list(plan_repairs())
+            return 200, {
+                "ok": True,
+                "dashboard_identity": DASHBOARD_IDENTITY,
+                "dashboard_pid": os.getpid(),
+                "repositories": fleet.get("repositories") or [],
+                "repairs": repairs,
+            }
         if suffix == "storage":
             from pipeline.storage_policy import collect_unused_repos, repo_storage_status
 
@@ -283,6 +318,18 @@ class DashboardAPI:
                 prefs["auto_admission"] = admission
             save_prefs(prefs)
             return 200, {"ok": True, "settings": load_prefs()}
+
+        if suffix == "repair":
+            from pipeline.doctor import apply_safe_repairs, apply_safe_repairs_all
+
+            path = data.get("path")
+            project_id = data.get("project_id")
+            if path:
+                return 200, apply_safe_repairs(Path(str(path)))
+            if project_id:
+                repositories = lifecycle.list_managed_repos()
+                return 200, apply_safe_repairs(_repo_path(str(project_id), repositories))
+            return 200, apply_safe_repairs_all()
 
         if suffix == "shutdown":
             return 200, {"ok": True, "stopping": True, "pid": os.getpid()}

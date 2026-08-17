@@ -206,4 +206,4 @@ def test_status_and_doctor_report_preferred_active_backup(monkeypatch, tmp_path)
         assert payload["active_profile"] == "cpu"
         assert payload["backup_reason"] == "DML failed"
         assert payload["envelope"] == envelope
-        assert payload["recommended_command"] == "python -m pipeline init --repair"
+        assert payload["recommended_command"] == "python -m pipeline setup --repair"

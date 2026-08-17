@@ -50,15 +50,10 @@ def _warm_saved_model(profile: AccelProfile) -> bool:
     from pipeline.accel import register_coderank
 
     register_coderank()
-    provider: str | tuple[str, dict[str, int]]
-    if profile.profile in {"cuda", "dml"}:
-        provider = (profile.provider, {"device_id": int(profile.device_id)})
-    else:
-        provider = profile.provider
     model = TextEmbedding(
         model_name=profile.model,
         threads=1,
-        providers=[provider],
+        providers=profile.providers(),
         lazy_load=True,
         local_files_only=True,
     )
@@ -83,7 +78,7 @@ def validate_provider(
             (),
             False,
             False,
-            "no saved profile; run `python -m pipeline init`",
+            "no saved profile; run `python -m pipeline setup`",
         )
     missing = [
         module for module in ("fastembed", "onnxruntime") if finder(module) is None
@@ -145,7 +140,7 @@ def validate_provider(
 def recommended_server_command(profile: AccelProfile | None) -> str:
     """Return startup guidance derived only from persisted profile presence."""
 
-    return "python -m pipeline serve" if profile is not None else "python -m pipeline init"
+    return "python -m pipeline serve" if profile is not None else "python -m pipeline setup"
 
 
 class CapabilityError(RuntimeError):
@@ -228,7 +223,7 @@ def inspect_accel(*, finder: Finder = importlib.util.find_spec) -> dict[str, Any
     if not configured:
         semantic_ok = False
         missing = ["not_configured"]
-        hint = "Run `ctx init` to configure and persist an acceleration profile."
+        hint = "Run `ctx setup` to configure and persist an acceleration profile."
     elif backend == "fastembed" and not explicit_st:
         semantic_ok = fastembed_ok and ort_ok and validation.ok
         missing: list[str] = []
@@ -241,13 +236,13 @@ def inspect_accel(*, finder: Finder = importlib.util.find_spec) -> dict[str, Any
         if provider_ok and not validation.model_warm:
             missing.append("model_warmup")
         hint = (
-            f"Run `python -m pipeline init` (or `pip install -e \".[{profile_name}]\"`) "
+            f"Run `python -m pipeline setup` (or `pip install -e \".[{profile_name}]\"`) "
             f"so FastEmbed uses {provider} at batch={batch_size}."
         )
     else:
         semantic_ok = st_ok
         missing = [] if st_ok else ["sentence_transformers"]
-        hint = "Install sentence-transformers or switch back to FastEmbed via `ctx init`."
+        hint = "Install sentence-transformers or switch back to FastEmbed via `ctx setup`."
 
     return {
         "ok": semantic_ok,

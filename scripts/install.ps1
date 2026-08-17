@@ -2,7 +2,7 @@
 # powershell -ExecutionPolicy Bypass -File scripts\install.ps1
 
 param(
-  [ValidateSet("auto", "cuda", "dml", "cpu")]
+  [ValidateSet("auto", "cuda", "dml", "coreml", "cpu")]
   [string]$Profile = "auto",
   [string]$IndexPath = ""
 )

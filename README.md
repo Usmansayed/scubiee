@@ -1,36 +1,31 @@
-# Context Engine
+# Scubiee
 
-Merkle sync → Graphify AST → **mix** compress → CodeRankEmbed (FastEmbed) → TurboQuant/FAISS → Conductor `R_plan`
+Local Context Engine: Merkle sync → Graphify AST → **mix** compress → CodeRankEmbed (FastEmbed) → TurboQuant/FAISS → Conductor `R_plan`
 
-## Install (one command — full MCP)
+## Install (no git clone)
 
-Installs the package, picks GPU/CPU, starts the background service, and registers **context-engine** in Cursor MCP.
+Requires **Python 3.10+**. One line installs the package and configures GPU/CPU + Cursor MCP.
 
-**Windows:**
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\install.ps1
-```
-
-**macOS / Linux:**
+**pip**
 
 ```bash
-bash scripts/install.sh
-```
-
-Then reload MCP in Cursor (Settings → MCP → refresh). Tools appear as `search_code`, `locate_capability`, etc.
-
-Already have the package?
-
-```powershell
+pip install -q scubiee
 ctx setup
-# optional: also register/index this repo
-ctx setup --register --repo .
 ```
 
-Or: `pip install -e ".[mcp]"` then `python -m pipeline setup`.
+**npm** (installs the same Python package, then runs `ctx setup`)
 
-Internally, MCP is a thin adapter and the Context Engine runs as a local service (`:8765`) so indexing/search stay out of the MCP process. You do not manage that separately — install/setup and MCP startup handle it.
+```bash
+npm install -g scubiee
+```
+
+Then `ctx init <repo>` for each codebase, and reload MCP in Cursor (Settings → MCP → refresh).
+
+`ctx setup` picks **CUDA** (NVIDIA), **DirectML** (Windows AMD/Intel), **CoreML** (macOS Metal/ANE), or **CPU**.
+
+From a git checkout (contributors only): `pip install -e .` then `ctx setup`.
+
+## Use
 
 Inside the engine process there are **three managers** only:
 
@@ -67,14 +62,7 @@ Default pre-embed compression is **`mix`** with a **512-char** cap (locked). Opt
 
 ## Resource management
 
-Indexing and embedding go through a **Resource Manager** that samples CPU/RAM and adapts throughput:
-
-| Pressure | Behavior |
-|----------|----------|
-| idle | Larger embed batches |
-| normal | Baseline (from accel profile) |
-| busy | Smaller batches + pauses |
-| critical | Background sync deferred; embeds crawl |
+Indexing and embedding run at the calibrated batch. The resource manager **only pauses** if free RAM is near empty (default under 256 MB). CPU spikes and Windows “RAM % used” (file cache) do not stop work.
 
 ```powershell
 ctx resources              # live pressure + hardware
@@ -82,7 +70,7 @@ ctx resources --refresh    # re-detect CPU/RAM/GPU/libs
 ctx init                   # also writes hardware.json + picks fastest ORT backend
 ```
 
-Disable: `CTX_RM_DISABLE=1`. Tune: `CTX_RM_MAX_CPU`, `CTX_RM_CRITICAL_CPU`, `CTX_RM_MIN_FREE_RAM_MB`.
+Disable entirely: `CTX_RM_DISABLE=1`. Emergency floor: `CTX_RM_MIN_FREE_RAM_MB`.
 
 ## Cursor MCP
 

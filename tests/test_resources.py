@@ -29,41 +29,55 @@ def _reset_rm(monkeypatch: pytest.MonkeyPatch):
     reset_resource_manager_for_tests()
 
 
-def test_classify_idle_busy_critical():
+def test_classify_ignores_cpu_spikes_and_ram_percent():
     rm = ResourceManager()
     assert (
         rm.classify(SystemSample(cpu_percent=10.0, ram_available_mb=8000, ram_percent=40))
         == "idle"
     )
     assert (
-        rm.classify(SystemSample(cpu_percent=75.0, ram_available_mb=4000, ram_percent=50))
-        == "busy"
+        rm.classify(SystemSample(cpu_percent=99.0, ram_available_mb=4000, ram_percent=50))
+        == "normal"
     )
     assert (
-        rm.classify(SystemSample(cpu_percent=95.0, ram_available_mb=4000, ram_percent=50))
-        == "critical"
+        rm.classify(SystemSample(cpu_percent=80.0, ram_available_mb=4000, ram_percent=92))
+        == "normal"
     )
     assert (
-        rm.classify(SystemSample(cpu_percent=20.0, ram_available_mb=100, ram_percent=95))
+        rm.classify(SystemSample(cpu_percent=5.0, ram_available_mb=64, ram_percent=99))
         == "critical"
     )
 
 
-def test_budget_scales_with_pressure(monkeypatch: pytest.MonkeyPatch):
+def test_budget_allows_all_jobs_under_high_cpu_and_high_ram_percent():
     rm = ResourceManager()
     rm._base_batch = 16
+    hot = SystemSample(
+        cpu_percent=99.0,
+        ram_available_mb=8_000,
+        ram_percent=91.0,
+        ram_total_mb=32_000,
+    )
+    with patch.object(rm, "sample", return_value=hot):
+        for job in ("index", "sync", "graph", "embed"):
+            budget = rm.budget(job)
+            assert budget.allow is True
+            assert budget.pressure != "critical"
+            assert budget.pause_s == 0.0
 
-    with patch.object(rm, "sample", return_value=SystemSample(cpu_percent=10.0, ram_available_mb=8000, ram_percent=30)):
-        idle = rm.budget("embed")
-    with patch.object(rm, "sample", return_value=SystemSample(cpu_percent=80.0, ram_available_mb=4000, ram_percent=50)):
-        busy = rm.budget("embed")
-    with patch.object(rm, "sample", return_value=SystemSample(cpu_percent=95.0, ram_available_mb=4000, ram_percent=50)):
-        crit_sync = rm.budget("sync")
 
-    assert idle.pressure == "idle"
-    assert idle.batch_size >= busy.batch_size
-    assert busy.pause_s > idle.pause_s
-    assert crit_sync.allow is False
+def test_budget_refuses_only_when_free_ram_is_near_oom():
+    rm = ResourceManager()
+    rm.min_free_ram_mb = 256
+    starving = SystemSample(
+        cpu_percent=10.0,
+        ram_available_mb=64,
+        ram_percent=99.0,
+        ram_total_mb=16_000,
+    )
+    with patch.object(rm, "sample", return_value=starving):
+        for job in ("index", "sync", "graph", "embed"):
+            assert rm.budget(job).allow is False
 
 
 def test_disable_env(monkeypatch: pytest.MonkeyPatch):

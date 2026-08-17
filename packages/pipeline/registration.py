@@ -167,6 +167,9 @@ def register_project(
 
     try:
         already = is_registered(root)
+        from pipeline.git_family import reconcile_git_families
+
+        reconcile_git_families(prefer_root=root)
         ref = resolve_project(root)
         mark_registered(ref.project_id, root, always_allow=always_allow)
 

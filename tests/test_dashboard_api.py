@@ -110,6 +110,101 @@ def test_local_mutation_without_origin_remains_supported(isolated_ce_home):
     assert payload["settings"]["registration_mode"] == "mcp_cli"
 
 
+def test_mutation_accepts_localhost_origin_for_loopback_server(isolated_ce_home):
+    from pipeline.dashboard_server import DashboardAPI
+
+    status, payload = DashboardAPI().dispatch(
+        "POST",
+        "/ce-dashboard/api/settings",
+        {"admission_mode": "mcp_cli"},
+        client_host="127.0.0.1",
+        origin="http://localhost:61696",
+        server_origin="http://127.0.0.1:61696",
+    )
+
+    assert status == 200
+    assert payload["settings"]["registration_mode"] == "mcp_cli"
+
+
+def test_health_includes_classified_repairs(isolated_ce_home, monkeypatch):
+    from pipeline.dashboard_server import DashboardAPI
+
+    monkeypatch.setattr(
+        "pipeline.doctor.doctor_all",
+        lambda: {
+            "ok": False,
+            "repositories": [
+                {
+                    "ok": False,
+                    "repo": "C:/repo",
+                    "project_id": "ce_repo",
+                    "repairs": ["ctx engine ensure C:/repo"],
+                }
+            ],
+        },
+    )
+    monkeypatch.setattr(
+        "pipeline.doctor.plan_repairs",
+        lambda _root=None, report=None: [
+            {
+                "id": "bind_daemon",
+                "kind": "safe",
+                "detail": "ctx engine ensure C:/repo",
+            }
+        ],
+    )
+
+    status, payload = DashboardAPI().dispatch(
+        "GET",
+        "/ce-dashboard/api/doctor",
+        client_host="127.0.0.1",
+    )
+
+    assert status == 200
+    assert payload["ok"] is True
+    assert payload["dashboard_identity"]
+    assert payload["repairs"]
+    assert payload["repairs"][0]["kind"] == "safe"
+
+
+def test_repair_route_applies_safe_actions_only(isolated_ce_home, monkeypatch):
+    from pipeline.dashboard_server import DashboardAPI
+
+    called: list[str] = []
+
+    monkeypatch.setattr(
+        "pipeline.doctor.apply_safe_repairs",
+        lambda root: called.append(str(root))
+        or {
+            "ok": True,
+            "applied": [{"id": "bind_daemon", "kind": "safe"}],
+            "manual": [],
+            "repo": str(root),
+        },
+    )
+    monkeypatch.setattr(
+        "pipeline.doctor.apply_safe_repairs_all",
+        lambda: {
+            "ok": True,
+            "applied": [{"id": "bind_daemon", "kind": "safe", "repo": "C:/repo"}],
+            "manual": [{"id": "init_repair", "kind": "manual"}],
+        },
+    )
+
+    status, payload = DashboardAPI().dispatch(
+        "POST",
+        "/ce-dashboard/api/repair",
+        {},
+        client_host="127.0.0.1",
+    )
+
+    assert status == 200
+    assert payload["ok"] is True
+    assert payload["applied"][0]["id"] == "bind_daemon"
+    assert payload["manual"][0]["kind"] == "manual"
+    assert called == []
+
+
 def test_settings_toggles_admission_mode(dashboard_http):
     status, changed = _request(
         f"{dashboard_http}/ce-dashboard/api/settings",

@@ -34,13 +34,21 @@ _QUICK = (
     "tests/test_session_store.py",
     "tests/test_daemon_guardrails.py",
     "tests/test_doctor_certify.py",
+    "tests/test_cli_init_repo.py",
+    "tests/test_lifecycle_runtime.py",
+    "tests/test_package_install_entry.py",
+    "tests/test_progress_ui.py",
 )
 _CORE_EXTRA = (
     "tests/test_project_id.py",
     "tests/test_registration_modes.py",
     "tests/test_resources.py",
+    "tests/test_resource_envelope.py",
     "tests/test_live_reindexing.py",
     "tests/test_watchdog.py",
+    "tests/test_install_profile_selection.py",
+    "tests/test_cross_platform_profiles.py",
+    "tests/test_runtime_cpu_backup.py",
 )
 _CERTIFICATION = (
     "tests/test_repo_lifecycle.py",
@@ -51,6 +59,11 @@ _CERTIFICATION = (
     "tests/test_production_scenarios.py",
     "tests/test_artifact_guard.py",
     "tests/test_daemon_guardrails.py",
+    "tests/test_dashboard_port.py",
+    "tests/test_repo_presence.py",
+    "tests/test_repo_lifecycle_dashboard_actions.py",
+    "tests/test_dashboard_api.py",
+    "tests/test_dashboard_ui_contract.py",
 )
 _FAULT = _CERTIFICATION
 _INSTALL = ("tests/test_opencode_mcp_preflight.py",)

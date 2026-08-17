@@ -178,10 +178,12 @@ def release_lock() -> None:
 
 
 def reconcile_managed_repositories(*, reason: str = "daemon_recovery") -> dict[str, Any]:
-    """Reload the durable registry and Merkle-reconcile every managed repo."""
+    """Reload registry, dedupe git families, and Merkle-reconcile every managed repo."""
+    from pipeline.git_family import reconcile_git_families
     from pipeline.repo_lifecycle import list_managed_repos
     from pipeline.sync_loop import BackgroundSyncLoop
 
+    family = reconcile_git_families().to_dict()
     managed = list_managed_repos()
     results: list[dict[str, Any]] = []
     errors: list[dict[str, str]] = []
@@ -196,6 +198,7 @@ def reconcile_managed_repositories(*, reason: str = "daemon_recovery") -> dict[s
         except Exception as exc:  # noqa: BLE001
             errors.append({"repo": str(root), "error": str(exc)})
     return {
+        "git_family": family,
         "managed": len(managed),
         "reconciled": len(results),
         "results": results,
@@ -400,6 +403,17 @@ def ensure_daemon(
     *,
     force_if_hung: bool = True,
 ) -> dict[str, Any]:
+    try:
+        from pipeline.lifecycle_runtime import note_activity
+        from pipeline.watchdog import watchdog_enabled
+
+        note_activity()
+        if watchdog_enabled():
+            from pipeline.lifecycle_runtime import ensure_supervisor
+
+            ensure_supervisor()
+    except Exception:  # noqa: BLE001
+        pass
     if is_running():
         target = Path(repo).resolve() if repo is not None else None
         if target is None:

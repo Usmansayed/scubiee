@@ -308,6 +308,81 @@ def scenario_checks(root: Path) -> list[dict[str, Any]]:
                 )
 
             try:
+                from pipeline.doctor import plan_repairs
+
+                repair_repo = sandbox / "doctor-repair-repo"
+                repair_repo.mkdir()
+                (repair_repo / "mod.py").write_text("value = 1\n", encoding="utf-8")
+                planned = plan_repairs(repair_repo)
+                kinds = {item["id"]: item["kind"] for item in planned}
+                safe_ok = all(
+                    item["kind"] == "safe"
+                    for item in planned
+                    if item["id"]
+                    in {"bind_daemon", "initialize_index", "replay_dirty_journal"}
+                )
+                manual_ok = all(
+                    item["kind"] == "manual"
+                    for item in planned
+                    if item["id"] in {"install_deps", "init_repair", "rebuild_index"}
+                )
+                classified = bool(planned) and all(
+                    item.get("kind") in {"safe", "manual"} for item in planned
+                )
+                ok = classified and safe_ok and manual_ok and (
+                    "initialize_index" in kinds or "bind_daemon" in kinds
+                )
+                checks.append(
+                    _check(
+                        "doctor_safe_repair_classification",
+                        ok,
+                        detail=str(kinds),
+                    )
+                )
+            except Exception as exc:  # noqa: BLE001
+                checks.append(
+                    _check(
+                        "doctor_safe_repair_classification",
+                        False,
+                        detail=str(exc),
+                    )
+                )
+
+            try:
+                from pipeline.lifecycle_runtime import (
+                    DEFAULT_IDLE_S,
+                    DESIRED_STANDBY,
+                    engine_should_be_running,
+                    load_policy,
+                    set_desired_mode,
+                    should_idle_stop,
+                    supervisor_command,
+                    current_desktop,
+                )
+
+                set_desired_mode(DESIRED_STANDBY)
+                cmd = supervisor_command(python="python")
+                ok = (
+                    DEFAULT_IDLE_S == 120.0
+                    and engine_should_be_running() is False
+                    and should_idle_stop(now=10_000.0) is False
+                    and load_policy()["desired_mode"] == DESIRED_STANDBY
+                    and cmd[-2:] == ["supervisor", "--logon"]
+                    and current_desktop() in {"windows", "darwin", "linux"}
+                )
+                checks.append(
+                    _check(
+                        "autonomous_standby_idle_policy",
+                        ok,
+                        detail=f"idle_s={DEFAULT_IDLE_S} cmd={cmd[-3:]}",
+                    )
+                )
+            except Exception as exc:  # noqa: BLE001
+                checks.append(
+                    _check("autonomous_standby_idle_policy", False, detail=str(exc))
+                )
+
+            try:
                 from pipeline.artifact_guard import publish_manifest, validate_manifest
 
                 store = sandbox / "publication-store"
@@ -394,16 +469,14 @@ def certify(
 
     # Install config defaults to phase
     try:
-        path = Path(__file__).resolve().parents[2] / "scripts" / "install_mcp.py"
-        spec = importlib.util.spec_from_file_location("install_mcp_certify", path)
-        mod = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
-        assert spec and spec.loader
-        spec.loader.exec_module(mod)
-        entry = mod.server_entry(repo)
+        from pipeline.mcp_install import server_entry
+
+        entry = server_entry(repo)
         checks.append(
             _check(
                 "install_mcp_phase_env",
-                entry.get("env", {}).get("CTX_MCP_SURFACE") == "phase",
+                entry.get("env", {}).get("CTX_MCP_SURFACE") == "phase"
+                and "PYTHONPATH" not in (entry.get("env") or {}),
                 detail=str(entry.get("env", {}).get("CTX_MCP_SURFACE")),
             )
         )
@@ -436,6 +509,7 @@ def certify(
             ("windows_dml", "Windows", "dml"),
             ("linux_nvidia_cuda", "Linux", "cuda"),
             ("linux_cpu_safe", "Linux", "cpu"),
+            ("darwin_coreml", "Darwin", "coreml"),
             ("darwin_cpu_safe", "Darwin", "cpu"),
         ):
             applicable = current_os == lane_os and saved_name == lane_profile

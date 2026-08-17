@@ -86,12 +86,12 @@
   }
 
   function repoName(repo) {
-    const path = String(repo.primary_path || repo.path || repo.paths?.[0] || "");
+    const path = String(repo.primary_path || repo.path || repo.root || repo.paths?.[0] || "");
     return repo.name || path.replace(/[\\/]+$/, "").split(/[\\/]/).pop() || repo.project_id || "Repository";
   }
 
   function repoPath(repo) {
-    return repo.primary_path || repo.path || repo.paths?.[0] || "Path unavailable";
+    return repo.primary_path || repo.path || repo.root || repo.paths?.[0] || "Path unavailable";
   }
 
   function repoPresence(repo) {
@@ -254,6 +254,52 @@
     </article>`;
   }
 
+  function renderHealth(payload) {
+    const repairs = Array.isArray(payload.repairs) ? payload.repairs : [];
+    const safe = repairs.filter((item) => item && item.kind === "safe");
+    const manual = repairs.filter((item) => item && item.kind === "manual");
+    const repairRows = repairs.length
+      ? repairs.map((item) => `<div class="key-value"><span>${escapeHtml(item.kind || "repair")} · ${escapeHtml(item.id || "")}</span><strong>${escapeHtml(item.detail || item.repo || "")}</strong></div>`).join("")
+      : '<div class="key-value"><span>Repairs</span><strong>None</strong></div>';
+    const repoCards = Array.isArray(payload.repositories)
+      ? payload.repositories.map((repo) => dataPanel(repo.project_id || "Repository", repo.repo || "Managed repository", repo)).join("")
+      : "";
+    $("#health-content").innerHTML = `
+      <article class="data-card">
+        <div class="data-card-header"><div><h3>Repair plan</h3><p>${safe.length} safe · ${manual.length} manual</p></div></div>
+        <div class="key-grid">${repairRows}</div>
+      </article>
+      ${dataPanel("Dashboard", "Local operator process", {
+        identity: payload.dashboard_identity,
+        pid: payload.dashboard_pid,
+      })}
+      ${repoCards}
+    `;
+  }
+
+  async function loadHealth() {
+    try {
+      renderHealth(await api("doctor"));
+      setServiceState(true);
+    } catch (error) {
+      $("#health-content").innerHTML = errorCard(error);
+      setServiceState(false);
+    }
+  }
+
+  async function applySafeRepairs() {
+    const button = $("#apply-safe-repairs");
+    if (button) button.disabled = true;
+    try {
+      const payload = await api("repair", { method: "POST", body: JSON.stringify({}) });
+      toast(payload.ok ? "Safe repairs applied" : "Safe repairs finished with remaining manual actions");
+      await loadHealth();
+    } catch (error) {
+      toast(error.message, "error");
+    }
+    if (button) button.disabled = false;
+  }
+
   async function loadDataPage(endpoint, target, title) {
     try {
       const payload = await api(endpoint);
@@ -392,7 +438,7 @@
     if (page === "overview") loadOverview();
     else if (page === "repositories" || page === "sync") loadRepositories();
     else if (page === "storage") loadStorage();
-    else if (page === "health") loadDataPage("health", "#health-content", "Health");
+    else if (page === "health") loadHealth();
     else if (page === "runtime") loadDataPage("runtime", "#runtime-content", "Runtime");
     else if (page === "graph") loadGraph();
     else if (page === "settings") loadSettings();
@@ -473,6 +519,7 @@
   $("#menu-button").addEventListener("click", () => $("#sidebar").classList.toggle("open"));
   $("#add-repository-button").addEventListener("click", () => openPathDialog("initialize"));
   $("#refresh-button").addEventListener("click", () => loadPage(location.hash.slice(1) || "overview"));
+  $("#apply-safe-repairs").addEventListener("click", () => applySafeRepairs());
   $("#graph-repository").addEventListener("change", (event) => {
     state.graphProjectId = event.target.value;
     loadGraph();

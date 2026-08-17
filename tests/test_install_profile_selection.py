@@ -28,7 +28,7 @@ def _profile(*, batch_size: int = 16) -> AccelProfile:
     )
 
 
-def _init_args(**overrides: object) -> argparse.Namespace:
+def _setup_args(**overrides: object) -> argparse.Namespace:
     values: dict[str, object] = {
         "status": False,
         "repair": False,
@@ -36,6 +36,13 @@ def _init_args(**overrides: object) -> argparse.Namespace:
         "skip_install": True,
         "skip_model": True,
         "skip_bench": True,
+        "skip_accel": False,
+        "index_path": None,
+        "repo": ".",
+        "register": False,
+        "host": "127.0.0.1",
+        "port": 8765,
+        "wait": 1.0,
     }
     values.update(overrides)
     return argparse.Namespace(**values)
@@ -71,7 +78,7 @@ def test_resolve_runtime_requires_init_when_profile_is_missing(
         lambda *args, **kwargs: pytest.fail("runtime must not choose"),
     )
 
-    with pytest.raises(RuntimeError, match=r"ctx init"):
+    with pytest.raises(RuntimeError, match=r"ctx setup"):
         accel.resolve_runtime()
 
 
@@ -155,7 +162,7 @@ def test_init_status_is_read_only_and_prints_preferred_envelope(
         lambda **kwargs: pytest.fail("status must not configure"),
     )
 
-    assert cli.cmd_init(_init_args(status=True)) == 0
+    assert cli.cmd_setup(_setup_args(status=True)) == 0
     payload = json.loads(capsys.readouterr().out)
 
     assert payload["preferred_profile"]["profile"] == "dml"
@@ -175,7 +182,7 @@ def test_existing_init_profile_is_reused_unless_repair_requested(
         lambda **kwargs: pytest.fail("existing init must not reconfigure"),
     )
 
-    assert cli.cmd_init(_init_args()) == 0
+    assert cli._configure_machine(_setup_args()) == 0
     assert json.loads(capsys.readouterr().out)["profile"] == "dml"
 
 
@@ -187,7 +194,7 @@ def test_init_repair_explicitly_reconfigures(
     monkeypatch.setattr(accel, "load_accel", lambda: _profile())
     monkeypatch.setattr(accel, "configure", lambda **kwargs: repaired)
 
-    assert cli.cmd_init(_init_args(repair=True)) == 0
+    assert cli._configure_machine(_setup_args(repair=True)) == 0
     assert json.loads(capsys.readouterr().out)["batch_size"] == 20
 
 
@@ -223,18 +230,18 @@ def test_hardware_snapshot_uses_saved_preference_without_recommendation(
     assert snapshot["recommended_accel"]["profile"] == "dml"
 
 
-def test_init_parser_accepts_repair_flag_only_for_init(
+def test_setup_parser_accepts_repair_and_init_does_not(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     seen: dict[str, object] = {}
 
-    def fake_init(args: argparse.Namespace) -> int:
+    def fake_setup(args: argparse.Namespace) -> int:
         seen["repair"] = args.repair
         return 0
 
-    monkeypatch.setattr(cli, "cmd_init", fake_init)
+    monkeypatch.setattr(cli, "cmd_setup", fake_setup)
 
-    assert cli.main(["init", "--repair", "--skip-install", "--skip-model", "--skip-bench"]) == 0
+    assert cli.main(["setup", "--repair", "--skip-install", "--skip-model", "--skip-bench"]) == 0
     assert seen["repair"] is True
     with pytest.raises(SystemExit):
-        cli.main(["setup", "--repair"])
+        cli.main(["init", "--repair"])

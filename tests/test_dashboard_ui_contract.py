@@ -76,6 +76,10 @@ def test_repository_and_settings_safety_contracts_are_present():
     assert "admission_mode" in javascript
     assert "clear-index" in javascript
     assert 'runRepoAction(projectId, "forget"' in javascript
+    assert 'id="apply-safe-repairs"' in html
+    assert "Apply safe repairs" in html
+    assert 'api("doctor"' in javascript
+    assert 'api("repair"' in javascript
 
 
 def test_graph_ui_bounds_rendered_and_listed_links():
