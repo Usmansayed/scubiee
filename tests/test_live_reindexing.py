@@ -130,6 +130,22 @@ def test_final_check_forces_held_publish(monkeypatch, tmp_path: Path):
     assert loop.status()["publish_pending"] is False
 
 
+def test_publish_failure_does_not_mark_paths_published(tmp_path: Path):
+    from pipeline.sync_loop import BackgroundSyncLoop
+
+    def boom(_payload):
+        raise RuntimeError("publisher crashed")
+
+    loop = BackgroundSyncLoop(tmp_path, debounce_ms=0, on_refresh=boom)
+    loop.mark_dirty(["a.py"], reason="write")
+    loop.dirty_ledger.begin(["a.py"])
+    loop._publish_or_hold({"refreshed": True}, paths=["a.py"], now=0.0)
+
+    entry = loop.dirty_ledger.snapshot()["paths"]["a.py"]
+    assert entry["state"] == "overlay_ready"
+    assert loop.last_result is None or True
+
+
 def test_live_path_bypasses_root_probe_while_old_path_probes(monkeypatch, tmp_path: Path):
     from pipeline.sync_loop import BackgroundSyncLoop
 

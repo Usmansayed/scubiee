@@ -44,6 +44,7 @@ def server_entry(repo: Path | None = None) -> dict:
             "CTX_AUTO_INDEX": "1",
             "CTX_SYNC_INTERVAL_MS": "300000",
             "CTX_REGISTRATION_MODE": "automatic",
+            "CTX_MCP_SURFACE": "phase",
             "PYTHONUTF8": "1",
         },
     }

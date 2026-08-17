@@ -18,6 +18,10 @@ DEFAULT_PREFS: dict[str, Any] = {
     # After register: start 5-min keeper / incremental (MCP session)
     "incremental_indexing": True,
     "file_watching": True,  # keeper + sync-trigger; not OS fs.watch yet
+    "auto_admission": {
+        "max_repositories": 8,
+        "large_repo_files": 10_000,
+    },
     "resource_management": {
         "enabled": True,
         "max_cpu_busy": 70,

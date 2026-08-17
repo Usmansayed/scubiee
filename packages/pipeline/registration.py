@@ -126,7 +126,7 @@ def mark_registered(
     entry = projects.get(project_id) if isinstance(projects.get(project_id), dict) else {}
     entry = dict(entry)
     entry["registered"] = True
-    entry["registered_at"] = time.time()
+    entry.setdefault("registered_at", time.time())
     if always_allow:
         entry["always_allow"] = True
     elif "always_allow" not in entry:

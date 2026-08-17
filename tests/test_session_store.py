@@ -91,10 +91,20 @@ def test_recall_lists_handles(repo: Path):
     assert card["spans"][0]["handle"].startswith("sp_")
 
 
-def test_mcp_exposes_lean_surface():
+def test_mcp_exposes_lean_surface(monkeypatch):
     pytest.importorskip("mcp")
+    monkeypatch.setenv("CTX_MCP_SURFACE", "read")
     from pipeline.mcp_locate import create_mcp
 
     names = set(create_mcp()._tool_manager._tools)
     # Session reuse (recall/expand) is now folded INTO read's dedupe, not a tool.
     assert names == {"search", "read", "status"}
+
+
+def test_mcp_phase_surface_exposes_map_focus_workspace(monkeypatch):
+    pytest.importorskip("mcp")
+    monkeypatch.setenv("CTX_MCP_SURFACE", "phase")
+    from pipeline.mcp_locate import create_mcp
+
+    names = set(create_mcp()._tool_manager._tools)
+    assert names == {"map", "focus", "workspace", "status"}

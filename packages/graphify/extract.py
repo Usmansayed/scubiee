@@ -5659,10 +5659,10 @@ def collect_files(target: Path, *, follow_symlinks: bool = False, root: Path | N
         return bool(patterns and _is_ignored(p, ignore_root, patterns, _cache=ignore_cache))
 
     if not follow_symlinks:
-        # The old rglob filter rejected paths with a noise component anywhere,
-        # including components of target itself — preserve that.
-        if any(_is_noise_dir(part) for part in target.parts):
-            return []
+        # ``target`` is an explicit scan root.  It may legitimately live inside
+        # a worktree directory (for example ``.worktrees/feature``), so only
+        # prune noisy *descendants* below it.  Rejecting target.parts here made
+        # every explicit worktree scan silently return an empty index.
         # When negation (!) patterns exist, skip directory-level ignore pruning
         # so negated files inside ignored dirs can still be reached (same
         # conservatism as detect's scan walk).

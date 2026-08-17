@@ -87,9 +87,12 @@ def search_repo(
     use_server: bool = True,
     server_url: str | None = None,
 ) -> list[SearchResult]:
-    """Search. Prefers warm HTTP server, else in-process warm engine cache."""
-    url = server_url or os.environ.get("CTX_SEARCH_URL", "http://127.0.0.1:8765")
-    if use_server:
+    """Search an explicitly selected repo, optionally through a configured server."""
+    # A default localhost probe can route a caller for repository A to an
+    # unrelated daemon currently serving repository B.  Only cross-process
+    # search when the caller explicitly supplies a URL or configures one.
+    url = server_url or os.environ.get("CTX_SEARCH_URL")
+    if use_server and url:
         hits = _search_via_server(query, top_k=top_k, url=url)
         if hits is not None:
             return hits

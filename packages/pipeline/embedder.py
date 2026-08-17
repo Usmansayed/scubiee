@@ -58,30 +58,58 @@ def _tune_cpu_threads() -> None:
         pass
 
 
-def _choose_backend(model: str, backend: str | None) -> str:
-    if backend:
-        return backend
-    env = os.environ.get("CTX_EMBED_BACKEND", "").strip().lower()
-    if env in {"fastembed", "coderank", "sentence-transformers", "st", "ollama"}:
-        if env in {"st", "sentence-transformers"}:
-            return "coderank"
-        if env == "coderank":
-            try:
-                import fastembed  # noqa: F401
+def _accel_wants_fastembed() -> bool:
+    """Saved/hardware profile prefers FastEmbed unless explicitly overridden."""
+    try:
+        from pipeline.accel import resolve_runtime
 
-                return "fastembed"
-            except Exception:  # noqa: BLE001
-                return "coderank"
-        return env
-    name = (model or "").lower()
-    if name.startswith("ollama:") or name in {"nomic-embed-text"}:
-        return "ollama"
+        prof = resolve_runtime()
+        return str(getattr(prof, "backend", "fastembed") or "fastembed") == "fastembed"
+    except Exception:  # noqa: BLE001
+        return True
+
+
+def _fastembed_available() -> bool:
     try:
         import fastembed  # noqa: F401
 
-        return "fastembed"
+        return True
     except Exception:  # noqa: BLE001
-        return "coderank"
+        return False
+
+
+def _choose_backend(model: str, backend: str | None) -> str:
+    """Pick embed backend. Hardware accel (FastEmbed+ORT) wins over silent ST/CPU.
+
+    Production path is always accel.json / detect → FastEmbed. SentenceTransformers
+    is an explicit opt-in only (CTX_EMBED_BACKEND=st|coderank), never a quiet fallback.
+    """
+    if backend:
+        chosen = backend
+    else:
+        env = os.environ.get("CTX_EMBED_BACKEND", "").strip().lower()
+        if env in {"fastembed", "coderank", "sentence-transformers", "st", "ollama"}:
+            chosen = "coderank" if env in {"st", "sentence-transformers"} else env
+        else:
+            name = (model or "").lower()
+            if name.startswith("ollama:") or name in {"nomic-embed-text"}:
+                chosen = "ollama"
+            elif _accel_wants_fastembed():
+                chosen = "fastembed"
+            elif _fastembed_available():
+                chosen = "fastembed"
+            else:
+                chosen = "coderank"
+
+    if chosen == "fastembed" and not _fastembed_available():
+        from pipeline.preflight import CapabilityError
+
+        raise CapabilityError(
+            "Context Engine accel profile requires FastEmbed + ONNX Runtime, but "
+            "fastembed is not installed in this Python. Run: python -m pipeline init "
+            "(or pip install -e \".[dml|cuda|cpu]\"). Refusing silent PyTorch/CPU fallback."
+        )
+    return chosen
 
 
 class Embedder:
@@ -106,13 +134,10 @@ class Embedder:
         self.cache: dict[str, list[float]] = {}
         self._st_model = None
         self._fe_model = None
+        self._cpu_backup_model = None
         self._cache_dirty: list[tuple[str, list[float]]] = []
         self.cache_flush_every = max(32, int(cache_flush_every))
         self._last_stats: dict = {}
-
-        self.backend = _choose_backend(model, backend)
-        if self.backend == "ollama":
-            self.model = model.replace("ollama:", "")
 
         self._accel = None
         try:
@@ -122,22 +147,62 @@ class Embedder:
         except Exception:  # noqa: BLE001
             self._accel = None
 
+        from pipeline.runtime_profile import (
+            RuntimeProfileState,
+            get_runtime_profile_state,
+            set_runtime_profile_state,
+        )
+
+        preferred_profile = self._accel.profile if self._accel else "cpu"
+        current_state = get_runtime_profile_state()
+        if current_state.preferred_profile != preferred_profile:
+            current_state = RuntimeProfileState(preferred_profile, preferred_profile)
+            set_runtime_profile_state(current_state)
+
+        # Resolve backend after accel so missing FastEmbed fails closed with profile context.
+        self.backend = _choose_backend(model, backend)
+        if self.backend == "ollama":
+            self.model = model.replace("ollama:", "")
+
         if self.backend == "fastembed" and self._accel:
             self.device = self._accel.profile
-            default_batch = int(self._accel.batch_size)
+            # Honor hardware-tuned batch (DML-safe 16, CUDA 32, CPU 8) — never invent 64+.
+            default_batch = max(1, int(self._accel.batch_size or 16))
         else:
             self.device = pick_device(device)
             if self.device == "cpu":
                 _tune_cpu_threads()
-            default_batch = 128 if self.device == "cuda" else 64
+            default_batch = 32 if self.device == "cuda" else 16
 
         if batch_size is not None:
             self.batch_size = int(batch_size)
+        elif "CTX_EMBED_BATCH" in os.environ:
+            self.batch_size = int(os.environ["CTX_EMBED_BATCH"])
         else:
-            self.batch_size = int(os.environ.get("CTX_EMBED_BATCH", str(default_batch)))
+            self.batch_size = default_batch
+
+        print(
+            f"[embed] plan backend={self.backend} device={self.device} "
+            f"batch={self.batch_size} model={self.model}"
+            + (
+                f" accel={self._accel.profile}@{self._accel.texts_per_sec}t/s"
+                if self._accel
+                else ""
+            ),
+            file=sys.stderr,
+            flush=True,
+        )
 
         if cache_path and cache_path.exists():
             self._load_cache()
+
+    @property
+    def runtime_state(self):
+        """Read synchronized process-wide profile state."""
+
+        from pipeline.runtime_profile import get_runtime_profile_state
+
+        return get_runtime_profile_state()
 
     def _load_cache(self) -> None:
         assert self.cache_path is not None
@@ -249,6 +314,39 @@ class Embedder:
         )
         return self._st_model
 
+    def _embed_cpu_backup(self, batch: list[str], *, batch_size: int) -> np.ndarray:
+        """Embed one operation on CPU without changing the installed profile."""
+
+        if self._cpu_backup_model is None:
+            from fastembed import TextEmbedding
+
+            self._cpu_backup_model = TextEmbedding(
+                model_name=self.model if self.model else CODERANK_MODEL,
+                threads=1,
+                providers=["CPUExecutionProvider"],
+                lazy_load=True,
+            )
+        vecs = list(
+            self._cpu_backup_model.embed(
+                batch,
+                batch_size=batch_size,
+                parallel=None,
+            )
+        )
+        return np.asarray(vecs, dtype=np.float32)
+
+    def _cpu_backup_batch_ceiling(self) -> int:
+        ceiling = int(self.batch_size)
+        if self._accel:
+            try:
+                ceiling = min(
+                    ceiling,
+                    int((self._accel.envelope or {}).get("batch_ceiling", ceiling)),
+                )
+            except (TypeError, ValueError):
+                pass
+        return max(1, ceiling // 2)
+
     def format_query(self, query: str) -> str:
         if self.backend in {"coderank", "fastembed"} and not query.startswith(QUERY_PREFIX):
             return QUERY_PREFIX + query
@@ -256,9 +354,39 @@ class Embedder:
 
     def _encode_batch(self, batch: list[str]) -> np.ndarray:
         if self.backend == "fastembed":
-            model = self._ensure_fastembed()
-            vecs = list(model.embed(batch, batch_size=len(batch), parallel=None))
-            return np.asarray(vecs, dtype=np.float32)
+            backup_batch = self._cpu_backup_batch_ceiling()
+            runtime_state = self.runtime_state
+            if (
+                runtime_state.active_profile == "cpu"
+                and runtime_state.preferred_profile != "cpu"
+            ):
+                self.device = "cpu"
+                return self._embed_cpu_backup(batch, batch_size=backup_batch)
+            try:
+                model = self._ensure_fastembed()
+                vecs = list(model.embed(batch, batch_size=len(batch), parallel=None))
+                return np.asarray(vecs, dtype=np.float32)
+            except Exception as primary_exc:
+                if runtime_state.preferred_profile == "cpu":
+                    raise
+                from pipeline.runtime_profile import (
+                    activate_cpu_backup,
+                    set_runtime_profile_state,
+                )
+
+                try:
+                    result = self._embed_cpu_backup(
+                        batch,
+                        batch_size=backup_batch,
+                    )
+                except Exception as backup_exc:
+                    self.device = runtime_state.preferred_profile
+                    raise primary_exc from backup_exc
+                set_runtime_profile_state(
+                    activate_cpu_backup(runtime_state, str(primary_exc))
+                )
+                self.device = "cpu"
+                return result
         model = self._ensure_coderank()
         return model.encode(
             batch,
@@ -334,6 +462,9 @@ class Embedder:
             rm = None
 
         start = 0
+        # Floor: never thrash below the hardware-tuned batch on healthy systems.
+        # Adaptive RM may raise (idle boost) or cut on busy/critical only.
+        configured_bs = max(1, int(self.batch_size))
         while start < len(pending_text):
             if rm is not None:
                 budget = rm.wait_for_capacity(
@@ -345,15 +476,22 @@ class Embedder:
                         flush=True,
                     ),
                 )
-                bs = max(1, min(int(budget.batch_size), len(pending_text) - start))
-                if not budget.allow:
-                    # Soft continue with batch=1 after timeout rather than abort mid-index
+                if budget.pressure in {"idle", "normal"}:
+                    bs = max(configured_bs, int(budget.batch_size))
+                elif budget.pressure == "busy":
+                    bs = max(max(1, configured_bs // 2), 1)
+                else:
+                    bs = 1 if not budget.allow else max(1, min(int(budget.batch_size), configured_bs))
+                bs = max(1, min(bs, len(pending_text) - start))
+                if not budget.allow and budget.pressure == "critical":
                     bs = 1
                     print(
                         f"[resources] embed proceeding minimally: {budget.reason}",
                         file=sys.stderr,
                         flush=True,
                     )
+            else:
+                bs = max(1, min(configured_bs, len(pending_text) - start))
             t_batch = time.perf_counter()
             batch = pending_text[start : start + bs]
             idxs = pending_idx[start : start + bs]

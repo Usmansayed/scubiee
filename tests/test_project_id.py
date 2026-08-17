@@ -61,16 +61,48 @@ def test_resolve_reuses_id_file(ce_home: Path, tmp_path: Path):
     assert ref.project_id == "ce_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
 
-def test_path_recovery_rewrites_id_file(ce_home: Path, tmp_path: Path):
+def test_missing_id_json_does_not_recover_from_registry(ce_home: Path, tmp_path: Path):
+    """Safety beats recovering a deleted identity file via a registry alias."""
     repo = tmp_path / "r"
     repo.mkdir()
     ref1 = resolve_project(repo)
     pid = ref1.project_id
     id_file_path(repo).unlink()
     assert read_id_file(repo) is None
+    assert (repo / ".context-engine").is_dir()
+    from pipeline.project_id import find_id_by_path
+
+    assert find_id_by_path(str(repo.resolve())) is None
     ref2 = resolve_project(repo)
-    assert ref2.project_id == pid
-    assert read_id_file(repo) == pid
+    assert ref2.project_id != pid
+    assert read_id_file(repo) == ref2.project_id
+
+
+def test_stale_registry_alias_without_id_json_is_not_trusted(
+    ce_home: Path, tmp_path: Path
+):
+    from pipeline.project_id import find_id_by_path, save_registry
+
+    old = tmp_path / "old"
+    old.mkdir()
+    ref = resolve_project(old)
+    vacated = tmp_path / "vacated"
+    vacated.mkdir()
+    (vacated / ".context-engine").mkdir()
+    save_registry(
+        {
+            "projects": {
+                ref.project_id: {
+                    "paths": [str(vacated.resolve()), str(old.resolve())],
+                    "updated_at": 1.0,
+                    "name": "vacated",
+                }
+            }
+        }
+    )
+    assert find_id_by_path(str(vacated.resolve())) is None
+    fresh = resolve_project(vacated)
+    assert fresh.project_id != ref.project_id
 
 
 def test_both_missing_mints_new(ce_home: Path, tmp_path: Path):

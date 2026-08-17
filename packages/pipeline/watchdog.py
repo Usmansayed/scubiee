@@ -35,6 +35,37 @@ def watchdog_log_path() -> Path:
     return _home() / "watchdog.log"
 
 
+def watchdog_state_path() -> Path:
+    return _home() / "watchdog-state.json"
+
+
+def _load_watchdog_state() -> dict[str, Any]:
+    try:
+        data = json.loads(watchdog_state_path().read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return {}
+
+
+def _update_watchdog_state(**changes: Any) -> dict[str, Any]:
+    from pipeline.artifact_guard import atomic_write_text
+
+    state = {
+        "restart_count": 0,
+        "last_wake_reconcile": None,
+        "last_reconcile": None,
+        "last_error": None,
+        **_load_watchdog_state(),
+        **changes,
+    }
+    _home().mkdir(parents=True, exist_ok=True)
+    atomic_write_text(
+        watchdog_state_path(),
+        json.dumps(state, sort_keys=True, separators=(",", ":")) + "\n",
+    )
+    return state
+
+
 def watchdog_enabled() -> bool:
     return os.environ.get("CTX_WATCHDOG", "1").strip().lower() not in {
         "0",
@@ -95,12 +126,17 @@ def watchdog_status() -> dict[str, Any]:
             pid = int(path.read_text(encoding="utf-8").strip())
         except Exception:  # noqa: BLE001
             pid = None
+    state = _load_watchdog_state()
     return {
         "enabled": watchdog_enabled(),
         "running": is_watchdog_running(),
         "pid": pid if pid and _pid_alive(pid) else None,
         "log": str(watchdog_log_path()),
         "interval_s": float(os.environ.get("CTX_WATCHDOG_INTERVAL_S", str(DEFAULT_INTERVAL_S))),
+        "restart_count": int(state.get("restart_count") or 0),
+        "last_wake_reconcile": state.get("last_wake_reconcile"),
+        "last_reconcile": state.get("last_reconcile"),
+        "last_error": state.get("last_error"),
     }
 
 
@@ -138,11 +174,35 @@ def watchdog_loop(*, stop_after: float | None = None) -> None:
     restart_times: list[float] = []
     backoff_i = 0
     deadline = time.time() + stop_after if stop_after else None
+    last_tick = time.monotonic()
+    wake_gap_s = max(
+        interval * 3,
+        float(os.environ.get("CTX_WAKE_GAP_MS", "30000")) / 1000,
+    )
 
     try:
         while True:
             if deadline is not None and time.time() >= deadline:
                 break
+            monotonic_now = time.monotonic()
+            if monotonic_now - last_tick > wake_gap_s:
+                from pipeline.daemon import reconcile_managed_repositories
+
+                reconciled_at = time.time()
+                try:
+                    reconcile_managed_repositories(reason="watchdog_sleep_wake")
+                    _update_watchdog_state(
+                        last_wake_reconcile=reconciled_at,
+                        last_reconcile=reconciled_at,
+                        last_error=None,
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    _update_watchdog_state(
+                        last_wake_reconcile=reconciled_at,
+                        last_error=str(exc),
+                    )
+                    _log(f"sleep/wake reconcile failed: {exc}")
+            last_tick = monotonic_now
             if _health_ok():
                 fails = 0
                 backoff_i = 0
@@ -174,6 +234,12 @@ def watchdog_loop(*, stop_after: float | None = None) -> None:
             _log(f"force restart repo={repo}")
             result = force_restart_daemon(repo)
             _log(f"restart result={result.get('ok')} {result.get('error') or ''}".strip())
+            state = _load_watchdog_state()
+            _update_watchdog_state(
+                restart_count=int(state.get("restart_count") or 0) + 1,
+                last_reconcile=time.time() if result.get("ok") else state.get("last_reconcile"),
+                last_error=result.get("error"),
+            )
             restart_times.append(time.time())
             fails = 0
             wait = BACKOFF_S[min(backoff_i, len(BACKOFF_S) - 1)]

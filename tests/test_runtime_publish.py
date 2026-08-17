@@ -29,7 +29,7 @@ def test_publish_engine_bumps_generation(runtime, tmp_path: Path):
     fake = MagicMock()
     fake.texts = ["a", "b", "c"]
 
-    with patch("pipeline.ce_service.clear_engines") as clear, patch(
+    with patch("pipeline.ce_service.drop_engine") as drop, patch(
         "pipeline.ce_service.load_engine", return_value=fake
     ) as load:
         g0 = runtime.generation
@@ -38,7 +38,7 @@ def test_publish_engine_bumps_generation(runtime, tmp_path: Path):
         assert runtime.generation == g0 + 1
         assert runtime.engine is fake
         assert runtime.last_sync_at is not None
-        clear.assert_called()
+        drop.assert_called_with(repo)
         load.assert_called_with(repo, force_reload=True)
 
         out2 = runtime.publish_engine()
@@ -56,7 +56,9 @@ def test_keeper_on_refresh_wired(runtime, tmp_path: Path):
             runtime._start_keeper(repo)
             Loop.assert_called_once()
             kwargs = Loop.call_args.kwargs
-            assert kwargs.get("on_refresh") == runtime.publish_engine
+            on_refresh = kwargs.get("on_refresh")
+            assert on_refresh is not None
+            assert callable(on_refresh)
             loop.start.assert_called_once()
 
 

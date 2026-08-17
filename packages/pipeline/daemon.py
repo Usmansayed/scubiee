@@ -116,8 +116,54 @@ def acquire_lock(pid: int, *, url: str, repo: str) -> dict[str, Any]:
             pass
 
     payload = {"pid": pid, "url": url, "repo": repo, "acquired_at": time.time()}
-    lock_path().write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    from pipeline.artifact_guard import atomic_write_text
+
+    atomic_write_text(lock_path(), json.dumps(payload, indent=2) + "\n")
     return {"ok": True, **payload}
+
+
+def validate_daemon_binding(repo: Path | str) -> dict[str, Any]:
+    """Compare requested repo against the live daemon lock/health binding."""
+    target = Path(repo).resolve()
+    healthy = is_running()
+    lock_pid = _read_lock_pid()
+    lock_repo = None
+    try:
+        raw = json.loads(lock_path().read_text(encoding="utf-8")) if lock_path().is_file() else {}
+        if isinstance(raw, dict) and raw.get("repo"):
+            lock_repo = str(Path(str(raw["repo"])).resolve())
+    except (OSError, json.JSONDecodeError, ValueError):
+        return {
+            "ok": False,
+            "reason": "lock_corrupt",
+            "healthy": healthy,
+            "repair": "ctx engine stop; remove ~/.context-engine/engine.lock if stale",
+            "repo": str(target),
+        }
+    bound = lock_repo
+    if healthy:
+        try:
+            from pipeline.client import EngineClient
+
+            health = EngineClient().get("/health")
+            if health.get("repo"):
+                bound = str(Path(str(health["repo"])).resolve())
+        except Exception:  # noqa: BLE001
+            pass
+    matched = bound is not None and Path(bound).resolve() == target
+    return {
+        "ok": bool(healthy and matched),
+        "healthy": healthy,
+        "matched": matched,
+        "bound_repo": bound,
+        "repo": str(target),
+        "lock_pid": lock_pid,
+        "repair": (
+            None
+            if healthy and matched
+            else f"ctx engine ensure {target}  # reopen so soft search binds this workspace"
+        ),
+    }
 
 
 def release_lock() -> None:
@@ -129,6 +175,32 @@ def release_lock() -> None:
         pid_path().unlink(missing_ok=True)
     except Exception:  # noqa: BLE001
         pass
+
+
+def reconcile_managed_repositories(*, reason: str = "daemon_recovery") -> dict[str, Any]:
+    """Reload the durable registry and Merkle-reconcile every managed repo."""
+    from pipeline.repo_lifecycle import list_managed_repos
+    from pipeline.sync_loop import BackgroundSyncLoop
+
+    managed = list_managed_repos()
+    results: list[dict[str, Any]] = []
+    errors: list[dict[str, str]] = []
+    for entry in managed:
+        root = Path(str(entry.get("root") or "")).resolve()
+        if not root.is_dir():
+            errors.append({"repo": str(root), "error": "managed repository is unavailable"})
+            continue
+        try:
+            result = BackgroundSyncLoop(root).reconcile(reason=reason)
+            results.append({"repo": str(root), **result})
+        except Exception as exc:  # noqa: BLE001
+            errors.append({"repo": str(root), "error": str(exc)})
+    return {
+        "managed": len(managed),
+        "reconciled": len(results),
+        "results": results,
+        "errors": errors,
+    }
 
 
 def start_daemon(
@@ -223,7 +295,8 @@ def start_daemon(
     client = EngineClient(f"http://{host}:{port}")
     while time.time() < deadline:
         if client.healthy():
-            return {"ok": True, "started": True, **meta}
+            recovery = reconcile_managed_repositories(reason="daemon_start")
+            return {"ok": True, "started": True, **meta, "registry_recovery": recovery}
         time.sleep(0.4)
     return {
         "ok": False,
@@ -328,7 +401,29 @@ def ensure_daemon(
     force_if_hung: bool = True,
 ) -> dict[str, Any]:
     if is_running():
-        return {"ok": True, "already_running": True, "url": engine_url()}
+        target = Path(repo).resolve() if repo is not None else None
+        if target is None:
+            return {"ok": True, "already_running": True, "url": engine_url()}
+        from pipeline.client import EngineClient
+
+        client = EngineClient()
+        opened = client.open_repo(str(target), wait=True)
+        health = client.get("/health")
+        bound_raw = health.get("repo")
+        try:
+            bound = Path(str(bound_raw)).resolve() if bound_raw else None
+        except OSError:
+            bound = None
+        matched = bool(opened.get("ok", True) and bound == target)
+        return {
+            "ok": matched,
+            "already_running": True,
+            "url": engine_url(),
+            "repo": str(target),
+            "bound_repo": str(bound) if bound is not None else bound_raw,
+            "opened": opened,
+            "error": None if matched else "running daemon did not bind requested repository",
+        }
     # If hung (lock alive, health down), optionally force restart.
     # MCP request paths should pass force_if_hung=False — force_restart can
     # block for minutes and looked like agent "hangs" in A/B runs.

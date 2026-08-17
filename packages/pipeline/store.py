@@ -8,6 +8,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from pipeline.artifact_guard import atomic_write_text
 from pipeline.merkle import load_snapshot, save_snapshot
 from pipeline.vectordb import FaissCollection, VectorDatabase, cwd_collection_name
 
@@ -85,7 +86,7 @@ class PipelineStore:
     def save_meta(self, meta: dict[str, Any]) -> None:
         if self.project_id and "project_id" not in meta:
             meta = {**meta, "project_id": self.project_id}
-        self.meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+        atomic_write_text(self.meta_path, json.dumps(meta, indent=2) + "\n")
 
     def load_chunks(self) -> list[ChunkRecord]:
         if not self.chunks_path.exists():
@@ -99,9 +100,10 @@ class PipelineStore:
         return out
 
     def save_chunks(self, chunks: list[ChunkRecord]) -> None:
-        with self.chunks_path.open("w", encoding="utf-8") as f:
-            for c in chunks:
-                f.write(json.dumps(asdict(c), ensure_ascii=False) + "\n")
+        atomic_write_text(
+            self.chunks_path,
+            "".join(json.dumps(asdict(c), ensure_ascii=False) + "\n" for c in chunks),
+        )
 
     def load_merkle(self) -> dict[str, str]:
         return load_snapshot(self.merkle_path)
@@ -124,9 +126,9 @@ class PipelineStore:
             return {}
 
     def save_chunk_merkle(self, hashes: dict[str, dict[str, str]]) -> None:
-        self.chunk_merkle_path.write_text(
-            json.dumps(hashes, indent=2, sort_keys=True),
-            encoding="utf-8",
+        atomic_write_text(
+            self.chunk_merkle_path,
+            json.dumps(hashes, indent=2, sort_keys=True) + "\n",
         )
 
     def get_collection(self) -> FaissCollection | None:

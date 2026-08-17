@@ -21,6 +21,7 @@ from conductor.graphify_retriever import build_and_save_graph
 from pipeline.embedder import Embedder
 from pipeline.merkle import SyncDiff, diff_hashes, file_sha256, scan_file_hashes
 from pipeline.paths import collect_index_paths, fast_roots_from_env
+from pipeline.preflight import CapabilityError, require_capabilities
 from pipeline.store import ChunkRecord, PipelineStore
 from pipeline.vectordb import VectorDatabase
 
@@ -105,6 +106,7 @@ def index_repo(
     except Exception as exc:  # noqa: BLE001
         print(f"[resources] index gate skipped: {exc}", file=sys.stderr, flush=True)
 
+    require_capabilities(require_semantic=True)
     store = PipelineStore(root, base_dir=base_dir, vdb=vdb)
     old = store.load_merkle()
     roots = list(fast_roots_from_env(fast_roots))
@@ -226,7 +228,13 @@ def index_repo(
                 f"embed-done:{stats.get('chunk_per_s', '?')}/s@{stats.get('device', '?')}",
                 0.88,
             )
+    except CapabilityError:
+        raise
     except Exception as exc:  # noqa: BLE001
+        # Never invent vectors for missing accel — only absorb transient encode faults
+        # when an explicit ST/ollama backend was selected.
+        if embedder.backend == "fastembed":
+            raise
         if progress:
             progress(f"embed-fallback:{exc}", 0.6)
         dim = 768
@@ -281,6 +289,21 @@ def index_repo(
             "note": "CodeRankLLM reranker is search-time only (not used during index)",
         }
     )
+    from pipeline.artifact_guard import publish_manifest
+
+    published = [
+        p
+        for p in (
+            store.chunks_path,
+            store.graph_path,
+            store.base / "graph.json",
+            store.meta_path,
+            store.merkle_path,
+        )
+        if p.is_file()
+    ]
+    if published:
+        publish_manifest(store.base, published)
 
     return IndexStats(
         root=str(root),

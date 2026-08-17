@@ -29,6 +29,7 @@ def _empty(repo: Path) -> dict[str, Any]:
         "turn": 0,
         "spans": {},
         "facts": [],
+        "sessions": {},
         "ledger": {"served_handles": [], "approx_prompt_tokens": 0},
         "by_hash": {},  # content_hash -> handle
         "by_key": {},  # path:start:end -> handle
@@ -84,16 +85,58 @@ def clear_store(repo: Path | str) -> dict[str, Any]:
     return empty
 
 
+def record_session_metadata(
+    repo: Path | str,
+    session_id: str,
+    *,
+    client: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Persist session attribution without changing repository-global index state."""
+    repo_p = Path(repo).resolve()
+    store = load_store(repo_p)
+    now = time.time()
+    sessions = store.setdefault("sessions", {})
+    current = dict(sessions.get(session_id) or {})
+    current.setdefault("started_at", now)
+    current.update(metadata or {})
+    current.update(
+        {
+            "session_id": session_id,
+            "client": client or current.get("client"),
+            "last_seen_at": now,
+            "session_authored": True,
+        }
+    )
+    sessions[session_id] = current
+    save_store(repo_p, store)
+    return dict(current)
+
+
+def end_session(repo: Path | str, session_id: str) -> dict[str, Any]:
+    """Mark one session ended while retaining its attribution history."""
+    repo_p = Path(repo).resolve()
+    store = load_store(repo_p)
+    sessions = store.setdefault("sessions", {})
+    current = dict(sessions.get(session_id) or {"session_id": session_id})
+    current["ended_at"] = time.time()
+    sessions[session_id] = current
+    save_store(repo_p, store)
+    return dict(current)
+
+
 def invalidate_paths(repo: Path | str, paths: list[str]) -> dict[str, Any]:
     """Drop cached session spans for files rewritten by incremental sync."""
     repo_p = Path(repo).resolve()
-    normalized = {str(path).replace("\", "/").lstrip("./") for path in paths if str(path)}
+    normalized = {
+        str(path).replace("\\", "/").lstrip("./") for path in paths if str(path)
+    }
     store = load_store(repo_p)
     spans = store.get("spans") or {}
     removed_handles = [
         handle
         for handle, span in spans.items()
-        if str((span or {}).get("path") or "").replace("\", "/") in normalized
+        if str((span or {}).get("path") or "").replace("\\", "/") in normalized
     ]
     for handle in removed_handles:
         spans.pop(handle, None)
@@ -110,7 +153,7 @@ def invalidate_paths(repo: Path | str, paths: list[str]) -> dict[str, Any]:
     store["focus_seen"] = {
         key: value
         for key, value in focus_seen.items()
-        if key.split(":", 1)[-1].replace("\", "/") not in normalized
+        if key.split(":", 1)[-1].replace("\\", "/") not in normalized
     }
     save_store(repo_p, store)
     return {"ok": True, "paths": sorted(normalized), "removed": len(removed_handles)}
@@ -162,9 +205,20 @@ def put_span(
     role: str = "",
     topic: str = "",
     excerpt_chars: int = 80,
+    session_id: str | None = None,
+    client: str | None = None,
+    session_authored: bool = False,
+    metadata: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Store span body server-side; return compact card with handle."""
     repo_p = Path(repo).resolve()
+    if session_id:
+        record_session_metadata(
+            repo_p,
+            session_id,
+            client=client,
+            metadata=metadata,
+        )
     store = load_store(repo_p)
     path_s = (path or "").replace("\\", "/")
     text_s = text or ""
@@ -209,6 +263,9 @@ def put_span(
         "why": (why or "")[:200],
         "role": (role or "")[:40],
         "source": (source or "")[:40],
+        "session_id": session_id,
+        "session_authored": bool(session_authored or session_id),
+        "metadata": dict(metadata or {}),
         "created_ts": time.time(),
         "last_served_ts": time.time(),
         "serve_count": 1,
@@ -236,6 +293,9 @@ def put_span(
         "why": (why or "")[:200],
         "role": (role or "")[:40],
         "source": (source or "")[:40],
+        "session_id": session_id,
+        "session_authored": bool(session_authored or session_id),
+        "metadata": dict(metadata or {}),
         "excerpt": _excerpt(text_s, max(40, int(excerpt_chars))),
         "hint": "Full text is in session store. expand(handle) to materialize.",
         "serve_count": 1,

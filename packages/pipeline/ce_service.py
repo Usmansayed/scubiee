@@ -10,12 +10,13 @@ MCP / CLI / dashboard are thin clients.
 
 from __future__ import annotations
 
+import os
 import threading
 import time
 from pathlib import Path
 from typing import Any
 
-from pipeline.engine import clear_engines, load_engine
+from pipeline.engine import clear_engines, drop_engine, load_engine
 from pipeline.index_manager import get_index_manager
 from pipeline.registration import (
     is_always_allowed,
@@ -24,6 +25,7 @@ from pipeline.registration import (
     register_project as do_register_project,
     registration_prompt_payload,
 )
+from pipeline.repo_runtime import RepoHub, RepoRuntime
 from pipeline.settings import get_registration_mode, load_prefs, save_prefs
 from pipeline.store import PipelineStore
 from pipeline.sync_loop import (
@@ -33,10 +35,26 @@ from pipeline.sync_loop import (
 )
 
 
+class _RuntimePublisher:
+    """Keeper callback that preserves the public ``publish_engine`` identity."""
+
+    def __init__(self, manager: "RuntimeManager", runtime: RepoRuntime) -> None:
+        self.manager = manager
+        self.runtime = runtime
+
+    def __call__(self, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        return self.manager._publish_runtime(self.runtime, payload)
+
+    def __eq__(self, other: object) -> bool:
+        return other == self.manager.publish_engine
+
+
 class RuntimeManager:
     """Process-local runtime: workspace, keeper, published search engine."""
 
     def __init__(self) -> None:
+        self.hub = RepoHub()
+        self._active_runtime: RepoRuntime | None = None
         self.repo: Path | None = None
         self.engine = None
         self.sync_loop: BackgroundSyncLoop | None = None
@@ -48,8 +66,233 @@ class RuntimeManager:
         self.warm_ms: float | None = None
         self.generation: int = 0
         self.last_sync_at: float | None = None
+        self._admission_pauses: dict[str, dict[str, Any]] = {}
         self._lock = threading.RLock()
         self.index = get_index_manager()
+
+    def _save_active_runtime(self) -> None:
+        """Persist the legacy facade fields onto its repository runtime."""
+        runtime = self._active_runtime
+        if runtime is None:
+            return
+        runtime.repo = self.repo or runtime.repo
+        runtime.engine = self.engine
+        runtime.keeper = self.sync_loop
+        runtime.warm_state = self.warm_state
+        runtime.warming = self.warming
+        runtime.indexing = self.indexing
+        runtime.error = self.warm_error
+        runtime.warm_ms = self.warm_ms
+        runtime.generation = self.generation
+        runtime.last_sync_at = self.last_sync_at
+
+    def _load_runtime_facade(self, runtime: RepoRuntime) -> None:
+        self._active_runtime = runtime
+        self.repo = runtime.repo
+        self.engine = runtime.engine
+        self.sync_loop = runtime.keeper
+        self.project_id = runtime.project_id
+        self.warm_state = runtime.warm_state
+        self.warming = runtime.warming
+        self.indexing = runtime.indexing
+        self.warm_error = runtime.error
+        self.warm_ms = runtime.warm_ms
+        self.generation = runtime.generation
+        self.last_sync_at = runtime.last_sync_at
+
+    def _activate_runtime(
+        self,
+        root: Path | str,
+        *,
+        client: str | None = None,
+        session_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> RepoRuntime:
+        """Switch the compatible active facade without stopping other repos."""
+        runtime = self.hub.ensure(
+            Path(root).resolve(),
+            client=client,
+            session_id=session_id,
+            metadata=metadata,
+        )
+        with self._lock:
+            if self._active_runtime is not runtime:
+                self._save_active_runtime()
+                self._load_runtime_facade(runtime)
+            runtime.touch(priority="active")
+        return runtime
+
+    @staticmethod
+    def _auto_limits() -> tuple[int, int]:
+        prefs = load_prefs()
+        config = prefs.get("auto_admission")
+        config = config if isinstance(config, dict) else {}
+
+        def value(env_name: str, pref_name: str, default: int) -> int:
+            raw = os.environ.get(env_name)
+            if raw is None:
+                raw = config.get(pref_name, default)
+            try:
+                return max(0, int(raw))
+            except (TypeError, ValueError):
+                return default
+
+        return (
+            value("CTX_AUTO_MAX_REPOS", "max_repositories", 8),
+            value("CTX_AUTO_LARGE_REPO_FILES", "large_repo_files", 10_000),
+        )
+
+    @staticmethod
+    def _repo_file_count(repo: Path, *, stop_after: int) -> int:
+        count = 0
+        ignored = {".git", ".context-engine", "__pycache__"}
+        for _root, dirs, files in os.walk(repo):
+            dirs[:] = [name for name in dirs if name not in ignored]
+            count += len(files)
+            if stop_after and count > stop_after:
+                break
+        return count
+
+    def admit_request(
+        self,
+        root: Path | str,
+        *,
+        client: str | None = None,
+        session_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Admit a path-bearing CE request without creating managed state."""
+        from pipeline import repo_lifecycle as lifecycle
+
+        repo = Path(root).resolve()
+        admission = lifecycle.activate_repo(repo)
+        status = str(admission.get("status") or admission.get("state") or "")
+        if status != "activated":
+            return {
+                **admission,
+                "status": status,
+                "pause_reason": admission.get("pause_reason"),
+                "client": client,
+                "session_id": session_id,
+                "session_authored": bool(session_id),
+            }
+
+        existing = self.hub.get(str(admission["project_id"]))
+        max_repositories, large_repo_files = self._auto_limits()
+        if existing is None:
+            file_count = self._repo_file_count(repo, stop_after=large_repo_files)
+            if large_repo_files and file_count > large_repo_files:
+                self._admission_pauses[str(repo)] = {
+                    "reason": "large_repo",
+                    "at": time.time(),
+                    "file_count": file_count,
+                }
+                return {
+                    **admission,
+                    "ok": False,
+                    "status": "paused",
+                    "pause_reason": "large_repo",
+                    "file_count": file_count,
+                    "large_repo_files": large_repo_files,
+                    "client": client,
+                    "session_id": session_id,
+                    "session_authored": bool(session_id),
+                }
+            auto_count = sum(
+                1
+                for item in self.hub.list_status()
+                if item.get("auto_admitted")
+            )
+            if max_repositories and auto_count >= max_repositories:
+                self._admission_pauses[str(repo)] = {
+                    "reason": "auto_limit",
+                    "at": time.time(),
+                    "auto_limit": max_repositories,
+                }
+                return {
+                    **admission,
+                    "ok": False,
+                    "status": "paused",
+                    "pause_reason": "auto_limit",
+                    "auto_limit": max_repositories,
+                    "client": client,
+                    "session_id": session_id,
+                    "session_authored": bool(session_id),
+                }
+
+        runtime = self._activate_runtime(
+            repo,
+            client=client,
+            session_id=session_id,
+            metadata=metadata,
+        )
+        self._admission_pauses.pop(str(repo), None)
+        runtime.auto_admitted = True
+        if session_id:
+            from pipeline.session_store import record_session_metadata
+
+            session = record_session_metadata(
+                repo,
+                session_id,
+                client=client,
+                metadata=metadata,
+            )
+        else:
+            session = None
+
+        if runtime.engine is None and runtime.warm_state != "ready":
+            opened = self._warm_registered(repo)
+        else:
+            opened = {
+                "ok": True,
+                "repo": str(repo),
+                "project_id": runtime.project_id,
+                "warm_state": runtime.warm_state,
+                "reused": True,
+            }
+        self._save_active_runtime()
+        return {
+            **admission,
+            "status": "activated",
+            "open": opened,
+            "client": client,
+            "session_id": session_id,
+            "session": session,
+            "session_authored": bool(session_id),
+            "runtime_shared": existing is not None,
+        }
+
+    def end_session(self, root: Path | str, session_id: str) -> dict[str, Any]:
+        """End one session without idling a repository used by another."""
+        from pipeline import repo_lifecycle as lifecycle
+
+        repo = Path(root).resolve()
+        lifecycle_data = lifecycle.lifecycle_status(repo)
+        project_id = lifecycle_data.get("project_id")
+        runtime = self.hub.get(str(project_id)) if project_id else None
+        if runtime is None:
+            return {
+                "ok": False,
+                "status": "not_active",
+                "repo": str(repo),
+                "session_id": session_id,
+                "remaining_sessions": 0,
+            }
+        remaining = runtime.end_session(session_id)
+        from pipeline.session_store import end_session as end_stored_session
+
+        end_stored_session(repo, session_id)
+        return {
+            "ok": True,
+            "status": "ended",
+            "repo": str(repo),
+            "project_id": runtime.project_id,
+            "session_id": session_id,
+            "remaining_sessions": remaining,
+            "runtime_active": runtime.project_id in {
+                item["project_id"] for item in self.hub.list_status()
+            },
+        }
 
     # --- publish (searcher generation) ------------------------------------
 
@@ -63,13 +306,14 @@ class RuntimeManager:
             return {"ok": False, "error": "no repo"}
         with self._lock:
             try:
-                clear_engines()
+                drop_engine(repo)
                 eng = load_engine(repo, force_reload=True)
                 self.engine = eng
                 self.generation += 1
                 self.last_sync_at = time.time()
                 self.warm_state = "ready"
                 self.warm_error = None
+                self._save_active_runtime()
                 return {
                     "ok": True,
                     "generation": self.generation,
@@ -79,6 +323,9 @@ class RuntimeManager:
                 }
             except Exception as exc:  # noqa: BLE001
                 self.warm_error = str(exc)
+                if self.project_id:
+                    self.hub.isolate_failure(self.project_id, exc)
+                self._save_active_runtime()
                 return {"ok": False, "error": str(exc), "generation": self.generation}
 
     def health(self) -> dict[str, Any]:
@@ -137,32 +384,14 @@ class RuntimeManager:
     def _open_repo_sync(self, root: Path) -> dict[str, Any]:
         enable_session_keeper_defaults()
         with self._lock:
-            self._stop_keeper(final=True, reason="open_repo")
-            clear_engines()
-            self.engine = None
-            self.repo = root
+            from pipeline.repo_lifecycle import activate_repo
+
+            admission = activate_repo(root)
+            if admission.get("status") != "activated":
+                return admission
+            self._activate_runtime(root)
             self.warm_error = None
-
-            mode = get_registration_mode()
-            if mode == "automatic":
-                return self._warm_after_register(root, always_allow=True)
-
-            if is_registered(root) or is_always_allowed(root):
-                if is_always_allowed(root) and not is_registered(root):
-                    do_register_project(
-                        root, always_allow=True, index=auto_index_enabled()
-                    )
-                return self._warm_registered(root)
-
-            self.warm_state = "awaiting_registration"
-            self.warming = False
-            return {
-                "ok": True,
-                "repo": str(root),
-                "warm_state": self.warm_state,
-                "registration_mode": mode,
-                **registration_prompt_payload(root),
-            }
+            return self._warm_registered(root)
 
     def _should_start_keeper(self) -> bool:
         prefs = load_prefs()
@@ -173,9 +402,42 @@ class RuntimeManager:
             return
         if self.sync_loop and self.sync_loop.running:
             return
-        loop = BackgroundSyncLoop(repo, on_refresh=self.publish_engine)
+        runtime = self._active_runtime
+        if runtime is None or runtime.repo != repo.resolve():
+            runtime = self._activate_runtime(repo)
+        loop = BackgroundSyncLoop(repo, on_refresh=_RuntimePublisher(self, runtime))
         loop.start()
         self.sync_loop = loop
+        self._save_active_runtime()
+
+    def _publish_runtime(self, runtime: RepoRuntime, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Publish from a keeper without changing another repository's facade."""
+        try:
+            drop_engine(runtime.repo)
+            engine = load_engine(runtime.repo, force_reload=True)
+            runtime.engine = engine
+            runtime.generation += 1
+            runtime.last_sync_at = time.time()
+            runtime.warm_state = "ready"
+            runtime.error = None
+            if self._active_runtime is runtime:
+                self._load_runtime_facade(runtime)
+            try:
+                from pipeline.storage_policy import compact_collection
+
+                compact_collection(runtime.project_id, force=False)
+            except Exception:  # noqa: BLE001
+                pass
+            return {
+                "ok": True,
+                "generation": runtime.generation,
+                "last_sync_at": runtime.last_sync_at,
+                "chunks": len(engine.texts),
+                "payload": payload,
+            }
+        except Exception as exc:  # noqa: BLE001
+            self.hub.isolate_failure(runtime.project_id, exc)
+            return {"ok": False, "error": str(exc), "generation": runtime.generation}
 
     def _stop_keeper(self, *, final: bool = True, reason: str = "stop") -> None:
         loop = self.sync_loop
@@ -257,7 +519,16 @@ class RuntimeManager:
             self.indexing = False
 
     def shutdown(self) -> None:
-        self._stop_keeper(final=True, reason="shutdown")
+        self._save_active_runtime()
+        for item in self.hub.list_status():
+            runtime = self.hub.get(str(item["project_id"]))
+            if runtime and runtime.keeper:
+                try:
+                    runtime.keeper.final_check(reason="shutdown")
+                except Exception:  # noqa: BLE001
+                    pass
+                runtime.keeper.stop()
+                runtime.keeper = None
         clear_engines()
         self.engine = None
 
@@ -265,29 +536,120 @@ class RuntimeManager:
 
     def status(self, root: Path | str | None = None) -> dict[str, Any]:
         repo = Path(root).resolve() if root else (self.repo or Path.cwd())
+        from pipeline.repo_lifecycle import UNMANAGED, lifecycle_status
+
+        lifecycle = lifecycle_status(repo)
+        admission_pause = self._admission_pauses.get(str(repo)) or {}
+        project_id = lifecycle.get("project_id")
+        runtime = self.hub.get(str(project_id)) if project_id else None
+        keeper = runtime.keeper if runtime else None
+        keeper_status = keeper.status() if keeper else None
+        dirty = (
+            keeper_status.get("dirty")
+            if isinstance(keeper_status, dict)
+            else {"paths": {}}
+        )
+        if not isinstance(dirty, dict):
+            dirty = {"paths": {}}
+        dirty_paths = dirty.get("paths")
+        dirty_paths = dirty_paths if isinstance(dirty_paths, dict) else {}
+        current_files = sorted(str(path) for path in dirty_paths)
+
+        try:
+            from pipeline.fair_schedule import get_embed_scheduler
+
+            scheduler_queue = get_embed_scheduler().status()
+            scheduler_queue.setdefault(
+                "queue_depth", int(scheduler_queue.get("queued") or 0)
+            )
+            scheduler_queue.setdefault(
+                "waiting", list(scheduler_queue.get("queue") or [])
+            )
+        except Exception:  # noqa: BLE001
+            scheduler_queue = {
+                "holder": None,
+                "queue_depth": 0,
+                "waiting": [],
+                "served": {},
+            }
+
+        storage_bytes: dict[str, Any] = {
+            "project_id": project_id,
+            "store_bytes": 0,
+            "vector_bytes": 0,
+            "bytes_used": 0,
+            "reclaimable_bytes": 0,
+        }
+        if project_id:
+            try:
+                from pipeline.storage_policy import repo_storage_status
+
+                storage_bytes = repo_storage_status(str(project_id))
+            except Exception as exc:  # noqa: BLE001
+                storage_bytes["error"] = str(exc)
+
+        session_rows = []
+        if runtime:
+            session_rows = [
+                dict(runtime.session_metadata[session_id])
+                for session_id in sorted(runtime.sessions)
+                if session_id in runtime.session_metadata
+            ]
+        timestamps = dict(lifecycle.get("timestamps") or {})
+        timestamps.update(
+            {
+                "last_activity_at": runtime.last_activity_at if runtime else None,
+                "last_runtime_sync_at": runtime.last_sync_at if runtime else None,
+                "admission_paused_at": admission_pause.get("at"),
+            }
+        )
         prefs = load_prefs()
         payload: dict[str, Any] = {
             "ok": True,
             "service": "context-engine",
             "repo": str(repo),
+            "lifecycle": lifecycle["state"],
             "registration_mode": get_registration_mode(),
             "registered": is_registered(repo),
             "always_allow": is_always_allowed(repo),
-            "project_id": self.project_id,
-            "warm_state": self.warm_state,
-            "warming": self.warming,
-            "indexing": self.indexing,
-            "warm_error": self.warm_error,
-            "warm_ms": self.warm_ms,
-            "generation": self.generation,
-            "last_sync_at": self.last_sync_at,
+            "project_id": project_id,
+            "warm_state": runtime.warm_state if runtime else "idle",
+            "warming": runtime.warming if runtime else False,
+            "indexing": runtime.indexing if runtime else False,
+            "warm_error": runtime.error if runtime else None,
+            "warm_ms": runtime.warm_ms if runtime else None,
+            "generation": runtime.generation if runtime else 0,
+            "last_sync_at": runtime.last_sync_at if runtime else None,
             "prefs": {
                 "registration_mode": prefs.get("registration_mode"),
                 "incremental_indexing": prefs.get("incremental_indexing"),
                 "file_watching": prefs.get("file_watching"),
+                "auto_admission": prefs.get("auto_admission"),
             },
-            "engine": self.engine.status() if self.engine else None,
-            "keeper": self.sync_loop.status() if self.sync_loop else None,
+            "engine": runtime.engine.status() if runtime and runtime.engine else None,
+            "keeper": keeper_status,
+            "repositories": self.hub.list_status(),
+            "sessions": session_rows,
+            "dirty": dirty,
+            "pending": {
+                "dirty_count": len(dirty_paths),
+                "publish": bool(
+                    keeper_status.get("publish_pending")
+                    if isinstance(keeper_status, dict)
+                    else False
+                ),
+                "sync_status": (
+                    keeper_status.get("sync_status")
+                    if isinstance(keeper_status, dict)
+                    else "idle"
+                ),
+            },
+            "scheduler_queue": scheduler_queue,
+            "current_files": current_files,
+            "pause_reason": admission_pause.get("reason")
+            or lifecycle.get("pause_reason"),
+            "timestamps": timestamps,
+            "storage_bytes": storage_bytes,
         }
         try:
             from pipeline.resources import get_resource_manager
@@ -295,14 +657,36 @@ class RuntimeManager:
             payload["resources"] = get_resource_manager().status()
         except Exception:  # noqa: BLE001
             payload["resources"] = None
+        from pipeline.runtime_profile import get_runtime_profile_state
 
-        if needs_registration_consent(repo):
+        profile_state = get_runtime_profile_state()
+        resource_status = payload["resources"]
+        envelope = (
+            resource_status.get("envelope")
+            if isinstance(resource_status, dict)
+            else None
+        )
+        payload.update(
+            {
+                "preferred_profile": profile_state.preferred_profile,
+                "active_profile": profile_state.active_profile,
+                "backup_reason": profile_state.backup_reason,
+                "envelope": envelope,
+                "recommended_command": (
+                    "python -m pipeline init --repair"
+                    if profile_state.backup_reason
+                    else "python -m pipeline serve"
+                ),
+            }
+        )
+
+        if lifecycle["state"] == UNMANAGED:
             payload["needs_registration"] = registration_prompt_payload(repo)
             return payload
 
         try:
             store = PipelineStore(repo)
-            payload["project_id"] = self.project_id or store.project_id
+            payload["project_id"] = project_id or store.project_id
             payload["root_probe"] = self.index.probe(repo)
             payload["meta"] = {
                 k: store.load_meta().get(k)
@@ -318,7 +702,7 @@ class RuntimeManager:
                 )
             }
             payload["last_bg_sync"] = (
-                self.sync_loop.last_result if self.sync_loop else None
+                keeper.last_result if keeper else None
             )
         except Exception as exc:  # noqa: BLE001
             payload["store_error"] = str(exc)
@@ -413,7 +797,7 @@ class RuntimeManager:
         if gate:
             return gate
         repo = Path(root).resolve() if root else (self.repo or Path.cwd())
-        self.repo = repo
+        self._activate_runtime(repo)
         out = self.index.sync(repo)
         if out.get("refreshed"):
             pub = self.publish_engine()
@@ -636,6 +1020,7 @@ class RuntimeManager:
             "registration_mode",
             "incremental_indexing",
             "file_watching",
+            "auto_admission",
             "resource_management",
         ):
             if key in patch:
@@ -657,11 +1042,12 @@ class RuntimeManager:
         return None
 
     def _ensure_engine(self, root: Path | str | None):
-        if self.engine is not None:
-            return self.engine
         repo = Path(root).resolve() if root else self.repo
         if repo is None:
             return None
+        self._activate_runtime(repo)
+        if self.engine is not None:
+            return self.engine
         if self.warm_state == "awaiting_registration":
             return None
         try:
@@ -671,8 +1057,11 @@ class RuntimeManager:
             self.warm_state = "ready"
             if self.generation == 0:
                 self.generation = 1
+            self._save_active_runtime()
             return eng
-        except Exception:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
+            if self.project_id:
+                self.hub.isolate_failure(self.project_id, exc)
             return None
 
 

@@ -160,8 +160,8 @@ def _accel_libs() -> dict[str, Any]:
 
 
 def detect_capabilities() -> dict[str, Any]:
-    """Full hardware + library snapshot (also merges accel.detect_hardware)."""
-    from pipeline.accel import detect_hardware, recommend_profile
+    """Full hardware snapshot annotated with the saved install preference."""
+    from pipeline.accel import detect_hardware, load_accel
 
     base = detect_hardware()
     ram = _ram_bytes()
@@ -176,9 +176,9 @@ def detect_capabilities() -> dict[str, Any]:
         "detected_at": time.time(),
         "platform": platform.platform(),
     }
-    # Suggested accel (does not install)
-    try:
-        prof = recommend_profile(base)
+    # Report the install-time choice without selecting a new provider.
+    prof = load_accel()
+    if prof is not None:
         snap["recommended_accel"] = {
             "profile": prof.profile,
             "provider": prof.provider,
@@ -186,8 +186,8 @@ def detect_capabilities() -> dict[str, Any]:
             "reason": prof.reason,
             "device_id": prof.device_id,
         }
-    except Exception as exc:  # noqa: BLE001
-        snap["recommended_accel"] = {"error": str(exc)}
+    else:
+        snap["recommended_accel"] = None
     return snap
 
 

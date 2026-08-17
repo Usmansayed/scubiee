@@ -304,9 +304,8 @@ def incremental_sync(
 
         # Merge chunk list
         merged = keep + new_records
-        # Re-assign contiguous ids for FAISS simplicity
-        for i, c in enumerate(merged):
-            c.id = i
+        # IDs are durable payload identities. Gaps after deletion are expected;
+        # compaction rebuilds storage without renumbering surviving chunks.
         store.save_chunks(merged)
 
         col = store.get_collection()
@@ -413,6 +412,24 @@ def incremental_sync(
         else:
             meta.pop("last_graph_error", None)
         store.save_meta(meta)
+        # Incremental sync mutates the same published artifacts as a full
+        # index. Refresh the manifest only after all of those writes complete,
+        # otherwise readiness will reject every live update as corruption.
+        from pipeline.artifact_guard import publish_manifest
+
+        published = [
+            path
+            for path in (
+                store.chunks_path,
+                store.graph_path,
+                store.base / "graph.json",
+                store.meta_path,
+                store.merkle_path,
+            )
+            if path.is_file()
+        ]
+        if published:
+            publish_manifest(store.base, published)
         try:
             from pipeline.capability import ensure_cards
 

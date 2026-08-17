@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import secrets
 import shutil
 import time
@@ -70,8 +71,14 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 
 def _write_json(path: Path, data: dict[str, Any]) -> None:
+    """Atomically replace a JSON document in its destination directory."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    temporary = path.with_name(f".{path.name}.{secrets.token_hex(8)}.tmp")
+    try:
+        temporary.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def read_id_file(root: Path) -> str | None:
@@ -110,6 +117,16 @@ def _norm_path(p: Path | str) -> str:
     return str(Path(p).resolve())
 
 
+def _registry_path_identity_trusted(project_id: str, path: Path) -> bool:
+    """Trust a registry path alias only when live ``id.json`` exactly matches.
+
+    Missing or malformed identity files are treated as stale/untrusted so a
+    vacated path (even with an empty ``.context-engine/`` directory) cannot
+    inherit a moved repository's durable ID.
+    """
+    return read_id_file(path) == project_id
+
+
 def find_id_by_path(abs_path: str, registry: dict[str, Any] | None = None) -> str | None:
     reg = registry if registry is not None else load_registry()
     target = _norm_path(abs_path)
@@ -121,7 +138,9 @@ def find_id_by_path(abs_path: str, registry: dict[str, Any] | None = None) -> st
             continue
         for p in paths:
             try:
-                if _norm_path(p) == target:
+                if _norm_path(p) != target:
+                    continue
+                if _registry_path_identity_trusted(str(pid), Path(p)):
                     return str(pid)
             except OSError:
                 continue
@@ -132,15 +151,27 @@ def update_registry(project_id: str, root: Path) -> None:
     reg = load_registry()
     projects = reg.setdefault("projects", {})
     entry = projects.get(project_id) if isinstance(projects.get(project_id), dict) else {}
+    entry = dict(entry)
     paths = list(entry.get("paths") or []) if isinstance(entry.get("paths"), list) else []
     abs_root = _norm_path(root)
-    # Keep this path first; drop duplicates
-    paths = [abs_root] + [p for p in paths if _norm_path(p) != abs_root]
-    projects[project_id] = {
-        "paths": paths[:8],
-        "updated_at": time.time(),
-        "name": Path(abs_root).name,
-    }
+    # Keep aliases that still carry this durable identity. A moved repository's
+    # vacated path must not remain an alias that can identify a new checkout.
+    live_aliases: list[str] = []
+    for path in paths:
+        normalized = _norm_path(path)
+        if normalized == abs_root:
+            continue
+        if read_id_file(Path(path)) == project_id:
+            live_aliases.append(normalized)
+    paths = [abs_root] + [path for path in live_aliases if path != abs_root]
+    entry.update(
+        {
+            "paths": paths[:8],
+            "updated_at": time.time(),
+            "name": Path(abs_root).name,
+        }
+    )
+    projects[project_id] = entry
     save_registry(reg)
 
 
@@ -220,7 +251,7 @@ def collection_name_for_project(root: Path, project_id: str) -> str:
 
 
 def index_is_usable(store_dir: Path, *, collection_name: str | None = None) -> bool:
-    """True when chunks + graph.json exist (vectors checked lightly via meta)."""
+    """True when chunks + graph.json exist and any publication manifest is valid."""
     if not (store_dir / "chunks.jsonl").is_file():
         return False
     if not (store_dir / "graph.json").is_file():
@@ -230,4 +261,11 @@ def index_is_usable(store_dir: Path, *, collection_name: str | None = None) -> b
         return False
     # Prefer collection name from meta when present
     _ = collection_name or meta.get("collection")
+    # Fail closed when a manifest exists but is corrupt/mismatched.
+    from pipeline.artifact_guard import MANIFEST_NAME, validate_manifest
+
+    if (store_dir / MANIFEST_NAME).is_file():
+        report = validate_manifest(store_dir)
+        if not report.get("ok"):
+            return False
     return True

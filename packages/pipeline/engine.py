@@ -305,6 +305,12 @@ def load_engine(
 
         t0 = time.perf_counter()
         store = PipelineStore(root, base_dir=base_dir, vdb=vdb)
+        from pipeline.project_id import index_is_usable
+
+        if not index_is_usable(store.base):
+            raise RuntimeError(
+                "Index publication is missing or checksum-invalid; refusing mixed generation."
+            )
         chunks = store.load_chunks()
         if not chunks:
             raise RuntimeError("No index found. Run: python -m pipeline index <repo>")
@@ -361,6 +367,13 @@ def load_engine(
         )
         _ENGINES[key] = eng
         return eng
+
+
+def drop_engine(root: Path, *, base_dir: Path | None = None) -> bool:
+    """Drop one repository's cached WarmSearchEngine without touching others."""
+    key = _engine_key(root.resolve(), base_dir)
+    with _LOCK:
+        return _ENGINES.pop(key, None) is not None
 
 
 def clear_engines() -> None:

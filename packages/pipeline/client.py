@@ -6,6 +6,7 @@ import json
 import os
 import urllib.error
 import urllib.request
+from pathlib import Path
 from typing import Any
 
 DEFAULT_URL = "http://127.0.0.1:8765"
@@ -22,9 +23,22 @@ def engine_url() -> str:
 class EngineClient:
     """Thin HTTP client — no business logic."""
 
-    def __init__(self, base_url: str | None = None, *, timeout: float = 120.0):
+    def __init__(
+        self,
+        base_url: str | None = None,
+        *,
+        timeout: float = 120.0,
+        workspace_path: str | Path | None = None,
+        client: str | None = None,
+        session_id: str | None = None,
+    ):
         self.base = (base_url or engine_url()).rstrip("/")
         self.timeout = timeout
+        self.workspace_path = (
+            str(Path(workspace_path).resolve()) if workspace_path else None
+        )
+        self.client_name = client
+        self.session_id = session_id
 
     def healthy(self) -> bool:
         """True if /health returns ok. Always uses a short timeout."""
@@ -49,7 +63,17 @@ class EngineClient:
         data = None
         headers = {"Accept": "application/json"}
         if body is not None and method != "GET":
-            data = json.dumps(body).encode("utf-8")
+            payload = dict(body)
+            supplied_path = payload.get("path") or payload.get("repo") or payload.get("root")
+            workspace = str(Path(supplied_path).resolve()) if supplied_path else self.workspace_path
+            if not workspace:
+                raise ValueError("workspace path is required for Context Engine requests")
+            payload["path"] = workspace
+            if self.client_name:
+                payload.setdefault("client", self.client_name)
+            if self.session_id:
+                payload.setdefault("session_id", self.session_id)
+            data = json.dumps(payload).encode("utf-8")
             headers["Content-Type"] = "application/json"
         req = urllib.request.Request(url, data=data, headers=headers, method=method)
         try:
@@ -81,12 +105,24 @@ class EngineClient:
 
     # Convenience wrappers matching CE API
     def status(self, path: str | None = None) -> dict[str, Any]:
-        if path:
-            return self.post("/v1/status", {"path": path})
-        return self.get("/v1/status")
+        return self.post("/v1/status", {"path": path or self.workspace_path})
 
     def open_repo(self, path: str, *, wait: bool = False) -> dict[str, Any]:
         return self.post("/v1/open", {"path": path, "wait": wait})
+
+    def lifecycle(self, action: str, path: str = "", **options: Any) -> dict[str, Any]:
+        return self.post(
+            "/v1/lifecycle",
+            {"action": action, "path": path or self.workspace_path, **options},
+        )
+
+    def end_session(self, path: str = "") -> dict[str, Any]:
+        if not self.session_id:
+            raise ValueError("session_id is required to end a Context Engine session")
+        return self.post(
+            "/v1/session/end",
+            {"path": path or self.workspace_path, "session_id": self.session_id},
+        )
 
     def register(
         self, path: str = "", *, always_allow: bool = False, index: bool = True
