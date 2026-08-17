@@ -73,6 +73,43 @@ def test_mutation_rejects_non_loopback_client(isolated_ce_home):
     assert payload["error"] == "loopback client required"
 
 
+def test_mutation_rejects_cross_origin_loopback_request(dashboard_http):
+    body = json.dumps({"admission_mode": "mcp_cli"}).encode("utf-8")
+    request = urllib.request.Request(
+        f"{dashboard_http}/ce-dashboard/api/settings",
+        data=body,
+        method="POST",
+        headers={
+            "Content-Type": "text/plain",
+            "Origin": "https://attacker.example",
+        },
+    )
+
+    with pytest.raises(urllib.error.HTTPError) as exc_info:
+        urllib.request.urlopen(request, timeout=5)
+
+    assert exc_info.value.code == 403
+    assert json.loads(exc_info.value.read().decode("utf-8")) == {
+        "ok": False,
+        "code": "cross_origin_forbidden",
+        "error": "same-origin request required",
+    }
+
+
+def test_local_mutation_without_origin_remains_supported(isolated_ce_home):
+    from pipeline.dashboard_server import DashboardAPI
+
+    status, payload = DashboardAPI().dispatch(
+        "POST",
+        "/ce-dashboard/api/settings",
+        {"admission_mode": "mcp_cli"},
+        client_host="127.0.0.1",
+    )
+
+    assert status == 200
+    assert payload["settings"]["registration_mode"] == "mcp_cli"
+
+
 def test_settings_toggles_admission_mode(dashboard_http):
     status, changed = _request(
         f"{dashboard_http}/ce-dashboard/api/settings",
@@ -209,6 +246,57 @@ def test_api_error_does_not_expose_internal_exception(isolated_ce_home, monkeypa
     assert sentinel not in json.dumps(payload)
 
 
+def test_clear_index_route_passes_project_id_by_keyword(isolated_ce_home, monkeypatch):
+    from pipeline import repo_lifecycle
+    from pipeline.dashboard_server import DashboardAPI
+
+    received: list[str] = []
+
+    def clear_index_repo(*, project_id: str):
+        received.append(project_id)
+        return {"ok": True, "project_id": project_id}
+
+    monkeypatch.setattr(repo_lifecycle, "clear_index_repo", clear_index_repo)
+
+    status, payload = DashboardAPI().dispatch(
+        "POST",
+        "/ce-dashboard/api/repos/ce_repo/clear-index",
+        client_host="127.0.0.1",
+    )
+
+    assert status == 200
+    assert payload == {"ok": True, "project_id": "ce_repo"}
+    assert received == ["ce_repo"]
+
+
+def test_dashboard_forget_uses_configured_missing_retention(
+    isolated_ce_home, tmp_path
+):
+    from pipeline.project_id import load_registry, save_registry
+    from pipeline.repo_lifecycle import initialize_repo
+    from pipeline.settings import save_prefs
+    from pipeline.dashboard_server import DashboardAPI
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    project_id = initialize_repo(repo, index=False)["project_id"]
+    registry = load_registry()
+    registry["projects"][project_id]["paths"] = [str(tmp_path / "gone")]
+    registry["projects"][project_id]["missing_since"] = 0.0
+    save_registry(registry)
+    save_prefs({"missing_retention_seconds": 1e20})
+
+    status, payload = DashboardAPI().dispatch(
+        "POST",
+        f"/ce-dashboard/api/repos/{project_id}/forget",
+        {"confirm": project_id},
+        client_host="127.0.0.1",
+    )
+
+    assert status == 409
+    assert payload["error"] == "forget_not_allowed"
+
+
 def test_stop_stale_state_never_signals_unrelated_live_pid(
     isolated_ce_home, monkeypatch
 ):
@@ -247,6 +335,48 @@ def test_stop_stale_state_never_signals_unrelated_live_pid(
     assert result["stale"] is True
     assert signals == []
     assert DashboardLock().read() is None
+
+
+def test_stop_revalidates_ownership_before_fallback_signal(
+    isolated_ce_home, monkeypatch
+):
+    import pipeline.dashboard_server as dashboard_server
+    from pipeline.dashboard_port import DashboardLock
+
+    pid = os.getpid()
+    state = DashboardLock().acquire(
+        "http://127.0.0.1:54321/ce-dashboard",
+        pid,
+    )
+    validated = iter([(pid, state["url"], {}), None])
+    monkeypatch.setattr(
+        dashboard_server,
+        "_validated_dashboard_state",
+        lambda _state: next(validated),
+    )
+    monkeypatch.setattr(
+        dashboard_server.urllib.request,
+        "urlopen",
+        lambda _request, timeout: (_ for _ in ()).throw(OSError("unreachable")),
+    )
+    alive = iter([True, False, False, False])
+    monkeypatch.setattr(
+        dashboard_server,
+        "_pid_alive",
+        lambda _pid: next(alive, False),
+    )
+    signals: list[tuple[int, int]] = []
+    monkeypatch.setattr(
+        dashboard_server.os,
+        "kill",
+        lambda target_pid, sig: signals.append((target_pid, sig)),
+    )
+
+    result = dashboard_server.stop_dashboard()
+
+    assert result["stopped"] is False
+    assert result["stale"] is True
+    assert signals == []
 
 
 def test_dashboard_cli_status_prints_json(monkeypatch, capsys):

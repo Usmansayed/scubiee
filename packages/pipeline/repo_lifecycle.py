@@ -97,6 +97,30 @@ def _presence(project_id: str, entry: dict[str, Any], **kwargs: Any) -> Presence
     )
 
 
+def _missing_retention_seconds() -> float:
+    from pipeline.settings import load_prefs
+
+    try:
+        return max(0.0, float(load_prefs().get("missing_retention_seconds", 86400)))
+    except (TypeError, ValueError):
+        return 86400.0
+
+
+def _observed_presence(
+    project_id: str, entry: dict[str, Any], *, retention_s: float
+) -> tuple[dict[str, Any], PresenceReport]:
+    presence = _presence(project_id, entry, retention_s=retention_s)
+    if presence.state == "missing" and entry.get("missing_since") is None:
+        entry = _update(project_id, missing_since=time.time())
+        presence = _presence(project_id, entry, retention_s=retention_s)
+    elif presence.state in {"active", "replaced", "conflict"} and entry.get(
+        "missing_since"
+    ) is not None:
+        entry = _update(project_id, missing_since=None)
+        presence = _presence(project_id, entry, retention_s=retention_s)
+    return entry, presence
+
+
 def git_common_dir(root: Path) -> Path | None:
     """Return the shared Git administration directory for a checkout."""
     root = _root(root)
@@ -652,17 +676,20 @@ def forget_repo(
 def list_managed_repos() -> list[dict[str, Any]]:
     registry = load_registry()
     managed: list[dict[str, Any]] = []
+    retention_s = _missing_retention_seconds()
     for project_id, raw in (registry.get("projects") or {}).items():
         if not isinstance(raw, dict) or not raw.get("managed"):
             continue
         project_id = str(project_id)
-        presence = _presence(project_id, raw)
-        paths = raw.get("paths") if isinstance(raw.get("paths"), list) else []
+        entry, presence = _observed_presence(
+            project_id, raw, retention_s=retention_s
+        )
+        paths = entry.get("paths") if isinstance(entry.get("paths"), list) else []
         primary = Path(paths[0]) if paths else None
         managed.append(
             _result(
                 project_id,
-                raw,
+                entry,
                 presence=presence.state,
                 forget_allowed=presence.forget_allowed,
                 root_exists=bool(primary and primary.exists()),

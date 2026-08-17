@@ -305,7 +305,7 @@
     const nodeIds = new Set(nodes.map((node) => String(node.id)));
     const edges = allEdges.filter((edge) =>
       nodeIds.has(String(edge.source)) && nodeIds.has(String(edge.target))
-    );
+    ).slice(0, 100);
     const positions = new Map();
     const centerX = 360;
     const centerY = 235;
@@ -338,8 +338,8 @@
           <g>${nodeMarkup}</g>
         </svg>`
       : '<div class="graph-empty"><p>This graph artifact contains no nodes.</p></div>';
-    $("#graph-edge-list").innerHTML = allEdges.length
-      ? allEdges.slice(0, 100).map((edge) => `
+    $("#graph-edge-list").innerHTML = edges.length
+      ? edges.map((edge) => `
         <div class="graph-edge-row">
           <strong>${escapeHtml(edge.source)}</strong>
           <span>${escapeHtml(edge.type || edge.relationship || "links to")}</span>
@@ -349,12 +349,8 @@
     $("#graph-node-count").textContent = allNodes.length;
     $("#graph-edge-count").textContent = allEdges.length;
     $("#graph-status").textContent = [
-      nodes.length < allNodes.length
-        ? `Showing 60 of ${allNodes.length} nodes`
-        : `Showing ${allNodes.length} nodes`,
-      allEdges.length > 100
-        ? `listing 100 of ${allEdges.length} links`
-        : `listing ${allEdges.length} links`,
+      `Showing ${nodes.length} of ${allNodes.length} nodes`,
+      `Showing ${edges.length} of ${allEdges.length} links`,
     ].join("; ") + ".";
   }
 

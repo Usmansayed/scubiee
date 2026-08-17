@@ -361,3 +361,59 @@ def test_list_rows_include_presence_and_forget_allowed(
     assert row["presence"] == "active"
     assert row["forget_allowed"] is False
     assert row["root_exists"] is True
+
+
+def test_dashboard_listing_persists_missing_since_and_clears_it_on_resolution(
+    ce_home: Path, tmp_path: Path
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    project_id = initialize_repo(repo, index=False)["project_id"]
+
+    shutil.rmtree(repo)
+    missing = next(
+        item for item in list_managed_repos() if item["project_id"] == project_id
+    )
+    missing_since = load_registry()["projects"][project_id]["missing_since"]
+
+    assert missing["presence"] == "missing"
+    assert isinstance(missing_since, float)
+
+    repo.mkdir()
+    write_id_file(repo, project_id)
+    active = next(
+        item for item in list_managed_repos() if item["project_id"] == project_id
+    )
+
+    assert active["presence"] == "active"
+    assert load_registry()["projects"][project_id].get("missing_since") is None
+
+    write_id_file(repo, "ce_replacement")
+    replaced = next(
+        item for item in list_managed_repos() if item["project_id"] == project_id
+    )
+
+    assert replaced["presence"] == "replaced"
+    assert load_registry()["projects"][project_id].get("missing_since") is None
+
+
+def test_dashboard_listing_uses_configured_missing_retention(
+    ce_home: Path, tmp_path: Path
+) -> None:
+    from pipeline.settings import save_prefs
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    project_id = initialize_repo(repo, index=False)["project_id"]
+    registry = load_registry()
+    registry["projects"][project_id]["paths"] = [str(tmp_path / "gone")]
+    registry["projects"][project_id]["missing_since"] = 0.0
+    save_registry(registry)
+    save_prefs({"missing_retention_seconds": 1e20})
+
+    row = next(
+        item for item in list_managed_repos() if item["project_id"] == project_id
+    )
+
+    assert row["presence"] == "missing"
+    assert row["forget_allowed"] is False

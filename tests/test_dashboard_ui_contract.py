@@ -78,6 +78,15 @@ def test_repository_and_settings_safety_contracts_are_present():
     assert 'runRepoAction(projectId, "forget"' in javascript
 
 
+def test_graph_ui_bounds_rendered_and_listed_links():
+    javascript = (UI_ROOT / "app.js").read_text(encoding="utf-8")
+
+    assert "const edges = allEdges.filter((edge) =>" in javascript
+    assert "nodeIds.has(String(edge.target))\n    ).slice(0, 100);" in javascript
+    assert '$("#graph-edge-list").innerHTML = edges.length' in javascript
+    assert "Showing ${edges.length} of ${allEdges.length} links" in javascript
+
+
 def test_storage_payload_renders_object_arrays_as_readable_rows():
     payload = {
         "repositories": [

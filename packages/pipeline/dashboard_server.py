@@ -112,11 +112,19 @@ class DashboardAPI:
         data: dict[str, Any] | None = None,
         *,
         client_host: str,
+        origin: str | None = None,
+        server_origin: str | None = None,
     ) -> tuple[int, dict[str, Any]]:
         method = method.upper()
         data = data or {}
         if method != "GET" and not _is_loopback(client_host):
             return 403, {"ok": False, "error": "loopback client required"}
+        if method != "GET" and origin and origin != server_origin:
+            return 403, {
+                "ok": False,
+                "code": "cross_origin_forbidden",
+                "error": "same-origin request required",
+            }
         if not path.startswith(f"{API_BASE}/") and path != API_BASE:
             return 404, {"ok": False, "error": "not found"}
 
@@ -302,14 +310,24 @@ class DashboardAPI:
                     "confirmation_required",
                     "confirmation is required to forget a repository",
                 )
-            result = lifecycle.forget_repo(project_id, confirm=confirm)
+            from pipeline.settings import load_prefs
+
+            try:
+                retention_s = max(
+                    0.0, float(load_prefs().get("missing_retention_seconds", 86400))
+                )
+            except (TypeError, ValueError):
+                retention_s = 86400.0
+            result = lifecycle.forget_repo(
+                project_id, confirm=confirm, retention_s=retention_s
+            )
         elif action == "locate":
             value = data.get("path")
             if not value:
                 raise PublicAPIError(400, "path_required", "path is required")
             result = lifecycle.locate_repo(project_id, Path(str(value)))
         elif action == "clear-index":
-            result = lifecycle.clear_index_repo(project_id)
+            result = lifecycle.clear_index_repo(project_id=project_id)
         elif action in {"pin", "unpin"}:
             from pipeline.project_id import load_registry, save_registry
 
@@ -435,7 +453,14 @@ class DashboardHandler(BaseHTTPRequestHandler):
             )
             return
         status, payload = self.api.dispatch(
-            "POST", path, data, client_host=str(self.client_address[0])
+            "POST",
+            path,
+            data,
+            client_host=str(self.client_address[0]),
+            origin=self.headers.get("Origin"),
+            server_origin=(
+                f"http://{self.server.server_address[0]}:{self.server.server_address[1]}"
+            ),
         )
         self._write_json(status, payload)
         if status == 200 and path == f"{API_BASE}/shutdown":
@@ -667,6 +692,15 @@ def stop_dashboard() -> dict[str, Any]:
             pass
     except OSError:
         if _pid_alive(pid):
+            revalidated = _validated_dashboard_state(state)
+            if revalidated is None or revalidated[0] != pid:
+                _clear_stale_state(DashboardLock(), state)
+                return {
+                    "ok": True,
+                    "running": False,
+                    "stopped": False,
+                    "stale": True,
+                }
             try:
                 os.kill(pid, signal.SIGTERM)
             except OSError:
