@@ -363,6 +363,24 @@ def cmd_serve(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_dashboard(args: argparse.Namespace) -> int:
+    """Start, inspect, or stop the dedicated localhost operator dashboard."""
+    from pipeline.dashboard_server import (
+        dashboard_status,
+        start_dashboard,
+        stop_dashboard,
+    )
+
+    if args.action == "stop":
+        out = stop_dashboard()
+    elif args.status:
+        out = dashboard_status()
+    else:
+        out = start_dashboard(open_browser=not args.no_open)
+    print(json.dumps(out, indent=2, default=str))
+    return 0 if out.get("ok") else 1
+
+
 def cmd_engine(args: argparse.Namespace) -> int:
     """Context Engine daemon control: start | stop | status | run | ensure | watchdog."""
     from pipeline.client import EngineClient, engine_url
@@ -815,6 +833,23 @@ def main(argv: list[str] | None = None) -> int:
     p_serve.add_argument("--host", default="127.0.0.1")
     p_serve.add_argument("--port", type=int, default=8765)
     p_serve.set_defaults(func=cmd_serve)
+
+    p_dashboard = sub.add_parser(
+        "dashboard",
+        help="Start or control the dedicated localhost operator dashboard",
+    )
+    p_dashboard.add_argument("action", nargs="?", choices=["stop"], default=None)
+    p_dashboard.add_argument(
+        "--no-open",
+        action="store_true",
+        help="Start or reuse the dashboard without opening a browser",
+    )
+    p_dashboard.add_argument(
+        "--status",
+        action="store_true",
+        help="Print dashboard URL, PID, and health",
+    )
+    p_dashboard.set_defaults(func=cmd_dashboard)
 
     p_eng = sub.add_parser("engine", help="Context Engine daemon: start|stop|status|run|ensure")
     p_eng.add_argument(
