@@ -9,15 +9,19 @@ from pathlib import Path
 from typing import Any
 
 from pipeline.project_id import (
+    RegistryConflictError,
     find_id_by_path,
     index_is_usable,
     load_registry,
+    mutate_registry,
     projects_root,
     read_id_file,
+    registry_lock,
     resolve_project,
-    save_registry,
+    update_registry,
 )
 from pipeline.registration import mark_registered
+from pipeline.repo_presence import PresenceReport, assess_presence
 
 ACTIVE = "active"
 PAUSED = "paused"
@@ -38,15 +42,18 @@ def _project(root: Path) -> tuple[str | None, dict[str, Any]]:
 
 
 def _update(project_id: str, **values: Any) -> dict[str, Any]:
-    registry = load_registry()
-    projects = registry.setdefault("projects", {})
-    current = projects.get(project_id)
-    entry = dict(current) if isinstance(current, dict) else {}
-    entry.update(values)
-    entry["updated_at"] = time.time()
-    projects[project_id] = entry
-    save_registry(registry)
-    return entry
+    def apply(registry: dict[str, Any]) -> dict[str, Any]:
+        projects = registry.setdefault("projects", {})
+        current = projects.get(project_id)
+        entry = dict(current) if isinstance(current, dict) else {}
+        if entry.get("forget_pending"):
+            raise RegistryConflictError("project forget is pending")
+        entry.update(values)
+        entry["updated_at"] = time.time()
+        projects[project_id] = entry
+        return entry
+
+    return mutate_registry(apply)
 
 
 def _result(project_id: str, entry: dict[str, Any], **extra: Any) -> dict[str, Any]:
@@ -65,6 +72,29 @@ def _result(project_id: str, entry: dict[str, Any], **extra: Any) -> dict[str, A
     }
     result.update(extra)
     return result
+
+
+def _entry_by_id(project_id: str) -> dict[str, Any]:
+    entry = (load_registry().get("projects") or {}).get(project_id)
+    return dict(entry) if isinstance(entry, dict) else {}
+
+
+def _store_dir(project_id: str) -> Path:
+    root = projects_root().resolve()
+    store = (root / project_id).resolve()
+    if store.parent != root:
+        raise ValueError("invalid_project_id")
+    return store
+
+
+def _presence(project_id: str, entry: dict[str, Any], **kwargs: Any) -> PresenceReport:
+    paths = entry.get("paths") if isinstance(entry.get("paths"), list) else []
+    return assess_presence(
+        project_id,
+        [str(path) for path in paths],
+        missing_since=entry.get("missing_since"),
+        **kwargs,
+    )
 
 
 def git_common_dir(root: Path) -> Path | None:
@@ -382,9 +412,11 @@ def remove_repo(root: Path, *, delete_store: bool = False) -> dict[str, Any]:
     if not project_id or not entry.get("managed"):
         return {"ok": False, "root": str(root), "state": UNMANAGED, "error": "unmanaged"}
     store = (projects_root() / project_id).resolve()
-    registry = load_registry()
-    registry.setdefault("projects", {}).pop(project_id, None)
-    save_registry(registry)
+
+    def remove(registry: dict[str, Any]) -> None:
+        registry.setdefault("projects", {}).pop(project_id, None)
+
+    mutate_registry(remove)
     deleted = False
     if delete_store and store.exists():
         shutil.rmtree(store)
@@ -399,11 +431,242 @@ def remove_repo(root: Path, *, delete_store: bool = False) -> dict[str, Any]:
     }
 
 
+def clear_index_repo(
+    root: Path | str | None = None,
+    *,
+    project_id: str | None = None,
+) -> dict[str, Any]:
+    """Delete only a known project's index store, preserving durable identity."""
+    if project_id is None:
+        if root is None:
+            return {"ok": False, "error": "project_required"}
+        canonical = _root(root)
+        project_id = read_id_file(canonical)
+        if project_id is None:
+            return {
+                "ok": False,
+                "root": str(canonical),
+                "error": "unknown_project",
+            }
+
+    entry = _entry_by_id(project_id)
+    if not entry:
+        return {"ok": False, "project_id": project_id, "error": "unknown_project"}
+    try:
+        store = _store_dir(project_id)
+    except ValueError as exc:
+        return {"ok": False, "project_id": project_id, "error": str(exc)}
+
+    deleted = store.exists()
+    if deleted:
+        shutil.rmtree(store)
+    return _result(project_id, entry, store_deleted=deleted, index_cleared=True)
+
+
+def locate_repo(project_id: str, new_path: Path | str) -> dict[str, Any]:
+    """Reattach a registry row only to a live path carrying the same ID."""
+    entry = _entry_by_id(project_id)
+    if not entry:
+        return {"ok": False, "project_id": project_id, "error": "unknown_project"}
+
+    path = _root(new_path)
+    if not path.exists():
+        return {
+            "ok": False,
+            "project_id": project_id,
+            "root": str(path),
+            "error": "path_missing",
+        }
+
+    actual_project_id = read_id_file(path)
+    if actual_project_id != project_id:
+        return {
+            "ok": False,
+            "project_id": project_id,
+            "actual_project_id": actual_project_id,
+            "root": str(path),
+            "error": "project_id_mismatch",
+        }
+
+    with registry_lock():
+        attached_path = str(path)
+        current_entry = _entry_by_id(project_id)
+        current_paths = (
+            current_entry.get("paths")
+            if isinstance(current_entry.get("paths"), list)
+            else []
+        )
+        alias_existed = any(
+            str(Path(item).resolve()) == attached_path for item in current_paths
+        )
+        try:
+            update_registry(project_id, path)
+        except ValueError:
+            return {
+                "ok": False,
+                "project_id": project_id,
+                "actual_project_id": read_id_file(path),
+                "root": str(path),
+                "error": "project_id_mismatch",
+            }
+        except RegistryConflictError as exc:
+            return {
+                "ok": False,
+                "project_id": project_id,
+                "root": str(path),
+                "error": "registry_conflict",
+                "detail": str(exc),
+            }
+
+        actual_project_id = read_id_file(path)
+        if actual_project_id != project_id:
+            def rollback(registry: dict[str, Any]) -> None:
+                current = registry.setdefault("projects", {}).get(project_id)
+                if alias_existed or not isinstance(current, dict):
+                    return
+                paths = current.get("paths")
+                if isinstance(paths, list):
+                    current["paths"] = [
+                        item
+                        for item in paths
+                        if str(Path(item).resolve()) != attached_path
+                    ]
+
+            mutate_registry(rollback)
+            return {
+                "ok": False,
+                "project_id": project_id,
+                "actual_project_id": actual_project_id,
+                "root": attached_path,
+                "error": "project_id_mismatch",
+            }
+        updated = _entry_by_id(project_id)
+        return _result(project_id, updated, located=True)
+
+
+def forget_repo(
+    project_id: str,
+    *,
+    confirm: str,
+    force: bool = False,
+    now: float | None = None,
+    retention_s: float = 86400,
+) -> dict[str, Any]:
+    """Permanently remove CE-owned state after exact confirmation and validation."""
+    del force  # Eligibility is never bypassed at this public boundary.
+    if confirm != project_id:
+        return {
+            "ok": False,
+            "project_id": project_id,
+            "error": "confirmation_mismatch",
+        }
+
+    store: Path
+
+    def mark_pending(registry: dict[str, Any]) -> dict[str, Any]:
+        projects = registry.setdefault("projects", {})
+        raw_entry = projects.get(project_id)
+        entry = dict(raw_entry) if isinstance(raw_entry, dict) else {}
+        if not entry:
+            raise KeyError(project_id)
+        presence = _presence(
+            project_id,
+            entry,
+            now=now,
+            retention_s=retention_s,
+        )
+        if not presence.forget_allowed:
+            raise PermissionError(presence.state, presence.reasons)
+        entry["forget_pending"] = True
+        entry["forget_pending_at"] = time.time()
+        projects[project_id] = entry
+        return entry
+
+    try:
+        store = _store_dir(project_id)
+        mark_pending_result = mutate_registry(mark_pending)
+    except KeyError:
+        return {"ok": False, "project_id": project_id, "error": "unknown_project"}
+    except PermissionError as exc:
+        return {
+            "ok": False,
+            "project_id": project_id,
+            "error": "forget_not_allowed",
+            "presence": exc.args[0],
+            "reasons": exc.args[1],
+        }
+    except ValueError as exc:
+        return {"ok": False, "project_id": project_id, "error": str(exc)}
+    except OSError as exc:
+        return {
+            "ok": False,
+            "project_id": project_id,
+            "error": "registry_write_failed",
+            "detail": str(exc),
+            "store_dir": str(store),
+            "store_deleted": False,
+        }
+
+    deleted = store.exists()
+    try:
+        if deleted:
+            shutil.rmtree(store)
+    except OSError as exc:
+        return {
+            "ok": False,
+            "project_id": project_id,
+            "error": "store_delete_failed",
+            "detail": str(exc),
+            "store_dir": str(store),
+            "store_deleted": False,
+            "forget_pending": bool(mark_pending_result.get("forget_pending")),
+        }
+
+    def finish(registry: dict[str, Any]) -> None:
+        current = registry.setdefault("projects", {}).get(project_id)
+        if isinstance(current, dict) and current.get("forget_pending"):
+            registry["projects"].pop(project_id, None)
+
+    try:
+        mutate_registry(finish)
+    except OSError as exc:
+        return {
+            "ok": False,
+            "project_id": project_id,
+            "error": "registry_cleanup_pending",
+            "detail": str(exc),
+            "store_dir": str(store),
+            "store_deleted": deleted,
+            "forget_pending": True,
+        }
+    return {
+        "ok": True,
+        "project_id": project_id,
+        "state": UNMANAGED,
+        "store_dir": str(store),
+        "store_deleted": deleted,
+        "forgotten": True,
+    }
+
+
 def list_managed_repos() -> list[dict[str, Any]]:
     registry = load_registry()
     managed: list[dict[str, Any]] = []
     for project_id, raw in (registry.get("projects") or {}).items():
         if not isinstance(raw, dict) or not raw.get("managed"):
             continue
-        managed.append(_result(str(project_id), raw))
+        project_id = str(project_id)
+        presence = _presence(project_id, raw)
+        paths = raw.get("paths") if isinstance(raw.get("paths"), list) else []
+        primary = Path(paths[0]) if paths else None
+        managed.append(
+            _result(
+                project_id,
+                raw,
+                presence=presence.state,
+                forget_allowed=presence.forget_allowed,
+                root_exists=bool(primary and primary.exists()),
+                presence_reasons=presence.reasons,
+            )
+        )
     return sorted(managed, key=lambda item: (item["root"], item["project_id"]))

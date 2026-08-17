@@ -17,15 +17,82 @@ import json
 import os
 import secrets
 import shutil
+import threading
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, Iterator, TypeVar
 
 
 ID_DIR_NAME = ".context-engine"
 ID_FILE_NAME = "id.json"
 REGISTRY_NAME = "registry.json"
+_REGISTRY_LOCK = threading.RLock()
+_REGISTRY_LOCK_STATE = threading.local()
+_REGISTRY_REVISION = "_registry_revision"
+_T = TypeVar("_T")
+
+
+class RegistryConflictError(RuntimeError):
+    """A stale registry snapshot attempted to overwrite newer state."""
+
+
+def _lock_registry_file(handle: Any) -> None:
+    handle.seek(0)
+    if os.name == "nt":
+        import msvcrt
+
+        while True:
+            try:
+                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                return
+            except OSError:
+                time.sleep(0.05)
+    else:
+        import fcntl
+
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+
+
+def _unlock_registry_file(handle: Any) -> None:
+    handle.seek(0)
+    if os.name == "nt":
+        import msvcrt
+
+        msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+    else:
+        import fcntl
+
+        fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+@contextmanager
+def registry_lock() -> Iterator[None]:
+    """Serialize registry transactions across threads and processes."""
+    with _REGISTRY_LOCK:
+        depth = int(getattr(_REGISTRY_LOCK_STATE, "depth", 0))
+        if depth:
+            _REGISTRY_LOCK_STATE.depth = depth + 1
+            try:
+                yield
+            finally:
+                _REGISTRY_LOCK_STATE.depth -= 1
+            return
+
+        lock_path = context_engine_home() / "registry.lock"
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        with lock_path.open("a+b") as handle:
+            if handle.seek(0, os.SEEK_END) == 0:
+                handle.write(b"\0")
+                handle.flush()
+            _lock_registry_file(handle)
+            _REGISTRY_LOCK_STATE.depth = 1
+            try:
+                yield
+            finally:
+                _REGISTRY_LOCK_STATE.depth = 0
+                _unlock_registry_file(handle)
 
 
 def context_engine_home() -> Path:
@@ -106,11 +173,37 @@ def load_registry() -> dict[str, Any]:
     data = _read_json(registry_path())
     if "projects" not in data or not isinstance(data["projects"], dict):
         data["projects"] = {}
+    revision = data.get(_REGISTRY_REVISION, 0)
+    data[_REGISTRY_REVISION] = revision if isinstance(revision, int) else 0
     return data
 
 
 def save_registry(data: dict[str, Any]) -> None:
-    _write_json(registry_path(), data)
+    with registry_lock():
+        current = _read_json(registry_path())
+        current_revision = current.get(_REGISTRY_REVISION, 0)
+        if not isinstance(current_revision, int):
+            current_revision = 0
+        expected_revision = data.get(_REGISTRY_REVISION)
+        if (
+            isinstance(expected_revision, int)
+            and expected_revision != current_revision
+        ):
+            raise RegistryConflictError(
+                f"stale registry revision {expected_revision}; current is {current_revision}"
+            )
+        next_revision = current_revision + 1
+        data[_REGISTRY_REVISION] = next_revision
+        _write_json(registry_path(), data)
+
+
+def mutate_registry(mutator: Callable[[dict[str, Any]], _T]) -> _T:
+    """Apply one load-modify-save operation under the shared registry lock."""
+    with registry_lock():
+        registry = load_registry()
+        result = mutator(registry)
+        save_registry(registry)
+        return result
 
 
 def _norm_path(p: Path | str) -> str:
@@ -148,31 +241,46 @@ def find_id_by_path(abs_path: str, registry: dict[str, Any] | None = None) -> st
 
 
 def update_registry(project_id: str, root: Path) -> None:
-    reg = load_registry()
-    projects = reg.setdefault("projects", {})
-    entry = projects.get(project_id) if isinstance(projects.get(project_id), dict) else {}
-    entry = dict(entry)
-    paths = list(entry.get("paths") or []) if isinstance(entry.get("paths"), list) else []
-    abs_root = _norm_path(root)
-    # Keep aliases that still carry this durable identity. A moved repository's
-    # vacated path must not remain an alias that can identify a new checkout.
-    live_aliases: list[str] = []
-    for path in paths:
-        normalized = _norm_path(path)
-        if normalized == abs_root:
-            continue
-        if read_id_file(Path(path)) == project_id:
-            live_aliases.append(normalized)
-    paths = [abs_root] + [path for path in live_aliases if path != abs_root]
-    entry.update(
-        {
-            "paths": paths[:8],
-            "updated_at": time.time(),
-            "name": Path(abs_root).name,
-        }
-    )
-    projects[project_id] = entry
-    save_registry(reg)
+    def attach(reg: dict[str, Any]) -> None:
+        if read_id_file(root) != project_id:
+            raise ValueError("project_id_mismatch")
+        projects = reg.setdefault("projects", {})
+        entry = (
+            projects.get(project_id)
+            if isinstance(projects.get(project_id), dict)
+            else {}
+        )
+        entry = dict(entry)
+        if entry.get("forget_pending"):
+            raise RegistryConflictError("project forget is pending")
+        paths = (
+            list(entry.get("paths") or [])
+            if isinstance(entry.get("paths"), list)
+            else []
+        )
+        abs_root = _norm_path(root)
+        # Keep aliases that still carry this durable identity. A moved repository's
+        # vacated path must not remain an alias that can identify a new checkout.
+        live_aliases: list[str] = []
+        for path in paths:
+            normalized = _norm_path(path)
+            if normalized == abs_root:
+                continue
+            if read_id_file(Path(path)) == project_id:
+                live_aliases.append(normalized)
+        paths = [abs_root] + [path for path in live_aliases if path != abs_root]
+        entry.update(
+            {
+                "paths": paths[:8],
+                "updated_at": time.time(),
+                "name": Path(abs_root).name,
+            }
+        )
+        if read_id_file(root) != project_id:
+            raise ValueError("project_id_mismatch")
+        projects[project_id] = entry
+
+    mutate_registry(attach)
 
 
 def legacy_repo_key(root: Path) -> str:
