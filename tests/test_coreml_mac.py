@@ -16,6 +16,10 @@ def test_coreml_provider_options_require_static_shapes():
     opts = coreml_provider_options(compute_units="CPUAndGPU")
     assert opts["RequireStaticInputShapes"] == "1"
     assert opts["MLComputeUnits"] == "CPUAndGPU"
+    assert opts["ModelFormat"] == "MLProgram"
+    # Invalid ORT string options cause EP init failure + silent CPU fallback on Mac.
+    assert "UseCPUAndGPU" not in opts
+    assert "CreateMLProgram" not in opts
 
 
 def test_coreml_gpu_only_excludes_cpu_provider(monkeypatch):

@@ -40,14 +40,14 @@ def mac_gpu_only() -> bool:
 def coreml_provider_options(*, compute_units: str | None = None) -> dict[str, str]:
     """ORT CoreML EP options tuned for transformer ONNX on Apple Silicon."""
     units = compute_units or os.environ.get("CTX_COREML_UNITS") or "CPUAndGPU"
+    # ORT string provider options only — do NOT pass C-API flags such as
+    # UseCPUAndGPU or CreateMLProgram (ModelFormat=MLProgram covers the latter).
     return {
         "ModelFormat": "MLProgram",
         "MLComputeUnits": str(units),
         # Static shapes compile reliably; dynamic axes crash on rotary/attention.
         "RequireStaticInputShapes": "1",
         "EnableOnSubgraphs": "0",
-        "UseCPUAndGPU": "1",
-        "CreateMLProgram": "1",
     }
 
 
@@ -127,6 +127,7 @@ def prepare_coderank_onnx_for_coreml(
     shutil.copy2(src, work)
     model = onnx.load(str(work))
     fixed_names = ("input_ids", "attention_mask", "token_type_ids")
+    shape = [batch, seq]
     patched_any = False
     for input_name in fixed_names:
         try:
