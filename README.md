@@ -4,16 +4,14 @@ Local Context Engine: Merkle sync → Graphify AST → **mix** compress → Code
 
 ## Install (no git clone)
 
-Requires **Python 3.10+**. One line installs the package and configures GPU/CPU + Cursor MCP.
-
-**pip**
+Requires **Python 3.10+**. Two steps on a clean machine:
 
 ```bash
-pip install -q scubiee
+pip install -U scubiee
 ctx setup
 ```
 
-**npm** (installs the same Python package, then runs `ctx setup`)
+**npm** (optional wrapper — same pip install + `ctx setup`):
 
 ```bash
 npm install -g scubiee
@@ -21,9 +19,16 @@ npm install -g scubiee
 
 Then `ctx init <repo>` for each codebase, and reload MCP in Cursor (Settings → MCP → refresh).
 
-`ctx setup` picks **CUDA** (NVIDIA), **DirectML** (Windows AMD/Intel), **CoreML** (macOS Metal/ANE), or **CPU**.
+`ctx setup` picks **CUDA** (NVIDIA), **DirectML** (Windows AMD/Intel), **CoreML** (macOS Metal/ANE), or **CPU**. No `[coreml]` extra required on Mac.
 
-From a git checkout (contributors only): `pip install -e .` then `ctx setup`.
+If PyPI is behind GitHub, install the tagged release:
+
+```bash
+pip install "scubiee @ git+https://github.com/Usmansayed/new-context-engine.git@v0.2.6"
+ctx setup
+```
+
+From a git checkout (contributors only): `pip install -e .` then `ctx setup`. Maintainers: see `docs/publish-setup.md`.
 
 ## Use
 
