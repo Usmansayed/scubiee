@@ -1,6 +1,6 @@
 {
   "name": "scubiee",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Scubiee — one-command install. Wraps the Python package and runs ctx setup.",
   "license": "UNLICENSED",
   "bin": {
