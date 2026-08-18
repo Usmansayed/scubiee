@@ -67,13 +67,14 @@ def test_merkle_verify_catches_edit_without_git(tmp_path: Path):
     assert "secret.py" in d.modified
 
 
-def test_fast_roots_include_testdata_and_lib():
+def test_fast_roots_include_packages_and_lib():
     from pipeline.paths import fast_roots_from_env
 
     roots = fast_roots_from_env()
-    assert any(r.startswith("testdata") for r in roots)
     assert any(r.startswith("lib") for r in roots)
     assert any(r.startswith("packages") for r in roots)
+    # Fixture trees are intentionally excluded from fast roots.
+    assert not any(r.startswith("testdata") for r in roots)
 
 
 def test_hot_patch_reads_disk(tmp_path: Path):

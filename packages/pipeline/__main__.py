@@ -18,19 +18,17 @@ from pipeline.searcher import search_repo
 from pipeline.store import PipelineStore
 
 
-def _progress(phase: str, frac: float) -> None:
-    pct = int(max(0.0, min(1.0, float(frac) if isinstance(frac, (int, float)) else 0)) * 100)
-    print(f"[{pct:3d}%] {phase}", file=sys.stderr)
+def _progress_bar(notice: str):
+    from pipeline.progress_ui import InstallProgress
+
+    bar = InstallProgress()
+    bar.start(notice)
+    return bar
 
 
 def cmd_index(args: argparse.Namespace) -> int:
     root = Path(args.path).resolve()
-
-    def progress(phase, frac=0.0):
-        if isinstance(phase, str) and isinstance(frac, (int, float)):
-            _progress(phase, frac)
-        else:
-            print(str(phase), file=sys.stderr)
+    bar = _progress_bar("This may take a few minutes. Indexing the repository.")
 
     roots = None
     if getattr(args, "roots", None):
@@ -59,6 +57,7 @@ def cmd_index(args: argparse.Namespace) -> int:
         fast=fast,
     )
     if not reg.ok:
+        bar.fail(reg.error if hasattr(reg, "error") else "registration failed")
         print(json.dumps(reg.to_dict(), indent=2))
         return 1
 
@@ -70,9 +69,10 @@ def cmd_index(args: argparse.Namespace) -> int:
             embed_model=args.model,
             fast=fast,
             fast_roots=roots,
-            progress=progress,
+            progress=bar,
         )
     except IndexDeferred as exc:
+        bar.fail(str(exc.reason))
         print(
             json.dumps(
                 {
@@ -85,6 +85,7 @@ def cmd_index(args: argparse.Namespace) -> int:
             )
         )
         return 1
+    bar.finish("Ready")
     out = stats.__dict__.copy()
     out["project_id"] = reg.project_id
     out["registered"] = True
@@ -131,6 +132,62 @@ def cmd_resources(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_test(args: argparse.Namespace) -> int:
+    """Run a named CE verification tier and emit a JSON report."""
+    from pipeline.test_runner import build_test_plan, run_plan
+
+    root = Path(args.path).resolve()
+    plan = build_test_plan(args.tier, root=root)
+    report = run_plan(
+        plan,
+        root=root,
+        external_client_available=bool(getattr(args, "clients", False)),
+    )
+    print(json.dumps(report, indent=2, default=str))
+    return 0 if report.get("ok") else 1
+
+
+def cmd_preflight(args: argparse.Namespace) -> int:
+    from pipeline.preflight import inspect_capabilities
+
+    report = inspect_capabilities(require_semantic=not bool(args.lexical_only))
+    print(json.dumps(report, indent=2, default=str))
+    return 0 if report.get("ok") else 1
+
+
+def cmd_doctor(args: argparse.Namespace) -> int:
+    from pipeline.doctor import (
+        apply_safe_repairs,
+        apply_safe_repairs_all,
+        doctor_all,
+        doctor_repo,
+    )
+
+    root = Path(args.path).resolve()
+    if args.fix and args.all:
+        out = apply_safe_repairs_all()
+    elif args.fix:
+        out = apply_safe_repairs(root)
+    elif args.all:
+        out = doctor_all()
+    else:
+        out = doctor_repo(root)
+    print(json.dumps(out, indent=2, default=str))
+    return 0 if out.get("ok") else 1
+
+
+def cmd_certify(args: argparse.Namespace) -> int:
+    from pipeline.certify import certify
+
+    out = certify(
+        Path(args.path).resolve(),
+        skip_daemon=bool(args.skip_daemon),
+        skip_canary=not bool(args.canary),
+    )
+    print(json.dumps(out, indent=2, default=str))
+    return 0 if out.get("ok") else 1
+
+
 def cmd_register(args: argparse.Namespace) -> int:
     from pipeline.registration import register_project
 
@@ -144,6 +201,50 @@ def cmd_register(args: argparse.Namespace) -> int:
     )
     print(json.dumps(result.to_dict(), indent=2))
     return 0 if result.ok else 1
+
+
+def cmd_repo_lifecycle(args: argparse.Namespace) -> int:
+    from pipeline.repo_lifecycle import (
+        activate_repo,
+        initialize_repo,
+        list_managed_repos,
+        never_index_repo,
+        pause_repo,
+        rebuild_repo,
+        remove_repo,
+        resume_repo,
+        sync_now_repo,
+    )
+
+    action = args.command
+    if action == "list":
+        out: dict | list = list_managed_repos()
+    else:
+        root = Path(args.path).resolve()
+        if action == "initialize":
+            out = initialize_repo(
+                root,
+                index=not bool(args.no_index),
+                always_allow=not bool(args.allow_once),
+            )
+        elif action == "activate":
+            out = activate_repo(root)
+        elif action == "pause":
+            out = pause_repo(root, reason=args.reason)
+        elif action == "resume":
+            out = resume_repo(root)
+        elif action == "sync-now":
+            out = sync_now_repo(root)
+        elif action == "rebuild":
+            out = rebuild_repo(root)
+        elif action == "remove":
+            out = remove_repo(root, delete_store=bool(args.delete_store))
+        elif action == "never-index":
+            out = never_index_repo(root, reason=args.reason)
+        else:
+            out = {"ok": False, "error": f"unknown lifecycle action: {action}"}
+    print(json.dumps(out, indent=2, default=str))
+    return 0 if isinstance(out, list) or out.get("ok") else 1
 
 
 def cmd_settings(args: argparse.Namespace) -> int:
@@ -173,22 +274,69 @@ def cmd_settings(args: argparse.Namespace) -> int:
     print(json.dumps(load_prefs(), indent=2))
     print(
         f"[settings] registration_mode={get_registration_mode()} "
-        f"(dashboard: ctx serve . → http://127.0.0.1:8765/dashboard)",
+        f"(dashboard: python -m pipeline dashboard)",
         file=sys.stderr,
     )
     return 0
 
 
+def interpret_search_cli(first: str, second: str | None) -> tuple[Path, str]:
+    """Accept both `search QUERY [PATH]` and the common `search PATH QUERY` mix-up.
+
+    A directory as the first positional is treated as the repo; otherwise the
+    first token is the query and the second (default `.`) is the repo.
+    """
+    second = second if second not in (None, "") else "."
+    first_path = Path(first)
+    second_path = Path(second)
+    first_is_dir = first in {".", ".."} or first_path.is_dir()
+    second_is_dir = second in {".", ".."} or second_path.is_dir()
+    if first_is_dir and not second_is_dir:
+        return first_path.resolve(), second
+    return second_path.resolve(), first
+
+
 def cmd_search(args: argparse.Namespace) -> int:
-    root = Path(args.path).resolve()
+    root, query = interpret_search_cli(args.query, args.path)
+    if not root.is_dir():
+        print(
+            json.dumps(
+                {
+                    "ok": False,
+                    "error": f"not a directory: {root}",
+                    "hint": "Usage: ctx search \"query\"  or  ctx search . \"query\"",
+                }
+            ),
+            file=sys.stderr,
+        )
+        return 1
     t0 = time.perf_counter()
-    hits = search_repo(
-        root,
-        args.query,
-        top_k=args.top_k,
-        use_server=not args.local,
-        server_url=args.url,
-    )
+    try:
+        hits = search_repo(
+            root,
+            query,
+            top_k=args.top_k,
+            use_server=not args.local,
+            server_url=args.url if not args.local else None,
+        )
+    except Exception as exc:
+        from pipeline.searcher import SearchEngineError
+
+        if isinstance(exc, SearchEngineError):
+            print(
+                json.dumps(
+                    {
+                        "ok": False,
+                        "error": str(exc),
+                        "hint": exc.hint,
+                        "mode": "daemon",
+                    },
+                    indent=2,
+                ),
+                file=sys.stderr,
+            )
+            return 1
+        raise
     ms = (time.perf_counter() - t0) * 1000
     print(
         json.dumps(
@@ -276,10 +424,35 @@ def cmd_serve(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_dashboard(args: argparse.Namespace) -> int:
+    """Start, inspect, or stop the dedicated localhost operator dashboard."""
+    from pipeline.dashboard_server import (
+        dashboard_status,
+        start_dashboard,
+        stop_dashboard,
+    )
+
+    if args.action == "stop":
+        out = stop_dashboard()
+    elif args.status:
+        out = dashboard_status()
+    else:
+        out = start_dashboard(open_browser=not args.no_open)
+    print(json.dumps(out, indent=2, default=str))
+    return 0 if out.get("ok") else 1
+
+
 def cmd_engine(args: argparse.Namespace) -> int:
     """Context Engine daemon control: start | stop | status | run | ensure | watchdog."""
     from pipeline.client import EngineClient, engine_url
     from pipeline.daemon import ensure_daemon, is_running, start_daemon, stop_daemon
+    from pipeline.lifecycle_runtime import (
+        DESIRED_STANDBY,
+        register_logon_autostart,
+        run_supervisor,
+        set_desired_mode,
+        unregister_logon_autostart,
+    )
     from pipeline.watchdog import (
         start_watchdog,
         stop_watchdog,
@@ -299,9 +472,19 @@ def cmd_engine(args: argparse.Namespace) -> int:
         )
         return 0
     if action == "watchdog":
-        # Foreground loop for the detached sidecar child
+        # Foreground loop for the in-session sidecar child (not the --logon path)
         watchdog_loop()
         return 0
+    if action == "supervisor":
+        run_supervisor(logon=bool(getattr(args, "logon", False)))
+        return 0
+    if action == "autostart":
+        if getattr(args, "off", False):
+            out = unregister_logon_autostart()
+        else:
+            out = register_logon_autostart()
+        print(json.dumps(out, indent=2, default=str))
+        return 0 if out.get("ok") else 1
     if action == "start":
         result = start_daemon(
             Path(args.path).resolve() if args.path else None,
@@ -311,9 +494,11 @@ def cmd_engine(args: argparse.Namespace) -> int:
         )
         # Start watchdog if daemon is usable (health may race past wait timeout)
         from pipeline.daemon import is_running as _ir
+        from pipeline.lifecycle_runtime import note_activity
 
         wd: dict
         if result.get("ok") or _ir():
+            note_activity()
             wd = start_watchdog()
             result["ok"] = True
         else:
@@ -322,6 +507,7 @@ def cmd_engine(args: argparse.Namespace) -> int:
         print(json.dumps(out, indent=2))
         return 0 if result.get("ok") else 1
     if action == "stop":
+        set_desired_mode(DESIRED_STANDBY)
         wd = stop_watchdog()
         eng = stop_daemon()
         print(json.dumps({"ok": True, "watchdog": wd, "engine": eng}, indent=2))
@@ -360,18 +546,23 @@ def cmd_mcp(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_init(args: argparse.Namespace) -> int:
-    """Detect hardware, install ORT wheel + FastEmbed, download CodeRank, microbench."""
-    from pipeline.accel import ACCEL_PATH, configure, detect_hardware, load_accel
+def _configure_machine(
+    args: argparse.Namespace,
+    *,
+    report: bool = True,
+    progress: object | None = None,
+) -> int:
+    """Once-per-machine accel: detect profile, install, model, calibrate batch."""
+    from pipeline.accel import ACCEL_PATH, configure, load_accel
 
-    if args.status:
+    if getattr(args, "status", False):
         prof = load_accel()
         print(
             json.dumps(
                 {
                     "accel_path": str(ACCEL_PATH),
-                    "profile": None if prof is None else prof.__dict__,
-                    "detected_now": detect_hardware(),
+                    "preferred_profile": None if prof is None else prof.__dict__,
+                    "envelope": None if prof is None else prof.envelope,
                 },
                 indent=2,
                 default=str,
@@ -379,112 +570,156 @@ def cmd_init(args: argparse.Namespace) -> int:
         )
         return 0
 
+    existing = load_accel()
+    if existing is not None and not bool(getattr(args, "repair", False)):
+        if progress is not None:
+            progress.set(92, "Using saved hardware profile")
+        if report:
+            print(json.dumps(existing.__dict__, indent=2, default=str))
+        return 0
+
     prof = configure(
-        force_profile=args.profile,
-        install_pkgs=not args.skip_install,
-        download_model=not args.skip_model,
-        bench=not args.skip_bench,
+        force_profile=getattr(args, "profile", None),
+        install_pkgs=not bool(getattr(args, "skip_install", False)),
+        download_model=not bool(getattr(args, "skip_model", False)),
+        bench=not bool(getattr(args, "skip_bench", False)),
+        force_install=bool(getattr(args, "repair", False)),
+        progress=progress,
     )
-    print(json.dumps(prof.__dict__, indent=2, default=str))
+    if report:
+        print(json.dumps(prof.__dict__, indent=2, default=str))
     return 0
+
+
+def cmd_init(args: argparse.Namespace) -> int:
+    """Enroll a repository under Context Engine and index it."""
+    from pipeline.accel import load_accel
+
+    if load_accel() is None:
+        print(
+            json.dumps(
+                {
+                    "ok": False,
+                    "error": "machine_not_setup",
+                    "repair": "python -m pipeline setup",
+                },
+                indent=2,
+            )
+        )
+        return 1
+
+    root = Path(getattr(args, "path", ".") or ".").resolve()
+    bar = _progress_bar("This may take a few minutes. Indexing the repository.")
+    from pipeline.repo_lifecycle import initialize_repo
+
+    try:
+        roots = None
+        if getattr(args, "roots", None):
+            roots = [r.strip() for r in str(args.roots).split(",") if r.strip()]
+        fast = bool(getattr(args, "fast", False))
+        if roots and not fast:
+            fast = True
+        out = initialize_repo(
+            root,
+            index=not bool(getattr(args, "no_index", False)),
+            always_allow=not bool(getattr(args, "allow_once", False)),
+            progress=bar,
+            fast=fast,
+            fast_roots=roots,
+        )
+    except Exception as exc:  # noqa: BLE001
+        bar.fail(str(exc))
+        raise
+    if out.get("ok"):
+        try:
+            from pipeline.daemon import ensure_daemon
+
+            out["daemon"] = ensure_daemon(root)
+        except Exception as exc:  # noqa: BLE001
+            out["daemon"] = {"ok": False, "error": str(exc)}
+        bar.finish("Ready")
+    else:
+        bar.fail(str(out.get("error") or "init failed"))
+    if not sys.stdout.isatty():
+        print(json.dumps(out, indent=2, default=str))
+    return 0 if out.get("ok") else 1
 
 
 def cmd_setup(args: argparse.Namespace) -> int:
     """One user-facing install: package config + local service + Cursor MCP."""
     import os
 
+    from pipeline.progress_ui import InstallProgress
+
     if getattr(args, "status", False):
-        return cmd_init(args)
+        return _configure_machine(args)
 
-    print("[setup] 1/4 graphify …", file=sys.stderr, flush=True)
-    try:
-        from graphify.extract import extract  # noqa: F401
-        from graphify.build import build  # noqa: F401
-    except Exception as exc:  # noqa: BLE001
-        print(f"[setup] graphify missing/broken: {exc}", file=sys.stderr)
-        return 1
-    print("[setup] graphify OK", file=sys.stderr, flush=True)
-
-    print("[setup] 2/4 hardware + accel …", file=sys.stderr, flush=True)
-    if not args.skip_accel:
-        rc = cmd_init(args)
-        if rc != 0:
-            return rc
-    else:
-        try:
-            from pipeline.hardware import ensure_hardware_snapshot
-
-            ensure_hardware_snapshot(force=True)
-        except Exception as exc:  # noqa: BLE001
-            print(f"[setup] hardware snapshot: {exc}", file=sys.stderr)
-
-    repo = Path(args.repo or args.index_path or ".").resolve()
-    os.environ["CTX_REPO"] = str(repo)
-    host = args.host
-    port = int(args.port)
-    os.environ["CTX_ENGINE_URL"] = f"http://{host}:{port}"
-
-    print("[setup] 3/4 start local service …", file=sys.stderr, flush=True)
-    from pipeline.daemon import start_daemon
-    from pipeline.watchdog import start_watchdog
-
-    eng = start_daemon(repo, host=host, port=port, wait_s=float(args.wait))
-    if eng.get("ok"):
-        print(f"[setup] service ready at {eng.get('url') or os.environ['CTX_ENGINE_URL']}", file=sys.stderr)
-        wd = start_watchdog()
-        print(f"[setup] watchdog: {wd}", file=sys.stderr)
-    else:
-        print(
-            "[setup] WARNING: service health timed out — MCP will retry on first use",
-            file=sys.stderr,
-        )
-
-    print("[setup] 4/4 register Cursor MCP …", file=sys.stderr, flush=True)
-    _write_mcp_config(repo, host, port)
-    install = Path(__file__).resolve().parents[2] / "scripts" / "install_mcp.py"
-    if install.is_file():
-        try:
-            import importlib.util
-
-            spec = importlib.util.spec_from_file_location("install_mcp", install)
-            mod = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
-            assert spec and spec.loader
-            spec.loader.exec_module(mod)
-            mod.merge_mcp_json(Path.cwd() / ".cursor" / "mcp.json", repo=repo)
-            mod.merge_mcp_json(Path.home() / ".cursor" / "mcp.json", repo=repo)
-        except Exception as exc:  # noqa: BLE001
-            print(f"[setup] install_mcp merge note: {exc}", file=sys.stderr)
-
-    if args.index_path or args.register:
-        print(f"[setup] register/index {repo} …", file=sys.stderr, flush=True)
-        from pipeline.client import EngineClient
-
-        client = EngineClient()
-        if client.healthy():
-            print(
-                json.dumps(
-                    client.register(str(repo), always_allow=True, index=True),
-                    indent=2,
-                )
-            )
-        else:
-            from pipeline.registration import register_project
-
-            print(
-                json.dumps(
-                    register_project(repo, always_allow=True, index=True, fast=True).to_dict(),
-                    indent=2,
-                )
-            )
-
-    print(
-        "\n[setup] DONE — Context Engine MCP is ready\n"
-        "  Reload MCP in Cursor (Settings → MCP → refresh)\n"
-        f"  Optional dashboard: {os.environ['CTX_ENGINE_URL']}/dashboard\n",
-        file=sys.stderr,
-        flush=True,
+    bar = InstallProgress()
+    bar.start(
+        "This may take a few minutes. Downloading and installing the Scubiee engine."
     )
-    return 0
+    try:
+        bar.set(4, "Checking engine modules")
+        try:
+            from graphify.extract import extract  # noqa: F401
+            from graphify.build import build  # noqa: F401
+        except Exception as exc:  # noqa: BLE001
+            bar.fail(f"graphify missing/broken: {exc}")
+            return 1
+
+        bar.set(10, "Detecting hardware")
+        if not args.skip_accel:
+            rc = _configure_machine(args, report=False, progress=bar)
+            if rc != 0:
+                bar.fail("Hardware setup failed")
+                return rc
+        else:
+            try:
+                from pipeline.hardware import ensure_hardware_snapshot
+
+                ensure_hardware_snapshot(force=True)
+            except Exception as exc:  # noqa: BLE001
+                bar.fail(f"hardware snapshot: {exc}")
+                return 1
+
+        repo = Path(args.repo or args.index_path or ".").resolve()
+        os.environ["CTX_REPO"] = str(repo)
+        host = args.host
+        port = int(args.port)
+        os.environ["CTX_ENGINE_URL"] = f"http://{host}:{port}"
+
+        bar.set(94, "Registering logon supervisor")
+        from pipeline.lifecycle_runtime import install_session_runtime
+
+        runtime = install_session_runtime()
+        if isinstance(runtime, dict) and runtime.get("ok") is False:
+            bar.fail("Could not start the session supervisor")
+            return 1
+
+        bar.set(98, "Registering Cursor MCP")
+        from pipeline.mcp_install import write_cursor_mcp
+
+        write_cursor_mcp(repo, host=host, port=port)
+
+        if args.index_path or args.register:
+            bar.set(99, "Enrolling repository")
+            from pipeline.git_family import reconcile_git_families
+            from pipeline.repo_lifecycle import initialize_repo
+
+            reconcile_git_families(prefer_root=repo)
+            print(
+                json.dumps(
+                    initialize_repo(repo, index=True, always_allow=True),
+                    indent=2,
+                    default=str,
+                )
+            )
+
+        bar.finish("Ready. Next: ctx init <repo>")
+        return 0
+    except Exception as exc:  # noqa: BLE001
+        bar.fail(str(exc))
+        return 1
 
 
 def _write_mcp_config(repo: Path, host: str, port: int) -> None:
@@ -504,6 +739,7 @@ def _write_mcp_config(repo: Path, host: str, port: int) -> None:
             "CTX_AUTO_INDEX": "1",
             "CTX_SYNC_INTERVAL_MS": "300000",
             "CTX_REGISTRATION_MODE": "automatic",
+            "CTX_MCP_SURFACE": "phase",
             "PYTHONUTF8": "1",
         },
     }
@@ -523,10 +759,17 @@ def _write_mcp_config(repo: Path, host: str, port: int) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    try:
+        from importlib.metadata import version as _pkg_version
+
+        _ver = _pkg_version("scubiee")
+    except Exception:  # noqa: BLE001
+        _ver = "0.2.6"
     parser = argparse.ArgumentParser(
         prog="pipeline",
         description="Context Engine — Merkle + Graphify + TurboQuant + FAISS + D_rerank",
     )
+    parser.add_argument("--version", action="version", version=f"scubiee {_ver}")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p_index = sub.add_parser("index", help="Index a repository")
@@ -568,6 +811,53 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_res.set_defaults(func=cmd_resources)
 
+    p_test = sub.add_parser(
+        "test",
+        help="Run CE verification tier: quick | core | fault | install | clients | all",
+    )
+    p_test.add_argument(
+        "tier",
+        choices=["quick", "core", "fault", "install", "clients", "all"],
+        nargs="?",
+        default="quick",
+    )
+    p_test.add_argument("path", nargs="?", default=".", help="Repository root")
+    p_test.add_argument(
+        "--clients",
+        action="store_true",
+        help="Permit external-client suites when the required client is installed",
+    )
+    p_test.set_defaults(func=cmd_test)
+
+    p_pre = sub.add_parser("preflight", help="Check required local CE dependencies")
+    p_pre.add_argument("path", nargs="?", default=".")
+    p_pre.add_argument(
+        "--lexical-only",
+        action="store_true",
+        help="Do not require semantic embedding backend",
+    )
+    p_pre.set_defaults(func=cmd_preflight)
+
+    p_doctor = sub.add_parser("doctor", help="Readiness + repair diagnostics")
+    p_doctor.add_argument("path", nargs="?", default=".")
+    p_doctor.add_argument(
+        "--all",
+        action="store_true",
+        help="Doctor every managed repository",
+    )
+    p_doctor.add_argument(
+        "--fix",
+        action="store_true",
+        help="Apply safe repairs only (never pip install, rebuild, or Forget)",
+    )
+    p_doctor.set_defaults(func=cmd_doctor)
+
+    p_cert = sub.add_parser("certify", help="Release certification gate")
+    p_cert.add_argument("path", nargs="?", default=".")
+    p_cert.add_argument("--skip-daemon", action="store_true")
+    p_cert.add_argument("--canary", action="store_true", help="Include warm semantic canary")
+    p_cert.set_defaults(func=cmd_certify)
+
     p_reg = sub.add_parser(
         "register",
         help="Register a project (id + optional index). Same pipeline as MCP consent.",
@@ -582,6 +872,57 @@ def main(argv: list[str] | None = None) -> int:
     p_reg.add_argument("--fast", action="store_true", help="Fast index roots only")
     p_reg.add_argument("--force", action="store_true", help="Force reindex")
     p_reg.set_defaults(func=cmd_register)
+
+    p_initialize = sub.add_parser(
+        "initialize",
+        help="Initialize a managed repository and reconcile an existing index",
+    )
+    p_initialize.add_argument("path", nargs="?", default=".")
+    p_initialize.add_argument("--no-index", action="store_true")
+    p_initialize.add_argument(
+        "--allow-once",
+        action="store_true",
+        help="Do not persist always-allow registration consent",
+    )
+    p_initialize.set_defaults(func=cmd_repo_lifecycle, command="initialize")
+
+    p_activate = sub.add_parser("activate", help="Activate a managed repository")
+    p_activate.add_argument("path", nargs="?", default=".")
+    p_activate.set_defaults(func=cmd_repo_lifecycle, command="activate")
+
+    p_pause = sub.add_parser("pause", help="Pause repository background indexing")
+    p_pause.add_argument("path", nargs="?", default=".")
+    p_pause.add_argument("--reason", default=None)
+    p_pause.set_defaults(func=cmd_repo_lifecycle, command="pause")
+
+    p_resume = sub.add_parser("resume", help="Resume repository background indexing")
+    p_resume.add_argument("path", nargs="?", default=".")
+    p_resume.set_defaults(func=cmd_repo_lifecycle, command="resume")
+
+    p_sync_now = sub.add_parser("sync-now", help="Reconcile repository freshness now")
+    p_sync_now.add_argument("path", nargs="?", default=".")
+    p_sync_now.set_defaults(func=cmd_repo_lifecycle, command="sync-now")
+
+    p_rebuild = sub.add_parser("rebuild", help="Force a full repository index rebuild")
+    p_rebuild.add_argument("path", nargs="?", default=".")
+    p_rebuild.set_defaults(func=cmd_repo_lifecycle, command="rebuild")
+
+    p_remove = sub.add_parser("remove", help="Remove repository lifecycle management")
+    p_remove.add_argument("path", nargs="?", default=".")
+    p_remove.add_argument(
+        "--delete-store",
+        action="store_true",
+        help="Also delete the repository index store",
+    )
+    p_remove.set_defaults(func=cmd_repo_lifecycle, command="remove")
+
+    p_never = sub.add_parser("never-index", help="Persistently deny indexing for a repository")
+    p_never.add_argument("path", nargs="?", default=".")
+    p_never.add_argument("--reason", default=None)
+    p_never.set_defaults(func=cmd_repo_lifecycle, command="never-index")
+
+    p_list = sub.add_parser("list", help="List managed repositories as JSON")
+    p_list.set_defaults(func=cmd_repo_lifecycle, command="list")
 
     p_set = sub.add_parser(
         "settings",
@@ -635,17 +976,53 @@ def main(argv: list[str] | None = None) -> int:
     p_serve.add_argument("--port", type=int, default=8765)
     p_serve.set_defaults(func=cmd_serve)
 
+    p_dashboard = sub.add_parser(
+        "dashboard",
+        help="Start or control the dedicated localhost operator dashboard",
+    )
+    p_dashboard.add_argument("action", nargs="?", choices=["stop"], default=None)
+    p_dashboard.add_argument(
+        "--no-open",
+        action="store_true",
+        help="Start or reuse the dashboard without opening a browser",
+    )
+    p_dashboard.add_argument(
+        "--status",
+        action="store_true",
+        help="Print dashboard URL, PID, and health",
+    )
+    p_dashboard.set_defaults(func=cmd_dashboard)
+
     p_eng = sub.add_parser("engine", help="Context Engine daemon: start|stop|status|run|ensure")
     p_eng.add_argument(
         "action",
-        choices=["start", "stop", "status", "run", "ensure", "watchdog"],
-        help="Daemon action (watchdog = sidecar poll loop)",
+        choices=[
+            "start",
+            "stop",
+            "status",
+            "run",
+            "ensure",
+            "watchdog",
+            "supervisor",
+            "autostart",
+        ],
+        help="Daemon action (supervisor = logon loop; watchdog = in-session sidecar)",
     )
     p_eng.add_argument("path", nargs="?", default=".", help="Default repo for open")
     p_eng.add_argument("--host", default="127.0.0.1")
     p_eng.add_argument("--port", type=int, default=8765)
     p_eng.add_argument("--wait", type=float, default=90.0, help="Health wait seconds (start)")
     p_eng.add_argument("--no-open", action="store_true", help="run: do not open repo on start")
+    p_eng.add_argument(
+        "--logon",
+        action="store_true",
+        help="supervisor: enter standby and stop leftover GPU (scheduled-task path)",
+    )
+    p_eng.add_argument(
+        "--off",
+        action="store_true",
+        help="autostart: unregister the logon supervisor task",
+    )
     p_eng.set_defaults(func=cmd_engine)
 
     p_mcp = sub.add_parser("mcp", help="Thin MCP adapter (forwards to Context Engine daemon)")
@@ -654,27 +1031,34 @@ def main(argv: list[str] | None = None) -> int:
 
     p_init = sub.add_parser(
         "init",
-        help="Detect GPU (CUDA/DML/CPU), install matching ORT + FastEmbed, download CodeRank",
+        help="Enroll a repository under Context Engine and index it",
+    )
+    p_init.add_argument("path", nargs="?", default=".", help="Repo path (default: cwd)")
+    p_init.add_argument("--no-index", action="store_true", help="Manage without indexing")
+    p_init.add_argument(
+        "--allow-once",
+        action="store_true",
+        help="Do not persist always-allow registration consent",
     )
     p_init.add_argument(
-        "--profile",
-        choices=["cuda", "dml", "cpu"],
-        default=None,
-        help="Force accel profile (default: auto-detect)",
+        "--fast",
+        action="store_true",
+        help="Fast index: .py under CTX_FAST_ROOTS / --roots only",
     )
-    p_init.add_argument("--skip-install", action="store_true", help="Do not pip install wheels")
-    p_init.add_argument("--skip-model", action="store_true", help="Skip CodeRank download/warm")
-    p_init.add_argument("--skip-bench", action="store_true", help="Skip microbench")
-    p_init.add_argument("--status", action="store_true", help="Print saved accel.json + detect")
+    p_init.add_argument(
+        "--roots",
+        default=None,
+        help="Comma-separated fast roots (implies --fast)",
+    )
     p_init.set_defaults(func=cmd_init)
 
     p_setup = sub.add_parser(
         "setup",
-        help="Full MCP install: accel + local service + Cursor mcp.json",
+        help="One-time machine install: detect GPU, install runtime, calibrate batch, register logon supervisor, write MCP",
     )
     p_setup.add_argument(
         "--profile",
-        choices=["cuda", "dml", "cpu"],
+        choices=["cuda", "dml", "coreml", "cpu"],
         default=None,
         help="Force accel profile (default: auto-detect)",
     )
@@ -682,6 +1066,11 @@ def main(argv: list[str] | None = None) -> int:
     p_setup.add_argument("--skip-model", action="store_true")
     p_setup.add_argument("--skip-bench", action="store_true")
     p_setup.add_argument("--skip-accel", action="store_true", help="Skip pip/ORT install")
+    p_setup.add_argument(
+        "--repair",
+        action="store_true",
+        help="Re-run hardware detection, package/provider setup, and batch calibration",
+    )
     p_setup.add_argument(
         "--index",
         dest="index_path",
@@ -697,7 +1086,7 @@ def main(argv: list[str] | None = None) -> int:
     p_setup.add_argument("--host", default="127.0.0.1")
     p_setup.add_argument("--port", type=int, default=8765)
     p_setup.add_argument("--wait", type=float, default=120.0)
-    p_setup.add_argument("--status", action="store_true", help="Delegate to init --status")
+    p_setup.add_argument("--status", action="store_true", help="Print saved preferred profile")
     p_setup.set_defaults(func=cmd_setup)
 
     args = parser.parse_args(argv)

@@ -126,7 +126,7 @@ def mark_registered(
     entry = projects.get(project_id) if isinstance(projects.get(project_id), dict) else {}
     entry = dict(entry)
     entry["registered"] = True
-    entry["registered_at"] = time.time()
+    entry.setdefault("registered_at", time.time())
     if always_allow:
         entry["always_allow"] = True
     elif "always_allow" not in entry:
@@ -167,6 +167,9 @@ def register_project(
 
     try:
         already = is_registered(root)
+        from pipeline.git_family import reconcile_git_families
+
+        reconcile_git_families(prefer_root=root)
         ref = resolve_project(root)
         mark_registered(ref.project_id, root, always_allow=always_allow)
 

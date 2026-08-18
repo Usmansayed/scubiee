@@ -1,0 +1,26 @@
+{
+  "name": "scubiee",
+  "version": "0.2.6",
+  "description": "Scubiee — one-command install. Wraps the Python package and runs ctx setup.",
+  "license": "UNLICENSED",
+  "bin": {
+    "ctx": "bin/ctx.cjs",
+    "scubiee": "bin/ctx.cjs"
+  },
+  "scripts": {
+    "postinstall": "node scripts/install-python.cjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "bin",
+    "scripts",
+    "README.md"
+  ],
+  "keywords": [
+    "context-engine",
+    "cursor",
+    "mcp"
+  ]
+}

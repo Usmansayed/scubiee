@@ -6,6 +6,7 @@ import json
 import os
 import urllib.error
 import urllib.request
+from pathlib import Path
 from typing import Any
 
 DEFAULT_URL = "http://127.0.0.1:8765"
@@ -22,9 +23,37 @@ def engine_url() -> str:
 class EngineClient:
     """Thin HTTP client — no business logic."""
 
-    def __init__(self, base_url: str | None = None, *, timeout: float = 120.0):
+    def __init__(
+        self,
+        base_url: str | None = None,
+        *,
+        timeout: float = 120.0,
+        workspace_path: str | Path | None = None,
+        client: str | None = None,
+        session_id: str | None = None,
+    ):
         self.base = (base_url or engine_url()).rstrip("/")
         self.timeout = timeout
+        self.workspace_path = (
+            str(Path(workspace_path).resolve()) if workspace_path else None
+        )
+        self.client_name = client
+        self.session_id = session_id
+
+    def _coerce_workspace(self, supplied: Any) -> str:
+        """Only existing directories are workspaces — never mkdir from a query string."""
+        if supplied:
+            try:
+                candidate = Path(str(supplied))
+                if candidate.is_dir():
+                    return str(candidate.resolve())
+            except OSError:
+                pass
+            if not self.workspace_path:
+                raise ValueError(f"workspace path is not a directory: {supplied}")
+        if self.workspace_path:
+            return str(self.workspace_path)
+        raise ValueError("workspace path is required for Context Engine requests")
 
     def healthy(self) -> bool:
         """True if /health returns ok. Always uses a short timeout."""
@@ -49,7 +78,15 @@ class EngineClient:
         data = None
         headers = {"Accept": "application/json"}
         if body is not None and method != "GET":
-            data = json.dumps(body).encode("utf-8")
+            payload = dict(body)
+            supplied_path = payload.get("path") or payload.get("repo") or payload.get("root")
+            workspace = self._coerce_workspace(supplied_path)
+            payload["path"] = workspace
+            if self.client_name:
+                payload.setdefault("client", self.client_name)
+            if self.session_id:
+                payload.setdefault("session_id", self.session_id)
+            data = json.dumps(payload).encode("utf-8")
             headers["Content-Type"] = "application/json"
         req = urllib.request.Request(url, data=data, headers=headers, method=method)
         try:
@@ -81,12 +118,27 @@ class EngineClient:
 
     # Convenience wrappers matching CE API
     def status(self, path: str | None = None) -> dict[str, Any]:
-        if path:
-            return self.post("/v1/status", {"path": path})
-        return self.get("/v1/status")
+        return self.post("/v1/status", {"path": path or self.workspace_path})
 
     def open_repo(self, path: str, *, wait: bool = False) -> dict[str, Any]:
-        return self.post("/v1/open", {"path": path, "wait": wait})
+        return self.post(
+            "/v1/open",
+            {"path": path, "wait": wait, "explicit": True},
+        )
+
+    def lifecycle(self, action: str, path: str = "", **options: Any) -> dict[str, Any]:
+        return self.post(
+            "/v1/lifecycle",
+            {"action": action, "path": path or self.workspace_path, **options},
+        )
+
+    def end_session(self, path: str = "") -> dict[str, Any]:
+        if not self.session_id:
+            raise ValueError("session_id is required to end a Context Engine session")
+        return self.post(
+            "/v1/session/end",
+            {"path": path or self.workspace_path, "session_id": self.session_id},
+        )
 
     def register(
         self, path: str = "", *, always_allow: bool = False, index: bool = True
@@ -104,6 +156,14 @@ class EngineClient:
 
     def sync(self, path: str = "") -> dict[str, Any]:
         return self.post("/v1/sync", {"path": path})
+
+    def mark_dirty(
+        self, paths: list[str], *, reason: str = "changed_file", path: str = ""
+    ) -> dict[str, Any]:
+        return self.post("/v1/dirty", {"paths": paths, "reason": reason, "path": path})
+
+    def note_locate(self, *, path: str = "") -> dict[str, Any]:
+        return self.post("/v1/note_locate", {"path": path})
 
     def grep(
         self, pattern: str, *, glob: str = "*.py", max_hits: int = 20, path: str = ""

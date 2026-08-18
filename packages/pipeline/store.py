@@ -8,6 +8,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from pipeline.artifact_guard import atomic_write_text
 from pipeline.merkle import load_snapshot, save_snapshot
 from pipeline.vectordb import FaissCollection, VectorDatabase, cwd_collection_name
 
@@ -60,6 +61,7 @@ class PipelineStore:
             self.base.mkdir(parents=True, exist_ok=True)
 
         self.merkle_path = self.base / "merkle.json"
+        self.chunk_merkle_path = self.base / "chunk_merkle.json"
         self.meta_path = self.base / "meta.json"
         self.chunks_path = self.base / "chunks.jsonl"
         self.graph_path = self.base / "graph_ir.json"
@@ -84,7 +86,7 @@ class PipelineStore:
     def save_meta(self, meta: dict[str, Any]) -> None:
         if self.project_id and "project_id" not in meta:
             meta = {**meta, "project_id": self.project_id}
-        self.meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+        atomic_write_text(self.meta_path, json.dumps(meta, indent=2) + "\n")
 
     def load_chunks(self) -> list[ChunkRecord]:
         if not self.chunks_path.exists():
@@ -98,9 +100,10 @@ class PipelineStore:
         return out
 
     def save_chunks(self, chunks: list[ChunkRecord]) -> None:
-        with self.chunks_path.open("w", encoding="utf-8") as f:
-            for c in chunks:
-                f.write(json.dumps(asdict(c), ensure_ascii=False) + "\n")
+        atomic_write_text(
+            self.chunks_path,
+            "".join(json.dumps(asdict(c), ensure_ascii=False) + "\n" for c in chunks),
+        )
 
     def load_merkle(self) -> dict[str, str]:
         return load_snapshot(self.merkle_path)
@@ -112,6 +115,21 @@ class PipelineStore:
 
     def save_merkle(self, file_hashes: dict[str, str]) -> None:
         save_snapshot(self.merkle_path, file_hashes, root=self.root)
+
+    def load_chunk_merkle(self) -> dict[str, dict[str, str]]:
+        if not self.chunk_merkle_path.is_file():
+            return {}
+        try:
+            data = json.loads(self.chunk_merkle_path.read_text(encoding="utf-8"))
+            return data if isinstance(data, dict) else {}
+        except (OSError, json.JSONDecodeError):
+            return {}
+
+    def save_chunk_merkle(self, hashes: dict[str, dict[str, str]]) -> None:
+        atomic_write_text(
+            self.chunk_merkle_path,
+            json.dumps(hashes, indent=2, sort_keys=True) + "\n",
+        )
 
     def get_collection(self) -> FaissCollection | None:
         if self.vdb.has_collection(self.collection_name):

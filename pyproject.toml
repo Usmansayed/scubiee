@@ -1,7 +1,7 @@
 [project]
-name = "context-engine"
-version = "0.1.0"
-description = "Cursor MCP for code search (Merkle + Graphify + CodeRank + FAISS). One-command install."
+name = "scubiee"
+version = "0.2.6"
+description = "Scubiee — local Cursor MCP context engine: setup once, ctx init per repo, CUDA/DirectML/CoreML/CPU."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -15,6 +15,7 @@ dependencies = [
   "tree-sitter-python>=0.23,<0.26",
   "tree-sitter-javascript>=0.23,<0.26",
   "tree-sitter-typescript>=0.23,<0.25",
+  "tree-sitter-json>=0.23,<0.25",
   "tree-sitter-go>=0.23,<0.26",
   "tree-sitter-rust>=0.23,<0.25",
   "tree-sitter-java>=0.23,<0.25",
@@ -22,12 +23,14 @@ dependencies = [
   "tree-sitter-cpp>=0.23,<0.25",
   "tree-sitter-ruby>=0.23,<0.25",
   "tree-sitter-c-sharp>=0.23,<0.25",
+  "mcp>=1.0,<2",
   "huggingface_hub>=0.20",
 ]
 
 [project.optional-dependencies]
-# Pick ONE via: python -m pipeline init  (uninstalls conflicting ORT wheels)
+# Pick ONE via: ctx setup  (uninstalls conflicting ORT wheels)
 cpu = ["fastembed>=0.4", "onnxruntime>=1.17"]
+coreml = ["fastembed>=0.4", "onnxruntime>=1.17"]
 dml = ["fastembed>=0.4", "onnxruntime-directml>=1.17"]
 cuda = ["fastembed>=0.4", "onnxruntime-gpu>=1.17"]
 embed-st = ["sentence-transformers>=3.0", "torch", "einops"]
@@ -35,7 +38,11 @@ mcp = ["mcp>=1.0,<2"]
 
 [project.scripts]
 ctx = "pipeline.__main__:main"
+scubiee = "pipeline.__main__:main"
 ctx-mcp = "pipeline.mcp_server:main"
+
+[project.urls]
+Homepage = "https://github.com/Usmansayed/new-context-engine"
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -53,3 +60,7 @@ include = [
   "parse_harness*",
   "graphify*",
 ]
+
+[tool.setuptools.package-data]
+pipeline = ["dashboard_ui/*"]
+

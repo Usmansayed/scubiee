@@ -20,7 +20,21 @@ DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
 
 
+def _note_user_activity() -> None:
+    try:
+        from pipeline.lifecycle_runtime import note_activity
+
+        note_activity()
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _json(handler: BaseHTTPRequestHandler, code: int, payload: dict) -> None:
+    context = getattr(handler, "_request_context", None)
+    if isinstance(context, dict):
+        payload.setdefault("client", context.get("client"))
+        payload.setdefault("session_id", context.get("session_id"))
+        payload.setdefault("session_authored", bool(context.get("session_id")))
     body = json.dumps(payload, default=str).encode("utf-8")
     handler.send_response(code)
     handler.send_header("Content-Type", "application/json")
@@ -58,6 +72,7 @@ class Handler(BaseHTTPRequestHandler):
         if path in ("/health", "/"):
             _json(self, 200, ce.health())
             return
+        _note_user_activity()
         if path == "/dashboard":
             from pipeline.dashboard import DASHBOARD_HTML
 
@@ -86,20 +101,44 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
+        if path not in ("/v1/shutdown", "/shutdown"):
+            _note_user_activity()
         data = _read_json(self)
         ce = get_context_engine()
+
+        def admit(root: str) -> dict:
+            admission = getattr(ce, "admit_request", None)
+            if admission is None:
+                return {
+                    "ok": True,
+                    "status": "activated",
+                    "client": data.get("client"),
+                    "session_id": data.get("session_id"),
+                }
+            return admission(
+                root,
+                client=data.get("client"),
+                session_id=data.get("session_id"),
+                metadata=(
+                    data.get("metadata")
+                    if isinstance(data.get("metadata"), dict)
+                    else None
+                ),
+                explicit=bool(data.get("explicit") or data.get("wait")),
+            )
 
         if path in ("/api/settings", "/v1/settings"):
             _json(self, 200, ce.update_settings(data))
             return
 
         if path == "/v1/open":
-            root = data.get("path") or (str(ce.repo) if ce.repo else ".")
-            wait = bool(data.get("wait"))
-            if wait:
-                _json(self, 200, ce.open_repo(root, background=False))
-            else:
-                _json(self, 200, ce.open_repo(root, background=True))
+            root = data.get("path")
+            if not root:
+                _json(self, 400, {"ok": False, "error": "workspace path required"})
+                return
+            admission = admit(root)
+            self._request_context = admission
+            _json(self, 200 if admission.get("status") == "activated" else 409, admission)
             return
 
         if path == "/v1/register":
@@ -114,8 +153,168 @@ class Handler(BaseHTTPRequestHandler):
             )
             return
 
+        if path == "/v1/client/register":
+            from pipeline.lifecycle_runtime import register_client
+
+            client_id = str(data.get("client_id") or "").strip()
+            if not client_id:
+                _json(self, 400, {"ok": False, "error": "client_id required"})
+                return
+            pid_raw = data.get("pid")
+            try:
+                pid = int(pid_raw) if pid_raw is not None else None
+            except (TypeError, ValueError):
+                pid = None
+            _json(
+                self,
+                200,
+                register_client(
+                    client_id,
+                    pid=pid,
+                    kind=str(data.get("kind") or "mcp"),
+                ),
+            )
+            return
+
+        if path == "/v1/client/unregister":
+            from pipeline.lifecycle_runtime import apply_idle_policy, unregister_client
+
+            client_id = str(data.get("client_id") or "").strip()
+            if not client_id:
+                _json(self, 400, {"ok": False, "error": "client_id required"})
+                return
+            result = unregister_client(client_id)
+            idle = apply_idle_policy()
+            _json(self, 200, {**result, "idle": idle})
+            return
+
+        if path == "/v1/lifecycle":
+            from pipeline import repo_lifecycle as lifecycle
+
+            action = str(data.get("action") or "").strip().lower()
+            root = data.get("path")
+            if action == "list":
+                _json(
+                    self,
+                    200,
+                    {"ok": True, "repositories": lifecycle.list_managed_repos()},
+                )
+                return
+            if not root:
+                _json(self, 400, {"ok": False, "error": "workspace path required"})
+                return
+            handlers = {
+                "initialize": lambda: lifecycle.initialize_repo(
+                    Path(root),
+                    index=data.get("index", True) is not False,
+                    always_allow=data.get("always_allow", True) is not False,
+                ),
+                "activate": lambda: lifecycle.activate_repo(Path(root)),
+                "pause": lambda: lifecycle.pause_repo(
+                    Path(root), reason=data.get("reason")
+                ),
+                "resume": lambda: lifecycle.resume_repo(Path(root)),
+                "sync-now": lambda: lifecycle.sync_now_repo(Path(root)),
+                "sync_now": lambda: lifecycle.sync_now_repo(Path(root)),
+                "rebuild": lambda: lifecycle.rebuild_repo(Path(root)),
+                "remove": lambda: lifecycle.remove_repo(
+                    Path(root), delete_store=bool(data.get("delete_store"))
+                ),
+                "never-index": lambda: lifecycle.never_index_repo(
+                    Path(root), reason=data.get("reason")
+                ),
+                "never_index": lambda: lifecycle.never_index_repo(
+                    Path(root), reason=data.get("reason")
+                ),
+            }
+            handler = handlers.get(action)
+            if handler is None:
+                _json(
+                    self,
+                    400,
+                    {
+                        "ok": False,
+                        "error": "valid lifecycle action required",
+                        "actions": sorted(handlers),
+                    },
+                )
+                return
+            _json(self, 200, handler())
+            return
+
         if path in ("/v1/status", "/status"):
-            _json(self, 200, ce.status(data.get("path")))
+            root = data.get("path")
+            if not root:
+                _json(self, 400, {"ok": False, "error": "workspace path required"})
+                return
+            admission = admit(root)
+            self._request_context = admission
+            status = ce.status(root)
+            status["admission"] = admission
+            _json(self, 200, status)
+            return
+
+        if path == "/v1/session/end":
+            root = data.get("path")
+            session_id = str(data.get("session_id") or "")
+            if not root or not session_id:
+                _json(
+                    self,
+                    400,
+                    {"ok": False, "error": "workspace path and session_id required"},
+                )
+                return
+            self._request_context = {
+                "client": data.get("client"),
+                "session_id": session_id,
+            }
+            _json(self, 200, ce.end_session(root, session_id))
+            return
+
+        operational = {
+            "/v1/dirty",
+            "/v1/note_locate",
+            "/v1/search",
+            "/search",
+            "/v1/locate",
+            "/v1/sync",
+            "/sync",
+            "/v1/grep",
+            "/v1/outline",
+            "/v1/read_span",
+            "/v1/follow_imports",
+            "/v1/graph_neighbors",
+            "/v1/query_graph",
+            "/v1/grep_ident",
+            "/v1/reopen_anchors",
+            "/v1/session_anchors",
+            "/reload",
+        }
+        if path in operational:
+            root = data.get("repo") or data.get("root") or data.get("path")
+            if not root:
+                _json(self, 400, {"ok": False, "error": "workspace path required"})
+                return
+            admission = admit(root)
+            self._request_context = admission
+            if admission.get("status") != "activated":
+                _json(self, 409, admission)
+                return
+
+        if path == "/v1/dirty":
+            paths = data.get("paths")
+            if not isinstance(paths, list) or not paths:
+                _json(self, 400, {"ok": False, "error": "paths list required"})
+                return
+            _json(
+                self,
+                200,
+                ce.mark_dirty([str(item) for item in paths], reason=str(data.get("reason") or "changed_file")),
+            )
+            return
+
+        if path == "/v1/note_locate":
+            _json(self, 200, ce.note_locate())
             return
 
         if path in ("/v1/search", "/search"):
@@ -329,17 +528,45 @@ class Handler(BaseHTTPRequestHandler):
         _json(self, 404, {"error": "not found"})
 
 
+def _start_idle_sweeper(*, interval_s: float = 30.0) -> None:
+    import threading
+
+    def _loop() -> None:
+        while True:
+            time.sleep(max(5.0, interval_s))
+            try:
+                from pipeline.lifecycle_runtime import apply_idle_policy
+
+                apply_idle_policy()
+            except Exception:  # noqa: BLE001
+                pass
+
+    thread = threading.Thread(target=_loop, name="ce-idle-sweeper", daemon=True)
+    thread.start()
+
+
 def run_server(
     repo: Path,
     host: str = DEFAULT_HOST,
     port: int = DEFAULT_PORT,
     *,
-    open_on_start: bool = True,
+    open_on_start: bool = False,
 ) -> None:
     """Run Context Engine daemon (blocking)."""
     from pipeline.sync_loop import enable_session_keeper_defaults
 
     enable_session_keeper_defaults()
+    from pipeline.git_family import reconcile_git_families
+
+    family = reconcile_git_families(prefer_root=repo)
+    if family.superseded_project_ids:
+        print(
+            f"[engine] git-family reconcile: canonical={family.canonical_project_ids} "
+            f"superseded={family.superseded_project_ids}",
+            file=sys.stderr,
+            flush=True,
+        )
+    _start_idle_sweeper()
     ce = get_context_engine()
     repo = repo.resolve()
     print(
@@ -353,10 +580,17 @@ def run_server(
         flush=True,
     )
     print(f"[engine] dashboard http://{host}:{port}/dashboard", file=sys.stderr, flush=True)
+    try:
+        from pipeline.process_job import attach_engine_on_start
+
+        attach_engine_on_start()
+    except Exception as exc:  # noqa: BLE001
+        print(f"[engine] job join note: {exc}", file=sys.stderr, flush=True)
 
     if open_on_start:
         print(f"[engine] opening {repo} …", file=sys.stderr, flush=True)
-        # Background warm so HTTP accepts health immediately
+        # Explicit callers may opt in; ordinary IDE/daemon startup stays idle
+        # until a path-bearing CE request is admitted.
         ce.open_repo(repo, background=True)
 
     httpd = ThreadingHTTPServer((host, port), Handler)

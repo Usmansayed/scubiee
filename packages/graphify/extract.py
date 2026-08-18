@@ -4298,6 +4298,14 @@ def _safe_extract_with_xaml_root(extractor, path: Path, root: Path) -> dict:
         _XAML_ACTIVE_EXTRACT_ROOT = previous_root
 
 
+def _print_ast_progress(message: str) -> None:
+    """AST progress lines. GRAPHIFY_QUIET=1 keeps a parent progress bar clean."""
+    flag = (os.environ.get("GRAPHIFY_QUIET") or "").strip().lower()
+    if flag in {"1", "true", "yes", "on"}:
+        return
+    print(message, flush=True)
+
+
 def _extract_single_file(args: tuple) -> tuple[int, dict]:
     """Worker function for parallel extraction. Runs in a subprocess.
 
@@ -4426,10 +4434,9 @@ def _extract_parallel(
                     total_files >= _PROGRESS_INTERVAL
                     and done_count % _PROGRESS_INTERVAL == 0
                 ):
-                    print(
+                    _print_ast_progress(
                         f"  AST extraction: {done_count}/{len(uncached_work)} uncached files "
-                        f"({done_count * 100 // len(uncached_work)}%) [{max_workers} workers]",
-                        flush=True,
+                        f"({done_count * 100 // len(uncached_work)}%) [{max_workers} workers]"
                     )
     except concurrent.futures.process.BrokenProcessPool:
         # On Windows (spawn start method) the worker subprocesses re-import the
@@ -4451,9 +4458,8 @@ def _extract_parallel(
         # corpus made the count jump upward at the end (cached hits + files with no
         # extractor never entered uncached_work), which read as inconsistent (#1693).
         _done = len(uncached_work)
-        print(
-            f"  AST extraction: {_done}/{_done} uncached files (100%) [{max_workers} workers]",
-            flush=True,
+        _print_ast_progress(
+            f"  AST extraction: {_done}/{_done} uncached files (100%) [{max_workers} workers]"
         )
     return True
 
@@ -4473,9 +4479,8 @@ def _extract_sequential(
             and work_idx % _PROGRESS_INTERVAL == 0
             and work_idx > 0
         ):
-            print(
-                f"  AST extraction: {work_idx}/{len(uncached_work)} uncached files ({work_idx * 100 // len(uncached_work)}%)",
-                flush=True,
+            _print_ast_progress(
+                f"  AST extraction: {work_idx}/{len(uncached_work)} uncached files ({work_idx * 100 // len(uncached_work)}%)"
             )
         extractor = _get_extractor(path)
         if extractor is None:
@@ -4491,7 +4496,7 @@ def _extract_sequential(
     if total_files >= _PROGRESS_INTERVAL:
         # Consistent denominator with the intermediate lines (#1693).
         _done = len(uncached_work)
-        print(f"  AST extraction: {_done}/{_done} uncached files (100%)", flush=True)
+        _print_ast_progress(f"  AST extraction: {_done}/{_done} uncached files (100%)")
 
 
 _PARALLEL_THRESHOLD = 20
@@ -5659,10 +5664,10 @@ def collect_files(target: Path, *, follow_symlinks: bool = False, root: Path | N
         return bool(patterns and _is_ignored(p, ignore_root, patterns, _cache=ignore_cache))
 
     if not follow_symlinks:
-        # The old rglob filter rejected paths with a noise component anywhere,
-        # including components of target itself — preserve that.
-        if any(_is_noise_dir(part) for part in target.parts):
-            return []
+        # ``target`` is an explicit scan root.  It may legitimately live inside
+        # a worktree directory (for example ``.worktrees/feature``), so only
+        # prune noisy *descendants* below it.  Rejecting target.parts here made
+        # every explicit worktree scan silently return an empty index.
         # When negation (!) patterns exist, skip directory-level ignore pruning
         # so negated files inside ignored dirs can still be reached (same
         # conservatism as detect's scan walk).

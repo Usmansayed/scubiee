@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-EXPECTED = {"search", "read", "status"}
+PHASE_EXPECTED = {"map", "focus", "workspace", "status"}
+READ_EXPECTED = {"search", "read", "status"}
 
 
 def _tool_names(mcp) -> set[str]:
@@ -19,15 +20,25 @@ def _tool_names(mcp) -> set[str]:
     raise AssertionError("cannot introspect FastMCP tools")
 
 
-def test_only_locate_mcp_is_shipped():
+def test_only_locate_mcp_is_shipped(monkeypatch):
     pytest.importorskip("mcp")
+    monkeypatch.delenv("CTX_MCP_SURFACE", raising=False)
     from pipeline.mcp_locate import create_mcp as create_locate
     from pipeline.mcp_server import create_mcp as create_compat
 
     locate = create_locate(name="test-locate")
     compat = create_compat()
-    assert _tool_names(locate) == EXPECTED
-    assert _tool_names(compat) == EXPECTED
+    assert _tool_names(locate) == PHASE_EXPECTED
+    assert _tool_names(compat) == PHASE_EXPECTED
+
+
+def test_read_surface_still_available(monkeypatch):
+    pytest.importorskip("mcp")
+    monkeypatch.setenv("CTX_MCP_SURFACE", "read")
+    from pipeline.mcp_locate import create_mcp as create_locate
+
+    locate = create_locate(name="test-locate-read")
+    assert _tool_names(locate) == READ_EXPECTED
 
 
 def test_ensure_daemon_soft_skips_force_restart(monkeypatch):

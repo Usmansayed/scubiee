@@ -17,10 +17,11 @@ from enrich import chunk_file_from_ir, inject_metadata
 from graphify.extract import extract
 from parse_harness.graphify_adapter import graphify_to_repo_ir
 
+from pipeline.chunk_merkle import chunk_digest, chunk_key, diff_chunk_records
 from pipeline.embedder import Embedder
 from pipeline.freshness import check_freshness
 from pipeline.merkle import file_sha256
-from pipeline.paths import collect_index_paths
+from pipeline.paths import collect_index_paths, collect_index_relpaths
 from pipeline.store import ChunkRecord, PipelineStore
 from pipeline.vectordb import VectorDatabase
 
@@ -121,18 +122,17 @@ def incremental_sync(
         report.reason = "force_files"
         report.detection = "force"
 
-    # New files under fast roots are outside the Merkle universe — discover them
-    # so timed background sync picks up freshly written modules.
-    if not force_files and meta.get("fast"):
+    # Merkle is a closed snapshot of already-indexed files. Discover newcomers
+    # with the same path filter as a full/fast index so untracked modules sync.
+    if not force_files:
         from pipeline.merkle import SyncDiff, root_hash as _rh
 
-        universe = {
-            p.relative_to(root).as_posix()
-            for p in collect_index_paths(
-                root, fast=True, fast_roots=meta.get("fast_roots")
+        newcomers = sorted(
+            collect_index_relpaths(
+                root, fast=bool(meta.get("fast")), fast_roots=meta.get("fast_roots")
             )
-        }
-        newcomers = sorted(universe - set(old))
+            - set(old)
+        )
         if newcomers:
             added = sorted(set(report.diff.added) | set(newcomers))
             report.diff = SyncDiff(
@@ -144,9 +144,10 @@ def incremental_sync(
             )
             report.clean = False
             if report.strategy == "none":
+                kind = "fast roots" if meta.get("fast") else "index paths"
                 report.strategy = "incremental"
-                report.reason = f"{len(newcomers)} new file(s) under fast roots"
-                report.detection = "fast_roots_new"
+                report.reason = f"{len(newcomers)} new file(s) under {kind}"
+                report.detection = "index_paths_new"
 
     if report.clean and not force_files:
         return IncrementalResult(
@@ -200,6 +201,7 @@ def incremental_sync(
         next_id = (max((c.id for c in existing), default=-1) + 1) if existing else 0
         graph_error: str | None = None
         matrix = None
+        embedder = None
         warnings: list[str] = []
         raw: dict = {"nodes": [], "edges": [], "hyperedges": []}
 
@@ -266,7 +268,24 @@ def incremental_sync(
             warnings.append(f"graph rebuild failed: {gexc}")
             print(f"[incremental] WARNING: graph rebuild failed: {gexc}", file=sys.stderr, flush=True)
 
-        if new_records:
+        # A file Merkle diff decides what to parse. A chunk Merkle diff decides
+        # what to embed. We still rebuild every dirty file's AST/graph patch,
+        # but reuse vectors for chunks whose stable key and embedding input are
+        # identical to the prior indexed generation.
+        old_by_file: dict[str, list[ChunkRecord]] = {}
+        for record in existing:
+            old_by_file.setdefault(record.file.replace("\\", "/"), []).append(record)
+        new_by_file: dict[str, list[ChunkRecord]] = {}
+        for record in new_records:
+            new_by_file.setdefault(record.file.replace("\\", "/"), []).append(record)
+        embed_records: list[ChunkRecord] = []
+        for file, records in new_by_file.items():
+            diff = diff_chunk_records(old_by_file.get(file, []), records)
+            embed_records.extend(
+                record for record in records if chunk_key(record) in diff.changed
+            )
+
+        if embed_records:
             model = str(meta.get("embed_model") or "nomic-ai/CodeRankEmbed")
             try:
                 from pipeline.engine import get_embedder
@@ -282,13 +301,12 @@ def incremental_sync(
                     max_seq_length=256 if meta.get("fast") else 512,
                     dim=meta.get("dim"),
                 )
-            matrix = embedder.embed_many([r.enriched for r in new_records])
+            matrix = embedder.embed_many([r.enriched for r in embed_records])
 
         # Merge chunk list
         merged = keep + new_records
-        # Re-assign contiguous ids for FAISS simplicity
-        for i, c in enumerate(merged):
-            c.id = i
+        # IDs are durable payload identities. Gaps after deletion are expected;
+        # compaction rebuilds storage without renumbering surviving chunks.
         store.save_chunks(merged)
 
         col = store.get_collection()
@@ -310,17 +328,20 @@ def incremental_sync(
 
             if keep and col.ntotal:
                 # rebuild matrix: old vectors for kept ids in old order mapping
-                old_by_file_chunk = {(c.file, c.start_line, c.end_line, c.symbol): c.id for c in existing}
+                old_by_file_chunk = {
+                    (c.file.replace("\\", "/"), chunk_key(c), chunk_digest(c)): c.id
+                    for c in existing
+                }
                 old_mat = col.compressed.to_float32()
-                id_to_row = {vid: i for i, vid in enumerate(col.ids)}
+                id_to_row = {int(vid): i for i, vid in enumerate(col.ids)}
                 rows = []
                 payloads = []
                 for c in merged:
-                    key = (c.file, c.start_line, c.end_line, c.symbol)
-                    if key in old_by_file_chunk and old_by_file_chunk[key] in id_to_row:
-                        rows.append(old_mat[id_to_row[old_by_file_chunk[key]]])
+                    key = (c.file.replace("\\", "/"), chunk_key(c), chunk_digest(c))
+                    old_id = old_by_file_chunk.get(key)
+                    if old_id is not None and int(old_id) in id_to_row:
+                        rows.append(old_mat[id_to_row[int(old_id)]])
                     else:
-                        # must be in new_records — find embedding
                         rows.append(None)  # type: ignore
                     payloads.append(
                         {
@@ -331,17 +352,41 @@ def incremental_sync(
                             "chunk_id": c.id,
                         }
                     )
-                # fill Nones from new_records matrix
+                # Fill changed/new chunks from the smaller embedding batch.
                 new_map = {
-                    (r.file, r.start_line, r.end_line, r.symbol): j
-                    for j, r in enumerate(new_records)
+                    (r.file.replace("\\", "/"), chunk_key(r), chunk_digest(r)): j
+                    for j, r in enumerate(embed_records)
                 }
                 for i, c in enumerate(merged):
-                    if rows[i] is None:
-                        j = new_map.get((c.file, c.start_line, c.end_line, c.symbol))
-                        if j is None or matrix is None:
-                            raise RuntimeError(f"missing embedding for {c.file}")
-                        rows[i] = matrix[j]
+                    if rows[i] is None and matrix is not None:
+                        j = new_map.get(
+                            (c.file.replace("\\", "/"), chunk_key(c), chunk_digest(c))
+                        )
+                        if j is not None:
+                            rows[i] = matrix[j]
+                missing_idx = [i for i, row in enumerate(rows) if row is None]
+                if missing_idx:
+                    if embedder is None:
+                        model = str(meta.get("embed_model") or "nomic-ai/CodeRankEmbed")
+                        try:
+                            from pipeline.engine import get_embedder
+
+                            embedder = get_embedder(
+                                model, dim=meta.get("dim"), cache_path=store.embed_cache
+                            )
+                        except Exception:
+                            embedder = Embedder(
+                                model=model,
+                                cache_path=store.embed_cache,
+                                batch_size=64,
+                                max_seq_length=256 if meta.get("fast") else 512,
+                                dim=meta.get("dim"),
+                            )
+                    extra = embedder.embed_many(
+                        [merged[i].enriched for i in missing_idx]
+                    )
+                    for j, i in enumerate(missing_idx):
+                        rows[i] = extra[j]
                 full = np.stack(rows, axis=0).astype(np.float32)
                 col.replace_all(full, [c.id for c in merged], payloads)
                 store.vdb.save_collection(col.name)
@@ -366,6 +411,22 @@ def incremental_sync(
 
             new_hashes = scan_file_hashes(root)
         store.save_merkle(new_hashes)
+        store.save_chunk_merkle(
+            {
+                file: {chunk_key(chunk): chunk_digest(chunk) for chunk in records}
+                for file, records in {
+                    **{
+                        file: [
+                            chunk for chunk in existing
+                            if chunk.file.replace("\\", "/") == file
+                        ]
+                        for file in new_hashes
+                        if file not in new_by_file
+                    },
+                    **new_by_file,
+                }.items()
+            }
+        )
         meta["git_head"] = report.git_head
         meta["chunks"] = len(merged)
         meta["last_incremental_at"] = time.time()
@@ -374,6 +435,24 @@ def incremental_sync(
         else:
             meta.pop("last_graph_error", None)
         store.save_meta(meta)
+        # Incremental sync mutates the same published artifacts as a full
+        # index. Refresh the manifest only after all of those writes complete,
+        # otherwise readiness will reject every live update as corruption.
+        from pipeline.artifact_guard import publish_manifest
+
+        published = [
+            path
+            for path in (
+                store.chunks_path,
+                store.graph_path,
+                store.base / "graph.json",
+                store.meta_path,
+                store.merkle_path,
+            )
+            if path.is_file()
+        ]
+        if published:
+            publish_manifest(store.base, published)
         try:
             from pipeline.capability import ensure_cards
 
@@ -393,7 +472,7 @@ def incremental_sync(
         return IncrementalResult(
             refreshed=True,
             files=touch,
-            chunks_upserted=len(new_records),
+            chunks_upserted=len(embed_records),
             chunks_removed=len(removed_ids),
             ms=(time.perf_counter() - t0) * 1000,
             strategy=report.strategy,

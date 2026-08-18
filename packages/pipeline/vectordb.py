@@ -72,6 +72,7 @@ class CollectionMeta:
     created_at: float = field(default_factory=time.time)
     updated_at: float = field(default_factory=time.time)
     description: str = ""
+    dead_ids: list[int] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -105,15 +106,27 @@ class FaissCollection:
     def ntotal(self) -> int:
         return int(self.index.ntotal)
 
+    @property
+    def dead_count(self) -> int:
+        return len(self.meta.dead_ids)
+
+    @property
+    def live_count(self) -> int:
+        return len(self.ids) - self.dead_count
+
     def _rebuild_faiss_from_compressed(self) -> None:
         self.index = self._new_index()
-        if not self.ids:
+        dead = set(self.meta.dead_ids)
+        live_rows = [row for row, vector_id in enumerate(self.ids) if vector_id not in dead]
+        if not live_rows:
             return
-        mat = self.compressed.to_float32()
-        if mat.shape[0] != len(self.ids):
+        all_vectors = self.compressed.to_float32()
+        if all_vectors.shape[0] != len(self.ids):
             raise RuntimeError("compressed rows != ids")
+        mat = all_vectors[live_rows].copy()
+        live_ids = [self.ids[row] for row in live_rows]
         faiss.normalize_L2(mat)
-        self.index.add_with_ids(mat, np.asarray(self.ids, dtype=np.int64))
+        self.index.add_with_ids(mat, np.asarray(live_ids, dtype=np.int64))
 
     def add(
         self,
@@ -133,9 +146,10 @@ class FaissCollection:
             raise ValueError("payloads/ids length mismatch")
 
         # Remove existing ids first (upsert semantics)
-        existing = [i for i in id_list if i in self.payloads or i in self.ids]
+        existing = [i for i in id_list if i in self.ids]
         if existing:
             self.delete(existing)
+            self.compact()
 
         self.compressed.add(vectors)
         self.ids.extend(id_list)
@@ -166,6 +180,7 @@ class FaissCollection:
         self.ids = []
         self.payloads = {}
         self.index = self._new_index()
+        self.meta.dead_ids = []
         if len(ids) == 0:
             self.meta.ntotal = 0
             self.meta.updated_at = time.time()
@@ -173,35 +188,53 @@ class FaissCollection:
         return self.add(vectors, ids, payloads)
 
     def delete(self, ids: list[int]) -> int:
-        """Remove vectors by id. Rebuilds FAISS+TurboQuant (small-corpuses OK)."""
+        """Logically delete vectors without assuming FAISS releases OS memory."""
         drop = set(int(i) for i in ids)
         if not drop:
             return 0
-        keep_idx = [i for i, vid in enumerate(self.ids) if vid not in drop]
-        if len(keep_idx) == len(self.ids):
+        already_dead = set(self.meta.dead_ids)
+        removed = sorted(drop.intersection(self.ids) - already_dead)
+        if not removed:
             return 0
-        if not keep_idx:
-            self.compressed = CompressedEmbeddingStore(
-                dim=self.meta.dim, bits=self.meta.bits, seed=self.meta.seed
-            )
-            self.ids = []
-            self.payloads = {}
-            self.index = self._new_index()
-            self.meta.ntotal = 0
-            self.meta.updated_at = time.time()
-            return len(drop)
+        self.index.remove_ids(np.asarray(removed, dtype=np.int64))
+        for vector_id in removed:
+            self.payloads.pop(vector_id, None)
+        self.meta.dead_ids = sorted(already_dead.union(removed))
+        self.meta.ntotal = int(self.index.ntotal)
+        self.meta.updated_at = time.time()
+        return len(removed)
 
-        mat = self.compressed.to_float32()[keep_idx]
-        new_ids = [self.ids[i] for i in keep_idx]
-        new_payloads = [self.payloads.get(vid, {}) for vid in new_ids]
+    def compact(self) -> int:
+        """Rebuild all vector artifacts from live rows, preserving vector IDs."""
+        dead = set(self.meta.dead_ids)
+        if not dead:
+            self._rebuild_faiss_from_compressed()
+            self.meta.ntotal = int(self.index.ntotal)
+            self.meta.updated_at = time.time()
+            return 0
+        keep_idx = [row for row, vector_id in enumerate(self.ids) if vector_id not in dead]
+        old_dead_count = len(dead)
+        if keep_idx:
+            mat = self.compressed.to_float32()[keep_idx].copy()
+            new_ids = [self.ids[row] for row in keep_idx]
+            new_payloads = [self.payloads.get(vector_id, {}) for vector_id in new_ids]
+        else:
+            mat = np.zeros((0, self.meta.dim), dtype=np.float32)
+            new_ids = []
+            new_payloads = []
         self.compressed = CompressedEmbeddingStore(
             dim=self.meta.dim, bits=self.meta.bits, seed=self.meta.seed
         )
         self.ids = []
         self.payloads = {}
         self.index = self._new_index()
-        self.add(mat, new_ids, new_payloads)
-        return len(drop)
+        self.meta.dead_ids = []
+        if new_ids:
+            self.add(mat, new_ids, new_payloads)
+        else:
+            self.meta.ntotal = 0
+            self.meta.updated_at = time.time()
+        return old_dead_count
 
     def search(
         self, query: np.ndarray, top_k: int = 10
@@ -235,8 +268,11 @@ class FaissCollection:
         self.compressed.save(self.path / "turboquant.npz")
         faiss.write_index(self.index, str(self.path / "faiss.index"))
         np.save(self.path / "ids.npy", np.asarray(self.ids, dtype=np.int64))
+        dead = set(self.meta.dead_ids)
         with (self.path / "payloads.jsonl").open("w", encoding="utf-8") as f:
             for vid in self.ids:
+                if vid in dead:
+                    continue
                 f.write(
                     json.dumps({"id": vid, "payload": self.payloads.get(vid, {})})
                     + "\n"
@@ -260,8 +296,8 @@ class FaissCollection:
         index_path = path / "faiss.index"
         if index_path.exists() and col.ids:
             col.index = faiss.read_index(str(index_path))
-            # Integrity: ntotal should match
-            if int(col.index.ntotal) != len(col.ids):
+            # Integrity: the serialized index contains live rows only.
+            if int(col.index.ntotal) != col.live_count:
                 col._rebuild_faiss_from_compressed()
         else:
             col._rebuild_faiss_from_compressed()
@@ -276,6 +312,8 @@ class FaissCollection:
                 "cwd": self.meta.cwd,
                 "dim": self.meta.dim,
                 "faiss_ntotal": int(self.index.ntotal),
+                "live_vectors": self.live_count,
+                "dead_vectors": self.dead_count,
                 "payloads": len(self.payloads),
                 "path": str(self.path),
                 "metric": self.meta.metric,

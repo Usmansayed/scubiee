@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>Context Engine</title>
+    <link rel="stylesheet" href="/ce-dashboard/styles.css">
+    <script src="/ce-dashboard/lucide.min.js" defer></script>
+    <script src="/ce-dashboard/storage_render.js" defer></script>
+    <script src="/ce-dashboard/app.js" defer></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" id="sidebar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-6"/><path d="M22 20V8"/>
+            </svg>
+          </span>
+          <div><strong>Context Engine</strong><small>Operator console</small></div>
+        </div>
+        <nav class="navigation" aria-label="Dashboard">
+          <button class="nav-item active" data-page="overview">
+            <span class="nav-icon" data-lucide="layout-dashboard"></span><span>Overview</span>
+          </button>
+          <button class="nav-item" data-page="repositories">
+            <span class="nav-icon" data-lucide="folder-git-2"></span><span>Repositories</span>
+          </button>
+          <button class="nav-item" data-page="sync">
+            <span class="nav-icon" data-lucide="refresh-cw"></span><span>Index &amp; Sync</span>
+          </button>
+          <button class="nav-item" data-page="storage">
+            <span class="nav-icon" data-lucide="hard-drive"></span><span>Storage</span>
+          </button>
+          <button class="nav-item" data-page="health">
+            <span class="nav-icon" data-lucide="heart-pulse"></span><span>Health</span>
+          </button>
+          <button class="nav-item" data-page="runtime">
+            <span class="nav-icon" data-lucide="cpu"></span><span>Runtime</span>
+          </button>
+          <button class="nav-item" data-page="graph">
+            <span class="nav-icon" data-lucide="share-2"></span><span>Graph</span>
+          </button>
+          <button class="nav-item" data-page="settings">
+            <span class="nav-icon" data-lucide="settings"></span><span>Settings</span>
+          </button>
+        </nav>
+        <div class="sidebar-status">
+          <span class="pulse-dot"></span>
+          <div><strong id="sidebar-status">Checking service</strong><small>Localhost only</small></div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <button class="menu-button" id="menu-button" aria-label="Toggle navigation">
+            <span data-lucide="menu"></span>
+          </button>
+          <div>
+            <p class="eyebrow">Local operator workspace</p>
+            <h1 id="page-title">Overview</h1>
+          </div>
+          <div class="topbar-actions">
+            <span class="local-badge"><span></span>127.0.0.1</span>
+            <button class="button secondary" id="refresh-button">
+              <span data-lucide="refresh-cw"></span>
+              Refresh
+            </button>
+          </div>
+        </header>
+
+        <div class="content">
+          <section class="page active" id="page-overview" aria-labelledby="overview-heading">
+            <div class="page-heading">
+              <div><h2 id="overview-heading">System at a glance</h2><p>Repository coverage and service state from this machine.</p></div>
+              <span class="updated-at" id="overview-updated">Not yet refreshed</span>
+            </div>
+            <div class="metric-grid">
+              <article class="metric-card">
+                <div class="metric-label">Managed repositories <span class="metric-symbol" data-lucide="folder-git-2"></span></div>
+                <strong id="metric-managed">—</strong>
+                <p id="metric-managed-detail">Loading registry</p>
+              </article>
+              <article class="metric-card">
+                <div class="metric-label">Active <span class="status-dot green"></span></div>
+                <strong id="metric-active">—</strong>
+                <p>Ready for retrieval</p>
+              </article>
+              <article class="metric-card">
+                <div class="metric-label">Needs attention <span class="status-dot amber"></span></div>
+                <strong id="metric-attention">—</strong>
+                <p>Missing, replaced, or conflicted</p>
+              </article>
+            </div>
+            <div class="split-grid">
+              <article class="panel">
+                <div class="panel-header"><div><h3>Repository state</h3><p>Current presence across managed projects</p></div><button class="text-button" data-go="repositories">View all →</button></div>
+                <div id="overview-repo-list" class="state-list loading-block">Loading repositories…</div>
+              </article>
+              <article class="panel system-panel">
+                <div class="panel-header"><div><h3>Operator service</h3><p>Dashboard process and access boundary</p></div></div>
+                <div class="system-orbit" aria-hidden="true"><span></span></div>
+                <dl class="detail-list" id="overview-service">
+                  <div><dt>Network</dt><dd>Loopback only</dd></div>
+                  <div><dt>Base path</dt><dd><code>/ce-dashboard</code></dd></div>
+                  <div><dt>Status</dt><dd>Checking…</dd></div>
+                </dl>
+              </article>
+            </div>
+          </section>
+
+          <section class="page" id="page-repositories" aria-labelledby="repositories-heading">
+            <div class="page-heading">
+              <div><h2 id="repositories-heading">Repositories</h2><p>Manage identity, presence, and safe lifecycle actions.</p></div>
+              <button class="button primary" id="add-repository-button">
+                <span data-lucide="plus"></span>
+                Add repository
+              </button>
+            </div>
+              <div class="notice"><span>i</span><p><strong>Forget removes Context Engine state only.</strong> Type the project ID to confirm. Source files stay on disk.</p></div>
+            <article class="panel table-panel">
+              <div class="table-toolbar">
+                <label class="search">
+                  <span data-lucide="search"></span>
+                  <input id="repo-search" type="search" placeholder="Search repositories" aria-label="Search repositories">
+                </label>
+                <span id="repo-count">0 repositories</span>
+              </div>
+              <div class="table-scroll">
+                <table>
+                  <thead><tr><th>Repository</th><th>Presence</th><th>Index</th><th>Path</th><th><span class="sr-only">Actions</span></th></tr></thead>
+                  <tbody id="repositories-body"><tr><td colspan="5" class="empty-cell">Loading repositories…</td></tr></tbody>
+                </table>
+              </div>
+            </article>
+          </section>
+
+          <section class="page" id="page-sync" aria-labelledby="sync-heading">
+            <div class="page-heading"><div><h2 id="sync-heading">Index &amp; Sync</h2><p>Inspect index state and run repository-scoped maintenance.</p></div></div>
+            <div id="sync-list" class="stack-list loading-block">Loading index state…</div>
+          </section>
+
+          <section class="page" id="page-storage" aria-labelledby="storage-heading">
+            <div class="page-heading"><div><h2 id="storage-heading">Storage</h2><p>Local artifacts, retention, and dry-run eviction candidates.</p></div></div>
+            <div id="storage-content" class="stack-list loading-block">Loading storage data…</div>
+          </section>
+
+          <section class="page" id="page-health" aria-labelledby="health-heading">
+            <div class="page-heading">
+              <div><h2 id="health-heading">Health</h2><p>Doctor checks for the dashboard and indexing environment. Safe repairs rebind the daemon, initialize an empty index, or replay the dirty journal. Rebuild, Forget, and package installs stay manual.</p></div>
+              <button class="button primary" id="apply-safe-repairs" type="button">Apply safe repairs</button>
+            </div>
+            <div id="health-content" class="stack-list loading-block">Running health checks…</div>
+          </section>
+
+          <section class="page" id="page-runtime" aria-labelledby="runtime-heading">
+            <div class="page-heading"><div><h2 id="runtime-heading">Runtime</h2><p>Process, resource, and acceleration details.</p></div></div>
+            <div id="runtime-content" class="stack-list loading-block">Loading runtime details…</div>
+          </section>
+
+          <section class="page" id="page-graph" aria-labelledby="graph-heading">
+            <div class="page-heading">
+              <div><h2 id="graph-heading">Graph</h2><p>Explore code relationships from an indexed repository.</p></div>
+              <label class="graph-repo-picker" for="graph-repository">
+                <span>Repository</span>
+                <select id="graph-repository" aria-label="Graph repository"></select>
+              </label>
+            </div>
+            <div class="graph-metrics" aria-live="polite">
+              <div><span>Nodes</span><strong id="graph-node-count">—</strong></div>
+              <div><span>Edges</span><strong id="graph-edge-count">—</strong></div>
+              <p id="graph-status">Choose an indexed repository to inspect its graph artifact.</p>
+            </div>
+            <div class="graph-layout">
+              <article class="panel graph-panel">
+                <div class="panel-header"><div><h3>Relationship map</h3><p>Up to 60 nodes are arranged for a readable overview.</p></div></div>
+                <div id="graph-canvas" class="graph-canvas">
+                  <div class="graph-empty">
+                    <div class="empty-state">
+                      <div class="empty-icon" data-lucide="share-2"></div>
+                      <strong>No graph selected</strong>
+                      <p>Choose an indexed repository to inspect its relationship map.</p>
+                    </div>
+                  </div>
+                </div>
+              </article>
+              <article class="panel graph-links-panel">
+                <div class="panel-header"><div><h3>Links</h3><p>Source → relationship → target</p></div></div>
+                <div id="graph-edge-list" class="graph-edge-list">
+                  <p class="empty-cell">No links loaded.</p>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section class="page" id="page-settings" aria-labelledby="settings-heading">
+            <div class="page-heading"><div><h2 id="settings-heading">Settings</h2><p>Choose how repositories are admitted and retained.</p></div></div>
+            <article class="panel settings-panel">
+              <div class="setting-copy"><h3>Repository admission</h3><p>Control whether new repositories are registered as you work or only through explicit commands.</p></div>
+              <div class="choice-grid" role="radiogroup" aria-label="Repository admission mode">
+                <label class="choice-card">
+                  <input type="radio" name="admission-mode" value="automatic">
+                  <span class="choice-control"></span>
+                  <span><strong>Automatic</strong><small>Register repositories as Context Engine encounters them.</small></span>
+                  <em>Recommended</em>
+                </label>
+                <label class="choice-card">
+                  <input type="radio" name="admission-mode" value="mcp_cli">
+                  <span class="choice-control"></span>
+                  <span><strong>Manual</strong><small>Only register repositories through MCP or CLI commands.</small></span>
+                </label>
+              </div>
+              <div class="settings-meta" id="settings-meta"></div>
+              <div class="panel-footer"><span id="settings-status">Loading preferences…</span><button class="button primary" id="save-settings-button">Save changes</button></div>
+            </article>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <dialog id="forget-dialog">
+      <form method="dialog" id="forget-form">
+        <div class="dialog-icon danger">!</div>
+        <h2>Forget repository?</h2>
+        <p>This removes the repository from Context Engine and deletes its local index. It does not delete source files.</p>
+        <div class="confirm-box">
+          <label for="forget-confirmation">To continue, type the repository ID <strong id="forget-required-value"></strong></label>
+          <input id="forget-confirmation" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="dialog-actions">
+          <button class="button secondary" value="cancel">Cancel</button>
+          <button class="button danger-button" id="confirm-forget-button" value="confirm" disabled>Forget repository</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="path-dialog">
+      <form method="dialog" id="path-form">
+        <div class="dialog-icon">+</div>
+        <h2 id="path-dialog-title">Add repository</h2>
+        <p id="path-dialog-copy">Enter an absolute path on this machine.</p>
+        <label for="repository-path">Repository path</label>
+        <input id="repository-path" placeholder="C:\path\to\repository" required>
+        <div class="dialog-actions">
+          <button class="button secondary" value="cancel">Cancel</button>
+          <button class="button primary" id="confirm-path-button" value="confirm">Continue</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div class="toast-region" id="toast-region" aria-live="polite"></div>
+  </body>
+</html>

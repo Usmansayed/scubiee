@@ -63,8 +63,8 @@ def test_fixture_bakeoff_picks_graphify(tmp_path):
 
 
 @pytest.mark.slow
+@pytest.mark.skipif(not SCUBIEE.exists(), reason="scubiee fixture not installed under testdata/")
 def test_scubiee_parse_and_determinism():
-    assert SCUBIEE.exists(), "scubiee-news-flow missing under testdata/"
     a, b = assert_deterministic(SCUBIEE)
     assert a.stats["file_count"] >= 10
     assert a.stats["callable_count"] >= 1
@@ -72,6 +72,7 @@ def test_scubiee_parse_and_determinism():
 
 
 @pytest.mark.slow
+@pytest.mark.skipif(not SCUBIEE.exists(), reason="scubiee fixture not installed under testdata/")
 def test_scubiee_bakeoff(tmp_path):
     report = run_bakeoff(SCUBIEE, out_dir=tmp_path / "scubiee")
     assert report["winner_parser"] == "graphify"

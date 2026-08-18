@@ -29,7 +29,7 @@ def test_publish_engine_bumps_generation(runtime, tmp_path: Path):
     fake = MagicMock()
     fake.texts = ["a", "b", "c"]
 
-    with patch("pipeline.ce_service.clear_engines") as clear, patch(
+    with patch("pipeline.ce_service.drop_engine") as drop, patch(
         "pipeline.ce_service.load_engine", return_value=fake
     ) as load:
         g0 = runtime.generation
@@ -38,7 +38,7 @@ def test_publish_engine_bumps_generation(runtime, tmp_path: Path):
         assert runtime.generation == g0 + 1
         assert runtime.engine is fake
         assert runtime.last_sync_at is not None
-        clear.assert_called()
+        drop.assert_called_with(repo)
         load.assert_called_with(repo, force_reload=True)
 
         out2 = runtime.publish_engine()
@@ -56,8 +56,26 @@ def test_keeper_on_refresh_wired(runtime, tmp_path: Path):
             runtime._start_keeper(repo)
             Loop.assert_called_once()
             kwargs = Loop.call_args.kwargs
-            assert kwargs.get("on_refresh") == runtime.publish_engine
+            on_refresh = kwargs.get("on_refresh")
+            assert on_refresh is not None
+            assert callable(on_refresh)
             loop.start.assert_called_once()
+
+
+def test_runtime_routes_live_events_to_active_keeper(runtime, tmp_path: Path):
+    repo = tmp_path / "r"
+    repo.mkdir()
+    runtime.repo = repo
+    loop = MagicMock()
+    runtime.sync_loop = loop
+
+    dirty = runtime.mark_dirty(["pkg/a.py"], reason="write")
+    located = runtime.note_locate()
+
+    assert dirty == {"ok": True, "paths": ["pkg/a.py"], "reason": "write"}
+    assert located == {"ok": True}
+    loop.mark_dirty.assert_called_once_with(["pkg/a.py"], reason="write")
+    loop.note_locate.assert_called_once()
 
 
 def test_sync_publishes_when_refreshed(runtime, tmp_path: Path, monkeypatch):

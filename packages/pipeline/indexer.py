@@ -21,6 +21,7 @@ from conductor.graphify_retriever import build_and_save_graph
 from pipeline.embedder import Embedder
 from pipeline.merkle import SyncDiff, diff_hashes, file_sha256, scan_file_hashes
 from pipeline.paths import collect_index_paths, fast_roots_from_env
+from pipeline.preflight import CapabilityError, require_capabilities
 from pipeline.store import ChunkRecord, PipelineStore
 from pipeline.vectordb import VectorDatabase
 
@@ -56,6 +57,17 @@ def _collect_paths(
     return collect_index_paths(root, fast=fast, fast_roots=fast_roots)
 
 
+def _emit_progress(progress, phase: str, frac: float) -> None:
+    if progress is None:
+        return
+    setter = getattr(progress, "set", None)
+    if callable(setter):
+        setter(int(max(0.0, min(1.0, float(frac))) * 100), phase)
+        return
+    if callable(progress):
+        progress(phase, frac)
+
+
 def index_repo(
     root: Path,
     *,
@@ -76,21 +88,30 @@ def index_repo(
 
         rm = get_resource_manager()
         rm.refresh_base_from_accel()
+        waited = {"n": 0}
+
+        def _on_wait(budget) -> None:
+            if waited["n"] == 0:
+                print(
+                    f"[resources] index waiting pressure={budget.pressure} {budget.reason}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+            waited["n"] += 1
+
         budget = rm.wait_for_capacity(
             "index",
-            timeout_s=120.0,
-            on_wait=lambda b: print(
-                f"[resources] index waiting pressure={b.pressure} {b.reason}",
+            timeout_s=30.0,
+            on_wait=_on_wait,
+        )
+        quiet = hasattr(progress, "set")
+        if not quiet:
+            print(
+                f"[resources] index start pressure={budget.pressure} "
+                f"batch~{budget.batch_size} allow={budget.allow} ({budget.reason})",
                 file=sys.stderr,
                 flush=True,
-            ),
-        )
-        print(
-            f"[resources] index start pressure={budget.pressure} "
-            f"batch~{budget.batch_size} allow={budget.allow} ({budget.reason})",
-            file=sys.stderr,
-            flush=True,
-        )
+            )
         if not budget.allow:
             raise IndexDeferred(
                 budget.reason or "resource manager refused index",
@@ -105,6 +126,7 @@ def index_repo(
     except Exception as exc:  # noqa: BLE001
         print(f"[resources] index gate skipped: {exc}", file=sys.stderr, flush=True)
 
+    require_capabilities(require_semantic=True)
     store = PipelineStore(root, base_dir=base_dir, vdb=vdb)
     old = store.load_merkle()
     roots = list(fast_roots_from_env(fast_roots))
@@ -139,15 +161,38 @@ def index_repo(
         )
 
     if progress:
-        progress("graphify", 0.05)
+        _emit_progress(progress, "Scanning files", 0.05)
 
     import time
 
     paths = _collect_paths(root, fast=fast, fast_roots=roots)
     if progress:
-        progress(f"graphify-files:{len(paths)}", 0.08)
+        _emit_progress(progress, "Parsing code", 0.08)
     t0 = time.perf_counter()
-    raw = extract(paths, root=root, cache_root=store.base)
+    previous_quiet = os.environ.get("GRAPHIFY_QUIET")
+    os.environ["GRAPHIFY_QUIET"] = "1"
+    pulse_stop = None
+    pulse_thread = None
+    if hasattr(progress, "pulse"):
+        import threading
+
+        pulse_stop = threading.Event()
+
+        def _pulse_parse() -> None:
+            while not pulse_stop.wait(0.2):
+                progress.pulse("Parsing code", until=40)
+
+        pulse_thread = threading.Thread(target=_pulse_parse, daemon=True)
+        pulse_thread.start()
+    try:
+        raw = extract(paths, root=root, cache_root=store.base)
+    finally:
+        if pulse_stop is not None:
+            pulse_stop.set()
+        if previous_quiet is None:
+            os.environ.pop("GRAPHIFY_QUIET", None)
+        else:
+            os.environ["GRAPHIFY_QUIET"] = previous_quiet
     elapsed_ms = (time.perf_counter() - t0) * 1000
     ir = graphify_to_repo_ir(
         raw, root=root, elapsed_ms=elapsed_ms, file_count=len(paths)
@@ -156,7 +201,7 @@ def index_repo(
     build_and_save_graph(raw, root, store.base / "graph.json")
 
     if progress:
-        progress("chunk", 0.25)
+        _emit_progress(progress, "Building chunks", 0.42)
 
     code_chunks = chunk_repo_from_ir(ir, root)
     # Fast without compress: truncate bodies. With compress (default mix): enrich
@@ -186,7 +231,7 @@ def index_repo(
     store.save_chunks(records)
 
     if progress:
-        progress(f"embed:{len(records)}", 0.45)
+        _emit_progress(progress, "Embedding", 0.50)
 
     model = embed_model or "nomic-ai/CodeRankEmbed"
     # Fast defaults: short seq. Batch: prefer env; else DML-safe 16 (128 OOMs/hangs RX 6500M).
@@ -211,24 +256,31 @@ def index_repo(
         cache_path=store.embed_cache,
         batch_size=batch,
         max_seq_length=seq,
+        quiet=progress is not None,
     )
     texts = [r.enriched for r in records]
     t_embed = time.perf_counter()
     try:
         def emb_prog(done: int, total: int) -> None:
             if progress:
-                progress("embed", 0.45 + 0.4 * done / max(total, 1))
+                _emit_progress(
+                    progress,
+                    "Embedding",
+                    0.50 + 0.38 * done / max(total, 1),
+                )
 
         matrix = embedder.embed_many(texts, progress=emb_prog)
         if progress:
-            stats = getattr(embedder, "_last_stats", {})
-            progress(
-                f"embed-done:{stats.get('chunk_per_s', '?')}/s@{stats.get('device', '?')}",
-                0.88,
-            )
+            _emit_progress(progress, "Embedding", 0.88)
+    except CapabilityError:
+        raise
     except Exception as exc:  # noqa: BLE001
+        # Never invent vectors for missing accel — only absorb transient encode faults
+        # when an explicit ST/ollama backend was selected.
+        if embedder.backend == "fastembed":
+            raise
         if progress:
-            progress(f"embed-fallback:{exc}", 0.6)
+            _emit_progress(progress, "Embedding", 0.6)
         dim = 768
         import numpy as np
         import hashlib
@@ -243,16 +295,17 @@ def index_repo(
         matrix = np.stack(rows, axis=0) if rows else np.zeros((0, dim), dtype=np.float32)
         embedder.dim = dim
     embed_s = time.perf_counter() - t_embed
-    print(
-        f"[index] embed phase {embed_s:.1f}s for {len(records)} chunks "
-        f"({len(records)/max(embed_s,1e-6):.1f} chunk/s)",
-        file=sys.stderr,
-        flush=True,
-    )
+    if not hasattr(progress, "set"):
+        print(
+            f"[index] embed phase {embed_s:.1f}s for {len(records)} chunks "
+            f"({len(records)/max(embed_s,1e-6):.1f} chunk/s)",
+            file=sys.stderr,
+            flush=True,
+        )
 
     dim = int(matrix.shape[1]) if matrix.size else (embedder.dim or 768)
     if progress:
-        progress("turboquant+faiss", 0.9)
+        _emit_progress(progress, "Writing index", 0.92)
 
     col = store.upsert_vectors(matrix, records, dim=dim, bits=bits)
     store.save_merkle(new_hashes)
@@ -281,6 +334,21 @@ def index_repo(
             "note": "CodeRankLLM reranker is search-time only (not used during index)",
         }
     )
+    from pipeline.artifact_guard import publish_manifest
+
+    published = [
+        p
+        for p in (
+            store.chunks_path,
+            store.graph_path,
+            store.base / "graph.json",
+            store.meta_path,
+            store.merkle_path,
+        )
+        if p.is_file()
+    ]
+    if published:
+        publish_manifest(store.base, published)
 
     return IndexStats(
         root=str(root),

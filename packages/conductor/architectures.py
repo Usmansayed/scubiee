@@ -85,6 +85,8 @@ class MultiArchConductor(Conductor):
         rb = {int(i): r for r, (i, _) in enumerate(self.bm25.search(query, top_k=cfg.candidate_pool), 1)}
         rd = {int(i): r for r, (i, _) in enumerate(self.dense.search(query_vec, top_k=cfg.candidate_pool), 1)}
         for cid in set(rb) | set(rd):
+            if cid < 0 or cid >= n:
+                continue
             hybrid_chunk[cid] = cfg.bm25_weight / (cfg.rrf_k + rb.get(cid, 10_000)) + cfg.dense_weight / (
                 cfg.rrf_k + rd.get(cid, 10_000)
             )

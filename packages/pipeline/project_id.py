@@ -2,11 +2,14 @@
 
 Resolve order:
   1. ``<repo>/.context-engine/id.json`` → project_id
-  2. Registry lookup by absolute path
-  3. Mint new id, write both
+  2. Registry lookup by absolute path (requires live id.json trust)
+  3. Recover from a usable store whose ``meta.json`` root matches this path
+  4. Reuse an existing git-family project (shared ``git_common_dir``)
+  5. Mint new id, write both
 
 Path moves: id file wins; registry paths updated.
-Id deleted but path known: recover from registry and rewrite id file.
+Id deleted but store proves ownership: recover durable id (reinstall-safe).
+Git worktrees share one project_id / index store (deduped by ``git_common_dir``).
 Both gone: mint (caller reindexes into empty store).
 """
 
@@ -14,17 +17,86 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import secrets
 import shutil
+import subprocess
+import threading
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, Iterator, TypeVar
 
 
 ID_DIR_NAME = ".context-engine"
 ID_FILE_NAME = "id.json"
 REGISTRY_NAME = "registry.json"
+_REGISTRY_LOCK = threading.RLock()
+_REGISTRY_LOCK_STATE = threading.local()
+_REGISTRY_REVISION = "_registry_revision"
+_T = TypeVar("_T")
+
+
+class RegistryConflictError(RuntimeError):
+    """A stale registry snapshot attempted to overwrite newer state."""
+
+
+def _lock_registry_file(handle: Any) -> None:
+    handle.seek(0)
+    if os.name == "nt":
+        import msvcrt
+
+        while True:
+            try:
+                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                return
+            except OSError:
+                time.sleep(0.05)
+    else:
+        import fcntl
+
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+
+
+def _unlock_registry_file(handle: Any) -> None:
+    handle.seek(0)
+    if os.name == "nt":
+        import msvcrt
+
+        msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+    else:
+        import fcntl
+
+        fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+@contextmanager
+def registry_lock() -> Iterator[None]:
+    """Serialize registry transactions across threads and processes."""
+    with _REGISTRY_LOCK:
+        depth = int(getattr(_REGISTRY_LOCK_STATE, "depth", 0))
+        if depth:
+            _REGISTRY_LOCK_STATE.depth = depth + 1
+            try:
+                yield
+            finally:
+                _REGISTRY_LOCK_STATE.depth -= 1
+            return
+
+        lock_path = context_engine_home() / "registry.lock"
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        with lock_path.open("a+b") as handle:
+            if handle.seek(0, os.SEEK_END) == 0:
+                handle.write(b"\0")
+                handle.flush()
+            _lock_registry_file(handle)
+            _REGISTRY_LOCK_STATE.depth = 1
+            try:
+                yield
+            finally:
+                _REGISTRY_LOCK_STATE.depth = 0
+                _unlock_registry_file(handle)
 
 
 def context_engine_home() -> Path:
@@ -70,8 +142,14 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 
 def _write_json(path: Path, data: dict[str, Any]) -> None:
+    """Atomically replace a JSON document in its destination directory."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    temporary = path.with_name(f".{path.name}.{secrets.token_hex(8)}.tmp")
+    try:
+        temporary.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def read_id_file(root: Path) -> str | None:
@@ -83,6 +161,9 @@ def read_id_file(root: Path) -> str | None:
 
 
 def write_id_file(root: Path, project_id: str) -> Path:
+    root = Path(root).resolve()
+    if not root.is_dir():
+        raise FileNotFoundError(f"cannot write project id: not a directory: {root}")
     path = id_file_path(root)
     _write_json(
         path,
@@ -99,15 +180,180 @@ def load_registry() -> dict[str, Any]:
     data = _read_json(registry_path())
     if "projects" not in data or not isinstance(data["projects"], dict):
         data["projects"] = {}
+    revision = data.get(_REGISTRY_REVISION, 0)
+    data[_REGISTRY_REVISION] = revision if isinstance(revision, int) else 0
     return data
 
 
 def save_registry(data: dict[str, Any]) -> None:
-    _write_json(registry_path(), data)
+    with registry_lock():
+        current = _read_json(registry_path())
+        current_revision = current.get(_REGISTRY_REVISION, 0)
+        if not isinstance(current_revision, int):
+            current_revision = 0
+        expected_revision = data.get(_REGISTRY_REVISION)
+        if (
+            isinstance(expected_revision, int)
+            and expected_revision != current_revision
+        ):
+            raise RegistryConflictError(
+                f"stale registry revision {expected_revision}; current is {current_revision}"
+            )
+        next_revision = current_revision + 1
+        data[_REGISTRY_REVISION] = next_revision
+        _write_json(registry_path(), data)
+
+
+def mutate_registry(mutator: Callable[[dict[str, Any]], _T]) -> _T:
+    """Apply one load-modify-save operation under the shared registry lock."""
+    with registry_lock():
+        registry = load_registry()
+        result = mutator(registry)
+        save_registry(registry)
+        return result
 
 
 def _norm_path(p: Path | str) -> str:
     return str(Path(p).resolve())
+
+
+def _registry_path_identity_trusted(project_id: str, path: Path) -> bool:
+    """Trust a registry path alias only when live ``id.json`` exactly matches.
+
+    Missing or malformed identity files are treated as stale/untrusted so a
+    vacated path (even with an empty ``.context-engine/`` directory) cannot
+    inherit a moved repository's durable ID.
+    """
+    return read_id_file(path) == project_id
+
+
+def git_common_dir(root: Path) -> Path | None:
+    """Return the shared Git administration directory for a checkout."""
+    root = root.resolve()
+    try:
+        completed = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(root),
+                "rev-parse",
+                "--path-format=absolute",
+                "--git-common-dir",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    value = completed.stdout.strip()
+    if not value:
+        return None
+    path = Path(value)
+    if not path.is_absolute():
+        path = root / path
+    return path.resolve()
+
+
+def find_recoverable_by_store(
+    root: Path, registry: dict[str, Any] | None = None
+) -> str | None:
+    """Recover durable id when id.json is gone but the index store proves this path."""
+    abs_root = _norm_path(root)
+    reg = registry if registry is not None else load_registry()
+    for pid, meta in (reg.get("projects") or {}).items():
+        if not isinstance(meta, dict):
+            continue
+        store = (projects_root() / str(pid)).resolve()
+        if not index_is_usable(store):
+            continue
+        store_meta = _read_json(store / "meta.json")
+        store_root = store_meta.get("root")
+        if not isinstance(store_root, str) or not store_root.strip():
+            continue
+        try:
+            if _norm_path(store_root) != abs_root:
+                continue
+        except OSError:
+            continue
+        return str(pid)
+    return None
+
+
+def find_id_by_git_common_dir(
+    common_dir: Path | str, registry: dict[str, Any] | None = None
+) -> str | None:
+    """Return the best existing project_id for a git worktree family."""
+    common = _norm_path(common_dir)
+    reg = registry if registry is not None else load_registry()
+    best: tuple[tuple[int, float], str] | None = None
+    for pid, meta in (reg.get("projects") or {}).items():
+        if not isinstance(meta, dict):
+            continue
+        raw = meta.get("git_common_dir")
+        if not raw:
+            continue
+        try:
+            if _norm_path(raw) != common:
+                continue
+        except OSError:
+            continue
+        store = (projects_root() / str(pid)).resolve()
+        score = 0
+        if meta.get("managed"):
+            score += 4
+        if index_is_usable(store):
+            score += 2
+        if meta.get("registered"):
+            score += 1
+        last = float(meta.get("last_access_at") or meta.get("updated_at") or 0.0)
+        key = (score, last)
+        if best is None or key > best[0]:
+            best = (key, str(pid))
+    return best[1] if best else None
+
+
+def detect_git_family_duplicates() -> dict[str, Any]:
+    """Return duplicate git-family groups that still need reconciliation."""
+    registry = load_registry()
+    projects = registry.get("projects")
+    if not isinstance(projects, dict):
+        return {"needs_reconcile": False, "groups": []}
+
+    groups: dict[str, list[str]] = {}
+    for project_id, raw in projects.items():
+        if not isinstance(raw, dict) or raw.get("superseded_by"):
+            continue
+        common = raw.get("git_common_dir")
+        if not common:
+            paths = raw.get("paths")
+            if isinstance(paths, list):
+                for item in paths:
+                    try:
+                        common = git_common_dir(Path(str(item)))
+                    except OSError:
+                        common = None
+                    if common is not None:
+                        break
+        if not common:
+            continue
+        try:
+            key = _norm_path(common)
+        except OSError:
+            continue
+        groups.setdefault(key, []).append(str(project_id))
+
+    duplicate_groups = [
+        {"git_common_dir": key, "project_ids": ids}
+        for key, ids in groups.items()
+        if len(ids) > 1
+    ]
+    return {
+        "needs_reconcile": bool(duplicate_groups),
+        "groups": duplicate_groups,
+        "duplicate_count": sum(len(item["project_ids"]) - 1 for item in duplicate_groups),
+    }
 
 
 def find_id_by_path(abs_path: str, registry: dict[str, Any] | None = None) -> str | None:
@@ -121,7 +367,9 @@ def find_id_by_path(abs_path: str, registry: dict[str, Any] | None = None) -> st
             continue
         for p in paths:
             try:
-                if _norm_path(p) == target:
+                if _norm_path(p) != target:
+                    continue
+                if _registry_path_identity_trusted(str(pid), Path(p)):
                     return str(pid)
             except OSError:
                 continue
@@ -129,19 +377,46 @@ def find_id_by_path(abs_path: str, registry: dict[str, Any] | None = None) -> st
 
 
 def update_registry(project_id: str, root: Path) -> None:
-    reg = load_registry()
-    projects = reg.setdefault("projects", {})
-    entry = projects.get(project_id) if isinstance(projects.get(project_id), dict) else {}
-    paths = list(entry.get("paths") or []) if isinstance(entry.get("paths"), list) else []
-    abs_root = _norm_path(root)
-    # Keep this path first; drop duplicates
-    paths = [abs_root] + [p for p in paths if _norm_path(p) != abs_root]
-    projects[project_id] = {
-        "paths": paths[:8],
-        "updated_at": time.time(),
-        "name": Path(abs_root).name,
-    }
-    save_registry(reg)
+    def attach(reg: dict[str, Any]) -> None:
+        if read_id_file(root) != project_id:
+            raise ValueError("project_id_mismatch")
+        projects = reg.setdefault("projects", {})
+        entry = (
+            projects.get(project_id)
+            if isinstance(projects.get(project_id), dict)
+            else {}
+        )
+        entry = dict(entry)
+        if entry.get("forget_pending"):
+            raise RegistryConflictError("project forget is pending")
+        paths = (
+            list(entry.get("paths") or [])
+            if isinstance(entry.get("paths"), list)
+            else []
+        )
+        abs_root = _norm_path(root)
+        # Keep aliases that still carry this durable identity. A moved repository's
+        # vacated path must not remain an alias that can identify a new checkout.
+        live_aliases: list[str] = []
+        for path in paths:
+            normalized = _norm_path(path)
+            if normalized == abs_root:
+                continue
+            if read_id_file(Path(path)) == project_id:
+                live_aliases.append(normalized)
+        paths = [abs_root] + [path for path in live_aliases if path != abs_root]
+        entry.update(
+            {
+                "paths": paths[:8],
+                "updated_at": time.time(),
+                "name": Path(abs_root).name,
+            }
+        )
+        if read_id_file(root) != project_id:
+            raise ValueError("project_id_mismatch")
+        projects[project_id] = entry
+
+    mutate_registry(attach)
 
 
 def legacy_repo_key(root: Path) -> str:
@@ -180,19 +455,58 @@ class ProjectRef:
 def resolve_project(root: Path, *, migrate: bool = True) -> ProjectRef:
     """Ensure id file + registry + projects/<id>/ exist; migrate legacy indexes."""
     root = root.resolve()
+    if not root.is_dir():
+        raise FileNotFoundError(f"not a directory: {root}")
+    # Nested folders (accidental CLI args, dump dirs) inherit the enclosing
+    # project's id.json instead of minting a sibling identity + polluting disk.
+    if not read_id_file(root) and not (root / ".git").exists():
+        for parent in root.parents:
+            parent_pid = read_id_file(parent)
+            if parent_pid:
+                root = parent
+                break
     abs_root = _norm_path(root)
     migrated = False
+    common = git_common_dir(root)
 
     pid = read_id_file(root)
     if not pid:
         pid = find_id_by_path(abs_root)
         if pid:
             write_id_file(root, pid)
-        else:
-            pid = mint_project_id(root)
+
+    if not pid:
+        pid = find_recoverable_by_store(root)
+        if pid:
             write_id_file(root, pid)
 
+    if not pid and common:
+        pid = find_id_by_git_common_dir(common)
+        if pid:
+            write_id_file(root, pid)
+
+    if pid and common:
+        canonical = find_id_by_git_common_dir(common)
+        if canonical and canonical != pid:
+            entry = (load_registry().get("projects") or {}).get(pid)
+            if isinstance(entry, dict) and entry.get("git_common_dir"):
+                try:
+                    if _norm_path(entry["git_common_dir"]) == _norm_path(common):
+                        pid = canonical
+                        write_id_file(root, pid)
+                except OSError:
+                    pass
+
+    if not pid:
+        pid = mint_project_id(root)
+        write_id_file(root, pid)
+
     update_registry(pid, root)
+    from pipeline.git_family import reconcile_git_families
+
+    reconcile_git_families(prefer_root=root, prefer_project_id=pid)
+    pid = read_id_file(root) or pid
+
     store_dir = (projects_root() / pid).resolve()
     store_dir.mkdir(parents=True, exist_ok=True)
 
@@ -220,7 +534,7 @@ def collection_name_for_project(root: Path, project_id: str) -> str:
 
 
 def index_is_usable(store_dir: Path, *, collection_name: str | None = None) -> bool:
-    """True when chunks + graph.json exist (vectors checked lightly via meta)."""
+    """True when chunks + graph.json exist and any publication manifest is valid."""
     if not (store_dir / "chunks.jsonl").is_file():
         return False
     if not (store_dir / "graph.json").is_file():
@@ -230,4 +544,11 @@ def index_is_usable(store_dir: Path, *, collection_name: str | None = None) -> b
         return False
     # Prefer collection name from meta when present
     _ = collection_name or meta.get("collection")
+    # Fail closed when a manifest exists but is corrupt/mismatched.
+    from pipeline.artifact_guard import MANIFEST_NAME, validate_manifest
+
+    if (store_dir / MANIFEST_NAME).is_file():
+        report = validate_manifest(store_dir)
+        if not report.get("ok"):
+            return False
     return True

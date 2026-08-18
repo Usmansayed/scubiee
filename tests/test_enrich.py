@@ -1,6 +1,8 @@
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "packages"))
 
@@ -54,8 +56,8 @@ def test_enrich_repo_fixture_counts():
     assert "auth/validate.ts" in login.metadata.related_files
 
 
+@pytest.mark.skipif(not SCUBIEE.exists(), reason="scubiee fixture not installed under testdata/")
 def test_scubiee_enrich_smoke():
-    assert SCUBIEE.exists()
     ir = parse_with_graphify(SCUBIEE, parallel=False)
     enriched = enrich_repo(ir, SCUBIEE)
     assert len(enriched) >= 20

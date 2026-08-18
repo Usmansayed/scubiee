@@ -38,10 +38,26 @@ class FaissDenseAdapter(DenseIndex):
         self.col = col
 
     def search(self, query_vec: np.ndarray, top_k: int = 50):
+        # Conductor arrays are positional 0..n-1. FAISS IndexIDMap2 returns
+        # durable chunk ids, which grow gaps after incremental delete/upsert.
         hits = self.col.search(query_vec, top_k=top_k)
-        if hits:
-            return [(vid, score) for vid, score, _ in hits]
-        return super().search(query_vec, top_k=top_k)
+        if not hits:
+            return super().search(query_vec, top_k=top_k)
+        id_to_row = {int(vid): i for i, vid in enumerate(self.col.ids)}
+        mapped: list[tuple[int, float]] = []
+        for vid, score, *_rest in hits:
+            row = id_to_row.get(int(vid))
+            if row is not None:
+                mapped.append((row, float(score)))
+        return mapped or super().search(query_vec, top_k=top_k)
+
+
+class SearchEngineError(RuntimeError):
+    """Raised when daemon search was requested but the engine is unavailable."""
+
+    def __init__(self, message: str, *, hint: str | None = None):
+        super().__init__(message)
+        self.hint = hint
 
 
 def _search_via_server(
@@ -49,10 +65,13 @@ def _search_via_server(
     *,
     top_k: int,
     url: str,
+    root: Path,
 ) -> list[SearchResult] | None:
-    payload = json.dumps({"query": query, "top_k": top_k}).encode("utf-8")
+    payload = json.dumps(
+        {"query": query, "top_k": top_k, "path": str(root)}
+    ).encode("utf-8")
     req = urllib.request.Request(
-        url.rstrip("/") + "/search",
+        url.rstrip("/") + "/v1/search",
         data=payload,
         headers={"Content-Type": "application/json"},
         method="POST",
@@ -60,8 +79,24 @@ def _search_via_server(
     try:
         with urllib.request.urlopen(req, timeout=120) as resp:
             data = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        try:
+            data = json.loads(exc.read().decode("utf-8") or "{}")
+        except json.JSONDecodeError:
+            data = {}
+        if exc.code in {400, 409} and data.get("error"):
+            raise SearchEngineError(
+                str(data.get("error") or exc),
+                hint=str(data.get("hint") or "Run: ctx engine ensure ."),
+            ) from exc
+        return None
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
         return None
+    if data.get("ok") is False and data.get("error"):
+        raise SearchEngineError(
+            str(data["error"]),
+            hint=str(data.get("hint") or "Run: ctx engine ensure ."),
+        )
     out: list[SearchResult] = []
     for h in data.get("hits") or []:
         out.append(
@@ -87,12 +122,22 @@ def search_repo(
     use_server: bool = True,
     server_url: str | None = None,
 ) -> list[SearchResult]:
-    """Search. Prefers warm HTTP server, else in-process warm engine cache."""
-    url = server_url or os.environ.get("CTX_SEARCH_URL", "http://127.0.0.1:8765")
-    if use_server:
-        hits = _search_via_server(query, top_k=top_k, url=url)
+    """Search an explicitly selected repo, optionally through a configured server."""
+    root = Path(root).resolve()
+    if not root.is_dir():
+        raise FileNotFoundError(f"not a directory: {root}")
+    # A default localhost probe can route a caller for repository A to an
+    # unrelated daemon currently serving repository B.  Only cross-process
+    # search when the caller explicitly supplies a URL or configures one.
+    url = server_url or os.environ.get("CTX_SEARCH_URL") or os.environ.get("CTX_ENGINE_URL")
+    if use_server and url:
+        hits = _search_via_server(query, top_k=top_k, url=url, root=root)
         if hits is not None:
             return hits
+        raise SearchEngineError(
+            f"Context Engine unreachable at {url.rstrip('/')}",
+            hint="Run: ctx engine ensure .   or   ctx search --local",
+        )
 
     from pipeline.engine import load_engine
 

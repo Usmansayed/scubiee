@@ -8,39 +8,14 @@ incremental_sync.
 from __future__ import annotations
 
 import json
-import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from pipeline.merkle import _is_ignored_dir_name, file_sha256, is_junk_rel, root_hash
-from pipeline.paths import fast_roots_from_env
+from pipeline.merkle import file_sha256, is_junk_rel, root_hash
+from pipeline.paths import collect_index_relpaths
 from pipeline.store import PipelineStore
 from pipeline.vectordb import VectorDatabase
-
-
-def _list_fast_py(root: Path, fast_roots: list[str] | tuple[str, ...] | None) -> set[str]:
-    """Cheap .py listing under fast roots only (no Graphify whole-tree walk)."""
-    roots = fast_roots_from_env(list(fast_roots) if fast_roots else None)
-    out: set[str] = set()
-    for fr in roots:
-        base = root / fr.rstrip("/")
-        if not base.is_dir():
-            continue
-        for dirpath, dirnames, filenames in os.walk(base, topdown=True):
-            dirnames[:] = [d for d in dirnames if not _is_ignored_dir_name(d)]
-            dp = Path(dirpath)
-            for fname in filenames:
-                if not fname.endswith(".py"):
-                    continue
-                p = dp / fname
-                try:
-                    rel = p.relative_to(root).as_posix()
-                except ValueError:
-                    continue
-                if not is_junk_rel(rel):
-                    out.add(rel)
-    return out
 
 
 @dataclass
@@ -119,7 +94,7 @@ def root_probe(
     vdb: VectorDatabase | None = None,
     discover_newcomers: bool = True,
 ) -> RootProbeResult:
-    """Mtime-gated rehash of indexed leaves (+ optional fast_roots newcomers)."""
+    """Mtime-gated rehash of indexed leaves (+ optional indexable newcomers)."""
     t0 = time.perf_counter()
     root = repo.resolve()
     store = PipelineStore(root, base_dir=base_dir, vdb=vdb)
@@ -144,8 +119,10 @@ def root_probe(
     current, hashed = _rebuild_universe(root, snap, mtimes)
 
     added: list[str] = []
-    if discover_newcomers and meta.get("fast"):
-        universe = _list_fast_py(root, meta.get("fast_roots"))
+    if discover_newcomers:
+        universe = collect_index_relpaths(
+            root, fast=bool(meta.get("fast")), fast_roots=meta.get("fast_roots")
+        )
         for rel in sorted(universe - set(snap)):
             p = root / rel
             if p.is_file():

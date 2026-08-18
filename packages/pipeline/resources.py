@@ -4,10 +4,9 @@ Standalone subsystem (not MCP-specific). Every heavy indexing job should
 call ``get_resource_manager().wait_for_capacity(...)`` or use ``throttle``.
 
 Pressure levels:
-  idle     → boost batch size, minimal pause
-  normal   → baseline from AccelProfile
-  busy     → shrink batch, pause between batches
-  critical → wait / skip background work; protect interactive UX
+  idle     → slight batch boost
+  normal   → run at the calibrated batch (default)
+  critical → only when free RAM is near-OOM; everything else keeps working
 """
 
 from __future__ import annotations
@@ -19,6 +18,9 @@ import time
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from typing import Any, Callable, Iterator, Literal, TypeVar
+
+from pipeline.fair_schedule import EmbedPriority, get_embed_scheduler
+from pipeline.resource_envelope import EnvelopeConfig, derive_envelope
 
 Pressure = Literal["idle", "normal", "busy", "critical"]
 JobKind = Literal["embed", "index", "sync", "graph", "generic"]
@@ -81,16 +83,22 @@ class ResourceManager:
 
     def __init__(self) -> None:
         self._lock = threading.RLock()
+        self.embed_scheduler = get_embed_scheduler()
         self._last_sample: SystemSample | None = None
         self._last_pressure: Pressure = "normal"
         self._base_batch = self._resolve_base_batch()
-        self._base_workers = max(1, min(4, (os.cpu_count() or 4) // 2))
+        self._cpu_count = os.cpu_count() or 4
+        self._base_workers = max(1, min(4, self._cpu_count // 2))
+        self._envelope = derive_envelope(16_000, 6_000, self._base_batch, self._cpu_count)
+        self._pending_envelope_tier: str | None = None
+        self._pending_envelope_samples = 0
+        self._last_envelope_sample: SystemSample | None = None
         self._prefs_enabled = True
         # thresholds (overridable)
         self.max_cpu_busy = _env_float("CTX_RM_MAX_CPU", 70.0)
         self.max_cpu_critical = _env_float("CTX_RM_CRITICAL_CPU", 90.0)
-        self.min_free_ram_mb = _env_float("CTX_RM_MIN_FREE_RAM_MB", 512.0)
-        self.max_ram_percent = _env_float("CTX_RM_MAX_RAM_PCT", 90.0)
+        self.min_free_ram_mb = _env_float("CTX_RM_MIN_FREE_RAM_MB", 256.0)
+        self.max_ram_percent = _env_float("CTX_RM_MAX_RAM_PCT", 99.5)
         self.poll_s = max(0.05, _env_float("CTX_RM_POLL_MS", 250.0) / 1000.0)
         self._load_prefs()
 
@@ -120,24 +128,56 @@ class ResourceManager:
         return resources_disabled() or not self._prefs_enabled
 
     def _resolve_base_batch(self) -> int:
-        if "CTX_EMBED_BATCH" in os.environ:
-            try:
-                return max(1, int(os.environ["CTX_EMBED_BATCH"]))
-            except ValueError:
-                pass
+        calibrated_batch = 16
         try:
             from pipeline.accel import load_accel
 
             prof = load_accel()
-            if prof and prof.batch_size:
-                return max(1, int(prof.batch_size))
+            if prof is not None:
+                saved_winner = (prof.batch_calibration or {}).get("winner")
+                calibrated_batch = max(1, int(saved_winner or prof.batch_size or calibrated_batch))
         except Exception:  # noqa: BLE001
             pass
-        return 16
+        if "CTX_EMBED_BATCH" in os.environ:
+            try:
+                return min(calibrated_batch, max(1, int(os.environ["CTX_EMBED_BATCH"])))
+            except ValueError:
+                pass
+        return calibrated_batch
 
     def refresh_base_from_accel(self) -> None:
         with self._lock:
             self._base_batch = self._resolve_base_batch()
+
+    def _update_envelope(self, sample: SystemSample) -> EnvelopeConfig:
+        if sample.ram_total_mb is None or sample.ram_available_mb is None:
+            return self._envelope
+
+        candidate = derive_envelope(
+            sample.ram_total_mb,
+            sample.ram_available_mb,
+            self._base_batch,
+            self._cpu_count,
+        )
+        with self._lock:
+            if sample is self._last_envelope_sample:
+                return self._envelope
+            self._last_envelope_sample = sample
+            if candidate.tier == self._envelope.tier:
+                self._envelope = candidate
+                self._pending_envelope_tier = None
+                self._pending_envelope_samples = 0
+                return self._envelope
+            if candidate.tier == self._pending_envelope_tier:
+                self._pending_envelope_samples += 1
+            else:
+                self._pending_envelope_tier = candidate.tier
+                self._pending_envelope_samples = 1
+            if self._pending_envelope_samples >= 2:
+                self._envelope = candidate
+                self._pending_envelope_tier = None
+                self._pending_envelope_samples = 0
+            return self._envelope
 
     def sample(self, *, force: bool = False) -> SystemSample:
         """Sample CPU/RAM. Cached briefly to avoid hammering the OS."""
@@ -191,69 +231,59 @@ class ResourceManager:
         if self.is_disabled():
             return "idle"
         sample = sample or self.sample()
-        # Memory critical
-        if sample.ram_available_mb is not None and sample.ram_available_mb < self.min_free_ram_mb:
-            return "critical"
-        if sample.ram_percent is not None and sample.ram_percent >= self.max_ram_percent:
+        # Only a real near-OOM stop. CPU spikes and Windows "RAM % used"
+        # (file cache) must not freeze indexing.
+        if (
+            sample.ram_available_mb is not None
+            and sample.ram_available_mb < self.min_free_ram_mb
+        ):
             return "critical"
         cpu = sample.cpu_percent
         if cpu is None:
             return "normal"
-        if cpu >= self.max_cpu_critical:
-            return "critical"
-        if cpu >= self.max_cpu_busy:
-            return "busy"
-        if cpu < 25.0 and (
-            sample.ram_available_mb is None or sample.ram_available_mb > self.min_free_ram_mb * 2
-        ):
+        if cpu < 25.0:
             return "idle"
         return "normal"
 
     def budget(self, job: JobKind = "generic") -> AdaptiveBudget:
         sample = self.sample()
         pressure = self.classify(sample)
+        envelope = self._update_envelope(sample)
         with self._lock:
             self._last_pressure = pressure
             base = self._base_batch
             workers = self._base_workers
 
-        # Job weight: graph/index slightly more cautious than embed
         heavy = job in {"index", "graph"}
 
-        if pressure == "idle":
-            batch = min(base * 2, 64 if not heavy else 32)
+        if pressure == "critical":
+            batch = 1
+            pause = 0.5
+            allow = False
+            workers = 1
+            reason = "almost no free RAM — pause to avoid OOM"
+        elif pressure == "idle":
+            if job == "embed":
+                boost_cap = 32 if base <= 16 else 64
+                batch = max(base, min(base * 2, boost_cap))
+            else:
+                batch = min(base * 2, 64 if not heavy else 32)
             pause = 0.0
             allow = True
             workers = min(workers + 1, 4)
             reason = "system idle — boost throughput"
-        elif pressure == "normal":
+        else:
             batch = base
-            pause = 0.0 if job == "embed" else 0.05
+            pause = 0.0
             allow = True
-            reason = "normal load — baseline budget"
-        elif pressure == "busy":
-            batch = max(1, base // 2)
-            pause = 0.35 if heavy else 0.2
-            allow = True
-            workers = 1
-            reason = "user load — throttle indexing"
-        else:  # critical
-            batch = 1
-            pause = 1.5
-            # Interactive-ish jobs still may proceed slowly; background sync pauses
-            allow = job in {"embed"} and sample.ram_available_mb is not None and (
-                sample.ram_available_mb >= self.min_free_ram_mb * 0.5
-            )
-            if job in {"sync", "index", "graph"}:
-                allow = False
-            workers = 1
-            reason = "resource pressure — pause / minimal work"
+            reason = "run at calibrated budget"
 
+        worker_ceiling = envelope.embed_workers if job == "embed" else envelope.index_workers
         return AdaptiveBudget(
             pressure=pressure,
             allow=allow,
-            batch_size=max(1, int(batch)),
-            workers=max(1, int(workers)),
+            batch_size=max(1, min(int(batch), base, envelope.batch_ceiling)),
+            workers=max(1, min(int(workers), worker_ceiling)),
             pause_s=float(pause),
             reason=reason,
             sample=sample.to_dict(),
@@ -307,8 +337,16 @@ class ResourceManager:
         finally:
             self.apply_pause(b)
 
-    def run_job(self, job: JobKind, fn: Callable[[], T], *, timeout_s: float = 120.0) -> T | None:
-        """Run fn if capacity available; return None if refused after wait."""
+    def run_job(
+        self,
+        job: JobKind,
+        fn: Callable[[], T],
+        *,
+        timeout_s: float = 120.0,
+        project_id: str | None = None,
+        priority: EmbedPriority = "recent",
+    ) -> T | None:
+        """Run fn if capacity allows, serializing expensive embeds fairly."""
         b = self.wait_for_capacity(job, timeout_s=timeout_s)
         if not b.allow:
             print(
@@ -317,10 +355,21 @@ class ResourceManager:
                 flush=True,
             )
             return None
-        try:
-            return fn()
-        finally:
-            self.apply_pause(b)
+        if job != "embed":
+            try:
+                return fn()
+            finally:
+                self.apply_pause(b)
+
+        # Capacity/debounce waits happen before this section: only model work
+        # occupies the process-wide single-flight scheduler.
+        with self.embed_scheduler.hold(project_id or "default", priority, timeout_s) as acquired:
+            if not acquired:
+                return None
+            try:
+                return fn()
+            finally:
+                self.apply_pause(b)
 
     def status(self) -> dict[str, Any]:
         sample = self.sample(force=True)
@@ -335,6 +384,7 @@ class ResourceManager:
             "pressure": pressure,
             "sample": sample.to_dict(),
             "base_batch": self._base_batch,
+            "envelope": asdict(self._envelope),
             "thresholds": {
                 "max_cpu_busy": self.max_cpu_busy,
                 "max_cpu_critical": self.max_cpu_critical,
@@ -342,6 +392,7 @@ class ResourceManager:
                 "max_ram_percent": self.max_ram_percent,
             },
             "budgets": budgets,
+            "embed_scheduler": self.embed_scheduler.status(),
         }
 
 
