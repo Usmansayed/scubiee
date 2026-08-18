@@ -725,7 +725,7 @@ def _client_for(repo: Path):
     from pipeline.client import EngineClient
     from pipeline.daemon import ensure_daemon
 
-    ensure_daemon(repo, force_if_hung=False)
+    ensure_daemon(repo, force_if_hung=True)
     client = EngineClient(workspace_path=str(repo))
     # Locate availability must not depend on the optional live reindex daemon.
     # This is deliberately best-effort: the next query still gets the normal
@@ -1693,6 +1693,7 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
     def status_impl() -> str:
         """Health / tool list only — not for finding code."""
         from pipeline.client import EngineClient
+        from pipeline.daemon import ensure_daemon
         from pipeline.session_store import load_store, token_mode
 
         tool_lists = {
@@ -1705,63 +1706,86 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
             "phase": ["map", "focus", "workspace", "status"],
         }
         try:
-            # MCP status must never block an agent behind the HTTP client's
-            # long request timeout when the daemon is wedged.
             repo = _default_repo()
-            eng = EngineClient(timeout=3.0, workspace_path=str(repo))
-            store = load_store(repo)
             try:
-                daemon_status = eng.status(str(repo))
-            except Exception:  # daemon liveness is still useful to expose
-                daemon_status = {}
+                ensure_daemon(repo, force_if_hung=False)
+            except Exception:  # noqa: BLE001
+                pass
+            eng = EngineClient(timeout=8.0, workspace_path=str(repo))
+            store = load_store(repo)
+            healthy = eng.healthy()
+            daemon_status: dict[str, Any] = {}
+            if healthy:
+                try:
+                    daemon_status = eng.status(str(repo))
+                except Exception:  # noqa: BLE001
+                    daemon_status = {}
+                if daemon_status.get("ok") is False and "unreachable" in str(
+                    daemon_status.get("error") or ""
+                ):
+                    # /health was fine; a slow /v1/status must not flip the card to down.
+                    daemon_status = {
+                        "ok": True,
+                        "warm_state": "ready",
+                        "error": None,
+                    }
+            else:
+                daemon_status = {
+                    "ok": False,
+                    "error": f"Context Engine unreachable at {eng.base}",
+                    "hint": "Run: ctx engine ensure .",
+                }
             soft_search_ready = bool(
-                daemon_status.get("soft_search_ready")
-                if "soft_search_ready" in daemon_status
-                else (
-                    daemon_status.get("warm_state") == "ready"
-                    and daemon_status.get("engine") is not None
-                    and not daemon_status.get("warm_error")
+                healthy
+                and (
+                    daemon_status.get("soft_search_ready")
+                    if "soft_search_ready" in daemon_status
+                    else (
+                        daemon_status.get("warm_state") == "ready"
+                        and daemon_status.get("engine") is not None
+                        and not daemon_status.get("warm_error")
+                    )
                 )
             )
             from pipeline.sync_status import build_sync_contract
 
             contract = build_sync_contract(
-                warm_state=daemon_status.get("warm_state"),
+                warm_state=daemon_status.get("warm_state") if healthy else None,
                 warm_error=daemon_status.get("warm_error"),
-                keeper=daemon_status.get("keeper"),
+                keeper=daemon_status.get("keeper") if healthy else None,
                 soft_search_ready=soft_search_ready,
-                last_error=daemon_status.get("error") or daemon_status.get("warm_error"),
+                last_error=None if healthy else daemon_status.get("error"),
             )
-            # Prefer daemon-provided contract fields when present.
-            for key in (
-                "sync_state",
-                "ready",
-                "syncing",
-                "overlay_ready",
-                "dense_pending",
-                "deferred",
-                "needs_full",
-                "error",
-                "locate_streak_active",
-                "publish_pending",
-                "catchup_chunked",
-            ):
-                if key in daemon_status:
-                    contract[key] = daemon_status[key]
+            if healthy:
+                for key in (
+                    "sync_state",
+                    "ready",
+                    "syncing",
+                    "overlay_ready",
+                    "dense_pending",
+                    "deferred",
+                    "needs_full",
+                    "locate_streak_active",
+                    "publish_pending",
+                    "catchup_chunked",
+                ):
+                    if key in daemon_status:
+                        contract[key] = daemon_status[key]
+                contract["error"] = daemon_status.get("error") if daemon_status.get("ok") is False else None
             return _dumps({
-                "ok": eng.healthy(), "tool": "status", "server": "context_engine_mcp",
+                "ok": healthy, "tool": "status", "server": "context_engine_mcp",
                 "surface": surface,
                 "engine": {
-                    "healthy": eng.healthy(),
+                    "healthy": healthy,
                     "soft_search_ready": soft_search_ready,
-                    "warm_state": daemon_status.get("warm_state"),
-                    "warm_error": daemon_status.get("warm_error"),
-                    "project_id": daemon_status.get("project_id"),
-                    "meta": daemon_status.get("meta"),
+                    "warm_state": daemon_status.get("warm_state") if healthy else None,
+                    "warm_error": daemon_status.get("warm_error") if healthy else daemon_status.get("error"),
+                    "project_id": daemon_status.get("project_id") if healthy else None,
+                    "meta": daemon_status.get("meta") if healthy else None,
                 },
                 "repo": str(repo), "token_mode": token_mode(),
                 "tools": tool_lists.get(surface, tool_lists["read"]),
-                "keeper": daemon_status.get("keeper"),
+                "keeper": daemon_status.get("keeper") if healthy else None,
                 "soft_search_ready": soft_search_ready,
                 **contract,
                 "session": {
@@ -1820,6 +1844,12 @@ def main() -> None:
     os.environ.setdefault("CTX_TOKEN_MODE", "savings")
     os.environ.setdefault("CTX_SESSION_GOVERNOR", "1")
     os.environ.setdefault("CTX_ENGINE_IDLE_S", "120")
+    try:
+        from pipeline.daemon import ensure_daemon
+
+        ensure_daemon(repo, force_if_hung=True)
+    except Exception as exc:  # noqa: BLE001
+        _stderr(f"[context_engine_mcp] ensure_daemon: {exc}")
     _register_mcp_client(repo)
     surface = _active_surface()
     tool_lists = {

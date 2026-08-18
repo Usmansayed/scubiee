@@ -161,6 +161,9 @@ def read_id_file(root: Path) -> str | None:
 
 
 def write_id_file(root: Path, project_id: str) -> Path:
+    root = Path(root).resolve()
+    if not root.is_dir():
+        raise FileNotFoundError(f"cannot write project id: not a directory: {root}")
     path = id_file_path(root)
     _write_json(
         path,
@@ -452,6 +455,16 @@ class ProjectRef:
 def resolve_project(root: Path, *, migrate: bool = True) -> ProjectRef:
     """Ensure id file + registry + projects/<id>/ exist; migrate legacy indexes."""
     root = root.resolve()
+    if not root.is_dir():
+        raise FileNotFoundError(f"not a directory: {root}")
+    # Nested folders (accidental CLI args, dump dirs) inherit the enclosing
+    # project's id.json instead of minting a sibling identity + polluting disk.
+    if not read_id_file(root) and not (root / ".git").exists():
+        for parent in root.parents:
+            parent_pid = read_id_file(parent)
+            if parent_pid:
+                root = parent
+                break
     abs_root = _norm_path(root)
     migrated = False
     common = git_common_dir(root)

@@ -58,6 +58,23 @@ def test_root_probe_ignores_venv_junk(tmp_path: Path):
     assert not any("venv" in p for p in r.added)
 
 
+def test_root_probe_detects_new_file_on_fast_index(tmp_path: Path):
+    store = _seed_store(tmp_path, {"pkg/a.py": "x=1\n"})
+    (tmp_path / "pkg" / "new_mod.py").write_text("NEW=1\n", encoding="utf-8")
+    r = root_probe(tmp_path, base_dir=store.base, discover_newcomers=True)
+    assert not r.clean
+    assert "pkg/new_mod.py" in r.added
+
+
+def test_root_probe_detects_new_file_on_full_index(tmp_path: Path):
+    store = _seed_store(tmp_path, {"pkg/a.py": "x=1\n"})
+    store.save_meta({"fast": False, "git_head": None})
+    (tmp_path / "pkg" / "new_mod.py").write_text("NEW=1\n", encoding="utf-8")
+    r = root_probe(tmp_path, base_dir=store.base, discover_newcomers=True)
+    assert not r.clean
+    assert "pkg/new_mod.py" in r.added
+
+
 def test_keeper_tick_root_clean_no_refresh(tmp_path: Path, monkeypatch):
     from pipeline.sync_loop import BackgroundSyncLoop
 

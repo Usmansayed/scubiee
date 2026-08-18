@@ -44,7 +44,6 @@ def test_write_cursor_mcp_writes_project_and_user(tmp_path: Path, monkeypatch) -
     paths = write_cursor_mcp(project_root)
     project = json.loads(Path(paths["project"]).read_text(encoding="utf-8"))
     assert project["mcpServers"]["context-engine"]["env"]["CTX_REPO"]
-    assert project["mcpServers"]["context-engine"]["env"]["CTX_WATCHDOG"] == "0"
     user = json.loads(user_mcp.read_text(encoding="utf-8"))
     assert "context-engine" not in user.get("mcpServers", {})
 

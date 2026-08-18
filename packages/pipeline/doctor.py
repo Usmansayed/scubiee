@@ -213,11 +213,14 @@ def doctor_repo(root: Path | str | None = None) -> dict[str, Any]:
     planned = plan_repairs(report=report)
     report["repair_plan"] = planned
     report["repairs"] = [item["detail"] for item in planned]
+    # An unbound daemon is operational guidance, not index corruption.
+    blocking = [item for item in planned if item.get("id") != "bind_daemon"]
     report["ok"] = bool(
         caps.get("ok")
         and usable
+        and manifest.get("ok") is not False
         and not git_family.get("needs_reconcile")
-        and not planned
+        and not blocking
     )
     return report
 

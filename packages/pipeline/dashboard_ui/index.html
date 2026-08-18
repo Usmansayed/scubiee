@@ -119,7 +119,7 @@
                 Add repository
               </button>
             </div>
-            <div class="notice"><span>i</span><p><strong>Missing is not deleted.</strong> Forget is available only after Context Engine validates the repository as eligible.</p></div>
+              <div class="notice"><span>i</span><p><strong>Forget removes Context Engine state only.</strong> Type the project ID to confirm. Source files stay on disk.</p></div>
             <article class="panel table-panel">
               <div class="table-toolbar">
                 <label class="search">
@@ -224,7 +224,7 @@
       <form method="dialog" id="forget-form">
         <div class="dialog-icon danger">!</div>
         <h2>Forget repository?</h2>
-        <p>This removes the repository identity and local index artifacts. It does not delete source files.</p>
+        <p>This removes the repository from Context Engine and deletes its local index. It does not delete source files.</p>
         <div class="confirm-box">
           <label for="forget-confirmation">To continue, type the repository ID <strong id="forget-required-value"></strong></label>
           <input id="forget-confirmation" autocomplete="off" spellcheck="false">

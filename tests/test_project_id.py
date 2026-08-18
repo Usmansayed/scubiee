@@ -63,6 +63,25 @@ def test_resolve_reuses_id_file(ce_home: Path, tmp_path: Path):
     assert ref.project_id == "ce_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
 
+def test_nested_folder_does_not_mint_or_write_id(ce_home: Path, tmp_path: Path):
+    repo = tmp_path / "app"
+    repo.mkdir()
+    parent = resolve_project(repo)
+    nested = repo / "test query"
+    nested.mkdir()
+    ref = resolve_project(nested)
+    assert ref.project_id == parent.project_id
+    assert ref.root == repo.resolve()
+    assert not (nested / ".context-engine" / "id.json").exists()
+
+
+def test_write_id_file_refuses_missing_directory(tmp_path: Path):
+    missing = tmp_path / "does-not-exist"
+    with pytest.raises(FileNotFoundError):
+        write_id_file(missing, "ce_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+    assert not missing.exists()
+
+
 def test_missing_id_json_does_not_recover_from_registry(ce_home: Path, tmp_path: Path):
     """Safety beats recovering a deleted identity file via a registry alias."""
     repo = tmp_path / "r"

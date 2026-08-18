@@ -40,6 +40,21 @@ class EngineClient:
         self.client_name = client
         self.session_id = session_id
 
+    def _coerce_workspace(self, supplied: Any) -> str:
+        """Only existing directories are workspaces — never mkdir from a query string."""
+        if supplied:
+            try:
+                candidate = Path(str(supplied))
+                if candidate.is_dir():
+                    return str(candidate.resolve())
+            except OSError:
+                pass
+            if not self.workspace_path:
+                raise ValueError(f"workspace path is not a directory: {supplied}")
+        if self.workspace_path:
+            return str(self.workspace_path)
+        raise ValueError("workspace path is required for Context Engine requests")
+
     def healthy(self) -> bool:
         """True if /health returns ok. Always uses a short timeout."""
         try:
@@ -65,9 +80,7 @@ class EngineClient:
         if body is not None and method != "GET":
             payload = dict(body)
             supplied_path = payload.get("path") or payload.get("repo") or payload.get("root")
-            workspace = str(Path(supplied_path).resolve()) if supplied_path else self.workspace_path
-            if not workspace:
-                raise ValueError("workspace path is required for Context Engine requests")
+            workspace = self._coerce_workspace(supplied_path)
             payload["path"] = workspace
             if self.client_name:
                 payload.setdefault("client", self.client_name)

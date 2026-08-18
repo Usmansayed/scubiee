@@ -35,7 +35,6 @@ def server_entry(
         "CTX_REGISTRATION_MODE": "automatic",
         "CTX_MCP_SURFACE": "phase",
         "CTX_ENGINE_IDLE_S": "120",
-        "CTX_WATCHDOG": "0",
         "PYTHONUTF8": "1",
     }
     if repo is not None:

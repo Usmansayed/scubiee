@@ -10,10 +10,31 @@ POSIX: no-op. Idle-stop plus next-logon standby cover leftovers.
 from __future__ import annotations
 
 import os
+import subprocess
 import sys
 from typing import Any
 
 JOB_NAME = "Local\\ContextEngineKillJob"
+CREATE_NO_WINDOW = 0x08000000
+
+
+def windows_hidden_creationflags() -> int:
+    """Spawn without a console flash. DETACHED_PROCESS flashes cmd.exe."""
+    if os.name != "nt":
+        return 0
+    no_window = int(getattr(subprocess, "CREATE_NO_WINDOW", CREATE_NO_WINDOW))
+    new_group = int(getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
+    return no_window | new_group
+
+
+def hidden_popen_kwargs() -> dict[str, Any]:
+    """Flags for background python.exe children that must not blink a console."""
+    if os.name == "nt":
+        return {"creationflags": windows_hidden_creationflags()}
+    kwargs: dict[str, Any] = {}
+    if sys.platform != "darwin":
+        kwargs["start_new_session"] = True
+    return kwargs
 
 
 def attach_supervisor_job() -> dict[str, Any]:
@@ -41,8 +62,8 @@ def _windows_assign(*, create: bool) -> dict[str, Any]:
     kernel32.CreateJobObjectW.restype = wintypes.HANDLE
     kernel32.OpenJobObjectW.restype = wintypes.HANDLE
     kernel32.AssignProcessToJobObject.restype = wintypes.BOOL
-    kernel32.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
-    kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+    kernel32.AssignProcessToJobObject.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+    kernel32.GetCurrentProcess.restype = ctypes.c_void_p
     kernel32.GetCurrentProcess.argtypes = []
     kernel32.SetInformationJobObject.restype = wintypes.BOOL
 
@@ -105,10 +126,7 @@ def _windows_assign(*, create: bool) -> dict[str, Any]:
         return {"ok": False, "error": f"job handle failed winerr={err}"}
 
     assigned = bool(
-        kernel32.AssignProcessToJobObject(
-            handle,
-            wintypes.HANDLE(kernel32.GetCurrentProcess()),
-        )
+        kernel32.AssignProcessToJobObject(handle, kernel32.GetCurrentProcess())
     )
     if not assigned:
         err = kernel32.GetLastError()

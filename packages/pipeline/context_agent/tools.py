@@ -11,8 +11,8 @@ def _client(repo: Path | None = None):
     from pipeline.client import EngineClient
     from pipeline.daemon import ensure_daemon
 
-    ensure_daemon(repo, force_if_hung=False) if repo else ensure_daemon(force_if_hung=False)
-    return EngineClient()
+    ensure_daemon(repo, force_if_hung=True) if repo else ensure_daemon(force_if_hung=True)
+    return EngineClient(workspace_path=str(repo) if repo else None)
 
 
 def tool_search_code(repo: Path, query: str, top_k: int = 6) -> dict[str, Any]:

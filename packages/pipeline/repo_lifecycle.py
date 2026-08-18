@@ -58,13 +58,19 @@ def _update(project_id: str, **values: Any) -> dict[str, Any]:
 
 def _result(project_id: str, entry: dict[str, Any], **extra: Any) -> dict[str, Any]:
     paths = entry.get("paths") if isinstance(entry.get("paths"), list) else []
-    root = paths[0] if paths else ""
+    root = str(paths[0]) if paths else ""
+    state = entry.get("lifecycle_state", ACTIVE)
     result = {
         "ok": True,
         "project_id": project_id,
         "root": root,
+        "primary_path": root,
+        "path": root,
+        "paths": [str(item) for item in paths],
         "store_dir": str((projects_root() / project_id).resolve()),
-        "state": entry.get("lifecycle_state", ACTIVE),
+        "state": state,
+        "paused": state == PAUSED,
+        "pinned": bool(entry.get("pinned")),
         "git_common_dir": entry.get("git_common_dir"),
         "initialized_at": entry.get("initialized_at"),
         "last_activated_at": entry.get("last_activated_at"),
@@ -160,6 +166,8 @@ def initialize_repo(
     index: bool = True,
     always_allow: bool = True,
     progress: Any = None,
+    fast: bool = False,
+    fast_roots: list[str] | None = None,
 ) -> dict[str, Any]:
     """Admit a repository and reconcile an existing usable index."""
     root = _root(root)
@@ -233,7 +241,13 @@ def initialize_repo(
             else:
                 from pipeline.indexer import index_repo
 
-                stats = index_repo(root, force=False, fast=False, progress=progress)
+                stats = index_repo(
+                    root,
+                    force=False,
+                    fast=fast,
+                    fast_roots=fast_roots,
+                    progress=progress,
+                )
                 chunks = int(stats.chunks)
                 indexed = True
         except Exception as exc:  # noqa: BLE001
@@ -558,11 +572,17 @@ def forget_repo(
     *,
     confirm: str,
     force: bool = False,
+    operator: bool = False,
     now: float | None = None,
     retention_s: float = 86400,
 ) -> dict[str, Any]:
-    """Permanently remove CE-owned state after exact confirmation and validation."""
-    del force  # Eligibility is never bypassed at this public boundary.
+    """Permanently remove CE-owned state after exact confirmation and validation.
+
+    Automated forget still requires presence eligibility. An operator console
+    that already collected an exact project-id confirmation may pass
+    ``operator=True`` to remove a live repository from Context Engine.
+    """
+    del force
     if confirm != project_id:
         return {
             "ok": False,
@@ -584,7 +604,7 @@ def forget_repo(
             now=now,
             retention_s=retention_s,
         )
-        if not presence.forget_allowed:
+        if not presence.forget_allowed and not operator:
             raise PermissionError(presence.state, presence.reasons)
         entry["forget_pending"] = True
         entry["forget_pending_at"] = time.time()
@@ -673,6 +693,11 @@ def list_managed_repos() -> list[dict[str, Any]]:
         )
         paths = entry.get("paths") if isinstance(entry.get("paths"), list) else []
         primary = Path(paths[0]) if paths else None
+        indexed = False
+        try:
+            indexed = index_is_usable(_store_dir(project_id))
+        except ValueError:
+            indexed = False
         managed.append(
             _result(
                 project_id,
@@ -681,6 +706,11 @@ def list_managed_repos() -> list[dict[str, Any]]:
                 forget_allowed=presence.forget_allowed,
                 root_exists=bool(primary and primary.exists()),
                 presence_reasons=presence.reasons,
+                indexed=indexed,
+                index_exists=indexed,
+                has_index=indexed,
+                index_state="ready" if indexed else "empty",
+                name=primary.name if primary else project_id,
             )
         )
     return sorted(managed, key=lambda item: (item["root"], item["project_id"]))

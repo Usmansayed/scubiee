@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -217,8 +218,14 @@ def start_daemon(
     if is_running():
         return {"ok": True, "already_running": True, "url": engine_url()}
 
-    # Stale lock with dead pid → clear; live lock without health → refuse
+    # Live engine process without health: wait/refuse. Never spawn a second
+    # python.exe — that flashes consoles and fights the first starter.
     existing = _read_lock_pid()
+    if existing is None:
+        try:
+            existing = int(pid_path().read_text(encoding="utf-8").strip())
+        except (OSError, ValueError):
+            existing = None
     if existing is not None and _pid_alive(existing) and not is_running():
         return {
             "ok": False,
@@ -265,10 +272,9 @@ def start_daemon(
         "stdin": subprocess.DEVNULL,
     }
     if os.name == "nt":
-        kwargs["creationflags"] = (
-            getattr(subprocess, "DETACHED_PROCESS", 0)
-            | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-        )
+        from pipeline.process_job import hidden_popen_kwargs
+
+        kwargs.update(hidden_popen_kwargs())
     else:
         kwargs["start_new_session"] = True
 
@@ -330,12 +336,27 @@ def stop_daemon() -> dict[str, Any]:
         try:
             if os.name == "nt":
                 subprocess.run(
-                    ["taskkill", "/PID", str(pid), "/F"],
+                    ["taskkill", "/PID", str(pid), "/T", "/F"],
                     capture_output=True,
                     check=False,
                 )
             else:
-                os.kill(pid, 15)
+                try:
+                    os.kill(pid, signal.SIGTERM)
+                except (ProcessLookupError, PermissionError, OSError):
+                    continue
+                deadline = time.time() + 2.0
+                while time.time() < deadline and _pid_alive(pid):
+                    time.sleep(0.1)
+                if _pid_alive(pid):
+                    try:
+                        os.kill(pid, signal.SIGKILL)
+                    except (ProcessLookupError, PermissionError, OSError):
+                        pass
+                    try:
+                        os.killpg(pid, signal.SIGKILL)
+                    except (ProcessLookupError, PermissionError, OSError):
+                        pass
         except Exception:  # noqa: BLE001
             pass
     release_lock()
@@ -382,7 +403,7 @@ def force_restart_daemon(repo: Path | str | None = None) -> dict[str, Any]:
         try:
             if os.name == "nt":
                 subprocess.run(
-                    ["taskkill", "/PID", str(existing), "/F"],
+                    ["taskkill", "/PID", str(existing), "/T", "/F"],
                     capture_output=True,
                     check=False,
                 )
@@ -404,10 +425,8 @@ def ensure_daemon(
     force_if_hung: bool = True,
 ) -> dict[str, Any]:
     try:
-        from pipeline.lifecycle_runtime import note_activity
         from pipeline.watchdog import watchdog_enabled
 
-        note_activity()
         if watchdog_enabled():
             from pipeline.lifecycle_runtime import ensure_supervisor
 
@@ -452,4 +471,7 @@ def ensure_daemon(
             "url": engine_url(),
             "hint": "daemon lock alive but /health down; restart outside MCP",
         }
+    from pipeline.lifecycle_runtime import note_activity
+
+    note_activity()
     return start_daemon(repo)

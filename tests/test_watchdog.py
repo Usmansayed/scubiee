@@ -30,6 +30,24 @@ def _no_windows_job(monkeypatch: pytest.MonkeyPatch):
     )
 
 
+def test_windows_hidden_spawn_does_not_use_detached_process():
+    import os
+    import subprocess
+
+    from pipeline.process_job import (
+        CREATE_NO_WINDOW,
+        hidden_popen_kwargs,
+        windows_hidden_creationflags,
+    )
+
+    flags = windows_hidden_creationflags()
+    assert flags & CREATE_NO_WINDOW
+    assert not flags & int(getattr(subprocess, "DETACHED_PROCESS", 0x8))
+    kwargs = hidden_popen_kwargs()
+    if os.name == "nt":
+        assert kwargs["creationflags"] == flags
+
+
 def test_watchdog_disabled(wd_home: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("CTX_WATCHDOG", "0")
     from pipeline.watchdog import start_watchdog, watchdog_enabled
@@ -87,7 +105,7 @@ def test_loop_standby_does_not_restart(wd_home: Path, monkeypatch: pytest.Monkey
     assert calls == []
 
 
-def test_loop_idle_stop_enters_standby(wd_home: Path, monkeypatch: pytest.MonkeyPatch):
+def test_loop_idle_stop_is_not_watchdogs_job(wd_home: Path, monkeypatch: pytest.MonkeyPatch):
     from pipeline import watchdog as wd
     from pipeline.lifecycle_runtime import note_activity
 
@@ -95,15 +113,27 @@ def test_loop_idle_stop_enters_standby(wd_home: Path, monkeypatch: pytest.Monkey
     note_activity(now=1.0)
     stopped: list[str] = []
 
-    def fake_standby(*, stop_engine=True):
-        stopped.append("standby")
-        return {"ok": True}
-
     monkeypatch.setattr(wd, "_health_ok", lambda: True)
-    monkeypatch.setattr("pipeline.lifecycle_runtime.enter_standby", fake_standby)
+    monkeypatch.setattr("pipeline.lifecycle_runtime.enter_standby", lambda **kwargs: stopped.append("standby") or {"ok": True})
     monkeypatch.setattr(wd, "BACKOFF_S", (0.01, 0.01, 0.01))
     wd.watchdog_loop(stop_after=0.3)
-    assert "standby" in stopped
+    assert stopped == []
+
+
+def test_apply_idle_policy_enters_standby_once(wd_home: Path, monkeypatch: pytest.MonkeyPatch):
+    from pipeline.lifecycle_runtime import apply_idle_policy, engine_should_be_running, note_activity
+
+    monkeypatch.setenv("CTX_ENGINE_IDLE_S", "1")
+    note_activity(now=1.0)
+    with patch("pipeline.daemon.is_running", return_value=True), patch(
+        "pipeline.daemon.stop_daemon",
+        return_value={"ok": True, "running": False},
+    ):
+        first = apply_idle_policy(now=10.0)
+        second = apply_idle_policy(now=10.0)
+    assert first["action"] == "standby"
+    assert second["action"] == "already_standby"
+    assert engine_should_be_running() is False
 
 
 def test_force_restart_calls_stop_and_start(wd_home: Path):

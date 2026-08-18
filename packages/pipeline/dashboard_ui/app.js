@@ -185,7 +185,7 @@
             <td><div class="actions">
               <button class="button quiet small" data-action="${paused ? "resume" : "pause"}" data-id="${escapeHtml(projectId)}">${paused ? "Resume" : "Pause"}</button>
               ${presence === "missing" ? `<button class="button quiet small" data-action="locate" data-id="${escapeHtml(projectId)}">Locate</button>` : ""}
-              <button class="button quiet small" data-action="forget" data-id="${escapeHtml(projectId)}" ${repo.forget_allowed ? "" : "disabled"} title="${repo.forget_allowed ? "Forget repository identity and index" : "Presence validation has not approved Forget"}">Forget</button>
+              <button class="button quiet small" data-action="forget" data-id="${escapeHtml(projectId)}" title="Remove this repository from Context Engine. Source files are not deleted.">Forget</button>
             </div></td>
           </tr>`;
         }).join("")
@@ -469,8 +469,8 @@
 
   function openForget(projectId) {
     const repo = findRepo(projectId);
-    if (!repo || !repo.forget_allowed) {
-      toast("Forget is unavailable until presence validation approves it.", "error");
+    if (!repo) {
+      toast("Repository is no longer listed.", "error");
       return;
     }
     state.forgetRepo = repo;

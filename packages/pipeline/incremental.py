@@ -21,7 +21,7 @@ from pipeline.chunk_merkle import chunk_digest, chunk_key, diff_chunk_records
 from pipeline.embedder import Embedder
 from pipeline.freshness import check_freshness
 from pipeline.merkle import file_sha256
-from pipeline.paths import collect_index_paths
+from pipeline.paths import collect_index_paths, collect_index_relpaths
 from pipeline.store import ChunkRecord, PipelineStore
 from pipeline.vectordb import VectorDatabase
 
@@ -122,18 +122,17 @@ def incremental_sync(
         report.reason = "force_files"
         report.detection = "force"
 
-    # New files under fast roots are outside the Merkle universe — discover them
-    # so timed background sync picks up freshly written modules.
-    if not force_files and meta.get("fast"):
+    # Merkle is a closed snapshot of already-indexed files. Discover newcomers
+    # with the same path filter as a full/fast index so untracked modules sync.
+    if not force_files:
         from pipeline.merkle import SyncDiff, root_hash as _rh
 
-        universe = {
-            p.relative_to(root).as_posix()
-            for p in collect_index_paths(
-                root, fast=True, fast_roots=meta.get("fast_roots")
+        newcomers = sorted(
+            collect_index_relpaths(
+                root, fast=bool(meta.get("fast")), fast_roots=meta.get("fast_roots")
             )
-        }
-        newcomers = sorted(universe - set(old))
+            - set(old)
+        )
         if newcomers:
             added = sorted(set(report.diff.added) | set(newcomers))
             report.diff = SyncDiff(
@@ -145,9 +144,10 @@ def incremental_sync(
             )
             report.clean = False
             if report.strategy == "none":
+                kind = "fast roots" if meta.get("fast") else "index paths"
                 report.strategy = "incremental"
-                report.reason = f"{len(newcomers)} new file(s) under fast roots"
-                report.detection = "fast_roots_new"
+                report.reason = f"{len(newcomers)} new file(s) under {kind}"
+                report.detection = "index_paths_new"
 
     if report.clean and not force_files:
         return IncrementalResult(
@@ -201,6 +201,7 @@ def incremental_sync(
         next_id = (max((c.id for c in existing), default=-1) + 1) if existing else 0
         graph_error: str | None = None
         matrix = None
+        embedder = None
         warnings: list[str] = []
         raw: dict = {"nodes": [], "edges": [], "hyperedges": []}
 
@@ -332,15 +333,15 @@ def incremental_sync(
                     for c in existing
                 }
                 old_mat = col.compressed.to_float32()
-                id_to_row = {vid: i for i, vid in enumerate(col.ids)}
+                id_to_row = {int(vid): i for i, vid in enumerate(col.ids)}
                 rows = []
                 payloads = []
                 for c in merged:
                     key = (c.file.replace("\\", "/"), chunk_key(c), chunk_digest(c))
-                    if key in old_by_file_chunk and old_by_file_chunk[key] in id_to_row:
-                        rows.append(old_mat[id_to_row[old_by_file_chunk[key]]])
+                    old_id = old_by_file_chunk.get(key)
+                    if old_id is not None and int(old_id) in id_to_row:
+                        rows.append(old_mat[id_to_row[int(old_id)]])
                     else:
-                        # must be in new_records — find embedding
                         rows.append(None)  # type: ignore
                     payloads.append(
                         {
@@ -357,13 +358,35 @@ def incremental_sync(
                     for j, r in enumerate(embed_records)
                 }
                 for i, c in enumerate(merged):
-                    if rows[i] is None:
+                    if rows[i] is None and matrix is not None:
                         j = new_map.get(
                             (c.file.replace("\\", "/"), chunk_key(c), chunk_digest(c))
                         )
-                        if j is None or matrix is None:
-                            raise RuntimeError(f"missing embedding for {c.file}")
-                        rows[i] = matrix[j]
+                        if j is not None:
+                            rows[i] = matrix[j]
+                missing_idx = [i for i, row in enumerate(rows) if row is None]
+                if missing_idx:
+                    if embedder is None:
+                        model = str(meta.get("embed_model") or "nomic-ai/CodeRankEmbed")
+                        try:
+                            from pipeline.engine import get_embedder
+
+                            embedder = get_embedder(
+                                model, dim=meta.get("dim"), cache_path=store.embed_cache
+                            )
+                        except Exception:
+                            embedder = Embedder(
+                                model=model,
+                                cache_path=store.embed_cache,
+                                batch_size=64,
+                                max_seq_length=256 if meta.get("fast") else 512,
+                                dim=meta.get("dim"),
+                            )
+                    extra = embedder.embed_many(
+                        [merged[i].enriched for i in missing_idx]
+                    )
+                    for j, i in enumerate(missing_idx):
+                        rows[i] = extra[j]
                 full = np.stack(rows, axis=0).astype(np.float32)
                 col.replace_all(full, [c.id for c in merged], payloads)
                 store.vdb.save_collection(col.name)

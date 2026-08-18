@@ -1,6 +1,9 @@
 """Lightweight sidecar watchdog — revive Context Engine if it dies or hangs.
 
-Not a manager: polls /health and calls daemon.force_restart_daemon.
+Not a manager: polls /health and calls daemon.force_restart_daemon when the
+policy says the engine should be running. Idle unload is handled by the daemon
+lifecycle (client registry + apply_idle_policy), not here.
+
 Disable with CTX_WATCHDOG=0.
 """
 
@@ -209,23 +212,7 @@ def watchdog_loop(*, stop_after: float | None = None) -> None:
                     )
                     _log(f"sleep/wake reconcile failed: {exc}")
             last_tick = monotonic_now
-            from pipeline.lifecycle_runtime import (
-                engine_should_be_running,
-                enter_standby,
-                should_idle_stop,
-            )
-
-            if should_idle_stop():
-                from pipeline.daemon import is_running
-
-                if is_running():
-                    _log("idle timeout — entering standby, engine stop")
-                    enter_standby(stop_engine=True)
-                else:
-                    enter_standby(stop_engine=False)
-                fails = 0
-                time.sleep(interval)
-                continue
+            from pipeline.lifecycle_runtime import engine_should_be_running
 
             if _health_ok():
                 fails = 0
@@ -303,10 +290,9 @@ def start_watchdog() -> dict[str, Any]:
         "stdin": subprocess.DEVNULL,
     }
     if os.name == "nt":
-        kwargs["creationflags"] = (
-            getattr(subprocess, "DETACHED_PROCESS", 0)
-            | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-        )
+        from pipeline.process_job import hidden_popen_kwargs
+
+        kwargs.update(hidden_popen_kwargs())
     elif sys.platform != "darwin":
         # Linux fallback may outlive the installing terminal. Darwin must not
         # orphan: LaunchAgent is the parent, and GUI logout should reap us.

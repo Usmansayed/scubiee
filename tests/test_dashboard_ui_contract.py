@@ -71,11 +71,15 @@ def test_repository_and_settings_safety_contracts_are_present():
     assert 'id="forget-dialog"' in html
     assert 'id="forget-confirmation"' in html
     assert "type the repository" in html.lower()
+    assert "Source files stay on disk" in html
     assert 'value="automatic"' in html
     assert 'value="mcp_cli"' in html
     assert "admission_mode" in javascript
     assert "clear-index" in javascript
     assert 'runRepoAction(projectId, "forget"' in javascript
+    assert "Forget is unavailable until presence validation" not in javascript
+    assert 'data-action="forget"' in javascript
+    assert "${repo.forget_allowed" not in javascript
     assert 'id="apply-safe-repairs"' in html
     assert "Apply safe repairs" in html
     assert 'api("doctor"' in javascript

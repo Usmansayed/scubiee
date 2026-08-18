@@ -93,3 +93,17 @@ def collect_index_paths(
             continue
         out.append(p)
     return out
+
+
+def collect_index_relpaths(
+    root: Path,
+    *,
+    fast: bool = False,
+    fast_roots: list[str] | tuple[str, ...] | None = None,
+) -> set[str]:
+    """Repo-relative paths currently eligible for indexing."""
+    root = root.resolve()
+    return {
+        p.relative_to(root).as_posix()
+        for p in collect_index_paths(root, fast=fast, fast_roots=fast_roots)
+    }

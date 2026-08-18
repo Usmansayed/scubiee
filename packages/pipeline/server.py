@@ -177,13 +177,15 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         if path == "/v1/client/unregister":
-            from pipeline.lifecycle_runtime import unregister_client
+            from pipeline.lifecycle_runtime import apply_idle_policy, unregister_client
 
             client_id = str(data.get("client_id") or "").strip()
             if not client_id:
                 _json(self, 400, {"ok": False, "error": "client_id required"})
                 return
-            _json(self, 200, unregister_client(client_id))
+            result = unregister_client(client_id)
+            idle = apply_idle_policy()
+            _json(self, 200, {**result, "idle": idle})
             return
 
         if path == "/v1/lifecycle":
@@ -526,6 +528,23 @@ class Handler(BaseHTTPRequestHandler):
         _json(self, 404, {"error": "not found"})
 
 
+def _start_idle_sweeper(*, interval_s: float = 30.0) -> None:
+    import threading
+
+    def _loop() -> None:
+        while True:
+            time.sleep(max(5.0, interval_s))
+            try:
+                from pipeline.lifecycle_runtime import apply_idle_policy
+
+                apply_idle_policy()
+            except Exception:  # noqa: BLE001
+                pass
+
+    thread = threading.Thread(target=_loop, name="ce-idle-sweeper", daemon=True)
+    thread.start()
+
+
 def run_server(
     repo: Path,
     host: str = DEFAULT_HOST,
@@ -547,6 +566,7 @@ def run_server(
             file=sys.stderr,
             flush=True,
         )
+    _start_idle_sweeper()
     ce = get_context_engine()
     repo = repo.resolve()
     print(

@@ -5,6 +5,7 @@ import os
 import threading
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 import pytest
 
@@ -231,6 +232,92 @@ def test_forget_route_requires_confirm(dashboard_http):
     assert "confirm" in payload["error"].lower()
 
 
+def test_dashboard_lists_root_and_action_fields(isolated_ce_home, tmp_path):
+    from pipeline.dashboard_server import DashboardAPI
+    from pipeline.repo_lifecycle import initialize_repo
+
+    repo = tmp_path / "listed"
+    repo.mkdir()
+    project_id = initialize_repo(repo, index=False)["project_id"]
+
+    status, payload = DashboardAPI().dispatch(
+        "GET",
+        "/ce-dashboard/api/repos",
+        client_host="127.0.0.1",
+    )
+
+    assert status == 200
+    listed = payload["repositories"][0]
+    assert listed["project_id"] == project_id
+    assert listed["root"] == str(repo.resolve())
+    assert listed["primary_path"] == listed["root"]
+    assert listed["path"] == listed["root"]
+    assert listed["paused"] is False
+    assert listed["forget_allowed"] is False
+    assert "indexed" in listed
+
+
+def test_dashboard_pause_and_resume_use_listed_root(isolated_ce_home, tmp_path):
+    from pipeline.dashboard_server import DashboardAPI
+    from pipeline.repo_lifecycle import initialize_repo, managed_state
+
+    repo = tmp_path / "ops"
+    repo.mkdir()
+    project_id = initialize_repo(repo, index=False)["project_id"]
+    api = DashboardAPI()
+
+    paused_status, paused = api.dispatch(
+        "POST",
+        f"/ce-dashboard/api/repos/{project_id}/pause",
+        {},
+        client_host="127.0.0.1",
+    )
+    assert paused_status == 200
+    assert paused["ok"] is True
+    assert paused["paused"] is True
+    assert managed_state(repo) == "paused"
+
+    resumed_status, resumed = api.dispatch(
+        "POST",
+        f"/ce-dashboard/api/repos/{project_id}/resume",
+        {},
+        client_host="127.0.0.1",
+    )
+    assert resumed_status == 200
+    assert resumed["ok"] is True
+    assert resumed["paused"] is False
+    assert managed_state(repo) == "active"
+
+
+def test_dashboard_forget_removes_active_repo(isolated_ce_home, tmp_path):
+    from pipeline.dashboard_server import DashboardAPI
+    from pipeline.project_id import load_registry
+    from pipeline.repo_lifecycle import initialize_repo, list_managed_repos
+
+    repo = tmp_path / "keep-source"
+    repo.mkdir()
+    (repo / "app.py").write_text("print('hi')\n", encoding="utf-8")
+    created = initialize_repo(repo, index=False)
+    project_id = created["project_id"]
+    store = created["store_dir"]
+
+    status, payload = DashboardAPI().dispatch(
+        "POST",
+        f"/ce-dashboard/api/repos/{project_id}/forget",
+        {"confirm": project_id},
+        client_host="127.0.0.1",
+    )
+
+    assert status == 200
+    assert payload["ok"] is True
+    assert payload["forgotten"] is True
+    assert "message" in payload
+    assert project_id not in (load_registry().get("projects") or {})
+    assert list_managed_repos() == []
+    assert (repo / "app.py").is_file()
+    assert not Path(store).exists()
+
+
 def test_graph_api_returns_nodes_for_indexed_repo(
     dashboard_http, tmp_path, monkeypatch
 ):
@@ -311,7 +398,9 @@ def test_pin_route_updates_registry(isolated_ce_home, monkeypatch):
     )
 
     assert status == 200
-    assert payload == {"ok": True, "project_id": "ce_repo", "pinned": True}
+    assert payload["ok"] is True
+    assert payload["project_id"] == "ce_repo"
+    assert payload["pinned"] is True
     assert saved[-1]["projects"]["ce_repo"]["pinned"] is True
 
 
@@ -360,7 +449,8 @@ def test_clear_index_route_passes_project_id_by_keyword(isolated_ce_home, monkey
     )
 
     assert status == 200
-    assert payload == {"ok": True, "project_id": "ce_repo"}
+    assert payload["ok"] is True
+    assert payload["project_id"] == "ce_repo"
     assert received == ["ce_repo"]
 
 
@@ -368,9 +458,8 @@ def test_dashboard_forget_uses_configured_missing_retention(
     isolated_ce_home, tmp_path
 ):
     from pipeline.project_id import load_registry, save_registry
-    from pipeline.repo_lifecycle import initialize_repo
+    from pipeline.repo_lifecycle import forget_repo, initialize_repo
     from pipeline.settings import save_prefs
-    from pipeline.dashboard_server import DashboardAPI
 
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -381,14 +470,9 @@ def test_dashboard_forget_uses_configured_missing_retention(
     save_registry(registry)
     save_prefs({"missing_retention_seconds": 1e20})
 
-    status, payload = DashboardAPI().dispatch(
-        "POST",
-        f"/ce-dashboard/api/repos/{project_id}/forget",
-        {"confirm": project_id},
-        client_host="127.0.0.1",
-    )
+    payload = forget_repo(project_id, confirm=project_id, retention_s=1e20)
 
-    assert status == 409
+    assert payload["ok"] is False
     assert payload["error"] == "forget_not_allowed"
 
 

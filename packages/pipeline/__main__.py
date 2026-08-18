@@ -280,16 +280,63 @@ def cmd_settings(args: argparse.Namespace) -> int:
     return 0
 
 
+def interpret_search_cli(first: str, second: str | None) -> tuple[Path, str]:
+    """Accept both `search QUERY [PATH]` and the common `search PATH QUERY` mix-up.
+
+    A directory as the first positional is treated as the repo; otherwise the
+    first token is the query and the second (default `.`) is the repo.
+    """
+    second = second if second not in (None, "") else "."
+    first_path = Path(first)
+    second_path = Path(second)
+    first_is_dir = first in {".", ".."} or first_path.is_dir()
+    second_is_dir = second in {".", ".."} or second_path.is_dir()
+    if first_is_dir and not second_is_dir:
+        return first_path.resolve(), second
+    return second_path.resolve(), first
+
+
 def cmd_search(args: argparse.Namespace) -> int:
-    root = Path(args.path).resolve()
+    root, query = interpret_search_cli(args.query, args.path)
+    if not root.is_dir():
+        print(
+            json.dumps(
+                {
+                    "ok": False,
+                    "error": f"not a directory: {root}",
+                    "hint": "Usage: ctx search \"query\"  or  ctx search . \"query\"",
+                }
+            ),
+            file=sys.stderr,
+        )
+        return 1
     t0 = time.perf_counter()
-    hits = search_repo(
-        root,
-        args.query,
-        top_k=args.top_k,
-        use_server=not args.local,
-        server_url=args.url,
-    )
+    try:
+        hits = search_repo(
+            root,
+            query,
+            top_k=args.top_k,
+            use_server=not args.local,
+            server_url=args.url if not args.local else None,
+        )
+    except Exception as exc:
+        from pipeline.searcher import SearchEngineError
+
+        if isinstance(exc, SearchEngineError):
+            print(
+                json.dumps(
+                    {
+                        "ok": False,
+                        "error": str(exc),
+                        "hint": exc.hint,
+                        "mode": "daemon",
+                    },
+                    indent=2,
+                ),
+                file=sys.stderr,
+            )
+            return 1
+        raise
     ms = (time.perf_counter() - t0) * 1000
     print(
         json.dumps(
@@ -566,11 +613,19 @@ def cmd_init(args: argparse.Namespace) -> int:
     from pipeline.repo_lifecycle import initialize_repo
 
     try:
+        roots = None
+        if getattr(args, "roots", None):
+            roots = [r.strip() for r in str(args.roots).split(",") if r.strip()]
+        fast = bool(getattr(args, "fast", False))
+        if roots and not fast:
+            fast = True
         out = initialize_repo(
             root,
             index=not bool(getattr(args, "no_index", False)),
             always_allow=not bool(getattr(args, "allow_once", False)),
             progress=bar,
+            fast=fast,
+            fast_roots=roots,
         )
     except Exception as exc:  # noqa: BLE001
         bar.fail(str(exc))
@@ -704,10 +759,17 @@ def _write_mcp_config(repo: Path, host: str, port: int) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    try:
+        from importlib.metadata import version as _pkg_version
+
+        _ver = _pkg_version("scubiee")
+    except Exception:  # noqa: BLE001
+        _ver = "0.2.5"
     parser = argparse.ArgumentParser(
         prog="pipeline",
         description="Context Engine — Merkle + Graphify + TurboQuant + FAISS + D_rerank",
     )
+    parser.add_argument("--version", action="version", version=f"scubiee {_ver}")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p_index = sub.add_parser("index", help="Index a repository")
@@ -977,6 +1039,16 @@ def main(argv: list[str] | None = None) -> int:
         "--allow-once",
         action="store_true",
         help="Do not persist always-allow registration consent",
+    )
+    p_init.add_argument(
+        "--fast",
+        action="store_true",
+        help="Fast index: .py under CTX_FAST_ROOTS / --roots only",
+    )
+    p_init.add_argument(
+        "--roots",
+        default=None,
+        help="Comma-separated fast roots (implies --fast)",
     )
     p_init.set_defaults(func=cmd_init)
 

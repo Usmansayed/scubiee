@@ -57,6 +57,18 @@ def _engine_key(root: Path, base_dir: Path | None) -> str:
     return f"{root.resolve()}::{base_dir.resolve() if base_dir else ''}"
 
 
+def _store_generation_mtime(store: PipelineStore) -> float:
+    """Newest published artifact mtime — used to drop a stale in-process engine."""
+    latest = 0.0
+    for path in (store.meta_path, store.chunks_path, store.merkle_path):
+        try:
+            if path.is_file():
+                latest = max(latest, path.stat().st_mtime)
+        except OSError:
+            continue
+    return latest
+
+
 def get_embedder(model: str, *, dim: int | None, cache_path: Path | None) -> Embedder:
     """Process-wide CodeRank/Ollama embedder cache (load weights once)."""
     key = f"{model}|{dim}|{cache_path}"
@@ -125,6 +137,12 @@ class WarmSearchEngine:
     ) -> list[SearchResult]:
         gate: dict[str, Any] = {"freshness": {"strategy": "skipped"}, "sync": None}
         if not skip_freshness:
+            gen = _store_generation_mtime(self.store)
+            if gen > self.loaded_at + 0.05:
+                clear_engines()
+                fresh = load_engine(self.root, force_reload=True)
+                return fresh.search(query, top_k=top_k, skip_freshness=False)
+
             from pipeline.incremental import ensure_fresh_for_search
 
             gate = ensure_fresh_for_search(self.root) or {}
@@ -225,17 +243,21 @@ class WarmSearchEngine:
         for i, h in enumerate(hits, 1):
             # Cursor: read live disk for the span (vectors are pointers)
             preview = ""
-            c = by_id.get(int(h.chunk_id))
+            cid = int(h.chunk_id)
+            if 0 <= cid < len(self.chunks):
+                c = self.chunks[cid]
+            else:
+                c = by_id.get(cid)
             if c is not None:
                 preview = disk_preview(self.root, c.file, c.start_line, c.end_line)
-            if not preview and 0 <= h.chunk_id < len(self.texts):
-                preview = " ".join(self.texts[h.chunk_id].split())[:240]
+            if not preview and 0 <= cid < len(self.texts):
+                preview = " ".join(self.texts[cid].split())[:240]
             out.append(
                 SearchResult(
                     rank=i,
                     file=h.file.replace("\\", "/"),
                     score=float(h.score),
-                    chunk_id=int(h.chunk_id),
+                    chunk_id=int(c.id) if c is not None else cid,
                     preview=preview,
                     source=h.source or "D_channel_best",
                     start_line=int(c.start_line) if c is not None else None,
@@ -325,7 +347,7 @@ def load_engine(
         files = [c.file.replace("\\", "/") for c in chunks]
         G = _load_graph(str(graph_json))
         spans = [
-            ChunkSpan(index=c.id, file=files[i], start_line=c.start_line, end_line=c.end_line)
+            ChunkSpan(index=i, file=files[i], start_line=c.start_line, end_line=c.end_line)
             for i, c in enumerate(chunks)
         ]
         graph = GraphifyChunkRetriever(G, spans, depth=2)

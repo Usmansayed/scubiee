@@ -86,17 +86,48 @@ def _origin_matches(origin: str | None, server_origin: str | None) -> bool:
     )
 
 
+def _first_nonempty(*values: Any) -> str | None:
+    for value in values:
+        if isinstance(value, str) and value.strip():
+            return value
+        if isinstance(value, list):
+            for item in value:
+                if isinstance(item, str) and item.strip():
+                    return item
+    return None
+
+
 def _repo_path(project_id: str, repositories: list[dict[str, Any]]) -> Path:
     for repo in repositories:
         if str(repo.get("project_id")) != project_id:
             continue
-        value = repo.get("primary_path") or repo.get("path")
-        if not value:
-            paths = repo.get("paths")
-            value = paths[0] if isinstance(paths, list) and paths else None
+        value = _first_nonempty(
+            repo.get("primary_path"),
+            repo.get("path"),
+            repo.get("root"),
+            repo.get("paths"),
+        )
         if value:
-            return Path(str(value))
+            return Path(value)
     raise FileNotFoundError(f"unknown project_id: {project_id}")
+
+
+def _with_action_message(action: str, result: dict[str, Any]) -> dict[str, Any]:
+    if not result.get("ok") or result.get("message"):
+        return result
+    labels = {
+        "forget": "Repository removed from Context Engine. Source files were not deleted.",
+        "pause": "Repository paused.",
+        "resume": "Repository resumed.",
+        "sync": "Sync started.",
+        "rebuild": "Rebuild started.",
+        "clear-index": "Local index cleared. Repository identity was kept.",
+        "locate": "Repository path updated.",
+        "pin": "Repository pinned.",
+        "unpin": "Repository unpinned.",
+        "unmanage": "Repository unmanaged.",
+    }
+    return {**result, "message": labels.get(action, f"{action} completed")}
 
 
 def _load_graph_artifact(
@@ -366,7 +397,10 @@ class DashboardAPI:
             except (TypeError, ValueError):
                 retention_s = 86400.0
             result = lifecycle.forget_repo(
-                project_id, confirm=confirm, retention_s=retention_s
+                project_id,
+                confirm=confirm,
+                retention_s=retention_s,
+                operator=True,
             )
         elif action == "locate":
             value = data.get("path")
@@ -401,7 +435,9 @@ class DashboardAPI:
             if handler is None:
                 return 404, {"ok": False, "error": "unknown lifecycle action"}
             result = handler()
-        return 200 if result.get("ok", True) else 409, result
+        return 200 if result.get("ok", True) else 409, _with_action_message(
+            action, result
+        )
 
 
 class DashboardHTTPServer(ThreadingHTTPServer):
@@ -680,10 +716,9 @@ def start_dashboard(*, open_browser: bool = True) -> dict[str, Any]:
                 "close_fds": True,
             }
             if os.name == "nt":
-                kwargs["creationflags"] = (
-                    subprocess.CREATE_NEW_PROCESS_GROUP
-                    | subprocess.DETACHED_PROCESS
-                )
+                from pipeline.process_job import hidden_popen_kwargs
+
+                kwargs.update(hidden_popen_kwargs())
             else:
                 kwargs["start_new_session"] = True
             process = subprocess.Popen(command, **kwargs)

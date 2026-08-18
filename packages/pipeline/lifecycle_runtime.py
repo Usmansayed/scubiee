@@ -267,6 +267,19 @@ def should_idle_stop(*, now: float | None = None) -> bool:
     return (current - float(anchor)) >= idle_s
 
 
+def apply_idle_policy(*, now: float | None = None) -> dict[str, Any]:
+    """Stop the engine after the idle window once clients are gone."""
+    from pipeline.daemon import is_running
+
+    if load_policy().get("desired_mode") == DESIRED_STANDBY:
+        return {"ok": True, "action": "already_standby"}
+    if not should_idle_stop(now=now):
+        return {"ok": True, "action": "none"}
+    running = is_running()
+    result = enter_standby(stop_engine=running)
+    return {**result, "action": "standby" if running else "policy_only"}
+
+
 def engine_should_be_running() -> bool:
     return load_policy().get("desired_mode") == DESIRED_RUN
 
@@ -620,15 +633,9 @@ def run_supervisor(*, logon: bool = False) -> None:
 
 
 def install_session_runtime() -> dict[str, Any]:
-    """Machine install tail: logon task + optional session supervisor, no GPU."""
-    from pipeline.watchdog import watchdog_enabled
-
+    """Machine install tail: logon task + current-session supervisor, no GPU."""
     registered = register_logon_autostart()
-    supervisor = ensure_supervisor() if watchdog_enabled() else {
-        "ok": True,
-        "skipped": True,
-        "reason": "CTX_WATCHDOG=0",
-    }
+    supervisor = ensure_supervisor()
     if not engine_should_be_running():
         set_desired_mode(DESIRED_STANDBY)
     supervisor_ok = bool(supervisor.get("ok"))
