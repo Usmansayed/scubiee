@@ -6,6 +6,8 @@
 > - Public: `https://github.com/Usmansayed/new-context-engine.git`
 > - Hidden handoff: `https://github.com/Usmansayed/hidden-context-engine-.git`
 > - Branch: `feat/production-certification` (as of 2026-08-19)
+>
+> **Cursor agent — user's Python venv:** The user created a venv named **`scubiee`** at **`~/scubiee`**, **not** `~/.context-engine/venv`. Always activate **`~/scubiee`** before pip/ctx commands. Runtime state (accel.json, model markers) still lives under **`~/.context-engine/`** — that is separate from the venv path.
 
 ---
 
@@ -63,7 +65,9 @@ Work on `feat/production-certification` / merged to `main`:
 
 ### Phase 2 — Mac user install journey
 
-Environment: MacBook Air, Apple Silicon, Python 3.12, venv at `~/.context-engine/venv`.
+Environment: MacBook Air, Apple Silicon, Python 3.12.
+
+**User's Python venv:** `~/scubiee` (named `scubiee` — **not** the default `~/.context-engine/venv` from docs/npm installer).
 
 | Step | Result |
 |------|--------|
@@ -133,10 +137,29 @@ embedder (runtime)
 | `packages/pipeline/preflight.py` | Validates saved provider can warm model |
 | `packages/pipeline/doctor.py` | Diagnostics; hints `setup --repair` |
 
-**Persisted config:** `~/.context-engine/accel.json`  
+**Persisted config (runtime data — not the venv):** `~/.context-engine/accel.json`  
 **Static model marker:** `~/.context-engine/coderank_coreml_static.json`
 
 ---
+
+## User venv vs CE runtime dirs (important for Cursor)
+
+| Path | What it is |
+|------|------------|
+| **`~/scubiee`** | User's **Python virtualenv** — activate this for `pip`, `python`, `ctx` |
+| `~/scubiee/bin/activate` | Activation script (zsh/bash) |
+| `~/.context-engine/accel.json` | Saved GPU profile after `ctx setup` (created at runtime) |
+| `~/.context-engine/coderank_coreml_static.json` | Marker for static CoreML ONNX model |
+| `~/.context-engine/venv` | Default venv from npm/mac-install.sh — **user did NOT use this** |
+
+**Cursor agent rule:** Do not assume `~/.context-engine/venv`. Always use:
+
+```bash
+source ~/scubiee/bin/activate
+export PATH="$HOME/scubiee/bin:$PATH"
+which python   # should be ~/scubiee/bin/python
+which ctx      # should be ~/scubiee/bin/ctx
+```
 
 ## Environment variables (Mac GPU)
 
@@ -154,9 +177,10 @@ Set `CTX_MAC_GPU_ONLY=0` only for debugging CPU fallback.
 ## Commands for Mac verification (after fix)
 
 ```bash
-# 1. venv
-source ~/.context-engine/venv/bin/activate
-export PATH="$HOME/.context-engine/venv/bin:$PATH"
+# 1. venv — USER USES ~/scubiee (NOT ~/.context-engine/venv)
+source ~/scubiee/bin/activate
+export PATH="$HOME/scubiee/bin:$PATH"
+which python && which ctx
 
 # 2. Install from git (this branch) OR PyPI when 0.2.8 published
 pip install -U "scubiee[coreml] @ git+https://github.com/Usmansayed/hidden-context-engine-.git@feat/production-certification"
@@ -233,6 +257,12 @@ Read docs/mac-gpu-install-handoff.md first.
 
 We need Mac CoreML GPU working on Apple Silicon — NOT CPU fallback.
 
+IMPORTANT — user's Python venv is named scubiee at ~/scubiee
+(NOT ~/.context-engine/venv). Always run:
+  source ~/scubiee/bin/activate
+  export PATH="$HOME/scubiee/bin:$PATH"
+Runtime data (accel.json etc.) is still under ~/.context-engine/
+
 Known bugs in 0.2.7 (may already be fixed on branch):
 1. packages/pipeline/coreml_mac.py — remove invalid ORT options UseCPUAndGPU and CreateMLProgram
 2. Same file — shape = [batch, seq] in prepare_coderank_onnx_for_coreml()
@@ -244,7 +274,7 @@ After fix:
 - Run tests/test_coreml_mac.py
 - Consider failing setup loudly if CoreML EP unavailable when profile=coreml
 
-User machine: MacBook Air, Apple Silicon, Python 3.12, venv ~/.context-engine/venv
+User machine: MacBook Air, Apple Silicon, Python 3.12, venv ~/scubiee
 ```
 
 ---
