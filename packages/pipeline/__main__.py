@@ -764,7 +764,7 @@ def main(argv: list[str] | None = None) -> int:
 
         _ver = _pkg_version("scubiee")
     except Exception:  # noqa: BLE001
-        _ver = "0.2.6"
+        _ver = "0.2.7"
     parser = argparse.ArgumentParser(
         prog="pipeline",
         description="Context Engine — Merkle + Graphify + TurboQuant + FAISS + D_rerank",

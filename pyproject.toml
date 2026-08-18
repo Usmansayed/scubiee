@@ -1,6 +1,6 @@
 [project]
 name = "scubiee"
-version = "0.2.6"
+version = "0.2.7"
 description = "Scubiee — local Cursor MCP context engine: setup once, ctx init per repo, CUDA/DirectML/CoreML/CPU."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -30,7 +30,7 @@ dependencies = [
 [project.optional-dependencies]
 # Pick ONE via: ctx setup  (uninstalls conflicting ORT wheels)
 cpu = ["fastembed>=0.4", "onnxruntime>=1.17"]
-coreml = ["fastembed>=0.4", "onnxruntime>=1.17"]
+coreml = ["fastembed>=0.4", "onnxruntime>=1.17", "onnx>=1.16"]
 dml = ["fastembed>=0.4", "onnxruntime-directml>=1.17"]
 cuda = ["fastembed>=0.4", "onnxruntime-gpu>=1.17"]
 embed-st = ["sentence-transformers>=3.0", "torch", "einops"]

@@ -58,20 +58,13 @@ class AccelProfile:
     hardware_fingerprint: str = ""
 
     def _coreml_options(self) -> dict[str, str]:
-        units = "ALL"
+        from pipeline.coreml_mac import coreml_provider_options
+
         detected = self.detected if isinstance(self.detected, dict) else {}
-        raw = detected.get("coreml_compute_units")
-        if raw:
-            units = str(raw)
-        elif str(detected.get("machine") or "").lower() not in {"arm64", "aarch64"}:
-            if detected.get("os") == "Darwin" and detected.get("machine"):
-                units = "CPUAndGPU"
-        return {
-            "ModelFormat": "MLProgram",
-            "MLComputeUnits": units,
-            "RequireStaticInputShapes": "0",
-            "EnableOnSubgraphs": "0",
-        }
+        units = detected.get("coreml_compute_units")
+        return coreml_provider_options(
+            compute_units=str(units) if units else None
+        )
 
     def providers(self) -> list:
         if self.profile == "cuda":
@@ -79,7 +72,9 @@ class AccelProfile:
         if self.profile == "dml":
             return [("DmlExecutionProvider", {"device_id": self.device_id}), "CPUExecutionProvider"]
         if self.profile == "coreml":
-            return [("CoreMLExecutionProvider", self._coreml_options()), "CPUExecutionProvider"]
+            from pipeline.coreml_mac import coreml_providers
+
+            return coreml_providers(self)
         return ["CPUExecutionProvider"]
 
 
@@ -178,7 +173,7 @@ def detect_hardware() -> dict[str, Any]:
     apple_silicon = platform.system() == "Darwin" and machine.lower() in {"arm64", "aarch64"}
     if apple_silicon and not gpus:
         gpus = [{"name": "Apple Silicon GPU", "adapter_ram": 0, "backend": "metal"}]
-    coreml_units = "ALL" if apple_silicon else "CPUAndGPU"
+    coreml_units = "CPUAndGPU" if apple_silicon else "CPUAndGPU"
     return {
         "os": platform.system(),
         "machine": machine,
@@ -331,13 +326,12 @@ def pip_uninstall(pkgs: list[str], *, progress: Any | None = None) -> None:
 
 
 def install_profile_packages(profile: str, progress: Any | None = None) -> None:
-    """Install FastEmbed + matching ORT wheel for profile.
-
-    FastEmbed depends on ``onnxruntime`` (CPU). For cuda/dml we install FastEmbed
-    first, then *replace* the ORT wheel with the accelerator build.
-    """
+    """Install FastEmbed + matching ORT wheel for profile."""
+    extras = ["fastembed>=0.4", "huggingface_hub>=0.20"]
+    if profile == "coreml":
+        extras.append("onnx>=1.16")
     pip_install(
-        ["fastembed>=0.4", "huggingface_hub>=0.20"],
+        extras,
         progress=progress,
         start_pct=18,
         end_pct=32,
@@ -464,6 +458,19 @@ def configure(
     if download_model:
         if progress is not None:
             progress.set(56, "Downloading embedding model")
+        if profile.profile == "coreml":
+            from pipeline.coreml_mac import (
+                COREML_STATIC_BATCH,
+                COREML_STATIC_SEQ,
+                register_coreml_coderank_model,
+            )
+
+            if progress is not None:
+                progress.set(57, "Preparing CoreML-static CodeRank ONNX")
+            register_coreml_coderank_model(
+                batch=COREML_STATIC_BATCH,
+                seq=COREML_STATIC_SEQ,
+            )
         ensure_coderank_model(profile, progress=progress)
     if bench:
         if progress is not None:
@@ -585,6 +592,17 @@ def ensure_coderank_model(
     from fastembed import TextEmbedding
 
     prof = profile or load_accel() or recommend_profile()
+    model_name = prof.model
+    static_bs = 1
+    if prof.profile == "coreml":
+        from pipeline.coreml_mac import (
+            coreml_model_name,
+            pad_embed_batch,
+            static_embed_batch_size,
+        )
+
+        model_name = coreml_model_name(prof.model)
+        static_bs = static_embed_batch_size(prof, prof.batch_size)
     previous = {
         name: os.environ.get(name)
         for name in ("HF_HUB_DISABLE_PROGRESS_BARS", "TQDM_DISABLE")
@@ -606,12 +624,15 @@ def ensure_coderank_model(
         worker.start()
     try:
         m = TextEmbedding(
-            model_name=CODERANK_MODEL,
+            model_name=model_name,
             threads=1,
             providers=prof.providers(),
             lazy_load=True,
         )
-        list(m.embed(["warmup coderank"], batch_size=1, parallel=None))
+        warmup = ["warmup coderank embedding on accelerator"]
+        if prof.profile == "coreml":
+            warmup = pad_embed_batch(warmup, static_bs)
+        list(m.embed(warmup, batch_size=static_bs, parallel=None))
     finally:
         stop.set()
         for name, value in previous.items():
@@ -707,33 +728,56 @@ def calibrate_batch(
     from fastembed import TextEmbedding
 
     count = int(n if n is not None else BATCH_CALIBRATE_N)
-    # Keep divisible by all candidates for clean last-batch sizing.
-    lcm = math.lcm(*[int(b) for b in candidates]) if candidates else 1
-    count = max(lcm, ((count + lcm - 1) // lcm) * lcm)
+    model_name = profile.model
+    static_bs = None
+    batch_candidates = candidates
+    if profile.profile == "coreml":
+        from pipeline.coreml_mac import (
+            COREML_STATIC_BATCH,
+            coreml_model_name,
+            pad_embed_batch,
+            static_embed_batch_size,
+        )
+
+        model_name = coreml_model_name(profile.model)
+        static_bs = static_embed_batch_size(profile, COREML_STATIC_BATCH)
+        batch_candidates = (static_bs,)
+        count = max(static_bs, ((count + static_bs - 1) // static_bs) * static_bs)
+    else:
+        lcm = math.lcm(*[int(b) for b in batch_candidates]) if batch_candidates else 1
+        count = max(lcm, ((count + lcm - 1) // lcm) * lcm)
     texts = _calibration_corpus(count)
 
     if model is None:
         model = TextEmbedding(
-            model_name=CODERANK_MODEL,
+            model_name=model_name,
             threads=1,
             providers=profile.providers(),
             lazy_load=True,
         )
-        list(model.embed(texts[:1], batch_size=1, parallel=None))
+        if static_bs:
+            warm = pad_embed_batch(texts[:static_bs], static_bs)
+            list(model.embed(warm, batch_size=static_bs, parallel=None))
+        else:
+            list(model.embed(texts[:1], batch_size=1, parallel=None))
 
     measured: dict[str, float] = {}
     errors: dict[str, str] = {}
-    # Prefer mid-size first so we fail fast if the device is unhealthy, then
-    # measure 8 and 20 around the preferred 16.
-    order = sorted(candidates, key=lambda b: (0 if b == BATCH_PREFER else 1, abs(b - BATCH_PREFER)))
+    order = sorted(batch_candidates, key=lambda b: (0 if b == BATCH_PREFER else 1, abs(b - BATCH_PREFER)))
     t_start = time.perf_counter()
     for batch in order:
         try:
             t0 = time.perf_counter()
-            list(model.embed(texts, batch_size=int(batch), parallel=None))
+            payload = texts
+            ort_bs = int(batch)
+            if profile.profile == "coreml" and static_bs is not None:
+                ort_bs = static_bs
+                payload = pad_embed_batch(texts[:static_bs], static_bs)
+            list(model.embed(payload, batch_size=ort_bs, parallel=None))
             wall = time.perf_counter() - t0
-            tps = len(texts) / max(wall, 1e-6)
-            measured[str(batch)] = round(tps, 3)
+            used = static_bs if profile.profile == "coreml" else len(texts)
+            tps = used / max(wall, 1e-6)
+            measured[str(batch if profile.profile != "coreml" else static_bs)] = round(tps, 3)
             print(
                 f"[accel] calibrate batch={batch} → {tps:.2f} t/s",
                 file=sys.stderr,
@@ -749,6 +793,9 @@ def calibrate_batch(
 
     scores = {int(k): v for k, v in measured.items()}
     winner, reason = pick_batch_size(scores)
+    if profile.profile == "coreml" and static_bs is not None:
+        winner = min(int(profile.batch_size or BATCH_PREFER), static_bs)
+        reason = f"CoreML static ONNX batch={static_bs}; runtime batch={winner}"
     winner_tps = scores.get(winner)
     elapsed = time.perf_counter() - t_start
     return {
@@ -763,6 +810,7 @@ def calibrate_batch(
         "prefer": BATCH_PREFER,
         "promote_ratio": BATCH_PROMOTE_MIN_RATIO,
         "promote_min_tps": BATCH_PROMOTE_MIN_TPS,
+        "coreml_static_batch": static_bs,
     }
 
 

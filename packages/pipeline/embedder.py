@@ -268,20 +268,32 @@ class Embedder:
 
         prof = self._accel or resolve_runtime()
         providers = prof.providers()
+        model_name = self.model if self.model else CODERANK_MODEL
+        if prof.profile == "coreml":
+            from pipeline.coreml_mac import coreml_model_name
+
+            model_name = coreml_model_name(model_name)
         print(
-            f"[embed] loading FastEmbed {self.model} profile={prof.profile} "
+            f"[embed] loading FastEmbed {model_name} profile={prof.profile} "
             f"batch={self.batch_size} providers={providers[0] if providers else '?'}",
             file=sys.stderr,
             flush=True,
         )
         t0 = time.perf_counter()
         self._fe_model = TextEmbedding(
-            model_name=self.model if self.model else CODERANK_MODEL,
+            model_name=model_name,
             threads=1,
             providers=providers,
             lazy_load=True,
         )
-        list(self._fe_model.embed(["warmup"], batch_size=1, parallel=None))
+        from pipeline.coreml_mac import pad_embed_batch, static_embed_batch_size
+
+        warm_bs = 1
+        warm = ["warmup"]
+        if prof.profile == "coreml":
+            warm_bs = static_embed_batch_size(prof, self.batch_size)
+            warm = pad_embed_batch(warm, warm_bs)
+        list(self._fe_model.embed(warm, batch_size=warm_bs, parallel=None))
         print(
             f"[embed] FastEmbed ready in {(time.perf_counter()-t0)*1000:.0f}ms",
             file=sys.stderr,
@@ -359,18 +371,33 @@ class Embedder:
         if self.backend == "fastembed":
             backup_batch = self._cpu_backup_batch_ceiling()
             runtime_state = self.runtime_state
+            prof = self._accel
+            gpu_only_coreml = False
+            if prof and prof.profile == "coreml":
+                from pipeline.coreml_mac import mac_gpu_only
+
+                gpu_only_coreml = mac_gpu_only()
             if (
                 runtime_state.active_profile == "cpu"
                 and runtime_state.preferred_profile != "cpu"
+                and not gpu_only_coreml
             ):
                 self.device = "cpu"
                 return self._embed_cpu_backup(batch, batch_size=backup_batch)
             try:
                 model = self._ensure_fastembed()
-                vecs = list(model.embed(batch, batch_size=len(batch), parallel=None))
-                return np.asarray(vecs, dtype=np.float32)
+                ort_bs = len(batch)
+                payload = batch
+                if prof and prof.profile == "coreml":
+                    from pipeline.coreml_mac import pad_embed_batch, static_embed_batch_size
+
+                    ort_bs = static_embed_batch_size(prof, self.batch_size)
+                    payload = pad_embed_batch(batch, ort_bs)
+                vecs = list(model.embed(payload, batch_size=ort_bs, parallel=None))
+                arr = np.asarray(vecs[: len(batch)], dtype=np.float32)
+                return arr
             except Exception as primary_exc:
-                if runtime_state.preferred_profile == "cpu":
+                if runtime_state.preferred_profile == "cpu" or gpu_only_coreml:
                     raise
                 from pipeline.runtime_profile import (
                     activate_cpu_backup,
