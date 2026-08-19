@@ -391,6 +391,7 @@ def pip_install(
     start_pct: int = 0,
     end_pct: int = 0,
     phase: str = "Installing packages",
+    force_reinstall: bool = False,
     no_deps: bool = False,
 ) -> None:
     cmd = [
@@ -405,6 +406,8 @@ def pip_install(
     ]
     if upgrade:
         cmd.append("-U")
+    if force_reinstall:
+        cmd.append("--force-reinstall")
     if no_deps:
         cmd.append("--no-deps")
     cmd.extend(pkgs)
@@ -449,6 +452,12 @@ def pip_uninstall(pkgs: list[str], *, progress: Any | None = None) -> None:
     )
 
 
+def _purge_ort_modules() -> None:
+    for name in list(sys.modules):
+        if name == "onnxruntime" or name.startswith("onnxruntime."):
+            del sys.modules[name]
+
+
 def _ort_profile_ready(profile: str) -> bool:
     if profile == "mlx":
         return True
@@ -460,6 +469,65 @@ def _ort_profile_ready(profile: str) -> bool:
         "cpu": "CPUExecutionProvider",
     }.get(profile)
     return bool(want and want in providers)
+
+
+def _install_ort_wheel(profile: str, progress: Any | None = None) -> None:
+    """Replace CPU/GPU/DML ORT wheels. They cannot coexist."""
+    if profile == "mlx":
+        return
+    _purge_ort_modules()
+    if _ort_profile_ready(profile):
+        if progress is not None:
+            progress.set(55, "GPU/CPU engine already installed")
+        return
+    all_ort = ["onnxruntime", "onnxruntime-gpu", "onnxruntime-directml"]
+    pip_uninstall(all_ort, progress=progress)
+    _purge_ort_modules()
+    pip_install(
+        ort_packages_for(profile),
+        progress=progress,
+        start_pct=32,
+        end_pct=54,
+        phase="Installing GPU/CPU engine",
+        force_reinstall=True,
+    )
+    _purge_ort_modules()
+    if _ort_profile_ready(profile):
+        if progress is not None:
+            progress.set(55, "GPU/CPU engine ready")
+        return
+    pip_install(
+        ort_packages_for(profile),
+        progress=progress,
+        start_pct=54,
+        end_pct=55,
+        phase="Retrying GPU/CPU engine",
+        force_reinstall=True,
+        upgrade=True,
+    )
+    _purge_ort_modules()
+
+
+def _align_profile_to_ort(profile: AccelProfile, progress: Any | None = None) -> None:
+    """Do not warm FastEmbed on an EP this wheel does not provide."""
+    if profile.profile in {"mlx", "cpu"}:
+        return
+    if _ort_profile_ready(profile.profile):
+        return
+    have = ort_available_providers()
+    msg = (
+        f"{profile.provider} is not in this onnxruntime wheel "
+        f"(providers={have}). Using CPU. Close other Python/ctx processes "
+        f"and re-run `ctx setup --repair` to retry GPU "
+        f"({ort_packages_for(profile.profile)[0]})."
+    )
+    if progress is not None:
+        progress.set(55, "GPU wheel missing — using CPU")
+    else:
+        print(f"[accel] {msg}", file=sys.stderr, flush=True)
+    profile.profile = "cpu"
+    profile.provider = "CPUExecutionProvider"
+    profile.reason = msg
 
 
 def install_profile_packages(profile: str, progress: Any | None = None) -> None:
@@ -482,20 +550,7 @@ def install_profile_packages(profile: str, progress: Any | None = None) -> None:
         )
     elif progress is not None:
         progress.set(32, "Embedding runtime already installed")
-    pip_uninstall(
-        conflicting_ort_packages(profile),
-        progress=progress,
-    )
-    if profile != "mlx" and not _ort_profile_ready(profile):
-        pip_install(
-            ort_packages_for(profile),
-            progress=progress,
-            start_pct=32,
-            end_pct=55,
-            phase="Installing GPU/CPU engine",
-        )
-    elif progress is not None:
-        progress.set(55, "GPU/CPU engine already installed")
+    _install_ort_wheel(profile, progress=progress)
 
 
 def ort_available_providers() -> list[str]:
@@ -625,6 +680,7 @@ def configure(
                 )
         else:
             install_profile_packages(profile.profile, progress=progress)
+        _align_profile_to_ort(profile, progress=progress)
         _refuse_coreml_cpu_fallback(profile, progress=progress)
     elif profile.profile == "coreml":
         _refuse_coreml_cpu_fallback(profile, progress=progress)

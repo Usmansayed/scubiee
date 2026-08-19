@@ -5,7 +5,23 @@ from __future__ import annotations
 import os
 import sys
 
-from pipeline.accel import _requirement_satisfied, _run_pip_captured
+from pipeline.accel import (
+    AccelProfile,
+    _align_profile_to_ort,
+    _requirement_satisfied,
+    _run_pip_captured,
+)
+
+
+def test_align_profile_falls_back_when_dml_missing(monkeypatch):
+    monkeypatch.setattr(
+        "pipeline.accel.ort_available_providers",
+        lambda: ["CPUExecutionProvider", "AzureExecutionProvider"],
+    )
+    prof = AccelProfile(profile="dml", provider="DmlExecutionProvider")
+    _align_profile_to_ort(prof)
+    assert prof.profile == "cpu"
+    assert prof.provider == "CPUExecutionProvider"
 
 
 def test_requirement_satisfied_for_installed_pip():
