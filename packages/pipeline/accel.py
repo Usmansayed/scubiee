@@ -13,6 +13,7 @@ Persists choice to ``~/.context-engine/accel.json``.
 from __future__ import annotations
 
 import hashlib
+import importlib.metadata
 import json
 import math
 import os
@@ -310,6 +311,34 @@ def conflicting_ort_packages(profile: str) -> list[str]:
     return sorted(all_ort - {keep})
 
 
+def _requirement_satisfied(spec: str) -> bool:
+    """True if importlib.metadata reports a version matching the PEP 508 spec."""
+    try:
+        from packaging.requirements import Requirement
+    except ImportError:
+        name = spec.split(">", 1)[0].split("=", 1)[0].split("<", 1)[0].strip()
+        try:
+            importlib.metadata.version(name)
+            return True
+        except importlib.metadata.PackageNotFoundError:
+            return False
+    req = Requirement(spec)
+    try:
+        have = importlib.metadata.version(req.name)
+    except importlib.metadata.PackageNotFoundError:
+        return False
+    if not req.specifier:
+        return True
+    return have in req.specifier
+
+
+def _pip_fail_detail(out: str, rc: int) -> str:
+    lines = [ln.strip() for ln in (out or "").splitlines() if ln.strip()]
+    if not lines:
+        return f"pip exited {rc}"
+    return " | ".join(lines[-6:])
+
+
 def _run_pip_captured(
     cmd: list[str],
     env: dict[str, str],
@@ -362,6 +391,7 @@ def pip_install(
     start_pct: int = 0,
     end_pct: int = 0,
     phase: str = "Installing packages",
+    no_deps: bool = False,
 ) -> None:
     cmd = [
         sys.executable,
@@ -375,6 +405,8 @@ def pip_install(
     ]
     if upgrade:
         cmd.append("-U")
+    if no_deps:
+        cmd.append("--no-deps")
     cmd.extend(pkgs)
     env = os.environ.copy()
     env["PIP_PROGRESS_BAR"] = "off"
@@ -395,12 +427,11 @@ def pip_install(
 
     rc, out = _run_pip_captured(cmd, env, on_tick=on_tick)
     if rc:
-        detail = (out or "").strip() or f"pip exited {rc}"
-        last = detail.splitlines()[-1] if detail else "pip failed"
+        last = _pip_fail_detail(out, rc)
         if progress is not None:
             progress.fail(f"{phase}: {last}")
         else:
-            print(detail, file=sys.stderr)
+            print((out or "").strip() or last, file=sys.stderr)
         raise subprocess.CalledProcessError(rc, cmd, output=out)
     if progress is not None and end_pct:
         progress.set(end_pct, phase)
@@ -418,6 +449,19 @@ def pip_uninstall(pkgs: list[str], *, progress: Any | None = None) -> None:
     )
 
 
+def _ort_profile_ready(profile: str) -> bool:
+    if profile == "mlx":
+        return True
+    providers = ort_available_providers()
+    want = {
+        "cuda": "CUDAExecutionProvider",
+        "dml": "DmlExecutionProvider",
+        "coreml": "CoreMLExecutionProvider",
+        "cpu": "CPUExecutionProvider",
+    }.get(profile)
+    return bool(want and want in providers)
+
+
 def install_profile_packages(profile: str, progress: Any | None = None) -> None:
     """Install FastEmbed + matching ORT wheel for profile (MLX on Apple Silicon)."""
     extras = ["fastembed>=0.4", "huggingface_hub>=0.20"]
@@ -425,24 +469,33 @@ def install_profile_packages(profile: str, progress: Any | None = None) -> None:
         extras.append("onnx>=1.16")
     if profile == "mlx":
         extras.append("mlx>=0.22")
-    pip_install(
-        extras,
-        progress=progress,
-        start_pct=18,
-        end_pct=32,
-        phase="Installing embedding runtime",
-    )
+    needed = [spec for spec in extras if not _requirement_satisfied(spec)]
+    if needed:
+        pip_install(
+            needed,
+            progress=progress,
+            start_pct=18,
+            end_pct=32,
+            phase="Installing embedding runtime",
+            # FastEmbed pulls CPU onnxruntime; GPU/DML wheel is installed next.
+            no_deps=any(s.startswith("fastembed") for s in needed),
+        )
+    elif progress is not None:
+        progress.set(32, "Embedding runtime already installed")
     pip_uninstall(
         conflicting_ort_packages(profile),
         progress=progress,
     )
-    pip_install(
-        ort_packages_for(profile),
-        progress=progress,
-        start_pct=32,
-        end_pct=55,
-        phase="Installing GPU/CPU engine",
-    )
+    if profile != "mlx" and not _ort_profile_ready(profile):
+        pip_install(
+            ort_packages_for(profile),
+            progress=progress,
+            start_pct=32,
+            end_pct=55,
+            phase="Installing GPU/CPU engine",
+        )
+    elif progress is not None:
+        progress.set(55, "GPU/CPU engine already installed")
 
 
 def ort_available_providers() -> list[str]:

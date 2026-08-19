@@ -5,7 +5,12 @@ from __future__ import annotations
 import os
 import sys
 
-from pipeline.accel import _run_pip_captured
+from pipeline.accel import _requirement_satisfied, _run_pip_captured
+
+
+def test_requirement_satisfied_for_installed_pip():
+    assert _requirement_satisfied("pip>=1")
+    assert not _requirement_satisfied("definitely-not-a-real-pkg-xyz>=1")
 
 
 def test_run_pip_captured_drains_large_stdout():
