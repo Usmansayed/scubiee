@@ -1,6 +1,6 @@
 # Scubiee
 
-Local Context Engine: Merkle sync → Graphify AST → **mix** compress → CodeRankEmbed (FastEmbed) → TurboQuant/FAISS → Conductor `R_plan`
+Local Context Engine: Merkle sync → Graphify AST → **mix** compress → CodeRankEmbed (MLX FP16 on Apple Silicon, FastEmbed CUDA/DirectML elsewhere) → TurboQuant/FAISS → Conductor `R_plan`
 
 ## Install (no git clone)
 
@@ -19,7 +19,7 @@ npm install -g scubiee
 
 Then `ctx init <repo>` for each codebase, and reload MCP in Cursor (Settings → MCP → refresh).
 
-`ctx setup` picks **CUDA** (NVIDIA), **DirectML** (Windows AMD/Intel), **CoreML** (macOS Metal/ANE), or **CPU**. No `[coreml]` extra required on Mac.
+`ctx setup` picks **CUDA** (NVIDIA), **DirectML** (Windows AMD/Intel), **MLX FP16** (Apple Silicon Metal), **CoreML** (Intel Mac), or **CPU**. On a MacBook, `pip install -U scubiee` already installs FastEmbed, ONNX Runtime, and **MLX** — no `[mlx]` / `[coreml]` extra required. Then `ctx setup` (or `ctx setup --repair` after an upgrade) writes the MLX FP16 profile. Opt out: `CTX_MLX=0` or `ctx setup --profile cpu`.
 
 If PyPI is behind GitHub, install the tagged release:
 

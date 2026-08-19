@@ -100,6 +100,19 @@ def test_sync_publishes_when_refreshed(runtime, tmp_path: Path, monkeypatch):
             assert out.get("published", {}).get("ok") is True
 
 
+def test_publish_reloads_without_resync(runtime, tmp_path: Path, monkeypatch):
+    repo = tmp_path / "r"
+    repo.mkdir()
+    runtime.repo = repo
+    monkeypatch.setattr(runtime, "_gate", lambda root=None: None)
+    with patch.object(
+        runtime, "publish_engine", return_value={"ok": True, "generation": 9}
+    ) as pub:
+        out = runtime.publish(repo, payload={"files": ["a.py"]})
+        pub.assert_called_once_with({"files": ["a.py"]})
+        assert out["ok"] is True
+
+
 def test_health_includes_generation(runtime):
     h = runtime.health()
     assert h["ok"] is True

@@ -7,8 +7,6 @@ import os
 from pathlib import Path
 from typing import Any
 
-_SOFT_CAP = 4
-
 
 def default_repo() -> Path:
     env = os.environ.get("CTX_REPO") or os.environ.get("CONTEXT_ENGINE_REPO")
@@ -21,37 +19,23 @@ def _norm_query(query: str) -> str:
     return " ".join((query or "").lower().split())
 
 
-def thrash_gate(repo: Path, query: str) -> dict[str, Any] | None:
-    """Refuse duplicate / over-budget soft searches (nav-style caps)."""
+def _record_search_query(repo: Path, query: str) -> str | None:
+    """Track queries for recall; return advisory hint on duplicates (never block)."""
     from pipeline.session_store import load_store, save_store
 
     store = load_store(repo)
     thrash = store.setdefault("locate_thrash", {"soft": [], "exact": [], "seen": []})
-    soft = thrash.setdefault("soft", [])
-    seen = thrash.setdefault("seen", [])
     qn = _norm_query(query)
-    if qn in seen:
-        return {
-            "ok": False,
-            "tool": "search",
-            "error": f"duplicate search blocked: {query[:160]}",
-            "thrash_blocked": True,
-            "hint": "Same query already ran. get_code_snippet / edit — do not re-search.",
-            "next": "snippet or edit",
-        }
-    if len(soft) >= _SOFT_CAP:
-        return {
-            "ok": False,
-            "tool": "search",
-            "error": f"soft search budget exhausted ({_SOFT_CAP}/{_SOFT_CAP})",
-            "thrash_blocked": True,
-            "hint": "soft≤4/task. Use graph/snippet and EDIT.",
-            "next": "edit",
-        }
-    soft.append(qn)
-    seen.append(qn)
+    duplicate = qn in (thrash.get("seen") or [])
+    thrash.setdefault("soft", []).append(qn)
+    thrash.setdefault("seen", []).append(qn)
     save_store(repo, store)
-    return None
+    if not duplicate:
+        return None
+    return (
+        "Advisory: this search query already ran. Use get_code_snippet / graph tools on "
+        "prior hits — only search again if the topic changed or prior results were empty."
+    )
 
 
 def soft_search(
@@ -63,9 +47,7 @@ def soft_search(
     max_chars: int = 1200,
 ) -> dict[str, Any]:
     """Run CE dense/fused locate; return facade-shaped payload."""
-    blocked = thrash_gate(repo, query)
-    if blocked is not None:
-        return blocked
+    usage_hint = _record_search_query(repo, query)
 
     from pipeline.locate import _read_excerpt, _search_hits
 
@@ -95,24 +77,28 @@ def soft_search(
     if results:
         nxt = (
             "If structure needed: search_graph / trace_path; else "
-            "get_code_snippet once, then EDIT. soft≤2/topic."
+            "get_code_snippet once, then EDIT."
         )
     else:
-        nxt = "no hits — one sharper soft query or search_graph(name_pattern)."
+        nxt = "No hits — sharpen the query once, then try graph/snippet paths."
 
-    return {
+    out: dict[str, Any] = {
         "ok": True,
-        "tool": "search",
-        "mode": "soft",
         "backend": "ce",
+        "tool": "search",
         "query": query,
-        "k": k,
-        "fetch": fetch,
         "count": len(results),
         "results": results,
         "next": nxt,
     }
+    if usage_hint:
+        out["usage_hint"] = usage_hint
+    return out
 
 
-def dumps(obj: Any) -> str:
-    return json.dumps(obj, indent=2, default=str)
+def soft_search_json(repo: Path, query: str, **kwargs: Any) -> str:
+    return json.dumps(soft_search(repo, query, **kwargs), indent=2, default=str)
+
+
+def dumps(obj: Any, **kwargs: Any) -> str:
+    return json.dumps(obj, indent=2, default=str, **kwargs)

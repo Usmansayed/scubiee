@@ -84,6 +84,9 @@ def test_resource_manager_uses_saved_calibration_as_ceiling(
         lambda *args, **kwargs: pytest.fail("runtime must not calibrate acceleration"),
     )
     monkeypatch.setenv("CTX_EMBED_BATCH", "64")
+    monkeypatch.delenv("CTX_CE_MEMORY_MODE", raising=False)
+    monkeypatch.delenv("CTX_CE_EMB_BATCH_CEILING", raising=False)
+    monkeypatch.delenv("CTX_CE_RSS_CAP_MB", raising=False)
     rm = ResourceManager()
     healthy = SystemSample(
         cpu_percent=10.0,

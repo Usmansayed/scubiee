@@ -59,11 +59,13 @@ def _tune_cpu_threads() -> None:
 
 
 def _accel_wants_fastembed() -> bool:
-    """Saved/hardware profile prefers FastEmbed unless explicitly overridden."""
+    """Saved/hardware profile prefers FastEmbed unless MLX is the runtime."""
     try:
         from pipeline.accel import resolve_runtime
 
         prof = resolve_runtime()
+        if str(getattr(prof, "profile", "") or "") == "mlx":
+            return False
         return str(getattr(prof, "backend", "fastembed") or "fastembed") == "fastembed"
     except Exception:  # noqa: BLE001
         return True
@@ -88,7 +90,7 @@ def _choose_backend(model: str, backend: str | None) -> str:
         chosen = backend
     else:
         env = os.environ.get("CTX_EMBED_BACKEND", "").strip().lower()
-        if env in {"fastembed", "coderank", "sentence-transformers", "st", "ollama"}:
+        if env in {"fastembed", "coderank", "sentence-transformers", "st", "ollama", "mlx"}:
             chosen = "coderank" if env in {"st", "sentence-transformers"} else env
         else:
             name = (model or "").lower()
@@ -101,6 +103,29 @@ def _choose_backend(model: str, backend: str | None) -> str:
             else:
                 chosen = "coderank"
 
+        try:
+            from pipeline.accel import resolve_runtime
+
+            prof = resolve_runtime()
+            if (
+                chosen == "fastembed"
+                and (prof.profile == "mlx" or prof.backend == "mlx")
+                and env not in {"fastembed", "cpu", "coreml"}
+            ):
+                chosen = "mlx"
+        except Exception:  # noqa: BLE001
+            pass
+
+    if chosen == "mlx":
+        try:
+            import mlx.core  # noqa: F401
+        except Exception as exc:  # noqa: BLE001
+            from pipeline.preflight import CapabilityError
+
+            raise CapabilityError(
+                "CTX_EMBED_BACKEND=mlx requires the mlx package on Apple Silicon "
+                "(pip install mlx). Refusing FastEmbed/CPU fallback."
+            ) from exc
     if chosen == "fastembed" and not _fastembed_available():
         from pipeline.preflight import CapabilityError
 
@@ -136,6 +161,9 @@ class Embedder:
         self.cache: dict[str, list[float]] = {}
         self._st_model = None
         self._fe_model = None
+        self._mlx_model = None
+        self._mlx_tokenizer = None
+        self._mlx_timings: dict[str, float] = {}
         self._cpu_backup_model = None
         self._cache_dirty: list[tuple[str, list[float]]] = []
         self.cache_flush_every = max(32, int(cache_flush_every))
@@ -166,7 +194,26 @@ class Embedder:
         if self.backend == "ollama":
             self.model = model.replace("ollama:", "")
 
-        if self.backend == "fastembed" and self._accel:
+        if self.backend == "mlx":
+            from pipeline.mlx_mac import require_mlx_gpu
+
+            report = require_mlx_gpu()
+            self.device = "gpu"
+            self._mlx_device_report = report
+            default_batch = max(1, int((self._accel.batch_size if self._accel else 32) or 32))
+            print("[embed] backend=mlx", file=sys.stderr, flush=True)
+            print("[embed] device=gpu", file=sys.stderr, flush=True)
+            print(
+                f"[embed] metal={'true' if report.get('metal_available') else 'false'}",
+                file=sys.stderr,
+                flush=True,
+            )
+            print(
+                f"[embed] mlx_device={report.get('default_device')}",
+                file=sys.stderr,
+                flush=True,
+            )
+        elif self.backend == "fastembed" and self._accel:
             self.device = self._accel.profile
             # Honor hardware-tuned batch (DML-safe 16, CUDA 32, CPU 8) — never invent 64+.
             default_batch = max(1, int(self._accel.batch_size or 16))
@@ -196,7 +243,16 @@ class Embedder:
                 flush=True,
             )
 
-        if cache_path and cache_path.exists():
+        skip_cache = os.environ.get("CTX_EMBED_NO_CACHE", "").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        self._skip_cache = skip_cache
+        if skip_cache:
+            self.cache_path = None
+        elif cache_path and cache_path.exists():
             self._load_cache()
 
     @property
@@ -286,11 +342,12 @@ class Embedder:
             providers=providers,
             lazy_load=True,
         )
-        from pipeline.coreml_mac import pad_embed_batch, static_embed_batch_size
+        from pipeline.coreml_mac import bind_coreml_tokenizer, pad_embed_batch, static_embed_batch_size
 
         warm_bs = 1
         warm = ["warmup"]
         if prof.profile == "coreml":
+            bind_coreml_tokenizer(self._fe_model)
             warm_bs = static_embed_batch_size(prof, self.batch_size)
             warm = pad_embed_batch(warm, warm_bs)
         list(self._fe_model.embed(warm, batch_size=warm_bs, parallel=None))
@@ -329,6 +386,36 @@ class Embedder:
         )
         return self._st_model
 
+    def _ensure_mlx(self):
+        if self._mlx_model is not None:
+            return self._mlx_model
+        from pipeline.mlx_mac import CodeRankMLX, load_coderank_tokenizer, require_mlx_gpu
+
+        report = require_mlx_gpu()
+        self._mlx_device_report = report
+        dtype = (os.environ.get("CTX_MLX_DTYPE") or "float16").strip().lower()
+        if dtype in {"fp16", "f16", "half"}:
+            dtype = "float16"
+        elif dtype in {"fp32", "f32"}:
+            dtype = "float32"
+        elif dtype not in {"float32", "float16"}:
+            raise RuntimeError(f"unsupported CTX_MLX_DTYPE={dtype!r}; use float16 or float32")
+        print(
+            f"[embed] loading MLX CodeRankEmbed dtype={dtype} device={report.get('default_device')}",
+            file=sys.stderr,
+            flush=True,
+        )
+        t0 = time.perf_counter()
+        self._mlx_model = CodeRankMLX(dtype=dtype, require_gpu=True)
+        self._mlx_tokenizer = load_coderank_tokenizer()
+        print(
+            f"[embed] MLX ready in {(time.perf_counter() - t0) * 1000:.0f}ms "
+            f"metal={bool(report.get('metal_available'))}",
+            file=sys.stderr,
+            flush=True,
+        )
+        return self._mlx_model
+
     def _embed_cpu_backup(self, batch: list[str], *, batch_size: int) -> np.ndarray:
         """Embed one operation on CPU without changing the installed profile."""
 
@@ -363,11 +450,29 @@ class Embedder:
         return max(1, ceiling // 2)
 
     def format_query(self, query: str) -> str:
-        if self.backend in {"coderank", "fastembed"} and not query.startswith(QUERY_PREFIX):
+        if self.backend in {"coderank", "fastembed", "mlx"} and not query.startswith(QUERY_PREFIX):
             return QUERY_PREFIX + query
         return query
 
     def _encode_batch(self, batch: list[str]) -> np.ndarray:
+        if self.backend == "mlx":
+            from pipeline.mlx_mac import content_token_count, tokenize_batch
+
+            model = self._ensure_mlx()
+            t0 = time.perf_counter()
+            ids, mask = tokenize_batch(
+                batch,
+                tokenizer=self._mlx_tokenizer,
+                max_seq=min(int(self.max_seq_length or 512), 512),
+            )
+            self._mlx_timings["tokenization"] = self._mlx_timings.get("tokenization", 0.0) + (
+                time.perf_counter() - t0
+            )
+            self._last_batch_tokens = content_token_count(mask)
+            self._last_batch_seq = int(ids.shape[1])
+            if ids.shape[1] > 512:
+                raise RuntimeError(f"MLX batch seq {ids.shape[1]} exceeds model max 512")
+            return model.embed_ids(ids, mask, timings=self._mlx_timings)
         if self.backend == "fastembed":
             backup_batch = self._cpu_backup_batch_ceiling()
             runtime_state = self.runtime_state
@@ -434,7 +539,7 @@ class Embedder:
             if self.dim is None:
                 self.dim = int(vec.shape[0])
             return vec
-        if self.backend in {"coderank", "fastembed"}:
+        if self.backend in {"coderank", "fastembed", "mlx"}:
             arr = self._encode_batch([payload])
             emb = arr[0].astype(np.float32).tolist()
         else:
@@ -469,11 +574,12 @@ class Embedder:
         pending_idx: list[int] = []
         pending_text: list[str] = []
         encoded: dict[int, np.ndarray] = {}
+        skip_cache = bool(getattr(self, "_skip_cache", False))
 
         for i, t in enumerate(texts):
             payload = self.format_query(t) if is_query else t
             key = text_key(("q:" if is_query else "d:") + payload)
-            if key in self.cache:
+            if not skip_cache and key in self.cache:
                 encoded[i] = np.asarray(self.cache[key], dtype=np.float32)
             else:
                 pending_idx.append(i)
@@ -484,10 +590,16 @@ class Embedder:
         done_new = 0
         # Adaptive batching via Resource Manager
         try:
-            from pipeline.resources import get_resource_manager
+            from pipeline.resources import get_resource_manager, resources_disabled
 
-            rm = get_resource_manager()
-            rm.refresh_base_from_accel()
+            if resources_disabled():
+                rm = None
+            else:
+                rm = get_resource_manager()
+                if rm.is_disabled():
+                    rm = None
+                else:
+                    rm.refresh_base_from_accel()
         except Exception:  # noqa: BLE001
             rm = None
 
@@ -495,6 +607,10 @@ class Embedder:
         # Floor: never thrash below the hardware-tuned batch on healthy systems.
         # Adaptive RM may raise (idle boost) or cut on busy/critical only.
         configured_bs = max(1, int(self.batch_size))
+        self._embed_token_total = 0
+        gpu_tok_total = 0
+        n_forwards = 0
+        self._mlx_timings = {}
         while start < len(pending_text):
             if rm is not None:
                 budget = rm.wait_for_capacity(
@@ -529,13 +645,36 @@ class Embedder:
             for j, idx in enumerate(idxs):
                 vec = arr[j].astype(np.float32)
                 encoded[idx] = vec
-                key = text_key(("q:" if is_query else "d:") + batch[j])
-                emb = vec.tolist()
-                self.cache[key] = emb
-                self._queue_cache(key, emb)
+                if not skip_cache:
+                    key = text_key(("q:" if is_query else "d:") + batch[j])
+                    emb = vec.tolist()
+                    self.cache[key] = emb
+                    self._queue_cache(key, emb)
             done_new += len(batch)
             batch_ms = (time.perf_counter() - t_batch) * 1000
             rate = len(batch) / max(batch_ms / 1000.0, 1e-6)
+            real_tok = 0
+            if self.backend == "mlx":
+                real_tok = int(getattr(self, "_last_batch_tokens", 0) or 0)
+            else:
+                try:
+                    fe = self._fe_model
+                    inner = getattr(fe, "model", fe) if fe is not None else None
+                    tok = getattr(inner, "tokenizer", None) if inner is not None else None
+                    if tok is not None:
+                        real_tok = sum(int(sum(enc.attention_mask)) for enc in tok.encode_batch(batch))
+                except Exception:  # noqa: BLE001
+                    real_tok = max(1, sum(len(t) for t in batch) // 4)
+            wall_s = max(batch_ms / 1000.0, 1e-6)
+            tok_ps = real_tok / wall_s
+            self._embed_token_total = int(getattr(self, "_embed_token_total", 0)) + real_tok
+            n_forwards += 1
+            if (self._accel and getattr(self._accel, "profile", None) == "coreml") or self.device == "coreml":
+                from pipeline.coreml_mac import COREML_STATIC_BATCH, COREML_STATIC_SEQ
+
+                gpu_tok_total += COREML_STATIC_BATCH * COREML_STATIC_SEQ
+            else:
+                gpu_tok_total += real_tok
             if progress:
                 progress(min(start + bs, len(pending_text)), len(texts))
             if not progress and (
@@ -546,7 +685,13 @@ class Embedder:
                 print(
                     f"[embed] {done_new}/{len(pending_text)} new "
                     f"(+{len(encoded)-done_new} cached) "
-                    f"{rate:.1f} chunk/s batch_ms={batch_ms:.0f} bs={bs} device={self.device}",
+                    f"{rate:.2f} chunk/s {tok_ps:.0f} tok/s "
+                    f"batch_ms={batch_ms:.0f} bs={bs} device={self.device}"
+                    + (
+                        f" seq={getattr(self, '_last_batch_seq', '?')}"
+                        if self.backend == "mlx"
+                        else ""
+                    ),
                     file=sys.stderr,
                     flush=True,
                 )
@@ -567,23 +712,37 @@ class Embedder:
         matrix = np.stack(rows, axis=0)
         self.dim = int(matrix.shape[1])
         elapsed = time.perf_counter() - t_all
+        tok_total = int(getattr(self, "_embed_token_total", 0) or 0)
+        self._embed_token_total = 0
         self._last_stats = {
             "total": len(texts),
             "cached": len(texts) - len(pending_text),
             "embedded": len(pending_text),
             "seconds": round(elapsed, 2),
             "chunk_per_s": round(len(pending_text) / max(elapsed, 1e-6), 2),
+            "tokens": tok_total,
+            "tok_per_s": round(tok_total / max(elapsed, 1e-6), 1),
+            "gpu_tok_per_s": round(gpu_tok_total / max(elapsed, 1e-6), 1),
+            "forwards": n_forwards,
             "device": self.device,
             "batch_size": bs,
             "backend": self.backend,
+            "timings_s": {k: round(v, 4) for k, v in (self._mlx_timings or {}).items()},
         }
         if not progress:
             print(
                 f"[embed] done: {self._last_stats['embedded']} new / {self._last_stats['cached']} cached "
-                f"in {elapsed:.1f}s ({self._last_stats['chunk_per_s']:.1f} chunk/s) on {self.device}",
+                f"in {elapsed:.1f}s ({self._last_stats['chunk_per_s']:.2f} chunk/s, "
+                f"{self._last_stats['tok_per_s']:.0f} content tok/s, "
+                f"{self._last_stats['gpu_tok_per_s']:.0f} GPU tok/s) on {self.device}",
                 file=sys.stderr,
                 flush=True,
             )
+            if self.backend == "mlx" and self._mlx_timings:
+                parts = " ".join(
+                    f"{k}={v:.3f}s" for k, v in sorted(self._mlx_timings.items())
+                )
+                print(f"[embed] mlx breakdown: {parts}", file=sys.stderr, flush=True)
         return matrix
 
     def _ollama_embed(self, text: str) -> list[float]:

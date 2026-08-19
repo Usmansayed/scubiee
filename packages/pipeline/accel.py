@@ -1,9 +1,10 @@
 """Hardware acceleration probe + install profile for CodeRank FastEmbed.
 
-Profiles (mutually exclusive ORT wheels):
+Profiles (mutually exclusive ORT wheels, plus Mac MLX):
   - cuda    → onnxruntime-gpu
   - dml     → onnxruntime-directml  (Windows AMD/Intel/NVIDIA without CUDA stack)
-  - coreml  → onnxruntime  (macOS Metal GPU + Apple Neural Engine)
+  - mlx     → Apple Silicon Metal (FP16 CodeRank; default on Darwin arm64)
+  - coreml  → onnxruntime  (Intel Mac / explicit --profile coreml)
   - cpu     → onnxruntime
 
 Persists choice to ``~/.context-engine/accel.json``.
@@ -41,7 +42,7 @@ BATCH_CALIBRATE_N = int(os.environ.get("CTX_BATCH_CALIBRATE_N", "64"))
 
 @dataclass
 class AccelProfile:
-    profile: str  # cuda | dml | coreml | cpu
+    profile: str  # cuda | dml | mlx | coreml | cpu
     provider: str  # CUDAExecutionProvider | DmlExecutionProvider | CoreMLExecutionProvider | CPUExecutionProvider
     device_id: int = 0
     batch_size: int = 16
@@ -67,6 +68,8 @@ class AccelProfile:
         )
 
     def providers(self) -> list:
+        if self.profile == "mlx" or self.backend == "mlx":
+            raise RuntimeError("MLX backend does not use ONNX Runtime providers")
         if self.profile == "cuda":
             return [("CUDAExecutionProvider", {"device_id": self.device_id}), "CPUExecutionProvider"]
         if self.profile == "dml":
@@ -118,6 +121,34 @@ def _has_nvidia() -> bool:
         return bool(torch.cuda.is_available())
     except Exception:  # noqa: BLE001
         return False
+
+
+def _is_apple_silicon(detected: dict[str, Any] | None = None) -> bool:
+    d = detected or {}
+    if d.get("apple_silicon"):
+        return True
+    os_name = str(d.get("os") or platform.system())
+    machine = str(d.get("machine") or platform.machine()).lower()
+    if os_name == "Darwin" and machine in {"arm64", "aarch64"}:
+        return True
+    names = " ".join(str(g.get("name") or "") for g in (d.get("gpus") or [])).lower()
+    return os_name == "Darwin" and ("apple" in names or "m1" in names or "m2" in names or "m3" in names or "m4" in names or "m5" in names)
+
+
+def _mlx_importable() -> bool:
+    try:
+        import mlx.core  # noqa: F401
+
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _env_disables_mlx() -> bool:
+    raw = (os.environ.get("CTX_MLX") or os.environ.get("CTX_EMBED_BACKEND") or "").strip().lower()
+    if raw in {"0", "false", "off", "no"}:
+        return True
+    return raw in {"fastembed", "cpu", "coreml", "st", "coderank", "sentence-transformers", "ollama"}
 
 
 def _windows_d3d12_gpus() -> list[dict[str, Any]]:
@@ -173,7 +204,9 @@ def detect_hardware() -> dict[str, Any]:
     apple_silicon = platform.system() == "Darwin" and machine.lower() in {"arm64", "aarch64"}
     if apple_silicon and not gpus:
         gpus = [{"name": "Apple Silicon GPU", "adapter_ram": 0, "backend": "metal"}]
-    coreml_units = "CPUAndGPU" if apple_silicon else "CPUAndGPU"
+    from pipeline.coreml_mac import requested_compute_units
+
+    coreml_units = requested_compute_units()
     return {
         "os": platform.system(),
         "machine": machine,
@@ -209,14 +242,28 @@ def recommend_profile(detected: dict[str, Any] | None = None) -> AccelProfile:
             detected=d,
         )
     if d.get("os") == "Darwin":
-        machine = str(d.get("machine") or "").lower()
-        apple_silicon = bool(d.get("apple_silicon")) or machine in {"arm64", "aarch64"}
-        units = str(d.get("coreml_compute_units") or ("ALL" if apple_silicon or not machine else "CPUAndGPU"))
+        apple_silicon = _is_apple_silicon(d)
+        from pipeline.coreml_mac import requested_compute_units
+
+        units = str(d.get("coreml_compute_units") or requested_compute_units())
         detected = {
             **d,
             "apple_silicon": apple_silicon,
             "coreml_compute_units": units,
         }
+        if apple_silicon and not _env_disables_mlx():
+            from pipeline.memory_budget import bootstrap_budget
+
+            budget = bootstrap_budget()
+            return AccelProfile(
+                profile="mlx",
+                provider="MLX",
+                backend="mlx",
+                device_id=0,
+                batch_size=budget.mlx_batch,
+                reason="Apple Silicon GPU via MLX FP16 — Metal, no CoreML/ORT for embed",
+                detected=detected,
+            )
         why = "macOS CoreML (Metal GPU"
         if apple_silicon or units == "ALL":
             why += " + Neural Engine"
@@ -244,6 +291,8 @@ def ort_packages_for(profile: str) -> list[str]:
         return ["onnxruntime-gpu>=1.17"]
     if profile == "dml":
         return ["onnxruntime-directml>=1.17"]
+    if profile == "mlx":
+        return ["onnxruntime>=1.17"]
     return ["onnxruntime>=1.17"]
 
 
@@ -255,6 +304,7 @@ def conflicting_ort_packages(profile: str) -> list[str]:
         "dml": "onnxruntime-directml",
         "cpu": "onnxruntime",
         "coreml": "onnxruntime",
+        "mlx": "onnxruntime",
     }[profile]
     return sorted(all_ort - {keep})
 
@@ -326,10 +376,12 @@ def pip_uninstall(pkgs: list[str], *, progress: Any | None = None) -> None:
 
 
 def install_profile_packages(profile: str, progress: Any | None = None) -> None:
-    """Install FastEmbed + matching ORT wheel for profile."""
+    """Install FastEmbed + matching ORT wheel for profile (MLX on Apple Silicon)."""
     extras = ["fastembed>=0.4", "huggingface_hub>=0.20"]
-    if profile == "coreml":
+    if profile in {"coreml", "mlx"}:
         extras.append("onnx>=1.16")
+    if profile == "mlx":
+        extras.append("mlx>=0.22")
     pip_install(
         extras,
         progress=progress,
@@ -338,7 +390,7 @@ def install_profile_packages(profile: str, progress: Any | None = None) -> None:
         phase="Installing embedding runtime",
     )
     pip_uninstall(
-        ["onnxruntime", "onnxruntime-gpu", "onnxruntime-directml"],
+        conflicting_ort_packages(profile),
         progress=progress,
     )
     pip_install(
@@ -360,10 +412,12 @@ def ort_available_providers() -> list[str]:
 
 
 def profile_packages_satisfied(profile: AccelProfile) -> bool:
-    """True if saved accel matches target and ORT already exposes the provider."""
+    """True if saved accel matches target and the runtime already exposes it."""
     saved = load_accel()
     if saved is None or saved.profile != profile.profile:
         return False
+    if profile.profile == "mlx" or profile.backend == "mlx":
+        return _mlx_importable()
     providers = ort_available_providers()
     if not providers:
         return False
@@ -374,6 +428,34 @@ def profile_packages_satisfied(profile: AccelProfile) -> bool:
     if profile.profile == "cpu" and providers:
         return True
     return False
+
+
+def _refuse_coreml_cpu_fallback(
+    profile: AccelProfile, progress: Any | None = None
+) -> None:
+    """Hard-fail CoreML setup when the EP is missing instead of silent CPU."""
+    if profile.profile != "coreml":
+        return
+    from pipeline.coreml_mac import mac_gpu_only
+
+    available = ort_available_providers()
+    if not available:
+        return
+    if "CoreMLExecutionProvider" in available:
+        return
+    msg = (
+        "macOS GPU requested but CoreMLExecutionProvider is missing from this "
+        f"onnxruntime wheel (providers={available})"
+    )
+    if mac_gpu_only():
+        raise RuntimeError(msg + ". Refusing CPU fallback (CTX_MAC_GPU_ONLY=1).")
+    if progress is None:
+        print(f"[accel] {msg} — CPU fallback", file=sys.stderr, flush=True)
+    else:
+        progress.set(55, "CoreML unavailable — using CPU")
+    profile.profile = "cpu"
+    profile.provider = "CPUExecutionProvider"
+    profile.reason = msg
 
 
 def configure(
@@ -399,7 +481,7 @@ def configure(
     profile = recommend_profile(detected)
     if force_profile:
         fp = force_profile.lower().strip()
-        if fp not in {"cuda", "dml", "cpu", "coreml"}:
+        if fp not in {"cuda", "dml", "cpu", "coreml", "mlx"}:
             raise ValueError(f"unknown profile {force_profile}")
         profile.profile = fp
         profile.provider = {
@@ -407,18 +489,26 @@ def configure(
             "dml": "DmlExecutionProvider",
             "cpu": "CPUExecutionProvider",
             "coreml": "CoreMLExecutionProvider",
+            "mlx": "MLX",
         }[fp]
         profile.reason = f"forced profile={fp}"
         profile.detected = detected
+        if fp == "mlx":
+            profile.backend = "mlx"
+            from pipeline.memory_budget import bootstrap_budget
+
+            profile.batch_size = bootstrap_budget().mlx_batch
         if fp == "dml":
             profile.device_id = int(detected.get("suggested_dml_device_id") or 0)
         if fp == "coreml":
+            from pipeline.coreml_mac import requested_compute_units
+
             machine = str(detected.get("machine") or platform.machine()).lower()
             apple = machine in {"arm64", "aarch64"}
             detected = {
                 **detected,
                 "apple_silicon": apple,
-                "coreml_compute_units": "ALL" if apple else "CPUAndGPU",
+                "coreml_compute_units": requested_compute_units(),
             }
             profile.detected = detected
         profile.batch_size = BATCH_PREFER
@@ -439,22 +529,9 @@ def configure(
                 )
         else:
             install_profile_packages(profile.profile, progress=progress)
-            if profile.profile == "coreml":
-                available = ort_available_providers()
-                if available and "CoreMLExecutionProvider" not in available:
-                    if progress is None:
-                        print(
-                            "[accel] CoreML EP not in this onnxruntime wheel — CPU fallback",
-                            file=sys.stderr,
-                            flush=True,
-                        )
-                    else:
-                        progress.set(55, "CoreML unavailable — using CPU")
-                    profile.profile = "cpu"
-                    profile.provider = "CPUExecutionProvider"
-                    profile.reason = (
-                        "macOS GPU requested but CoreMLExecutionProvider is missing"
-                    )
+        _refuse_coreml_cpu_fallback(profile, progress=progress)
+    elif profile.profile == "coreml":
+        _refuse_coreml_cpu_fallback(profile, progress=progress)
     if download_model:
         if progress is not None:
             progress.set(56, "Downloading embedding model")
@@ -462,21 +539,59 @@ def configure(
             from pipeline.coreml_mac import (
                 COREML_STATIC_BATCH,
                 COREML_STATIC_SEQ,
+                assert_coreml_ep_active,
+                coreml_model_name,
                 register_coreml_coderank_model,
             )
 
             if progress is not None:
                 progress.set(57, "Preparing CoreML-static CodeRank ONNX")
-            register_coreml_coderank_model(
+            patched = register_coreml_coderank_model(
                 batch=COREML_STATIC_BATCH,
                 seq=COREML_STATIC_SEQ,
             )
+            if patched is None:
+                raise RuntimeError(
+                    "Failed to patch CodeRank ONNX for CoreML static shapes. "
+                    "Refusing CPU fallback."
+                )
+            if progress is not None:
+                progress.set(70, "Probing CoreML GPU session")
+            else:
+                print(
+                    f"[accel] probing CoreML EP on {patched}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+            used = assert_coreml_ep_active(patched, profile.providers())
+            print(
+                f"[accel] CoreML session providers={used}",
+                file=sys.stderr,
+                flush=True,
+            )
+            profile.model = coreml_model_name(profile.model)
+        if profile.profile == "mlx":
+            if progress is not None:
+                progress.set(57, "Preparing MLX FP16 CodeRank weights")
+            from pipeline.mlx_mac import apply_mlx_production_defaults
+
+            apply_mlx_production_defaults()
+            profile.backend = "mlx"
+            profile.provider = "MLX"
         ensure_coderank_model(profile, progress=progress)
     if bench:
         if progress is not None:
             progress.set(86, "Calibrating speed")
         try:
-            calibration = calibrate_batch(profile)
+            if profile.profile == "mlx":
+                calibration = _calibrate_mlx(profile)
+            else:
+                calibration = calibrate_batch(profile)
+            if profile.profile == "coreml" and not calibration.get("ok"):
+                raise RuntimeError(
+                    "CoreML calibration failed: "
+                    f"{calibration.get('errors') or calibration.get('error') or calibration}"
+                )
             profile.batch_size = int(calibration["winner"])
             profile.texts_per_sec = calibration.get("texts_per_sec")
             profile.meets_target = (
@@ -492,6 +607,42 @@ def configure(
                     file=sys.stderr,
                     flush=True,
                 )
+            if (
+                profile.profile == "coreml"
+                and (profile.texts_per_sec or 0) < TARGET_TPS
+            ):
+                coreml_tps = float(profile.texts_per_sec or 0)
+                msg = (
+                    f"CoreML Metal path is {coreml_tps:.2f} t/s (RoPE dim-0 splits "
+                    "the graph into many CPU/GPU partitions). Switching to Apple "
+                    "Silicon CPU FastEmbed, which is much faster on this model."
+                )
+                if progress is None:
+                    print(f"[accel] {msg}", file=sys.stderr, flush=True)
+                else:
+                    progress.set(88, "CoreML too slow — using CPU")
+                profile.profile = "cpu"
+                profile.provider = "CPUExecutionProvider"
+                profile.model = CODERANK_MODEL
+                profile.reason = msg
+                calibration = calibrate_batch(profile)
+                profile.batch_size = int(calibration["winner"])
+                profile.texts_per_sec = calibration.get("texts_per_sec")
+                profile.meets_target = (
+                    profile.texts_per_sec is not None
+                    and profile.texts_per_sec >= TARGET_TPS
+                )
+                profile.batch_calibration = {
+                    **calibration,
+                    "coreml_rejected_tps": coreml_tps,
+                }
+                if progress is None:
+                    print(
+                        f"[accel] CPU batch={profile.batch_size} "
+                        f"{profile.texts_per_sec or 0:.2f} t/s",
+                        file=sys.stderr,
+                        flush=True,
+                    )
             if not profile.meets_target and progress is None:
                 print(
                     "[accel] WARNING: below 10 t/s target — indexing will still work; "
@@ -500,6 +651,12 @@ def configure(
                     flush=True,
                 )
         except Exception as exc:  # noqa: BLE001
+            from pipeline.coreml_mac import mac_gpu_only
+
+            if profile.profile == "coreml" and mac_gpu_only():
+                raise RuntimeError(
+                    f"CoreML GPU calibration failed: {exc}. Refusing CPU fallback."
+                ) from exc
             if progress is None:
                 print(f"[accel] batch calibration failed: {exc}", file=sys.stderr, flush=True)
             profile.texts_per_sec = None
@@ -623,16 +780,38 @@ def ensure_coderank_model(
         worker = threading.Thread(target=_pulse, daemon=True)
         worker.start()
     try:
-        m = TextEmbedding(
-            model_name=model_name,
-            threads=1,
-            providers=prof.providers(),
-            lazy_load=True,
-        )
-        warmup = ["warmup coderank embedding on accelerator"]
-        if prof.profile == "coreml":
-            warmup = pad_embed_batch(warmup, static_bs)
-        list(m.embed(warmup, batch_size=static_bs, parallel=None))
+        if prof.profile == "mlx" or prof.backend == "mlx":
+            from pipeline.mlx_mac import (
+                CodeRankMLX,
+                apply_mlx_production_defaults,
+                ensure_mlx_fp16_weights,
+            )
+
+            apply_mlx_production_defaults()
+            # Download ONNX via CPU EP, then convert to isolated MLX FP16 weights.
+            m = TextEmbedding(
+                model_name=CODERANK_MODEL,
+                threads=1,
+                providers=["CPUExecutionProvider"],
+                lazy_load=True,
+            )
+            list(m.embed(["warmup coderank embedding on accelerator"], batch_size=1, parallel=None))
+            ensure_mlx_fp16_weights()
+            CodeRankMLX(dtype="float16", require_gpu=True)
+        else:
+            m = TextEmbedding(
+                model_name=model_name,
+                threads=1,
+                providers=prof.providers(),
+                lazy_load=True,
+            )
+            warmup = ["warmup coderank embedding on accelerator"]
+            if prof.profile == "coreml":
+                from pipeline.coreml_mac import bind_coreml_tokenizer
+
+                bind_coreml_tokenizer(m)
+                warmup = pad_embed_batch(warmup, static_bs)
+            list(m.embed(warmup, batch_size=static_bs, parallel=None))
     finally:
         stop.set()
         for name, value in previous.items():
@@ -644,6 +823,40 @@ def ensure_coderank_model(
         progress.set(85, "Embedding model ready")
     else:
         print("[accel] CodeRank model ready", file=sys.stderr, flush=True)
+
+
+def _calibrate_mlx(profile: AccelProfile) -> dict[str, Any]:
+    """Persist MLX production batch without an ORT microbench."""
+    from pipeline.memory_budget import bootstrap_budget
+    from pipeline.mlx_mac import CodeRankMLX, apply_mlx_production_defaults
+
+    apply_mlx_production_defaults()
+    budget = bootstrap_budget()
+    winner = int(budget.mlx_batch)
+    tps = None
+    try:
+        model = CodeRankMLX(dtype="float16", require_gpu=True)
+        texts = _calibration_corpus(max(8, min(48, winner)))
+        t0 = time.perf_counter()
+        model.embed_texts(texts)
+        wall = max(time.perf_counter() - t0, 1e-6)
+        tps = round(len(texts) / wall, 3)
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "ok": False,
+            "winner": winner,
+            "error": str(exc),
+            "reason": "mlx warmup failed",
+        }
+    profile.batch_size = winner
+    return {
+        "ok": True,
+        "winner": winner,
+        "texts_per_sec": tps,
+        "candidates": {str(winner): tps},
+        "reason": "MLX FP16 production batch (bootstrap memory budget)",
+        "dtype": "float16",
+    }
 
 
 def _calibration_corpus(n: int) -> list[str]:
@@ -756,6 +969,9 @@ def calibrate_batch(
             lazy_load=True,
         )
         if static_bs:
+            from pipeline.coreml_mac import bind_coreml_tokenizer
+
+            bind_coreml_tokenizer(model)
             warm = pad_embed_batch(texts[:static_bs], static_bs)
             list(model.embed(warm, batch_size=static_bs, parallel=None))
         else:
@@ -797,6 +1013,8 @@ def calibrate_batch(
         winner = min(int(profile.batch_size or BATCH_PREFER), static_bs)
         reason = f"CoreML static ONNX batch={static_bs}; runtime batch={winner}"
     winner_tps = scores.get(winner)
+    if winner_tps is None and static_bs is not None:
+        winner_tps = scores.get(int(static_bs))
     elapsed = time.perf_counter() - t_start
     return {
         "ok": bool(scores),
@@ -824,8 +1042,40 @@ def microbench(profile: AccelProfile, n: int = 48) -> float:
 
 
 def resolve_runtime() -> AccelProfile:
-    """Load the installed preference without detection or selection."""
+    """Load the installed preference without detection or selection.
+
+    Apple Silicon: ``ctx setup`` persists ``profile=mlx`` (FP16). A saved
+    CoreML profile is overlaid with MLX when the ``mlx`` package is installed.
+    ``accel.json`` is not rewritten here. Opt out with ``CTX_EMBED_BACKEND=fastembed``
+    or ``CTX_MLX=0``. An explicit CPU profile is left unchanged.
+    """
     profile = load_accel()
     if profile is None:
         raise RuntimeError("acceleration profile is not configured; run `ctx setup`")
-    return profile
+    env = os.environ.get("CTX_EMBED_BACKEND", "").strip().lower()
+    want_mlx = env == "mlx" or (profile.profile == "mlx" or profile.backend == "mlx")
+    if profile.profile in {"dml", "cuda"} and env != "mlx":
+        return profile
+    if not want_mlx and not _env_disables_mlx() and _is_apple_silicon(profile.detected or {}):
+        # Promote the old CoreML path only. An explicit CPU profile stays CPU.
+        if profile.profile == "coreml" and _mlx_importable():
+            want_mlx = True
+    if not want_mlx:
+        return profile
+    from dataclasses import replace
+
+    from pipeline.memory_budget import bootstrap_budget
+
+    batch = int(profile.batch_size or bootstrap_budget().mlx_batch)
+    if "CTX_EMBED_BATCH" in os.environ:
+        batch = max(1, int(os.environ["CTX_EMBED_BATCH"]))
+    elif profile.profile not in {"mlx"}:
+        batch = bootstrap_budget().mlx_batch
+    return replace(
+        profile,
+        profile="mlx",
+        provider="MLX",
+        backend="mlx",
+        batch_size=batch,
+        reason="MLX FP16 overlay (saved accel.json unchanged)",
+    )

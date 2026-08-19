@@ -153,7 +153,7 @@ def test_search_returns_ce_shape(monkeypatch):
     assert out["results"][0]["file"] == "pkg/mod.py"
 
 
-def test_search_thrash_blocks_duplicate(monkeypatch, tmp_path):
+def test_search_thrash_advises_duplicate_without_blocking(monkeypatch, tmp_path):
     from hybrid_cbm import semantic as sem
     from pipeline import locate as loc
 
@@ -168,8 +168,9 @@ def test_search_thrash_blocks_duplicate(monkeypatch, tmp_path):
     first = sem.soft_search(tmp_path, "where is focus")
     assert first["ok"] is True
     second = sem.soft_search(tmp_path, "where is focus")
-    assert second["ok"] is False
-    assert second.get("thrash_blocked") is True
+    assert second["ok"] is True
+    assert "usage_hint" in second
+    assert "Advisory" in second["usage_hint"]
 
 
 def test_graph_tools_use_proxy(monkeypatch):

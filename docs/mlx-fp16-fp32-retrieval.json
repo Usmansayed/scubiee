@@ -1,0 +1,2324 @@
+{
+  "repo": "/Users/usmansayed/Downloads/hidden-context-engine-",
+  "queries": 50,
+  "soft": 35,
+  "hard": 15,
+  "index_fp32_s": 45.91,
+  "fp32": {
+    "embed_backend": "mlx",
+    "embed_model": "nomic-ai/CodeRankEmbed",
+    "chunks": 2927,
+    "top_k": 8,
+    "overall": {
+      "n": 50,
+      "hits": 37,
+      "hit@1": 0.52,
+      "hit@5": 0.72,
+      "hit@8": 0.74,
+      "mrr": 0.5903
+    },
+    "soft": {
+      "n": 35,
+      "hits": 23,
+      "hit@1": 0.3714,
+      "hit@5": 0.6286,
+      "hit@8": 0.6571,
+      "mrr": 0.4662
+    },
+    "hard": {
+      "n": 15,
+      "hits": 14,
+      "hit@1": 0.8667,
+      "hit@5": 0.9333,
+      "hit@8": 0.9333,
+      "mrr": 0.88
+    },
+    "cases": [
+      {
+        "id": "soft01",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "how does the MLX backend embed CodeRank on the Apple GPU",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/mlx_mac.py",
+          "scripts/eval_mlx_fp16_fp32_retrieval.py",
+          "docs/mlx-m5-index-report.md",
+          "tests/test_mlx_mac.py",
+          "tests/test_repo_presence.py",
+          "packages/pipeline/repo_runtime.py",
+          "packages/graphify/extract.py",
+          "tests/test_dashboard_api.py"
+        ],
+        "elapsed_ms": 130.3
+      },
+      {
+        "id": "soft02",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "where do we refuse to run MLX on CPU when Metal is unavailable",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/mlx_mac.py",
+          "tests/test_capability_promotion.py",
+          "packages/pipeline/context_agent/tools.py",
+          "tests/test_test_runner.py",
+          "tests/test_sync_status_canaries.py",
+          "packages/pipeline/context_agent/agent.py",
+          "packages/pipeline/engine.py",
+          "tests/test_resource_envelope.py"
+        ],
+        "elapsed_ms": 13.1
+      },
+      {
+        "id": "soft03",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "pad each embedding batch only to its longest sequence not always five twelve",
+        "hit": true,
+        "rank": 4,
+        "returned": [
+          "docs/mlx-memory-optimization.md",
+          "tests/test_mcp_lean.py",
+          "tests/seir_exp/test_spans.py",
+          "packages/pipeline/mlx_mac.py",
+          "packages/pipeline/turbo_quant.py",
+          "tests/test_runtime_publish.py",
+          "scripts/eval_mlx_fp16_fp32_retrieval.py",
+          "packages/pipeline/coreml_mac.py"
+        ],
+        "elapsed_ms": 12.2
+      },
+      {
+        "id": "soft04",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "detect which source files changed since the last index using content hashes",
+        "hit": false,
+        "rank": null,
+        "returned": [
+          "packages/graphify/detect.py",
+          "tests/test_faiss_dense_adapter.py",
+          "tests/test_project_id.py",
+          "tests/test_sdk_mcp_smoke.py",
+          "tests/test_install_profile_selection.py",
+          "tests/test_package_install_entry.py",
+          "packages/hybrid_cbm/__main__.py",
+          "packages/pipeline/runtime_profile.py"
+        ],
+        "elapsed_ms": 17.6
+      },
+      {
+        "id": "soft05",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "compress embedding vectors with turboquant before storing in faiss",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/vectordb.py",
+          "packages/graphify/extractors/elixir.py",
+          "packages/graphify/dedup.py",
+          "packages/pipeline/preflight.py",
+          "packages/graphify/extractors/csharp.py",
+          "packages/pipeline/__init__.py",
+          "packages/graphify/extract.py",
+          "packages/graphify/extractors/terraform.py"
+        ],
+        "elapsed_ms": 11.2
+      },
+      {
+        "id": "soft06",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "adaptive batch size when the machine is under memory or cpu pressure during embed",
+        "hit": false,
+        "rank": null,
+        "returned": [
+          "packages/pipeline/session_store.py",
+          "tests/test_session_store.py",
+          "tests/seir_exp/test_render.py",
+          "packages/pipeline/server.py",
+          "packages/seir/rels.py",
+          "packages/pipeline/daemon.py",
+          "docs/superpowers/specs/2026-08-18-ctx-setup-then-init-design.md",
+          "scripts/install_mcp_frontend.py"
+        ],
+        "elapsed_ms": 14.6
+      },
+      {
+        "id": "soft07",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "patch CoreML ONNX when RoPE leaves an empty tensor slice",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/coreml_mac.py",
+          "tests/test_mcp_lean.py",
+          "packages/pipeline/hot_patch.py",
+          "tests/test_cli_init_repo.py",
+          "packages/graphify/_minhash.py",
+          "packages/pipeline/doctor.py",
+          "tests/test_git_family.py",
+          "packages/pipeline/client.py"
+        ],
+        "elapsed_ms": 10.9
+      },
+      {
+        "id": "soft08",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "capability cards that answer soft natural language locate queries",
+        "hit": false,
+        "rank": null,
+        "returned": [
+          "packages/pipeline/locate.py",
+          "docs/superpowers/specs/2026-08-03-capability-locate-design.md",
+          "tests/test_capability_promotion.py",
+          "packages/conductor/f95.py",
+          "packages/graphify/dedup.py",
+          "docs/superpowers/specs/2026-08-11-cbm-ce-hybrid-design.md",
+          "tests/test_dashboard_api.py",
+          "packages/pipeline/dashboard_port.py"
+        ],
+        "elapsed_ms": 12.8
+      },
+      {
+        "id": "soft09",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "MCP tools for map focus and expand context navigation",
+        "hit": false,
+        "rank": null,
+        "returned": [
+          "packages/pipeline/context_agent/llm_llama.py",
+          "scripts/eval_locate_quality.py",
+          "docs/superpowers/specs/2026-08-06-agent-context-tools-design.md",
+          "docs/engineering/04-agent-tools-and-mcp.md",
+          "docs/context-engine-mcp.md",
+          "tests/test_sdk_mcp_smoke.py",
+          "packages/conductor/fusion_math.py",
+          "docs/sdk-dev-trial-runbook.md"
+        ],
+        "elapsed_ms": 14.5
+      },
+      {
+        "id": "soft10",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "resolve a stable project id when the repository path moves",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/project_id.py",
+          "tests/test_project_id.py",
+          "packages/graphify/extractors/json_config.py",
+          "packages/graphify/cache.py",
+          "tests/test_repo_lifecycle.py",
+          "tests/test_root_probe.py",
+          "tests/test_ce_architecture.py",
+          "packages/pipeline/root_probe.py"
+        ],
+        "elapsed_ms": 13.3
+      },
+      {
+        "id": "soft11",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "compress chunk bodies with mix or skeleton modes before embedding",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/chunk_compress.py",
+          "docs/compress-mix-shipped.md",
+          "packages/seir/ast_tree.py",
+          "packages/seir/rels.py",
+          "packages/graphify/analyze.py",
+          "docs/superpowers/specs/2026-08-06-seir-design.md",
+          "tests/test_enrich.py",
+          "scripts/seir_ab_bench.py"
+        ],
+        "elapsed_ms": 10.7
+      },
+      {
+        "id": "soft12",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "extract symbols and imports from source files into a graph",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/graphify/extract.py",
+          "packages/pipeline/coreml_mac.py",
+          "docs/reindexing/live-reindexing-delivery.md",
+          "packages/pipeline/project_id.py",
+          "packages/conductor/bm25_index.py",
+          "docs/superpowers/specs/2026-08-03-retrieval-orchestration-decision.md",
+          "packages/conductor/dense_index.py",
+          "tests/test_repo_lifecycle.py"
+        ],
+        "elapsed_ms": 35.6
+      },
+      {
+        "id": "soft13",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "decide whether search needs a full reindex or incremental sync",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/incremental.py",
+          "tests/test_sdk_mcp_dev_trial.py",
+          "tests/test_index_coverage.py",
+          "packages/conductor/soft_bank.py",
+          "packages/pipeline/mcp_locate.py",
+          "packages/conductor/architectures.py",
+          "packages/graphify/extractors/resolution.py",
+          "tests/test_dashboard_api.py"
+        ],
+        "elapsed_ms": 13.9
+      },
+      {
+        "id": "soft14",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "search the faiss vector collection for nearest chunk embeddings",
+        "hit": true,
+        "rank": 5,
+        "returned": [
+          "docs/phase1-parser-comparison.md",
+          "docs/engineering/02-indexing-and-embeddings.md",
+          "docs/engineering/00-START-HERE.md",
+          "docs/engineering/01-architecture.md",
+          "packages/pipeline/vectordb.py",
+          "packages/pipeline/searcher.py",
+          "tests/test_cli_init_repo.py",
+          "scripts/sim_install_forget.py"
+        ],
+        "elapsed_ms": 12.4
+      },
+      {
+        "id": "soft15",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "classify a query as soft natural language versus path-like hard lookup",
+        "hit": false,
+        "rank": null,
+        "returned": [
+          "packages/pipeline/query_tune.py",
+          "packages/graphify/resolver_registry.py",
+          "packages/graphify/build.py",
+          "tests/test_mcp_repo_resolution.py",
+          "packages/metadata/__init__.py",
+          "scripts/prune_engine_state.py",
+          "packages/conductor/soft_bank.py",
+          "tests/test_doctor_certify.py"
+        ],
+        "elapsed_ms": 14.2
+      },
+      {
+        "id": "soft16",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "background daemon that serves search over http",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/daemon.py",
+          "packages/graphify/querylog.py",
+          "packages/pipeline/context_nav.py",
+          "packages/pipeline/dashboard_ui/storage_render.js",
+          "packages/conductor/fusion_math.py",
+          "packages/graphify/transcribe.py",
+          "packages/graphify/export.py",
+          "scripts/mcp_stdio_client.py"
+        ],
+        "elapsed_ms": 12.0
+      },
+      {
+        "id": "soft17",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "choose between fastembed onnx and mlx for document embedding",
+        "hit": true,
+        "rank": 4,
+        "returned": [
+          "packages/hybrid_cbm/server.py",
+          "packages/pipeline/ce_service.py",
+          "docs/engineering/00-START-HERE.md",
+          "packages/pipeline/embedder.py",
+          "packages/pipeline/mcp_server.py",
+          "tests/test_context_nav.py",
+          "packages/seir/__init__.py",
+          "tests/test_ce_architecture.py"
+        ],
+        "elapsed_ms": 9.6
+      },
+      {
+        "id": "soft18",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "preflight checks that refuse index when semantic backend is missing",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/preflight.py",
+          "packages/hybrid_cbm/semantic.py",
+          "packages/seir/semantic.py",
+          "tests/test_preflight.py",
+          "tests/test_mlx_backend.py",
+          "tests/test_cross_platform_profiles.py",
+          "tests/test_production_scenarios.py",
+          "packages/pipeline/accel.py"
+        ],
+        "elapsed_ms": 12.1
+      },
+      {
+        "id": "soft19",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "combine bm25 dense and graph signals in the D channel reranker",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/conductor/architectures.py",
+          "docs/engineering/03-retrieval-and-search.md",
+          "packages/conductor/bm25_index.py",
+          "tests/test_lifecycle_runtime.py",
+          "packages/pipeline/ce_service.py",
+          "docs/superpowers/specs/2026-08-17-ce-operator-dashboard-design.md",
+          "docs/superpowers/specs/2026-08-06-d-channel-best-cursor-ab-design.md",
+          "packages/conductor/diverse_bank.py"
+        ],
+        "elapsed_ms": 37.5
+      },
+      {
+        "id": "soft20",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "patch bm25 text from disk while dense embeddings catch up after edits",
+        "hit": true,
+        "rank": 5,
+        "returned": [
+          "packages/conductor/__init__.py",
+          "tests/test_faiss_dense_adapter.py",
+          "docs/superpowers/specs/2026-08-03-keeper-sync-lifecycle-design.md",
+          "packages/conductor/architectures.py",
+          "packages/pipeline/hot_patch.py",
+          "packages/conductor/hard_v2_gold.py",
+          "packages/pipeline/accel.py",
+          "docs/phase1-parser-comparison.md"
+        ],
+        "elapsed_ms": 13.4
+      },
+      {
+        "id": "soft21",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "persist session state and token budgets for agent workflows",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/session_store.py",
+          "packages/graphify/extractors/resolution.py",
+          "scripts/eval_locate_quality.py",
+          "packages/graphify/extractors/pascal.py",
+          "tests/test_install_profile_selection.py",
+          "packages/seir/spans.py",
+          "packages/graphify/extractors/markdown.py",
+          "packages/graphify/extractors/dm.py"
+        ],
+        "elapsed_ms": 14.0
+      },
+      {
+        "id": "soft22",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "register the CodeRank ONNX model with fastembed custom models",
+        "hit": true,
+        "rank": 6,
+        "returned": [
+          "packages/pipeline/coreml_mac.py",
+          "packages/graphify/extractors/models.py",
+          "packages/graphify/resolver_registry.py",
+          "tests/test_coreml_mac.py",
+          "docs/superpowers/specs/2026-08-03-universal-embed-accel-design.md",
+          "packages/pipeline/accel.py",
+          "packages/graphify/mcp_ingest.py",
+          "packages/pipeline/embedder.py"
+        ],
+        "elapsed_ms": 8.9
+      },
+      {
+        "id": "soft23",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "incrementally re-embed only changed chunks not the whole repository",
+        "hit": false,
+        "rank": null,
+        "returned": [
+          "packages/conductor/conductor.py",
+          "packages/pipeline/dashboard_ui/app.js",
+          "packages/graphify/pascal_resolution.py",
+          "packages/graphify/extractors/rust.py",
+          "packages/conductor/architectures.py",
+          "packages/conductor/fusion_math.py",
+          "packages/graphify/paths.py",
+          "packages/conductor/__init__.py"
+        ],
+        "elapsed_ms": 11.2
+      },
+      {
+        "id": "soft24",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "store vectors in named collections under the context engine home directory",
+        "hit": false,
+        "rank": null,
+        "returned": [
+          "docs/superpowers/specs/2026-08-08-session-native-context-engine-design.md",
+          "docs/superpowers/specs/2026-08-08-natural-sdk-context-engine-vs-graphify-smoke-design.md",
+          "docs/context-engine-mcp.md",
+          "packages/pipeline/project_id.py",
+          "packages/pipeline/context_agent/tools.py",
+          "docs/superpowers/specs/2026-08-06-session-arch-lsp-planner-design.md",
+          "docs/superpowers/plans/2026-08-06-session-arch-lsp-planner.md",
+          "scripts/bench_apple_silicon_embed.py"
+        ],
+        "elapsed_ms": 15.5
+      },
+      {
+        "id": "soft25",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "convert graphify extraction output into repo ir for chunking",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/parse_harness/graphify_adapter.py",
+          "docs/superpowers/specs/2026-08-08-natural-sdk-context-engine-vs-graphify-smoke-design.md",
+          "packages/graphify/extractors/base.py",
+          "packages/pipeline/store.py",
+          "packages/graphify/cache.py",
+          "packages/conductor/graphify_retriever.py",
+          "packages/pipeline/token_meter.py",
+          "packages/seir/rels.py"
+        ],
+        "elapsed_ms": 33.3
+      },
+      {
+        "id": "soft26",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "inject file and symbol metadata into enriched chunk text",
+        "hit": false,
+        "rank": null,
+        "returned": [
+          "packages/graphify/export.py",
+          "tests/test_chunk_merkle.py",
+          "packages/graphify/file_slice.py",
+          "packages/metadata/__init__.py",
+          "packages/graphify/extractors/dm.py",
+          "packages/pipeline/chunk_compress.py",
+          "packages/graphify/extractors/engine.py",
+          "packages/graphify/paths.py"
+        ],
+        "elapsed_ms": 14.8
+      },
+      {
+        "id": "soft27",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "track which files were touched in the current working session",
+        "hit": false,
+        "rank": null,
+        "returned": [
+          "packages/pipeline/freshness.py",
+          "packages/graphify/transcribe.py",
+          "packages/pipeline/vectordb.py",
+          "packages/conductor/query_router.py",
+          "tests/test_enrich.py",
+          "packages/seir/ast_tree.py",
+          "packages/pipeline/settings.py",
+          "packages/hybrid_cbm/__init__.py"
+        ],
+        "elapsed_ms": 33.5
+      },
+      {
+        "id": "soft28",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "fair scheduling priority for embed versus index jobs",
+        "hit": true,
+        "rank": 4,
+        "returned": [
+          "packages/conductor/bm25_index.py",
+          "packages/pipeline/vectordb.py",
+          "packages/graphify/extractors/models.py",
+          "packages/pipeline/fair_schedule.py",
+          "packages/pipeline/repo_presence.py",
+          "scripts/cleanup_repo.py",
+          "packages/graphify/extractors/pascal.py",
+          "packages/pipeline/live_reindex.py"
+        ],
+        "elapsed_ms": 11.8
+      },
+      {
+        "id": "soft29",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "checksum guard when publishing index artifacts",
+        "hit": true,
+        "rank": 2,
+        "returned": [
+          "packages/pipeline/chunk_compress.py",
+          "packages/pipeline/artifact_guard.py",
+          "packages/pipeline/dashboard_ui/storage_render.js",
+          "docs/compress-mix-shipped.md",
+          "packages/pipeline/searcher.py",
+          "packages/pipeline/embedder.py",
+          "packages/pipeline/indexer.py",
+          "packages/conductor/architectures.py"
+        ],
+        "elapsed_ms": 10.3
+      },
+      {
+        "id": "soft30",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "background live reindex when files change during development",
+        "hit": false,
+        "rank": null,
+        "returned": [
+          "tests/test_cross_platform_profiles.py",
+          "docs/superpowers/plans/2026-08-17-cross-platform-runtime-compatibility.md",
+          "tests/test_install_profile_selection.py",
+          "packages/pipeline/runtime_profile.py",
+          "docs/engineering/05-background-systems.md",
+          "tests/test_resource_envelope.py",
+          "packages/parse_harness/claude_context_probe.py",
+          "tests/test_batch_calibration.py"
+        ],
+        "elapsed_ms": 14.0
+      },
+      {
+        "id": "soft31",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "sealed navigation read outline and neighbors over the code graph",
+        "hit": false,
+        "rank": null,
+        "returned": [
+          "docs/superpowers/specs/2026-08-10-sealed-nav-trial-postmortem.md",
+          "docs/superpowers/plans/2026-08-10-sealed-retrieval-nav.md",
+          "docs/superpowers/specs/2026-08-10-sealed-retrieval-nav-design.md",
+          "packages/pipeline/context_agent/llm_llama.py",
+          "packages/pipeline/repo_runtime.py",
+          "scripts/context_agent/README.md",
+          "packages/enrich/__init__.py",
+          "docs/engineering/00-START-HERE.md"
+        ],
+        "elapsed_ms": 40.6
+      },
+      {
+        "id": "soft32",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "estimate token savings from compact search hits versus reading whole files",
+        "hit": true,
+        "rank": 2,
+        "returned": [
+          "packages/pipeline/doctor.py",
+          "packages/pipeline/token_meter.py",
+          "packages/parse_harness/graphify_adapter.py",
+          "packages/pipeline/resources.py",
+          "packages/pipeline/certify.py",
+          "packages/pipeline/store.py",
+          "packages/graphify/extractors/dm.py",
+          "packages/graphify/pascal_resolution.py"
+        ],
+        "elapsed_ms": 12.6
+      },
+      {
+        "id": "soft33",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "merkle snapshot per chunk for fine grained invalidation",
+        "hit": true,
+        "rank": 2,
+        "returned": [
+          "packages/pipeline/merkle.py",
+          "packages/pipeline/chunk_merkle.py",
+          "packages/graphify/extractors/json_config.py",
+          "packages/graphify/analyze.py",
+          "scripts/eval_mlx_fp16_fp32_retrieval.py",
+          "scripts/mcp_stdio_client.py",
+          "packages/hybrid_cbm/proxy.py",
+          "docs/reindexing/chunk-level-incremental-indexing.md"
+        ],
+        "elapsed_ms": 35.2
+      },
+      {
+        "id": "soft34",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "policy for where indexes and vector db files are stored on disk",
+        "hit": false,
+        "rank": null,
+        "returned": [
+          "packages/pipeline/progress_ui.py",
+          "packages/metadata/__init__.py",
+          "tests/test_production_scenarios.py",
+          "tests/test_dashboard_ui_contract.py",
+          "packages/graphify/cache.py",
+          "packages/seir/rels.py",
+          "packages/seir/importance.py",
+          "tests/test_coreml_mac.py"
+        ],
+        "elapsed_ms": 11.0
+      },
+      {
+        "id": "soft35",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "detect hardware and persist recommended acceleration profile",
+        "hit": true,
+        "rank": 2,
+        "returned": [
+          "packages/graphify/detect.py",
+          "packages/pipeline/hardware.py",
+          "packages/pipeline/accel.py",
+          "docs/mlx-m5-index-report.md",
+          "docs/engineering/02-indexing-and-embeddings.md",
+          "docs/superpowers/specs/2026-08-03-universal-embed-accel-design.md",
+          "docs/superpowers/plans/2026-08-17-cross-platform-runtime-compatibility.md",
+          "packages/conductor/bm25_index.py"
+        ],
+        "elapsed_ms": 9.0
+      },
+      {
+        "id": "hard01",
+        "kind": "hard",
+        "bucket": "symbol",
+        "query": "CodeRankMLX forward_tokens embed_ids",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/mlx_mac.py",
+          "scripts/bench_mlx_memory.py",
+          "scripts/bench_apple_silicon_embed.py",
+          "tests/test_mlx_mac.py",
+          "packages/pipeline/lifecycle_runtime.py",
+          "docs/superpowers/plans/2026-08-10-sealed-retrieval-nav.md",
+          "packages/seir/render.py",
+          "packages/pipeline/mcp_server.py"
+        ],
+        "elapsed_ms": 6.5
+      },
+      {
+        "id": "hard02",
+        "kind": "hard",
+        "bucket": "symbol",
+        "query": "require_mlx_gpu mlx_device_report",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/mlx_mac.py",
+          "tests/test_mlx_mac.py",
+          "tests/test_mlx_backend.py",
+          "scripts/bench_mlx_memory.py",
+          "packages/graphify/extractors/verilog.py",
+          "packages/pipeline/progress_ui.py",
+          "packages/pipeline/ce_service.py",
+          "packages/pipeline/repo_runtime.py"
+        ],
+        "elapsed_ms": 5.3
+      },
+      {
+        "id": "hard03",
+        "kind": "hard",
+        "bucket": "symbol",
+        "query": "bypass_empty_rotary_remainders norot0 onnx",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/coreml_mac.py",
+          "tests/test_coreml_mac.py",
+          "docs/superpowers/specs/2026-08-03-universal-embed-accel-design.md",
+          "packages/pipeline/accel.py",
+          "packages/conductor/architectures.py",
+          "packages/conductor/f95.py",
+          "packages/conductor/__init__.py",
+          "packages/conductor/fusion_math.py"
+        ],
+        "elapsed_ms": 5.7
+      },
+      {
+        "id": "hard04",
+        "kind": "hard",
+        "bucket": "symbol",
+        "query": "scaled_dot_product_attention CTX_MLX_FAST_ATTN",
+        "hit": false,
+        "rank": null,
+        "returned": [
+          "tests/test_sdk_mcp_smoke.py",
+          "packages/graphify/_minhash.py",
+          "packages/seir/semantic.py",
+          "packages/pipeline/test_runner.py"
+        ],
+        "elapsed_ms": 5.5
+      },
+      {
+        "id": "hard05",
+        "kind": "hard",
+        "bucket": "symbol",
+        "query": "resolve_runtime CTX_EMBED_BACKEND mlx overlay",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/accel.py",
+          "tests/test_mlx_backend.py",
+          "packages/pipeline/mlx_mac.py",
+          "scripts/bench_mlx_pipeline.py",
+          "packages/pipeline/embedder.py",
+          "packages/pipeline/coreml_mac.py",
+          "packages/pipeline/project_id.py",
+          "packages/pipeline/repo_runtime.py"
+        ],
+        "elapsed_ms": 6.8
+      },
+      {
+        "id": "hard06",
+        "kind": "hard",
+        "bucket": "symbol",
+        "query": "FaissDenseAdapter col.search IndexIDMap2",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/searcher.py",
+          "tests/test_faiss_dense_adapter.py",
+          "packages/conductor/dense_index.py",
+          "packages/pipeline/vectordb.py",
+          "packages/pipeline/paths.py",
+          "packages/parse_harness/graphify_adapter.py",
+          "tests/test_storage_policy.py",
+          "packages/graphify/file_slice.py"
+        ],
+        "elapsed_ms": 9.2
+      },
+      {
+        "id": "hard07",
+        "kind": "hard",
+        "bucket": "symbol",
+        "query": "retrieve_D_channel_best MultiArchConductor",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/conductor/architectures.py",
+          "packages/conductor/conductor.py",
+          "packages/conductor/bm25_index.py",
+          "packages/conductor/query_router.py",
+          "packages/conductor/service.py",
+          "scripts/eval_mlx_fp16_fp32_retrieval.py",
+          "scripts/bench_mix_seq_ab.py",
+          "packages/pipeline/merkle.py"
+        ],
+        "elapsed_ms": 7.0
+      },
+      {
+        "id": "hard08",
+        "kind": "hard",
+        "bucket": "symbol",
+        "query": "tokenize_batch enable_padding longest batch",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/mlx_mac.py",
+          "packages/pipeline/embedder.py",
+          "scripts/bench_mlx_memory.py",
+          "packages/pipeline/coreml_mac.py",
+          "packages/pipeline/store.py",
+          "scripts/prune_engine_state.py",
+          "packages/pipeline/settings.py",
+          "docs/mlx-m5-index-report.md"
+        ],
+        "elapsed_ms": 8.1
+      },
+      {
+        "id": "hard09",
+        "kind": "hard",
+        "bucket": "symbol",
+        "query": "PipelineStore upsert_vectors turboquant",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/store.py",
+          "tests/test_storage_policy.py",
+          "packages/pipeline/turbo_quant.py",
+          "packages/pipeline/vectordb.py",
+          "packages/pipeline/__init__.py",
+          "packages/pipeline/merkle.py",
+          "packages/pipeline/dashboard_ui/app.js",
+          "packages/pipeline/repo_runtime.py"
+        ],
+        "elapsed_ms": 6.4
+      },
+      {
+        "id": "hard10",
+        "kind": "hard",
+        "bucket": "symbol",
+        "query": "IndexDeferred wait_for_capacity resource manager",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/indexer.py",
+          "packages/pipeline/resources.py",
+          "tests/test_resources.py",
+          "packages/pipeline/vectordb.py",
+          "tests/test_auto_sessions_observability.py",
+          "packages/pipeline/ce_service.py",
+          "docs/superpowers/specs/2026-08-11-search-only-vs-read-verdict.md",
+          "fixtures/mini-repo/user/tokens.ts"
+        ],
+        "elapsed_ms": 9.6
+      },
+      {
+        "id": "hard11",
+        "kind": "hard",
+        "bucket": "confusable",
+        "query": "CoreML static batch pad 512 CodeRank onnx metal",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/coreml_mac.py",
+          "tests/test_coreml_mac.py",
+          "scripts/bench_apple_silicon_embed.py",
+          "packages/graphify/transcribe.py",
+          "packages/metadata/__init__.py",
+          "packages/graphify/extractors/objc.py",
+          "packages/graphify/ingest.py",
+          "packages/pipeline/mlx_mac.py"
+        ],
+        "elapsed_ms": 8.6
+      },
+      {
+        "id": "hard12",
+        "kind": "hard",
+        "bucket": "confusable",
+        "query": "validate_provider inspect_accel preflight not configure",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/preflight.py",
+          "tests/test_cross_platform_profiles.py",
+          "tests/test_mlx_backend.py",
+          "packages/pipeline/certify.py",
+          "packages/pipeline/accel.py",
+          "packages/pipeline/resource_envelope.py",
+          "packages/pipeline/sync_loop.py",
+          "packages/pipeline/dirty_journal.py"
+        ],
+        "elapsed_ms": 7.2
+      },
+      {
+        "id": "hard13",
+        "kind": "hard",
+        "bucket": "multihop",
+        "query": "rotate-half RoPE base 1000 head dim 64 nomic bert",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/mlx_mac.py",
+          "packages/pipeline/merkle.py",
+          "tests/test_sdk_mcp_dev_trial.py",
+          "scripts/eval_locate_quality.py",
+          "packages/pipeline/dirty_journal.py",
+          "packages/pipeline/mcp_locate.py",
+          "packages/pipeline/dirty_ledger.py",
+          "packages/pipeline/server.py"
+        ],
+        "elapsed_ms": 42.1
+      },
+      {
+        "id": "hard14",
+        "kind": "hard",
+        "bucket": "multihop",
+        "query": "Represent this query for searching relevant code prefix is_query",
+        "hit": true,
+        "rank": 5,
+        "returned": [
+          "scripts/bench_difficult_compare.py",
+          "scripts/bench_budget_alloc.py",
+          "scripts/bench_size_ladder.py",
+          "scripts/bench_mix_seq_ab.py",
+          "packages/pipeline/embedder.py",
+          "packages/conductor/query_router.py",
+          "packages/pipeline/context_agent/prompts.py",
+          "packages/conductor/hard_v2_gold.py"
+        ],
+        "elapsed_ms": 9.6
+      },
+      {
+        "id": "hard15",
+        "kind": "hard",
+        "bucket": "distractor",
+        "query": "sentence-transformers coderank pytorch fallback backend",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/embedder.py",
+          "packages/pipeline/ce_service.py",
+          "packages/pipeline/mlx_mac.py",
+          "packages/pipeline/lifecycle_runtime.py",
+          "tests/test_mlx_backend.py",
+          "packages/pipeline/engine.py",
+          "tests/test_sdk_mcp_dev_trial.py",
+          "packages/pipeline/server.py"
+        ],
+        "elapsed_ms": 7.8
+      }
+    ]
+  },
+  "index_fp16_s": 46.34,
+  "fp16": {
+    "embed_backend": "mlx",
+    "embed_model": "nomic-ai/CodeRankEmbed",
+    "chunks": 2927,
+    "top_k": 8,
+    "overall": {
+      "n": 50,
+      "hits": 37,
+      "hit@1": 0.52,
+      "hit@5": 0.72,
+      "hit@8": 0.74,
+      "mrr": 0.591
+    },
+    "soft": {
+      "n": 35,
+      "hits": 23,
+      "hit@1": 0.3714,
+      "hit@5": 0.6286,
+      "hit@8": 0.6571,
+      "mrr": 0.4671
+    },
+    "hard": {
+      "n": 15,
+      "hits": 14,
+      "hit@1": 0.8667,
+      "hit@5": 0.9333,
+      "hit@8": 0.9333,
+      "mrr": 0.88
+    },
+    "cases": [
+      {
+        "id": "soft01",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "how does the MLX backend embed CodeRank on the Apple GPU",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/mlx_mac.py",
+          "docs/mlx-m5-index-report.md",
+          "tests/test_repo_presence.py",
+          "tests/test_mlx_mac.py",
+          "packages/pipeline/repo_runtime.py",
+          "packages/graphify/extract.py",
+          "tests/test_dashboard_api.py",
+          "packages/conductor/query_router.py"
+        ],
+        "elapsed_ms": 133.4
+      },
+      {
+        "id": "soft02",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "where do we refuse to run MLX on CPU when Metal is unavailable",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/mlx_mac.py",
+          "tests/test_capability_promotion.py",
+          "tests/test_sync_status_canaries.py",
+          "packages/pipeline/context_agent/tools.py",
+          "tests/test_test_runner.py",
+          "packages/pipeline/context_agent/agent.py",
+          "tests/test_resource_envelope.py",
+          "docs/mlx-m5-index-report.md"
+        ],
+        "elapsed_ms": 13.9
+      },
+      {
+        "id": "soft03",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "pad each embedding batch only to its longest sequence not always five twelve",
+        "hit": true,
+        "rank": 3,
+        "returned": [
+          "docs/mlx-memory-optimization.md",
+          "tests/test_mcp_lean.py",
+          "packages/pipeline/mlx_mac.py",
+          "tests/seir_exp/test_spans.py",
+          "packages/pipeline/turbo_quant.py",
+          "tests/test_runtime_publish.py",
+          "scripts/eval_mlx_fp16_fp32_retrieval.py",
+          "packages/pipeline/coreml_mac.py"
+        ],
+        "elapsed_ms": 13.0
+      },
+      {
+        "id": "soft04",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "detect which source files changed since the last index using content hashes",
+        "hit": false,
+        "rank": null,
+        "returned": [
+          "packages/graphify/detect.py",
+          "tests/test_faiss_dense_adapter.py",
+          "tests/test_project_id.py",
+          "tests/test_sdk_mcp_smoke.py",
+          "tests/test_install_profile_selection.py",
+          "tests/test_package_install_entry.py",
+          "packages/hybrid_cbm/__main__.py",
+          "packages/pipeline/runtime_profile.py"
+        ],
+        "elapsed_ms": 19.4
+      },
+      {
+        "id": "soft05",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "compress embedding vectors with turboquant before storing in faiss",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/vectordb.py",
+          "packages/graphify/extractors/elixir.py",
+          "packages/graphify/dedup.py",
+          "packages/pipeline/preflight.py",
+          "packages/graphify/extractors/csharp.py",
+          "packages/pipeline/__init__.py",
+          "packages/graphify/extract.py",
+          "packages/graphify/extractors/terraform.py"
+        ],
+        "elapsed_ms": 11.8
+      },
+      {
+        "id": "soft06",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "adaptive batch size when the machine is under memory or cpu pressure during embed",
+        "hit": false,
+        "rank": null,
+        "returned": [
+          "packages/pipeline/session_store.py",
+          "tests/test_session_store.py",
+          "tests/seir_exp/test_render.py",
+          "packages/pipeline/server.py",
+          "packages/seir/rels.py",
+          "packages/pipeline/daemon.py",
+          "docs/superpowers/specs/2026-08-18-ctx-setup-then-init-design.md",
+          "scripts/install_mcp_frontend.py"
+        ],
+        "elapsed_ms": 16.0
+      },
+      {
+        "id": "soft07",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "patch CoreML ONNX when RoPE leaves an empty tensor slice",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/coreml_mac.py",
+          "tests/test_mcp_lean.py",
+          "packages/pipeline/hot_patch.py",
+          "tests/test_cli_init_repo.py",
+          "packages/graphify/_minhash.py",
+          "packages/pipeline/doctor.py",
+          "tests/test_git_family.py",
+          "packages/pipeline/client.py"
+        ],
+        "elapsed_ms": 11.7
+      },
+      {
+        "id": "soft08",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "capability cards that answer soft natural language locate queries",
+        "hit": false,
+        "rank": null,
+        "returned": [
+          "packages/pipeline/locate.py",
+          "docs/superpowers/specs/2026-08-03-capability-locate-design.md",
+          "tests/test_capability_promotion.py",
+          "packages/conductor/f95.py",
+          "packages/graphify/dedup.py",
+          "docs/superpowers/specs/2026-08-11-cbm-ce-hybrid-design.md",
+          "tests/test_dashboard_api.py",
+          "packages/pipeline/dashboard_port.py"
+        ],
+        "elapsed_ms": 14.1
+      },
+      {
+        "id": "soft09",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "MCP tools for map focus and expand context navigation",
+        "hit": false,
+        "rank": null,
+        "returned": [
+          "packages/pipeline/context_agent/llm_llama.py",
+          "scripts/eval_locate_quality.py",
+          "docs/superpowers/specs/2026-08-06-agent-context-tools-design.md",
+          "docs/engineering/04-agent-tools-and-mcp.md",
+          "docs/context-engine-mcp.md",
+          "tests/test_sdk_mcp_smoke.py",
+          "packages/conductor/fusion_math.py",
+          "docs/sdk-dev-trial-runbook.md"
+        ],
+        "elapsed_ms": 15.8
+      },
+      {
+        "id": "soft10",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "resolve a stable project id when the repository path moves",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/project_id.py",
+          "tests/test_project_id.py",
+          "packages/graphify/cache.py",
+          "packages/graphify/extractors/json_config.py",
+          "tests/test_repo_lifecycle.py",
+          "tests/test_root_probe.py",
+          "tests/test_ce_architecture.py",
+          "packages/pipeline/root_probe.py"
+        ],
+        "elapsed_ms": 14.3
+      },
+      {
+        "id": "soft11",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "compress chunk bodies with mix or skeleton modes before embedding",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/chunk_compress.py",
+          "docs/compress-mix-shipped.md",
+          "packages/seir/ast_tree.py",
+          "packages/seir/rels.py",
+          "docs/superpowers/specs/2026-08-06-seir-design.md",
+          "packages/graphify/analyze.py",
+          "scripts/seir_ab_bench.py",
+          "tests/test_enrich.py"
+        ],
+        "elapsed_ms": 12.2
+      },
+      {
+        "id": "soft12",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "extract symbols and imports from source files into a graph",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/graphify/extract.py",
+          "packages/pipeline/coreml_mac.py",
+          "docs/reindexing/live-reindexing-delivery.md",
+          "packages/pipeline/project_id.py",
+          "packages/conductor/bm25_index.py",
+          "docs/superpowers/specs/2026-08-03-retrieval-orchestration-decision.md",
+          "packages/conductor/dense_index.py",
+          "packages/pipeline/capability.py"
+        ],
+        "elapsed_ms": 36.6
+      },
+      {
+        "id": "soft13",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "decide whether search needs a full reindex or incremental sync",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/incremental.py",
+          "tests/test_sdk_mcp_dev_trial.py",
+          "tests/test_index_coverage.py",
+          "packages/conductor/soft_bank.py",
+          "packages/pipeline/mcp_locate.py",
+          "packages/conductor/architectures.py",
+          "tests/test_dashboard_api.py",
+          "packages/graphify/extractors/resolution.py"
+        ],
+        "elapsed_ms": 14.0
+      },
+      {
+        "id": "soft14",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "search the faiss vector collection for nearest chunk embeddings",
+        "hit": true,
+        "rank": 5,
+        "returned": [
+          "docs/phase1-parser-comparison.md",
+          "docs/engineering/02-indexing-and-embeddings.md",
+          "docs/engineering/00-START-HERE.md",
+          "docs/engineering/01-architecture.md",
+          "packages/pipeline/searcher.py",
+          "packages/pipeline/vectordb.py",
+          "tests/test_cli_init_repo.py",
+          "scripts/sim_install_forget.py"
+        ],
+        "elapsed_ms": 12.4
+      },
+      {
+        "id": "soft15",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "classify a query as soft natural language versus path-like hard lookup",
+        "hit": false,
+        "rank": null,
+        "returned": [
+          "packages/pipeline/query_tune.py",
+          "packages/graphify/resolver_registry.py",
+          "packages/graphify/build.py",
+          "tests/test_mcp_repo_resolution.py",
+          "packages/metadata/__init__.py",
+          "packages/conductor/soft_bank.py",
+          "scripts/prune_engine_state.py",
+          "tests/test_doctor_certify.py"
+        ],
+        "elapsed_ms": 14.7
+      },
+      {
+        "id": "soft16",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "background daemon that serves search over http",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/daemon.py",
+          "packages/pipeline/context_nav.py",
+          "packages/graphify/querylog.py",
+          "packages/pipeline/dashboard_ui/storage_render.js",
+          "packages/conductor/fusion_math.py",
+          "packages/graphify/transcribe.py",
+          "packages/graphify/export.py",
+          "scripts/mcp_stdio_client.py"
+        ],
+        "elapsed_ms": 12.7
+      },
+      {
+        "id": "soft17",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "choose between fastembed onnx and mlx for document embedding",
+        "hit": true,
+        "rank": 5,
+        "returned": [
+          "packages/hybrid_cbm/server.py",
+          "packages/pipeline/ce_service.py",
+          "docs/engineering/00-START-HERE.md",
+          "tests/test_context_nav.py",
+          "packages/pipeline/embedder.py",
+          "packages/seir/__init__.py",
+          "packages/pipeline/mcp_server.py",
+          "tests/test_ce_architecture.py"
+        ],
+        "elapsed_ms": 9.6
+      },
+      {
+        "id": "soft18",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "preflight checks that refuse index when semantic backend is missing",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/preflight.py",
+          "packages/hybrid_cbm/semantic.py",
+          "packages/seir/semantic.py",
+          "tests/test_preflight.py",
+          "tests/test_mlx_backend.py",
+          "tests/test_cross_platform_profiles.py",
+          "tests/test_production_scenarios.py",
+          "packages/pipeline/accel.py"
+        ],
+        "elapsed_ms": 13.0
+      },
+      {
+        "id": "soft19",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "combine bm25 dense and graph signals in the D channel reranker",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/conductor/architectures.py",
+          "docs/engineering/03-retrieval-and-search.md",
+          "packages/conductor/bm25_index.py",
+          "tests/test_cross_platform_profiles.py",
+          "tests/test_lifecycle_runtime.py",
+          "packages/pipeline/ce_service.py",
+          "docs/superpowers/specs/2026-08-06-d-channel-best-cursor-ab-design.md",
+          "docs/superpowers/specs/2026-08-17-ce-operator-dashboard-design.md"
+        ],
+        "elapsed_ms": 39.6
+      },
+      {
+        "id": "soft20",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "patch bm25 text from disk while dense embeddings catch up after edits",
+        "hit": true,
+        "rank": 5,
+        "returned": [
+          "packages/conductor/__init__.py",
+          "tests/test_faiss_dense_adapter.py",
+          "docs/superpowers/specs/2026-08-03-keeper-sync-lifecycle-design.md",
+          "packages/conductor/architectures.py",
+          "packages/pipeline/hot_patch.py",
+          "packages/conductor/hard_v2_gold.py",
+          "packages/pipeline/accel.py",
+          "docs/phase1-parser-comparison.md"
+        ],
+        "elapsed_ms": 15.7
+      },
+      {
+        "id": "soft21",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "persist session state and token budgets for agent workflows",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/session_store.py",
+          "packages/graphify/extractors/resolution.py",
+          "scripts/eval_locate_quality.py",
+          "tests/test_install_profile_selection.py",
+          "packages/graphify/extractors/pascal.py",
+          "packages/seir/spans.py",
+          "packages/graphify/extractors/markdown.py",
+          "packages/graphify/extractors/dm.py"
+        ],
+        "elapsed_ms": 13.3
+      },
+      {
+        "id": "soft22",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "register the CodeRank ONNX model with fastembed custom models",
+        "hit": true,
+        "rank": 6,
+        "returned": [
+          "packages/pipeline/coreml_mac.py",
+          "packages/graphify/extractors/models.py",
+          "packages/graphify/resolver_registry.py",
+          "tests/test_coreml_mac.py",
+          "docs/superpowers/specs/2026-08-03-universal-embed-accel-design.md",
+          "packages/pipeline/accel.py",
+          "packages/graphify/mcp_ingest.py",
+          "packages/pipeline/embedder.py"
+        ],
+        "elapsed_ms": 9.3
+      },
+      {
+        "id": "soft23",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "incrementally re-embed only changed chunks not the whole repository",
+        "hit": false,
+        "rank": null,
+        "returned": [
+          "packages/conductor/conductor.py",
+          "packages/pipeline/dashboard_ui/app.js",
+          "packages/graphify/pascal_resolution.py",
+          "packages/graphify/extractors/rust.py",
+          "packages/graphify/paths.py",
+          "packages/conductor/__init__.py",
+          "packages/conductor/architectures.py",
+          "packages/conductor/fusion_math.py"
+        ],
+        "elapsed_ms": 11.3
+      },
+      {
+        "id": "soft24",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "store vectors in named collections under the context engine home directory",
+        "hit": false,
+        "rank": null,
+        "returned": [
+          "docs/superpowers/specs/2026-08-08-session-native-context-engine-design.md",
+          "docs/superpowers/specs/2026-08-08-natural-sdk-context-engine-vs-graphify-smoke-design.md",
+          "docs/context-engine-mcp.md",
+          "packages/pipeline/project_id.py",
+          "packages/pipeline/context_agent/tools.py",
+          "docs/superpowers/specs/2026-08-06-session-arch-lsp-planner-design.md",
+          "docs/superpowers/plans/2026-08-06-session-arch-lsp-planner.md",
+          "scripts/bench_apple_silicon_embed.py"
+        ],
+        "elapsed_ms": 16.8
+      },
+      {
+        "id": "soft25",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "convert graphify extraction output into repo ir for chunking",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/parse_harness/graphify_adapter.py",
+          "docs/superpowers/specs/2026-08-08-natural-sdk-context-engine-vs-graphify-smoke-design.md",
+          "packages/graphify/extractors/base.py",
+          "packages/pipeline/store.py",
+          "packages/graphify/cache.py",
+          "packages/conductor/graphify_retriever.py",
+          "packages/pipeline/token_meter.py",
+          "packages/seir/rels.py"
+        ],
+        "elapsed_ms": 36.3
+      },
+      {
+        "id": "soft26",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "inject file and symbol metadata into enriched chunk text",
+        "hit": false,
+        "rank": null,
+        "returned": [
+          "packages/graphify/export.py",
+          "tests/test_chunk_merkle.py",
+          "packages/metadata/__init__.py",
+          "packages/graphify/file_slice.py",
+          "packages/graphify/extractors/dm.py",
+          "packages/graphify/extractors/go.py",
+          "packages/pipeline/chunk_compress.py",
+          "packages/graphify/extractors/engine.py"
+        ],
+        "elapsed_ms": 15.7
+      },
+      {
+        "id": "soft27",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "track which files were touched in the current working session",
+        "hit": false,
+        "rank": null,
+        "returned": [
+          "packages/pipeline/freshness.py",
+          "packages/graphify/transcribe.py",
+          "packages/pipeline/vectordb.py",
+          "packages/conductor/query_router.py",
+          "tests/test_enrich.py",
+          "packages/pipeline/settings.py",
+          "packages/seir/ast_tree.py",
+          "packages/hybrid_cbm/__init__.py"
+        ],
+        "elapsed_ms": 35.5
+      },
+      {
+        "id": "soft28",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "fair scheduling priority for embed versus index jobs",
+        "hit": true,
+        "rank": 4,
+        "returned": [
+          "packages/conductor/bm25_index.py",
+          "packages/pipeline/vectordb.py",
+          "packages/graphify/extractors/models.py",
+          "packages/pipeline/fair_schedule.py",
+          "packages/pipeline/repo_presence.py",
+          "scripts/cleanup_repo.py",
+          "packages/graphify/extractors/pascal.py",
+          "tests/test_sdk_mcp_dev_trial.py"
+        ],
+        "elapsed_ms": 12.7
+      },
+      {
+        "id": "soft29",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "checksum guard when publishing index artifacts",
+        "hit": true,
+        "rank": 2,
+        "returned": [
+          "packages/pipeline/chunk_compress.py",
+          "packages/pipeline/artifact_guard.py",
+          "packages/pipeline/dashboard_ui/storage_render.js",
+          "docs/compress-mix-shipped.md",
+          "packages/pipeline/searcher.py",
+          "packages/pipeline/embedder.py",
+          "packages/conductor/architectures.py",
+          "packages/pipeline/indexer.py"
+        ],
+        "elapsed_ms": 10.5
+      },
+      {
+        "id": "soft30",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "background live reindex when files change during development",
+        "hit": false,
+        "rank": null,
+        "returned": [
+          "tests/test_cross_platform_profiles.py",
+          "docs/superpowers/plans/2026-08-17-cross-platform-runtime-compatibility.md",
+          "tests/test_install_profile_selection.py",
+          "docs/engineering/05-background-systems.md",
+          "packages/pipeline/runtime_profile.py",
+          "tests/test_resource_envelope.py",
+          "packages/parse_harness/claude_context_probe.py",
+          "tests/test_batch_calibration.py"
+        ],
+        "elapsed_ms": 11.1
+      },
+      {
+        "id": "soft31",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "sealed navigation read outline and neighbors over the code graph",
+        "hit": false,
+        "rank": null,
+        "returned": [
+          "docs/superpowers/specs/2026-08-10-sealed-nav-trial-postmortem.md",
+          "docs/superpowers/plans/2026-08-10-sealed-retrieval-nav.md",
+          "docs/superpowers/specs/2026-08-10-sealed-retrieval-nav-design.md",
+          "packages/pipeline/context_agent/llm_llama.py",
+          "packages/pipeline/repo_runtime.py",
+          "scripts/context_agent/README.md",
+          "packages/enrich/__init__.py",
+          "docs/engineering/00-START-HERE.md"
+        ],
+        "elapsed_ms": 41.9
+      },
+      {
+        "id": "soft32",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "estimate token savings from compact search hits versus reading whole files",
+        "hit": true,
+        "rank": 2,
+        "returned": [
+          "packages/pipeline/doctor.py",
+          "packages/pipeline/token_meter.py",
+          "packages/parse_harness/graphify_adapter.py",
+          "packages/pipeline/resources.py",
+          "packages/pipeline/certify.py",
+          "packages/pipeline/store.py",
+          "packages/graphify/pascal_resolution.py",
+          "packages/graphify/extractors/dm.py"
+        ],
+        "elapsed_ms": 13.4
+      },
+      {
+        "id": "soft33",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "merkle snapshot per chunk for fine grained invalidation",
+        "hit": true,
+        "rank": 2,
+        "returned": [
+          "packages/pipeline/merkle.py",
+          "packages/pipeline/chunk_merkle.py",
+          "packages/graphify/extractors/json_config.py",
+          "packages/graphify/analyze.py",
+          "scripts/eval_mlx_fp16_fp32_retrieval.py",
+          "scripts/mcp_stdio_client.py",
+          "packages/hybrid_cbm/proxy.py",
+          "docs/reindexing/chunk-level-incremental-indexing.md"
+        ],
+        "elapsed_ms": 36.8
+      },
+      {
+        "id": "soft34",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "policy for where indexes and vector db files are stored on disk",
+        "hit": false,
+        "rank": null,
+        "returned": [
+          "packages/pipeline/progress_ui.py",
+          "tests/test_production_scenarios.py",
+          "packages/metadata/__init__.py",
+          "tests/test_dashboard_ui_contract.py",
+          "packages/graphify/cache.py",
+          "packages/seir/rels.py",
+          "packages/seir/importance.py",
+          "tests/test_coreml_mac.py"
+        ],
+        "elapsed_ms": 29.5
+      },
+      {
+        "id": "soft35",
+        "kind": "soft",
+        "bucket": "soft",
+        "query": "detect hardware and persist recommended acceleration profile",
+        "hit": true,
+        "rank": 2,
+        "returned": [
+          "packages/graphify/detect.py",
+          "packages/pipeline/hardware.py",
+          "packages/pipeline/accel.py",
+          "docs/mlx-m5-index-report.md",
+          "docs/engineering/02-indexing-and-embeddings.md",
+          "docs/superpowers/specs/2026-08-03-universal-embed-accel-design.md",
+          "docs/superpowers/plans/2026-08-17-cross-platform-runtime-compatibility.md",
+          "packages/conductor/bm25_index.py"
+        ],
+        "elapsed_ms": 9.9
+      },
+      {
+        "id": "hard01",
+        "kind": "hard",
+        "bucket": "symbol",
+        "query": "CodeRankMLX forward_tokens embed_ids",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/mlx_mac.py",
+          "scripts/bench_mlx_memory.py",
+          "scripts/bench_apple_silicon_embed.py",
+          "tests/test_mlx_mac.py",
+          "packages/pipeline/lifecycle_runtime.py",
+          "docs/superpowers/plans/2026-08-10-sealed-retrieval-nav.md",
+          "packages/seir/render.py",
+          "packages/pipeline/mcp_server.py"
+        ],
+        "elapsed_ms": 6.1
+      },
+      {
+        "id": "hard02",
+        "kind": "hard",
+        "bucket": "symbol",
+        "query": "require_mlx_gpu mlx_device_report",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/mlx_mac.py",
+          "tests/test_mlx_mac.py",
+          "tests/test_mlx_backend.py",
+          "scripts/bench_mlx_memory.py",
+          "packages/graphify/extractors/verilog.py",
+          "packages/pipeline/progress_ui.py",
+          "packages/pipeline/ce_service.py",
+          "packages/pipeline/repo_runtime.py"
+        ],
+        "elapsed_ms": 5.6
+      },
+      {
+        "id": "hard03",
+        "kind": "hard",
+        "bucket": "symbol",
+        "query": "bypass_empty_rotary_remainders norot0 onnx",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/coreml_mac.py",
+          "tests/test_coreml_mac.py",
+          "docs/superpowers/specs/2026-08-03-universal-embed-accel-design.md",
+          "packages/pipeline/accel.py",
+          "packages/conductor/architectures.py",
+          "packages/conductor/__init__.py",
+          "packages/conductor/f95.py",
+          "packages/graphify/extract.py"
+        ],
+        "elapsed_ms": 6.4
+      },
+      {
+        "id": "hard04",
+        "kind": "hard",
+        "bucket": "symbol",
+        "query": "scaled_dot_product_attention CTX_MLX_FAST_ATTN",
+        "hit": false,
+        "rank": null,
+        "returned": [
+          "tests/test_sdk_mcp_smoke.py",
+          "packages/graphify/_minhash.py",
+          "packages/seir/semantic.py",
+          "packages/pipeline/test_runner.py"
+        ],
+        "elapsed_ms": 5.1
+      },
+      {
+        "id": "hard05",
+        "kind": "hard",
+        "bucket": "symbol",
+        "query": "resolve_runtime CTX_EMBED_BACKEND mlx overlay",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/accel.py",
+          "tests/test_mlx_backend.py",
+          "packages/pipeline/mlx_mac.py",
+          "scripts/bench_mlx_pipeline.py",
+          "packages/pipeline/embedder.py",
+          "packages/pipeline/coreml_mac.py",
+          "packages/pipeline/project_id.py",
+          "packages/pipeline/repo_runtime.py"
+        ],
+        "elapsed_ms": 7.4
+      },
+      {
+        "id": "hard06",
+        "kind": "hard",
+        "bucket": "symbol",
+        "query": "FaissDenseAdapter col.search IndexIDMap2",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/searcher.py",
+          "tests/test_faiss_dense_adapter.py",
+          "packages/conductor/dense_index.py",
+          "packages/pipeline/vectordb.py",
+          "packages/pipeline/paths.py",
+          "packages/parse_harness/graphify_adapter.py",
+          "tests/test_storage_policy.py",
+          "packages/graphify/file_slice.py"
+        ],
+        "elapsed_ms": 8.2
+      },
+      {
+        "id": "hard07",
+        "kind": "hard",
+        "bucket": "symbol",
+        "query": "retrieve_D_channel_best MultiArchConductor",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/conductor/architectures.py",
+          "packages/conductor/conductor.py",
+          "packages/conductor/bm25_index.py",
+          "packages/conductor/query_router.py",
+          "packages/conductor/service.py",
+          "scripts/bench_mix_seq_ab.py",
+          "scripts/eval_mlx_fp16_fp32_retrieval.py",
+          "packages/pipeline/merkle.py"
+        ],
+        "elapsed_ms": 6.7
+      },
+      {
+        "id": "hard08",
+        "kind": "hard",
+        "bucket": "symbol",
+        "query": "tokenize_batch enable_padding longest batch",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/mlx_mac.py",
+          "packages/pipeline/embedder.py",
+          "scripts/bench_mlx_memory.py",
+          "packages/pipeline/coreml_mac.py",
+          "packages/pipeline/store.py",
+          "scripts/prune_engine_state.py",
+          "packages/conductor/graphify_retriever.py",
+          "docs/mlx-m5-index-report.md"
+        ],
+        "elapsed_ms": 8.0
+      },
+      {
+        "id": "hard09",
+        "kind": "hard",
+        "bucket": "symbol",
+        "query": "PipelineStore upsert_vectors turboquant",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/store.py",
+          "tests/test_storage_policy.py",
+          "packages/pipeline/turbo_quant.py",
+          "packages/pipeline/vectordb.py",
+          "packages/pipeline/__init__.py",
+          "packages/pipeline/merkle.py",
+          "packages/pipeline/dashboard_ui/app.js",
+          "packages/pipeline/repo_runtime.py"
+        ],
+        "elapsed_ms": 6.7
+      },
+      {
+        "id": "hard10",
+        "kind": "hard",
+        "bucket": "symbol",
+        "query": "IndexDeferred wait_for_capacity resource manager",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/indexer.py",
+          "packages/pipeline/resources.py",
+          "tests/test_resources.py",
+          "packages/pipeline/vectordb.py",
+          "tests/test_auto_sessions_observability.py",
+          "packages/pipeline/ce_service.py",
+          "docs/superpowers/specs/2026-08-11-search-only-vs-read-verdict.md",
+          "fixtures/mini-repo/user/tokens.ts"
+        ],
+        "elapsed_ms": 11.5
+      },
+      {
+        "id": "hard11",
+        "kind": "hard",
+        "bucket": "confusable",
+        "query": "CoreML static batch pad 512 CodeRank onnx metal",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/coreml_mac.py",
+          "tests/test_coreml_mac.py",
+          "scripts/bench_apple_silicon_embed.py",
+          "packages/graphify/transcribe.py",
+          "packages/metadata/__init__.py",
+          "packages/graphify/extractors/objc.py",
+          "packages/graphify/ingest.py",
+          "packages/parse_harness/graphify_adapter.py"
+        ],
+        "elapsed_ms": 8.8
+      },
+      {
+        "id": "hard12",
+        "kind": "hard",
+        "bucket": "confusable",
+        "query": "validate_provider inspect_accel preflight not configure",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/preflight.py",
+          "tests/test_cross_platform_profiles.py",
+          "tests/test_mlx_backend.py",
+          "packages/pipeline/certify.py",
+          "packages/pipeline/accel.py",
+          "packages/pipeline/resource_envelope.py",
+          "packages/pipeline/dirty_journal.py",
+          "packages/pipeline/sync_loop.py"
+        ],
+        "elapsed_ms": 7.4
+      },
+      {
+        "id": "hard13",
+        "kind": "hard",
+        "bucket": "multihop",
+        "query": "rotate-half RoPE base 1000 head dim 64 nomic bert",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/mlx_mac.py",
+          "packages/pipeline/merkle.py",
+          "tests/test_sdk_mcp_dev_trial.py",
+          "scripts/eval_locate_quality.py",
+          "packages/pipeline/dirty_journal.py",
+          "packages/pipeline/mcp_locate.py",
+          "packages/pipeline/dirty_ledger.py",
+          "packages/pipeline/server.py"
+        ],
+        "elapsed_ms": 42.5
+      },
+      {
+        "id": "hard14",
+        "kind": "hard",
+        "bucket": "multihop",
+        "query": "Represent this query for searching relevant code prefix is_query",
+        "hit": true,
+        "rank": 5,
+        "returned": [
+          "scripts/bench_difficult_compare.py",
+          "scripts/bench_budget_alloc.py",
+          "scripts/bench_size_ladder.py",
+          "scripts/bench_mix_seq_ab.py",
+          "packages/pipeline/embedder.py",
+          "packages/conductor/query_router.py",
+          "packages/pipeline/query_tune.py",
+          "packages/pipeline/context_agent/prompts.py"
+        ],
+        "elapsed_ms": 9.5
+      },
+      {
+        "id": "hard15",
+        "kind": "hard",
+        "bucket": "distractor",
+        "query": "sentence-transformers coderank pytorch fallback backend",
+        "hit": true,
+        "rank": 1,
+        "returned": [
+          "packages/pipeline/embedder.py",
+          "packages/pipeline/ce_service.py",
+          "packages/pipeline/mlx_mac.py",
+          "packages/pipeline/lifecycle_runtime.py",
+          "tests/test_mlx_backend.py",
+          "packages/pipeline/engine.py",
+          "tests/test_sdk_mcp_dev_trial.py",
+          "packages/pipeline/server.py"
+        ],
+        "elapsed_ms": 8.9
+      }
+    ]
+  },
+  "compare": {
+    "agreement_hit": 1.0,
+    "same_top1": 1.0,
+    "fp32_only_hits": [],
+    "fp16_only_hits": [],
+    "regressions_fp16": [],
+    "improvements_fp16": [],
+    "per_case": [
+      {
+        "id": "soft01",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 1,
+        "fp16_rank": 1
+      },
+      {
+        "id": "soft02",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 1,
+        "fp16_rank": 1
+      },
+      {
+        "id": "soft03",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 4,
+        "fp16_rank": 3
+      },
+      {
+        "id": "soft04",
+        "fp32_hit": false,
+        "fp16_hit": false,
+        "fp32_rank": null,
+        "fp16_rank": null
+      },
+      {
+        "id": "soft05",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 1,
+        "fp16_rank": 1
+      },
+      {
+        "id": "soft06",
+        "fp32_hit": false,
+        "fp16_hit": false,
+        "fp32_rank": null,
+        "fp16_rank": null
+      },
+      {
+        "id": "soft07",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 1,
+        "fp16_rank": 1
+      },
+      {
+        "id": "soft08",
+        "fp32_hit": false,
+        "fp16_hit": false,
+        "fp32_rank": null,
+        "fp16_rank": null
+      },
+      {
+        "id": "soft09",
+        "fp32_hit": false,
+        "fp16_hit": false,
+        "fp32_rank": null,
+        "fp16_rank": null
+      },
+      {
+        "id": "soft10",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 1,
+        "fp16_rank": 1
+      },
+      {
+        "id": "soft11",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 1,
+        "fp16_rank": 1
+      },
+      {
+        "id": "soft12",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 1,
+        "fp16_rank": 1
+      },
+      {
+        "id": "soft13",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 1,
+        "fp16_rank": 1
+      },
+      {
+        "id": "soft14",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 5,
+        "fp16_rank": 5
+      },
+      {
+        "id": "soft15",
+        "fp32_hit": false,
+        "fp16_hit": false,
+        "fp32_rank": null,
+        "fp16_rank": null
+      },
+      {
+        "id": "soft16",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 1,
+        "fp16_rank": 1
+      },
+      {
+        "id": "soft17",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 4,
+        "fp16_rank": 5
+      },
+      {
+        "id": "soft18",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 1,
+        "fp16_rank": 1
+      },
+      {
+        "id": "soft19",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 1,
+        "fp16_rank": 1
+      },
+      {
+        "id": "soft20",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 5,
+        "fp16_rank": 5
+      },
+      {
+        "id": "soft21",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 1,
+        "fp16_rank": 1
+      },
+      {
+        "id": "soft22",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 6,
+        "fp16_rank": 6
+      },
+      {
+        "id": "soft23",
+        "fp32_hit": false,
+        "fp16_hit": false,
+        "fp32_rank": null,
+        "fp16_rank": null
+      },
+      {
+        "id": "soft24",
+        "fp32_hit": false,
+        "fp16_hit": false,
+        "fp32_rank": null,
+        "fp16_rank": null
+      },
+      {
+        "id": "soft25",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 1,
+        "fp16_rank": 1
+      },
+      {
+        "id": "soft26",
+        "fp32_hit": false,
+        "fp16_hit": false,
+        "fp32_rank": null,
+        "fp16_rank": null
+      },
+      {
+        "id": "soft27",
+        "fp32_hit": false,
+        "fp16_hit": false,
+        "fp32_rank": null,
+        "fp16_rank": null
+      },
+      {
+        "id": "soft28",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 4,
+        "fp16_rank": 4
+      },
+      {
+        "id": "soft29",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 2,
+        "fp16_rank": 2
+      },
+      {
+        "id": "soft30",
+        "fp32_hit": false,
+        "fp16_hit": false,
+        "fp32_rank": null,
+        "fp16_rank": null
+      },
+      {
+        "id": "soft31",
+        "fp32_hit": false,
+        "fp16_hit": false,
+        "fp32_rank": null,
+        "fp16_rank": null
+      },
+      {
+        "id": "soft32",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 2,
+        "fp16_rank": 2
+      },
+      {
+        "id": "soft33",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 2,
+        "fp16_rank": 2
+      },
+      {
+        "id": "soft34",
+        "fp32_hit": false,
+        "fp16_hit": false,
+        "fp32_rank": null,
+        "fp16_rank": null
+      },
+      {
+        "id": "soft35",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 2,
+        "fp16_rank": 2
+      },
+      {
+        "id": "hard01",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 1,
+        "fp16_rank": 1
+      },
+      {
+        "id": "hard02",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 1,
+        "fp16_rank": 1
+      },
+      {
+        "id": "hard03",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 1,
+        "fp16_rank": 1
+      },
+      {
+        "id": "hard04",
+        "fp32_hit": false,
+        "fp16_hit": false,
+        "fp32_rank": null,
+        "fp16_rank": null
+      },
+      {
+        "id": "hard05",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 1,
+        "fp16_rank": 1
+      },
+      {
+        "id": "hard06",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 1,
+        "fp16_rank": 1
+      },
+      {
+        "id": "hard07",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 1,
+        "fp16_rank": 1
+      },
+      {
+        "id": "hard08",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 1,
+        "fp16_rank": 1
+      },
+      {
+        "id": "hard09",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 1,
+        "fp16_rank": 1
+      },
+      {
+        "id": "hard10",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 1,
+        "fp16_rank": 1
+      },
+      {
+        "id": "hard11",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 1,
+        "fp16_rank": 1
+      },
+      {
+        "id": "hard12",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 1,
+        "fp16_rank": 1
+      },
+      {
+        "id": "hard13",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 1,
+        "fp16_rank": 1
+      },
+      {
+        "id": "hard14",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 5,
+        "fp16_rank": 5
+      },
+      {
+        "id": "hard15",
+        "fp32_hit": true,
+        "fp16_hit": true,
+        "fp32_rank": 1,
+        "fp16_rank": 1
+      }
+    ]
+  }
+}

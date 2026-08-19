@@ -408,12 +408,46 @@ def cmd_status(args: argparse.Namespace) -> int:
 
 
 def cmd_sync(args: argparse.Namespace) -> int:
+    """Incremental sync — prefer the live daemon so search gets a published generation."""
     from pipeline.incremental import incremental_sync
 
     root = Path(args.path).resolve()
-    result = incremental_sync(root)
-    print(json.dumps(result.to_dict(), indent=2))
-    return 0 if result.error is None else 1
+    out: dict = {}
+    used_daemon = False
+    try:
+        from pipeline.client import EngineClient
+
+        client = EngineClient(workspace_path=root)
+        if client.healthy():
+            out = client.sync(str(root))
+            used_daemon = True
+    except Exception as exc:  # noqa: BLE001
+        print(f"[sync] daemon path unavailable ({exc}); local sync", file=sys.stderr)
+
+    if not used_daemon:
+        result = incremental_sync(root)
+        out = result.to_dict()
+        if result.refreshed and result.error is None:
+            out["published"] = _notify_daemon_publish(root, out)
+
+    print(json.dumps(out, indent=2, default=str))
+    if used_daemon:
+        err = out.get("error")
+        return 0 if not err else 1
+    return 0 if out.get("error") is None else 1
+
+
+def _notify_daemon_publish(root: Path, payload: dict | None = None) -> dict:
+    """Ask a running daemon to reload search after a local CLI sync."""
+    try:
+        from pipeline.client import EngineClient
+
+        client = EngineClient(workspace_path=root)
+        if not client.healthy():
+            return {"ok": False, "skipped": True, "reason": "daemon_down"}
+        return client.publish(str(root), payload=payload)
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "error": str(exc)}
 
 
 def cmd_serve(args: argparse.Namespace) -> int:
@@ -724,10 +758,12 @@ def cmd_setup(args: argparse.Namespace) -> int:
 
 def _write_mcp_config(repo: Path, host: str, port: int) -> None:
     """Minimal MCP write when install_mcp import fails."""
-    py = Path(sys.executable).resolve()
+    from pipeline.mcp_install import interpreter
+
+    py = interpreter()
     root = Path(__file__).resolve().parents[2]
     entry = {
-        "command": str(py).replace("\\", "/"),
+        "command": py.replace("\\", "/"),
         "args": ["-u", "-m", "pipeline.mcp_locate"],
         "env": {
             "PYTHONPATH": str(root / "packages").replace("\\", "/"),
@@ -1058,7 +1094,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_setup.add_argument(
         "--profile",
-        choices=["cuda", "dml", "coreml", "cpu"],
+        choices=["cuda", "dml", "mlx", "coreml", "cpu"],
         default=None,
         help="Force accel profile (default: auto-detect)",
     )

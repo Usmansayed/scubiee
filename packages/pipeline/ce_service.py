@@ -806,6 +806,15 @@ class RuntimeManager:
             out["generation"] = self.generation
         return out
 
+    def publish(self, root: Path | str | None = None, *, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Reload search after an out-of-process index/sync wrote new artifacts."""
+        gate = self._gate(root)
+        if gate:
+            return gate
+        repo = Path(root).resolve() if root else (self.repo or Path.cwd())
+        self._activate_runtime(repo)
+        return self.publish_engine(payload)
+
     def grep(
         self, pattern: str, *, glob: str = "*.py", max_hits: int = 20, root: Path | str | None = None
     ) -> dict[str, Any]:

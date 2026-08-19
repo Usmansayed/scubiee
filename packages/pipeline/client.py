@@ -157,6 +157,13 @@ class EngineClient:
     def sync(self, path: str = "") -> dict[str, Any]:
         return self.post("/v1/sync", {"path": path})
 
+    def publish(self, path: str = "", *, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Reload the daemon's in-memory search engine after an external sync/index."""
+        body: dict[str, Any] = {"path": path}
+        if payload is not None:
+            body["payload"] = payload
+        return self.post("/v1/publish", body)
+
     def mark_dirty(
         self, paths: list[str], *, reason: str = "changed_file", path: str = ""
     ) -> dict[str, Any]:

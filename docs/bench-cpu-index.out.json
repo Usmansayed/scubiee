@@ -1,0 +1,30 @@
+[graphify] Deduplicated 7 node(s) (1 exact, 6 fuzzy).
+{
+  "root": "/Users/usmansayed/Downloads/hidden-context-engine-",
+  "added": 6,
+  "modified": 7,
+  "removed": 0,
+  "chunks": 2904,
+  "embedded": 2904,
+  "unchanged": false,
+  "vector_stats": {
+    "ntotal": 2904,
+    "compressed_bytes": 2230272,
+    "fp32_bytes": 8921088,
+    "compression_ratio": 4.0,
+    "bits": 8,
+    "backend": "numpy-turboquant",
+    "name": "hidden-context-engine-_f63ce26206159954",
+    "cwd": "/Users/usmansayed/Downloads/hidden-context-engine-",
+    "dim": 768,
+    "faiss_ntotal": 2904,
+    "live_vectors": 2904,
+    "dead_vectors": 0,
+    "payloads": 2904,
+    "path": "/Users/usmansayed/.context-engine/vectordb/collections/hidden-context-engine-_f63ce26206159954",
+    "metric": "ip"
+  },
+  "store_dir": "/Users/usmansayed/.context-engine/projects/ce_f63ce2620615995446303a3ba283f235",
+  "project_id": "ce_f63ce2620615995446303a3ba283f235",
+  "registered": true
+}

@@ -35,8 +35,8 @@ from pipeline.accel import AccelProfile, recommend_profile
             "Darwin",
             False,
             [{"name": "Apple M3", "adapter_ram": 8_000_000_000}],
-            ["CoreMLExecutionProvider", "CPUExecutionProvider"],
-            "coreml",
+            ["MLX"],
+            "mlx",
         ),
     ],
 )
@@ -61,12 +61,17 @@ def test_simulated_platform_profile_is_provider_validated_and_warmed(
 
     validation = validate_provider(
         profile,
-        finder=lambda name: object() if name in {"fastembed", "onnxruntime"} else None,
+        finder=lambda name: object() if name in {"fastembed", "onnxruntime", "mlx"} else None,
         provider_getter=lambda: providers,
         warmup=lambda saved: warmed.append(saved.provider) or True,
     )
 
     assert profile.profile == expected
+    if expected == "mlx":
+        assert validation.ok is True
+        assert validation.provider_available is True
+        assert warmed == []
+        return
     assert validation.ok is True
     assert validation.provider_available is True
     assert validation.model_warm is True
@@ -93,7 +98,28 @@ def test_os_or_unsupported_gpu_name_alone_never_claims_gpu_support(
     assert profile.provider == "CPUExecutionProvider"
 
 
-def test_darwin_apple_silicon_uses_coreml_metal_and_ane() -> None:
+def test_darwin_apple_silicon_uses_mlx_fp16(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("CTX_EMBED_BACKEND", raising=False)
+    monkeypatch.delenv("CTX_MLX", raising=False)
+    profile = recommend_profile(
+        {
+            "os": "Darwin",
+            "machine": "arm64",
+            "nvidia": False,
+            "apple_silicon": True,
+            "gpus": [{"name": "Apple M3 Max", "adapter_ram": 16_000_000_000}],
+        }
+    )
+
+    assert profile.profile == "mlx"
+    assert profile.provider == "MLX"
+    assert profile.backend == "mlx"
+
+
+def test_darwin_apple_silicon_coreml_when_mlx_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CTX_MLX", "0")
+    monkeypatch.setenv("CTX_MAC_GPU_ONLY", "1")
+    monkeypatch.delenv("CTX_COREML_UNITS", raising=False)
     profile = recommend_profile(
         {
             "os": "Darwin",
@@ -107,8 +133,10 @@ def test_darwin_apple_silicon_uses_coreml_metal_and_ane() -> None:
     assert profile.profile == "coreml"
     assert profile.provider == "CoreMLExecutionProvider"
     assert providers[0][0] == "CoreMLExecutionProvider"
-    assert providers[0][1]["MLComputeUnits"] == "ALL"
-    assert "CPUExecutionProvider" in providers
+    assert providers[0][1]["MLComputeUnits"] == "CPUAndGPU"
+    assert "CPUExecutionProvider" not in providers
+    assert "UseCPUAndGPU" not in providers[0][1]
+    assert "CreateMLProgram" not in providers[0][1]
 
 
 def test_darwin_intel_uses_coreml_gpu() -> None:

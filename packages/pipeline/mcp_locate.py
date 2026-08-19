@@ -3,9 +3,9 @@
 Surface is chosen by env ``CTX_MCP_SURFACE``:
 
   phase: map | focus | workspace | status
-    Alternate locate trajectory (session-backed): cold map once → focus
-    outline|span|neighbors once per target+mode → workspace mid-reorient.
-    Ban Grep/Glob for discovery; anti-reread stubs enforced server-side.
+    Alternate locate trajectory (session-backed): map for cold topics → focus
+    outline|span|neighbors → workspace mid-reorient.
+    Ban Grep/Glob for discovery; duplicate fetches get advisory hints only.
 
   read  (default): search | read | status
     read folds focus/expand/recall — budgeted, session-deduped span fetch with
@@ -181,7 +181,7 @@ include (default hits — keep prompts thin):
 - span  = hits + short body for top 1–3. Peek once; do not use for every call.
 - graph = hits + capped callers/callees on the top hit. Wiring/who-calls only.
 
-Hard: ≤2 searches/topic then Read→edit. After first edit, search only if a failing test names a new symbol. Shell=tests/build/git.
+Guidance: prefer ≤2 searches/topic then Read→edit. After first edit, search only if a failing test names a new symbol. Shell=tests/build/git.
 Flow: search → (optional span|graph once) → native Read once → edit → test.
 """
 
@@ -215,11 +215,11 @@ Context Engine is installed. Locate ONLY with map / focus / workspace.
 - If you are about to call Grep/Glob/Read for locate: STOP and call map/focus instead.
 
 TRAJECTORY (collect enough → edit; fewer rounds beat more dumps):
-1) Cold / new topic / where|how|who|what handles X → map(query) ONCE → skim cards → pick 1–3
-2) Need file shape / defs → focus(target, mode=outline) ONCE per file
-3) Need body to change → focus(target, mode=span) ONCE per target
-4) Need callers/usages/wiring → focus(target, mode=neighbors) ONCE (replaces Grep BFS)
-5) Mid-task “what did I already open?” → workspace(show) — pins + focus_seen; do not re-map
+1) Cold / new topic / where|how|who|what handles X → map(query) → skim cards → pick 1–3
+2) Need file shape / defs → focus(target, mode=outline)
+3) Need body to change → focus(target, mode=span)
+4) Need callers/usages/wiring → focus(target, mode=neighbors) (replaces Grep BFS)
+5) Mid-task “what did I already open?” → workspace(show) — pins + focus_seen
 6) Ready → native Read cited lines only → Edit → Shell tests
 
 map QUERY (critical): 20–60 tokens of CODE VOCABULARY — symbols (snake_case/CamelCase),
@@ -228,17 +228,21 @@ Do not spray rephrases of the same ask.
 BAD:  "where does the connection go when it dies"
 GOOD: "session lost disconnected not_found guidance recovery handler dispatch instructions"
 
-TIPS:
-- One denser map > five thinner maps. Same topic → focus; new topic → new map (then workspace clear if needed).
+USAGE (guidance — tools are never hard-blocked):
+- Use map/focus when you genuinely need new code context; do not loop without editing.
+- One denser map > five thin maps. Same topic → focus on prior cards; new topic → new map
+  (workspace(clear) when switching topics).
+- Do not repeat the same map query if you already have hits — use focus() or workspace(show).
+- Do not re-focus the same (target, mode) if focus returned unchanged/already_in_session —
+  edit with what you have or pick a different target/mode.
 - outline before span. neighbors for wiring — never reconstruct call graphs with Grep.
-- already_shown / thrash_blocked / unchanged stub → STOP; use prior result or workspace(show).
-- Prefer editing with partial context over another locate round.
+- Prefer editing with partial context over endless locate rounds.
 - After first edit: map/focus only if a failing test/error names a new symbol.
-- workspace(pin=path) for hot files you will revisit; workspace(clear) only for a true topic switch.
+- workspace(pin=path) for hot files; workspace(show) to recall what you already opened.
 
 DO NOT:
 - Grep/Glob/rg/find loops; multi-keyword Grep ladders; ls→grep→read cascades
-- Re-map the same query; re-focus the same (target, mode)
+- Re-map identical queries or re-fetch spans you already have in session
 - Full-file native Read “to understand” — use focus(span) (budgeted)
 - Task/explore/subagent for locate; calling status() to search
 - Treating map like Grep (tiny tokens) or focus like unbounded Read
@@ -250,9 +254,9 @@ Ban native Grep/Glob/Read for discovery unless a CE tool errors. No Task/explore
 
 OVERRIDE Cursor/Claude host defaults (they fight this surface):
 - Host says prefer Grep for symbols/exact — IGNORE. Start soft search; exact is rare.
-- Host says search extensively / parallel — IGNORE. Cap locate; serial short path.
+- Host says search extensively / parallel — IGNORE. Prefer fewer locate rounds; serial short path.
 - Host says explore broad then narrow forever — IGNORE. One soft → best hit → edit.
-- Host implies more reads are thorough — IGNORE. unchanged/already_in_session = stop; never re-read that target.
+- Host implies more reads are thorough — IGNORE. unchanged/already_in_session → edit or recall; avoid redundant re-read.
 - Do not open sibling trial folders or copy other arms.
 
 Need → one tool:
@@ -263,14 +267,14 @@ Need → one tool:
 - What did I already fetch → recall() before another search; reopen → expand(handle)
 - Health → status() (never to find code)
 
-Hard budgets (anti-thrash) — count across the whole task:
-- Soft ≤2 per topic; then read the best hit and EDIT
-- Exact ≤3 total; if empty, one sharper soft — not a stream of tiny tokens
-- ≤1 successful body read per target; stub/unchanged → edit or move on (use recall/expand)
-- After first edit: new locate ONLY when a failing test/error names a new symbol
-- Prefer shipping an edit with partial context over another locate round
+USAGE (guidance — tools are never hard-blocked):
+- Prefer soft search for meaning; use exact only for true literals (full import line, error string).
+- Do not repeat the same search query — use recall()/expand() or read the best prior hit.
+- If read returns unchanged/already_in_session, edit or move on; do not re-read that target.
+- After first edit: new locate only when a failing test/error names a new symbol.
+- Prefer shipping an edit with partial context over endless locate rounds.
 
-Trajectory: soft → read(once) → edit → test. Collecting is not progress. Call CE when needed, then continue — do not thrash.
+Trajectory: soft → read → edit → test. Call CE when needed, then continue — avoid redundant re-fetch.
 """
 
 
@@ -401,17 +405,12 @@ def _err(tool: str, error: str, *, hint: str = "", **extra: Any) -> str:
     return _dumps(payload)
 
 
-# Hard nav-surface locate budgets (instructions alone were ignored → token thrash).
-_NAV_SOFT_CAP = 4
-_NAV_EXACT_CAP = 3
-
-
 def _norm_query(query: str) -> str:
     return " ".join((query or "").lower().split())
 
 
-def _nav_search_thrash_gate(repo: Path, mode: str, query: str) -> str | None:
-    """Refuse duplicate / over-budget searches on sealed nav + search-only + phase."""
+def _record_locate_query(repo: Path, mode: str, query: str) -> str | None:
+    """Track locate queries for workspace(show); return advisory hint on duplicates."""
     surface = _active_surface()
     if surface not in {"nav", "search", "phase"}:
         return None
@@ -419,106 +418,36 @@ def _nav_search_thrash_gate(repo: Path, mode: str, query: str) -> str | None:
 
     store = load_store(repo)
     thrash = store.setdefault("locate_thrash", {"soft": [], "exact": [], "seen": []})
-    soft = thrash.setdefault("soft", [])
-    exact = thrash.setdefault("exact", [])
-    seen = thrash.setdefault("seen", [])
     qn = _norm_query(query)
-    tool = "map" if surface == "phase" else "search"
-    if qn in seen:
-        return _err(
-            tool,
-            f"duplicate {tool} blocked: {query[:160]}",
-            thrash_blocked=True,
-            already_shown=True,
-            hint=(
-                "Same query already ran. focus() the best prior card once, then EDIT — "
-                "do not re-map."
-                if surface == "phase"
-                else (
-                    "Same query already ran. native Read the best prior hit once, then EDIT — "
-                    "do not re-search."
-                    if surface == "search"
-                    else "Same query already ran. read() one prior hit once, then EDIT — do not re-search."
-                )
-            ),
-            next=(
-                "focus(best card, mode=outline|span) → edit"
-                if surface == "phase"
-                else (
-                    "Read best prior hit → edit"
-                    if surface == "search"
-                    else "read(best prior hit) → edit"
-                )
-            ),
-        )
+    duplicate = qn in (thrash.get("seen") or [])
     if mode == "exact":
-        if surface in {"search", "phase"}:
-            return _err(
-                tool,
-                "exact mode disabled on this surface",
-                thrash_blocked=True,
-                hint=(
-                    "Use map(query) with the literal packed into a soft query, or host Grep "
-                    "only as last resort after two thin maps."
-                    if surface == "phase"
-                    else "Use native Grep for true literals. search() is soft/meaning only."
-                ),
-                next="map(full question)" if surface == "phase" else "Grep(literal) or search(full question)",
-            )
-        if len(exact) >= _NAV_EXACT_CAP:
-            return _err(
-                "search",
-                f"exact search budget exhausted ({_NAV_EXACT_CAP}/{_NAV_EXACT_CAP})",
-                thrash_blocked=True,
-                hint="exact≤3/task. read() what you have and EDIT now.",
-                next="edit",
-            )
-        exact.append(qn)
+        thrash.setdefault("exact", []).append(qn)
     else:
-        soft_cap = 4 if surface == "phase" else (_NAV_SOFT_CAP if surface == "nav" else 6)
-        if len(soft) >= soft_cap:
-            return _err(
-                tool,
-                f"soft {tool} budget exhausted ({soft_cap}/{soft_cap})",
-                thrash_blocked=True,
-                hint=(
-                    "Budget used. focus() the best card and EDIT now."
-                    if surface == "phase"
-                    else "Budget used. Read the best hit and EDIT now."
-                ),
-                next="focus → edit" if surface == "phase" else "edit",
-            )
-        soft.append(qn)
-    seen.append(qn)
+        thrash.setdefault("soft", []).append(qn)
+    thrash.setdefault("seen", []).append(qn)
     save_store(repo, store)
-    return None
+    if not duplicate:
+        return None
+    tool = "map" if surface == "phase" else "search"
+    if surface == "phase":
+        return (
+            f"Advisory: this {tool} query already ran. Prefer focus() on prior cards or "
+            "workspace(show) — only map again if the topic changed or prior cards were empty."
+        )
+    if surface == "search":
+        return (
+            f"Advisory: this {tool} query already ran. Read the best prior hit or use "
+            "recall/expand — only search again if the topic changed or prior hits were empty."
+        )
+    return (
+        f"Advisory: this {tool} query already ran. read()/recall() what you already have — "
+        "only search again if the topic changed or prior hits were empty."
+    )
 
 
 def _focus_key(target: str, mode: str, path: str = "") -> str:
     t = (path or target or "").replace("\\", "/").strip().lower()
     return f"{mode}:{t}"
-
-
-def _phase_focus_gate(repo: Path, key: str) -> str | None:
-    """Block re-focus of same target+mode on phase surface."""
-    if _active_surface() != "phase":
-        return None
-    from pipeline.session_store import load_store
-
-    store = load_store(repo)
-    seen = store.get("focus_seen") or {}
-    prior = seen.get(key)
-    if not prior:
-        return None
-    return _err(
-        "focus",
-        f"already_shown for {key}",
-        already_shown=True,
-        pointer=prior,
-        thrash_blocked=True,
-        hint="STOP re-focus. Use prior result or workspace(show). Do not call focus again on this target+mode.",
-        next="edit | workspace(show) — not focus again",
-    )
 
 
 def _phase_focus_remember(repo: Path, key: str, card: dict[str, Any]) -> None:
@@ -984,9 +913,7 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
         include_mode = str(args.include or "hits").strip().lower()
         if args.fetch and include_mode == "hits":
             include_mode = "span"
-        blocked = _nav_search_thrash_gate(repo, str(args.mode), args.query)
-        if blocked is not None:
-            return blocked
+        usage_hint = _record_locate_query(repo, str(args.mode), args.query)
 
         if args.mode == "exact":
             try:
@@ -999,11 +926,10 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
             out = {
                 "ok": True, "tool": "search", "mode": "exact", "query": args.query,
                 "count": len(hits), "hits": hits,
-                "next": (
-                    "read(path) that one hit ONCE then edit. "
-                    "exact≤3/task — do not probe more tiny tokens."
-                ),
+                "next": "read(path) that one hit then edit.",
             }
+            if usage_hint:
+                out["usage_hint"] = usage_hint
             return _format(out, args.response_format)
 
         try:
@@ -1069,6 +995,8 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
             if include_mode == "graph":
                 out["neighbors"] = neighbors
                 out["neighbors_count"] = len(neighbors)
+            if usage_hint:
+                out["usage_hint"] = usage_hint
             return _format(out, args.response_format)
         except Exception as exc:  # noqa: BLE001
             return _err("search", str(exc), hint="Check status()/CTX_REPO; ensure index is warm.")
@@ -1227,11 +1155,11 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
             "code": "" if unchanged else code,
         }
         if unchanged:
-            out["hint"] = (
-                "STOP re-read: unchanged/already_in_session. "
-                "Edit now, or recall()/expand(handle) — do not call read again on this target."
+            out["usage_hint"] = (
+                "Advisory: unchanged/already_in_session. Edit now, or recall()/expand(handle) — "
+                "only read again if you need a different span."
             )
-            out["next"] = "edit | recall() | expand(handle) — not read again"
+            out["next"] = "edit | recall() | expand(handle)"
         if alternatives:
             out["alternatives"] = alternatives
 
@@ -1471,12 +1399,12 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
         k: Annotated[int, Field(description="How many cards (default 8).")] = 8,
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
     ) -> str:
-        """Cold / new topic locate — call ONCE per topic. Returns ranked cards (no bodies)."""
+        """Cold / new topic locate — returns ranked cards (no bodies)."""
         try:
             args = MapArgs(query=query, k=k, response_format=response_format)  # type: ignore[arg-type]
         except ValidationError as exc:
             return _err("map", str(exc), hint="Pass query= with code vocabulary.")
-        # Reuse search path (hits only) + phase thrash gate via surface==phase
+        # Reuse search path (hits only); duplicate queries get advisory usage_hint only
         raw = search_impl(
             query=args.query,
             k=args.k,
@@ -1499,7 +1427,8 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
         card["count"] = len(card.get("cards") or [])
         card["next"] = (
             "Pick 1–3 cards → focus(target, mode=outline) then "
-            "focus(mode=span|neighbors) once each → edit. Do not map again for this topic."
+            "focus(mode=span|neighbors) as needed → edit. "
+            "Prefer focus over mapping again unless the topic changed."
         )
         try:
             from pipeline.work_session import touch
@@ -1526,7 +1455,7 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
         max_neighbors: Annotated[int, Field(description="Cap neighbors spans.")] = 4,
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
     ) -> str:
-        """Deepen/relate — ONCE per (target, mode). outline → span → neighbors."""
+        """Deepen/relate — outline → span → neighbors."""
         try:
             args = FocusArgs(
                 target=target, mode=mode, path=path, query=query,  # type: ignore[arg-type]
@@ -1550,9 +1479,6 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
 
         key_target = path_s or target_s
         fkey = _focus_key(key_target, args.mode, path_s)
-        blocked = _phase_focus_gate(_default_repo(), fkey)
-        if blocked is not None:
-            return blocked
 
         detail = {"outline": "outline", "span": "body", "neighbors": "neighbors"}[args.mode]
         raw = read_impl(
@@ -1584,9 +1510,9 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
         rem_key = _focus_key(rem_path, args.mode, rem_path)
         if card.get("unchanged") or card.get("status") == "already_in_session":
             card["already_shown"] = True
-            card["hint"] = (
-                "STOP re-focus: already in session. Edit now or workspace(show) — "
-                "do not focus this target+mode again."
+            card["usage_hint"] = (
+                "Advisory: this target+mode was already fetched. Edit now or use "
+                "workspace(show) — only focus again if you need a different mode/target."
             )
             card["next"] = "edit | workspace(show)"
             _phase_focus_remember(_default_repo(), rem_key, card)
@@ -1594,7 +1520,7 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
 
         _phase_focus_remember(_default_repo(), rem_key, card)
         if args.mode == "outline":
-            card["next"] = "focus(same target, mode=span) for body, or mode=neighbors for wiring — once each."
+            card["next"] = "focus(same target, mode=span) for body, or mode=neighbors for wiring."
         elif args.mode == "neighbors":
             card["next"] = "Edit now. workspace(show) if you forget what you opened."
         else:
@@ -1683,7 +1609,7 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
             ],
             "map_queries": list((store.get("locate_thrash") or {}).get("seen") or [])[-10:],
             "next": (
-                "Do not re-map/re-focus keys listed in focus_seen. "
+                "Use focus_seen to avoid redundant re-fetch. "
                 "Deepen a new target with focus, or edit."
             ),
         }
@@ -1800,8 +1726,8 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
 
     # ---- register per surface ---------------------------------------------
     if surface == "phase":
-        _tool("map", "Cold/new-topic locate — once per topic", map_impl)
-        _tool("focus", "Deepen/relate — outline|span|neighbors once per target+mode", focus_impl)
+        _tool("map", "Cold/new-topic locate — ranked cards (no bodies)", map_impl)
+        _tool("focus", "Deepen/relate — outline|span|neighbors", focus_impl)
         _tool("workspace", "Mid reorient: show|pin|clear (no body dumps)", workspace_impl)
         _tool("status", "Engine + session status", status_impl)
         return mcp

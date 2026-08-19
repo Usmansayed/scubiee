@@ -1,0 +1,239 @@
+{
+  "distribution": {
+    "n": 2821,
+    "min": 49,
+    "mean": 157.7919177596597,
+    "p50": 159.0,
+    "p75": 174.0,
+    "p90": 189.0,
+    "p95": 196.0,
+    "p99": 212.0,
+    "max": 241,
+    "buckets": {
+      "le_128": 334,
+      "129_256": 2487,
+      "257_384": 0,
+      "385_512": 0,
+      "gt_512_after_trunc": 0
+    },
+    "total_content_tokens": 445131
+  },
+  "batch_sweep": [
+    {
+      "batch": 8,
+      "chunks": 2821,
+      "wall_s": 144.399,
+      "chunk_per_s": 19.536,
+      "tokens": 445131,
+      "tok_per_s": 3084.2,
+      "timings_s": {
+        "tokenization": 2.3583,
+        "batch_prep": 0.0646,
+        "mlx_inference": 139.4545,
+        "pooling": 1.2917,
+        "normalization": 0.3688
+      },
+      "peak_mlx_bytes": 1957929072,
+      "rss_mb": 965.9,
+      "dim": 768,
+      "device": "Device(gpu, 0)"
+    },
+    {
+      "batch": 16,
+      "chunks": 2821,
+      "wall_s": 181.008,
+      "chunk_per_s": 15.585,
+      "tokens": 445131,
+      "tok_per_s": 2460.6,
+      "timings_s": {
+        "tokenization": 3.071,
+        "batch_prep": 0.0487,
+        "mlx_inference": 175.9253,
+        "pooling": 0.6298,
+        "normalization": 0.2423
+      },
+      "peak_mlx_bytes": 2219356260,
+      "rss_mb": 965.9,
+      "dim": 768,
+      "device": "Device(gpu, 0)"
+    },
+    {
+      "batch": 20,
+      "chunks": 2821,
+      "wall_s": 151.98,
+      "chunk_per_s": 18.562,
+      "tokens": 445131,
+      "tok_per_s": 2929.8,
+      "timings_s": {
+        "tokenization": 1.8607,
+        "batch_prep": 0.0281,
+        "mlx_inference": 148.3978,
+        "pooling": 0.8724,
+        "normalization": 0.2143
+      },
+      "peak_mlx_bytes": 2157213876,
+      "rss_mb": 965.9,
+      "dim": 768,
+      "device": "Device(gpu, 0)"
+    },
+    {
+      "batch": 32,
+      "chunks": 2821,
+      "wall_s": 139.511,
+      "chunk_per_s": 20.221,
+      "tokens": 445131,
+      "tok_per_s": 3191.5,
+      "timings_s": {
+        "tokenization": 3.4289,
+        "batch_prep": 0.0438,
+        "mlx_inference": 133.2368,
+        "pooling": 0.7888,
+        "normalization": 0.3731
+      },
+      "peak_mlx_bytes": 2001107180,
+      "rss_mb": 965.9,
+      "dim": 768,
+      "device": "Device(gpu, 0)"
+    },
+    {
+      "batch": 48,
+      "chunks": 2821,
+      "wall_s": 103.576,
+      "chunk_per_s": 27.236,
+      "tokens": 445131,
+      "tok_per_s": 4300.0,
+      "timings_s": {
+        "tokenization": 0.5609,
+        "batch_prep": 0.0159,
+        "mlx_inference": 102.4593,
+        "pooling": 0.1728,
+        "normalization": 0.0396
+      },
+      "peak_mlx_bytes": 1975645536,
+      "rss_mb": 965.9,
+      "dim": 768,
+      "device": "Device(gpu, 0)"
+    },
+    {
+      "batch": 64,
+      "chunks": 2821,
+      "wall_s": 122.033,
+      "chunk_per_s": 23.117,
+      "tokens": 445131,
+      "tok_per_s": 3648.9,
+      "timings_s": {
+        "tokenization": 0.8905,
+        "batch_prep": 0.0117,
+        "mlx_inference": 120.1794,
+        "pooling": 0.2296,
+        "normalization": 0.1228
+      },
+      "peak_mlx_bytes": 2065347996,
+      "rss_mb": 965.9,
+      "dim": 768,
+      "device": "Device(gpu, 0)"
+    },
+    {
+      "batch": 96,
+      "chunks": 2821,
+      "wall_s": 99.46,
+      "chunk_per_s": 28.363,
+      "tokens": 445131,
+      "tok_per_s": 4476.2,
+      "timings_s": {
+        "tokenization": 0.5265,
+        "batch_prep": 0.0063,
+        "mlx_inference": 98.2674,
+        "pooling": 0.1802,
+        "normalization": 0.3694
+      },
+      "peak_mlx_bytes": 2450158088,
+      "rss_mb": 965.9,
+      "dim": 768,
+      "device": "Device(gpu, 0)"
+    }
+  ],
+  "winner_batch": 96,
+  "fp16_vs_fp32": {
+    "n": 64,
+    "max_abs": 0.0004488527774810791,
+    "mean_abs": 7.871901470934972e-05,
+    "cosine_min": 0.9999951124191284,
+    "cosine_mean": 0.9999963045120239
+  },
+  "production_index": {
+    "repo": "/Users/usmansayed/Downloads/hidden-context-engine-",
+    "chunks": 2904,
+    "tokens": 459864,
+    "mean_tokens": 158.36,
+    "note": "Same repo/chunker for CPU and MLX. Chunk count rose from 2821 to 2904 after MLX integration files were added; both index runs used 2904.",
+    "cpu_fastembed": {
+      "batch": 16,
+      "wall_s": 236.43,
+      "embed_s": 225.6,
+      "parse_s": 3.8,
+      "chunk_s": 3.8,
+      "write_s": 0.24,
+      "chunk_per_s_embed": 12.88,
+      "chunk_per_s_wall": 12.28,
+      "tok_per_s_embed": 2038.9,
+      "rss_bytes": 1400389632
+    },
+    "mlx_fp32": {
+      "batch": 96,
+      "device": "Device(gpu, 0)",
+      "metal": true,
+      "wall_s": 93.45,
+      "embed_s": 83.4,
+      "parse_s": 3.3,
+      "chunk_s": 3.9,
+      "write_s": 0.46,
+      "chunk_per_s_embed": 34.81,
+      "chunk_per_s_wall": 31.08,
+      "tok_per_s_embed": 5512.8,
+      "rss_bytes": 1057505280,
+      "timings_s": {
+        "tokenization": 0.4498,
+        "batch_prep": 0.0065,
+        "mlx_inference": 82.2917,
+        "pooling": 0.1702,
+        "normalization": 0.0379
+      }
+    },
+    "mlx_fp16": {
+      "batch": 96,
+      "device": "Device(gpu, 0)",
+      "metal": true,
+      "wall_s": 110.81,
+      "embed_s": 97.6,
+      "parse_s": 5.7,
+      "chunk_s": 4.2,
+      "write_s": 0.51,
+      "chunk_per_s_embed": 29.76,
+      "chunk_per_s_wall": 26.21,
+      "tok_per_s_embed": 4713.4,
+      "rss_bytes": 738050048,
+      "timings_s": {
+        "tokenization": 0.3226,
+        "batch_prep": 0.0087,
+        "mlx_inference": 96.4617,
+        "pooling": 0.1852,
+        "normalization": 0.0575
+      }
+    },
+    "fp16_vs_fp32_sample": {
+      "n": 64,
+      "max_abs": 0.0004488527774810791,
+      "mean_abs": 7.871901470934972e-05,
+      "cosine_min": 0.9999951124191284,
+      "cosine_mean": 0.9999963045120239
+    },
+    "winner_batch": 96,
+    "decision": {
+      "mlx_production_backend": "YES",
+      "precision": "float32",
+      "persist_accel_json": false,
+      "reason": "MLX FP32 sustained 34.8 embed chunks/s and 31.1 end-to-end chunks/s on the real ctx index workload, vs 12.9 on CPU FastEmbed. GPU is the embed bottleneck (~99% of embed time). FP16 stayed numerically in spec but was slower on this M5."
+    }
+  }
+}

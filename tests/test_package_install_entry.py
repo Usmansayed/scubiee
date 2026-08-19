@@ -17,6 +17,35 @@ def test_server_entry_uses_module_invocation_without_source_pythonpath(tmp_path:
     assert env["CTX_REPO"] == str(tmp_path.resolve()).replace("\\", "/")
 
 
+def test_interpreter_preserves_venv_shim_not_cellar_realpath(monkeypatch, tmp_path: Path) -> None:
+    """macOS venv python is a symlink into Homebrew; resolving it breaks imports."""
+    import sys
+
+    from pipeline import mcp_install
+
+    venv_root = tmp_path / "scubiee"
+    bin_dir = venv_root / "bin"
+    bin_dir.mkdir(parents=True)
+    shim = bin_dir / "python"
+    shim.write_text("#!/bin/sh\n", encoding="utf-8")
+    shim.chmod(0o755)
+    monkeypatch.setattr(sys, "prefix", str(venv_root))
+    monkeypatch.setattr(sys, "executable", str(shim))
+    monkeypatch.delenv("CTX_PYTHON", raising=False)
+    got = mcp_install.interpreter()
+    assert got == str(shim).replace("\\", "/")
+    assert "Cellar" not in got
+
+
+def test_interpreter_honors_ctx_python_override(monkeypatch, tmp_path: Path) -> None:
+    from pipeline import mcp_install
+
+    custom = tmp_path / "custom-python"
+    custom.write_text("", encoding="utf-8")
+    monkeypatch.setenv("CTX_PYTHON", str(custom))
+    assert mcp_install.interpreter() == str(custom).replace("\\", "/")
+
+
 def test_user_level_entry_does_not_pin_a_repo(tmp_path: Path) -> None:
     entry = server_entry(None)
     assert "CTX_REPO" not in entry["env"]
@@ -56,6 +85,12 @@ def test_pyproject_and_npm_versions_match() -> None:
     assert py["project"]["name"] == "scubiee"
     assert npm["name"] == "scubiee"
     assert py["project"]["version"] == npm["version"]
+    deps = "\n".join(py["project"]["dependencies"])
+    assert "mlx>=0.22" in deps
+    assert "sys_platform == 'darwin'" in deps
+    extras = py["project"]["optional-dependencies"]
+    assert "macos" in extras
+    assert "mlx" in extras
     assert "ctx" in py["project"]["scripts"]
     assert "scubiee" in py["project"]["scripts"]
     assert npm["bin"]["ctx"]

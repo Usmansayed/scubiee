@@ -50,14 +50,30 @@ def _warm_saved_model(profile: AccelProfile) -> bool:
     from pipeline.accel import register_coderank
 
     register_coderank()
+    model_name = profile.model
+    warm = ["ctx provider validation"]
+    warm_bs = 1
+    if profile.profile == "coreml":
+        from pipeline.coreml_mac import (
+            bind_coreml_tokenizer,
+            coreml_model_name,
+            pad_embed_batch,
+            static_embed_batch_size,
+        )
+
+        model_name = coreml_model_name(profile.model)
+        warm_bs = static_embed_batch_size(profile, max(1, int(profile.batch_size or 1)))
+        warm = pad_embed_batch(warm, warm_bs)
     model = TextEmbedding(
-        model_name=profile.model,
+        model_name=model_name,
         threads=1,
         providers=profile.providers(),
         lazy_load=True,
         local_files_only=True,
     )
-    warmed = list(model.embed(["ctx provider validation"], batch_size=1, parallel=None))
+    if profile.profile == "coreml":
+        bind_coreml_tokenizer(model)
+    warmed = list(model.embed(warm, batch_size=warm_bs, parallel=None))
     return bool(warmed)
 
 
@@ -79,6 +95,17 @@ def validate_provider(
             False,
             False,
             "no saved profile; run `python -m pipeline setup`",
+        )
+    if profile.profile == "mlx" or profile.backend == "mlx":
+        mlx_ok = finder("mlx") is not None
+        return ProviderValidation(
+            mlx_ok,
+            profile.profile,
+            profile.provider,
+            ("MLX",),
+            mlx_ok,
+            mlx_ok,
+            "MLX package available" if mlx_ok else "mlx is not installed",
         )
     missing = [
         module for module in ("fastembed", "onnxruntime") if finder(module) is None
@@ -224,6 +251,14 @@ def inspect_accel(*, finder: Finder = importlib.util.find_spec) -> dict[str, Any
         semantic_ok = False
         missing = ["not_configured"]
         hint = "Run `ctx setup` to configure and persist an acceleration profile."
+    elif backend == "mlx":
+        mlx_ok = finder("mlx") is not None
+        semantic_ok = mlx_ok
+        missing = [] if mlx_ok else ["mlx"]
+        hint = (
+            "Install MLX (`pip install mlx`) on Apple Silicon, then set "
+            "CTX_EMBED_BACKEND=mlx. GPU initialization is required; CPU fallback is refused."
+        )
     elif backend == "fastembed" and not explicit_st:
         semantic_ok = fastembed_ok and ort_ok and validation.ok
         missing: list[str] = []

@@ -509,6 +509,7 @@ def certify(
             ("windows_dml", "Windows", "dml"),
             ("linux_nvidia_cuda", "Linux", "cuda"),
             ("linux_cpu_safe", "Linux", "cpu"),
+            ("darwin_mlx", "Darwin", "mlx"),
             ("darwin_coreml", "Darwin", "coreml"),
             ("darwin_cpu_safe", "Darwin", "cpu"),
         ):

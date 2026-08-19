@@ -278,7 +278,7 @@ def test_search_include_graph_attaches_neighbors(monkeypatch, tmp_path):
     monkeypatch.setenv("CTX_REPO", str(tmp_path))
     clear_store(tmp_path)
     monkeypatch.setattr(pd, "ensure_daemon", lambda *a, **k: None)
-    monkeypatch.setattr(pc, "EngineClient", lambda: _FakeEngine())
+    monkeypatch.setattr(pc, "EngineClient", lambda *a, **k: _FakeEngine())
     monkeypatch.setattr(
         loc,
         "_search_hits",
@@ -306,7 +306,7 @@ def test_search_surface_blocks_exact_and_clamps_k(monkeypatch, tmp_path):
     monkeypatch.setenv("CTX_REPO", str(tmp_path))
     clear_store(tmp_path)
     monkeypatch.setattr(pd, "ensure_daemon", lambda *a, **k: None)
-    monkeypatch.setattr(pc, "EngineClient", lambda: _FakeEngine())
+    monkeypatch.setattr(pc, "EngineClient", lambda *a, **k: _FakeEngine())
     monkeypatch.setattr(
         loc,
         "_search_hits",
@@ -381,7 +381,7 @@ def test_read_attaches_neighbors_when_requested(monkeypatch, tmp_path):
     monkeypatch.setenv("CTX_MCP_SURFACE", "rich")
     monkeypatch.setenv("CTX_REPO", str(tmp_path))
     monkeypatch.setattr(pd, "ensure_daemon", lambda *a, **k: None)
-    monkeypatch.setattr(pc, "EngineClient", lambda: _FakeEngine())
+    monkeypatch.setattr(pc, "EngineClient", lambda *a, **k: _FakeEngine())
     read_fn = _tool_fn(create_mcp(), "read")
 
     # graph rides inside read: neighbors=true attaches 1-hop callers/callees.
@@ -407,7 +407,7 @@ def test_rich_tools_return_expected_shapes(monkeypatch, tmp_path):
     monkeypatch.setenv("CTX_MCP_SURFACE", "rich")
     monkeypatch.setenv("CTX_REPO", str(tmp_path))
     monkeypatch.setattr(pd, "ensure_daemon", lambda *a, **k: None)
-    monkeypatch.setattr(pc, "EngineClient", lambda: _FakeEngine())
+    monkeypatch.setattr(pc, "EngineClient", lambda *a, **k: _FakeEngine())
     monkeypatch.setattr(
         loc,
         "_search_hits",
@@ -449,7 +449,7 @@ def test_neighbors_and_graph_tools_return_spans(monkeypatch, tmp_path):
     monkeypatch.setenv("CTX_MCP_SURFACE", "graph")
     monkeypatch.setenv("CTX_REPO", str(tmp_path))
     monkeypatch.setattr(pd, "ensure_daemon", lambda *a, **k: None)
-    monkeypatch.setattr(pc, "EngineClient", lambda: _FakeEngine())
+    monkeypatch.setattr(pc, "EngineClient", lambda *a, **k: _FakeEngine())
     monkeypatch.setattr(
         loc,
         "_search_hits",
@@ -521,7 +521,7 @@ def test_live_search_read_flow():
 
 
 def test_nav_surface_active_and_instructions_budget(monkeypatch):
-    """Sealed nav surface: six tools + ≤600 tok (~2400 char) anti-default instructions."""
+    """Sealed nav surface: six tools + guidance-only usage instructions."""
     from pipeline import mcp_locate as ml
 
     monkeypatch.setenv("CTX_MCP_SURFACE", "nav")
@@ -533,10 +533,9 @@ def test_nav_surface_active_and_instructions_budget(monkeypatch):
     assert "search | files | read | recall | expand | status" in text
     assert "mode=exact" in text
     assert "recall" in text and "expand" in text
-    assert "anti-thrash" in text.lower() or "Hard budgets" in text
+    assert "USAGE (guidance" in text
+    assert "never hard-blocked" in text.lower()
     assert "Grep" in text and "IGNORE" in text
-    assert "Soft ≤2" in text or "Soft <=2" in text
-    assert "Exact ≤3" in text or "Exact <=3" in text
     assert "unchanged" in text.lower()
 
 
@@ -621,7 +620,7 @@ def test_search_mode_exact_returns_grep_hits(monkeypatch, tmp_path):
     monkeypatch.setenv("CTX_MCP_SURFACE", "nav")
     monkeypatch.setenv("CTX_REPO", str(tmp_path))
     monkeypatch.setattr(pd, "ensure_daemon", lambda *a, **k: None)
-    monkeypatch.setattr(pc, "EngineClient", lambda: _FakeEngine())
+    monkeypatch.setattr(pc, "EngineClient", lambda *a, **k: _FakeEngine())
     monkeypatch.setattr(
         loc,
         "_search_hits",
@@ -644,8 +643,8 @@ def test_search_mode_exact_returns_grep_hits(monkeypatch, tmp_path):
     assert "results" not in exact
 
 
-def test_nav_search_thrash_gate_dedupes_and_caps(monkeypatch, tmp_path):
-    """Nav surface: refuse duplicate queries and hard-cap soft/exact to cut token thrash."""
+def test_nav_search_records_duplicates_without_blocking(monkeypatch, tmp_path):
+    """Nav surface: duplicate queries succeed with advisory usage_hint (no hard cap)."""
     pytest.importorskip("mcp")
     import pipeline.client as pc
     import pipeline.daemon as pd
@@ -657,7 +656,7 @@ def test_nav_search_thrash_gate_dedupes_and_caps(monkeypatch, tmp_path):
     monkeypatch.setenv("CTX_REPO", str(tmp_path))
     clear_store(tmp_path)
     monkeypatch.setattr(pd, "ensure_daemon", lambda *a, **k: None)
-    monkeypatch.setattr(pc, "EngineClient", lambda: _FakeEngine())
+    monkeypatch.setattr(pc, "EngineClient", lambda *a, **k: _FakeEngine())
     monkeypatch.setattr(
         loc,
         "_search_hits",
@@ -668,28 +667,17 @@ def test_nav_search_thrash_gate_dedupes_and_caps(monkeypatch, tmp_path):
     search_fn = _tool_fn(create_mcp(), "search")
 
     first = json.loads(search_fn(query="Where is auth?", mode="soft"))
-    assert first["ok"] is True and first.get("thrash_blocked") is not True
+    assert first["ok"] is True
+    assert "usage_hint" not in first
 
     dup = json.loads(search_fn(query="Where is auth?", mode="soft"))
-    assert dup["ok"] is False or dup.get("thrash_blocked") is True
-    assert "duplicate" in json.dumps(dup).lower() or "already" in json.dumps(dup).lower()
+    assert dup["ok"] is True
+    assert "usage_hint" in dup
+    assert "Advisory" in dup["usage_hint"]
 
-    # Burn remaining soft budget (cap=4 including first)
-    for i in range(3):
+    for i in range(6):
         r = json.loads(search_fn(query=f"Where is topic {i}?", mode="soft"))
         assert r["ok"] is True, r
-
-    capped = json.loads(search_fn(query="Where is one more soft?", mode="soft"))
-    assert capped.get("thrash_blocked") is True or capped["ok"] is False
-    blob = json.dumps(capped).lower()
-    assert "edit" in blob or "budget" in blob or "cap" in blob
-
-    for i in range(3):
-        r = json.loads(search_fn(query=f"UNIQUE_TOKEN_{i}", mode="exact"))
-        assert r["ok"] is True and r.get("mode") == "exact"
-
-    exact_cap = json.loads(search_fn(query="UNIQUE_TOKEN_Z", mode="exact"))
-    assert exact_cap.get("thrash_blocked") is True or exact_cap["ok"] is False
 
 
 def test_read_detail_outline_and_neighbors(monkeypatch, tmp_path):
@@ -705,7 +693,7 @@ def test_read_detail_outline_and_neighbors(monkeypatch, tmp_path):
     monkeypatch.setenv("CTX_MCP_SURFACE", "nav")
     monkeypatch.setenv("CTX_REPO", str(tmp_path))
     monkeypatch.setattr(pd, "ensure_daemon", lambda *a, **k: None)
-    monkeypatch.setattr(pc, "EngineClient", lambda: _FakeEngine())
+    monkeypatch.setattr(pc, "EngineClient", lambda *a, **k: _FakeEngine())
     read_fn = _tool_fn(create_mcp(), "read")
 
     outline = json.loads(read_fn(path="pkg/mod.py", detail="outline"))

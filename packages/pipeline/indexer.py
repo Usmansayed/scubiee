@@ -128,6 +128,24 @@ def index_repo(
 
     require_capabilities(require_semantic=True)
     store = PipelineStore(root, base_dir=base_dir, vdb=vdb)
+    from pipeline.memory_budget import (
+        apply_index_memory_budget,
+        is_bootstrap_index,
+        mlx_compute_summary,
+        process_rss_peak_mb,
+        resolve_index_memory_budget,
+    )
+
+    mem_budget = resolve_index_memory_budget(background=False, store=store)
+    apply_index_memory_budget(mem_budget)
+    wall_start = time.perf_counter()
+    print(
+        f"[index] memory mode={mem_budget.mode} rss_cap={mem_budget.rss_cap_mb}MB "
+        f"bootstrap={is_bootstrap_index(store)} "
+        f"mlx_batch={mem_budget.mlx_batch} cache={mem_budget.mlx_cache_mb}MB",
+        file=sys.stderr,
+        flush=True,
+    )
     old = store.load_merkle()
     roots = list(fast_roots_from_env(fast_roots))
     # Default: mix (card labels + importance body). CTX_COMPRESS=off disables.
@@ -163,8 +181,6 @@ def index_repo(
     if progress:
         _emit_progress(progress, "Scanning files", 0.05)
 
-    import time
-
     paths = _collect_paths(root, fast=fast, fast_roots=roots)
     if progress:
         _emit_progress(progress, "Parsing code", 0.08)
@@ -194,6 +210,12 @@ def index_repo(
         else:
             os.environ["GRAPHIFY_QUIET"] = previous_quiet
     elapsed_ms = (time.perf_counter() - t0) * 1000
+    parse_s = elapsed_ms / 1000.0
+    print(
+        f"[index] parse+ir {parse_s:.1f}s for {len(paths)} files",
+        file=sys.stderr,
+        flush=True,
+    )
     ir = graphify_to_repo_ir(
         raw, root=root, elapsed_ms=elapsed_ms, file_count=len(paths)
     )
@@ -203,6 +225,7 @@ def index_repo(
     if progress:
         _emit_progress(progress, "Building chunks", 0.42)
 
+    t_chunk = time.perf_counter()
     code_chunks = chunk_repo_from_ir(ir, root)
     # Fast without compress: truncate bodies. With compress (default mix): enrich
     # fully then compress to cmax so metadata isn't mid-cut.
@@ -229,6 +252,12 @@ def index_repo(
             )
         )
     store.save_chunks(records)
+    chunk_s = time.perf_counter() - t_chunk
+    print(
+        f"[index] chunk {chunk_s:.1f}s -> {len(records)} chunks",
+        file=sys.stderr,
+        flush=True,
+    )
 
     if progress:
         _emit_progress(progress, "Embedding", 0.50)
@@ -243,7 +272,11 @@ def index_repo(
             from pipeline.accel import load_accel
 
             prof = load_accel()
-            if prof and prof.profile == "dml":
+            mlx_env = os.environ.get("CTX_EMBED_BACKEND", "").strip().lower() == "mlx"
+            mlx_prof = bool(prof and (prof.profile == "mlx" or getattr(prof, "backend", "") == "mlx"))
+            if mlx_env or mlx_prof:
+                batch = int(os.environ.get("CTX_EMBED_BATCH", str(mem_budget.mlx_batch)))
+            elif prof and prof.profile == "dml":
                 batch = int(prof.batch_size or 16)
             elif prof and prof.profile == "cuda":
                 batch = 64 if fast else 32
@@ -251,6 +284,7 @@ def index_repo(
                 batch = 32 if fast else 16
         except Exception:
             batch = 16 if fast else 32
+    batch = min(batch, mem_budget.embed_batch_ceiling)
     embedder = Embedder(
         model=model,
         cache_path=store.embed_cache,
@@ -277,7 +311,7 @@ def index_repo(
     except Exception as exc:  # noqa: BLE001
         # Never invent vectors for missing accel — only absorb transient encode faults
         # when an explicit ST/ollama backend was selected.
-        if embedder.backend == "fastembed":
+        if embedder.backend in {"fastembed", "mlx"}:
             raise
         if progress:
             _emit_progress(progress, "Embedding", 0.6)
@@ -295,19 +329,33 @@ def index_repo(
         matrix = np.stack(rows, axis=0) if rows else np.zeros((0, dim), dtype=np.float32)
         embedder.dim = dim
     embed_s = time.perf_counter() - t_embed
-    if not hasattr(progress, "set"):
-        print(
-            f"[index] embed phase {embed_s:.1f}s for {len(records)} chunks "
-            f"({len(records)/max(embed_s,1e-6):.1f} chunk/s)",
-            file=sys.stderr,
-            flush=True,
-        )
+    print(
+        f"[index] embed phase {embed_s:.1f}s for {len(records)} chunks "
+        f"({len(records)/max(embed_s,1e-6):.1f} chunk/s)",
+        file=sys.stderr,
+        flush=True,
+    )
+    stats = getattr(embedder, "_last_stats", None) or {}
+    print(
+        f"[index] embed stats backend={stats.get('backend')} device={stats.get('device')} "
+        f"tokens={stats.get('tokens')} tok/s={stats.get('tok_per_s')} "
+        f"chunk/s={stats.get('chunk_per_s')} timings={stats.get('timings_s')}",
+        file=sys.stderr,
+        flush=True,
+    )
 
     dim = int(matrix.shape[1]) if matrix.size else (embedder.dim or 768)
     if progress:
         _emit_progress(progress, "Writing index", 0.92)
 
+    t_write = time.perf_counter()
     col = store.upsert_vectors(matrix, records, dim=dim, bits=bits)
+    write_s = time.perf_counter() - t_write
+    print(
+        f"[index] vector write {write_s:.2f}s for {len(records)} chunks",
+        file=sys.stderr,
+        flush=True,
+    )
     store.save_merkle(new_hashes)
     from pipeline.freshness import git_head as _git_head
 
@@ -349,6 +397,25 @@ def index_repo(
     ]
     if published:
         publish_manifest(store.base, published)
+
+    wall_s = time.perf_counter() - wall_start
+    compute = mlx_compute_summary(stats.get("timings_s"))
+    rss_peak = process_rss_peak_mb()
+    print(
+        f"[index] summary wall={wall_s:.1f}s parse={parse_s:.1f}s chunk={chunk_s:.1f}s "
+        f"embed={embed_s:.1f}s write={write_s:.2f}s "
+        f"e2e={len(records)/max(wall_s,1e-6):.1f} chunk/s "
+        f"rss_peak={rss_peak:.0f}MB mode={mem_budget.mode}",
+        file=sys.stderr,
+        flush=True,
+    )
+    print(
+        f"[index] model compute inference={compute['model_inference_s']}s "
+        f"tokens={stats.get('tokens')} tok/s={stats.get('tok_per_s')} "
+        f"chunks={len(records)} chunk/s={stats.get('chunk_per_s')}",
+        file=sys.stderr,
+        flush=True,
+    )
 
     return IndexStats(
         root=str(root),

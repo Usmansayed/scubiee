@@ -278,11 +278,25 @@ class ResourceManager:
             allow = True
             reason = "run at calibrated budget"
 
+        from pipeline.memory_budget import process_rss_mb, rss_cap_mb
+
+        cap = rss_cap_mb()
+        proc_rss = process_rss_mb()
+        if cap and proc_rss is not None and proc_rss >= cap * 0.9:
+            batch = max(1, int(batch) // 2)
+            allow = True
+            reason = f"process RSS {proc_rss:.0f}MB near CE cap {cap}MB — halving batch"
+
         worker_ceiling = envelope.embed_workers if job == "embed" else envelope.index_workers
+        ceiling = envelope.batch_ceiling
+        if os.environ.get("CTX_CE_MEMORY_MODE"):
+            cap_ceiling = _env_int("CTX_CE_EMB_BATCH_CEILING", 0)
+            if cap_ceiling > 0:
+                ceiling = min(ceiling, cap_ceiling)
         return AdaptiveBudget(
             pressure=pressure,
             allow=allow,
-            batch_size=max(1, min(int(batch), base, envelope.batch_ceiling)),
+            batch_size=max(1, min(int(batch), base, ceiling)),
             workers=max(1, min(int(workers), worker_ceiling)),
             pause_s=float(pause),
             reason=reason,

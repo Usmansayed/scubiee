@@ -279,6 +279,7 @@ class Handler(BaseHTTPRequestHandler):
             "/v1/locate",
             "/v1/sync",
             "/sync",
+            "/v1/publish",
             "/v1/grep",
             "/v1/outline",
             "/v1/read_span",
@@ -351,6 +352,17 @@ class Handler(BaseHTTPRequestHandler):
 
         if path in ("/v1/sync", "/sync"):
             _json(self, 200, ce.sync(data.get("path") or None))
+            return
+
+        if path == "/v1/publish":
+            payload = data.get("payload")
+            if payload is not None and not isinstance(payload, dict):
+                payload = None
+            _json(
+                self,
+                200,
+                ce.publish(data.get("path") or None, payload=payload),
+            )
             return
 
         if path == "/v1/grep":

@@ -53,6 +53,8 @@ def test_resolve_runtime_returns_saved_profile_without_detect(
 ) -> None:
     saved = _profile()
     monkeypatch.setattr(accel, "load_accel", lambda: saved)
+    monkeypatch.delenv("CTX_EMBED_BACKEND", raising=False)
+    monkeypatch.delenv("CTX_MLX", raising=False)
     monkeypatch.setattr(
         accel,
         "recommend_profile",

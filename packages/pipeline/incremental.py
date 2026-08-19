@@ -92,6 +92,16 @@ def incremental_sync(
         print(f"[resources] sync gate skipped: {exc}", file=sys.stderr, flush=True)
 
     store = PipelineStore(root, base_dir=base_dir, vdb=vdb)
+    from pipeline.memory_budget import apply_index_memory_budget, resolve_index_memory_budget
+
+    mem_budget = resolve_index_memory_budget(background=True, store=store)
+    apply_index_memory_budget(mem_budget)
+    print(
+        f"[sync] memory mode={mem_budget.mode} rss_cap={mem_budget.rss_cap_mb}MB "
+        f"mlx_batch={mem_budget.mlx_batch} cache={mem_budget.mlx_cache_mb}MB",
+        file=sys.stderr,
+        flush=True,
+    )
     meta = store.load_meta()
     old = store.load_merkle()
     report = check_freshness(

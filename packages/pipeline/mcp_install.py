@@ -10,7 +10,24 @@ from typing import Any
 
 
 def interpreter() -> str:
-    return str(Path(sys.executable).resolve()).replace("\\", "/")
+    """Python that can ``import pipeline`` for Cursor MCP.
+
+    Do **not** ``Path.resolve()`` the executable: on macOS a venv's
+    ``bin/python`` is a symlink into Homebrew's Cellar, and resolving it
+    drops the venv ``site-packages`` → ``ModuleNotFoundError: pipeline``.
+    Prefer ``CTX_PYTHON``, then ``sys.prefix``'s python, then ``sys.executable``
+    as written (symlink preserved).
+    """
+    override = (os.environ.get("CTX_PYTHON") or "").strip()
+    if override:
+        return override.replace("\\", "/")
+    if os.name == "nt":
+        candidate = Path(sys.prefix) / "Scripts" / "python.exe"
+    else:
+        candidate = Path(sys.prefix) / "bin" / "python"
+    if candidate.is_file():
+        return str(candidate).replace("\\", "/")
+    return str(Path(sys.executable)).replace("\\", "/")
 
 
 def server_entry(

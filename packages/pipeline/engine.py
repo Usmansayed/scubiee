@@ -78,6 +78,8 @@ def get_embedder(model: str, *, dim: int | None, cache_path: Path | None) -> Emb
             # Force model load now so first HTTP request is fast
             if emb.backend == "coderank":
                 emb._ensure_coderank()
+            elif emb.backend == "mlx":
+                emb._ensure_mlx()
             _EMBEDDERS[key] = emb
         return _EMBEDDERS[key]
 
