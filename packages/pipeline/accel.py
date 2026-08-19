@@ -20,10 +20,11 @@ import platform
 import shutil
 import subprocess
 import sys
+import threading
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 CODERANK_MODEL = "nomic-ai/CodeRankEmbed"
 CODERANK_HF_ONNX = "jamie8johnson/CodeRankEmbed-onnx"
@@ -309,10 +310,54 @@ def conflicting_ort_packages(profile: str) -> list[str]:
     return sorted(all_ort - {keep})
 
 
+def _run_pip_captured(
+    cmd: list[str],
+    env: dict[str, str],
+    *,
+    on_tick: Callable[[], None] | None = None,
+) -> tuple[int, str]:
+    """Run pip and drain stdout.
+
+    Windows deadlocks if we PIPE stdout and only ``poll()``: the OS pipe
+    fills, pip blocks on write, we wait forever. Read in a thread.
+    """
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        env=env,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        bufsize=1,
+    )
+    chunks: list[str] = []
+
+    def drain() -> None:
+        stdout = proc.stdout
+        if stdout is None:
+            return
+        while True:
+            block = stdout.read(4096)
+            if not block:
+                break
+            chunks.append(block)
+
+    reader = threading.Thread(target=drain, daemon=True)
+    reader.start()
+    while reader.is_alive() or proc.poll() is None:
+        if on_tick is not None:
+            on_tick()
+        reader.join(timeout=0.2)
+    reader.join(timeout=2.0)
+    rc = proc.wait()
+    return rc, "".join(chunks)
+
+
 def pip_install(
     pkgs: list[str],
     *,
-    upgrade: bool = True,
+    upgrade: bool = False,
     progress: Any | None = None,
     start_pct: int = 0,
     end_pct: int = 0,
@@ -326,6 +371,7 @@ def pip_install(
         "--progress-bar",
         "off",
         "--disable-pip-version-check",
+        "--no-input",
     ]
     if upgrade:
         cmd.append("-U")
@@ -333,32 +379,29 @@ def pip_install(
     env = os.environ.copy()
     env["PIP_PROGRESS_BAR"] = "off"
     env["PIP_DISABLE_PIP_VERSION_CHECK"] = "1"
+    env["PIP_NO_INPUT"] = "1"
     if progress is not None:
         progress.set(start_pct, phase)
     else:
         print(f"[accel] {' '.join(cmd)}", file=sys.stderr, flush=True)
-    proc = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        env=env,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-    )
-    while proc.poll() is None:
-        if progress is not None:
-            progress.pulse(phase, until=max(start_pct, end_pct - 1) if end_pct else start_pct)
-        time.sleep(0.15)
-    out, _ = proc.communicate()
-    if proc.returncode:
-        detail = (out or "").strip() or f"pip exited {proc.returncode}"
+    until = max(start_pct, end_pct - 1) if end_pct else start_pct
+    t0 = time.monotonic()
+
+    def on_tick() -> None:
+        if progress is None:
+            return
+        elapsed = int(time.monotonic() - t0)
+        progress.pulse(f"{phase} ({elapsed}s)", until=until)
+
+    rc, out = _run_pip_captured(cmd, env, on_tick=on_tick)
+    if rc:
+        detail = (out or "").strip() or f"pip exited {rc}"
         last = detail.splitlines()[-1] if detail else "pip failed"
         if progress is not None:
             progress.fail(f"{phase}: {last}")
         else:
             print(detail, file=sys.stderr)
-        raise subprocess.CalledProcessError(proc.returncode, cmd, output=out)
+        raise subprocess.CalledProcessError(rc, cmd, output=out)
     if progress is not None and end_pct:
         progress.set(end_pct, phase)
 
