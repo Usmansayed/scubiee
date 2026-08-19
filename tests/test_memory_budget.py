@@ -10,8 +10,18 @@ from pipeline.memory_budget import (
     background_budget,
     bootstrap_budget,
     is_bootstrap_index,
+    process_rss_mb,
+    process_rss_peak_mb,
     resolve_index_memory_budget,
 )
+
+
+def test_rss_helpers_work_without_unix_resource_module() -> None:
+    rss = process_rss_mb()
+    peak = process_rss_peak_mb()
+    assert rss is None or rss > 0
+    assert peak is None or peak > 0
+    assert "resource" not in __import__("pipeline.memory_budget", fromlist=["*"]).__dict__
 
 
 def test_bootstrap_budget_defaults() -> None:

@@ -821,16 +821,21 @@ class RuntimeManager:
         gate = self._gate(root)
         if gate:
             return gate
-        from pipeline.capability import grep_code
+        from pipeline.capability import grep_scan
 
         repo = Path(root).resolve() if root else (self.repo or Path.cwd())
         t0 = time.perf_counter()
-        hits = grep_code(repo, pattern, glob=glob, max_hits=max_hits)
+        report = grep_scan(repo, pattern, glob=glob, max_hits=max_hits)
         return {
             "ok": True,
             "pattern": pattern,
+            "glob": glob,
             "ms": round((time.perf_counter() - t0) * 1000, 2),
-            "hits": hits,
+            "hits": report["hits"],
+            "count": report["count"],
+            "truncated": report["truncated"],
+            "has_more": report["has_more"],
+            "max_hits": report["max_hits"],
         }
 
     def outline(self, path: str, *, root: Path | str | None = None) -> dict[str, Any]:
@@ -846,7 +851,13 @@ class RuntimeManager:
                 rel = str(Path(path).resolve().relative_to(repo)).replace("\\", "/")
         except Exception:  # noqa: BLE001
             pass
-        return {"ok": True, "path": rel, "symbols": file_outline(repo, rel)}
+        symbols = file_outline(repo, rel)
+        out: dict[str, Any] = {"ok": True, "path": rel, "symbols": symbols}
+        suffix = Path(rel).suffix.lower()
+        if suffix not in {".py", ".pyi"}:
+            out["language_unsupported"] = True
+            out["note"] = "outline is Python AST only; use focus(mode=span) for this file."
+        return out
 
     def read_span(
         self,

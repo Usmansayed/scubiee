@@ -540,7 +540,7 @@ def test_nav_surface_active_and_instructions_budget(monkeypatch):
 
 
 def test_phase_surface_grep_glob_and_trajectory(monkeypatch):
-    """Phase surface: MCP grep/glob for known file/literal; map for meaning."""
+    """Phase surface: recommend map/focus/grep/glob; agent decides."""
     from pipeline import mcp_locate as ml
 
     pytest.importorskip("mcp")
@@ -548,9 +548,10 @@ def test_phase_surface_grep_glob_and_trajectory(monkeypatch):
     text = ml.SERVER_INSTRUCTIONS_PHASE
     assert ml._server_instructions("phase") == text
     assert "map | focus | grep | glob | workspace | status" in text
-    assert "MCP grep / glob" in text or "MCP grep" in text
-    assert "ONLY when specific" in text or "ONLY when you know" in text.lower()
-    assert "native Grep" in text or "native Grep / Glob" in text
+    assert "you decide" in text.lower()
+    assert "never hard-blocked" in text.lower()
+    assert "STRICT NATIVE BAN" not in text
+    assert "MANDATORY" not in text
     tools = set(ml.create_mcp()._tool_manager._tools)
     assert tools == {"map", "focus", "grep", "glob", "workspace", "status"}
 
@@ -775,7 +776,9 @@ def test_server_instructions_are_short_grep_like_cards():
 def test_cursor_rule_mirrors_short_decision_card():
     rule = (REPO / ".cursor" / "rules" / "context-agent.mdc").read_text(encoding="utf-8")
     assert "map" in rule and "focus" in rule
-    assert "Grep" in rule
-    assert "status()" in rule or "`status`" in rule
-    # Rule + frontmatter still under ~800 tokens budget with headroom.
+    assert "grep" in rule
+    assert "status" in rule
+    assert "STRICT" in rule
+    assert "Do not use native Grep" in rule
+    assert "SemanticSearch" in rule
     assert len(rule) <= 4000

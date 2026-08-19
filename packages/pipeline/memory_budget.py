@@ -10,7 +10,6 @@ batch, MLX allocator cache, and enabling aggressive unload hints.
 from __future__ import annotations
 
 import os
-import resource
 import sys
 from dataclasses import dataclass
 from typing import Literal
@@ -109,6 +108,19 @@ def apply_index_memory_budget(budget: IndexMemoryBudget) -> None:
         os.environ["CTX_CE_EMB_BATCH_CEILING"] = str(budget.embed_batch_ceiling)
 
 
+def _rusage_rss_mb() -> float | None:
+    """Unix ``resource`` module; missing on Windows."""
+    try:
+        import resource
+    except ImportError:
+        return None
+    usage = resource.getrusage(resource.RUSAGE_SELF)
+    peak = int(usage.ru_maxrss)
+    if sys.platform == "darwin":
+        return peak / (1024 * 1024)
+    return peak / 1024
+
+
 def process_rss_mb() -> float | None:
     try:
         import psutil  # type: ignore
@@ -116,19 +128,19 @@ def process_rss_mb() -> float | None:
         return float(psutil.Process().memory_info().rss) / (1024 * 1024)
     except Exception:  # noqa: BLE001
         pass
-    usage = resource.getrusage(resource.RUSAGE_SELF)
-    peak = int(usage.ru_maxrss)
-    if sys.platform == "darwin":
-        return peak / (1024 * 1024)
-    return peak / 1024
+    return _rusage_rss_mb()
 
 
 def process_rss_peak_mb() -> float | None:
-    usage = resource.getrusage(resource.RUSAGE_SELF)
-    peak = int(usage.ru_maxrss)
-    if sys.platform == "darwin":
-        return peak / (1024 * 1024)
-    return peak / 1024
+    try:
+        import psutil  # type: ignore
+
+        info = psutil.Process().memory_info()
+        peak = getattr(info, "peak_wset", None) or info.rss
+        return float(peak) / (1024 * 1024)
+    except Exception:  # noqa: BLE001
+        pass
+    return _rusage_rss_mb()
 
 
 def rss_cap_mb() -> int | None:

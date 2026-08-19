@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import ast
 import json
+import os
 import re
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -57,6 +58,61 @@ class LocateHit:
 
 def _norm_path(rel: str) -> str:
     return rel.replace("\\", "/").lstrip("./")
+
+
+def glob_to_regex(patt: str) -> re.Pattern[str]:
+    """Glob with ``**`` path segments (not fnmatch's flattened ``*``)."""
+    i, n = 0, len(patt)
+    parts: list[str] = []
+    while i < n:
+        if patt.startswith("**/", i):
+            parts.append("(?:.*/)?")
+            i += 3
+            continue
+        if patt.startswith("**", i):
+            parts.append(".*")
+            i += 2
+            continue
+        ch = patt[i]
+        if ch == "*":
+            parts.append("[^/]*")
+        elif ch == "?":
+            parts.append("[^/]")
+        else:
+            parts.append(re.escape(ch))
+        i += 1
+    flags = re.IGNORECASE if os.name == "nt" else 0
+    return re.compile("^" + "".join(parts) + "$", flags)
+
+
+def path_glob_match(rel: str, glob_pat: str) -> bool:
+    rel_n = _norm_path(rel)
+    name = rel_n.rsplit("/", 1)[-1]
+    patt = (glob_pat or "*").replace("\\", "/").strip() or "*"
+    if patt in {"*", "**", "**/*"}:
+        return True
+    rx = glob_to_regex(patt)
+    return rx.fullmatch(rel_n) is not None or rx.fullmatch(name) is not None
+
+
+def iter_glob_files(root: Path, glob_pat: str = "*.py") -> list[str]:
+    """Repo-relative files matching ``glob_pat``, skipping junk dirs."""
+    root = root.resolve()
+    out: list[str] = []
+    for dirpath, dirnames, filenames in os_walk_safe(root):
+        dirnames[:] = [d for d in dirnames if not _is_ignored_dir_name(d)]
+        for fname in filenames:
+            p = Path(dirpath) / fname
+            try:
+                rel = p.relative_to(root).as_posix()
+            except ValueError:
+                continue
+            if is_junk_rel(rel):
+                continue
+            if not path_glob_match(rel, glob_pat):
+                continue
+            out.append(rel)
+    return sorted(out)
 
 
 def _module_doc(source: str) -> str:
@@ -362,6 +418,59 @@ class CapabilityIndex:
         return (hits[0].score / (hits[1].score + 1e-9)) >= 1.12
 
 
+def grep_scan(
+    root: Path,
+    pattern: str,
+    *,
+    glob: str = "*.py",
+    max_hits: int = 20,
+) -> dict[str, Any]:
+    """Live-disk line grep. ``truncated`` means the hit cap fired — not absence."""
+    try:
+        rx = re.compile(pattern)
+    except re.error:
+        rx = re.compile(re.escape(pattern))
+    cap = max(1, int(max_hits or 20))
+    hits: list[dict[str, Any]] = []
+    truncated = False
+    for rel in iter_glob_files(root, glob):
+        path = root / rel
+        try:
+            raw = path.read_bytes()
+        except OSError:
+            continue
+        if b"\0" in raw[:8192]:
+            continue
+        try:
+            lines = raw.decode("utf-8", errors="replace").splitlines()
+        except Exception:  # noqa: BLE001
+            continue
+        for i, line in enumerate(lines, 1):
+            if not rx.search(line):
+                continue
+            if len(hits) >= cap:
+                truncated = True
+                break
+            hits.append(
+                {
+                    "path": rel,
+                    "file": rel,
+                    "line": i,
+                    "text": line.strip()[:200],
+                }
+            )
+        if truncated:
+            break
+    return {
+        "hits": hits,
+        "truncated": truncated,
+        "has_more": truncated,
+        "glob": glob,
+        "max_hits": cap,
+        "count": len(hits),
+    }
+
+
 def grep_code(
     root: Path,
     pattern: str,
@@ -369,35 +478,8 @@ def grep_code(
     glob: str = "*.py",
     max_hits: int = 20,
 ) -> list[dict[str, Any]]:
-    """Cheap line grep over the repo (no LLM)."""
-    import fnmatch
-
-    try:
-        rx = re.compile(pattern)
-    except re.error:
-        rx = re.compile(re.escape(pattern))
-    hits: list[dict[str, Any]] = []
-    for rel in iter_py_files(root):
-        if glob and not fnmatch.fnmatch(Path(rel).name, glob.replace("**/", "")):
-            if not fnmatch.fnmatch(rel, glob):
-                continue
-        path = root / rel
-        try:
-            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
-        except OSError:
-            continue
-        for i, line in enumerate(lines, 1):
-            if rx.search(line):
-                hits.append(
-                    {
-                        "path": rel,
-                        "line": i,
-                        "text": line.strip()[:200],
-                    }
-                )
-                if len(hits) >= max_hits:
-                    return hits
-    return hits
+    """Cheap line grep over the repo (no LLM). Honors ``glob`` (not Python-only)."""
+    return list(grep_scan(root, pattern, glob=glob, max_hits=max_hits)["hits"])
 
 
 def file_outline(root: Path, rel: str) -> list[dict[str, Any]]:

@@ -1,6 +1,6 @@
 # Tech summary — how we do things
 
-As of **scubiee 0.2.13** / commit `e59fb8a`. This replaces `docs/engineering/` (deleted).
+As of **scubiee 0.2.18** (PyPI latest **0.2.17**). This replaces `docs/engineering/` (deleted).
 
 ## System picture
 
@@ -63,15 +63,15 @@ Incremental: only dirty files; after sync the **running daemon must `/v1/publish
 
 `packages/pipeline/mcp_locate.py`. Default `CTX_MCP_SURFACE=phase`.
 
-- `map` — ranked cards, no bodies.
-- `focus` — outline / span / neighbors; already-in-session is **advisory**, not an error.
-- `grep` / `glob` — specific-only (not discovery). `glob` wraps `files_impl`.
+- `map` — ranked cards, no bodies. Payload `ranked_only` / `scope=indexed_chunks`. A miss is not “not in the repo”.
+- `focus` — outline / span / neighbors; already-in-session is **advisory**. Span may set `truncated`. Outline may set `language_unsupported` (Python AST only).
+- `grep` / `glob` — live disk. Grep honors `glob` (default `*.py`; pass `*` / `*.ts`). Both return `truncated` / `has_more`. Empty + not truncated = absence for that glob/pattern only.
 - `workspace` — pin / show / clear.
 - `status` — health; tool list must include all six.
 
 **No hard session caps** on map/search/focus. Duplicates → `usage_hint` only. Payload `max_chars` still applies.
 
-Cursor rule shipped at `packages/pipeline/templates/context-agent.mdc`. `ctx setup` copies it to `.cursor/rules/context-agent.mdc` (`.cursor/` is gitignored). **Short:** CE-only retrieval unless MCP unhealthy. Full trajectory is in MCP **server instructions**, not the rule.
+Cursor rule shipped at `packages/pipeline/templates/context-agent.mdc`. `ctx setup` copies it to `.cursor/rules/context-agent.mdc` (`.cursor/` is gitignored). **Short + strict:** native Grep/Glob/search banned for discovery; CE MCP only. Exception: MCP missing or `status()` unhealthy. How to pick map vs grep vs glob is still recommended in MCP instructions.
 
 MCP Python on Darwin: **do not** `Path(sys.executable).resolve()` — venv `bin/python` is a Homebrew Cellar symlink. Use `CTX_PYTHON` or `sys.prefix/bin/python` (`mcp_install.py`).
 
@@ -118,10 +118,12 @@ ctx resources [--refresh]
 ## Tests that guard this design
 
 - `tests/test_mcp_locate.py` / `test_mcp_lean.py` / `test_session_store.py` — phase tool set
+- `tests/test_grep_glob_scope.py` — grep glob + `**` + truncated
 - `tests/test_hybrid_cbm.py` — duplicate search advises, does not block
 - `tests/test_runtime_publish.py` — publish-after-sync
 - `tests/test_mlx_mac.py` / `test_mlx_backend.py` / `test_coreml_mac.py`
-- `tests/test_memory_budget.py`
+- `tests/test_memory_budget.py` — Windows RSS without `resource`
+- `tests/test_accel_pip_drain.py` — pip stdout drain
 
 ## Do not regress
 
@@ -129,6 +131,6 @@ ctx resources [--refresh]
 2. `Path.resolve()` on Darwin MCP interpreter.
 3. Skip `/v1/publish` after out-of-process sync.
 4. MLX embed without per-thread stream.
-5. Native Grep/Glob mixed with phase for discovery.
-6. Long tool-usage table in the Cursor rule.
+5. Treat a `map` miss as “file absent,” or grep/glob as exhaustive when `truncated` is true.
+6. Long ban / trajectory table in the Cursor rule.
 7. Silent CPU fallback when the user asked for GPU.

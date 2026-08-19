@@ -10,6 +10,7 @@ Read **this folder first** when a new Cursor chat starts on Context Engine / Scu
 Engineering how-it-works: [`../engg/`](../engg/).
 
 **Branch:** `feat/production-certification`  
-**Tip:** `e59fb8a` (Mac handoff 0.2.11–0.2.13)  
-**PyPI:** `scubiee==0.2.14`  
-**Mac venv:** `~/scubiee` (not `~/.context-engine/venv`)
+**PyPI published:** `scubiee==0.2.17`  
+**Tree:** `0.2.18` (grep/glob honesty + recommend MCP instructions; upload to PyPI if needed)  
+**Mac venv:** `~/scubiee` (not `~/.context-engine/venv`)  
+**Windows:** Miniconda 3.13, DirectML on RX 6500M verified

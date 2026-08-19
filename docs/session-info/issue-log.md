@@ -100,13 +100,79 @@ CoreML remained too brittle. Mac agent shipped **MLX** CodeRank on Metal (`mlx_m
 
 ---
 
+## Windows install + DML (0.2.14–0.2.17)
+
+### Setup hung at 31% (pip PIPE deadlock)
+
+**Symptom:** `ctx setup` bar stuck ~31%, never finished.  
+**Cause:** `pip_install` used `Popen(stdout=PIPE)` and never drained stdout (Windows pipe deadlock).  
+**Fix (0.2.14):** drain thread in `accel._run_pip_captured`.  
+**Files:** `packages/pipeline/accel.py`, `tests/test_accel_pip_drain.py`.  
+**PyPI:** https://pypi.org/project/scubiee/0.2.14/
+
+### Permission error while FastEmbed pulled CPU ORT
+
+**Symptom:** Setup died ~31% replacing onnxruntime while `ctx.exe` held site-packages. Leftover `~cubiee` dist-info noise. Editable `context_engine-0.1.0` shadowed PyPI.  
+**Fix (0.2.15):** skip already-satisfied FastEmbed deps; FastEmbed `--no-deps`; clean leftover dist-info / old editable.  
+**Lesson:** do not `pip install` ORT while the running `ctx` process has the wheel locked.
+
+### DML crash: CPU ORT wheel, profile `dml`
+
+**Symptom:** ~56% “GPU/CPU engine”; FastEmbed asked for `DmlExecutionProvider`; installed wheel was CPU (`AzureExecutionProvider` / `CPUExecutionProvider`). Leftover `onnxruntime/` folder after mixed uninstall → `ort.get_available_providers` `AttributeError` (`__file__` None).  
+**Fix (0.2.16):** uninstall all of `onnxruntime` / `-gpu` / `-directml`, force-install the profile wheel; `_align_profile_to_ort` CPU-fallback only if EP still missing. Manual purge of leftover `site-packages/onnxruntime` then `onnxruntime-directml` on this machine.  
+**Verified:** providers `DmlExecutionProvider`, `CPUExecutionProvider`; `ctx setup --repair` 100% Ready; `accel.json` profile `dml` device_id 1 (RX 6500M).  
+**PyPI:** https://pypi.org/project/scubiee/0.2.16/
+
+### `ctx init` `No module named 'resource'`
+
+**Symptom:** Setup OK; `ctx init` failed immediately (`[resources] index gate skipped` then hard fail).  
+**Cause:** `memory_budget.py` imported Unix-only stdlib `resource` at module level. Windows has no `resource`.  
+**Fix (0.2.17):** RSS via `psutil` first; `resource` only as Unix fallback.  
+**Verified:** `ctx init` on this worktree — 364 files, 2987 chunks, FastEmbed DML ~27 chunk/s, 100% Ready. `mlx_batch` in the log is bootstrap budget field names, not MLX backend.  
+**Files:** `packages/pipeline/memory_budget.py`, `tests/test_memory_budget.py`.  
+**PyPI:** https://pypi.org/project/scubiee/0.2.17/
+
+### First PyPI 0.2.17 upload hung
+
+Credential script quoting failed; twine waited for a password. Killed; retry uploaded 0.2.17 successfully.
+
+---
+
+## MCP locate honesty + recommendations (0.2.18, tree — not necessarily on PyPI yet)
+
+### Grep only searched `.py` even when glob said otherwise
+
+**Symptom:** `grep(pattern, glob="*.ts")` still walked `iter_py_files` (`.py` only). Default `max_hits=20` with no “more exist” flag → agents treated a miss as absence.  
+**Fix:** `grep_scan` / `iter_glob_files` honor the requested glob; return `truncated` / `has_more`. Empty + `truncated=false` = absence **for that glob only**.  
+**Files:** `packages/pipeline/capability.py`, `ce_service.py`, `mcp_locate.py`, `tests/test_grep_glob_scope.py`.
+
+### Glob flattened `**` and truncated mid-walk
+
+**Cause:** `**` replaced with `*`; walk stopped at `limit` then sorted → a real file later in the tree never appeared, and empty+truncated was possible.  
+**Fix:** globstar matcher; collect all matches, sort, slice; `truncated` means more than `limit`. Known relative path without magic is an exact file check.
+
+### Map treated as exhaustive; phase instructions were bans
+
+**Was:** long STRICT NATIVE BAN / MANDATORY / “ONLY when specific” in MCP server instructions every turn. Cursor rule duplicated trajectory.  
+**User:** recommend, let the agent decide; do not imply map miss = not in repo.  
+**Fix:** short recommend card (`SERVER_INSTRUCTIONS_PHASE`). `map` payload `ranked_only` + `scope=indexed_chunks`. `focus` may set `truncated` / `language_unsupported` (outline is Python AST). Cursor rule later restored **STRICT native ban** (Grep/Glob/search forbidden; CE MCP only; unhealthy `status()` exception). MCP instructions still recommend *which* CE tool, not native locate.  
+**Files:** `mcp_locate.py`, `templates/context-agent.mdc`, `.cursor/rules/context-agent.mdc`.  
+**Tests:** `test_mcp_locate.py` (no STRICT BAN / MANDATORY), `test_grep_glob_scope.py`.
+
+### Live reindex probe (this Windows session, CE MCP)
+
+Wrote unique new file + edit on `memory_budget.py`, waited 5s. `grep`/`glob` saw tokens immediately (live disk). `map` rank 1 on both unique symbols. Keeper incremental ~5.2s, 10 chunks upserted. Probe files removed. Hammering `map`/`locate` while measuring can delay sync (`locate_streak`) — poll grep/search, not locate, for timing tests.
+
+---
+
 ## Process mistakes (this Windows session)
 
 - Merged feature branch into `main` **and checked this worktree out to `main`**. User wanted Mac commits **on `feat/production-certification` in this worktree**. Undo: this worktree back on the feature branch; `main` force-updated to Mac tip `e59fb8a` (no merge commit).
 - Do not assume venv `~/.context-engine/venv` — user created **`~/scubiee`**.
+- Session-info logs were written at 0.2.13/0.2.14 and **not updated** through 0.2.15–0.2.18 until this entry. Always append here when we ship a setup/MCP fix.
 
 ---
 
 ## Still open (see session-summary remaining)
 
-npm publish, `needs_full` status after catchup, leftover project stores, dump/replace operator UX, foreign-tree indexing, uninstall vs live daemon, Windows MCP/SDK test flakes, README git pin still `v0.2.6` in one place.
+npm publish, `needs_full` / `sync_status=syncing` vs keeper `ready` mismatch, leftover project stores, dump/replace operator UX, foreign-tree indexing, uninstall vs live daemon, README git pin still `v0.2.6` in one place, 0.2.18 not on PyPI until we upload.
