@@ -14,12 +14,15 @@ import hashlib
 import json
 import os
 import sys
+import threading
 import time
 from pathlib import Path
 
 import numpy as np
 
 QUERY_PREFIX = "Represent this query for searching relevant code: "
+
+_MLX_THREAD = threading.local()
 CODERANK_MODEL = "nomic-ai/CodeRankEmbed"
 DEFAULT_MODEL = os.environ.get("CTX_EMBED_MODEL", CODERANK_MODEL)
 
@@ -387,9 +390,17 @@ class Embedder:
         return self._st_model
 
     def _ensure_mlx(self):
-        if self._mlx_model is not None:
-            return self._mlx_model
-        from pipeline.mlx_mac import CodeRankMLX, load_coderank_tokenizer, require_mlx_gpu
+        model = getattr(_MLX_THREAD, "model", None)
+        if model is not None:
+            self._mlx_model = model
+            self._mlx_tokenizer = getattr(_MLX_THREAD, "tokenizer", None) or self._mlx_tokenizer
+            return model
+        from pipeline.mlx_mac import (
+            CodeRankMLX,
+            load_coderank_tokenizer,
+            mlx_thread_stream,
+            require_mlx_gpu,
+        )
 
         report = require_mlx_gpu()
         self._mlx_device_report = report
@@ -406,8 +417,13 @@ class Embedder:
             flush=True,
         )
         t0 = time.perf_counter()
-        self._mlx_model = CodeRankMLX(dtype=dtype, require_gpu=True)
-        self._mlx_tokenizer = load_coderank_tokenizer()
+        with mlx_thread_stream():
+            model = CodeRankMLX(dtype=dtype, require_gpu=True)
+        tok = load_coderank_tokenizer()
+        _MLX_THREAD.model = model
+        _MLX_THREAD.tokenizer = tok
+        self._mlx_model = model
+        self._mlx_tokenizer = tok
         print(
             f"[embed] MLX ready in {(time.perf_counter() - t0) * 1000:.0f}ms "
             f"metal={bool(report.get('metal_available'))}",

@@ -539,6 +539,22 @@ def test_nav_surface_active_and_instructions_budget(monkeypatch):
     assert "unchanged" in text.lower()
 
 
+def test_phase_surface_grep_glob_and_trajectory(monkeypatch):
+    """Phase surface: MCP grep/glob for known file/literal; map for meaning."""
+    from pipeline import mcp_locate as ml
+
+    pytest.importorskip("mcp")
+    monkeypatch.setenv("CTX_MCP_SURFACE", "phase")
+    text = ml.SERVER_INSTRUCTIONS_PHASE
+    assert ml._server_instructions("phase") == text
+    assert "map | focus | grep | glob | workspace | status" in text
+    assert "MCP grep / glob" in text or "MCP grep" in text
+    assert "ONLY when specific" in text or "ONLY when you know" in text.lower()
+    assert "native Grep" in text or "native Grep / Glob" in text
+    tools = set(ml.create_mcp()._tool_manager._tools)
+    assert tools == {"map", "focus", "grep", "glob", "workspace", "status"}
+
+
 def test_nav_surface_exposes_six_tools(monkeypatch):
     pytest.importorskip("mcp")
     from pipeline.mcp_locate import create_mcp

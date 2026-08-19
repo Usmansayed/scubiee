@@ -450,11 +450,12 @@ class CodeRankMLX:
         import gc
 
         gc.collect()
-        mx.eval(*self.w.values())
-        try:
-            mx.clear_cache()
-        except Exception:  # noqa: BLE001
-            pass
+        with mlx_thread_stream():
+            mx.eval(*self.w.values())
+            try:
+                mx.clear_cache()
+            except Exception:  # noqa: BLE001
+                pass
         self.inv_freq = self.w["rotary_inv_freq"].astype(mx.float32)
         self._compiled = None
         self.use_fast_attn = _flag("CTX_MLX_FAST_ATTN", True)

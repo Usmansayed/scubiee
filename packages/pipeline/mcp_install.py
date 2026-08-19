@@ -88,6 +88,23 @@ def merge_mcp_json(
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
 
+def _context_agent_rule_template() -> Path:
+    import pipeline
+
+    return Path(pipeline.__file__).resolve().parent / "templates" / "context-agent.mdc"
+
+
+def write_cursor_rule() -> str | None:
+    """Write MCP-only retrieval rule to project .cursor/rules (gitignored locally)."""
+    src = _context_agent_rule_template()
+    if not src.is_file():
+        return None
+    dest = Path.cwd() / ".cursor" / "rules" / "context-agent.mdc"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+    return str(dest)
+
+
 def write_cursor_mcp(
     repo: Path | str | None = None,
     *,
@@ -100,7 +117,11 @@ def write_cursor_mcp(
     target_repo = repo or Path.cwd()
     merge_mcp_json(project, repo=target_repo, host=host, port=port)
     _drop_user_context_engine_when_project_configured(project, user)
-    return {"project": str(project), "user": str(user)}
+    out = {"project": str(project), "user": str(user)}
+    rule = write_cursor_rule()
+    if rule:
+        out["rule"] = rule
+    return out
 
 
 def _drop_user_context_engine_when_project_configured(

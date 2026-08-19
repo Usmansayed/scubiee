@@ -101,10 +101,10 @@ def test_mcp_exposes_lean_surface(monkeypatch):
     assert names == {"search", "read", "status"}
 
 
-def test_mcp_phase_surface_exposes_map_focus_workspace(monkeypatch):
+def test_mcp_phase_surface_exposes_locate_toolkit(monkeypatch):
     pytest.importorskip("mcp")
     monkeypatch.setenv("CTX_MCP_SURFACE", "phase")
     from pipeline.mcp_locate import create_mcp
 
     names = set(create_mcp()._tool_manager._tools)
-    assert names == {"map", "focus", "workspace", "status"}
+    assert names == {"map", "focus", "grep", "glob", "workspace", "status"}
