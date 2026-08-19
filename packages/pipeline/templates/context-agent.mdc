@@ -1,34 +1,12 @@
 ---
-description: Context Engine — MCP-only code retrieval (phase trajectory)
+description: Context Engine — retrieval-only MCP (strict fallback only)
 alwaysApply: true
 ---
 
-# Context Engine = ONLY code retrieval
+# Strict retrieval policy
 
-MCP server `context-engine` (surface **phase**). Tools: **map | focus | grep | glob | workspace | status**.
+Use Context Engine MCP (`context-engine`) as the ONLY retrieval source (use `map` / `focus` / `status()` as needed).
 
-**Ban native locate:** do not use Grep, Glob, rg, find, SemanticSearch, codebase_search, or Task/explore/subagent for discovery. Use MCP tools only. Shell = tests / build / git / gh. Native **Read** only for exact lines you are about to **Edit** — not to explore.
+Do not use native Grep/Glob/rg/find/SemanticSearch/codebase_search/Task/explore for retrieval.
 
-## Need → MCP tool
-
-| Situation | Tool |
-|-----------|------|
-| Cold topic / where\|how\|who\|what handles X | `map(query)` — code vocabulary, 20–60 tokens |
-| File shape / defs | `focus(target, mode=outline)` |
-| Body to change | `focus(target, mode=span)` |
-| Callers / wiring | `focus(target, mode=neighbors)` |
-| **Known file** (stack trace, @ ref, exact path) | `glob('path/or/file.py')` → `focus` |
-| **Known exact text** (import line, error string) | `grep('literal')` → `focus` |
-| Forgot what you opened | `workspace(show)` |
-| Hot file | `workspace(pin=path)` |
-| New topic | `workspace(clear)` → `map` |
-| Health | `status()` — never to find code |
-
-## grep / glob — specific only
-
-- **glob:** you know WHICH file. BAD: find auth code. GOOD: `glob('packages/pipeline/mcp_locate.py')`.
-- **grep:** you know WHAT exact string. BAD: first locate with `grep('session')`. GOOD: after test names `class RuntimeManager`.
-
-## Flow
-
-`map` → `focus` → edit → test. Or `glob`/`grep` (when specific) → `focus` → edit. Fewer locate rounds; do not repeat identical queries — use `workspace(show)`.
+Only if `context-engine` MCP is unavailable (connection/runtime failure or unhealthy `status()`), allow a single native locate pass (e.g. Grep/Glob) to get the exact file/lines you must edit, then immediately switch back to editing.
