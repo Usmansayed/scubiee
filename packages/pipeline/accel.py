@@ -590,7 +590,62 @@ def install_profile_packages(profile: str, progress: Any | None = None) -> None:
     _install_ort_wheel(profile, progress=progress)
 
 
+def _ensure_cuda_dll_paths() -> None:
+    """Auto-discover CUDA/cuDNN DLLs from onnxruntime wheel on Windows.
+
+    When onnxruntime-gpu is installed via pip/conda, the CUDA runtime DLLs
+    (cublas, cudnn, etc.) are bundled inside the package's native directory
+    but Windows won't find them unless they're on PATH or registered via
+    os.add_dll_directory(). This function discovers those paths and adds them
+    before ORT is imported.
+    """
+    if platform.system() != "Windows":
+        return
+    try:
+        import importlib.util
+
+        spec = importlib.util.find_spec("onnxruntime")
+        if spec is None or spec.origin is None:
+            return
+        ort_dir = Path(spec.origin).parent
+        # onnxruntime-gpu ships DLLs in the capi/ subdirectory
+        capi_dir = ort_dir / "capi"
+        dll_dirs: list[Path] = []
+        if capi_dir.is_dir():
+            dll_dirs.append(capi_dir)
+        # Also check for cuda provider directory
+        cuda_dir = ort_dir / "capi" / "cuda"
+        if cuda_dir.is_dir():
+            dll_dirs.append(cuda_dir)
+        # Some conda installs put CUDA libs in the env's Library/bin
+        env_prefix = Path(sys.prefix)
+        lib_bin = env_prefix / "Library" / "bin"
+        if lib_bin.is_dir():
+            dll_dirs.append(lib_bin)
+        # Also check CUDA_PATH if set
+        cuda_path = os.environ.get("CUDA_PATH", "")
+        if cuda_path:
+            cuda_bin = Path(cuda_path) / "bin"
+            if cuda_bin.is_dir():
+                dll_dirs.append(cuda_bin)
+        # Register via os.add_dll_directory (Python 3.8+) and prepend PATH
+        path_additions: list[str] = []
+        for d in dll_dirs:
+            resolved = str(d.resolve())
+            if resolved not in os.environ.get("PATH", ""):
+                path_additions.append(resolved)
+            try:
+                os.add_dll_directory(resolved)
+            except (OSError, AttributeError):
+                pass
+        if path_additions:
+            os.environ["PATH"] = ";".join(path_additions) + ";" + os.environ.get("PATH", "")
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def ort_available_providers() -> list[str]:
+    _ensure_cuda_dll_paths()
     try:
         import onnxruntime as ort  # type: ignore
 
@@ -652,19 +707,61 @@ def _refuse_cuda_cpu_fallback(
     """Detect CUDA silent CPU fallback and warn/fix.
 
     After installing onnxruntime-gpu, verify CUDAExecutionProvider is actually
-    available. If not (missing CUDA toolkit, wrong driver version, library path
-    issues), warn clearly instead of silently running on CPU.
+    available AND can create a working session. ORT may list the provider but
+    fail at session time if DLLs are missing. We do a real inference probe.
     """
     if profile.profile != "cuda":
         return
+    _ensure_cuda_dll_paths()
     available = ort_available_providers()
     if not available:
         return
-    if "CUDAExecutionProvider" in available:
+
+    cuda_listed = "CUDAExecutionProvider" in available
+
+    # Even if CUDA EP is listed, probe actual session creation
+    cuda_works = False
+    if cuda_listed:
+        try:
+            import numpy as np
+            import onnxruntime as ort
+
+            # Create a trivial ONNX model in-memory to test CUDA session
+            # Use ORT's own session with CUDA provider to verify DLL loading
+            sess_options = ort.SessionOptions()
+            sess_options.log_severity_level = 4  # suppress warnings during probe
+            # Try creating a session with a known model to verify CUDA actually works
+            from huggingface_hub import try_to_load_from_cache
+
+            model_path = try_to_load_from_cache(
+                CODERANK_HF_ONNX, "model_optimized.onnx"
+            )
+            if model_path and Path(model_path).is_file():
+                sess = ort.InferenceSession(
+                    str(model_path),
+                    sess_options=sess_options,
+                    providers=["CUDAExecutionProvider", "CPUExecutionProvider"],
+                )
+                active = sess.get_providers()
+                cuda_works = "CUDAExecutionProvider" in active
+                del sess
+            else:
+                # No cached model yet — trust provider list for now,
+                # calibration will catch it later
+                cuda_works = True
+        except Exception:  # noqa: BLE001
+            cuda_works = False
+
+    if cuda_listed and cuda_works:
         return
 
-    # CUDA EP missing — diagnose why
+    # CUDA EP missing or non-functional — diagnose why
     hints: list[str] = []
+    if not cuda_listed:
+        reason_prefix = "CUDAExecutionProvider not listed"
+    else:
+        reason_prefix = "CUDAExecutionProvider listed but session creation failed (DLL load error)"
+
     if platform.system() == "Linux":
         ld_path = os.environ.get("LD_LIBRARY_PATH", "")
         if "/usr/local/cuda" not in ld_path:
@@ -686,10 +783,15 @@ def _refuse_cuda_cpu_fallback(
             )
         elif not Path(cuda_path).exists():
             hints.append(f"CUDA_PATH={cuda_path} does not exist.")
+        hints.append(
+            "For CUDA 12.x try: pip install onnxruntime-gpu "
+            "--extra-index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/"
+            "_packaging/onnxruntime-cuda-12/pypi/simple/"
+        )
 
     hint_text = " ".join(hints) if hints else "Check CUDA toolkit installation."
     msg = (
-        f"NVIDIA GPU detected but CUDAExecutionProvider is missing from onnxruntime-gpu "
+        f"NVIDIA GPU detected but {reason_prefix} "
         f"(providers={available}). {hint_text}"
     )
 

@@ -157,13 +157,39 @@ def _daemon_status() -> dict[str, Any]:
 
 
 def _run_quick_tests(progress_callback=None) -> dict[str, Any]:
-    """Run the quick verification tier and return results."""
+    """Run the quick verification tier and return results.
+
+    Only runs if executed from within the scubiee source repository where
+    test files exist. When installed as a package (normal user scenario),
+    skips tests gracefully since test files are not shipped in the wheel.
+    """
     try:
         from pipeline.test_runner import build_test_plan, run_plan
 
+        # Determine where test files would live
         root = Path(__file__).resolve().parents[2]
+        test_dir = root / "tests"
+
+        # If tests directory doesn't exist, we're running from an installed
+        # package — skip gracefully instead of producing misleading failures.
+        if not test_dir.is_dir():
+            return {
+                "ok": True,
+                "skipped": True,
+                "reason": "test suite not available (installed package, not source checkout)",
+            }
+
         plan = build_test_plan("quick", root=root)
         targets = list(plan.pytest_targets)
+
+        # Verify at least one target file actually exists
+        existing = [t for t in targets if (root / t).is_file()]
+        if not existing:
+            return {
+                "ok": True,
+                "skipped": True,
+                "reason": "no test files found at expected paths",
+            }
 
         if progress_callback:
             progress_callback(0, len(targets), "Starting tests")
