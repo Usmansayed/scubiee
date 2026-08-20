@@ -1,7 +1,7 @@
 [project]
 name = "scubiee"
-version = "0.2.25"
-description = "Scubiee — local Cursor MCP context engine: setup once, ctx init per repo, CUDA/DirectML/MLX/CPU."
+version = "0.2.26"
+description = "Scubiee — local Cursor MCP context engine: setup once, ctx init per repo, DirectML/MLX/CUDA/CPU."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -26,20 +26,19 @@ dependencies = [
   "mcp>=1.0,<2",
   "loguru>=0.7",
   "huggingface_hub>=0.20",
-  # Mac: pip install scubiee pulls the Metal stack (no extra required).
-  "fastembed>=0.4; sys_platform == 'darwin'",
-  "onnxruntime>=1.17; sys_platform == 'darwin'",
+  "fastembed>=0.4",
+  "tokenizers>=0.15",
+  # Mac: MLX + CoreML stack.
   "onnx>=1.16; sys_platform == 'darwin'",
-  "tokenizers>=0.15; sys_platform == 'darwin'",
   "mlx>=0.22; sys_platform == 'darwin' and platform_machine == 'arm64'",
 ]
 
 [project.optional-dependencies]
-# Pick ONE via: ctx setup  (uninstalls conflicting ORT wheels)
+# ctx setup auto-detects the best profile. These extras are for explicit control.
 cpu = ["fastembed>=0.4", "onnxruntime>=1.17"]
 coreml = ["fastembed>=0.4", "onnxruntime>=1.17", "onnx>=1.16"]
 dml = ["fastembed>=0.4", "onnxruntime-directml>=1.17"]
-cuda = ["fastembed>=0.4", "onnxruntime-gpu>=1.17"]
+cuda = ["fastembed>=0.4", "onnxruntime-gpu>=1.17,<1.27"]
 macos = ["fastembed>=0.4", "onnxruntime>=1.17", "onnx>=1.16", "mlx>=0.22"]
 mlx = ["mlx>=0.22", "fastembed>=0.4", "onnx>=1.16", "onnxruntime>=1.17"]
 embed-st = ["sentence-transformers>=3.0", "torch", "einops"]

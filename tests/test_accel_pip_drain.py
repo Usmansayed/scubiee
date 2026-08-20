@@ -18,10 +18,23 @@ def test_align_profile_falls_back_when_dml_missing(monkeypatch):
         "pipeline.accel.ort_available_providers",
         lambda: ["CPUExecutionProvider", "AzureExecutionProvider"],
     )
+    monkeypatch.setattr("pipeline.accel.platform.system", lambda: "Linux")
     prof = AccelProfile(profile="dml", provider="DmlExecutionProvider")
     _align_profile_to_ort(prof)
     assert prof.profile == "cpu"
     assert prof.provider == "CPUExecutionProvider"
+
+
+def test_align_profile_marks_dml_pending_on_windows(monkeypatch):
+    monkeypatch.setattr(
+        "pipeline.accel.ort_available_providers",
+        lambda: ["CPUExecutionProvider", "AzureExecutionProvider"],
+    )
+    monkeypatch.setattr("pipeline.accel.platform.system", lambda: "Windows")
+    prof = AccelProfile(profile="dml", provider="DmlExecutionProvider")
+    _align_profile_to_ort(prof)
+    assert prof.profile == "dml"  # stays dml, not downgraded
+    assert getattr(prof, "_dml_pending", False) is True
 
 
 def test_requirement_satisfied_for_installed_pip():

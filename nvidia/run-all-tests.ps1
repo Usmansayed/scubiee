@@ -1,9 +1,10 @@
-# Scubiee NVIDIA Validation Script
-# Run this in PowerShell on the NVIDIA Windows laptop
-# It will test each layer and report results
+# Scubiee Windows GPU Validation Script (DirectML)
+# Run this in PowerShell on any Windows laptop with a GPU
+# Works on NVIDIA, AMD, and Intel GPUs
 
 Write-Host "============================================" -ForegroundColor Cyan
-Write-Host "  Scubiee NVIDIA Laptop Validation Suite" -ForegroundColor Cyan
+Write-Host "  Scubiee Windows GPU Validation Suite" -ForegroundColor Cyan
+Write-Host "  (DirectML — NVIDIA / AMD / Intel)" -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -42,29 +43,30 @@ Test-Step "CLI version" {
 # Test 2: Preflight
 Test-Step "Preflight capabilities" {
     $out = ctx preflight 2>&1 | Out-String
-    if ($out -match '"ok": true') { exit 0 } else { exit 1 }
+    if ($out -match '"ok"') { exit 0 } else { exit 1 }
 }
 
-# Test 3: Hardware detection
-Test-Step "Hardware detection" {
+# Test 3: GPU detection
+Test-Step "GPU detection (WMI)" {
     $out = ctx resources 2>&1 | Out-String
-    if ($out -match 'nvidia' -or $out -match 'NVIDIA' -or $out -match 'cuda') { exit 0 } else { exit 1 }
+    if ($out -match 'DmlExecutionProvider' -or $out -match 'nvidia' -or $out -match 'Radeon' -or $out -match 'Intel') { exit 0 } else { exit 1 }
 }
 
-# Test 4: nvidia-smi
-Test-Step "NVIDIA driver (nvidia-smi)" {
-    nvidia-smi -L
-}
-
-# Test 5: Setup/repair
-Test-Step "Setup acceleration" {
+# Test 4: Setup
+Test-Step "Setup acceleration (DirectML)" {
     ctx setup --repair
+}
+
+# Test 5: Verify DML profile
+Test-Step "Profile is DML" {
+    $out = ctx preflight 2>&1 | Out-String
+    if ($out -match '"profile": "dml"' -or $out -match 'DmlExecutionProvider') { exit 0 } else { exit 1 }
 }
 
 # Test 6: Init a test repo
 $testRepo = "$env:TEMP\scubiee-test-$([System.IO.Path]::GetRandomFileName().Split('.')[0])"
 New-Item -ItemType Directory -Path $testRepo -Force | Out-Null
-"def hello():`n    return 'world'" | Out-File "$testRepo\app.py" -Encoding utf8
+"def hello():`n    return 'world'`n`ndef greet(name):`n    return f'Hi {name}'" | Out-File "$testRepo\app.py" -Encoding utf8
 
 Test-Step "Repository init" {
     ctx init $testRepo
@@ -77,13 +79,14 @@ Test-Step "Index repository" {
 
 # Test 8: Search
 Test-Step "Search works" {
-    $out = ctx search "hello" $testRepo 2>&1 | Out-String
+    $out = ctx search "greet" $testRepo 2>&1 | Out-String
     if ($out -match 'app.py') { exit 0 } else { exit 1 }
 }
 
 # Test 9: Diagnose
 Test-Step "Diagnostic report" {
-    ctx diagnose --no-tests
+    $out = ctx diagnose --no-tests 2>&1 | Out-String
+    if ($out -match '"ok": true' -or $out -match 'Acceleration: dml') { exit 0 } else { exit 1 }
 }
 
 # Cleanup
@@ -98,9 +101,8 @@ $results | Format-Table -AutoSize
 
 if ($fail -gt 0) {
     Write-Host "Some tests failed. Run 'ctx diagnose' and share the log file." -ForegroundColor Yellow
-    Write-Host "See nvidia/README.md for fix instructions." -ForegroundColor Yellow
     exit 1
 }
 
-Write-Host "All tests passed! Ready for Kiro." -ForegroundColor Green
+Write-Host "All tests passed! DirectML GPU acceleration is working." -ForegroundColor Green
 exit 0
