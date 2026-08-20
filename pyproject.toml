@@ -1,6 +1,6 @@
 [project]
 name = "scubiee"
-version = "0.2.23"
+version = "0.2.24"
 description = "Scubiee — local Cursor MCP context engine: setup once, ctx init per repo, CUDA/DirectML/MLX/CPU."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -24,6 +24,7 @@ dependencies = [
   "tree-sitter-ruby>=0.23,<0.25",
   "tree-sitter-c-sharp>=0.23,<0.25",
   "mcp>=1.0,<2",
+  "loguru>=0.7",
   "huggingface_hub>=0.20",
   # Mac: pip install scubiee pulls the Metal stack (no extra required).
   "fastembed>=0.4; sys_platform == 'darwin'",
