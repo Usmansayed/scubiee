@@ -57,6 +57,22 @@ def _is_too_broad(root: Path) -> bool:
         "/etc",
         "/opt",
     }
+
+    # Windows-specific broad paths
+    import platform
+
+    if platform.system() == "Windows":
+        win_root = os.environ.get("SystemDrive", "C:")
+        _BROAD.update({
+            f"{win_root}\\",
+            f"{win_root}\\Users",
+            f"{win_root}\\Windows",
+            f"{win_root}\\Program Files",
+            f"{win_root}\\Program Files (x86)",
+            str(home / "AppData"),
+            str(home / "OneDrive"),
+        })
+
     if str(resolved) in _BROAD:
         return True
 

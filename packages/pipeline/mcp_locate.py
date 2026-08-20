@@ -1862,6 +1862,11 @@ def main() -> None:
 
     gc.disable()
 
+    # Disable Rayon parallelism in tokenizers to prevent memory corruption on
+    # macOS ARM64. The Rayon thread pool interacts badly with CPython's memory
+    # allocator, causing SIGSEGV in random threads.
+    os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
     repo = _default_repo()
     os.environ.setdefault("CTX_REPO", str(repo))
     os.environ.setdefault("CTX_TOKEN_MODE", "savings")

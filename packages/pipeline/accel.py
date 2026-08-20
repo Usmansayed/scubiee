@@ -59,6 +59,7 @@ class AccelProfile:
     batch_calibration: dict[str, Any] = field(default_factory=dict)
     envelope: dict[str, Any] = field(default_factory=dict)
     hardware_fingerprint: str = ""
+    cuda_fallback_hint: str = ""
 
     def _coreml_options(self) -> dict[str, str]:
         from pipeline.coreml_mac import coreml_provider_options
@@ -105,6 +106,8 @@ def save_accel(profile: AccelProfile, path: Path | None = None) -> Path:
 
 
 def _has_nvidia() -> bool:
+    """Detect NVIDIA GPU via multiple methods (nvidia-smi, ORT, torch, /proc)."""
+    # Method 1: nvidia-smi (most reliable on both Windows and Linux)
     if shutil.which("nvidia-smi"):
         try:
             r = subprocess.run(
@@ -114,15 +117,49 @@ def _has_nvidia() -> bool:
                 timeout=8,
                 check=False,
             )
-            return r.returncode == 0 and "GPU" in (r.stdout or "")
+            if r.returncode == 0 and "GPU" in (r.stdout or ""):
+                return True
         except Exception:  # noqa: BLE001
-            return False
+            pass
+
+    # Method 2: Check if onnxruntime already has CUDA provider
+    try:
+        providers = ort_available_providers()
+        if "CUDAExecutionProvider" in providers:
+            return True
+    except Exception:  # noqa: BLE001
+        pass
+
+    # Method 3: PyTorch (if installed)
     try:
         import torch
 
-        return bool(torch.cuda.is_available())
+        if torch.cuda.is_available():
+            return True
     except Exception:  # noqa: BLE001
-        return False
+        pass
+
+    # Method 4: Linux /proc/driver/nvidia (driver loaded without toolkit in PATH)
+    try:
+        if Path("/proc/driver/nvidia/version").exists():
+            return True
+    except Exception:  # noqa: BLE001
+        pass
+
+    # Method 5: Windows — check WMI for NVIDIA adapters (nvidia-smi not in PATH)
+    if platform.system() == "Windows":
+        try:
+            r = subprocess.run(
+                ["powershell", "-NoProfile", "-Command",
+                 "Get-CimInstance Win32_VideoController | Select-Object -ExpandProperty Name"],
+                capture_output=True, text=True, timeout=10, check=False,
+            )
+            if r.returncode == 0 and "nvidia" in (r.stdout or "").lower():
+                return True
+        except Exception:  # noqa: BLE001
+            pass
+
+    return False
 
 
 def _is_apple_silicon(detected: dict[str, Any] | None = None) -> bool:
@@ -609,6 +646,76 @@ def _refuse_coreml_cpu_fallback(
     profile.reason = msg
 
 
+def _refuse_cuda_cpu_fallback(
+    profile: AccelProfile, progress: Any | None = None
+) -> None:
+    """Detect CUDA silent CPU fallback and warn/fix.
+
+    After installing onnxruntime-gpu, verify CUDAExecutionProvider is actually
+    available. If not (missing CUDA toolkit, wrong driver version, library path
+    issues), warn clearly instead of silently running on CPU.
+    """
+    if profile.profile != "cuda":
+        return
+    available = ort_available_providers()
+    if not available:
+        return
+    if "CUDAExecutionProvider" in available:
+        return
+
+    # CUDA EP missing — diagnose why
+    hints: list[str] = []
+    if platform.system() == "Linux":
+        ld_path = os.environ.get("LD_LIBRARY_PATH", "")
+        if "/usr/local/cuda" not in ld_path:
+            hints.append(
+                "LD_LIBRARY_PATH may need /usr/local/cuda/lib64. "
+                "Try: export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH"
+            )
+        if not Path("/usr/local/cuda").exists():
+            hints.append(
+                "CUDA toolkit not found at /usr/local/cuda. "
+                "Install from: https://developer.nvidia.com/cuda-downloads"
+            )
+    elif platform.system() == "Windows":
+        cuda_path = os.environ.get("CUDA_PATH", "")
+        if not cuda_path:
+            hints.append(
+                "CUDA_PATH environment variable not set. "
+                "Install CUDA Toolkit from: https://developer.nvidia.com/cuda-downloads"
+            )
+        elif not Path(cuda_path).exists():
+            hints.append(f"CUDA_PATH={cuda_path} does not exist.")
+
+    hint_text = " ".join(hints) if hints else "Check CUDA toolkit installation."
+    msg = (
+        f"NVIDIA GPU detected but CUDAExecutionProvider is missing from onnxruntime-gpu "
+        f"(providers={available}). {hint_text}"
+    )
+
+    # Check if user explicitly forced CUDA (don't silently fall back)
+    force_gpu = (os.environ.get("CTX_REQUIRE_GPU") or "").strip().lower() in {
+        "1", "true", "yes",
+    }
+    if force_gpu:
+        raise RuntimeError(
+            msg + " Refusing CPU fallback (CTX_REQUIRE_GPU=1). "
+            "Fix CUDA installation or use --profile dml / --profile cpu."
+        )
+
+    if progress is None:
+        print(f"[accel] WARNING: {msg}", file=sys.stderr, flush=True)
+        print("[accel] Falling back to CPU. Run `ctx setup --repair` after fixing CUDA.",
+              file=sys.stderr, flush=True)
+    else:
+        progress.set(55, "CUDA unavailable — using CPU (check CUDA toolkit)")
+
+    profile.profile = "cpu"
+    profile.provider = "CPUExecutionProvider"
+    profile.reason = msg
+    profile.cuda_fallback_hint = hint_text
+
+
 def configure(
     *,
     force_profile: str | None = None,
@@ -682,8 +789,11 @@ def configure(
             install_profile_packages(profile.profile, progress=progress)
         _align_profile_to_ort(profile, progress=progress)
         _refuse_coreml_cpu_fallback(profile, progress=progress)
+        _refuse_cuda_cpu_fallback(profile, progress=progress)
     elif profile.profile == "coreml":
         _refuse_coreml_cpu_fallback(profile, progress=progress)
+    elif profile.profile == "cuda":
+        _refuse_cuda_cpu_fallback(profile, progress=progress)
     if download_model:
         if progress is not None:
             progress.set(56, "Downloading embedding model")

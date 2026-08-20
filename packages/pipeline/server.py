@@ -577,6 +577,10 @@ def run_server(
 
     gc.disable()
 
+    # Disable Rayon parallelism in tokenizers to prevent memory corruption.
+    # The Rayon thread pool on macOS ARM64 corrupts CPython's heap.
+    os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
     from pipeline.sync_loop import enable_session_keeper_defaults
 
     enable_session_keeper_defaults()
