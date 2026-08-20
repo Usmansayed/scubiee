@@ -26,8 +26,10 @@ DEFAULT_INITIAL_DELAY_MS = int(os.environ.get("CTX_SYNC_INITIAL_DELAY_MS", "5000
 DEFAULT_DEBOUNCE_MS = int(os.environ.get("CTX_DEBOUNCE_MS", "1500"))
 DEFAULT_REWRITE_DEBOUNCE_MS = int(os.environ.get("CTX_REWRITE_DEBOUNCE_MS", "2500"))
 DEFAULT_LOCATE_STREAK_MS = int(os.environ.get("CTX_LOCATE_STREAK_MS", "8000"))
-DEFAULT_LIVE_MAX_FILES = int(os.environ.get("CTX_LIVE_MAX_FILES", "40"))
-DEFAULT_LIVE_MAX_CHUNKS = int(os.environ.get("CTX_LIVE_MAX_CHUNKS", "100"))
+DEFAULT_LIVE_MAX_FILES = int(os.environ.get("CTX_LIVE_MAX_FILES", "200"))
+DEFAULT_LIVE_MAX_CHUNKS = int(os.environ.get("CTX_LIVE_MAX_CHUNKS", "300"))
+DEFAULT_AUTO_FULL_INDEX_CHUNKS = int(os.environ.get("CTX_AUTO_FULL_INDEX_CHUNKS", "10000"))
+DEFAULT_BULK_REINDEX_THRESHOLD = int(os.environ.get("CTX_BULK_REINDEX_THRESHOLD", "300"))
 DEFAULT_CHANGE_POLL_MS = int(os.environ.get("CTX_CHANGE_POLL_MS", "1000"))
 DEFAULT_WAKE_GAP_MS = int(os.environ.get("CTX_WAKE_GAP_MS", "30000"))
 TRIGGER_NAME = ".sync-trigger"
@@ -99,6 +101,8 @@ class BackgroundSyncLoop:
         self.locate_streak_ms = max(0, locate_streak_ms)
         self.live_max_files = max(1, live_max_files)
         self.live_max_chunks = max(1, live_max_chunks)
+        self.auto_full_index_chunks = max(1, DEFAULT_AUTO_FULL_INDEX_CHUNKS)
+        self.bulk_reindex_threshold = max(1, DEFAULT_BULK_REINDEX_THRESHOLD)
         self.change_poll_ms = max(250, change_poll_ms)
         self.wake_gap_ms = max(1000, wake_gap_ms)
         self.dirty_ledger = JournalingLedger(
@@ -152,6 +156,8 @@ class BackgroundSyncLoop:
             "locate_streak_active": self._locate_streak_active(),
             "live_max_files": self.live_max_files,
             "live_max_chunks": self.live_max_chunks,
+            "auto_full_index_chunks": self.auto_full_index_chunks,
+            "bulk_reindex_threshold": self.bulk_reindex_threshold,
             "needs_full": self.needs_full,
             "catchup_chunked": self.catchup_chunked,
             "live_batches": self.live_batches,
@@ -165,6 +171,47 @@ class BackgroundSyncLoop:
                 "last_error": self._watcher_last_error,
             },
         }
+
+    def _estimate_dirty_chunks(self, paths: list[str]) -> tuple[int, dict[str, int]]:
+        """Estimate changed chunks without parsing or mutating the index.
+
+        Existing files use their indexed chunk count. New files use a conservative
+        line-based estimate because their chunk count does not exist yet. The
+        estimate is only a gate for the 10000-chunk safety limit; incremental_sync
+        applies the exact post-parse limit before writing graph/vector artifacts.
+        """
+        counts: dict[str, int] = {}
+        try:
+            from pipeline.store import PipelineStore
+
+            ref = resolve_project(self.repo)
+            store = PipelineStore(
+                self.repo,
+                base_dir=ref.store_dir,
+                project_id=ref.project_id,
+            )
+            for chunk in store.load_chunks():
+                rel = chunk.file.replace("\\", "/")
+                counts[rel] = counts.get(rel, 0) + 1
+        except Exception:
+            counts = {}
+
+        estimates: dict[str, int] = {}
+        for raw_path in paths:
+            path = str(raw_path).replace("\\", "/")
+            estimate = counts.get(path, 0)
+            if estimate <= 0:
+                candidate = self.repo / path
+                if candidate.is_file():
+                    try:
+                        lines = sum(1 for _ in candidate.open("r", encoding="utf-8", errors="ignore"))
+                    except OSError:
+                        lines = 0
+                    estimate = max(1, min(2000, (lines + 24) // 25))
+                else:
+                    estimate = 1
+            estimates[path] = estimate
+        return sum(estimates.values()), estimates
 
     def mark_dirty(
         self,
@@ -267,11 +314,82 @@ class BackgroundSyncLoop:
             self.drain_publish(now=current_time)
             return []
 
-        batch = paths[: self.live_max_files]
-        deferred = paths[self.live_max_files :]
+        estimated_total, estimates = self._estimate_dirty_chunks(paths)
+
+        # --- Tier 3: >10000 chunks — refuse, require explicit full index ---
+        if estimated_total > self.auto_full_index_chunks:
+            self.needs_full = True
+            payload = {
+                "refreshed": False,
+                "files": paths[:50],
+                "chunks_upserted": 0,
+                "chunks_removed": 0,
+                "strategy": "explicit_full_index_required",
+                "needs_full": True,
+                "estimated_chunks": estimated_total,
+                "auto_full_index_chunks": self.auto_full_index_chunks,
+                "error": (
+                    f"approximately {estimated_total} chunks changed, exceeding the "
+                    f"automatic limit of {self.auto_full_index_chunks}; run "
+                    f"`ctx index {self.repo} --force` explicitly"
+                ),
+                "warnings": [
+                    "Automatic sync paused before graph/vector mutation; explicit full indexing is required."
+                ],
+            }
+            self.last_result = payload
+            self.dirty_ledger.defer(paths, now=current_time + 60.0)
+            return [payload]
+
+        # --- Tier 2: 301–10000 chunks — bulk reindex (800 MB, sub-batched with checkpoints) ---
+        if estimated_total > self.bulk_reindex_threshold:
+            self.catchup_chunked = True
+            try:
+                payload = self._bulk_sync_paths(paths, reason="bulk_reindex")
+            except Exception:
+                # Only re-mark paths that are NOT already published by
+                # completed sub-batches — avoid overriding durable progress.
+                snap = self.dirty_ledger.snapshot().get("paths", {})
+                unpublished = [
+                    p for p in paths
+                    if (snap.get(p) or {}).get("state") != "published"
+                ]
+                if unpublished:
+                    self.dirty_ledger.mark(unpublished, reason="retry", now=current_time)
+                self.catchup_chunked = False
+                raise
+            self.live_batches += 1
+            self.last_result = payload
+            if payload.get("strategy") == "explicit_full_index_required":
+                self.needs_full = True
+                payload["needs_full"] = True
+            elif payload.get("refreshed"):
+                # _bulk_sync_paths already committed sub-batches to journal;
+                # just notify the publication layer for generation advance.
+                self._notify_refresh(payload)
+            self.catchup_chunked = False
+            self.drain_publish(now=current_time)
+            return [payload]
+
+        # --- Tier 1: ≤300 chunks — fast live batch ---
+        batch: list[str] = []
+        estimated_batch = 0
+        for path in paths:
+            if len(batch) >= self.live_max_files:
+                break
+            estimate = estimates.get(path, 1)
+            if batch and estimated_batch + estimate > self.live_max_chunks:
+                break
+            batch.append(path)
+            estimated_batch += estimate
+            if estimated_batch >= self.live_max_chunks:
+                break
+        if not batch:
+            batch = [paths[0]]
+        batch_set = set(batch)
+        deferred = [path for path in paths if path not in batch_set]
         if deferred:
             self.catchup_chunked = True
-            self.needs_full = True
             self.dirty_ledger.defer(deferred, now=current_time)
         self.dirty_ledger.begin(batch)
         try:
@@ -281,24 +399,39 @@ class BackgroundSyncLoop:
             raise
         self.live_batches += 1
         chunk_count = int(payload.get("chunks_upserted") or 0) + int(payload.get("chunks_removed") or 0)
-        if deferred or chunk_count > self.live_max_chunks:
+        if deferred:
             self.catchup_chunked = True
-            self.needs_full = True
             payload["strategy"] = "catchup_chunked"
-            payload["needs_full"] = True
+            payload["catchup_chunked"] = True
             payload["live_limits"] = {
                 "max_files": self.live_max_files,
                 "max_chunks": self.live_max_chunks,
                 "deferred_paths": len(deferred),
                 "chunks": chunk_count,
             }
+        elif chunk_count > self.live_max_chunks:
+            payload["live_limits"] = {
+                "max_files": self.live_max_files,
+                "max_chunks": self.live_max_chunks,
+                "deferred_paths": 0,
+                "chunks": chunk_count,
+            }
         self.last_result = payload
-        if payload.get("refreshed"):
+        if payload.get("strategy") == "explicit_full_index_required":
+            self.needs_full = True
+            payload["needs_full"] = True
+            self.dirty_ledger.defer(batch, now=current_time + 60.0)
+        elif payload.get("refreshed"):
             self._invalidate_session_paths(batch)
             self._publish_or_hold(payload, paths=batch, now=current_time)
         else:
             self.dirty_ledger.complete(batch, published=True)
         self.drain_publish(now=current_time)
+        if not any(
+            entry.get("state") in {"queued", "due", "processing"}
+            for entry in self.dirty_ledger.snapshot().get("paths", {}).values()
+        ):
+            self.catchup_chunked = False
         return [payload]
 
     def drain_publish(self, *, now: float | None = None, force: bool = False) -> bool:
@@ -467,6 +600,142 @@ class BackgroundSyncLoop:
         payload = result.to_dict()
         payload["reason"] = reason
         payload["dirty_paths"] = paths
+        return payload
+
+    def _bulk_sync_paths(self, paths: list[str], *, reason: str) -> dict:
+        """Process dirty paths in committed sub-batches with bootstrap memory budget.
+
+        Used for 301–10000 chunk changes (like a GitHub pull) that should
+        complete in minutes. Processes files in sub-batches of ~50, committing
+        each to disk atomically. If the process is interrupted (power loss,
+        crash), only the in-flight sub-batch is lost — completed sub-batches
+        are durable, and the dirty journal re-queues unfinished paths on restart.
+
+        Uses 800 MB RSS cap and batch 48 — same as initial full index.
+        """
+        from pipeline.incremental import incremental_sync
+
+        BULK_SUB_BATCH = max(1, int(os.environ.get("CTX_BULK_SUB_BATCH", "50") or "50"))
+        total_files = len(paths)
+        total_upserted = 0
+        total_removed = 0
+        batches_done = 0
+        t0 = time.monotonic()
+        last_error: str | None = None
+        last_strategy = "bulk_reindex"
+
+        print(
+            f"[keeper] bulk sync starting: {total_files} files in ~"
+            f"{(total_files + BULK_SUB_BATCH - 1) // BULK_SUB_BATCH} sub-batches [{reason}]",
+            file=sys.stderr,
+            flush=True,
+        )
+
+        for i in range(0, total_files, BULK_SUB_BATCH):
+            sub_batch = paths[i : i + BULK_SUB_BATCH]
+            # Mark this sub-batch as processing in the journal so a crash
+            # leaves them in a retriable state (not marked published).
+            self.dirty_ledger.begin(sub_batch)
+            try:
+                result = incremental_sync(self.repo, force_files=sub_batch, bulk=True)
+            except Exception as exc:
+                # Return this sub-batch and all remaining to queue for retry.
+                self.dirty_ledger.mark(sub_batch, reason="bulk_retry", now=time.monotonic())
+                remaining = paths[i + BULK_SUB_BATCH:]
+                if remaining:
+                    self.dirty_ledger.mark(remaining, reason="bulk_retry", now=time.monotonic())
+                last_error = str(exc)
+                print(
+                    f"[keeper] bulk sub-batch {batches_done + 1} failed: {exc}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                break
+
+            if result.refreshed:
+                self._invalidate_session_paths(sub_batch)
+                self.dirty_ledger.complete(sub_batch, published=True)
+                total_upserted += result.chunks_upserted
+                total_removed += result.chunks_removed
+            elif result.strategy == "explicit_full_index_required":
+                # Exact post-parse guard fired — stop bulk and escalate.
+                # Re-queue this sub-batch and all remaining un-attempted paths.
+                self.dirty_ledger.mark(sub_batch, reason="bulk_oversized", now=time.monotonic())
+                remaining = paths[i + BULK_SUB_BATCH:]
+                if remaining:
+                    self.dirty_ledger.mark(remaining, reason="bulk_oversized", now=time.monotonic())
+                last_error = result.error
+                last_strategy = "explicit_full_index_required"
+                break
+            else:
+                # Deferred (resource pressure) or other non-refresh — re-queue
+                # for retry rather than marking published (files weren't indexed).
+                self.dirty_ledger.mark(sub_batch, reason="bulk_deferred", now=time.monotonic())
+                remaining = paths[i + BULK_SUB_BATCH:]
+                if remaining:
+                    self.dirty_ledger.mark(remaining, reason="bulk_deferred", now=time.monotonic())
+                if result.error:
+                    last_error = result.error
+                if result.strategy == "deferred":
+                    last_error = last_error or "resource pressure — bulk deferred"
+                break
+
+            batches_done += 1
+            elapsed = time.monotonic() - t0
+            print(
+                f"[keeper] bulk sub-batch {batches_done} done: "
+                f"{len(sub_batch)} files, {result.chunks_upserted} upserted "
+                f"({elapsed:.1f}s elapsed, {total_files - i - len(sub_batch)} files remaining)",
+                file=sys.stderr,
+                flush=True,
+            )
+
+        elapsed_ms = (time.monotonic() - t0) * 1000
+        refreshed = total_upserted > 0 or total_removed > 0
+        payload = {
+            "refreshed": refreshed,
+            "files": paths,
+            "chunks_upserted": total_upserted,
+            "chunks_removed": total_removed,
+            "ms": round(elapsed_ms, 1),
+            "strategy": last_strategy,
+            "reason": reason,
+            "bulk": True,
+            "dirty_paths": paths,
+            "bulk_progress": {
+                "sub_batches_done": batches_done,
+                "sub_batch_size": BULK_SUB_BATCH,
+                "total_files": total_files,
+                "files_completed": min(batches_done * BULK_SUB_BATCH, total_files),
+            },
+            # Only surface error to status if nothing succeeded; otherwise
+            # a partial failure would permanently show "error" even though
+            # most chunks were indexed. Partial errors go into warnings.
+            "error": last_error if not refreshed else None,
+            "warnings": [last_error] if (last_error and refreshed) else [],
+        }
+        print(
+            f"[keeper] bulk sync done: {total_upserted} upserted, "
+            f"{total_removed} removed in {elapsed_ms:.0f}ms "
+            f"({batches_done} sub-batches)",
+            file=sys.stderr,
+            flush=True,
+        )
+
+        # Restore conservative background budget so the daemon doesn't keep
+        # running at 800 MB for subsequent small live edits.
+        try:
+            from pipeline.memory_budget import background_budget, force_apply_memory_budget
+
+            force_apply_memory_budget(background_budget())
+            print(
+                "[keeper] memory budget restored to background (560 MB)",
+                file=sys.stderr,
+                flush=True,
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(f"[keeper] budget restore failed: {exc}", file=sys.stderr, flush=True)
+
         return payload
 
     def _invalidate_session_paths(self, paths: list[str]) -> None:

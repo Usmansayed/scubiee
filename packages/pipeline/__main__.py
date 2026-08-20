@@ -802,6 +802,52 @@ def cmd_migrate(args: argparse.Namespace) -> int:
     return 0 if result.get("ok") else 1
 
 
+def cmd_diagnose(args: argparse.Namespace) -> int:
+    """Run installation diagnostics with progress bar and save a shareable log."""
+    from pipeline.diagnose import diagnose
+
+    output_path = Path(args.output) if args.output else None
+    report = diagnose(
+        run_tests=not bool(args.no_tests),
+        output_path=output_path,
+    )
+
+    # Print summary to stdout
+    print(json.dumps(report, indent=2, default=str))
+
+    # Human-friendly summary to stderr
+    verdict = report.get("verdict", {})
+    log_file = report.get("log_file", "")
+    log_path = Path(log_file) if log_file else None
+
+    # Build a clickable file:// URL for the log (works in Windows Terminal, iTerm2, etc.)
+    if log_path:
+        file_url = log_path.as_uri()
+        # On Windows, also show the parent folder for easy Explorer access
+        folder_url = log_path.parent.as_uri()
+    else:
+        file_url = ""
+        folder_url = ""
+
+    print(f"\n{'='*60}", file=sys.stderr)
+    print(f"  Scubiee {report.get('scubiee_version', '?')}", file=sys.stderr)
+    print(f"  Platform: {report.get('platform', {}).get('system', '?')} "
+          f"{report.get('platform', {}).get('machine', '')}", file=sys.stderr)
+    print(f"  Acceleration: {verdict.get('acceleration', 'none')}", file=sys.stderr)
+    print(f"  Capabilities: {verdict.get('capabilities', '?')}", file=sys.stderr)
+    print(f"  Tests: {verdict.get('tests', '?')}", file=sys.stderr)
+    print(f"  Daemon: {verdict.get('daemon', '?')}", file=sys.stderr)
+    print(f"{'='*60}", file=sys.stderr)
+    print(f"  Log saved: {log_file}", file=sys.stderr)
+    if file_url:
+        print(f"  Open log:    {file_url}", file=sys.stderr)
+        print(f"  Open folder: {folder_url}", file=sys.stderr)
+    print(f"\n  Share the log file above for support.", file=sys.stderr)
+    print(f"{'='*60}", file=sys.stderr)
+
+    return 0 if verdict.get("ok") else 1
+
+
 def _write_mcp_config(repo: Path, host: str, port: int) -> None:
     """Minimal MCP write when install_mcp import fails."""
     from pipeline.mcp_install import interpreter
@@ -1223,6 +1269,22 @@ def main(argv: list[str] | None = None) -> int:
         help="Force migration even if schema appears current",
     )
     p_migrate.set_defaults(func=cmd_migrate)
+
+    p_diag = sub.add_parser(
+        "diagnose",
+        help="Run installation diagnostics, test the setup, and save a shareable log file",
+    )
+    p_diag.add_argument(
+        "--no-tests",
+        action="store_true",
+        help="Skip running the quick test suite",
+    )
+    p_diag.add_argument(
+        "--output",
+        default=None,
+        help="Custom path for the diagnostic log file (default: ~/.context-engine/logs/)",
+    )
+    p_diag.set_defaults(func=cmd_diagnose)
 
     args = parser.parse_args(argv)
     return int(args.func(args))

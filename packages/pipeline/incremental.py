@@ -26,6 +26,9 @@ from pipeline.store import ChunkRecord, PipelineStore
 from pipeline.vectordb import VectorDatabase
 
 
+AUTO_FULL_INDEX_CHUNKS = int(os.environ.get("CTX_AUTO_FULL_INDEX_CHUNKS", "10000"))
+
+
 @dataclass
 class IncrementalResult:
     refreshed: bool
@@ -69,8 +72,14 @@ def incremental_sync(
     bits: int = 4,
     max_chars: int = 1200,
     force_files: list[str] | None = None,
+    bulk: bool = False,
 ) -> IncrementalResult:
-    """Re-parse + re-embed only changed/removed files; upsert into FAISS collection."""
+    """Re-parse + re-embed only changed/removed files; upsert into FAISS collection.
+
+    When *bulk* is True the bootstrap memory budget (800 MB RSS, batch 48) is
+    used instead of the conservative background budget, suitable for 501–10000
+    chunk changes that should complete in minutes like an initial index.
+    """
     t0 = time.perf_counter()
     root = root.resolve()
     try:
@@ -94,11 +103,12 @@ def incremental_sync(
     store = PipelineStore(root, base_dir=base_dir, vdb=vdb)
     from pipeline.memory_budget import apply_index_memory_budget, resolve_index_memory_budget
 
-    mem_budget = resolve_index_memory_budget(background=True, store=store)
+    mem_budget = resolve_index_memory_budget(background=not bulk, store=store)
     apply_index_memory_budget(mem_budget)
     print(
         f"[sync] memory mode={mem_budget.mode} rss_cap={mem_budget.rss_cap_mb}MB "
-        f"mlx_batch={mem_budget.mlx_batch} cache={mem_budget.mlx_cache_mb}MB",
+        f"mlx_batch={mem_budget.mlx_batch} cache={mem_budget.mlx_cache_mb}MB"
+        f"{' [BULK]' if bulk else ''}",
         file=sys.stderr,
         flush=True,
     )
@@ -251,6 +261,25 @@ def incremental_sync(
                         )
                     )
                     next_id += 1
+
+        changed_chunk_count = len(removed_ids) + len(new_records)
+        if changed_chunk_count > AUTO_FULL_INDEX_CHUNKS:
+            limit = AUTO_FULL_INDEX_CHUNKS
+            return IncrementalResult(
+                refreshed=False,
+                files=touch,
+                chunks_upserted=0,
+                chunks_removed=0,
+                ms=(time.perf_counter() - t0) * 1000,
+                strategy="explicit_full_index_required",
+                error=(
+                    f"{changed_chunk_count} chunks changed, exceeding the automatic "
+                    f"limit of {limit}; run `ctx index {root} --force` explicitly"
+                ),
+                warnings=[
+                    "No graph or vector artifacts were published for this oversized change."
+                ],
+            )
 
         # Patch graph from changed-file extract only (same AST pass as chunks).
         # Fallback: full extract if graph.json missing.
