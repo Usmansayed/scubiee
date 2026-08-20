@@ -137,7 +137,14 @@ def _read_json(path: Path) -> dict[str, Any]:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
         return data if isinstance(data, dict) else {}
-    except (OSError, json.JSONDecodeError):
+    except (OSError, json.JSONDecodeError) as exc:
+        import sys
+
+        print(
+            f"[context-engine] WARNING: corrupt JSON at {path}: {exc}",
+            file=sys.stderr,
+            flush=True,
+        )
         return {}
 
 
@@ -459,7 +466,12 @@ def resolve_project(root: Path, *, migrate: bool = True) -> ProjectRef:
         raise FileNotFoundError(f"not a directory: {root}")
     # Nested folders (accidental CLI args, dump dirs) inherit the enclosing
     # project's id.json instead of minting a sibling identity + polluting disk.
-    if not read_id_file(root) and not (root / ".git").exists():
+    # BUT: if the folder has a real .git (contains HEAD), it's an independent repo.
+    has_own_git = (root / ".git").exists() and (
+        (root / ".git" / "HEAD").exists()  # real git repo
+        or (root / ".git").is_file()  # git worktree pointer file
+    )
+    if not read_id_file(root) and not has_own_git:
         for parent in root.parents:
             parent_pid = read_id_file(parent)
             if parent_pid:
@@ -468,6 +480,15 @@ def resolve_project(root: Path, *, migrate: bool = True) -> ProjectRef:
     abs_root = _norm_path(root)
     migrated = False
     common = git_common_dir(root)
+
+    # If this folder has its own .git but git_common_dir resolves to a parent,
+    # this is an independent repo — don't inherit the parent's identity.
+    if has_own_git and common:
+        try:
+            if not common.resolve().is_relative_to(root.resolve()):
+                common = None  # Ignore parent's git — this repo is independent
+        except (ValueError, OSError):
+            pass
 
     pid = read_id_file(root)
     if not pid:

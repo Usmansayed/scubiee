@@ -81,7 +81,18 @@ class PipelineStore:
     def load_meta(self) -> dict[str, Any]:
         if not self.meta_path.exists():
             return {}
-        return json.loads(self.meta_path.read_text(encoding="utf-8"))
+        try:
+            data = json.loads(self.meta_path.read_text(encoding="utf-8"))
+            return data if isinstance(data, dict) else {}
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            import sys
+
+            print(
+                f"[context-engine] WARNING: corrupt meta at {self.meta_path}: {exc}",
+                file=sys.stderr,
+                flush=True,
+            )
+            return {}
 
     def save_meta(self, meta: dict[str, Any]) -> None:
         if self.project_id and "project_id" not in meta:

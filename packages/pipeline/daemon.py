@@ -360,7 +360,10 @@ def stop_daemon() -> dict[str, Any]:
         except Exception:  # noqa: BLE001
             pass
     release_lock()
-    time.sleep(0.5)
+    # Wait until the port is actually free (daemon fully dead)
+    deadline = time.time() + 5.0
+    while time.time() < deadline and is_running():
+        time.sleep(0.2)
     return {"ok": True, "running": is_running()}
 
 

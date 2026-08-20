@@ -756,6 +756,52 @@ def cmd_setup(args: argparse.Namespace) -> int:
         return 1
 
 
+def cmd_wipe(args: argparse.Namespace) -> int:
+    """Remove all Context Engine data from this machine."""
+    from pipeline.wipe import wipe_context_engine
+
+    result = wipe_context_engine(
+        confirm=bool(args.confirm),
+        include_repos=bool(args.include_repos),
+        include_mcp=bool(args.include_mcp),
+        dry_run=bool(args.dry_run),
+    )
+    print(json.dumps(result, indent=2, default=str))
+    return 0 if result.get("ok") else 1
+
+
+def cmd_migrate(args: argparse.Namespace) -> int:
+    """Check or apply data migrations after a version upgrade."""
+    from pipeline.migrate import detect_migration_needed, migrate_all, migrate_project
+
+    if args.check_all or args.apply_all:
+        if args.apply_all:
+            result = migrate_all()
+        else:
+            # Just check all, don't apply
+            from pipeline.project_id import load_registry
+
+            registry = load_registry()
+            projects = registry.get("projects", {})
+            results = []
+            for pid, entry in projects.items():
+                if not isinstance(entry, dict) or not entry.get("managed"):
+                    continue
+                paths = entry.get("paths", [])
+                root = Path(paths[0]) if paths else None
+                results.append(detect_migration_needed(root, project_id=pid))
+            result = {"ok": True, "projects": results}
+    else:
+        root = Path(args.path).resolve()
+        if args.apply:
+            result = migrate_project(root, force=bool(args.force))
+        else:
+            result = detect_migration_needed(root)
+
+    print(json.dumps(result, indent=2, default=str))
+    return 0 if result.get("ok") else 1
+
+
 def _write_mcp_config(repo: Path, host: str, port: int) -> None:
     """Minimal MCP write when install_mcp import fails."""
     from pipeline.mcp_install import interpreter
@@ -1124,6 +1170,59 @@ def main(argv: list[str] | None = None) -> int:
     p_setup.add_argument("--wait", type=float, default=120.0)
     p_setup.add_argument("--status", action="store_true", help="Print saved preferred profile")
     p_setup.set_defaults(func=cmd_setup)
+
+    p_wipe = sub.add_parser(
+        "wipe",
+        help="Completely remove all Context Engine data from this machine",
+    )
+    p_wipe.add_argument(
+        "--confirm",
+        action="store_true",
+        help="Required: confirm permanent deletion of all CE data",
+    )
+    p_wipe.add_argument(
+        "--include-repos",
+        action="store_true",
+        help="Also remove .context-engine/ dirs inside managed repositories",
+    )
+    p_wipe.add_argument(
+        "--include-mcp",
+        action="store_true",
+        help="Also remove context-engine entries from IDE MCP configs",
+    )
+    p_wipe.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be deleted without actually deleting",
+    )
+    p_wipe.set_defaults(func=cmd_wipe)
+
+    p_migrate = sub.add_parser(
+        "migrate",
+        help="Check or apply data migrations after a version upgrade",
+    )
+    p_migrate.add_argument("path", nargs="?", default=".", help="Repo path (default: cwd)")
+    p_migrate.add_argument(
+        "--apply",
+        action="store_true",
+        help="Apply migration (without this flag, only checks)",
+    )
+    p_migrate.add_argument(
+        "--apply-all",
+        action="store_true",
+        help="Apply migrations to all managed projects",
+    )
+    p_migrate.add_argument(
+        "--check-all",
+        action="store_true",
+        help="Check migration status for all managed projects",
+    )
+    p_migrate.add_argument(
+        "--force",
+        action="store_true",
+        help="Force migration even if schema appears current",
+    )
+    p_migrate.set_defaults(func=cmd_migrate)
 
     args = parser.parse_args(argv)
     return int(args.func(args))

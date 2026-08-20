@@ -26,6 +26,13 @@ from pipeline.store import ChunkRecord, PipelineStore
 from pipeline.vectordb import VectorDatabase
 
 
+def _schema_version() -> int:
+    """Current index schema version — stamped into meta.json on every index."""
+    from pipeline.migrate import SCHEMA_VERSION
+
+    return SCHEMA_VERSION
+
+
 @dataclass
 class IndexStats:
     root: str
@@ -363,6 +370,7 @@ def index_repo(
         {
             "root": str(root),
             "project_id": store.project_id,
+            "schema_version": _schema_version(),
             "dim": dim,
             "bits": bits,
             "chunks": len(records),

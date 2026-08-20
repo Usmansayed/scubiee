@@ -239,6 +239,34 @@ Trajectory: soft → read → edit → test. Call CE when needed, then continue 
 """
 
 
+def _is_repo_managed() -> bool:
+    """Check if the current CTX_REPO is managed by Context Engine.
+
+    Returns True if the repo has a project ID and is in the registry as managed.
+    Falls back to True if detection fails (don't suppress instructions on errors).
+    """
+    try:
+        # If CTX_REPO is explicitly empty or unset, treat as unmanaged
+        explicit = (os.environ.get("CTX_REPO") or "").strip()
+        if not explicit:
+            return False
+
+        repo = _default_repo()
+        from pipeline.project_id import read_id_file, load_registry
+
+        project_id = read_id_file(repo)
+        if not project_id:
+            return False
+        registry = load_registry()
+        entry = registry.get("projects", {}).get(project_id)
+        if not isinstance(entry, dict):
+            return False
+        return bool(entry.get("managed", False))
+    except Exception:  # noqa: BLE001
+        # On any failure, default to showing full instructions (safe fallback).
+        return True
+
+
 def _server_instructions(surface: str) -> str:
     # Open-locate trials: keep tool names visible but drop anti-Grep mandates so
     # the agent can freely choose native locate vs CE.
@@ -257,6 +285,16 @@ def _server_instructions(surface: str) -> str:
             "Context Engine MCP tools are available for this workspace. "
             "Use any tools you prefer for the task."
         )
+
+    # Gate: if the current folder is not managed by Context Engine, do not force
+    # the agent to use CE tools. Provide a passive notice instead.
+    if not _is_repo_managed():
+        return (
+            "Context Engine MCP is available but the current folder is not managed. "
+            "Use status() to check. To manage this folder: ctx init <path>. "
+            "CE tools remain usable but are not required for this workspace."
+        )
+
     # Phase instructions are recommendations (agent decides).
     # CTX_MCP_STRICT_NATIVE_BAN remains accepted for older trial flags but is a no-op.
     return {
@@ -1745,6 +1783,13 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
                     "meta": daemon_status.get("meta") if healthy else None,
                 },
                 "repo": str(repo), "token_mode": token_mode(),
+                "managed": _is_repo_managed(),
+                "should_use_mcp": _is_repo_managed() and healthy,
+                "index_available": bool(
+                    healthy
+                    and daemon_status.get("meta")
+                    and (daemon_status.get("meta") or {}).get("chunks", 0) > 0
+                ),
                 "tools": tool_lists.get(surface, tool_lists["read"]),
                 "keeper": daemon_status.get("keeper") if healthy else None,
                 "soft_search_ready": soft_search_ready,
@@ -1810,6 +1855,13 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
 
 
 def main() -> None:
+    # Disable automatic GC in the MCP process. Native extensions (tokenizers,
+    # MLX, numpy) release the GIL; concurrent GC can traverse freed objects → SIGSEGV.
+    # Same fix as the daemon (server.py). Manual gc.collect() at safe points.
+    import gc
+
+    gc.disable()
+
     repo = _default_repo()
     os.environ.setdefault("CTX_REPO", str(repo))
     os.environ.setdefault("CTX_TOKEN_MODE", "savings")

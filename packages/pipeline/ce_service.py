@@ -18,6 +18,16 @@ from typing import Any
 
 from pipeline.engine import clear_engines, drop_engine, load_engine
 from pipeline.index_manager import get_index_manager
+
+
+def _daemon_version() -> str:
+    """Return the installed scubiee version for the /health response."""
+    try:
+        from importlib.metadata import version
+
+        return version("scubiee")
+    except Exception:  # noqa: BLE001
+        return "unknown"
 from pipeline.registration import (
     is_always_allowed,
     is_registered,
@@ -342,6 +352,7 @@ class RuntimeManager:
         return {
             "ok": True,
             "service": "context-engine",
+            "version": _daemon_version(),
             "warm": self.engine is not None,
             "warm_state": self.warm_state,
             "generation": self.generation,

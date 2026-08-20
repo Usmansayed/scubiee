@@ -415,6 +415,13 @@ class BackgroundSyncLoop:
         finally:
             with self._lock:
                 self._syncing = False
+            # Safe point: collect garbage after sync completes. GC is disabled
+            # globally in the daemon to prevent SIGSEGV during native extension
+            # work (tokenizers/MLX/numpy). We collect manually here when no
+            # embedding is in progress.
+            import gc
+
+            gc.collect()
 
     def final_check(self, *, reason: str = "shutdown") -> dict:
         """One last cheap probe (+ sync if dirty). Best-effort; once per stop."""
