@@ -51,7 +51,7 @@ def server_entry(
         "CTX_SYNC_INTERVAL_MS": "300000",
         "CTX_REGISTRATION_MODE": "automatic",
         "CTX_MCP_SURFACE": "phase",
-        "CTX_ENGINE_IDLE_S": "120",
+        "CTX_ENGINE_IDLE_S": "60",
         "PYTHONUTF8": "1",
     }
     if repo is not None:

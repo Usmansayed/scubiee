@@ -19,7 +19,7 @@ TASK_NAME = "ContextEngineSupervisor"
 LAUNCH_AGENT_LABEL = "com.contextengine.supervisor"
 POLICY_NAME = "lifecycle_policy.json"
 CLIENTS_NAME = "active_clients.json"
-DEFAULT_IDLE_S = 120.0
+DEFAULT_IDLE_S = 60.0
 DESIRED_RUN = "run"
 DESIRED_STANDBY = "standby"
 

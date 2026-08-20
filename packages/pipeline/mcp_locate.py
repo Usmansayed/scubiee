@@ -1871,7 +1871,7 @@ def main() -> None:
     os.environ.setdefault("CTX_REPO", str(repo))
     os.environ.setdefault("CTX_TOKEN_MODE", "savings")
     os.environ.setdefault("CTX_SESSION_GOVERNOR", "1")
-    os.environ.setdefault("CTX_ENGINE_IDLE_S", "120")
+    os.environ.setdefault("CTX_ENGINE_IDLE_S", "60")
     try:
         from pipeline.daemon import ensure_daemon
 

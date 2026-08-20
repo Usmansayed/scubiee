@@ -363,7 +363,7 @@ def scenario_checks(root: Path) -> list[dict[str, Any]]:
                 set_desired_mode(DESIRED_STANDBY)
                 cmd = supervisor_command(python="python")
                 ok = (
-                    DEFAULT_IDLE_S == 120.0
+                    DEFAULT_IDLE_S == 60.0
                     and engine_should_be_running() is False
                     and should_idle_stop(now=10_000.0) is False
                     and load_policy()["desired_mode"] == DESIRED_STANDBY
