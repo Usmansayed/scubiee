@@ -335,12 +335,12 @@ def recommend_profile(detected: dict[str, Any] | None = None) -> AccelProfile:
 
 def ort_packages_for(profile: str) -> list[str]:
     if profile == "cuda":
-        return ["onnxruntime-gpu>=1.17,<1.27"]
+        return ["onnxruntime-gpu>=1.17,<1.25"]
     if profile == "dml":
-        return ["onnxruntime-directml>=1.17"]
+        return ["onnxruntime-directml>=1.17,<1.25"]
     if profile == "mlx":
-        return ["onnxruntime>=1.17"]
-    return ["onnxruntime>=1.17"]
+        return ["onnxruntime>=1.17,<1.25"]
+    return ["onnxruntime>=1.17,<1.25"]
 
 
 def conflicting_ort_packages(profile: str) -> list[str]:

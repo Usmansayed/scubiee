@@ -1,6 +1,6 @@
 [project]
 name = "scubiee"
-version = "0.2.30"
+version = "0.2.31"
 description = "Scubiee — local AI code context engine: setup once, scubiee connect per tool, DirectML/MLX/CUDA/CPU."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -27,6 +27,7 @@ dependencies = [
   "loguru>=0.7",
   "huggingface_hub>=0.20",
   "fastembed>=0.4",
+  "onnxruntime>=1.17,<1.25; platform_machine != 'arm64' or sys_platform != 'darwin'",
   "tokenizers>=0.15",
   # Mac: MLX + CoreML stack.
   "onnx>=1.16; sys_platform == 'darwin'",
@@ -34,11 +35,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# ctx setup auto-detects the best profile. These extras are for explicit control.
-cpu = ["fastembed>=0.4", "onnxruntime>=1.17"]
-coreml = ["fastembed>=0.4", "onnxruntime>=1.17", "onnx>=1.16"]
-dml = ["fastembed>=0.4", "onnxruntime-directml>=1.17"]
-cuda = ["fastembed>=0.4", "onnxruntime-gpu>=1.17,<1.27"]
+# scubiee setup auto-detects the best profile. These extras are for explicit control.
+cpu = ["fastembed>=0.4", "onnxruntime>=1.17,<1.25"]
+coreml = ["fastembed>=0.4", "onnxruntime>=1.17,<1.25", "onnx>=1.16"]
+dml = ["fastembed>=0.4", "onnxruntime-directml>=1.17,<1.25"]
+cuda = ["fastembed>=0.4", "onnxruntime-gpu>=1.17,<1.25"]
 macos = ["fastembed>=0.4", "onnxruntime>=1.17", "onnx>=1.16", "mlx>=0.22"]
 mlx = ["mlx>=0.22", "fastembed>=0.4", "onnx>=1.16", "onnxruntime>=1.17"]
 embed-st = ["sentence-transformers>=3.0", "torch", "einops"]
