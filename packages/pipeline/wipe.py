@@ -1,13 +1,14 @@
-﻿"""Complete removal of all Context Engine data from this machine.
+﻿"""Complete removal of all Scubiee data from this machine.
 
-scubiee wipe --confirm removes:
-  - The running daemon + watchdog
-  - ~/.context-engine/ (registry, projects, vectordb, accel, logs, locks)
+Usage:
+    scubiee wipe --confirm              # engine data only (indexes, logs, accel)
+    scubiee wipe --confirm --all        # EVERYTHING: engine + models + tool configs + repo markers
+    scubiee wipe --confirm --models     # engine data + embedding model cache
+    scubiee wipe --confirm --tools      # engine data + disconnect from all AI tools
+    scubiee wipe --confirm --repos      # engine data + per-repo .context-engine/ dirs
+    scubiee wipe --dry-run --all        # preview what would be deleted
 
-Does NOT remove:
-  - The installed Python package (user must pip uninstall scubiee)
-  - Per-repo .context-engine/id.json files (harmless; use --include-repos to remove)
-  - MCP json entries in IDE configs (use --include-mcp to remove)
+Does NOT remove the Python package itself (use: pip uninstall scubiee).
 """
 
 from __future__ import annotations
@@ -30,13 +31,12 @@ def _rmtree_force(path: Path, retries: int = 3, delay: float = 2.0) -> None:
         except PermissionError:
             if attempt == retries - 1:
                 raise
-            # Kill any remaining engine/watchdog processes holding files
             _kill_ce_processes()
             time.sleep(delay)
 
 
 def _kill_ce_processes() -> None:
-    """Force-kill any running context-engine Python processes on Windows."""
+    """Force-kill any running scubiee engine/watchdog processes."""
     try:
         import psutil
     except ImportError:
@@ -57,46 +57,79 @@ def _is_safe_to_wipe(path: Path) -> bool:
     resolved = path.resolve()
     resolved_str = str(resolved)
 
-    # Never wipe root-level system directories
     _DANGEROUS = {
         "/", "/tmp", "/var", "/home", "/usr", "/etc", "/opt",
         "/bin", "/sbin", "/lib", "/dev", "/proc", "/sys",
-        str(Path.home()),  # Never wipe the entire home directory
+        str(Path.home()),
     }
     if resolved_str in _DANGEROUS:
         return False
-
-    # Must be at least 3 path components deep (e.g. /Users/x/.context-engine)
     if len(resolved.parts) <= 2:
         return False
-
-    # Should look like a CE home (has registry.json or accel.json, or the dir name is .context-engine)
     if resolved.name == ".context-engine":
         return True
     if (resolved / "registry.json").exists():
         return True
     if (resolved / "accel.json").exists():
         return True
-
-    # Non-existent path is safe to "wipe" (no-op)
     if not resolved.exists():
         return True
-
     return False
+
+
+def _find_model_cache_dirs() -> list[Path]:
+    """Find Scubiee-related model cache directories."""
+    dirs: list[Path] = []
+
+    # fastembed cache (stores ONNX models)
+    fastembed_cache = Path.home() / ".cache" / "fastembed"
+    if fastembed_cache.is_dir():
+        # Look for CodeRankEmbed specifically
+        for child in fastembed_cache.iterdir():
+            if child.is_dir() and "coderank" in child.name.lower():
+                dirs.append(child)
+        # If no specific match, flag the whole fastembed cache
+        if not dirs and fastembed_cache.is_dir():
+            dirs.append(fastembed_cache)
+
+    # huggingface hub cache for CodeRankEmbed
+    hf_cache = Path(os.environ.get("HF_HOME", "")) or Path.home() / ".cache" / "huggingface"
+    hf_hub = hf_cache / "hub"
+    if hf_hub.is_dir():
+        for child in hf_hub.iterdir():
+            if child.is_dir() and "coderank" in child.name.lower():
+                dirs.append(child)
+
+    # MLX converted weights (inside CE home, but also check standalone)
+    mlx_dir = Path.home() / ".context-engine" / "mlx"
+    if mlx_dir.is_dir():
+        dirs.append(mlx_dir)
+
+    return dirs
 
 
 def wipe_context_engine(
     *,
     confirm: bool = False,
+    include_all: bool = False,
     include_repos: bool = False,
     include_mcp: bool = False,
+    include_models: bool = False,
+    include_tools: bool = False,
     dry_run: bool = False,
 ) -> dict[str, Any]:
-    """Remove all Context Engine state from this machine.
+    """Remove Scubiee data from this machine.
 
-    Returns a result dict describing what was (or would be) deleted.
+    --all expands to: repos + tools (disconnect) + models + mcp configs.
     """
     from pipeline.project_id import context_engine_home, load_registry
+
+    # --all enables everything
+    if include_all:
+        include_repos = True
+        include_mcp = True
+        include_models = True
+        include_tools = True
 
     ce_home = context_engine_home()
 
@@ -104,17 +137,17 @@ def wipe_context_engine(
         return {
             "ok": False,
             "error": "confirmation_required",
-            "message": "Pass --confirm to proceed. This permanently deletes all CE data.",
+            "message": "Pass --confirm to proceed. This permanently deletes all Scubiee data.",
+            "hint": "Use --all to remove everything, or --dry-run to preview.",
             "ce_home": str(ce_home),
             "exists": ce_home.exists(),
         }
 
-    # Safety: refuse to wipe dangerous system paths
     if not _is_safe_to_wipe(ce_home):
         return {
             "ok": False,
             "error": "unsafe_path",
-            "message": f"Refusing to wipe '{ce_home}' — does not look like a Context Engine home directory.",
+            "message": f"Refusing to wipe '{ce_home}' — does not look like a Scubiee home directory.",
             "ce_home": str(ce_home),
         }
 
@@ -125,7 +158,9 @@ def wipe_context_engine(
         "daemon_stopped": False,
         "ce_home_deleted": False,
         "repo_dirs_cleaned": [],
+        "tools_disconnected": [],
         "mcp_configs_cleaned": [],
+        "models_cleaned": [],
     }
 
     # 1. Stop daemon + watchdog
@@ -153,28 +188,50 @@ def wipe_context_engine(
         except Exception:  # noqa: BLE001
             pass
 
-    # 3. Delete ~/.context-engine/
+    # 3. Disconnect from all AI tools (remove MCP configs + rule files)
+    if include_tools:
+        try:
+            from pipeline.rules_installer import uninstall_tools
+            from pipeline.tool_registry import ALL_SLUGS
+
+            reports = uninstall_tools(ALL_SLUGS, dry_run=dry_run)
+            for r in reports:
+                if r.get("mcp_removed") or r.get("rule_removed"):
+                    result["tools_disconnected"].append(r["slug"])
+        except Exception as exc:  # noqa: BLE001
+            result["tools_disconnect_error"] = str(exc)
+
+    # 4. Delete ~/.context-engine/
     if ce_home.exists():
         if not dry_run:
             _rmtree_force(ce_home)
         result["ce_home_deleted"] = True
 
-    # 4. Remove per-repo .context-engine/ dirs
+    # 5. Remove per-repo .context-engine/ dirs
     if include_repos:
         for repo in repo_paths:
             ce_dir = repo / ".context-engine"
             if ce_dir.is_dir():
                 if not dry_run:
-                    shutil.rmtree(ce_dir)
+                    shutil.rmtree(ce_dir, ignore_errors=True)
                 result["repo_dirs_cleaned"].append(str(ce_dir))
 
-    # 5. Remove MCP config entries (best-effort)
-    if include_mcp:
+    # 6. Remove MCP config entries (legacy path — covered by --tools but kept for compat)
+    if include_mcp and not include_tools:
         mcp_paths = _find_mcp_configs()
         for mcp_path in mcp_paths:
             removed = _remove_ce_from_mcp_json(mcp_path, dry_run=dry_run)
             if removed:
                 result["mcp_configs_cleaned"].append(str(mcp_path))
+
+    # 7. Remove cached embedding models
+    if include_models:
+        model_dirs = _find_model_cache_dirs()
+        for model_dir in model_dirs:
+            if model_dir.is_dir():
+                if not dry_run:
+                    shutil.rmtree(model_dir, ignore_errors=True)
+                result["models_cleaned"].append(str(model_dir))
 
     return result
 
@@ -184,12 +241,10 @@ def _find_mcp_configs() -> list[Path]:
     candidates: list[Path] = []
     home = Path.home()
 
-    # Cursor configs
     cursor_user = home / ".cursor" / "mcp.json"
     if cursor_user.exists():
         candidates.append(cursor_user)
 
-    # Kiro configs
     kiro_user = home / ".kiro" / "settings" / "mcp.json"
     if kiro_user.exists():
         candidates.append(kiro_user)

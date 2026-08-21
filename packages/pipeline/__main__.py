@@ -762,13 +762,16 @@ def cmd_setup(args: argparse.Namespace) -> int:
 
 
 def cmd_wipe(args: argparse.Namespace) -> int:
-    """Remove all Context Engine data from this machine."""
+    """Remove all Scubiee data from this machine."""
     from pipeline.wipe import wipe_context_engine
 
     result = wipe_context_engine(
         confirm=bool(args.confirm),
-        include_repos=bool(args.include_repos),
-        include_mcp=bool(args.include_mcp),
+        include_all=bool(getattr(args, "all", False)),
+        include_repos=bool(getattr(args, "repos", False)),
+        include_mcp=bool(getattr(args, "mcp", False) if hasattr(args, "mcp") else False),
+        include_models=bool(getattr(args, "models", False)),
+        include_tools=bool(getattr(args, "tools", False)),
         dry_run=bool(args.dry_run),
     )
     print(json.dumps(result, indent=2, default=str))
@@ -1320,27 +1323,37 @@ def main(argv: list[str] | None = None) -> int:
 
     p_wipe = sub.add_parser(
         "wipe",
-        help="Completely remove all Context Engine data from this machine",
+        help="Remove Scubiee data from this machine (use --all for complete cleanup)",
     )
     p_wipe.add_argument(
         "--confirm",
         action="store_true",
-        help="Required: confirm permanent deletion of all CE data",
+        help="Required: confirm permanent deletion",
     )
     p_wipe.add_argument(
-        "--include-repos",
+        "--all",
+        action="store_true",
+        help="Remove EVERYTHING: engine data + models + tool configs + repo markers",
+    )
+    p_wipe.add_argument(
+        "--models",
+        action="store_true",
+        help="Also remove cached embedding models (CodeRankEmbed ONNX weights)",
+    )
+    p_wipe.add_argument(
+        "--tools",
+        action="store_true",
+        help="Also disconnect from all AI tools (same as 'scubiee disconnect --all')",
+    )
+    p_wipe.add_argument(
+        "--repos",
         action="store_true",
         help="Also remove .context-engine/ dirs inside managed repositories",
     )
     p_wipe.add_argument(
-        "--include-mcp",
-        action="store_true",
-        help="Also remove context-engine entries from IDE MCP configs",
-    )
-    p_wipe.add_argument(
         "--dry-run",
         action="store_true",
-        help="Show what would be deleted without actually deleting",
+        help="Preview what would be deleted without actually deleting",
     )
     p_wipe.set_defaults(func=cmd_wipe)
 
