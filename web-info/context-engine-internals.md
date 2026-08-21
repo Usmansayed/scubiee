@@ -1,6 +1,6 @@
-# Context Engine Internals: Architecture and Operations
+﻿# Context Engine Internals: Architecture and Operations
 
-> **Implementation baseline:** Scubiee / Context Engine `0.2.29`
+> **Implementation baseline:** Scubiee `0.2.32`
 > **Audience:** engineers, operators, integration authors, and maintainers building the technical sections of a documentation website.
 
 This document describes the current Context Engine (CE) architecture rather than the historical research prototypes. The public command and product guide is in [`commands-and-setup.md`](./commands-and-setup.md).
@@ -57,7 +57,7 @@ The control plane decides whether a repository is eligible and which runtime own
 
 | Area | Primary modules | Responsibility |
 | --- | --- | --- |
-| CLI and command dispatch | `packages/pipeline/__main__.py` | Defines the `ctx` command surface and connects commands to setup, lifecycle, search, daemon, diagnostics, and integration handlers. |
+| CLI and command dispatch | `packages/pipeline/__main__.py` | Defines the `scubiee` command surface and connects commands to setup, lifecycle, search, daemon, diagnostics, connect/disconnect, and wipe handlers. |
 | Hardware/provider setup | `accel.py`, `runtime_profile.py`, `embedder.py`, `preflight.py` | Detects capabilities, selects an execution profile, installs/validates the runtime, prepares CodeRankEmbed, and fails closed when required capabilities are not available. |
 | Registration/lifecycle | `repo_lifecycle.py`, `settings.py` | Applies enrollment, consent/registration policy, activation, pause/resume, sync, rebuild, removal, and persistent never-index decisions. |
 | Project identity | `project_id.py`, `git_family.py` | Resolves a stable `ce_...` project ID and reconciles duplicate/moved repositories, Git common directories, and linked worktrees. |
@@ -68,7 +68,7 @@ The control plane decides whether a repository is eligible and which runtime own
 | Resource control | `ResourceManager` and setup/runtime resource components | Tracks hardware pressure and controls adaptive budgets for indexing and retrieval. |
 | Watchdog | `watchdog.py` | Monitors the managed runtime and can wake/restart/reconcile it according to watchdog policy. |
 | MCP surface | `mcp_locate.py` | Selects the MCP surface, exposes tools, checks managed status, applies server instructions, and forwards requests to the daemon. |
-| MCP installation | `mcp_install.py`, `tool_registry.py`, `rules_installer.py` | Produces client-specific MCP entries, config paths, and global rule/instruction files. |
+| MCP installation | `mcp_install.py`, `tool_registry.py`, `rules_installer.py` | Produces client-specific MCP entries, config paths, global rule/instruction files, and handles `connect`/`disconnect` operations. |
 | Vector storage | `vectordb.py`, TurboQuant/FAISS components | Stores compressed embeddings and vector catalogs under the Context Engine data root. |
 | Path/scope policy | `paths.py`, `storage_policy.py` | Resolves fast roots, artifact layout, compaction and persistence policy, and storage safety constraints. |
 
@@ -76,7 +76,7 @@ The control plane decides whether a repository is eligible and which runtime own
 
 ### Machine setup
 
-`ctx setup` is the machine-level path. In broad terms it:
+`scubiee setup` is the machine-level path. In broad terms it:
 
 1. snapshots hardware and available accelerators;
 2. selects or validates a runtime profile (`cuda`, `dml`, `mlx`, `coreml`, or `cpu`);
@@ -90,7 +90,7 @@ Provider and capability failures are not treated as successful setup. The operat
 
 ### Repository enrollment
 
-`ctx init PATH` is the normal repository-facing path:
+`scubiee init PATH` is the normal repository-facing path:
 
 1. normalize and validate the repository root;
 2. apply registration and consent policy;
@@ -100,7 +100,7 @@ Provider and capability failures are not treated as successful setup. The operat
 6. index unless `--no-index` was supplied; and
 7. ensure that the daemon can serve the repository.
 
-`ctx register PATH` is the explicit registration variant. `ctx initialize PATH` is the lifecycle-oriented entry point used when initializing or reconciling a managed repository. These operations are intentionally distinct from `ctx setup`, so adding another repository does not repeat machine provider installation.
+`scubiee register PATH` is the explicit registration variant. `scubiee initialize PATH` is the lifecycle-oriented entry point used when initializing or reconciling a managed repository. These operations are intentionally distinct from `scubiee setup`, so adding another repository does not repeat machine provider installation.
 
 ### Full index sequence
 
@@ -175,7 +175,7 @@ query
 
 The production multi-architecture path uses `MultiArchConductor.retrieve_D_channel_best`. The exact implementation may choose a local or daemon-backed route, but the behavioral contract is the same: lexical evidence, semantic evidence, and repository structure are fused rather than relying on one ranking signal.
 
-`WarmSearchEngine` is the readiness boundary for retrieval. A cold or unavailable dense index can be surfaced through status/capability information instead of being mistaken for a healthy semantic search result. CLI `ctx search` can use the warm server path, a local path (`--local`), or an explicit `--url`.
+`WarmSearchEngine` is the readiness boundary for retrieval. A cold or unavailable dense index can be surfaced through status/capability information instead of being mistaken for a healthy semantic search result. CLI `scubiee search` can use the warm server path, a local path (`--local`), or an explicit `--url`.
 
 ## Incremental and live re-indexing
 
@@ -199,7 +199,7 @@ The live loop includes debounce and bulk-change controls. Current guard defaults
 - `CTX_CHANGE_POLL_MS=1000`; and
 - `CTX_SYNC_INTERVAL_MS=300000` for the normal five-minute background interval.
 
-These are operational defaults, not promises that every repository will use the same workload. A change set that is too large or too structurally disruptive is escalated to a full index so that incremental mutation does not produce an unsafe or incomplete graph/vector state. An explicit `ctx init --confirm` bypasses the 200-file incremental touch confirmation, while the chunk safety limit and provider/resource guards still apply.
+These are operational defaults, not promises that every repository will use the same workload. A change set that is too large or too structurally disruptive is escalated to a full index so that incremental mutation does not produce an unsafe or incomplete graph/vector state. An explicit `scubiee init --confirm` bypasses the 200-file incremental touch confirmation, while the chunk safety limit and provider/resource guards still apply.
 
 ## Runtime, daemon, and watchdog
 
@@ -207,7 +207,7 @@ These are operational defaults, not promises that every repository will use the 
 
 The daemon hosts a `RuntimeManager`, which routes repository requests through `RepoHub` and a `RepoRuntime`. A repository runtime coordinates its `IndexManager`, `ResourceManager`, search state, and lifecycle flags. This prevents a request for repository A from accidentally using a daemon state or store belonging to repository B.
 
-`server.py` provides the HTTP serving layer. `daemon.py` provides process/control behavior. The CLI can run a foreground service with `ctx serve`, while `ctx engine` controls start, stop, status, ensure, run, watchdog, supervisor, and autostart operations.
+`server.py` provides the HTTP serving layer. `daemon.py` provides process/control behavior. The CLI can run a foreground service with `scubiee serve`, while `scubiee engine` controls start, stop, status, ensure, run, watchdog, supervisor, and autostart operations.
 
 ### Standby and idle behavior
 
@@ -237,7 +237,7 @@ The phase surface is optimized for a staged discovery workflow: map the area, fo
 
 ### The global rule contract
 
-`ctx install rules` installs both a client-specific MCP configuration and a global instruction where the client supports one. The instruction is deliberately conditional because global rules are loaded before the repository's CE state is known:
+`scubiee connect` installs both a client-specific MCP configuration and a global instruction where the client supports one. The instruction is deliberately conditional because global rules are loaded before the repository's CE state is known:
 
 ```text
 call status() once
@@ -271,7 +271,7 @@ Project identity is a safety boundary, not merely a cache key. The resolution se
 
 A Git worktree may have a `.git` pointer file rather than a `.git` directory. The resolver must therefore use Git common-directory evidence without incorrectly rejecting worktrees as outside the repository root. Reconciliation can select a canonical existing identity and supersede duplicate records rather than creating independent indexes for every linked path.
 
-When a repository moves, is re-opened through a worktree, or has duplicate ID evidence, `ctx init`/`ctx initialize` should be preferred over manually editing IDs. The lifecycle path reconciles identity and then performs the appropriate incremental or full freshness operation.
+When a repository moves, is re-opened through a worktree, or has duplicate ID evidence, `scubiee init`/`scubiee initialize` should be preferred over manually editing IDs. The lifecycle path reconciles identity and then performs the appropriate incremental or full freshness operation.
 
 ## Provider selection and fallback
 
@@ -317,33 +317,33 @@ The CPU profile is a supported fallback, but it is a policy decision that should
 
 ### First installation
 
-```powershell
-python -m pip install -U scubiee
-ctx setup
-ctx preflight
-ctx install rules --all --dry-run
-ctx init C:\src\repository
-ctx status C:\src\repository
+```bash
+pip install -U scubiee
+scubiee setup
+scubiee preflight
+scubiee connect --all --dry-run
+scubiee init C:\src\repository
+scubiee status C:\src\repository
 ```
 
 ### Health check before a release
 
-```powershell
-ctx preflight C:\src\repository
-ctx doctor C:\src\repository --all
-ctx resources --refresh
-ctx certify C:\src\repository --canary
-ctx test quick
-ctx test core
+```bash
+scubiee preflight C:\src\repository
+scubiee doctor C:\src\repository --all
+scubiee resources --refresh
+scubiee certify C:\src\repository --canary
+scubiee test quick
+scubiee test core
 ```
 
 ### Diagnose a client that cannot retrieve context
 
-```powershell
-ctx status C:\src\repository
-ctx engine status C:\src\repository
-ctx install rules --cursor --dry-run
-ctx mcp C:\src\repository
+```bash
+scubiee status C:\src\repository
+scubiee engine status C:\src\repository
+scubiee connect --cursor --dry-run
+scubiee mcp C:\src\repository
 ```
 
 Check the following in order:
@@ -351,42 +351,53 @@ Check the following in order:
 1. the client has a `context-engine` MCP entry;
 2. the entry uses the intended Python interpreter and `CTX_ENGINE_URL`;
 3. `CTX_REPO` is absent only when the client can provide the workspace path;
-4. `ctx status` reports the repository as managed and healthy; and
+4. `scubiee status` reports the repository as managed and healthy; and
 5. the selected MCP surface exposes the expected tool names.
 
 ### Refresh a stale index
 
-```powershell
-ctx status C:\src\repository
-ctx sync C:\src\repository
+```bash
+scubiee status C:\src\repository
+scubiee sync C:\src\repository
 # Immediate lifecycle reconciliation:
-ctx sync-now C:\src\repository
+scubiee sync-now C:\src\repository
 # Full rebuild when status or change size requires it:
-ctx rebuild C:\src\repository
+scubiee rebuild C:\src\repository
 ```
 
 ### Repair or migrate
 
-```powershell
-ctx setup --repair
-ctx doctor --all --fix
-ctx migrate C:\src\repository --check-all
-ctx migrate C:\src\repository --apply
+```bash
+scubiee setup --repair
+scubiee doctor --all --fix
+scubiee migrate C:\src\repository --check-all
+scubiee migrate C:\src\repository --apply
 ```
 
-Use `ctx wipe --dry-run` before any machine-wide cleanup. `--confirm`, `--include-repos`, and `--include-mcp` should be reserved for an operator who understands the data being removed.
+### Complete cleanup
+
+```bash
+# Preview first:
+scubiee wipe --dry-run --all
+
+# Nuclear: remove everything Scubiee created
+scubiee wipe --confirm --all
+
+# Remove the package itself:
+pip uninstall scubiee -y
+```
 
 ## Failure modes and safety boundaries
 
 | Condition | Expected behavior | Operator response |
 | --- | --- | --- |
-| Repository is not managed | MCP status reports unmanaged/not healthy for CE use; the global rule tells the AI to use native tools | Run `ctx init PATH` if CE is intended for the repository |
+| Repository is not managed | MCP status reports unmanaged/not healthy for CE use; the global rule tells the AI to use native tools | Run `scubiee init PATH` if CE is intended for the repository |
 | MCP has no repository context | The adapter cannot safely infer the target project | Supply the workspace path or configure `CTX_REPO` in the client entry |
-| Daemon is down or bound to another repository | Search/status fails or reports unhealthy rather than crossing repository boundaries | Run `ctx engine status`, then `ctx engine ensure`/`start` for the intended repository |
+| Daemon is down or bound to another repository | Search/status fails or reports unhealthy rather than crossing repository boundaries | Run `scubiee engine status`, then `scubiee engine ensure`/`start` for the intended repository |
 | Provider/model capability is missing | Preflight/setup/indexing fails closed | Repair the profile or explicitly choose `cpu` |
-| Large change set | Live sync escalates to a guarded full-index path | Allow the rebuild or run `ctx rebuild` deliberately |
-| Duplicate/moved/worktree identity | Resolver and Git-family reconciliation choose or mint identity based on evidence | Use `ctx init`/`ctx initialize`; do not hand-edit IDs first |
-| Repository is intentionally excluded | `never-index` persists a denial | Use `ctx never-index PATH --reason ...` only when exclusion is intended |
+| Large change set | Live sync escalates to a guarded full-index path | Allow the rebuild or run `scubiee rebuild` deliberately |
+| Duplicate/moved/worktree identity | Resolver and Git-family reconciliation choose or mint identity based on evidence | Use `scubiee init`/`scubiee initialize`; do not hand-edit IDs first |
+| Repository is intentionally excluded | `never-index` persists a denial | Use `scubiee never-index PATH --reason ...` only when exclusion is intended |
 | Destructive cleanup requested | Removal/wipe requires explicit command and, for wipe, confirmation | Review `--dry-run` output before `--confirm` |
 
 ## Extension and documentation guidance
