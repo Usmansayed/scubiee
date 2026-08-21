@@ -660,6 +660,7 @@ def cmd_init(args: argparse.Namespace) -> int:
             progress=bar,
             fast=fast,
             fast_roots=roots,
+            confirm=bool(getattr(args, "confirm", False)),
         )
     except Exception as exc:  # noqa: BLE001
         bar.fail(str(exc))
@@ -673,7 +674,11 @@ def cmd_init(args: argparse.Namespace) -> int:
             out["daemon"] = {"ok": False, "error": str(exc)}
         bar.finish("Ready")
     else:
-        bar.fail(str(out.get("error") or "init failed"))
+        message = str(out.get("error") or "init failed")
+        if out.get("confirmation_required"):
+            bar.notice(message)
+        else:
+            bar.fail(message)
     if not sys.stdout.isatty():
         print(json.dumps(out, indent=2, default=str))
     return 0 if out.get("ok") else 1
@@ -1221,6 +1226,11 @@ def main(argv: list[str] | None = None) -> int:
         "--roots",
         default=None,
         help="Comma-separated fast roots (implies --fast)",
+    )
+    p_init.add_argument(
+        "--confirm",
+        action="store_true",
+        help="Confirm indexing more than 200 changed/removed files",
     )
     p_init.set_defaults(func=cmd_init)
 

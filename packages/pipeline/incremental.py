@@ -40,6 +40,7 @@ class IncrementalResult:
     error: str | None = None
     graph_error: str | None = None
     warnings: list[str] | None = None
+    confirmation_required: bool = False
 
     def to_dict(self) -> dict:
         return {
@@ -52,6 +53,7 @@ class IncrementalResult:
             "error": self.error,
             "graph_error": self.graph_error,
             "warnings": self.warnings or [],
+            "confirmation_required": self.confirmation_required,
         }
 
 
@@ -73,6 +75,7 @@ def incremental_sync(
     max_chars: int = 1200,
     force_files: list[str] | None = None,
     bulk: bool = False,
+    confirm: bool = False,
 ) -> IncrementalResult:
     """Re-parse + re-embed only changed/removed files; upsert into FAISS collection.
 
@@ -179,7 +182,28 @@ def incremental_sync(
             strategy="none",
         )
 
-    if report.strategy == "full" and not force_files:
+    changed = sorted(set(report.diff.changed_files) | set(force_files or []))
+    removed = list(report.diff.removed)
+    # Hard cap — never extract thousands of accidental paths in one sync.
+    max_touch = int(os.environ.get("CTX_INCREMENTAL_MAX_TOUCH", "200"))
+    touched_count = len(changed) + len(removed)
+    if touched_count > max_touch and not force_files and not confirm:
+        return IncrementalResult(
+            refreshed=False,
+            files=(changed + removed)[:50],
+            chunks_upserted=0,
+            chunks_removed=0,
+            ms=(time.perf_counter() - t0) * 1000,
+            strategy=report.strategy,
+            error=(
+                f"There are {touched_count} changed or removed files, which is over "
+                f"the {max_touch}-file safety limit. Are you sure you want to index "
+                "all of them? Run `ctx init --confirm` to continue."
+            ),
+            confirmation_required=True,
+        )
+
+    if report.strategy == "full" and not force_files and not confirm:
         return IncrementalResult(
             refreshed=False,
             files=[],
@@ -193,20 +217,6 @@ def incremental_sync(
             ),
         )
 
-    changed = sorted(set(report.diff.changed_files) | set(force_files or []))
-    removed = list(report.diff.removed)
-    # Hard cap — never extract thousands of accidental paths in one sync
-    max_touch = int(os.environ.get("CTX_INCREMENTAL_MAX_TOUCH", "80"))
-    if len(changed) + len(removed) > max_touch and not force_files:
-        return IncrementalResult(
-            refreshed=False,
-            files=(changed + removed)[:50],
-            chunks_upserted=0,
-            chunks_removed=0,
-            ms=(time.perf_counter() - t0) * 1000,
-            strategy=report.strategy,
-            error=f"refusing to touch {len(changed)+len(removed)} files (>{max_touch})",
-        )
     touch = sorted(set(changed) | set(removed))
 
     try:

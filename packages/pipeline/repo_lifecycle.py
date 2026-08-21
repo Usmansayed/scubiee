@@ -215,6 +215,7 @@ def initialize_repo(
     progress: Any = None,
     fast: bool = False,
     fast_roots: list[str] | None = None,
+    confirm: bool = False,
 ) -> dict[str, Any]:
     """Admit a repository and reconcile an existing usable index."""
     root = _root(root)
@@ -334,7 +335,7 @@ def initialize_repo(
             if index_is_usable(store_dir):
                 from pipeline.incremental import incremental_sync
 
-                sync = incremental_sync(root, base_dir=store_dir)
+                sync = incremental_sync(root, base_dir=store_dir, confirm=confirm)
                 sync_data = sync.to_dict()
                 if sync_data.get("error"):
                     return _result(
@@ -344,6 +345,7 @@ def initialize_repo(
                         indexed=False,
                         reconciled=True,
                         sync=sync_data,
+                        confirmation_required=bool(sync_data.get("confirmation_required")),
                         error=sync_data["error"],
                     )
                 reconciled = True
