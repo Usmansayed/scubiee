@@ -848,6 +848,50 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
     return 0 if verdict.get("ok") else 1
 
 
+def cmd_install_rules(args: argparse.Namespace) -> int:
+    """Install global MCP config + AI rules for coding tools."""
+    from pipeline.rules_installer import install_tools
+    from pipeline.tool_registry import ALL_SLUGS
+
+    # Collect selected tools
+    if getattr(args, "all", False):
+        selected = list(ALL_SLUGS)
+    else:
+        selected = [slug for slug in ALL_SLUGS if getattr(args, slug.replace("-", "_"), False)]
+
+    if not selected:
+        print(
+            "No tools specified. Use --all or specify tools: "
+            + ", ".join(f"--{s}" for s in ALL_SLUGS),
+            file=sys.stderr,
+        )
+        return 1
+
+    dry_run = getattr(args, "dry_run", False)
+    results = install_tools(selected, dry_run=dry_run)
+
+    # Print results
+    print(json.dumps(results, indent=2, default=str))
+
+    # Human-friendly summary
+    ok_count = sum(1 for r in results if r.get("ok"))
+    fail_count = len(results) - ok_count
+    if dry_run:
+        print(f"\n[dry-run] Would install for {len(results)} tool(s).", file=sys.stderr)
+    else:
+        print(f"\nInstalled for {ok_count} tool(s).", file=sys.stderr)
+        if fail_count:
+            print(f"  {fail_count} failed — check errors above.", file=sys.stderr)
+        print(
+            "\nThe global rule tells AI tools to call status() first.\n"
+            "If a project is NOT managed by Context Engine, the AI will\n"
+            "skip CE tools and use native search — no errors, no noise.",
+            file=sys.stderr,
+        )
+
+    return 0 if fail_count == 0 else 1
+
+
 def _write_mcp_config(repo: Path, host: str, port: int) -> None:
     """Minimal MCP write when install_mcp import fails."""
     from pipeline.mcp_install import interpreter
@@ -1285,6 +1329,28 @@ def main(argv: list[str] | None = None) -> int:
         help="Custom path for the diagnostic log file (default: ~/.context-engine/logs/)",
     )
     p_diag.set_defaults(func=cmd_diagnose)
+
+    # --- install rules ---
+    p_install = sub.add_parser(
+        "install",
+        help="Install Context Engine integrations into AI coding tools",
+    )
+    p_install_sub = p_install.add_subparsers(dest="install_cmd", required=True)
+    p_rules = p_install_sub.add_parser(
+        "rules",
+        help="Install global MCP config + AI rules for coding tools",
+    )
+    from pipeline.tool_registry import ALL_SLUGS
+
+    for slug in ALL_SLUGS:
+        p_rules.add_argument(
+            f"--{slug}",
+            action="store_true",
+            help=f"Install for {slug}",
+        )
+    p_rules.add_argument("--all", action="store_true", help="Install for all supported tools")
+    p_rules.add_argument("--dry-run", action="store_true", help="Show what would be written")
+    p_rules.set_defaults(func=cmd_install_rules)
 
     args = parser.parse_args(argv)
     return int(args.func(args))

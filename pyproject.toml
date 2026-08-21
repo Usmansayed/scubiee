@@ -1,6 +1,6 @@
 [project]
 name = "scubiee"
-version = "0.2.27"
+version = "0.2.28"
 description = "Scubiee — local Cursor MCP context engine: setup once, ctx init per repo, DirectML/MLX/CUDA/CPU."
 readme = "README.md"
 requires-python = ">=3.10"
