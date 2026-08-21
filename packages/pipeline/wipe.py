@@ -13,10 +13,43 @@ Does NOT remove:
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import sys
+import time
 from pathlib import Path
 from typing import Any
+
+
+def _rmtree_force(path: Path, retries: int = 3, delay: float = 2.0) -> None:
+    """Remove a directory tree, force-killing any processes holding files open on Windows."""
+    for attempt in range(retries):
+        try:
+            shutil.rmtree(path)
+            return
+        except PermissionError:
+            if attempt == retries - 1:
+                raise
+            # Kill any remaining engine/watchdog processes holding files
+            _kill_ce_processes()
+            time.sleep(delay)
+
+
+def _kill_ce_processes() -> None:
+    """Force-kill any running context-engine Python processes on Windows."""
+    try:
+        import psutil
+    except ImportError:
+        return
+    for proc in psutil.process_iter(["pid", "name", "cmdline"]):
+        try:
+            cmdline = proc.info.get("cmdline") or []
+            cmd_str = " ".join(cmdline).lower()
+            if "pipeline" in cmd_str and ("engine" in cmd_str or "watchdog" in cmd_str):
+                proc.kill()
+                proc.wait(timeout=5)
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.TimeoutExpired):
+            pass
 
 
 def _is_safe_to_wipe(path: Path) -> bool:
@@ -123,7 +156,7 @@ def wipe_context_engine(
     # 3. Delete ~/.context-engine/
     if ce_home.exists():
         if not dry_run:
-            shutil.rmtree(ce_home)
+            _rmtree_force(ce_home)
         result["ce_home_deleted"] = True
 
     # 4. Remove per-repo .context-engine/ dirs
