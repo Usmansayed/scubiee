@@ -77,8 +77,12 @@ def test_pip_install_hides_pip_logs_and_uses_quiet_progress(monkeypatch: pytest.
 
         def __init__(self) -> None:
             self._sent = False
+            self.stdout = io.StringIO("Would have dumped a wall of pip text\n")
 
         def poll(self) -> int | None:
+            return 0
+
+        def wait(self) -> int:
             return 0
 
         def communicate(self, timeout: float | None = None) -> tuple[str, str]:

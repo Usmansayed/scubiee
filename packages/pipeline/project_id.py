@@ -481,9 +481,13 @@ def resolve_project(root: Path, *, migrate: bool = True) -> ProjectRef:
     migrated = False
     common = git_common_dir(root)
 
-    # If this folder has its own .git but git_common_dir resolves to a parent,
-    # this is an independent repo — don't inherit the parent's identity.
-    if has_own_git and common:
+    # If this folder has its own .git directory (not a worktree pointer file)
+    # but git_common_dir resolves outside the root, this is a nested independent
+    # repo — don't inherit the parent's identity.  Worktrees have a .git *file*
+    # pointing to the main repo's .git, so their common_dir is intentionally
+    # outside the worktree root and must be preserved for family reconciliation.
+    is_worktree_pointer = (root / ".git").is_file()
+    if has_own_git and common and not is_worktree_pointer:
         try:
             if not common.resolve().is_relative_to(root.resolve()):
                 common = None  # Ignore parent's git — this repo is independent

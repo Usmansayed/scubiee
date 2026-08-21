@@ -264,50 +264,66 @@ def initialize_repo(
         # Re-check after acquiring lock — another thread may have completed init.
         project_id, existing = _project(root)
         if project_id and existing.get("managed"):
-            # Already initialized by the concurrent winner — just activate.
-            entry = _update(project_id, last_access_at=time.time())
-            return _result(project_id, entry, indexed=False, reconciled=False)
+            # Already initialized — reconcile git families first (using existing
+            # scores), then refresh timestamps and paths.
+            store_dir = (projects_root() / project_id).resolve()
+            from pipeline.git_family import reconcile_git_families as _rgf
 
-        ref = resolve_project(root)
-        now = time.time()
-        # resolve_project may have walked up to a parent — use ref's root for registration
-        try:
-            mark_registered(ref.project_id, root, always_allow=always_allow)
-        except (ValueError, RegistryConflictError):
-            # Subfolder resolved to parent's project — that's fine, just activate parent
-            entry = _update(ref.project_id, last_access_at=time.time())
-            return _result(ref.project_id, entry, indexed=False, reconciled=False)
-        current = (load_registry().get("projects") or {}).get(ref.project_id, {})
-        initialized_at = (
-            current.get("initialized_at") if isinstance(current, dict) else None
-        ) or now
-        common = git_common_dir(root)
-        lifecycle_state = (
-            PAUSED if existing.get("lifecycle_state") == PAUSED else ACTIVE
-        )
+            family = _rgf(prefer_root=None, prefer_project_id=None)
+            # Reconciliation may have synced id files to a canonical winner
+            ref_pid = read_id_file(root) or project_id
+            if ref_pid != project_id:
+                store_dir = (projects_root() / ref_pid).resolve()
+            # Now update timestamps and path aliases on the canonical entry
+            entry = _update(ref_pid, last_access_at=time.time())
+            from pipeline.project_id import update_registry as _upreg
+            try:
+                _upreg(ref_pid, root)
+            except (ValueError, RegistryConflictError):
+                pass
+            entry = _entry_by_id(ref_pid) or entry
+        else:
+            ref = resolve_project(root)
+            now = time.time()
+            # resolve_project may have walked up to a parent — use ref's root for registration
+            try:
+                mark_registered(ref.project_id, root, always_allow=always_allow)
+            except (ValueError, RegistryConflictError):
+                # Subfolder resolved to parent's project — that's fine, just activate parent
+                entry = _update(ref.project_id, last_access_at=time.time())
+                return _result(ref.project_id, entry, indexed=False, reconciled=False)
+            current = (load_registry().get("projects") or {}).get(ref.project_id, {})
+            initialized_at = (
+                current.get("initialized_at") if isinstance(current, dict) else None
+            ) or now
+            common = git_common_dir(root)
+            lifecycle_state = (
+                PAUSED if existing.get("lifecycle_state") == PAUSED else ACTIVE
+            )
 
-        lifecycle_values: dict[str, Any] = {
-            "managed": True,
-            "lifecycle_state": lifecycle_state,
-            "initialized_at": initialized_at,
-            "last_access_at": now,
-            "git_common_dir": str(common) if common else None,
-        }
-        if lifecycle_state == ACTIVE:
-            lifecycle_values.update(last_activated_at=now, pause_reason=None)
-        entry = _update(ref.project_id, **lifecycle_values)
-        from pipeline.git_family import reconcile_git_families
+            lifecycle_values: dict[str, Any] = {
+                "managed": True,
+                "lifecycle_state": lifecycle_state,
+                "initialized_at": initialized_at,
+                "last_access_at": now,
+                "git_common_dir": str(common) if common else None,
+            }
+            if lifecycle_state == ACTIVE:
+                lifecycle_values.update(last_activated_at=now, pause_reason=None)
+            entry = _update(ref.project_id, **lifecycle_values)
+            from pipeline.git_family import reconcile_git_families
 
-        family = reconcile_git_families(prefer_root=root, prefer_project_id=ref.project_id)
-        if family.canonical_project_ids:
-            ref_pid = read_id_file(root) or ref.project_id
-            if ref_pid != ref.project_id:
-                ref = resolve_project(root, migrate=False)
+            family = reconcile_git_families(prefer_root=root, prefer_project_id=ref.project_id)
+            if family.canonical_project_ids:
+                ref_pid = read_id_file(root) or ref.project_id
+                if ref_pid != ref.project_id:
+                    ref = resolve_project(root, migrate=False)
+                else:
+                    ref_pid = ref.project_id
             else:
                 ref_pid = ref.project_id
-        else:
-            ref_pid = ref.project_id
-        entry = _entry_by_id(ref_pid) or entry
+            entry = _entry_by_id(ref_pid) or entry
+            store_dir = (projects_root() / ref_pid).resolve()
 
     # --- Lock released: indexing can proceed without holding the registry ---
     indexed = False
@@ -315,14 +331,14 @@ def initialize_repo(
     chunks = 0
     if index:
         try:
-            if index_is_usable(ref.store_dir):
+            if index_is_usable(store_dir):
                 from pipeline.incremental import incremental_sync
 
-                sync = incremental_sync(root, base_dir=ref.store_dir)
+                sync = incremental_sync(root, base_dir=store_dir)
                 sync_data = sync.to_dict()
                 if sync_data.get("error"):
                     return _result(
-                        ref.project_id,
+                        ref_pid,
                         entry,
                         ok=False,
                         indexed=False,
@@ -345,12 +361,12 @@ def initialize_repo(
                 indexed = True
         except Exception as exc:  # noqa: BLE001
             entry = _update(
-                ref.project_id,
+                ref_pid,
                 last_access_at=time.time(),
                 last_error=str(exc),
             )
             return _result(
-                ref.project_id,
+                ref_pid,
                 entry,
                 ok=False,
                 indexed=False,
@@ -358,9 +374,9 @@ def initialize_repo(
                 error=str(exc),
             )
 
-    entry = _update(ref.project_id, last_access_at=time.time())
+    entry = _update(ref_pid, last_access_at=time.time())
     return _result(
-        ref.project_id,
+        ref_pid,
         entry,
         indexed=indexed,
         reconciled=reconciled,
