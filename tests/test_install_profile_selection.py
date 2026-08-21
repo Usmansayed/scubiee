@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import argparse
 import json
@@ -80,7 +80,7 @@ def test_resolve_runtime_requires_init_when_profile_is_missing(
         lambda *args, **kwargs: pytest.fail("runtime must not choose"),
     )
 
-    with pytest.raises(RuntimeError, match=r"ctx setup"):
+    with pytest.raises(RuntimeError, match=r"scubiee setup"):
         accel.resolve_runtime()
 
 

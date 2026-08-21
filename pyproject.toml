@@ -1,7 +1,7 @@
 [project]
 name = "scubiee"
 version = "0.2.29"
-description = "Scubiee — local Cursor MCP context engine: setup once, ctx init per repo, DirectML/MLX/CUDA/CPU."
+description = "Scubiee — local AI code context engine: setup once, scubiee connect per tool, DirectML/MLX/CUDA/CPU."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -45,9 +45,8 @@ embed-st = ["sentence-transformers>=3.0", "torch", "einops"]
 mcp = ["mcp>=1.0,<2"]
 
 [project.scripts]
-ctx = "pipeline.__main__:main"
 scubiee = "pipeline.__main__:main"
-ctx-mcp = "pipeline.mcp_server:main"
+scubiee-mcp = "pipeline.mcp_server:main"
 
 [project.urls]
 Homepage = "https://github.com/Usmansayed/new-context-engine"

@@ -1,4 +1,4 @@
-"""Release certification — required vs skipped vs optional checks."""
+﻿"""Release certification — required vs skipped vs optional checks."""
 
 from __future__ import annotations
 
@@ -419,7 +419,7 @@ def scenario_checks(root: Path) -> list[dict[str, Any]]:
             False,
             required=False,
             status="skipped",
-            detail="optional: ctx test clients --clients",
+            detail="optional: scubiee test clients --clients",
         )
     )
     return checks

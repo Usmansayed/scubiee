@@ -1,8 +1,8 @@
-"""CodeRankEmbed on Apple Silicon via MLX (Metal GPU).
+﻿"""CodeRankEmbed on Apple Silicon via MLX (Metal GPU).
 
 Selectable embedding backend. Weights are converted from the existing CodeRank
 ONNX initializers into ``~/.context-engine/mlx/`` — the FastEmbed / ONNX caches
-are never modified. On Apple Silicon, ``ctx setup`` persists ``profile=mlx``
+are never modified. On Apple Silicon, ``scubiee setup`` persists ``profile=mlx``
 (FP16). ``CTX_EMBED_BACKEND=fastembed`` or ``CTX_MLX=0`` keeps the ORT path.
 """
 

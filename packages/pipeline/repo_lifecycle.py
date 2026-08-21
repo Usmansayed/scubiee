@@ -1,4 +1,4 @@
-"""Persistent repository lifecycle built on the global project registry."""
+﻿"""Persistent repository lifecycle built on the global project registry."""
 
 from __future__ import annotations
 
@@ -244,7 +244,7 @@ def initialize_repo(
             "message": (
                 f"Refusing to manage '{root}' — too broad. "
                 "This would index personal files, secrets, or system data. "
-                "Use ctx init on a specific project directory."
+                "Use scubiee init on a specific project directory."
             ),
         }
 

@@ -1,4 +1,4 @@
-"""Tests for the lean 3-tool MCP surface: search / read / status."""
+﻿"""Tests for the lean 3-tool MCP surface: search / read / status."""
 
 from __future__ import annotations
 
@@ -525,6 +525,7 @@ def test_nav_surface_active_and_instructions_budget(monkeypatch):
     from pipeline import mcp_locate as ml
 
     monkeypatch.setenv("CTX_MCP_SURFACE", "nav")
+    monkeypatch.setattr(ml, "_is_repo_managed", lambda: True)
     assert ml._active_surface() == "nav"
     text = ml.SERVER_INSTRUCTIONS_NAV
     assert ml._server_instructions("nav") == text
@@ -545,6 +546,7 @@ def test_phase_surface_grep_glob_and_trajectory(monkeypatch):
 
     pytest.importorskip("mcp")
     monkeypatch.setenv("CTX_MCP_SURFACE", "phase")
+    monkeypatch.setattr(ml, "_is_repo_managed", lambda: True)
     text = ml.SERVER_INSTRUCTIONS_PHASE
     assert ml._server_instructions("phase") == text
     assert "map | focus | grep | glob | workspace | status" in text
@@ -725,9 +727,11 @@ def test_read_detail_outline_and_neighbors(monkeypatch, tmp_path):
     assert nbr["neighbors"][0]["file"] == "pkg/caller.py"
 
 
-def test_server_instructions_are_short_grep_like_cards():
+def test_server_instructions_are_short_grep_like_cards(monkeypatch):
     """Always-on MCP instructions must stay under ~800 tokens (~3200 chars)."""
     from pipeline import mcp_locate as ml
+
+    monkeypatch.setattr(ml, "_is_repo_managed", lambda: True)
 
     cards = {
         "read": ml.SERVER_INSTRUCTIONS_READ,
@@ -774,11 +778,269 @@ def test_server_instructions_are_short_grep_like_cards():
 
 
 def test_cursor_rule_mirrors_short_decision_card():
-    rule = (REPO / ".cursor" / "rules" / "context-agent.mdc").read_text(encoding="utf-8")
-    assert "map" in rule and "focus" in rule
-    assert "grep" in rule
-    assert "status" in rule
-    assert "STRICT" in rule
-    assert "Do not use native Grep" in rule
-    assert "SemanticSearch" in rule
-    assert len(rule) <= 4000
+    template = (REPO / "packages" / "pipeline" / "templates" / "context-agent.mdc").read_text(
+        encoding="utf-8"
+    )
+    assert "map" in template and "focus" in template
+    assert "grep" in template
+    assert "status" in template
+    assert "Do not use native Grep" in template or "do not use native Grep" in template.lower()
+    assert "status()" in template
+    assert len(template) <= 4000
+
+
+def test_mcp_reports_routing_errors_instead_of_successful_zero_hits(
+    monkeypatch, tmp_path
+) -> None:
+    pytest.importorskip("mcp")
+    import pipeline.client as pc
+    import pipeline.daemon as pd
+    from pipeline import locate as loc
+    from pipeline.context_agent.tools import BackendResponseError
+    from pipeline.mcp_locate import create_mcp
+
+    monkeypatch.setenv("CTX_MCP_SURFACE", "phase")
+    monkeypatch.setenv("CTX_REPO", str(tmp_path))
+    monkeypatch.setattr(pd, "ensure_daemon", lambda *a, **k: None)
+
+    response = {
+        "ok": False,
+        "status": "requires_initialize",
+        "error": "requires_initialize",
+        "root": str(tmp_path),
+        "http_status": 409,
+    }
+    monkeypatch.setattr(
+        loc,
+        "_search_hits",
+        lambda *_a, **_k: (_ for _ in ()).throw(BackendResponseError(response)),
+    )
+    mcp = create_mcp()
+    mapped = json.loads(_tool_fn(mcp, "map")(query="routing admission indexed chunks"))
+    assert mapped["ok"] is False
+    assert mapped["status"] == "requires_initialize"
+    assert mapped["http_status"] == 409
+    assert "count" not in mapped
+    assert "scubiee init" in mapped["hint"]
+
+    class _RoutingErrorEngine:
+        def grep(self, *_a, **_k):
+            return response
+
+    monkeypatch.setattr(pc, "EngineClient", lambda *a, **k: _RoutingErrorEngine())
+    grep_result = json.loads(_tool_fn(mcp, "grep")(pattern="incremental_sync"))
+    assert grep_result["ok"] is False
+    assert grep_result["status"] == "requires_initialize"
+    assert "count" not in grep_result
+    assert "scubiee init" in grep_result["hint"]
+
+
+def test_mcp_rejects_implicit_backend_readiness_failures(monkeypatch, tmp_path):
+    pytest.importorskip("mcp")
+    import pipeline.client as pc
+    import pipeline.daemon as pd
+    from pipeline import locate as loc
+    from pipeline.context_agent.tools import BackendResponseError
+    from pipeline.mcp_locate import create_mcp
+
+    monkeypatch.setenv("CTX_REPO", str(tmp_path))
+    monkeypatch.setattr(pd, "ensure_daemon", lambda *a, **k: None)
+    warming = {"status": "warming", "ready": False, "error": "index warming"}
+
+    class _WarmingEngine:
+        def outline(self, *_a, **_k):
+            return warming
+
+        def grep(self, *_a, **_k):
+            return warming
+
+        def graph_neighbors(self, *_a, **_k):
+            return warming
+
+        def query_graph(self, *_a, **_k):
+            return warming
+
+    monkeypatch.setattr(pc, "EngineClient", lambda *a, **k: _WarmingEngine())
+    monkeypatch.setattr(
+        loc,
+        "_search_hits",
+        lambda *_a, **_k: [{"file": "pkg/mod.py", "start_line": 1, "end_line": 3}],
+    )
+    monkeypatch.setattr(loc, "_read_excerpt", lambda *_a, **_k: warming)
+
+    monkeypatch.setenv("CTX_MCP_SURFACE", "rich")
+    rich = create_mcp()
+    read_fn = _tool_fn(rich, "read")
+    outline_fn = _tool_fn(rich, "outline")
+    results = [
+        json.loads(outline_fn(path="pkg/mod.py")),
+        json.loads(read_fn(path="pkg/mod.py", detail="outline")),
+        json.loads(read_fn(target="warming span")),
+    ]
+
+    monkeypatch.setenv("CTX_MCP_SURFACE", "graph")
+    graph = create_mcp()
+    results.extend(
+        [
+            json.loads(_tool_fn(graph, "neighbors")(target="pkg/mod.py")),
+            json.loads(_tool_fn(graph, "graph")(question="warming graph")),
+        ]
+    )
+
+    monkeypatch.setenv("CTX_MCP_SURFACE", "phase")
+    monkeypatch.setattr(
+        loc,
+        "_search_hits",
+        lambda *_a, **_k: (_ for _ in ()).throw(BackendResponseError(warming)),
+    )
+    phase = create_mcp()
+    results.extend(
+        [
+            json.loads(_tool_fn(phase, "map")(query="warming map")),
+            json.loads(_tool_fn(phase, "grep")(pattern="warming")),
+        ]
+    )
+
+    for result in results:
+        assert result["ok"] is False, result
+        assert result["status"] == "warming", result
+        assert "count" not in result
+
+
+def test_context_agent_wrappers_reject_implicit_warming(monkeypatch, tmp_path):
+    import pipeline.context_agent.tools as tools
+
+    warming = {"status": "warming", "ready": False, "error": "index warming"}
+
+    class _WarmingClient:
+        def search(self, *_a, **_k):
+            return warming
+
+        def grep(self, *_a, **_k):
+            return warming
+
+        def read_span(self, *_a, **_k):
+            return warming
+
+    monkeypatch.setattr(tools, "_client", lambda *a, **k: _WarmingClient())
+    results = [
+        tools.tool_search_code(tmp_path, "warming"),
+        tools.tool_grep_code(tmp_path, "warming"),
+        tools.tool_read_span(tmp_path, "pkg/mod.py"),
+    ]
+
+    for result in results:
+        assert result["ok"] is False, result
+        assert result["status"] == "warming", result
+
+
+def test_mcp_rejects_missing_success_envelopes(monkeypatch, tmp_path):
+    pytest.importorskip("mcp")
+    import pipeline.client as pc
+    import pipeline.daemon as pd
+    from pipeline import locate as loc
+    from pipeline.context_agent.tools import BackendResponseError
+    from pipeline.mcp_locate import create_mcp
+
+    monkeypatch.setenv("CTX_REPO", str(tmp_path))
+    monkeypatch.setattr(pd, "ensure_daemon", lambda *a, **k: None)
+    empty = {}
+
+    class _EmptyEngine:
+        def grep(self, *_a, **_k):
+            return empty
+
+        def outline(self, *_a, **_k):
+            return empty
+
+        def graph_neighbors(self, *_a, **_k):
+            return empty
+
+        def query_graph(self, *_a, **_k):
+            return empty
+
+    monkeypatch.setattr(pc, "EngineClient", lambda *a, **k: _EmptyEngine())
+    monkeypatch.setattr(
+        loc,
+        "_search_hits",
+        lambda *_a, **_k: (_ for _ in ()).throw(BackendResponseError(empty)),
+    )
+    monkeypatch.setattr(loc, "_read_excerpt", lambda *_a, **_k: empty)
+
+    monkeypatch.setenv("CTX_MCP_SURFACE", "rich")
+    rich = create_mcp()
+    read_fn = _tool_fn(rich, "read")
+    results = [
+        json.loads(_tool_fn(rich, "outline")(path="pkg/mod.py")),
+        json.loads(read_fn(path="pkg/mod.py", detail="outline")),
+        json.loads(read_fn(target="missing span")),
+    ]
+
+    monkeypatch.setenv("CTX_MCP_SURFACE", "graph")
+    graph = create_mcp()
+    results.extend(
+        [
+            json.loads(_tool_fn(graph, "neighbors")(target="pkg/mod.py")),
+            json.loads(_tool_fn(graph, "graph")(question="missing graph")),
+        ]
+    )
+
+    monkeypatch.setenv("CTX_MCP_SURFACE", "phase")
+    phase = create_mcp()
+    results.extend(
+        [
+            json.loads(_tool_fn(phase, "map")(query="missing map")),
+            json.loads(_tool_fn(phase, "grep")(pattern="missing")),
+            json.loads(_tool_fn(phase, "focus")(target="pkg/mod.py", mode="outline")),
+        ]
+    )
+
+    monkeypatch.setenv("CTX_MCP_SURFACE", "nav")
+    nav = create_mcp()
+    results.append(
+        json.loads(_tool_fn(nav, "search")(query="missing exact", mode="exact"))
+    )
+
+    for result in results:
+        assert result["ok"] is False, result
+        assert "count" not in result
+
+
+def test_optional_graph_failures_preserve_primary_results(monkeypatch, tmp_path):
+    pytest.importorskip("mcp")
+    import pipeline.client as pc
+    import pipeline.daemon as pd
+    from pipeline import locate as loc
+    from pipeline.mcp_locate import create_mcp
+
+    (tmp_path / "pkg").mkdir()
+    (tmp_path / "pkg" / "mod.py").write_text("value = 1\n", encoding="utf-8")
+    monkeypatch.setenv("CTX_REPO", str(tmp_path))
+    monkeypatch.setattr(pd, "ensure_daemon", lambda *a, **k: None)
+
+    class _GraphCrashEngine:
+        def graph_neighbors(self, *_a, **_k):
+            raise RuntimeError("graph unavailable")
+
+    monkeypatch.setattr(pc, "EngineClient", lambda *a, **k: _GraphCrashEngine())
+    monkeypatch.setattr(
+        loc,
+        "_search_hits",
+        lambda *_a, **_k: [{"file": "pkg/mod.py", "start_line": 1, "end_line": 1, "score": 1.0}],
+    )
+    monkeypatch.setenv("CTX_MCP_SURFACE", "search")
+    search = _tool_fn(create_mcp(), "search")
+    searched = json.loads(search(query="value", include="graph"))
+    assert searched["ok"] is True
+    assert searched["count"] == 1
+    assert searched["neighbors"] == []
+    assert "graph unavailable" in searched["neighbors_error"]
+
+    monkeypatch.setenv("CTX_MCP_SURFACE", "rich")
+    read = _tool_fn(create_mcp(), "read")
+    read_result = json.loads(
+        read(path="pkg/mod.py", start_line=1, end_line=1, neighbors=True)
+    )
+    assert read_result["ok"] is True
+    assert read_result["code"] == "value = 1"
+    assert "graph unavailable" in read_result["neighbors_error"]

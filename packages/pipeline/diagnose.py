@@ -1,4 +1,4 @@
-"""ctx diagnose — shareable installation health report with progress bar.
+﻿"""scubiee diagnose — shareable installation health report with progress bar.
 
 Collects tech stack, setup state, acceleration profile, and runs a quick
 validation suite. Saves results to a timestamped log file the user can share.

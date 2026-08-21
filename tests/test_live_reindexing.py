@@ -1,4 +1,4 @@
-"""Live reindexing ingress and safety controls without an embedding model."""
+﻿"""Live reindexing ingress and safety controls without an embedding model."""
 
 from __future__ import annotations
 
@@ -174,7 +174,7 @@ def test_estimated_oversized_change_requires_explicit_full_index(monkeypatch, tm
 
     assert sync_calls == []
     assert out[0]["strategy"] == "explicit_full_index_required"
-    assert "ctx index" in out[0]["error"]
+    assert "scubiee index" in out[0]["error"]
     assert out[0]["warnings"] == [
         "Automatic sync paused before graph/vector mutation; explicit full indexing is required."
     ]
@@ -294,7 +294,7 @@ def test_incremental_exact_chunk_limit_refuses_before_graph_publish(monkeypatch,
     assert result.chunks_upserted == 0
     assert result.chunks_removed == 0
     assert "3 chunks changed" in (result.error or "")
-    assert "ctx index" in (result.error or "")
+    assert "scubiee index" in (result.error or "")
     assert result.warnings == [
         "No graph or vector artifacts were published for this oversized change."
     ]

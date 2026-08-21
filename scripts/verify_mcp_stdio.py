@@ -1,9 +1,9 @@
-"""End-to-end check that a Cursor mcp.json entry actually serves this repo.
+"""End-to-end check that an MCP config entry actually serves this repo.
 
-Spawns the configured server exactly as Cursor would, speaks MCP over stdio and
+Spawns the configured server exactly as the AI tool would, speaks MCP over stdio and
 reports the advertised tools plus the repo that `status` claims.
 
-    python scripts/verify_mcp_stdio.py --config .cursor/mcp.json --server context-engine
+    python scripts/verify_mcp_stdio.py --config .kiro/settings/mcp.json --server context-engine
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--config", default=str(ROOT / ".cursor" / "mcp.json"))
     ap.add_argument("--server", default="context-engine")
     ap.add_argument("--expect-repo", default=str(ROOT))
-    ap.add_argument("--expect-tools", default="map,focus,workspace,recall,expand,status")
+    ap.add_argument("--expect-tools", default="focus,glob,grep,map,status,workspace")
     args = ap.parse_args(argv)
 
     cfg = json.loads(Path(args.config).read_text(encoding="utf-8"))

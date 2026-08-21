@@ -7,6 +7,72 @@ from pathlib import Path
 from typing import Any, Callable
 
 
+class BackendResponseError(RuntimeError):
+    """Raised when a path-bearing CE request is rejected by the daemon."""
+
+    def __init__(self, response: dict[str, Any]):
+        self.response = response
+        super().__init__(
+            str(response.get("error") or response.get("status") or "backend request failed")
+        )
+
+
+_SUCCESS_STATUSES = {
+    "ok",
+    "ready",
+    "active",
+    "activated",
+    "success",
+    "complete",
+    "completed",
+    "idle",
+    "registered",
+    "indexed",
+    "published",
+}
+
+
+def _backend_failed(response: Any) -> bool:
+    """Return True for explicit and implicit daemon failure states.
+
+    Some CE endpoints return a transient state such as ``warming`` without an
+    ``ok`` field. Data-bearing CE responses guarantee ``ok:true`` on success,
+    so an absent or false success marker must be treated as a failure instead
+    of an empty result.
+    """
+    if not isinstance(response, dict):
+        return True
+    if response.get("ok") is not True:
+        return True
+    if response.get("error"):
+        return True
+    if response.get("ready") is False:
+        return True
+    status = str(response.get("status") or "").strip().lower()
+    return bool(status and status not in _SUCCESS_STATUSES)
+
+
+def _copy_backend_metadata(out: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
+    for key in (
+        "error",
+        "status",
+        "http_status",
+        "state",
+        "ready",
+        "warm_state",
+        "sync_state",
+        "sync_status",
+        "root",
+        "repo",
+        "project_id",
+        "pause_reason",
+        "hint",
+    ):
+        if key in out and out[key] is not None:
+            result[key] = out[key]
+    return result
+
+
 def _client(repo: Path | None = None):
     from pipeline.client import EngineClient
     from pipeline.daemon import ensure_daemon
@@ -30,7 +96,8 @@ def tool_search_code(repo: Path, query: str, top_k: int = 6) -> dict[str, Any]:
                 "source": h.get("source"),
             }
         )
-    return {"ok": bool(out.get("ok", True)), "tool": "search_code", "hits": hits}
+    result = {"ok": not _backend_failed(out), "tool": "search_code", "hits": hits}
+    return _copy_backend_metadata(out, result)
 
 
 def tool_grep_code(
@@ -49,7 +116,8 @@ def tool_grep_code(
                     "text": (h.get("text") or h.get("preview") or "")[:140],
                 }
             )
-    return {"ok": bool(out.get("ok", True)), "tool": "grep_code", "hits": slim}
+    result = {"ok": not _backend_failed(out), "tool": "grep_code", "hits": slim}
+    return _copy_backend_metadata(out, result)
 
 
 def tool_query_graph(repo: Path, question: str, token_budget: int = 1200) -> dict[str, Any]:
@@ -99,14 +167,15 @@ def tool_read_span(
         text = out.get("text") or out.get("span") or out.get("content") or ""
         if isinstance(text, str) and len(text) > max_chars:
             text = text[:max_chars]
-        return {
-            "ok": bool(out.get("ok", True)),
+        result = {
+            "ok": not _backend_failed(out),
             "tool": "read_span",
             "path": path,
             "start_line": out.get("start_line") or start_line,
             "end_line": out.get("end_line") or end_line,
             "text": text if text else out,
         }
+        return _copy_backend_metadata(out, result)
     return {"ok": True, "tool": "read_span", "result": out}
 
 

@@ -1,11 +1,11 @@
 ---
-description: Context Engine — check once, then follow or ignore for full session
+description: Scubiee — check once, then follow or ignore for full session
 alwaysApply: true
 ---
 
-**First message only:** call `status()` from the Context Engine MCP.
+**First message only:** call `status()` from the Scubiee MCP.
 
-- If `status.managed` is `true` and `status.ok` is `true`: use CE MCP (`map`, `focus`, `grep`, `glob`, `workspace`) for all code discovery this session. Do not use native Grep, Glob, rg, find, or codebase_search for discovery. Native Read = only lines you will Edit. Shell = tests, build, git.
-- If `status.managed` is `false`, or the MCP is missing/unhealthy: **ignore this rule entirely for the rest of the session.** Use native tools freely. Do not call CE tools again.
+- If `status.managed` is `true` and `status.ok` is `true`: use Scubiee MCP (`map`, `focus`, `grep`, `glob`, `workspace`) for all code discovery this session. Do not use native Grep, Glob, rg, find, or codebase_search for discovery. Native Read = only lines you will Edit. Shell = tests, build, git.
+- If `status.managed` is `false`, or the MCP is missing/unhealthy: **ignore this rule entirely for the rest of the session.** Use native tools freely. Do not call Scubiee tools again.
 
 One `status()` call per session. Do not repeat it.

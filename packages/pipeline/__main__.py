@@ -1,4 +1,4 @@
-"""CLI: python -m pipeline index|search|status|serve"""
+﻿"""CLI: python -m pipeline index|search|status|serve"""
 
 from __future__ import annotations
 
@@ -304,7 +304,7 @@ def cmd_search(args: argparse.Namespace) -> int:
                 {
                     "ok": False,
                     "error": f"not a directory: {root}",
-                    "hint": "Usage: ctx search \"query\"  or  ctx search . \"query\"",
+                    "hint": "Usage: scubiee search \"query\"  or  scubiee search . \"query\"",
                 }
             ),
             file=sys.stderr,
@@ -754,7 +754,7 @@ def cmd_setup(args: argparse.Namespace) -> int:
                 )
             )
 
-        bar.finish("Ready. Next: ctx init <repo>")
+        bar.finish("Ready. Next: scubiee init <repo>")
         return 0
     except Exception as exc:  # noqa: BLE001
         bar.fail(str(exc))
@@ -853,8 +853,8 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
     return 0 if verdict.get("ok") else 1
 
 
-def cmd_install_rules(args: argparse.Namespace) -> int:
-    """Install global MCP config + AI rules for coding tools."""
+def cmd_connect(args: argparse.Namespace) -> int:
+    """Connect Scubiee to AI coding tools (MCP config + rules)."""
     from pipeline.rules_installer import install_tools
     from pipeline.tool_registry import ALL_SLUGS
 
@@ -873,7 +873,8 @@ def cmd_install_rules(args: argparse.Namespace) -> int:
         return 1
 
     dry_run = getattr(args, "dry_run", False)
-    results = install_tools(selected, dry_run=dry_run)
+    repo = getattr(args, "repo", None)
+    results = install_tools(selected, dry_run=dry_run, repo=repo)
 
     # Print results
     print(json.dumps(results, indent=2, default=str))
@@ -882,17 +883,63 @@ def cmd_install_rules(args: argparse.Namespace) -> int:
     ok_count = sum(1 for r in results if r.get("ok"))
     fail_count = len(results) - ok_count
     if dry_run:
-        print(f"\n[dry-run] Would install for {len(results)} tool(s).", file=sys.stderr)
+        print(f"\n[dry-run] Would connect {len(results)} tool(s).", file=sys.stderr)
     else:
-        print(f"\nInstalled for {ok_count} tool(s).", file=sys.stderr)
+        print(f"\nConnected {ok_count} tool(s).", file=sys.stderr)
         if fail_count:
             print(f"  {fail_count} failed — check errors above.", file=sys.stderr)
         print(
             "\nThe global rule tells AI tools to call status() first.\n"
-            "If a project is NOT managed by Context Engine, the AI will\n"
-            "skip CE tools and use native search — no errors, no noise.",
+            "If a project is NOT managed by Scubiee, the AI will\n"
+            "skip Scubiee tools and use native search — no errors, no noise.",
             file=sys.stderr,
         )
+
+    return 0 if fail_count == 0 else 1
+
+
+def cmd_disconnect(args: argparse.Namespace) -> int:
+    """Disconnect Scubiee from AI coding tools (removes MCP config + rules)."""
+    from pipeline.rules_installer import uninstall_tools
+    from pipeline.tool_registry import ALL_SLUGS
+
+    # Collect selected tools
+    if getattr(args, "all", False):
+        selected = list(ALL_SLUGS)
+    else:
+        selected = [slug for slug in ALL_SLUGS if getattr(args, slug.replace("-", "_"), False)]
+
+    if not selected:
+        print(
+            "No tools specified. Use --all or specify tools: "
+            + ", ".join(f"--{s}" for s in ALL_SLUGS),
+            file=sys.stderr,
+        )
+        return 1
+
+    dry_run = getattr(args, "dry_run", False)
+    repo = getattr(args, "repo", None)
+    results = uninstall_tools(selected, dry_run=dry_run, repo=repo)
+
+    # Print results
+    print(json.dumps(results, indent=2, default=str))
+
+    # Human-friendly summary
+    ok_count = sum(1 for r in results if r.get("ok"))
+    removed_mcp = sum(1 for r in results if r.get("mcp_removed"))
+    removed_rule = sum(1 for r in results if r.get("rule_removed"))
+    fail_count = len(results) - ok_count
+    if dry_run:
+        print(f"\n[dry-run] Would disconnect {len(results)} tool(s).", file=sys.stderr)
+    else:
+        print(
+            f"\nDisconnected {ok_count} tool(s): "
+            f"{removed_mcp} MCP config(s) removed, "
+            f"{removed_rule} rule file(s) removed.",
+            file=sys.stderr,
+        )
+        if fail_count:
+            print(f"  {fail_count} failed — check errors above.", file=sys.stderr)
 
     return 0 if fail_count == 0 else 1
 
@@ -943,8 +990,8 @@ def main(argv: list[str] | None = None) -> int:
     except Exception:  # noqa: BLE001
         _ver = "0.2.7"
     parser = argparse.ArgumentParser(
-        prog="pipeline",
-        description="Context Engine — Merkle + Graphify + TurboQuant + FAISS + D_rerank",
+        prog="scubiee",
+        description="Scubiee — local AI code context engine: setup once, connect per tool, search everything.",
     )
     parser.add_argument("--version", action="version", version=f"scubiee {_ver}")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -1340,27 +1387,49 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_diag.set_defaults(func=cmd_diagnose)
 
-    # --- install rules ---
-    p_install = sub.add_parser(
-        "install",
-        help="Install Context Engine integrations into AI coding tools",
-    )
-    p_install_sub = p_install.add_subparsers(dest="install_cmd", required=True)
-    p_rules = p_install_sub.add_parser(
-        "rules",
-        help="Install global MCP config + AI rules for coding tools",
+    # --- connect (install MCP + rules for AI tools) ---
+    p_connect = sub.add_parser(
+        "connect",
+        help="Connect Scubiee to AI coding tools (installs MCP config + rules)",
     )
     from pipeline.tool_registry import ALL_SLUGS
 
     for slug in ALL_SLUGS:
-        p_rules.add_argument(
+        p_connect.add_argument(
             f"--{slug}",
             action="store_true",
-            help=f"Install for {slug}",
+            help=f"Connect to {slug}",
         )
-    p_rules.add_argument("--all", action="store_true", help="Install for all supported tools")
-    p_rules.add_argument("--dry-run", action="store_true", help="Show what would be written")
-    p_rules.set_defaults(func=cmd_install_rules)
+    p_connect.add_argument("--all", action="store_true", help="Connect to all supported tools")
+    p_connect.add_argument("--dry-run", action="store_true", help="Show what would be written")
+    p_connect.add_argument(
+        "--repo",
+        type=Path,
+        default=None,
+        help="Workspace repository for repo-aware integrations such as Kiro (default: current directory)",
+    )
+    p_connect.set_defaults(func=cmd_connect)
+
+    # --- disconnect (remove MCP + rules from AI tools) ---
+    p_disconnect = sub.add_parser(
+        "disconnect",
+        help="Disconnect Scubiee from AI coding tools (removes MCP config + rules)",
+    )
+    for slug in ALL_SLUGS:
+        p_disconnect.add_argument(
+            f"--{slug}",
+            action="store_true",
+            help=f"Disconnect from {slug}",
+        )
+    p_disconnect.add_argument("--all", action="store_true", help="Disconnect from all supported tools")
+    p_disconnect.add_argument("--dry-run", action="store_true", help="Show what would be removed")
+    p_disconnect.add_argument(
+        "--repo",
+        type=Path,
+        default=None,
+        help="Workspace repository for repo-aware integrations such as Kiro (default: current directory)",
+    )
+    p_disconnect.set_defaults(func=cmd_disconnect)
 
     args = parser.parse_args(argv)
     return int(args.func(args))

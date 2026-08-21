@@ -1,11 +1,10 @@
 {
   "name": "scubiee",
   "version": "0.2.29",
-  "description": "Scubiee — one-command install. Wraps the Python package and runs ctx setup.",
+  "description": "Scubiee — one-command install. Wraps the Python package and runs scubiee setup.",
   "license": "UNLICENSED",
   "bin": {
-    "ctx": "bin/ctx.cjs",
-    "scubiee": "bin/ctx.cjs"
+    "scubiee": "bin/scubiee.cjs"
   },
   "scripts": {
     "postinstall": "node scripts/install-python.cjs"

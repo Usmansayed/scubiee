@@ -1,4 +1,4 @@
-"""Incremental re-index: only re-embed files that Merkle/git say changed."""
+﻿"""Incremental re-index: only re-embed files that Merkle/git say changed."""
 
 from __future__ import annotations
 
@@ -198,7 +198,7 @@ def incremental_sync(
             error=(
                 f"There are {touched_count} changed or removed files, which is over "
                 f"the {max_touch}-file safety limit. Are you sure you want to index "
-                "all of them? Run `ctx init --confirm` to continue."
+                "all of them? Run `scubiee init --confirm` to continue."
             ),
             confirmation_required=True,
         )
@@ -213,7 +213,7 @@ def incremental_sync(
             strategy="full",
             error=(
                 "large drift — refusing incremental extract; "
-                "run `ctx index . --force --fast --roots packages`"
+                "run `scubiee index . --force --fast --roots packages`"
             ),
         )
 
@@ -284,7 +284,7 @@ def incremental_sync(
                 strategy="explicit_full_index_required",
                 error=(
                     f"{changed_chunk_count} chunks changed, exceeding the automatic "
-                    f"limit of {limit}; run `ctx index {root} --force` explicitly"
+                    f"limit of {limit}; run `scubiee index {root} --force` explicitly"
                 ),
                 warnings=[
                     "No graph or vector artifacts were published for this oversized change."
@@ -622,13 +622,13 @@ def ensure_fresh_for_search(
         else:
             print(
                 "[freshness] WARNING: large drift detected — NOT auto-reindexing "
-                "(set CTX_ALLOW_BG_FULL=1 or run: ctx index . --force --fast --roots packages)",
+                "(set CTX_ALLOW_BG_FULL=1 or run: scubiee index . --force --fast --roots packages)",
                 file=sys.stderr,
                 flush=True,
             )
             note = (
                 "full reindex skipped (CTX_ALLOW_BG_FULL=0); "
-                "run `ctx index . --force` manually if needed"
+                "run `scubiee index . --force` manually if needed"
             )
         out["sync"] = {
             "refreshed": False,

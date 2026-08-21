@@ -1,4 +1,4 @@
-"""Hardware acceleration probe + install profile for CodeRank FastEmbed.
+﻿"""Hardware acceleration probe + install profile for CodeRank FastEmbed.
 
 Profiles (mutually exclusive ORT wheels, plus Mac MLX):
   - cuda    → onnxruntime-gpu
@@ -610,7 +610,7 @@ def _align_profile_to_ort(profile: AccelProfile, progress: Any | None = None) ->
     msg = (
         f"{profile.provider} is not in this onnxruntime wheel "
         f"(providers={have}). Using CPU. Close other Python/ctx processes "
-        f"and re-run `ctx setup --repair` to retry GPU "
+        f"and re-run `scubiee setup --repair` to retry GPU "
         f"({ort_packages_for(profile.profile)[0]})."
     )
     if progress is not None:
@@ -842,7 +842,7 @@ def _refuse_cuda_cpu_fallback(
 
     if progress is None:
         print(f"[accel] WARNING: {msg}", file=sys.stderr, flush=True)
-        print("[accel] Falling back to CPU. Run `ctx setup --repair` after fixing CUDA.",
+        print("[accel] Falling back to CPU. Run `scubiee setup --repair` after fixing CUDA.",
               file=sys.stderr, flush=True)
     else:
         progress.set(55, "CUDA unavailable — using CPU (check CUDA toolkit)")
@@ -1470,14 +1470,14 @@ def microbench(profile: AccelProfile, n: int = 48) -> float:
 def resolve_runtime() -> AccelProfile:
     """Load the installed preference without detection or selection.
 
-    Apple Silicon: ``ctx setup`` persists ``profile=mlx`` (FP16). A saved
+    Apple Silicon: ``scubiee setup`` persists ``profile=mlx`` (FP16). A saved
     CoreML profile is overlaid with MLX when the ``mlx`` package is installed.
     ``accel.json`` is not rewritten here. Opt out with ``CTX_EMBED_BACKEND=fastembed``
     or ``CTX_MLX=0``. An explicit CPU profile is left unchanged.
     """
     profile = load_accel()
     if profile is None:
-        raise RuntimeError("acceleration profile is not configured; run `ctx setup`")
+        raise RuntimeError("acceleration profile is not configured; run `scubiee setup`")
     env = os.environ.get("CTX_EMBED_BACKEND", "").strip().lower()
     want_mlx = env == "mlx" or (profile.profile == "mlx" or profile.backend == "mlx")
     if profile.profile in {"dml", "cuda"} and env != "mlx":

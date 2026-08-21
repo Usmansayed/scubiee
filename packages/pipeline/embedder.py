@@ -1,4 +1,4 @@
-"""Embedding backends: CodeRankEmbed via FastEmbed (primary) or SentenceTransformers.
+﻿"""Embedding backends: CodeRankEmbed via FastEmbed (primary) or SentenceTransformers.
 
 CodeRankEmbed (nomic-ai/CodeRankEmbed) is the production code retriever.
 Hardware profile from ``pipeline.accel`` (cuda / dml / cpu).
@@ -472,7 +472,7 @@ class Embedder:
 
     def _encode_batch(self, batch: list[str]) -> np.ndarray:
         # GC is disabled globally in the daemon process (server.py run_server).
-        # For non-daemon callers (CLI ctx index), disable GC during native
+        # For non-daemon callers (CLI scubiee index), disable GC during native
         # embedding to prevent SIGSEGV from GC traversing partially-modified
         # objects while tokenizers/numpy/MLX release the GIL.
         import gc

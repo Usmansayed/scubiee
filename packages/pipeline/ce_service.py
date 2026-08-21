@@ -1,4 +1,4 @@
-"""Context Engine RuntimeManager — core backend (independent of MCP).
+﻿"""Context Engine RuntimeManager — core backend (independent of MCP).
 
 Three managers inside one process:
   RuntimeManager  — lifecycle, publish search generation, serve queries
@@ -504,7 +504,7 @@ class RuntimeManager:
                 if not idx.get("ok", True) and idx.get("error"):
                     raise RuntimeError(str(idx["error"]))
             elif not index_is_usable(store.base):
-                raise RuntimeError("No index found. Run: ctx register .  or  ctx index .")
+                raise RuntimeError("No index found. Run: scubiee register .  or  scubiee index .")
 
             pub = self.publish_engine()
             if not pub.get("ok"):

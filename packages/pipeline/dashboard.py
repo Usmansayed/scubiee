@@ -1,4 +1,4 @@
-"""Minimal Context Engine settings dashboard (HTML + JSON API)."""
+﻿"""Minimal Context Engine settings dashboard (HTML + JSON API)."""
 
 from __future__ import annotations
 
@@ -78,7 +78,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         <input type="radio" name="mode" value="mcp_cli" />
         <div>
           <div class="title">MCP / CLI</div>
-          <div class="desc">Do not auto-initialize. Register only when MCP asks (with always-allow option) or you run <code>ctx register</code> / <code>ctx index</code>.</div>
+          <div class="desc">Do not auto-initialize. Register only when MCP asks (with always-allow option) or you run <code>scubiee register</code> / <code>scubiee index</code>.</div>
         </div>
       </label>
     </section>

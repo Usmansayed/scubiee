@@ -1,6 +1,6 @@
-"""Complete removal of all Context Engine data from this machine.
+﻿"""Complete removal of all Context Engine data from this machine.
 
-ctx wipe --confirm removes:
+scubiee wipe --confirm removes:
   - The running daemon + watchdog
   - ~/.context-engine/ (registry, projects, vectordb, accel, logs, locks)
 

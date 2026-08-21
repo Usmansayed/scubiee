@@ -1,4 +1,4 @@
-"""Data migration detection and execution for Context Engine version upgrades.
+﻿"""Data migration detection and execution for Context Engine version upgrades.
 
 When the index schema, embedding model, or graph format changes between versions,
 this module detects stale data and provides a guided path to bring it current.
@@ -96,7 +96,7 @@ def detect_migration_needed(
                 if v in SCHEMA_CHANGELOG
             )
         )
-        actions.append("ctx migrate --apply")
+        actions.append("scubiee migrate --apply")
 
     return {
         "ok": True,
@@ -214,7 +214,7 @@ def _migrate_with_rebuild(
             "ok": False,
             "project_id": project_id,
             "error": "root_required_for_rebuild",
-            "message": "Pass the repo path to rebuild: ctx migrate --apply <path>",
+            "message": "Pass the repo path to rebuild: scubiee migrate --apply <path>",
         }
 
     from pipeline.repo_lifecycle import rebuild_repo

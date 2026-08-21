@@ -1,8 +1,8 @@
-"""Install global MCP config + rules for AI coding tools.
+﻿"""Connect Scubiee to AI coding tools (MCP config + rules).
 
 Usage from CLI:
-    ctx install rules --cursor --claude-code --kiro --copilot
-    ctx install rules --all
+    scubiee connect --cursor --claude-code --kiro --copilot
+    scubiee connect --all
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ import textwrap
 from pathlib import Path
 from typing import Any
 
-from pipeline.mcp_install import interpreter, server_entry
+from pipeline.mcp_install import interpreter, server_entry, write_kiro_mcp
 from pipeline.tool_registry import (
     ALL_SLUGS,
     TOOL_MAP,
@@ -208,11 +208,18 @@ def install_tool(
     tool: ToolDef,
     *,
     dry_run: bool = False,
+    repo: Path | str | None = None,
 ) -> dict[str, Any]:
-    """Install MCP config + rule for one tool. Returns a report dict."""
+    """Install MCP config + rule for one tool. Returns a report dict.
+
+    Kiro is special: its user-level entry remains repo-neutral while a
+    workspace-level entry carries the explicit repository path.
+    """
     mcp_path = resolve_mcp_path(tool)
     rule_path = resolve_rule_path(tool)
     entry = server_entry()  # uses current Python interpreter
+    workspace_root = Path(repo or Path.cwd()).resolve() if tool.slug == "kiro" else None
+    workspace_mcp_path = workspace_root / tool.mcp_path if workspace_root else None
 
     report: dict[str, Any] = {
         "tool": tool.name,
@@ -223,21 +230,33 @@ def install_tool(
         "ok": True,
         "errors": [],
     }
+    if workspace_mcp_path is not None:
+        report["workspace_mcp_path"] = str(workspace_mcp_path)
+        report["workspace_repo"] = str(workspace_root)
 
     if dry_run:
         report["would_write_mcp"] = str(mcp_path)
         report["would_write_rule"] = str(rule_path) if rule_path else None
+        if workspace_mcp_path is not None:
+            report["would_write_workspace_mcp"] = str(workspace_mcp_path)
         return report
 
     # Write MCP config
     try:
-        writer = _MCP_WRITERS.get(tool.mcp_format)
-        if writer:
-            writer(mcp_path, tool.mcp_key, entry)
+        if tool.slug == "kiro":
+            paths = write_kiro_mcp(workspace_root)
+            report["mcp_path"] = paths["user"]
+            report["workspace_mcp_path"] = paths["project"]
             report["mcp_written"] = True
+            report["workspace_mcp_written"] = True
         else:
-            report["mcp_written"] = False
-            report["errors"].append(f"unsupported mcp_format: {tool.mcp_format}")
+            writer = _MCP_WRITERS.get(tool.mcp_format)
+            if writer:
+                writer(mcp_path, tool.mcp_key, entry)
+                report["mcp_written"] = True
+            else:
+                report["mcp_written"] = False
+                report["errors"].append(f"unsupported mcp_format: {tool.mcp_format}")
     except Exception as exc:
         report["mcp_written"] = False
         report["errors"].append(f"mcp write failed: {exc}")
@@ -267,6 +286,7 @@ def install_tools(
     slugs: list[str],
     *,
     dry_run: bool = False,
+    repo: Path | str | None = None,
 ) -> list[dict[str, Any]]:
     """Install for multiple tools. Returns list of reports."""
     results = []
@@ -275,5 +295,229 @@ def install_tools(
         if not tool:
             results.append({"tool": slug, "ok": False, "errors": [f"unknown tool: {slug}"]})
             continue
-        results.append(install_tool(tool, dry_run=dry_run))
+        results.append(install_tool(tool, dry_run=dry_run, repo=repo))
+    return results
+
+
+# ---------------------------------------------------------------------------
+# MCP config removers (per format)
+# ---------------------------------------------------------------------------
+
+def _remove_mcp_json(path: Path, key: str) -> bool:
+    """Remove context-engine from a JSON MCP config. Returns True if removed."""
+    if not path.is_file():
+        return False
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return False
+    servers = data.get(key, {})
+    if not isinstance(servers, dict) or "context-engine" not in servers:
+        return False
+    del servers["context-engine"]
+    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    return True
+
+
+def _remove_mcp_toml(path: Path, _key: str) -> bool:
+    """Remove context-engine section from a TOML config."""
+    if not path.is_file():
+        return False
+    existing = path.read_text(encoding="utf-8")
+    if "[mcp_servers.context-engine]" not in existing:
+        return False
+    new_lines = []
+    skip = False
+    for line in existing.splitlines():
+        if line.strip() == "[mcp_servers.context-engine]":
+            skip = True
+            continue
+        if skip and line.startswith("["):
+            skip = False
+        if not skip:
+            new_lines.append(line)
+    # Strip trailing blank lines from removal
+    while new_lines and not new_lines[-1].strip():
+        new_lines.pop()
+    new_lines.append("")
+    path.write_text("\n".join(new_lines), encoding="utf-8")
+    return True
+
+
+def _remove_mcp_yaml(path: Path, _key: str) -> bool:
+    """Remove context-engine block from a YAML config."""
+    if not path.is_file():
+        return False
+    existing = path.read_text(encoding="utf-8")
+    marker = "# context-engine"
+    if marker not in existing:
+        return False
+    lines = existing.splitlines()
+    new_lines = []
+    skip = False
+    for line in lines:
+        if marker in line:
+            skip = True
+            continue
+        if skip and line.strip() and not line.startswith(" ") and not line.startswith("\t"):
+            skip = False
+        if not skip:
+            new_lines.append(line)
+    while new_lines and not new_lines[-1].strip():
+        new_lines.pop()
+    new_lines.append("")
+    path.write_text("\n".join(new_lines), encoding="utf-8")
+    return True
+
+
+_MCP_REMOVERS = {
+    "json": _remove_mcp_json,
+    "jsonc": _remove_mcp_json,
+    "toml": _remove_mcp_toml,
+    "yaml": _remove_mcp_yaml,
+}
+
+
+# ---------------------------------------------------------------------------
+# Rule removers
+# ---------------------------------------------------------------------------
+
+def _remove_rule_file(path: Path) -> bool:
+    """Delete a standalone rule file (mdc or md format)."""
+    if not path.is_file():
+        return False
+    path.unlink()
+    return True
+
+
+def _remove_rule_section(path: Path) -> bool:
+    """Remove the context-engine section from an append-md file."""
+    if not path.is_file():
+        return False
+    existing = path.read_text(encoding="utf-8")
+    if _MARKER_START not in existing:
+        return False
+    before = existing.split(_MARKER_START)[0]
+    after = existing.split(_MARKER_END)[-1] if _MARKER_END in existing else ""
+    result = before.rstrip()
+    if after.strip():
+        result += "\n\n" + after.lstrip()
+    result = result.strip()
+    if result:
+        result += "\n"
+    path.write_text(result, encoding="utf-8")
+    return True
+
+
+_RULE_REMOVERS = {
+    "mdc": _remove_rule_file,
+    "md": _remove_rule_file,
+    "append-md": _remove_rule_section,
+    "none": lambda _path: False,
+}
+
+
+# ---------------------------------------------------------------------------
+# Public uninstaller
+# ---------------------------------------------------------------------------
+
+def uninstall_tool(
+    tool: ToolDef,
+    *,
+    dry_run: bool = False,
+    repo: Path | str | None = None,
+) -> dict[str, Any]:
+    """Remove MCP config entry + rule for one tool. Returns a report dict."""
+    mcp_path = resolve_mcp_path(tool)
+    rule_path = resolve_rule_path(tool)
+    workspace_root = Path(repo or Path.cwd()).resolve() if tool.slug == "kiro" else None
+    workspace_mcp_path = workspace_root / tool.mcp_path if workspace_root else None
+
+    report: dict[str, Any] = {
+        "tool": tool.name,
+        "slug": tool.slug,
+        "mcp_path": str(mcp_path),
+        "rule_path": str(rule_path) if rule_path else None,
+        "dry_run": dry_run,
+        "ok": True,
+        "errors": [],
+        "mcp_removed": False,
+        "rule_removed": False,
+    }
+    if workspace_mcp_path is not None:
+        report["workspace_mcp_path"] = str(workspace_mcp_path)
+
+    if dry_run:
+        report["would_remove_mcp"] = str(mcp_path)
+        report["would_remove_rule"] = str(rule_path) if rule_path else None
+        if workspace_mcp_path is not None:
+            report["would_remove_workspace_mcp"] = str(workspace_mcp_path)
+        return report
+
+    # Remove MCP config entry
+    try:
+        if tool.slug == "kiro":
+            # Remove from both user and workspace level
+            user_path = Path.home() / ".kiro" / "settings" / "mcp.json"
+            removed_user = _remove_mcp_json(user_path, tool.mcp_key)
+            removed_project = False
+            if workspace_mcp_path:
+                removed_project = _remove_mcp_json(workspace_mcp_path, tool.mcp_key)
+            report["mcp_removed"] = removed_user or removed_project
+            if removed_user:
+                report["user_mcp_removed"] = True
+            if removed_project:
+                report["workspace_mcp_removed"] = True
+        elif tool.slug == "cursor":
+            # Cursor: project-scoped .cursor/mcp.json + the extra context-agent.mdc rule
+            removed = _remove_mcp_json(mcp_path, tool.mcp_key)
+            report["mcp_removed"] = removed
+            # Also remove the context-agent.mdc installed by write_cursor_rule
+            extra_rule = mcp_path.parent.parent / ".cursor" / "rules" / "context-agent.mdc"
+            if not extra_rule.is_file():
+                extra_rule = Path.cwd() / ".cursor" / "rules" / "context-agent.mdc"
+            if extra_rule.is_file():
+                extra_rule.unlink()
+                report["extra_rule_removed"] = str(extra_rule)
+        else:
+            remover = _MCP_REMOVERS.get(tool.mcp_format)
+            if remover:
+                report["mcp_removed"] = remover(mcp_path, tool.mcp_key)
+            else:
+                report["errors"].append(f"unsupported mcp_format: {tool.mcp_format}")
+    except Exception as exc:
+        report["errors"].append(f"mcp removal failed: {exc}")
+        report["ok"] = False
+
+    # Remove rule
+    if rule_path and tool.rule_format != "none":
+        try:
+            rule_remover = _RULE_REMOVERS.get(tool.rule_format)
+            if rule_remover:
+                report["rule_removed"] = rule_remover(rule_path)
+            else:
+                report["errors"].append(f"unsupported rule_format: {tool.rule_format}")
+        except Exception as exc:
+            report["errors"].append(f"rule removal failed: {exc}")
+            report["ok"] = False
+    else:
+        report["rule_removed"] = None  # not applicable
+
+    return report
+
+
+def uninstall_tools(
+    slugs: list[str],
+    *,
+    dry_run: bool = False,
+    repo: Path | str | None = None,
+) -> list[dict[str, Any]]:
+    """Uninstall for multiple tools. Returns list of reports."""
+    results = []
+    for slug in slugs:
+        tool = TOOL_MAP.get(slug)
+        if not tool:
+            results.append({"tool": slug, "ok": False, "errors": [f"unknown tool: {slug}"]})
+            continue
+        results.append(uninstall_tool(tool, dry_run=dry_run, repo=repo))
     return results

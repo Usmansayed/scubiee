@@ -1,4 +1,4 @@
-"""Installed-package MCP entry must not depend on a git checkout."""
+﻿"""Installed-package MCP entry must not depend on a git checkout."""
 
 from __future__ import annotations
 
@@ -91,10 +91,175 @@ def test_pyproject_and_npm_versions_match() -> None:
     extras = py["project"]["optional-dependencies"]
     assert "macos" in extras
     assert "mlx" in extras
-    assert "ctx" in py["project"]["scripts"]
     assert "scubiee" in py["project"]["scripts"]
-    assert npm["bin"]["ctx"]
+    assert "scubiee-mcp" in py["project"]["scripts"]
     assert npm["bin"]["scubiee"]
     assert "mcp" in str(py["project"]["dependencies"]).lower() or any(
         "mcp" in dep for dep in py["project"]["dependencies"]
     )
+
+
+def test_kiro_rules_install_writes_workspace_entry_without_global_pin(
+    tmp_path: Path, monkeypatch
+) -> None:
+    from pipeline.rules_installer import install_tools
+
+    project_root = tmp_path / "workspace"
+    project_root.mkdir()
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.chdir(project_root)
+    monkeypatch.setattr("pipeline.mcp_install.Path.home", lambda: home)
+
+    reports = install_tools(["kiro"], repo=project_root)
+
+    assert reports[0]["ok"] is True
+    project = json.loads(
+        (project_root / ".kiro" / "settings" / "mcp.json").read_text(encoding="utf-8")
+    )
+    user = json.loads(
+        (home / ".kiro" / "settings" / "mcp.json").read_text(encoding="utf-8")
+    )
+    assert project["mcpServers"]["context-engine"]["env"]["CTX_REPO"]
+    assert "CTX_REPO" not in user["mcpServers"]["context-engine"]["env"]
+    assert reports[0]["workspace_mcp_path"] == str(
+        project_root / ".kiro" / "settings" / "mcp.json"
+    )
+
+
+def test_kiro_rules_cli_accepts_explicit_repo_from_unrelated_cwd(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    from pipeline.__main__ import main
+
+    target = tmp_path / "workspace"
+    unrelated = tmp_path / "unrelated"
+    target.mkdir()
+    unrelated.mkdir()
+    monkeypatch.chdir(unrelated)
+
+    assert main(
+        ["connect", "--kiro", "--repo", str(target), "--dry-run"]
+    ) == 0
+
+    report = json.loads(capsys.readouterr().out)
+    assert report[0]["workspace_repo"] == str(target.resolve())
+    assert report[0]["would_write_workspace_mcp"] == str(
+        target / ".kiro" / "settings" / "mcp.json"
+    )
+
+
+def test_uninstall_removes_mcp_entry_and_rule_file(tmp_path: Path, monkeypatch) -> None:
+    """scubiee disconnect reverses scubiee connect for a JSON+md tool."""
+    from pipeline.rules_installer import install_tool, uninstall_tool
+    from pipeline.tool_registry import TOOL_MAP
+
+    # Use Kiro as the test target — it has JSON MCP + md rule
+    tool = TOOL_MAP["kiro"]
+    workspace = tmp_path / "project"
+    workspace.mkdir()
+
+    # Redirect home so we don't touch real config
+    fake_home = tmp_path / "home"
+    fake_home.mkdir()
+    monkeypatch.setenv("USERPROFILE", str(fake_home))
+    monkeypatch.setenv("HOME", str(fake_home))
+    monkeypatch.setattr(Path, "home", staticmethod(lambda: fake_home))
+
+    # Install
+    install_tool(tool, repo=workspace)
+    user_mcp = fake_home / ".kiro" / "settings" / "mcp.json"
+    project_mcp = workspace / ".kiro" / "settings" / "mcp.json"
+    rule_file = fake_home / ".kiro" / "steering" / "context-engine.md"
+    assert user_mcp.is_file()
+    assert project_mcp.is_file()
+    assert rule_file.is_file()
+    assert "context-engine" in json.loads(user_mcp.read_text(encoding="utf-8")).get("mcpServers", {})
+    assert "context-engine" in json.loads(project_mcp.read_text(encoding="utf-8")).get("mcpServers", {})
+
+    # Uninstall
+    report = uninstall_tool(tool, repo=workspace)
+    assert report["ok"] is True
+    assert report["mcp_removed"] is True
+    assert report["rule_removed"] is True
+
+    # Verify MCP entries are gone
+    assert "context-engine" not in json.loads(user_mcp.read_text(encoding="utf-8")).get("mcpServers", {})
+    assert "context-engine" not in json.loads(project_mcp.read_text(encoding="utf-8")).get("mcpServers", {})
+    # Rule file deleted
+    assert not rule_file.is_file()
+
+
+def test_uninstall_removes_append_md_section(tmp_path: Path, monkeypatch) -> None:
+    """Uninstall strips the CE section from append-md rule files without deleting other content."""
+    from pipeline.rules_installer import install_tool, uninstall_tool
+    from pipeline.tool_registry import TOOL_MAP
+
+    tool = TOOL_MAP["claude-code"]
+    fake_home = tmp_path / "home"
+    fake_home.mkdir()
+    monkeypatch.setenv("USERPROFILE", str(fake_home))
+    monkeypatch.setenv("HOME", str(fake_home))
+    monkeypatch.setattr(Path, "home", staticmethod(lambda: fake_home))
+
+    # Pre-existing content in the rule file
+    rule_path = fake_home / ".claude" / "CLAUDE.md"
+    rule_path.parent.mkdir(parents=True)
+    rule_path.write_text("# My Project\n\nSome instructions here.\n", encoding="utf-8")
+
+    # Install appends section
+    install_tool(tool)
+    content_after_install = rule_path.read_text(encoding="utf-8")
+    assert "<!-- context-engine:start -->" in content_after_install
+    assert "# My Project" in content_after_install
+
+    # Uninstall strips only the CE section
+    report = uninstall_tool(tool)
+    assert report["ok"] is True
+    assert report["rule_removed"] is True
+    remaining = rule_path.read_text(encoding="utf-8")
+    assert "<!-- context-engine:start -->" not in remaining
+    assert "# My Project" in remaining
+    assert "Some instructions here." in remaining
+
+
+def test_uninstall_dry_run_does_not_modify(tmp_path: Path, monkeypatch) -> None:
+    """--dry-run reports what would be removed without changing files."""
+    from pipeline.rules_installer import install_tool, uninstall_tool
+    from pipeline.tool_registry import TOOL_MAP
+
+    tool = TOOL_MAP["kiro"]
+    workspace = tmp_path / "project"
+    workspace.mkdir()
+    fake_home = tmp_path / "home"
+    fake_home.mkdir()
+    monkeypatch.setenv("USERPROFILE", str(fake_home))
+    monkeypatch.setenv("HOME", str(fake_home))
+    monkeypatch.setattr(Path, "home", staticmethod(lambda: fake_home))
+
+    install_tool(tool, repo=workspace)
+    user_mcp = fake_home / ".kiro" / "settings" / "mcp.json"
+    assert user_mcp.is_file()
+
+    # Dry-run uninstall
+    report = uninstall_tool(tool, repo=workspace, dry_run=True)
+    assert report["dry_run"] is True
+    assert "would_remove_mcp" in report
+
+    # Files are still intact
+    assert "context-engine" in json.loads(user_mcp.read_text(encoding="utf-8")).get("mcpServers", {})
+
+
+def test_uninstall_cli_entry_point(tmp_path: Path, monkeypatch, capsys) -> None:
+    """scubiee disconnect --kiro --dry-run works through the CLI entry."""
+    from pipeline.__main__ import main
+
+    workspace = tmp_path / "project"
+    workspace.mkdir()
+    monkeypatch.chdir(workspace)
+
+    assert main(["disconnect", "--kiro", "--dry-run"]) == 0
+    out = capsys.readouterr().out
+    report = json.loads(out)
+    assert report[0]["slug"] == "kiro"
+    assert report[0]["dry_run"] is True

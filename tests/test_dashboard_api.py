@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 import os
@@ -139,7 +139,7 @@ def test_health_includes_classified_repairs(isolated_ce_home, monkeypatch):
                     "ok": False,
                     "repo": "C:/repo",
                     "project_id": "ce_repo",
-                    "repairs": ["ctx engine ensure C:/repo"],
+                    "repairs": ["scubiee engine ensure C:/repo"],
                 }
             ],
         },
@@ -150,7 +150,7 @@ def test_health_includes_classified_repairs(isolated_ce_home, monkeypatch):
             {
                 "id": "bind_daemon",
                 "kind": "safe",
-                "detail": "ctx engine ensure C:/repo",
+                "detail": "scubiee engine ensure C:/repo",
             }
         ],
     )

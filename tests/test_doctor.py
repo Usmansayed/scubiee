@@ -1,4 +1,4 @@
-"""Doctor exit codes and repair classification."""
+﻿"""Doctor exit codes and repair classification."""
 
 from __future__ import annotations
 
@@ -45,7 +45,7 @@ def test_doctor_ok_when_only_daemon_unbound(tmp_path: Path, monkeypatch) -> None
         lambda *_a, **_k: {
             "ok": False,
             "reason": "daemon_not_serving_repo",
-            "repair": "ctx engine ensure .",
+            "repair": "scubiee engine ensure .",
         },
     )
     monkeypatch.setattr(

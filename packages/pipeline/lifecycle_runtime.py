@@ -1,6 +1,6 @@
-"""Autonomous desktop policy: standby vs run, idle stop, logon autostart.
+﻿"""Autonomous desktop policy: standby vs run, idle stop, logon autostart.
 
-The user-facing contract is setup-once then `ctx init`. This module is the
+The user-facing contract is setup-once then `scubiee init`. This module is the
 machine-side policy that keeps the engine off until work, and off again when
 idle, without fighting the watchdog.
 """
@@ -669,7 +669,7 @@ def ensure_supervisor() -> dict[str, Any]:
 
 
 def run_supervisor(*, logon: bool = False) -> None:
-    """Blocking supervisor used by the logon task and `ctx engine supervisor`."""
+    """Blocking supervisor used by the logon task and `scubiee engine supervisor`."""
     from pipeline.process_job import attach_supervisor_job
     from pipeline.watchdog import watchdog_loop
 

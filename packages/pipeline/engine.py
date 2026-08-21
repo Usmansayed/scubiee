@@ -1,4 +1,4 @@
-"""Warm long-lived search engine (embedder + conductor cached in-process)."""
+﻿"""Warm long-lived search engine (embedder + conductor cached in-process)."""
 
 from __future__ import annotations
 
@@ -55,7 +55,7 @@ def _verify_gpu_provider(embedder: Embedder) -> None:
         print(
             f"[engine] WARNING: profile={profile.profile} but {want_provider} not in "
             f"available providers {available}. Embedding is running on CPU. "
-            f"Run `ctx setup --repair` to fix GPU acceleration.",
+            f"Run `scubiee setup --repair` to fix GPU acceleration.",
             file=sys.stderr,
             flush=True,
         )

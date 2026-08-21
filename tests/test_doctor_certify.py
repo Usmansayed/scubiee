@@ -1,4 +1,4 @@
-"""Doctor / certify CLI contract tests."""
+﻿"""Doctor / certify CLI contract tests."""
 
 from __future__ import annotations
 
@@ -55,7 +55,7 @@ def test_apply_safe_repairs_rebinds_daemon_and_leaves_manual_actions(
             "bound_repo": str(other),
             "repo": str(target),
             "lock_pid": 1,
-            "repair": f"ctx engine ensure {target}",
+            "repair": f"scubiee engine ensure {target}",
         }
 
     def fake_ensure(root, **_kwargs):

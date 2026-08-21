@@ -1,4 +1,4 @@
-"""Operator diagnostics: capabilities, liveness vs readiness, repair actions."""
+﻿"""Operator diagnostics: capabilities, liveness vs readiness, repair actions."""
 
 from __future__ import annotations
 
@@ -105,7 +105,7 @@ def plan_repairs(
                 "kind": "safe",
                 "detail": str(
                     binding.get("repair")
-                    or "ctx engine ensure .  # reopen so soft search binds this workspace"
+                    or "scubiee engine ensure .  # reopen so soft search binds this workspace"
                 ),
             }
         )

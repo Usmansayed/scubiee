@@ -1,8 +1,8 @@
-"""Keeper sync loop — Cursor/Claude Context session lifecycle.
+﻿"""Keeper sync loop — Cursor/Claude Context session lifecycle.
 
 CE_LIVE_PROBE_20260818_mcp_verify
 
-While MCP / ``ctx serve`` is open: periodic root-hash probe → incremental sync
+While MCP / ``scubiee serve`` is open: periodic root-hash probe → incremental sync
 only when dirty. On cwd switch or process exit: one final check, then stop.
 """
 
@@ -331,7 +331,7 @@ class BackgroundSyncLoop:
                 "error": (
                     f"approximately {estimated_total} chunks changed, exceeding the "
                     f"automatic limit of {self.auto_full_index_chunks}; run "
-                    f"`ctx index {self.repo} --force` explicitly"
+                    f"`scubiee index {self.repo} --force` explicitly"
                 ),
                 "warnings": [
                     "Automatic sync paused before graph/vector mutation; explicit full indexing is required."

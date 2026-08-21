@@ -1,4 +1,4 @@
-"""Shared project registration pipeline.
+﻿"""Shared project registration pipeline.
 
 All triggers (automatic IDE open, MCP consent, CLI) call ``register_project``.
 Only the *trigger* differs by ``registration_mode`` in prefs.
@@ -93,7 +93,7 @@ def registration_prompt_payload(root: Path) -> dict[str, Any]:
         "message": (
             "This project is not registered with Context Engine. "
             "Call register_project(path, always_allow=true|false) to index it, "
-            "or run: ctx register <path>"
+            "or run: scubiee register <path>"
         ),
         "actions": [
             {
