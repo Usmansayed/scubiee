@@ -39,6 +39,23 @@ Use fast mode for a first run on large monorepos.
 
 ---
 
+## Before first `init`
+
+`scubiee init` requires a completed machine setup. If `accel.json` is missing:
+
+```json
+{"ok": false, "error": "machine_not_setup", "repair": "python -m pipeline setup"}
+```
+
+**Fix:**
+
+```bash
+scubiee setup --repair
+scubiee init . --fast
+```
+
+---
+
 ## Safety: home directory and drive roots
 
 Scubiee **refuses silent indexing** of:

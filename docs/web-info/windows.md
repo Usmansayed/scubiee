@@ -8,7 +8,7 @@ Windows-specific install, DirectML (AMD/Intel GPU), uv tool layout, and repair s
 
 ```powershell
 uv cache clean scubiee
-uv tool install --force scubiee==0.2.50 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.2.54 --index-url https://pypi.org/simple --refresh
 uv tool update-shell
 # restart terminal
 scubiee setup --repair
@@ -60,7 +60,7 @@ scubiee setup --profile cpu --repair
 Common after `uv tool install`. See [Troubleshooting](./troubleshooting.md#faiss-cannot-import-name-class_wrappers) or run:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/repair-uv-scubiee.ps1 0.2.50
+powershell -ExecutionPolicy Bypass -File scripts/repair-uv-scubiee.ps1 0.2.54
 scubiee setup --repair
 ```
 
@@ -72,7 +72,7 @@ scubiee setup --repair
 2. Run repair script:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/repair-uv-scubiee.ps1 0.2.50
+powershell -ExecutionPolicy Bypass -File scripts/repair-uv-scubiee.ps1 0.2.54
 scubiee setup --repair
 ```
 
@@ -80,7 +80,7 @@ Nuclear option:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/uninstall-uv-scubiee.ps1
-uv tool install --force scubiee==0.2.50 --index-url https://pypi.org/simple
+uv tool install --force scubiee==0.2.54 --index-url https://pypi.org/simple
 scubiee setup --repair
 ```
 

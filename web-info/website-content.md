@@ -1,6 +1,6 @@
 # Scubiee Website Content
 
-> **Version:** 0.2.32
+> **Version:** 0.2.54
 > **Purpose:** Content reference for designing and building the Scubiee product website.
 
 ## Tagline options
@@ -35,7 +35,7 @@ Understands code structure: imports, function calls, class hierarchies. Returns 
 All data stays on your machine. No cloud uploads, no API keys for search, no telemetry. Your code never leaves your disk.
 
 ### Clean uninstall
-`scubiee wipe --confirm --all` removes everything — indexes, models, configs, tool connections. Nothing left behind.
+`scubiee wipe --all --yes --package` removes indexes, models, MCP configs, and tool rules — with an **`audit.remaining`** report if Windows locks files. Nothing hidden.
 
 ### Multi-repository
 Index as many repos as you want. Each gets its own identity, vector index, and lifecycle. Adding a repo is just `scubiee init <path>`.
@@ -43,8 +43,8 @@ Index as many repos as you want. Each gets its own identity, vector index, and l
 ## How it works (3-step explanation)
 
 ```
-1. SETUP          2. INDEX           3. CONNECT
-scubiee setup     scubiee init .     scubiee connect --all
+1. SETUP               2. INDEX              3. CONNECT
+scubiee setup --repair  scubiee init .        scubiee connect --all
      |                  |                    |
      v                  v                    v
 Detect GPU        Parse code          Write MCP configs
@@ -179,12 +179,10 @@ scubiee
 │   ├── ensure <path>
 │   └── run <path>
 ├── wipe               # Cleanup
-│   ├── --confirm
-│   ├── --all
-│   ├── --models
-│   ├── --tools
-│   ├── --repos
-│   └── --dry-run
+│   ├── --all --yes
+│   ├── --all --yes --package
+│   ├── --all --yes --keep-models
+│   └── --all --yes --keep-package
 ├── serve <path>       # Foreground daemon
 ├── dashboard          # Operator UI
 ├── preflight          # Dependency check

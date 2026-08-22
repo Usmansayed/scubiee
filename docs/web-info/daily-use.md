@@ -1,6 +1,6 @@
 # Daily use
 
-Once `scubiee setup` and `scubiee init` are done, these are the commands you use day to day.
+Once `scubiee setup --repair`, `scubiee connect --cursor`, and `scubiee init` are done, these are the commands you use day to day.
 
 ---
 
@@ -38,11 +38,24 @@ scubiee sync . --confirm
 ## Search from the terminal
 
 ```bash
-scubiee search "query text" . --top-k 8
+scubiee search "query text" .
 scubiee search "query text" . --local    # in-process, no HTTP daemon
 ```
 
 Argument order: **query first**, optional **path** second (defaults to `.`).
+
+---
+
+## Connect / disconnect / upgrade helpers
+
+```bash
+scubiee connect --cursor --dry-run
+scubiee connect --all
+scubiee disconnect --cursor
+scubiee migrate --check-all          # after upgrading scubiee
+scubiee migrate --apply-all          # apply schema migrations if needed
+scubiee diagnose --no-tests          # shareable install log
+```
 
 ---
 
@@ -158,12 +171,13 @@ scubiee certify . --skip-daemon # full certification gate
 
 ## Run tests (developers)
 
+From a **git checkout** with pytest installed:
+
 ```bash
-scubiee test quick .
-scubiee test core .
+pytest tests/test_wipe.py tests/test_hardening.py -q
 ```
 
-Tiers: `quick`, `core`, `fault`, `install`, `clients`, `all`.
+The `scubiee test quick` command shells out to pytest in the **same Python** as the CLI. A uv tool install does not include pytest by default — use a dev checkout or `pip install pytest` in the tool venv if you need `scubiee test`.
 
 ---
 

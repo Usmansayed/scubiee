@@ -204,6 +204,25 @@ _RULE_WRITERS = {
 # Public installer
 # ---------------------------------------------------------------------------
 
+def _server_entry_for_tool(tool: ToolDef, repo: Path | str | None = None) -> dict[str, Any]:
+    """Format MCP block for the target tool (OpenCode uses a different schema)."""
+    entry = server_entry(repo)
+    if tool.slug != "opencode":
+        return entry
+    cmd = [str(entry["command"])]
+    cmd.extend(str(a) for a in entry.get("args") or [])
+    env = {str(k): str(v) for k, v in (entry.get("env") or {}).items()}
+    if repo is not None:
+        env["CTX_REPO"] = str(Path(repo).resolve()).replace("\\", "/")
+    return {
+        "type": "local",
+        "enabled": True,
+        "command": cmd,
+        "environment": env,
+        "timeout": 120000,
+    }
+
+
 def install_tool(
     tool: ToolDef,
     *,
@@ -217,7 +236,7 @@ def install_tool(
     """
     mcp_path = resolve_mcp_path(tool)
     rule_path = resolve_rule_path(tool)
-    entry = server_entry()  # uses current Python interpreter
+    entry = _server_entry_for_tool(tool, repo)
     workspace_root = Path(repo or Path.cwd()).resolve() if tool.slug == "kiro" else None
     workspace_mcp_path = workspace_root / tool.mcp_path if workspace_root else None
 

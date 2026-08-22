@@ -13,12 +13,12 @@ You need **Python 3.10+**. You do **not** need to clone the GitHub repo to use i
 ```powershell
 # Windows — always pin PyPI and version on Windows
 uv cache clean scubiee
-uv tool install --force scubiee==0.2.50 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.2.54 --index-url https://pypi.org/simple --refresh
 ```
 
 ```bash
 # macOS / Linux
-uv tool install scubiee==0.2.50 --index-url https://pypi.org/simple
+uv tool install scubiee==0.2.54 --index-url https://pypi.org/simple
 ```
 
 Add uv’s bin directory to PATH once (then restart the terminal):
@@ -32,7 +32,7 @@ On Windows, uv usually installs shims to `%USERPROFILE%\.local\bin`. Ensure that
 **Alternative — pip:**
 
 ```bash
-pip install -U scubiee==0.2.50
+pip install -U scubiee==0.2.54
 ```
 
 Verify:
@@ -114,17 +114,40 @@ scubiee init . --fast --confirm
 
 Success prints JSON with `"ok": true`, a `project_id`, and chunk counts when indexed.
 
+If you see `"error": "machine_not_setup"`, run `scubiee setup --repair` first — `init` requires a saved machine profile in `~/.context-engine/accel.json`.
+
 ---
 
-## 4. Connect Cursor (MCP)
+## 4. Connect Cursor and other AI tools
 
-After `scubiee setup`, reload MCP in Cursor:
+**Recommended (0.2.54+):** use `connect` to install MCP config **and** the Cursor agent rule in one step:
 
-**Settings → MCP → refresh** (or restart Cursor).
+```bash
+scubiee connect --cursor
+# or every supported tool:
+scubiee connect --all
+```
 
-Scubiee registers a `context-engine` MCP server in `~/.cursor/mcp.json`. The agent can then use tools like `grep`, `glob`, `map`, `focus`, `search`, and `status`.
+Preview without writing files:
 
-See [Cursor & MCP](./cursor-mcp.md) for registration modes and troubleshooting.
+```bash
+scubiee connect --cursor --dry-run
+```
+
+This writes:
+
+- `~/.cursor/mcp.json` — `context-engine` MCP server entry
+- `~/.cursor/rules/context-agent.mdc` — one-shot `status()` rule (same template as `setup`)
+
+`scubiee setup --repair` also writes MCP config; you can use **either** `setup` or `connect` for Cursor. Prefer **`connect`** when you only need tool wiring without re-running GPU calibration.
+
+To remove wiring:
+
+```bash
+scubiee disconnect --cursor
+```
+
+Then **reload MCP in Cursor:** Settings → MCP → refresh (or restart Cursor).
 
 ---
 
@@ -133,7 +156,9 @@ See [Cursor & MCP](./cursor-mcp.md) for registration modes and troubleshooting.
 ```bash
 scubiee status .
 scubiee doctor .
-scubiee search "your symbol name" . --local --top-k 5
+scubiee search "your symbol name" .
+scubiee diagnose --no-tests
+scubiee migrate --check-all
 scubiee dashboard --no-open
 scubiee dashboard --status
 ```
@@ -151,7 +176,7 @@ scubiee certify . --skip-daemon
 When a new version is published:
 
 ```bash
-uv tool install --force scubiee==0.2.50 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.2.54 --index-url https://pypi.org/simple --refresh
 scubiee setup --repair
 ```
 

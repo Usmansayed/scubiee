@@ -1,6 +1,6 @@
 # Commands reference
 
-All commands are `scubiee <subcommand>`. Legacy alias: `ctx` (same binary).
+All commands are `scubiee <subcommand>`.
 
 Run `scubiee <subcommand> --help` for flags on your installed version.
 
@@ -72,9 +72,15 @@ Run `scubiee <subcommand> --help` for flags on your installed version.
 | `scubiee doctor --all` | All managed repos |
 | `scubiee certify [path]` | Release certification gate |
 | `scubiee certify . --skip-daemon` | Certify without daemon checks |
+| `scubiee diagnose [--no-tests]` | Installation diagnostics + shareable log file |
+| `scubiee diagnose --output path.json` | Custom log path |
+| `scubiee migrate [path]` | Check if data migration is needed after upgrade |
+| `scubiee migrate --apply [path]` | Apply migration for one repo |
+| `scubiee migrate --check-all` | Check all managed projects |
+| `scubiee migrate --apply-all` | Apply migrations for all managed projects |
 | `scubiee resources` | Hardware + live pressure |
 | `scubiee resources --refresh` | Re-detect hardware |
-| `scubiee test quick [path]` | Run quick pytest tier |
+| `scubiee test quick [path]` | Run quick pytest tier (**requires pytest in the same Python env** — mainly for git checkouts) |
 
 ---
 
@@ -96,6 +102,25 @@ Run `scubiee <subcommand> --help` for flags on your installed version.
 
 ---
 
+## Connect & disconnect
+
+| Command | Purpose |
+|---------|---------|
+| `scubiee connect --cursor` | Wire Cursor MCP + `context-agent.mdc` rule |
+| `scubiee connect --claude-code --kiro` | Wire selected tools (see `--help`) |
+| `scubiee connect --all` | Connect all supported tools |
+| `scubiee connect --all --dry-run` | Preview paths that would be written |
+| `scubiee connect --kiro --repo /path/to/workspace` | Kiro: user + workspace MCP entries |
+| `scubiee disconnect --cursor` | Remove MCP entry + Cursor rule |
+| `scubiee disconnect --all` | Disconnect all tools |
+| `scubiee disconnect --all --dry-run` | Preview removals |
+
+**Supported slugs:** `cursor`, `claude-code`, `codex`, `kiro`, `windsurf`, `copilot`, `cline`, `roo-code`, `continue`, `zed`, `opencode`.
+
+`connect`, `disconnect`, `migrate`, and `diagnose` skip the faiss bootstrap guard so they work on broken installs.
+
+---
+
 ## Settings & wipe
 
 | Command | Purpose |
@@ -105,11 +130,13 @@ Run `scubiee <subcommand> --help` for flags on your installed version.
 | `scubiee settings --mode mcp_cli` | Consent on first MCP use |
 | `scubiee wipe [path]` | Remove repo identity + local CE files for one repo |
 | `scubiee wipe --all` | **Blocked** until you confirm (see below) |
-| `scubiee wipe --all --yes` | Delete all CE state on this machine |
-| `scubiee wipe --all --yes --package` | Full wipe **and** uninstall scubiee package |
+| `scubiee wipe --all --yes` | Delete all CE state on this machine (models, MCP, rules, enrolled repos) |
+| `scubiee wipe --all --yes --package` | Full wipe **and** uninstall scubiee uv tool / pip package |
 | `scubiee wipe --all --confirm` | Same as `--yes` (alias) |
-| `scubiee wipe --all --yes --keep-models` | Wipe but keep model cache |
+| `scubiee wipe --all --yes --keep-models` | Wipe but keep CodeRank/FastEmbed model caches |
 | `scubiee wipe --all --yes --keep-package` | Wipe state but keep uv tool install |
+
+After `--all --yes`, JSON includes an **`audit`** block listing any **`remaining`** paths still on disk (common on Windows when Cursor holds MCP locks). Re-run after `scubiee stop` and quitting Cursor.
 
 ---
 
@@ -120,13 +147,12 @@ Not CLI commands — exposed to the agent after MCP reload:
 | Tool | Role |
 |------|------|
 | `status` | Engine health + repo binding |
-| `grep` | Pattern search (honors glob, reports truncation) |
-| `glob` | File path discovery |
-| `map` | Ranked symbol/chunk map for a query |
-| `focus` | Deep read around a symbol |
-| `search` | Hybrid retrieval |
-| `sync_index` | Trigger incremental sync |
-| `set_repo` / `register_project` | Bind workspace |
+| `map` | Ranked overview of relevant chunks/symbols |
+| `focus` | Deep context around a hit |
+| `grep` | Pattern search (supports `glob=`; reports truncation) |
+| `glob` | Find files by path pattern |
+| `workspace` | Session / workspace context |
+| `register_project` | Register repo with user consent (MCP or CLI) |
 
 ---
 
@@ -135,8 +161,8 @@ Not CLI commands — exposed to the agent after MCP reload:
 | Code | Meaning |
 |------|---------|
 | `0` | Success |
-| `1` | Error (JSON error on stdout for init/index) |
-| `2` | Usage error or wipe guard (`--all` without `--yes`) |
+| `1` | Error (check JSON `error` field) |
+| `2` | Safety pause — confirm required (`wipe --all` without `--yes`, or large index/sync without `--confirm`) |
 
 ---
 

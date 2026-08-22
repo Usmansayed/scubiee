@@ -72,7 +72,7 @@ Mac repair from git checkout (if you have the repo):
 
 ```bash
 # no Windows-only scripts needed; reinstall uv tool from PyPI
-uv tool install --force scubiee==0.2.50 --index-url https://pypi.org/simple
+uv tool install --force scubiee==0.2.54 --index-url https://pypi.org/simple
 scubiee setup --repair
 ```
 
@@ -81,7 +81,7 @@ scubiee setup --repair
 ## Reinstall fresh
 
 ```bash
-uv tool install scubiee==0.2.50 --index-url https://pypi.org/simple
+uv tool install scubiee==0.2.54 --index-url https://pypi.org/simple
 scubiee setup --repair
 cd your/project && scubiee init . --fast
 ```

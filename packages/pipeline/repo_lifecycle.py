@@ -325,6 +325,7 @@ def initialize_repo(
                 ref_pid = ref.project_id
             entry = _entry_by_id(ref_pid) or entry
             store_dir = (projects_root() / ref_pid).resolve()
+            ref = resolve_project(root, migrate=False)
 
     # --- Lock released: indexing can proceed without holding the registry ---
     indexed = False
@@ -340,11 +341,11 @@ def initialize_repo(
                 fast_roots=fast_roots,
                 confirm=confirm,
             )
-            if index_is_usable(ref.store_dir):
+            if index_is_usable(store_dir):
                 from pipeline.incremental import incremental_sync
 
                 sync = incremental_sync(
-                    root, base_dir=ref.store_dir, confirm=confirm
+                    root, base_dir=store_dir, confirm=confirm
                 )
                 sync_data = sync.to_dict()
                 if sync_data.get("error"):

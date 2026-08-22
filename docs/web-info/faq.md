@@ -16,7 +16,16 @@ No. Install from PyPI: `uv tool install scubiee`.
 3.10 or newer.
 
 **Latest version?**  
-Check PyPI: [scubiee](https://pypi.org/project/scubiee/). Docs assume **0.2.50**.
+Check PyPI: [scubiee 0.2.54](https://pypi.org/project/scubiee/0.2.54/). Docs assume **0.2.54**.
+
+**What changed in 0.2.54?**  
+Merged live-reindexing features (`connect`, `disconnect`, `migrate`, `diagnose`) with production hardening (wipe audit, safety-pause gates, unified Cursor rule).
+
+**How do I connect Cursor?**  
+`scubiee connect --cursor` (after `scubiee setup --repair`).
+
+**`init` says `machine_not_setup`?**  
+Run `scubiee setup --repair` — needs `~/.context-engine/accel.json`.
 
 ---
 
@@ -91,7 +100,7 @@ Uses MLX Metal by default — see [Mac & Linux](./mac-and-linux.md).
 No — indexing and search are local. Only the embedding model downloads from HuggingFace during setup.
 
 **How do I delete everything?**  
-`scubiee wipe --all --yes --package` (after `scubiee stop`).
+`scubiee stop` → `scubiee wipe --all --yes --package`. Check JSON `audit.remaining` if folders persist (quit Cursor first on Windows).
 
 ---
 

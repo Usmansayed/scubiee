@@ -1,0 +1,18 @@
+{
+  "title": "Connect OpenCode A/B — vague dev tasks, nomcp vs scubiee connect MCP",
+  "repo": "testdata/frontend-mcp",
+  "model": "opencode/x-preview-f-free",
+  "variant": "max",
+  "tasks": [
+    {
+      "id": "T1_wiring_discovery",
+      "arm": "nomcp",
+      "prompt": "I inherited this repo cold. Somewhere we tell autonomous agents what to do when browser-based observation becomes unreliable or a live session goes stale. Somewhere else we stop two expensive browser observers from fighting over the same session unsafely. I also need to understand how an agent's chosen tool name actually becomes a runnable handler at runtime.\n\nFind all three concerns in the codebase and explain the wiring story end-to-end. Give exact repo-relative paths and short evidence snippets. Do not edit anything — read-only discovery. Avoid marketing/SEO/design-benchmark trees unless they are genuinely the answer."
+    },
+    {
+      "id": "T2_session_perception_fix",
+      "arm": "mcp",
+      "prompt": "Agents using our perception stack keep thrashing: they repeat costly observation and verification steps even when that evidence was already collected earlier in the same session. When a tool comes back degraded, they often plow ahead instead of adapting. Separately, codebase intelligence / code-graph style lookup still is not a first-class perception capability wired like the other perception tools.\n\nImplement one coherent change set that fixes all of this: session evidence recall so agents can ask what was already observed or verified (with a clear empty answer when nothing exists), guidance text that steers agents toward recall instead of redoing browser work, graceful degraded envelopes when toggles are off, and a toggleable code-graph perception tool registered and dispatched like the others. Discover every integration point yourself — schemas, handlers, dispatch, envelopes, session store, coordinator guidance. Add regression tests, update any contract counts the repo already guards, and leave a brief docs note. Make it work across multiple layers, not stubs."
+    }
+  ]
+}

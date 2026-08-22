@@ -18,6 +18,25 @@ If semantic preflight fails: `scubiee setup --repair` then retry.
 
 ---
 
+## `machine_not_setup` on `init`
+
+**Symptom:**
+
+```json
+{"ok": false, "error": "machine_not_setup"}
+```
+
+**Cause:** No saved profile in `~/.context-engine/accel.json` (fresh machine, after partial wipe, or upgrade without repair).
+
+**Fix:**
+
+```bash
+scubiee setup --repair
+scubiee setup --status    # preferred_profile should be non-null
+```
+
+---
+
 ## Install & setup
 
 ### `No module named 'fastembed'` during `scubiee setup`
@@ -57,7 +76,29 @@ scubiee preflight . --lexical-only
 
 ---
 
-### DirectML profile but CPU provider only
+### Wipe did not remove everything
+
+**Symptom:** After `scubiee wipe --all --yes`, `.context-engine` or uv tool dir still present.
+
+**Cause:** Cursor MCP or daemon still locking files (Windows).
+
+**Fix:**
+
+```bash
+scubiee stop
+# quit Cursor completely
+scubiee wipe --all --yes --package
+```
+
+Read stderr/JSON **`audit.remaining`** for honest list of leftover paths. Re-run wipe until `audit.clean` is true.
+
+---
+
+### `connect` fails before faiss is fixed
+
+**Fixed in 0.2.54:** `connect`, `disconnect`, `migrate`, and `diagnose` no longer require faiss. Upgrade if an older build blocks them.
+
+---
 
 **Symptom:** Setup says `dml` but embed uses CPU; `available_providers` lacks `DmlExecutionProvider`.
 
@@ -180,7 +221,7 @@ Test with a unique token in a **`.py`** file.
 
 ### Dashboard unhealthy on Windows
 
-Upgrade to **0.2.50+**. See [Dashboard & engine](./dashboard-and-engine.md).
+Upgrade to **scubiee 0.2.54+**. See [Dashboard & engine](./dashboard-and-engine.md).
 
 ---
 

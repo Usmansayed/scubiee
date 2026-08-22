@@ -1,6 +1,6 @@
 # Scubiee: Commands, Setup, and Product Guide
 
-> **Documentation baseline:** Scubiee `0.2.32`
+> **Documentation baseline:** Scubiee `0.2.54`
 > **Audience:** product pages, documentation websites, and developers using Scubiee from a terminal or an AI coding tool.
 
 Scubiee is a local-first code context engine. It builds a searchable representation of your repository, keeps it fresh as files change, and exposes the result through a CLI, a local daemon, and MCP integrations for AI coding tools.
@@ -17,35 +17,29 @@ Most coding assistants can read files, but a large repository makes ad-hoc file 
 - incrementally re-index changed files instead of rebuilding for every edit;
 - serve context locally through a managed daemon and MCP;
 - connect to 11 AI coding tools with one command; and
-- fully clean up after itself when you're done.
+- fully clean up after itself when you're done (with an honest wipe audit).
 
 ### Product value in one sentence
 
 **Scubiee turns a repository into continuously maintained, tool-agnostic context without forcing an AI assistant to guess which files matter.**
 
-## Who should use it
-
-- **Individual developers** — make any repository searchable by meaning and structure, entirely local.
-- **Teams building AI coding workflows** — give Cursor, Claude Code, Codex, Kiro, Copilot, and others a common MCP backend.
-- **Large or active repositories** — keep context current through incremental and live re-indexing.
-- **Operators and release engineers** — inspect readiness, provider capabilities, daemon state, and data health from one CLI.
-
 ## Quick start
 
 ```bash
-# 1. Install
-pip install -U scubiee
+# 1. Install (recommended: uv tool)
+uv tool install --force scubiee==0.2.54 --index-url https://pypi.org/simple --refresh
 
 # 2. One-time machine setup (detects GPU, downloads model, calibrates)
-scubiee setup
+scubiee setup --repair
 
-# 3. Index your repository
-scubiee init .
+# 3. Connect your AI tools
+scubiee connect --cursor --claude-code
 
-# 4. Connect to your AI tools
-scubiee connect --kiro --cursor --claude-code
+# 4. Index your repository
+cd your-repo
+scubiee init . --fast
 
-# Done. Your AI tools now have semantic code search.
+# Done. Reload MCP in Cursor (Settings → MCP → refresh).
 ```
 
 ## Core commands
@@ -54,10 +48,14 @@ scubiee connect --kiro --cursor --claude-code
 
 | Command | What it does |
 |---------|-------------|
-| `scubiee setup` | One-time machine install: detect GPU, download embedding model, calibrate speed, register supervisor |
-| `scubiee init <path>` | Enroll a repository, index it, start serving it |
+| `scubiee setup --repair` | Machine install: detect GPU, ORT/FastEmbed, model, calibration, supervisor |
+| `scubiee setup --status` | Print saved accel profile (read-only) |
+| `scubiee init <path>` | Enroll a repository and index it (requires setup first) |
+| `scubiee init . --fast --roots packages` | Fast index scoped to code roots |
+| `scubiee init . --confirm` | Allow indexing when >400 files would be touched |
 | `scubiee status <path>` | Show index health, freshness, and daemon state |
 | `scubiee search "query" <path>` | Search your code from the CLI |
+| `scubiee sync <path> [--confirm]` | Incremental re-index of changed files |
 
 ### Connecting and disconnecting AI tools
 
@@ -73,18 +71,28 @@ scubiee connect --kiro --cursor --claude-code
 
 Both commands accept `--repo <path>` for workspace-aware integrations (Kiro writes both user-level and workspace-level configs).
 
+### Diagnostics and migrations
+
+| Command | What it does |
+|---------|-------------|
+| `scubiee diagnose [--no-tests]` | Installation diagnostics + shareable log file |
+| `scubiee migrate --check-all` | Check schema migrations after upgrade |
+| `scubiee migrate --apply-all` | Apply migrations for all managed projects |
+| `scubiee doctor <path> [--fix]` | Readiness report and safe repairs |
+| `scubiee preflight [path]` | Dependency / capability check |
+
 ### Cleanup and removal
 
 | Command | What it does |
 |---------|-------------|
-| `scubiee wipe --confirm` | Remove engine data (indexes, logs, accel profile) |
-| `scubiee wipe --confirm --all` | Nuclear option: engine + models + tool configs + repo markers |
-| `scubiee wipe --confirm --models` | Engine data + cached embedding model weights |
-| `scubiee wipe --confirm --tools` | Engine data + disconnect all AI tools |
-| `scubiee wipe --confirm --repos` | Engine data + per-repo .context-engine/ directories |
-| `scubiee wipe --dry-run --all` | Preview what would be deleted |
+| `scubiee wipe <path>` | Remove one repo's CE enrollment + index |
+| `scubiee wipe --all` | **Safety pause** (exit 2) until confirmed |
+| `scubiee wipe --all --yes` | Remove all CE state: homes, MCP, rules, models, enrolled repos |
+| `scubiee wipe --all --yes --package` | Full wipe + uninstall scubiee uv tool |
+| `scubiee wipe --all --yes --keep-models` | Wipe but keep embedding model caches |
+| `scubiee stop` | Stop engine, watchdog, MCP-related processes (run before wipe on Windows) |
 
-After `--all`, only the Python package remains. Remove it with: `pip uninstall scubiee`
+After `--all --yes`, inspect JSON **`audit.remaining`** for paths still on disk (usually MCP locks). Quit Cursor and re-run if needed.
 
 ### Repository lifecycle
 
@@ -103,22 +111,10 @@ After `--all`, only the Python package remains. Remove it with: `pip uninstall s
 | Command | What it does |
 |---------|-------------|
 | `scubiee engine status` | Check if daemon is running |
-| `scubiee engine start` | Start the daemon |
-| `scubiee engine stop` | Stop the daemon |
-| `scubiee engine ensure <path>` | Ensure daemon is serving a specific repo |
-| `scubiee serve <path>` | Run daemon in foreground (useful for debugging) |
-| `scubiee dashboard` | Open the operator dashboard |
-
-### Diagnostics and repair
-
-| Command | What it does |
-|---------|-------------|
-| `scubiee preflight <path>` | Check dependencies and capabilities |
-| `scubiee doctor <path> --all` | Readiness diagnostics |
-| `scubiee doctor <path> --fix` | Auto-repair known issues |
-| `scubiee diagnose` | Generate a shareable diagnostic report |
-| `scubiee setup --repair` | Repair machine-level setup |
-| `scubiee resources --refresh` | Inspect hardware and resource pressure |
+| `scubiee engine ensure <path>` | Ensure daemon is serving a repo |
+| `scubiee stop` | Stop daemon + watchdog + related processes |
+| `scubiee serve <path>` | Run daemon in foreground (debug) |
+| `scubiee dashboard --no-open` | Start operator dashboard |
 
 ## Machine setup vs repository enrollment
 
@@ -126,11 +122,13 @@ These are intentionally separate:
 
 | Operation | Scope | When |
 |-----------|-------|------|
-| `scubiee setup` | Machine-wide: GPU detection, model download, calibration | Once per machine |
+| `scubiee setup --repair` | Machine-wide: GPU, model, calibration | Once per machine (and after upgrade) |
 | `scubiee init <path>` | Per-repository: enroll, index, serve | For each repo you want searchable |
 | `scubiee connect --<tool>` | Per-tool: MCP config + rules | For each AI tool you use |
 
-Adding a second repository does NOT repeat machine setup. Just run `scubiee init <path>`.
+Adding a second repository does **not** repeat machine setup. Run `scubiee init <path>` only.
+
+If `init` returns `"error": "machine_not_setup"`, run `scubiee setup --repair` first.
 
 ## Provider profiles
 
@@ -138,30 +136,31 @@ The embedding model is **`nomic-ai/CodeRankEmbed`**. The runtime depends on your
 
 | Profile | Platform | Command |
 |---------|----------|---------|
-| `dml` | Windows GPU (AMD/Intel/NVIDIA) | `scubiee setup --profile dml` |
-| `cuda` | Linux NVIDIA GPU | `scubiee setup --profile cuda` |
-| `mlx` | Apple Silicon (M1/M2/M3/M4) | `scubiee setup --profile mlx` |
-| `coreml` | macOS CoreML | `scubiee setup --profile coreml` |
-| `cpu` | Any machine (fallback) | `scubiee setup --profile cpu` |
+| `dml` | Windows GPU (AMD/Intel/NVIDIA) | `scubiee setup --profile dml --repair` |
+| `cuda` | Linux NVIDIA GPU | `scubiee setup --profile cuda --repair` |
+| `mlx` | Apple Silicon (M1/M2/M3/M4) | `scubiee setup --profile mlx --repair` |
+| `coreml` | macOS CoreML | `scubiee setup --profile coreml --repair` |
+| `cpu` | Any machine (fallback) | `scubiee setup --profile cpu --repair` |
 
-Without `--profile`, setup auto-detects the best option.
+Without `--profile`, setup auto-detects the best option. ONNX Runtime is pinned to `<1.25` for compatibility.
 
 ## MCP tools exposed to AI coding tools
 
-The default MCP surface (`phase`) exposes 6 tools:
+The default MCP surface (`phase`) exposes **7 tools**:
 
 | Tool | Purpose |
 |------|---------|
+| `status` | Check if the repo is managed and healthy (call once per session) |
 | `map` | Find the most relevant areas of the codebase for a query |
 | `focus` | Deep-dive into a specific file/span with surrounding context |
 | `grep` | Exact text/regex search across the repository |
 | `glob` | Find files by path pattern |
 | `workspace` | Inspect or manage session context |
-| `status` | Check if the repo is managed and healthy |
+| `register_project` | Register repo with explicit user consent |
 
 ### How the global rule works
 
-When you run `scubiee connect`, it installs a self-gating rule:
+When you run `scubiee connect --cursor`, it installs **`~/.cursor/rules/context-agent.mdc`**:
 
 1. AI tool calls `status()` once at session start
 2. If `managed=true` and `ok=true` → use Scubiee tools for discovery
@@ -173,7 +172,7 @@ This means the rule never breaks unmanaged folders. It only activates when the r
 
 | Tool | MCP config path | Rule file |
 |------|----------------|-----------|
-| Cursor | `~/.cursor/mcp.json` | `~/.cursor/rules/context-engine.mdc` |
+| Cursor | `~/.cursor/mcp.json` | `~/.cursor/rules/context-agent.mdc` |
 | Claude Code | `~/.claude.json` | `~/.claude/CLAUDE.md` (appended section) |
 | Codex | `~/.codex/config.toml` | `~/.codex/instructions.md` (appended) |
 | Kiro | `~/.kiro/settings/mcp.json` + workspace | `~/.kiro/steering/context-engine.md` |
@@ -190,70 +189,52 @@ This means the rule never breaks unmanaged folders. It only activates when the r
 | Location | What's stored |
 |----------|--------------|
 | `~/.context-engine/` | Engine home: indexes, registry, accel profile, logs |
-| `~/.context-engine/vectordb/` | FAISS vector database |
 | `~/.context-engine/projects/<id>/` | Per-repo index artifacts |
 | `<repo>/.context-engine/id.json` | Repository identity marker |
-| `~/.cache/fastembed/` | Cached ONNX embedding model |
-| `~/.cache/huggingface/hub/` | HuggingFace model downloads |
-
-## Environment variables
-
-Most users don't need these. They're for MCP entries and advanced automation:
-
-| Variable | Purpose |
-|----------|---------|
-| `CTX_REPO` | Explicit repository path for MCP processes |
-| `CTX_ENGINE_URL` | Daemon URL (default: `http://127.0.0.1:8765`) |
-| `CTX_MCP_SURFACE` | Tool surface selection (default: `phase`) |
-| `CTX_TOKEN_MODE` | Token budget mode (default: `savings`) |
-| `CTX_BACKGROUND_SYNC` | Enable/disable background sync |
-| `CTX_AUTO_INDEX` | Enable/disable auto-indexing |
+| `~/.cursor/mcp.json` | Cursor MCP server entry |
+| `~/.cursor/rules/context-agent.mdc` | Cursor agent rule (canonical) |
+| FastEmbed / HuggingFace caches | CodeRank ONNX model weights |
 
 ## Common workflows
 
 ### Fresh install on a new machine
 
 ```bash
-pip install -U scubiee
-scubiee setup
+uv tool install --force scubiee==0.2.54 --index-url https://pypi.org/simple --refresh
+scubiee setup --repair
 scubiee connect --all
-scubiee init ~/projects/my-app
+cd ~/projects/my-app && scubiee init . --fast
 ```
 
 ### Add another repository (no repeat setup)
 
 ```bash
-scubiee init ~/projects/another-repo
-```
-
-### Refresh a stale index
-
-```bash
-scubiee status .
-scubiee sync-now .
-# or full rebuild:
-scubiee rebuild .
+scubiee init ~/projects/another-repo --fast
 ```
 
 ### Complete uninstall
 
 ```bash
-scubiee wipe --confirm --all
-pip uninstall scubiee -y
+scubiee stop
+scubiee wipe --all --yes --package
+# quit Cursor if audit.remaining is non-empty, then re-run wipe
 ```
 
 ### Troubleshoot: AI tool not using Scubiee
 
 ```bash
-scubiee status <repo>              # Is it managed and healthy?
-scubiee engine status              # Is the daemon running?
-scubiee connect --<tool> --dry-run # Is the config pointing to the right places?
+scubiee status <repo>
+scubiee engine status
+scubiee connect --cursor --dry-run
+scubiee diagnose --no-tests
 ```
 
 ## Versioning
 
-- Current release: **0.2.32**
+- Current release: **0.2.54**
 - Package name: `scubiee`
 - CLI command: `scubiee`
-- PyPI: https://pypi.org/project/scubiee/
+- PyPI: https://pypi.org/project/scubiee/0.2.54/
 - GitHub: https://github.com/Usmansayed/new-context-engine
+
+For detailed operator docs see [`../docs/web-info/`](../docs/web-info/README.md).

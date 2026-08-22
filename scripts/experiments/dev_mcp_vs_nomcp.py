@@ -1,17 +1,10 @@
-"""Isolated 2-arm dev-task token A/B: context-engine MCP vs no MCP (native tools).
+"""Same complex vague dev task on both arms: CE MCP vs native tools only.
 
-Each arm gets a fresh copy of testdata/frontend-mcp (git-baselined), then runs
-the SAME complex multi-file dev task via `opencode run`:
-
-  - mcp   : context-engine MCP enabled (D_channel_best surface)
-  - nomcp : zero MCP servers, native read/grep/glob/bash only
-
-Tokens are summed from opencode `step_finish` events. Report written to
-out/experiments/dev_mcp_vs_nomcp/.
+Mandatory preflight before any OpenCode run. Tokens from step_finish JSONL events.
 
 Usage:
-  .\\.venv\\Scripts\\python.exe -u scripts\\experiments\\dev_mcp_vs_nomcp.py
-  .\\.venv\\Scripts\\python.exe -u scripts\\experiments\\dev_mcp_vs_nomcp.py --model google/gemini-3.1-pro-preview --arms mcp,nomcp
+  python -u scripts/experiments/dev_mcp_vs_nomcp.py
+  python -u scripts/experiments/dev_mcp_vs_nomcp.py --arms nomcp,mcp --timeout 3600
 """
 
 from __future__ import annotations
@@ -20,7 +13,6 @@ import argparse
 import importlib.util
 import json
 import os
-import queue
 import re
 import shutil
 import subprocess
@@ -33,21 +25,16 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
-REPO = ROOT / "testdata" / "frontend-mcp"
+REPO = (ROOT / "testdata" / "frontend-mcp").resolve()
+PACKAGES = (ROOT / "packages").resolve()
 OUT = ROOT / "out" / "experiments" / "dev_mcp_vs_nomcp"
+
+_UV_PY = Path.home() / "AppData" / "Roaming" / "uv" / "tools" / "scubiee" / "Scripts" / "python.exe"
 VENV_PY = ROOT / ".venv" / "Scripts" / "python.exe"
-if not VENV_PY.is_file():
-    VENV_PY = Path(sys.executable)
+CE_PY = _UV_PY if _UV_PY.is_file() else (VENV_PY if VENV_PY.is_file() else Path(sys.executable))
 
 _OPENCODE_EXE = (
-    Path.home()
-    / "AppData"
-    / "Roaming"
-    / "npm"
-    / "node_modules"
-    / "opencode-ai"
-    / "bin"
-    / "opencode.exe"
+    Path.home() / "AppData" / "Roaming" / "npm" / "node_modules" / "opencode-ai" / "bin" / "opencode.exe"
 )
 OPENCODE = (
     str(_OPENCODE_EXE)
@@ -56,48 +43,27 @@ OPENCODE = (
 )
 
 COPY_EXCLUDED_NAMES = {
-    ".git",
-    ".venv",
-    ".context-engine",
-    ".pytest_cache",
-    "__pycache__",
-    "out",
-    ".env",
-    ".superpowers",
-    "research",
-    "testdata",
-    "scripts",
-    "graphify-out",
-    "vendor",
-    "node_modules",
+    ".git", ".venv", ".context-engine", ".pytest_cache", "__pycache__",
+    "out", ".env", ".superpowers", "research", "testdata", "scripts",
+    "graphify-out", "vendor", "node_modules",
 }
 
-# Same complex multi-file feature task the SDK dev trial uses on frontend-mcp.
+# Vague but specific — no filenames/functions (same prompt both arms).
 DEV_TASK = (
-    "Hey — agents using our perception MCP keep thrashing. They re-run the same "
-    "expensive observation / verify steps even when that evidence was already "
-    "collected earlier in the session, and when a tool comes back degraded they "
-    "often just plow ahead instead of noticing. Also the codebase-intelligence / "
-    "code-graph side still isn't reachable as its own first-class perception "
-    "tool the way the other perception tools are.\n\n"
-    "I need you to fix both of these, as one coherent change:\n"
-    "1) Add a first-class perception tool that queries the pure-Python codebase "
-    "intelligence / code graph (search / related files / neighbors style), wired "
-    "the same way other perception tools are — schema, handler, and runtime "
-    "dispatch by name. Gate it behind an env toggle (default on) with a graceful "
-    "degraded envelope when it's off.\n"
-    "2) Add a small session-evidence recall path so an agent can ask what was "
-    "already observed / verified this session (or get a clear empty answer), and "
-    "make sure agent-guidance / coordinator-facing text actually points agents at "
-    "that instead of redoing the same browser work. Also env-gated if that fits "
-    "the project's toggle patterns.\n\n"
-    "I don't know the layout at all — you'll need to poke around and find where "
-    "tool schemas live, where handlers live, how dispatch works, where envelopes "
-    "are built, where session/store state lives, and where agent guidance / "
-    "coordinator briefing text is authored. Touch the real integration points, "
-    "not stubs. Add tests so this doesn't regress, bump any tool-count / contract "
-    "expectations the repo already guards, and leave a short docs note. Make it "
-    "actually work across multiple sides of the codebase."
+    "Agents using our perception stack keep thrashing: they repeat costly observation "
+    "and verification steps even when that evidence was already collected earlier in the "
+    "same session. When a tool comes back degraded, they often plow ahead instead of "
+    "adapting. Separately, codebase intelligence / code-graph style lookup still is not "
+    "a first-class perception capability wired like the other perception tools.\n\n"
+    "Implement one coherent change set that fixes all of this: session evidence recall "
+    "so agents can ask what was already observed or verified (with a clear empty answer "
+    "when nothing exists), guidance text that steers agents toward recall instead of "
+    "redoing browser work, graceful degraded envelopes when toggles are off, and a "
+    "toggleable code-graph perception tool registered and dispatched like the others. "
+    "Discover every integration point yourself — schemas, handlers, dispatch, envelopes, "
+    "session store, coordinator guidance. Add regression tests, update any contract counts "
+    "the repo already guards, and leave a brief docs note. Make it work across multiple "
+    "layers, not stubs."
 )
 
 
@@ -109,210 +75,235 @@ def _load_helper(name: str, path: Path):
     return mod
 
 
-opencode_ab = _load_helper(
-    "_opencode_mcp_ab_helper", Path(__file__).parent / "opencode_mcp_ab" / "run.py"
-)
+opencode_ab = _load_helper("_opencode_mcp_ab_helper", Path(__file__).parent / "opencode_mcp_ab" / "run.py")
 parse_jsonl = opencode_ab._parse_jsonl
 sum_tokens = opencode_ab._sum_tokens
 extract_assistant_text = opencode_ab._extract_assistant_text
-ensure_daemon = opencode_ab._ensure_daemon
+provider_block = opencode_ab._provider_block
 
 
-def _google_provider_block() -> dict[str, Any]:
-    auth = Path.home() / ".local" / "share" / "opencode" / "auth.json"
-    key = ""
-    if auth.is_file():
-        try:
-            key = str((json.loads(auth.read_text(encoding="utf-8")) or {}).get("google", {}).get("key", ""))
-        except (OSError, json.JSONDecodeError):
-            key = ""
-    if not key:
-        env_f = ROOT / ".env"
-        if env_f.is_file():
-            for line in env_f.read_text(encoding="utf-8").splitlines():
-                m = re.match(r"^\s*GOOGLE1\s*=\s*(.+?)\s*$", line)
-                if m:
-                    key = m.group(1).strip().strip('"').strip("'")
-                    break
-    if not key:
-        return {}
-    return {
-        "provider": {
-            "google": {
-                "npm": "@ai-sdk/google",
-                "name": "Google AI Studio",
-                "options": {"apiKey": key},
-                "models": {
-                    "gemini-3.1-pro-preview": {"name": "Gemini 3.1 Pro Preview"},
-                    "gemini-2.5-pro": {"name": "Gemini 2.5 Pro"},
-                    "gemini-2.5-flash": {"name": "Gemini 2.5 Flash"},
+def _ce_env(extra: dict[str, str] | None = None) -> dict[str, str]:
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(PACKAGES)
+    env.setdefault("CTX_ENGINE_URL", "http://127.0.0.1:8765")
+    if extra:
+        env.update(extra)
+    return env
+
+
+def _run(cmd: list[str], *, cwd: Path | None = None, env: dict[str, str] | None = None, timeout: float = 600):
+    return subprocess.run(
+        cmd, cwd=str(cwd or ROOT), env=env or os.environ.copy(),
+        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout,
+    )
+
+
+def _ensure_engine_ready(repo: Path, *, timeout_s: float = 900) -> dict[str, Any]:
+    script = f"""
+import json, time
+from pathlib import Path
+from pipeline.client import EngineClient
+from pipeline.daemon import ensure_daemon
+repo = Path(r"{repo}")
+ensure_daemon(repo)
+client = EngineClient(timeout=30.0)
+opened = client.open_repo(str(repo), wait=True)
+deadline = time.time() + {int(timeout_s)}
+while time.time() < deadline:
+    st = client.status(str(repo))
+    warm = st.get("warm_state")
+    eng = st.get("engine") or {{}}
+    chunks = eng.get("chunks") or (st.get("meta") or {{}}).get("chunks")
+    if warm == "ready" and eng and chunks:
+        print(json.dumps({{"ok": True, "warm_state": warm, "chunks": chunks}}))
+        raise SystemExit(0)
+    time.sleep(3)
+print(json.dumps({{"ok": False, "warm_state": st.get("warm_state"), "error": st.get("warm_error")}}))
+raise SystemExit(1)
+"""
+    proc = _run([str(CE_PY), "-c", script], env=_ce_env(), timeout=timeout_s + 60)
+    line = (proc.stdout or "").strip().splitlines()[-1] if proc.stdout else "{}"
+    try:
+        return json.loads(line)
+    except json.JSONDecodeError:
+        return {"ok": False, "error": proc.stderr or proc.stdout}
+
+
+def _validate_opencode_mcp(path: Path) -> list[str]:
+    if not path.is_file():
+        return ["missing"]
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return [str(exc)]
+    block = (data.get("mcp") or {}).get("context-engine")
+    if not isinstance(block, dict):
+        return ["missing context-engine"]
+    errs = []
+    if block.get("type") != "local":
+        errs.append("type must be local")
+    if block.get("enabled") is not True:
+        errs.append("enabled must be true")
+    if not block.get("command"):
+        errs.append("command required")
+    return errs
+
+
+def _preflight(repo: Path, *, model: str) -> None:
+    checks: list[tuple[str, bool, Any]] = []
+
+    def record(name: str, ok: bool, detail: Any) -> None:
+        checks.append((name, ok, detail))
+        print(f"[preflight] {'PASS' if ok else 'FAIL'} {name}: {detail}", flush=True)
+        if not ok:
+            raise RuntimeError(f"preflight failed: {name}")
+
+    record("repo_exists", repo.is_dir(), str(repo))
+    pf = _run(["scubiee", "preflight"], timeout=120)
+    record("scubiee_preflight", pf.returncode == 0, (pf.stdout or pf.stderr)[-300:])
+
+    init_script = f"""
+from pathlib import Path
+from pipeline.repo_lifecycle import initialize_repo
+import json
+out = initialize_repo(Path(r"{repo}"), index=True, confirm=True)
+print(json.dumps(out))
+"""
+    init = _run([str(CE_PY), "-c", init_script], env=_ce_env(), timeout=900)
+    try:
+        init_data = json.loads((init.stdout or "").strip().splitlines()[-1])
+    except (json.JSONDecodeError, IndexError):
+        init_data = {"ok": False, "stderr": init.stderr}
+    record("initialize_repo", init.returncode == 0 and init_data.get("ok", True), init_data)
+
+    warm = _ensure_engine_ready(repo)
+    record("engine_ready", bool(warm.get("ok")), warm)
+
+    search = _run(["scubiee", "search", "session evidence recall perception", str(repo)], timeout=120)
+    record("search_smoke", search.returncode == 0, (search.stdout or "")[-200:])
+
+    conn = _run(["scubiee", "connect", "--opencode", "--repo", str(repo)], timeout=60)
+    record("scubiee_connect", conn.returncode == 0, (conn.stdout or "")[-200:])
+    cfg = Path.home() / ".config" / "opencode" / "config.json"
+    if cfg.is_file():
+        data = json.loads(cfg.read_text(encoding="utf-8"))
+        raw = (data.get("mcp") or {}).get("context-engine")
+        if isinstance(raw, dict) and raw.get("type") != "local":
+            py = str(CE_PY).replace("\\", "/")
+            repo_s = str(repo).replace("\\", "/")
+            data.setdefault("mcp", {})["context-engine"] = {
+                "type": "local", "enabled": True,
+                "command": [py, "-u", "-m", "pipeline.mcp_locate"],
+                "environment": {
+                    "CTX_REPO": repo_s, "CTX_ENGINE_URL": "http://127.0.0.1:8765",
+                    "CTX_MCP_SURFACE": "phase", "CTX_AUTO_INDEX": "0",
+                    "PYTHONPATH": str(PACKAGES).replace("\\", "/"),
                 },
+                "timeout": 120000,
             }
-        }
+            cfg.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    record("opencode_mcp_schema", not _validate_opencode_mcp(cfg), _validate_opencode_mcp(cfg) or "valid")
+
+    oc = _run([OPENCODE, "--version"], timeout=30)
+    record("opencode_cli", oc.returncode == 0, (oc.stdout or "").strip())
+    models = _run([OPENCODE, "models"], timeout=60)
+    record("opencode_model", model in (models.stdout or ""), model)
+
+
+def _arm_configs(*, indexed_repo: Path) -> dict[str, dict[str, Any]]:
+    py = str(CE_PY.resolve()).replace("\\", "/")
+    packages = str(PACKAGES).replace("\\", "/")
+    repo_s = str(indexed_repo.resolve()).replace("\\", "/")
+    disabled = {"frontend-mcp": {"type": "local", "enabled": False, "command": ["echo", "disabled"]}}
+    perms = {
+        "edit": "allow", "bash": "allow", "webfetch": "deny",
+        "read": "allow", "grep": "allow", "glob": "allow", "list": "allow",
     }
-
-
-def _arm_configs(workspace: Path) -> dict[str, dict[str, Any]]:
-    py = str(VENV_PY.resolve()).replace("\\", "/")
-    packages = str((ROOT / "packages").resolve()).replace("\\", "/")
-    ws = str(workspace.resolve()).replace("\\", "/")
-    base: dict[str, Any] = {"$schema": "https://opencode.ai/config.json"}
-    base.update(_google_provider_block())
-    disabled_global = {
-        "frontend-mcp": {
-            "type": "local",
-            "enabled": False,
-            "command": ["echo", "disabled"],
-        }
+    base: dict[str, Any] = {"$schema": "https://opencode.ai/config.json", **provider_block(), "permission": perms}
+    mcp_env = {
+        "PYTHONPATH": packages,
+        "CTX_REPO": repo_s,
+        "CTX_ENGINE_URL": "http://127.0.0.1:8765",
+        "CTX_MCP_SURFACE": "phase",
+        "CTX_AUTO_INDEX": "0",
+        "CTX_RETRIEVE": "R_plan",
     }
     return {
+        "nomcp": {**base, "mcp": {**disabled}},
         "mcp": {
             **base,
             "mcp": {
-                **disabled_global,
-                "ce-d-channel-best": {
-                    "type": "local",
-                    "enabled": True,
-                    "command": [py, "-m", "pipeline.mcp_d_channel_best"],
-                    "environment": {
-                        "PYTHONPATH": packages,
-                        "CTX_REPO": ws,
-                        "CTX_RETRIEVE": "D_channel_best",
-                        "CTX_ENGINE_URL": "http://127.0.0.1:8765",
-                    },
+                **disabled,
+                "context-engine": {
+                    "type": "local", "enabled": True,
+                    "command": [py, "-u", "-m", "pipeline.mcp_locate"],
+                    "environment": mcp_env,
                     "timeout": 120000,
                 },
             },
-        },
-        "nomcp": {
-            **base,
-            "mcp": disabled_global,
         },
     }
 
 
 def _copy_workspace(source: Path, target: Path) -> str:
-    def _ignore(directory: str, names: list[str]) -> set[str]:
-        return {
-            n
-            for n in names
-            if n in COPY_EXCLUDED_NAMES or n.startswith(".sim-ce-home")
-        }
+    def _ignore(_d: str, names: list[str]) -> set[str]:
+        return {n for n in names if n in COPY_EXCLUDED_NAMES or n.startswith(".sim-ce-home")}
 
     shutil.copytree(source, target, ignore=_ignore)
     for cmd in (
         ["git", "init"],
         ["git", "-c", "user.name=Dev AB Trial", "-c", "user.email=trial@local.invalid", "add", "-A"],
-        ["git", "-c", "user.name=Dev AB Trial", "-c", "user.email=trial@local.invalid", "commit", "-m", "trial baseline", "--no-gpg-sign"],
+        ["git", "-c", "user.name=Dev AB Trial", "-c", "user.email=trial@local.invalid", "commit", "-m", "baseline", "--no-gpg-sign"],
     ):
-        proc = subprocess.run(
-            cmd, cwd=target, capture_output=True, text=True, encoding="utf-8", errors="replace"
-        )
+        proc = subprocess.run(cmd, cwd=target, capture_output=True, text=True, encoding="utf-8", errors="replace")
         if proc.returncode != 0 and cmd[1] != "init":
-            raise RuntimeError(f"git {' '.join(cmd[1:])} failed: {proc.stderr}")
-    head = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=target, capture_output=True, text=True
-    )
+            raise RuntimeError(proc.stderr)
+    head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=target, capture_output=True, text=True)
     return head.stdout.strip()
 
 
 def _git_diff_stat(workspace: Path) -> dict[str, Any]:
-    proc = subprocess.run(
-        ["git", "diff", "--no-ext-diff", "--stat", "HEAD"],
-        cwd=workspace,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-    )
-    stat_text = proc.stdout
-    files = subprocess.run(
-        ["git", "diff", "--name-only", "HEAD"],
-        cwd=workspace,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-    )
-    untracked = subprocess.run(
-        ["git", "ls-files", "--others", "--exclude-standard"],
-        cwd=workspace,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-    )
-    changed = sorted(
-        {f for f in (files.stdout or "").splitlines() if f}
-        | {f for f in (untracked.stdout or "").splitlines() if f}
-    )
-    added_tests = [f for f in changed if re.match(r"^tests/test_.*\.py$", f)]
+    stat = subprocess.run(["git", "diff", "--no-ext-diff", "--stat", "HEAD"], cwd=workspace, capture_output=True, text=True)
+    files = subprocess.run(["git", "diff", "--name-only", "HEAD"], cwd=workspace, capture_output=True, text=True)
+    untracked = subprocess.run(["git", "ls-files", "--others", "--exclude-standard"], cwd=workspace, capture_output=True, text=True)
+    changed = sorted({f for f in (files.stdout or "").splitlines() if f} | {f for f in (untracked.stdout or "").splitlines() if f})
     return {
-        "stat": stat_text.strip(),
+        "stat": (stat.stdout or "").strip(),
         "changed_files": changed,
-        "added_test_files": added_tests,
+        "added_test_files": [f for f in changed if re.match(r"^tests/test_.*\.py$", f)],
     }
 
 
-def run_arm(
-    arm: str,
-    cfg: dict[str, Any],
-    workspace: Path,
-    *,
-    model: str,
-    variant: str,
-    timeout_s: float,
-) -> dict[str, Any]:
+def _arm_hint(arm: str) -> str:
+    if arm == "nomcp":
+        return "ARM=nomcp | NO MCP. Native read/grep/glob/bash only. Same task as MCP arm."
+    return "ARM=mcp | Context Engine MCP enabled. Prefer CE search/map/focus for locate, then read/grep to implement."
+
+
+def run_arm(arm: str, cfg: dict[str, Any], workspace: Path, *, model: str, variant: str, timeout_s: float) -> dict[str, Any]:
     cfg_path = workspace / "opencode.json"
     cfg_path.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
-
     if arm == "mcp":
-        print(f"[{arm}] ensuring CE daemon on workspace (CTX_RETRIEVE=D_channel_best)…", flush=True)
-        ensure_daemon(workspace, retrieve_mode="D_channel_best")
+        warm = _ensure_engine_ready(REPO)
+        if not warm.get("ok"):
+            raise RuntimeError(f"engine not ready before {arm}: {warm}")
+
+    prompt = f"{_arm_hint(arm)} | {DEV_TASK} | Repo root is the working directory."
+    cmd = [OPENCODE, "run", "--format", "json", "--auto", "--pure", "--dir", str(workspace),
+           "--title", f"dev-ab-{arm}-{int(time.time())}", "--model", model, "--variant", variant, prompt]
+    (workspace / f"{arm}_cmd.txt").write_text(" ".join(cmd), encoding="utf-8")
 
     env = os.environ.copy()
     env["OPENCODE_CONFIG"] = str(cfg_path)
-    env.pop("CTX_HOME", None)
-    env.pop("CTX_ENGINE_URL", None)
     env["CTX_ENGINE_URL"] = "http://127.0.0.1:8765"
-    if arm == "mcp":
-        env["CTX_RETRIEVE"] = "D_channel_best"
+    env["CTX_REPO"] = str(REPO).replace("\\", "/")
 
-    session_title = f"dev-mcp-vs-nomcp-{arm}-{int(time.time())}"
-    cmd = [
-        OPENCODE,
-        "run",
-        "--format",
-        "json",
-        "--auto",
-        "--pure",
-        "--dir",
-        str(workspace),
-        "--title",
-        session_title,
-    ]
-    if model:
-        cmd.extend(["--model", model])
-    if variant:
-        cmd.extend(["--variant", variant])
-    cmd.append(DEV_TASK)
-    (workspace / f"{arm}_cmd.txt").write_text(" ".join(cmd), encoding="utf-8")
-
-    print(
-        f"\n=== {arm} run started (model={model or 'default'}, variant={variant or 'default'}, timeout={timeout_s:g}s) ===",
-        flush=True,
-    )
+    print(f"\n=== {arm} (model={model}, variant={variant}, timeout={timeout_s:g}s) ===", flush=True)
     t0 = time.perf_counter()
-    proc = subprocess.Popen(
-        cmd,
-        cwd=str(workspace),
-        env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-    )
+    proc = subprocess.Popen(cmd, cwd=str(workspace), env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            text=True, encoding="utf-8", errors="replace")
+    lines: list[str] = []
+    err_lines: list[str] = []
 
     def _pump(pipe: Any, sink: list[str]) -> None:
         try:
@@ -321,163 +312,117 @@ def run_arm(
         except Exception:  # noqa: BLE001
             pass
 
-    lines: list[str] = []
-    err_lines: list[str] = []
-    done = threading.Event()
     out_t = threading.Thread(target=_pump, args=(proc.stdout, lines), daemon=True)
     err_t = threading.Thread(target=_pump, args=(proc.stderr, err_lines), daemon=True)
-    out_t.start()
-    err_t.start()
+    out_t.start(); err_t.start()
     timed_out = False
-    last_beat = time.perf_counter()
+    last_beat = t0
     while True:
         now = time.perf_counter()
         if proc.poll() is not None:
             break
         if now - t0 > timeout_s:
-            proc.kill()
-            timed_out = True
-            break
-        if now - last_beat >= 20.0:
-            events = parse_jsonl("".join(lines[-400:]))
-            tok = sum_tokens(events)
-            print(
-                f"  [beat {now - t0:.0f}s] events={len(events)} "
-                f"steps={tok.get('steps')} tools={tok.get('tool_calls')} "
-                f"tokens={tok.get('tokens_total')}",
-                flush=True,
-            )
+            proc.kill(); timed_out = True; break
+        if now - last_beat >= 20:
+            tok = sum_tokens(parse_jsonl("".join(lines[-400:])))
+            print(f"  [beat {now - t0:.0f}s] tools={tok.get('tool_calls')} mcp={tok.get('mcp_tool_calls')} tokens={tok.get('tokens_total')}", flush=True)
             last_beat = now
         time.sleep(0.25)
-    out_t.join(timeout=10)
-    err_t.join(timeout=10)
-    proc.wait()
-    stderr_text = "".join(err_lines)
-    raw = "".join(lines)
+    out_t.join(timeout=10); err_t.join(timeout=10); proc.wait()
     ms = (time.perf_counter() - t0) * 1000
-
-    events = parse_jsonl(raw)
-    tok = sum_tokens(events)
-    text = extract_assistant_text(events)
-    if timed_out:
-        (workspace / f"{arm}_timeout_stdout.txt").write_text(raw, encoding="utf-8")
-        row: dict[str, Any] = {
-            "arm": arm,
-            "ok": False,
-            "error": "timeout",
-            "ms": ms,
-            "exit_code": None,
-            "text_excerpt": text[:1500],
-            "events": len(events),
-            "timed_out": True,
-            **tok,
-        }
-        print(f"  TIMEOUT tools={tok.get('tool_calls')} tokens={tok.get('tokens_total')}", flush=True)
-        row["diff"] = _git_diff_stat(workspace)
-        return row
-
+    raw = "".join(lines); stderr_text = "".join(err_lines)
     (workspace / f"{arm}_stdout.txt").write_text(raw, encoding="utf-8")
     (workspace / f"{arm}_stderr.txt").write_text(stderr_text, encoding="utf-8")
-    row = {
-        "arm": arm,
-        "ok": proc.returncode == 0,
-        "error": "" if proc.returncode == 0 else stderr_text[:500],
-        "ms": round(ms, 1),
-        "exit_code": proc.returncode,
-        "text_excerpt": text[:1500],
-        "events": len(events),
-        "timed_out": False,
-        **tok,
+    events = parse_jsonl(raw); tok = sum_tokens(events); text = extract_assistant_text(events)
+    row: dict[str, Any] = {
+        "arm": arm, "ok": proc.returncode == 0 and not timed_out,
+        "exit_code": proc.returncode, "timed_out": timed_out, "ms": round(ms, 1),
+        "text_excerpt": text[:1500], "events": len(events), **tok,
+        "diff": _git_diff_stat(workspace),
     }
-    row["diff"] = _git_diff_stat(workspace)
-    print(
-        f"  done exit={proc.returncode} tokens={tok.get('tokens_total')} "
-        f"exchanged={tok.get('tokens_exchanged')} tools={tok.get('tool_calls')} "
-        f"ms={ms:.0f} changed_files={len(row['diff']['changed_files'])} "
-        f"new_tests={len(row['diff']['added_test_files'])}",
-        flush=True,
-    )
+    print(f"  done exit={proc.returncode} tokens={tok.get('tokens_total')} mcp_tools={tok.get('mcp_tool_calls')} ms={ms:.0f}", flush=True)
     return row
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="OpenCode dev-task token A/B: CE MCP vs no MCP")
-    ap.add_argument("--arms", nargs="+", default=["mcp", "nomcp"], choices=["mcp", "nomcp"])
-    ap.add_argument("--model", default="opencode/deepseek-v4-flash-free")
-    ap.add_argument("--variant", default="max", help="reasoning effort variant (e.g. max, high, minimal)")
-    ap.add_argument("--timeout", type=float, default=2400.0)
-    ap.add_argument("--keep-workspaces", action="store_true")
+    ap = argparse.ArgumentParser(description="Same-task token A/B: CE MCP vs no MCP")
+    ap.add_argument("--arms", nargs="+", default=["nomcp", "mcp"], choices=["mcp", "nomcp"])
+    ap.add_argument("--model", default="opencode/x-preview-f-free")
+    ap.add_argument("--variant", default="max")
+    ap.add_argument("--timeout", type=float, default=3600.0)
+    ap.add_argument("--skip-preflight", action="store_true")
     args = ap.parse_args()
+
+    if not REPO.is_dir():
+        print(f"ERROR: missing {REPO}", file=sys.stderr)
+        return 2
+
+    if not args.skip_preflight:
+        print("\n=== PREFLIGHT ===", flush=True)
+        _preflight(REPO, model=args.model)
 
     OUT.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     ws_root = Path(tempfile.gettempdir()) / "ce_dev_mcp_ab" / stamp
     ws_root.mkdir(parents=True, exist_ok=True)
-
+    configs = _arm_configs(indexed_repo=REPO)
     results: list[dict[str, Any]] = []
+
     for arm in args.arms:
         ws = ws_root / f"{arm}_workspace"
-        print(f"[{arm}] copying workspace -> {ws}", flush=True)
+        print(f"[{arm}] workspace -> {ws}", flush=True)
         baseline = _copy_workspace(REPO, ws)
-        row = run_arm(
-            arm,
-            _arm_configs(ws)[arm],
-            ws,
-            model=args.model,
-            variant=args.variant,
-            timeout_s=args.timeout,
-        )
-        row["workspace"] = str(ws)
-        row["baseline_commit"] = baseline
+        row = run_arm(arm, configs[arm], ws, model=args.model, variant=args.variant, timeout_s=args.timeout)
+        row["workspace"] = str(ws); row["baseline_commit"] = baseline
         results.append(row)
-        per = OUT / f"{arm}_{stamp}.json"
-        per.write_text(json.dumps(row, indent=2, default=str), encoding="utf-8")
-        print(f"[{arm}] per-arm result -> {per}", flush=True)
-
-    # Best-effort: point the daemon back at the original repo after the MCP arm.
-    try:
-        ensure_daemon(REPO, retrieve_mode="D_channel_best")
-    except Exception as exc:  # noqa: BLE001
-        print(f"[warn] daemon restore failed: {exc}", flush=True)
+        (OUT / f"{arm}_{stamp}.json").write_text(json.dumps(row, indent=2, default=str), encoding="utf-8")
 
     by_tokens = sorted(results, key=lambda r: int(r.get("tokens_total") or 10**12))
+    t_nomcp = next((r for r in results if r["arm"] == "nomcp"), None)
+    t_mcp = next((r for r in results if r["arm"] == "mcp"), None)
+    savings = None
+    if t_nomcp and t_mcp and t_nomcp.get("tokens_total") and t_mcp.get("tokens_total"):
+        nt = int(t_nomcp["tokens_total"]); mt = int(t_mcp["tokens_total"])
+        if nt > 0:
+            savings = round((1 - mt / nt) * 100, 1)
+
     report = {
-        "title": "Dev task token A/B: context-engine MCP vs no MCP (native tools)",
-        "task": DEV_TASK[:300],
+        "title": "Same-task token A/B: context-engine MCP vs no MCP",
+        "task": DEV_TASK,
         "repo": str(REPO),
         "model": args.model,
+        "variant": args.variant,
         "workspace_root": str(ws_root),
         "arms": results,
+        "token_savings_pct_mcp_vs_nomcp": savings,
         "ranking_by_tokens": [
             {
                 "arm": r["arm"],
                 "tokens_total": r.get("tokens_total"),
-                "tokens_exchanged": r.get("tokens_exchanged"),
                 "tokens_input": r.get("tokens_input"),
                 "tokens_output": r.get("tokens_output"),
+                "tokens_reasoning": r.get("tokens_reasoning"),
                 "tokens_cache_read": r.get("tokens_cache_read"),
                 "tool_calls": r.get("tool_calls"),
-                "steps": r.get("steps"),
+                "mcp_tool_calls": r.get("mcp_tool_calls"),
                 "wall_ms": r.get("ms"),
                 "changed_files": len(r.get("diff", {}).get("changed_files", [])),
                 "added_test_files": r.get("diff", {}).get("added_test_files"),
                 "timed_out": r.get("timed_out"),
+                "ok": r.get("ok"),
             }
             for r in by_tokens
         ],
-        "comparison": {
-            (by_tokens[0]["arm"] if by_tokens else None): "FEWER tokens",
-            (by_tokens[-1]["arm"] if by_tokens else None): "MORE tokens",
-        },
     }
     out = OUT / f"report_{stamp}.json"
     out.write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
-    latest = OUT / "report_latest.json"
-    latest.write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
-    print("\n=== TOKEN COMPARISON ===")
+    (OUT / "report_latest.json").write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
+    print("\n=== TOKEN COMPARISON (same prompt, both arms) ===")
     print(json.dumps(report["ranking_by_tokens"], indent=2))
-    print(f"\nwrote {out}")
-    return 0
+    if savings is not None:
+        print(f"\nMCP vs no-MCP token delta: {savings}% ({'MCP used fewer' if savings > 0 else 'no-MCP used fewer'})")
+    print(f"\nReport: {out}")
+    return 0 if all(r.get("ok") for r in results) else 1
 
 
 if __name__ == "__main__":

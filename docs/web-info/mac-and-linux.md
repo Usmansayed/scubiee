@@ -7,7 +7,7 @@ Install and GPU behavior on macOS and Linux.
 ## Install
 
 ```bash
-uv tool install scubiee==0.2.50 --index-url https://pypi.org/simple
+uv tool install scubiee==0.2.54 --index-url https://pypi.org/simple
 uv tool update-shell
 scubiee setup --repair
 cd ~/your/project
@@ -17,7 +17,7 @@ scubiee init . --fast
 **pip alternative:**
 
 ```bash
-pip install -U scubiee==0.2.50
+pip install -U scubiee==0.2.54
 scubiee setup --repair
 ```
 

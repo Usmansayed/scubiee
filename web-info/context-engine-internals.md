@@ -1,6 +1,6 @@
 ﻿# Context Engine Internals: Architecture and Operations
 
-> **Implementation baseline:** Scubiee `0.2.32`
+> **Implementation baseline:** Scubiee `0.2.54`
 > **Audience:** engineers, operators, integration authors, and maintainers building the technical sections of a documentation website.
 
 This document describes the current Context Engine (CE) architecture rather than the historical research prototypes. The public command and product guide is in [`commands-and-setup.md`](./commands-and-setup.md).
