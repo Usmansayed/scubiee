@@ -25,6 +25,102 @@ from pipeline.paths import collect_index_paths, collect_index_relpaths
 from pipeline.store import ChunkRecord, PipelineStore
 from pipeline.vectordb import VectorDatabase
 
+# Auto-touch without asking. Above this, require explicit --confirm (not --force/--fast).
+DEFAULT_MAX_TOUCH = 400
+
+
+class IndexConfirmRequired(Exception):
+    """Full index or sync would touch more files than the auto cap."""
+
+    def __init__(
+        self,
+        n_files: int,
+        *,
+        max_touch: int = DEFAULT_MAX_TOUCH,
+        message: str | None = None,
+    ):
+        self.n_files = n_files
+        self.max_touch = max_touch
+        super().__init__(message or _confirm_hint(n_files, max_touch=max_touch))
+
+
+def is_broad_index_root(root: Path) -> str | None:
+    """Return a short reason when *root* is too broad for silent ``init``."""
+    root = root.resolve()
+    home = Path.home().resolve()
+    if root == home:
+        return "user home directory"
+    if os.name == "nt":
+        drive, tail = os.path.splitdrive(str(root))
+        tail = tail.strip("\\/")
+        if drive and not tail:
+            return "drive root"
+    elif root == Path("/"):
+        return "filesystem root"
+    return None
+
+
+def _broad_root_hint(root: Path, reason: str, n_files: int) -> str:
+    count_line = (
+        f"Found {n_files} indexable files under this path. "
+        if n_files
+        else ""
+    )
+    return (
+        f"Refusing to index {root} ({reason}). "
+        f"{count_line}"
+        "Change into your project directory and run `scubiee init`, "
+        "or re-run with --confirm if you really want to index here."
+    )
+
+
+def preflight_index_scope(
+    root: Path,
+    *,
+    fast: bool = False,
+    fast_roots: list[str] | None = None,
+    confirm: bool = False,
+    force: bool = False,
+) -> int:
+    """Cheap count + safety gates before any parse/embed work."""
+    root = root.resolve()
+    broad = is_broad_index_root(root)
+    if broad and not confirm and not force:
+        raise IndexConfirmRequired(
+            0,
+            max_touch=max_index_touch(),
+            message=_broad_root_hint(root, broad, 0),
+        )
+    n = len(collect_index_relpaths(root, fast=fast, fast_roots=fast_roots))
+    require_index_confirm(n, confirm=confirm, force=force)
+    return n
+
+
+def max_index_touch() -> int:
+    return int(os.environ.get("CTX_INCREMENTAL_MAX_TOUCH", str(DEFAULT_MAX_TOUCH)))
+
+
+def require_index_confirm(
+    n_files: int,
+    *,
+    confirm: bool = False,
+    force: bool = False,
+) -> None:
+    if force or confirm:
+        return
+    cap = max_index_touch()
+    if n_files > cap:
+        raise IndexConfirmRequired(n_files, max_touch=cap)
+
+
+def _confirm_hint(n_files: int, *, max_touch: int) -> str:
+    return (
+        f"{n_files} files need indexing (>{max_touch}). "
+        "Re-run with --confirm if you want to proceed, e.g. "
+        "`scubiee init . --confirm`, `scubiee index . --confirm`, "
+        "or `scubiee sync . --confirm`."
+    )
+
 
 @dataclass
 class IncrementalResult:
@@ -69,6 +165,7 @@ def incremental_sync(
     bits: int = 4,
     max_chars: int = 1200,
     force_files: list[str] | None = None,
+    confirm: bool = False,
 ) -> IncrementalResult:
     """Re-parse + re-embed only changed/removed files; upsert into FAISS collection."""
     t0 = time.perf_counter()
@@ -169,7 +266,8 @@ def incremental_sync(
             strategy="none",
         )
 
-    if report.strategy == "full" and not force_files:
+    if report.strategy == "full" and not force_files and not confirm:
+        n = report.changed_count
         return IncrementalResult(
             refreshed=False,
             files=[],
@@ -177,17 +275,18 @@ def incremental_sync(
             chunks_removed=0,
             ms=(time.perf_counter() - t0) * 1000,
             strategy="full",
-            error=(
-                "large drift — refusing incremental extract; "
-                "run `ctx index . --force --fast --roots packages`"
+            error=_confirm_hint(
+                n,
+                max_touch=int(os.environ.get("CTX_INCREMENTAL_MAX_TOUCH", str(DEFAULT_MAX_TOUCH))),
             ),
         )
 
     changed = sorted(set(report.diff.changed_files) | set(force_files or []))
     removed = list(report.diff.removed)
-    # Hard cap — never extract thousands of accidental paths in one sync
-    max_touch = int(os.environ.get("CTX_INCREMENTAL_MAX_TOUCH", "80"))
-    if len(changed) + len(removed) > max_touch and not force_files:
+    # Soft auto-cap — larger than this needs an explicit --confirm (not --force/--fast).
+    max_touch = int(os.environ.get("CTX_INCREMENTAL_MAX_TOUCH", str(DEFAULT_MAX_TOUCH)))
+    touch_n = len(changed) + len(removed)
+    if touch_n > max_touch and not force_files and not confirm:
         return IncrementalResult(
             refreshed=False,
             files=(changed + removed)[:50],
@@ -195,7 +294,7 @@ def incremental_sync(
             chunks_removed=0,
             ms=(time.perf_counter() - t0) * 1000,
             strategy=report.strategy,
-            error=f"refusing to touch {len(changed)+len(removed)} files (>{max_touch})",
+            error=_confirm_hint(touch_n, max_touch=max_touch),
         )
     touch = sorted(set(changed) | set(removed))
 
@@ -583,13 +682,13 @@ def ensure_fresh_for_search(
         else:
             print(
                 "[freshness] WARNING: large drift detected — NOT auto-reindexing "
-                "(set CTX_ALLOW_BG_FULL=1 or run: ctx index . --force --fast --roots packages)",
+                "(set CTX_ALLOW_BG_FULL=1 or run: scubiee sync . --confirm)",
                 file=sys.stderr,
                 flush=True,
             )
             note = (
                 "full reindex skipped (CTX_ALLOW_BG_FULL=0); "
-                "run `ctx index . --force` manually if needed"
+                "run `scubiee sync . --confirm` if you want to index the large change set"
             )
         out["sync"] = {
             "refreshed": False,

@@ -324,7 +324,7 @@ def test_install_patched_onnx_into_fastembed_cache(monkeypatch, tmp_path):
 
     fe = tmp_path / "fastembed_cache" / "models--x" / "snapshots" / "abc" / "onnx"
     fe.mkdir(parents=True)
-    (fe / "model.onnx").write_bytes(b"src")
+    (fe / "model_fp16.onnx").write_bytes(b"src")
     patched = tmp_path / "hub" / "model.coreml_b20_s512.onnx"
     patched.parent.mkdir(parents=True)
     patched.write_bytes(b"patched-onnx")

@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Compare MLX FP32 vs FP16 retrieval on the same codebase.
 
+NOTE (product 0.2.18+): production weights are FP16-only. ``CTX_MLX_DTYPE=float32``
+is ignored by ``pipeline.mlx_mac.resolve_embed_dtype`` — both legs run FP16.
+This script is kept for historical A/B notes only.
+
 Indexes this repo twice (FP32 then FP16), runs 50 grounded queries
 (35 soft NL, 15 hard symbol/confusable/multihop), reports hit@k / MRR.
 

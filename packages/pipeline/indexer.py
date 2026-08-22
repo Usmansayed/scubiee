@@ -19,8 +19,8 @@ from parse_harness.graphify_adapter import graphify_to_repo_ir
 from conductor.graphify_retriever import build_and_save_graph
 
 from pipeline.embedder import Embedder
-from pipeline.merkle import SyncDiff, diff_hashes, file_sha256, scan_file_hashes
-from pipeline.paths import collect_index_paths, fast_roots_from_env
+from pipeline.merkle import SyncDiff, diff_hashes, file_sha256
+from pipeline.paths import collect_index_paths, collect_index_relpaths, fast_roots_from_env
 from pipeline.preflight import CapabilityError, require_capabilities
 from pipeline.store import ChunkRecord, PipelineStore
 from pipeline.vectordb import VectorDatabase
@@ -48,6 +48,9 @@ class IndexDeferred(Exception):
         self.pressure = pressure
 
 
+from pipeline.incremental import IndexConfirmRequired  # re-export for CLI/tests
+
+
 def _collect_paths(
     root: Path,
     *,
@@ -55,6 +58,19 @@ def _collect_paths(
     fast_roots: list[str] | None = None,
 ) -> list[Path]:
     return collect_index_paths(root, fast=fast, fast_roots=fast_roots)
+
+
+def _index_file_hashes(
+    root: Path,
+    *,
+    fast: bool = False,
+    fast_roots: list[str] | None = None,
+) -> dict[str, str]:
+    """Hash only paths that graphify/index will actually touch (not testdata/vendor)."""
+    return {
+        p.relative_to(root).as_posix(): file_sha256(p)
+        for p in _collect_paths(root, fast=fast, fast_roots=fast_roots)
+    }
 
 
 def _emit_progress(progress, phase: str, frac: float) -> None:
@@ -68,10 +84,22 @@ def _emit_progress(progress, phase: str, frac: float) -> None:
         progress(phase, frac)
 
 
+def count_indexable_files(
+    root: Path,
+    *,
+    fast: bool = False,
+    fast_roots: list[str] | None = None,
+) -> int:
+    """Cheap preflight count for confirm gates (before graphify/embed)."""
+    root = root.resolve()
+    return len(collect_index_relpaths(root, fast=fast, fast_roots=fast_roots))
+
+
 def index_repo(
     root: Path,
     *,
     force: bool = False,
+    confirm: bool = False,
     bits: int = 8,
     embed_model: str | None = None,
     base_dir: Path | None = None,
@@ -83,6 +111,15 @@ def index_repo(
     compress_max_chars: int = 512,
 ) -> IndexStats:
     root = root.resolve()
+    from pipeline.incremental import preflight_index_scope
+
+    preflight_index_scope(
+        root,
+        fast=fast,
+        fast_roots=fast_roots,
+        confirm=confirm,
+        force=force,
+    )
     try:
         from pipeline.resources import get_resource_manager
 
@@ -155,13 +192,7 @@ def index_repo(
     cmode = resolve_compress_mode(compress_mode)
     cmax = int(os.environ.get("CTX_COMPRESS_MAX_CHARS", str(compress_max_chars)))
 
-    if fast:
-        new_hashes = {
-            p.relative_to(root).as_posix(): file_sha256(p)
-            for p in _collect_paths(root, fast=True, fast_roots=roots)
-        }
-    else:
-        new_hashes = scan_file_hashes(root)
+    new_hashes = _index_file_hashes(root, fast=fast, fast_roots=roots)
     diff: SyncDiff = diff_hashes(old, new_hashes)
 
     if diff.unchanged and not force and store.chunks_path.exists():
@@ -178,10 +209,13 @@ def index_repo(
             store_dir=str(store.base),
         )
 
-    if progress:
-        _emit_progress(progress, "Scanning files", 0.05)
+    from pipeline.incremental import require_index_confirm
+
+    require_index_confirm(len(new_hashes), confirm=confirm, force=force)
 
     paths = _collect_paths(root, fast=fast, fast_roots=roots)
+    if progress:
+        _emit_progress(progress, "Scanning files", 0.05)
     if progress:
         _emit_progress(progress, "Parsing code", 0.08)
     t0 = time.perf_counter()

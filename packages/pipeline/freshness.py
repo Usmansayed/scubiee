@@ -27,7 +27,7 @@ from pipeline.merkle import (
 
 FULL_FRACTION = float(os.environ.get("CTX_FULL_REINDEX_FRACTION", "0.5"))
 INCREMENTAL_MAX = int(os.environ.get("CTX_INCREMENTAL_MAX", "40"))
-BACKGROUND_MAX = int(os.environ.get("CTX_BACKGROUND_MAX", "200"))
+BACKGROUND_MAX = int(os.environ.get("CTX_BACKGROUND_MAX", "500"))
 
 
 @dataclass

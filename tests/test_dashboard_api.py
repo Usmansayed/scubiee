@@ -6,6 +6,7 @@ import threading
 import urllib.error
 import urllib.request
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -572,6 +573,22 @@ def test_dashboard_cli_status_prints_json(monkeypatch, capsys):
     payload = json.loads(capsys.readouterr().out)
     assert payload["running"] is True
     assert payload["url"].endswith("/ce-dashboard")
+
+
+def test_resolve_spawn_dashboard_pid_accepts_windows_wrapper_pid() -> None:
+    from pipeline.dashboard_server import _resolve_spawn_dashboard_pid
+
+    health = {
+        "ok": True,
+        "dashboard_identity": "context-engine-operator-dashboard-v1",
+        "dashboard_pid": 4242,
+    }
+    with patch("pipeline.dashboard_server._pid_alive", return_value=True):
+        assert (
+            _resolve_spawn_dashboard_pid(health, 1111, spawn_running=True) == 4242
+            if __import__("os").name == "nt"
+            else _resolve_spawn_dashboard_pid(health, 4242, spawn_running=True) == 4242
+        )
 
 
 def test_background_server_reuses_pid_and_stops(isolated_ce_home):

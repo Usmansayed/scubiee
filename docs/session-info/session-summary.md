@@ -40,7 +40,7 @@ PyPI credentials live in parent repo `.env` (`pipy_username` / `pipy_password` â
 | **0.2.15** | Skip already-installed FastEmbed deps (permission error while `ctx` held ORT files). |
 | **0.2.16** | Swap mutually exclusive ORT wheels; do not warm DML on CPU onnxruntime. PyPI. |
 | **0.2.17** | Windows `import resource` crash on `ctx init`. RSS via psutil. PyPI. |
-| **0.2.18** | Grep honors glob + `truncated`/`has_more`; glob `**` + honest truncation; phase instructions **recommend** (no native ban). Tree version; **upload PyPI if we want pip -U**. |
+| **0.2.18** | Grep honors glob + `truncated`/`has_more`; glob `**` + honest truncation; phase instructions **recommend** (no native ban). Tree version; **upload PyPI if we want pip -U**. **FP16-only** CodeRank weights on every OS/hardware (`onnx/model_fp16.onnx` + MLX FP16; FP32 not selectable). |
 
 PyPI latest published in this arc: https://pypi.org/project/scubiee/0.2.17/  (0.2.18 is local until twine).
 

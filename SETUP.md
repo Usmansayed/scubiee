@@ -10,7 +10,7 @@ These items are too large or machine-specific for GitHub. Each section below tel
 
 | Item | Size | How to get it |
 |------|------|---------------|
-| Embedding model (CodeRankEmbed ONNX) | ~100MB | `ctx init` downloads from HuggingFace |
+| Embedding model (CodeRankEmbed FP16 ONNX) | ~270MB | `ctx setup` / `ctx init` downloads from HuggingFace |
 | ONNX Runtime (GPU/CPU wheel) | ~200MB | `ctx init` installs via pip |
 | `testdata/frontend-mcp/` (test corpus) | 26MB, 2681 files | See "Get test data" below |
 | `testdata/scubiee-news-flow/` | Large | Optional — only for `@slow` tests |
@@ -33,7 +33,20 @@ git clone https://github.com/Usmansayed/new-context-engine.git
 cd new-context-engine
 ```
 
-### 2. Python virtual environment
+### 2. Python environment
+
+**Recommended — uv:**
+
+```bash
+# Install uv once: https://docs.astral.sh/uv/getting-started/installation/
+uv venv
+source .venv/bin/activate          # Linux / macOS
+# .\.venv\Scripts\Activate.ps1   # Windows PowerShell
+
+uv pip install -e ".[dml]"         # Windows GPU: dml | NVIDIA: cuda | Mac: coreml | CPU: cpu
+```
+
+**Alternative — venv + pip:**
 
 ```bash
 # Linux / macOS
@@ -43,13 +56,18 @@ source .venv/bin/activate
 # Windows PowerShell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-
-# Windows CMD
-python -m venv .venv
-.venv\Scripts\activate.bat
 ```
 
 ### 3. Install all packages
+
+**uv (recommended):**
+
+```bash
+uv pip install -e .
+uv pip install "mcp>=1.0,<2" psutil
+```
+
+**pip:**
 
 ```bash
 pip install -e .
@@ -65,7 +83,7 @@ This gives you:
 
 ### 4. Install GPU acceleration + download embedding model
 
-This is the critical step that gets the ~100MB embedding model and the right ONNX Runtime.
+This is the critical step that gets the ~270MB FP16 embedding model and the right ONNX Runtime.
 
 #### Automatic (recommended — works on all OS):
 
@@ -84,8 +102,9 @@ What this does:
    - dml: `onnxruntime-directml>=1.17`
    - cpu: `onnxruntime>=1.17`
 4. Installs `fastembed>=0.4`
-5. Downloads `nomic-ai/CodeRankEmbed` ONNX model from HuggingFace (~100MB)
-   - Cached at `~/.cache/fastembed/` (Linux/Mac) or `%LOCALAPPDATA%\fastembed\` (Windows)
+5. Downloads `nomic-ai/CodeRankEmbed` **FP16** ONNX (`onnx/model_fp16.onnx`, ~270MB) from HuggingFace
+   - Cached at `~/.cache/fastembed/` (Linux/Mac) or `%TEMP%\fastembed_cache\` (Windows)
+   - FP32 `model.onnx` is not used in production
 6. Runs a microbenchmark (target: 10 texts/sec)
 7. Saves profile to `~/.context-engine/accel.json`
 
@@ -100,16 +119,18 @@ ctx init --profile cpu     # Any OS, no GPU
 #### If ctx init fails — manual install:
 
 ```bash
-# Step 1: Install FastEmbed
-pip install fastembed>=0.4 huggingface_hub>=0.20
+# Step 1: Install FastEmbed (uv recommended)
+uv pip install "fastembed>=0.4" "huggingface_hub>=0.20"
+# or: pip install fastembed>=0.4 huggingface_hub>=0.20
 
 # Step 2: Remove all ORT wheels (they conflict with each other)
-pip uninstall -y onnxruntime onnxruntime-gpu onnxruntime-directml
+uv pip uninstall onnxruntime onnxruntime-gpu onnxruntime-directml
+# or: pip uninstall -y onnxruntime onnxruntime-gpu onnxruntime-directml
 
 # Step 3: Install ONE of these:
-pip install onnxruntime>=1.17              # CPU (any OS)
-pip install onnxruntime-gpu>=1.17          # NVIDIA CUDA
-pip install onnxruntime-directml>=1.17     # Windows DirectML
+uv pip install "onnxruntime>=1.17"              # CPU (any OS)
+uv pip install "onnxruntime-gpu>=1.17"          # NVIDIA CUDA
+uv pip install "onnxruntime-directml>=1.17"     # Windows DirectML
 
 # Step 4: Download the model
 python -c "from fastembed import TextEmbedding; m = TextEmbedding('nomic-ai/CodeRankEmbed'); list(m.embed(['warmup']))"
@@ -391,7 +412,7 @@ new-context-engine/
 └── projects/ce_*/         ← Per-project index data
 
 ~/.cache/fastembed/        ← Embedding model weights (downloaded by ctx init)
-└── nomic-ai--CodeRankEmbed/  ← ~100MB ONNX model files
+└── models--jamie8johnson--CodeRankEmbed-onnx/  ← FP16 ONNX (~270MB; model_fp16.onnx)
 ```
 
 ---

@@ -33,6 +33,9 @@ def doctor_report() -> dict[str, Any]:
             "active_profile": state.active_profile,
             "backup_reason": state.backup_reason,
             "envelope": envelope,
+            "onnx_file": getattr(installed.preferred, "onnx_file", None)
+            if installed and installed.preferred
+            else None,
             "recommended_command": (
                 "python -m pipeline setup --repair"
                 if state.backup_reason

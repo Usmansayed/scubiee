@@ -208,14 +208,19 @@ class Handler(BaseHTTPRequestHandler):
                     Path(root),
                     index=data.get("index", True) is not False,
                     always_allow=data.get("always_allow", True) is not False,
+                    confirm=bool(data.get("confirm")),
                 ),
                 "activate": lambda: lifecycle.activate_repo(Path(root)),
                 "pause": lambda: lifecycle.pause_repo(
                     Path(root), reason=data.get("reason")
                 ),
                 "resume": lambda: lifecycle.resume_repo(Path(root)),
-                "sync-now": lambda: lifecycle.sync_now_repo(Path(root)),
-                "sync_now": lambda: lifecycle.sync_now_repo(Path(root)),
+                "sync-now": lambda: lifecycle.sync_now_repo(
+                    Path(root), confirm=bool(data.get("confirm"))
+                ),
+                "sync_now": lambda: lifecycle.sync_now_repo(
+                    Path(root), confirm=bool(data.get("confirm"))
+                ),
                 "rebuild": lambda: lifecycle.rebuild_repo(Path(root)),
                 "remove": lambda: lifecycle.remove_repo(
                     Path(root), delete_store=bool(data.get("delete_store"))
@@ -351,7 +356,14 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         if path in ("/v1/sync", "/sync"):
-            _json(self, 200, ce.sync(data.get("path") or None))
+            _json(
+                self,
+                200,
+                ce.sync(
+                    data.get("path") or None,
+                    confirm=bool(data.get("confirm")),
+                ),
+            )
             return
 
         if path == "/v1/publish":

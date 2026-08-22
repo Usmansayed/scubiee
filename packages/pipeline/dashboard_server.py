@@ -591,12 +591,36 @@ def _expected_dashboard_url(url: str) -> bool:
     )
 
 
+def _dashboard_pid_from_health(health: dict[str, Any] | None) -> int | None:
+    if not health or health.get("dashboard_identity") != DASHBOARD_IDENTITY:
+        return None
+    pid = int(health.get("dashboard_pid") or -1)
+    if pid <= 0 or not _pid_alive(pid):
+        return None
+    return pid
+
+
 def _health_matches_process(health: dict[str, Any] | None, pid: int) -> bool:
-    return bool(
-        health
-        and health.get("dashboard_identity") == DASHBOARD_IDENTITY
-        and int(health.get("dashboard_pid") or -1) == pid
-    )
+    dash_pid = _dashboard_pid_from_health(health)
+    return dash_pid is not None and dash_pid == pid
+
+
+def _resolve_spawn_dashboard_pid(
+    health: dict[str, Any] | None,
+    spawn_pid: int,
+    *,
+    spawn_running: bool,
+) -> int | None:
+    """Return the serving dashboard pid after a background spawn."""
+    dash_pid = _dashboard_pid_from_health(health)
+    if dash_pid is None:
+        return None
+    if dash_pid == spawn_pid:
+        return dash_pid
+    # Windows CREATE_NEW_PROCESS_GROUP: Popen.pid is not the HTTP server process.
+    if os.name == "nt" and spawn_running:
+        return dash_pid
+    return None
 
 
 def _validated_dashboard_state(
@@ -722,20 +746,36 @@ def start_dashboard(*, open_browser: bool = True) -> dict[str, Any]:
             else:
                 kwargs["start_new_session"] = True
             process = subprocess.Popen(command, **kwargs)
-            deadline = time.monotonic() + 10.0
+            deadline = time.monotonic() + 30.0
             health = None
+            owner_pid: int | None = None
             while time.monotonic() < deadline:
                 if process.poll() is not None:
                     break
-                health = _fetch_health(url)
-                if _health_matches_process(health, process.pid):
+                health = _fetch_health(url, timeout=2.0)
+                owner_pid = _resolve_spawn_dashboard_pid(
+                    health,
+                    process.pid,
+                    spawn_running=True,
+                )
+                if owner_pid is not None:
                     break
-                time.sleep(0.05)
-            if not _health_matches_process(health, process.pid):
+                time.sleep(0.1)
+            if owner_pid is None:
                 if process.poll() is None:
                     process.terminate()
-                raise RuntimeError("dashboard server failed to become healthy")
-            state = DashboardLock().acquire(url, process.pid)
+                detail = ""
+                if process.poll() is not None:
+                    detail = f" (spawn exited {process.returncode})"
+                elif health:
+                    detail = (
+                        f" (health pid={health.get('dashboard_pid')}, "
+                        f"spawn pid={process.pid})"
+                    )
+                raise RuntimeError(
+                    "dashboard server failed to become healthy" + detail
+                )
+            state = DashboardLock().acquire(url, owner_pid)
             result = {
                 **state,
                 "ok": True,

@@ -1,6 +1,6 @@
 # Tech summary — how we do things
 
-As of **scubiee 0.2.18** (PyPI latest **0.2.17**). This replaces `docs/engineering/` (deleted).
+As of **scubiee 0.2.33**. This replaces `docs/engineering/` (deleted).
 
 ## System picture
 
@@ -42,9 +42,9 @@ Packages: `pipeline` (engine), `graphify` (tree-sitter + NetworkX), `conductor` 
 4. **Chunk** — slice at callable symbol lines (`enrich`).
 5. **Metadata headers** — module/file/imports prepended (`metadata`).
 6. **Compress `mix`** — ≤512 chars high-signal text (`CTX_COMPRESS=off` to skip). Locked default.
-7. **Embed** — CodeRankEmbed dim 768, L2-normalized.
-   - Apple Silicon: **MLX** (`mlx_mac.py`, `embedder.py` `_ensure_mlx` per thread).
-   - Else: FastEmbed + ORT (CUDA / DML / CoreML / CPU).
+7. **Embed** — CodeRankEmbed dim 768, L2-normalized. **FP16 weights only** on every OS/hardware path (no FP32 production option).
+   - Apple Silicon: **MLX FP16** (`mlx_mac.py`; `CTX_MLX_DTYPE` is forced to float16).
+   - Else: FastEmbed + ORT (CUDA / DML / CoreML / CPU) loading `onnx/model_fp16.onnx`.
 8. **TurboQuant** uint8 + **FAISS** IndexFlatIP.
 9. Persist under `~/.context-engine/projects/ce_<hash>/` (chunks, merkle, graph, caches).
 

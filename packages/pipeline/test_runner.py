@@ -38,6 +38,8 @@ _QUICK = (
     "tests/test_lifecycle_runtime.py",
     "tests/test_package_install_entry.py",
     "tests/test_progress_ui.py",
+    "tests/test_coderank_fp16.py",
+    "tests/test_env_guard.py",
 )
 _CORE_EXTRA = (
     "tests/test_project_id.py",

@@ -404,13 +404,9 @@ class Embedder:
 
         report = require_mlx_gpu()
         self._mlx_device_report = report
-        dtype = (os.environ.get("CTX_MLX_DTYPE") or "float16").strip().lower()
-        if dtype in {"fp16", "f16", "half"}:
-            dtype = "float16"
-        elif dtype in {"fp32", "f32"}:
-            dtype = "float32"
-        elif dtype not in {"float32", "float16"}:
-            raise RuntimeError(f"unsupported CTX_MLX_DTYPE={dtype!r}; use float16 or float32")
+        from pipeline.mlx_mac import resolve_embed_dtype
+
+        dtype = resolve_embed_dtype()
         print(
             f"[embed] loading MLX CodeRankEmbed dtype={dtype} device={report.get('default_device')}",
             file=sys.stderr,

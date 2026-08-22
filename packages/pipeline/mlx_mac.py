@@ -216,8 +216,25 @@ def _flag(name: str, default: bool) -> bool:
     return str(raw).strip().lower() in {"1", "true", "yes", "on"}
 
 
+def resolve_embed_dtype(_requested: str | None = None) -> str:
+    """Production embedding precision is FP16 on every OS and hardware path."""
+    raw = (os.environ.get("CTX_MLX_DTYPE") or _requested or "float16").strip().lower()
+    if raw in {"float32", "fp32", "f32"}:
+        # Once per process — avoid spam from multi-thread MLX loads.
+        flag = "_ctx_warned_fp32_dtype"
+        if not getattr(resolve_embed_dtype, flag, False):
+            setattr(resolve_embed_dtype, flag, True)
+            print(
+                "[embed] CTX_MLX_DTYPE=float32 ignored; production weights are FP16 only",
+                file=sys.stderr,
+                flush=True,
+            )
+    return "float16"
+
+
 def apply_mlx_production_defaults() -> None:
     """Fused kernels + output eval are on unless explicitly overridden."""
+    os.environ["CTX_MLX_DTYPE"] = "float16"
     os.environ.setdefault("CTX_MLX_FAST_ATTN", "1")
     os.environ.setdefault("CTX_MLX_FAST_LN", "1")
     os.environ.setdefault("CTX_MLX_EVAL", "output")
@@ -336,7 +353,10 @@ def ensure_mlx_weights(onnx_path: Path | None = None) -> Path:
 
         found = find_coderank_onnx(_fastembed_cache_root())
         if found is None:
-            raise FileNotFoundError("CodeRank ONNX not in FastEmbed cache")
+            raise FileNotFoundError(
+                "CodeRank FP16 ONNX (onnx/model_fp16.onnx) not in FastEmbed cache. "
+                "Run `ctx setup --repair` to download it."
+            )
         onnx_path = found
     return convert_coderank_onnx_to_mlx(onnx_path)
 
@@ -425,17 +445,13 @@ class CodeRankMLX:
         self.device_report = report
         apply_mlx_production_defaults()
         master = weights_path or ensure_mlx_weights()
-        dtype_env = (os.environ.get("CTX_MLX_DTYPE") or dtype or "float16").strip().lower()
-        if dtype_env in {"fp16", "f16", "half"}:
-            dtype_env = "float16"
-        if dtype_env not in {"float16", "float32"}:
-            dtype_env = "float16"
-        mlx_dtype = mx.float16 if dtype_env == "float16" else mx.float32
+        resolve_embed_dtype(dtype)
+        mlx_dtype = mx.float16
         self.dtype = mlx_dtype
         cache_mb = os.environ.get("CTX_MLX_CACHE_MB")
         if cache_mb is not None and cache_mb.strip() != "":
             apply_mlx_cache_limit(int(cache_mb) * 1024 * 1024)
-        load_path = ensure_mlx_fp16_weights() if dtype_env == "float16" else master
+        load_path = ensure_mlx_fp16_weights() if weights_path is None else master
         self.w: dict[str, Any] = {}
         raw = np.load(load_path, mmap_mode="r")
         try:
@@ -633,7 +649,10 @@ def load_coderank_tokenizer(onnx_dir: Path | None = None):
     if onnx_dir is None:
         found = find_coderank_onnx(_fastembed_cache_root())
         if found is None:
-            raise FileNotFoundError("CodeRank tokenizer not found")
+            raise FileNotFoundError(
+                "CodeRank FP16 ONNX (onnx/model_fp16.onnx) not in FastEmbed cache. "
+                "Run `ctx setup --repair` to download it."
+            )
         onnx_dir = found.parent.parent
     tok_path = onnx_dir / "tokenizer.json"
     tok = Tokenizer.from_file(str(tok_path))

@@ -13,9 +13,20 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT / "packages") not in sys.path:
     sys.path.insert(0, str(ROOT / "packages"))
 
-from pipeline.indexer import IndexDeferred, index_repo
-from pipeline.searcher import search_repo
-from pipeline.store import PipelineStore
+from pipeline.env_guard import format_install_identity, warn_extra_scubiee
+
+
+def _version_only(argv: list[str] | None) -> bool:
+    args = list(argv) if argv is not None else sys.argv[1:]
+    return args == ["--version"]
+
+
+class _IdentityVersion(argparse.Action):
+    def __init__(self, option_strings, dest, nargs=0, **kwargs):
+        super().__init__(option_strings, dest, nargs=nargs, **kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        parser.exit(message=format_install_identity() + "\n")
 
 
 def _progress_bar(notice: str):
@@ -26,9 +37,21 @@ def _progress_bar(notice: str):
     return bar
 
 
+def _fail_confirm(root: Path, exc: Exception) -> int:
+    payload = {
+        "ok": False,
+        "error": str(exc),
+        "needs_confirm": True,
+        "root": str(root),
+    }
+    if hasattr(exc, "n_files"):
+        payload["n_files"] = getattr(exc, "n_files")
+    print(json.dumps(payload, indent=2))
+    return 1
+
+
 def cmd_index(args: argparse.Namespace) -> int:
     root = Path(args.path).resolve()
-    bar = _progress_bar("This may take a few minutes. Indexing the repository.")
 
     roots = None
     if getattr(args, "roots", None):
@@ -36,9 +59,6 @@ def cmd_index(args: argparse.Namespace) -> int:
 
     fast = bool(getattr(args, "fast", False))
     if roots and not fast:
-        # --roots only narrows the fast path. Honouring it literally would mean a
-        # full index of every supported extension, which is the opposite of what
-        # someone restricting roots is asking for.
         print(
             "[index] --roots implies --fast; indexing .py under "
             f"{', '.join(roots)} only",
@@ -47,6 +67,20 @@ def cmd_index(args: argparse.Namespace) -> int:
         fast = True
     args.fast = fast
 
+    from pipeline.incremental import IndexConfirmRequired, preflight_index_scope
+
+    try:
+        preflight_index_scope(
+            root,
+            fast=fast,
+            fast_roots=roots,
+            confirm=bool(getattr(args, "confirm", False)),
+            force=bool(getattr(args, "force", False)),
+        )
+    except IndexConfirmRequired as exc:
+        return _fail_confirm(root, exc)
+
+    bar = _progress_bar("This may take a few minutes. Indexing the repository.")
     # CLI index always registers the project (shared pipeline)
     from pipeline.registration import register_project
 
@@ -62,6 +96,8 @@ def cmd_index(args: argparse.Namespace) -> int:
         return 1
 
     try:
+        from pipeline.indexer import IndexConfirmRequired, IndexDeferred, index_repo
+
         stats = index_repo(
             root,
             force=args.force,
@@ -70,7 +106,12 @@ def cmd_index(args: argparse.Namespace) -> int:
             fast=fast,
             fast_roots=roots,
             progress=bar,
+            confirm=bool(getattr(args, "confirm", False)),
         )
+    except IndexConfirmRequired as exc:
+        bar.fail(str(exc))
+        print(json.dumps({"ok": False, "error": str(exc), "needs_confirm": True}, indent=2))
+        return 1
     except IndexDeferred as exc:
         bar.fail(str(exc.reason))
         print(
@@ -155,6 +196,63 @@ def cmd_preflight(args: argparse.Namespace) -> int:
     return 0 if report.get("ok") else 1
 
 
+def cmd_stop(args: argparse.Namespace) -> int:
+    """Stop daemon, watchdog, and uv-tool MCP processes (unlocks files on Windows)."""
+    from pipeline.daemon import stop_daemon
+    from pipeline.lifecycle_runtime import DESIRED_STANDBY, set_desired_mode
+    from pipeline.process_control import stop_all_context_engine_processes
+    from pipeline.watchdog import stop_watchdog
+
+    set_desired_mode(DESIRED_STANDBY)
+    stop_all = stop_all_context_engine_processes()
+    out = {
+        "ok": bool(stop_all.get("ok")),
+        "watchdog": stop_watchdog(),
+        "engine": stop_daemon(),
+        "processes": stop_all,
+        "next": (
+            "To remove scubiee entirely: scubiee wipe --all --yes "
+            "(stops processes, wipes state, uninstalls the uv tool). "
+            "Reload Cursor if MCP was connected."
+        ),
+    }
+    if stop_all.get("remaining"):
+        out["ok"] = False
+        out["hint"] = (
+            "Some processes still hold files (usually Cursor MCP). "
+            "Quit Cursor completely, then run: scubiee wipe --all --yes"
+        )
+    print(json.dumps(out, indent=2, default=str))
+    return 0 if out.get("ok") else 1
+
+
+def cmd_wipe(args: argparse.Namespace) -> int:
+    """Remove CE state for this repo, or everything with --all --yes."""
+    from pipeline.wipe import wipe
+
+    yes = bool(getattr(args, "yes", False) or getattr(args, "confirm", False))
+    keep_package = bool(getattr(args, "keep_package", False))
+    package_arg = getattr(args, "package", False)
+    if keep_package:
+        package = False
+    elif package_arg:
+        package = True
+    else:
+        package = None
+
+    out = wipe(
+        all=bool(getattr(args, "all", False)),
+        yes=yes,
+        models=not bool(getattr(args, "keep_models", False)),
+        package=package,
+        path=getattr(args, "path", None) or ".",
+    )
+    print(json.dumps(out, indent=2, default=str))
+    if out.get("error") == "confirm_required":
+        return 2
+    return 0 if out.get("ok") else 1
+
+
 def cmd_doctor(args: argparse.Namespace) -> int:
     from pipeline.doctor import (
         apply_safe_repairs,
@@ -226,6 +324,7 @@ def cmd_repo_lifecycle(args: argparse.Namespace) -> int:
                 root,
                 index=not bool(args.no_index),
                 always_allow=not bool(args.allow_once),
+                confirm=bool(getattr(args, "confirm", False)),
             )
         elif action == "activate":
             out = activate_repo(root)
@@ -234,7 +333,9 @@ def cmd_repo_lifecycle(args: argparse.Namespace) -> int:
         elif action == "resume":
             out = resume_repo(root)
         elif action == "sync-now":
-            out = sync_now_repo(root)
+            out = sync_now_repo(
+                root, confirm=bool(getattr(args, "confirm", False))
+            )
         elif action == "rebuild":
             out = rebuild_repo(root)
         elif action == "remove":
@@ -312,6 +413,8 @@ def cmd_search(args: argparse.Namespace) -> int:
         return 1
     t0 = time.perf_counter()
     try:
+        from pipeline.searcher import search_repo
+
         hits = search_repo(
             root,
             query,
@@ -361,6 +464,8 @@ def cmd_search(args: argparse.Namespace) -> int:
 
 
 def cmd_status(args: argparse.Namespace) -> int:
+    from pipeline.store import PipelineStore
+
     root = Path(args.path).resolve()
     store = PipelineStore(root)
     meta = store.load_meta()
@@ -412,6 +517,7 @@ def cmd_sync(args: argparse.Namespace) -> int:
     from pipeline.incremental import incremental_sync
 
     root = Path(args.path).resolve()
+    confirm = bool(getattr(args, "confirm", False))
     out: dict = {}
     used_daemon = False
     try:
@@ -419,13 +525,13 @@ def cmd_sync(args: argparse.Namespace) -> int:
 
         client = EngineClient(workspace_path=root)
         if client.healthy():
-            out = client.sync(str(root))
+            out = client.sync(str(root), confirm=confirm)
             used_daemon = True
     except Exception as exc:  # noqa: BLE001
         print(f"[sync] daemon path unavailable ({exc}); local sync", file=sys.stderr)
 
     if not used_daemon:
-        result = incremental_sync(root)
+        result = incremental_sync(root, confirm=confirm)
         out = result.to_dict()
         if result.refreshed and result.error is None:
             out["published"] = _notify_daemon_publish(root, out)
@@ -606,11 +712,14 @@ def _configure_machine(
 
     existing = load_accel()
     if existing is not None and not bool(getattr(args, "repair", False)):
-        if progress is not None:
-            progress.set(92, "Using saved hardware profile")
-        if report:
-            print(json.dumps(existing.__dict__, indent=2, default=str))
-        return 0
+        from pipeline.accel import saved_accel_needs_reconfigure
+
+        if not saved_accel_needs_reconfigure(existing):
+            if progress is not None:
+                progress.set(92, "Using saved hardware profile")
+            if report:
+                print(json.dumps(existing.__dict__, indent=2, default=str))
+            return 0
 
     prof = configure(
         force_profile=getattr(args, "profile", None),
@@ -643,16 +752,30 @@ def cmd_init(args: argparse.Namespace) -> int:
         return 1
 
     root = Path(getattr(args, "path", ".") or ".").resolve()
-    bar = _progress_bar("This may take a few minutes. Indexing the repository.")
+    roots = None
+    if getattr(args, "roots", None):
+        roots = [r.strip() for r in str(args.roots).split(",") if r.strip()]
+    fast = bool(getattr(args, "fast", False))
+    if roots and not fast:
+        fast = True
+
+    if not bool(getattr(args, "no_index", False)):
+        from pipeline.incremental import IndexConfirmRequired, preflight_index_scope
+
+        try:
+            preflight_index_scope(
+                root,
+                fast=fast,
+                fast_roots=roots,
+                confirm=bool(getattr(args, "confirm", False)),
+            )
+        except IndexConfirmRequired as exc:
+            return _fail_confirm(root, exc)
+
+    bar = _progress_bar("Initializing repository…")
     from pipeline.repo_lifecycle import initialize_repo
 
     try:
-        roots = None
-        if getattr(args, "roots", None):
-            roots = [r.strip() for r in str(args.roots).split(",") if r.strip()]
-        fast = bool(getattr(args, "fast", False))
-        if roots and not fast:
-            fast = True
         out = initialize_repo(
             root,
             index=not bool(getattr(args, "no_index", False)),
@@ -660,7 +783,11 @@ def cmd_init(args: argparse.Namespace) -> int:
             progress=bar,
             fast=fast,
             fast_roots=roots,
+            confirm=bool(getattr(args, "confirm", False)),
         )
+    except IndexConfirmRequired as exc:
+        bar.fail(str(exc))
+        return _fail_confirm(root, exc)
     except Exception as exc:  # noqa: BLE001
         bar.fail(str(exc))
         raise
@@ -682,16 +809,38 @@ def cmd_init(args: argparse.Namespace) -> int:
 def cmd_setup(args: argparse.Namespace) -> int:
     """One user-facing install: package config + local service + Cursor MCP."""
     import os
+    import warnings
 
+    from pipeline.accel import coderank_fp16_onnx_ready, format_setup_error
     from pipeline.progress_ui import InstallProgress
 
     if getattr(args, "status", False):
         return _configure_machine(args)
 
+    os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+    os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+    os.environ.setdefault("TQDM_DISABLE", "1")
+    warnings.filterwarnings(
+        "ignore",
+        message=".*huggingface_hub.*cache-system uses symlinks.*",
+        category=UserWarning,
+    )
+    warnings.filterwarnings(
+        "ignore",
+        message=".*Cannot enable progress bars.*HF_HUB_DISABLE_PROGRESS_BARS.*",
+        category=UserWarning,
+    )
+
     bar = InstallProgress()
+    warn_extra_scubiee(bar.stream)
+    identity = format_install_identity().splitlines()
+    if len(identity) >= 2:
+        bar.stream.write(identity[1] + "\n")
+        bar.stream.flush()
     bar.start(
         "This may take a few minutes. Downloading and installing the Scubiee engine."
     )
+    reused_runtime = False
     try:
         bar.set(4, "Checking engine modules")
         try:
@@ -701,12 +850,36 @@ def cmd_setup(args: argparse.Namespace) -> int:
             bar.fail(f"graphify missing/broken: {exc}")
             return 1
 
+        from pipeline.install_health import ensure_faiss_importable
+
+        faiss_err = ensure_faiss_importable(repair=True)
+        if faiss_err:
+            bar.fail(faiss_err)
+            return 1
+
         bar.set(10, "Detecting hardware")
         if not args.skip_accel:
+            from pipeline.accel import load_accel, profile_packages_satisfied, setup_finish_message
+
+            prior = load_accel()
             rc = _configure_machine(args, report=False, progress=bar)
             if rc != 0:
                 bar.fail("Hardware setup failed")
                 return rc
+            after = load_accel()
+            if (
+                prior is not None
+                and after is not None
+                and profile_packages_satisfied(after)
+                and coderank_fp16_onnx_ready()
+            ):
+                reused_runtime = True
+                bar.stream.write(
+                    f"[setup] Reusing existing {after.profile} runtime + model cache "
+                    f"(accel.json present). Use `scubiee wipe --all --yes` then setup "
+                    f"again for a full re-download.\n"
+                )
+                bar.stream.flush()
         else:
             try:
                 from pipeline.hardware import ensure_hardware_snapshot
@@ -749,10 +922,10 @@ def cmd_setup(args: argparse.Namespace) -> int:
                 )
             )
 
-        bar.finish("Ready. Next: ctx init <repo>")
+        bar.finish(setup_finish_message(reused_runtime=reused_runtime))
         return 0
     except Exception as exc:  # noqa: BLE001
-        bar.fail(str(exc))
+        bar.fail(format_setup_error(exc))
         return 1
 
 
@@ -795,17 +968,22 @@ def _write_mcp_config(repo: Path, host: str, port: int) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    try:
-        from importlib.metadata import version as _pkg_version
+    if _version_only(argv):
+        print(format_install_identity())
+        return 0
 
-        _ver = _pkg_version("scubiee")
-    except Exception:  # noqa: BLE001
-        _ver = "0.2.7"
+    from pipeline.install_health import ensure_faiss_importable
+
+    faiss_err = ensure_faiss_importable(repair=True)
+    if faiss_err:
+        print(f"[scubiee] {faiss_err}", file=sys.stderr)
+        return 1
+
     parser = argparse.ArgumentParser(
         prog="pipeline",
         description="Context Engine — Merkle + Graphify + TurboQuant + FAISS + D_rerank",
     )
-    parser.add_argument("--version", action="version", version=f"scubiee {_ver}")
+    parser.add_argument("--version", action=_IdentityVersion)
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p_index = sub.add_parser("index", help="Index a repository")
@@ -831,6 +1009,11 @@ def main(argv: list[str] | None = None) -> int:
         "--roots",
         default=None,
         help="Comma-separated fast roots (default: src,lib,app,packages,testdata,...)",
+    )
+    p_index.add_argument(
+        "--confirm",
+        action="store_true",
+        help="Proceed when indexing more than CTX_INCREMENTAL_MAX_TOUCH files (default 400)",
     )
     p_index.set_defaults(func=cmd_index)
 
@@ -920,6 +1103,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Do not persist always-allow registration consent",
     )
+    p_initialize.add_argument(
+        "--confirm",
+        action="store_true",
+        help="Allow indexing when more than 400 files changed (safety opt-in)",
+    )
     p_initialize.set_defaults(func=cmd_repo_lifecycle, command="initialize")
 
     p_activate = sub.add_parser("activate", help="Activate a managed repository")
@@ -937,6 +1125,11 @@ def main(argv: list[str] | None = None) -> int:
 
     p_sync_now = sub.add_parser("sync-now", help="Reconcile repository freshness now")
     p_sync_now.add_argument("path", nargs="?", default=".")
+    p_sync_now.add_argument(
+        "--confirm",
+        action="store_true",
+        help="Allow indexing when more than 400 files changed (safety opt-in)",
+    )
     p_sync_now.set_defaults(func=cmd_repo_lifecycle, command="sync-now")
 
     p_rebuild = sub.add_parser("rebuild", help="Force a full repository index rebuild")
@@ -1004,6 +1197,11 @@ def main(argv: list[str] | None = None) -> int:
 
     p_sync = sub.add_parser("sync", help="Incremental re-embed files changed since last index")
     p_sync.add_argument("path", nargs="?", default=".")
+    p_sync.add_argument(
+        "--confirm",
+        action="store_true",
+        help="Allow indexing when more than 400 files changed (safety opt-in)",
+    )
     p_sync.set_defaults(func=cmd_sync)
 
     p_serve = sub.add_parser("serve", help="Alias: run Context Engine HTTP daemon (foreground)")
@@ -1086,6 +1284,11 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Comma-separated fast roots (implies --fast)",
     )
+    p_init.add_argument(
+        "--confirm",
+        action="store_true",
+        help="Allow indexing when more than 400 files changed (safety opt-in)",
+    )
     p_init.set_defaults(func=cmd_init)
 
     p_setup = sub.add_parser(
@@ -1124,6 +1327,49 @@ def main(argv: list[str] | None = None) -> int:
     p_setup.add_argument("--wait", type=float, default=120.0)
     p_setup.add_argument("--status", action="store_true", help="Print saved preferred profile")
     p_setup.set_defaults(func=cmd_setup)
+
+    p_wipe = sub.add_parser(
+        "wipe",
+        help="Remove CE state (repo) or full uninstall (--all --yes)",
+    )
+    p_wipe.add_argument("path", nargs="?", default=".", help="Repo path (default: cwd)")
+    p_wipe.add_argument(
+        "--all",
+        action="store_true",
+        help="Wipe machine state: daemon, ~/.context-engine, MCP, rules, models, scubiee tool",
+    )
+    p_wipe.add_argument(
+        "--yes",
+        action="store_true",
+        help="Required with --all — confirm destructive wipe",
+    )
+    p_wipe.add_argument(
+        "--confirm",
+        action="store_true",
+        help="Alias for --yes (same as --yes)",
+    )
+    p_wipe.add_argument(
+        "--keep-models",
+        action="store_true",
+        help="With --all: keep CodeRank/FastEmbed model caches",
+    )
+    p_wipe.add_argument(
+        "--keep-package",
+        action="store_true",
+        help="With --all: keep the scubiee uv tool installed (default: uninstall)",
+    )
+    p_wipe.add_argument(
+        "--package",
+        action="store_true",
+        help="With --all: uninstall scubiee (default when --all --yes)",
+    )
+    p_wipe.set_defaults(func=cmd_wipe)
+
+    p_stop = sub.add_parser(
+        "stop",
+        help="Stop engine, watchdog, and MCP processes (run before wipe/uninstall on Windows)",
+    )
+    p_stop.set_defaults(func=cmd_stop)
 
     args = parser.parse_args(argv)
     return int(args.func(args))

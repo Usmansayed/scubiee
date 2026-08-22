@@ -163,6 +163,31 @@ Credential script quoting failed; twine waited for a password. Killed; retry upl
 
 Wrote unique new file + edit on `memory_budget.py`, waited 5s. `grep`/`glob` saw tokens immediately (live disk). `map` rank 1 on both unique symbols. Keeper incremental ~5.2s, 10 chunks upserted. Probe files removed. Hammering `map`/`locate` while measuring can delay sync (`locate_streak`) — poll grep/search, not locate, for timing tests.
 
+### FP16-only embed weights (0.2.18, all OS/hardware)
+
+**Decision:** Production CodeRank is **FP16 only** (Windows DirectML eval: FP16 ≈ FP32 quality).  
+**Risks of a half-switch:** FastEmbed “already registered” kept `onnx/model.onnx`; CoreML cache install required `model.onnx` and skipped FP16-only caches; `accel.json` / `CTX_MLX_DTYPE=float32` could leave operators thinking FP32 was active; MLX convert looked for FP32 ONNX.  
+**Fix:** `CODERANK_ONNX_FILE=onnx/model_fp16.onnx`; `register_coderank` patches stale in-process FP32 entries; `find_coderank_onnx` / CoreML install accept FP16 caches; `AccelProfile.onnx_file` forced on load/save; MLX dtype forced to float16 with a one-time stderr warning.  
+**Files:** `accel.py`, `coreml_mac.py`, `mlx_mac.py`, `embedder.py`, `memory_budget.py`, `doctor.py`, `SETUP.md`, `tests/test_coderank_fp16.py`.  
+**Symptom:** `pip uninstall scubiee` said not installed while `scubiee --version` still ran. Setup then failed with `onnxruntime has no attribute SessionOptions`.  
+**Cause:** Two Pythons on PATH (Miniconda vs Python.org 3.12). `pip` hit conda; `scubiee.exe` was the other env. Separately, pip uninstall of conflicting ORT wheels left `site-packages/onnxruntime/capi` as a namespace package.  
+**Fix:** `--version` / setup print this Python + uninstall line; warn if another `scubiee.exe` is on PATH. After ORT uninstall, delete leftover `onnxruntime/` tree before reinstalling.  
+**Files:** `env_guard.py`, `accel.py`, `__main__.py`, `tests/test_env_guard.py`.
+
+### uv tool uninstall Access denied (Windows MCP locks)
+
+**Symptom:** `uv tool uninstall scubiee` → `Access is denied` on `...\Scripts`; partial delete → `failed to locate pyvenv.cfg`.  
+**Cause:** Cursor MCP keeps `python.exe` / `ctx-mcp` open under `%APPDATA%\uv\tools\scubiee`. `uv tool uninstall` deletes the whole venv including the interpreter; pip uninstall only removes the package.  
+**Fix:** Document one flow — `scubiee stop` (daemon + watchdog + uv-tool processes) → `scubiee wipe --all --yes --package` → reload Cursor → `uv tool uninstall` if needed. Emergency scripts: `scripts/repair-uv-scubiee.ps1`, `scripts/uninstall-uv-scubiee.ps1` when CLI broken.  
+**Files:** `process_control.py`, `wipe.py`, `__main__.py` (`stop`), `docs/web-info/uninstall-windows.md`.
+
+### `scubiee setup` fails `No module named 'fastembed'` but `--repair` works
+
+**Symptom:** Fresh `uv tool install` + `scubiee setup` dies at ~10% with fastembed missing; `scubiee setup --repair` succeeds and reuses DML cache.  
+**Cause:** On Windows, fastembed is **not** a PyPI core dep (installed by setup). Old `accel.json` + model cache on disk made setup call `coderank_fp16_onnx_ready()` → `fastembed_cache_root()` **before** fastembed was installed. `--repair` skips that early path and installs packages first.  
+**Fix:** `default_fastembed_cache_root()` without importing fastembed; `saved_accel_needs_reconfigure` / `profile_packages_satisfied` require fastembed installed.  
+**Files:** `accel.py`, `tests/test_coderank_fp16.py`.
+
 ---
 
 ## Process mistakes (this Windows session)

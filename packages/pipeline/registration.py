@@ -150,6 +150,7 @@ def register_project(
     index: bool | None = None,
     fast: bool = False,
     force_reindex: bool = False,
+    confirm: bool = False,
 ) -> RegistrationResult:
     """Single registration pipeline used by automatic, MCP, and CLI triggers.
 
@@ -176,9 +177,22 @@ def register_project(
         indexed = False
         chunks = 0
         if do_index and (force_reindex or not index_is_usable(ref.store_dir)):
+            from pipeline.incremental import preflight_index_scope
+
+            preflight_index_scope(
+                root,
+                fast=fast,
+                confirm=confirm or force_reindex,
+                force=force_reindex,
+            )
             from pipeline.indexer import index_repo
 
-            stats = index_repo(root, force=force_reindex, fast=fast)
+            stats = index_repo(
+                root,
+                force=force_reindex,
+                fast=fast,
+                confirm=confirm or force_reindex,
+            )
             indexed = True
             chunks = int(stats.chunks)
         elif index_is_usable(ref.store_dir):

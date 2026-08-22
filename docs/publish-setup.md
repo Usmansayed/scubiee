@@ -1,6 +1,6 @@
 # Publishing scubiee (PyPI + npm)
 
-`pip install scubiee` only installs the **latest version on PyPI**. Tags on GitHub do not update PyPI until a release is uploaded.
+End users should install with **`uv tool install scubiee`** (recommended) or `pip install scubiee`. PyPI only updates when a release is uploaded — GitHub tags alone are not enough.
 
 ## One-time GitHub secrets
 
@@ -8,7 +8,7 @@ In **GitHub → repo → Settings → Secrets and variables → Actions**, add:
 
 | Secret | Used for |
 |--------|----------|
-| `PYPI_API_TOKEN` | `pip install scubiee` ([create at pypi.org](https://pypi.org/manage/account/token/)) |
+| `PYPI_API_TOKEN` | `uv tool install scubiee` / `pip install scubiee` ([create at pypi.org](https://pypi.org/manage/account/token/)) |
 | `NPM_TOKEN` | `npm install -g scubiee` ([create at npmjs.com](https://www.npmjs.com/settings/~youruser/tokens)) |
 
 ## Release (automated)
@@ -36,7 +36,11 @@ cd npm && npm login && npm publish --access public
 ## Verify
 
 ```bash
+uv tool install scubiee   # recommended
+scubiee setup --status
+
+# or pip:
 pip index versions scubiee
 pip install -U scubiee
-ctx --version
+scubiee setup --status
 ```

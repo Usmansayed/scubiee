@@ -3,7 +3,7 @@
 Profiles (mutually exclusive ORT wheels, plus Mac MLX):
   - cuda    → onnxruntime-gpu
   - dml     → onnxruntime-directml  (Windows AMD/Intel/NVIDIA without CUDA stack)
-  - mlx     → Apple Silicon Metal (FP16 CodeRank; default on Darwin arm64)
+  - mlx     → Apple Silicon Metal (FP16 CodeRank only; default on Darwin arm64)
   - coreml  → onnxruntime  (Intel Mac / explicit --profile coreml)
   - cpu     → onnxruntime
 
@@ -29,6 +29,22 @@ from typing import Any, Callable
 
 CODERANK_MODEL = "nomic-ai/CodeRankEmbed"
 CODERANK_HF_ONNX = "jamie8johnson/CodeRankEmbed-onnx"
+# Production weights: FP16 ONNX only (Windows/Linux FastEmbed + Mac convert source).
+CODERANK_ONNX_FILE = "onnx/model_fp16.onnx"
+# HF hosts FP32 source weights under this name; setup converts to model_fp16.onnx locally.
+CODERANK_FP32_ONNX_FILE = "onnx/model.onnx"
+CODERANK_FP16_MIN_BYTES = 180_000_000
+# Installed alongside fastembed (--no-deps) so CPU onnxruntime is not pulled back in.
+FASTEMBED_RUNTIME_DEPS = [
+    "huggingface_hub>=0.20",
+    "loguru>=0.7.2",
+    "mmh3>=4.1.0",
+    "onnx>=1.16",
+    "Pillow>=10.0",
+    "py-rust-stemmers>=0.1.0",
+    "tokenizers>=0.15",
+    "tqdm>=4.66",
+]
 TARGET_TPS = float(os.environ.get("CTX_TARGET_TPS", "10"))
 ACCEL_PATH = Path.home() / ".context-engine" / "accel.json"
 # Install-time batch candidates. Prefer 16 unless 20 clearly wins ROI.
@@ -51,6 +67,7 @@ class AccelProfile:
     backend: str = "fastembed"
     model: str = CODERANK_MODEL
     model_source: str = CODERANK_HF_ONNX
+    onnx_file: str = CODERANK_ONNX_FILE
     texts_per_sec: float | None = None
     meets_target: bool | None = None
     reason: str = ""
@@ -89,7 +106,13 @@ def load_accel(path: Path | None = None) -> AccelProfile | None:
         return None
     try:
         raw = json.loads(p.read_text(encoding="utf-8"))
-        return AccelProfile(**{k: v for k, v in raw.items() if k in AccelProfile.__dataclass_fields__})
+        profile = AccelProfile(
+            **{k: v for k, v in raw.items() if k in AccelProfile.__dataclass_fields__}
+        )
+        # Force FP16 ONNX even if an older accel.json still lists model.onnx.
+        if profile.onnx_file != CODERANK_ONNX_FILE:
+            profile.onnx_file = CODERANK_ONNX_FILE
+        return profile
     except Exception:  # noqa: BLE001
         return None
 
@@ -99,6 +122,7 @@ def save_accel(profile: AccelProfile, path: Path | None = None) -> Path:
     p.parent.mkdir(parents=True, exist_ok=True)
     from datetime import datetime, timezone
 
+    profile.onnx_file = CODERANK_ONNX_FILE
     profile.installed_at = datetime.now(timezone.utc).isoformat()
     p.write_text(json.dumps(asdict(profile), indent=2) + "\n", encoding="utf-8")
     return p
@@ -394,16 +418,27 @@ def pip_install(
     force_reinstall: bool = False,
     no_deps: bool = False,
 ) -> None:
-    cmd = [
-        sys.executable,
-        "-m",
-        "pip",
-        "install",
-        "--progress-bar",
-        "off",
-        "--disable-pip-version-check",
-        "--no-input",
-    ]
+    uv = shutil.which("uv")
+    if uv:
+        cmd = [
+            uv,
+            "pip",
+            "install",
+            "--python",
+            sys.executable,
+            "--quiet",
+        ]
+    else:
+        cmd = [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--progress-bar",
+            "off",
+            "--disable-pip-version-check",
+            "--no-input",
+        ]
     if upgrade:
         cmd.append("-U")
     if force_reinstall:
@@ -429,6 +464,26 @@ def pip_install(
         progress.pulse(f"{phase} ({elapsed}s)", until=until)
 
     rc, out = _run_pip_captured(cmd, env, on_tick=on_tick)
+    if rc and uv:
+        # uv can fail on Windows when DLLs are locked (e.g. indexing still running).
+        cmd = [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--progress-bar",
+            "off",
+            "--disable-pip-version-check",
+            "--no-input",
+        ]
+        if upgrade:
+            cmd.append("-U")
+        if force_reinstall:
+            cmd.append("--force-reinstall")
+        if no_deps:
+            cmd.append("--no-deps")
+        cmd.extend(pkgs)
+        rc, out = _run_pip_captured(cmd, env, on_tick=on_tick)
     if rc:
         last = _pip_fail_detail(out, rc)
         if progress is not None:
@@ -441,7 +496,11 @@ def pip_install(
 
 
 def pip_uninstall(pkgs: list[str], *, progress: Any | None = None) -> None:
-    cmd = [sys.executable, "-m", "pip", "uninstall", "-y", *pkgs]
+    uv = shutil.which("uv")
+    if uv:
+        cmd = [uv, "pip", "uninstall", "--python", sys.executable, "-y", *pkgs]
+    else:
+        cmd = [sys.executable, "-m", "pip", "uninstall", "-y", *pkgs]
     if progress is None:
         print(f"[accel] {' '.join(cmd)}", file=sys.stderr, flush=True)
     subprocess.run(
@@ -458,9 +517,61 @@ def _purge_ort_modules() -> None:
             del sys.modules[name]
 
 
+def _site_package_roots() -> list[Path]:
+    roots: list[Path] = []
+    try:
+        import site
+
+        for item in list(site.getsitepackages() or []) + [site.getusersitepackages()]:
+            if item:
+                roots.append(Path(item))
+    except Exception:  # noqa: BLE001
+        pass
+    for item in sys.path:
+        if item and str(item).replace("\\", "/").rstrip("/").endswith("site-packages"):
+            roots.append(Path(item))
+    unique: list[Path] = []
+    seen: set[str] = set()
+    for root in roots:
+        key = str(root)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(root)
+    return unique
+
+
+def remove_stale_ort_tree() -> list[str]:
+    """Delete leftover onnxruntime dirs after pip uninstall of conflicting wheels.
+
+    Windows often leaves a namespace folder (``capi/`` without ``__init__.py``)
+    so ``import onnxruntime`` succeeds but ``SessionOptions`` is missing.
+    """
+    _purge_ort_modules()
+    removed: list[str] = []
+    for root in _site_package_roots():
+        leftover = root / "onnxruntime"
+        if leftover.exists():
+            shutil.rmtree(leftover, ignore_errors=True)
+            if not leftover.exists():
+                removed.append(str(leftover))
+    return removed
+
+
+def _ort_session_ok() -> bool:
+    _purge_ort_modules()
+    try:
+        import onnxruntime as ort  # type: ignore
+    except Exception:  # noqa: BLE001
+        return False
+    return hasattr(ort, "SessionOptions") and hasattr(ort, "get_available_providers")
+
+
 def _ort_profile_ready(profile: str) -> bool:
     if profile == "mlx":
         return True
+    if not _ort_session_ok():
+        return False
     providers = ort_available_providers()
     want = {
         "cuda": "CUDAExecutionProvider",
@@ -482,22 +593,35 @@ def _install_ort_wheel(profile: str, progress: Any | None = None) -> None:
         return
     all_ort = ["onnxruntime", "onnxruntime-gpu", "onnxruntime-directml"]
     pip_uninstall(all_ort, progress=progress)
-    _purge_ort_modules()
-    pip_install(
-        ort_packages_for(profile),
-        progress=progress,
-        start_pct=32,
-        end_pct=54,
-        phase="Installing GPU/CPU engine",
-        force_reinstall=True,
-    )
+    remove_stale_ort_tree()
+    spec = ort_packages_for(profile)[0]
+    try:
+        pip_install(
+            [spec],
+            progress=progress,
+            start_pct=32,
+            end_pct=54,
+            phase="Installing GPU/CPU engine",
+            force_reinstall=False,
+        )
+    except subprocess.CalledProcessError:
+        _purge_ort_modules()
+        pip_install(
+            [spec],
+            progress=progress,
+            start_pct=32,
+            end_pct=54,
+            phase="Installing GPU/CPU engine",
+            force_reinstall=True,
+        )
     _purge_ort_modules()
     if _ort_profile_ready(profile):
         if progress is not None:
             progress.set(55, "GPU/CPU engine ready")
         return
+    remove_stale_ort_tree()
     pip_install(
-        ort_packages_for(profile),
+        [spec],
         progress=progress,
         start_pct=54,
         end_pct=55,
@@ -506,10 +630,22 @@ def _install_ort_wheel(profile: str, progress: Any | None = None) -> None:
         upgrade=True,
     )
     _purge_ort_modules()
+    if not _ort_session_ok():
+        raise RuntimeError(
+            "onnxruntime imported without SessionOptions (broken leftover install). "
+            "Close other Python processes and re-run `scubiee setup --repair`."
+        )
+    if profile in {"cuda", "dml", "coreml"} and not _ort_profile_ready(profile):
+        have = ort_available_providers()
+        raise RuntimeError(
+            f"{ort_packages_for(profile)[0]} is installed but "
+            f"{profile} EP is missing (providers={have}). "
+            "Close other Python/ctx processes and re-run `scubiee setup --repair`."
+        )
 
 
 def _align_profile_to_ort(profile: AccelProfile, progress: Any | None = None) -> None:
-    """Do not warm FastEmbed on an EP this wheel does not provide."""
+    """Ensure the saved profile matches an EP this ORT wheel exposes."""
     if profile.profile in {"mlx", "cpu"}:
         return
     if _ort_profile_ready(profile.profile):
@@ -517,46 +653,58 @@ def _align_profile_to_ort(profile: AccelProfile, progress: Any | None = None) ->
     have = ort_available_providers()
     msg = (
         f"{profile.provider} is not in this onnxruntime wheel "
-        f"(providers={have}). Using CPU. Close other Python/ctx processes "
-        f"and re-run `ctx setup --repair` to retry GPU "
-        f"({ort_packages_for(profile.profile)[0]})."
+        f"(providers={have}). "
+        f"Re-run `scubiee setup --repair` to install "
+        f"{ort_packages_for(profile.profile)[0]}."
     )
+    if profile.profile in {"dml", "cuda"}:
+        raise RuntimeError(msg)
     if progress is not None:
         progress.set(55, "GPU wheel missing — using CPU")
     else:
-        print(f"[accel] {msg}", file=sys.stderr, flush=True)
+        print(f"[accel] {msg} — CPU fallback", file=sys.stderr, flush=True)
     profile.profile = "cpu"
     profile.provider = "CPUExecutionProvider"
     profile.reason = msg
 
 
 def install_profile_packages(profile: str, progress: Any | None = None) -> None:
-    """Install FastEmbed + matching ORT wheel for profile (MLX on Apple Silicon)."""
-    extras = ["fastembed>=0.4", "huggingface_hub>=0.20"]
-    if profile in {"coreml", "mlx"}:
-        extras.append("onnx>=1.16")
+    """Install matching ORT wheel first, then FastEmbed (avoids CPU ORT shadowing DML)."""
+    if profile != "mlx":
+        _install_ort_wheel(profile, progress=progress)
+    runtime = list(FASTEMBED_RUNTIME_DEPS)
     if profile == "mlx":
-        extras.append("mlx>=0.22")
-    needed = [spec for spec in extras if not _requirement_satisfied(spec)]
-    if needed:
+        runtime.append("mlx>=0.22")
+    needed_runtime = [spec for spec in runtime if not _requirement_satisfied(spec)]
+    if needed_runtime:
         pip_install(
-            needed,
+            needed_runtime,
             progress=progress,
             start_pct=18,
-            end_pct=32,
+            end_pct=28,
             phase="Installing embedding runtime",
-            # FastEmbed pulls CPU onnxruntime; GPU/DML wheel is installed next.
-            no_deps=any(s.startswith("fastembed") for s in needed),
+        )
+    if not _requirement_satisfied("fastembed>=0.4"):
+        pip_install(
+            ["fastembed>=0.4"],
+            progress=progress,
+            start_pct=28,
+            end_pct=32,
+            phase="Installing FastEmbed",
+            no_deps=True,
         )
     elif progress is not None:
         progress.set(32, "Embedding runtime already installed")
-    _install_ort_wheel(profile, progress=progress)
+    if profile == "mlx":
+        _install_ort_wheel(profile, progress=progress)
 
 
 def ort_available_providers() -> list[str]:
     try:
         import onnxruntime as ort  # type: ignore
 
+        if not hasattr(ort, "SessionOptions") or not hasattr(ort, "get_available_providers"):
+            return []
         return list(ort.get_available_providers())
     except Exception:  # noqa: BLE001
         return []
@@ -564,6 +712,8 @@ def ort_available_providers() -> list[str]:
 
 def profile_packages_satisfied(profile: AccelProfile) -> bool:
     """True if saved accel matches target and the runtime already exposes it."""
+    if not _requirement_satisfied("fastembed>=0.4"):
+        return False
     saved = load_accel()
     if saved is None or saved.profile != profile.profile:
         return False
@@ -579,6 +729,49 @@ def profile_packages_satisfied(profile: AccelProfile) -> bool:
     if profile.profile == "cpu" and providers:
         return True
     return False
+
+
+def saved_accel_needs_reconfigure(existing: AccelProfile) -> bool:
+    """True when accel.json must not skip ``setup`` / ``configure``."""
+    if not _requirement_satisfied("fastembed>=0.4"):
+        return True
+    if not coderank_fp16_onnx_ready():
+        return True
+    detected = existing.detected if isinstance(existing.detected, dict) else detect_hardware()
+    recommended = recommend_profile(detected)
+    if existing.profile == "cpu" and recommended.profile != "cpu":
+        return True
+    if existing.profile != recommended.profile and recommended.profile != "cpu":
+        return True
+    if existing.profile in {"dml", "cuda", "coreml"}:
+        return not _ort_profile_ready(existing.profile)
+    if existing.profile == "mlx" or existing.backend == "mlx":
+        return not _mlx_importable()
+    return False
+
+
+def setup_finish_message(*, reused_runtime: bool = False) -> str:
+    """Honest one-line setup outcome (never claim GPU when profile is CPU)."""
+    prof = load_accel()
+    if prof is None:
+        return "Ready. Next: scubiee init ."
+    detected = prof.detected if isinstance(prof.detected, dict) else {}
+    recommended = recommend_profile(detected)
+    tps = prof.texts_per_sec
+    if prof.profile == "cpu" and recommended.profile != "cpu":
+        gpu = recommended.profile.upper()
+        speed = f" (~{tps:.1f} t/s)" if tps is not None else ""
+        return (
+            f"Setup finished on CPU{speed}, not {gpu}. "
+            "Run: scubiee setup --repair"
+        )
+    if reused_runtime:
+        return f"Ready (reused {prof.profile} runtime + model cache). Next: scubiee init ."
+    if prof.profile != "cpu":
+        speed = f", ~{tps:.1f} t/s" if tps is not None else ""
+        return f"Ready ({prof.profile}{speed}). Next: scubiee init ."
+    speed = f" (~{tps:.1f} t/s)" if tps is not None else ""
+    return f"Ready (CPU{speed}). Next: scubiee init ."
 
 
 def _refuse_coreml_cpu_fallback(
@@ -869,10 +1062,230 @@ def configure(
     return profile
 
 
+def default_fastembed_cache_root() -> Path:
+    """FastEmbed model cache without importing fastembed (safe during first ``setup``)."""
+    for key in ("FASTEMBED_CACHE", "FASTEMBED_CACHE_PATH"):
+        raw = os.environ.get(key)
+        if raw:
+            return Path(raw)
+    return Path.home() / ".cache" / "fastembed"
+
+
+def fastembed_cache_root() -> Path:
+    try:
+        from fastembed.common.utils import define_cache_dir
+
+        return Path(define_cache_dir())
+    except ImportError:
+        return default_fastembed_cache_root()
+
+
+def _coderank_hf_cache_name() -> str:
+    return f"models--{CODERANK_HF_ONNX.replace('/', '--')}"
+
+
+def list_coderank_snapshot_dirs(cache_root: Path | None = None) -> list[Path]:
+    root = cache_root or fastembed_cache_root()
+    snaps = root / _coderank_hf_cache_name() / "snapshots"
+    if not snaps.is_dir():
+        return []
+    out = [p for p in snaps.iterdir() if p.is_dir()]
+    out.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    return out
+
+
+def coderank_fp16_onnx_ready(cache_root: Path | None = None) -> bool:
+    from pipeline.coreml_mac import find_coderank_onnx
+
+    root = cache_root or fastembed_cache_root()
+    found = find_coderank_onnx(root)
+    if found is None or not found.is_file():
+        return False
+    return found.stat().st_size >= CODERANK_FP16_MIN_BYTES
+
+
+def _setup_download_env() -> dict[str, str | None]:
+    names = (
+        "HF_HUB_DISABLE_PROGRESS_BARS",
+        "HF_HUB_DISABLE_SYMLINKS_WARNING",
+        "TQDM_DISABLE",
+    )
+    prev = {name: os.environ.get(name) for name in names}
+    os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+    os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+    os.environ["TQDM_DISABLE"] = "1"
+    return prev
+
+
+def _restore_env(prev: dict[str, str | None]) -> None:
+    for name, value in prev.items():
+        if value is None:
+            os.environ.pop(name, None)
+        else:
+            os.environ[name] = value
+
+
+def _download_coderank_source_onnx(cache_root: Path) -> Path:
+    from huggingface_hub import snapshot_download
+    from huggingface_hub.utils import disable_progress_bars, enable_progress_bars
+
+    prev = _setup_download_env()
+    disable_progress_bars()
+    try:
+        snapshot_download(
+            repo_id=CODERANK_HF_ONNX,
+            cache_dir=str(cache_root),
+            allow_patterns=[
+                "config.json",
+                "tokenizer.json",
+                "tokenizer_config.json",
+                "special_tokens_map.json",
+                "vocab.txt",
+                CODERANK_FP32_ONNX_FILE,
+            ],
+        )
+    finally:
+        enable_progress_bars()
+        _restore_env(prev)
+    for snap in list_coderank_snapshot_dirs(cache_root):
+        fp32 = snap / CODERANK_FP32_ONNX_FILE
+        if fp32.is_file() and fp32.stat().st_size > 100_000_000:
+            return fp32
+    raise RuntimeError(
+        "CodeRank weights (onnx/model.onnx) did not download completely. "
+        "Check disk space and network, then run: scubiee setup --repair"
+    )
+
+
+def _convert_coderank_fp32_onnx_to_fp16(src: Path, dest: Path) -> None:
+    import warnings
+
+    try:
+        import onnx  # noqa: F401
+    except ImportError:
+        pip_install(["onnx>=1.16"], phase="Installing ONNX for FP16 conversion")
+    import onnx
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dest.with_suffix(".onnx.part")
+    model = onnx.load(str(src), load_external_data=True)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        try:
+            from onnxruntime.transformers import float16 as ort_fp16
+
+            converted = ort_fp16.convert_float_to_float16(model, keep_io_types=True)
+        except Exception:
+            from onnxconverter_common import float16 as common_fp16
+
+            converted = common_fp16.convert_float_to_float16(model, keep_io_types=True)
+    onnx.save(converted, str(tmp))
+    tmp.replace(dest)
+
+
+def ensure_coderank_fp16_onnx(progress: Any | None = None) -> Path:
+    """Ensure FP16 ONNX exists in the FastEmbed cache (convert from HF FP32 if needed)."""
+    cache_root = fastembed_cache_root()
+    if coderank_fp16_onnx_ready(cache_root):
+        from pipeline.coreml_mac import find_coderank_onnx
+
+        found = find_coderank_onnx(cache_root)
+        assert found is not None
+        return found
+
+    if progress is not None:
+        progress.set(58, "Downloading CodeRank weights (~500MB)")
+    fp32 = _download_coderank_source_onnx(cache_root)
+    fp16 = fp32.parent / "model_fp16.onnx"
+    if fp16.is_file() and fp16.stat().st_size >= CODERANK_FP16_MIN_BYTES:
+        return fp16
+    if progress is not None:
+        progress.set(64, "Converting CodeRank to FP16 (~260MB)")
+    _convert_coderank_fp32_onnx_to_fp16(fp32, fp16)
+    if fp16.stat().st_size < CODERANK_FP16_MIN_BYTES:
+        fp16.unlink(missing_ok=True)
+        raise RuntimeError("CodeRank FP16 conversion produced an incomplete file.")
+    return fp16
+
+
+def format_setup_error(exc: BaseException) -> str:
+    msg = str(exc).strip()
+    if "model_fp16.onnx" in msg and ("NO_SUCHFILE" in msg or "does not exist" in msg.lower()):
+        return (
+            "CodeRank FP16 weights are missing from the model cache. "
+            "Run: scubiee wipe --all --yes  then  scubiee setup --repair"
+        )
+    if "did not download completely" in msg or "FP16 conversion" in msg:
+        return msg
+    if "No module named 'fastembed'" in msg or "No module named \"fastembed\"" in msg:
+        return (
+            "FastEmbed is not installed yet (normal on Windows after `uv tool install`). "
+            "Setup will install it automatically — if this persists, run: scubiee setup --repair"
+        )
+    if "No module named 'PIL'" in msg or "Pillow" in msg:
+        return (
+            "Missing FastEmbed dependency (Pillow). "
+            "Run: uv tool install --force scubiee  then  scubiee setup --repair"
+        )
+    if "loguru" in msg or "mmh3" in msg or "py_rust_stemmers" in msg:
+        return (
+            "Missing FastEmbed dependencies. "
+            "Run: uv tool install --force scubiee  then  scubiee setup --repair"
+        )
+    if len(msg) > 240:
+        return msg[:237] + "..."
+    return msg or exc.__class__.__name__
+
+
+def _coderank_fp16_description():
+    from fastembed.common.model_description import DenseModelDescription, ModelSource
+
+    return DenseModelDescription(
+        model=CODERANK_MODEL,
+        sources=ModelSource(hf=CODERANK_HF_ONNX),
+        dim=768,
+        model_file=CODERANK_ONNX_FILE,
+        description="CodeRankEmbed FP16 ONNX",
+        license="mit",
+        size_in_GB=0.27,
+        additional_files=[],
+    )
+
+
+def _patch_registered_coderank_to_fp16() -> bool:
+    """Replace an in-process FP32 CodeRank registration with FP16 (same model name)."""
+    from fastembed import TextEmbedding
+    from fastembed.text.custom_text_embedding import CustomTextEmbedding
+
+    desired = _coderank_fp16_description()
+    patched = False
+    registries: list[list[Any]] = []
+    custom = getattr(CustomTextEmbedding, "SUPPORTED_MODELS", None)
+    if isinstance(custom, list):
+        registries.append(custom)
+    for emb_type in getattr(TextEmbedding, "EMBEDDINGS_REGISTRY", ()) or ():
+        models = getattr(emb_type, "SUPPORTED_MODELS", None)
+        if isinstance(models, list) and models not in registries:
+            registries.append(models)
+    for models in registries:
+        for i, desc in enumerate(models):
+            if str(getattr(desc, "model", "")).lower() != CODERANK_MODEL.lower():
+                continue
+            if getattr(desc, "model_file", None) != CODERANK_ONNX_FILE:
+                models[i] = desired
+                patched = True
+            else:
+                patched = True  # already FP16
+    return patched
+
+
 def register_coderank() -> None:
+    """Register CodeRank as FP16 ONNX; upgrade any stale FP32 in-process entry."""
     from fastembed import TextEmbedding
     from fastembed.common.model_description import ModelSource, PoolingType
 
+    if _patch_registered_coderank_to_fp16():
+        return
     try:
         TextEmbedding.add_custom_model(
             model=CODERANK_MODEL,
@@ -880,27 +1293,58 @@ def register_coderank() -> None:
             normalization=True,
             sources=ModelSource(hf=CODERANK_HF_ONNX),
             dim=768,
-            model_file="onnx/model.onnx",
-            description="CodeRankEmbed FP32 ONNX",
+            model_file=CODERANK_ONNX_FILE,
+            description="CodeRankEmbed FP16 ONNX",
             license="mit",
-            size_in_gb=0.5,
+            size_in_gb=0.27,
         )
     except ValueError as exc:
         if "already registered" not in str(exc).lower():
             raise
+        _patch_registered_coderank_to_fp16()
+
+
+def _ensure_fastembed_import_deps(*, progress: Any | None = None) -> None:
+    """FastEmbed needs these at import time; install without pulling CPU onnxruntime."""
+    checks: list[tuple[str, str]] = [
+        ("PIL", "Pillow>=10.0"),
+        ("loguru", "loguru>=0.7.2"),
+        ("mmh3", "mmh3>=4.1.0"),
+        ("py_rust_stemmers", "py-rust-stemmers>=0.1.0"),
+        ("tokenizers", "tokenizers>=0.15"),
+    ]
+    missing = [spec for mod, spec in checks if not _module_available(mod)]
+    if not missing:
+        return
+    pip_install(
+        missing,
+        progress=progress,
+        start_pct=52,
+        end_pct=55,
+        phase="Installing FastEmbed dependencies",
+    )
+
+
+def _module_available(name: str) -> bool:
+    import importlib.util
+
+    return importlib.util.find_spec(name) is not None
 
 
 def ensure_coderank_model(
     profile: AccelProfile | None = None,
     progress: Any | None = None,
 ) -> None:
-    """Download/warm CodeRank ONNX via FastEmbed."""
+    """Download/warm CodeRank FP16 ONNX via FastEmbed."""
     import threading
 
     register_coderank()
+    _ensure_fastembed_import_deps(progress=progress)
     from fastembed import TextEmbedding
 
     prof = profile or load_accel() or recommend_profile()
+    if getattr(prof, "onnx_file", None) != CODERANK_ONNX_FILE:
+        prof.onnx_file = CODERANK_ONNX_FILE
     model_name = prof.model
     static_bs = 1
     if prof.profile == "coreml":
@@ -912,14 +1356,14 @@ def ensure_coderank_model(
 
         model_name = coreml_model_name(prof.model)
         static_bs = static_embed_batch_size(prof, prof.batch_size)
-    previous = {
-        name: os.environ.get(name)
-        for name in ("HF_HUB_DISABLE_PROGRESS_BARS", "TQDM_DISABLE")
-    }
-    os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
-    os.environ["TQDM_DISABLE"] = "1"
+    previous = _setup_download_env()
     if progress is None:
-        print(f"[accel] ensuring CodeRank model ({CODERANK_HF_ONNX}) ...", file=sys.stderr, flush=True)
+        print(
+            f"[accel] ensuring CodeRank FP16 model ({CODERANK_HF_ONNX} / {CODERANK_ONNX_FILE}) ...",
+            file=sys.stderr,
+            flush=True,
+        )
+    ensure_coderank_fp16_onnx(progress=progress)
     stop = threading.Event()
 
     def _pulse() -> None:
@@ -966,11 +1410,7 @@ def ensure_coderank_model(
             list(m.embed(warmup, batch_size=static_bs, parallel=None))
     finally:
         stop.set()
-        for name, value in previous.items():
-            if value is None:
-                os.environ.pop(name, None)
-            else:
-                os.environ[name] = value
+        _restore_env(previous)
     if progress is not None:
         progress.set(85, "Embedding model ready")
     else:

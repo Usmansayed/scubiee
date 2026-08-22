@@ -1,34 +1,67 @@
 # Scubiee
 
-Local Context Engine: Merkle sync → Graphify AST → **mix** compress → CodeRankEmbed (MLX FP16 on Apple Silicon, FastEmbed CUDA/DirectML elsewhere) → TurboQuant/FAISS → Conductor `R_plan`
+Local Context Engine: Merkle sync → Graphify AST → **mix** compress → CodeRankEmbed FP16 (MLX on Apple Silicon, FastEmbed CUDA/DirectML/CPU elsewhere) → TurboQuant/FAISS → Conductor `R_plan`
 
 ## Install (no git clone)
 
-Requires **Python 3.10+**. Two steps on a clean machine:
+Requires **Python 3.10+**. Two steps on a clean machine.
+
+**Recommended — [uv](https://docs.astral.sh/uv/)** (fast, isolated CLI; no venv juggling):
+
+```bash
+uv tool install scubiee
+scubiee setup
+```
+
+Always pin the PyPI index on Windows (avoids stale uv cache and broken partial upgrades):
+
+```bash
+uv tool install --force scubiee==0.2.49 --index-url https://pypi.org/simple
+scubiee setup --repair
+```
+
+If `uv tool install scubiee==X.Y.Z` says “no version found”, run `uv cache clean` and retry with `--index-url https://pypi.org/simple`.
+
+**Broken install (`failed to locate pyvenv.cfg`, faiss errors):** quit Cursor, then `scripts/repair-uv-scubiee.ps1`. See [`docs/web-info/uninstall-windows.md`](docs/web-info/uninstall-windows.md).
+
+**Uninstall / `uv tool uninstall` Access denied:** run `scubiee stop`, then `scubiee wipe --all --yes --package`, reload Cursor. Do not use raw `uv tool uninstall` while MCP is running.
+
+Upgrade later: `uv tool install --force scubiee --index-url https://pypi.org/simple` then `scubiee setup --repair`.
+
+Note: `uv tool upgrade scubiee` refreshes dependencies but may **not** bump the scubiee version — use `--force` with an explicit version when release notes say to.
+
+**Alternative — pip:**
 
 ```bash
 pip install -U scubiee
-ctx setup
+scubiee setup
 ```
 
-**npm** (optional wrapper — same pip install + `ctx setup`):
+**npm** (optional wrapper — installs Python package + runs setup):
 
 ```bash
 npm install -g scubiee
 ```
 
-Then `ctx init <repo>` for each codebase, and reload MCP in Cursor (Settings → MCP → refresh).
+Then `scubiee init <repo>` (or `ctx init`) for each codebase, and reload MCP in Cursor (Settings → MCP → refresh).
 
-`ctx setup` picks **CUDA** (NVIDIA), **DirectML** (Windows AMD/Intel), **MLX FP16** (Apple Silicon Metal), **CoreML** (Intel Mac), or **CPU**. On a MacBook, `pip install -U scubiee` already installs FastEmbed, ONNX Runtime, and **MLX** — no `[mlx]` / `[coreml]` extra required. Then `ctx setup` (or `ctx setup --repair` after an upgrade) writes the MLX FP16 profile. Opt out: `CTX_MLX=0` or `ctx setup --profile cpu`.
+After `uv tool install scubiee`, add tools to PATH once per machine:
+
+```bash
+uv tool update-shell    # restart terminal after
+# or one session:  export PATH="$HOME/.local/bin:$PATH"  (Windows: see uv's hint)
+```
+
+`scubiee setup` picks **CUDA** (NVIDIA), **DirectML** (Windows AMD/Intel), **MLX FP16** (Apple Silicon Metal), **CoreML** (Intel Mac), or **CPU**. On a MacBook, `uv tool install scubiee` / `pip install scubiee` pulls FastEmbed, ONNX Runtime, and **MLX** — no `[mlx]` / `[coreml]` extra required. Then `scubiee setup` (or `scubiee setup --repair` after an upgrade) writes the MLX FP16 profile. Opt out: `CTX_MLX=0` or `scubiee setup --profile cpu`.
 
 If PyPI is behind GitHub, install the tagged release:
 
 ```bash
-pip install "scubiee @ git+https://github.com/Usmansayed/new-context-engine.git@v0.2.6"
-ctx setup
+uv tool install "scubiee @ git+https://github.com/Usmansayed/new-context-engine.git@v0.2.6"
+scubiee setup
 ```
 
-From a git checkout (contributors only): `pip install -e .` then `ctx setup`. Maintainers: see `docs/publish-setup.md`.
+From a git checkout (contributors): `uv pip install -e ".[dml]"` (or `pip install -e .`) then `scubiee setup`. Maintainers: see `docs/publish-setup.md`.
 
 ## Use
 

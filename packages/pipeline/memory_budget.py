@@ -1,10 +1,13 @@
 """Cross-platform Context Engine memory budgets.
 
-Bootstrap (first complete index): allow up to ~800 MB process RSS for the full
-parse → chunk → embed → write pipeline.
+Bootstrap (first complete index / init): allow up to ~800 MB process RSS without
+asking.
 
-Background (incremental sync / live reindex): target ≤560 MB by lowering embed
-batch, MLX allocator cache, and enabling aggressive unload hints.
+Background reindex (incremental sync): same 800 MB ceiling without asking when
+the corpus is modest (≤ ~6000 chunks).
+
+Large reindex (>6000 chunks already on disk): allow up to ~8000 MB so a big
+refresh can finish without pushing users onto ``--fast``.
 """
 
 from __future__ import annotations
@@ -16,10 +19,12 @@ from typing import Literal
 
 from pipeline.store import PipelineStore
 
-MemoryMode = Literal["bootstrap", "background"]
+MemoryMode = Literal["bootstrap", "background", "large_reindex"]
 
 BOOTSTRAP_RSS_CAP_MB = 800
-BACKGROUND_RSS_CAP_MB = 560
+BACKGROUND_RSS_CAP_MB = 800
+LARGE_REINDEX_RSS_CAP_MB = 8000
+LARGE_REINDEX_CHUNK_THRESHOLD = 6000
 
 
 @dataclass(frozen=True)
@@ -47,10 +52,21 @@ def background_budget() -> IndexMemoryBudget:
     return IndexMemoryBudget(
         mode="background",
         rss_cap_mb=BACKGROUND_RSS_CAP_MB,
-        mlx_cache_mb=64,
-        mlx_batch=16,
-        embed_batch_ceiling=16,
+        mlx_cache_mb=128,
+        mlx_batch=24,
+        embed_batch_ceiling=24,
         aggressive_unload=True,
+    )
+
+
+def large_reindex_budget() -> IndexMemoryBudget:
+    return IndexMemoryBudget(
+        mode="large_reindex",
+        rss_cap_mb=LARGE_REINDEX_RSS_CAP_MB,
+        mlx_cache_mb=512,
+        mlx_batch=64,
+        embed_batch_ceiling=64,
+        aggressive_unload=False,
     )
 
 
@@ -71,11 +87,29 @@ def is_bootstrap_index(store: PipelineStore) -> bool:
     return False
 
 
+def indexed_chunk_count(store: PipelineStore) -> int:
+    meta = store.load_meta()
+    n = int(meta.get("chunks") or 0)
+    if n > 0:
+        return n
+    try:
+        return len(store.load_chunks())
+    except Exception:  # noqa: BLE001
+        return 0
+
+
 def resolve_index_memory_budget(
     *,
     background: bool = False,
     store: PipelineStore | None = None,
 ) -> IndexMemoryBudget:
+    if store is not None and not is_bootstrap_index(store):
+        if indexed_chunk_count(store) > LARGE_REINDEX_CHUNK_THRESHOLD:
+            return large_reindex_budget()
+        if background:
+            return background_budget()
+        # Force/full reindex of an existing modest corpus: still 800 MB.
+        return background_budget()
     if background:
         return background_budget()
     return bootstrap_budget()
@@ -85,7 +119,7 @@ def apply_index_memory_budget(budget: IndexMemoryBudget) -> None:
     """Apply budget as env defaults (never override explicit caller env)."""
     os.environ.setdefault("CTX_CE_MEMORY_MODE", budget.mode)
     os.environ.setdefault("CTX_CE_RSS_CAP_MB", str(budget.rss_cap_mb))
-    os.environ.setdefault("CTX_MLX_DTYPE", "float16")
+    os.environ["CTX_MLX_DTYPE"] = "float16"
     os.environ.setdefault("CTX_MLX_FAST_ATTN", "1")
     os.environ.setdefault("CTX_MLX_FAST_LN", "1")
     os.environ.setdefault("CTX_MLX_EVAL", "output")

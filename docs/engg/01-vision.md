@@ -20,7 +20,7 @@ Agents must **not** treat the IDE’s native Grep/Glob/semantic search as the di
 | **Better than grep for meaning** | Conductor `D_channel_best`: BM25 + dense CodeRank + graph affinity, fused by min-rank + agreement | Natural-language “where does session die” hits the recovery handler |
 | **Cheap tokens** | Mix compress (512-char cap) before embed; MCP returns pointers + budgeted spans; session store dedupes already-shown bodies | Same span not re-sent as a full dump |
 | **Always local** | No cloud embed required. Model + index on disk under `~/.context-engine/` | Works offline after first model download |
-| **Use the machine’s GPU** | Auto profile: CUDA / DirectML / **MLX FP16 (Apple Silicon)** / CoreML (Intel Mac fallback path) / CPU | MacBook indexes on Metal, not silent CPU |
+| **Use the machine’s GPU** | Auto profile: CUDA / DirectML / **MLX FP16 (Apple Silicon)** / CoreML (Intel Mac fallback path) / CPU. Embed weights are **FP16 only** (ONNX `model_fp16.onnx` or MLX FP16). | MacBook indexes on Metal, not silent CPU |
 | **Stay fresh without full reindex** | Merkle + incremental sync + daemon `/v1/publish` so search generation bumps in the **running** process | Edit a `.py` file, `ctx sync`, search hits it without restart |
 | **Install once, forget** | `ctx setup` writes accel profile, MCP json, Cursor rule template, logon supervisor | Second machine: two commands, MCP works |
 

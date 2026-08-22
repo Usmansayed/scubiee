@@ -482,6 +482,21 @@ class RuntimeManager:
             self.repo = root
             store = PipelineStore(root, base_dir=ref.store_dir, project_id=ref.project_id)
             if not index_is_usable(store.base) and auto_index_enabled():
+                from pipeline.incremental import IndexConfirmRequired, preflight_index_scope
+
+                try:
+                    preflight_index_scope(root, fast=False, confirm=False, force=False)
+                except IndexConfirmRequired as exc:
+                    self.warming = False
+                    self.warm_state = "needs_confirm"
+                    self.warm_error = str(exc)
+                    return {
+                        "ok": False,
+                        "error": str(exc),
+                        "needs_confirm": True,
+                        "file_count": exc.n_files,
+                        "warm_state": "needs_confirm",
+                    }
                 self.indexing = True
                 self.warm_state = "indexing"
                 idx = self.index.full_index(root, force=False, fast=False)
@@ -733,13 +748,29 @@ class RuntimeManager:
         gate = self._gate(root)
         if gate:
             return gate
+        # Laptop safety: never feed unbounded text into the GPU embed path.
+        q = (query or "").strip()
+        if not q:
+            return {"ok": False, "error": "query required", "hits": []}
+        max_q = int(os.environ.get("CTX_QUERY_MAX_CHARS", "2000") or "2000")
+        if len(q) > max_q:
+            q = q[:max_q]
         eng = self._ensure_engine(root)
         if eng is None:
             return {"status": "warming", "ready": False, "warm_state": self.warm_state}
-        hits = eng.search(query, top_k=top_k, skip_freshness=True)
+        try:
+            hits = eng.search(q, top_k=top_k, skip_freshness=True)
+        except Exception as exc:  # noqa: BLE001
+            return {
+                "ok": False,
+                "error": f"search failed: {exc}",
+                "query": q,
+                "hits": [],
+                "hint": "Retry once; if persistent run: scubiee engine ensure .",
+            }
         return {
             "ok": True,
-            "query": query,
+            "query": q,
             "generation": self.generation,
             "keeper": self.sync_loop.status() if self.sync_loop else None,
             "timings": getattr(eng, "_last_timings", {}),
@@ -793,13 +824,15 @@ class RuntimeManager:
             ],
         }
 
-    def sync(self, root: Path | str | None = None) -> dict[str, Any]:
+    def sync(
+        self, root: Path | str | None = None, *, confirm: bool = False
+    ) -> dict[str, Any]:
         gate = self._gate(root)
         if gate:
             return gate
         repo = Path(root).resolve() if root else (self.repo or Path.cwd())
         self._activate_runtime(repo)
-        out = self.index.sync(repo)
+        out = self.index.sync(repo, confirm=confirm)
         if out.get("refreshed"):
             pub = self.publish_engine()
             out["published"] = pub

@@ -168,6 +168,7 @@ def initialize_repo(
     progress: Any = None,
     fast: bool = False,
     fast_roots: list[str] | None = None,
+    confirm: bool = False,
 ) -> dict[str, Any]:
     """Admit a repository and reconcile an existing usable index."""
     root = _root(root)
@@ -222,10 +223,20 @@ def initialize_repo(
     chunks = 0
     if index:
         try:
+            from pipeline.incremental import preflight_index_scope
+
+            preflight_index_scope(
+                root,
+                fast=fast,
+                fast_roots=fast_roots,
+                confirm=confirm,
+            )
             if index_is_usable(ref.store_dir):
                 from pipeline.incremental import incremental_sync
 
-                sync = incremental_sync(root, base_dir=ref.store_dir)
+                sync = incremental_sync(
+                    root, base_dir=ref.store_dir, confirm=confirm
+                )
                 sync_data = sync.to_dict()
                 if sync_data.get("error"):
                     return _result(
@@ -247,6 +258,7 @@ def initialize_repo(
                     fast=fast,
                     fast_roots=fast_roots,
                     progress=progress,
+                    confirm=confirm,
                 )
                 chunks = int(stats.chunks)
                 indexed = True
@@ -357,7 +369,7 @@ def resume_repo(root: Path) -> dict[str, Any]:
     return activate_repo(root)
 
 
-def sync_now_repo(root: Path) -> dict[str, Any]:
+def sync_now_repo(root: Path, *, confirm: bool = False) -> dict[str, Any]:
     root = _root(root)
     project_id, entry = _project(root)
     state = managed_state(root)
@@ -367,7 +379,9 @@ def sync_now_repo(root: Path) -> dict[str, Any]:
         return _result(project_id, entry, ok=False, error="never_index")
     from pipeline.incremental import incremental_sync
 
-    result = incremental_sync(root, base_dir=projects_root() / project_id)
+    result = incremental_sync(
+        root, base_dir=projects_root() / project_id, confirm=confirm
+    )
     data = result.to_dict()
     entry = _update(project_id, last_access_at=time.time(), last_sync_at=time.time())
     return _result(

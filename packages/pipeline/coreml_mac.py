@@ -111,14 +111,20 @@ def pad_embed_batch(texts: list[str], batch_size: int) -> list[str]:
     return texts + [filler] * (bs - n)
 
 
+def is_coderank_onnx_dir(onnx_dir: Path) -> bool:
+    """True when this cache folder holds production CodeRank weights (FP16 preferred)."""
+    return (onnx_dir / "model_fp16.onnx").is_file() or (onnx_dir / "model.onnx").is_file()
+
+
 def find_coderank_onnx(root: Path) -> Path | None:
-    """Locate FastEmbed's cached CodeRank ONNX under a HF-style tree."""
+    """Locate FastEmbed's cached CodeRank FP16 ONNX under a HF-style tree."""
     if not root.is_dir():
         return None
-    direct = root / "onnx" / "model.onnx"
-    if direct.is_file():
-        return direct
-    for path in root.rglob("model.onnx"):
+    for rel in ("onnx/model_fp16.onnx", "model_fp16.onnx"):
+        direct = root / rel
+        if direct.is_file():
+            return direct
+    for path in root.rglob("model_fp16.onnx"):
         if path.is_file():
             return path
     return None
@@ -496,7 +502,7 @@ def install_patched_onnx_into_fastembed_cache(patched: Path) -> Path:
     if not root.is_dir():
         return dest
     for onnx_dir in root.glob("**/onnx"):
-        if not (onnx_dir / "model.onnx").is_file():
+        if not is_coderank_onnx_dir(onnx_dir):
             continue
         target = onnx_dir / patched.name
         if target.resolve() == patched.resolve():
@@ -551,7 +557,7 @@ def register_coreml_coderank_model(
             model_file=rel,
             description="CodeRankEmbed CoreML-static ONNX",
             license="mit",
-            size_in_gb=0.5,
+            size_in_gb=0.27,
         )
     except ValueError as exc:
         if "already registered" not in str(exc).lower():
@@ -609,7 +615,7 @@ def _register_coreml_static_alias(model: str, batch: int, seq: int) -> None:
             model_file=rel,
             description="CodeRankEmbed CoreML-static ONNX",
             license="mit",
-            size_in_gb=0.5,
+            size_in_gb=0.27,
         )
     except ValueError as exc:
         if "already registered" not in str(exc).lower():

@@ -211,12 +211,23 @@ class WarmSearchEngine:
             return out
 
         t0 = time.perf_counter()
+        # Cap query size (huge prompts can OOM/orphan ORT on laptop GPUs) and
+        # single-flight the embed — DirectML/ORT is not safe under ThreadingHTTPServer.
+        max_q = int(os.environ.get("CTX_QUERY_MAX_CHARS", "2000") or "2000")
+        q_embed = (query or "")[: max(64, max_q)]
         try:
-            qvec = self.embedder.embed_one(query, is_query=True)
+            from pipeline.fair_schedule import get_embed_scheduler
+
+            with get_embed_scheduler().hold(
+                "query-embed", priority="active", timeout_s=90.0
+            ) as acquired:
+                if not acquired:
+                    raise TimeoutError("embed scheduler busy")
+                qvec = self.embedder.embed_one(q_embed, is_query=True)
         except Exception:
             import hashlib
 
-            h = hashlib.sha256(query.encode("utf-8")).digest()
+            h = hashlib.sha256(q_embed.encode("utf-8")).digest()
             rng = np.random.default_rng(int.from_bytes(h[:8], "little"))
             dim = int(self.embedder.dim or 768)
             qvec = rng.normal(size=dim).astype(np.float32)
