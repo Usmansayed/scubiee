@@ -18,7 +18,30 @@ from pipeline.env_guard import format_install_identity, warn_extra_scubiee
 
 def _version_only(argv: list[str] | None) -> bool:
     args = list(argv) if argv is not None else sys.argv[1:]
-    return args == ["--version"]
+    if args == ["--version"]:
+        return True
+    return len(args) == 1 and args[0] in {"version", "-version", "-V"}
+
+
+def _requires_faiss_guard(argv: list[str] | None) -> bool:
+    """Bootstrap/repair commands must run even when faiss is incomplete."""
+    args = list(argv) if argv is not None else sys.argv[1:]
+    if not args or args[0].startswith("-"):
+        return False
+    cmd = args[0]
+    if cmd in {"setup", "stop", "wipe", "doctor", "preflight", "test"}:
+        return False
+    if cmd == "engine" and len(args) > 1 and args[1] in {
+        "stop",
+        "status",
+        "watchdog",
+        "supervisor",
+        "autostart",
+    }:
+        return False
+    if cmd == "dashboard" and len(args) > 1 and args[1] == "stop":
+        return False
+    return True
 
 
 class _IdentityVersion(argparse.Action):
@@ -1029,12 +1052,17 @@ def main(argv: list[str] | None = None) -> int:
         print(format_install_identity())
         return 0
 
-    from pipeline.install_health import ensure_faiss_importable
+    if _requires_faiss_guard(argv):
+        from pipeline.install_health import ensure_faiss_importable
 
-    faiss_err = ensure_faiss_importable(repair=True)
-    if faiss_err:
-        print(f"[scubiee] {faiss_err}", file=sys.stderr)
-        return 1
+        faiss_err = ensure_faiss_importable(repair=True)
+        if faiss_err:
+            print(f"[scubiee] {faiss_err}", file=sys.stderr)
+            print(
+                "[scubiee] Try: scubiee setup --repair",
+                file=sys.stderr,
+            )
+            return 1
 
     parser = argparse.ArgumentParser(
         prog="pipeline",

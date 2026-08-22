@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import glob
 import importlib
+import importlib.util
 import shutil
 import subprocess
 import sys
@@ -29,11 +30,31 @@ def faiss_import_ok() -> bool:
     return True
 
 
-def _faiss_wheel_repair() -> None:
-    from pipeline.accel import pip_install
+def _pip_module_available() -> bool:
+    return importlib.util.find_spec("pip") is not None  # type: ignore[attr-defined]
 
+
+def _ensure_pip_module() -> None:
+    if _pip_module_available():
+        return
+    proc = subprocess.run(
+        [sys.executable, "-m", "ensurepip", "--upgrade"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout or "").strip() or f"exit {proc.returncode}"
+        raise RuntimeError(f"ensurepip failed: {detail}")
+    if not _pip_module_available():
+        raise RuntimeError("pip still unavailable after ensurepip")
+
+
+def _faiss_wheel_repair() -> None:
+    """Reinstall faiss-cpu from a full wheel file (uv index installs can omit files)."""
     tmp = Path(tempfile.mkdtemp(prefix="scubiee-faiss-"))
     try:
+        _ensure_pip_module()
         dl = subprocess.run(
             [
                 sys.executable,
@@ -56,7 +77,9 @@ def _faiss_wheel_repair() -> None:
         wheels = sorted(glob.glob(str(tmp / "faiss_cpu-*.whl")))
         if not wheels:
             raise RuntimeError("faiss wheel not found after download")
-        pip_install([wheels[0]], force_reinstall=True)
+        from pipeline.accel import pip_install
+
+        pip_install([wheels[0]], force_reinstall=True, no_deps=True)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
