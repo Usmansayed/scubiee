@@ -159,6 +159,13 @@ def test_5000_event_storm_processes_only_configured_batch(
 
     loop = BackgroundSyncLoop(tmp_path, debounce_ms=0, live_max_files=37)
     batches: list[list[str]] = []
+    # Estimate exactly 300 total so it stays in the live tier (≤300)
+    # but defers because the file cap is 37.
+    monkeypatch.setattr(
+        loop,
+        "_estimate_dirty_chunks",
+        lambda paths: (min(len(paths), 300), {p: 1 for p in paths}),
+    )
     monkeypatch.setattr(
         loop,
         "_sync_paths",
@@ -171,8 +178,8 @@ def test_5000_event_storm_processes_only_configured_batch(
 
     assert len(batches) == 1
     assert len(batches[0]) == 37
-    assert out[0]["needs_full"] is True
+    assert out[0]["strategy"] == "catchup_chunked"
     assert out[0]["live_limits"]["deferred_paths"] == 4_963
     status = loop.status()
-    assert status["needs_full"] is True
+    assert status["needs_full"] is False
     assert status["catchup_chunked"] is True

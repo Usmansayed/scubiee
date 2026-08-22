@@ -54,7 +54,7 @@ def server_entry(
         "CTX_SYNC_INTERVAL_MS": "300000",
         "CTX_REGISTRATION_MODE": reg_mode,
         "CTX_MCP_SURFACE": "phase",
-        "CTX_ENGINE_IDLE_S": "120",
+        "CTX_ENGINE_IDLE_S": "60",
         "PYTHONUTF8": "1",
     }
     if repo is not None:
@@ -89,6 +89,29 @@ def merge_mcp_json(
         data["mcpServers"] = servers
     servers[name] = server_entry(repo, host=host, port=port)
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+
+def write_kiro_mcp(
+    repo: Path | str | None = None,
+    *,
+    host: str = "127.0.0.1",
+    port: int = 8765,
+) -> dict[str, str]:
+    """Write repo-aware and repo-neutral Kiro MCP configuration.
+
+    Kiro loads user-level settings for every workspace, so that entry must not
+    contain ``CTX_REPO``.  The workspace-level entry is the one that pins the
+    server to the repository being configured.
+    """
+    target_repo = Path(repo or Path.cwd()).resolve()
+    project = target_repo / ".kiro" / "settings" / "mcp.json"
+    user = Path.home() / ".kiro" / "settings" / "mcp.json"
+
+    # Keep the global entry usable from any workspace, then let the closer
+    # workspace scope provide the repository-specific environment.
+    merge_mcp_json(user, repo=None, host=host, port=port)
+    merge_mcp_json(project, repo=target_repo, host=host, port=port)
+    return {"project": str(project), "user": str(user)}
 
 
 def _context_agent_rule_template() -> Path:

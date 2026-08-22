@@ -1,4 +1,4 @@
-"""Embedding backends: CodeRankEmbed via FastEmbed (primary) or SentenceTransformers.
+﻿"""Embedding backends: CodeRankEmbed via FastEmbed (primary) or SentenceTransformers.
 
 CodeRankEmbed (nomic-ai/CodeRankEmbed) is the production code retriever.
 Hardware profile from ``pipeline.accel`` (cuda / dml / cpu).
@@ -467,6 +467,22 @@ class Embedder:
         return query
 
     def _encode_batch(self, batch: list[str]) -> np.ndarray:
+        # GC is disabled globally in the daemon process (server.py run_server).
+        # For non-daemon callers (CLI scubiee index), disable GC during native
+        # embedding to prevent SIGSEGV from GC traversing partially-modified
+        # objects while tokenizers/numpy/MLX release the GIL.
+        import gc
+
+        gc_was_enabled = gc.isenabled()
+        if gc_was_enabled:
+            gc.disable()
+        try:
+            return self._encode_batch_inner(batch)
+        finally:
+            if gc_was_enabled:
+                gc.enable()
+
+    def _encode_batch_inner(self, batch: list[str]) -> np.ndarray:
         if self.backend == "mlx":
             from pipeline.mlx_mac import content_token_count, tokenize_batch
 

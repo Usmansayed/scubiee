@@ -1,4 +1,4 @@
-"""Explicit runtime capability checks for Context Engine.
+﻿"""Explicit runtime capability checks for Context Engine.
 
 No caller may interpret a missing parser or semantic backend as a successful,
 empty search/index. Accel inspection reads the saved profile, checks the exact
@@ -51,7 +51,7 @@ def _warm_saved_model(profile: AccelProfile) -> bool:
 
     register_coderank()
     model_name = profile.model
-    warm = ["ctx provider validation"]
+    warm = ["scubiee provider validation"]
     warm_bs = 1
     if profile.profile == "coreml":
         from pipeline.coreml_mac import (
@@ -179,7 +179,7 @@ _CAPABILITIES = (
         "faiss",
         "faiss",
         True,
-        "Install the CE vector dependencies, then rerun `ctx preflight`.",
+        "Install the CE vector dependencies, then rerun `scubiee preflight`.",
     ),
     (
         "rapidfuzz",
@@ -250,7 +250,7 @@ def inspect_accel(*, finder: Finder = importlib.util.find_spec) -> dict[str, Any
     if not configured:
         semantic_ok = False
         missing = ["not_configured"]
-        hint = "Run `ctx setup` to configure and persist an acceleration profile."
+        hint = "Run `scubiee setup` to configure and persist an acceleration profile."
     elif backend == "mlx":
         mlx_ok = finder("mlx") is not None
         semantic_ok = mlx_ok
@@ -277,7 +277,7 @@ def inspect_accel(*, finder: Finder = importlib.util.find_spec) -> dict[str, Any
     else:
         semantic_ok = st_ok
         missing = [] if st_ok else ["sentence_transformers"]
-        hint = "Install sentence-transformers or switch back to FastEmbed via `ctx setup`."
+        hint = "Install sentence-transformers or switch back to FastEmbed via `scubiee setup`."
 
     return {
         "ok": semantic_ok,

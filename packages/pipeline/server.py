@@ -553,6 +553,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def _start_idle_sweeper(*, interval_s: float = 30.0) -> None:
+    import gc
     import threading
 
     def _loop() -> None:
@@ -564,6 +565,8 @@ def _start_idle_sweeper(*, interval_s: float = 30.0) -> None:
                 apply_idle_policy()
             except Exception:  # noqa: BLE001
                 pass
+            # Safe GC collection point — daemon is idle, no embedding in progress.
+            gc.collect()
 
     thread = threading.Thread(target=_loop, name="ce-idle-sweeper", daemon=True)
     thread.start()
@@ -577,6 +580,19 @@ def run_server(
     open_on_start: bool = False,
 ) -> None:
     """Run Context Engine daemon (blocking)."""
+    # Disable automatic GC in the daemon process. Native extensions (tokenizers,
+    # MLX, numpy) release the GIL during computation; if Python's GC fires on
+    # another thread while these extensions are mutating Python objects, it can
+    # traverse freed/inconsistent memory → SIGSEGV. We collect manually at safe
+    # points instead (after sync, during idle sweeps).
+    import gc
+
+    gc.disable()
+
+    # Disable Rayon parallelism in tokenizers to prevent memory corruption.
+    # The Rayon thread pool on macOS ARM64 corrupts CPython's heap.
+    os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
     from pipeline.sync_loop import enable_session_keeper_defaults
 
     enable_session_keeper_defaults()

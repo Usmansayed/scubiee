@@ -1,6 +1,6 @@
-"""Autonomous desktop policy: standby vs run, idle stop, logon autostart.
+﻿"""Autonomous desktop policy: standby vs run, idle stop, logon autostart.
 
-The user-facing contract is setup-once then `ctx init`. This module is the
+The user-facing contract is setup-once then `scubiee init`. This module is the
 machine-side policy that keeps the engine off until work, and off again when
 idle, without fighting the watchdog.
 """
@@ -19,7 +19,7 @@ TASK_NAME = "ContextEngineSupervisor"
 LAUNCH_AGENT_LABEL = "com.contextengine.supervisor"
 POLICY_NAME = "lifecycle_policy.json"
 CLIENTS_NAME = "active_clients.json"
-DEFAULT_IDLE_S = 120.0
+DEFAULT_IDLE_S = 60.0
 DESIRED_RUN = "run"
 DESIRED_STANDBY = "standby"
 
@@ -472,6 +472,14 @@ def _register_darwin(cmd: list[str], *, runner: Any) -> dict[str, Any]:
 
 
 def _register_linux(cmd: list[str]) -> dict[str, Any]:
+    """Register autostart on Linux via both XDG desktop entry and systemd user service.
+
+    XDG autostart works on desktop (GNOME/KDE).
+    systemd user service works on headless/server (common for CUDA workstations).
+    """
+    results: dict[str, Any] = {"ok": True, "platform": "linux", "command": cmd}
+
+    # 1. XDG desktop autostart (GUI sessions)
     desktop_dir = _user_home() / ".config" / "autostart"
     desktop_dir.mkdir(parents=True, exist_ok=True)
     desktop = desktop_dir / "context-engine-supervisor.desktop"
@@ -489,12 +497,52 @@ def _register_linux(cmd: list[str]) -> dict[str, Any]:
         ),
         encoding="utf-8",
     )
-    return {
-        "ok": True,
-        "platform": "linux",
-        "task": str(desktop),
-        "command": cmd,
-    }
+    results["xdg_desktop"] = str(desktop)
+
+    # 2. systemd user service (headless + desktop, survives terminal close)
+    systemd_dir = _user_home() / ".config" / "systemd" / "user"
+    systemd_dir.mkdir(parents=True, exist_ok=True)
+    service_file = systemd_dir / "context-engine.service"
+    python_bin = cmd[0] if cmd else sys.executable
+    service_content = f"""\
+[Unit]
+Description=Context Engine daemon supervisor
+After=default.target
+
+[Service]
+Type=simple
+ExecStart={exec_line}
+Restart=on-failure
+RestartSec=5
+Environment=TOKENIZERS_PARALLELISM=false
+
+[Install]
+WantedBy=default.target
+"""
+    service_file.write_text(service_content, encoding="utf-8")
+    results["systemd_service"] = str(service_file)
+
+    # Enable the service (best-effort — systemctl may not be available)
+    try:
+        subprocess.run(
+            ["systemctl", "--user", "daemon-reload"],
+            capture_output=True, check=False, timeout=10,
+        )
+        subprocess.run(
+            ["systemctl", "--user", "enable", "context-engine.service"],
+            capture_output=True, check=False, timeout=10,
+        )
+        subprocess.run(
+            ["systemctl", "--user", "start", "context-engine.service"],
+            capture_output=True, check=False, timeout=10,
+        )
+        results["systemd_enabled"] = True
+    except (FileNotFoundError, OSError):
+        # systemctl not available (minimal container, old distro)
+        results["systemd_enabled"] = False
+
+    results["task"] = str(service_file)
+    return results
 
 
 def register_logon_autostart(
@@ -621,7 +669,7 @@ def ensure_supervisor() -> dict[str, Any]:
 
 
 def run_supervisor(*, logon: bool = False) -> None:
-    """Blocking supervisor used by the logon task and `ctx engine supervisor`."""
+    """Blocking supervisor used by the logon task and `scubiee engine supervisor`."""
     from pipeline.process_job import attach_supervisor_job
     from pipeline.watchdog import watchdog_loop
 

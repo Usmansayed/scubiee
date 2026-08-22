@@ -1,4 +1,4 @@
-"""ctx init enrolls a repository; machine install lives on ctx setup."""
+﻿"""scubiee init enrolls a repository; machine install lives on scubiee setup."""
 
 from __future__ import annotations
 

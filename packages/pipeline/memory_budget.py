@@ -142,6 +142,34 @@ def apply_index_memory_budget(budget: IndexMemoryBudget) -> None:
         os.environ["CTX_CE_EMB_BATCH_CEILING"] = str(budget.embed_batch_ceiling)
 
 
+def force_apply_memory_budget(budget: IndexMemoryBudget) -> None:
+    """Unconditionally override memory budget env vars.
+
+    Used after a bulk operation finishes to restore the conservative background
+    budget so the daemon doesn't keep running at elevated memory (800 MB) for
+    subsequent small live edits.
+    """
+    os.environ["CTX_CE_MEMORY_MODE"] = budget.mode
+    os.environ["CTX_CE_RSS_CAP_MB"] = str(budget.rss_cap_mb)
+    os.environ["CTX_MLX_CACHE_MB"] = str(budget.mlx_cache_mb)
+    os.environ["CTX_CE_EMB_BATCH_CEILING"] = str(budget.embed_batch_ceiling)
+    mlx = os.environ.get("CTX_EMBED_BACKEND", "").strip().lower() == "mlx"
+    if not mlx:
+        try:
+            from pipeline.accel import load_accel
+
+            prof = load_accel()
+            mlx = bool(prof and (prof.profile == "mlx" or prof.backend == "mlx"))
+        except Exception:  # noqa: BLE001
+            mlx = False
+    if mlx:
+        os.environ["CTX_EMBED_BATCH"] = str(budget.mlx_batch)
+    if budget.aggressive_unload:
+        os.environ["CTX_CE_AGGRESSIVE_UNLOAD"] = "1"
+    else:
+        os.environ.pop("CTX_CE_AGGRESSIVE_UNLOAD", None)
+
+
 def _rusage_rss_mb() -> float | None:
     """Unix ``resource`` module; missing on Windows."""
     try:

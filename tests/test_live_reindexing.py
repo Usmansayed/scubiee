@@ -1,4 +1,4 @@
-"""Live reindexing ingress and safety controls without an embedding model."""
+﻿"""Live reindexing ingress and safety controls without an embedding model."""
 
 from __future__ import annotations
 
@@ -81,28 +81,225 @@ def test_dirty_sync_invalidates_only_changed_session_paths(monkeypatch, tmp_path
     assert paths == ["pkg/b.py"]
 
 
-def test_live_storm_chunks_without_background_full_index(monkeypatch, tmp_path: Path):
+def test_live_batch_within_300_chunks_uses_fast_path(
+    monkeypatch, tmp_path: Path
+):
+    """≤300 estimated chunks stay on the fast live-batch path."""
     from pipeline.sync_loop import BackgroundSyncLoop
 
-    loop = BackgroundSyncLoop(tmp_path, debounce_ms=0)
+    loop = BackgroundSyncLoop(tmp_path, debounce_ms=0, live_max_files=1000)
     calls: list[list[str]] = []
+    # 250 paths × 1 chunk each = 250 total, under the 300 bulk threshold
+    monkeypatch.setattr(
+        loop,
+        "_estimate_dirty_chunks",
+        lambda paths: (len(paths), {path: 1 for path in paths}),
+    )
     monkeypatch.setattr(
         loop,
         "_sync_paths",
         lambda paths, **_: calls.append(paths)
-        or {"refreshed": True, "chunks_upserted": 1, "chunks_removed": 0},
+        or {"refreshed": True, "chunks_upserted": len(paths), "chunks_removed": 0},
     )
 
-    paths = [f"pkg/{n}.py" for n in range(41)]
+    paths = [f"pkg/{n}.py" for n in range(250)]
+    loop.mark_dirty(paths, reason="watch")
+    now = time.monotonic() + 0.01
+
+    out = loop.drain_due(now=now)
+    assert len(calls) == 1
+    assert len(calls[0]) == 250
+    assert out[0]["chunks_upserted"] == 250
+    assert out[0].get("needs_full", False) is False
+    assert loop.status()["needs_full"] is False
+    assert loop.status()["catchup_chunked"] is False
+
+
+def test_bulk_reindex_for_501_to_6000_chunks(monkeypatch, tmp_path: Path):
+    """501–6000 estimated chunks route to bulk reindex (800 MB, all at once)."""
+    from pipeline.sync_loop import BackgroundSyncLoop
+
+    loop = BackgroundSyncLoop(tmp_path, debounce_ms=0)
+    bulk_calls: list[list[str]] = []
+    live_calls: list[list[str]] = []
+    # 600 paths × 1 chunk = 600 estimated, above 500 threshold
+    monkeypatch.setattr(
+        loop,
+        "_estimate_dirty_chunks",
+        lambda paths: (len(paths), {path: 1 for path in paths}),
+    )
+    monkeypatch.setattr(
+        loop,
+        "_bulk_sync_paths",
+        lambda paths, **_: (
+            bulk_calls.append(paths),
+            loop.dirty_ledger.begin(paths),
+            loop.dirty_ledger.complete(paths, published=True),
+        )[-1]
+        or {"refreshed": True, "strategy": "bulk_reindex", "bulk": True,
+            "chunks_upserted": len(paths), "chunks_removed": 0},
+    )
+    monkeypatch.setattr(
+        loop,
+        "_sync_paths",
+        lambda paths, **_: live_calls.append(paths)
+        or {"refreshed": True, "chunks_upserted": len(paths), "chunks_removed": 0},
+    )
+
+    paths = [f"pkg/{n}.py" for n in range(600)]
     loop.mark_dirty(paths, reason="watch")
     out = loop.drain_due(now=time.monotonic() + 0.01)
 
-    assert len(calls) == 1
-    assert len(calls[0]) == 40
-    assert out[0]["strategy"] == "catchup_chunked"
-    assert out[0]["needs_full"] is True
-    assert loop.status()["catchup_chunked"] is True
+    assert live_calls == []
+    assert len(bulk_calls) == 1
+    assert len(bulk_calls[0]) == 600
+    assert out[0]["strategy"] == "bulk_reindex"
+    assert out[0]["bulk"] is True
+    assert out[0]["chunks_upserted"] == 600
+    assert loop.status()["needs_full"] is False
+    assert loop.status()["catchup_chunked"] is False
+    assert loop.status()["sync_status"] == "ready"
+
+
+def test_estimated_oversized_change_requires_explicit_full_index(monkeypatch, tmp_path: Path):
+    from pipeline.sync_loop import BackgroundSyncLoop
+
+    loop = BackgroundSyncLoop(tmp_path, debounce_ms=0)
+    sync_calls: list[list[str]] = []
+    monkeypatch.setattr(loop, "_estimate_dirty_chunks", lambda paths: (10001, {p: 5001 for p in paths}))
+    monkeypatch.setattr(loop, "_sync_paths", lambda paths, **_: sync_calls.append(paths))
+
+    loop.mark_dirty(["pkg/a.py", "pkg/b.py"], reason="watch")
+    out = loop.drain_due(now=time.monotonic() + 0.01)
+
+    assert sync_calls == []
+    assert out[0]["strategy"] == "explicit_full_index_required"
+    assert "scubiee index" in out[0]["error"]
+    assert out[0]["warnings"] == [
+        "Automatic sync paused before graph/vector mutation; explicit full indexing is required."
+    ]
+    assert loop.status()["sync_status"] == "needs_full"
     assert loop.status()["needs_full"] is True
+
+
+def test_bulk_sub_batch_commits_and_resumes_after_interrupt(monkeypatch, tmp_path: Path):
+    """Bulk sync processes in sub-batches; completed batches survive a simulated crash."""
+    from pipeline.sync_loop import BackgroundSyncLoop
+
+    loop = BackgroundSyncLoop(tmp_path, debounce_ms=0)
+    sub_batch_calls: list[list[str]] = []
+    call_count = {"n": 0}
+
+    from pipeline.incremental import IncrementalResult
+
+    def fake_incremental(root, *, force_files=None, bulk=False):
+        call_count["n"] += 1
+        sub_batch_calls.append(list(force_files or []))
+        # Simulate crash on the 3rd sub-batch
+        if call_count["n"] == 3:
+            raise RuntimeError("simulated power loss")
+        return IncrementalResult(
+            refreshed=True,
+            files=force_files or [],
+            chunks_upserted=len(force_files or []),
+            chunks_removed=0,
+            ms=100.0,
+            strategy="incremental",
+        )
+
+    monkeypatch.setattr("pipeline.incremental.incremental_sync", fake_incremental)
+    monkeypatch.setattr(
+        loop,
+        "_estimate_dirty_chunks",
+        lambda paths: (len(paths) * 4, {p: 4 for p in paths}),
+    )
+    monkeypatch.setenv("CTX_BULK_SUB_BATCH", "50")
+
+    paths = [f"pkg/{n}.py" for n in range(150)]
+    loop.mark_dirty(paths, reason="watch")
+
+    out = loop.drain_due(now=time.monotonic() + 0.01)
+
+    # 2 sub-batches completed (50 + 50 = 100 files), 3rd crashed
+    assert len(sub_batch_calls) == 3
+    assert len(sub_batch_calls[0]) == 50
+    assert len(sub_batch_calls[1]) == 50
+    assert len(sub_batch_calls[2]) == 50
+    payload = out[0]
+    assert payload["bulk"] is True
+    assert payload["chunks_upserted"] == 100
+    assert payload["bulk_progress"]["sub_batches_done"] == 2
+    # Partial success: error goes to warnings (not error field) so status
+    # doesn't permanently show "error" when most chunks indexed fine.
+    assert payload["error"] is None
+    assert len(payload["warnings"]) == 1
+    assert "simulated power loss" in payload["warnings"][0]
+
+    # The first 100 paths should be published in the journal
+    snap = loop.dirty_ledger.snapshot()["paths"]
+    published = [p for p, e in snap.items() if e["state"] == "published"]
+    assert len(published) == 100
+    # The crashed sub-batch (50 paths) should be back in queue
+    queued = [p for p, e in snap.items() if e["state"] == "queued"]
+    assert len(queued) == 50
+
+
+def test_incremental_exact_chunk_limit_refuses_before_graph_publish(monkeypatch, tmp_path: Path):
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+
+    import pipeline.incremental as incremental_module
+    from pipeline.incremental import incremental_sync
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "a.py").write_text("def a():\n    return 1\n", encoding="utf-8")
+    base = tmp_path / "store"
+    base.mkdir()
+    monkeypatch.setattr(incremental_module, "AUTO_FULL_INDEX_CHUNKS", 2)
+    monkeypatch.setattr(
+        incremental_module,
+        "extract",
+        lambda *_args, **_kwargs: {"nodes": [], "edges": [], "hyperedges": []},
+    )
+    monkeypatch.setattr(incremental_module, "graphify_to_repo_ir", lambda *_args, **_kwargs: object())
+    monkeypatch.setattr(
+        incremental_module,
+        "chunk_file_from_ir",
+        lambda *_args, **_kwargs: [
+            SimpleNamespace(
+                file="a.py",
+                start_line=index,
+                end_line=index,
+                symbol=f"a_{index}",
+                content=f"chunk {index}",
+            )
+            for index in range(3)
+        ],
+    )
+    monkeypatch.setattr(
+        incremental_module,
+        "inject_metadata",
+        lambda chunk, _ir: SimpleNamespace(enriched=chunk.content),
+    )
+    graph_patch = MagicMock()
+    monkeypatch.setattr(incremental_module, "patch_and_save_graph", graph_patch)
+    graph_full = MagicMock()
+    monkeypatch.setattr(incremental_module, "build_and_save_graph", graph_full)
+
+    result = incremental_sync(repo, base_dir=base, force_files=["a.py"])
+
+    assert result.refreshed is False
+    assert result.strategy == "explicit_full_index_required"
+    assert result.chunks_upserted == 0
+    assert result.chunks_removed == 0
+    assert "3 chunks changed" in (result.error or "")
+    assert "scubiee index" in (result.error or "")
+    assert result.warnings == [
+        "No graph or vector artifacts were published for this oversized change."
+    ]
+    graph_patch.assert_not_called()
+    graph_full.assert_not_called()
 
 
 def test_final_check_forces_held_publish(monkeypatch, tmp_path: Path):

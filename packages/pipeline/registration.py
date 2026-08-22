@@ -1,4 +1,4 @@
-"""Shared project registration pipeline.
+﻿"""Shared project registration pipeline.
 
 All triggers (automatic IDE open, MCP consent, CLI) call ``register_project``.
 Only the *trigger* differs by ``registration_mode`` in prefs.

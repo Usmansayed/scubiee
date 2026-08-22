@@ -1,4 +1,4 @@
-"""MCP: context_engine_mcp — session-native code context, switchable surfaces.
+﻿"""MCP: context_engine_mcp — session-native code context, switchable surfaces.
 
 Surface is chosen by env ``CTX_MCP_SURFACE``:
 
@@ -239,6 +239,34 @@ Trajectory: soft → read → edit → test. Call CE when needed, then continue 
 """
 
 
+def _is_repo_managed() -> bool:
+    """Check if the current CTX_REPO is managed by Context Engine.
+
+    Returns True if the repo has a project ID and is in the registry as managed.
+    Falls back to True if detection fails (don't suppress instructions on errors).
+    """
+    try:
+        # If CTX_REPO is explicitly empty or unset, treat as unmanaged
+        explicit = (os.environ.get("CTX_REPO") or "").strip()
+        if not explicit:
+            return False
+
+        repo = _default_repo()
+        from pipeline.project_id import read_id_file, load_registry
+
+        project_id = read_id_file(repo)
+        if not project_id:
+            return False
+        registry = load_registry()
+        entry = registry.get("projects", {}).get(project_id)
+        if not isinstance(entry, dict):
+            return False
+        return bool(entry.get("managed", False))
+    except Exception:  # noqa: BLE001
+        # On any failure, default to showing full instructions (safe fallback).
+        return True
+
+
 def _server_instructions(surface: str) -> str:
     # Open-locate trials: keep tool names visible but drop anti-Grep mandates so
     # the agent can freely choose native locate vs CE.
@@ -257,6 +285,16 @@ def _server_instructions(surface: str) -> str:
             "Context Engine MCP tools are available for this workspace. "
             "Use any tools you prefer for the task."
         )
+
+    # Gate: if the current folder is not managed by Context Engine, do not force
+    # the agent to use CE tools. Provide a passive notice instead.
+    if not _is_repo_managed():
+        return (
+            "Context Engine MCP is available but the current folder is not managed. "
+            "Use status() to check. To manage this folder: scubiee init <path>. "
+            "CE tools remain usable but are not required for this workspace."
+        )
+
     # Phase instructions are recommendations (agent decides).
     # CTX_MCP_STRICT_NATIVE_BAN remains accepted for older trial flags but is a no-op.
     return {
@@ -342,16 +380,11 @@ def _default_repo() -> Path:
         if (candidate / ".context-engine" / "id.json").is_file():
             return candidate
 
-    try:
-        from pipeline.client import EngineClient
-
-        health = EngineClient(timeout=2.0).get("/health")
-        bound = health.get("repo")
-        if bound:
-            return Path(str(bound)).resolve()
-    except Exception:  # noqa: BLE001
-        pass
-
+    # Never infer a workspace from the daemon's currently bound repository.
+    # A repo-neutral global MCP entry can be launched from another workspace;
+    # using /health here would silently route that client to repository A while
+    # the user is working in repository B. The caller will receive the normal
+    # admission error for this cwd if it has not been explicitly initialized.
     return cwd
 
 
@@ -364,6 +397,87 @@ def _err(tool: str, error: str, *, hint: str = "", **extra: Any) -> str:
     if hint:
         payload["hint"] = hint
     return _dumps(payload)
+
+
+_SUCCESS_BACKEND_STATUSES = {
+    "ok",
+    "ready",
+    "active",
+    "activated",
+    "success",
+    "complete",
+    "completed",
+    "idle",
+    "registered",
+    "indexed",
+    "published",
+}
+
+
+def _backend_failed(response: Any, *, require_ok: bool = True) -> bool:
+    """Detect explicit and implicit daemon failures.
+
+    The daemon can return transient states such as ``warming`` without an
+    ``ok`` field. Data-bearing HTTP endpoints otherwise guarantee ``ok:true``
+    on success, so a missing success marker is treated as a failed response.
+    """
+    if not isinstance(response, dict):
+        return require_ok
+    if require_ok and response.get("ok") is not True:
+        return True
+    if response.get("ok") is False or response.get("error"):
+        return True
+    if response.get("ready") is False:
+        return True
+    status = str(response.get("status") or "").strip().lower()
+    return bool(status and status not in _SUCCESS_BACKEND_STATUSES)
+
+
+def _backend_error(
+    tool: str,
+    repo: Path,
+    response: Any,
+    *,
+    hint: str,
+    require_ok: bool = True,
+) -> str | None:
+    """Preserve daemon admission/readiness failures instead of empty results."""
+    if response is None:
+        return None
+    if not isinstance(response, dict):
+        return _err(tool, "invalid Context Engine response", hint=hint, repo=str(repo))
+    if not _backend_failed(response, require_ok=require_ok):
+        return None
+
+    status = str(response.get("status") or "").strip()
+    error = str(
+        response.get("error")
+        or status
+        or ("Context Engine is not ready" if response.get("ready") is False else "Context Engine request failed")
+    )
+    if status == "requires_initialize" or error == "requires_initialize":
+        hint = f"Run: scubiee init {repo} and then reload/reconnect the MCP server."
+    elif status == "needs_registration":
+        hint = f"Register this workspace first: scubiee register {repo}."
+    elif status in {"warming", "starting", "loading", "syncing", "initializing", "not_ready"}:
+        hint = f"Context Engine is still {status}; retry after status() reports ready."
+
+    extra: dict[str, Any] = {"repo": str(repo)}
+    for key in (
+        "status",
+        "state",
+        "ready",
+        "warm_state",
+        "sync_state",
+        "sync_status",
+        "http_status",
+        "root",
+        "project_id",
+        "pause_reason",
+    ):
+        if response.get(key) is not None:
+            extra[key] = response[key]
+    return _err(tool, error, hint=hint, **extra)
 
 
 def _norm_query(query: str) -> str:
@@ -887,6 +1001,14 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
                 )
             except Exception as exc:  # noqa: BLE001
                 return _err("search", str(exc), hint="Exact mode needs a warm engine; check status().")
+            backend_error = _backend_error(
+                "search",
+                repo,
+                res,
+                hint="Exact mode needs a warm engine; check status().",
+            )
+            if backend_error:
+                return backend_error
             hits = _slim_grep(res.get("hits") or res.get("matches"), keep=max(args.k, 20))
             out = {
                 "ok": True, "tool": "search", "mode": "exact", "query": args.query,
@@ -920,6 +1042,7 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
                 results.append(item)
 
             neighbors: list[dict[str, Any]] = []
+            neighbors_error: str | None = None
             if include_mode == "graph" and results:
                 top = results[0]
                 file_s = str(top.get("file") or "")
@@ -931,11 +1054,24 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
                             max_chars=min(400, int(args.max_chars)),
                             repo=str(repo),
                         )
+                        backend_error = _backend_error(
+                            "search", repo, gn,
+                            hint="Graph results need a warm engine; check status().",
+                        )
+                        if backend_error:
+                            return backend_error
                         neighbors = _slim_spans(
                             gn.get("spans") or [], keep=4, body_chars=400
                         )
-                    except Exception:  # noqa: BLE001
+                    except Exception as exc:  # noqa: BLE001
+                        backend_error = _backend_error(
+                            "search", repo, getattr(exc, "response", None),
+                            hint="Graph results need a warm engine; check status().",
+                        )
+                        if backend_error:
+                            return backend_error
                         neighbors = []
+                        neighbors_error = str(exc)
 
             if results:
                 if include_mode == "graph":
@@ -960,11 +1096,26 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
             if include_mode == "graph":
                 out["neighbors"] = neighbors
                 out["neighbors_count"] = len(neighbors)
+                if neighbors_error:
+                    out["neighbors_error"] = neighbors_error
             if usage_hint:
                 out["usage_hint"] = usage_hint
             return _format(out, args.response_format)
         except Exception as exc:  # noqa: BLE001
-            return _err("search", str(exc), hint="Check status()/CTX_REPO; ensure index is warm.")
+            backend_error = _backend_error(
+                "search",
+                repo,
+                getattr(exc, "response", None),
+                hint="Check status()/CTX_REPO; ensure index is warm.",
+            )
+            if backend_error:
+                return backend_error
+            return _err(
+                "search",
+                str(exc),
+                repo=str(repo),
+                hint="Check status()/CTX_REPO; ensure index is warm.",
+            )
 
     # ---- read (read, rich, nav) -------------------------------------------------
     def read_impl(
@@ -1011,6 +1162,11 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
                 res = _client_for(repo).outline(path_o.replace("\\", "/"), repo=str(repo))
             except Exception as exc:  # noqa: BLE001
                 return _err("read", str(exc), hint="Ensure the engine is warm.")
+            backend_error = _backend_error(
+                "read", repo, res, hint="Ensure the engine is warm."
+            )
+            if backend_error:
+                return backend_error
             symbols = _slim_outline(res.get("symbols") or res.get("outline"), keep=60)
             out = {
                 "ok": True, "tool": "read", "detail": "outline", "mode": "outline",
@@ -1095,7 +1251,18 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
                 ex = _read_excerpt(repo, file_s, start_l, end_l, max_chars=args.max_chars)
         except Exception as exc:  # noqa: BLE001
             return _err("read", str(exc), file=file_s)
+        backend_error = _backend_error(
+            "read", repo, ex, hint="Ensure the engine is warm and the file exists.",
+            require_ok=False,
+        )
+        if backend_error:
+            return backend_error
         code = ex.get("excerpt") or ex.get("text") or ""
+        if not str(code).strip():
+            return _err(
+                "read", f"no readable span found for {file_s!r}",
+                file=file_s, hint="Try read(path=..., start_line=1) or search() first.",
+            )
         start_l = int(ex.get("start_line") or start_l or 0)
         end_l = int(ex.get("end_line") or end_l or 0)
 
@@ -1136,14 +1303,26 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
                     [file_s], query=target_s or q or "", keep=keep_n,
                     max_chars=400, repo=str(repo),
                 )
+                backend_error = _backend_error(
+                    "read", repo, gn, hint="Graph neighbors need a warm engine; check status()."
+                )
+                if backend_error:
+                    return backend_error
                 nbrs = _slim_spans(gn.get("spans") or [], keep=keep_n, body_chars=400)
                 if nbrs:
                     out["neighbors"] = nbrs
                     out["neighbors_count"] = len(nbrs)
                 else:
                     out["neighbors_note"] = "no 1-hop neighbors resolved for this span"
-            except Exception:  # noqa: BLE001
+            except Exception as exc:  # noqa: BLE001
+                backend_error = _backend_error(
+                    "read", repo, getattr(exc, "response", None),
+                    hint="Graph neighbors need a warm engine; check status().",
+                )
+                if backend_error:
+                    return backend_error
                 out["neighbors_note"] = "neighbors unavailable (graph not warm)"
+                out["neighbors_error"] = str(exc)
 
         out["next"] = (
             "Edit now. About to change a shared symbol? read(neighbors=true) for "
@@ -1175,6 +1354,11 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
             )
         except Exception as exc:  # noqa: BLE001
             return _err("grep", str(exc), hint="Ensure the engine is warm.")
+        backend_error = _backend_error(
+            "grep", repo, res, hint="Ensure the engine is warm."
+        )
+        if backend_error:
+            return backend_error
         hits = _slim_grep(res.get("hits") or res.get("matches"), keep=args.max_hits)
         truncated = bool(res.get("truncated") or res.get("has_more"))
         nxt = (
@@ -1217,6 +1401,11 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
             res = _client_for(repo).outline(args.path.replace("\\", "/"), repo=str(repo))
         except Exception as exc:  # noqa: BLE001
             return _err("outline", str(exc), hint="Ensure the engine is warm.")
+        backend_error = _backend_error(
+            "outline", repo, res, hint="Ensure the engine is warm."
+        )
+        if backend_error:
+            return backend_error
         symbols = _slim_outline(res.get("symbols") or res.get("outline"), keep=args.keep)
         out = {
             "ok": True, "tool": "outline", "path": res.get("path") or args.path,
@@ -1249,6 +1438,11 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
             )
         except Exception as exc:  # noqa: BLE001
             return _err("neighbors", str(exc), hint="Ensure the graph index is warm.")
+        backend_error = _backend_error(
+            "neighbors", repo, gn, hint="Ensure the graph index is warm."
+        )
+        if backend_error:
+            return backend_error
         nbrs = _slim_spans(gn.get("spans") or [], keep=args.keep, body_chars=args.max_chars)
         out = {
             "ok": True, "tool": "neighbors", "target": args.target, "file": file_s,
@@ -1277,6 +1471,11 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
             )
         except Exception as exc:  # noqa: BLE001
             return _err("graph", str(exc), hint="Ensure the graph index is warm.")
+        backend_error = _backend_error(
+            "graph", repo, gq, hint="Ensure the graph index is warm."
+        )
+        if backend_error:
+            return backend_error
         spans = _slim_spans(gq.get("spans") or [], keep=args.keep, body_chars=args.max_chars)
         out = {
             "ok": True, "tool": "graph", "question": args.question,
@@ -1698,7 +1897,7 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
                 daemon_status = {
                     "ok": False,
                     "error": f"Context Engine unreachable at {eng.base}",
-                    "hint": "Run: ctx engine ensure .",
+                    "hint": "Run: scubiee engine ensure .",
                 }
             soft_search_ready = bool(
                 healthy
@@ -1749,6 +1948,13 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
                     "meta": daemon_status.get("meta") if healthy else None,
                 },
                 "repo": str(repo), "token_mode": token_mode(),
+                "managed": _is_repo_managed(),
+                "should_use_mcp": _is_repo_managed() and healthy,
+                "index_available": bool(
+                    healthy
+                    and daemon_status.get("meta")
+                    and (daemon_status.get("meta") or {}).get("chunks", 0) > 0
+                ),
                 "tools": tool_lists.get(surface, tool_lists["read"]),
                 "keeper": daemon_status.get("keeper") if healthy else None,
                 "soft_search_ready": soft_search_ready,
@@ -1851,11 +2057,23 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
 
 
 def main() -> None:
+    # Disable automatic GC in the MCP process. Native extensions (tokenizers,
+    # MLX, numpy) release the GIL; concurrent GC can traverse freed objects → SIGSEGV.
+    # Same fix as the daemon (server.py). Manual gc.collect() at safe points.
+    import gc
+
+    gc.disable()
+
+    # Disable Rayon parallelism in tokenizers to prevent memory corruption on
+    # macOS ARM64. The Rayon thread pool interacts badly with CPython's memory
+    # allocator, causing SIGSEGV in random threads.
+    os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+
     repo = _default_repo()
     os.environ.setdefault("CTX_REPO", str(repo))
     os.environ.setdefault("CTX_TOKEN_MODE", "savings")
     os.environ.setdefault("CTX_SESSION_GOVERNOR", "1")
-    os.environ.setdefault("CTX_ENGINE_IDLE_S", "120")
+    os.environ.setdefault("CTX_ENGINE_IDLE_S", "60")
     try:
         from pipeline.daemon import ensure_daemon
 

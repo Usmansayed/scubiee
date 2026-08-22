@@ -1,4 +1,4 @@
-"""Daemon lifecycle: start/stop/pid/lock for the Context Engine HTTP service."""
+﻿"""Daemon lifecycle: start/stop/pid/lock for the Context Engine HTTP service."""
 
 from __future__ import annotations
 
@@ -107,7 +107,7 @@ def acquire_lock(pid: int, *, url: str, repo: str) -> dict[str, Any]:
             return {
                 "ok": False,
                 "error": f"engine.lock held by live pid {existing} (not healthy)",
-                "hint": "Stop with: ctx engine stop",
+                "hint": "Stop with: scubiee engine stop",
                 "lock_pid": existing,
             }
         # stale
@@ -138,7 +138,7 @@ def validate_daemon_binding(repo: Path | str) -> dict[str, Any]:
             "ok": False,
             "reason": "lock_corrupt",
             "healthy": healthy,
-            "repair": "ctx engine stop; remove ~/.context-engine/engine.lock if stale",
+            "repair": "scubiee engine stop; remove ~/.context-engine/engine.lock if stale",
             "repo": str(target),
         }
     bound = lock_repo
@@ -162,7 +162,7 @@ def validate_daemon_binding(repo: Path | str) -> dict[str, Any]:
         "repair": (
             None
             if healthy and matched
-            else f"ctx engine ensure {target}  # reopen so soft search binds this workspace"
+            else f"scubiee engine ensure {target}  # reopen so soft search binds this workspace"
         ),
     }
 
@@ -230,7 +230,7 @@ def start_daemon(
         return {
             "ok": False,
             "error": f"engine.lock held by pid {existing} but /health is down",
-            "hint": "ctx engine stop  or check engine.log",
+            "hint": "scubiee engine stop  or check engine.log",
             "log": str(log_path()),
         }
 
@@ -311,7 +311,7 @@ def start_daemon(
         "ok": False,
         "error": "daemon started but health check timed out",
         **meta,
-        "hint": f"Check {log_path()} or run: ctx engine run .  (foreground)",
+        "hint": f"Check {log_path()} or run: scubiee engine run .  (foreground)",
     }
 
 
@@ -343,7 +343,9 @@ def stop_daemon() -> dict[str, Any]:
         elif result.get("skipped") == "not_context_engine":
             skipped.append(result)
     release_lock()
-    time.sleep(0.5)
+    deadline = time.time() + 5.0
+    while time.time() < deadline and is_running():
+        time.sleep(0.2)
     return {
         "ok": True,
         "running": is_running(),

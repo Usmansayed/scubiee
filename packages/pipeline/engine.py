@@ -1,8 +1,9 @@
-"""Warm long-lived search engine (embedder + conductor cached in-process)."""
+﻿"""Warm long-lived search engine (embedder + conductor cached in-process)."""
 
 from __future__ import annotations
 
 import os
+import sys
 import threading
 import time
 from dataclasses import dataclass
@@ -23,6 +24,43 @@ from pipeline.hot_patch import disk_preview, hot_patch_texts, rebuild_bm25
 from pipeline.searcher import FaissDenseAdapter, SearchResult
 from pipeline.store import ChunkRecord, PipelineStore
 from pipeline.vectordb import VectorDatabase
+
+
+def _verify_gpu_provider(embedder: Embedder) -> None:
+    """Warn if the configured GPU profile silently fell back to CPU at runtime.
+
+    Called after the warm-up embed_one. Checks the accel profile vs what ORT
+    actually loaded. Logs a clear warning so users know they're on CPU.
+    """
+    try:
+        from pipeline.accel import load_accel, ort_available_providers
+
+        profile = load_accel()
+        if not profile or profile.profile in {"cpu", "mlx"}:
+            return  # CPU or MLX — no ORT provider concern
+
+        want_provider = {
+            "cuda": "CUDAExecutionProvider",
+            "dml": "DmlExecutionProvider",
+            "coreml": "CoreMLExecutionProvider",
+        }.get(profile.profile)
+
+        if not want_provider:
+            return
+
+        available = ort_available_providers()
+        if want_provider in available:
+            return  # All good — GPU provider loaded
+
+        print(
+            f"[engine] WARNING: profile={profile.profile} but {want_provider} not in "
+            f"available providers {available}. Embedding is running on CPU. "
+            f"Run `scubiee setup --repair` to fix GPU acceleration.",
+            file=sys.stderr,
+            flush=True,
+        )
+    except Exception:  # noqa: BLE001
+        pass  # Don't crash the warm-up over a diagnostic check
 
 _LOCK = threading.RLock()
 _ENGINES: dict[str, "WarmSearchEngine"] = {}
@@ -380,6 +418,9 @@ def load_engine(
             embedder.embed_one("warmup", is_query=True)
         except Exception:
             pass
+
+        # Verify GPU provider at warm-up (detect silent CPU fallback)
+        _verify_gpu_provider(embedder)
 
         # Rebuild cards on force_reload so docstring/intent updates apply without re-embed.
         cards = ensure_cards(

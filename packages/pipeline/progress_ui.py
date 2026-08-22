@@ -110,6 +110,13 @@ class InstallProgress:
         self.stream.write(f"Failed: {phase}\n")
         self.stream.flush()
 
+    def notice(self, message: str) -> None:
+        """Print a user-facing notice without labeling it as a failure."""
+        if self._tty and self._started:
+            self.stream.write("\n")
+        self.stream.write(f"{message}\n")
+        self.stream.flush()
+
     def _draw(self, *, force: bool = False) -> None:
         if not self.enabled:
             return

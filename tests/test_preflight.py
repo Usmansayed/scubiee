@@ -1,4 +1,4 @@
-"""Dependency preflight must make degraded CE operation explicit."""
+﻿"""Dependency preflight must make degraded CE operation explicit."""
 
 from __future__ import annotations
 
@@ -126,7 +126,7 @@ def test_missing_installed_profile_cannot_report_valid_cpu(
     assert report["accel"]["ok"] is False
     assert report["accel"]["profile"] is None
     assert "not_configured" in report["accel"]["missing"]
-    assert "ctx setup" in report["accel"]["hint"]
+    assert "scubiee setup" in report["accel"]["hint"]
 
 
 def test_explicit_installed_cpu_profile_remains_valid(

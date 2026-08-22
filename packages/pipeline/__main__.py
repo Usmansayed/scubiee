@@ -1,4 +1,4 @@
-"""CLI: python -m pipeline index|search|status|serve"""
+﻿"""CLI: python -m pipeline index|search|status|serve"""
 
 from __future__ import annotations
 
@@ -499,7 +499,7 @@ def cmd_search(args: argparse.Namespace) -> int:
                 {
                     "ok": False,
                     "error": f"not a directory: {root}",
-                    "hint": "Usage: ctx search \"query\"  or  ctx search . \"query\"",
+                    "hint": "Usage: scubiee search \"query\"  or  scubiee search . \"query\"",
                 }
             ),
             file=sys.stderr,
@@ -894,7 +894,11 @@ def cmd_init(args: argparse.Namespace) -> int:
             out["daemon"] = {"ok": False, "error": str(exc)}
         bar.finish("Ready")
     else:
-        bar.fail(str(out.get("error") or "init failed"))
+        message = str(out.get("error") or "init failed")
+        if out.get("confirmation_required"):
+            bar.notice(message)
+        else:
+            bar.fail(message)
     if not sys.stdout.isatty():
         print(json.dumps(out, indent=2, default=str))
     return 0 if out.get("ok") else 1
@@ -1023,6 +1027,175 @@ def cmd_setup(args: argparse.Namespace) -> int:
         return 1
 
 
+def cmd_migrate(args: argparse.Namespace) -> int:
+    """Check or apply data migrations after a version upgrade."""
+    from pipeline.migrate import detect_migration_needed, migrate_all, migrate_project
+
+    if args.check_all or args.apply_all:
+        if args.apply_all:
+            result = migrate_all()
+        else:
+            # Just check all, don't apply
+            from pipeline.project_id import load_registry
+
+            registry = load_registry()
+            projects = registry.get("projects", {})
+            results = []
+            for pid, entry in projects.items():
+                if not isinstance(entry, dict) or not entry.get("managed"):
+                    continue
+                paths = entry.get("paths", [])
+                root = Path(paths[0]) if paths else None
+                results.append(detect_migration_needed(root, project_id=pid))
+            result = {"ok": True, "projects": results}
+    else:
+        root = Path(args.path).resolve()
+        if args.apply:
+            result = migrate_project(root, force=bool(args.force))
+        else:
+            result = detect_migration_needed(root)
+
+    print(json.dumps(result, indent=2, default=str))
+    return 0 if result.get("ok") else 1
+
+
+def cmd_diagnose(args: argparse.Namespace) -> int:
+    """Run installation diagnostics with progress bar and save a shareable log."""
+    from pipeline.diagnose import diagnose
+
+    output_path = Path(args.output) if args.output else None
+    report = diagnose(
+        run_tests=not bool(args.no_tests),
+        output_path=output_path,
+    )
+
+    # Print summary to stdout
+    print(json.dumps(report, indent=2, default=str))
+
+    # Human-friendly summary to stderr
+    verdict = report.get("verdict", {})
+    log_file = report.get("log_file", "")
+    log_path = Path(log_file) if log_file else None
+
+    # Build a clickable file:// URL for the log (works in Windows Terminal, iTerm2, etc.)
+    if log_path:
+        file_url = log_path.as_uri()
+        # On Windows, also show the parent folder for easy Explorer access
+        folder_url = log_path.parent.as_uri()
+    else:
+        file_url = ""
+        folder_url = ""
+
+    print(f"\n{'='*60}", file=sys.stderr)
+    print(f"  Scubiee {report.get('scubiee_version', '?')}", file=sys.stderr)
+    print(f"  Platform: {report.get('platform', {}).get('system', '?')} "
+          f"{report.get('platform', {}).get('machine', '')}", file=sys.stderr)
+    print(f"  Acceleration: {verdict.get('acceleration', 'none')}", file=sys.stderr)
+    print(f"  Capabilities: {verdict.get('capabilities', '?')}", file=sys.stderr)
+    print(f"  Tests: {verdict.get('tests', '?')}", file=sys.stderr)
+    print(f"  Daemon: {verdict.get('daemon', '?')}", file=sys.stderr)
+    print(f"{'='*60}", file=sys.stderr)
+    print(f"  Log saved: {log_file}", file=sys.stderr)
+    if file_url:
+        print(f"  Open log:    {file_url}", file=sys.stderr)
+        print(f"  Open folder: {folder_url}", file=sys.stderr)
+    print(f"\n  Share the log file above for support.", file=sys.stderr)
+    print(f"{'='*60}", file=sys.stderr)
+
+    return 0 if verdict.get("ok") else 1
+
+
+def cmd_connect(args: argparse.Namespace) -> int:
+    """Connect Scubiee to AI coding tools (MCP config + rules)."""
+    from pipeline.rules_installer import install_tools
+    from pipeline.tool_registry import ALL_SLUGS
+
+    # Collect selected tools
+    if getattr(args, "all", False):
+        selected = list(ALL_SLUGS)
+    else:
+        selected = [slug for slug in ALL_SLUGS if getattr(args, slug.replace("-", "_"), False)]
+
+    if not selected:
+        print(
+            "No tools specified. Use --all or specify tools: "
+            + ", ".join(f"--{s}" for s in ALL_SLUGS),
+            file=sys.stderr,
+        )
+        return 1
+
+    dry_run = getattr(args, "dry_run", False)
+    repo = getattr(args, "repo", None)
+    results = install_tools(selected, dry_run=dry_run, repo=repo)
+
+    # Print results
+    print(json.dumps(results, indent=2, default=str))
+
+    # Human-friendly summary
+    ok_count = sum(1 for r in results if r.get("ok"))
+    fail_count = len(results) - ok_count
+    if dry_run:
+        print(f"\n[dry-run] Would connect {len(results)} tool(s).", file=sys.stderr)
+    else:
+        print(f"\nConnected {ok_count} tool(s).", file=sys.stderr)
+        if fail_count:
+            print(f"  {fail_count} failed — check errors above.", file=sys.stderr)
+        print(
+            "\nThe global rule tells AI tools to call status() first.\n"
+            "If a project is NOT managed by Scubiee, the AI will\n"
+            "skip Scubiee tools and use native search — no errors, no noise.",
+            file=sys.stderr,
+        )
+
+    return 0 if fail_count == 0 else 1
+
+
+def cmd_disconnect(args: argparse.Namespace) -> int:
+    """Disconnect Scubiee from AI coding tools (removes MCP config + rules)."""
+    from pipeline.rules_installer import uninstall_tools
+    from pipeline.tool_registry import ALL_SLUGS
+
+    # Collect selected tools
+    if getattr(args, "all", False):
+        selected = list(ALL_SLUGS)
+    else:
+        selected = [slug for slug in ALL_SLUGS if getattr(args, slug.replace("-", "_"), False)]
+
+    if not selected:
+        print(
+            "No tools specified. Use --all or specify tools: "
+            + ", ".join(f"--{s}" for s in ALL_SLUGS),
+            file=sys.stderr,
+        )
+        return 1
+
+    dry_run = getattr(args, "dry_run", False)
+    repo = getattr(args, "repo", None)
+    results = uninstall_tools(selected, dry_run=dry_run, repo=repo)
+
+    # Print results
+    print(json.dumps(results, indent=2, default=str))
+
+    # Human-friendly summary
+    ok_count = sum(1 for r in results if r.get("ok"))
+    removed_mcp = sum(1 for r in results if r.get("mcp_removed"))
+    removed_rule = sum(1 for r in results if r.get("rule_removed"))
+    fail_count = len(results) - ok_count
+    if dry_run:
+        print(f"\n[dry-run] Would disconnect {len(results)} tool(s).", file=sys.stderr)
+    else:
+        print(
+            f"\nDisconnected {ok_count} tool(s): "
+            f"{removed_mcp} MCP config(s) removed, "
+            f"{removed_rule} rule file(s) removed.",
+            file=sys.stderr,
+        )
+        if fail_count:
+            print(f"  {fail_count} failed — check errors above.", file=sys.stderr)
+
+    return 0 if fail_count == 0 else 1
+
+
 def _write_mcp_config(repo: Path, host: str, port: int) -> None:
     """Minimal MCP write when install_mcp import fails."""
     from pipeline.mcp_install import interpreter
@@ -1079,8 +1252,8 @@ def main(argv: list[str] | None = None) -> int:
             return 1
 
     parser = argparse.ArgumentParser(
-        prog="pipeline",
-        description="Context Engine — Merkle + Graphify + TurboQuant + FAISS + D_rerank",
+        prog="scubiee",
+        description="Scubiee — local AI code context engine: setup once, connect per tool, search everything.",
     )
     parser.add_argument("--version", action=_IdentityVersion)
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -1474,6 +1647,93 @@ def main(argv: list[str] | None = None) -> int:
         help="Stop engine, watchdog, and MCP processes (run before wipe/uninstall on Windows)",
     )
     p_stop.set_defaults(func=cmd_stop)
+
+    p_migrate = sub.add_parser(
+        "migrate",
+        help="Check or apply data migrations after a version upgrade",
+    )
+    p_migrate.add_argument("path", nargs="?", default=".", help="Repo path (default: cwd)")
+    p_migrate.add_argument(
+        "--apply",
+        action="store_true",
+        help="Apply migration (without this flag, only checks)",
+    )
+    p_migrate.add_argument(
+        "--apply-all",
+        action="store_true",
+        help="Apply migrations to all managed projects",
+    )
+    p_migrate.add_argument(
+        "--check-all",
+        action="store_true",
+        help="Check migration status for all managed projects",
+    )
+    p_migrate.add_argument(
+        "--force",
+        action="store_true",
+        help="Force migration even if schema appears current",
+    )
+    p_migrate.set_defaults(func=cmd_migrate)
+
+    p_diag = sub.add_parser(
+        "diagnose",
+        help="Run installation diagnostics, test the setup, and save a shareable log file",
+    )
+    p_diag.add_argument(
+        "--no-tests",
+        action="store_true",
+        help="Skip running the quick test suite",
+    )
+    p_diag.add_argument(
+        "--output",
+        default=None,
+        help="Custom path for the diagnostic log file (default: ~/.context-engine/logs/)",
+    )
+    p_diag.set_defaults(func=cmd_diagnose)
+
+    # --- connect (install MCP + rules for AI tools) ---
+    p_connect = sub.add_parser(
+        "connect",
+        help="Connect Scubiee to AI coding tools (installs MCP config + rules)",
+    )
+    from pipeline.tool_registry import ALL_SLUGS
+
+    for slug in ALL_SLUGS:
+        p_connect.add_argument(
+            f"--{slug}",
+            action="store_true",
+            help=f"Connect to {slug}",
+        )
+    p_connect.add_argument("--all", action="store_true", help="Connect to all supported tools")
+    p_connect.add_argument("--dry-run", action="store_true", help="Show what would be written")
+    p_connect.add_argument(
+        "--repo",
+        type=Path,
+        default=None,
+        help="Workspace repository for repo-aware integrations such as Kiro (default: current directory)",
+    )
+    p_connect.set_defaults(func=cmd_connect)
+
+    # --- disconnect (remove MCP + rules from AI tools) ---
+    p_disconnect = sub.add_parser(
+        "disconnect",
+        help="Disconnect Scubiee from AI coding tools (removes MCP config + rules)",
+    )
+    for slug in ALL_SLUGS:
+        p_disconnect.add_argument(
+            f"--{slug}",
+            action="store_true",
+            help=f"Disconnect from {slug}",
+        )
+    p_disconnect.add_argument("--all", action="store_true", help="Disconnect from all supported tools")
+    p_disconnect.add_argument("--dry-run", action="store_true", help="Show what would be removed")
+    p_disconnect.add_argument(
+        "--repo",
+        type=Path,
+        default=None,
+        help="Workspace repository for repo-aware integrations such as Kiro (default: current directory)",
+    )
+    p_disconnect.set_defaults(func=cmd_disconnect)
 
     args = parser.parse_args(argv)
     return int(args.func(args))

@@ -1,7 +1,7 @@
 [project]
 name = "scubiee"
-version = "0.2.53"
-description = "Scubiee — local Cursor MCP context engine: setup once, ctx init per repo, CUDA/DirectML/MLX/CPU."
+version = "0.2.54"
+description = "Scubiee — local AI code context engine: setup once, connect tools, CUDA/DirectML/MLX/CPU."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -24,6 +24,7 @@ dependencies = [
   "tree-sitter-ruby>=0.23,<0.25",
   "tree-sitter-c-sharp>=0.23,<0.25",
   "mcp>=1.0,<2",
+  "loguru>=0.7",
   "huggingface_hub>=0.20",
   "Pillow>=10.0",
   "loguru>=0.7.2",
@@ -33,27 +34,25 @@ dependencies = [
   "onnx>=1.16",
   # Mac: pip install scubiee pulls the Metal stack (no extra required).
   "fastembed>=0.4; sys_platform == 'darwin'",
-  "onnxruntime>=1.17; sys_platform == 'darwin'",
+  "onnxruntime>=1.17,<1.25; sys_platform == 'darwin'",
   "onnx>=1.16; sys_platform == 'darwin'",
-  "tokenizers>=0.15; sys_platform == 'darwin'",
   "mlx>=0.22; sys_platform == 'darwin' and platform_machine == 'arm64'",
 ]
 
 [project.optional-dependencies]
-# Pick ONE via: ctx setup  (uninstalls conflicting ORT wheels)
-cpu = ["fastembed>=0.4", "onnxruntime>=1.17", "onnx>=1.16"]
-coreml = ["fastembed>=0.4", "onnxruntime>=1.17", "onnx>=1.16"]
-dml = ["fastembed>=0.4", "onnxruntime-directml>=1.17", "onnx>=1.16"]
-cuda = ["fastembed>=0.4", "onnxruntime-gpu>=1.17", "onnx>=1.16"]
-macos = ["fastembed>=0.4", "onnxruntime>=1.17", "onnx>=1.16", "mlx>=0.22"]
-mlx = ["mlx>=0.22", "fastembed>=0.4", "onnx>=1.16", "onnxruntime>=1.17"]
+# Pick ONE via: scubiee setup  (uninstalls conflicting ORT wheels)
+cpu = ["fastembed>=0.4", "onnxruntime>=1.17,<1.25", "onnx>=1.16"]
+coreml = ["fastembed>=0.4", "onnxruntime>=1.17,<1.25", "onnx>=1.16"]
+dml = ["fastembed>=0.4", "onnxruntime-directml>=1.17,<1.25", "onnx>=1.16"]
+cuda = ["fastembed>=0.4", "onnxruntime-gpu>=1.17,<1.25", "onnx>=1.16"]
+macos = ["fastembed>=0.4", "onnxruntime>=1.17,<1.25", "onnx>=1.16", "mlx>=0.22"]
+mlx = ["mlx>=0.22", "fastembed>=0.4", "onnx>=1.16", "onnxruntime>=1.17,<1.25"]
 embed-st = ["sentence-transformers>=3.0", "torch", "einops"]
 mcp = ["mcp>=1.0,<2"]
 
 [project.scripts]
-ctx = "pipeline.__main__:main"
 scubiee = "pipeline.__main__:main"
-ctx-mcp = "pipeline.mcp_server:main"
+scubiee-mcp = "pipeline.mcp_server:main"
 
 [project.urls]
 Homepage = "https://github.com/Usmansayed/new-context-engine"
@@ -77,4 +76,3 @@ include = [
 
 [tool.setuptools.package-data]
 pipeline = ["dashboard_ui/*", "templates/*"]
-

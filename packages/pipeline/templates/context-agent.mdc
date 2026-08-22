@@ -1,12 +1,11 @@
 ---
-description: Context Engine locate — native Grep/Glob banned
+description: Scubiee — check once, then follow or ignore for full session
 alwaysApply: true
 ---
 
-**STRICT native ban.** Locate code only with Context Engine MCP: `map`, `focus`, `grep`, `glob`, `workspace`, `status`.
+**First message only:** call `status()` from the Scubiee MCP.
 
-Do not use native Grep, Glob, rg, find, SemanticSearch, codebase_search, or Task/explore for discovery.
+- If `status.managed` is `true` and `status.ok` is `true`: use Scubiee MCP (`map`, `focus`, `grep`, `glob`, `workspace`) for all code discovery this session. Do not use native Grep, Glob, rg, find, or codebase_search for discovery. Native Read = only lines you will Edit. Shell = tests, build, git.
+- If `status.managed` is `false`, or the MCP is missing/unhealthy: **ignore this rule entirely for the rest of the session.** Use native tools freely. Do not call Scubiee tools again.
 
-Native Read = the exact lines you will Edit. Shell = tests, build, git.
-
-Exception: CE MCP missing or `status()` unhealthy → one native locate pass, then back to MCP.
+One `status()` call per session. Do not repeat it.

@@ -103,6 +103,10 @@ def test_branch_storm_and_resource_pressure_statuses():
     dirty = {"paths": {"a.py": {"state": "queued"}}}
 
     assert derive_sync_status(dirty=dirty, needs_full=True, catchup_chunked=True) == "needs_full"
+    assert derive_sync_status(dirty=dirty, catchup_chunked=True) == "catching_up"
+    assert derive_sync_status(
+        dirty=dirty, last_result={"strategy": "explicit_full_index_required"}
+    ) == "needs_full"
     assert derive_sync_status(dirty=dirty, resource_deferred=True) == "deferred"
     assert derive_sync_status(dirty=dirty, dense_pending=True) == "dense_pending"
 

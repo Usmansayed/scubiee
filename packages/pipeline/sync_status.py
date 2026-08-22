@@ -11,6 +11,7 @@ SYNC_STATUSES = {
     "overlay_ready",
     "dense_pending",
     "deferred",
+    "catching_up",
     "needs_full",
     "error",
 }
@@ -35,8 +36,10 @@ def derive_sync_status(
     effective_error = error if error is not None else result.get("error")
     dense_is_pending = bool(dense_pending or result.get("dense_pending"))
 
-    if needs_full or catchup_chunked or effective_strategy in {"full", "catchup_chunked"}:
+    if needs_full or effective_strategy in {"full", "explicit_full_index_required"}:
         return "needs_full"
+    if catchup_chunked or effective_strategy == "catchup_chunked":
+        return "catching_up"
     if resource_deferred or effective_strategy == "deferred":
         return "deferred"
     if dense_is_pending:

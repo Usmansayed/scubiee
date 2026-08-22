@@ -136,9 +136,11 @@ def _extract_json(text: str) -> dict[str, Any] | None:
 
 
 def _search_hits(repo: Path, query: str, top_k: int = 10) -> list[dict[str, Any]]:
-    from pipeline.context_agent.tools import tool_search_code
+    from pipeline.context_agent.tools import BackendResponseError, tool_search_code
 
     out = tool_search_code(repo, query, top_k=top_k)
+    if out.get("ok") is False:
+        raise BackendResponseError(out)
     tokens = _query_tokens(query)
     hits = []
     for h in out.get("hits") or []:
@@ -187,7 +189,7 @@ def _read_excerpt(
     end_line: int = 0,
     max_chars: int = EXCERPT_MAX,
 ) -> dict[str, Any]:
-    from pipeline.context_agent.tools import tool_read_span
+    from pipeline.context_agent.tools import _backend_failed, tool_read_span
 
     max_chars = max(200, min(int(max_chars or EXCERPT_MAX), SNIPPET_MAX))
     try:
@@ -209,24 +211,38 @@ def _read_excerpt(
                 span if isinstance(span, dict) and "text" in span else (out.get("text") or out.get("span")),
                 max_chars,
             )
-            return {
-                "ok": bool(out.get("ok", True)) and bool(text),
+            result = {
+                "ok": not _backend_failed(out) and bool(text),
                 "path": path,
                 "start_line": (span or {}).get("start_line") if isinstance(span, dict) else start_line,
                 "end_line": (span or {}).get("end_line") if isinstance(span, dict) else end_line,
                 "excerpt": text,
             }
+            for key in (
+                "error", "status", "ready", "warm_state", "sync_state",
+                "sync_status", "http_status", "state", "root", "project_id", "hint",
+            ):
+                if out.get(key) is not None:
+                    result[key] = out[key]
+            return result
     except Exception:  # noqa: BLE001
         pass
     r = tool_read_span(repo, path, start_line, end_line, max_chars=min(max_chars, 700))
     text = _coerce_excerpt_text(r.get("text") or r, max_chars)
-    return {
-        "ok": bool(r.get("ok", True)) and bool(text),
+    result = {
+        "ok": not _backend_failed(r) and bool(text),
         "path": path,
         "start_line": r.get("start_line") or start_line,
         "end_line": r.get("end_line") or end_line,
         "excerpt": text,
     }
+    for key in (
+        "error", "status", "ready", "warm_state", "sync_state",
+        "sync_status", "http_status", "state", "root", "project_id", "hint",
+    ):
+        if r.get(key) is not None:
+            result[key] = r[key]
+    return result
 
 
 def _heuristic_plan(query: str, hits: list[dict[str, Any]], max_targets: int = 6) -> dict[str, Any]:

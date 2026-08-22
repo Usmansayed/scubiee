@@ -1,4 +1,4 @@
-"""Search using FAISS collection dense + BM25 + Graphify → Conductor D_rerank."""
+﻿"""Search using FAISS collection dense + BM25 + Graphify → Conductor D_rerank."""
 
 from __future__ import annotations
 
@@ -87,7 +87,7 @@ def _search_via_server(
         if exc.code in {400, 409} and data.get("error"):
             raise SearchEngineError(
                 str(data.get("error") or exc),
-                hint=str(data.get("hint") or "Run: ctx engine ensure ."),
+                hint=str(data.get("hint") or "Run: scubiee engine ensure ."),
             ) from exc
         return None
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
@@ -95,7 +95,7 @@ def _search_via_server(
     if data.get("ok") is False and data.get("error"):
         raise SearchEngineError(
             str(data["error"]),
-            hint=str(data.get("hint") or "Run: ctx engine ensure ."),
+            hint=str(data.get("hint") or "Run: scubiee engine ensure ."),
         )
     out: list[SearchResult] = []
     for h in data.get("hits") or []:
@@ -136,7 +136,7 @@ def search_repo(
             return hits
         raise SearchEngineError(
             f"Context Engine unreachable at {url.rstrip('/')}",
-            hint="Run: ctx engine ensure .   or   ctx search --local",
+            hint="Run: scubiee engine ensure .   or   scubiee search --local",
         )
 
     from pipeline.engine import load_engine

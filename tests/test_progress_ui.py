@@ -1,4 +1,4 @@
-"""Install/setup shows one in-place 0–100% bar instead of a log dump."""
+﻿"""Install/setup shows one in-place 0–100% bar instead of a log dump."""
 
 from __future__ import annotations
 
@@ -77,8 +77,12 @@ def test_pip_install_hides_pip_logs_and_uses_quiet_progress(monkeypatch: pytest.
 
         def __init__(self) -> None:
             self._sent = False
+            self.stdout = io.StringIO("Would have dumped a wall of pip text\n")
 
         def poll(self) -> int | None:
+            return 0
+
+        def wait(self) -> int:
             return 0
 
         def communicate(self, timeout: float | None = None) -> tuple[str, str]:
@@ -154,7 +158,7 @@ def test_cmd_setup_uses_progress_bar_not_step_log(
     err = capsys.readouterr().err
     assert "This may take a few minutes" in err
     assert "[setup] 1/4 graphify" not in err
-    assert "100%" in err or "Ready" in err or "ctx init" in err
+    assert "100%" in err or "Ready" in err or "scubiee init" in err
 
 
 def test_ast_progress_is_silent_when_quiet(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
@@ -245,4 +249,4 @@ def test_cmd_setup_succeeds_when_logon_task_access_denied(
     err = capsys.readouterr().err
     assert "Failed:" not in err
     assert "Access is denied" not in err
-    assert "Ready" in err or "100%" in err or "ctx init" in err
+    assert "Ready" in err or "100%" in err or "scubiee init" in err

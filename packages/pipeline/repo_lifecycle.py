@@ -1,7 +1,8 @@
-"""Persistent repository lifecycle built on the global project registry."""
+﻿"""Persistent repository lifecycle built on the global project registry."""
 
 from __future__ import annotations
 
+import os
 import shutil
 import time
 from pathlib import Path
@@ -31,6 +32,52 @@ UNMANAGED = "unmanaged"
 
 def _root(root: Path | str) -> Path:
     return Path(root).resolve()
+
+
+def _is_too_broad(root: Path) -> bool:
+    """Refuse home directories, filesystem roots, and common system paths."""
+    resolved = root.resolve()
+    home = Path.home().resolve()
+
+    # Exact home directory
+    if resolved == home:
+        return True
+
+    # Filesystem root or near-root
+    if len(resolved.parts) <= 2:
+        return True
+
+    # Common system/user-level directories that should never be indexed
+    _BROAD = {
+        str(home / "Desktop"),
+        str(home / "Documents"),
+        str(home / "Downloads"),
+        "/tmp",
+        "/var",
+        "/usr",
+        "/etc",
+        "/opt",
+    }
+
+    # Windows-specific broad paths
+    import platform
+
+    if platform.system() == "Windows":
+        win_root = os.environ.get("SystemDrive", "C:")
+        _BROAD.update({
+            f"{win_root}\\",
+            f"{win_root}\\Users",
+            f"{win_root}\\Windows",
+            f"{win_root}\\Program Files",
+            f"{win_root}\\Program Files (x86)",
+            str(home / "AppData"),
+            str(home / "OneDrive"),
+        })
+
+    if str(resolved) in _BROAD:
+        return True
+
+    return False
 
 
 def _project(root: Path) -> tuple[str | None, dict[str, Any]]:
@@ -172,6 +219,35 @@ def initialize_repo(
 ) -> dict[str, Any]:
     """Admit a repository and reconcile an existing usable index."""
     root = _root(root)
+
+    # Guard: refuse to index CE's own storage directory
+    from pipeline.project_id import context_engine_home
+
+    ce_home = context_engine_home()
+    try:
+        if root.resolve().is_relative_to(ce_home.resolve()):
+            return {
+                "ok": False,
+                "root": str(root),
+                "error": "inside_ce_home",
+                "message": "Cannot manage a folder inside Context Engine's storage directory.",
+            }
+    except (ValueError, OSError):
+        pass  # is_relative_to raises ValueError on unrelated paths on older Python
+
+    # Guard: refuse overly broad directories (home, root, system paths)
+    if _is_too_broad(root):
+        return {
+            "ok": False,
+            "root": str(root),
+            "error": "path_too_broad",
+            "message": (
+                f"Refusing to manage '{root}' — too broad. "
+                "This would index personal files, secrets, or system data. "
+                "Use scubiee init on a specific project directory."
+            ),
+        }
+
     project_id, existing = _project(root)
     if project_id and existing.get("lifecycle_state") == NEVER_INDEX:
         entry = _update(project_id, last_access_at=time.time())
@@ -184,40 +260,73 @@ def initialize_repo(
             error=NEVER_INDEX,
         )
 
-    ref = resolve_project(root)
-    now = time.time()
-    mark_registered(ref.project_id, root, always_allow=always_allow)
-    current = (load_registry().get("projects") or {}).get(ref.project_id, {})
-    initialized_at = (
-        current.get("initialized_at") if isinstance(current, dict) else None
-    ) or now
-    common = git_common_dir(root)
-    lifecycle_state = (
-        PAUSED if existing.get("lifecycle_state") == PAUSED else ACTIVE
-    )
-    lifecycle_values: dict[str, Any] = {
-        "managed": True,
-        "lifecycle_state": lifecycle_state,
-        "initialized_at": initialized_at,
-        "last_access_at": now,
-        "git_common_dir": str(common) if common else None,
-    }
-    if lifecycle_state == ACTIVE:
-        lifecycle_values.update(last_activated_at=now, pause_reason=None)
-    entry = _update(ref.project_id, **lifecycle_values)
-    from pipeline.git_family import reconcile_git_families
+    # Serialize init so concurrent calls on the same folder wait instead of racing.
+    with registry_lock():
+        # Re-check after acquiring lock — another thread may have completed init.
+        project_id, existing = _project(root)
+        if project_id and existing.get("managed"):
+            # Already initialized — reconcile git families first (using existing
+            # scores), then refresh timestamps and paths.
+            store_dir = (projects_root() / project_id).resolve()
+            from pipeline.git_family import reconcile_git_families as _rgf
 
-    family = reconcile_git_families(prefer_root=root, prefer_project_id=ref.project_id)
-    if family.canonical_project_ids:
-        ref_pid = read_id_file(root) or ref.project_id
-        if ref_pid != ref.project_id:
-            ref = resolve_project(root, migrate=False)
+            family = _rgf(prefer_root=None, prefer_project_id=None)
+            # Reconciliation may have synced id files to a canonical winner
+            ref_pid = read_id_file(root) or project_id
+            if ref_pid != project_id:
+                store_dir = (projects_root() / ref_pid).resolve()
+            # Now update timestamps and path aliases on the canonical entry
+            entry = _update(ref_pid, last_access_at=time.time())
+            from pipeline.project_id import update_registry as _upreg
+            try:
+                _upreg(ref_pid, root)
+            except (ValueError, RegistryConflictError):
+                pass
+            entry = _entry_by_id(ref_pid) or entry
         else:
-            ref_pid = ref.project_id
-    else:
-        ref_pid = ref.project_id
-    entry = _entry_by_id(ref_pid) or entry
+            ref = resolve_project(root)
+            now = time.time()
+            # resolve_project may have walked up to a parent — use ref's root for registration
+            try:
+                mark_registered(ref.project_id, root, always_allow=always_allow)
+            except (ValueError, RegistryConflictError):
+                # Subfolder resolved to parent's project — that's fine, just activate parent
+                entry = _update(ref.project_id, last_access_at=time.time())
+                return _result(ref.project_id, entry, indexed=False, reconciled=False)
+            current = (load_registry().get("projects") or {}).get(ref.project_id, {})
+            initialized_at = (
+                current.get("initialized_at") if isinstance(current, dict) else None
+            ) or now
+            common = git_common_dir(root)
+            lifecycle_state = (
+                PAUSED if existing.get("lifecycle_state") == PAUSED else ACTIVE
+            )
 
+            lifecycle_values: dict[str, Any] = {
+                "managed": True,
+                "lifecycle_state": lifecycle_state,
+                "initialized_at": initialized_at,
+                "last_access_at": now,
+                "git_common_dir": str(common) if common else None,
+            }
+            if lifecycle_state == ACTIVE:
+                lifecycle_values.update(last_activated_at=now, pause_reason=None)
+            entry = _update(ref.project_id, **lifecycle_values)
+            from pipeline.git_family import reconcile_git_families
+
+            family = reconcile_git_families(prefer_root=root, prefer_project_id=ref.project_id)
+            if family.canonical_project_ids:
+                ref_pid = read_id_file(root) or ref.project_id
+                if ref_pid != ref.project_id:
+                    ref = resolve_project(root, migrate=False)
+                else:
+                    ref_pid = ref.project_id
+            else:
+                ref_pid = ref.project_id
+            entry = _entry_by_id(ref_pid) or entry
+            store_dir = (projects_root() / ref_pid).resolve()
+
+    # --- Lock released: indexing can proceed without holding the registry ---
     indexed = False
     reconciled = False
     chunks = 0
@@ -240,12 +349,13 @@ def initialize_repo(
                 sync_data = sync.to_dict()
                 if sync_data.get("error"):
                     return _result(
-                        ref.project_id,
+                        ref_pid,
                         entry,
                         ok=False,
                         indexed=False,
                         reconciled=True,
                         sync=sync_data,
+                        confirmation_required=bool(sync_data.get("confirmation_required")),
                         error=sync_data["error"],
                     )
                 reconciled = True
@@ -264,12 +374,12 @@ def initialize_repo(
                 indexed = True
         except Exception as exc:  # noqa: BLE001
             entry = _update(
-                ref.project_id,
+                ref_pid,
                 last_access_at=time.time(),
                 last_error=str(exc),
             )
             return _result(
-                ref.project_id,
+                ref_pid,
                 entry,
                 ok=False,
                 indexed=False,
@@ -277,9 +387,9 @@ def initialize_repo(
                 error=str(exc),
             )
 
-    entry = _update(ref.project_id, last_access_at=time.time())
+    entry = _update(ref_pid, last_access_at=time.time())
     return _result(
-        ref.project_id,
+        ref_pid,
         entry,
         indexed=indexed,
         reconciled=reconciled,

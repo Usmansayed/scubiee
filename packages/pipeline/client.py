@@ -1,4 +1,4 @@
-"""HTTP client for the Context Engine daemon."""
+﻿"""HTTP client for the Context Engine daemon."""
 
 from __future__ import annotations
 
@@ -106,14 +106,14 @@ class EngineClient:
             return {
                 "ok": False,
                 "error": f"Context Engine unreachable at {self.base}: {exc.reason}",
-                "hint": "Run: ctx setup   or   ctx engine start",
+                "hint": "Run: scubiee setup   or   scubiee engine start",
             }
         except (TimeoutError, OSError, ConnectionError) as exc:
             # WinError 10054/10061 etc. — treat as unreachable, don't crash callers
             return {
                 "ok": False,
                 "error": f"Context Engine unreachable at {self.base}: {exc}",
-                "hint": "Run: ctx setup   or   ctx engine start",
+                "hint": "Run: scubiee setup   or   scubiee engine start",
             }
 
     # Convenience wrappers matching CE API

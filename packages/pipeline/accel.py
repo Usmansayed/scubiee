@@ -1,4 +1,4 @@
-"""Hardware acceleration probe + install profile for CodeRank FastEmbed.
+﻿"""Hardware acceleration probe + install profile for CodeRank FastEmbed.
 
 Profiles (mutually exclusive ORT wheels, plus Mac MLX):
   - cuda    → onnxruntime-gpu
@@ -76,6 +76,7 @@ class AccelProfile:
     batch_calibration: dict[str, Any] = field(default_factory=dict)
     envelope: dict[str, Any] = field(default_factory=dict)
     hardware_fingerprint: str = ""
+    cuda_fallback_hint: str = ""
 
     def _coreml_options(self) -> dict[str, str]:
         from pipeline.coreml_mac import coreml_provider_options
@@ -129,6 +130,8 @@ def save_accel(profile: AccelProfile, path: Path | None = None) -> Path:
 
 
 def _has_nvidia() -> bool:
+    """Detect NVIDIA GPU via multiple methods (nvidia-smi, ORT, torch, /proc)."""
+    # Method 1: nvidia-smi (most reliable on both Windows and Linux)
     if shutil.which("nvidia-smi"):
         try:
             r = subprocess.run(
@@ -138,15 +141,49 @@ def _has_nvidia() -> bool:
                 timeout=8,
                 check=False,
             )
-            return r.returncode == 0 and "GPU" in (r.stdout or "")
+            if r.returncode == 0 and "GPU" in (r.stdout or ""):
+                return True
         except Exception:  # noqa: BLE001
-            return False
+            pass
+
+    # Method 2: Check if onnxruntime already has CUDA provider
+    try:
+        providers = ort_available_providers()
+        if "CUDAExecutionProvider" in providers:
+            return True
+    except Exception:  # noqa: BLE001
+        pass
+
+    # Method 3: PyTorch (if installed)
     try:
         import torch
 
-        return bool(torch.cuda.is_available())
+        if torch.cuda.is_available():
+            return True
     except Exception:  # noqa: BLE001
-        return False
+        pass
+
+    # Method 4: Linux /proc/driver/nvidia (driver loaded without toolkit in PATH)
+    try:
+        if Path("/proc/driver/nvidia/version").exists():
+            return True
+    except Exception:  # noqa: BLE001
+        pass
+
+    # Method 5: Windows — check WMI for NVIDIA adapters (nvidia-smi not in PATH)
+    if platform.system() == "Windows":
+        try:
+            r = subprocess.run(
+                ["powershell", "-NoProfile", "-Command",
+                 "Get-CimInstance Win32_VideoController | Select-Object -ExpandProperty Name"],
+                capture_output=True, text=True, timeout=10, check=False,
+            )
+            if r.returncode == 0 and "nvidia" in (r.stdout or "").lower():
+                return True
+        except Exception:  # noqa: BLE001
+            pass
+
+    return False
 
 
 def _is_apple_silicon(detected: dict[str, Any] | None = None) -> bool:
@@ -248,23 +285,31 @@ def detect_hardware() -> dict[str, Any]:
 
 def recommend_profile(detected: dict[str, Any] | None = None) -> AccelProfile:
     d = detected or detect_hardware()
-    if d.get("nvidia"):
+    # Windows: use DirectML if a real GPU is present (not just a basic display adapter)
+    if d.get("os") == "Windows" and d.get("gpus"):
+        # Filter out software rasterizers (Microsoft Basic Display Adapter, etc.)
+        real_gpus = [
+            g for g in d["gpus"]
+            if "microsoft" not in g.get("name", "").lower()
+            and "basic" not in g.get("name", "").lower()
+        ]
+        if real_gpus:
+            return AccelProfile(
+                profile="dml",
+                provider="DmlExecutionProvider",
+                device_id=int(d.get("suggested_dml_device_id") or 0),
+                batch_size=BATCH_PREFER,
+                reason="Windows GPU via DirectML — zero-config acceleration for NVIDIA/AMD/Intel",
+                detected=d,
+            )
+    # Linux NVIDIA: use CUDA (DLL locking is not an issue on Linux)
+    if d.get("nvidia") and d.get("os") == "Linux":
         return AccelProfile(
             profile="cuda",
             provider="CUDAExecutionProvider",
             device_id=0,
             batch_size=BATCH_PREFER,
-            reason="NVIDIA GPU detected — use onnxruntime-gpu + FastEmbed",
-            detected=d,
-        )
-    if d.get("os") == "Windows" and d.get("gpus"):
-        # Any real adapter → DML (covers AMD/Intel/NVIDIA without CUDA toolkit)
-        return AccelProfile(
-            profile="dml",
-            provider="DmlExecutionProvider",
-            device_id=int(d.get("suggested_dml_device_id") or 0),
-            batch_size=BATCH_PREFER,
-            reason="Windows GPU via DirectML — use onnxruntime-directml + FastEmbed",
+            reason="Linux NVIDIA GPU detected — use onnxruntime-gpu + FastEmbed",
             detected=d,
         )
     if d.get("os") == "Darwin":
@@ -314,12 +359,12 @@ def recommend_profile(detected: dict[str, Any] | None = None) -> AccelProfile:
 
 def ort_packages_for(profile: str) -> list[str]:
     if profile == "cuda":
-        return ["onnxruntime-gpu>=1.17"]
+        return ["onnxruntime-gpu>=1.17,<1.25"]
     if profile == "dml":
-        return ["onnxruntime-directml>=1.17"]
+        return ["onnxruntime-directml>=1.17,<1.25"]
     if profile == "mlx":
-        return ["onnxruntime>=1.17"]
-    return ["onnxruntime>=1.17"]
+        return ["onnxruntime>=1.17,<1.25"]
+    return ["onnxruntime>=1.17,<1.25"]
 
 
 def conflicting_ort_packages(profile: str) -> list[str]:
@@ -583,7 +628,17 @@ def _ort_profile_ready(profile: str) -> bool:
 
 
 def _install_ort_wheel(profile: str, progress: Any | None = None) -> None:
-    """Replace CPU/GPU/DML ORT wheels. They cannot coexist."""
+    """Install the correct ORT wheel for the detected profile.
+
+    ORT wheels conflict — only one can be installed at a time:
+    - onnxruntime (CPU + CoreML on Mac)
+    - onnxruntime-directml (Windows GPU — NVIDIA, AMD, Intel)
+    - onnxruntime-gpu (Linux NVIDIA CUDA)
+
+    On Windows with DirectML, the wheel is already installed from base deps
+    (pyproject.toml includes onnxruntime-directml for win32). This function
+    mainly handles Linux CUDA and edge cases.
+    """
     if profile == "mlx":
         return
     _purge_ort_modules()
@@ -593,6 +648,21 @@ def _install_ort_wheel(profile: str, progress: Any | None = None) -> None:
         return
     all_ort = ["onnxruntime", "onnxruntime-gpu", "onnxruntime-directml"]
     pip_uninstall(all_ort, progress=progress)
+    if platform.system() == "Windows":
+        import site
+        import shutil
+
+        for sp in site.getsitepackages():
+            sp_path = Path(sp)
+            if sp_path.is_dir():
+                for broken in sp_path.glob("~*"):
+                    try:
+                        if broken.is_dir():
+                            shutil.rmtree(broken, ignore_errors=True)
+                        else:
+                            broken.unlink(missing_ok=True)
+                    except Exception:  # noqa: BLE001
+                        pass
     remove_stale_ort_tree()
     spec = ort_packages_for(profile)[0]
     try:
@@ -651,6 +721,22 @@ def _align_profile_to_ort(profile: AccelProfile, progress: Any | None = None) ->
     if _ort_profile_ready(profile.profile):
         return
     have = ort_available_providers()
+    # On Windows, if we just swapped ORT wheels in this session, the new
+    # provider won't be visible until next process. Save the GPU profile
+    # WITHOUT calibrating — next run will calibrate at full GPU speed.
+    if platform.system() == "Windows" and profile.profile == "dml":
+        if progress is not None:
+            progress.set(55, "DirectML installed — will calibrate on next run")
+        else:
+            print(
+                "[accel] DirectML wheel installed but not visible in this session. "
+                "Profile saved as dml — next ctx command will use GPU.",
+                file=sys.stderr,
+                flush=True,
+            )
+        # Mark that calibration is pending but keep the dml profile
+        profile._dml_pending = True  # type: ignore[attr-defined]
+        return
     msg = (
         f"{profile.provider} is not in this onnxruntime wheel "
         f"(providers={have}). "
@@ -699,7 +785,42 @@ def install_profile_packages(profile: str, progress: Any | None = None) -> None:
         _install_ort_wheel(profile, progress=progress)
 
 
+def _ensure_cuda_dll_paths() -> None:
+    """Auto-discover CUDA/cuDNN DLLs for Linux CUDA setups.
+
+    On Linux with onnxruntime-gpu, CUDA DLLs may be in non-standard locations
+    (conda env, pip nvidia packages, etc.). This adds them to LD_LIBRARY_PATH.
+    On Windows, DirectML is used instead of CUDA so this is a no-op.
+    """
+    if platform.system() == "Windows":
+        return  # Windows uses DirectML, no CUDA DLL hunting needed
+    try:
+        import importlib.util
+
+        spec = importlib.util.find_spec("onnxruntime")
+        if spec is None or spec.origin is None:
+            return
+        ort_dir = Path(spec.origin).parent
+        # Check nvidia pip packages (nvidia-cublas-cu12, nvidia-cudnn-cu12)
+        site_packages = ort_dir.parent
+        nvidia_pkg_dir = site_packages / "nvidia"
+        if nvidia_pkg_dir.is_dir():
+            lib_dirs: list[str] = []
+            for sub in ("cublas", "cudnn", "cuda_runtime", "cufft", "curand", "cusolver", "cusparse"):
+                lib_dir = nvidia_pkg_dir / sub / "lib"
+                if lib_dir.is_dir():
+                    lib_dirs.append(str(lib_dir.resolve()))
+            if lib_dirs:
+                existing = os.environ.get("LD_LIBRARY_PATH", "")
+                additions = [d for d in lib_dirs if d not in existing]
+                if additions:
+                    os.environ["LD_LIBRARY_PATH"] = ":".join(additions) + ":" + existing
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def ort_available_providers() -> list[str]:
+    _ensure_cuda_dll_paths()
     try:
         import onnxruntime as ort  # type: ignore
 
@@ -802,6 +923,194 @@ def _refuse_coreml_cpu_fallback(
     profile.reason = msg
 
 
+def _refuse_cuda_cpu_fallback(
+    profile: AccelProfile, progress: Any | None = None
+) -> None:
+    """Detect CUDA silent CPU fallback and warn/fix.
+
+    After installing onnxruntime-gpu, verify CUDAExecutionProvider is actually
+    available AND can create a working session. ORT may list the provider but
+    fail at session time if DLLs are missing. We do a real inference probe.
+    """
+    if profile.profile != "cuda":
+        return
+    _ensure_cuda_dll_paths()
+    available = ort_available_providers()
+    if not available:
+        return
+
+    cuda_listed = "CUDAExecutionProvider" in available
+
+    # Even if CUDA EP is listed, probe actual session creation
+    cuda_works = False
+    if cuda_listed:
+        try:
+            import numpy as np
+            import onnxruntime as ort
+
+            # Create a trivial ONNX model in-memory to test CUDA session
+            # Use ORT's own session with CUDA provider to verify DLL loading
+            sess_options = ort.SessionOptions()
+            sess_options.log_severity_level = 4  # suppress warnings during probe
+            # Try creating a session with a known model to verify CUDA actually works
+            from huggingface_hub import try_to_load_from_cache
+
+            model_path = try_to_load_from_cache(
+                CODERANK_HF_ONNX, "model_optimized.onnx"
+            )
+            if model_path and Path(model_path).is_file():
+                sess = ort.InferenceSession(
+                    str(model_path),
+                    sess_options=sess_options,
+                    providers=["CUDAExecutionProvider", "CPUExecutionProvider"],
+                )
+                active = sess.get_providers()
+                cuda_works = "CUDAExecutionProvider" in active
+                del sess
+            else:
+                # No cached model yet — trust provider list for now,
+                # calibration will catch it later
+                cuda_works = True
+        except Exception:  # noqa: BLE001
+            cuda_works = False
+
+    if cuda_listed and cuda_works:
+        return
+
+    # CUDA EP missing or non-functional — diagnose why
+    hints: list[str] = []
+    if not cuda_listed:
+        reason_prefix = "CUDAExecutionProvider not listed"
+    else:
+        reason_prefix = "CUDAExecutionProvider listed but session creation failed (DLL load error)"
+
+    if platform.system() == "Linux":
+        ld_path = os.environ.get("LD_LIBRARY_PATH", "")
+        if "/usr/local/cuda" not in ld_path:
+            hints.append(
+                "LD_LIBRARY_PATH may need /usr/local/cuda/lib64. "
+                "Try: export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH"
+            )
+        if not Path("/usr/local/cuda").exists():
+            hints.append(
+                "CUDA toolkit not found at /usr/local/cuda. "
+                "Install from: https://developer.nvidia.com/cuda-downloads"
+            )
+    elif platform.system() == "Windows":
+        cuda_path = os.environ.get("CUDA_PATH", "")
+        if not cuda_path:
+            hints.append(
+                "CUDA_PATH environment variable not set. "
+                "Install CUDA Toolkit from: https://developer.nvidia.com/cuda-downloads"
+            )
+        elif not Path(cuda_path).exists():
+            hints.append(f"CUDA_PATH={cuda_path} does not exist.")
+        hints.append(
+            "For CUDA 12.x try: pip install onnxruntime-gpu "
+            "--extra-index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/"
+            "_packaging/onnxruntime-cuda-12/pypi/simple/"
+        )
+
+    hint_text = " ".join(hints) if hints else "Check CUDA toolkit installation."
+    msg = (
+        f"NVIDIA GPU detected but {reason_prefix} "
+        f"(providers={available}). {hint_text}"
+    )
+
+    # Check if user explicitly forced CUDA (don't silently fall back)
+    force_gpu = (os.environ.get("CTX_REQUIRE_GPU") or "").strip().lower() in {
+        "1", "true", "yes",
+    }
+    if force_gpu:
+        raise RuntimeError(
+            msg + " Refusing CPU fallback (CTX_REQUIRE_GPU=1). "
+            "Fix CUDA installation or use --profile dml / --profile cpu."
+        )
+
+    if progress is None:
+        print(f"[accel] WARNING: {msg}", file=sys.stderr, flush=True)
+        print("[accel] Falling back to CPU. Run `scubiee setup --repair` after fixing CUDA.",
+              file=sys.stderr, flush=True)
+    else:
+        progress.set(55, "CUDA unavailable — using CPU (check CUDA toolkit)")
+
+    profile.profile = "cpu"
+    profile.provider = "CPUExecutionProvider"
+    profile.reason = msg
+    profile.cuda_fallback_hint = hint_text
+
+
+def _do_calibration(profile: AccelProfile, progress: Any | None = None) -> None:
+    """Run batch-size calibration on the active acceleration provider."""
+    if profile.profile == "mlx":
+        calibration = _calibrate_mlx(profile)
+    else:
+        calibration = calibrate_batch(profile)
+    if profile.profile == "coreml" and not calibration.get("ok"):
+        raise RuntimeError(
+            "CoreML calibration failed: "
+            f"{calibration.get('errors') or calibration.get('error') or calibration}"
+        )
+    profile.batch_size = int(calibration["winner"])
+    profile.texts_per_sec = calibration.get("texts_per_sec")
+    profile.meets_target = (
+        profile.texts_per_sec is not None and profile.texts_per_sec >= TARGET_TPS
+    )
+    profile.batch_calibration = calibration
+    if progress is None:
+        print(
+            f"[accel] batch={profile.batch_size} "
+            f"{profile.texts_per_sec or 0:.2f} t/s "
+            f"(target {TARGET_TPS}+) meet={profile.meets_target} "
+            f"reason={calibration.get('reason')}",
+            file=sys.stderr,
+            flush=True,
+        )
+    if (
+        profile.profile == "coreml"
+        and (profile.texts_per_sec or 0) < TARGET_TPS
+    ):
+        coreml_tps = float(profile.texts_per_sec or 0)
+        msg = (
+            f"CoreML Metal path is {coreml_tps:.2f} t/s (RoPE dim-0 splits "
+            "the graph into many CPU/GPU partitions). Switching to Apple "
+            "Silicon CPU FastEmbed, which is much faster on this model."
+        )
+        if progress is None:
+            print(f"[accel] {msg}", file=sys.stderr, flush=True)
+        else:
+            progress.set(88, "CoreML too slow — using CPU")
+        profile.profile = "cpu"
+        profile.provider = "CPUExecutionProvider"
+        profile.model = CODERANK_MODEL
+        profile.reason = msg
+        calibration = calibrate_batch(profile)
+        profile.batch_size = int(calibration["winner"])
+        profile.texts_per_sec = calibration.get("texts_per_sec")
+        profile.meets_target = (
+            profile.texts_per_sec is not None
+            and profile.texts_per_sec >= TARGET_TPS
+        )
+        profile.batch_calibration = {
+            **calibration,
+            "coreml_rejected_tps": coreml_tps,
+        }
+        if progress is None:
+            print(
+                f"[accel] CPU batch={profile.batch_size} "
+                f"{profile.texts_per_sec or 0:.2f} t/s",
+                file=sys.stderr,
+                flush=True,
+            )
+    if not profile.meets_target and progress is None:
+        print(
+            "[accel] WARNING: below 10 t/s target — indexing will still work; "
+            "consider a stronger GPU or shorter embed recipe.",
+            file=sys.stderr,
+            flush=True,
+        )
+
+
 def configure(
     *,
     force_profile: str | None = None,
@@ -875,8 +1184,11 @@ def configure(
             install_profile_packages(profile.profile, progress=progress)
         _align_profile_to_ort(profile, progress=progress)
         _refuse_coreml_cpu_fallback(profile, progress=progress)
+        _refuse_cuda_cpu_fallback(profile, progress=progress)
     elif profile.profile == "coreml":
         _refuse_coreml_cpu_fallback(profile, progress=progress)
+    elif profile.profile == "cuda":
+        _refuse_cuda_cpu_fallback(profile, progress=progress)
     if download_model:
         if progress is not None:
             progress.set(56, "Downloading embedding model")
@@ -923,90 +1235,46 @@ def configure(
             apply_mlx_production_defaults()
             profile.backend = "mlx"
             profile.provider = "MLX"
-        ensure_coderank_model(profile, progress=progress)
-    if bench:
-        if progress is not None:
-            progress.set(86, "Calibrating speed")
-        try:
-            if profile.profile == "mlx":
-                calibration = _calibrate_mlx(profile)
-            else:
-                calibration = calibrate_batch(profile)
-            if profile.profile == "coreml" and not calibration.get("ok"):
-                raise RuntimeError(
-                    "CoreML calibration failed: "
-                    f"{calibration.get('errors') or calibration.get('error') or calibration}"
-                )
-            profile.batch_size = int(calibration["winner"])
-            profile.texts_per_sec = calibration.get("texts_per_sec")
-            profile.meets_target = (
-                profile.texts_per_sec is not None and profile.texts_per_sec >= TARGET_TPS
-            )
-            profile.batch_calibration = calibration
-            if progress is None:
-                print(
-                    f"[accel] batch={profile.batch_size} "
-                    f"{profile.texts_per_sec or 0:.2f} t/s "
-                    f"(target {TARGET_TPS}+) meet={profile.meets_target} "
-                    f"reason={calibration.get('reason')}",
-                    file=sys.stderr,
-                    flush=True,
-                )
-            if (
-                profile.profile == "coreml"
-                and (profile.texts_per_sec or 0) < TARGET_TPS
-            ):
-                coreml_tps = float(profile.texts_per_sec or 0)
-                msg = (
-                    f"CoreML Metal path is {coreml_tps:.2f} t/s (RoPE dim-0 splits "
-                    "the graph into many CPU/GPU partitions). Switching to Apple "
-                    "Silicon CPU FastEmbed, which is much faster on this model."
-                )
-                if progress is None:
-                    print(f"[accel] {msg}", file=sys.stderr, flush=True)
-                else:
-                    progress.set(88, "CoreML too slow — using CPU")
-                profile.profile = "cpu"
-                profile.provider = "CPUExecutionProvider"
-                profile.model = CODERANK_MODEL
-                profile.reason = msg
-                calibration = calibrate_batch(profile)
-                profile.batch_size = int(calibration["winner"])
-                profile.texts_per_sec = calibration.get("texts_per_sec")
-                profile.meets_target = (
-                    profile.texts_per_sec is not None
-                    and profile.texts_per_sec >= TARGET_TPS
-                )
-                profile.batch_calibration = {
-                    **calibration,
-                    "coreml_rejected_tps": coreml_tps,
-                }
-                if progress is None:
-                    print(
-                        f"[accel] CPU batch={profile.batch_size} "
-                        f"{profile.texts_per_sec or 0:.2f} t/s",
-                        file=sys.stderr,
-                        flush=True,
-                    )
-            if not profile.meets_target and progress is None:
-                print(
-                    "[accel] WARNING: below 10 t/s target — indexing will still work; "
-                    "consider a stronger GPU or shorter embed recipe.",
-                    file=sys.stderr,
-                    flush=True,
-                )
-        except Exception as exc:  # noqa: BLE001
-            from pipeline.coreml_mac import mac_gpu_only
+        # If DML was just installed but not visible, download model with CPU provider
+        if getattr(profile, "_dml_pending", False):
+            from dataclasses import replace
 
-            if profile.profile == "coreml" and mac_gpu_only():
-                raise RuntimeError(
-                    f"CoreML GPU calibration failed: {exc}. Refusing CPU fallback."
-                ) from exc
-            if progress is None:
-                print(f"[accel] batch calibration failed: {exc}", file=sys.stderr, flush=True)
+            cpu_profile = replace(profile, profile="cpu", provider="CPUExecutionProvider")
+            ensure_coderank_model(cpu_profile, progress=progress)
+        else:
+            ensure_coderank_model(profile, progress=progress)
+    if bench:
+        # Skip calibration if DML was just installed but not yet visible
+        # (will calibrate on next run when DirectML is properly loaded)
+        if getattr(profile, "_dml_pending", False):
+            if progress is not None:
+                progress.set(92, "Skipping calibration — DirectML ready on next run")
+            profile.batch_size = BATCH_PREFER
             profile.texts_per_sec = None
-            profile.meets_target = None
-            profile.batch_calibration = {"ok": False, "error": str(exc)}
+            profile.meets_target = False
+            profile.batch_calibration = {
+                "ok": True,
+                "winner": BATCH_PREFER,
+                "texts_per_sec": None,
+                "reason": "deferred — DirectML not yet visible in this process",
+            }
+        else:
+            if progress is not None:
+                progress.set(86, "Calibrating speed")
+            try:
+                _do_calibration(profile, progress=progress)
+            except Exception as exc:  # noqa: BLE001
+                from pipeline.coreml_mac import mac_gpu_only
+
+                if profile.profile == "coreml" and mac_gpu_only():
+                    raise RuntimeError(
+                        f"CoreML GPU calibration failed: {exc}. Refusing CPU fallback."
+                    ) from exc
+                if progress is None:
+                    print(f"[accel] batch calibration failed: {exc}", file=sys.stderr, flush=True)
+                profile.texts_per_sec = None
+                profile.meets_target = None
+                profile.batch_calibration = {"ok": False, "error": str(exc)}
 
     from pipeline.resource_envelope import derive_envelope
 
@@ -1636,14 +1904,14 @@ def microbench(profile: AccelProfile, n: int = 48) -> float:
 def resolve_runtime() -> AccelProfile:
     """Load the installed preference without detection or selection.
 
-    Apple Silicon: ``ctx setup`` persists ``profile=mlx`` (FP16). A saved
+    Apple Silicon: ``scubiee setup`` persists ``profile=mlx`` (FP16). A saved
     CoreML profile is overlaid with MLX when the ``mlx`` package is installed.
     ``accel.json`` is not rewritten here. Opt out with ``CTX_EMBED_BACKEND=fastembed``
     or ``CTX_MLX=0``. An explicit CPU profile is left unchanged.
     """
     profile = load_accel()
     if profile is None:
-        raise RuntimeError("acceleration profile is not configured; run `ctx setup`")
+        raise RuntimeError("acceleration profile is not configured; run `scubiee setup`")
     env = os.environ.get("CTX_EMBED_BACKEND", "").strip().lower()
     want_mlx = env == "mlx" or (profile.profile == "mlx" or profile.backend == "mlx")
     if profile.profile in {"dml", "cuda"} and env != "mlx":
