@@ -297,7 +297,13 @@ class BackgroundSyncLoop:
             self._invalidate_session_paths(batch)
             self._publish_or_hold(payload, paths=batch, now=current_time)
         else:
-            self.dirty_ledger.complete(batch, published=True)
+            self.dirty_ledger.complete(batch, published=False)
+            if isinstance(payload, dict):
+                warns = payload.setdefault("warnings", [])
+                if isinstance(warns, list):
+                    warns.append(
+                        "sync did not refresh the index; search may be stale until retry"
+                    )
         self.drain_publish(now=current_time)
         return [payload]
 

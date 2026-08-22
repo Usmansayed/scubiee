@@ -130,6 +130,82 @@ def stop_uv_tool_processes(python: Path | None = None) -> dict[str, Any]:
     return stop_processes_under(root)
 
 
+def process_cmdline(pid: int) -> str:
+    """Best-effort command line for *pid* (lowercase on Windows)."""
+    try:
+        import psutil
+
+        proc = psutil.Process(pid)
+        parts = proc.cmdline()
+        return " ".join(str(x) for x in parts).lower()
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def is_context_engine_process(pid: int) -> bool:
+    """True only when *pid* looks like CE daemon/MCP/watchdog (not arbitrary reuse)."""
+    if pid <= 0:
+        return False
+    try:
+        import psutil
+
+        proc = psutil.Process(pid)
+        name = (proc.name() or "").lower()
+    except Exception:  # noqa: BLE001
+        name = ""
+    cmdline = process_cmdline(pid)
+    if not cmdline and not name:
+        return False
+    if _cmdline_matches_ce(cmdline.split() if cmdline else None):
+        return True
+    needles = (
+        "python",
+        "python.exe",
+        "scubiee",
+        "ctx-mcp",
+    )
+    if name not in needles and "python" not in name:
+        return False
+    markers = (
+        "pipeline.server",
+        "pipeline.engine",
+        "pipeline.mcp_locate",
+        "pipeline.mcp_server",
+        "pipeline.watchdog",
+        "pipeline.__main__",
+        "context-engine",
+        "scubiee",
+    )
+    return any(m in cmdline for m in markers)
+
+
+def safe_terminate_pid(pid: int, *, grace_s: float = 1.0) -> dict[str, Any]:
+    """Terminate *pid* only when it matches CE; never kill unrelated processes."""
+    from pipeline.daemon import _pid_alive
+
+    if not _pid_alive(pid):
+        return {"pid": pid, "ok": True, "skipped": "not_alive"}
+    if not is_context_engine_process(pid):
+        return {"pid": pid, "ok": False, "skipped": "not_context_engine"}
+    try:
+        if os.name == "nt":
+            subprocess.run(
+                ["taskkill", "/PID", str(pid), "/T", "/F"],
+                capture_output=True,
+                check=False,
+            )
+        else:
+            os.kill(pid, 15)
+            deadline = time.time() + grace_s
+            while time.time() < deadline and _pid_alive(pid):
+                time.sleep(0.1)
+            if _pid_alive(pid):
+                os.kill(pid, 9)
+        return {"pid": pid, "ok": True, "terminated": True}
+    except OSError as exc:
+        return {"pid": pid, "ok": False, "error": str(exc)}
+
+
 def _cmdline_matches_ce(cmdline: list[str] | None) -> bool:
     if not cmdline:
         return False
@@ -183,15 +259,11 @@ def stop_all_context_engine_processes(*, ctx_home: Path | None = None) -> dict[s
                 joined = " ".join(str(x) for x in cmdline).lower()
                 if not _cmdline_matches_ce(cmdline) and home_s not in joined:
                     continue
-                if os.name == "nt":
-                    subprocess.run(
-                        ["taskkill", "/PID", str(pid), "/T", "/F"],
-                        capture_output=True,
-                        check=False,
-                    )
-                else:
-                    proc.terminate()
-                extra_killed.append(pid)
+                result = safe_terminate_pid(pid, grace_s=1.0)
+                if result.get("terminated"):
+                    extra_killed.append(pid)
+                elif result.get("skipped") == "not_context_engine":
+                    extra_failed.append(pid)
             except (psutil.NoSuchProcess, psutil.AccessDenied, TypeError, ValueError):
                 extra_failed.append(int(info.get("pid") or 0))
     time.sleep(1.0)

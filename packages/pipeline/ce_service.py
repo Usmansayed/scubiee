@@ -490,13 +490,14 @@ class RuntimeManager:
                     self.warming = False
                     self.warm_state = "needs_confirm"
                     self.warm_error = str(exc)
-                    return {
-                        "ok": False,
-                        "error": str(exc),
-                        "needs_confirm": True,
-                        "file_count": exc.n_files,
-                        "warm_state": "needs_confirm",
-                    }
+                    payload = exc.to_payload(root)
+                    payload.update(
+                        {
+                            "warm_state": "needs_confirm",
+                            "file_count": exc.n_files,
+                        }
+                    )
+                    return payload
                 self.indexing = True
                 self.warm_state = "indexing"
                 idx = self.index.full_index(root, force=False, fast=False)

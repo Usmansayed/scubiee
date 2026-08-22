@@ -84,10 +84,11 @@ def _coderank_model_dirs() -> list[Path]:
         home / ".cache" / "huggingface",
         home / ".cache" / "huggingface" / "hub",
         Path(tempfile.gettempdir()) / "fastembed_cache",
-        Path(os.environ.get("HF_HOME", "")),
-        Path(os.environ.get("HUGGINGFACE_HUB_CACHE", "")),
-        Path(os.environ.get("FASTEMBED_CACHE", "")),
     ]
+    for env_name in ("HF_HOME", "HUGGINGFACE_HUB_CACHE", "FASTEMBED_CACHE"):
+        raw = os.environ.get(env_name, "").strip()
+        if raw:
+            candidates.append(Path(raw))
     local = os.environ.get("LOCALAPPDATA", "").strip()
     if local:
         candidates.extend(
@@ -215,9 +216,16 @@ def wipe_all(
     if not yes:
         return {
             "ok": False,
+            "status": "warning",
             "scope": "all",
+            "warning": "confirm_required",
             "error": "confirm_required",
+            "needs_confirm": True,
             "plan": plan,
+            "message": (
+                "Safety pause: full machine wipe was not run. "
+                "This is intentional — confirm only when you mean to delete everything."
+            ),
             "hint": (
                 "This deletes ALL Context Engine state on this machine "
                 "(indexes, prefs, MCP wiring, CodeRank model caches, and the scubiee tool). "

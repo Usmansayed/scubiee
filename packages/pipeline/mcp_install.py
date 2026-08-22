@@ -42,6 +42,9 @@ def server_entry(
     ``python -m pipeline.mcp_locate`` from the same interpreter that has CE.
     """
     engine_url = os.environ.get("CTX_ENGINE_URL") or f"http://{host}:{port}"
+    from pipeline.settings import get_registration_mode
+
+    reg_mode = get_registration_mode()
     env: dict[str, str] = {
         "CTX_ENGINE_URL": engine_url,
         "CTX_TOKEN_MODE": "savings",
@@ -49,7 +52,7 @@ def server_entry(
         "CTX_ALLOW_BG_FULL": "0",
         "CTX_AUTO_INDEX": "1",
         "CTX_SYNC_INTERVAL_MS": "300000",
-        "CTX_REGISTRATION_MODE": "automatic",
+        "CTX_REGISTRATION_MODE": reg_mode,
         "CTX_MCP_SURFACE": "phase",
         "CTX_ENGINE_IDLE_S": "120",
         "PYTHONUTF8": "1",

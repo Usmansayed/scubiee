@@ -332,36 +332,24 @@ def stop_daemon() -> dict[str, Any]:
     lock_pid = _read_lock_pid()
     if lock_pid:
         pids.add(lock_pid)
+    from pipeline.process_control import safe_terminate_pid
+
+    killed: list[int] = []
+    skipped: list[dict[str, Any]] = []
     for pid in pids:
-        try:
-            if os.name == "nt":
-                subprocess.run(
-                    ["taskkill", "/PID", str(pid), "/T", "/F"],
-                    capture_output=True,
-                    check=False,
-                )
-            else:
-                try:
-                    os.kill(pid, signal.SIGTERM)
-                except (ProcessLookupError, PermissionError, OSError):
-                    continue
-                deadline = time.time() + 2.0
-                while time.time() < deadline and _pid_alive(pid):
-                    time.sleep(0.1)
-                if _pid_alive(pid):
-                    try:
-                        os.kill(pid, signal.SIGKILL)
-                    except (ProcessLookupError, PermissionError, OSError):
-                        pass
-                    try:
-                        os.killpg(pid, signal.SIGKILL)
-                    except (ProcessLookupError, PermissionError, OSError):
-                        pass
-        except Exception:  # noqa: BLE001
-            pass
+        result = safe_terminate_pid(pid, grace_s=2.0)
+        if result.get("terminated"):
+            killed.append(pid)
+        elif result.get("skipped") == "not_context_engine":
+            skipped.append(result)
     release_lock()
     time.sleep(0.5)
-    return {"ok": True, "running": is_running()}
+    return {
+        "ok": True,
+        "running": is_running(),
+        "killed": killed,
+        "skipped_pids": skipped,
+    }
 
 
 def force_restart_daemon(repo: Path | str | None = None) -> dict[str, Any]:

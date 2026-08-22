@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -28,6 +29,38 @@ from pipeline.vectordb import VectorDatabase
 # Auto-touch without asking. Above this, require explicit --confirm (not --force/--fast).
 DEFAULT_MAX_TOUCH = 400
 
+_BG_SYNC_LOCK = threading.Lock()
+_BG_SYNC_RUNNING = False
+
+
+def _trust_id_file_env() -> bool:
+    return os.environ.get("CTX_TRUST_ID_FILE", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def _run_single_flight(name: str, fn) -> bool:
+    """Run *fn* at most once globally; return False if already running."""
+    global _BG_SYNC_RUNNING
+    with _BG_SYNC_LOCK:
+        if _BG_SYNC_RUNNING:
+            return False
+        _BG_SYNC_RUNNING = True
+
+    def _wrapper() -> None:
+        global _BG_SYNC_RUNNING
+        try:
+            fn()
+        finally:
+            with _BG_SYNC_LOCK:
+                _BG_SYNC_RUNNING = False
+
+    threading.Thread(target=_wrapper, name=name, daemon=True).start()
+    return True
+
 
 class IndexConfirmRequired(Exception):
     """Full index or sync would touch more files than the auto cap."""
@@ -38,10 +71,48 @@ class IndexConfirmRequired(Exception):
         *,
         max_touch: int = DEFAULT_MAX_TOUCH,
         message: str | None = None,
+        kind: str = "large_scope",
     ):
         self.n_files = n_files
         self.max_touch = max_touch
+        self.kind = kind
         super().__init__(message or _confirm_hint(n_files, max_touch=max_touch))
+
+    def to_payload(self, root: Path) -> dict:
+        broad = is_broad_index_root(root)
+        if self.kind == "broad_root" or (self.n_files == 0 and broad):
+            return {
+                "ok": False,
+                "status": "warning",
+                "warning": "broad_index_scope",
+                "needs_confirm": True,
+                "root": str(root.resolve()),
+                "n_files": self.n_files,
+                "max_touch": self.max_touch,
+                "message": str(self),
+                "action": (
+                    "Change into your project directory, or re-run with --confirm "
+                    "if you intentionally want to index this broad path."
+                ),
+            }
+        return {
+            "ok": False,
+            "status": "warning",
+            "warning": "large_index_scope",
+            "needs_confirm": True,
+            "root": str(root.resolve()),
+            "n_files": self.n_files,
+            "max_touch": self.max_touch,
+            "message": (
+                f"Safety pause: {self.n_files} indexable files (cap {self.max_touch}). "
+                "This is not a failure — confirm when you are ready."
+            ),
+            "action": (
+                "Re-run with --confirm, or narrow scope: "
+                "`scubiee init . --fast --roots packages`"
+            ),
+            "hint": str(self),
+        }
 
 
 def is_broad_index_root(root: Path) -> str | None:
@@ -67,8 +138,9 @@ def _broad_root_hint(root: Path, reason: str, n_files: int) -> str:
         else ""
     )
     return (
-        f"Refusing to index {root} ({reason}). "
+        f"Safety pause: refusing to index {root} ({reason}). "
         f"{count_line}"
+        "This protects you from indexing an overly broad folder by accident. "
         "Change into your project directory and run `scubiee init`, "
         "or re-run with --confirm if you really want to index here."
     )
@@ -89,6 +161,7 @@ def preflight_index_scope(
         raise IndexConfirmRequired(
             0,
             max_touch=max_index_touch(),
+            kind="broad_root",
             message=_broad_root_hint(root, broad, 0),
         )
     n = len(collect_index_relpaths(root, fast=fast, fast_roots=fast_roots))
@@ -115,11 +188,16 @@ def require_index_confirm(
 
 def _confirm_hint(n_files: int, *, max_touch: int) -> str:
     return (
-        f"{n_files} files need indexing (>{max_touch}). "
-        "Re-run with --confirm if you want to proceed, e.g. "
+        f"Safety pause: {n_files} files would be indexed (cap {max_touch}). "
+        "Re-run with --confirm when ready, e.g. "
         "`scubiee init . --confirm`, `scubiee index . --confirm`, "
-        "or `scubiee sync . --confirm`."
+        "or `scubiee sync . --confirm`. "
+        "For large repos prefer: `scubiee init . --fast --roots packages`."
     )
+
+
+def is_safety_pause_message(msg: str | None) -> bool:
+    return bool(msg and msg.startswith("Safety pause:"))
 
 
 @dataclass
@@ -135,7 +213,7 @@ class IncrementalResult:
     warnings: list[str] | None = None
 
     def to_dict(self) -> dict:
-        return {
+        out = {
             "refreshed": self.refreshed,
             "files": self.files,
             "chunks_upserted": self.chunks_upserted,
@@ -146,6 +224,11 @@ class IncrementalResult:
             "graph_error": self.graph_error,
             "warnings": self.warnings or [],
         }
+        if is_safety_pause_message(self.error):
+            out["status"] = "warning"
+            out["warning"] = "confirm_required"
+            out["needs_confirm"] = True
+        return out
 
 
 def _paths_for_files(root: Path, rels: list[str]) -> list[Path]:
@@ -699,16 +782,21 @@ def ensure_fresh_for_search(
         out["dirty_boost_files"] = report.diff.changed_files[:50]
         return out
 
-    # background: incremental in daemon
+    # background: incremental in daemon (single-flight)
     def _bg():
         incremental_sync(root, base_dir=base_dir, vdb=vdb)
 
-    threading.Thread(target=_bg, name="ctx-incremental", daemon=True).start()
+    started = _run_single_flight("ctx-incremental", _bg)
     out["sync"] = {
         "refreshed": False,
         "strategy": "background",
         "files": report.diff.changed_files + report.diff.removed,
-        "note": "search continues; BM25 hot-patched from disk; dense may lag",
+        "note": (
+            "search continues; BM25 hot-patched from disk; dense may lag"
+            if started
+            else "background sync already running; dense may lag briefly"
+        ),
+        "single_flight": not started,
     }
     out["dirty_boost_files"] = report.diff.changed_files
     return out

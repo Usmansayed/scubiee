@@ -94,7 +94,6 @@ function pipSpecs(version) {
   return [
     `scubiee${extra}==${version}`,
     `scubiee${extra} @ git+${GIT_ORIGIN}@v${version}`,
-    `scubiee${extra} @ git+${GIT_ORIGIN}@feat/production-certification`,
   ];
 }
 
@@ -104,7 +103,6 @@ function uvToolSpecs(version) {
   return [
     `scubiee${extra}==${version}`,
     `scubiee${extra} @ git+${GIT_ORIGIN}@v${version}`,
-    `scubiee${extra} @ git+${GIT_ORIGIN}@feat/production-certification`,
   ];
 }
 

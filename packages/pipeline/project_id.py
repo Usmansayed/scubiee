@@ -214,7 +214,41 @@ def mutate_registry(mutator: Callable[[dict[str, Any]], _T]) -> _T:
 
 
 def _norm_path(p: Path | str) -> str:
-    return str(Path(p).resolve())
+    resolved = str(Path(p).resolve())
+    if os.name == "nt":
+        return os.path.normcase(resolved)
+    return resolved
+
+
+def _id_file_trusted(root: Path, project_id: str) -> bool:
+    """True when on-disk id.json matches registry/store for this root."""
+    abs_root = _norm_path(root)
+    reg = load_registry()
+    entry = (reg.get("projects") or {}).get(project_id)
+    if isinstance(entry, dict):
+        roots = entry.get("paths") or []
+        primary = entry.get("root")
+        if isinstance(primary, str) and primary.strip():
+            roots = list(roots) + [primary]
+        for raw in roots:
+            if isinstance(raw, str) and raw.strip():
+                try:
+                    if _norm_path(raw) == abs_root:
+                        return True
+                except OSError:
+                    continue
+        if entry.get("managed") or entry.get("registered"):
+            return False
+    store = (projects_root() / project_id).resolve()
+    if index_is_usable(store):
+        store_meta = _read_json(store / "meta.json")
+        store_root = store_meta.get("root")
+        if isinstance(store_root, str) and store_root.strip():
+            try:
+                return _norm_path(store_root) == abs_root
+            except OSError:
+                return False
+    return False
 
 
 def _registry_path_identity_trusted(project_id: str, path: Path) -> bool:
@@ -470,6 +504,23 @@ def resolve_project(root: Path, *, migrate: bool = True) -> ProjectRef:
     common = git_common_dir(root)
 
     pid = read_id_file(root)
+    if pid and not _id_file_trusted(root, pid):
+        import sys
+
+        print(
+            f"[scubiee] Warning: {id_file_path(root)} project_id {pid} "
+            f"does not match registry/store for {root}. "
+            "Ignoring id file (set CTX_TRUST_ID_FILE=1 to force-trust).",
+            file=sys.stderr,
+            flush=True,
+        )
+        if os.environ.get("CTX_TRUST_ID_FILE", "").strip().lower() not in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }:
+            pid = None
     if not pid:
         pid = find_id_by_path(abs_root)
         if pid:

@@ -38,16 +38,60 @@ def _progress_bar(notice: str):
 
 
 def _fail_confirm(root: Path, exc: Exception) -> int:
-    payload = {
-        "ok": False,
-        "error": str(exc),
-        "needs_confirm": True,
-        "root": str(root),
-    }
-    if hasattr(exc, "n_files"):
-        payload["n_files"] = getattr(exc, "n_files")
+    from pipeline.incremental import IndexConfirmRequired
+
+    if isinstance(exc, IndexConfirmRequired):
+        payload = exc.to_payload(root)
+    else:
+        payload = {
+            "ok": False,
+            "status": "warning",
+            "warning": "confirm_required",
+            "needs_confirm": True,
+            "root": str(root),
+            "message": str(exc),
+            "action": "Re-run with --confirm if you intend to proceed.",
+        }
+        if hasattr(exc, "n_files"):
+            payload["n_files"] = getattr(exc, "n_files")
     print(json.dumps(payload, indent=2))
-    return 1
+    msg = payload.get("message") or payload.get("hint") or str(exc)
+    print(f"[scubiee] Warning: {msg}", file=sys.stderr)
+    if payload.get("action"):
+        print(f"[scubiee] {payload['action']}", file=sys.stderr)
+    return 2
+
+
+def _needs_confirm_out(out: dict) -> bool:
+    if out.get("needs_confirm"):
+        return True
+    if out.get("warning") == "confirm_required":
+        return True
+    if out.get("error") == "confirm_required":
+        return True
+    from pipeline.incremental import is_safety_pause_message
+
+    for key in ("message", "hint", "error"):
+        val = out.get(key)
+        if isinstance(val, str) and is_safety_pause_message(val):
+            return True
+    sync = out.get("sync")
+    if isinstance(sync, dict) and _needs_confirm_out(sync):
+        return True
+    return False
+
+
+def _emit_confirm_warning(out: dict) -> None:
+    msg = (
+        out.get("message")
+        or out.get("hint")
+        or out.get("error")
+        or "Confirmation required before proceeding."
+    )
+    print(f"[scubiee] Warning: {msg}", file=sys.stderr)
+    action = out.get("action")
+    if action:
+        print(f"[scubiee] {action}", file=sys.stderr)
 
 
 def cmd_index(args: argparse.Namespace) -> int:
@@ -109,9 +153,8 @@ def cmd_index(args: argparse.Namespace) -> int:
             confirm=bool(getattr(args, "confirm", False)),
         )
     except IndexConfirmRequired as exc:
-        bar.fail(str(exc))
-        print(json.dumps({"ok": False, "error": str(exc), "needs_confirm": True}, indent=2))
-        return 1
+        bar.fail("Safety pause (not an error)")
+        return _fail_confirm(root, exc)
     except IndexDeferred as exc:
         bar.fail(str(exc.reason))
         print(
@@ -248,7 +291,8 @@ def cmd_wipe(args: argparse.Namespace) -> int:
         path=getattr(args, "path", None) or ".",
     )
     print(json.dumps(out, indent=2, default=str))
-    if out.get("error") == "confirm_required":
+    if _needs_confirm_out(out):
+        _emit_confirm_warning(out)
         return 2
     return 0 if out.get("ok") else 1
 
@@ -287,16 +331,21 @@ def cmd_certify(args: argparse.Namespace) -> int:
 
 
 def cmd_register(args: argparse.Namespace) -> int:
+    from pipeline.incremental import IndexConfirmRequired
     from pipeline.registration import register_project
 
     root = Path(args.path).resolve()
-    result = register_project(
-        root,
-        always_allow=bool(args.always_allow),
-        index=not bool(args.no_index),
-        fast=bool(args.fast),
-        force_reindex=bool(args.force),
-    )
+    try:
+        result = register_project(
+            root,
+            always_allow=bool(args.always_allow),
+            index=not bool(args.no_index),
+            fast=bool(args.fast),
+            force_reindex=bool(args.force),
+            confirm=bool(getattr(args, "confirm", False)),
+        )
+    except IndexConfirmRequired as exc:
+        return _fail_confirm(root, exc)
     print(json.dumps(result.to_dict(), indent=2))
     return 0 if result.ok else 1
 
@@ -318,33 +367,41 @@ def cmd_repo_lifecycle(args: argparse.Namespace) -> int:
     if action == "list":
         out: dict | list = list_managed_repos()
     else:
+        from pipeline.incremental import IndexConfirmRequired
+
         root = Path(args.path).resolve()
-        if action == "initialize":
-            out = initialize_repo(
-                root,
-                index=not bool(args.no_index),
-                always_allow=not bool(args.allow_once),
-                confirm=bool(getattr(args, "confirm", False)),
-            )
-        elif action == "activate":
-            out = activate_repo(root)
-        elif action == "pause":
-            out = pause_repo(root, reason=args.reason)
-        elif action == "resume":
-            out = resume_repo(root)
-        elif action == "sync-now":
-            out = sync_now_repo(
-                root, confirm=bool(getattr(args, "confirm", False))
-            )
-        elif action == "rebuild":
-            out = rebuild_repo(root)
-        elif action == "remove":
-            out = remove_repo(root, delete_store=bool(args.delete_store))
-        elif action == "never-index":
-            out = never_index_repo(root, reason=args.reason)
-        else:
-            out = {"ok": False, "error": f"unknown lifecycle action: {action}"}
+        try:
+            if action == "initialize":
+                out = initialize_repo(
+                    root,
+                    index=not bool(args.no_index),
+                    always_allow=not bool(args.allow_once),
+                    confirm=bool(getattr(args, "confirm", False)),
+                )
+            elif action == "activate":
+                out = activate_repo(root)
+            elif action == "pause":
+                out = pause_repo(root, reason=args.reason)
+            elif action == "resume":
+                out = resume_repo(root)
+            elif action == "sync-now":
+                out = sync_now_repo(
+                    root, confirm=bool(getattr(args, "confirm", False))
+                )
+            elif action == "rebuild":
+                out = rebuild_repo(root)
+            elif action == "remove":
+                out = remove_repo(root, delete_store=bool(args.delete_store))
+            elif action == "never-index":
+                out = never_index_repo(root, reason=args.reason)
+            else:
+                out = {"ok": False, "error": f"unknown lifecycle action: {action}"}
+        except IndexConfirmRequired as exc:
+            return _fail_confirm(root, exc)
     print(json.dumps(out, indent=2, default=str))
+    if isinstance(out, dict) and _needs_confirm_out(out):
+        _emit_confirm_warning(out)
+        return 2
     return 0 if isinstance(out, list) or out.get("ok") else 1
 
 
@@ -537,9 +594,9 @@ def cmd_sync(args: argparse.Namespace) -> int:
             out["published"] = _notify_daemon_publish(root, out)
 
     print(json.dumps(out, indent=2, default=str))
-    if used_daemon:
-        err = out.get("error")
-        return 0 if not err else 1
+    if _needs_confirm_out(out):
+        _emit_confirm_warning(out)
+        return 2
     return 0 if out.get("error") is None else 1
 
 
@@ -786,7 +843,7 @@ def cmd_init(args: argparse.Namespace) -> int:
             confirm=bool(getattr(args, "confirm", False)),
         )
     except IndexConfirmRequired as exc:
-        bar.fail(str(exc))
+        bar.fail("Safety pause (not an error)")
         return _fail_confirm(root, exc)
     except Exception as exc:  # noqa: BLE001
         bar.fail(str(exc))
@@ -1090,6 +1147,11 @@ def main(argv: list[str] | None = None) -> int:
     p_reg.add_argument("--no-index", action="store_true", help="Only write id/registry")
     p_reg.add_argument("--fast", action="store_true", help="Fast index roots only")
     p_reg.add_argument("--force", action="store_true", help="Force reindex")
+    p_reg.add_argument(
+        "--confirm",
+        action="store_true",
+        help="Allow indexing when more than 400 files changed (safety opt-in)",
+    )
     p_reg.set_defaults(func=cmd_register)
 
     p_initialize = sub.add_parser(

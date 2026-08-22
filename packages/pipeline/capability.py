@@ -426,6 +426,10 @@ def grep_scan(
     max_hits: int = 20,
 ) -> dict[str, Any]:
     """Live-disk line grep. ``truncated`` means the hit cap fired — not absence."""
+    import time as _time
+
+    max_lines = int(os.environ.get("CTX_GREP_MAX_LINES", "50000"))
+    deadline = _time.monotonic() + float(os.environ.get("CTX_GREP_TIMEOUT_S", "8"))
     try:
         rx = re.compile(pattern)
     except re.error:
@@ -433,11 +437,17 @@ def grep_scan(
     cap = max(1, int(max_hits or 20))
     hits: list[dict[str, Any]] = []
     truncated = False
+    lines_scanned = 0
     for rel in iter_glob_files(root, glob):
+        if _time.monotonic() > deadline:
+            truncated = True
+            break
         path = root / rel
         try:
             raw = path.read_bytes()
         except OSError:
+            continue
+        if len(raw) > 2_000_000:
             continue
         if b"\0" in raw[:8192]:
             continue
@@ -446,6 +456,13 @@ def grep_scan(
         except Exception:  # noqa: BLE001
             continue
         for i, line in enumerate(lines, 1):
+            lines_scanned += 1
+            if lines_scanned > max_lines:
+                truncated = True
+                break
+            if _time.monotonic() > deadline:
+                truncated = True
+                break
             if not rx.search(line):
                 continue
             if len(hits) >= cap:

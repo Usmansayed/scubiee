@@ -21,6 +21,8 @@ import hashlib
 import json
 import os
 import re
+import tempfile
+import threading
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -30,6 +32,7 @@ import faiss
 import numpy as np
 
 from pipeline.turbo_quant import CompressedEmbeddingStore
+from pipeline.artifact_guard import atomic_write_text
 
 DEFAULT_ROOT_ENV = "CTX_VECTORDB_ROOT"
 
@@ -88,6 +91,7 @@ class FaissCollection:
     def __init__(self, path: Path, meta: CollectionMeta):
         self.path = path
         self.meta = meta
+        self._lock = threading.RLock()
         self.compressed = CompressedEmbeddingStore(
             dim=meta.dim, bits=meta.bits, seed=meta.seed
         )
@@ -239,44 +243,60 @@ class FaissCollection:
     def search(
         self, query: np.ndarray, top_k: int = 10
     ) -> list[tuple[int, float, dict[str, Any]]]:
-        q = np.asarray(query, dtype=np.float32).reshape(1, -1).copy()
-        if q.shape[1] != self.meta.dim:
-            raise ValueError(f"query dim {q.shape[1]} != collection dim {self.meta.dim}")
-        faiss.normalize_L2(q)
-        if self.index.ntotal == 0:
-            return []
-        k = min(top_k, self.index.ntotal)
-        scores, labels = self.index.search(q, k)
-        out: list[tuple[int, float, dict[str, Any]]] = []
-        for score, lab in zip(scores[0], labels[0], strict=False):
-            vid = int(lab)
-            if vid < 0:
-                continue
-            out.append((vid, float(score), dict(self.payloads.get(vid, {}))))
-        return out
+        with self._lock:
+            q = np.asarray(query, dtype=np.float32).reshape(1, -1).copy()
+            if q.shape[1] != self.meta.dim:
+                raise ValueError(f"query dim {q.shape[1]} != collection dim {self.meta.dim}")
+            faiss.normalize_L2(q)
+            if self.index.ntotal == 0:
+                return []
+            k = min(top_k, self.index.ntotal)
+            scores, labels = self.index.search(q, k)
+            out: list[tuple[int, float, dict[str, Any]]] = []
+            for score, lab in zip(scores[0], labels[0], strict=False):
+                vid = int(lab)
+                if vid < 0:
+                    continue
+                out.append((vid, float(score), dict(self.payloads.get(vid, {}))))
+            return out
 
     def get(self, ids: list[int]) -> list[dict[str, Any]]:
         return [{"id": i, "payload": self.payloads.get(int(i), {})} for i in ids]
 
     def save(self) -> None:
-        self.path.mkdir(parents=True, exist_ok=True)
-        self.meta.ntotal = int(self.index.ntotal)
-        self.meta.updated_at = time.time()
-        (self.path / "meta.json").write_text(
-            json.dumps(self.meta.to_dict(), indent=2), encoding="utf-8"
-        )
-        self.compressed.save(self.path / "turboquant.npz")
-        faiss.write_index(self.index, str(self.path / "faiss.index"))
-        np.save(self.path / "ids.npy", np.asarray(self.ids, dtype=np.int64))
-        dead = set(self.meta.dead_ids)
-        with (self.path / "payloads.jsonl").open("w", encoding="utf-8") as f:
-            for vid in self.ids:
-                if vid in dead:
-                    continue
-                f.write(
-                    json.dumps({"id": vid, "payload": self.payloads.get(vid, {})})
-                    + "\n"
-                )
+        with self._lock:
+            self.path.mkdir(parents=True, exist_ok=True)
+            self.meta.ntotal = int(self.index.ntotal)
+            self.meta.updated_at = time.time()
+            meta_text = json.dumps(self.meta.to_dict(), indent=2) + "\n"
+            atomic_write_text(self.path / "meta.json", meta_text)
+            tmp_dir = Path(
+                tempfile.mkdtemp(prefix=".save.", dir=str(self.path))
+            )
+            try:
+                self.compressed.save(tmp_dir / "turboquant.npz")
+                faiss.write_index(self.index, str(tmp_dir / "faiss.index"))
+                np.save(tmp_dir / "ids.npy", np.asarray(self.ids, dtype=np.int64))
+                dead = set(self.meta.dead_ids)
+                payloads_path = tmp_dir / "payloads.jsonl"
+                with payloads_path.open("w", encoding="utf-8") as f:
+                    for vid in self.ids:
+                        if vid in dead:
+                            continue
+                        f.write(
+                            json.dumps({"id": vid, "payload": self.payloads.get(vid, {})})
+                            + "\n"
+                        )
+                for name in ("turboquant.npz", "faiss.index", "ids.npy", "payloads.jsonl"):
+                    src = tmp_dir / name
+                    dst = self.path / name
+                    if dst.exists():
+                        dst.unlink()
+                    src.replace(dst)
+            finally:
+                import shutil
+
+                shutil.rmtree(tmp_dir, ignore_errors=True)
 
     @classmethod
     def load(cls, path: Path) -> "FaissCollection":
@@ -332,6 +352,7 @@ class VectorDatabase:
         self.root.mkdir(parents=True, exist_ok=True)
         self.collections_dir.mkdir(parents=True, exist_ok=True)
         self._cache: dict[str, FaissCollection] = {}
+        self._db_lock = threading.RLock()
         self._ensure_catalog()
 
     def _ensure_catalog(self) -> None:
@@ -342,7 +363,10 @@ class VectorDatabase:
         return json.loads(self.catalog_path.read_text(encoding="utf-8"))
 
     def _write_catalog(self, data: dict[str, Any]) -> None:
-        self.catalog_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        atomic_write_text(
+            self.catalog_path,
+            json.dumps(data, indent=2) + "\n",
+        )
 
     def _collection_path(self, name: str) -> Path:
         return self.collections_dir / _safe_name(name)
@@ -406,14 +430,15 @@ class VectorDatabase:
 
     def get_collection(self, name: str) -> FaissCollection:
         safe = _safe_name(name)
-        if safe in self._cache:
-            return self._cache[safe]
-        path = self._collection_path(safe)
-        if not (path / "meta.json").exists():
-            raise KeyError(f"collection not found: {name}")
-        col = FaissCollection.load(path)
-        self._cache[safe] = col
-        return col
+        with self._db_lock:
+            if safe in self._cache:
+                return self._cache[safe]
+            path = self._collection_path(safe)
+            if not (path / "meta.json").exists():
+                raise KeyError(f"collection not found: {name}")
+            col = FaissCollection.load(path)
+            self._cache[safe] = col
+            return col
 
     def get_or_create_for_cwd(
         self,

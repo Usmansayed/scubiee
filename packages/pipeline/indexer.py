@@ -343,25 +343,12 @@ def index_repo(
     except CapabilityError:
         raise
     except Exception as exc:  # noqa: BLE001
-        # Never invent vectors for missing accel — only absorb transient encode faults
-        # when an explicit ST/ollama backend was selected.
-        if embedder.backend in {"fastembed", "mlx"}:
-            raise
-        if progress:
-            _emit_progress(progress, "Embedding", 0.6)
-        dim = 768
-        import numpy as np
-        import hashlib
-
-        rows = []
-        for t in texts:
-            h = hashlib.sha256(t.encode("utf-8")).digest()
-            rng = np.random.default_rng(int.from_bytes(h[:8], "little"))
-            v = rng.normal(size=dim).astype(np.float32)
-            v /= max(float(np.linalg.norm(v)), 1e-12)
-            rows.append(v)
-        matrix = np.stack(rows, axis=0) if rows else np.zeros((0, dim), dtype=np.float32)
-        embedder.dim = dim
+        print(
+            f"[index] ERROR: embedding failed ({exc}); index aborted (no random-vector fallback).",
+            file=sys.stderr,
+            flush=True,
+        )
+        raise
     embed_s = time.perf_counter() - t_embed
     print(
         f"[index] embed phase {embed_s:.1f}s for {len(records)} chunks "

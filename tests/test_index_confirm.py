@@ -20,7 +20,7 @@ def test_require_index_confirm_blocks_large_repo() -> None:
         require_index_confirm(401, confirm=False, force=False)
     assert exc.value.n_files == 401
     assert exc.value.max_touch == DEFAULT_MAX_TOUCH
-    assert "401 files" in str(exc.value)
+    assert "Safety pause" in str(exc.value)
 
 
 def test_require_index_confirm_allows_up_to_cap() -> None:

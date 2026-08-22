@@ -738,6 +738,10 @@ class WorkspaceArgs(BaseModel):
 
 # ---- markdown ---------------------------------------------------------------
 
+def _escape_fence(text: str) -> str:
+    return str(text).replace("```", "'''")
+
+
 def _to_markdown(card: dict[str, Any]) -> str:
     lines = [f"# {card.get('tool', 'result')}", ""]
     if card.get("ok") is False:
@@ -753,7 +757,7 @@ def _to_markdown(card: dict[str, Any]) -> str:
                 f"L{r.get('start_line')}-{r.get('end_line')} — {r.get('why') or ''}"
             )
             if r.get("code"):
-                lines += ["```", str(r["code"])[:1200], "```"]
+                lines += ["```", _escape_fence(str(r["code"])[:1200]), "```"]
         lines.append("")
     if card.get("handle") and card.get("tool") in {"read", "expand"}:
         lines.append(
@@ -761,7 +765,7 @@ def _to_markdown(card: dict[str, Any]) -> str:
             f"L{card.get('start_line')}-{card.get('end_line')} ({card.get('status')})"
         )
         if card.get("code"):
-            lines += ["```", str(card["code"])[:3000], "```"]
+            lines += ["```", _escape_fence(str(card["code"])[:3000]), "```"]
         elif card.get("unchanged"):
             lines.append("_unchanged — already in session_")
         lines.append("")
@@ -1664,7 +1668,7 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
             "rich": ["search", "read", "outline", "status"],
             "search": ["search", "status"],
             "grep": ["grep", "status"],
-            "phase": ["map", "focus", "grep", "glob", "workspace", "status"],
+            "phase": ["map", "focus", "grep", "glob", "workspace", "register_project", "status"],
         }
         try:
             repo = _default_repo()
@@ -1759,6 +1763,38 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
         except Exception as exc:  # noqa: BLE001
             return _err("status", str(exc))
 
+    def register_project_impl(
+        path: str = "",
+        always_allow: bool = False,
+        fast: bool = False,
+        response_format: Literal["json", "markdown"] = "json",
+    ) -> str:
+        """Register and optionally index a repository after user consent."""
+        from pipeline.registration import register_project
+
+        repo = Path(path).resolve() if path.strip() else _default_repo()
+        try:
+            result = register_project(
+                repo,
+                always_allow=always_allow,
+                index=True,
+                fast=fast,
+                confirm=False,
+            )
+            out = result.to_dict()
+            out["tool"] = "register_project"
+            if not result.ok:
+                return _err("register_project", str(out.get("error") or "registration failed"))
+            return _format(out, response_format)
+        except Exception as exc:  # noqa: BLE001
+            from pipeline.incremental import IndexConfirmRequired
+
+            if isinstance(exc, IndexConfirmRequired):
+                payload = exc.to_payload(repo)
+                payload["tool"] = "register_project"
+                return _format(payload, response_format)
+            return _err("register_project", str(exc))
+
     # ---- register per surface ---------------------------------------------
     if surface == "phase":
         _tool("map", "Cold/new-topic locate — ranked cards (no bodies)", map_impl)
@@ -1774,6 +1810,11 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
             glob_impl,
         )
         _tool("workspace", "Mid reorient: show|pin|clear (no body dumps)", workspace_impl)
+        _tool(
+            "register_project",
+            "Register/index this repo after explicit user consent (mcp_cli mode)",
+            register_project_impl,
+        )
         _tool("status", "Engine + session status", status_impl)
         return mcp
 
@@ -1830,7 +1871,7 @@ def main() -> None:
         "rich": "search,read,outline,status",
         "search": "search,status",
         "grep": "grep,status",
-        "phase": "map,focus,grep,glob,workspace,status",
+        "phase": "map,focus,grep,glob,workspace,register_project,status",
     }
     _stderr(
         f"[context_engine_mcp] surface={surface} tools={tool_lists.get(surface)} "

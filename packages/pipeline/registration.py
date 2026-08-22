@@ -92,17 +92,18 @@ def registration_prompt_payload(root: Path) -> dict[str, Any]:
         "repo": str(root),
         "message": (
             "This project is not registered with Context Engine. "
-            "Call register_project(path, always_allow=true|false) to index it, "
-            "or run: ctx register <path>"
+            "Run `scubiee register <path>` (or MCP tool `register_project`) after user consent."
         ),
         "actions": [
             {
                 "tool": "register_project",
+                "cli": "scubiee register . --always-allow",
                 "always_allow": True,
                 "label": "Register and always allow for this project",
             },
             {
                 "tool": "register_project",
+                "cli": "scubiee register .",
                 "always_allow": False,
                 "label": "Register once",
             },
@@ -217,6 +218,10 @@ def register_project(
             mode=mode,
         )
     except Exception as exc:  # noqa: BLE001
+        from pipeline.incremental import IndexConfirmRequired
+
+        if isinstance(exc, IndexConfirmRequired):
+            raise
         return RegistrationResult(
             ok=False,
             project_id="",

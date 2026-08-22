@@ -13,6 +13,8 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from pipeline.artifact_guard import atomic_write_text
+
 DEFAULT_IGNORE_DIRS = {
     ".git",
     ".hg",
@@ -110,8 +112,22 @@ def is_junk_rel(rel: str) -> bool:
     return any(_is_ignored_dir_name(p) for p in parts[:-1])
 
 
+def canonical_relpath(rel: str) -> str:
+    """Normalize path keys; case-fold on Windows so renames do not duplicate chunks."""
+    norm = rel.replace("\\", "/").strip("/")
+    if os.name == "nt":
+        return os.path.normcase(norm)
+    return norm
+
+
 def sanitize_file_hashes(file_hashes: dict[str, str]) -> dict[str, str]:
-    return {k: v for k, v in file_hashes.items() if not is_junk_rel(k)}
+    merged: dict[str, str] = {}
+    for k, v in file_hashes.items():
+        if is_junk_rel(k):
+            continue
+        ck = canonical_relpath(k)
+        merged[ck] = v
+    return merged
 
 
 def _should_skip(rel: Path, extensions: set[str]) -> bool:
@@ -144,7 +160,7 @@ def scan_file_hashes(
                 continue
             if _should_skip(rel, exts):
                 continue
-            out[rel.as_posix()] = _sha256_file(path)
+            out[canonical_relpath(rel.as_posix())] = _sha256_file(path)
     return out
 
 
@@ -205,4 +221,4 @@ def save_snapshot(path: Path, file_hashes: dict[str, str], *, root: Path | None 
         "file_hashes": sorted(file_hashes.items()),
         "file_mtimes": mtimes,
     }
-    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    atomic_write_text(path, json.dumps(payload, indent=2) + "\n")
