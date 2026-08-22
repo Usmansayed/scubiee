@@ -317,6 +317,20 @@ def cmd_wipe(args: argparse.Namespace) -> int:
     if _needs_confirm_out(out):
         _emit_confirm_warning(out)
         return 2
+    remaining = out.get("remaining") if isinstance(out, dict) else None
+    if remaining:
+        print("[scubiee] Warning: some CE files may still be on disk:", file=sys.stderr)
+        for item in remaining[:12]:
+            if isinstance(item, dict):
+                path = item.get("path", "")
+                kind = item.get("kind", "artifact")
+                print(f"[scubiee]   - ({kind}) {path}", file=sys.stderr)
+        if len(remaining) > 12:
+            print(f"[scubiee]   … and {len(remaining) - 12} more (see JSON)", file=sys.stderr)
+        audit = out.get("audit") if isinstance(out, dict) else {}
+        if isinstance(audit, dict) and audit.get("hint"):
+            print(f"[scubiee] {audit['hint']}", file=sys.stderr)
+        return 2 if out.get("scope") == "all" else 1
     return 0 if out.get("ok") else 1
 
 

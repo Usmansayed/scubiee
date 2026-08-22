@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from pipeline.wipe import wipe, wipe_all, wipe_repo
+from pipeline.wipe import audit_scubiee_artifacts, wipe, wipe_all, wipe_repo
 
 
 def test_wipe_all_requires_yes(tmp_path: Path, monkeypatch) -> None:
@@ -112,9 +112,34 @@ def test_wipe_repo_hint_mentions_all(tmp_path: Path, monkeypatch) -> None:
     assert out["still_on_machine"]["accel_json"] is True
 
 
-def test_wipe_dispatch_all_flag(tmp_path: Path, monkeypatch) -> None:
+def test_audit_reports_ctx_home(tmp_path: Path, monkeypatch) -> None:
     home = tmp_path / "ce-home"
     home.mkdir()
     monkeypatch.setenv("CTX_HOME", str(home))
-    out = wipe(all=True, yes=False)
-    assert out["error"] == "confirm_required"
+    out = audit_scubiee_artifacts(include_package=False)
+    assert out["clean"] is False
+    kinds = {item["kind"] for item in out["remaining"]}
+    assert "ctx_home" in kinds
+
+
+def test_wipe_all_plan_lists_registered_repos(tmp_path: Path, monkeypatch) -> None:
+    home = tmp_path / "ce-home"
+    home.mkdir()
+    monkeypatch.setenv("CTX_HOME", str(home))
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    from pipeline.project_id import save_registry
+
+    save_registry(
+        {
+            "projects": {
+                "ce_test": {
+                    "managed": True,
+                    "root": str(repo.resolve()),
+                    "paths": [str(repo.resolve())],
+                }
+            }
+        }
+    )
+    out = wipe_all(yes=False)
+    assert str(repo.resolve()) in out["plan"]["registered_repos"]

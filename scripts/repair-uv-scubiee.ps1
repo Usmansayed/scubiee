@@ -6,7 +6,7 @@
 $ErrorActionPreference = "Stop"
 $UvToolRoot = Join-Path $env:APPDATA "uv\tools\scubiee"
 $LocalBin = Join-Path $env:USERPROFILE ".local\bin"
-$Version = if ($args.Count -gt 0) { $args[0] } else { "0.2.52" }
+$Version = if ($args.Count -gt 0) { $args[0] } else { "0.2.53" }
 $IndexUrl = "https://pypi.org/simple"
 
 Write-Host "[repair] Stopping processes using uv scubiee tool ..."

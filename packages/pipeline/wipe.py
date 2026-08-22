@@ -70,6 +70,17 @@ def _drop_mcp_server(path: Path, *, name: str = "context-engine") -> dict[str, A
 
 def _coderank_model_dirs() -> list[Path]:
     """Locate FastEmbed / Hugging Face caches that hold CodeRank weights."""
+    from pipeline.accel import CODERANK_HF_ONNX, CODERANK_MODEL, default_fastembed_cache_root
+
+    hf_repo_slugs = (
+        CODERANK_MODEL.replace("/", "--"),
+        CODERANK_HF_ONNX.replace("/", "--"),
+    )
+    hub_prefixes = tuple(f"models--{slug}" for slug in hf_repo_slugs) + (
+        "models--nomic-ai--CodeRankEmbed",
+        "models--jamie8johnson--CodeRankEmbed-onnx",
+    )
+
     roots: list[Path] = []
     try:
         from fastembed.common.utils import define_cache_dir
@@ -78,6 +89,8 @@ def _coderank_model_dirs() -> list[Path]:
     except Exception:  # noqa: BLE001
         pass
 
+    roots.append(default_fastembed_cache_root())
+
     home = Path.home()
     candidates = [
         home / ".cache" / "fastembed",
@@ -85,7 +98,7 @@ def _coderank_model_dirs() -> list[Path]:
         home / ".cache" / "huggingface" / "hub",
         Path(tempfile.gettempdir()) / "fastembed_cache",
     ]
-    for env_name in ("HF_HOME", "HUGGINGFACE_HUB_CACHE", "FASTEMBED_CACHE"):
+    for env_name in ("HF_HOME", "HUGGINGFACE_HUB_CACHE", "FASTEMBED_CACHE", "FASTEMBED_CACHE_PATH"):
         raw = os.environ.get(env_name, "").strip()
         if raw:
             candidates.append(Path(raw))
@@ -98,46 +111,51 @@ def _coderank_model_dirs() -> list[Path]:
                 Path(local) / "huggingface" / "hub",
             ]
         )
-    for c in candidates:
-        if c and str(c) not in {"", "."}:
-            roots.append(c)
 
-    # Unique existing roots
+    # Unique candidate roots (existing or not — we may create paths during setup).
     seen: set[str] = set()
     uniq: list[Path] = []
-    for r in roots:
-        key = str(r.resolve()) if r.exists() else str(r)
+    for r in roots + candidates:
+        if not r or str(r) in {"", "."}:
+            continue
+        key = str(r)
         if key in seen:
             continue
         seen.add(key)
         uniq.append(r)
 
-    patterns = (
-        "coderank",
-        "CodeRank",
-        "nomic-ai",
-        "jamie8johnson",
-        "model_fp16",
-    )
     found: list[Path] = []
     for root in uniq:
         if not root.exists():
             continue
-        # Whole FastEmbed cache is CE-owned enough on wipe --all models.
-        if root.name.lower() in {"fastembed"} or "fastembed" in str(root).lower():
+        low = str(root).lower()
+        if root.name.lower() == "fastembed" or "fastembed" in low:
             found.append(root)
             continue
-        try:
-            for child in root.rglob("*"):
+        hub = root if root.name.lower() == "hub" else root / "hub"
+        if hub.is_dir():
+            for child in hub.iterdir():
+                if not child.is_dir():
+                    continue
                 name = child.name
-                if any(p.lower() in name.lower() for p in patterns):
-                    # Prefer top-ish model dirs, not every file.
-                    target = child if child.is_dir() else child.parent
-                    found.append(target)
+                if name.startswith(hub_prefixes) or any(
+                    token in name.lower()
+                    for token in ("coderank", "nomic-ai", "jamie8johnson")
+                ):
+                    found.append(child)
+            continue
+        # Fallback: shallow pattern scan for odd cache layouts.
+        try:
+            for child in root.iterdir():
+                name = child.name
+                if child.is_dir() and any(
+                    token in name.lower()
+                    for token in ("coderank", "nomic-ai", "jamie8johnson", "model_fp16")
+                ):
+                    found.append(child)
         except OSError:
             continue
 
-    # Dedup by path, prefer shorter (parent) paths
     found_sorted = sorted({p.resolve() for p in found if p.exists()}, key=lambda p: len(str(p)))
     pruned: list[Path] = []
     for p in found_sorted:
@@ -145,6 +163,172 @@ def _coderank_model_dirs() -> list[Path]:
             continue
         pruned.append(p)
     return pruned
+
+
+def _context_engine_homes() -> list[Path]:
+    """Every CE home directory (CTX_HOME override + default)."""
+    homes: list[Path] = []
+    try:
+        from pipeline.project_id import context_engine_home
+
+        homes.append(context_engine_home())
+    except Exception:  # noqa: BLE001
+        pass
+    homes.append(Path.home() / ".context-engine")
+    seen: set[str] = set()
+    out: list[Path] = []
+    for home in homes:
+        try:
+            key = str(home.resolve())
+        except OSError:
+            key = str(home)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(home)
+    return out
+
+
+def _vectordb_roots() -> list[Path]:
+    from pipeline.vectordb import default_vectordb_root
+
+    root = default_vectordb_root()
+    homes = {str(h.resolve()) for h in _context_engine_homes() if h.exists()}
+    try:
+        resolved = str(root.resolve())
+    except OSError:
+        resolved = str(root)
+    if any(resolved == home or resolved.startswith(home + os.sep) for home in homes):
+        return []
+    return [root]
+
+
+def _registered_repo_roots() -> list[Path]:
+    """All checkout paths known to the registry (before home is deleted)."""
+    from pipeline.project_id import load_registry
+
+    roots: list[Path] = []
+    seen: set[str] = set()
+    reg = load_registry()
+    for meta in (reg.get("projects") or {}).values():
+        if not isinstance(meta, dict):
+            continue
+        for raw in meta.get("paths") or []:
+            try:
+                path = Path(str(raw)).resolve()
+            except OSError:
+                continue
+            key = str(path).lower() if os.name == "nt" else str(path)
+            if key in seen or not path.exists():
+                continue
+            seen.add(key)
+            roots.append(path)
+        root = meta.get("root")
+        if root:
+            try:
+                path = Path(str(root)).resolve()
+            except OSError:
+                continue
+            key = str(path).lower() if os.name == "nt" else str(path)
+            if key in seen or not path.exists():
+                continue
+            seen.add(key)
+            roots.append(path)
+    return roots
+
+
+def _uv_tool_dir() -> Path | None:
+    try:
+        from pipeline.process_control import uv_tool_root
+
+        return uv_tool_root()
+    except Exception:  # noqa: BLE001
+        raw = os.environ.get("APPDATA", "").strip()
+        if not raw:
+            return None
+        return Path(raw) / "uv" / "tools" / "scubiee"
+
+
+def _mcp_has_context_engine(path: Path, *, name: str = "context-engine") -> bool:
+    if not path.is_file():
+        return False
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return False
+    servers = data.get("mcpServers") if isinstance(data, dict) else None
+    return isinstance(servers, dict) and name in servers
+
+
+def audit_scubiee_artifacts(*, include_package: bool = True, include_models: bool = True) -> dict[str, Any]:
+    """Report CE-owned paths still present after a wipe (for honest CLI output)."""
+    remaining: list[dict[str, Any]] = []
+
+    def note(path: Path, *, kind: str) -> None:
+        if not path.exists():
+            return
+        try:
+            if path.is_dir():
+                size = sum(
+                    f.stat().st_size
+                    for f in path.rglob("*")
+                    if f.is_file()
+                )
+            else:
+                size = path.stat().st_size
+        except OSError:
+            size = None
+        remaining.append(
+            {
+                "kind": kind,
+                "path": str(path),
+                "size_bytes": size,
+            }
+        )
+
+    for home in _context_engine_homes():
+        note(home, kind="ctx_home")
+    for root in _vectordb_roots():
+        note(root, kind="vectordb")
+    if include_models:
+        for model in _coderank_model_dirs():
+            note(model, kind="model_cache")
+    user_mcp = Path.home() / ".cursor" / "mcp.json"
+    if _mcp_has_context_engine(user_mcp):
+        note(user_mcp, kind="user_mcp")
+    tool = _uv_tool_dir()
+    if tool is not None and include_package:
+        note(tool, kind="uv_tool")
+    for shim in (
+        Path.home() / ".local" / "bin" / "scubiee.exe",
+        Path.home() / ".local" / "bin" / "scubiee",
+        Path.home() / ".local" / "bin" / "ctx.exe",
+        Path.home() / ".local" / "bin" / "ctx-mcp.exe",
+    ):
+        note(shim, kind="tool_shim")
+
+    # Repo-local enrollment markers left behind.
+    for repo in _registered_repo_roots():
+        id_dir = repo / ".context-engine"
+        if id_dir.exists():
+            note(id_dir, kind="repo_id_dir")
+        rule = repo / ".cursor" / "rules" / "context-agent.mdc"
+        if rule.is_file():
+            note(rule, kind="repo_rule")
+        project_mcp = repo / ".cursor" / "mcp.json"
+        if _mcp_has_context_engine(project_mcp):
+            note(project_mcp, kind="repo_mcp")
+
+    return {
+        "clean": not remaining,
+        "remaining": remaining,
+        "hint": (
+            "If paths remain, quit Cursor completely (MCP locks files), run "
+            "`scubiee stop`, then `scubiee wipe --all --yes` again."
+            if remaining
+            else None
+        ),
+    }
 
 
 def wipe_repo(root: Path | str, *, mcp: bool = True, rule: bool = True) -> dict[str, Any]:
@@ -203,13 +387,15 @@ def wipe_all(
     repo: Path | str | None = None,
 ) -> dict[str, Any]:
     """Nuclear wipe: daemon, home, MCP, rules, and optionally models / pip package."""
-    from pipeline.project_id import context_engine_home
-
-    home = context_engine_home()
+    homes = _context_engine_homes()
+    home = homes[0]
     plan = {
-        "ctx_home": str(home),
+        "ctx_homes": [str(h) for h in homes],
+        "vectordb_roots": [str(p) for p in _vectordb_roots()],
         "user_mcp": str(Path.home() / ".cursor" / "mcp.json"),
         "models": models,
+        "model_targets": [str(p) for p in _coderank_model_dirs()] if models else [],
+        "registered_repos": [str(p) for p in _registered_repo_roots()],
         "package": package,
         "repo": str(Path(repo).resolve()) if repo else None,
     }
@@ -227,10 +413,11 @@ def wipe_all(
                 "This is intentional — confirm only when you mean to delete everything."
             ),
             "hint": (
-                "This deletes ALL Context Engine state on this machine "
-                "(indexes, prefs, MCP wiring, CodeRank model caches, and the scubiee tool). "
-                "Re-run with: scubiee wipe --all --yes"
-                "  (or: scubiee wipe --all --confirm)"
+                "This removes ALL Context Engine state: every enrolled repo's "
+                ".context-engine + MCP rule, all ctx home dirs (~/.context-engine), "
+                "CodeRank/FastEmbed/HuggingFace model caches, uv tool shims, and "
+                "the scubiee package. Re-run with: scubiee wipe --all --yes "
+                "(or: scubiee wipe --all --confirm). Quit Cursor first on Windows."
             ),
         }
 
@@ -269,25 +456,41 @@ def wipe_all(
     except Exception as exc:  # noqa: BLE001
         actions.append({"unregister_autostart": {"ok": False, "error": str(exc)}})
 
-    # Repo-local leftovers (cwd / explicit path) before deleting the registry.
+    # Every enrolled checkout (registry) + explicit target/cwd.
+    repo_targets: list[Path] = []
+    seen_repo: set[str] = set()
+    for candidate in list(_registered_repo_roots()):
+        key = str(candidate).lower() if os.name == "nt" else str(candidate)
+        if key in seen_repo:
+            continue
+        seen_repo.add(key)
+        repo_targets.append(candidate)
     target = Path(repo).resolve() if repo else Path.cwd().resolve()
-    try:
-        actions.append({"wipe_repo": wipe_repo(target, mcp=True, rule=True)})
-    except Exception as exc:  # noqa: BLE001
-        actions.append({"wipe_repo": {"ok": False, "error": str(exc)}})
+    target_key = str(target).lower() if os.name == "nt" else str(target)
+    if target_key not in seen_repo:
+        repo_targets.append(target)
+
+    repo_actions: list[dict[str, Any]] = []
+    for repo_root in repo_targets:
+        try:
+            repo_actions.append(
+                {"root": str(repo_root), **wipe_repo(repo_root, mcp=True, rule=True)}
+            )
+        except Exception as exc:  # noqa: BLE001
+            repo_actions.append(
+                {"root": str(repo_root), "ok": False, "error": str(exc)}
+            )
+    actions.append({"wipe_repos": repo_actions})
 
     actions.append({"user_mcp": _drop_mcp_server(Path.home() / ".cursor" / "mcp.json")})
-    # Also clear project mcp if still present after wipe_repo.
-    actions.append({"project_mcp": _drop_mcp_server(target / ".cursor" / "mcp.json")})
 
-    actions.append({"ctx_home": _rm_tree(home)})
+    for ctx_home in homes:
+        actions.append({f"ctx_home:{ctx_home.name}": _rm_tree(ctx_home)})
+
+    for vroot in _vectordb_roots():
+        actions.append({f"vectordb:{vroot.name}": _rm_tree(vroot)})
 
     actions.append({"tool_shims": remove_tool_shims()})
-
-    # Legacy / hard-coded home if CTX_HOME pointed elsewhere.
-    default_home = Path.home() / ".context-engine"
-    if default_home.resolve() != home.resolve() and default_home.exists():
-        actions.append({"default_ctx_home": _rm_tree(default_home)})
 
     model_removed: list[dict[str, Any]] = []
     if models:
@@ -297,7 +500,7 @@ def wipe_all(
 
     pkg_out: dict[str, Any] | None = None
     if package:
-        from pipeline.process_control import is_uv_tool_install, uv_tool_uninstall
+        from pipeline.process_control import force_remove_uv_tool_dir, is_uv_tool_install, uv_tool_uninstall
 
         if is_uv_tool_install():
             pkg_out = uv_tool_uninstall()
@@ -315,7 +518,17 @@ def wipe_all(
                 }
             except Exception as exc:  # noqa: BLE001
                 pkg_out = {"ok": False, "error": str(exc)}
+        tool = _uv_tool_dir()
+        if tool is not None and tool.exists():
+            forced = force_remove_uv_tool_dir()
+            if isinstance(pkg_out, dict):
+                pkg_out["forced_tool_dir"] = forced
+                if not forced.get("ok"):
+                    pkg_out["ok"] = False
         actions.append({"uninstall_scubiee": pkg_out})
+
+    audit = audit_scubiee_artifacts(include_package=package, include_models=models)
+    actions.append({"audit": audit})
 
     ok = True
     for a in actions:
@@ -324,19 +537,36 @@ def wipe_all(
                 "unmanaged",
                 "confirm_required",
             }:
-                # Soft failures (missing paths) are fine; hard errors flip ok.
                 if v.get("error") and not v.get("missing") and not v.get("absent"):
                     ok = False
+            if isinstance(v, list):
+                for item in v:
+                    if isinstance(item, dict) and item.get("removed") is False and item.get("error"):
+                        ok = False
+    if not audit.get("clean"):
+        ok = False
+
     return {
         "ok": ok,
         "scope": "all",
         "plan": plan,
         "actions": actions,
+        "remaining": audit.get("remaining") or [],
+        "audit": audit,
         "next": (
             "Machine is clean. Reinstall: "
             "uv tool install scubiee --index-url https://pypi.org/simple && scubiee setup"
-            if package
-            else "Re-run: scubiee setup && scubiee init ."
+            if package and audit.get("clean")
+            else (
+                "Some CE files may remain (see remaining). Quit Cursor, run "
+                "`scubiee stop`, then `scubiee wipe --all --yes` again."
+                if audit.get("remaining")
+                else (
+                    "Re-run: scubiee setup && scubiee init ."
+                    if not package
+                    else "Reinstall: uv tool install scubiee && scubiee setup"
+                )
+            )
         ),
     }
 
