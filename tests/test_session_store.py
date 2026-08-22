@@ -107,4 +107,12 @@ def test_mcp_phase_surface_exposes_locate_toolkit(monkeypatch):
     from pipeline.mcp_locate import create_mcp
 
     names = set(create_mcp()._tool_manager._tools)
-    assert names == {"map", "focus", "grep", "glob", "workspace", "status"}
+    assert names == {
+        "map",
+        "focus",
+        "grep",
+        "glob",
+        "workspace",
+        "register_project",
+        "status",
+    }

@@ -36,5 +36,9 @@ def test_requires_faiss_guard_skips_setup_and_wipe() -> None:
 
     assert not _requires_faiss_guard(["setup", "--repair"])
     assert not _requires_faiss_guard(["wipe", "--all"])
+    assert not _requires_faiss_guard(["connect", "--cursor", "--dry-run"])
+    assert not _requires_faiss_guard(["disconnect", "--all", "--dry-run"])
+    assert not _requires_faiss_guard(["migrate", "--check-all"])
+    assert not _requires_faiss_guard(["diagnose", "--no-tests"])
     assert _requires_faiss_guard(["init"])
     assert _requires_faiss_guard(["index"])

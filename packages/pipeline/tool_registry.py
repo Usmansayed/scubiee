@@ -45,7 +45,7 @@ TOOLS: list[ToolDef] = [
         mcp_path=".cursor/mcp.json",
         mcp_key="mcpServers",
         mcp_format="json",
-        rule_path=".cursor/rules/context-engine.mdc",
+        rule_path=".cursor/rules/context-agent.mdc",
         rule_format="mdc",
     ),
     ToolDef(

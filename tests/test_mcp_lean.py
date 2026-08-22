@@ -4,7 +4,15 @@ from __future__ import annotations
 
 import pytest
 
-PHASE_EXPECTED = {"map", "focus", "grep", "glob", "workspace", "status"}
+PHASE_EXPECTED = {
+    "map",
+    "focus",
+    "grep",
+    "glob",
+    "workspace",
+    "register_project",
+    "status",
+}
 READ_EXPECTED = {"search", "read", "status"}
 
 

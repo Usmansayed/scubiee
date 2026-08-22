@@ -743,8 +743,18 @@ def _align_profile_to_ort(profile: AccelProfile, progress: Any | None = None) ->
         f"Re-run `scubiee setup --repair` to install "
         f"{ort_packages_for(profile.profile)[0]}."
     )
-    if profile.profile in {"dml", "cuda"}:
+    if profile.profile == "cuda":
         raise RuntimeError(msg)
+    if profile.profile == "dml":
+        # Non-Windows only (Windows keeps dml + _dml_pending above).
+        if progress is not None:
+            progress.set(55, "DirectML unavailable — using CPU")
+        else:
+            print(f"[accel] {msg} — CPU fallback", file=sys.stderr, flush=True)
+        profile.profile = "cpu"
+        profile.provider = "CPUExecutionProvider"
+        profile.reason = msg
+        return
     if progress is not None:
         progress.set(55, "GPU wheel missing — using CPU")
     else:

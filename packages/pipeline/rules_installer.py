@@ -39,8 +39,8 @@ def _rule_content_md() -> str:
 
 
 def _rule_content_mdc() -> str:
-    """Cursor MDC format with frontmatter."""
-    path = _templates_dir() / "context-engine.mdc"
+    """Cursor MDC format with frontmatter (same file as setup's write_cursor_rule)."""
+    path = _templates_dir() / "context-agent.mdc"
     return path.read_text(encoding="utf-8")
 
 
@@ -469,16 +469,13 @@ def uninstall_tool(
             if removed_project:
                 report["workspace_mcp_removed"] = True
         elif tool.slug == "cursor":
-            # Cursor: project-scoped .cursor/mcp.json + the extra context-agent.mdc rule
             removed = _remove_mcp_json(mcp_path, tool.mcp_key)
             report["mcp_removed"] = removed
-            # Also remove the context-agent.mdc installed by write_cursor_rule
-            extra_rule = mcp_path.parent.parent / ".cursor" / "rules" / "context-agent.mdc"
-            if not extra_rule.is_file():
-                extra_rule = Path.cwd() / ".cursor" / "rules" / "context-agent.mdc"
-            if extra_rule.is_file():
-                extra_rule.unlink()
-                report["extra_rule_removed"] = str(extra_rule)
+            # Legacy name from pre-0.2.54 connect (before rule unification).
+            legacy_rule = Path.home() / ".cursor" / "rules" / "context-engine.mdc"
+            if legacy_rule.is_file():
+                legacy_rule.unlink()
+                report["legacy_rule_removed"] = str(legacy_rule)
         else:
             remover = _MCP_REMOVERS.get(tool.mcp_format)
             if remover:

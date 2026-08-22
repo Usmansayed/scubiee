@@ -15,6 +15,14 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+# Cursor rule filenames: canonical + legacy (pre-0.2.54 connect wrote context-engine.mdc).
+_CURSOR_RULE_NAMES = ("context-agent.mdc", "context-engine.mdc")
+
+
+def _cursor_rule_paths(base: Path) -> list[Path]:
+    rules = base / ".cursor" / "rules"
+    return [rules / name for name in _CURSOR_RULE_NAMES]
+
 
 def _rm_tree(path: Path) -> dict[str, Any]:
     if not path.exists():
@@ -296,6 +304,8 @@ def audit_scubiee_artifacts(*, include_package: bool = True, include_models: boo
     user_mcp = Path.home() / ".cursor" / "mcp.json"
     if _mcp_has_context_engine(user_mcp):
         note(user_mcp, kind="user_mcp")
+    for rule_path in _cursor_rule_paths(Path.home()):
+        note(rule_path, kind="user_rule")
     tool = _uv_tool_dir()
     if tool is not None and include_package:
         note(tool, kind="uv_tool")
@@ -312,9 +322,9 @@ def audit_scubiee_artifacts(*, include_package: bool = True, include_models: boo
         id_dir = repo / ".context-engine"
         if id_dir.exists():
             note(id_dir, kind="repo_id_dir")
-        rule = repo / ".cursor" / "rules" / "context-agent.mdc"
-        if rule.is_file():
-            note(rule, kind="repo_rule")
+        for rule_path in _cursor_rule_paths(repo):
+            if rule_path.is_file():
+                note(rule_path, kind="repo_rule")
         project_mcp = repo / ".cursor" / "mcp.json"
         if _mcp_has_context_engine(project_mcp):
             note(project_mcp, kind="repo_mcp")
@@ -357,8 +367,8 @@ def wipe_repo(root: Path | str, *, mcp: bool = True, rule: bool = True) -> dict[
             {"mcp": _drop_mcp_server(root / ".cursor" / "mcp.json")}
         )
     if rule:
-        rule_path = root / ".cursor" / "rules" / "context-agent.mdc"
-        out["actions"].append({"rule": _rm_tree(rule_path)})
+        for rule_path in _cursor_rule_paths(root):
+            out["actions"].append({"rule": _rm_tree(rule_path)})
 
     out["project_id"] = project_id
     from pipeline.project_id import context_engine_home
@@ -483,6 +493,8 @@ def wipe_all(
     actions.append({"wipe_repos": repo_actions})
 
     actions.append({"user_mcp": _drop_mcp_server(Path.home() / ".cursor" / "mcp.json")})
+    for rule_path in _cursor_rule_paths(Path.home()):
+        actions.append({"user_rule": _rm_tree(rule_path)})
 
     for ctx_home in homes:
         actions.append({f"ctx_home:{ctx_home.name}": _rm_tree(ctx_home)})

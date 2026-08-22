@@ -555,7 +555,15 @@ def test_phase_surface_grep_glob_and_trajectory(monkeypatch):
     assert "STRICT NATIVE BAN" not in text
     assert "MANDATORY" not in text
     tools = set(ml.create_mcp()._tool_manager._tools)
-    assert tools == {"map", "focus", "grep", "glob", "workspace", "status"}
+    assert tools == {
+        "map",
+        "focus",
+        "grep",
+        "glob",
+        "workspace",
+        "register_project",
+        "status",
+    }
 
 
 def test_nav_surface_exposes_six_tools(monkeypatch):

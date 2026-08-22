@@ -29,7 +29,18 @@ def _requires_faiss_guard(argv: list[str] | None) -> bool:
     if not args or args[0].startswith("-"):
         return False
     cmd = args[0]
-    if cmd in {"setup", "stop", "wipe", "doctor", "preflight", "test"}:
+    if cmd in {
+        "setup",
+        "stop",
+        "wipe",
+        "doctor",
+        "preflight",
+        "test",
+        "connect",
+        "disconnect",
+        "migrate",
+        "diagnose",
+    }:
         return False
     if cmd == "engine" and len(args) > 1 and args[1] in {
         "stop",
