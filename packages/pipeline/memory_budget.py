@@ -129,7 +129,14 @@ def apply_index_memory_budget(budget: IndexMemoryBudget) -> None:
     os.environ.setdefault("CTX_CE_RSS_CAP_MB", str(budget.rss_cap_mb))
     # CPU thread budget for CPU-only embedding (INT8 on laptops without GPU).
     # DML/CUDA/MLX profiles ignore this — GPU handles the compute.
-    cpu_threads = max(1, int((os.cpu_count() or 4) * budget.cpu_thread_pct))
+    # Bootstrap guarantees at least 2 threads (except on single-core) so that
+    # 4-core laptops don't get stuck at single-threaded.
+    cores = os.cpu_count() or 4
+    raw_threads = round(cores * budget.cpu_thread_pct)
+    if budget.mode in ("bootstrap", "large_reindex"):
+        cpu_threads = max(min(2, cores), raw_threads)
+    else:
+        cpu_threads = max(1, raw_threads)
     os.environ.setdefault("CTX_CPU_EMBED_THREADS", str(cpu_threads))
     os.environ["CTX_MLX_DTYPE"] = "float16"
     os.environ.setdefault("CTX_MLX_FAST_ATTN", "1")
