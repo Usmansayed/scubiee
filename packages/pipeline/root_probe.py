@@ -12,7 +12,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from pipeline.merkle import file_sha256, is_junk_rel, root_hash
+from pipeline.merkle import canonical_relpath, file_sha256, is_junk_rel, root_hash
 from pipeline.paths import collect_index_relpaths
 from pipeline.store import PipelineStore
 from pipeline.vectordb import VectorDatabase
@@ -123,11 +123,18 @@ def root_probe(
         universe = collect_index_relpaths(
             root, fast=bool(meta.get("fast")), fast_roots=meta.get("fast_roots")
         )
-        for rel in sorted(universe - set(snap)):
+        # ``universe`` is posix-style (forward slashes); ``snap``/``current`` keys
+        # are ``canonical_relpath`` (backslash + lowercased on Windows). Comparing
+        # the raw sets here made every indexed file look "added" on Windows on
+        # every probe — the keeper never converged and spun continuously (#3182).
+        for rel in sorted(universe, key=canonical_relpath):
+            ck = canonical_relpath(rel)
+            if ck in snap or ck in current:
+                continue
             p = root / rel
             if p.is_file():
-                current[rel] = file_sha256(p)
-                added.append(rel)
+                current[ck] = file_sha256(p)
+                added.append(ck)
                 hashed += 1
 
     rh = root_hash(current)
@@ -139,14 +146,21 @@ def root_probe(
     all_added = sorted(set(added) | {p for p in current if p not in snap})
     clean = rh == stored and not all_added and not modified and not removed
 
+    # Internal keys are canonical_relpath (backslash + lowercased on Windows)
+    # so dict lookups above are correct; the public result always reports
+    # posix-style paths since every caller (sync_loop, MCP tools, tests)
+    # treats "/" as the wire format.
+    def _posix(paths: list[str]) -> list[str]:
+        return sorted({p.replace("\\", "/") for p in paths})
+
     return RootProbeResult(
         clean=clean,
         root=rh,
         stored_root=stored,
         ms=(time.perf_counter() - t0) * 1000,
-        added=all_added,
-        modified=modified,
-        removed=removed,
+        added=_posix(all_added),
+        modified=_posix(modified),
+        removed=_posix(removed),
         files_checked=len(snap),
         hashed=hashed,
     )

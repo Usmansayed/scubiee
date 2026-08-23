@@ -285,6 +285,14 @@ def git_common_dir(root: Path) -> Path | None:
             capture_output=True,
             text=True,
             timeout=5,
+            # git never needs stdin here. Without this, subprocess inherits
+            # the parent's stdin handle on Windows — fatal inside the MCP
+            # stdio server, whose stdin is an open pipe to the client that
+            # is never written to or closed. git.exe can then block during
+            # process creation on that inherited handle, and since the hang
+            # happens before Popen.wait() is reached, subprocess.run's
+            # ``timeout=`` never gets a chance to fire (#3182).
+            stdin=subprocess.DEVNULL,
         )
     except (OSError, subprocess.SubprocessError):
         return None

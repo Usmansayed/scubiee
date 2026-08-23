@@ -145,7 +145,11 @@ def _gh(*args: str) -> list | dict | None:
             # Decode gh's output as UTF-8, not the Windows cp1252 locale codec: gh
             # emits UTF-8 JSON with non-Latin1 titles/logins (emoji, فارسی), and the
             # default text=True decode crashes on those (#1505 fixed the same in llm).
-            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30,
+            # Never inherit stdin — this can run inside a long-lived MCP/server
+            # process whose stdin is an open pipe that is never closed, which
+            # can hang the child before its timeout ever fires on Windows (#3182).
+            stdin=subprocess.DEVNULL,
         )
         if result.returncode != 0:
             return None
@@ -167,7 +171,8 @@ def _detect_default_branch(repo: str | None = None) -> str:
     try:
         result = subprocess.run(
             ["git", "symbolic-ref", "refs/remotes/origin/HEAD"],
-            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5,
+            stdin=subprocess.DEVNULL,
         )
         if result.returncode == 0:
             # refs/remotes/origin/main → main
@@ -232,7 +237,10 @@ def fetch_pr_files(number: int, repo: str | None = None) -> list[str]:
     if repo:
         args += ["--repo", repo]
     try:
-        result = subprocess.run(["gh", *args], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30)
+        result = subprocess.run(
+            ["gh", *args], capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=30, stdin=subprocess.DEVNULL,
+        )
         if result.returncode != 0:
             return []
         return [l.strip() for l in result.stdout.splitlines() if l.strip()]
@@ -303,7 +311,8 @@ def fetch_worktrees() -> dict[str, str]:
     try:
         result = subprocess.run(
             ["git", "worktree", "list", "--porcelain"],
-            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=10
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=10,
+            stdin=subprocess.DEVNULL,
         )
         if result.returncode != 0:
             return {}

@@ -2080,6 +2080,19 @@ def main() -> None:
         ensure_daemon(repo, force_if_hung=True)
     except Exception as exc:  # noqa: BLE001
         _stderr(f"[context_engine_mcp] ensure_daemon: {exc}")
+
+    # Load faiss (native extension, own OpenMP/loader-lock behavior) on the
+    # main thread before the stdio event loop starts handing tool calls to
+    # worker threads. register_project is the only tool that reaches
+    # pipeline.vectordb; importing faiss there for the first time from a
+    # FastMCP worker thread deadlocked on Windows — the tool call never
+    # returned even though the identical import completes in well under a
+    # second on the main thread (#3182).
+    try:
+        import pipeline.vectordb  # noqa: F401
+    except Exception as exc:  # noqa: BLE001
+        _stderr(f"[context_engine_mcp] faiss preload: {exc}")
+
     _register_mcp_client(repo)
     surface = _active_surface()
     tool_lists = {

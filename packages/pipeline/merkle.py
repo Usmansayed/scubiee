@@ -32,6 +32,18 @@ DEFAULT_IGNORE_DIRS = {
     "coverage",
     ".context-engine",
     "site-packages",
+    # Keep aligned with pipeline.paths._SKIP_SUBSTRINGS: fixture/vendored/
+    # experimental trees are never part of the indexed universe. A mismatch
+    # here means scan_file_hashes() (merkle snapshot) hashes thousands of
+    # files the real indexer never touches, so root_probe() sees them as
+    # permanent "newcomers" and the keeper loop never converges (#3182).
+    "vendor",
+    "testdata",
+    "research",
+    "sandbox",
+    "references",
+    "experiments",
+    "design_benchmarks",
 }
 
 _JUNK_PATH_MARKERS = (
@@ -206,19 +218,29 @@ def load_mtimes(path: Path) -> dict[str, float]:
 
 
 def save_snapshot(path: Path, file_hashes: dict[str, str], *, root: Path | None = None) -> None:
+    """Persist a merkle snapshot.
+
+    Keys are canonicalized (``canonical_relpath``) before the root hash is
+    computed and stored — ``load_snapshot`` canonicalizes on read via
+    ``sanitize_file_hashes``, so writing raw (often posix-style) keys here
+    made the persisted ``root_hash`` unreproducible from the loaded snapshot
+    on Windows: every probe recomputed a different hash than the one on disk
+    and reported a spuriously dirty repo (#3182).
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
+    canonical = sanitize_file_hashes(file_hashes)
     mtimes: list[tuple[str, float]] = []
     if root is not None:
-        for rel in sorted(file_hashes):
-            p = root / rel
+        for orig_rel in sorted(file_hashes):
+            p = root / orig_rel
             try:
                 if p.is_file():
-                    mtimes.append((rel, p.stat().st_mtime))
+                    mtimes.append((canonical_relpath(orig_rel), p.stat().st_mtime))
             except OSError:
                 pass
     payload = {
-        "root_hash": root_hash(file_hashes),
-        "file_hashes": sorted(file_hashes.items()),
+        "root_hash": root_hash(canonical),
+        "file_hashes": sorted(canonical.items()),
         "file_mtimes": mtimes,
     }
     atomic_write_text(path, json.dumps(payload, indent=2) + "\n")

@@ -80,6 +80,10 @@ def _git(root: Path, *args: str) -> str | None:
             text=True,
             timeout=15,
             check=False,
+            # Never inherit stdin: this runs inside long-lived server/MCP
+            # processes whose own stdin is an open, never-closed pipe on
+            # Windows, which can hang the child before its timeout fires.
+            stdin=subprocess.DEVNULL,
         )
         if r.returncode != 0:
             return None

@@ -197,6 +197,7 @@ def register_project(
             indexed = True
             chunks = int(stats.chunks)
         elif index_is_usable(ref.store_dir):
+            import sys as _sys
             from pipeline.store import PipelineStore
 
             store = PipelineStore(
