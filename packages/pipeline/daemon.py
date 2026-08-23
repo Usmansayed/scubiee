@@ -428,6 +428,19 @@ def ensure_daemon(
     except Exception:  # noqa: BLE001
         pass
     if is_running():
+        # Version mismatch check: restart if daemon is running old code
+        try:
+            from pipeline.upgrade import daemon_version_matches, restart_daemon_if_stale
+
+            if not daemon_version_matches():
+                restarted = restart_daemon_if_stale()
+                if restarted.get("ok") and restarted.get("action") == "restarted":
+                    # Daemon was restarted with new version; re-check
+                    import time as _t
+                    _t.sleep(1.0)
+        except Exception:  # noqa: BLE001
+            pass
+
         target = Path(repo).resolve() if repo is not None else None
         if target is None:
             return {"ok": True, "already_running": True, "url": engine_url()}

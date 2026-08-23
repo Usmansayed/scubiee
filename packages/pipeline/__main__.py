@@ -1238,6 +1238,58 @@ def cmd_disconnect(args: argparse.Namespace) -> int:
     return 0 if fail_count == 0 else 1
 
 
+def cmd_upgrade(args: argparse.Namespace) -> int:
+    """Upgrade scubiee to the latest version, restart daemon, run migrations."""
+    from pipeline.upgrade import check_pypi_version, do_upgrade, installed_version
+
+    # Check if update is available first
+    if sys.stdout.isatty():
+        from pipeline.cli_ui import info, kv, success, warn
+
+        print("", file=sys.stderr)
+        info(f"Current version: {installed_version()}", stream=sys.stderr)
+
+        check = check_pypi_version(force=True)
+        if check.get("error"):
+            warn("Could not reach PyPI", detail=check["error"], stream=sys.stderr)
+        elif not check.get("update_available"):
+            success("Already on the latest version", stream=sys.stderr)
+            print("", file=sys.stderr)
+            return 0
+        else:
+            info(f"Latest available: {check['latest']}", stream=sys.stderr)
+
+        print("", file=sys.stderr)
+        info("Upgrading...", stream=sys.stderr)
+
+    result = do_upgrade(pre_release=bool(getattr(args, "pre", False)))
+
+    if sys.stdout.isatty():
+        print("", file=sys.stderr)
+        if result.get("ok"):
+            old = result.get("old_version", "?")
+            new = result.get("new_version", "?")
+            if result.get("already_latest"):
+                success(f"Already on latest ({new})", stream=sys.stderr)
+            else:
+                success(f"Upgraded {old} → {new}", stream=sys.stderr)
+            restart = result.get("daemon_restart", {})
+            if restart.get("action") == "restarted":
+                success("Daemon restarted with new version", stream=sys.stderr)
+            elif restart.get("action") == "version_match":
+                kv("Daemon", "already current", stream=sys.stderr)
+            migration = result.get("migration", {})
+            if isinstance(migration, dict) and migration.get("migrated"):
+                success(f"Migrated {migration['migrated']} project(s)", stream=sys.stderr)
+        else:
+            warn(f"Upgrade failed: {result.get('error', 'unknown')}", stream=sys.stderr)
+        print("", file=sys.stderr)
+    else:
+        print(json.dumps(result, indent=2, default=str))
+
+    return 0 if result.get("ok") else 1
+
+
 def cmd_global_resume(args: argparse.Namespace) -> int:
     """Resume Scubiee — re-enables MCP, restores rules, reconciles."""
     from pipeline.pause_resume import is_paused, resume
@@ -1810,6 +1862,14 @@ def main(argv: list[str] | None = None) -> int:
         help="Deprecated/ignored: disconnect is global-only",
     )
     p_disconnect.set_defaults(func=cmd_disconnect)
+
+    # --- upgrade ---
+    p_upgrade = sub.add_parser(
+        "upgrade",
+        help="Upgrade scubiee to the latest version (pulls from PyPI, restarts daemon, runs migrations)",
+    )
+    p_upgrade.add_argument("--pre", action="store_true", help="Allow pre-release versions")
+    p_upgrade.set_defaults(func=cmd_upgrade)
 
     args = parser.parse_args(argv)
     return int(args.func(args))
