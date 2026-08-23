@@ -51,10 +51,18 @@ def pick_device(explicit: str | None = None) -> str:
 
 
 def _tune_cpu_threads() -> None:
+    """Set CPU thread limits respecting the memory budget's cpu_thread_pct.
+
+    CTX_CPU_EMBED_THREADS is set by apply_index_memory_budget():
+    - bootstrap/large_reindex: 35% of cpu_count (faster initial index)
+    - background sync: 15% of cpu_count (barely noticeable during coding)
+    """
     try:
         import torch
 
-        n = int(os.environ.get("CTX_TORCH_THREADS", "0")) or (os.cpu_count() or 4)
+        n = int(os.environ.get("CTX_CPU_EMBED_THREADS", "0")) or int(
+            os.environ.get("CTX_TORCH_THREADS", "0")
+        ) or max(1, int((os.cpu_count() or 4) * 0.35))
         torch.set_num_threads(max(1, n))
         torch.set_num_interop_threads(max(1, min(4, n // 2 or 1)))
     except Exception:  # noqa: BLE001
@@ -339,9 +347,18 @@ class Embedder:
             flush=True,
         )
         t0 = time.perf_counter()
+        # CPU-only profiles use the thread budget from memory_budget (35% for
+        # bootstrap, 15% for background sync). GPU profiles keep threads=1
+        # since the GPU handles compute and CPU threads are just for tokenization.
+        if prof.profile == "cpu":
+            ort_threads = int(os.environ.get("CTX_CPU_EMBED_THREADS", "0")) or max(
+                1, int((os.cpu_count() or 4) * 0.35)
+            )
+        else:
+            ort_threads = 1
         self._fe_model = TextEmbedding(
             model_name=model_name,
-            threads=1,
+            threads=ort_threads,
             providers=providers,
             lazy_load=True,
         )

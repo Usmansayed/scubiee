@@ -35,6 +35,11 @@ class IndexMemoryBudget:
     mlx_batch: int
     embed_batch_ceiling: int
     aggressive_unload: bool
+    # CPU thread budget as percentage of os.cpu_count(). On CPU-only profiles
+    # (no GPU), this controls how much CPU the embedding phase uses.
+    # Bootstrap/large_reindex: 35% (faster initial index, acceptable for one-time cost)
+    # Background: 15% (barely noticeable during coding)
+    cpu_thread_pct: float = 0.35
 
 
 def bootstrap_budget() -> IndexMemoryBudget:
@@ -45,6 +50,7 @@ def bootstrap_budget() -> IndexMemoryBudget:
         mlx_batch=48,
         embed_batch_ceiling=48,
         aggressive_unload=False,
+        cpu_thread_pct=0.35,
     )
 
 
@@ -56,6 +62,7 @@ def background_budget() -> IndexMemoryBudget:
         mlx_batch=24,
         embed_batch_ceiling=24,
         aggressive_unload=True,
+        cpu_thread_pct=0.15,
     )
 
 
@@ -67,6 +74,7 @@ def large_reindex_budget() -> IndexMemoryBudget:
         mlx_batch=64,
         embed_batch_ceiling=64,
         aggressive_unload=False,
+        cpu_thread_pct=0.35,
     )
 
 
@@ -119,6 +127,10 @@ def apply_index_memory_budget(budget: IndexMemoryBudget) -> None:
     """Apply budget as env defaults (never override explicit caller env)."""
     os.environ.setdefault("CTX_CE_MEMORY_MODE", budget.mode)
     os.environ.setdefault("CTX_CE_RSS_CAP_MB", str(budget.rss_cap_mb))
+    # CPU thread budget for CPU-only embedding (INT8 on laptops without GPU).
+    # DML/CUDA/MLX profiles ignore this — GPU handles the compute.
+    cpu_threads = max(1, int((os.cpu_count() or 4) * budget.cpu_thread_pct))
+    os.environ.setdefault("CTX_CPU_EMBED_THREADS", str(cpu_threads))
     os.environ["CTX_MLX_DTYPE"] = "float16"
     os.environ.setdefault("CTX_MLX_FAST_ATTN", "1")
     os.environ.setdefault("CTX_MLX_FAST_LN", "1")
