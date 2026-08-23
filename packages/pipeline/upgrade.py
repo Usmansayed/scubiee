@@ -176,24 +176,47 @@ def restart_daemon_if_stale() -> dict[str, Any]:
 def do_upgrade(*, pre_release: bool = False) -> dict[str, Any]:
     """Perform the full upgrade: pull package -> restart daemon -> migrate.
 
-    Returns a structured report.
+    Order: stop processes -> upgrade package -> restart daemon -> migrate.
+    Stopping first ensures no DLL/file locks (critical on Windows with uv tools).
     """
     report: dict[str, Any] = {"ok": True}
     old_version = installed_version()
     report["old_version"] = old_version
+
+    # 0. Stop running processes first (avoids Windows DLL locks on uv tool env)
+    #    Also clear paused state — upgrading implies intent to use scubiee.
+    try:
+        from pipeline.daemon import stop_daemon
+        from pipeline.pause_resume import _save_state, is_paused
+        from pipeline.watchdog import stop_watchdog
+
+        if is_paused():
+            _save_state({"paused": False})
+        stop_watchdog()
+        stop_daemon()
+        report["pre_stop"] = True
+    except Exception:  # noqa: BLE001
+        report["pre_stop"] = False
 
     # 1. Upgrade the package
     uv = shutil.which("uv")
     from pipeline.process_control import is_uv_tool_install
 
     if is_uv_tool_install() and uv:
+        # uv tool upgrade pulls the latest; extras are preserved from original install
         cmd = [uv, "tool", "upgrade", "scubiee"]
         if pre_release:
             cmd.append("--prerelease=allow")
     elif uv:
-        cmd = [uv, "pip", "install", "--upgrade", "--python", sys.executable, "scubiee"]
+        # uv is available but not a tool install (pip/venv) — use uv pip for speed
+        import platform
+        extras = "macos" if platform.system() == "Darwin" else "cpu"
+        cmd = [uv, "pip", "install", "--upgrade", "--python", sys.executable, f"scubiee[{extras}]"]
     else:
-        cmd = [sys.executable, "-m", "pip", "install", "--upgrade", "scubiee"]
+        # Fallback: plain pip
+        import platform
+        extras = "macos" if platform.system() == "Darwin" else "cpu"
+        cmd = [sys.executable, "-m", "pip", "install", "--upgrade", f"scubiee[{extras}]"]
 
     try:
         proc = subprocess.run(
