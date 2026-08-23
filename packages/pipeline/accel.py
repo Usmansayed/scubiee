@@ -842,29 +842,67 @@ def ort_available_providers() -> list[str]:
 
 
 def validate_dml_provider() -> bool:
-    """Runtime guard: verify DmlExecutionProvider is actually available.
+    """Runtime guard: verify GPU provider is available; auto-repair if not.
 
-    Called at daemon/engine startup when the saved profile is "dml".
-    Unlike _align_profile_to_ort (which runs during setup), this does NOT
-    silently fall back to CPU — it emits a clear error so the user knows
-    their GPU acceleration is broken.
+    Called at daemon/engine startup when the saved profile is "dml" or "cuda".
+    If the expected GPU execution provider is missing (e.g. onnxruntime got
+    upgraded to a version without DML), attempts automatic repair by
+    reinstalling the correct ORT wheel. Only falls back to CPU as a last
+    resort after repair fails.
 
-    Returns True if DML is available, False otherwise.
+    Returns True if GPU provider is available (or was successfully repaired).
     """
     saved = load_accel()
-    if saved is None or saved.profile != "dml":
-        return True  # Not a DML profile, nothing to check
-    providers = ort_available_providers()
-    if "DmlExecutionProvider" in providers:
+    if saved is None or saved.profile in {"cpu", "mlx", "coreml"}:
         return True
+    if saved.profile not in {"dml", "cuda"}:
+        return True
+
+    want_provider = {
+        "dml": "DmlExecutionProvider",
+        "cuda": "CUDAExecutionProvider",
+    }[saved.profile]
+
+    providers = ort_available_providers()
+    if want_provider in providers:
+        return True
+
+    # GPU provider missing. Attempt auto-repair before giving up.
+    # Common cause: fastembed pulled a newer onnxruntime that shadows
+    # onnxruntime-directml. Fix: reinstall the correct ORT wheel.
     print(
-        "[scubiee] ERROR: DML profile selected but DmlExecutionProvider missing. "
-        "Run: scubiee setup --repair",
+        f"[scubiee] {want_provider} missing (have: {providers}). "
+        f"Attempting auto-repair for {saved.profile} profile...",
+        file=sys.stderr,
+        flush=True,
+    )
+    try:
+        _install_ort_wheel(saved.profile)
+        _purge_ort_modules()
+        providers = ort_available_providers()
+        if want_provider in providers:
+            print(
+                f"[scubiee] Auto-repair successful: {want_provider} restored.",
+                file=sys.stderr,
+                flush=True,
+            )
+            return True
+    except Exception as exc:  # noqa: BLE001
+        print(
+            f"[scubiee] Auto-repair failed: {exc}",
+            file=sys.stderr,
+            flush=True,
+        )
+
+    # Repair failed. Emit clear error, do NOT silently fall back to CPU.
+    print(
+        f"[scubiee] ERROR: {saved.profile} profile but {want_provider} "
+        f"still missing after repair. GPU acceleration is broken.",
         file=sys.stderr,
         flush=True,
     )
     print(
-        f"[scubiee] Available providers: {providers}",
+        f"  Fix: scubiee setup --repair",
         file=sys.stderr,
         flush=True,
     )
