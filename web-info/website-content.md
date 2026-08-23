@@ -208,3 +208,9 @@ scubiee, local code search, semantic code search, AI coding tools, MCP server, c
 - "The AI actually finds the right code now instead of grepping randomly"
 - "Completely local — our security team approved it in a day"
 - "The wipe --all command is a trust signal — nothing hidden"
+
+## Live search experience
+
+Scubiee keeps search results aligned with the repository as you work. When a file changes, the watcher refreshes only affected chunks, so the next normal search can discover the update without a full rebuild.
+
+**Try it:** add a note such as `Scubiee live-search sentinel aurora`, wait for synchronization, and run `scubiee search "Scubiee live-search sentinel aurora" . --top-k 5`. The result should point back to the changed file through the same user-facing search path used by AI tools.

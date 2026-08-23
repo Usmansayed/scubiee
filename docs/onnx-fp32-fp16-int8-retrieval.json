@@ -1,0 +1,2973 @@
+{
+  "date": "2026-08-22 08:48",
+  "repo": "C:\\Users\\usman\\Downloads\\context-engine",
+  "queries": 50,
+  "chunks": 4900,
+  "top_k": 8,
+  "batch_size": 16,
+  "gpu": "DirectML",
+  "sizes_mb": {
+    "fp32": 547.7,
+    "fp16": 274.1,
+    "int8": 138.6
+  },
+  "results": {
+    "fp32": {
+      "n": 50,
+      "hits": 41,
+      "hit@1": 0.52,
+      "hit@5": 0.76,
+      "hit@8": 0.82,
+      "mrr": 0.6215,
+      "embed_time_s": 789.6,
+      "chunks_per_sec": 6.2
+    },
+    "fp16": {
+      "n": 50,
+      "hits": 41,
+      "hit@1": 0.52,
+      "hit@5": 0.76,
+      "hit@8": 0.82,
+      "mrr": 0.6215,
+      "embed_time_s": 840.6,
+      "chunks_per_sec": 5.8
+    },
+    "int8": {
+      "n": 50,
+      "hits": 41,
+      "hit@1": 0.5,
+      "hit@5": 0.74,
+      "hit@8": 0.82,
+      "mrr": 0.6087,
+      "embed_time_s": 1078.3,
+      "chunks_per_sec": 4.5
+    }
+  },
+  "comparison": {
+    "n": 50,
+    "fp32_vs_fp16": {
+      "agreement_hit": 1.0,
+      "same_top1": 0.98,
+      "a_only": [],
+      "b_only": []
+    },
+    "fp32_vs_int8": {
+      "agreement_hit": 0.88,
+      "same_top1": 0.78,
+      "a_only": [
+        "q17",
+        "q32",
+        "q40"
+      ],
+      "b_only": [
+        "q03",
+        "q18",
+        "q45"
+      ]
+    },
+    "fp16_vs_int8": {
+      "agreement_hit": 0.88,
+      "same_top1": 0.78,
+      "a_only": [
+        "q17",
+        "q32",
+        "q40"
+      ],
+      "b_only": [
+        "q03",
+        "q18",
+        "q45"
+      ]
+    },
+    "per_case": [
+      {
+        "id": "q01",
+        "fp32_hit": true,
+        "fp32_rank": 1,
+        "fp16_hit": true,
+        "fp16_rank": 1,
+        "int8_hit": true,
+        "int8_rank": 1
+      },
+      {
+        "id": "q02",
+        "fp32_hit": true,
+        "fp32_rank": 3,
+        "fp16_hit": true,
+        "fp16_rank": 3,
+        "int8_hit": true,
+        "int8_rank": 3
+      },
+      {
+        "id": "q03",
+        "fp32_hit": false,
+        "fp32_rank": null,
+        "fp16_hit": false,
+        "fp16_rank": null,
+        "int8_hit": true,
+        "int8_rank": 6
+      },
+      {
+        "id": "q04",
+        "fp32_hit": true,
+        "fp32_rank": 1,
+        "fp16_hit": true,
+        "fp16_rank": 1,
+        "int8_hit": true,
+        "int8_rank": 1
+      },
+      {
+        "id": "q05",
+        "fp32_hit": true,
+        "fp32_rank": 1,
+        "fp16_hit": true,
+        "fp16_rank": 1,
+        "int8_hit": true,
+        "int8_rank": 1
+      },
+      {
+        "id": "q06",
+        "fp32_hit": false,
+        "fp32_rank": null,
+        "fp16_hit": false,
+        "fp16_rank": null,
+        "int8_hit": false,
+        "int8_rank": null
+      },
+      {
+        "id": "q07",
+        "fp32_hit": true,
+        "fp32_rank": 3,
+        "fp16_hit": true,
+        "fp16_rank": 3,
+        "int8_hit": true,
+        "int8_rank": 2
+      },
+      {
+        "id": "q08",
+        "fp32_hit": true,
+        "fp32_rank": 1,
+        "fp16_hit": true,
+        "fp16_rank": 1,
+        "int8_hit": true,
+        "int8_rank": 1
+      },
+      {
+        "id": "q09",
+        "fp32_hit": true,
+        "fp32_rank": 1,
+        "fp16_hit": true,
+        "fp16_rank": 1,
+        "int8_hit": true,
+        "int8_rank": 1
+      },
+      {
+        "id": "q10",
+        "fp32_hit": false,
+        "fp32_rank": null,
+        "fp16_hit": false,
+        "fp16_rank": null,
+        "int8_hit": false,
+        "int8_rank": null
+      },
+      {
+        "id": "q11",
+        "fp32_hit": true,
+        "fp32_rank": 1,
+        "fp16_hit": true,
+        "fp16_rank": 1,
+        "int8_hit": true,
+        "int8_rank": 1
+      },
+      {
+        "id": "q12",
+        "fp32_hit": true,
+        "fp32_rank": 1,
+        "fp16_hit": true,
+        "fp16_rank": 1,
+        "int8_hit": true,
+        "int8_rank": 2
+      },
+      {
+        "id": "q13",
+        "fp32_hit": true,
+        "fp32_rank": 1,
+        "fp16_hit": true,
+        "fp16_rank": 1,
+        "int8_hit": true,
+        "int8_rank": 1
+      },
+      {
+        "id": "q14",
+        "fp32_hit": false,
+        "fp32_rank": null,
+        "fp16_hit": false,
+        "fp16_rank": null,
+        "int8_hit": false,
+        "int8_rank": null
+      },
+      {
+        "id": "q15",
+        "fp32_hit": true,
+        "fp32_rank": 1,
+        "fp16_hit": true,
+        "fp16_rank": 1,
+        "int8_hit": true,
+        "int8_rank": 1
+      },
+      {
+        "id": "q16",
+        "fp32_hit": true,
+        "fp32_rank": 1,
+        "fp16_hit": true,
+        "fp16_rank": 1,
+        "int8_hit": true,
+        "int8_rank": 1
+      },
+      {
+        "id": "q17",
+        "fp32_hit": true,
+        "fp32_rank": 4,
+        "fp16_hit": true,
+        "fp16_rank": 4,
+        "int8_hit": false,
+        "int8_rank": null
+      },
+      {
+        "id": "q18",
+        "fp32_hit": false,
+        "fp32_rank": null,
+        "fp16_hit": false,
+        "fp16_rank": null,
+        "int8_hit": true,
+        "int8_rank": 8
+      },
+      {
+        "id": "q19",
+        "fp32_hit": true,
+        "fp32_rank": 2,
+        "fp16_hit": true,
+        "fp16_rank": 2,
+        "int8_hit": true,
+        "int8_rank": 2
+      },
+      {
+        "id": "q20",
+        "fp32_hit": true,
+        "fp32_rank": 6,
+        "fp16_hit": true,
+        "fp16_rank": 6,
+        "int8_hit": true,
+        "int8_rank": 3
+      },
+      {
+        "id": "q21",
+        "fp32_hit": true,
+        "fp32_rank": 1,
+        "fp16_hit": true,
+        "fp16_rank": 1,
+        "int8_hit": true,
+        "int8_rank": 1
+      },
+      {
+        "id": "q22",
+        "fp32_hit": true,
+        "fp32_rank": 2,
+        "fp16_hit": true,
+        "fp16_rank": 2,
+        "int8_hit": true,
+        "int8_rank": 1
+      },
+      {
+        "id": "q23",
+        "fp32_hit": true,
+        "fp32_rank": 1,
+        "fp16_hit": true,
+        "fp16_rank": 1,
+        "int8_hit": true,
+        "int8_rank": 1
+      },
+      {
+        "id": "q24",
+        "fp32_hit": true,
+        "fp32_rank": 1,
+        "fp16_hit": true,
+        "fp16_rank": 1,
+        "int8_hit": true,
+        "int8_rank": 1
+      },
+      {
+        "id": "q25",
+        "fp32_hit": true,
+        "fp32_rank": 2,
+        "fp16_hit": true,
+        "fp16_rank": 2,
+        "int8_hit": true,
+        "int8_rank": 2
+      },
+      {
+        "id": "q26",
+        "fp32_hit": true,
+        "fp32_rank": 1,
+        "fp16_hit": true,
+        "fp16_rank": 1,
+        "int8_hit": true,
+        "int8_rank": 1
+      },
+      {
+        "id": "q27",
+        "fp32_hit": true,
+        "fp32_rank": 1,
+        "fp16_hit": true,
+        "fp16_rank": 1,
+        "int8_hit": true,
+        "int8_rank": 1
+      },
+      {
+        "id": "q28",
+        "fp32_hit": true,
+        "fp32_rank": 3,
+        "fp16_hit": true,
+        "fp16_rank": 3,
+        "int8_hit": true,
+        "int8_rank": 4
+      },
+      {
+        "id": "q29",
+        "fp32_hit": true,
+        "fp32_rank": 1,
+        "fp16_hit": true,
+        "fp16_rank": 1,
+        "int8_hit": true,
+        "int8_rank": 1
+      },
+      {
+        "id": "q30",
+        "fp32_hit": true,
+        "fp32_rank": 3,
+        "fp16_hit": true,
+        "fp16_rank": 3,
+        "int8_hit": true,
+        "int8_rank": 3
+      },
+      {
+        "id": "q31",
+        "fp32_hit": true,
+        "fp32_rank": 8,
+        "fp16_hit": true,
+        "fp16_rank": 8,
+        "int8_hit": true,
+        "int8_rank": 6
+      },
+      {
+        "id": "q32",
+        "fp32_hit": true,
+        "fp32_rank": 6,
+        "fp16_hit": true,
+        "fp16_rank": 6,
+        "int8_hit": false,
+        "int8_rank": null
+      },
+      {
+        "id": "q33",
+        "fp32_hit": true,
+        "fp32_rank": 1,
+        "fp16_hit": true,
+        "fp16_rank": 1,
+        "int8_hit": true,
+        "int8_rank": 1
+      },
+      {
+        "id": "q34",
+        "fp32_hit": true,
+        "fp32_rank": 1,
+        "fp16_hit": true,
+        "fp16_rank": 1,
+        "int8_hit": true,
+        "int8_rank": 1
+      },
+      {
+        "id": "q35",
+        "fp32_hit": true,
+        "fp32_rank": 1,
+        "fp16_hit": true,
+        "fp16_rank": 1,
+        "int8_hit": true,
+        "int8_rank": 1
+      },
+      {
+        "id": "q36",
+        "fp32_hit": true,
+        "fp32_rank": 2,
+        "fp16_hit": true,
+        "fp16_rank": 2,
+        "int8_hit": true,
+        "int8_rank": 7
+      },
+      {
+        "id": "q37",
+        "fp32_hit": false,
+        "fp32_rank": null,
+        "fp16_hit": false,
+        "fp16_rank": null,
+        "int8_hit": false,
+        "int8_rank": null
+      },
+      {
+        "id": "q38",
+        "fp32_hit": true,
+        "fp32_rank": 1,
+        "fp16_hit": true,
+        "fp16_rank": 1,
+        "int8_hit": true,
+        "int8_rank": 1
+      },
+      {
+        "id": "q39",
+        "fp32_hit": false,
+        "fp32_rank": null,
+        "fp16_hit": false,
+        "fp16_rank": null,
+        "int8_hit": false,
+        "int8_rank": null
+      },
+      {
+        "id": "q40",
+        "fp32_hit": true,
+        "fp32_rank": 5,
+        "fp16_hit": true,
+        "fp16_rank": 5,
+        "int8_hit": false,
+        "int8_rank": null
+      },
+      {
+        "id": "q41",
+        "fp32_hit": true,
+        "fp32_rank": 1,
+        "fp16_hit": true,
+        "fp16_rank": 1,
+        "int8_hit": true,
+        "int8_rank": 2
+      },
+      {
+        "id": "q42",
+        "fp32_hit": false,
+        "fp32_rank": null,
+        "fp16_hit": false,
+        "fp16_rank": null,
+        "int8_hit": false,
+        "int8_rank": null
+      },
+      {
+        "id": "q43",
+        "fp32_hit": true,
+        "fp32_rank": 1,
+        "fp16_hit": true,
+        "fp16_rank": 1,
+        "int8_hit": true,
+        "int8_rank": 1
+      },
+      {
+        "id": "q44",
+        "fp32_hit": true,
+        "fp32_rank": 1,
+        "fp16_hit": true,
+        "fp16_rank": 1,
+        "int8_hit": true,
+        "int8_rank": 1
+      },
+      {
+        "id": "q45",
+        "fp32_hit": false,
+        "fp32_rank": null,
+        "fp16_hit": false,
+        "fp16_rank": null,
+        "int8_hit": true,
+        "int8_rank": 4
+      },
+      {
+        "id": "q46",
+        "fp32_hit": true,
+        "fp32_rank": 2,
+        "fp16_hit": true,
+        "fp16_rank": 2,
+        "int8_hit": true,
+        "int8_rank": 2
+      },
+      {
+        "id": "q47",
+        "fp32_hit": true,
+        "fp32_rank": 1,
+        "fp16_hit": true,
+        "fp16_rank": 1,
+        "int8_hit": true,
+        "int8_rank": 1
+      },
+      {
+        "id": "q48",
+        "fp32_hit": true,
+        "fp32_rank": 1,
+        "fp16_hit": true,
+        "fp16_rank": 1,
+        "int8_hit": true,
+        "int8_rank": 1
+      },
+      {
+        "id": "q49",
+        "fp32_hit": true,
+        "fp32_rank": 1,
+        "fp16_hit": true,
+        "fp16_rank": 1,
+        "int8_hit": true,
+        "int8_rank": 1
+      },
+      {
+        "id": "q50",
+        "fp32_hit": true,
+        "fp32_rank": 3,
+        "fp16_hit": true,
+        "fp16_rank": 3,
+        "int8_hit": true,
+        "int8_rank": 3
+      }
+    ]
+  },
+  "eval_results": {
+    "fp32": {
+      "n": 50,
+      "hits": 41,
+      "hit@1": 0.52,
+      "hit@5": 0.76,
+      "hit@8": 0.82,
+      "mrr": 0.6215,
+      "cases": [
+        {
+          "id": "q01",
+          "query": "initialize the sentence embedding model with hardware-specific acceleration providers",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/accel.py",
+            "packages/pipeline/preflight.py",
+            "packages/pipeline/engine.py",
+            "packages/pipeline/embedder.py",
+            "packages/pipeline/indexer.py",
+            "SETUP.md",
+            "docs/superpowers/specs/2026-08-17-cross-platform-runtime-compatibility-design.md",
+            "docs/superpowers/specs/2026-08-03-universal-embed-accel-design.md"
+          ]
+        },
+        {
+          "id": "q02",
+          "query": "register a custom ONNX model definition so the fast embedding library knows about it",
+          "hit": true,
+          "rank": 3,
+          "returned": [
+            "packages/pipeline/coreml_mac.py",
+            "scripts/eval_onnx_fp32_fp16_int8.py",
+            "packages/pipeline/accel.py",
+            "packages/pipeline/mlx_mac.py",
+            "docs/mlx-fp16-fp32-retrieval.json",
+            "packages/scubiee.egg-info/requires.txt",
+            "SETUP.md",
+            "tests/test_coreml_mac.py"
+          ]
+        },
+        {
+          "id": "q03",
+          "query": "prepend instruction prefix to search queries before encoding them",
+          "hit": false,
+          "rank": null,
+          "returned": [
+            "packages/hybrid_cbm/semantic.py",
+            "scripts/eval_onnx_fp32_fp16_int8.py",
+            "scripts/experiments/difficult_session_ab.py",
+            "scripts/experiments/session_native_ab.py",
+            "packages/pipeline/query_tune.py",
+            "packages/pipeline/searcher.py",
+            "packages/pipeline/__init__.py",
+            "scripts/experiments/opencode_soft_ab/run.py"
+          ]
+        },
+        {
+          "id": "q04",
+          "query": "warm up the embedding session by running a dummy batch through the model",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/embedder.py",
+            "packages/pipeline/engine.py",
+            "scripts/bench_mlx_memory.py",
+            "tests/test_memory_budget.py",
+            "packages/pipeline/accel.py",
+            "scripts/bench_mlx_pipeline.py",
+            "tests/test_runtime_cpu_backup.py",
+            "scripts/bench_budget_alloc.py"
+          ]
+        },
+        {
+          "id": "q05",
+          "query": "choose between GPU-accelerated and CPU-only execution providers at runtime",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/accel.py",
+            "packages/pipeline/embedder.py",
+            "packages/pipeline/engine.py",
+            "packages/pipeline/certify.py",
+            "tests/test_cross_platform_profiles.py",
+            "packages/pipeline/coreml_mac.py",
+            "nvidia/CUDA-DLL-RESOLUTION.md",
+            "nvidia/WINDOWS-GPU-ACCELERATION.md"
+          ]
+        },
+        {
+          "id": "q06",
+          "query": "split source code into overlapping semantic chunks before embedding",
+          "hit": false,
+          "rank": null,
+          "returned": [
+            "packages/enrich/__init__.py",
+            "scripts/bench_mix_seq_ab.py",
+            "packages/pipeline/indexer.py",
+            "docs/why-seq128-still-retrieves.md",
+            "packages/seir/spans.py",
+            "scripts/bench_budget_alloc.py",
+            "packages/pipeline/incremental.py",
+            "packages/seir/baseline.py"
+          ]
+        },
+        {
+          "id": "q07",
+          "query": "detect which repository files have changed since the last indexing run",
+          "hit": true,
+          "rank": 3,
+          "returned": [
+            "tests/test_preflight.py",
+            "scripts/experiments/sdk_mcp_dev_trial.py",
+            "packages/pipeline/freshness.py",
+            "packages/pipeline/merkle.py",
+            "docs/reindexing/live-reindexing-delivery.md",
+            "packages/pipeline/incremental.py",
+            "scripts/experiments/dev_mcp_vs_nomcp.py",
+            "scripts/eval_mlx_fp16_fp32_retrieval.py"
+          ]
+        },
+        {
+          "id": "q08",
+          "query": "persist embedded vectors to a local FAISS collection on disk",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "tests/test_vectordb.py",
+            "packages/pipeline/indexer.py",
+            "packages/pipeline/vectordb.py",
+            "packages/pipeline/store.py",
+            "packages/pipeline/faiss_store.py",
+            "packages/pipeline/incremental.py",
+            "tests/test_storage_policy.py",
+            "tests/test_e2e_pipeline.py"
+          ]
+        },
+        {
+          "id": "q09",
+          "query": "extract import relationships and function calls into a dependency graph",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "vendor/graphify/graphify/analyze.py",
+            "packages/graphify/analyze.py",
+            "vendor/graphify/graphify/extractors/elixir.py",
+            "packages/graphify/extractors/elixir.py",
+            "vendor/graphify/graphify/extractors/rust.py",
+            "packages/graphify/extractors/rust.py",
+            "vendor/graphify/graphify/extractors/zig.py",
+            "packages/graphify/extractors/zig.py"
+          ]
+        },
+        {
+          "id": "q10",
+          "query": "skip binary files and large generated assets during the indexing walk",
+          "hit": false,
+          "rank": null,
+          "returned": [
+            "tests/test_index_coverage.py",
+            "packages/graphify/detect.py",
+            "packages/pipeline/incremental.py",
+            "packages/pipeline/memory_budget.py",
+            "packages/pipeline/merkle.py",
+            "packages/pipeline/freshness.py",
+            "packages/pipeline/indexer.py",
+            "docs/reindexing/future-work.md"
+          ]
+        },
+        {
+          "id": "q11",
+          "query": "blend dense vector similarity with sparse keyword matching for hybrid results",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/conductor/conductor.py",
+            "packages/pipeline/incremental.py",
+            "packages/conductor/architectures.py",
+            "packages/seir/mix_rels.py",
+            "packages/conductor/dense_index.py",
+            "docs/conductor-final-architecture.md",
+            "packages/conductor/query_router.py",
+            "docs/graph-hybrid-conductor.md"
+          ]
+        },
+        {
+          "id": "q12",
+          "query": "boost results that are structurally connected to the query via the code graph",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/conductor/architectures.py",
+            "packages/pipeline/context_nav.py",
+            "packages/pipeline/engine.py",
+            "scripts/experiments/session_arch/hop_utils.py",
+            "packages/hybrid_cbm/semantic.py",
+            "packages/pipeline/mcp_locate.py",
+            "vendor/graphify/graphify/watch.py",
+            "vendor/graphify/graphify/affected.py"
+          ]
+        },
+        {
+          "id": "q13",
+          "query": "find nearest neighbors in the vector index given a query embedding",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/vectordb.py",
+            "scripts/eval_onnx_fp32_fp16_int8.py",
+            "scripts/eval_locate_quality.py",
+            "packages/conductor/bm25_index.py",
+            "packages/conductor/dense_index.py",
+            "scripts/experiments/cursor_ab/metered_tools.py",
+            "scripts/experiments/difficult_session_ab.py",
+            "packages/conductor/architectures.py"
+          ]
+        },
+        {
+          "id": "q14",
+          "query": "classify whether a user query is asking about a specific symbol or a general concept",
+          "hit": false,
+          "rank": null,
+          "returned": [
+            "vendor/graphify/graphify/analyze.py",
+            "packages/graphify/analyze.py",
+            "scripts/experiments/session_arch/hop_utils.py",
+            "packages/pipeline/capability.py",
+            "packages/conductor/architectures.py",
+            "scripts/experiments/classify_discovery.py",
+            "scripts/experiments/mine_search_scenarios.py",
+            "vendor/graphify/graphify/serve.py"
+          ]
+        },
+        {
+          "id": "q15",
+          "query": "rerank candidate results using multiple signal channels before returning",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/conductor/architectures.py",
+            "packages/conductor/conductor.py",
+            "packages/conductor/fusion_math.py",
+            "packages/pipeline/engine.py",
+            "scripts/bench_budget_alloc.py",
+            "docs/mlx-fp16-fp32-retrieval.json",
+            "docs/reindexing/agent-write-patterns-and-channel-conflicts.md",
+            "scripts/eval_mlx_fp16_fp32_retrieval.py"
+          ]
+        },
+        {
+          "id": "q16",
+          "query": "start a background HTTP server that answers search requests from AI tools",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/server.py",
+            "web-info/website-content.md",
+            "scripts/context_agent/start_llama_qwen.ps1",
+            "packages/pipeline/searcher.py",
+            "packages/pipeline/daemon.py",
+            "scripts/eval_mlx_fp16_fp32_retrieval.py",
+            "packages/pipeline/__main__.py",
+            "docs/superpowers/specs/2026-08-17-cross-platform-runtime-compatibility-design.md"
+          ]
+        },
+        {
+          "id": "q17",
+          "query": "expose code navigation tools over the model context protocol for IDE plugins",
+          "hit": true,
+          "rank": 4,
+          "returned": [
+            "docs/superpowers/specs/2026-08-06-agent-context-tools-design.md",
+            "packages/pipeline/rules_installer.py",
+            "packages/pipeline/tool_registry.py",
+            "packages/pipeline/mcp_locate.py",
+            "docs/superpowers/specs/2026-08-08-tracelab-context-collection-research-framework.md",
+            "scripts/experiments/sdk_mcp_smoke.py",
+            "packages/pipeline/context_agent/__init__.py",
+            "packages/hybrid_cbm/proxy.py"
+          ]
+        },
+        {
+          "id": "q18",
+          "query": "keep the search index fresh by watching filesystem events in real time",
+          "hit": false,
+          "rank": null,
+          "returned": [
+            "web-info/website-content.md",
+            "vendor/graphify/graphify/watch.py",
+            "packages/pipeline/incremental.py",
+            "vendor/graphify/graphify/cache.py",
+            "packages/graphify/cache.py",
+            "packages/pipeline/ce_service.py",
+            "docs/research-freshness.md",
+            "docs/superpowers/specs/2026-08-17-questions-production-readiness-design.md"
+          ]
+        },
+        {
+          "id": "q19",
+          "query": "handle graceful shutdown of the engine daemon when the system sends a signal",
+          "hit": true,
+          "rank": 2,
+          "returned": [
+            "packages/pipeline/server.py",
+            "packages/pipeline/daemon.py",
+            "scripts/sim_install_forget.py",
+            "docs/session-info/bug-hunt-0.2.18.md",
+            "docs/reindexing/future-work.md",
+            "packages/pipeline/mcp_locate.py",
+            "scripts/experiments/sdk_mcp_smoke.py",
+            "packages/pipeline/ce_service.py"
+          ]
+        },
+        {
+          "id": "q20",
+          "query": "health check endpoint that reports whether the engine is ready to serve queries",
+          "hit": true,
+          "rank": 6,
+          "returned": [
+            "packages/pipeline/ce_service.py",
+            "scripts/experiments/sdk_mcp_smoke.py",
+            "scripts/sim_install_forget.py",
+            "packages/pipeline/diagnose.py",
+            "packages/pipeline/__main__.py",
+            "packages/pipeline/daemon.py",
+            "packages/pipeline/mcp_locate.py",
+            "packages/pipeline/context_agent/llm_llama.py"
+          ]
+        },
+        {
+          "id": "q21",
+          "query": "command line interface entry point that dispatches subcommands",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "vendor/graphify/graphify/__main__.py",
+            "packages/pipeline/dashboard_server.py",
+            "packages/pipeline/__main__.py",
+            "packages/pipeline/context_agent/agent.py",
+            "scripts/experiments/cursor_subagent_ab/graphify_cli.py",
+            "packages/parse_harness/__main__.py",
+            "scripts/experiments/session_arch_ab.py",
+            "vendor/graphify/graphify/cli.py"
+          ]
+        },
+        {
+          "id": "q22",
+          "query": "wipe all local data including downloaded models and tool configurations",
+          "hit": true,
+          "rank": 2,
+          "returned": [
+            "packages/pipeline/__main__.py",
+            "packages/pipeline/wipe.py",
+            "scripts/cleanup_local_indexes.py",
+            "web-info/website-content.md",
+            "web-info/commands-and-setup.md",
+            "scripts/cleanup_repo.py",
+            "scripts/prune_engine_state.py",
+            "vendor/graphify/README.md"
+          ]
+        },
+        {
+          "id": "q23",
+          "query": "run diagnostic checks and produce a shareable report for support",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/diagnose.py",
+            "packages/pipeline/__main__.py",
+            "packages/pipeline/preflight.py",
+            "scripts/eval_locate_quality.py",
+            "docs/superpowers/specs/2026-08-08-sdk-development-context-engine-vs-graphify-design.md",
+            "scripts/eval_mcp_session.py",
+            "packages/parse_harness/claude_context_probe.py",
+            "vendor/graphify/graphify/cli.py"
+          ]
+        },
+        {
+          "id": "q24",
+          "query": "connect the search engine as an MCP server to multiple AI coding tools at once",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/__main__.py",
+            "tests/test_hybrid_cbm.py",
+            "packages/scubiee.egg-info/entry_points.txt",
+            "packages/pipeline/mcp_locate.py",
+            "web-info/commands-and-setup.md",
+            "tests/test_session_store.py",
+            "docs/context-engine-mcp.md",
+            "tests/test_mcp_locate.py"
+          ]
+        },
+        {
+          "id": "q25",
+          "query": "inspect available hardware resources like GPU memory and CPU cores",
+          "hit": true,
+          "rank": 2,
+          "returned": [
+            "packages/pipeline/__main__.py",
+            "packages/pipeline/hardware.py",
+            "packages/pipeline/accel.py",
+            "docs/superpowers/specs/2026-08-05-resource-management-design.md",
+            "tests/test_resources.py",
+            "packages/pipeline/mlx_mac.py",
+            "nvidia/README.md",
+            "packages/pipeline/engine.py"
+          ]
+        },
+        {
+          "id": "q26",
+          "query": "convert ONNX float weights into half-precision numpy arrays for Apple GPU",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/mlx_mac.py",
+            "scripts/bench_apple_silicon_embed.py",
+            "docs/session-info/issue-log.md",
+            "packages/pipeline/accel.py",
+            "docs/mac-gpu-install-handoff.md",
+            "packages/pipeline/coreml_mac.py",
+            "packages/scubiee.egg-info/requires.txt",
+            "tests/test_coreml_mac.py"
+          ]
+        },
+        {
+          "id": "q27",
+          "query": "run the full transformer forward pass using Metal compute shaders",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/mlx_mac.py",
+            "nvidia/run-all-tests.ps1",
+            "scripts/session_ab_realistic.py",
+            "scripts/bench_budget_alloc.py",
+            "docs/superpowers/plans/2026-08-08-sdk-development-context-engine-vs-graphify.md",
+            "packages/pipeline/embedder.py",
+            "docs/mlx-memory-optimization.md",
+            "packages/pipeline/mcp_locate.py"
+          ]
+        },
+        {
+          "id": "q28",
+          "query": "apply rotary position embeddings to query and key tensors in attention",
+          "hit": true,
+          "rank": 3,
+          "returned": [
+            "tests/test_coreml_mac.py",
+            "packages/conductor/architectures.py",
+            "packages/pipeline/mlx_mac.py",
+            "packages/conductor/service.py",
+            "packages/pipeline/embedder.py",
+            "scripts/experiments/session_native_ab.py",
+            "scripts/experiments/difficult_session_ab.py",
+            "packages/conductor/dense_index.py"
+          ]
+        },
+        {
+          "id": "q29",
+          "query": "CoreML static batch padding workaround for the ONNX runtime on Intel Mac",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/coreml_mac.py",
+            "tests/test_coreml_mac.py",
+            "docs/mac-gpu-install-handoff.md",
+            "docs/session-info/issue-log.md",
+            "docs/macbook-embed-speed.md",
+            "packages/pipeline/accel.py",
+            "scripts/bench_apple_silicon_embed.py",
+            "tests/test_mlx_mac.py"
+          ]
+        },
+        {
+          "id": "q30",
+          "query": "benchmark embedding throughput across different batch sizes on Apple hardware",
+          "hit": true,
+          "rank": 3,
+          "returned": [
+            "docs/macbook-embed-speed.md",
+            "scripts/bench_difficult_compare.py",
+            "scripts/bench_apple_silicon_embed.py",
+            "scripts/bench_mlx_pipeline.py",
+            "scripts/bench_budget_alloc.py",
+            "scripts/bench_size_ladder.py",
+            "tests/test_coreml_mac.py",
+            "packages/scubiee.egg-info/requires.txt"
+          ]
+        },
+        {
+          "id": "q31",
+          "query": "derive a stable unique identifier for a repository that survives path renames",
+          "hit": true,
+          "rank": 8,
+          "returned": [
+            "vendor/graphify/graphify/extractors/resolution.py",
+            "packages/graphify/extractors/resolution.py",
+            "tests/test_repo_presence.py",
+            "vendor/graphify/graphify/cache.py",
+            "packages/graphify/cache.py",
+            "vendor/graphify/graphify/extractors/base.py",
+            "packages/graphify/extractors/base.py",
+            "packages/pipeline/project_id.py"
+          ]
+        },
+        {
+          "id": "q32",
+          "query": "manage multiple indexed repositories from a central registry file",
+          "hit": true,
+          "rank": 6,
+          "returned": [
+            "tests/test_preflight.py",
+            "packages/pipeline/__main__.py",
+            "tests/test_dashboard_api.py",
+            "tests/test_repo_lifecycle_dashboard_actions.py",
+            "packages/pipeline/repo_lifecycle.py",
+            "packages/pipeline/project_id.py",
+            "tests/test_repo_lifecycle.py",
+            "scripts/install_mcp_frontend.py"
+          ]
+        },
+        {
+          "id": "q33",
+          "query": "compress stored chunk embeddings using scalar quantization to save disk space",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/turbo_quant.py",
+            "scripts/bench_size_ladder.py",
+            "tests/test_pipeline_core.py",
+            "packages/pipeline/embedder.py",
+            "packages/pipeline/indexer.py",
+            "scripts/eval_onnx_fp32_fp16_int8.py",
+            "scripts/bench_mix_seq_ab.py",
+            "scripts/bench_apple_silicon_embed.py"
+          ]
+        },
+        {
+          "id": "q34",
+          "query": "cache embedding results so identical text does not get re-encoded",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/embedder.py",
+            "packages/conductor/dense_index.py",
+            "packages/conductor/service.py",
+            "packages/pipeline/mlx_mac.py",
+            "packages/pipeline/engine.py",
+            "scripts/bench_apple_silicon_embed.py",
+            "tests/test_resource_envelope.py",
+            "scripts/bench_mlx_memory.py"
+          ]
+        },
+        {
+          "id": "q35",
+          "query": "load and save engine metadata alongside the vector index files",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/store.py",
+            "packages/pipeline/incremental.py",
+            "web-info/commands-and-setup.md",
+            "packages/pipeline/vectordb.py",
+            "packages/pipeline/indexer.py",
+            "packages/pipeline/engine.py",
+            "packages/pipeline/watchdog.py",
+            "tests/test_storage_policy.py"
+          ]
+        },
+        {
+          "id": "q36",
+          "query": "integration test that verifies end-to-end indexing and search on a fixture repo",
+          "hit": true,
+          "rank": 2,
+          "returned": [
+            "tests/test_enrich.py",
+            "tests/test_cli_init_repo.py",
+            "tests/test_repo_lifecycle.py",
+            "tests/test_runtime_publish.py",
+            "docs/superpowers/plans/2026-08-17-ce-operator-dashboard.md",
+            "docs/superpowers/plans/2026-08-16-live-reindexing.md",
+            "tests/test_e2e_pipeline.py",
+            "nvidia/run-all-tests.ps1"
+          ]
+        },
+        {
+          "id": "q37",
+          "query": "validate that the AST parser handles edge cases like decorators and nested classes",
+          "hit": false,
+          "rank": null,
+          "returned": [
+            "packages/seir/spans.py",
+            "docs/phase1-parser-comparison.md",
+            "tests/seir_exp/test_spans.py",
+            "vendor/graphify/graphify/extractors/resolution.py",
+            "packages/graphify/extractors/resolution.py",
+            "vendor/graphify/graphify/multigraph_compat.py",
+            "tests/test_preflight.py",
+            "vendor/graphify/graphify/extractors/dart.py"
+          ]
+        },
+        {
+          "id": "q38",
+          "query": "measure retrieval precision against a curated set of known-good query answers",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "scripts/eval_mlx_fp16_fp32_retrieval.py",
+            "docs/superpowers/specs/_search_scenario_mine.json",
+            "scripts/eval_locate_quality.py",
+            "vendor/graphify/graphify/serve.py",
+            "packages/graphify/serve.py",
+            "docs/superpowers/specs/2026-08-08-tracelab-context-collection-research-framework.md",
+            "packages/pipeline/accel.py",
+            "docs/superpowers/specs/2026-08-03-retrieval-orchestration-decision.md"
+          ]
+        },
+        {
+          "id": "q39",
+          "query": "mock the GPU runtime to test fallback behavior on machines without acceleration",
+          "hit": false,
+          "rank": null,
+          "returned": [
+            "tests/test_runtime_cpu_backup.py",
+            "packages/pipeline/accel.py",
+            "docs/superpowers/plans/2026-08-17-cross-platform-runtime-compatibility.md",
+            "tests/test_coreml_mac.py",
+            "tests/test_mlx_backend.py",
+            "tests/test_runtime_profile.py",
+            "tests/test_cross_platform_profiles.py",
+            "nvidia/KNOWN-ISSUES.md"
+          ]
+        },
+        {
+          "id": "q40",
+          "query": "verify the daemon starts and responds to search requests correctly",
+          "hit": true,
+          "rank": 5,
+          "returned": [
+            "tests/test_cli_init_repo.py",
+            "tests/test_watchdog.py",
+            "tests/test_mcp_locate.py",
+            "packages/pipeline/mcp_locate.py",
+            "tests/test_daemon_guardrails.py",
+            "docs/sdk-dev-trial-runbook.md",
+            "tests/test_auto_sessions_observability.py",
+            "nvidia/README.md"
+          ]
+        },
+        {
+          "id": "q41",
+          "query": "session-aware context that remembers which files the developer recently opened",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/work_session.py",
+            "scripts/session_ab_realistic.py",
+            "packages/pipeline/project_id.py",
+            "packages/pipeline/session_store.py",
+            "packages/pipeline/ce_service.py",
+            "scripts/experiments/difficult_session_ab.py",
+            "docs/superpowers/specs/2026-08-08-session-native-context-engine-design.md",
+            "fixtures/ce-sim-repo/session.py"
+          ]
+        },
+        {
+          "id": "q42",
+          "query": "pin important files so they always rank higher in search results",
+          "hit": false,
+          "rank": null,
+          "returned": [
+            "scripts/bench_budget_alloc.py",
+            "packages/conductor/architectures.py",
+            "tests/test_dashboard_api.py",
+            "packages/conductor/conductor.py",
+            "scripts/experiments/session_native_ab.py",
+            "tests/test_storage_policy.py",
+            "docs/mlx-fp16-fp32-retrieval.json",
+            "packages/pipeline/work_session.py"
+          ]
+        },
+        {
+          "id": "q43",
+          "query": "navigate from a code location to its structural neighbors like callers and callees",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "vendor/graphify/graphify/extractors/dm.py",
+            "packages/graphify/extractors/dm.py",
+            "vendor/graphify/graphify/extractors/zig.py",
+            "packages/graphify/extractors/zig.py",
+            "vendor/graphify/graphify/extractors/elixir.py",
+            "packages/graphify/extractors/elixir.py",
+            "vendor/graphify/graphify/extractors/pascal.py",
+            "packages/graphify/extractors/pascal.py"
+          ]
+        },
+        {
+          "id": "q44",
+          "query": "limit memory consumption during embedding by controlling the batch window",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/memory_budget.py",
+            "packages/pipeline/resources.py",
+            "scripts/bench_mlx_memory.py",
+            "packages/pipeline/resource_envelope.py",
+            "packages/pipeline/embedder.py",
+            "docs/mlx-index-compute-and-memory.md",
+            "tests/test_memory_budget.py",
+            "docs/mlx-m5-index-report.md"
+          ]
+        },
+        {
+          "id": "q45",
+          "query": "gracefully degrade search quality when the index is being rebuilt in the background",
+          "hit": false,
+          "rank": null,
+          "returned": [
+            "packages/pipeline/incremental.py",
+            "tests/test_memory_budget.py",
+            "packages/pipeline/memory_budget.py",
+            "packages/pipeline/__init__.py",
+            "tests/test_live_reindexing.py",
+            "scripts/sim_install_forget.py",
+            "docs/sdk-dev-trial-runbook.md",
+            "scripts/experiments/session_native_ab.py"
+          ]
+        },
+        {
+          "id": "q46",
+          "query": "first-time setup wizard that downloads models and calibrates embedding speed",
+          "hit": true,
+          "rank": 2,
+          "returned": [
+            "SETUP.md",
+            "packages/pipeline/accel.py",
+            "nvidia/UNIVERSAL-INSTALL-FIX.md",
+            "scripts/bench_difficult_compare.py",
+            "packages/pipeline/embedder.py",
+            "packages/pipeline/preflight.py",
+            "packages/pipeline/__main__.py",
+            "scripts/experiments/opencode_soft_ab/run.py"
+          ]
+        },
+        {
+          "id": "q47",
+          "query": "user preferences file that controls default behavior like batch size and backend",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/settings.py",
+            "tests/test_batch_calibration.py",
+            "packages/pipeline/resources.py",
+            "packages/pipeline/lifecycle_runtime.py",
+            "vendor/graphify/graphify/llm.py",
+            "packages/graphify/llm.py",
+            "docs/superpowers/specs/2026-08-17-cross-platform-runtime-compatibility-design.md",
+            "scripts/experiments/session_arch_ab.py"
+          ]
+        },
+        {
+          "id": "q48",
+          "query": "preflight validation that blocks indexing if required dependencies are missing",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "tests/test_preflight.py",
+            "packages/pipeline/preflight.py",
+            "docs/superpowers/specs/2026-08-17-questions-production-readiness-design.md",
+            "packages/pipeline/certify.py",
+            "vendor/graphify/graphify/validate.py",
+            "packages/graphify/validate.py",
+            "packages/pipeline/migrate.py",
+            "packages/pipeline/project_id.py"
+          ]
+        },
+        {
+          "id": "q49",
+          "query": "data migration logic when the index schema changes between versions",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/migrate.py",
+            "docs/publish-setup.md",
+            "tests/test_preflight.py",
+            "packages/pipeline/indexer.py",
+            "tests/test_project_id.py",
+            "packages/pipeline/incremental.py",
+            "packages/pipeline/project_id.py",
+            "packages/pipeline/__init__.py"
+          ]
+        },
+        {
+          "id": "q50",
+          "query": "generate MCP configuration JSON for each supported AI coding tool",
+          "hit": true,
+          "rank": 3,
+          "returned": [
+            "packages/pipeline/tool_registry.py",
+            "scripts/experiments/analyze_trial_session.py",
+            "scripts/experiments/sdk_mcp_smoke.py",
+            "packages/pipeline/rules_installer.py",
+            "scripts/experiments/opencode_soft_ab/run.py",
+            "scripts/experiments/dev_mcp_vs_nomcp.py",
+            "scripts/experiments/opencode_raw_vs_ce/run.py",
+            "tests/test_session_store.py"
+          ]
+        }
+      ],
+      "embed_time_s": 789.6,
+      "chunks_per_sec": 6.2
+    },
+    "fp16": {
+      "n": 50,
+      "hits": 41,
+      "hit@1": 0.52,
+      "hit@5": 0.76,
+      "hit@8": 0.82,
+      "mrr": 0.6215,
+      "cases": [
+        {
+          "id": "q01",
+          "query": "initialize the sentence embedding model with hardware-specific acceleration providers",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/accel.py",
+            "packages/pipeline/preflight.py",
+            "packages/pipeline/engine.py",
+            "packages/pipeline/embedder.py",
+            "packages/pipeline/indexer.py",
+            "SETUP.md",
+            "docs/superpowers/specs/2026-08-17-cross-platform-runtime-compatibility-design.md",
+            "docs/superpowers/specs/2026-08-03-universal-embed-accel-design.md"
+          ]
+        },
+        {
+          "id": "q02",
+          "query": "register a custom ONNX model definition so the fast embedding library knows about it",
+          "hit": true,
+          "rank": 3,
+          "returned": [
+            "packages/pipeline/coreml_mac.py",
+            "scripts/eval_onnx_fp32_fp16_int8.py",
+            "packages/pipeline/accel.py",
+            "packages/pipeline/mlx_mac.py",
+            "docs/mlx-fp16-fp32-retrieval.json",
+            "packages/scubiee.egg-info/requires.txt",
+            "SETUP.md",
+            "tests/test_coreml_mac.py"
+          ]
+        },
+        {
+          "id": "q03",
+          "query": "prepend instruction prefix to search queries before encoding them",
+          "hit": false,
+          "rank": null,
+          "returned": [
+            "packages/hybrid_cbm/semantic.py",
+            "scripts/eval_onnx_fp32_fp16_int8.py",
+            "scripts/experiments/difficult_session_ab.py",
+            "scripts/experiments/session_native_ab.py",
+            "packages/pipeline/query_tune.py",
+            "packages/pipeline/searcher.py",
+            "packages/pipeline/__init__.py",
+            "scripts/experiments/opencode_soft_ab/run.py"
+          ]
+        },
+        {
+          "id": "q04",
+          "query": "warm up the embedding session by running a dummy batch through the model",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/embedder.py",
+            "packages/pipeline/engine.py",
+            "scripts/bench_mlx_memory.py",
+            "packages/pipeline/accel.py",
+            "tests/test_memory_budget.py",
+            "tests/test_runtime_cpu_backup.py",
+            "scripts/bench_mlx_pipeline.py",
+            "scripts/bench_budget_alloc.py"
+          ]
+        },
+        {
+          "id": "q05",
+          "query": "choose between GPU-accelerated and CPU-only execution providers at runtime",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/accel.py",
+            "packages/pipeline/embedder.py",
+            "packages/pipeline/engine.py",
+            "packages/pipeline/certify.py",
+            "tests/test_cross_platform_profiles.py",
+            "packages/pipeline/coreml_mac.py",
+            "nvidia/CUDA-DLL-RESOLUTION.md",
+            "nvidia/WINDOWS-GPU-ACCELERATION.md"
+          ]
+        },
+        {
+          "id": "q06",
+          "query": "split source code into overlapping semantic chunks before embedding",
+          "hit": false,
+          "rank": null,
+          "returned": [
+            "packages/enrich/__init__.py",
+            "scripts/bench_mix_seq_ab.py",
+            "packages/pipeline/indexer.py",
+            "docs/why-seq128-still-retrieves.md",
+            "packages/seir/spans.py",
+            "packages/pipeline/incremental.py",
+            "scripts/bench_budget_alloc.py",
+            "packages/seir/baseline.py"
+          ]
+        },
+        {
+          "id": "q07",
+          "query": "detect which repository files have changed since the last indexing run",
+          "hit": true,
+          "rank": 3,
+          "returned": [
+            "tests/test_preflight.py",
+            "scripts/experiments/sdk_mcp_dev_trial.py",
+            "packages/pipeline/freshness.py",
+            "packages/pipeline/merkle.py",
+            "docs/reindexing/live-reindexing-delivery.md",
+            "packages/pipeline/incremental.py",
+            "scripts/experiments/dev_mcp_vs_nomcp.py",
+            "scripts/eval_mlx_fp16_fp32_retrieval.py"
+          ]
+        },
+        {
+          "id": "q08",
+          "query": "persist embedded vectors to a local FAISS collection on disk",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "tests/test_vectordb.py",
+            "packages/pipeline/indexer.py",
+            "packages/pipeline/vectordb.py",
+            "packages/pipeline/store.py",
+            "packages/pipeline/faiss_store.py",
+            "packages/pipeline/incremental.py",
+            "tests/test_storage_policy.py",
+            "tests/test_e2e_pipeline.py"
+          ]
+        },
+        {
+          "id": "q09",
+          "query": "extract import relationships and function calls into a dependency graph",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "vendor/graphify/graphify/analyze.py",
+            "packages/graphify/analyze.py",
+            "vendor/graphify/graphify/extractors/elixir.py",
+            "packages/graphify/extractors/elixir.py",
+            "vendor/graphify/graphify/extractors/rust.py",
+            "packages/graphify/extractors/rust.py",
+            "vendor/graphify/graphify/extractors/powershell.py",
+            "packages/graphify/extractors/powershell.py"
+          ]
+        },
+        {
+          "id": "q10",
+          "query": "skip binary files and large generated assets during the indexing walk",
+          "hit": false,
+          "rank": null,
+          "returned": [
+            "tests/test_index_coverage.py",
+            "packages/graphify/detect.py",
+            "packages/pipeline/incremental.py",
+            "packages/pipeline/memory_budget.py",
+            "packages/pipeline/merkle.py",
+            "packages/pipeline/freshness.py",
+            "packages/pipeline/indexer.py",
+            "vendor/graphify/graphify/cache.py"
+          ]
+        },
+        {
+          "id": "q11",
+          "query": "blend dense vector similarity with sparse keyword matching for hybrid results",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/conductor/conductor.py",
+            "packages/pipeline/incremental.py",
+            "packages/conductor/architectures.py",
+            "packages/conductor/dense_index.py",
+            "packages/seir/mix_rels.py",
+            "docs/conductor-final-architecture.md",
+            "docs/graph-hybrid-conductor.md",
+            "packages/conductor/query_router.py"
+          ]
+        },
+        {
+          "id": "q12",
+          "query": "boost results that are structurally connected to the query via the code graph",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/conductor/architectures.py",
+            "packages/pipeline/context_nav.py",
+            "packages/pipeline/engine.py",
+            "scripts/experiments/session_arch/hop_utils.py",
+            "packages/hybrid_cbm/semantic.py",
+            "packages/pipeline/mcp_locate.py",
+            "vendor/graphify/graphify/watch.py",
+            "vendor/graphify/graphify/affected.py"
+          ]
+        },
+        {
+          "id": "q13",
+          "query": "find nearest neighbors in the vector index given a query embedding",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/vectordb.py",
+            "scripts/eval_onnx_fp32_fp16_int8.py",
+            "scripts/eval_locate_quality.py",
+            "packages/conductor/bm25_index.py",
+            "packages/conductor/dense_index.py",
+            "scripts/experiments/cursor_ab/metered_tools.py",
+            "scripts/experiments/difficult_session_ab.py",
+            "packages/conductor/architectures.py"
+          ]
+        },
+        {
+          "id": "q14",
+          "query": "classify whether a user query is asking about a specific symbol or a general concept",
+          "hit": false,
+          "rank": null,
+          "returned": [
+            "vendor/graphify/graphify/analyze.py",
+            "packages/graphify/analyze.py",
+            "scripts/experiments/session_arch/hop_utils.py",
+            "packages/pipeline/capability.py",
+            "packages/conductor/architectures.py",
+            "scripts/experiments/classify_discovery.py",
+            "scripts/experiments/mine_search_scenarios.py",
+            "vendor/graphify/graphify/serve.py"
+          ]
+        },
+        {
+          "id": "q15",
+          "query": "rerank candidate results using multiple signal channels before returning",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/conductor/architectures.py",
+            "packages/conductor/conductor.py",
+            "scripts/bench_budget_alloc.py",
+            "packages/conductor/fusion_math.py",
+            "packages/pipeline/engine.py",
+            "docs/mlx-fp16-fp32-retrieval.json",
+            "docs/reindexing/agent-write-patterns-and-channel-conflicts.md",
+            "scripts/eval_mlx_fp16_fp32_retrieval.py"
+          ]
+        },
+        {
+          "id": "q16",
+          "query": "start a background HTTP server that answers search requests from AI tools",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/server.py",
+            "web-info/website-content.md",
+            "scripts/context_agent/start_llama_qwen.ps1",
+            "packages/pipeline/searcher.py",
+            "packages/pipeline/daemon.py",
+            "packages/pipeline/__main__.py",
+            "scripts/eval_mlx_fp16_fp32_retrieval.py",
+            "scripts/experiments/kiro_live_reindex_write_trial.py"
+          ]
+        },
+        {
+          "id": "q17",
+          "query": "expose code navigation tools over the model context protocol for IDE plugins",
+          "hit": true,
+          "rank": 4,
+          "returned": [
+            "docs/superpowers/specs/2026-08-06-agent-context-tools-design.md",
+            "packages/pipeline/rules_installer.py",
+            "packages/pipeline/tool_registry.py",
+            "packages/pipeline/mcp_locate.py",
+            "docs/superpowers/specs/2026-08-08-tracelab-context-collection-research-framework.md",
+            "scripts/experiments/sdk_mcp_smoke.py",
+            "packages/pipeline/context_agent/__init__.py",
+            "packages/hybrid_cbm/proxy.py"
+          ]
+        },
+        {
+          "id": "q18",
+          "query": "keep the search index fresh by watching filesystem events in real time",
+          "hit": false,
+          "rank": null,
+          "returned": [
+            "web-info/website-content.md",
+            "vendor/graphify/graphify/watch.py",
+            "packages/pipeline/incremental.py",
+            "vendor/graphify/graphify/cache.py",
+            "packages/graphify/cache.py",
+            "packages/pipeline/ce_service.py",
+            "docs/research-freshness.md",
+            "docs/superpowers/specs/2026-08-17-questions-production-readiness-design.md"
+          ]
+        },
+        {
+          "id": "q19",
+          "query": "handle graceful shutdown of the engine daemon when the system sends a signal",
+          "hit": true,
+          "rank": 2,
+          "returned": [
+            "packages/pipeline/server.py",
+            "packages/pipeline/daemon.py",
+            "scripts/sim_install_forget.py",
+            "docs/session-info/bug-hunt-0.2.18.md",
+            "docs/reindexing/future-work.md",
+            "packages/pipeline/mcp_locate.py",
+            "scripts/experiments/sdk_mcp_smoke.py",
+            "packages/pipeline/ce_service.py"
+          ]
+        },
+        {
+          "id": "q20",
+          "query": "health check endpoint that reports whether the engine is ready to serve queries",
+          "hit": true,
+          "rank": 6,
+          "returned": [
+            "packages/pipeline/ce_service.py",
+            "scripts/experiments/sdk_mcp_smoke.py",
+            "scripts/sim_install_forget.py",
+            "packages/pipeline/diagnose.py",
+            "packages/pipeline/__main__.py",
+            "packages/pipeline/daemon.py",
+            "packages/pipeline/mcp_locate.py",
+            "packages/pipeline/context_agent/llm_llama.py"
+          ]
+        },
+        {
+          "id": "q21",
+          "query": "command line interface entry point that dispatches subcommands",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "vendor/graphify/graphify/__main__.py",
+            "packages/pipeline/dashboard_server.py",
+            "packages/pipeline/__main__.py",
+            "packages/pipeline/context_agent/agent.py",
+            "scripts/experiments/cursor_subagent_ab/graphify_cli.py",
+            "packages/parse_harness/__main__.py",
+            "scripts/experiments/session_arch_ab.py",
+            "vendor/graphify/graphify/cli.py"
+          ]
+        },
+        {
+          "id": "q22",
+          "query": "wipe all local data including downloaded models and tool configurations",
+          "hit": true,
+          "rank": 2,
+          "returned": [
+            "packages/pipeline/__main__.py",
+            "packages/pipeline/wipe.py",
+            "scripts/cleanup_local_indexes.py",
+            "web-info/website-content.md",
+            "web-info/commands-and-setup.md",
+            "scripts/cleanup_repo.py",
+            "scripts/prune_engine_state.py",
+            "vendor/graphify/README.md"
+          ]
+        },
+        {
+          "id": "q23",
+          "query": "run diagnostic checks and produce a shareable report for support",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/diagnose.py",
+            "packages/pipeline/__main__.py",
+            "packages/pipeline/preflight.py",
+            "scripts/eval_locate_quality.py",
+            "docs/superpowers/specs/2026-08-08-sdk-development-context-engine-vs-graphify-design.md",
+            "scripts/eval_mcp_session.py",
+            "packages/parse_harness/claude_context_probe.py",
+            "vendor/graphify/graphify/cli.py"
+          ]
+        },
+        {
+          "id": "q24",
+          "query": "connect the search engine as an MCP server to multiple AI coding tools at once",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/__main__.py",
+            "tests/test_hybrid_cbm.py",
+            "packages/scubiee.egg-info/entry_points.txt",
+            "packages/pipeline/mcp_locate.py",
+            "web-info/commands-and-setup.md",
+            "tests/test_session_store.py",
+            "docs/context-engine-mcp.md",
+            "tests/test_mcp_locate.py"
+          ]
+        },
+        {
+          "id": "q25",
+          "query": "inspect available hardware resources like GPU memory and CPU cores",
+          "hit": true,
+          "rank": 2,
+          "returned": [
+            "packages/pipeline/__main__.py",
+            "packages/pipeline/hardware.py",
+            "packages/pipeline/accel.py",
+            "docs/superpowers/specs/2026-08-05-resource-management-design.md",
+            "tests/test_resources.py",
+            "packages/pipeline/mlx_mac.py",
+            "nvidia/README.md",
+            "packages/pipeline/engine.py"
+          ]
+        },
+        {
+          "id": "q26",
+          "query": "convert ONNX float weights into half-precision numpy arrays for Apple GPU",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/mlx_mac.py",
+            "scripts/bench_apple_silicon_embed.py",
+            "docs/session-info/issue-log.md",
+            "packages/pipeline/accel.py",
+            "docs/mac-gpu-install-handoff.md",
+            "packages/pipeline/coreml_mac.py",
+            "packages/scubiee.egg-info/requires.txt",
+            "tests/test_coreml_mac.py"
+          ]
+        },
+        {
+          "id": "q27",
+          "query": "run the full transformer forward pass using Metal compute shaders",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/mlx_mac.py",
+            "nvidia/run-all-tests.ps1",
+            "scripts/session_ab_realistic.py",
+            "scripts/bench_budget_alloc.py",
+            "docs/superpowers/plans/2026-08-08-sdk-development-context-engine-vs-graphify.md",
+            "packages/pipeline/embedder.py",
+            "docs/mlx-memory-optimization.md",
+            "packages/pipeline/mcp_locate.py"
+          ]
+        },
+        {
+          "id": "q28",
+          "query": "apply rotary position embeddings to query and key tensors in attention",
+          "hit": true,
+          "rank": 3,
+          "returned": [
+            "tests/test_coreml_mac.py",
+            "packages/conductor/architectures.py",
+            "packages/pipeline/mlx_mac.py",
+            "packages/conductor/service.py",
+            "packages/pipeline/embedder.py",
+            "scripts/experiments/difficult_session_ab.py",
+            "scripts/experiments/session_native_ab.py",
+            "packages/conductor/dense_index.py"
+          ]
+        },
+        {
+          "id": "q29",
+          "query": "CoreML static batch padding workaround for the ONNX runtime on Intel Mac",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/coreml_mac.py",
+            "tests/test_coreml_mac.py",
+            "docs/mac-gpu-install-handoff.md",
+            "docs/session-info/issue-log.md",
+            "docs/macbook-embed-speed.md",
+            "packages/pipeline/accel.py",
+            "scripts/bench_apple_silicon_embed.py",
+            "tests/test_mlx_mac.py"
+          ]
+        },
+        {
+          "id": "q30",
+          "query": "benchmark embedding throughput across different batch sizes on Apple hardware",
+          "hit": true,
+          "rank": 3,
+          "returned": [
+            "docs/macbook-embed-speed.md",
+            "scripts/bench_difficult_compare.py",
+            "scripts/bench_apple_silicon_embed.py",
+            "scripts/bench_mlx_pipeline.py",
+            "scripts/bench_budget_alloc.py",
+            "scripts/bench_size_ladder.py",
+            "tests/test_coreml_mac.py",
+            "packages/scubiee.egg-info/requires.txt"
+          ]
+        },
+        {
+          "id": "q31",
+          "query": "derive a stable unique identifier for a repository that survives path renames",
+          "hit": true,
+          "rank": 8,
+          "returned": [
+            "vendor/graphify/graphify/extractors/resolution.py",
+            "packages/graphify/extractors/resolution.py",
+            "tests/test_repo_presence.py",
+            "vendor/graphify/graphify/cache.py",
+            "packages/graphify/cache.py",
+            "vendor/graphify/graphify/extractors/base.py",
+            "packages/graphify/extractors/base.py",
+            "packages/pipeline/project_id.py"
+          ]
+        },
+        {
+          "id": "q32",
+          "query": "manage multiple indexed repositories from a central registry file",
+          "hit": true,
+          "rank": 6,
+          "returned": [
+            "tests/test_preflight.py",
+            "packages/pipeline/__main__.py",
+            "tests/test_dashboard_api.py",
+            "tests/test_repo_lifecycle_dashboard_actions.py",
+            "packages/pipeline/repo_lifecycle.py",
+            "packages/pipeline/project_id.py",
+            "tests/test_repo_lifecycle.py",
+            "scripts/install_mcp_frontend.py"
+          ]
+        },
+        {
+          "id": "q33",
+          "query": "compress stored chunk embeddings using scalar quantization to save disk space",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/turbo_quant.py",
+            "scripts/bench_size_ladder.py",
+            "tests/test_pipeline_core.py",
+            "packages/pipeline/embedder.py",
+            "packages/pipeline/indexer.py",
+            "scripts/eval_onnx_fp32_fp16_int8.py",
+            "scripts/bench_apple_silicon_embed.py",
+            "scripts/bench_mix_seq_ab.py"
+          ]
+        },
+        {
+          "id": "q34",
+          "query": "cache embedding results so identical text does not get re-encoded",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/embedder.py",
+            "packages/conductor/dense_index.py",
+            "packages/conductor/service.py",
+            "packages/pipeline/mlx_mac.py",
+            "packages/pipeline/engine.py",
+            "scripts/bench_apple_silicon_embed.py",
+            "tests/test_resource_envelope.py",
+            "scripts/bench_mlx_memory.py"
+          ]
+        },
+        {
+          "id": "q35",
+          "query": "load and save engine metadata alongside the vector index files",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/store.py",
+            "packages/pipeline/incremental.py",
+            "web-info/commands-and-setup.md",
+            "packages/pipeline/vectordb.py",
+            "packages/pipeline/indexer.py",
+            "packages/pipeline/engine.py",
+            "packages/pipeline/watchdog.py",
+            "tests/test_storage_policy.py"
+          ]
+        },
+        {
+          "id": "q36",
+          "query": "integration test that verifies end-to-end indexing and search on a fixture repo",
+          "hit": true,
+          "rank": 2,
+          "returned": [
+            "tests/test_enrich.py",
+            "tests/test_cli_init_repo.py",
+            "tests/test_repo_lifecycle.py",
+            "tests/test_runtime_publish.py",
+            "docs/superpowers/plans/2026-08-17-ce-operator-dashboard.md",
+            "docs/superpowers/plans/2026-08-16-live-reindexing.md",
+            "tests/test_e2e_pipeline.py",
+            "nvidia/run-all-tests.ps1"
+          ]
+        },
+        {
+          "id": "q37",
+          "query": "validate that the AST parser handles edge cases like decorators and nested classes",
+          "hit": false,
+          "rank": null,
+          "returned": [
+            "packages/seir/spans.py",
+            "docs/phase1-parser-comparison.md",
+            "tests/seir_exp/test_spans.py",
+            "vendor/graphify/graphify/extractors/resolution.py",
+            "packages/graphify/extractors/resolution.py",
+            "vendor/graphify/graphify/multigraph_compat.py",
+            "tests/test_preflight.py",
+            "vendor/graphify/graphify/extractors/dart.py"
+          ]
+        },
+        {
+          "id": "q38",
+          "query": "measure retrieval precision against a curated set of known-good query answers",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "scripts/eval_mlx_fp16_fp32_retrieval.py",
+            "docs/superpowers/specs/_search_scenario_mine.json",
+            "scripts/eval_locate_quality.py",
+            "vendor/graphify/graphify/serve.py",
+            "packages/graphify/serve.py",
+            "docs/superpowers/specs/2026-08-08-tracelab-context-collection-research-framework.md",
+            "packages/pipeline/accel.py",
+            "docs/superpowers/specs/2026-08-03-retrieval-orchestration-decision.md"
+          ]
+        },
+        {
+          "id": "q39",
+          "query": "mock the GPU runtime to test fallback behavior on machines without acceleration",
+          "hit": false,
+          "rank": null,
+          "returned": [
+            "tests/test_runtime_cpu_backup.py",
+            "packages/pipeline/accel.py",
+            "docs/superpowers/plans/2026-08-17-cross-platform-runtime-compatibility.md",
+            "tests/test_coreml_mac.py",
+            "tests/test_runtime_profile.py",
+            "tests/test_mlx_backend.py",
+            "tests/test_cross_platform_profiles.py",
+            "nvidia/KNOWN-ISSUES.md"
+          ]
+        },
+        {
+          "id": "q40",
+          "query": "verify the daemon starts and responds to search requests correctly",
+          "hit": true,
+          "rank": 5,
+          "returned": [
+            "tests/test_cli_init_repo.py",
+            "tests/test_watchdog.py",
+            "tests/test_mcp_locate.py",
+            "packages/pipeline/mcp_locate.py",
+            "tests/test_daemon_guardrails.py",
+            "docs/sdk-dev-trial-runbook.md",
+            "tests/test_auto_sessions_observability.py",
+            "nvidia/README.md"
+          ]
+        },
+        {
+          "id": "q41",
+          "query": "session-aware context that remembers which files the developer recently opened",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "scripts/session_ab_realistic.py",
+            "packages/pipeline/work_session.py",
+            "packages/pipeline/project_id.py",
+            "packages/pipeline/session_store.py",
+            "packages/pipeline/ce_service.py",
+            "scripts/experiments/difficult_session_ab.py",
+            "docs/superpowers/specs/2026-08-08-session-native-context-engine-design.md",
+            "fixtures/ce-sim-repo/session.py"
+          ]
+        },
+        {
+          "id": "q42",
+          "query": "pin important files so they always rank higher in search results",
+          "hit": false,
+          "rank": null,
+          "returned": [
+            "scripts/bench_budget_alloc.py",
+            "packages/conductor/architectures.py",
+            "tests/test_dashboard_api.py",
+            "packages/conductor/conductor.py",
+            "scripts/experiments/session_native_ab.py",
+            "tests/test_storage_policy.py",
+            "docs/mlx-fp16-fp32-retrieval.json",
+            "packages/pipeline/work_session.py"
+          ]
+        },
+        {
+          "id": "q43",
+          "query": "navigate from a code location to its structural neighbors like callers and callees",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "vendor/graphify/graphify/extractors/dm.py",
+            "packages/graphify/extractors/dm.py",
+            "vendor/graphify/graphify/extractors/zig.py",
+            "packages/graphify/extractors/zig.py",
+            "vendor/graphify/graphify/extractors/elixir.py",
+            "packages/graphify/extractors/elixir.py",
+            "vendor/graphify/graphify/extractors/pascal.py",
+            "packages/graphify/extractors/pascal.py"
+          ]
+        },
+        {
+          "id": "q44",
+          "query": "limit memory consumption during embedding by controlling the batch window",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/memory_budget.py",
+            "packages/pipeline/resources.py",
+            "scripts/bench_mlx_memory.py",
+            "packages/pipeline/resource_envelope.py",
+            "packages/pipeline/embedder.py",
+            "docs/mlx-index-compute-and-memory.md",
+            "tests/test_memory_budget.py",
+            "docs/mlx-m5-index-report.md"
+          ]
+        },
+        {
+          "id": "q45",
+          "query": "gracefully degrade search quality when the index is being rebuilt in the background",
+          "hit": false,
+          "rank": null,
+          "returned": [
+            "packages/pipeline/incremental.py",
+            "tests/test_memory_budget.py",
+            "packages/pipeline/memory_budget.py",
+            "packages/pipeline/__init__.py",
+            "tests/test_live_reindexing.py",
+            "scripts/sim_install_forget.py",
+            "docs/sdk-dev-trial-runbook.md",
+            "scripts/experiments/session_native_ab.py"
+          ]
+        },
+        {
+          "id": "q46",
+          "query": "first-time setup wizard that downloads models and calibrates embedding speed",
+          "hit": true,
+          "rank": 2,
+          "returned": [
+            "SETUP.md",
+            "packages/pipeline/accel.py",
+            "scripts/bench_difficult_compare.py",
+            "nvidia/UNIVERSAL-INSTALL-FIX.md",
+            "packages/pipeline/embedder.py",
+            "packages/pipeline/preflight.py",
+            "scripts/experiments/opencode_soft_ab/run.py",
+            "packages/pipeline/__main__.py"
+          ]
+        },
+        {
+          "id": "q47",
+          "query": "user preferences file that controls default behavior like batch size and backend",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/settings.py",
+            "tests/test_batch_calibration.py",
+            "packages/pipeline/resources.py",
+            "packages/pipeline/lifecycle_runtime.py",
+            "vendor/graphify/graphify/llm.py",
+            "packages/graphify/llm.py",
+            "docs/superpowers/specs/2026-08-17-cross-platform-runtime-compatibility-design.md",
+            "scripts/experiments/session_arch_ab.py"
+          ]
+        },
+        {
+          "id": "q48",
+          "query": "preflight validation that blocks indexing if required dependencies are missing",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "tests/test_preflight.py",
+            "packages/pipeline/preflight.py",
+            "docs/superpowers/specs/2026-08-17-questions-production-readiness-design.md",
+            "vendor/graphify/graphify/validate.py",
+            "packages/graphify/validate.py",
+            "packages/pipeline/certify.py",
+            "packages/pipeline/migrate.py",
+            "packages/pipeline/project_id.py"
+          ]
+        },
+        {
+          "id": "q49",
+          "query": "data migration logic when the index schema changes between versions",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/migrate.py",
+            "docs/publish-setup.md",
+            "tests/test_preflight.py",
+            "packages/pipeline/indexer.py",
+            "tests/test_project_id.py",
+            "packages/pipeline/incremental.py",
+            "packages/pipeline/project_id.py",
+            "packages/pipeline/__init__.py"
+          ]
+        },
+        {
+          "id": "q50",
+          "query": "generate MCP configuration JSON for each supported AI coding tool",
+          "hit": true,
+          "rank": 3,
+          "returned": [
+            "packages/pipeline/tool_registry.py",
+            "scripts/experiments/analyze_trial_session.py",
+            "scripts/experiments/sdk_mcp_smoke.py",
+            "packages/pipeline/rules_installer.py",
+            "scripts/experiments/opencode_soft_ab/run.py",
+            "scripts/experiments/dev_mcp_vs_nomcp.py",
+            "scripts/experiments/opencode_raw_vs_ce/run.py",
+            "tests/test_session_store.py"
+          ]
+        }
+      ],
+      "embed_time_s": 840.6,
+      "chunks_per_sec": 5.8
+    },
+    "int8": {
+      "n": 50,
+      "hits": 41,
+      "hit@1": 0.5,
+      "hit@5": 0.74,
+      "hit@8": 0.82,
+      "mrr": 0.6087,
+      "cases": [
+        {
+          "id": "q01",
+          "query": "initialize the sentence embedding model with hardware-specific acceleration providers",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/embedder.py",
+            "packages/pipeline/preflight.py",
+            "packages/pipeline/indexer.py",
+            "packages/pipeline/accel.py",
+            "packages/pipeline/engine.py",
+            "SETUP.md",
+            "scripts/eval_onnx_fp32_fp16_int8.py",
+            "docs/mlx-m5-index-report.md"
+          ]
+        },
+        {
+          "id": "q02",
+          "query": "register a custom ONNX model definition so the fast embedding library knows about it",
+          "hit": true,
+          "rank": 3,
+          "returned": [
+            "packages/pipeline/coreml_mac.py",
+            "scripts/eval_onnx_fp32_fp16_int8.py",
+            "packages/pipeline/accel.py",
+            "packages/pipeline/mlx_mac.py",
+            "packages/scubiee.egg-info/requires.txt",
+            "tests/test_coreml_mac.py",
+            "docs/mlx-fp16-fp32-retrieval.json",
+            "SETUP.md"
+          ]
+        },
+        {
+          "id": "q03",
+          "query": "prepend instruction prefix to search queries before encoding them",
+          "hit": true,
+          "rank": 6,
+          "returned": [
+            "packages/pipeline/__init__.py",
+            "packages/pipeline/query_tune.py",
+            "scripts/eval_onnx_fp32_fp16_int8.py",
+            "packages/hybrid_cbm/semantic.py",
+            "packages/pipeline/searcher.py",
+            "packages/pipeline/embedder.py",
+            "scripts/experiments/session_arch/symbol_hop.py",
+            "scripts/experiments/difficult_session_ab.py"
+          ]
+        },
+        {
+          "id": "q04",
+          "query": "warm up the embedding session by running a dummy batch through the model",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/embedder.py",
+            "scripts/bench_mlx_memory.py",
+            "packages/pipeline/engine.py",
+            "tests/test_embedder_progress.py",
+            "packages/pipeline/accel.py",
+            "packages/pipeline/preflight.py",
+            "tests/test_memory_budget.py",
+            "packages/pipeline/indexer.py"
+          ]
+        },
+        {
+          "id": "q05",
+          "query": "choose between GPU-accelerated and CPU-only execution providers at runtime",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/accel.py",
+            "packages/pipeline/embedder.py",
+            "packages/pipeline/engine.py",
+            "packages/pipeline/certify.py",
+            "nvidia/CUDA-DLL-RESOLUTION.md",
+            "packages/pipeline/coreml_mac.py",
+            "tests/test_cross_platform_profiles.py",
+            "tests/test_preflight.py"
+          ]
+        },
+        {
+          "id": "q06",
+          "query": "split source code into overlapping semantic chunks before embedding",
+          "hit": false,
+          "rank": null,
+          "returned": [
+            "packages/enrich/__init__.py",
+            "scripts/bench_mix_seq_ab.py",
+            "packages/seir/spans.py",
+            "packages/pipeline/incremental.py",
+            "packages/pipeline/indexer.py",
+            "docs/why-seq128-still-retrieves.md",
+            "packages/seir/baseline.py",
+            "vendor/graphify/graphify/watch.py"
+          ]
+        },
+        {
+          "id": "q07",
+          "query": "detect which repository files have changed since the last indexing run",
+          "hit": true,
+          "rank": 2,
+          "returned": [
+            "scripts/experiments/sdk_mcp_dev_trial.py",
+            "packages/pipeline/freshness.py",
+            "packages/pipeline/merkle.py",
+            "scripts/experiments/dev_mcp_vs_nomcp.py",
+            "packages/pipeline/incremental.py",
+            "packages/pipeline/live_reindex.py",
+            "docs/reindexing/live-reindexing-delivery.md",
+            "scripts/eval_mlx_fp16_fp32_retrieval.py"
+          ]
+        },
+        {
+          "id": "q08",
+          "query": "persist embedded vectors to a local FAISS collection on disk",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "tests/test_vectordb.py",
+            "packages/pipeline/indexer.py",
+            "packages/pipeline/store.py",
+            "packages/pipeline/faiss_store.py",
+            "tests/test_storage_policy.py",
+            "packages/pipeline/vectordb.py",
+            "packages/pipeline/incremental.py",
+            "scripts/bench_mix_seq_ab.py"
+          ]
+        },
+        {
+          "id": "q09",
+          "query": "extract import relationships and function calls into a dependency graph",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "vendor/graphify/graphify/analyze.py",
+            "packages/graphify/analyze.py",
+            "packages/graphify/extractors/elixir.py",
+            "vendor/graphify/graphify/extractors/elixir.py",
+            "packages/graphify/extractors/powershell.py",
+            "packages/graphify/extractors/zig.py",
+            "vendor/graphify/graphify/extractors/go.py",
+            "vendor/graphify/graphify/extractors/powershell.py"
+          ]
+        },
+        {
+          "id": "q10",
+          "query": "skip binary files and large generated assets during the indexing walk",
+          "hit": false,
+          "rank": null,
+          "returned": [
+            "tests/test_index_coverage.py",
+            "packages/pipeline/memory_budget.py",
+            "packages/pipeline/indexer.py",
+            "packages/graphify/detect.py",
+            "packages/pipeline/freshness.py",
+            "packages/pipeline/incremental.py",
+            "vendor/graphify/graphify/extractors/json_config.py",
+            "vendor/graphify/graphify/detect.py"
+          ]
+        },
+        {
+          "id": "q11",
+          "query": "blend dense vector similarity with sparse keyword matching for hybrid results",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/conductor/conductor.py",
+            "packages/conductor/architectures.py",
+            "packages/pipeline/searcher.py",
+            "packages/pipeline/incremental.py",
+            "packages/conductor/dense_index.py",
+            "docs/research-freshness.md",
+            "docs/graph-hybrid-conductor.md",
+            "packages/pipeline/engine.py"
+          ]
+        },
+        {
+          "id": "q12",
+          "query": "boost results that are structurally connected to the query via the code graph",
+          "hit": true,
+          "rank": 2,
+          "returned": [
+            "packages/pipeline/context_nav.py",
+            "packages/conductor/architectures.py",
+            "scripts/experiments/session_arch/hop_utils.py",
+            "packages/hybrid_cbm/semantic.py",
+            "packages/pipeline/engine.py",
+            "packages/pipeline/mcp_locate.py",
+            "vendor/graphify/graphify/watch.py",
+            "packages/graphify/analyze.py"
+          ]
+        },
+        {
+          "id": "q13",
+          "query": "find nearest neighbors in the vector index given a query embedding",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/vectordb.py",
+            "scripts/eval_onnx_fp32_fp16_int8.py",
+            "scripts/eval_locate_quality.py",
+            "packages/conductor/bm25_index.py",
+            "packages/conductor/dense_index.py",
+            "scripts/experiments/cursor_ab/metered_tools.py",
+            "scripts/experiments/difficult_session_ab.py",
+            "packages/conductor/conductor.py"
+          ]
+        },
+        {
+          "id": "q14",
+          "query": "classify whether a user query is asking about a specific symbol or a general concept",
+          "hit": false,
+          "rank": null,
+          "returned": [
+            "packages/graphify/analyze.py",
+            "vendor/graphify/graphify/analyze.py",
+            "packages/graphify/serve.py",
+            "packages/pipeline/capability.py",
+            "scripts/experiments/session_arch/hop_utils.py",
+            "packages/graphify/symbol_resolution.py",
+            "vendor/graphify/graphify/serve.py",
+            "packages/pipeline/repo_lifecycle.py"
+          ]
+        },
+        {
+          "id": "q15",
+          "query": "rerank candidate results using multiple signal channels before returning",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/conductor/architectures.py",
+            "scripts/bench_budget_alloc.py",
+            "packages/conductor/fusion_math.py",
+            "packages/conductor/conductor.py",
+            "packages/pipeline/engine.py",
+            "scripts/eval_mlx_fp16_fp32_retrieval.py",
+            "scripts/experiments/difficult_session_ab.py",
+            "scripts/experiments/session_arch/d_rerank_arms.py"
+          ]
+        },
+        {
+          "id": "q16",
+          "query": "start a background HTTP server that answers search requests from AI tools",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/server.py",
+            "packages/pipeline/searcher.py",
+            "web-info/website-content.md",
+            "scripts/context_agent/start_llama_qwen.ps1",
+            "packages/pipeline/daemon.py",
+            "scripts/eval_mlx_fp16_fp32_retrieval.py",
+            "packages/pipeline/__main__.py",
+            "packages/pipeline/mcp_locate.py"
+          ]
+        },
+        {
+          "id": "q17",
+          "query": "expose code navigation tools over the model context protocol for IDE plugins",
+          "hit": false,
+          "rank": null,
+          "returned": [
+            "docs/superpowers/specs/2026-08-06-agent-context-tools-design.md",
+            "packages/pipeline/rules_installer.py",
+            "packages/pipeline/tool_registry.py",
+            "packages/pipeline/preflight.py",
+            "packages/hybrid_cbm/proxy.py",
+            "packages/hybrid_cbm/server.py",
+            "packages/pipeline/__main__.py",
+            "scripts/experiments/cursor_mcp_ab/run_agentic.py"
+          ]
+        },
+        {
+          "id": "q18",
+          "query": "keep the search index fresh by watching filesystem events in real time",
+          "hit": true,
+          "rank": 8,
+          "returned": [
+            "vendor/graphify/graphify/watch.py",
+            "packages/pipeline/incremental.py",
+            "web-info/website-content.md",
+            "vendor/graphify/graphify/cache.py",
+            "packages/graphify/cache.py",
+            "packages/pipeline/ce_service.py",
+            "packages/pipeline/freshness.py",
+            "packages/pipeline/sync_loop.py"
+          ]
+        },
+        {
+          "id": "q19",
+          "query": "handle graceful shutdown of the engine daemon when the system sends a signal",
+          "hit": true,
+          "rank": 2,
+          "returned": [
+            "packages/pipeline/server.py",
+            "packages/pipeline/daemon.py",
+            "scripts/sim_install_forget.py",
+            "docs/session-info/bug-hunt-0.2.18.md",
+            "packages/pipeline/process_job.py",
+            "packages/pipeline/mcp_locate.py",
+            "packages/pipeline/lifecycle_runtime.py",
+            "packages/pipeline/__main__.py"
+          ]
+        },
+        {
+          "id": "q20",
+          "query": "health check endpoint that reports whether the engine is ready to serve queries",
+          "hit": true,
+          "rank": 3,
+          "returned": [
+            "packages/pipeline/ce_service.py",
+            "scripts/sim_install_forget.py",
+            "packages/pipeline/daemon.py",
+            "packages/pipeline/diagnose.py",
+            "scripts/experiments/sdk_mcp_smoke.py",
+            "packages/pipeline/mcp_locate.py",
+            "packages/pipeline/__main__.py",
+            "tests/test_ce_architecture.py"
+          ]
+        },
+        {
+          "id": "q21",
+          "query": "command line interface entry point that dispatches subcommands",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "vendor/graphify/graphify/__main__.py",
+            "packages/pipeline/dashboard_server.py",
+            "packages/pipeline/__main__.py",
+            "vendor/graphify/graphify/cli.py",
+            "scripts/experiments/session_arch_ab.py",
+            "scripts/experiments/cursor_subagent_ab/graphify_cli.py",
+            "packages/pipeline/context_agent/agent.py",
+            "packages/parse_harness/__main__.py"
+          ]
+        },
+        {
+          "id": "q22",
+          "query": "wipe all local data including downloaded models and tool configurations",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/wipe.py",
+            "packages/pipeline/__main__.py",
+            "scripts/cleanup_repo.py",
+            "scripts/cleanup_local_indexes.py",
+            "web-info/commands-and-setup.md",
+            "packages/pipeline/session_store.py",
+            "packages/pipeline/ce_service.py",
+            "vendor/graphify/graphify/__main__.py"
+          ]
+        },
+        {
+          "id": "q23",
+          "query": "run diagnostic checks and produce a shareable report for support",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/diagnose.py",
+            "packages/pipeline/__main__.py",
+            "scripts/eval_locate_quality.py",
+            "packages/pipeline/preflight.py",
+            "docs/superpowers/specs/2026-08-08-sdk-development-context-engine-vs-graphify-design.md",
+            "vendor/graphify/graphify/cli.py",
+            "nvidia/README.md",
+            "packages/parse_harness/claude_context_probe.py"
+          ]
+        },
+        {
+          "id": "q24",
+          "query": "connect the search engine as an MCP server to multiple AI coding tools at once",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/__main__.py",
+            "packages/pipeline/mcp_locate.py",
+            "tests/test_hybrid_cbm.py",
+            "tests/test_session_store.py",
+            "docs/context-engine-mcp.md",
+            "tests/test_mcp_locate.py",
+            "web-info/commands-and-setup.md",
+            "packages/pipeline/rules_installer.py"
+          ]
+        },
+        {
+          "id": "q25",
+          "query": "inspect available hardware resources like GPU memory and CPU cores",
+          "hit": true,
+          "rank": 2,
+          "returned": [
+            "packages/pipeline/__main__.py",
+            "packages/pipeline/hardware.py",
+            "tests/test_resources.py",
+            "packages/pipeline/accel.py",
+            "nvidia/README.md",
+            "packages/pipeline/engine.py",
+            "packages/pipeline/mlx_mac.py",
+            "vendor/graphify/graphify/serve.py"
+          ]
+        },
+        {
+          "id": "q26",
+          "query": "convert ONNX float weights into half-precision numpy arrays for Apple GPU",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/mlx_mac.py",
+            "docs/session-info/issue-log.md",
+            "nvidia/UNIVERSAL-INSTALL-FIX.md",
+            "packages/pipeline/coreml_mac.py",
+            "packages/pipeline/accel.py",
+            "packages/scubiee.egg-info/requires.txt",
+            "scripts/bench_apple_silicon_embed.py",
+            "SETUP.md"
+          ]
+        },
+        {
+          "id": "q27",
+          "query": "run the full transformer forward pass using Metal compute shaders",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/mlx_mac.py",
+            "scripts/bench_mix_seq_ab.py",
+            "scripts/bench_budget_alloc.py",
+            "nvidia/run-all-tests.ps1",
+            "packages/pipeline/mcp_locate.py",
+            "docs/superpowers/plans/2026-08-08-sdk-development-context-engine-vs-graphify.md",
+            "scripts/experiments/sdk_mcp_smoke.py",
+            "SETUP.md"
+          ]
+        },
+        {
+          "id": "q28",
+          "query": "apply rotary position embeddings to query and key tensors in attention",
+          "hit": true,
+          "rank": 4,
+          "returned": [
+            "packages/pipeline/embedder.py",
+            "tests/test_coreml_mac.py",
+            "scripts/experiments/session_native_ab.py",
+            "packages/pipeline/mlx_mac.py",
+            "packages/conductor/architectures.py",
+            "packages/conductor/service.py",
+            "scripts/experiments/difficult_session_ab.py",
+            "scripts/eval_onnx_fp32_fp16_int8.py"
+          ]
+        },
+        {
+          "id": "q29",
+          "query": "CoreML static batch padding workaround for the ONNX runtime on Intel Mac",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/coreml_mac.py",
+            "tests/test_coreml_mac.py",
+            "docs/mac-gpu-install-handoff.md",
+            "docs/session-info/issue-log.md",
+            "docs/macbook-embed-speed.md",
+            "packages/pipeline/accel.py",
+            "scripts/bench_apple_silicon_embed.py",
+            "tests/test_mlx_mac.py"
+          ]
+        },
+        {
+          "id": "q30",
+          "query": "benchmark embedding throughput across different batch sizes on Apple hardware",
+          "hit": true,
+          "rank": 3,
+          "returned": [
+            "docs/macbook-embed-speed.md",
+            "scripts/bench_difficult_compare.py",
+            "scripts/bench_apple_silicon_embed.py",
+            "scripts/bench_mlx_pipeline.py",
+            "scripts/bench_mlx_memory.py",
+            "packages/pipeline/embedder.py",
+            "scripts/bench_budget_alloc.py",
+            "packages/pipeline/accel.py"
+          ]
+        },
+        {
+          "id": "q31",
+          "query": "derive a stable unique identifier for a repository that survives path renames",
+          "hit": true,
+          "rank": 6,
+          "returned": [
+            "packages/graphify/extractors/resolution.py",
+            "vendor/graphify/graphify/extractors/resolution.py",
+            "vendor/graphify/graphify/cache.py",
+            "tests/test_repo_presence.py",
+            "packages/graphify/cache.py",
+            "packages/pipeline/project_id.py",
+            "vendor/graphify/graphify/build.py",
+            "tests/test_repo_lifecycle.py"
+          ]
+        },
+        {
+          "id": "q32",
+          "query": "manage multiple indexed repositories from a central registry file",
+          "hit": false,
+          "rank": null,
+          "returned": [
+            "tests/test_preflight.py",
+            "packages/pipeline/__main__.py",
+            "packages/pipeline/repo_lifecycle.py",
+            "tests/test_dashboard_api.py",
+            "tests/test_repo_lifecycle_dashboard_actions.py",
+            "tests/test_auto_sessions_observability.py",
+            "packages/pipeline/registration.py",
+            "packages/pipeline/dashboard_server.py"
+          ]
+        },
+        {
+          "id": "q33",
+          "query": "compress stored chunk embeddings using scalar quantization to save disk space",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/turbo_quant.py",
+            "scripts/eval_onnx_fp32_fp16_int8.py",
+            "packages/pipeline/embedder.py",
+            "packages/pipeline/indexer.py",
+            "tests/test_pipeline_core.py",
+            "scripts/bench_size_ladder.py",
+            "packages/pipeline/incremental.py",
+            "scripts/bench_apple_silicon_embed.py"
+          ]
+        },
+        {
+          "id": "q34",
+          "query": "cache embedding results so identical text does not get re-encoded",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/embedder.py",
+            "packages/conductor/service.py",
+            "packages/pipeline/engine.py",
+            "packages/conductor/dense_index.py",
+            "scripts/bench_apple_silicon_embed.py",
+            "tests/test_runtime_cpu_backup.py",
+            "packages/pipeline/mlx_mac.py",
+            "packages/pipeline/coreml_mac.py"
+          ]
+        },
+        {
+          "id": "q35",
+          "query": "load and save engine metadata alongside the vector index files",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/store.py",
+            "packages/pipeline/incremental.py",
+            "packages/pipeline/engine.py",
+            "packages/pipeline/indexer.py",
+            "packages/pipeline/vectordb.py",
+            "web-info/commands-and-setup.md",
+            "packages/pipeline/watchdog.py",
+            "tests/test_storage_policy.py"
+          ]
+        },
+        {
+          "id": "q36",
+          "query": "integration test that verifies end-to-end indexing and search on a fixture repo",
+          "hit": true,
+          "rank": 7,
+          "returned": [
+            "tests/test_enrich.py",
+            "tests/test_repo_lifecycle.py",
+            "tests/test_runtime_publish.py",
+            "tests/test_e2e_pipeline.py",
+            "nvidia/run-all-tests.ps1",
+            "docs/superpowers/plans/2026-08-17-ce-operator-dashboard.md",
+            "tests/test_cli_init_repo.py",
+            "tests/test_doctor_certify.py"
+          ]
+        },
+        {
+          "id": "q37",
+          "query": "validate that the AST parser handles edge cases like decorators and nested classes",
+          "hit": false,
+          "rank": null,
+          "returned": [
+            "packages/seir/spans.py",
+            "vendor/graphify/graphify/extractors/dart.py",
+            "packages/graphify/extractors/dart.py",
+            "docs/phase1-parser-comparison.md",
+            "vendor/graphify/graphify/extractors/resolution.py",
+            "packages/graphify/extractors/resolution.py",
+            "vendor/graphify/graphify/multigraph_compat.py",
+            "tests/test_preflight.py"
+          ]
+        },
+        {
+          "id": "q38",
+          "query": "measure retrieval precision against a curated set of known-good query answers",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "scripts/eval_mlx_fp16_fp32_retrieval.py",
+            "docs/superpowers/specs/_search_scenario_mine.json",
+            "packages/pipeline/accel.py",
+            "scripts/eval_onnx_fp32_fp16_int8.py",
+            "packages/conductor/architectures.py",
+            "packages/graphify/serve.py",
+            "vendor/graphify/graphify/serve.py",
+            "docs/mlx-fp16-fp32-retrieval.md"
+          ]
+        },
+        {
+          "id": "q39",
+          "query": "mock the GPU runtime to test fallback behavior on machines without acceleration",
+          "hit": false,
+          "rank": null,
+          "returned": [
+            "tests/test_runtime_cpu_backup.py",
+            "packages/pipeline/accel.py",
+            "tests/test_mlx_backend.py",
+            "tests/test_coreml_mac.py",
+            "tests/test_cross_platform_profiles.py",
+            "docs/superpowers/plans/2026-08-17-cross-platform-runtime-compatibility.md",
+            "nvidia/KNOWN-ISSUES.md",
+            "tests/test_runtime_profile.py"
+          ]
+        },
+        {
+          "id": "q40",
+          "query": "verify the daemon starts and responds to search requests correctly",
+          "hit": false,
+          "rank": null,
+          "returned": [
+            "tests/test_cli_init_repo.py",
+            "tests/test_watchdog.py",
+            "nvidia/README.md",
+            "tests/test_mcp_locate.py",
+            "packages/pipeline/mcp_locate.py",
+            "scripts/experiments/live_reindex_probe.py",
+            "docs/sdk-dev-trial-runbook.md",
+            "docs/session-info/bug-hunt-0.2.18.md"
+          ]
+        },
+        {
+          "id": "q41",
+          "query": "session-aware context that remembers which files the developer recently opened",
+          "hit": true,
+          "rank": 2,
+          "returned": [
+            "packages/pipeline/project_id.py",
+            "scripts/session_ab_realistic.py",
+            "packages/pipeline/work_session.py",
+            "scripts/experiments/session_arch/core.py",
+            "packages/pipeline/session_store.py",
+            "packages/pipeline/dashboard_port.py",
+            "fixtures/ce-sim-repo/session.py",
+            "scripts/experiments/difficult_session_ab.py"
+          ]
+        },
+        {
+          "id": "q42",
+          "query": "pin important files so they always rank higher in search results",
+          "hit": false,
+          "rank": null,
+          "returned": [
+            "tests/test_dashboard_api.py",
+            "nvidia/UNIVERSAL-INSTALL-FIX.md",
+            "scripts/bench_budget_alloc.py",
+            "packages/conductor/architectures.py",
+            "packages/pipeline/work_session.py",
+            "scripts/experiments/session_native_ab.py",
+            "tests/test_storage_policy.py",
+            "packages/conductor/conductor.py"
+          ]
+        },
+        {
+          "id": "q43",
+          "query": "navigate from a code location to its structural neighbors like callers and callees",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "vendor/graphify/graphify/extractors/dm.py",
+            "packages/graphify/extractors/dm.py",
+            "vendor/graphify/graphify/extractors/zig.py",
+            "packages/graphify/extractors/powershell.py",
+            "vendor/graphify/graphify/extractors/powershell.py",
+            "packages/graphify/extractors/zig.py",
+            "vendor/graphify/graphify/extractors/pascal.py",
+            "packages/graphify/extractors/elixir.py"
+          ]
+        },
+        {
+          "id": "q44",
+          "query": "limit memory consumption during embedding by controlling the batch window",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/memory_budget.py",
+            "packages/pipeline/resource_envelope.py",
+            "tests/test_resource_envelope.py",
+            "scripts/bench_mlx_memory.py",
+            "packages/pipeline/embedder.py",
+            "packages/pipeline/resources.py",
+            "docs/mlx-m5-index-report.md",
+            "docs/mlx-index-compute-and-memory.md"
+          ]
+        },
+        {
+          "id": "q45",
+          "query": "gracefully degrade search quality when the index is being rebuilt in the background",
+          "hit": true,
+          "rank": 4,
+          "returned": [
+            "packages/pipeline/incremental.py",
+            "tests/test_memory_budget.py",
+            "packages/pipeline/memory_budget.py",
+            "packages/pipeline/engine.py",
+            "tests/test_live_reindexing.py",
+            "packages/pipeline/__main__.py",
+            "packages/pipeline/__init__.py",
+            "docs/reindexing/future-work.md"
+          ]
+        },
+        {
+          "id": "q46",
+          "query": "first-time setup wizard that downloads models and calibrates embedding speed",
+          "hit": true,
+          "rank": 2,
+          "returned": [
+            "SETUP.md",
+            "packages/pipeline/accel.py",
+            "packages/pipeline/embedder.py",
+            "scripts/eval_onnx_fp32_fp16_int8.py",
+            "packages/pipeline/preflight.py",
+            "nvidia/UNIVERSAL-INSTALL-FIX.md",
+            "packages/pipeline/__main__.py",
+            "scripts/experiments/live_reindex_probe.py"
+          ]
+        },
+        {
+          "id": "q47",
+          "query": "user preferences file that controls default behavior like batch size and backend",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/settings.py",
+            "tests/test_batch_calibration.py",
+            "docs/superpowers/specs/2026-08-17-cross-platform-runtime-compatibility-design.md",
+            "scripts/bench_mlx_memory.py",
+            "packages/pipeline/resources.py",
+            "scripts/experiments/session_arch_ab.py",
+            "packages/pipeline/runtime_profile.py",
+            "packages/pipeline/embedder.py"
+          ]
+        },
+        {
+          "id": "q48",
+          "query": "preflight validation that blocks indexing if required dependencies are missing",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "tests/test_preflight.py",
+            "packages/graphify/validate.py",
+            "vendor/graphify/graphify/validate.py",
+            "packages/pipeline/preflight.py",
+            "packages/pipeline/certify.py",
+            "docs/superpowers/specs/2026-08-17-questions-production-readiness-design.md",
+            "packages/pipeline/project_id.py",
+            "packages/pipeline/indexer.py"
+          ]
+        },
+        {
+          "id": "q49",
+          "query": "data migration logic when the index schema changes between versions",
+          "hit": true,
+          "rank": 1,
+          "returned": [
+            "packages/pipeline/migrate.py",
+            "packages/pipeline/indexer.py",
+            "tests/test_project_id.py",
+            "docs/publish-setup.md",
+            "packages/pipeline/index_manager.py",
+            "packages/pipeline/incremental.py",
+            "tests/test_preflight.py",
+            "vendor/graphify/graphify/cache.py"
+          ]
+        },
+        {
+          "id": "q50",
+          "query": "generate MCP configuration JSON for each supported AI coding tool",
+          "hit": true,
+          "rank": 3,
+          "returned": [
+            "packages/pipeline/tool_registry.py",
+            "scripts/experiments/opencode_soft_ab/run.py",
+            "scripts/experiments/dev_mcp_vs_nomcp.py",
+            "packages/graphify/mcp_ingest.py",
+            "vendor/graphify/graphify/mcp_ingest.py",
+            "scripts/experiments/analyze_trial_session.py",
+            "packages/pipeline/rules_installer.py",
+            "packages/pipeline/__main__.py"
+          ]
+        }
+      ],
+      "embed_time_s": 1078.3,
+      "chunks_per_sec": 4.5
+    }
+  }
+}
