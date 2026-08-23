@@ -6,6 +6,9 @@ On first message, call `status()` from the Scubiee MCP.
   (`search`, `map`, `focus`, `grep`, `glob`, `workspace`) for all code discovery this session.
   Do not use native file search or codebase search for discovery.
   Native file read = only lines you will edit. Shell = tests, build, git.
+- If `status.managed` is `true` and `status.warming` is `true`: the engine is
+  starting up. Use Scubiee MCP tools — if a tool returns a warming/not-ready
+  response, wait 5 seconds and retry once. Do not fall back to native search.
 - If `status.managed` is `false`, or the MCP is unavailable/unhealthy:
   **ignore this rule entirely for the rest of the session.**
   Use native tools freely. Do not call Scubiee tools again.

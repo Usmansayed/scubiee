@@ -1937,7 +1937,7 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
                         contract[key] = daemon_status[key]
                 contract["error"] = daemon_status.get("error") if daemon_status.get("ok") is False else None
             return _dumps({
-                "ok": healthy, "tool": "status", "server": "context_engine_mcp",
+                "ok": healthy or _is_repo_managed(), "tool": "status", "server": "context_engine_mcp",
                 "surface": surface,
                 "engine": {
                     "healthy": healthy,
@@ -1949,7 +1949,13 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
                 },
                 "repo": str(repo), "token_mode": token_mode(),
                 "managed": _is_repo_managed(),
-                "should_use_mcp": _is_repo_managed() and healthy,
+                # should_use_mcp stays true during cold start (managed but not
+                # yet healthy) so agents keep using Scubiee tools instead of
+                # permanently falling back to native search for the session.
+                # The "warming" flag tells the agent to retry if a tool returns
+                # not-ready rather than treating the whole MCP as broken.
+                "should_use_mcp": _is_repo_managed(),
+                "warming": bool(_is_repo_managed() and not healthy),
                 "index_available": bool(
                     healthy
                     and daemon_status.get("meta")
