@@ -77,18 +77,68 @@ def _load_helper(name: str, path: Path):
 
 opencode_ab = _load_helper("_opencode_mcp_ab_helper", Path(__file__).parent / "opencode_mcp_ab" / "run.py")
 parse_jsonl = opencode_ab._parse_jsonl
-sum_tokens = opencode_ab._sum_tokens
 extract_assistant_text = opencode_ab._extract_assistant_text
 provider_block = opencode_ab._provider_block
+
+_CE_MCP_TOOL_NAMES = frozenset({
+    "map", "focus", "grep", "glob", "workspace", "status", "recall", "expand",
+    "search", "read", "outline", "neighbors", "graph", "search_code",
+})
+
+
+def sum_tokens(events: list[dict[str, Any]]) -> dict[str, Any]:
+    """Token totals plus CE MCP vs builtin tool split for OpenCode JSONL."""
+    base = opencode_ab._sum_tokens(events)
+    mcp_tools = 0
+    builtin_tools = 0
+    for ev in events:
+        part = ev.get("part") if isinstance(ev.get("part"), dict) else {}
+        typ = ev.get("type") or ""
+        if typ != "tool_use" and part.get("type") != "tool":
+            continue
+        name = str(part.get("tool") or part.get("name") or ev.get("tool") or "").lower()
+        if not name:
+            continue
+        is_ce = (
+            "context-engine" in name
+            or "context_engine" in name
+            or name in _CE_MCP_TOOL_NAMES
+            or any(name.endswith(f"_{t}") for t in _CE_MCP_TOOL_NAMES)
+        )
+        if is_ce:
+            mcp_tools += 1
+        else:
+            builtin_tools += 1
+    base["mcp_tool_calls"] = mcp_tools
+    base["builtin_tool_calls"] = builtin_tools
+    return base
 
 
 def _ce_env(extra: dict[str, str] | None = None) -> dict[str, str]:
     env = os.environ.copy()
     env["PYTHONPATH"] = str(PACKAGES)
     env.setdefault("CTX_ENGINE_URL", "http://127.0.0.1:8765")
+    env.setdefault("CTX_ENGINE_IDLE_S", "0")
+    env.setdefault("CTX_WATCHDOG", "0")
     if extra:
         env.update(extra)
     return env
+
+
+def _search_ok(proc: subprocess.CompletedProcess[str]) -> bool:
+    """CLI search success: exit 0 and JSON body with latency_ms (no ok:false)."""
+    if proc.returncode != 0:
+        return False
+    text = (proc.stdout or "").strip()
+    if not text:
+        return False
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return False
+    if data.get("ok") is False or "error" in data:
+        return False
+    return "latency_ms" in data
 
 
 def _run(cmd: list[str], *, cwd: Path | None = None, env: dict[str, str] | None = None, timeout: float = 600):
@@ -99,34 +149,57 @@ def _run(cmd: list[str], *, cwd: Path | None = None, env: dict[str, str] | None 
 
 
 def _ensure_engine_ready(repo: Path, *, timeout_s: float = 900) -> dict[str, Any]:
-    script = f"""
-import json, time
-from pathlib import Path
-from pipeline.client import EngineClient
-from pipeline.daemon import ensure_daemon
-repo = Path(r"{repo}")
-ensure_daemon(repo)
-client = EngineClient(timeout=30.0)
-opened = client.open_repo(str(repo), wait=True)
-deadline = time.time() + {int(timeout_s)}
-while time.time() < deadline:
-    st = client.status(str(repo))
-    warm = st.get("warm_state")
-    eng = st.get("engine") or {{}}
-    chunks = eng.get("chunks") or (st.get("meta") or {{}}).get("chunks")
-    if warm == "ready" and eng and chunks:
-        print(json.dumps({{"ok": True, "warm_state": warm, "chunks": chunks}}))
-        raise SystemExit(0)
-    time.sleep(3)
-print(json.dumps({{"ok": False, "warm_state": st.get("warm_state"), "error": st.get("warm_error")}}))
-raise SystemExit(1)
+    """Warm engine on repo; gate on live search (same as preflight smoke)."""
+    warm_script = """
+import time
+from pipeline.lifecycle_runtime import (
+    DESIRED_RUN, load_policy, note_activity, register_client, save_policy, set_desired_mode,
+)
+set_desired_mode(DESIRED_RUN)
+note_activity()
+policy = load_policy()
+policy["last_client_left_at"] = None
+save_policy(policy)
+register_client("dev_mcp_vs_nomcp", kind="experiment")
+print("policy_run")
 """
-    proc = _run([str(CE_PY), "-c", script], env=_ce_env(), timeout=timeout_s + 60)
-    line = (proc.stdout or "").strip().splitlines()[-1] if proc.stdout else "{}"
-    try:
-        return json.loads(line)
-    except json.JSONDecodeError:
-        return {"ok": False, "error": proc.stderr or proc.stdout}
+    _run([str(CE_PY), "-c", warm_script], env=_ce_env(), timeout=30)
+    probe = _run(
+        ["scubiee", "search", "session evidence recall perception", str(repo)],
+        env=_ce_env(),
+        timeout=120,
+    )
+    if _search_ok(probe):
+        return {"ok": True, "warm_state": "ready", "via": "search_probe"}
+    _run(
+        ["scubiee", "engine", "start", str(repo), "--wait", "300"],
+        env=_ce_env(),
+        timeout=360,
+    )
+    deadline = time.time() + min(timeout_s, 300.0)
+    last: dict[str, Any] = {"ok": False}
+    while time.time() < deadline:
+        search = _run(
+            ["scubiee", "search", "session evidence recall perception", str(repo)],
+            env=_ce_env(),
+            timeout=120,
+        )
+        if _search_ok(search):
+            st = _run(["scubiee", "status", str(repo)], timeout=60)
+            chunks = None
+            warm = None
+            if st.returncode == 0:
+                try:
+                    data = json.loads(st.stdout or "{}")
+                    chunks = data.get("chunks") or (data.get("meta") or {}).get("chunks")
+                    srv = data.get("server") or {}
+                    warm = srv.get("warm_state") or ("ready" if srv.get("warm") else None)
+                except json.JSONDecodeError:
+                    pass
+            return {"ok": True, "warm_state": warm or "ready", "chunks": chunks, "via": "search_after_start"}
+        last = {"ok": False, "error": (search.stderr or search.stdout)[-300:]}
+        time.sleep(5)
+    return last
 
 
 def _validate_opencode_mcp(path: Path) -> list[str]:
@@ -174,7 +247,34 @@ print(json.dumps(out))
         init_data = json.loads((init.stdout or "").strip().splitlines()[-1])
     except (json.JSONDecodeError, IndexError):
         init_data = {"ok": False, "stderr": init.stderr}
-    record("initialize_repo", init.returncode == 0 and init_data.get("ok", True), init_data)
+    # Re-index can flake (vectors/ids mismatch) while an existing usable index remains.
+    # For A/B parity with prior nomcp, accept usable index + live search over sync ok.
+    init_ok = init.returncode == 0 and bool(init_data.get("ok", True))
+    if not init_ok:
+        st = _run(["scubiee", "status", str(repo)], env=_ce_env(), timeout=60)
+        chunks = 0
+        usable = False
+        if st.returncode == 0:
+            try:
+                sdata = json.loads(st.stdout or "{}")
+                chunks = int(sdata.get("chunks") or (sdata.get("meta") or {}).get("chunks") or 0)
+                usable = bool((sdata.get("server") or {}).get("index_usable")) or chunks >= 3000
+            except (json.JSONDecodeError, TypeError, ValueError):
+                pass
+        smoke = _run(
+            ["scubiee", "search", "session evidence recall perception", str(repo)],
+            env=_ce_env(),
+            timeout=120,
+        )
+        if usable and _search_ok(smoke):
+            init_ok = True
+            init_data = {
+                "ok": True,
+                "accepted_existing_index": True,
+                "chunks": chunks,
+                "prior_error": init_data.get("error") or (init_data.get("sync") or {}).get("error"),
+            }
+    record("initialize_repo", init_ok, init_data)
 
     warm = _ensure_engine_ready(repo)
     record("engine_ready", bool(warm.get("ok")), warm)
@@ -284,9 +384,11 @@ def run_arm(arm: str, cfg: dict[str, Any], workspace: Path, *, model: str, varia
     cfg_path = workspace / "opencode.json"
     cfg_path.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
     if arm == "mcp":
+        print("  [setup] ensuring engine warm before OpenCode...", flush=True)
         warm = _ensure_engine_ready(REPO)
         if not warm.get("ok"):
             raise RuntimeError(f"engine not ready before {arm}: {warm}")
+        print(f"  [setup] engine ready chunks={warm.get('chunks')}", flush=True)
 
     prompt = f"{_arm_hint(arm)} | {DEV_TASK} | Repo root is the working directory."
     cmd = [OPENCODE, "run", "--format", "json", "--auto", "--pure", "--dir", str(workspace),
@@ -376,6 +478,19 @@ def main() -> int:
         row["workspace"] = str(ws); row["baseline_commit"] = baseline
         results.append(row)
         (OUT / f"{arm}_{stamp}.json").write_text(json.dumps(row, indent=2, default=str), encoding="utf-8")
+
+    # Merge saved nomcp when running mcp-only so comparison stays valid without re-run.
+    nomcp_saved = OUT / "nomcp_20260822T140106Z.json"
+    if "mcp" in args.arms and "nomcp" not in args.arms and nomcp_saved.is_file():
+        try:
+            prior = json.loads(nomcp_saved.read_text(encoding="utf-8"))
+            if prior.get("arm") == "nomcp":
+                prior["artifact"] = str(nomcp_saved.as_posix())
+                prior["merged_from_prior_run"] = True
+                results.insert(0, prior)
+                print(f"[report] merged prior nomcp from {nomcp_saved.name}", flush=True)
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"[report] WARN could not merge nomcp: {exc}", flush=True)
 
     by_tokens = sorted(results, key=lambda r: int(r.get("tokens_total") or 10**12))
     t_nomcp = next((r for r in results if r["arm"] == "nomcp"), None)

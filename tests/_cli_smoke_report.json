@@ -1,0 +1,207 @@
+{
+  "repo": "C:\\Users\\usman\\AppData\\Local\\Temp\\scubiee-smoke-z7a3zby_",
+  "failed": 0,
+  "total": 20,
+  "results": [
+    {
+      "cmd": "C:\\Users\\usman\\.local\\bin\\scubiee.EXE --version",
+      "exit": 0,
+      "stdout_head": "scubiee 0.2.54\npython  C:\\Users\\usman\\AppData\\Roaming\\uv\\tools\\scubiee\\Scripts\\python.exe (3.13.5)\nuninstall this copy:\n  scubiee stop\n  scubiee wipe --all --yes --package\n  uv tool uninstall scubiee   # if tool dir remains\n  C:\\Users\\usman\\AppData\\Roaming\\uv\\tools\\scubiee\\Scripts\\python.exe -m pip uninstall scubiee -y   # pip/venv installs only",
+      "stderr_head": "",
+      "json_ok": null,
+      "name": "version",
+      "expect": 0,
+      "pass": true
+    },
+    {
+      "cmd": "C:\\Users\\usman\\.local\\bin\\scubiee.EXE --help",
+      "exit": 0,
+      "stdout_head": "usage: scubiee [-h] [--version]\n               {index,resources,test,preflight,doctor,certify,register,initialize,activate,pause,resume,sync-now,rebuild,remove,never-index,list,settings,search,status,sync,serve,dashboard,engine,mcp,init,setup,wipe,stop,migrate,diagnose,connect,disconnect} ...\n\nScubiee \u2014 local AI code context engine: setup once, connect per tool, search\neverything.\n\npositional argu",
+      "stderr_head": "",
+      "json_ok": null,
+      "name": "help",
+      "expect": 0,
+      "pass": true
+    },
+    {
+      "cmd": "C:\\Users\\usman\\.local\\bin\\scubiee.EXE preflight",
+      "exit": 0,
+      "stdout_head": "{\n  \"ok\": true,\n  \"require_semantic\": true,\n  \"capabilities\": {\n    \"faiss\": {\n      \"module\": \"faiss\",\n      \"available\": true,\n      \"required\": true,\n      \"hint\": \"Install the CE vector dependencies, then rerun `scubiee preflight`.\"\n    },\n    \"rapidfuzz\": {\n      \"module\": \"rapidfuzz\",\n      \"available\": true,\n      \"required\": true,\n      \"hint\": \"Install `rapidfuzz`; graph deduplication can",
+      "stderr_head": "",
+      "json_ok": true,
+      "name": "preflight",
+      "expect": 0,
+      "pass": true
+    },
+    {
+      "cmd": "C:\\Users\\usman\\.local\\bin\\scubiee.EXE setup --status",
+      "exit": 0,
+      "stdout_head": "{\n  \"accel_path\": \"C:\\\\Users\\\\usman\\\\.context-engine\\\\accel.json\",\n  \"preferred_profile\": {\n    \"profile\": \"dml\",\n    \"provider\": \"DmlExecutionProvider\",\n    \"device_id\": 1,\n    \"batch_size\": 16,\n    \"backend\": \"fastembed\",\n    \"model\": \"nomic-ai/CodeRankEmbed\",\n    \"model_source\": \"jamie8johnson/CodeRankEmbed-onnx\",\n    \"onnx_file\": \"onnx/model_fp16.onnx\",\n    \"texts_per_sec\": null,\n    \"meets_ta",
+      "stderr_head": "",
+      "json_ok": null,
+      "name": "setup_status",
+      "expect": 0,
+      "pass": true
+    },
+    {
+      "cmd": "C:\\Users\\usman\\.local\\bin\\scubiee.EXE resources",
+      "exit": 0,
+      "stdout_head": "{\n  \"hardware\": {\n    \"os\": \"Windows\",\n    \"cpu_model\": \"AMD Ryzen 7 5800H with Radeon Graphics\",\n    \"cpu_count\": 16,\n    \"ram_total_gb\": 16.52,\n    \"recommended_accel\": {\n      \"profile\": \"dml\",\n      \"provider\": \"DmlExecutionProvider\",\n      \"batch_size\": 16,\n      \"reason\": \"Windows GPU via DirectML \\u2014 zero-config acceleration for NVIDIA/AMD/Intel\",\n      \"device_id\": 1\n    },\n    \"librari",
+      "stderr_head": "",
+      "json_ok": null,
+      "name": "resources",
+      "expect": 0,
+      "pass": true
+    },
+    {
+      "cmd": "C:\\Users\\usman\\.local\\bin\\scubiee.EXE list",
+      "exit": 0,
+      "stdout_head": "[\n  {\n    \"ok\": true,\n    \"project_id\": \"ce_b742f3785e32c435d18ddc2d3a966da2\",\n    \"root\": \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\\\\.worktrees\\\\production-certification\",\n    \"primary_path\": \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\\\\.worktrees\\\\production-certification\",\n    \"path\": \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\\\\.worktrees\\\\production-certification\",\n    \"paths\": [\n      \"",
+      "stderr_head": "",
+      "json_ok": null,
+      "name": "list",
+      "expect": 0,
+      "pass": true
+    },
+    {
+      "cmd": "C:\\Users\\usman\\.local\\bin\\scubiee.EXE migrate --check-all",
+      "exit": 0,
+      "stdout_head": "{\n  \"ok\": true,\n  \"projects\": [\n    {\n      \"ok\": true,\n      \"needs_migration\": false,\n      \"project_id\": \"ce_b742f3785e32c435d18ddc2d3a966da2\",\n      \"reason\": \"no_index_data\"\n    }\n  ]\n}",
+      "stderr_head": "",
+      "json_ok": true,
+      "name": "migrate_check",
+      "expect": 0,
+      "pass": true
+    },
+    {
+      "cmd": "C:\\Users\\usman\\.local\\bin\\scubiee.EXE diagnose --no-tests",
+      "exit": 0,
+      "stdout_head": "{\n  \"timestamp\": \"2026-08-22T12:11:52.243621+00:00\",\n  \"scubiee_version\": \"0.2.54\",\n  \"platform\": {\n    \"system\": \"Windows\",\n    \"release\": \"11\",\n    \"machine\": \"AMD64\",\n    \"processor\": \"AMD64 Family 25 Model 80 Stepping 0, AuthenticAMD\"\n  },\n  \"python\": {\n    \"version\": \"3.13.5\",\n    \"implementation\": \"CPython\",\n    \"executable\": \"C:\\\\Users\\\\usman\\\\AppData\\\\Roaming\\\\uv\\\\tools\\\\scubiee\\\\Scripts\\\\",
+      "stderr_head": "Running diagnostics...\n[----------------------------]   0%  Starting\n[#---------------------------]   5%  Checking platform\n[###-------------------------]  10%  Checking Python\n[####------------------------]  15%  Detecting hardware\n[#######---------------------]  25%  Checking acceleration\n[##########------------------]  35%  Checking libraries\n[#############---------------]  45%  Validating capa",
+      "json_ok": null,
+      "name": "diagnose",
+      "expect": null,
+      "pass": true
+    },
+    {
+      "cmd": "C:\\Users\\usman\\.local\\bin\\scubiee.EXE connect --cursor --dry-run",
+      "exit": 0,
+      "stdout_head": "[\n  {\n    \"tool\": \"Cursor\",\n    \"slug\": \"cursor\",\n    \"mcp_path\": \"C:\\\\Users\\\\usman\\\\.cursor\\\\mcp.json\",\n    \"rule_path\": \"C:\\\\Users\\\\usman\\\\.cursor\\\\rules\\\\context-agent.mdc\",\n    \"dry_run\": true,\n    \"ok\": true,\n    \"errors\": [],\n    \"would_write_mcp\": \"C:\\\\Users\\\\usman\\\\.cursor\\\\mcp.json\",\n    \"would_write_rule\": \"C:\\\\Users\\\\usman\\\\.cursor\\\\rules\\\\context-agent.mdc\"\n  }\n]",
+      "stderr_head": "[dry-run] Would connect 1 tool(s).",
+      "json_ok": null,
+      "name": "connect_dry",
+      "expect": 0,
+      "pass": true
+    },
+    {
+      "cmd": "C:\\Users\\usman\\.local\\bin\\scubiee.EXE disconnect --cursor --dry-run",
+      "exit": 0,
+      "stdout_head": "[\n  {\n    \"tool\": \"Cursor\",\n    \"slug\": \"cursor\",\n    \"mcp_path\": \"C:\\\\Users\\\\usman\\\\.cursor\\\\mcp.json\",\n    \"rule_path\": \"C:\\\\Users\\\\usman\\\\.cursor\\\\rules\\\\context-agent.mdc\",\n    \"dry_run\": true,\n    \"ok\": true,\n    \"errors\": [],\n    \"mcp_removed\": false,\n    \"rule_removed\": false,\n    \"would_remove_mcp\": \"C:\\\\Users\\\\usman\\\\.cursor\\\\mcp.json\",\n    \"would_remove_rule\": \"C:\\\\Users\\\\usman\\\\.cursor\\",
+      "stderr_head": "[dry-run] Would disconnect 1 tool(s).",
+      "json_ok": null,
+      "name": "disconnect_dry",
+      "expect": 0,
+      "pass": true
+    },
+    {
+      "cmd": "C:\\Users\\usman\\.local\\bin\\scubiee.EXE wipe --all",
+      "exit": 2,
+      "stdout_head": "{\n  \"ok\": false,\n  \"status\": \"warning\",\n  \"scope\": \"all\",\n  \"warning\": \"confirm_required\",\n  \"error\": \"confirm_required\",\n  \"needs_confirm\": true,\n  \"plan\": {\n    \"ctx_homes\": [\n      \"C:\\\\Users\\\\usman\\\\.context-engine\"\n    ],\n    \"vectordb_roots\": [],\n    \"user_mcp\": \"C:\\\\Users\\\\usman\\\\.cursor\\\\mcp.json\",\n    \"models\": true,\n    \"model_targets\": [\n      \"C:\\\\Users\\\\usman\\\\AppData\\\\Local\\\\Temp\\\\fa",
+      "stderr_head": "[scubiee] Warning: Safety pause: full machine wipe was not run. This is intentional \u2014 confirm only when you mean to delete everything.",
+      "json_ok": false,
+      "name": "wipe_all_gate",
+      "expect": 2,
+      "pass": true
+    },
+    {
+      "cmd": "C:\\Users\\usman\\.local\\bin\\scubiee.EXE engine status",
+      "exit": 0,
+      "stdout_head": "{\n  \"url\": \"http://127.0.0.1:8765\",\n  \"running\": true,\n  \"health\": {\n    \"ok\": true,\n    \"service\": \"context-engine\",\n    \"version\": \"0.2.54\",\n    \"warm\": false,\n    \"warm_state\": \"idle\",\n    \"generation\": 0,\n    \"index_usable\": false,\n    \"last_sync_at\": null,\n    \"repo\": null,\n    \"dashboard\": \"/dashboard\",\n    \"api\": \"/v1/*\"\n  },\n  \"watchdog\": {\n    \"enabled\": true,\n    \"running\": true,\n    \"pi",
+      "stderr_head": "",
+      "json_ok": null,
+      "name": "engine_status",
+      "expect": 0,
+      "pass": true
+    },
+    {
+      "cmd": "C:\\Users\\usman\\.local\\bin\\scubiee.EXE doctor C:\\Users\\usman\\AppData\\Local\\Temp\\scubiee-smoke-z7a3zby_",
+      "exit": 1,
+      "stdout_head": "{\n  \"ok\": false,\n  \"repo\": \"C:\\\\Users\\\\usman\\\\AppData\\\\Local\\\\Temp\\\\scubiee-smoke-z7a3zby_\",\n  \"project_id\": \"ce_025ff062a505569d642f718da31ccb94\",\n  \"capabilities\": {\n    \"ok\": true,\n    \"require_semantic\": true,\n    \"capabilities\": {\n      \"faiss\": {\n        \"module\": \"faiss\",\n        \"available\": true,\n        \"required\": true,\n        \"hint\": \"Install the CE vector dependencies, then rerun `sc",
+      "stderr_head": "",
+      "json_ok": false,
+      "name": "doctor",
+      "expect": null,
+      "pass": true
+    },
+    {
+      "cmd": "C:\\Users\\usman\\.local\\bin\\scubiee.EXE init C:\\Users\\usman\\AppData\\Local\\Temp\\scubiee-smoke-z7a3zby_ --fast --roots pkg --confirm",
+      "exit": 0,
+      "stdout_head": "{\n  \"ok\": true,\n  \"project_id\": \"ce_025ff062a505569d642f718da31ccb94\",\n  \"root\": \"c:\\\\users\\\\usman\\\\appdata\\\\local\\\\temp\\\\scubiee-smoke-z7a3zby_\",\n  \"primary_path\": \"c:\\\\users\\\\usman\\\\appdata\\\\local\\\\temp\\\\scubiee-smoke-z7a3zby_\",\n  \"path\": \"c:\\\\users\\\\usman\\\\appdata\\\\local\\\\temp\\\\scubiee-smoke-z7a3zby_\",\n  \"paths\": [\n    \"c:\\\\users\\\\usman\\\\appdata\\\\local\\\\temp\\\\scubiee-smoke-z7a3zby_\"\n  ],\n  \"sto",
+      "stderr_head": "Initializing repository\u2026\n[----------------------------]   0%  Starting\n[index] memory mode=bootstrap rss_cap=800MB bootstrap=True mlx_batch=48 cache=256MB\n[#---------------------------]   5%  Scanning files\n[##--------------------------]   8%  Parsing code\n[index] parse+ir 0.0s for 1 files\n[############----------------]  42%  Building chunks\n[index] chunk 0.0s -> 1 chunks\n[##############----------",
+      "json_ok": true,
+      "name": "init_fast",
+      "expect": 0,
+      "pass": true
+    },
+    {
+      "cmd": "C:\\Users\\usman\\.local\\bin\\scubiee.EXE status C:\\Users\\usman\\AppData\\Local\\Temp\\scubiee-smoke-z7a3zby_",
+      "exit": 0,
+      "stdout_head": "{\n  \"root\": \"C:\\\\Users\\\\usman\\\\AppData\\\\Local\\\\Temp\\\\scubiee-smoke-z7a3zby_\",\n  \"store\": \"C:\\\\Users\\\\usman\\\\.context-engine\\\\projects\\\\ce_025ff062a505569d642f718da31ccb94\",\n  \"collection\": \"scubiee-smoke-z7a3zby_025ff062a505569d\",\n  \"meta\": {\n    \"root\": \"C:\\\\Users\\\\usman\\\\AppData\\\\Local\\\\Temp\\\\scubiee-smoke-z7a3zby_\",\n    \"project_id\": \"ce_025ff062a505569d642f718da31ccb94\",\n    \"schema_version\": ",
+      "stderr_head": "",
+      "json_ok": null,
+      "name": "status",
+      "expect": 0,
+      "pass": true
+    },
+    {
+      "cmd": "C:\\Users\\usman\\.local\\bin\\scubiee.EXE sync C:\\Users\\usman\\AppData\\Local\\Temp\\scubiee-smoke-z7a3zby_ --confirm",
+      "exit": 1,
+      "stdout_head": "{\n  \"refreshed\": false,\n  \"files\": [\n    \"pkg/app.py\"\n  ],\n  \"chunks_upserted\": 0,\n  \"chunks_removed\": 0,\n  \"ms\": 6096.6,\n  \"strategy\": \"incremental\",\n  \"error\": \"vectors/ids length mismatch\",\n  \"graph_error\": null,\n  \"warnings\": [],\n  \"confirmation_required\": false,\n  \"ok\": false,\n  \"client\": null,\n  \"session_id\": null,\n  \"session_authored\": false\n}",
+      "stderr_head": "",
+      "json_ok": false,
+      "name": "sync",
+      "expect": null,
+      "pass": true
+    },
+    {
+      "cmd": "C:\\Users\\usman\\.local\\bin\\scubiee.EXE search C:\\Users\\usman\\AppData\\Local\\Temp\\scubiee-smoke-z7a3zby_ greet",
+      "exit": 0,
+      "stdout_head": "{\n  \"latency_ms\": 5201.2,\n  \"hits\": [\n    {\n      \"rank\": 1,\n      \"file\": \"pkg/app.py\",\n      \"score\": 156.1328,\n      \"chunk_id\": 0,\n      \"preview\": \"\",\n      \"source\": \"D_channel_best:bm25+dense+graph\"\n    }\n  ]\n}",
+      "stderr_head": "",
+      "json_ok": null,
+      "name": "search",
+      "expect": null,
+      "pass": true
+    },
+    {
+      "cmd": "C:\\Users\\usman\\.local\\bin\\scubiee.EXE register C:\\Users\\usman\\AppData\\Local\\Temp\\scubiee-smoke-z7a3zby_ --no-index",
+      "exit": 0,
+      "stdout_head": "{\n  \"ok\": true,\n  \"project_id\": \"ce_025ff062a505569d642f718da31ccb94\",\n  \"root\": \"C:\\\\Users\\\\usman\\\\AppData\\\\Local\\\\Temp\\\\scubiee-smoke-z7a3zby_\",\n  \"store_dir\": \"C:\\\\Users\\\\usman\\\\.context-engine\\\\projects\\\\ce_025ff062a505569d642f718da31ccb94\",\n  \"already_registered\": true,\n  \"indexed\": false,\n  \"chunks\": 0,\n  \"always_allow\": true,\n  \"error\": null,\n  \"mode\": \"automatic\"\n}",
+      "stderr_head": "",
+      "json_ok": true,
+      "name": "register_no_index",
+      "expect": 0,
+      "pass": true
+    },
+    {
+      "cmd": "C:\\Users\\usman\\.local\\bin\\scubiee.EXE certify C:\\Users\\usman\\AppData\\Local\\Temp\\scubiee-smoke-z7a3zby_ --skip-daemon",
+      "exit": 0,
+      "stdout_head": "{\n  \"ok\": true,\n  \"repo\": \"C:\\\\Users\\\\usman\\\\AppData\\\\Local\\\\Temp\\\\scubiee-smoke-z7a3zby_\",\n  \"passed\": 19,\n  \"failed_required\": 0,\n  \"skipped\": 9,\n  \"checks\": [\n    {\n      \"name\": \"import_preflight\",\n      \"ok\": true,\n      \"required\": true,\n      \"status\": \"passed\",\n      \"detail\": \"\"\n    },\n    {\n      \"name\": \"import_artifact_guard\",\n      \"ok\": true,\n      \"required\": true,\n      \"status\": \"",
+      "stderr_head": "",
+      "json_ok": true,
+      "name": "certify",
+      "expect": null,
+      "pass": true
+    },
+    {
+      "cmd": "C:\\Users\\usman\\.local\\bin\\scubiee.EXE stop",
+      "exit": 1,
+      "stdout_head": "",
+      "stderr_head": "",
+      "json_ok": null,
+      "name": "stop",
+      "expect": null,
+      "pass": true
+    }
+  ]
+}

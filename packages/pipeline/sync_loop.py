@@ -316,6 +316,12 @@ class BackgroundSyncLoop:
 
         estimated_total, estimates = self._estimate_dirty_chunks(paths)
 
+        deferred = self._defer_for_active_session(
+            paths, now=current_time, estimated_total=estimated_total
+        )
+        if deferred is not None:
+            return [deferred]
+
         # --- Tier 3: >10000 chunks — refuse, require explicit full index ---
         if estimated_total > self.auto_full_index_chunks:
             self.needs_full = True
@@ -466,6 +472,51 @@ class BackgroundSyncLoop:
             return False
         current_time = time.monotonic() if now is None else now
         return current_time - self._last_locate_at < self.locate_streak_ms / 1000
+
+    def _clients_active(self) -> bool:
+        """True when an MCP/IDE/experiment client is registered against the engine."""
+        try:
+            from pipeline.lifecycle_runtime import active_client_count
+
+            return active_client_count() > 0
+        except Exception:  # noqa: BLE001
+            return False
+
+    def _defer_for_active_session(
+        self, paths: list[str], *, now: float, estimated_total: int
+    ) -> dict | None:
+        """Hold heavy (and, with clients, all) sync while agents are locating.
+
+        Bulk reindex removes/replaces the live vector set — catastrophic mid-MCP.
+        With registered clients, defer *all* due sync and re-check shortly.
+        """
+        clients = self._clients_active()
+        locate = self._locate_streak_active(now=now)
+        bulk = estimated_total > self.bulk_reindex_threshold
+        if not clients and not (locate and bulk):
+            return None
+        # Re-queue soon; do not drop dirty state.
+        self.dirty_ledger.defer(paths, now=now + 15.0)
+        reason = "clients_active" if clients else "locate_streak_bulk"
+        print(
+            f"[keeper] defer sync ({reason}): {len(paths)} paths "
+            f"~{estimated_total} chunks",
+            file=sys.stderr,
+            flush=True,
+        )
+        payload = {
+            "refreshed": False,
+            "files": paths[:50],
+            "chunks_upserted": 0,
+            "chunks_removed": 0,
+            "strategy": "deferred_active_session",
+            "reason": reason,
+            "estimated_chunks": estimated_total,
+            "clients_active": clients,
+            "locate_streak_active": locate,
+        }
+        self.last_result = payload
+        return payload
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():

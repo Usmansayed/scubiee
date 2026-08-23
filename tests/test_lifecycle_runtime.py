@@ -60,6 +60,39 @@ def test_zero_idle_never_stops(tmp_path: Path, monkeypatch) -> None:
     assert life.should_idle_stop(now=1_000_000.0) is False
 
 
+def test_note_activity_clears_stale_client_left_anchor(tmp_path: Path, monkeypatch) -> None:
+    """HTTP/CLI activity after disconnect must reset idle — not use stale leave time."""
+    monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
+    monkeypatch.setenv("CTX_ENGINE_IDLE_S", "30")
+    life.register_client("mcp:1", pid=1, now=100.0)
+    life.unregister_client("mcp:1", now=100.0)
+    assert life.load_policy()["last_client_left_at"] == 100.0
+    # Without the fix, should_idle_stop(131) would be True off last_left=100.
+    life.note_activity(now=120.0)
+    assert life.load_policy()["last_client_left_at"] is None
+    assert life.should_idle_stop(now=140.0) is False
+    assert life.should_idle_stop(now=151.0) is True
+
+
+def test_should_idle_stop_uses_most_recent_activity_signal(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
+    monkeypatch.setenv("CTX_ENGINE_IDLE_S", "30")
+    # Simulate a policy that still has last_left but fresher last_activity
+    # (belt-and-suspenders if note_activity wasn't called).
+    life.save_policy(
+        {
+            **life.load_policy(),
+            "desired_mode": life.DESIRED_RUN,
+            "last_client_left_at": 100.0,
+            "last_activity": 200.0,
+        }
+    )
+    assert life.should_idle_stop(now=220.0) is False
+    assert life.should_idle_stop(now=231.0) is True
+
+
 def test_register_logon_autostart_uses_onlogon_task(
     tmp_path: Path, monkeypatch
 ) -> None:

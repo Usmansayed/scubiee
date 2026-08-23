@@ -116,6 +116,7 @@ def test_debounced_dirty_sync_coalesces_rewrites(monkeypatch, tmp_path: Path):
     from pipeline.sync_loop import BackgroundSyncLoop
 
     loop = BackgroundSyncLoop(tmp_path, debounce_ms=10, rewrite_debounce_ms=20)
+    monkeypatch.setattr(loop, "_clients_active", lambda *a, **k: False)
     calls = []
     monkeypatch.setattr(
         loop,
@@ -140,6 +141,7 @@ def test_locate_streak_holds_publish_then_promotes(monkeypatch, tmp_path: Path):
         locate_streak_ms=100,
         on_refresh=lambda payload: published.append(payload),
     )
+    monkeypatch.setattr(loop, "_clients_active", lambda *a, **k: False)
     monkeypatch.setattr(loop, "_sync_paths", lambda paths, **_: {"refreshed": True})
     now = time.monotonic()
 

@@ -99,7 +99,7 @@ def test_pyproject_and_npm_versions_match() -> None:
     )
 
 
-def test_kiro_rules_install_writes_workspace_entry_without_global_pin(
+def test_kiro_rules_install_writes_global_entry_without_repo_pin(
     tmp_path: Path, monkeypatch
 ) -> None:
     from pipeline.rules_installer import install_tools
@@ -109,25 +109,23 @@ def test_kiro_rules_install_writes_workspace_entry_without_global_pin(
     home = tmp_path / "home"
     home.mkdir()
     monkeypatch.chdir(project_root)
-    monkeypatch.setattr("pipeline.mcp_install.Path.home", lambda: home)
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
 
     reports = install_tools(["kiro"], repo=project_root)
 
     assert reports[0]["ok"] is True
-    project = json.loads(
-        (project_root / ".kiro" / "settings" / "mcp.json").read_text(encoding="utf-8")
-    )
+    assert reports[0].get("repo_ignored") is True
     user = json.loads(
         (home / ".kiro" / "settings" / "mcp.json").read_text(encoding="utf-8")
     )
-    assert project["mcpServers"]["context-engine"]["env"]["CTX_REPO"]
     assert "CTX_REPO" not in user["mcpServers"]["context-engine"]["env"]
-    assert reports[0]["workspace_mcp_path"] == str(
-        project_root / ".kiro" / "settings" / "mcp.json"
-    )
+    assert not (project_root / ".kiro").exists()
+    assert reports[0]["mcp_path"] == str(home / ".kiro" / "settings" / "mcp.json")
 
 
-def test_kiro_rules_cli_accepts_explicit_repo_from_unrelated_cwd(
+def test_kiro_rules_cli_accepts_repo_but_ignores_for_global(
     tmp_path: Path, monkeypatch, capsys
 ) -> None:
     from pipeline.__main__ import main
@@ -143,9 +141,11 @@ def test_kiro_rules_cli_accepts_explicit_repo_from_unrelated_cwd(
     ) == 0
 
     report = json.loads(capsys.readouterr().out)
-    assert report[0]["workspace_repo"] == str(target.resolve())
-    assert report[0]["would_write_workspace_mcp"] == str(
-        target / ".kiro" / "settings" / "mcp.json"
+    assert report[0]["scope"] == "global"
+    assert report[0].get("repo_ignored") is True
+    assert "would_write_workspace_mcp" not in report[0]
+    assert report[0]["would_write_mcp"].endswith(
+        str(Path(".kiro") / "settings" / "mcp.json")
     )
 
 
@@ -154,39 +154,30 @@ def test_uninstall_removes_mcp_entry_and_rule_file(tmp_path: Path, monkeypatch) 
     from pipeline.rules_installer import install_tool, uninstall_tool
     from pipeline.tool_registry import TOOL_MAP
 
-    # Use Kiro as the test target — it has JSON MCP + md rule
     tool = TOOL_MAP["kiro"]
     workspace = tmp_path / "project"
     workspace.mkdir()
 
-    # Redirect home so we don't touch real config
     fake_home = tmp_path / "home"
     fake_home.mkdir()
     monkeypatch.setenv("USERPROFILE", str(fake_home))
     monkeypatch.setenv("HOME", str(fake_home))
     monkeypatch.setattr(Path, "home", staticmethod(lambda: fake_home))
 
-    # Install
     install_tool(tool, repo=workspace)
     user_mcp = fake_home / ".kiro" / "settings" / "mcp.json"
-    project_mcp = workspace / ".kiro" / "settings" / "mcp.json"
     rule_file = fake_home / ".kiro" / "steering" / "context-engine.md"
     assert user_mcp.is_file()
-    assert project_mcp.is_file()
     assert rule_file.is_file()
     assert "context-engine" in json.loads(user_mcp.read_text(encoding="utf-8")).get("mcpServers", {})
-    assert "context-engine" in json.loads(project_mcp.read_text(encoding="utf-8")).get("mcpServers", {})
+    assert not (workspace / ".kiro").exists()
 
-    # Uninstall
     report = uninstall_tool(tool, repo=workspace)
     assert report["ok"] is True
     assert report["mcp_removed"] is True
     assert report["rule_removed"] is True
 
-    # Verify MCP entries are gone
     assert "context-engine" not in json.loads(user_mcp.read_text(encoding="utf-8")).get("mcpServers", {})
-    assert "context-engine" not in json.loads(project_mcp.read_text(encoding="utf-8")).get("mcpServers", {})
-    # Rule file deleted
     assert not rule_file.is_file()
 
 
@@ -198,6 +189,9 @@ def test_uninstall_removes_append_md_section(tmp_path: Path, monkeypatch) -> Non
     tool = TOOL_MAP["claude-code"]
     fake_home = tmp_path / "home"
     fake_home.mkdir()
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+    monkeypatch.chdir(workspace)
     monkeypatch.setenv("USERPROFILE", str(fake_home))
     monkeypatch.setenv("HOME", str(fake_home))
     monkeypatch.setattr(Path, "home", staticmethod(lambda: fake_home))
@@ -208,13 +202,13 @@ def test_uninstall_removes_append_md_section(tmp_path: Path, monkeypatch) -> Non
     rule_path.write_text("# My Project\n\nSome instructions here.\n", encoding="utf-8")
 
     # Install appends section
-    install_tool(tool)
+    install_tool(tool, repo=workspace)
     content_after_install = rule_path.read_text(encoding="utf-8")
     assert "<!-- context-engine:start -->" in content_after_install
     assert "# My Project" in content_after_install
 
     # Uninstall strips only the CE section
-    report = uninstall_tool(tool)
+    report = uninstall_tool(tool, repo=workspace)
     assert report["ok"] is True
     assert report["rule_removed"] is True
     remaining = rule_path.read_text(encoding="utf-8")

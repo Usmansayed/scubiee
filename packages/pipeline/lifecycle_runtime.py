@@ -116,9 +116,16 @@ def set_desired_mode(mode: str) -> dict[str, Any]:
 
 
 def note_activity(*, now: float | None = None) -> dict[str, Any]:
+    """Mark engine use. Clears stale disconnect anchors so HTTP/CLI activity
+    keeps the idle clock honest (search/status must not race a prior client leave).
+    """
     policy = load_policy()
+    current = time.time() if now is None else now
     policy["desired_mode"] = DESIRED_RUN
-    policy["last_activity"] = time.time() if now is None else now
+    policy["last_activity"] = current
+    # Activity after the last client left means the engine is in use again —
+    # do not idle-stop off a stale last_client_left_at.
+    policy["last_client_left_at"] = None
     return save_policy(policy)
 
 
@@ -261,10 +268,12 @@ def should_idle_stop(*, now: float | None = None) -> bool:
     policy = load_policy()
     last_left = policy.get("last_client_left_at")
     last_activity = policy.get("last_activity")
-    anchor = last_left if last_left is not None else last_activity
-    if anchor is None:
+    # Use the most recent signal of use. Preferring only last_client_left_at
+    # ignored search/health activity and killed warm engines mid-session.
+    candidates = [float(x) for x in (last_left, last_activity) if x is not None]
+    if not candidates:
         return False
-    return (current - float(anchor)) >= idle_s
+    return (current - max(candidates)) >= idle_s
 
 
 def apply_idle_policy(*, now: float | None = None) -> dict[str, Any]:

@@ -6,6 +6,17 @@ import time
 import threading
 from pathlib import Path
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _default_no_engine_clients(monkeypatch):
+    """Unit tests must not defer sync because a live MCP client is registered."""
+    monkeypatch.setattr(
+        "pipeline.sync_loop.BackgroundSyncLoop._clients_active",
+        lambda self: False,
+    )
+
 
 def test_changed_file_ingress_normalizes_repo_relative_paths(tmp_path: Path):
     from pipeline.live_reindex import notify_changed_files
@@ -120,6 +131,7 @@ def test_bulk_reindex_for_501_to_6000_chunks(monkeypatch, tmp_path: Path):
     from pipeline.sync_loop import BackgroundSyncLoop
 
     loop = BackgroundSyncLoop(tmp_path, debounce_ms=0)
+    monkeypatch.setattr(loop, "_clients_active", lambda: False)
     bulk_calls: list[list[str]] = []
     live_calls: list[list[str]] = []
     # 600 paths × 1 chunk = 600 estimated, above 500 threshold
@@ -159,6 +171,35 @@ def test_bulk_reindex_for_501_to_6000_chunks(monkeypatch, tmp_path: Path):
     assert loop.status()["needs_full"] is False
     assert loop.status()["catchup_chunked"] is False
     assert loop.status()["sync_status"] == "ready"
+
+
+def test_active_clients_defer_bulk_reindex(monkeypatch, tmp_path: Path):
+    """MCP/IDE clients must not see mid-session vector wipe from bulk sync."""
+    from pipeline.sync_loop import BackgroundSyncLoop
+
+    loop = BackgroundSyncLoop(tmp_path, debounce_ms=0)
+    bulk_calls: list[list[str]] = []
+    monkeypatch.setattr(loop, "_clients_active", lambda *a, **k: True)
+    monkeypatch.setattr(
+        loop,
+        "_estimate_dirty_chunks",
+        lambda paths: (len(paths), {path: 1 for path in paths}),
+    )
+    monkeypatch.setattr(
+        loop,
+        "_bulk_sync_paths",
+        lambda paths, **_: bulk_calls.append(paths)
+        or {"refreshed": True, "strategy": "bulk_reindex"},
+    )
+
+    paths = [f"pkg/{n}.py" for n in range(600)]
+    loop.mark_dirty(paths, reason="watch")
+    out = loop.drain_due(now=time.monotonic() + 0.01)
+
+    assert bulk_calls == []
+    assert out[0]["strategy"] == "deferred_active_session"
+    assert out[0]["reason"] == "clients_active"
+    assert loop.dirty_ledger.due_paths(now=time.monotonic() + 20.0)
 
 
 def test_estimated_oversized_change_requires_explicit_full_index(monkeypatch, tmp_path: Path):

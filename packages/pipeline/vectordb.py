@@ -143,7 +143,9 @@ class FaissCollection:
             vectors = vectors.reshape(1, -1)
         id_list = [int(i) for i in ids]
         if vectors.shape[0] != len(id_list):
-            raise ValueError("vectors/ids length mismatch")
+            raise ValueError(
+                f"vectors/ids length mismatch: vectors={vectors.shape[0]} ids={len(id_list)}"
+            )
         if vectors.shape[1] != self.meta.dim:
             raise ValueError(f"dim mismatch: got {vectors.shape[1]} expected {self.meta.dim}")
         if payloads is not None and len(payloads) != len(id_list):

@@ -104,16 +104,19 @@ Run `scubiee <subcommand> --help` for flags on your installed version.
 
 ## Connect & disconnect
 
+Installs **global** MCP + rules once (under your user profile). No project files, no `CTX_REPO` pin — works in every repo. Paths: [connect-global-mcp-research.md](../connect-global-mcp-research.md).
+
 | Command | Purpose |
 |---------|---------|
-| `scubiee connect --cursor` | Wire Cursor MCP + `context-agent.mdc` rule |
-| `scubiee connect --claude-code --kiro` | Wire selected tools (see `--help`) |
-| `scubiee connect --all` | Connect all supported tools |
-| `scubiee connect --all --dry-run` | Preview paths that would be written |
-| `scubiee connect --kiro --repo /path/to/workspace` | Kiro: user + workspace MCP entries |
-| `scubiee disconnect --cursor` | Remove MCP entry + Cursor rule |
+| `scubiee connect --cursor` | Global Cursor MCP + `~/.cursor/rules/context-agent.mdc` |
+| `scubiee connect --claude-code --codex --kiro` | Wire selected tools (see `--help`) |
+| `scubiee connect --all` | Connect all supported tools (run once) |
+| `scubiee connect --all --dry-run` | Preview global paths that would be written |
+| `scubiee disconnect --cursor` | Remove global MCP entry + rule |
 | `scubiee disconnect --all` | Disconnect all tools |
 | `scubiee disconnect --all --dry-run` | Preview removals |
+
+`--repo` is deprecated/ignored (connect is global-only).
 
 **Supported slugs:** `cursor`, `claude-code`, `codex`, `kiro`, `windsurf`, `copilot`, `cline`, `roo-code`, `continue`, `zed`, `opencode`.
 

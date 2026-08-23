@@ -692,7 +692,9 @@ def cmd_engine(args: argparse.Namespace) -> int:
     from pipeline.client import EngineClient, engine_url
     from pipeline.daemon import ensure_daemon, is_running, start_daemon, stop_daemon
     from pipeline.lifecycle_runtime import (
+        DESIRED_RUN,
         DESIRED_STANDBY,
+        note_activity,
         register_logon_autostart,
         run_supervisor,
         set_desired_mode,
@@ -731,6 +733,9 @@ def cmd_engine(args: argparse.Namespace) -> int:
         print(json.dumps(out, indent=2, default=str))
         return 0 if out.get("ok") else 1
     if action == "start":
+        # Explicit start always means the user wants the engine running — do
+        # not inherit a leftover standby from a prior `engine stop`.
+        set_desired_mode(DESIRED_RUN)
         result = start_daemon(
             Path(args.path).resolve() if args.path else None,
             host=args.host,
@@ -739,7 +744,6 @@ def cmd_engine(args: argparse.Namespace) -> int:
         )
         # Start watchdog if daemon is usable (health may race past wait timeout)
         from pipeline.daemon import is_running as _ir
-        from pipeline.lifecycle_runtime import note_activity
 
         wd: dict
         if result.get("ok") or _ir():
@@ -1152,9 +1156,10 @@ def cmd_connect(args: argparse.Namespace) -> int:
         if fail_count:
             print(f"  {fail_count} failed — check errors above.", file=sys.stderr)
         print(
-            "\nThe global rule tells AI tools to call status() first.\n"
-            "If a project is NOT managed by Scubiee, the AI will\n"
-            "skip Scubiee tools and use native search — no errors, no noise.",
+            "\nGlobal MCP + rules installed. Restart/reload each tool once.\n"
+            "Works in every repo — Scubiee does not pin CTX_REPO.\n"
+            "If a project is NOT managed by Scubiee, agents skip Scubiee tools\n"
+            "after status() and use native search.",
             file=sys.stderr,
         )
 
@@ -1721,7 +1726,7 @@ def main(argv: list[str] | None = None) -> int:
         "--repo",
         type=Path,
         default=None,
-        help="Workspace repository for repo-aware integrations such as Kiro (default: current directory)",
+        help="Deprecated/ignored: connect is global-only (MCP+rules under your home profile)",
     )
     p_connect.set_defaults(func=cmd_connect)
 
@@ -1742,7 +1747,7 @@ def main(argv: list[str] | None = None) -> int:
         "--repo",
         type=Path,
         default=None,
-        help="Workspace repository for repo-aware integrations such as Kiro (default: current directory)",
+        help="Deprecated/ignored: disconnect is global-only",
     )
     p_disconnect.set_defaults(func=cmd_disconnect)
 

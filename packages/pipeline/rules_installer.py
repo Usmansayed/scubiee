@@ -1,90 +1,166 @@
-﻿"""Connect Scubiee to AI coding tools (MCP config + rules).
+﻿"""Connect Scubiee to AI coding tools — global MCP + rules only.
 
-Usage from CLI:
-    scubiee connect --cursor --claude-code --kiro --copilot
+Usage:
     scubiee connect --all
+    scubiee connect --cursor --claude-code --codex --kiro --opencode
+
+Never writes project configs. Never pins CTX_REPO.
+See docs/connect-global-mcp-research.md.
 """
 
 from __future__ import annotations
 
 import json
-import os
-import sys
-import textwrap
 from pathlib import Path
 from typing import Any
 
-from pipeline.mcp_install import interpreter, server_entry, write_kiro_mcp
+from pipeline.mcp_install import server_entry
 from pipeline.tool_registry import (
-    ALL_SLUGS,
     TOOL_MAP,
     ToolDef,
-    resolve_mcp_path,
-    resolve_rule_path,
+    resolve_mcp_user_path,
+    resolve_mcp_user_paths,
+    resolve_mcp_write_targets,
+    resolve_rule_user_path,
+    resolve_rule_user_paths,
 )
 
-
-# ---------------------------------------------------------------------------
-# Templates
-# ---------------------------------------------------------------------------
 
 def _templates_dir() -> Path:
     return Path(__file__).resolve().parent / "templates"
 
 
 def _rule_content_md() -> str:
-    """Universal markdown rule content."""
-    path = _templates_dir() / "context-engine.md"
-    return path.read_text(encoding="utf-8")
+    return (_templates_dir() / "context-engine.md").read_text(encoding="utf-8")
 
 
 def _rule_content_mdc() -> str:
-    """Cursor MDC format with frontmatter (same file as setup's write_cursor_rule)."""
-    path = _templates_dir() / "context-agent.mdc"
-    return path.read_text(encoding="utf-8")
+    return (_templates_dir() / "context-agent.mdc").read_text(encoding="utf-8")
 
 
-# Marker for idempotent append operations
 _MARKER_START = "<!-- context-engine:start -->"
 _MARKER_END = "<!-- context-engine:end -->"
+_SERVER_NAME = "context-engine"
 
 
 # ---------------------------------------------------------------------------
-# MCP config writers (per format)
+# Entry shaping
 # ---------------------------------------------------------------------------
 
-def _write_mcp_json(path: Path, key: str, entry: dict[str, Any]) -> None:
-    """Merge a context-engine server entry into a JSON MCP config."""
+def format_server_entry(
+    tool: ToolDef,
+    repo: Path | str | None = None,
+    *,
+    pin_repo: bool = False,
+    schema: str | None = None,
+) -> dict[str, Any]:
+    """Return only fields accepted by the target tool's MCP schema.
+
+    Global connect always uses pin_repo=False (repo ignored).
+    """
+    base = server_entry(repo if pin_repo else None)
+    cmd = str(base["command"])
+    args = [str(a) for a in base.get("args") or []]
+    env = {str(k): str(v) for k, v in (base.get("env") or {}).items()}
+
+    use_schema = schema or tool.mcp_schema
+    if use_schema == "claude":
+        return {"command": cmd, "args": args, "env": env}
+    if use_schema == "vscode":
+        return {"type": "stdio", "command": cmd, "args": args, "env": env}
+    if use_schema == "copilot_cli":
+        # GitHub Copilot CLI ~/.copilot/mcp-config.json
+        return {
+            "type": "local",
+            "command": cmd,
+            "args": args,
+            "env": env,
+            "tools": ["*"],
+        }
+    if use_schema == "opencode":
+        return {
+            "type": "local",
+            "enabled": True,
+            "command": [cmd, *args],
+            "environment": env,
+            "timeout": 120000,
+        }
+    if use_schema == "amp":
+        return {"command": cmd, "args": args, "env": env}
+    if use_schema == "codex":
+        return {"command": cmd, "args": args, "env": env}
+    if use_schema == "continue":
+        return {"name": _SERVER_NAME, "command": cmd, "args": args, "env": env}
+    if use_schema == "zed":
+        return {"command": cmd, "args": args, "env": env}
+    raise ValueError(f"unknown mcp_schema: {use_schema}")
+
+
+def _server_entry_for_tool(tool: ToolDef, repo: Path | str | None = None) -> dict[str, Any]:
+    return format_server_entry(tool, repo, pin_repo=False)
+
+
+# ---------------------------------------------------------------------------
+# MCP writers
+# ---------------------------------------------------------------------------
+
+def _load_json(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _write_json(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    data: dict[str, Any] = {}
-    if path.is_file():
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
-            data = {}
-    if not isinstance(data, dict):
-        data = {}
-    servers = data.setdefault(key, {})
-    if not isinstance(servers, dict):
-        servers = {}
-        data[key] = servers
-    servers["context-engine"] = entry
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
 
-def _write_mcp_toml(path: Path, _key: str, entry: dict[str, Any]) -> None:
-    """Write/merge context-engine into a TOML config (Codex style)."""
+def _write_mcp_json_keyed(path: Path, key: str, entry: dict[str, Any]) -> None:
+    data = _load_json(path)
+    servers = data.get(key)
+    if not isinstance(servers, dict):
+        servers = {}
+    servers[_SERVER_NAME] = entry
+    data[key] = servers
+    if key == "mcp" and "$schema" not in data:
+        data = {"$schema": "https://opencode.ai/config.json", **data}
+    _write_json(path, data)
+
+
+def _write_mcp_amp(path: Path, entry: dict[str, Any]) -> None:
+    data = _load_json(path)
+    servers = data.get("amp.mcpServers")
+    if not isinstance(servers, dict):
+        servers = {}
+    servers[_SERVER_NAME] = entry
+    data["amp.mcpServers"] = servers
+    _write_json(path, data)
+
+
+def _write_mcp_zed(path: Path, entry: dict[str, Any]) -> None:
+    data = _load_json(path)
+    servers = data.get("context_servers")
+    if not isinstance(servers, dict):
+        servers = {}
+    servers[_SERVER_NAME] = {
+        "command": entry["command"],
+        "args": entry.get("args") or [],
+        "env": entry.get("env") or {},
+    }
+    data["context_servers"] = servers
+    _write_json(path, data)
+
+
+def _write_mcp_toml(path: Path, entry: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    # Codex TOML format:
-    # [mcp_servers.context-engine]
-    # command = "python"
-    # args = ["-u", "-m", "pipeline.mcp_locate"]
-    # env = { CTX_ENGINE_URL = "..." }
     lines: list[str] = []
     if path.is_file():
         existing = path.read_text(encoding="utf-8")
-        # Remove any previous context-engine section
-        new_lines = []
+        new_lines: list[str] = []
         skip = False
         for line in existing.splitlines():
             if line.strip() == "[mcp_servers.context-engine]":
@@ -95,33 +171,24 @@ def _write_mcp_toml(path: Path, _key: str, entry: dict[str, Any]) -> None:
             if not skip:
                 new_lines.append(line)
         lines = new_lines
-    # Append new section
     lines.append("")
     lines.append("[mcp_servers.context-engine]")
     lines.append(f'command = "{entry["command"]}"')
     args_str = ", ".join(f'"{a}"' for a in entry.get("args", []))
     lines.append(f"args = [{args_str}]")
     if entry.get("env"):
-        env_parts = []
-        for k, v in entry["env"].items():
-            env_parts.append(f'{k} = "{v}"')
+        env_parts = [f'{k} = "{v}"' for k, v in entry["env"].items()]
         lines.append(f"env = {{ {', '.join(env_parts)} }}")
     lines.append("")
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
-def _write_mcp_yaml(path: Path, _key: str, entry: dict[str, Any]) -> None:
-    """Merge context-engine into a YAML config (Continue style)."""
+def _write_mcp_continue_yaml(path: Path, entry: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    # Continue uses mcpServers as a top-level list of objects
-    # We'll write a simple YAML block — avoid pulling in pyyaml dependency
     marker = "# context-engine"
-    existing = ""
-    if path.is_file():
-        existing = path.read_text(encoding="utf-8")
-    # Remove previous CE block
+    existing = path.read_text(encoding="utf-8") if path.is_file() else ""
     lines = existing.splitlines()
-    new_lines = []
+    new_lines: list[str] = []
     skip = False
     for line in lines:
         if marker in line:
@@ -131,10 +198,11 @@ def _write_mcp_yaml(path: Path, _key: str, entry: dict[str, Any]) -> None:
             skip = False
         if not skip:
             new_lines.append(line)
-    # Append new CE block
+    while new_lines and not new_lines[-1].strip():
+        new_lines.pop()
     new_lines.append("")
     new_lines.append(f"mcpServers:  {marker}")
-    new_lines.append(f"  - name: context-engine")
+    new_lines.append(f"  - name: {entry.get('name', _SERVER_NAME)}")
     new_lines.append(f'    command: "{entry["command"]}"')
     args_yaml = ", ".join(f'"{a}"' for a in entry.get("args", []))
     new_lines.append(f"    args: [{args_yaml}]")
@@ -146,12 +214,26 @@ def _write_mcp_yaml(path: Path, _key: str, entry: dict[str, Any]) -> None:
     path.write_text("\n".join(new_lines), encoding="utf-8")
 
 
-_MCP_WRITERS = {
-    "json": _write_mcp_json,
-    "jsonc": _write_mcp_json,
-    "toml": _write_mcp_toml,
-    "yaml": _write_mcp_yaml,
-}
+def write_mcp_config(
+    tool: ToolDef,
+    path: Path,
+    entry: dict[str, Any],
+    *,
+    schema: str | None = None,
+    key: str | None = None,
+) -> None:
+    use_schema = schema or tool.mcp_schema
+    use_key = key if key is not None else tool.mcp_key
+    if use_schema == "amp":
+        _write_mcp_amp(path, entry)
+    elif use_schema == "zed":
+        _write_mcp_zed(path, entry)
+    elif use_schema == "codex":
+        _write_mcp_toml(path, entry)
+    elif use_schema == "continue":
+        _write_mcp_continue_yaml(path, entry)
+    else:
+        _write_mcp_json_keyed(path, use_key, entry)
 
 
 # ---------------------------------------------------------------------------
@@ -159,30 +241,23 @@ _MCP_WRITERS = {
 # ---------------------------------------------------------------------------
 
 def _write_rule_mdc(path: Path) -> None:
-    """Write Cursor MDC rule file (overwrite)."""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(_rule_content_mdc(), encoding="utf-8")
 
 
 def _write_rule_md(path: Path) -> None:
-    """Write standalone markdown rule file (overwrite)."""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(_rule_content_md(), encoding="utf-8")
 
 
 def _write_rule_append_md(path: Path) -> None:
-    """Append CE rule section to an existing markdown file (idempotent)."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    existing = ""
-    if path.is_file():
-        existing = path.read_text(encoding="utf-8")
-    # If already present, replace the section
+    existing = path.read_text(encoding="utf-8") if path.is_file() else ""
     if _MARKER_START in existing:
         before = existing.split(_MARKER_START)[0]
         after = existing.split(_MARKER_END)[-1] if _MARKER_END in existing else ""
         existing = before.rstrip() + "\n\n" if before.strip() else ""
         existing += after.lstrip() if after.strip() else ""
-    # Append the marked section
     content = _rule_content_md()
     section = f"{_MARKER_START}\n{content}\n{_MARKER_END}\n"
     if existing and not existing.endswith("\n"):
@@ -200,28 +275,15 @@ _RULE_WRITERS = {
 }
 
 
-# ---------------------------------------------------------------------------
-# Public installer
-# ---------------------------------------------------------------------------
+def _write_rule(tool: ToolDef, path: Path) -> None:
+    writer = _RULE_WRITERS.get(tool.rule_format)
+    if writer:
+        writer(path)
 
-def _server_entry_for_tool(tool: ToolDef, repo: Path | str | None = None) -> dict[str, Any]:
-    """Format MCP block for the target tool (OpenCode uses a different schema)."""
-    entry = server_entry(repo)
-    if tool.slug != "opencode":
-        return entry
-    cmd = [str(entry["command"])]
-    cmd.extend(str(a) for a in entry.get("args") or [])
-    env = {str(k): str(v) for k, v in (entry.get("env") or {}).items()}
-    if repo is not None:
-        env["CTX_REPO"] = str(Path(repo).resolve()).replace("\\", "/")
-    return {
-        "type": "local",
-        "enabled": True,
-        "command": cmd,
-        "environment": env,
-        "timeout": 120000,
-    }
 
+# ---------------------------------------------------------------------------
+# Public installer (global only)
+# ---------------------------------------------------------------------------
 
 def install_tool(
     tool: ToolDef,
@@ -229,74 +291,69 @@ def install_tool(
     dry_run: bool = False,
     repo: Path | str | None = None,
 ) -> dict[str, Any]:
-    """Install MCP config + rule for one tool. Returns a report dict.
-
-    Kiro is special: its user-level entry remains repo-neutral while a
-    workspace-level entry carries the explicit repository path.
-    """
-    mcp_path = resolve_mcp_path(tool)
-    rule_path = resolve_rule_path(tool)
-    entry = _server_entry_for_tool(tool, repo)
-    workspace_root = Path(repo or Path.cwd()).resolve() if tool.slug == "kiro" else None
-    workspace_mcp_path = workspace_root / tool.mcp_path if workspace_root else None
+    """Install global MCP + rule for one tool. ``repo`` is ignored (compat)."""
+    write_targets = resolve_mcp_write_targets(tool)
+    mcp_paths = [p for p, _s, _k in write_targets]
+    rule_paths = resolve_rule_user_paths(tool)
+    primary = mcp_paths[0] if mcp_paths else None
+    primary_rule = rule_paths[0] if rule_paths else None
 
     report: dict[str, Any] = {
         "tool": tool.name,
         "slug": tool.slug,
-        "mcp_path": str(mcp_path),
-        "rule_path": str(rule_path) if rule_path else None,
+        "mcp_schema": tool.mcp_schema,
+        "scope": "global",
+        "mcp_path": str(primary) if primary else None,
+        "mcp_paths": [str(p) for p in mcp_paths],
+        "rule_path": str(primary_rule) if primary_rule else None,
+        "rule_paths": [str(p) for p in rule_paths],
         "dry_run": dry_run,
         "ok": True,
         "errors": [],
     }
-    if workspace_mcp_path is not None:
-        report["workspace_mcp_path"] = str(workspace_mcp_path)
-        report["workspace_repo"] = str(workspace_root)
+    if repo is not None:
+        report["repo_ignored"] = True
+        report["note"] = "connect is global-only; --repo is ignored"
 
     if dry_run:
-        report["would_write_mcp"] = str(mcp_path)
-        report["would_write_rule"] = str(rule_path) if rule_path else None
-        if workspace_mcp_path is not None:
-            report["would_write_workspace_mcp"] = str(workspace_mcp_path)
+        report["would_write_mcp"] = str(primary) if primary else None
+        report["would_write_mcp_paths"] = [str(p) for p in mcp_paths]
+        report["would_write_rule"] = str(primary_rule) if primary_rule else None
+        report["would_write_rule_paths"] = [str(p) for p in rule_paths]
         return report
 
-    # Write MCP config
     try:
-        if tool.slug == "kiro":
-            paths = write_kiro_mcp(workspace_root)
-            report["mcp_path"] = paths["user"]
-            report["workspace_mcp_path"] = paths["project"]
-            report["mcp_written"] = True
-            report["workspace_mcp_written"] = True
+        if not write_targets:
+            report["errors"].append(f"{tool.slug}: no global MCP path configured")
+            report["ok"] = False
         else:
-            writer = _MCP_WRITERS.get(tool.mcp_format)
-            if writer:
-                writer(mcp_path, tool.mcp_key, entry)
-                report["mcp_written"] = True
-            else:
-                report["mcp_written"] = False
-                report["errors"].append(f"unsupported mcp_format: {tool.mcp_format}")
-    except Exception as exc:
+            for path, schema, key in write_targets:
+                entry = format_server_entry(tool, pin_repo=False, schema=schema)
+                write_mcp_config(tool, path, entry, schema=schema, key=key)
+                if "CTX_REPO" in (entry.get("env") or {}) or "CTX_REPO" in (
+                    entry.get("environment") or {}
+                ):
+                    report["errors"].append(
+                        "internal error: CTX_REPO leaked into global entry"
+                    )
+                    report["ok"] = False
+            report["mcp_written"] = True
+    except Exception as exc:  # noqa: BLE001
         report["mcp_written"] = False
         report["errors"].append(f"mcp write failed: {exc}")
         report["ok"] = False
 
-    # Write rule
-    if rule_path and tool.rule_format != "none":
-        try:
-            rule_writer = _RULE_WRITERS.get(tool.rule_format)
-            if rule_writer:
-                rule_writer(rule_path)
-                report["rule_written"] = True
-            else:
-                report["rule_written"] = False
-                report["errors"].append(f"unsupported rule_format: {tool.rule_format}")
-        except Exception as exc:
-            report["rule_written"] = False
-            report["errors"].append(f"rule write failed: {exc}")
-            report["ok"] = False
-    else:
-        report["rule_written"] = None  # not applicable
+    try:
+        if rule_paths and tool.rule_format != "none":
+            for rule_path in rule_paths:
+                _write_rule(tool, rule_path)
+            report["rule_written"] = True
+        else:
+            report["rule_written"] = None
+    except Exception as exc:  # noqa: BLE001
+        report["rule_written"] = False
+        report["errors"].append(f"rule write failed: {exc}")
+        report["ok"] = False
 
     return report
 
@@ -307,7 +364,6 @@ def install_tools(
     dry_run: bool = False,
     repo: Path | str | None = None,
 ) -> list[dict[str, Any]]:
-    """Install for multiple tools. Returns list of reports."""
     results = []
     for slug in slugs:
         tool = TOOL_MAP.get(slug)
@@ -319,33 +375,46 @@ def install_tools(
 
 
 # ---------------------------------------------------------------------------
-# MCP config removers (per format)
+# Removers
 # ---------------------------------------------------------------------------
 
-def _remove_mcp_json(path: Path, key: str) -> bool:
-    """Remove context-engine from a JSON MCP config. Returns True if removed."""
+def _remove_mcp_json_keyed(path: Path, key: str) -> bool:
     if not path.is_file():
         return False
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
+    data = _load_json(path)
+    servers = data.get(key)
+    if not isinstance(servers, dict) or _SERVER_NAME not in servers:
         return False
-    servers = data.get(key, {})
-    if not isinstance(servers, dict) or "context-engine" not in servers:
-        return False
-    del servers["context-engine"]
-    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    del servers[_SERVER_NAME]
+    data[key] = servers
+    _write_json(path, data)
     return True
 
 
-def _remove_mcp_toml(path: Path, _key: str) -> bool:
-    """Remove context-engine section from a TOML config."""
+def _remove_mcp_amp(path: Path) -> bool:
+    if not path.is_file():
+        return False
+    data = _load_json(path)
+    servers = data.get("amp.mcpServers")
+    if not isinstance(servers, dict) or _SERVER_NAME not in servers:
+        return False
+    del servers[_SERVER_NAME]
+    data["amp.mcpServers"] = servers
+    _write_json(path, data)
+    return True
+
+
+def _remove_mcp_zed(path: Path) -> bool:
+    return _remove_mcp_json_keyed(path, "context_servers")
+
+
+def _remove_mcp_toml(path: Path) -> bool:
     if not path.is_file():
         return False
     existing = path.read_text(encoding="utf-8")
     if "[mcp_servers.context-engine]" not in existing:
         return False
-    new_lines = []
+    new_lines: list[str] = []
     skip = False
     for line in existing.splitlines():
         if line.strip() == "[mcp_servers.context-engine]":
@@ -355,7 +424,6 @@ def _remove_mcp_toml(path: Path, _key: str) -> bool:
             skip = False
         if not skip:
             new_lines.append(line)
-    # Strip trailing blank lines from removal
     while new_lines and not new_lines[-1].strip():
         new_lines.pop()
     new_lines.append("")
@@ -363,8 +431,7 @@ def _remove_mcp_toml(path: Path, _key: str) -> bool:
     return True
 
 
-def _remove_mcp_yaml(path: Path, _key: str) -> bool:
-    """Remove context-engine block from a YAML config."""
+def _remove_mcp_continue_yaml(path: Path) -> bool:
     if not path.is_file():
         return False
     existing = path.read_text(encoding="utf-8")
@@ -372,7 +439,7 @@ def _remove_mcp_yaml(path: Path, _key: str) -> bool:
     if marker not in existing:
         return False
     lines = existing.splitlines()
-    new_lines = []
+    new_lines: list[str] = []
     skip = False
     for line in lines:
         if marker in line:
@@ -389,20 +456,27 @@ def _remove_mcp_yaml(path: Path, _key: str) -> bool:
     return True
 
 
-_MCP_REMOVERS = {
-    "json": _remove_mcp_json,
-    "jsonc": _remove_mcp_json,
-    "toml": _remove_mcp_toml,
-    "yaml": _remove_mcp_yaml,
-}
+def remove_mcp_config(
+    tool: ToolDef,
+    path: Path,
+    *,
+    schema: str | None = None,
+    key: str | None = None,
+) -> bool:
+    use_schema = schema or tool.mcp_schema
+    use_key = key if key is not None else tool.mcp_key
+    if use_schema == "amp":
+        return _remove_mcp_amp(path)
+    if use_schema == "zed":
+        return _remove_mcp_zed(path)
+    if use_schema == "codex":
+        return _remove_mcp_toml(path)
+    if use_schema == "continue":
+        return _remove_mcp_continue_yaml(path)
+    return _remove_mcp_json_keyed(path, use_key)
 
-
-# ---------------------------------------------------------------------------
-# Rule removers
-# ---------------------------------------------------------------------------
 
 def _remove_rule_file(path: Path) -> bool:
-    """Delete a standalone rule file (mdc or md format)."""
     if not path.is_file():
         return False
     path.unlink()
@@ -410,7 +484,6 @@ def _remove_rule_file(path: Path) -> bool:
 
 
 def _remove_rule_section(path: Path) -> bool:
-    """Remove the context-engine section from an append-md file."""
     if not path.is_file():
         return False
     existing = path.read_text(encoding="utf-8")
@@ -436,88 +509,61 @@ _RULE_REMOVERS = {
 }
 
 
-# ---------------------------------------------------------------------------
-# Public uninstaller
-# ---------------------------------------------------------------------------
-
 def uninstall_tool(
     tool: ToolDef,
     *,
     dry_run: bool = False,
     repo: Path | str | None = None,
 ) -> dict[str, Any]:
-    """Remove MCP config entry + rule for one tool. Returns a report dict."""
-    mcp_path = resolve_mcp_path(tool)
-    rule_path = resolve_rule_path(tool)
-    workspace_root = Path(repo or Path.cwd()).resolve() if tool.slug == "kiro" else None
-    workspace_mcp_path = workspace_root / tool.mcp_path if workspace_root else None
+    write_targets = resolve_mcp_write_targets(tool)
+    mcp_paths = [p for p, _s, _k in write_targets]
+    rule_paths = resolve_rule_user_paths(tool)
+    primary = mcp_paths[0] if mcp_paths else None
+    primary_rule = rule_paths[0] if rule_paths else None
 
     report: dict[str, Any] = {
         "tool": tool.name,
         "slug": tool.slug,
-        "mcp_path": str(mcp_path),
-        "rule_path": str(rule_path) if rule_path else None,
+        "scope": "global",
+        "mcp_path": str(primary) if primary else None,
+        "mcp_paths": [str(p) for p in mcp_paths],
+        "rule_path": str(primary_rule) if primary_rule else None,
+        "rule_paths": [str(p) for p in rule_paths],
         "dry_run": dry_run,
         "ok": True,
         "errors": [],
         "mcp_removed": False,
         "rule_removed": False,
     }
-    if workspace_mcp_path is not None:
-        report["workspace_mcp_path"] = str(workspace_mcp_path)
 
     if dry_run:
-        report["would_remove_mcp"] = str(mcp_path)
-        report["would_remove_rule"] = str(rule_path) if rule_path else None
-        if workspace_mcp_path is not None:
-            report["would_remove_workspace_mcp"] = str(workspace_mcp_path)
+        report["would_remove_mcp"] = str(primary) if primary else None
+        report["would_remove_mcp_paths"] = [str(p) for p in mcp_paths]
+        report["would_remove_rule"] = str(primary_rule) if primary_rule else None
+        report["would_remove_rule_paths"] = [str(p) for p in rule_paths]
         return report
 
-    # Remove MCP config entry
     try:
-        if tool.slug == "kiro":
-            # Remove from both user and workspace level
-            user_path = Path.home() / ".kiro" / "settings" / "mcp.json"
-            removed_user = _remove_mcp_json(user_path, tool.mcp_key)
-            removed_project = False
-            if workspace_mcp_path:
-                removed_project = _remove_mcp_json(workspace_mcp_path, tool.mcp_key)
-            report["mcp_removed"] = removed_user or removed_project
-            if removed_user:
-                report["user_mcp_removed"] = True
-            if removed_project:
-                report["workspace_mcp_removed"] = True
-        elif tool.slug == "cursor":
-            removed = _remove_mcp_json(mcp_path, tool.mcp_key)
-            report["mcp_removed"] = removed
-            # Legacy name from pre-0.2.54 connect (before rule unification).
-            legacy_rule = Path.home() / ".cursor" / "rules" / "context-engine.mdc"
-            if legacy_rule.is_file():
-                legacy_rule.unlink()
-                report["legacy_rule_removed"] = str(legacy_rule)
-        else:
-            remover = _MCP_REMOVERS.get(tool.mcp_format)
-            if remover:
-                report["mcp_removed"] = remover(mcp_path, tool.mcp_key)
-            else:
-                report["errors"].append(f"unsupported mcp_format: {tool.mcp_format}")
-    except Exception as exc:
+        removed = False
+        for path, schema, key in write_targets:
+            removed = remove_mcp_config(tool, path, schema=schema, key=key) or removed
+        report["mcp_removed"] = removed
+    except Exception as exc:  # noqa: BLE001
         report["errors"].append(f"mcp removal failed: {exc}")
         report["ok"] = False
 
-    # Remove rule
-    if rule_path and tool.rule_format != "none":
-        try:
-            rule_remover = _RULE_REMOVERS.get(tool.rule_format)
-            if rule_remover:
-                report["rule_removed"] = rule_remover(rule_path)
-            else:
-                report["errors"].append(f"unsupported rule_format: {tool.rule_format}")
-        except Exception as exc:
-            report["errors"].append(f"rule removal failed: {exc}")
-            report["ok"] = False
-    else:
-        report["rule_removed"] = None  # not applicable
+    try:
+        remover = _RULE_REMOVERS.get(tool.rule_format)
+        if remover and rule_paths and tool.rule_format != "none":
+            any_removed = False
+            for rule_path in rule_paths:
+                any_removed = remover(rule_path) or any_removed
+            report["rule_removed"] = any_removed
+        else:
+            report["rule_removed"] = None
+    except Exception as exc:  # noqa: BLE001
+        report["errors"].append(f"rule removal failed: {exc}")
+        report["ok"] = False
 
     return report
 
@@ -528,7 +574,6 @@ def uninstall_tools(
     dry_run: bool = False,
     repo: Path | str | None = None,
 ) -> list[dict[str, Any]]:
-    """Uninstall for multiple tools. Returns list of reports."""
     results = []
     for slug in slugs:
         tool = TOOL_MAP.get(slug)

@@ -536,9 +536,33 @@ def incremental_sync(
         dim = int(meta.get("dim") or (matrix.shape[1] if matrix is not None and matrix.size else 768))
         bits_i = int(meta.get("bits") or bits)
         if col is None:
-            # create empty then replace
+            # create empty then replace — matrix only covers embed_records, not all merged
+            import numpy as np
+
+            if not merged:
+                full_mat = np.zeros((0, dim), dtype=np.float32)
+            elif matrix is not None and int(matrix.shape[0]) == len(merged):
+                full_mat = np.asarray(matrix, dtype=np.float32)
+            else:
+                if embedder is None:
+                    model = str(meta.get("embed_model") or "nomic-ai/CodeRankEmbed")
+                    try:
+                        from pipeline.engine import get_embedder
+
+                        embedder = get_embedder(
+                            model, dim=meta.get("dim"), cache_path=store.embed_cache
+                        )
+                    except Exception:
+                        embedder = Embedder(
+                            model=model,
+                            cache_path=store.embed_cache,
+                            batch_size=64,
+                            max_seq_length=256 if meta.get("fast") else 512,
+                            dim=meta.get("dim"),
+                        )
+                full_mat = embedder.embed_many([c.enriched for c in merged])
             store.upsert_vectors(
-                matrix if matrix is not None else __import__("numpy").zeros((0, dim), dtype="float32"),
+                full_mat,
                 merged,
                 dim=dim,
                 bits=bits_i,
@@ -614,8 +638,33 @@ def incremental_sync(
                 col.replace_all(full, [c.id for c in merged], payloads)
                 store.vdb.save_collection(col.name)
             else:
+                # keep empty or collection empty — never upsert a partial embed batch
+                import numpy as np
+
+                if not merged:
+                    full_mat = np.zeros((0, dim), dtype=np.float32)
+                elif matrix is not None and int(matrix.shape[0]) == len(merged):
+                    full_mat = np.asarray(matrix, dtype=np.float32)
+                else:
+                    if embedder is None:
+                        model = str(meta.get("embed_model") or "nomic-ai/CodeRankEmbed")
+                        try:
+                            from pipeline.engine import get_embedder
+
+                            embedder = get_embedder(
+                                model, dim=meta.get("dim"), cache_path=store.embed_cache
+                            )
+                        except Exception:
+                            embedder = Embedder(
+                                model=model,
+                                cache_path=store.embed_cache,
+                                batch_size=64,
+                                max_seq_length=256 if meta.get("fast") else 512,
+                                dim=meta.get("dim"),
+                            )
+                    full_mat = embedder.embed_many([c.enriched for c in merged])
                 store.upsert_vectors(
-                    matrix if matrix is not None else np.zeros((0, dim), dtype=np.float32),
+                    full_mat,
                     merged,
                     dim=dim,
                     bits=bits_i,
