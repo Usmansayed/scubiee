@@ -274,33 +274,41 @@ def cmd_preflight(args: argparse.Namespace) -> int:
 
 
 def cmd_stop(args: argparse.Namespace) -> int:
-    """Stop daemon, watchdog, and uv-tool MCP processes (unlocks files on Windows)."""
-    from pipeline.daemon import stop_daemon
-    from pipeline.lifecycle_runtime import DESIRED_STANDBY, set_desired_mode
-    from pipeline.process_control import stop_all_context_engine_processes
-    from pipeline.watchdog import stop_watchdog
+    """Stop Scubiee globally — kills processes, disables MCP, hides rules."""
+    from pipeline.pause_resume import is_paused, pause
 
-    set_desired_mode(DESIRED_STANDBY)
-    stop_all = stop_all_context_engine_processes()
-    out = {
-        "ok": bool(stop_all.get("ok")),
-        "watchdog": stop_watchdog(),
-        "engine": stop_daemon(),
-        "processes": stop_all,
-        "next": (
-            "To remove scubiee entirely: scubiee wipe --all --yes "
-            "(stops processes, wipes state, uninstalls the uv tool). "
-            "Reload Cursor if MCP was connected."
-        ),
-    }
-    if stop_all.get("remaining"):
-        out["ok"] = False
-        out["hint"] = (
-            "Some processes still hold files (usually Cursor MCP). "
-            "Quit Cursor completely, then run: scubiee wipe --all --yes"
-        )
-    print(json.dumps(out, indent=2, default=str))
-    return 0 if out.get("ok") else 1
+    if is_paused():
+        if sys.stdout.isatty():
+            from pipeline.cli_ui import info
+
+            info("Scubiee is already stopped")
+        else:
+            print(json.dumps({"ok": True, "already_paused": True}, indent=2))
+        return 0
+
+    result = pause()
+
+    if sys.stdout.isatty():
+        from pipeline.cli_ui import info, kv, success
+
+        print("", file=sys.stderr)
+        success("Scubiee stopped", stream=sys.stderr)
+        tools = result.get("connected_tools", [])
+        if tools:
+            kv("Tools paused", ", ".join(tools), stream=sys.stderr)
+        disabled = result.get("disabled_mcp", [])
+        if disabled:
+            kv("MCP disabled", str(len(disabled)), stream=sys.stderr)
+        renamed = result.get("renamed_rules", [])
+        if renamed:
+            kv("Rules hidden", str(len(renamed)), stream=sys.stderr)
+        print("", file=sys.stderr)
+        info("Agents will use native tools. Resume with: scubiee resume", stream=sys.stderr)
+        print("", file=sys.stderr)
+    else:
+        print(json.dumps(result, indent=2, default=str))
+
+    return 0 if result.get("ok") else 1
 
 
 def cmd_wipe(args: argparse.Namespace) -> int:
@@ -362,7 +370,12 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         out = doctor_all()
     else:
         out = doctor_repo(root)
-    print(json.dumps(out, indent=2, default=str))
+    if sys.stdout.isatty():
+        from pipeline.cli_ui import print_doctor_summary
+
+        print_doctor_summary(out)
+    else:
+        print(json.dumps(out, indent=2, default=str))
     return 0 if out.get("ok") else 1
 
 
@@ -594,26 +607,28 @@ def cmd_status(args: argparse.Namespace) -> int:
     except Exception:
         warm = {"ok": False, "warm": False}
 
-    print(
-        json.dumps(
-            {
-                "root": str(root),
-                "store": str(store.base),
-                "collection": store.collection_name,
-                "meta": meta,
-                "chunks": len(store.load_chunks()),
-                "vectors": col.stats() if col else None,
-                "merkle_files": len(store.load_merkle()),
-                "freshness": freshness,
-                "vectordb": {
-                    "root": str(vdb.root),
-                    "collections": vdb.list_collections(),
-                },
-                "server": warm,
-            },
-            indent=2,
-        )
-    )
+    data = {
+        "root": str(root),
+        "store": str(store.base),
+        "collection": store.collection_name,
+        "meta": meta,
+        "chunks": len(store.load_chunks()),
+        "vectors": col.stats() if col else None,
+        "merkle_files": len(store.load_merkle()),
+        "freshness": freshness,
+        "vectordb": {
+            "root": str(vdb.root),
+            "collections": vdb.list_collections(),
+        },
+        "server": warm,
+    }
+
+    if sys.stdout.isatty() and not getattr(args, "json", False):
+        from pipeline.cli_ui import print_status_summary
+
+        print_status_summary(data)
+    else:
+        print(json.dumps(data, indent=2))
     return 0
 
 
@@ -908,6 +923,10 @@ def cmd_init(args: argparse.Namespace) -> int:
         except Exception as exc:  # noqa: BLE001
             out["daemon"] = {"ok": False, "error": str(exc)}
         bar.finish("Ready")
+        if sys.stdout.isatty():
+            from pipeline.cli_ui import print_init_summary
+
+            print_init_summary(out)
     else:
         message = str(out.get("error") or "init failed")
         if out.get("confirmation_required"):
@@ -1143,26 +1162,14 @@ def cmd_connect(args: argparse.Namespace) -> int:
     repo = getattr(args, "repo", None)
     results = install_tools(selected, dry_run=dry_run, repo=repo)
 
-    # Print results
-    print(json.dumps(results, indent=2, default=str))
+    if sys.stdout.isatty():
+        from pipeline.cli_ui import print_connect_summary
 
-    # Human-friendly summary
-    ok_count = sum(1 for r in results if r.get("ok"))
-    fail_count = len(results) - ok_count
-    if dry_run:
-        print(f"\n[dry-run] Would connect {len(results)} tool(s).", file=sys.stderr)
+        print_connect_summary(results, action="Connected", dry_run=dry_run)
     else:
-        print(f"\nConnected {ok_count} tool(s).", file=sys.stderr)
-        if fail_count:
-            print(f"  {fail_count} failed — check errors above.", file=sys.stderr)
-        print(
-            "\nGlobal MCP + rules installed. Restart/reload each tool once.\n"
-            "Works in every repo — Scubiee does not pin CTX_REPO.\n"
-            "If a project is NOT managed by Scubiee, agents skip Scubiee tools\n"
-            "after status() and use native search.",
-            file=sys.stderr,
-        )
+        print(json.dumps(results, indent=2, default=str))
 
+    fail_count = sum(1 for r in results if not r.get("ok"))
     return 0 if fail_count == 0 else 1
 
 
@@ -1189,27 +1196,53 @@ def cmd_disconnect(args: argparse.Namespace) -> int:
     repo = getattr(args, "repo", None)
     results = uninstall_tools(selected, dry_run=dry_run, repo=repo)
 
-    # Print results
-    print(json.dumps(results, indent=2, default=str))
+    if sys.stdout.isatty():
+        from pipeline.cli_ui import print_connect_summary
 
-    # Human-friendly summary
-    ok_count = sum(1 for r in results if r.get("ok"))
-    removed_mcp = sum(1 for r in results if r.get("mcp_removed"))
-    removed_rule = sum(1 for r in results if r.get("rule_removed"))
-    fail_count = len(results) - ok_count
-    if dry_run:
-        print(f"\n[dry-run] Would disconnect {len(results)} tool(s).", file=sys.stderr)
+        print_connect_summary(results, action="Disconnected", dry_run=dry_run)
     else:
-        print(
-            f"\nDisconnected {ok_count} tool(s): "
-            f"{removed_mcp} MCP config(s) removed, "
-            f"{removed_rule} rule file(s) removed.",
-            file=sys.stderr,
-        )
-        if fail_count:
-            print(f"  {fail_count} failed — check errors above.", file=sys.stderr)
+        print(json.dumps(results, indent=2, default=str))
 
+    fail_count = sum(1 for r in results if not r.get("ok"))
     return 0 if fail_count == 0 else 1
+
+
+def cmd_global_resume(args: argparse.Namespace) -> int:
+    """Resume Scubiee — re-enables MCP, restores rules, reconciles."""
+    from pipeline.pause_resume import is_paused, resume
+
+    if not is_paused():
+        if sys.stdout.isatty():
+            from pipeline.cli_ui import info
+
+            info("Scubiee is already active")
+        else:
+            print(json.dumps({"ok": True, "already_active": True}, indent=2))
+        return 0
+
+    result = resume()
+
+    if sys.stdout.isatty():
+        from pipeline.cli_ui import info, kv, success, warn
+
+        print("", file=sys.stderr)
+        if result.get("ok"):
+            success("Scubiee resumed", stream=sys.stderr)
+        else:
+            warn("Scubiee resumed with warnings", stream=sys.stderr)
+        tools = result.get("connected_tools", [])
+        if tools:
+            kv("Tools restored", ", ".join(tools), stream=sys.stderr)
+        reconciled = result.get("files_reconciled", 0)
+        if reconciled:
+            kv("Files synced", str(reconciled), stream=sys.stderr)
+        print("", file=sys.stderr)
+        info("Agents will use Scubiee MCP tools again.", stream=sys.stderr)
+        print("", file=sys.stderr)
+    else:
+        print(json.dumps(result, indent=2, default=str))
+
+    return 0 if result.get("ok") else 1
 
 
 def _write_mcp_config(repo: Path, host: str, port: int) -> None:
@@ -1407,14 +1440,8 @@ def main(argv: list[str] | None = None) -> int:
     p_activate.add_argument("path", nargs="?", default=".")
     p_activate.set_defaults(func=cmd_repo_lifecycle, command="activate")
 
-    p_pause = sub.add_parser("pause", help="Pause repository background indexing")
-    p_pause.add_argument("path", nargs="?", default=".")
-    p_pause.add_argument("--reason", default=None)
-    p_pause.set_defaults(func=cmd_repo_lifecycle, command="pause")
-
-    p_resume = sub.add_parser("resume", help="Resume repository background indexing")
-    p_resume.add_argument("path", nargs="?", default=".")
-    p_resume.set_defaults(func=cmd_repo_lifecycle, command="resume")
+    p_resume = sub.add_parser("resume", help="Resume Scubiee (re-enables MCP, restores rules, reconciles changes)")
+    p_resume.set_defaults(func=cmd_global_resume)
 
     p_sync_now = sub.add_parser("sync-now", help="Reconcile repository freshness now")
     p_sync_now.add_argument("path", nargs="?", default=".")
@@ -1486,6 +1513,7 @@ def main(argv: list[str] | None = None) -> int:
     p_status = sub.add_parser("status", help="Show index + freshness status")
     p_status.add_argument("path", nargs="?", default=".")
     p_status.add_argument("--url", default="http://127.0.0.1:8765")
+    p_status.add_argument("--json", action="store_true", help="Output raw JSON (default when piped)")
     p_status.set_defaults(func=cmd_status)
 
     p_sync = sub.add_parser("sync", help="Incremental re-embed files changed since last index")
@@ -1660,7 +1688,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p_stop = sub.add_parser(
         "stop",
-        help="Stop engine, watchdog, and MCP processes (run before wipe/uninstall on Windows)",
+        help="Stop Scubiee (kills processes, disables MCP, hides rules). Resume with: scubiee resume",
     )
     p_stop.set_defaults(func=cmd_stop)
 

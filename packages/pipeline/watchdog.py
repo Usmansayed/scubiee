@@ -271,6 +271,10 @@ def watchdog_loop(*, stop_after: float | None = None) -> None:
 
 def start_watchdog() -> dict[str, Any]:
     """Spawn detached watchdog if enabled and not already running."""
+    from pipeline.pause_resume import is_paused
+
+    if is_paused():
+        return {"ok": True, "skipped": True, "reason": "globally_paused"}
     if not watchdog_enabled():
         return {"ok": True, "skipped": True, "reason": "CTX_WATCHDOG=0"}
     if is_watchdog_running():

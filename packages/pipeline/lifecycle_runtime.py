@@ -290,6 +290,10 @@ def apply_idle_policy(*, now: float | None = None) -> dict[str, Any]:
 
 
 def engine_should_be_running() -> bool:
+    from pipeline.pause_resume import is_paused
+
+    if is_paused():
+        return False
     return load_policy().get("desired_mode") == DESIRED_RUN
 
 

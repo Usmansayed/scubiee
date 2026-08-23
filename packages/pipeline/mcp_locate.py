@@ -1856,6 +1856,19 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
     # ---- status (all surfaces) --------------------------------------------
     def status_impl() -> str:
         """Health / tool list only — not for finding code."""
+        from pipeline.pause_resume import is_paused
+
+        if is_paused():
+            return _dumps({
+                "ok": False,
+                "paused": True,
+                "tool": "status",
+                "server": "context_engine_mcp",
+                "managed": False,
+                "should_use_mcp": False,
+                "hint": "Scubiee is paused. Resume with: scubiee wake",
+            })
+
         from pipeline.client import EngineClient
         from pipeline.daemon import ensure_daemon
         from pipeline.session_store import load_store, token_mode

@@ -414,6 +414,10 @@ def ensure_daemon(
     *,
     force_if_hung: bool = True,
 ) -> dict[str, Any]:
+    from pipeline.pause_resume import is_paused
+
+    if is_paused():
+        return {"ok": False, "skipped": True, "reason": "globally_paused"}
     try:
         from pipeline.watchdog import watchdog_enabled
 
