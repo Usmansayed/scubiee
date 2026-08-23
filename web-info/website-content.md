@@ -1,6 +1,6 @@
 # Scubiee Website Content
 
-> **Version:** 0.2.54
+> **Version:** 0.2.57
 > **Purpose:** Content reference for designing and building the Scubiee product website.
 
 ## Tagline options
@@ -19,11 +19,14 @@ Scubiee is a local code context engine that gives AI coding tools semantic searc
 ### Semantic code search
 Search by meaning, not just text. "authentication middleware" finds auth handlers even if they don't contain those exact words. Powered by CodeRankEmbed embeddings + FAISS vector search.
 
-### 11 AI tools, one command
-Connect to Cursor, Claude Code, Codex, Kiro, VS Code/Copilot, Windsurf, Cline, Roo Code, Continue, Zed, and OpenCode with `scubiee connect --all`.
+### 13 AI tools, one command
+Connect to Cursor, Claude Code, Codex, Kiro, VS Code/Copilot, Windsurf, Cline, Roo Code, Continue, Zed, OpenCode, Amp, and Pi with `scubiee connect --all`. Disconnect cleanly with `scubiee disconnect --all`.
 
 ### GPU-accelerated indexing
-Auto-detects your GPU and uses DirectML (Windows), CUDA (Linux), or MLX (Mac) for fast embedding. Falls back to CPU when needed. Typical: 377 files indexed in under 3 minutes.
+Auto-detects your hardware and picks the fastest path. DirectML (Windows), CUDA (Linux), or MLX (Mac) for GPU-accelerated FP16 embedding. CPU-only laptops get INT8 quantized model automatically — 1.5x faster and 4x smaller than FP16, with near-identical retrieval quality. Typical: 400 files indexed in under 3 minutes on GPU, ~7 minutes on CPU.
+
+### Smart CPU throttling
+Background indexing uses only 15% of your CPU — invisible during coding. Initial index uses 35% for faster first-time setup. GPU machines offload compute entirely, keeping CPU near zero.
 
 ### Live re-indexing
 Changed files are automatically re-indexed in the background. Your search results stay current without manual rebuilds.
@@ -34,8 +37,14 @@ Understands code structure: imports, function calls, class hierarchies. Returns 
 ### Completely local
 All data stays on your machine. No cloud uploads, no API keys for search, no telemetry. Your code never leaves your disk.
 
-### Clean uninstall
-`scubiee wipe --all --yes --package` removes indexes, models, MCP configs, and tool rules — with an **`audit.remaining`** report if Windows locks files. Nothing hidden.
+### Stop and resume
+`scubiee stop` makes Scubiee completely invisible — kills processes, disables MCP entries, hides rules. Zero CPU/memory while stopped. `scubiee resume` brings everything back instantly.
+
+### One-command upgrade
+`scubiee upgrade` checks PyPI, stops processes, installs the new version, restarts, and runs migrations. Status shows update hints when a newer version is available.
+
+### Self-healing
+GPU provider missing after a package update? Scubiee auto-repairs by reinstalling the correct runtime wheel. Daemon killed? Auto-restarts on next tool call. Registry corrupted? Gracefully recovers. Multiple installs fighting? Warns with a clear fix.
 
 ### Multi-repository
 Index as many repos as you want. Each gets its own identity, vector index, and lifecycle. Adding a repo is just `scubiee init <path>`.
@@ -105,23 +114,30 @@ Your AI Tool (Cursor/Kiro/Claude Code/...)
 
 | Metric | Value |
 |--------|-------|
-| Index speed (DML GPU) | ~26 chunks/sec, 377 files in 184s |
-| Index speed (calibrated) | ~36 texts/sec at batch=20 |
+| Index speed (DML GPU) | ~26-35 chunks/sec, 400 files in ~3 min |
+| Index speed (CPU INT8, 2 threads) | ~8 chunks/sec, 400 files in ~7 min |
+| Index speed (MLX Apple Silicon) | ~111 texts/sec |
 | Embedding model | nomic-ai/CodeRankEmbed (768-dim) |
+| Model precision | FP16 (GPU) / INT8 quantized (CPU) |
 | Vector compression | 4x (TurboQuant 8-bit) |
-| Search latency (warm) | <100ms for top-k=5 |
-| Live re-index | Background, debounced, sub-second for small changes |
+| Search latency (warm) | <100ms for top-k=8 |
+| Cold-start warming | 3-5s (GPU), 5-10s (CPU) — agent retries automatically |
+| Live re-index | Background, debounced, 15% CPU budget |
 | Memory (idle daemon) | ~50-100MB RSS |
+| MCP tools response | <1s after warmup |
 
 ## Supported platforms
 
-| Platform | GPU acceleration | Status |
-|----------|-----------------|--------|
-| Windows 10/11 | DirectML (AMD, Intel, NVIDIA) | Production |
-| Linux | CUDA (NVIDIA) | Production |
-| macOS (Apple Silicon) | MLX (Metal) | Production |
-| macOS (Intel) | CoreML / CPU | Supported |
-| Any | CPU fallback | Supported |
+| Platform | GPU acceleration | Model | Status |
+|----------|-----------------|-------|--------|
+| Windows 10/11 | DirectML (AMD, Intel, NVIDIA) | FP16 | Production |
+| Linux | CUDA (NVIDIA) | FP16 | Production |
+| macOS (Apple Silicon) | MLX (Metal) | FP16 | Production |
+| macOS (Intel) | CoreML / CPU | FP16/INT8 | Supported |
+| Windows (no discrete GPU) | CPU + INT8 quantized | INT8 | Supported |
+| Linux (no GPU) | CPU + INT8 quantized | INT8 | Supported |
+
+**Model selection is automatic:** GPU machines get FP16 (fast, accurate). CPU-only machines get INT8 (1.5x faster than FP16 on CPU, 4x smaller, near-identical quality). FP32 is never used for inference.
 
 ## Pricing model (TBD — for website design)
 
@@ -133,14 +149,22 @@ Scubiee is currently free and open source. Future pricing could include:
 ## Installation methods
 
 ```bash
-# PyPI (recommended)
-pip install -U scubiee
+# Recommended (isolated tool install)
+uv tool install scubiee
 
-# From source (development)
-pip install -e ".[dml]"  # or [cuda], [mlx], [cpu]
+# With GPU extras
+uv tool install "scubiee[dml]"     # Windows DirectML
+uv tool install "scubiee[cuda]"    # Linux NVIDIA
+uv tool install "scubiee[macos]"   # Mac (auto-detects MLX on Apple Silicon)
 
-# npm wrapper (for Node.js toolchains)
-npx scubiee setup
+# pip (also works)
+pip install scubiee
+pip install "scubiee[dml]"
+
+# CPU-only (INT8 model auto-installed during setup)
+uv tool install scubiee
+# or
+pip install scubiee
 ```
 
 ## CLI command tree (complete)
@@ -161,8 +185,13 @@ scubiee
 │   ├── --continue
 │   ├── --zed
 │   ├── --opencode
+│   ├── --amp
+│   ├── --pi
 │   └── --all
 ├── disconnect         # Disconnect from AI tools (same flags)
+├── stop               # Make Scubiee invisible (kill, disable MCP, hide rules)
+├── resume             # Bring Scubiee back
+├── upgrade            # Check + install latest version
 ├── search "query"     # CLI search
 ├── status <path>      # Health check
 ├── sync <path>        # Incremental re-index

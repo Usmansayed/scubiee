@@ -1,6 +1,6 @@
 ﻿# Context Engine Internals: Architecture and Operations
 
-> **Implementation baseline:** Scubiee `0.2.54`
+> **Implementation baseline:** Scubiee `0.2.57`
 > **Audience:** engineers, operators, integration authors, and maintainers building the technical sections of a documentation website.
 
 This document describes the current Context Engine (CE) architecture rather than the historical research prototypes. The public command and product guide is in [`commands-and-setup.md`](./commands-and-setup.md).
@@ -279,15 +279,37 @@ The provider path is explicit and capability-aware:
 
 | Profile | Runtime intent |
 | --- | --- |
-| `cuda` | Linux NVIDIA GPU / `onnxruntime-gpu` |
-| `dml` | Windows DirectML / `onnxruntime-directml` |
-| `mlx` | Apple Silicon MLX when available |
-| `coreml` | Explicit CoreML path |
-| `cpu` | Deliberate CPU fallback |
+| `cuda` | Linux NVIDIA GPU / `onnxruntime-gpu` / FP16 model |
+| `dml` | Windows DirectML / `onnxruntime-directml` / FP16 model |
+| `mlx` | Apple Silicon MLX when available / FP16 model |
+| `coreml` | Explicit CoreML path / FP16 model |
+| `cpu` | CPU with INT8 quantized model (auto-created during setup) |
 
 `accel.py` and `runtime_profile.py` determine what can actually run; `embedder.py` prepares CodeRankEmbed; `preflight.py` validates the prerequisites. A provider/capability failure fails closed at the relevant boundary. The system should not publish a semantically incomplete index while reporting the provider as healthy.
 
-The CPU profile is a supported fallback, but it is a policy decision that should be visible in status and operational logs. Automatic selection is useful for normal setup; explicit profiles are preferable for reproducible CI, release certification, and controlled deployment.
+### Model precision by profile
+
+| Profile | Model file | Size | Why |
+| --- | --- | --- | --- |
+| `dml` / `cuda` / `mlx` / `coreml` | `model_fp16.onnx` | ~260 MB | GPUs have native FP16 support, full precision |
+| `cpu` | `model_int8.onnx` | ~132 MB | INT8 uses CPU VNNI/AMX instructions, 1.5x faster than FP16 on CPU |
+
+FP32 (`model.onnx`, 522 MB) is **never used for inference**. It exists only as the download source from HuggingFace, converted to FP16 during setup. The INT8 model is dynamically quantized from FP16 during setup when a CPU profile is selected.
+
+### CPU thread budget
+
+CPU-only profiles use a dual-budget strategy controlled by `IndexMemoryBudget.cpu_thread_pct`:
+
+| Operation | CPU budget | Rationale |
+| --- | --- | --- |
+| Bootstrap / full reindex | 35% of cores (min 2) | One-time cost, users expect to wait |
+| Background incremental sync | 15% of cores (min 1) | Must be invisible during active coding |
+
+The budget is applied via `CTX_CPU_EMBED_THREADS` env var, consumed by `embedder.py` when initializing FastEmbed with `threads=N`. GPU profiles ignore this entirely — they set `threads=1` and offload compute to the GPU.
+
+### GPU auto-repair
+
+`validate_dml_provider()` runs at engine startup. If the expected GPU execution provider is missing (e.g., a package upgrade pulled a newer `onnxruntime` that shadowed the DML wheel), it automatically reinstalls the correct ORT wheel and re-validates. Only reports failure after repair fails. Never silently falls back to CPU — users paid for GPU hardware.
 
 ## Storage and publication invariants
 
