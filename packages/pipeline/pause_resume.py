@@ -316,8 +316,21 @@ def resume() -> dict[str, Any]:
 
     try:
         from pipeline.daemon import ensure_daemon
+        from pipeline.project_id import load_registry
 
-        report["engine"] = ensure_daemon()
+        # Find first managed repo to bind the daemon to
+        repo = None
+        registry = load_registry()
+        for entry in (registry.get("projects") or {}).values():
+            if isinstance(entry, dict) and entry.get("managed"):
+                paths = entry.get("paths", [])
+                if paths:
+                    from pathlib import Path
+                    candidate = Path(str(paths[0]))
+                    if candidate.exists():
+                        repo = candidate
+                        break
+        report["engine"] = ensure_daemon(repo)
     except Exception as exc:  # noqa: BLE001
         report["engine_error"] = str(exc)
 
