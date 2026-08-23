@@ -209,14 +209,12 @@ def do_upgrade(*, pre_release: bool = False) -> dict[str, Any]:
             cmd.append("--prerelease=allow")
     elif uv:
         # uv is available but not a tool install (pip/venv) — use uv pip for speed
-        import platform
-        extras = "macos" if platform.system() == "Darwin" else "cpu"
-        cmd = [uv, "pip", "install", "--upgrade", "--python", sys.executable, f"scubiee[{extras}]"]
+        # No extras needed: pyproject.toml base deps include platform-conditional packages
+        cmd = [uv, "pip", "install", "--upgrade", "--python", sys.executable, "scubiee"]
     else:
         # Fallback: plain pip
-        import platform
-        extras = "macos" if platform.system() == "Darwin" else "cpu"
-        cmd = [sys.executable, "-m", "pip", "install", "--upgrade", f"scubiee[{extras}]"]
+        # No extras needed: base deps pull mlx/fastembed/ort on macOS automatically
+        cmd = [sys.executable, "-m", "pip", "install", "--upgrade", "scubiee"]
 
     try:
         proc = subprocess.run(
