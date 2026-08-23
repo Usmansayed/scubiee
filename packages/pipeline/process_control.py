@@ -226,6 +226,7 @@ def _cmdline_matches_ce(cmdline: list[str] | None) -> bool:
 def stop_all_context_engine_processes(*, ctx_home: Path | None = None) -> dict[str, Any]:
     """Stop daemon, watchdog, MCP, and anything locking the uv tool env."""
     actions: dict[str, Any] = {}
+    my_pid = os.getpid()
     try:
         from pipeline.watchdog import stop_watchdog
 
@@ -255,6 +256,8 @@ def stop_all_context_engine_processes(*, ctx_home: Path | None = None) -> dict[s
             try:
                 info = proc.info
                 pid = int(info["pid"])
+                if pid == my_pid:
+                    continue  # Never kill ourselves (wipe, stop, etc.)
                 cmdline = info.get("cmdline") or []
                 joined = " ".join(str(x) for x in cmdline).lower()
                 if not _cmdline_matches_ce(cmdline) and home_s not in joined:
@@ -270,7 +273,7 @@ def stop_all_context_engine_processes(*, ctx_home: Path | None = None) -> dict[s
     actions["extra_killed"] = sorted(set(extra_killed))
     actions["extra_failed"] = sorted(set(x for x in extra_failed if x))
     root = uv_tool_root()
-    remaining = processes_under(root) if root else []
+    remaining = [p for p in (processes_under(root) if root else []) if p != my_pid]
     actions["remaining"] = remaining
     actions["ok"] = not remaining
     return actions
