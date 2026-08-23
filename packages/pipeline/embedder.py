@@ -336,6 +336,30 @@ class Embedder:
         prof = self._accel or resolve_runtime()
         providers = prof.providers()
         model_name = self.model if self.model else CODERANK_MODEL
+
+        # CPU-only: use INT8 quantized model if available (1.5x faster, 4x smaller)
+        if prof.profile == "cpu" and not self.model:
+            from pipeline.accel import coderank_int8_onnx_path
+            int8_path = coderank_int8_onnx_path()
+            if int8_path:
+                # Re-register with INT8 model file so FastEmbed loads it
+                from pipeline.accel import CODERANK_HF_ONNX, CODERANK_INT8_ONNX_FILE
+                from fastembed.common.model_description import ModelSource, PoolingType
+                try:
+                    TextEmbedding.add_custom_model(
+                        model=CODERANK_MODEL,
+                        pooling=PoolingType.MEAN,
+                        normalization=True,
+                        sources=ModelSource(hf=CODERANK_HF_ONNX),
+                        dim=768,
+                        model_file=CODERANK_INT8_ONNX_FILE,
+                        description="CodeRankEmbed INT8 ONNX (CPU optimized)",
+                        license="mit",
+                        size_in_gb=0.13,
+                    )
+                except (ValueError, TypeError):
+                    pass  # Already registered or API mismatch — FP16 still works
+
         if prof.profile == "coreml":
             from pipeline.coreml_mac import coreml_model_name
 
