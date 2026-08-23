@@ -215,6 +215,14 @@ def start_daemon(
     wait_s: float = 90.0,
 ) -> dict[str, Any]:
     """Spawn Context Engine in background if not already healthy."""
+    # Guard: detect conflicting scubiee installations sharing ~/.context-engine
+    from pipeline.install_guard import check_install_conflict, write_install_marker
+
+    conflict = check_install_conflict()
+    if conflict:
+        print(f"[scubiee] WARNING: {conflict['hint']}", file=sys.stderr, flush=True)
+    write_install_marker()
+
     if is_running():
         return {"ok": True, "already_running": True, "url": engine_url()}
 

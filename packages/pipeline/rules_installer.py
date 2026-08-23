@@ -120,7 +120,32 @@ def _write_json(path: Path, data: dict[str, Any]) -> None:
 
 
 def _write_mcp_json_keyed(path: Path, key: str, entry: dict[str, Any]) -> None:
+    """Write a server entry into a keyed MCP JSON config file.
+
+    Defensive read-before-write: validates the loaded structure is a dict
+    and logs a warning if it contains unexpected data (but still proceeds
+    to avoid blocking the user's workflow).
+    """
+    import sys
+
     data = _load_json(path)
+
+    # Defensive check: warn if the file has unexpected structure.
+    # _load_json already returns {} for non-dict data, but if the file has
+    # keys suggesting a completely different format, log a heads-up.
+    if path.is_file() and data:
+        _KNOWN_MCP_KEYS = {
+            "mcpServers", "servers", "mcp", "$schema",
+            "amp.mcpServers", "context_servers",
+        }
+        if key not in data and not any(k in _KNOWN_MCP_KEYS for k in data):
+            print(
+                f"[scubiee] WARNING: {path} has unexpected keys "
+                f"({list(data.keys())[:5]}); writing '{key}' anyway.",
+                file=sys.stderr,
+                flush=True,
+            )
+
     servers = data.get(key)
     if not isinstance(servers, dict):
         servers = {}
@@ -153,6 +178,75 @@ def _write_mcp_zed(path: Path, entry: dict[str, Any]) -> None:
     }
     data["context_servers"] = servers
     _write_json(path, data)
+
+
+def verify_mcp_configs(slugs: list[str]) -> list[dict[str, Any]]:
+    """Verify MCP config files have a valid context-engine entry.
+
+    For each tool slug, reads its MCP config file(s) and checks that the
+    'context-engine' server entry exists with 'command' + 'args' keys.
+    Callable from `scubiee doctor`.
+
+    Returns a list of {tool, path, ok, error} dicts.
+    """
+    results: list[dict[str, Any]] = []
+    for slug in slugs:
+        tool = TOOL_MAP.get(slug)
+        if not tool:
+            results.append({"tool": slug, "path": None, "ok": False, "error": f"unknown tool: {slug}"})
+            continue
+        write_targets = resolve_mcp_write_targets(tool)
+        if not write_targets:
+            results.append({"tool": slug, "path": None, "ok": False, "error": "no MCP path configured"})
+            continue
+        for path, schema, key in write_targets:
+            result: dict[str, Any] = {"tool": slug, "path": str(path), "ok": False, "error": None}
+            if not path.is_file():
+                result["error"] = "file does not exist"
+                results.append(result)
+                continue
+            data = _load_json(path)
+            if not data:
+                result["error"] = "file is empty or not valid JSON"
+                results.append(result)
+                continue
+            # Find the server entry depending on schema
+            use_key = key if key is not None else tool.mcp_key
+            if schema == "amp":
+                servers = data.get("amp.mcpServers", {})
+            elif schema == "zed":
+                servers = data.get("context_servers", {})
+            else:
+                servers = data.get(use_key, {})
+            if not isinstance(servers, dict):
+                result["error"] = f"'{use_key}' is not a dict"
+                results.append(result)
+                continue
+            entry = servers.get(_SERVER_NAME)
+            if entry is None:
+                result["error"] = f"'{_SERVER_NAME}' entry missing"
+                results.append(result)
+                continue
+            if not isinstance(entry, dict):
+                result["error"] = f"'{_SERVER_NAME}' entry is not a dict"
+                results.append(result)
+                continue
+            # Check for required keys: command + args (or 'command' list for opencode)
+            has_command = "command" in entry
+            has_args = "args" in entry or (
+                isinstance(entry.get("command"), list) and len(entry["command"]) > 1
+            )
+            if not has_command:
+                result["error"] = "'command' key missing in server entry"
+                results.append(result)
+                continue
+            if not has_args and schema != "opencode":
+                result["error"] = "'args' key missing in server entry"
+                results.append(result)
+                continue
+            result["ok"] = True
+            results.append(result)
+    return results
 
 
 def _write_mcp_toml(path: Path, entry: dict[str, Any]) -> None:

@@ -334,8 +334,33 @@ def index_repo(
         quiet=progress is not None,
     )
     texts = [r.enriched for r in records]
+
+    # --- Checkpoint-based resume: if a prior index was interrupted, the embed
+    # cache (jsonl/npz) already holds partial results. We write a checkpoint
+    # file so that on restart we can report progress and confirm resume is
+    # working. The Embedder's cache lookup in embed_many automatically skips
+    # already-embedded chunks, so no explicit slice logic is needed here.
+    checkpoint_path = store.base / "embed_checkpoint.json"
+    _checkpoint_interval = 500  # flush checkpoint every N chunks
+
+    # If checkpoint exists from a prior interrupted run, log the resume.
+    if checkpoint_path.is_file():
+        try:
+            _ckpt = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+            _ckpt_done = _ckpt.get("chunks_done", 0)
+            print(
+                f"[index] resuming embed from checkpoint: {_ckpt_done}/{_ckpt.get('total', '?')} "
+                f"chunks previously cached",
+                file=sys.stderr,
+                flush=True,
+            )
+        except (json.JSONDecodeError, OSError):
+            pass  # Corrupt checkpoint — proceed normally, cache handles dedup
+
     t_embed = time.perf_counter()
     try:
+        _chunks_reported = {"n": 0}
+
         def emb_prog(done: int, total: int) -> None:
             if progress:
                 _emit_progress(
@@ -343,6 +368,22 @@ def index_repo(
                     "Embedding",
                     0.50 + 0.38 * done / max(total, 1),
                 )
+            # Write checkpoint every _checkpoint_interval chunks for resume
+            if done - _chunks_reported["n"] >= _checkpoint_interval or done >= total:
+                _chunks_reported["n"] = done
+                try:
+                    checkpoint_path.write_text(
+                        json.dumps({
+                            "chunks_done": done,
+                            "total": total,
+                            "timestamp": time.time(),
+                        }) + "\n",
+                        encoding="utf-8",
+                    )
+                    # Also flush the embedder's cache so entries are on disk
+                    embedder.flush_cache()
+                except OSError:
+                    pass  # Non-fatal: checkpoint is best-effort
 
         matrix = embedder.embed_many(texts, progress=emb_prog)
         if progress:
@@ -356,6 +397,12 @@ def index_repo(
             flush=True,
         )
         raise
+
+    # Embed succeeded — remove checkpoint file (no longer needed for resume)
+    try:
+        checkpoint_path.unlink(missing_ok=True)
+    except OSError:
+        pass
     embed_s = time.perf_counter() - t_embed
     print(
         f"[index] embed phase {embed_s:.1f}s for {len(records)} chunks "

@@ -841,6 +841,36 @@ def ort_available_providers() -> list[str]:
         return []
 
 
+def validate_dml_provider() -> bool:
+    """Runtime guard: verify DmlExecutionProvider is actually available.
+
+    Called at daemon/engine startup when the saved profile is "dml".
+    Unlike _align_profile_to_ort (which runs during setup), this does NOT
+    silently fall back to CPU — it emits a clear error so the user knows
+    their GPU acceleration is broken.
+
+    Returns True if DML is available, False otherwise.
+    """
+    saved = load_accel()
+    if saved is None or saved.profile != "dml":
+        return True  # Not a DML profile, nothing to check
+    providers = ort_available_providers()
+    if "DmlExecutionProvider" in providers:
+        return True
+    print(
+        "[scubiee] ERROR: DML profile selected but DmlExecutionProvider missing. "
+        "Run: scubiee setup --repair",
+        file=sys.stderr,
+        flush=True,
+    )
+    print(
+        f"[scubiee] Available providers: {providers}",
+        file=sys.stderr,
+        flush=True,
+    )
+    return False
+
+
 def profile_packages_satisfied(profile: AccelProfile) -> bool:
     """True if saved accel matches target and the runtime already exposes it."""
     if not _requirement_satisfied("fastembed>=0.4"):

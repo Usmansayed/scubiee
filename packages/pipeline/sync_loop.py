@@ -131,6 +131,11 @@ class BackgroundSyncLoop:
         self._watcher_last_reconcile: float | None = None
         self._watcher_last_wake_reconcile: float | None = None
         self._watcher_last_error: str | None = None
+        # Adaptive change-poll backoff: track probe durations to detect slow I/O
+        # (antivirus interference, network drives, etc.) and reduce poll frequency.
+        self._probe_durations: list[float] = []  # last N probe durations in seconds
+        self._original_change_poll_ms = self.change_poll_ms
+        self._backoff_active = False
 
     def status(self) -> dict:
         dirty = self.dirty_ledger.snapshot()
@@ -234,15 +239,29 @@ class BackgroundSyncLoop:
 
         This is the agent-write producer: Kiro/Cursor edits do not need to call
         /v1/dirty explicitly. The 5-minute keeper tick remains the backup.
+
+        Includes adaptive backoff: if root_probe consistently takes > 2s
+        (3 consecutive probes), doubles change_poll_ms up to 10s max.
+        Restores original interval when probes drop back under 500ms.
         """
         from pipeline.root_probe import root_probe
 
         current_time = time.monotonic() if now is None else now
+        t_probe_start = time.perf_counter()
         try:
             probe = root_probe(self.repo)
         except Exception as exc:  # noqa: BLE001
             print(f"[keeper] change poll failed: {exc}", file=sys.stderr, flush=True)
             return []
+        probe_duration = time.perf_counter() - t_probe_start
+
+        # --- Adaptive backoff: track probe durations for slow I/O detection ---
+        self._probe_durations.append(probe_duration)
+        # Keep only the last 5 durations for averaging
+        if len(self._probe_durations) > 5:
+            self._probe_durations = self._probe_durations[-5:]
+        self._adapt_poll_interval()
+
         if probe.clean:
             return []
         paths = sorted(
@@ -269,6 +288,49 @@ class BackgroundSyncLoop:
         self.dirty_ledger.mark(fresh, reason="disk_poll", now=current_time)
         self.last_probe = {**probe.to_dict(), "reason": "change_poll"}
         return fresh
+
+    def _adapt_poll_interval(self) -> None:
+        """Adaptive backoff: slow I/O → increase poll interval; fast I/O → restore.
+
+        If the last 3 probes all took > 2s, double the poll interval (up to 10s).
+        If the last 3 probes all took < 500ms, restore to the original interval.
+        This handles antivirus interference and slow network drives gracefully.
+        """
+        MAX_POLL_MS = 10_000
+        SLOW_THRESHOLD_S = 2.0
+        FAST_THRESHOLD_S = 0.5
+        MIN_SAMPLES = 3
+
+        if len(self._probe_durations) < MIN_SAMPLES:
+            return
+
+        recent = self._probe_durations[-MIN_SAMPLES:]
+        avg_ms = sum(recent) * 1000 / len(recent)
+
+        if all(d > SLOW_THRESHOLD_S for d in recent):
+            # All recent probes are slow — back off
+            if not self._backoff_active or self.change_poll_ms < MAX_POLL_MS:
+                new_poll = min(self.change_poll_ms * 2, MAX_POLL_MS)
+                if new_poll != self.change_poll_ms:
+                    print(
+                        f"[keeper] slow I/O detected ({avg_ms:.0f}ms avg), "
+                        f"backing off to {new_poll}ms poll interval",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+                    self.change_poll_ms = new_poll
+                    self._backoff_active = True
+        elif all(d < FAST_THRESHOLD_S for d in recent) and self._backoff_active:
+            # I/O recovered — restore original interval
+            if self.change_poll_ms != self._original_change_poll_ms:
+                print(
+                    f"[keeper] I/O recovered ({avg_ms:.0f}ms avg), "
+                    f"restoring {self._original_change_poll_ms}ms poll interval",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                self.change_poll_ms = self._original_change_poll_ms
+                self._backoff_active = False
 
     def reconcile(self, reason: str = "manual") -> dict:
         """Probe the repository and enqueue Merkle-discovered dirty paths."""
