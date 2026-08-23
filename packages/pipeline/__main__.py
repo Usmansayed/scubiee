@@ -286,6 +286,20 @@ def cmd_stop(args: argparse.Namespace) -> int:
             print(json.dumps({"ok": True, "already_paused": True}, indent=2))
         return 0
 
+    if sys.stdout.isatty() and not getattr(args, "yes", False):
+        from pipeline.cli_ui import confirm_action
+
+        if not confirm_action(
+            "Stop Scubiee?",
+            details=[
+                "This will kill the engine, disable MCP in all connected tools,",
+                "and hide rules. Agents will fall back to native search.",
+                "Resume anytime with: scubiee resume",
+            ],
+        ):
+            print("  Cancelled.", file=sys.stderr)
+            return 0
+
     result = pause()
 
     if sys.stdout.isatty():
@@ -316,6 +330,23 @@ def cmd_wipe(args: argparse.Namespace) -> int:
     from pipeline.wipe import wipe
 
     yes = bool(getattr(args, "yes", False) or getattr(args, "confirm", False))
+
+    # Interactive confirmation for --all without --yes
+    if bool(getattr(args, "all", False)) and not yes and sys.stdout.isatty():
+        from pipeline.cli_ui import confirm_action
+
+        if not confirm_action(
+            "Wipe ALL Scubiee data?",
+            details=[
+                "This permanently deletes: ~/.context-engine (indexes, models, state),",
+                "MCP configs, rules, LaunchAgent, and uninstalls the scubiee package.",
+                "This cannot be undone. You will need to reinstall and re-setup.",
+            ],
+        ):
+            print("  Cancelled.", file=sys.stderr)
+            return 0
+        yes = True
+
     keep_package = bool(getattr(args, "keep_package", False))
     package_arg = getattr(args, "package", False)
     if keep_package:
@@ -1690,6 +1721,7 @@ def main(argv: list[str] | None = None) -> int:
         "stop",
         help="Stop Scubiee (kills processes, disables MCP, hides rules). Resume with: scubiee resume",
     )
+    p_stop.add_argument("-y", "--yes", action="store_true", help="Skip confirmation prompt")
     p_stop.set_defaults(func=cmd_stop)
 
     p_migrate = sub.add_parser(
