@@ -1002,7 +1002,11 @@ def cmd_setup(args: argparse.Namespace) -> int:
     except Exception:  # noqa: BLE001
         pass
 
-    bar = InstallProgress()
+    if sys.stderr.isatty():
+        from pipeline.cli_ui import SetupProgress
+        bar = SetupProgress()
+    else:
+        bar = InstallProgress()
     warn_extra_scubiee(bar.stream)
     identity = format_install_identity().splitlines()
     if len(identity) >= 2:
