@@ -1012,6 +1012,8 @@ def _configure_machine(
 
 def cmd_init(args: argparse.Namespace) -> int:
     """Enroll a repository under Context Engine and index it."""
+    import os
+
     from pipeline.accel import load_accel
 
     is_tty = sys.stdout.isatty()
@@ -1068,7 +1070,7 @@ def cmd_init(args: argparse.Namespace) -> int:
 
     # --- Run init ---
     if is_tty:
-        from pipeline.cli_ui import InitProgress, suppress_stderr_noise
+        from pipeline.cli_ui import InitProgress
         bar = InitProgress()
         # Only print header if we didn't already (from the confirm prompt)
         if not getattr(args, "confirm", False) or not is_tty:
@@ -1078,11 +1080,14 @@ def cmd_init(args: argparse.Namespace) -> int:
 
     from pipeline.repo_lifecycle import initialize_repo
 
-    # Suppress internal library noise ([index], [embed], [graphify]) in TTY mode
-    noise_ctx = suppress_stderr_noise() if is_tty else None
+    # Silence internal library noise ([index], [embed], [graphify]) via env vars
+    # instead of redirecting stderr (which would also kill progress output).
+    _prev_graphify_quiet = os.environ.get("GRAPHIFY_QUIET")
+    _prev_ctx_quiet = os.environ.get("CTX_QUIET")
+    if is_tty:
+        os.environ["GRAPHIFY_QUIET"] = "1"
+        os.environ["CTX_QUIET"] = "1"
     try:
-        if noise_ctx:
-            noise_ctx.__enter__()
         out = initialize_repo(
             root,
             index=not bool(getattr(args, "no_index", False)),
@@ -1093,8 +1098,6 @@ def cmd_init(args: argparse.Namespace) -> int:
             confirm=bool(getattr(args, "confirm", False)),
         )
     except IndexConfirmRequired as exc:
-        if noise_ctx:
-            noise_ctx.__exit__(None, None, None)
         if is_tty:
             bar.fail("Safety pause", hint="Re-run with --confirm or use a narrower path")
         else:
@@ -1102,18 +1105,22 @@ def cmd_init(args: argparse.Namespace) -> int:
             return _fail_confirm(root, exc)
         return 2
     except Exception as exc:  # noqa: BLE001
-        if noise_ctx:
-            noise_ctx.__exit__(None, None, None)
         if is_tty:
             bar.fail(f"Init failed: {str(exc)[:80]}", hint="Run: scubiee init .")
         else:
             bar.fail(str(exc))
             raise
         return 1
-
-    # Restore stderr before printing results
-    if noise_ctx:
-        noise_ctx.__exit__(None, None, None)
+    finally:
+        # Restore env vars
+        if _prev_graphify_quiet is None:
+            os.environ.pop("GRAPHIFY_QUIET", None)
+        else:
+            os.environ["GRAPHIFY_QUIET"] = _prev_graphify_quiet
+        if _prev_ctx_quiet is None:
+            os.environ.pop("CTX_QUIET", None)
+        else:
+            os.environ["CTX_QUIET"] = _prev_ctx_quiet
 
     if out.get("ok"):
         try:
@@ -1128,6 +1135,17 @@ def cmd_init(args: argparse.Namespace) -> int:
 
         if is_tty:
             chunks = out.get("chunks", 0)
+            # Fallback: if chunks not in result (reconciled/already-managed path),
+            # read from the store's meta.json.
+            if not chunks and out.get("store_dir"):
+                try:
+                    import json as _json
+                    _meta_path = Path(out["store_dir"]) / "meta.json"
+                    if _meta_path.is_file():
+                        _meta = _json.loads(_meta_path.read_text(encoding="utf-8"))
+                        chunks = int(_meta.get("chunks", 0))
+                except (OSError, ValueError, KeyError):
+                    pass
             bar.done(chunks)
             daemon = out.get("daemon", {})
             if daemon.get("ok"):

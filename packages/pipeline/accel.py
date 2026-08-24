@@ -1567,9 +1567,12 @@ def ensure_coderank_fp16_onnx(progress: Any | None = None) -> Path:
         while not _dl_stop.wait(2.0):
             i += 1
             if progress is not None:
-                progress.set(58 + min(i, 5), "Downloading model… (" + str(int(i*2)) + "s)")
+                # Increment pct from 58 toward 63 so the progress bar fills up.
+                # Each tick adds 1 to pct (capped at 63 to leave room for convert step).
+                pct = 58 + min(i, 5)
+                progress.set(pct, f"Downloading model\u2026 ({int(i*2)}s)")
     if progress is not None:
-        progress.set(58, "Downloading model…")
+        progress.set(58, "Downloading model\u2026")
         _dl_thread = _thr.Thread(target=_dl_pulse, daemon=True)
         _dl_thread.start()
     else:
@@ -1577,7 +1580,7 @@ def ensure_coderank_fp16_onnx(progress: Any | None = None) -> Path:
     fp32 = _download_coderank_source_onnx(cache_root)
     _dl_stop.set()
     if progress is not None:
-        progress.set(64, "Converting to FP16…")
+        progress.set(64, "Converting to FP16\u2026")
     else:
         print("[accel] Converting to FP16...", file=sys.stderr, flush=True)
     fp16 = fp32.parent / "model_fp16.onnx"

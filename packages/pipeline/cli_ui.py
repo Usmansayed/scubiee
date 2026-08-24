@@ -478,6 +478,7 @@ class SetupProgress:
         self._line_open = False
         self._last_line_len = 0
         self._non_tty_last_emit = ""
+        self._last_step_finish_msg = ""
 
     def start(self, notice=None):
         branded_header("setup", stream=self.stream)
@@ -520,6 +521,10 @@ class SetupProgress:
         self._line_open = True
 
     def step_finish(self, message, detail=""):
+        # Dedup: skip if same message was already finished
+        if message == self._last_step_finish_msg:
+            return
+        self._last_step_finish_msg = message
         detail_str = f"  {self.c.muted}{detail}{self.c.reset}" if detail else ""
         if self._tty:
             plain = f"  {ICON_OK} {message}" + (f"  {detail}" if detail else "")
@@ -556,14 +561,29 @@ class SetupProgress:
     _MODEL_STEP_KEYS = ("downloading", "converting", "preparing", "quantizing", "step 1", "step 2", "step 3", "warming")
 
     def set(self, pct, phase):
+        phase_key = phase.lower().split("(")[0].strip()
+        phase_lower = phase.lower()
+
+        # Model step keys use the progress bar — allow repeated calls with
+        # different pct values (don't dedup on phase text for these).
+        if any(key in phase_lower for key in self._MODEL_STEP_KEYS):
+            # Progress bar for model prep (pct 56-85 maps to 0-100%)
+            bar_width = 20
+            frac = max(0.05, min(1.0, (pct - 56) / (85 - 56))) if pct > 56 else 0.05
+            filled = int(bar_width * frac)
+            bar = "\u2588" * filled + "\u2591" * (bar_width - filled)
+            self.step_update(f"[{bar}] {frac:.0%}  Preparing model")
+            self._last_phase = phase
+            self._last_key = phase_key
+            return
+
+        # For non-model steps, dedup on phase text
         if phase == self._last_phase:
             return
-        phase_key = phase.lower().split("(")[0].strip()
         if phase_key == self._last_key:
             return
         self._last_key = phase_key
         self._last_phase = phase
-        phase_lower = phase.lower()
 
         if "starting" in phase_lower or "checking" in phase_lower:
             return
@@ -578,7 +598,7 @@ class SetupProgress:
             self.step_done("Runtime installed")
             return
         if "runtime issue" in phase_lower or "auto-repair" in phase_lower or "repairing" in phase_lower:
-            self.step_active("Runtime issue — repairing")
+            self.step_active("Runtime issue \u2014 repairing")
             return
         if "reinstalling" in phase_lower:
             self.step_update("Reinstalling runtime\u2026")
@@ -587,14 +607,6 @@ class SetupProgress:
             self.step_finish("Runtime fixed")
             return
 
-        if any(key in phase_lower for key in self._MODEL_STEP_KEYS):
-            # Progress bar for model prep (pct 56-85 maps to 0-100%)
-            bar_width = 20
-            frac = max(0.05, min(1.0, (pct - 56) / (85 - 56))) if pct > 56 else 0.05
-            filled = int(bar_width * frac)
-            bar = "█" * filled + "░" * (bar_width - filled)
-            self.step_update(f"[{bar}] {frac:.0%}  Preparing model")
-            return
         if "embedding model ready" in phase_lower or "model ready" in phase_lower:
             self.step_finish("Model ready")
             return
@@ -963,22 +975,20 @@ class InitProgress:
         if total > 0:
             pct = min(current / total, 1.0)
             filled = int(bar_width * pct)
-            bar = "█" * filled + "░" * (bar_width - filled)
-            msg = f"[{bar}] {pct:.0%}  Indexing  {current:,}/{total:,} chunks"
+            bar = "\u2588" * filled + "\u2591" * (bar_width - filled)
+            msg = f"[{bar}] {pct:.0%}  Embedding  {current:,}/{total:,}"
         else:
-            bar = "░" * bar_width
-            msg = f"[{bar}]  Indexing…"
+            bar = "\u2591" * bar_width
+            msg = f"[{bar}]  Parsing\u2026"
         if self._tty:
             line = f"  {msg}"
             pad = max(0, self._last_line_len - len(line))
-            self.stream.write(f"\r{msg}{' ' * pad}")
-
+            self.stream.write(f"\r  {msg}{' ' * pad}")
             self.stream.flush()
             self._last_line_len = max(self._last_line_len, len(line))
         else:
             if total > 0 and current == total:
                 self.stream.write(f"  {msg}\n")
-
                 self.stream.flush()
 
     def done(self, chunks: int):
@@ -1025,6 +1035,8 @@ class InitProgress:
         phase_lower = phase.lower()
         if "parsing" in phase_lower or "scanning" in phase_lower:
             self.indexing()
+        elif "building chunks" in phase_lower or ("chunk" in phase_lower and "embedding" not in phase_lower):
+            self.indexing()
         elif "embedding" in phase_lower:
             import re as _re
             m = _re.search(r"(\d+)/(\d+)", phase)
@@ -1032,7 +1044,7 @@ class InitProgress:
                 self.indexing(int(m.group(1)), int(m.group(2)))
             else:
                 self.indexing()
-        elif "chunk" in phase_lower or "indexing" in phase_lower:
+        elif "indexing" in phase_lower:
             self.indexing()
         elif "daemon" in phase_lower:
             self.daemon_started()

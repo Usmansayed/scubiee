@@ -133,9 +133,10 @@ def index_repo(
         rm = get_resource_manager()
         rm.refresh_base_from_accel()
         waited = {"n": 0}
+        _quiet_rm = hasattr(progress, "set") or os.environ.get("CTX_QUIET") == "1"
 
         def _on_wait(budget) -> None:
-            if waited["n"] == 0:
+            if waited["n"] == 0 and not _quiet_rm:
                 print(
                     f"[resources] index waiting pressure={budget.pressure} {budget.reason}",
                     file=sys.stderr,
@@ -148,8 +149,7 @@ def index_repo(
             timeout_s=30.0,
             on_wait=_on_wait,
         )
-        quiet = hasattr(progress, "set")
-        if not quiet:
+        if not _quiet_rm:
             print(
                 f"[resources] index start pressure={budget.pressure} "
                 f"batch~{budget.batch_size} allow={budget.allow} ({budget.reason})",
@@ -168,7 +168,8 @@ def index_repo(
     except IndexDeferred:
         raise
     except Exception as exc:  # noqa: BLE001
-        print(f"[resources] index gate skipped: {exc}", file=sys.stderr, flush=True)
+        if not (hasattr(progress, "set") or os.environ.get("CTX_QUIET") == "1"):
+            print(f"[resources] index gate skipped: {exc}", file=sys.stderr, flush=True)
 
     require_capabilities(require_semantic=True)
     store = PipelineStore(root, base_dir=base_dir, vdb=vdb)
@@ -183,13 +184,15 @@ def index_repo(
     mem_budget = resolve_index_memory_budget(background=False, store=store)
     apply_index_memory_budget(mem_budget)
     wall_start = time.perf_counter()
-    print(
-        f"[index] memory mode={mem_budget.mode} rss_cap={mem_budget.rss_cap_mb}MB "
-        f"bootstrap={is_bootstrap_index(store)} "
-        f"mlx_batch={mem_budget.mlx_batch} cache={mem_budget.mlx_cache_mb}MB",
-        file=sys.stderr,
-        flush=True,
-    )
+    quiet = hasattr(progress, "set") or os.environ.get("CTX_QUIET") == "1"
+    if not quiet:
+        print(
+            f"[index] memory mode={mem_budget.mode} rss_cap={mem_budget.rss_cap_mb}MB "
+            f"bootstrap={is_bootstrap_index(store)} "
+            f"mlx_batch={mem_budget.mlx_batch} cache={mem_budget.mlx_cache_mb}MB",
+            file=sys.stderr,
+            flush=True,
+        )
     old = store.load_merkle()
     roots = list(fast_roots_from_env(fast_roots))
     # Default: mix (card labels + importance body). CTX_COMPRESS=off disables.
@@ -246,17 +249,16 @@ def index_repo(
     finally:
         if pulse_stop is not None:
             pulse_stop.set()
-        if previous_quiet is None:
-            os.environ.pop("GRAPHIFY_QUIET", None)
-        else:
-            os.environ["GRAPHIFY_QUIET"] = previous_quiet
+        # Keep GRAPHIFY_QUIET=1 for the rest of the index run (build_and_save_graph
+        # also emits "[graphify] Deduplicated" messages). Restore only at the end.
     elapsed_ms = (time.perf_counter() - t0) * 1000
     parse_s = elapsed_ms / 1000.0
-    print(
-        f"[index] parse+ir {parse_s:.1f}s for {len(paths)} files",
-        file=sys.stderr,
-        flush=True,
-    )
+    if not quiet:
+        print(
+            f"[index] parse+ir {parse_s:.1f}s for {len(paths)} files",
+            file=sys.stderr,
+            flush=True,
+        )
     ir = graphify_to_repo_ir(
         raw, root=root, elapsed_ms=elapsed_ms, file_count=len(paths)
     )
@@ -294,11 +296,12 @@ def index_repo(
         )
     store.save_chunks(records)
     chunk_s = time.perf_counter() - t_chunk
-    print(
-        f"[index] chunk {chunk_s:.1f}s -> {len(records)} chunks",
-        file=sys.stderr,
-        flush=True,
-    )
+    if not quiet:
+        print(
+            f"[index] chunk {chunk_s:.1f}s -> {len(records)} chunks",
+            file=sys.stderr,
+            flush=True,
+        )
 
     if progress:
         _emit_progress(progress, "Embedding", 0.50)
@@ -348,12 +351,13 @@ def index_repo(
         try:
             _ckpt = json.loads(checkpoint_path.read_text(encoding="utf-8"))
             _ckpt_done = _ckpt.get("chunks_done", 0)
-            print(
-                f"[index] resuming embed from checkpoint: {_ckpt_done}/{_ckpt.get('total', '?')} "
-                f"chunks previously cached",
-                file=sys.stderr,
-                flush=True,
-            )
+            if not quiet:
+                print(
+                    f"[index] resuming embed from checkpoint: {_ckpt_done}/{_ckpt.get('total', '?')} "
+                    f"chunks previously cached",
+                    file=sys.stderr,
+                    flush=True,
+                )
         except (json.JSONDecodeError, OSError):
             pass  # Corrupt checkpoint — proceed normally, cache handles dedup
 
@@ -391,11 +395,12 @@ def index_repo(
     except CapabilityError:
         raise
     except Exception as exc:  # noqa: BLE001
-        print(
-            f"[index] ERROR: embedding failed ({exc}); index aborted (no random-vector fallback).",
-            file=sys.stderr,
-            flush=True,
-        )
+        if not quiet:
+            print(
+                f"[index] ERROR: embedding failed ({exc}); index aborted (no random-vector fallback).",
+                file=sys.stderr,
+                flush=True,
+            )
         raise
 
     # Embed succeeded — remove checkpoint file (no longer needed for resume)
@@ -404,20 +409,22 @@ def index_repo(
     except OSError:
         pass
     embed_s = time.perf_counter() - t_embed
-    print(
-        f"[index] embed phase {embed_s:.1f}s for {len(records)} chunks "
-        f"({len(records)/max(embed_s,1e-6):.1f} chunk/s)",
-        file=sys.stderr,
-        flush=True,
-    )
+    if not quiet:
+        print(
+            f"[index] embed phase {embed_s:.1f}s for {len(records)} chunks "
+            f"({len(records)/max(embed_s,1e-6):.1f} chunk/s)",
+            file=sys.stderr,
+            flush=True,
+        )
     stats = getattr(embedder, "_last_stats", None) or {}
-    print(
-        f"[index] embed stats backend={stats.get('backend')} device={stats.get('device')} "
-        f"tokens={stats.get('tokens')} tok/s={stats.get('tok_per_s')} "
-        f"chunk/s={stats.get('chunk_per_s')} timings={stats.get('timings_s')}",
-        file=sys.stderr,
-        flush=True,
-    )
+    if not quiet:
+        print(
+            f"[index] embed stats backend={stats.get('backend')} device={stats.get('device')} "
+            f"tokens={stats.get('tokens')} tok/s={stats.get('tok_per_s')} "
+            f"chunk/s={stats.get('chunk_per_s')} timings={stats.get('timings_s')}",
+            file=sys.stderr,
+            flush=True,
+        )
 
     dim = int(matrix.shape[1]) if matrix.size else (embedder.dim or 768)
     if progress:
@@ -426,11 +433,12 @@ def index_repo(
     t_write = time.perf_counter()
     col = store.upsert_vectors(matrix, records, dim=dim, bits=bits)
     write_s = time.perf_counter() - t_write
-    print(
-        f"[index] vector write {write_s:.2f}s for {len(records)} chunks",
-        file=sys.stderr,
-        flush=True,
-    )
+    if not quiet:
+        print(
+            f"[index] vector write {write_s:.2f}s for {len(records)} chunks",
+            file=sys.stderr,
+            flush=True,
+        )
     store.save_merkle(new_hashes)
     from pipeline.freshness import git_head as _git_head
 
@@ -477,21 +485,28 @@ def index_repo(
     wall_s = time.perf_counter() - wall_start
     compute = mlx_compute_summary(stats.get("timings_s"))
     rss_peak = process_rss_peak_mb()
-    print(
-        f"[index] summary wall={wall_s:.1f}s parse={parse_s:.1f}s chunk={chunk_s:.1f}s "
-        f"embed={embed_s:.1f}s write={write_s:.2f}s "
-        f"e2e={len(records)/max(wall_s,1e-6):.1f} chunk/s "
-        f"rss_peak={rss_peak:.0f}MB mode={mem_budget.mode}",
-        file=sys.stderr,
-        flush=True,
-    )
-    print(
-        f"[index] model compute inference={compute['model_inference_s']}s "
-        f"tokens={stats.get('tokens')} tok/s={stats.get('tok_per_s')} "
-        f"chunks={len(records)} chunk/s={stats.get('chunk_per_s')}",
-        file=sys.stderr,
-        flush=True,
-    )
+    if not quiet:
+        print(
+            f"[index] summary wall={wall_s:.1f}s parse={parse_s:.1f}s chunk={chunk_s:.1f}s "
+            f"embed={embed_s:.1f}s write={write_s:.2f}s "
+            f"e2e={len(records)/max(wall_s,1e-6):.1f} chunk/s "
+            f"rss_peak={rss_peak:.0f}MB mode={mem_budget.mode}",
+            file=sys.stderr,
+            flush=True,
+        )
+        print(
+            f"[index] model compute inference={compute['model_inference_s']}s "
+            f"tokens={stats.get('tokens')} tok/s={stats.get('tok_per_s')} "
+            f"chunks={len(records)} chunk/s={stats.get('chunk_per_s')}",
+            file=sys.stderr,
+            flush=True,
+        )
+
+    # Restore GRAPHIFY_QUIET now that the entire index run is complete.
+    if previous_quiet is None:
+        os.environ.pop("GRAPHIFY_QUIET", None)
+    else:
+        os.environ["GRAPHIFY_QUIET"] = previous_quiet
 
     return IndexStats(
         root=str(root),
