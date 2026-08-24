@@ -347,6 +347,20 @@ def recommend_profile(detected: dict[str, Any] | None = None) -> AccelProfile:
             reason=why,
             detected=detected,
         )
+    # Final fallback — but never allow CPU-only on Apple Silicon (has Metal GPU)
+    import platform
+
+    if platform.system() == "Darwin" and platform.machine() in ("arm64", "aarch64"):
+        # Force MLX even if earlier detection failed (Apple Silicon always has Metal)
+        return AccelProfile(
+            profile="mlx",
+            provider="MLX",
+            backend="mlx",
+            device_id=0,
+            batch_size=24,
+            reason="Apple Silicon GPU via MLX FP16 (fallback — detection may have failed)",
+            detected=d,
+        )
     return AccelProfile(
         profile="cpu",
         provider="CPUExecutionProvider",
@@ -1564,6 +1578,10 @@ def _ensure_coderank_int8(progress: Any | None = None) -> Path | None:
     instructions (Intel 10th gen+, AMD Zen3+) and 4x smaller model size.
     Accuracy loss is negligible for code search retrieval.
     """
+    # Apple Silicon uses MLX Metal GPU — never degrade to INT8 CPU
+    import platform as _plat
+    if _plat.system() == "Darwin" and _plat.machine() in ("arm64", "aarch64"):
+        return None
     cache_root = fastembed_cache_root()
     snap_dirs = list_coderank_snapshot_dirs(cache_root)
     if not snap_dirs:
