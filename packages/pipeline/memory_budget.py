@@ -23,7 +23,7 @@ MemoryMode = Literal["bootstrap", "background", "large_reindex"]
 
 BOOTSTRAP_RSS_CAP_MB = 800
 BACKGROUND_RSS_CAP_MB = 500  # Light sync: 1-5 files, stay invisible
-LARGE_REINDEX_RSS_CAP_MB = 8000
+LARGE_REINDEX_RSS_CAP_MB = 1000
 LARGE_REINDEX_CHUNK_THRESHOLD = 6000
 
 
