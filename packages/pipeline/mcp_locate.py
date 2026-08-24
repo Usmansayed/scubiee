@@ -355,10 +355,9 @@ def _register_mcp_client(repo: Path) -> str:
 
 
 def _default_repo() -> Path:
-    env = os.environ.get("CTX_REPO") or os.environ.get("CONTEXT_ENGINE_REPO")
-    if env:
-        return Path(env).resolve()
-
+    # Priority 1: IDE workspace env vars ? if the IDE tells us which workspace
+    # it launched from AND that workspace is enrolled, use it. This prevents
+    # stale CTX_REPO from routing to the wrong project after wipe/reinstall.
     for key in (
         "CURSOR_PROJECT_DIR",
         "CURSOR_WORKSPACE",
@@ -376,21 +375,44 @@ def _default_repo() -> Path:
             candidate = Path(hint).resolve()
         except OSError:
             continue
-        if (candidate / ".context-engine" / "id.json").is_file() or (
-            candidate / ".git"
-        ).exists():
+        if (candidate / ".context-engine" / "id.json").is_file():
             return candidate
 
+    # Priority 2: Explicit CTX_REPO env var (set by connect/init configs)
+    env = os.environ.get("CTX_REPO") or os.environ.get("CONTEXT_ENGINE_REPO")
+    if env:
+        resolved = Path(env).resolve()
+        # Only trust CTX_REPO if it's actually enrolled or at least a real project dir
+        if (resolved / ".context-engine" / "id.json").is_file() or (resolved / ".git").exists():
+            return resolved
+
+    # Priority 3: Walk up from cwd looking for enrolled project
     cwd = Path.cwd().resolve()
     for candidate in (cwd, *cwd.parents):
         if (candidate / ".context-engine" / "id.json").is_file():
             return candidate
 
-    # Never infer a workspace from the daemon's currently bound repository.
-    # A repo-neutral global MCP entry can be launched from another workspace;
-    # using /health here would silently route that client to repository A while
-    # the user is working in repository B. The caller will receive the normal
-    # admission error for this cwd if it has not been explicitly initialized.
+    # Priority 4: IDE workspace with .git (not enrolled yet, but a valid project)
+    for key in (
+        "CURSOR_PROJECT_DIR",
+        "COPILOT_WORKSPACE_FOLDER",
+        "VSCODE_WORKSPACE_FOLDER",
+        "WORKSPACE_FOLDER",
+    ):
+        hint = os.environ.get(key)
+        if not hint:
+            continue
+        try:
+            candidate = Path(hint).resolve()
+        except OSError:
+            continue
+        if (candidate / ".git").exists():
+            return candidate
+
+    # Fallback: CTX_REPO even if not enrolled (for first-time init scenarios)
+    if env:
+        return Path(env).resolve()
+
     return cwd
 
 
