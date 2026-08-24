@@ -1556,20 +1556,32 @@ def ensure_coderank_fp16_onnx(progress: Any | None = None) -> Path:
 
         found = find_coderank_onnx(cache_root)
         assert found is not None
+        if progress is not None:
+            progress.set(70, "Embedding model ready (cached)")
         return found
 
     if progress is not None:
-        progress.set(58, "Downloading CodeRank weights (~500MB)")
+        progress.set(58, "Step 1/3: Downloading CodeRank weights (~500 MB)")
+    else:
+        print("[accel] Step 1/3: Downloading CodeRank weights (~500 MB)...", file=sys.stderr, flush=True)
     fp32 = _download_coderank_source_onnx(cache_root)
+    if progress is not None:
+        progress.set(64, "Step 2/3: Converting to FP16 (~260 MB)")
+    else:
+        print("[accel] Step 2/3: Converting to FP16...", file=sys.stderr, flush=True)
     fp16 = fp32.parent / "model_fp16.onnx"
     if fp16.is_file() and fp16.stat().st_size >= CODERANK_FP16_MIN_BYTES:
+        if progress is not None:
+            progress.set(70, "Step 3/3: FP16 model ready")
         return fp16
-    if progress is not None:
-        progress.set(64, "Converting CodeRank to FP16 (~260MB)")
     _convert_coderank_fp32_onnx_to_fp16(fp32, fp16)
     if fp16.stat().st_size < CODERANK_FP16_MIN_BYTES:
         fp16.unlink(missing_ok=True)
         raise RuntimeError("CodeRank FP16 conversion produced an incomplete file.")
+    if progress is not None:
+        progress.set(70, "Step 3/3: FP16 model ready")
+    else:
+        print("[accel] Step 3/3: FP16 model ready", file=sys.stderr, flush=True)
     return fp16
 
 
@@ -1775,7 +1787,6 @@ def ensure_coderank_model(
     ~1.5x faster) if it doesn't already exist. The embedder uses INT8
     automatically when profile=cpu.
     """
-    import threading
 
     register_coderank()
     _ensure_fastembed_import_deps(progress=progress)
@@ -1803,17 +1814,8 @@ def ensure_coderank_model(
             flush=True,
         )
     ensure_coderank_fp16_onnx(progress=progress)
-    stop = threading.Event()
-
-    def _pulse() -> None:
-        while not stop.wait(0.2):
-            if progress is not None:
-                progress.pulse("Downloading embedding model", until=84)
-
-    worker: threading.Thread | None = None
     if progress is not None:
-        worker = threading.Thread(target=_pulse, daemon=True)
-        worker.start()
+        progress.set(72, "Warming up embedding model on accelerator")
     try:
         if prof.profile == "mlx" or prof.backend == "mlx":
             from pipeline.mlx_mac import (
@@ -1848,7 +1850,6 @@ def ensure_coderank_model(
                 warmup = pad_embed_batch(warmup, static_bs)
             list(m.embed(warmup, batch_size=static_bs, parallel=None))
     finally:
-        stop.set()
         _restore_env(previous)
     # For CPU-only profiles: create INT8 quantized model if missing.
     # INT8 is ~4x smaller and ~1.5x faster on CPU (uses VNNI/AMX instructions).

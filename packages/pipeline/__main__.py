@@ -287,48 +287,38 @@ def cmd_stop(args: argparse.Namespace) -> int:
     """Stop Scubiee globally — kills processes, disables MCP, hides rules."""
     from pipeline.pause_resume import is_paused, pause
 
-    if is_paused():
-        if sys.stdout.isatty():
-            from pipeline.cli_ui import info
+    is_tty = sys.stdout.isatty()
 
-            info("Scubiee is already stopped")
+    if is_paused():
+        if is_tty:
+            from pipeline.cli_ui import success
+            sys.stderr.write("\n")
+            success("Already stopped", stream=sys.stderr)
+            sys.stderr.write("\n")
         else:
             print(json.dumps({"ok": True, "already_paused": True}, indent=2))
         return 0
 
-    if sys.stdout.isatty() and not getattr(args, "yes", False):
+    if is_tty and not getattr(args, "yes", False):
         from pipeline.cli_ui import confirm_action
 
         if not confirm_action(
             "Stop Scubiee?",
-            details=[
-                "This will kill the engine, disable MCP in all connected tools,",
-                "and hide rules. Agents will fall back to native search.",
-                "Resume anytime with: scubiee resume",
-            ],
+            details=["Agents will fall back to native search. Resume with: scubiee resume"],
         ):
-            print("  Cancelled.", file=sys.stderr)
+            print("  Cancelled.\n", file=sys.stderr)
             return 0
 
     result = pause()
 
-    if sys.stdout.isatty():
-        from pipeline.cli_ui import info, kv, success
-
-        print("", file=sys.stderr)
-        success("Scubiee stopped", stream=sys.stderr)
-        tools = result.get("connected_tools", [])
-        if tools:
-            kv("Tools paused", ", ".join(tools), stream=sys.stderr)
-        disabled = result.get("disabled_mcp", [])
-        if disabled:
-            kv("MCP disabled", str(len(disabled)), stream=sys.stderr)
-        renamed = result.get("renamed_rules", [])
-        if renamed:
-            kv("Rules hidden", str(len(renamed)), stream=sys.stderr)
-        print("", file=sys.stderr)
-        info("Agents will use native tools. Resume with: scubiee resume", stream=sys.stderr)
-        print("", file=sys.stderr)
+    if is_tty:
+        from pipeline.cli_ui import success, warn
+        sys.stderr.write("\n")
+        if result.get("ok"):
+            success("Stopped", stream=sys.stderr)
+        else:
+            warn("Stop may be incomplete", stream=sys.stderr)
+        sys.stderr.write("\n")
     else:
         print(json.dumps(result, indent=2, default=str))
 
@@ -336,26 +326,26 @@ def cmd_stop(args: argparse.Namespace) -> int:
 
 
 def cmd_wipe(args: argparse.Namespace) -> int:
-    """Remove CE state for this repo, or everything with --all --yes."""
+    """Remove CE state for this repo, or everything with --all."""
     from pipeline.wipe import wipe
 
-    yes = bool(getattr(args, "yes", False) or getattr(args, "confirm", False))
+    confirmed = bool(getattr(args, "confirm", False))
+    is_tty = sys.stdout.isatty()
 
-    # Interactive confirmation for --all without --yes
-    if bool(getattr(args, "all", False)) and not yes and sys.stdout.isatty():
+    # Interactive confirmation for --all without --confirm
+    if bool(getattr(args, "all", False)) and not confirmed and is_tty:
         from pipeline.cli_ui import confirm_action
 
         if not confirm_action(
             "Wipe ALL Scubiee data?",
             details=[
-                "This permanently deletes: ~/.context-engine (indexes, models, state),",
-                "MCP configs, rules, LaunchAgent, and uninstalls the scubiee package.",
-                "This cannot be undone. You will need to reinstall and re-setup.",
+                "Deletes indexes, models, MCP configs, and uninstalls the package.",
+                "This cannot be undone.",
             ],
         ):
-            print("  Cancelled.", file=sys.stderr)
+            print("  Cancelled.\n", file=sys.stderr)
             return 0
-        yes = True
+        confirmed = True
 
     keep_package = bool(getattr(args, "keep_package", False))
     package_arg = getattr(args, "package", False)
@@ -368,43 +358,23 @@ def cmd_wipe(args: argparse.Namespace) -> int:
 
     out = wipe(
         all=bool(getattr(args, "all", False)),
-        yes=yes,
+        yes=confirmed,
         models=not bool(getattr(args, "keep_models", False)),
         package=package,
         path=getattr(args, "path", None) or ".",
     )
 
-    if sys.stdout.isatty():
-        from pipeline.cli_ui import error, info, success, warn
-
-        print("", file=sys.stderr)
+    if is_tty:
         if _needs_confirm_out(out):
+            from pipeline.cli_ui import info, warn
             warn(out.get("message", "Confirmation required"), stream=sys.stderr)
-            if out.get("action") or out.get("hint"):
-                info(out.get("action") or out.get("hint", ""), stream=sys.stderr)
-            print("", file=sys.stderr)
+            if out.get("hint"):
+                info(out.get("hint", ""), stream=sys.stderr)
+            sys.stderr.write("\n")
             return 2
 
-        remaining = out.get("remaining") if isinstance(out, dict) else None
-        # Filter out 0-byte empty dirs from remaining
-        remaining = [
-            r for r in (remaining or [])
-            if not (isinstance(r, dict) and r.get("size_bytes", 1) == 0)
-        ]
-
-        if out.get("ok") and not remaining:
-            success("Scubiee wiped completely", stream=sys.stderr)
-            if out.get("scope") == "all":
-                info("Reinstall: uv tool install scubiee && scubiee setup", stream=sys.stderr)
-        elif remaining:
-            warn(f"{len(remaining)} item(s) could not be removed", stream=sys.stderr)
-            for item in remaining[:5]:
-                if isinstance(item, dict):
-                    info(f"{item.get('kind', '?')}: {item.get('path', '?')}", stream=sys.stderr)
-        else:
-            success("Wipe completed", stream=sys.stderr)
-
-        print("", file=sys.stderr)
+        from pipeline.cli_ui import print_wipe_summary
+        print_wipe_summary(out)
     else:
         print(json.dumps(out, indent=2, default=str))
         if _needs_confirm_out(out):
@@ -1004,14 +974,37 @@ def _configure_machine(
                 print(json.dumps(existing.__dict__, indent=2, default=str))
             return 0
 
-    prof = configure(
-        force_profile=getattr(args, "profile", None),
-        install_pkgs=not bool(getattr(args, "skip_install", False)),
-        download_model=not bool(getattr(args, "skip_model", False)),
-        bench=not bool(getattr(args, "skip_bench", False)),
-        force_install=bool(getattr(args, "repair", False)),
-        progress=progress,
-    )
+    # First attempt: normal configure
+    try:
+        prof = configure(
+            force_profile=getattr(args, "profile", None),
+            install_pkgs=not bool(getattr(args, "skip_install", False)),
+            download_model=not bool(getattr(args, "skip_model", False)),
+            bench=not bool(getattr(args, "skip_bench", False)),
+            force_install=bool(getattr(args, "repair", False)),
+            progress=progress,
+        )
+    except Exception as first_err:
+        # Auto-repair: if ORT-related failure, retry with force_install=True
+        err_msg = str(first_err).lower()
+        ort_keywords = ("onnxruntime", "sessionoptions", "providers", "dml", "cuda",
+                        "model_warmup", "capabilityerror", "no module named 'onnxruntime'")
+        is_ort_issue = any(kw in err_msg for kw in ort_keywords)
+        if is_ort_issue and not bool(getattr(args, "repair", False)):
+            if progress is not None:
+                progress.set(20, "Runtime issue detected — auto-repairing")
+            else:
+                print("[setup] ORT issue detected, auto-repairing...", file=sys.stderr, flush=True)
+            prof = configure(
+                force_profile=getattr(args, "profile", None),
+                install_pkgs=True,
+                download_model=not bool(getattr(args, "skip_model", False)),
+                bench=not bool(getattr(args, "skip_bench", False)),
+                force_install=True,
+                progress=progress,
+            )
+        else:
+            raise
     if report:
         print(json.dumps(prof.__dict__, indent=2, default=str))
     return 0
@@ -1021,17 +1014,16 @@ def cmd_init(args: argparse.Namespace) -> int:
     """Enroll a repository under Context Engine and index it."""
     from pipeline.accel import load_accel
 
+    is_tty = sys.stdout.isatty()
+
     if load_accel() is None:
-        print(
-            json.dumps(
-                {
-                    "ok": False,
-                    "error": "machine_not_setup",
-                    "repair": "python -m pipeline setup",
-                },
-                indent=2,
-            )
-        )
+        if is_tty:
+            from pipeline.cli_ui import error, info
+            error("Machine not set up", stream=sys.stderr)
+            info("Run: scubiee setup", stream=sys.stderr)
+            sys.stderr.write("\n")
+        else:
+            print(json.dumps({"ok": False, "error": "machine_not_setup", "repair": "scubiee setup"}, indent=2))
         return 1
 
     root = Path(getattr(args, "path", ".") or ".").resolve()
@@ -1042,6 +1034,7 @@ def cmd_init(args: argparse.Namespace) -> int:
     if roots and not fast:
         fast = True
 
+    # --- Preflight: check scope and prompt if large ---
     if not bool(getattr(args, "no_index", False)):
         from pipeline.incremental import IndexConfirmRequired, preflight_index_scope
 
@@ -1053,9 +1046,36 @@ def cmd_init(args: argparse.Namespace) -> int:
                 confirm=bool(getattr(args, "confirm", False)),
             )
         except IndexConfirmRequired as exc:
-            return _fail_confirm(root, exc)
+            if is_tty:
+                # Interactive Y/N instead of failing with JSON
+                from pipeline.cli_ui import branded_header, confirm_action
 
-    bar = _progress_bar("Initializing repository…")
+                branded_header("init", stream=sys.stderr)
+                n_files = getattr(exc, "n_files", 0)
+                est_min = max(1, n_files // 600)  # rough: ~600 files/min
+                confirmed = confirm_action(
+                    f"This repository has {n_files:,} files (est. ~{est_min} min to index)",
+                    default=True,
+                    stream=sys.stderr,
+                )
+                if not confirmed:
+                    sys.stderr.write("  Cancelled.\n\n")
+                    return 0
+                # User said yes — proceed with confirm=True
+                args.confirm = True
+            else:
+                return _fail_confirm(root, exc)
+
+    # --- Run init ---
+    if is_tty:
+        from pipeline.cli_ui import InitProgress
+        bar = InitProgress()
+        # Only print header if we didn't already (from the confirm prompt)
+        if not getattr(args, "confirm", False) or not is_tty:
+            bar.start()
+    else:
+        bar = _progress_bar("Initializing repository…")
+
     from pipeline.repo_lifecycle import initialize_repo
 
     try:
@@ -1069,11 +1089,20 @@ def cmd_init(args: argparse.Namespace) -> int:
             confirm=bool(getattr(args, "confirm", False)),
         )
     except IndexConfirmRequired as exc:
-        bar.fail("Safety pause (not an error)")
-        return _fail_confirm(root, exc)
+        if is_tty:
+            bar.fail("Safety pause", hint="Re-run with --confirm or use a narrower path")
+        else:
+            bar.fail("Safety pause (not an error)")
+            return _fail_confirm(root, exc)
+        return 2
     except Exception as exc:  # noqa: BLE001
-        bar.fail(str(exc))
-        raise
+        if is_tty:
+            bar.fail(f"Init failed: {str(exc)[:80]}", hint="Run: scubiee init .")
+        else:
+            bar.fail(str(exc))
+            raise
+        return 1
+
     if out.get("ok"):
         try:
             from pipeline.daemon import ensure_daemon
@@ -1084,19 +1113,28 @@ def cmd_init(args: argparse.Namespace) -> int:
             out["daemon"] = ensure_daemon(root)
         except Exception as exc:  # noqa: BLE001
             out["daemon"] = {"ok": False, "error": str(exc)}
-        bar.finish("Ready")
-        if sys.stdout.isatty():
-            from pipeline.cli_ui import print_init_summary
 
-            print_init_summary(out)
+        if is_tty:
+            chunks = out.get("chunks", 0)
+            bar.done(chunks)
+            daemon = out.get("daemon", {})
+            if daemon.get("ok"):
+                bar.daemon_started()
+            bar.finish()
+        else:
+            bar.finish("Ready")
+            print(json.dumps(out, indent=2, default=str))
     else:
         message = str(out.get("error") or "init failed")
-        if out.get("confirmation_required"):
-            bar.notice(message)
+        if is_tty:
+            bar.fail(message, hint="Run: scubiee init .")
         else:
-            bar.fail(message)
-    if not sys.stdout.isatty():
-        print(json.dumps(out, indent=2, default=str))
+            if out.get("confirmation_required"):
+                bar.notice(message)
+            else:
+                bar.fail(message)
+            print(json.dumps(out, indent=2, default=str))
+
     return 0 if out.get("ok") else 1
 
 
@@ -1117,10 +1155,13 @@ def cmd_setup(args: argparse.Namespace) -> int:
     os.environ.setdefault("TQDM_DISABLE", "1")
     import logging
     logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
+    logging.getLogger("fastembed").setLevel(logging.ERROR)
+    logging.getLogger("onnxruntime").setLevel(logging.ERROR)
     warnings.filterwarnings("ignore", message=".*huggingface_hub.*")
     warnings.filterwarnings("ignore", message=".*unauthenticated.*")
     warnings.filterwarnings("ignore", message=".*HF_TOKEN.*")
     warnings.filterwarnings("ignore", message=".*Cannot enable progress bars.*")
+    warnings.filterwarnings("ignore", message=".*onnxruntime.*")
 
     # Setup implies intent to use scubiee — clear any global pause
     try:
@@ -1130,21 +1171,28 @@ def cmd_setup(args: argparse.Namespace) -> int:
     except Exception:  # noqa: BLE001
         pass
 
-    if sys.stderr.isatty():
-        from pipeline.cli_ui import SetupProgress
+    is_tty = sys.stderr.isatty()
+    if is_tty:
+        from pipeline.cli_ui import SetupProgress, suppress_stderr_noise
         bar = SetupProgress()
     else:
         bar = InstallProgress()
     bar.start()
     warn_extra_scubiee(bar.stream)
     reused_runtime = False
+
+    # Suppress library stderr noise in TTY mode (our progress writes directly to stream)
+    noise_ctx = suppress_stderr_noise() if is_tty else None
     try:
+        if noise_ctx:
+            noise_ctx.__enter__()
+
         bar.set(4, "Checking engine modules")
         try:
             from graphify.extract import extract  # noqa: F401
             from graphify.build import build  # noqa: F401
         except Exception as exc:  # noqa: BLE001
-            bar.fail(f"graphify missing/broken: {exc}")
+            bar.fail(f"Engine modules missing: {type(exc).__name__}")
             return 1
 
         from pipeline.install_health import ensure_faiss_importable
@@ -1179,7 +1227,7 @@ def cmd_setup(args: argparse.Namespace) -> int:
 
                 ensure_hardware_snapshot(force=True)
             except Exception as exc:  # noqa: BLE001
-                bar.fail(f"hardware snapshot: {exc}")
+                bar.fail(f"Hardware detection failed: {str(exc)[:60]}")
                 return 1
 
         repo = Path(args.repo or args.index_path or ".").resolve()
@@ -1196,7 +1244,7 @@ def cmd_setup(args: argparse.Namespace) -> int:
             bar.fail("Could not start the session supervisor")
             return 1
 
-        bar.set(98, "Registering Cursor MCP")
+        bar.set(98, "Registering MCP")
         from pipeline.mcp_install import write_cursor_mcp
 
         write_cursor_mcp(repo, host=host, port=port)
@@ -1207,19 +1255,20 @@ def cmd_setup(args: argparse.Namespace) -> int:
             from pipeline.repo_lifecycle import initialize_repo
 
             reconcile_git_families(prefer_root=repo)
-            print(
-                json.dumps(
-                    initialize_repo(repo, index=True, always_allow=True),
-                    indent=2,
-                    default=str,
-                )
-            )
+            init_out = initialize_repo(repo, index=True, always_allow=True)
+            if not is_tty:
+                print(json.dumps(init_out, indent=2, default=str))
 
         bar.finish(setup_finish_message(reused_runtime=reused_runtime))
         return 0
     except Exception as exc:  # noqa: BLE001
         bar.fail(format_setup_error(exc))
+        if not is_tty:
+            sys.stderr.write(f"  Run: scubiee setup --repair\n")
         return 1
+    finally:
+        if noise_ctx:
+            noise_ctx.__exit__(None, None, None)
 
 
 def cmd_migrate(args: argparse.Namespace) -> int:
@@ -1310,11 +1359,13 @@ def cmd_connect(args: argparse.Namespace) -> int:
         selected = [slug for slug in ALL_SLUGS if getattr(args, slug.replace("-", "_"), False)]
 
     if not selected:
-        print(
-            "No tools specified. Use --all or specify tools: "
-            + ", ".join(f"--{s}" for s in ALL_SLUGS),
-            file=sys.stderr,
-        )
+        if sys.stdout.isatty():
+            from pipeline.cli_ui import error, info
+            error("No tools specified", stream=sys.stderr)
+            info(f"Use --all or specify tools: {', '.join(f'--{s}' for s in ALL_SLUGS[:4])}...", stream=sys.stderr)
+            sys.stderr.write("\n")
+        else:
+            print(json.dumps({"ok": False, "error": "no tools specified"}, indent=2))
         return 1
 
     dry_run = getattr(args, "dry_run", False)
@@ -1344,11 +1395,14 @@ def cmd_disconnect(args: argparse.Namespace) -> int:
         selected = [slug for slug in ALL_SLUGS if getattr(args, slug.replace("-", "_"), False)]
 
     if not selected:
-        print(
-            "No tools specified. Use --all or specify tools: "
-            + ", ".join(f"--{s}" for s in ALL_SLUGS),
-            file=sys.stderr,
-        )
+        if sys.stdout.isatty():
+            from pipeline.cli_ui import error, info
+            error("No tools specified", stream=sys.stderr)
+            info(f"Use --all or specify tools: {', '.join(f'--{s}' for s in ALL_SLUGS[:4])}...", stream=sys.stderr)
+            sys.stderr.write("\n")
+        else:
+            print(json.dumps({"ok": False, "error": "no tools specified"}, indent=2))
+        return 1
         return 1
 
     dry_run = getattr(args, "dry_run", False)
@@ -1422,34 +1476,28 @@ def cmd_global_resume(args: argparse.Namespace) -> int:
     """Resume Scubiee — re-enables MCP, restores rules, reconciles."""
     from pipeline.pause_resume import is_paused, resume
 
-    if not is_paused():
-        if sys.stdout.isatty():
-            from pipeline.cli_ui import info
+    is_tty = sys.stdout.isatty()
 
-            info("Scubiee is already active")
+    if not is_paused():
+        if is_tty:
+            from pipeline.cli_ui import success
+            sys.stderr.write("\n")
+            success("Already active", stream=sys.stderr)
+            sys.stderr.write("\n")
         else:
             print(json.dumps({"ok": True, "already_active": True}, indent=2))
         return 0
 
     result = resume()
 
-    if sys.stdout.isatty():
-        from pipeline.cli_ui import info, kv, success, warn
-
-        print("", file=sys.stderr)
+    if is_tty:
+        from pipeline.cli_ui import success, warn
+        sys.stderr.write("\n")
         if result.get("ok"):
-            success("Scubiee resumed", stream=sys.stderr)
+            success("Resumed", stream=sys.stderr)
         else:
-            warn("Scubiee resumed with warnings", stream=sys.stderr)
-        tools = result.get("connected_tools", [])
-        if tools:
-            kv("Tools restored", ", ".join(tools), stream=sys.stderr)
-        reconciled = result.get("files_reconciled", 0)
-        if reconciled:
-            kv("Files synced", str(reconciled), stream=sys.stderr)
-        print("", file=sys.stderr)
-        info("Agents will use Scubiee MCP tools again.", stream=sys.stderr)
-        print("", file=sys.stderr)
+            warn("Resumed with warnings", stream=sys.stderr)
+        sys.stderr.write("\n")
     else:
         print(json.dumps(result, indent=2, default=str))
 
@@ -1868,7 +1916,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p_wipe = sub.add_parser(
         "wipe",
-        help="Remove CE state (repo) or full uninstall (--all --yes)",
+        help="Remove CE state (repo) or full uninstall (--all --confirm)",
     )
     p_wipe.add_argument("path", nargs="?", default=".", help="Repo path (default: cwd)")
     p_wipe.add_argument(
@@ -1877,14 +1925,9 @@ def main(argv: list[str] | None = None) -> int:
         help="Wipe machine state: daemon, ~/.context-engine, MCP, rules, models, scubiee tool",
     )
     p_wipe.add_argument(
-        "--yes",
-        action="store_true",
-        help="Required with --all — confirm destructive wipe",
-    )
-    p_wipe.add_argument(
         "--confirm",
         action="store_true",
-        help="Alias for --yes (same as --yes)",
+        help="Skip interactive prompt (for scripts). Without this, prompts Y/N.",
     )
     p_wipe.add_argument(
         "--keep-models",
@@ -1899,7 +1942,7 @@ def main(argv: list[str] | None = None) -> int:
     p_wipe.add_argument(
         "--package",
         action="store_true",
-        help="With --all: uninstall scubiee (default when --all --yes)",
+        help="With --all: uninstall scubiee (default when --all --confirm)",
     )
     p_wipe.set_defaults(func=cmd_wipe)
 

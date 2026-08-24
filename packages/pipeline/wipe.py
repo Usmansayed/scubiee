@@ -1,7 +1,7 @@
 """Wipe Context Engine state — repo-local or full machine (``--all``).
 
 Normal path stays untouched: ``setup`` → ``init`` → use. Wipe is opt-in cleanup.
-``wipe --all --yes`` removes home state, MCP wiring, Cursor rules, and CodeRank
+``wipe --all --confirm`` removes home state, MCP wiring, Cursor rules, and CodeRank
 model caches so a fresh install starts clean on any laptop.
 """
 
@@ -22,6 +22,16 @@ _CURSOR_RULE_NAMES = ("context-agent.mdc", "context-engine.mdc")
 def _cursor_rule_paths(base: Path) -> list[Path]:
     rules = base / ".cursor" / "rules"
     return [rules / name for name in _CURSOR_RULE_NAMES]
+
+
+def _kiro_mcp_paths(base: Path) -> list[Path]:
+    """All .kiro/settings/mcp.json locations that connect may have written."""
+    return [base / ".kiro" / "settings" / "mcp.json"]
+
+
+def _kiro_steering_paths(base: Path) -> list[Path]:
+    """Steering files scubiee connect may have written."""
+    return [base / ".kiro" / "steering" / "context-engine.md"]
 
 
 def _rm_tree(path: Path) -> dict[str, Any]:
@@ -304,8 +314,14 @@ def audit_scubiee_artifacts(*, include_package: bool = True, include_models: boo
     user_mcp = Path.home() / ".cursor" / "mcp.json"
     if _mcp_has_context_engine(user_mcp):
         note(user_mcp, kind="user_mcp")
+    # Kiro user-level MCP
+    for kiro_mcp in _kiro_mcp_paths(Path.home()):
+        if _mcp_has_context_engine(kiro_mcp):
+            note(kiro_mcp, kind="kiro_user_mcp")
     for rule_path in _cursor_rule_paths(Path.home()):
         note(rule_path, kind="user_rule")
+    for steering_path in _kiro_steering_paths(Path.home()):
+        note(steering_path, kind="kiro_user_steering")
     tool = _uv_tool_dir()
     if tool is not None and include_package:
         note(tool, kind="uv_tool")
@@ -328,13 +344,20 @@ def audit_scubiee_artifacts(*, include_package: bool = True, include_models: boo
         project_mcp = repo / ".cursor" / "mcp.json"
         if _mcp_has_context_engine(project_mcp):
             note(project_mcp, kind="repo_mcp")
+        # Kiro project-level MCP
+        for kiro_mcp in _kiro_mcp_paths(repo):
+            if _mcp_has_context_engine(kiro_mcp):
+                note(kiro_mcp, kind="kiro_repo_mcp")
+        for steering_path in _kiro_steering_paths(repo):
+            if steering_path.is_file():
+                note(steering_path, kind="kiro_repo_steering")
 
     return {
         "clean": not remaining,
         "remaining": remaining,
         "hint": (
             "If paths remain, quit Cursor completely (MCP locks files), run "
-            "`scubiee stop`, then `scubiee wipe --all --yes` again."
+            "`scubiee stop`, then `scubiee wipe --all --confirm` again."
             if remaining
             else None
         ),
@@ -366,9 +389,15 @@ def wipe_repo(root: Path | str, *, mcp: bool = True, rule: bool = True) -> dict[
         out["actions"].append(
             {"mcp": _drop_mcp_server(root / ".cursor" / "mcp.json")}
         )
+        for kiro_mcp in _kiro_mcp_paths(root):
+            out["actions"].append(
+                {"kiro_mcp": _drop_mcp_server(kiro_mcp)}
+            )
     if rule:
         for rule_path in _cursor_rule_paths(root):
             out["actions"].append({"rule": _rm_tree(rule_path)})
+        for steering_path in _kiro_steering_paths(root):
+            out["actions"].append({"kiro_steering": _rm_tree(steering_path)})
 
     out["project_id"] = project_id
     from pipeline.project_id import context_engine_home
@@ -383,7 +412,7 @@ def wipe_repo(root: Path | str, *, mcp: bool = True, rule: bool = True) -> dict[
         ),
     }
     out["hint"] = (
-        "Full clean (home + models + MCP + daemon + uninstall scubiee): scubiee wipe --all --yes\n"
+        "Full clean (home + models + MCP + daemon + uninstall scubiee): scubiee wipe --all --confirm\n"
         "Then reinstall: uv tool install scubiee --index-url https://pypi.org/simple && scubiee setup"
     )
     return out
@@ -426,8 +455,8 @@ def wipe_all(
                 "This removes ALL Context Engine state: every enrolled repo's "
                 ".context-engine + MCP rule, all ctx home dirs (~/.context-engine), "
                 "CodeRank/FastEmbed/HuggingFace model caches, uv tool shims, and "
-                "the scubiee package. Re-run with: scubiee wipe --all --yes "
-                "(or: scubiee wipe --all --confirm). Quit Cursor first on Windows."
+                "the scubiee package. Re-run with: scubiee wipe --all --confirm. "
+                "Quit Cursor/Kiro first on Windows."
             ),
         }
 
@@ -439,7 +468,18 @@ def wipe_all(
 
     from pipeline.process_control import remove_tool_shims, stop_all_context_engine_processes
 
-    # Stop background processes first so files unlock on Windows.
+    # STEP 0: Remove MCP configs FIRST so IDEs (Kiro, Cursor) don't respawn
+    # the server process immediately after we kill it.
+    actions.append({"user_cursor_mcp": _drop_mcp_server(Path.home() / ".cursor" / "mcp.json")})
+    for kiro_mcp in _kiro_mcp_paths(Path.home()):
+        actions.append({"kiro_user_mcp_early": _drop_mcp_server(kiro_mcp)})
+    # Also remove project-level MCP for the target repo (cwd or explicit)
+    target_early = Path(repo).resolve() if repo else Path.cwd().resolve()
+    actions.append({"project_cursor_mcp_early": _drop_mcp_server(target_early / ".cursor" / "mcp.json")})
+    for kiro_mcp in _kiro_mcp_paths(target_early):
+        actions.append({"kiro_project_mcp_early": _drop_mcp_server(kiro_mcp)})
+
+    # STEP 1: Stop background processes so files unlock on Windows.
     try:
         actions.append({"stop_all": stop_all_context_engine_processes(ctx_home=home)})
     except Exception as exc:  # noqa: BLE001
@@ -493,8 +533,13 @@ def wipe_all(
     actions.append({"wipe_repos": repo_actions})
 
     actions.append({"user_mcp": _drop_mcp_server(Path.home() / ".cursor" / "mcp.json")})
+    # Also clean Kiro user-level MCP and steering
+    for kiro_mcp in _kiro_mcp_paths(Path.home()):
+        actions.append({"kiro_user_mcp": _drop_mcp_server(kiro_mcp)})
     for rule_path in _cursor_rule_paths(Path.home()):
         actions.append({"user_rule": _rm_tree(rule_path)})
+    for steering_path in _kiro_steering_paths(Path.home()):
+        actions.append({"kiro_user_steering": _rm_tree(steering_path)})
 
     for ctx_home in homes:
         actions.append({f"ctx_home:{ctx_home.name}": _rm_tree(ctx_home)})
@@ -589,7 +634,7 @@ def wipe_all(
             if package and audit.get("clean")
             else (
                 "Some CE files may remain (see remaining). Quit Cursor, run "
-                "`scubiee stop`, then `scubiee wipe --all --yes` again."
+                "`scubiee stop`, then `scubiee wipe --all --confirm` again."
                 if audit.get("remaining")
                 else (
                     "Re-run: scubiee setup && scubiee init ."

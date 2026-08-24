@@ -105,6 +105,16 @@ def header(title: str, *, stream: IO[str] | TextIO | None = None) -> None:
     s.flush()
 
 
+def branded_header(cmd: str, *, stream: IO[str] | TextIO | None = None) -> None:
+    """Print a branded command header — used only for setup and init."""
+    s = stream or sys.stderr
+    if not _is_tty(s):
+        return
+    c = colors(s)
+    s.write(f"\n{c.bold}scubiee {cmd}{c.reset}\n\n")
+    s.flush()
+
+
 def divider(*, stream: IO[str] | TextIO | None = None, width: int = 48) -> None:
     """Print a subtle horizontal divider."""
     s = stream or sys.stderr
@@ -495,8 +505,7 @@ class SetupProgress:
         self._non_tty_last_emit = ""
 
     def start(self, notice=None):
-        self.stream.write(f"\n{self.c.bold}scubiee setup{self.c.reset}\n\n")
-        self.stream.flush()
+        branded_header("setup", stream=self.stream)
 
     def _clear_line(self):
         if self._tty and self._line_open:
@@ -569,7 +578,7 @@ class SetupProgress:
     # instead of each opening/closing their own line — that mismatch (a
     # shorter message not erasing a longer one) was the overlapping-text bug.
 
-    _MODEL_STEP_KEYS = ("downloading", "converting", "preparing", "quantizing")
+    _MODEL_STEP_KEYS = ("downloading", "converting", "preparing", "quantizing", "step 1", "step 2", "step 3", "warming")
 
     def set(self, pct, phase):
         if phase == self._last_phase:
@@ -593,9 +602,18 @@ class SetupProgress:
         if "already installed" in phase_lower or "runtime already" in phase_lower:
             self.step_done("Runtime installed")
             return
+        if "runtime issue" in phase_lower or "auto-repair" in phase_lower or "repairing" in phase_lower:
+            self.step_active("Runtime issue — repairing")
+            return
+        if "reinstalling" in phase_lower:
+            self.step_update("Reinstalling runtime\u2026")
+            return
+        if "runtime fixed" in phase_lower:
+            self.step_finish("Runtime fixed")
+            return
 
         if any(key in phase_lower for key in self._MODEL_STEP_KEYS):
-            self.step_update("Preparing model (this can take a minute)…")
+            self.step_update("Preparing model\u2026")
             return
         if "embedding model ready" in phase_lower or "model ready" in phase_lower:
             self.step_finish("Model ready")
@@ -832,3 +850,210 @@ def print_dashboard_summary(data, *, stream=None):
         error(f"Dashboard error: {data.get('error', 'unknown')}", stream=s)
     s.write("\n")
     s.flush()
+
+
+# ── Stderr noise suppression ──────────────────────────────────────────────────
+
+class suppress_stderr_noise:
+    """Context manager that silences library stderr noise during TTY mode.
+
+    Redirects stderr writes from known noisy libraries (huggingface_hub,
+    fastembed, onnxruntime, tqdm) to devnull. Our own progress output uses
+    the stream reference directly so it's not affected.
+    """
+
+    def __init__(self, stream: IO[str] | TextIO | None = None):
+        self._active = _is_tty(stream or sys.stderr)
+        self._original_stderr: TextIO | None = None
+
+    def __enter__(self):
+        if not self._active:
+            return self
+        self._original_stderr = sys.stderr
+        sys.stderr = open(os.devnull, "w")  # noqa: SIM115
+        return self
+
+    def __exit__(self, *_):
+        if self._original_stderr is not None:
+            try:
+                sys.stderr.close()
+            except Exception:  # noqa: BLE001
+                pass
+            sys.stderr = self._original_stderr
+            self._original_stderr = None
+
+
+# ── Wipe summary ──────────────────────────────────────────────────────────────
+
+def print_wipe_summary(data: dict[str, Any], *, stream: IO[str] | TextIO | None = None) -> None:
+    """Print a clean wipe result — step by step status lines."""
+    s = stream or sys.stderr
+    c = colors(s)
+    ok = data.get("ok", False)
+    actions = data.get("actions") or []
+
+    s.write("\n")
+
+    # Map action keys to human-readable labels
+    step_map = {
+        "stop_all": "Processes stopped",
+        "stop_watchdog": None,  # redundant with stop_all
+        "stop_daemon": None,
+        "user_cursor_mcp": "MCP configs removed",
+        "user_cursor_mcp_early": None,
+        "kiro_user_mcp_early": None,
+        "kiro_project_mcp_early": None,
+        "project_cursor_mcp_early": None,
+        "user_mcp": None,  # covered by early removal
+        "kiro_user_mcp": None,
+        "wipe_repos": "Repository data wiped",
+        "models": "Models removed",
+        "uninstall_scubiee": "Package uninstalled",
+        "tool_shims": None,
+        "audit": None,
+        "unregister_autostart": None,
+    }
+
+    shown_labels: set[str] = set()
+    failed_steps: list[str] = []
+
+    for action_dict in actions:
+        for key, val in action_dict.items():
+            label = step_map.get(key)
+            if label is None:
+                # Check ctx_home / vectordb keys
+                if key.startswith("ctx_home"):
+                    label = "Data wiped"
+                elif key.startswith("vectordb"):
+                    label = "Vector index removed"
+                else:
+                    continue
+            if label in shown_labels:
+                continue
+
+            # Determine if this step succeeded
+            step_ok = True
+            if isinstance(val, dict):
+                if val.get("ok") is False and val.get("error") and not val.get("missing") and not val.get("absent"):
+                    step_ok = False
+                if val.get("removed") is False and val.get("error"):
+                    step_ok = False
+            elif isinstance(val, list):
+                for item in val:
+                    if isinstance(item, dict) and item.get("ok") is False:
+                        step_ok = False
+                        break
+
+            shown_labels.add(label)
+            if step_ok:
+                success(label, stream=s)
+            else:
+                err_detail = ""
+                if isinstance(val, dict):
+                    err_detail = str(val.get("error", ""))[:60]
+                error(label, detail=err_detail, stream=s)
+                failed_steps.append(label)
+
+    s.write("\n")
+    if ok:
+        scope = data.get("scope", "")
+        if scope == "all":
+            success("Clean. Reinstall: uv tool install scubiee", stream=s)
+        else:
+            success("Repository cleaned", stream=s)
+    else:
+        if failed_steps:
+            hint = "Close Cursor/Kiro, then run: scubiee wipe --all --confirm"
+            error(f"{failed_steps[0]}", stream=s)
+            info(hint, stream=s)
+        else:
+            remaining = data.get("remaining") or []
+            if remaining:
+                warn("Some files remain", detail="close IDE and retry", stream=s)
+            else:
+                success("Clean", stream=s)
+    s.write("\n")
+    s.flush()
+
+
+# ── Init progress helper ──────────────────────────────────────────────────────
+
+class InitProgress:
+    """Clean progress display for scubiee init — single updating line."""
+
+    def __init__(self, stream=None):
+        self.stream = stream or sys.stderr
+        self.c = colors(self.stream)
+        self._tty = _is_tty(self.stream)
+        self._last_line_len = 0
+
+    def start(self):
+        branded_header("init", stream=self.stream)
+
+    def indexing(self, current: int = 0, total: int = 0):
+        """Update the indexing progress line in-place."""
+        if total > 0:
+            msg = f"Indexing\u2026  {current:,}/{total:,} files"
+        else:
+            msg = "Indexing\u2026"
+        if self._tty:
+            line = f"  {ICON_RUN} {msg}"
+            pad = max(0, self._last_line_len - len(line))
+            self.stream.write(f"\r  {self.c.blue}{ICON_RUN}{self.c.reset} {msg}{' ' * pad}")
+            self.stream.flush()
+            self._last_line_len = max(self._last_line_len, len(line))
+        else:
+            self.stream.write(f"  {ICON_RUN} {msg}\n")
+            self.stream.flush()
+
+    def done(self, chunks: int):
+        """Show indexing complete."""
+        msg = f"Indexed"
+        detail = f"{chunks:,} chunks"
+        if self._tty:
+            plain = f"  {ICON_OK} {msg}  {detail}"
+            pad = max(0, self._last_line_len - len(plain))
+            self.stream.write(f"\r  {self.c.green}{ICON_OK}{self.c.reset} {msg}  {self.c.muted}{detail}{self.c.reset}{' ' * pad}\n")
+        else:
+            self.stream.write(f"  {ICON_OK} {msg}  {detail}\n")
+        self.stream.flush()
+        self._last_line_len = 0
+
+    def already_initialized(self, chunks: int):
+        success(f"Already initialized", detail=f"{chunks:,} chunks", stream=self.stream)
+
+    def daemon_started(self):
+        success("Daemon started", stream=self.stream)
+
+    def finish(self):
+        self.stream.write(f"\n  {self.c.green}{ICON_OK}{self.c.reset} {self.c.bold}Ready{self.c.reset}\n\n")
+        self.stream.flush()
+
+    def fail(self, message: str, *, hint: str = ""):
+        if self._tty:
+            pad = max(0, self._last_line_len - (len(message) + 4))
+            self.stream.write(f"\r  {self.c.red}{ICON_FAIL}{self.c.reset} {message}{' ' * pad}\n")
+        else:
+            self.stream.write(f"  {ICON_FAIL} {message}\n")
+        if hint:
+            self.stream.write(f"\n    {self.c.muted}{hint}{self.c.reset}\n")
+        self.stream.write("\n")
+        self.stream.flush()
+        self._last_line_len = 0
+
+    def cancelled(self):
+        self.stream.write(f"  Cancelled.\n\n")
+        self.stream.flush()
+
+    # Adapter for pipeline progress_ui interface
+    def set(self, pct, phase):
+        if "indexing" in phase.lower() or "embedding" in phase.lower():
+            self.indexing()
+        elif "daemon" in phase.lower():
+            self.daemon_started()
+
+    def pulse(self, phase, *, until=100):
+        self.set(until, phase)
+
+    def notice(self, msg):
+        warn(msg, stream=self.stream)
