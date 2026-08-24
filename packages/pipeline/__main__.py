@@ -1080,6 +1080,10 @@ def cmd_init(args: argparse.Namespace) -> int:
 
     from pipeline.repo_lifecycle import initialize_repo
 
+    # Show progress bar immediately so user doesn't see a frozen terminal
+    if is_tty:
+        bar._bar(0.0, "Starting…")
+
     # Silence ALL stderr noise during init by redirecting stderr to devnull.
     # The progress bar writes to _real_stderr (saved before redirect).
     _prev_graphify_quiet = os.environ.get("GRAPHIFY_QUIET")
@@ -1218,6 +1222,9 @@ def cmd_setup(args: argparse.Namespace) -> int:
         bar = InstallProgress()
     bar.start()
     warn_extra_scubiee(bar.stream)
+    # Show immediate feedback so terminal doesn't look frozen
+    if is_tty:
+        bar.step_active("Starting…")
     reused_runtime = False
 
     # Suppress library stderr noise in TTY mode (our progress writes directly to stream)
