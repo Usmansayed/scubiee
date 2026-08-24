@@ -1560,15 +1560,26 @@ def ensure_coderank_fp16_onnx(progress: Any | None = None) -> Path:
             progress.set(70, "Embedding model ready (cached)")
         return found
 
+    import threading as _thr
+    _dl_stop = _thr.Event()
+    def _dl_pulse():
+        i = 0
+        while not _dl_stop.wait(2.0):
+            i += 1
+            if progress is not None:
+                progress.set(58 + min(i, 5), "Downloading model… (" + str(int(i*2)) + "s)")
     if progress is not None:
-        progress.set(58, "Step 1/3: Downloading CodeRank weights (~500 MB)")
+        progress.set(58, "Downloading model…")
+        _dl_thread = _thr.Thread(target=_dl_pulse, daemon=True)
+        _dl_thread.start()
     else:
-        print("[accel] Step 1/3: Downloading CodeRank weights (~500 MB)...", file=sys.stderr, flush=True)
+        print("[accel] Downloading CodeRank weights (~500 MB)...", file=sys.stderr, flush=True)
     fp32 = _download_coderank_source_onnx(cache_root)
+    _dl_stop.set()
     if progress is not None:
-        progress.set(64, "Step 2/3: Converting to FP16 (~260 MB)")
+        progress.set(64, "Converting to FP16…")
     else:
-        print("[accel] Step 2/3: Converting to FP16...", file=sys.stderr, flush=True)
+        print("[accel] Converting to FP16...", file=sys.stderr, flush=True)
     fp16 = fp32.parent / "model_fp16.onnx"
     if fp16.is_file() and fp16.stat().st_size >= CODERANK_FP16_MIN_BYTES:
         if progress is not None:

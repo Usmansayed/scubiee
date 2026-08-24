@@ -1048,9 +1048,16 @@ class InitProgress:
     # Adapter for pipeline progress_ui interface
     def set(self, pct, phase):
         phase_lower = phase.lower()
-        if "parsing" in phase_lower:
+        if "parsing" in phase_lower or "scanning" in phase_lower:
             self.indexing()
-        elif "indexing" in phase_lower or "embedding" in phase_lower or "chunk" in phase_lower:
+        elif "embedding" in phase_lower:
+            import re as _re
+            m = _re.search(r"(\d+)/(\d+)", phase)
+            if m:
+                self.indexing(int(m.group(1)), int(m.group(2)))
+            else:
+                self.indexing()
+        elif "chunk" in phase_lower or "indexing" in phase_lower:
             self.indexing()
         elif "daemon" in phase_lower:
             self.daemon_started()

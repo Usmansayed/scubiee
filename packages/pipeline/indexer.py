@@ -365,7 +365,7 @@ def index_repo(
             if progress:
                 _emit_progress(
                     progress,
-                    "Embedding",
+                    f"Embedding {done}/{total}",
                     0.50 + 0.38 * done / max(total, 1),
                 )
             # Write checkpoint every _checkpoint_interval chunks for resume
