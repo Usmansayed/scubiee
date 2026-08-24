@@ -14,7 +14,6 @@ import sys
 import time
 from typing import IO, Any, TextIO
 
-
 # ── Color support ─────────────────────────────────────────────────────────────
 
 def _supports_color(stream: IO[str] | TextIO | None = None) -> bool:
@@ -28,11 +27,9 @@ def _supports_color(stream: IO[str] | TextIO | None = None) -> bool:
         return False
     return True
 
-
 def _is_tty(stream: IO[str] | TextIO | None = None) -> bool:
     s = stream or sys.stdout
     return bool(hasattr(s, "isatty") and s.isatty())
-
 
 class _Colors:
     """ANSI escape sequences — degrades to empty strings when color is off."""
@@ -79,10 +76,8 @@ class _Colors:
     def muted(self) -> str:
         return self._esc("90")  # bright black / gray
 
-
 def colors(stream: IO[str] | TextIO | None = None) -> _Colors:
     return _Colors(enabled=_supports_color(stream))
-
 
 # ── Icons (single-width, no emoji) ───────────────────────────────────────────
 
@@ -94,7 +89,6 @@ ICON_RUN = "▶"
 ICON_ARROW = "→"
 ICON_BULLET = "·"
 
-
 # ── Layout helpers ────────────────────────────────────────────────────────────
 
 def header(title: str, *, stream: IO[str] | TextIO | None = None) -> None:
@@ -103,7 +97,6 @@ def header(title: str, *, stream: IO[str] | TextIO | None = None) -> None:
     c = colors(s)
     s.write(f"\n{c.bold}{title}{c.reset}\n")
     s.flush()
-
 
 def branded_header(cmd: str, *, stream: IO[str] | TextIO | None = None) -> None:
     """Print a branded command header — used only for setup and init."""
@@ -114,14 +107,12 @@ def branded_header(cmd: str, *, stream: IO[str] | TextIO | None = None) -> None:
     s.write(f"\n{c.bold}scubiee {cmd}{c.reset}\n\n")
     s.flush()
 
-
 def divider(*, stream: IO[str] | TextIO | None = None, width: int = 48) -> None:
     """Print a subtle horizontal divider."""
     s = stream or sys.stderr
     c = colors(s)
     s.write(f"{c.muted}{'─' * width}{c.reset}\n")
     s.flush()
-
 
 def kv(key: str, value: Any, *, stream: IO[str] | TextIO | None = None, indent: int = 2) -> None:
     """Print a key-value pair with alignment."""
@@ -130,7 +121,6 @@ def kv(key: str, value: Any, *, stream: IO[str] | TextIO | None = None, indent: 
     pad = " " * indent
     s.write(f"{pad}{c.muted}{key:<16}{c.reset} {value}\n")
     s.flush()
-
 
 def status_line(
     icon: str,
@@ -158,22 +148,17 @@ def status_line(
     s.write(f"  {color}{icon}{c.reset} {message}{detail_str}\n")
     s.flush()
 
-
 def success(message: str, *, detail: str = "", stream: IO[str] | TextIO | None = None) -> None:
     status_line(ICON_OK, message, detail=detail, stream=stream)
-
 
 def error(message: str, *, detail: str = "", stream: IO[str] | TextIO | None = None) -> None:
     status_line(ICON_FAIL, message, detail=detail, stream=stream)
 
-
 def warn(message: str, *, detail: str = "", stream: IO[str] | TextIO | None = None) -> None:
     status_line(ICON_WARN, message, detail=detail, stream=stream)
 
-
 def info(message: str, *, detail: str = "", stream: IO[str] | TextIO | None = None) -> None:
     status_line(ICON_INFO, message, detail=detail, stream=stream)
-
 
 # ── Table ─────────────────────────────────────────────────────────────────────
 
@@ -215,7 +200,6 @@ def table(
 
     s.flush()
 
-
 # ── Composite outputs ─────────────────────────────────────────────────────────
 
 def format_duration(seconds: float) -> str:
@@ -228,7 +212,6 @@ def format_duration(seconds: float) -> str:
     secs = int(seconds % 60)
     return f"{mins}m {secs}s"
 
-
 def format_bytes(n: int | float) -> str:
     """Human-readable byte size."""
     if n < 1024:
@@ -239,11 +222,9 @@ def format_bytes(n: int | float) -> str:
         return f"{n / (1024 * 1024):.1f}MB"
     return f"{n / (1024 * 1024 * 1024):.1f}GB"
 
-
 def format_count(n: int) -> str:
     """Format number with comma separators."""
     return f"{n:,}"
-
 
 def print_status_summary(data: dict[str, Any], *, stream: IO[str] | TextIO | None = None) -> None:
     """Print a clean human-readable status summary from the status JSON."""
@@ -302,7 +283,6 @@ def print_status_summary(data: dict[str, Any], *, stream: IO[str] | TextIO | Non
     s.write("\n")
     s.flush()
 
-
 def print_init_summary(data: dict[str, Any], *, stream: IO[str] | TextIO | None = None) -> None:
     """Print a clean init result summary."""
     s = stream or sys.stderr
@@ -333,7 +313,6 @@ def print_init_summary(data: dict[str, Any], *, stream: IO[str] | TextIO | None 
 
     s.write("\n")
     s.flush()
-
 
 def print_connect_summary(
     results: list[dict[str, Any]],
@@ -373,7 +352,6 @@ def print_connect_summary(
     s.write("\n")
     s.flush()
 
-
 def print_stop_summary(data: dict[str, Any], *, stream: IO[str] | TextIO | None = None) -> None:
     """Print a clean stop result."""
     s = stream or sys.stderr
@@ -399,7 +377,6 @@ def print_stop_summary(data: dict[str, Any], *, stream: IO[str] | TextIO | None 
 
     s.write("\n")
     s.flush()
-
 
 def print_doctor_summary(data: dict[str, Any], *, stream: IO[str] | TextIO | None = None) -> None:
     """Print a clean doctor result."""
@@ -437,7 +414,6 @@ def print_doctor_summary(data: dict[str, Any], *, stream: IO[str] | TextIO | Non
 
     s.write("\n")
     s.flush()
-
 
 # ── Confirmation prompt ───────────────────────────────────────────────────────
 
@@ -481,7 +457,6 @@ def confirm_action(
     if not answer:
         return default
     return answer in ("y", "yes")
-
 
 # ── Setup progress (phased output) ───────────────────────────────────────────
 
@@ -613,7 +588,12 @@ class SetupProgress:
             return
 
         if any(key in phase_lower for key in self._MODEL_STEP_KEYS):
-            self.step_update("Preparing model\u2026")
+            # Progress bar for model prep (pct 56-85 maps to 0-100%)
+            bar_width = 20
+            frac = max(0.05, min(1.0, (pct - 56) / (85 - 56))) if pct > 56 else 0.05
+            filled = int(bar_width * frac)
+            bar = "█" * filled + "░" * (bar_width - filled)
+            self.step_update(f"[{bar}] {frac:.0%}  Preparing model")
             return
         if "embedding model ready" in phase_lower or "model ready" in phase_lower:
             self.step_finish("Model ready")
@@ -648,7 +628,6 @@ class SetupProgress:
         self.stream.write(f"  {self.c.muted}{message}{self.c.reset}\n")
         self.stream.flush()
 
-
 # ── Additional command summaries ─────────────────────────────────────────────
 
 def print_search_summary(data, *, stream=None):
@@ -677,7 +656,6 @@ def print_search_summary(data, *, stream=None):
     s.write(f"\n  {c.muted}{len(hits)} result(s) in {latency:.0f}ms{c.reset}\n\n")
     s.flush()
 
-
 def print_resources_summary(data, *, stream=None):
     """Clean hardware/pressure summary."""
     s = stream or sys.stderr
@@ -702,7 +680,6 @@ def print_resources_summary(data, *, stream=None):
     s.write("\n")
     s.flush()
 
-
 def print_preflight_summary(data, *, stream=None):
     """Clean dependency check summary."""
     s = stream or sys.stderr
@@ -718,7 +695,6 @@ def print_preflight_summary(data, *, stream=None):
             warn(str(dep), stream=s)
     s.write("\n")
     s.flush()
-
 
 def print_certify_summary(data, *, stream=None):
     """Clean certification gate summary."""
@@ -738,7 +714,6 @@ def print_certify_summary(data, *, stream=None):
     s.write("\n")
     s.flush()
 
-
 def print_register_summary(data, *, stream=None):
     """Clean project registration summary."""
     s = stream or sys.stderr
@@ -755,7 +730,6 @@ def print_register_summary(data, *, stream=None):
     s.write("\n")
     s.flush()
 
-
 def print_lifecycle_summary(data, *, action, stream=None):
     """Clean repo lifecycle action summary (pause/resume/rebuild/remove/etc)."""
     s = stream or sys.stderr
@@ -770,7 +744,6 @@ def print_lifecycle_summary(data, *, action, stream=None):
         error(f"{action.capitalize()} failed: {data.get('error', 'unknown')}", stream=s)
     s.write("\n")
     s.flush()
-
 
 def print_migrate_summary(data, *, stream=None):
     """Clean migration check/apply summary."""
@@ -798,7 +771,6 @@ def print_migrate_summary(data, *, stream=None):
     s.write("\n")
     s.flush()
 
-
 def print_settings_summary(prefs, *, stream=None):
     """Clean settings/preferences summary."""
     s = stream or sys.stderr
@@ -810,7 +782,6 @@ def print_settings_summary(prefs, *, stream=None):
         kv("Config file", prefs["prefs_path"], stream=s)
     s.write("\n")
     s.flush()
-
 
 def print_repo_list_summary(repos, *, stream=None):
     """Clean table of managed repositories."""
@@ -831,7 +802,6 @@ def print_repo_list_summary(repos, *, stream=None):
     s.write(f"\n  {c.muted}{len(repos)} repositor{'y' if len(repos)==1 else 'ies'}{c.reset}\n\n")
     s.flush()
 
-
 def print_dashboard_summary(data, *, stream=None):
     """Clean dashboard start/stop/status summary."""
     s = stream or sys.stderr
@@ -850,7 +820,6 @@ def print_dashboard_summary(data, *, stream=None):
         error(f"Dashboard error: {data.get('error', 'unknown')}", stream=s)
     s.write("\n")
     s.flush()
-
 
 # ── Stderr noise suppression ──────────────────────────────────────────────────
 
@@ -881,7 +850,6 @@ class suppress_stderr_noise:
                 pass
             sys.stderr = self._original_stderr
             self._original_stderr = None
-
 
 # ── Wipe summary ──────────────────────────────────────────────────────────────
 
@@ -975,7 +943,6 @@ def print_wipe_summary(data: dict[str, Any], *, stream: IO[str] | TextIO | None 
     s.write("\n")
     s.flush()
 
-
 # ── Init progress helper ──────────────────────────────────────────────────────
 
 class InitProgress:
@@ -991,20 +958,28 @@ class InitProgress:
         branded_header("init", stream=self.stream)
 
     def indexing(self, current: int = 0, total: int = 0):
-        """Update the indexing progress line in-place."""
+        """Update the indexing progress bar in-place."""
+        bar_width = 20
         if total > 0:
-            msg = f"Indexing\u2026  {current:,}/{total:,} files"
+            pct = min(current / total, 1.0)
+            filled = int(bar_width * pct)
+            bar = "█" * filled + "░" * (bar_width - filled)
+            msg = f"[{bar}] {pct:.0%}  Indexing  {current:,}/{total:,} chunks"
         else:
-            msg = "Indexing\u2026"
+            bar = "░" * bar_width
+            msg = f"[{bar}]  Indexing…"
         if self._tty:
-            line = f"  {ICON_RUN} {msg}"
+            line = f"  {msg}"
             pad = max(0, self._last_line_len - len(line))
-            self.stream.write(f"\r  {self.c.blue}{ICON_RUN}{self.c.reset} {msg}{' ' * pad}")
+            self.stream.write(f"\r{msg}{' ' * pad}")
+
             self.stream.flush()
             self._last_line_len = max(self._last_line_len, len(line))
         else:
-            self.stream.write(f"  {ICON_RUN} {msg}\n")
-            self.stream.flush()
+            if total > 0 and current == total:
+                self.stream.write(f"  {msg}\n")
+
+                self.stream.flush()
 
     def done(self, chunks: int):
         """Show indexing complete."""
