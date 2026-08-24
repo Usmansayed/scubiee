@@ -958,49 +958,64 @@ def print_wipe_summary(data: dict[str, Any], *, stream: IO[str] | TextIO | None 
 # ── Init progress helper ──────────────────────────────────────────────────────
 
 class InitProgress:
-    """Clean progress display for scubiee init — single updating line."""
+    """Single progress bar for the entire init process.
+
+    Shows: [????????????????????] 40%  Embedding
+    The bar fills as phases progress, text on right shows current phase.
+    """
 
     def __init__(self, stream=None):
         self.stream = stream or sys.stderr
         self.c = colors(self.stream)
         self._tty = _is_tty(self.stream)
         self._last_line_len = 0
+        self._pct = 0
 
     def start(self):
         branded_header("init", stream=self.stream)
 
-    def indexing(self, current: int = 0, total: int = 0):
-        """Update the indexing progress bar in-place."""
-        bar_width = 20
-        if total > 0:
-            pct = min(current / total, 1.0)
-            filled = int(bar_width * pct)
-            bar = "\u2588" * filled + "\u2591" * (bar_width - filled)
-            msg = f"[{bar}] {pct:.0%}  Embedding  {current:,}/{total:,}"
+    def _bar(self, pct: float, label: str):
+        """Render [????????] pct%  label ? single line, overwritten in place."""
+        bar_width = 24
+        pct = max(0.0, min(1.0, pct))
+        filled = int(bar_width * pct)
+        bar = "\u2588" * filled + "\u2591" * (bar_width - filled)
+        if pct > 0:
+            msg = f"[{bar}] {pct:.0%}  {label}"
         else:
-            bar = "\u2591" * bar_width
-            msg = f"[{bar}]  Parsing\u2026"
+            msg = f"[{bar}]  {label}"
         if self._tty:
             line = f"  {msg}"
             pad = max(0, self._last_line_len - len(line))
             self.stream.write(f"\r  {msg}{' ' * pad}")
             self.stream.flush()
             self._last_line_len = max(self._last_line_len, len(line))
+        # Non-TTY: only print at key milestones
+        elif pct in (0, 1.0) or label != getattr(self, '_last_label', ''):
+            self.stream.write(f"  {msg}\n")
+            self.stream.flush()
+            self._last_label = label
+
+    def indexing(self, current: int = 0, total: int = 0):
+        """Called during embed phase with chunk counts."""
+        if total > 0:
+            pct = current / total
+            # Map embed progress (0-100%) to bar range 40%-90%
+            bar_pct = 0.40 + 0.50 * pct
+            self._bar(bar_pct, f"Embedding  {current:,}/{total:,}")
         else:
-            if total > 0 and current == total:
-                self.stream.write(f"  {msg}\n")
-                self.stream.flush()
+            self._bar(0.05, "Parsing")
 
     def done(self, chunks: int):
-        """Show indexing complete."""
-        msg = f"Indexed"
-        detail = f"{chunks:,} chunks"
+        """Finish the bar at 100% then print the success line."""
+        self._bar(1.0, "Done")
         if self._tty:
-            plain = f"  {ICON_OK} {msg}  {detail}"
-            pad = max(0, self._last_line_len - len(plain))
-            self.stream.write(f"\r  {self.c.green}{ICON_OK}{self.c.reset} {msg}  {self.c.muted}{detail}{self.c.reset}{' ' * pad}\n")
+            # Overwrite bar with final success line
+            msg = f"{self.c.green}{ICON_OK}{self.c.reset} Indexed  {self.c.muted}{chunks:,} chunks{self.c.reset}"
+            pad = max(0, self._last_line_len - len(f"  {ICON_OK} Indexed  {chunks:,} chunks"))
+            self.stream.write(f"\r  {msg}{' ' * pad}\n")
         else:
-            self.stream.write(f"  {ICON_OK} {msg}  {detail}\n")
+            self.stream.write(f"  {ICON_OK} Indexed  {chunks:,} chunks\n")
         self.stream.flush()
         self._last_line_len = 0
 
@@ -1027,30 +1042,37 @@ class InitProgress:
         self._last_line_len = 0
 
     def cancelled(self):
-        self.stream.write(f"  Cancelled.\n\n")
+        self.stream.write("  Cancelled.\n\n")
         self.stream.flush()
 
     # Adapter for pipeline progress_ui interface
     def set(self, pct, phase):
         phase_lower = phase.lower()
-        if "parsing" in phase_lower or "scanning" in phase_lower:
-            self.indexing()
-        elif "building chunks" in phase_lower or ("chunk" in phase_lower and "embedding" not in phase_lower):
-            self.indexing()
+        # Map internal phases to clean labels + bar percentage
+        if "scanning" in phase_lower:
+            self._bar(0.03, "Scanning")
+        elif "parsing" in phase_lower:
+            self._bar(0.08, "Parsing")
+        elif "building" in phase_lower or "chunk" in phase_lower:
+            self._bar(0.35, "Chunking")
         elif "embedding" in phase_lower:
             import re as _re
             m = _re.search(r"(\d+)/(\d+)", phase)
             if m:
-                self.indexing(int(m.group(1)), int(m.group(2)))
+                done, total = int(m.group(1)), int(m.group(2))
+                bar_pct = 0.40 + 0.50 * (done / max(total, 1))
+                self._bar(bar_pct, f"Embedding  {done:,}/{total:,}")
             else:
-                self.indexing()
-        elif "indexing" in phase_lower:
-            self.indexing()
+                self._bar(0.40, "Embedding")
+        elif "writing" in phase_lower:
+            self._bar(0.92, "Writing index")
         elif "daemon" in phase_lower:
-            self.daemon_started()
+            pass  # handled by daemon_started()
 
     def pulse(self, phase, *, until=100):
         self.set(until, phase)
 
     def notice(self, msg):
         warn(msg, stream=self.stream)
+
+
