@@ -543,6 +543,11 @@ class SetupProgress:
         """Adapter: map the old percentage-based API to phased output."""
         if phase == self._last_phase:
             return
+        # Avoid duplicate lines for similar phases
+        phase_key = phase.lower().split("(")[0].strip()
+        if hasattr(self, "_last_key") and phase_key == self._last_key:
+            return
+        self._last_key = phase_key
         self._last_phase = phase
         # Map known phases to clean output
         phase_lower = phase.lower()
