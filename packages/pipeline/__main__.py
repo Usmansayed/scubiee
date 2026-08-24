@@ -707,10 +707,35 @@ def cmd_sync(args: argparse.Namespace) -> int:
         if result.refreshed and result.error is None:
             out["published"] = _notify_daemon_publish(root, out)
 
-    print(json.dumps(out, indent=2, default=str))
-    if _needs_confirm_out(out):
-        _emit_confirm_warning(out)
-        return 2
+    if sys.stdout.isatty():
+        from pipeline.cli_ui import error, info, success, warn
+
+        print("", file=sys.stderr)
+        if _needs_confirm_out(out):
+            warn(out.get("message", "Confirmation required"), stream=sys.stderr)
+            if out.get("action"):
+                info(out["action"], stream=sys.stderr)
+            print("", file=sys.stderr)
+            return 2
+        err = out.get("error")
+        if err:
+            if err == "requires_initialize":
+                warn("Repository not initialized", stream=sys.stderr)
+                info("Run: scubiee init .", stream=sys.stderr)
+            else:
+                error(f"Sync failed: {err}", stream=sys.stderr)
+        else:
+            files = out.get("files_synced") or out.get("chunks_upserted") or 0
+            if out.get("refreshed"):
+                success("Synced", detail=f"{files} file(s) updated", stream=sys.stderr)
+            else:
+                success("Already up to date", stream=sys.stderr)
+        print("", file=sys.stderr)
+    else:
+        print(json.dumps(out, indent=2, default=str))
+        if _needs_confirm_out(out):
+            _emit_confirm_warning(out)
+            return 2
     return 0 if out.get("error") is None else 1
 
 
@@ -819,13 +844,30 @@ def cmd_engine(args: argparse.Namespace) -> int:
         else:
             wd = {"ok": False, "skipped": True}
         out = {**result, "watchdog": wd}
-        print(json.dumps(out, indent=2))
+        if sys.stdout.isatty():
+            from pipeline.cli_ui import error as ui_error, success
+
+            print("", file=sys.stderr)
+            if result.get("ok"):
+                success("Engine started", stream=sys.stderr)
+            else:
+                ui_error(f"Engine failed to start", stream=sys.stderr)
+            print("", file=sys.stderr)
+        else:
+            print(json.dumps(out, indent=2))
         return 0 if result.get("ok") else 1
     if action == "stop":
         set_desired_mode(DESIRED_STANDBY)
         wd = stop_watchdog()
         eng = stop_daemon()
-        print(json.dumps({"ok": True, "watchdog": wd, "engine": eng}, indent=2))
+        if sys.stdout.isatty():
+            from pipeline.cli_ui import success
+
+            print("", file=sys.stderr)
+            success("Engine stopped", stream=sys.stderr)
+            print("", file=sys.stderr)
+        else:
+            print(json.dumps({"ok": True, "watchdog": wd, "engine": eng}, indent=2))
         return 0
     if action == "status":
         client = EngineClient()
@@ -838,13 +880,42 @@ def cmd_engine(args: argparse.Namespace) -> int:
         }
         if healthy:
             payload["status"] = client.status(str(Path(args.path or ".").resolve()))
-        print(json.dumps(payload, indent=2, default=str))
+        if sys.stdout.isatty():
+            from pipeline.cli_ui import info, kv, success, error as ui_error
+
+            print("", file=sys.stderr)
+            if healthy:
+                success("Engine running", stream=sys.stderr)
+                kv("URL", engine_url(), stream=sys.stderr)
+                wd = payload.get("watchdog", {})
+                kv("Watchdog", "active" if wd.get("running") else "stopped", stream=sys.stderr)
+            else:
+                ui_error("Engine not running", stream=sys.stderr)
+                info("Start with: scubiee engine start", stream=sys.stderr)
+            print("", file=sys.stderr)
+        else:
+            print(json.dumps(payload, indent=2, default=str))
         return 0 if healthy else 1
     if action == "ensure":
         result = ensure_daemon(Path(args.path or ".").resolve())
         if result.get("ok"):
             result["watchdog"] = start_watchdog()
-        print(json.dumps(result, indent=2))
+        if sys.stdout.isatty():
+            from pipeline.cli_ui import error as ui_error, info, success
+
+            print("", file=sys.stderr)
+            if result.get("ok"):
+                if result.get("already_running"):
+                    success("Engine already running", stream=sys.stderr)
+                else:
+                    success("Engine started", stream=sys.stderr)
+            elif result.get("reason") == "globally_paused":
+                info("Scubiee is stopped. Resume with: scubiee resume", stream=sys.stderr)
+            else:
+                ui_error(f"Engine failed: {result.get('error', 'unknown')}", stream=sys.stderr)
+            print("", file=sys.stderr)
+        else:
+            print(json.dumps(result, indent=2))
         return 0 if result.get("ok") else 1
     print(f"unknown action {action}", file=sys.stderr)
     return 2
