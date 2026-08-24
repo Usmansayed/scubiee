@@ -314,8 +314,8 @@ def test_adversarial():
 def test_recovery():
     section("8. Engine recovery")
 
-    # Kill daemon
-    run("stop", timeout=10)
+    # Kill daemon (engine stop, NOT global stop which pauses MCP/rules)
+    run("engine", "stop", timeout=10)
     time.sleep(2)
 
     # Status should still work (restarts daemon or reports cold state)

@@ -949,7 +949,10 @@ def cmd_init(args: argparse.Namespace) -> int:
     if out.get("ok"):
         try:
             from pipeline.daemon import ensure_daemon
+            from pipeline.pause_resume import _save_state, is_paused
 
+            if is_paused():
+                _save_state({"paused": False})
             out["daemon"] = ensure_daemon(root)
         except Exception as exc:  # noqa: BLE001
             out["daemon"] = {"ok": False, "error": str(exc)}
@@ -993,6 +996,14 @@ def cmd_setup(args: argparse.Namespace) -> int:
         message=".*Cannot enable progress bars.*HF_HUB_DISABLE_PROGRESS_BARS.*",
         category=UserWarning,
     )
+
+    # Setup implies intent to use scubiee — clear any global pause
+    try:
+        from pipeline.pause_resume import _save_state, is_paused
+        if is_paused():
+            _save_state({"paused": False})
+    except Exception:  # noqa: BLE001
+        pass
 
     bar = InstallProgress()
     warn_extra_scubiee(bar.stream)
