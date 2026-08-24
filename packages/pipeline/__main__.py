@@ -985,17 +985,14 @@ def cmd_setup(args: argparse.Namespace) -> int:
 
     os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
     os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+    os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
     os.environ.setdefault("TQDM_DISABLE", "1")
-    warnings.filterwarnings(
-        "ignore",
-        message=".*huggingface_hub.*cache-system uses symlinks.*",
-        category=UserWarning,
-    )
-    warnings.filterwarnings(
-        "ignore",
-        message=".*Cannot enable progress bars.*HF_HUB_DISABLE_PROGRESS_BARS.*",
-        category=UserWarning,
-    )
+    import logging
+    logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
+    warnings.filterwarnings("ignore", message=".*huggingface_hub.*")
+    warnings.filterwarnings("ignore", message=".*unauthenticated.*")
+    warnings.filterwarnings("ignore", message=".*HF_TOKEN.*")
+    warnings.filterwarnings("ignore", message=".*Cannot enable progress bars.*")
 
     # Setup implies intent to use scubiee — clear any global pause
     try:

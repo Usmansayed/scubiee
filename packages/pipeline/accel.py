@@ -1468,12 +1468,17 @@ def _setup_download_env() -> dict[str, str | None]:
     names = (
         "HF_HUB_DISABLE_PROGRESS_BARS",
         "HF_HUB_DISABLE_SYMLINKS_WARNING",
+        "HF_HUB_DISABLE_TELEMETRY",
         "TQDM_DISABLE",
     )
     prev = {name: os.environ.get(name) for name in names}
     os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
     os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+    os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
     os.environ["TQDM_DISABLE"] = "1"
+    # Silence the huggingface_hub "unauthenticated requests" warning
+    import logging
+    logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
     return prev
 
 
