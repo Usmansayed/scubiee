@@ -842,13 +842,14 @@ class BackgroundSyncLoop:
         )
 
         # Restore conservative background budget so the daemon doesn't keep
-        # running at 800 MB for subsequent small live edits.
+        # After bulk work, restore the conservative background budget so the daemon
+        # doesn't keep running at elevated resources for subsequent small live edits.
         try:
             from pipeline.memory_budget import background_budget, force_apply_memory_budget
 
             force_apply_memory_budget(background_budget())
             print(
-                "[keeper] memory budget restored to background (560 MB)",
+                "[keeper] budget restored to background (500MB + 15% CPU)",
                 file=sys.stderr,
                 flush=True,
             )

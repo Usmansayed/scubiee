@@ -1,13 +1,12 @@
 """Cross-platform Context Engine memory budgets.
 
-Bootstrap (first complete index / init): allow up to ~800 MB process RSS without
-asking.
+CPU and RAM budgets are always coupled — heavy work gets both, light work gets neither.
 
-Background reindex (incremental sync): same 800 MB ceiling without asking when
-the corpus is modest (≤ ~6000 chunks).
+Bootstrap (first complete index / init): 800 MB RAM + 35% CPU.
 
-Large reindex (>6000 chunks already on disk): allow up to ~8000 MB so a big
-refresh can finish without pushing users onto ``--fast``.
+Background reindex (incremental sync): 500 MB RAM + 15% CPU. Invisible during coding.
+
+Large reindex (>6000 chunks already on disk): 1 GB RAM + 35% CPU.
 """
 
 from __future__ import annotations
@@ -167,11 +166,19 @@ def force_apply_memory_budget(budget: IndexMemoryBudget) -> None:
     """Unconditionally override memory budget env vars.
 
     Used after a bulk operation finishes to restore the conservative background
-    budget so the daemon doesn't keep running at elevated memory (800 MB) for
+    budget so the daemon doesn't keep running at elevated resources for
     subsequent small live edits.
     """
     os.environ["CTX_CE_MEMORY_MODE"] = budget.mode
     os.environ["CTX_CE_RSS_CAP_MB"] = str(budget.rss_cap_mb)
+    # Sync CPU thread budget with the new RAM budget
+    cores = os.cpu_count() or 4
+    raw_threads = round(cores * budget.cpu_thread_pct)
+    if budget.mode in ("bootstrap", "large_reindex"):
+        cpu_threads = max(min(2, cores), raw_threads)
+    else:
+        cpu_threads = max(1, raw_threads)
+    os.environ["CTX_CPU_EMBED_THREADS"] = str(cpu_threads)
     os.environ["CTX_MLX_CACHE_MB"] = str(budget.mlx_cache_mb)
     os.environ["CTX_CE_EMB_BATCH_CEILING"] = str(budget.embed_batch_ceiling)
     mlx = os.environ.get("CTX_EMBED_BACKEND", "").strip().lower() == "mlx"
