@@ -629,3 +629,206 @@ class SetupProgress:
         self._clear_line()
         self.stream.write(f"  {self.c.muted}{message}{self.c.reset}\n")
         self.stream.flush()
+
+
+# ── Additional command summaries ─────────────────────────────────────────────
+
+def print_search_summary(data, *, stream=None):
+    """Clean search results: ranked list, no raw JSON."""
+    s = stream or sys.stderr
+    c = colors(s)
+    hits = data.get("hits") or []
+    latency = data.get("latency_ms", 0)
+
+    s.write("\n")
+    if not hits:
+        info("No matches found", stream=s)
+        s.write("\n")
+        return
+
+    for h in hits:
+        rank = h.get("rank", "?")
+        file = h.get("file", "?")
+        score = h.get("score", 0)
+        preview = (h.get("preview") or "").strip().replace("\n", " ")
+        if len(preview) > 90:
+            preview = preview[:87] + "..."
+        s.write(f"  {c.muted}{rank:>2}{c.reset}  {c.bold}{file}{c.reset}  {c.muted}({score:.2f}){c.reset}\n")
+        if preview:
+            s.write(f"      {c.muted}{preview}{c.reset}\n")
+    s.write(f"\n  {c.muted}{len(hits)} result(s) in {latency:.0f}ms{c.reset}\n\n")
+    s.flush()
+
+
+def print_resources_summary(data, *, stream=None):
+    """Clean hardware/pressure summary."""
+    s = stream or sys.stderr
+    c = colors(s)
+    res = data.get("resources") or {}
+    hw = data.get("hardware") or {}
+    sample = res.get("sample") or {}
+
+    s.write("\n")
+    pressure = res.get("pressure", "unknown")
+    icon = ICON_OK if pressure == "idle" else ICON_WARN
+    status_line(icon, f"Resource pressure: {pressure}", stream=s)
+    if sample:
+        kv("CPU", f"{sample.get('cpu_percent', 0):.0f}%", stream=s)
+        kv("RAM", f"{sample.get('ram_percent', 0):.0f}%", stream=s)
+    if hw:
+        os_name = hw.get("os", "?")
+        gpus = hw.get("gpus") or []
+        kv("Platform", os_name, stream=s)
+        if gpus:
+            kv("GPU", ", ".join(g.get("name", "?") for g in gpus[:2]), stream=s)
+    s.write("\n")
+    s.flush()
+
+
+def print_preflight_summary(data, *, stream=None):
+    """Clean dependency check summary."""
+    s = stream or sys.stderr
+    ok = data.get("ok", False)
+
+    s.write("\n")
+    if ok:
+        success("All dependencies present", stream=s)
+    else:
+        missing = data.get("missing_required") or []
+        error("Missing dependencies", stream=s)
+        for dep in missing:
+            warn(str(dep), stream=s)
+    s.write("\n")
+    s.flush()
+
+
+def print_certify_summary(data, *, stream=None):
+    """Clean certification gate summary."""
+    s = stream or sys.stderr
+    ok = data.get("ok", False)
+    passed = data.get("passed", 0)
+    failed = data.get("failed_required", 0)
+
+    s.write("\n")
+    if ok:
+        success(f"Certification passed", detail=f"{passed} checks", stream=s)
+    else:
+        error(f"Certification failed", detail=f"{failed} required check(s) failed", stream=s)
+        for f in data.get("failures") or []:
+            if isinstance(f, dict):
+                warn(f.get("name", "?"), detail=f.get("detail", ""), stream=s)
+    s.write("\n")
+    s.flush()
+
+
+def print_register_summary(data, *, stream=None):
+    """Clean project registration summary."""
+    s = stream or sys.stderr
+    ok = data.get("ok", False)
+
+    s.write("\n")
+    if ok:
+        success("Repository registered", stream=s)
+        chunks = data.get("chunks")
+        if chunks:
+            kv("Chunks", format_count(chunks), stream=s)
+    else:
+        error(f"Registration failed: {data.get('error', 'unknown')}", stream=s)
+    s.write("\n")
+    s.flush()
+
+
+def print_lifecycle_summary(data, *, action, stream=None):
+    """Clean repo lifecycle action summary (pause/resume/rebuild/remove/etc)."""
+    s = stream or sys.stderr
+    ok = data.get("ok", True)
+
+    s.write("\n")
+    if ok:
+        state = data.get("state") or data.get("status")
+        detail = f"state: {state}" if state else ""
+        success(f"{action.capitalize()} complete", detail=detail, stream=s)
+    else:
+        error(f"{action.capitalize()} failed: {data.get('error', 'unknown')}", stream=s)
+    s.write("\n")
+    s.flush()
+
+
+def print_migrate_summary(data, *, stream=None):
+    """Clean migration check/apply summary."""
+    s = stream or sys.stderr
+    ok = data.get("ok", True)
+
+    s.write("\n")
+    if "needs_migration" in data:
+        if data.get("needs_migration"):
+            warn("Migration needed", detail=data.get("reason", ""), stream=s)
+        else:
+            success("No migration needed", stream=s)
+    elif "projects" in data:
+        projects = data.get("projects") or []
+        needing = [p for p in projects if p.get("needs_migration")]
+        if needing:
+            warn(f"{len(needing)} project(s) need migration", stream=s)
+        else:
+            success(f"All {len(projects)} project(s) up to date", stream=s)
+    elif ok:
+        migrated = data.get("migrated", 0)
+        success(f"Migration complete", detail=f"{migrated} project(s)", stream=s)
+    else:
+        error(f"Migration failed: {data.get('error', 'unknown')}", stream=s)
+    s.write("\n")
+    s.flush()
+
+
+def print_settings_summary(prefs, *, stream=None):
+    """Clean settings/preferences summary."""
+    s = stream or sys.stderr
+    s.write("\n")
+    for key in ("registration_mode", "incremental_indexing", "file_watching"):
+        if key in prefs:
+            kv(key.replace("_", " ").capitalize(), prefs[key], stream=s)
+    if "prefs_path" in prefs:
+        kv("Config file", prefs["prefs_path"], stream=s)
+    s.write("\n")
+    s.flush()
+
+
+def print_repo_list_summary(repos, *, stream=None):
+    """Clean table of managed repositories."""
+    s = stream or sys.stderr
+    c = colors(s)
+    s.write("\n")
+    if not repos:
+        info("No managed repositories", stream=s)
+        s.write("\n")
+        return
+    rows = []
+    for r in repos:
+        name = r.get("name") or r.get("root", "?")
+        state = r.get("state", "?")
+        chunks = r.get("index_state", "?")
+        rows.append([name, state, chunks])
+    table(rows, headers=["Repository", "State", "Index"], stream=s)
+    s.write(f"\n  {c.muted}{len(repos)} repositor{'y' if len(repos)==1 else 'ies'}{c.reset}\n\n")
+    s.flush()
+
+
+def print_dashboard_summary(data, *, stream=None):
+    """Clean dashboard start/stop/status summary."""
+    s = stream or sys.stderr
+    ok = data.get("ok", False)
+    s.write("\n")
+    if ok:
+        url = data.get("url")
+        running = data.get("running")
+        if running is False:
+            success("Dashboard stopped", stream=s)
+        elif url:
+            success("Dashboard running", detail=url, stream=s)
+        else:
+            success("Dashboard ready", stream=s)
+    else:
+        error(f"Dashboard error: {data.get('error', 'unknown')}", stream=s)
+    s.write("\n")
+    s.flush()

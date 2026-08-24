@@ -1,4 +1,4 @@
-﻿"""CLI: python -m pipeline index|search|status|serve"""
+"""CLI: python -m pipeline index|search|status|serve"""
 
 from __future__ import annotations
 
@@ -210,7 +210,11 @@ def cmd_index(args: argparse.Namespace) -> int:
     out = stats.__dict__.copy()
     out["project_id"] = reg.project_id
     out["registered"] = True
-    print(json.dumps(out, indent=2))
+    if sys.stdout.isatty():
+        from pipeline.cli_ui import success, kv
+        success("Indexed", detail=f"{out.get('chunks', 0)} chunks")
+    else:
+        print(json.dumps(out, indent=2))
     return 0
 
 
@@ -231,25 +235,24 @@ def cmd_resources(args: argparse.Namespace) -> int:
 
     rm = get_resource_manager()
     status = rm.status()
-    print(
-        json.dumps(
-            {
-                "hardware": {
-                    "os": snap.get("os"),
-                    "cpu_model": snap.get("cpu_model"),
-                    "cpu_count": snap.get("cpu_count_logical") or snap.get("cpu_count"),
-                    "ram_total_gb": round((snap.get("ram_total_bytes") or 0) / 1e9, 2)
-                    if snap.get("ram_total_bytes")
-                    else None,
-                    "recommended_accel": snap.get("recommended_accel"),
-                    "libraries": snap.get("libraries"),
-                },
-                "resources": status,
-            },
-            indent=2,
-            default=str,
-        )
-    )
+    payload = {
+        "hardware": {
+            "os": snap.get("os"),
+            "cpu_model": snap.get("cpu_model"),
+            "cpu_count": snap.get("cpu_count_logical") or snap.get("cpu_count"),
+            "ram_total_gb": round((snap.get("ram_total_bytes") or 0) / 1e9, 2)
+            if snap.get("ram_total_bytes")
+            else None,
+            "recommended_accel": snap.get("recommended_accel"),
+            "libraries": snap.get("libraries"),
+        },
+        "resources": status,
+    }
+    if sys.stdout.isatty():
+        from pipeline.cli_ui import print_resources_summary
+        print_resources_summary(payload)
+    else:
+        print(json.dumps(payload, indent=2, default=str))
     return 0
 
 
@@ -272,7 +275,11 @@ def cmd_preflight(args: argparse.Namespace) -> int:
     from pipeline.preflight import inspect_capabilities
 
     report = inspect_capabilities(require_semantic=not bool(args.lexical_only))
-    print(json.dumps(report, indent=2, default=str))
+    if sys.stdout.isatty():
+        from pipeline.cli_ui import print_preflight_summary
+        print_preflight_summary(report)
+    else:
+        print(json.dumps(report, indent=2, default=str))
     return 0 if report.get("ok") else 1
 
 
@@ -441,7 +448,11 @@ def cmd_certify(args: argparse.Namespace) -> int:
         skip_daemon=bool(args.skip_daemon),
         skip_canary=not bool(args.canary),
     )
-    print(json.dumps(out, indent=2, default=str))
+    if sys.stdout.isatty():
+        from pipeline.cli_ui import print_certify_summary
+        print_certify_summary(out)
+    else:
+        print(json.dumps(out, indent=2, default=str))
     return 0 if out.get("ok") else 1
 
 
@@ -461,7 +472,11 @@ def cmd_register(args: argparse.Namespace) -> int:
         )
     except IndexConfirmRequired as exc:
         return _fail_confirm(root, exc)
-    print(json.dumps(result.to_dict(), indent=2))
+    if sys.stdout.isatty():
+        from pipeline.cli_ui import print_register_summary
+        print_register_summary(result.to_dict())
+    else:
+        print(json.dumps(result.to_dict(), indent=2))
     return 0 if result.ok else 1
 
 
@@ -513,7 +528,14 @@ def cmd_repo_lifecycle(args: argparse.Namespace) -> int:
                 out = {"ok": False, "error": f"unknown lifecycle action: {action}"}
         except IndexConfirmRequired as exc:
             return _fail_confirm(root, exc)
-    print(json.dumps(out, indent=2, default=str))
+    if sys.stdout.isatty() and isinstance(out, list):
+        from pipeline.cli_ui import print_repo_list_summary
+        print_repo_list_summary(out)
+    elif sys.stdout.isatty() and isinstance(out, dict):
+        from pipeline.cli_ui import print_lifecycle_summary
+        print_lifecycle_summary(out, action=action)
+    else:
+        print(json.dumps(out, indent=2, default=str))
     if isinstance(out, dict) and _needs_confirm_out(out):
         _emit_confirm_warning(out)
         return 2
@@ -532,7 +554,11 @@ def cmd_settings(args: argparse.Namespace) -> int:
     if args.show or (not args.mode and args.incremental is None and args.watching is None):
         prefs = load_prefs()
         prefs["prefs_path"] = str(prefs_path())
-        print(json.dumps(prefs, indent=2))
+        if sys.stdout.isatty():
+            from pipeline.cli_ui import print_settings_summary
+            print_settings_summary(prefs)
+        else:
+            print(json.dumps(prefs, indent=2))
         return 0
 
     prefs = load_prefs()
@@ -544,14 +570,18 @@ def cmd_settings(args: argparse.Namespace) -> int:
     if args.watching is not None:
         prefs["file_watching"] = bool(args.watching)
     save_prefs(prefs)
-    print(json.dumps(load_prefs(), indent=2))
-    print(
-        f"[settings] registration_mode={get_registration_mode()} "
-        f"(dashboard: python -m pipeline dashboard)",
-        file=sys.stderr,
-    )
+    final_prefs = load_prefs()
+    if sys.stdout.isatty():
+        from pipeline.cli_ui import success
+        success("Settings updated", detail=f"mode={get_registration_mode()}")
+    else:
+        print(json.dumps(final_prefs, indent=2))
+        print(
+            f"[settings] registration_mode={get_registration_mode()} "
+            f"(dashboard: python -m pipeline dashboard)",
+            file=sys.stderr,
+        )
     return 0
-
 
 def interpret_search_cli(first: str, second: str | None) -> tuple[Path, str]:
     """Accept both `search QUERY [PATH]` and the common `search PATH QUERY` mix-up.
@@ -613,25 +643,25 @@ def cmd_search(args: argparse.Namespace) -> int:
             return 1
         raise
     ms = (time.perf_counter() - t0) * 1000
-    print(
-        json.dumps(
+    payload = {
+        "latency_ms": round(ms, 1),
+        "hits": [
             {
-                "latency_ms": round(ms, 1),
-                "hits": [
-                    {
-                        "rank": h.rank,
-                        "file": h.file,
-                        "score": h.score,
-                        "chunk_id": h.chunk_id,
-                        "preview": h.preview,
-                        "source": h.source,
-                    }
-                    for h in hits
-                ],
-            },
-            indent=2,
-        )
-    )
+                "rank": h.rank,
+                "file": h.file,
+                "score": h.score,
+                "chunk_id": h.chunk_id,
+                "preview": h.preview,
+                "source": h.source,
+            }
+            for h in hits
+        ],
+    }
+    if sys.stdout.isatty():
+        from pipeline.cli_ui import print_search_summary
+        print_search_summary(payload)
+    else:
+        print(json.dumps(payload, indent=2))
     return 0
 
 
@@ -777,7 +807,11 @@ def cmd_dashboard(args: argparse.Namespace) -> int:
         out = dashboard_status()
     else:
         out = start_dashboard(open_browser=not args.no_open)
-    print(json.dumps(out, indent=2, default=str))
+    if sys.stdout.isatty():
+        from pipeline.cli_ui import print_dashboard_summary
+        print_dashboard_summary(out)
+    else:
+        print(json.dumps(out, indent=2, default=str))
     return 0 if out.get("ok") else 1
 
 
@@ -1216,7 +1250,11 @@ def cmd_migrate(args: argparse.Namespace) -> int:
         else:
             result = detect_migration_needed(root)
 
-    print(json.dumps(result, indent=2, default=str))
+    if sys.stdout.isatty():
+        from pipeline.cli_ui import print_migrate_summary
+        print_migrate_summary(result)
+    else:
+        print(json.dumps(result, indent=2, default=str))
     return 0 if result.get("ok") else 1
 
 
@@ -1230,40 +1268,34 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
         output_path=output_path,
     )
 
-    # Print summary to stdout
-    print(json.dumps(report, indent=2, default=str))
-
-    # Human-friendly summary to stderr
     verdict = report.get("verdict", {})
     log_file = report.get("log_file", "")
     log_path = Path(log_file) if log_file else None
 
-    # Build a clickable file:// URL for the log (works in Windows Terminal, iTerm2, etc.)
-    if log_path:
-        file_url = log_path.as_uri()
-        # On Windows, also show the parent folder for easy Explorer access
-        folder_url = log_path.parent.as_uri()
-    else:
-        file_url = ""
-        folder_url = ""
+    if sys.stdout.isatty():
+        from pipeline.cli_ui import divider, header, info, kv, success, error as ui_error
 
-    print(f"\n{'='*60}", file=sys.stderr)
-    print(f"  Scubiee {report.get('scubiee_version', '?')}", file=sys.stderr)
-    print(f"  Platform: {report.get('platform', {}).get('system', '?')} "
-          f"{report.get('platform', {}).get('machine', '')}", file=sys.stderr)
-    print(f"  Acceleration: {verdict.get('acceleration', 'none')}", file=sys.stderr)
-    print(f"  Capabilities: {verdict.get('capabilities', '?')}", file=sys.stderr)
-    print(f"  Tests: {verdict.get('tests', '?')}", file=sys.stderr)
-    print(f"  Daemon: {verdict.get('daemon', '?')}", file=sys.stderr)
-    print(f"{'='*60}", file=sys.stderr)
-    print(f"  Log saved: {log_file}", file=sys.stderr)
-    if file_url:
-        print(f"  Open log:    {file_url}", file=sys.stderr)
-        print(f"  Open folder: {folder_url}", file=sys.stderr)
-    print(f"\n  Share the log file above for support.", file=sys.stderr)
-    print(f"{'='*60}", file=sys.stderr)
+        header("Diagnostics")
+        kv("Scubiee", report.get("scubiee_version", "?"))
+        platform_info = report.get("platform", {})
+        kv("Platform", f"{platform_info.get('system', '?')} {platform_info.get('machine', '')}".strip())
+        kv("Acceleration", verdict.get("acceleration", "none"))
+        kv("Capabilities", verdict.get("capabilities", "?"))
+        kv("Tests", verdict.get("tests", "?"))
+        kv("Daemon", verdict.get("daemon", "?"))
+        divider()
+        if verdict.get("ok"):
+            success(f"Log saved: {log_file}")
+        else:
+            ui_error(f"Issues found — log saved: {log_file}")
+        if log_path:
+            info(f"Open: {log_path.as_uri()}")
+        info("Share the log file above for support.")
+    else:
+        print(json.dumps(report, indent=2, default=str))
 
     return 0 if verdict.get("ok") else 1
+
 
 
 def cmd_connect(args: argparse.Namespace) -> int:
