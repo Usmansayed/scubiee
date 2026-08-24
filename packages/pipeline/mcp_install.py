@@ -38,9 +38,13 @@ def server_entry(
 ) -> dict[str, Any]:
     """MCP server block that works after `pip install scubiee`.
 
-    Does not set PYTHONPATH to a git checkout. Cursor starts
-    ``python -m pipeline.mcp_locate`` from the same interpreter that has CE.
+    Prefers the installed `scubiee-mcp` executable (works cross-platform,
+    doesn't depend on knowing the exact Python path, and handles PATH-based
+    discovery in IDEs like Kiro/Cursor that spawn the process). Falls back to
+    ``python -m pipeline.mcp_locate`` when the executable isn't found.
     """
+    import shutil
+
     engine_url = os.environ.get("CTX_ENGINE_URL") or f"http://{host}:{port}"
     from pipeline.settings import get_registration_mode
 
@@ -59,6 +63,18 @@ def server_entry(
     }
     if repo is not None:
         env["CTX_REPO"] = str(Path(repo).resolve()).replace("\\", "/")
+
+    # Prefer the installed scubiee-mcp executable — it's a proper entry point
+    # that IDEs can spawn without knowing the Python path. This fixes Kiro and
+    # other tools that couldn't launch the raw python.exe path reliably.
+    mcp_exe = shutil.which("scubiee-mcp")
+    if mcp_exe:
+        return {
+            "command": mcp_exe.replace("\\", "/"),
+            "args": [],
+            "env": env,
+        }
+    # Fallback: raw Python interpreter + module
     return {
         "command": interpreter(),
         "args": ["-u", "-m", "pipeline.mcp_locate"],
