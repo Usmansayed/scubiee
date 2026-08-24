@@ -585,19 +585,28 @@ def cmd_search(args: argparse.Namespace) -> int:
         return 1
     t0 = time.perf_counter()
     try:
-        from pipeline.searcher import search_repo
+        from pipeline.searcher import search_repo, SearchEngineError
 
-        hits = search_repo(
-            root,
-            query,
-            top_k=args.top_k,
-            use_server=not args.local,
-            server_url=args.url if not args.local else None,
-        )
+        try:
+            hits = search_repo(
+                root,
+                query,
+                top_k=args.top_k,
+                use_server=not args.local,
+                server_url=args.url if not args.local else None,
+            )
+        except SearchEngineError:
+            # Daemon unreachable ? fall back to local search silently
+            hits = search_repo(
+                root,
+                query,
+                top_k=args.top_k,
+                use_server=False,
+            )
     except Exception as exc:
-        from pipeline.searcher import SearchEngineError
+        from pipeline.searcher import SearchEngineError as _SE
 
-        if isinstance(exc, SearchEngineError):
+        if isinstance(exc, _SE):
             print(
                 json.dumps(
                     {
