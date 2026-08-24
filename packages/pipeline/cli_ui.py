@@ -334,6 +334,12 @@ def print_connect_summary(
         detail = ""
         if not ok:
             detail = r.get("error", "failed")
+        elif r.get("workspace_mcp_written"):
+            paths = r.get("workspace_mcp_paths") or []
+            if paths:
+                detail = f"local: {paths[0]}"
+        elif r.get("workspace_mcp_skipped"):
+            detail = "global only (run again in repo)"
         rows.append([icon, tool, detail])
 
     table(rows, headers=["", "Tool", ""], stream=s)
@@ -348,6 +354,25 @@ def print_connect_summary(
             success(f"{action} {ok_count}/{total} tools", stream=s)
         else:
             warn(f"{action} {ok_count}/{total} tools", detail=f"{total - ok_count} failed", stream=s)
+
+    seen_notices: set[str] = set()
+    for r in results:
+        notice = (r.get("notice") or "").strip()
+        if not notice or notice in seen_notices:
+            continue
+        seen_notices.add(notice)
+        if r.get("workspace_mcp_skipped"):
+            warn(notice, stream=s)
+            reason = r.get("workspace_mcp_skip_reason")
+            if reason:
+                info(f"  → {reason}", stream=s)
+        elif r.get("workspace_mcp_written"):
+            info(notice, stream=s)
+            paths = r.get("workspace_mcp_paths") or []
+            for p in paths[1:]:
+                info(f"  also wrote {p}", stream=s)
+        else:
+            info(notice, stream=s)
 
     s.write("\n")
     s.flush()

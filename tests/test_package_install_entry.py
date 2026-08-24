@@ -99,7 +99,7 @@ def test_pyproject_and_npm_versions_match() -> None:
     )
 
 
-def test_kiro_rules_install_writes_global_entry_without_repo_pin(
+def test_kiro_rules_install_writes_global_without_repo_pin_skips_workspace_without_git(
     tmp_path: Path, monkeypatch
 ) -> None:
     from pipeline.rules_installer import install_tools
@@ -113,26 +113,59 @@ def test_kiro_rules_install_writes_global_entry_without_repo_pin(
     monkeypatch.setenv("USERPROFILE", str(home))
     monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
 
-    reports = install_tools(["kiro"], repo=project_root)
+    reports = install_tools(["kiro"])
 
     assert reports[0]["ok"] is True
-    assert reports[0].get("repo_ignored") is True
+    assert reports[0].get("workspace_mcp_skipped") is True
     user = json.loads(
         (home / ".kiro" / "settings" / "mcp.json").read_text(encoding="utf-8")
     )
     assert "CTX_REPO" not in user["mcpServers"]["context-engine"]["env"]
     assert not (project_root / ".kiro").exists()
     assert reports[0]["mcp_path"] == str(home / ".kiro" / "settings" / "mcp.json")
+    assert reports[0].get("notice")
 
 
-def test_kiro_rules_cli_accepts_repo_but_ignores_for_global(
+def test_kiro_rules_install_writes_workspace_mcp_when_git_repo(
+    tmp_path: Path, monkeypatch
+) -> None:
+    from pipeline.rules_installer import install_tools
+
+    project_root = tmp_path / "workspace"
+    project_root.mkdir()
+    (project_root / ".git").mkdir()
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.chdir(project_root)
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+
+    reports = install_tools(["kiro"], repo=project_root)
+
+    assert reports[0]["ok"] is True
+    assert reports[0].get("workspace_mcp_written") is True
+    user = json.loads(
+        (home / ".kiro" / "settings" / "mcp.json").read_text(encoding="utf-8")
+    )
+    assert "CTX_REPO" not in user["mcpServers"]["context-engine"]["env"]
+    project = json.loads(
+        (project_root / ".kiro" / "settings" / "mcp.json").read_text(encoding="utf-8")
+    )
+    assert project["mcpServers"]["context-engine"]["env"]["CTX_REPO"] == str(
+        project_root.resolve()
+    ).replace("\\", "/")
+
+
+def test_kiro_rules_cli_uses_repo_for_workspace_mcp(
     tmp_path: Path, monkeypatch, capsys
 ) -> None:
     from pipeline.__main__ import main
 
     target = tmp_path / "workspace"
-    unrelated = tmp_path / "unrelated"
     target.mkdir()
+    (target / ".git").mkdir()
+    unrelated = tmp_path / "unrelated"
     unrelated.mkdir()
     monkeypatch.chdir(unrelated)
 
@@ -141,9 +174,11 @@ def test_kiro_rules_cli_accepts_repo_but_ignores_for_global(
     ) == 0
 
     report = json.loads(capsys.readouterr().out)
-    assert report[0]["scope"] == "global"
-    assert report[0].get("repo_ignored") is True
-    assert "would_write_workspace_mcp" not in report[0]
+    assert report[0]["scope"] == "global+workspace"
+    assert report[0].get("would_write_workspace_mcp_paths")
+    assert str(target / ".kiro" / "settings" / "mcp.json") in report[0][
+        "would_write_workspace_mcp_paths"
+    ]
     assert report[0]["would_write_mcp"].endswith(
         str(Path(".kiro") / "settings" / "mcp.json")
     )
@@ -157,6 +192,7 @@ def test_uninstall_removes_mcp_entry_and_rule_file(tmp_path: Path, monkeypatch) 
     tool = TOOL_MAP["kiro"]
     workspace = tmp_path / "project"
     workspace.mkdir()
+    (workspace / ".git").mkdir()
 
     fake_home = tmp_path / "home"
     fake_home.mkdir()
@@ -167,18 +203,25 @@ def test_uninstall_removes_mcp_entry_and_rule_file(tmp_path: Path, monkeypatch) 
     install_tool(tool, repo=workspace)
     user_mcp = fake_home / ".kiro" / "settings" / "mcp.json"
     rule_file = fake_home / ".kiro" / "steering" / "context-engine.md"
+    project_mcp = workspace / ".kiro" / "settings" / "mcp.json"
     assert user_mcp.is_file()
     assert rule_file.is_file()
+    assert project_mcp.is_file()
     assert "context-engine" in json.loads(user_mcp.read_text(encoding="utf-8")).get("mcpServers", {})
-    assert not (workspace / ".kiro").exists()
+    assert "CTX_REPO" in json.loads(project_mcp.read_text(encoding="utf-8"))["mcpServers"]["context-engine"]["env"]
 
     report = uninstall_tool(tool, repo=workspace)
     assert report["ok"] is True
     assert report["mcp_removed"] is True
     assert report["rule_removed"] is True
+    assert report.get("workspace_mcp_removed") is True
 
-    assert "context-engine" not in json.loads(user_mcp.read_text(encoding="utf-8")).get("mcpServers", {})
+    if user_mcp.is_file():
+        assert "context-engine" not in json.loads(
+            user_mcp.read_text(encoding="utf-8")
+        ).get("mcpServers", {})
     assert not rule_file.is_file()
+    assert not project_mcp.is_file()
 
 
 def test_uninstall_removes_append_md_section(tmp_path: Path, monkeypatch) -> None:

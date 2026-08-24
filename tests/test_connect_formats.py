@@ -1,4 +1,4 @@
-"""Global-only connect: MCP schemas + Win/Mac paths (no project writes)."""
+"""Global connect: MCP schemas + Win/Mac paths; workspace-local for 4 hosts."""
 
 from __future__ import annotations
 
@@ -11,7 +11,8 @@ from pipeline.rules_installer import format_server_entry, install_tool, uninstal
 from pipeline.tool_registry import (
     ALL_SLUGS,
     TOOL_MAP,
-    resolve_mcp_project_path,
+    WORKSPACE_LOCAL_MCP_SLUGS,
+    resolve_mcp_project_paths,
     resolve_mcp_user_path,
     resolve_mcp_user_paths,
     resolve_rule_project_path,
@@ -29,14 +30,24 @@ def fake_home(tmp_path: Path, monkeypatch) -> Path:
     return home
 
 
+def _git_repo(path: Path) -> Path:
+    path.mkdir(parents=True, exist_ok=True)
+    (path / ".git").mkdir()
+    return path
+
+
 def test_registry_has_priority_tools() -> None:
     for slug in ("codex", "claude-code", "kiro", "amp", "pi", "opencode", "copilot", "cursor"):
         assert slug in ALL_SLUGS
 
 
-def test_never_resolves_project_paths(tmp_path: Path) -> None:
+def test_project_paths_only_for_workspace_local_tools(tmp_path: Path) -> None:
     for tool in TOOL_MAP.values():
-        assert resolve_mcp_project_path(tool, tmp_path) is None
+        paths = resolve_mcp_project_paths(tool, tmp_path)
+        if tool.slug in WORKSPACE_LOCAL_MCP_SLUGS:
+            assert paths
+        else:
+            assert paths == []
         assert resolve_rule_project_path(tool, tmp_path) is None
 
 
@@ -74,14 +85,28 @@ def test_install_cursor_global_mcp_and_rules(fake_home: Path, tmp_path: Path) ->
     assert not (workspace / ".cursor").exists()
 
 
-def test_install_kiro_global_only(fake_home: Path, tmp_path: Path) -> None:
-    workspace = tmp_path / "ws"
-    workspace.mkdir()
+def test_install_kiro_global_and_workspace_mcp(fake_home: Path, tmp_path: Path) -> None:
+    workspace = _git_repo(tmp_path / "ws")
     report = install_tool(TOOL_MAP["kiro"], repo=workspace)
     assert report["ok"]
+    assert report.get("workspace_mcp_written") is True
     user = json.loads((fake_home / ".kiro" / "settings" / "mcp.json").read_text(encoding="utf-8"))
     assert "CTX_REPO" not in user["mcpServers"]["context-engine"]["env"]
+    project = json.loads((workspace / ".kiro" / "settings" / "mcp.json").read_text(encoding="utf-8"))
+    assert project["mcpServers"]["context-engine"]["env"]["CTX_REPO"] == str(workspace).replace("\\", "/")
     assert (fake_home / ".kiro" / "steering" / "context-engine.md").is_file()
+    assert report.get("notice")
+
+
+def test_install_kiro_skips_workspace_without_git(
+    fake_home: Path, tmp_path: Path, monkeypatch
+) -> None:
+    workspace = tmp_path / "plain"
+    workspace.mkdir()
+    monkeypatch.chdir(workspace)
+    report = install_tool(TOOL_MAP["kiro"])
+    assert report["ok"]
+    assert report.get("workspace_mcp_skipped") is True
     assert not (workspace / ".kiro").exists()
 
 
@@ -127,9 +152,11 @@ def test_install_amp_dotted_key(fake_home: Path) -> None:
 
 
 def test_install_copilot_user_profile_and_cli(fake_home: Path, tmp_path: Path) -> None:
-    report = install_tool(TOOL_MAP["copilot"])
+    workspace = _git_repo(tmp_path / "ws")
+    report = install_tool(TOOL_MAP["copilot"], repo=workspace)
     assert report["ok"]
     assert report["rule_written"] is True
+    assert report.get("workspace_mcp_written") is True
 
     vscode_path = resolve_mcp_user_path(TOOL_MAP["copilot"])
     assert vscode_path is not None
@@ -143,13 +170,17 @@ def test_install_copilot_user_profile_and_cli(fake_home: Path, tmp_path: Path) -
     assert entry["tools"] == ["*"]
     assert "CTX_REPO" not in entry["env"]
 
+    proj_vscode = json.loads((workspace / ".vscode" / "mcp.json").read_text(encoding="utf-8"))
+    assert proj_vscode["servers"]["context-engine"]["env"]["CTX_REPO"] == str(workspace).replace("\\", "/")
+    root_mcp = json.loads((workspace / ".mcp.json").read_text(encoding="utf-8"))
+    assert root_mcp["mcpServers"]["context-engine"]["env"]["CTX_REPO"] == str(workspace).replace("\\", "/")
+
     instructions = (fake_home / ".copilot" / "copilot-instructions.md").read_text(encoding="utf-8")
     assert "<!-- context-engine:start -->" in instructions
     modular = (
         fake_home / ".copilot" / "instructions" / "context-engine.instructions.md"
     ).read_text(encoding="utf-8")
     assert "<!-- context-engine:start -->" in modular
-    assert not (tmp_path / ".vscode").exists()
 
 
 def test_format_copilot_cli_schema() -> None:
@@ -194,12 +225,12 @@ def test_uninstall_global(fake_home: Path) -> None:
 def test_kiro_cli_dry_run_global(tmp_path: Path, monkeypatch, capsys) -> None:
     from pipeline.__main__ import main
 
-    target = tmp_path / "workspace"
-    target.mkdir()
+    target = _git_repo(tmp_path / "workspace")
     monkeypatch.chdir(target)
-    assert main(["connect", "--kiro", "--repo", str(target), "--dry-run"]) == 0
+    assert main(["connect", "--kiro", "--dry-run"]) == 0
     report = json.loads(capsys.readouterr().out)
-    assert report[0]["scope"] == "global"
-    assert report[0].get("repo_ignored") is True
-    assert "workspace_mcp_path" not in report[0]
-    assert "would_write_workspace_mcp" not in report[0]
+    assert report[0]["scope"] == "global+workspace"
+    assert report[0].get("would_write_workspace_mcp_paths")
+    assert str(target / ".kiro" / "settings" / "mcp.json") in report[0][
+        "would_write_workspace_mcp_paths"
+    ]

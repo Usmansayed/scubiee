@@ -2070,7 +2070,10 @@ def main(argv: list[str] | None = None) -> int:
         "--repo",
         type=Path,
         default=None,
-        help="Deprecated/ignored: connect is global-only (MCP+rules under your home profile)",
+        help=(
+            "Project folder for workspace-local MCP (Kiro, Copilot, Cline, Roo). "
+            "Defaults to current directory."
+        ),
     )
     p_connect.set_defaults(func=cmd_connect)
 
@@ -2091,7 +2094,10 @@ def main(argv: list[str] | None = None) -> int:
         "--repo",
         type=Path,
         default=None,
-        help="Deprecated/ignored: disconnect is global-only",
+        help=(
+            "Project folder for workspace-local MCP removal (Kiro, Copilot, Cline, Roo). "
+            "Defaults to current directory."
+        ),
     )
     p_disconnect.set_defaults(func=cmd_disconnect)
 

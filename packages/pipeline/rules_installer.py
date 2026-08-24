@@ -1,11 +1,14 @@
-﻿"""Connect Scubiee to AI coding tools — global MCP + rules only.
+﻿"""Connect Scubiee to AI coding tools — global MCP + rules.
 
 Usage:
     scubiee connect --all
-    scubiee connect --cursor --claude-code --codex --kiro --opencode
+    scubiee connect --cursor --claude-code --codex
+    scubiee connect --kiro --copilot --cline --roo-code   # run inside each repo
 
-Never writes project configs. Never pins CTX_REPO.
-See docs/connect-global-mcp-research.md.
+Most tools get user-global MCP only (no CTX_REPO pin).
+
+Kiro, Copilot, Cline, and Roo Code also write a workspace-local MCP file when
+connect is run from a project folder (or with --repo).
 """
 
 from __future__ import annotations
@@ -18,6 +21,9 @@ from pipeline.mcp_install import server_entry
 from pipeline.tool_registry import (
     TOOL_MAP,
     ToolDef,
+    WORKSPACE_LOCAL_MCP_NOTICES,
+    is_workspace_local_mcp_tool,
+    resolve_mcp_project_paths,
     resolve_mcp_user_path,
     resolve_mcp_user_paths,
     resolve_mcp_write_targets,
@@ -67,12 +73,19 @@ def format_server_entry(
     if use_schema == "claude":
         return {"command": cmd, "args": args, "env": env}
     if use_schema == "vscode":
-        # When repo-neutral (no CTX_REPO in env), inject WORKSPACE_FOLDER so
-        # VS Code resolves the active workspace before launching the process.
-        # _default_repo() already checks this variable for workspace discovery.
-        if "CTX_REPO" not in env:
+        # Global user mcp.json does not expand ${workspaceFolder} (VS Code #245905).
+        # Only project .vscode/mcp.json should rely on WORKSPACE_FOLDER / cwd.
+        if "CTX_REPO" not in env and pin_repo:
             env.setdefault("WORKSPACE_FOLDER", "${workspaceFolder}")
-        return {"type": "stdio", "command": cmd, "args": args, "env": env}
+        payload: dict[str, Any] = {
+            "type": "stdio",
+            "command": cmd,
+            "args": args,
+            "env": env,
+        }
+        if pin_repo:
+            payload["cwd"] = "${workspaceFolder}"
+        return payload
     if use_schema == "copilot_cli":
         # GitHub Copilot CLI ~/.copilot/mcp-config.json
         # Inject WORKSPACE_FOLDER for workspace discovery when repo-neutral.
@@ -102,6 +115,74 @@ def format_server_entry(
     if use_schema == "zed":
         return {"command": cmd, "args": args, "env": env}
     raise ValueError(f"unknown mcp_schema: {use_schema}")
+
+
+def _connect_repo(repo: Path | str | None) -> Path:
+    return Path(repo if repo is not None else Path.cwd()).resolve()
+
+
+def _workspace_mcp_eligible(root: Path, *, explicit_repo: bool) -> bool:
+    if explicit_repo:
+        return True
+    if (root / ".git").exists():
+        return True
+    if (root / ".context-engine" / "id.json").is_file():
+        return True
+    return False
+
+
+def _write_workspace_mcp(tool: ToolDef, repo: Path) -> list[Path]:
+    """Write repo-pinned MCP config(s) for hosts that break global discovery."""
+    written: list[Path] = []
+    slug = tool.slug
+
+    if slug == "kiro":
+        path = repo / ".kiro" / "settings" / "mcp.json"
+        entry = format_server_entry(tool, repo, pin_repo=True)
+        write_mcp_config(tool, path, entry)
+        written.append(path)
+        return written
+
+    if slug == "copilot":
+        vscode_path = repo / ".vscode" / "mcp.json"
+        vscode_entry = format_server_entry(tool, repo, pin_repo=True, schema="vscode")
+        write_mcp_config(tool, vscode_path, vscode_entry, schema="vscode", key="servers")
+
+        root_mcp = repo / ".mcp.json"
+        agent_entry = format_server_entry(tool, repo, pin_repo=True, schema="claude")
+        _write_mcp_json_keyed(root_mcp, "mcpServers", agent_entry)
+        written.extend([vscode_path, root_mcp])
+        return written
+
+    if slug == "cline":
+        path = repo / ".cline" / "mcp.json"
+        entry = format_server_entry(tool, repo, pin_repo=True)
+        write_mcp_config(tool, path, entry)
+        written.append(path)
+        return written
+
+    if slug == "roo-code":
+        path = repo / ".roo" / "mcp.json"
+        entry = format_server_entry(tool, repo, pin_repo=True)
+        write_mcp_config(tool, path, entry)
+        written.append(path)
+        return written
+
+    return written
+
+
+def _remove_workspace_mcp(tool: ToolDef, repo: Path) -> bool:
+    removed = False
+    for path in resolve_mcp_project_paths(tool, repo):
+        if not path.is_file():
+            continue
+        if tool.slug == "copilot" and path.name == "mcp.json" and path.parent == repo:
+            removed = _remove_mcp_json_keyed(path, "mcpServers") or removed
+        elif tool.slug == "copilot" and ".vscode" in path.parts:
+            removed = remove_mcp_config(tool, path, schema="vscode", key="servers") or removed
+        else:
+            removed = remove_mcp_config(tool, path) or removed
+    return removed
 
 
 def _server_entry_for_tool(tool: ToolDef, repo: Path | str | None = None) -> dict[str, Any]:
@@ -393,35 +474,53 @@ def install_tool(
     dry_run: bool = False,
     repo: Path | str | None = None,
 ) -> dict[str, Any]:
-    """Install global MCP + rule for one tool. ``repo`` is ignored (compat)."""
+    """Install global MCP + rule; workspace-local MCP for Kiro/Copilot/Cline/Roo."""
+    explicit_repo = repo is not None
+    target_repo = _connect_repo(repo)
     write_targets = resolve_mcp_write_targets(tool)
     mcp_paths = [p for p, _s, _k in write_targets]
     rule_paths = resolve_rule_user_paths(tool)
     primary = mcp_paths[0] if mcp_paths else None
     primary_rule = rule_paths[0] if rule_paths else None
+    workspace_local = is_workspace_local_mcp_tool(tool.slug)
+    workspace_paths = resolve_mcp_project_paths(tool, target_repo) if workspace_local else []
 
     report: dict[str, Any] = {
         "tool": tool.name,
         "slug": tool.slug,
         "mcp_schema": tool.mcp_schema,
-        "scope": "global",
+        "scope": "global+workspace" if workspace_local else "global",
         "mcp_path": str(primary) if primary else None,
         "mcp_paths": [str(p) for p in mcp_paths],
         "rule_path": str(primary_rule) if primary_rule else None,
         "rule_paths": [str(p) for p in rule_paths],
+        "workspace_mcp_paths": [str(p) for p in workspace_paths],
         "dry_run": dry_run,
         "ok": True,
         "errors": [],
     }
-    if repo is not None:
+
+    if workspace_local:
+        report["notice"] = WORKSPACE_LOCAL_MCP_NOTICES.get(tool.slug, "")
+        report["repo"] = str(target_repo)
+        eligible = _workspace_mcp_eligible(target_repo, explicit_repo=explicit_repo)
+        report["workspace_mcp_eligible"] = eligible
+        if not eligible:
+            report["workspace_mcp_skipped"] = True
+            report["workspace_mcp_skip_reason"] = (
+                "not a project folder — cd into the repo (or pass --repo) and run connect again"
+            )
+    elif repo is not None:
         report["repo_ignored"] = True
-        report["note"] = "connect is global-only; --repo is ignored"
+        report["note"] = "connect is global-only for this tool; --repo is ignored"
 
     if dry_run:
         report["would_write_mcp"] = str(primary) if primary else None
         report["would_write_mcp_paths"] = [str(p) for p in mcp_paths]
         report["would_write_rule"] = str(primary_rule) if primary_rule else None
         report["would_write_rule_paths"] = [str(p) for p in rule_paths]
+        if workspace_local and report.get("workspace_mcp_eligible"):
+            report["would_write_workspace_mcp_paths"] = [str(p) for p in workspace_paths]
         return report
 
     try:
@@ -444,6 +543,18 @@ def install_tool(
         report["mcp_written"] = False
         report["errors"].append(f"mcp write failed: {exc}")
         report["ok"] = False
+
+    if workspace_local and report.get("workspace_mcp_eligible"):
+        try:
+            written = _write_workspace_mcp(tool, target_repo)
+            report["workspace_mcp_written"] = True
+            report["workspace_mcp_paths"] = [str(p) for p in written]
+        except Exception as exc:  # noqa: BLE001
+            report["workspace_mcp_written"] = False
+            report["errors"].append(f"workspace mcp write failed: {exc}")
+            report["ok"] = False
+    elif workspace_local:
+        report["workspace_mcp_written"] = False
 
     try:
         if rule_paths and tool.rule_format != "none":
@@ -488,8 +599,15 @@ def _remove_mcp_json_keyed(path: Path, key: str) -> bool:
     if not isinstance(servers, dict) or _SERVER_NAME not in servers:
         return False
     del servers[_SERVER_NAME]
-    data[key] = servers
-    _write_json(path, data)
+    if servers:
+        data[key] = servers
+        _write_json(path, data)
+    else:
+        data.pop(key, None)
+        if data:
+            _write_json(path, data)
+        else:
+            path.unlink()
     return True
 
 
@@ -617,32 +735,41 @@ def uninstall_tool(
     dry_run: bool = False,
     repo: Path | str | None = None,
 ) -> dict[str, Any]:
+    target_repo = _connect_repo(repo)
     write_targets = resolve_mcp_write_targets(tool)
     mcp_paths = [p for p, _s, _k in write_targets]
     rule_paths = resolve_rule_user_paths(tool)
     primary = mcp_paths[0] if mcp_paths else None
     primary_rule = rule_paths[0] if rule_paths else None
+    workspace_local = is_workspace_local_mcp_tool(tool.slug)
+    workspace_paths = resolve_mcp_project_paths(tool, target_repo) if workspace_local else []
 
     report: dict[str, Any] = {
         "tool": tool.name,
         "slug": tool.slug,
-        "scope": "global",
+        "scope": "global+workspace" if workspace_local else "global",
         "mcp_path": str(primary) if primary else None,
         "mcp_paths": [str(p) for p in mcp_paths],
         "rule_path": str(primary_rule) if primary_rule else None,
         "rule_paths": [str(p) for p in rule_paths],
+        "workspace_mcp_paths": [str(p) for p in workspace_paths],
         "dry_run": dry_run,
         "ok": True,
         "errors": [],
         "mcp_removed": False,
         "rule_removed": False,
+        "workspace_mcp_removed": False,
     }
+    if workspace_local:
+        report["repo"] = str(target_repo)
 
     if dry_run:
         report["would_remove_mcp"] = str(primary) if primary else None
         report["would_remove_mcp_paths"] = [str(p) for p in mcp_paths]
         report["would_remove_rule"] = str(primary_rule) if primary_rule else None
         report["would_remove_rule_paths"] = [str(p) for p in rule_paths]
+        if workspace_local:
+            report["would_remove_workspace_mcp_paths"] = [str(p) for p in workspace_paths]
         return report
 
     try:
@@ -653,6 +780,13 @@ def uninstall_tool(
     except Exception as exc:  # noqa: BLE001
         report["errors"].append(f"mcp removal failed: {exc}")
         report["ok"] = False
+
+    if workspace_local:
+        try:
+            report["workspace_mcp_removed"] = _remove_workspace_mcp(tool, target_repo)
+        except Exception as exc:  # noqa: BLE001
+            report["errors"].append(f"workspace mcp removal failed: {exc}")
+            report["ok"] = False
 
     try:
         remover = _RULE_REMOVERS.get(tool.rule_format)

@@ -1,19 +1,30 @@
 # Global MCP + rules research (Scubiee `connect`)
 
-**Goal:** One `scubiee connect` run installs **user-global** MCP + rules only. No project files. No `CTX_REPO` pin. Works in every repo forever; the engine/MCP discovers the open workspace at runtime.
+**Goal:** One `scubiee connect` run installs **user-global** MCP + rules for most hosts. Four broken hosts also need a **workspace-local MCP file** when connect is run from inside each project.
 
-**Researched:** 2026-08-23  
+**Researched:** 2026-08-23 (updated 2026-08-25 for workspace-local exceptions)  
 **Sources:** Official product docs (Cursor, Claude Code, Codex, Kiro, OpenCode, Amp, VS Code, Zed, Windsurf, Continue, Pi), plus cross-checks on Cline/Roo storage paths.
 
 ---
 
 ## Design rules for Scubiee
 
-1. Write **only** global/user config paths listed below.
-2. Never set `CTX_REPO` in global MCP env (repo-agnostic).
-3. Never write `.cursor/mcp.json`, `.mcp.json`, `.vscode/mcp.json`, `opencode.json`, etc. into a project.
+1. Write **global/user** config paths for every supported tool.
+2. Never set `CTX_REPO` in **global** MCP env (repo-agnostic).
+3. For **Kiro, VS Code/Copilot, Cline, Roo Code** only: when `connect --<tool>` runs from a project folder (`.git`, `.context-engine/id.json`, or `--repo`), also write workspace-local MCP with `CTX_REPO` pinned.
 4. Schema must match what each host actually parses (wrong key = silent miss).
 5. Windows vs Mac paths differ for VS Code-family and Zed; home-relative `~` paths are usually the same shape under `%USERPROFILE%`.
+
+### Workspace-local exceptions (global MCP broken)
+
+| Tool | Global (always) | Workspace-local (per repo, when connect runs in project) |
+|---|---|---|
+| **Kiro** | `~/.kiro/settings/mcp.json` + steering | `.kiro/settings/mcp.json` |
+| **Copilot** | VS Code user `mcp.json` + `~/.copilot/mcp-config.json` | `.vscode/mcp.json` + `.mcp.json` |
+| **Cline** | VS Code globalStorage + `~/.cline/...` | `.cline/mcp.json` |
+| **Roo Code** | VS Code globalStorage | `.roo/mcp.json` |
+
+Run `scubiee connect --kiro` (etc.) **inside each repo** after `scubiee init .`. Running from `$HOME` still installs global rules/MCP but skips workspace files with a CLI notice.
 
 ---
 
@@ -66,7 +77,7 @@
 | **Rules (steering)** | `~/.kiro/steering/context-engine.md` | `%USERPROFILE%\.kiro\steering\context-engine.md` |
 
 - **Schema:** `{ "mcpServers": { ... } }` (Claude-style).
-- **Notes:** Workspace `.kiro/...` exists but is **out of scope** for global connect. Global MCP must not pin `CTX_REPO`.
+- **Notes:** Global MCP must not pin `CTX_REPO`. Kiro IDE cannot resolve workspace from global MCP alone ([#10486](https://github.com/kirodotdev/Kiro/issues/10486)); run `scubiee connect --kiro` inside each project to write `.kiro/settings/mcp.json`.
 - **Refs:** [kiro.dev/docs/mcp/configuration](https://kiro.dev/docs/mcp/configuration/), [kiro.dev/docs/configuration](https://kiro.dev/docs/configuration/)
 
 ### Windsurf (Cascade)
@@ -90,7 +101,7 @@
 
 - **VS Code schema:** `{ "servers": { "name": { "type": "stdio", "command", "args", "env" } } }`
 - **CLI schema:** `{ "mcpServers": { "name": { "type": "local", "command", "args", "env", "tools": ["*"] } } }`
-- **Notes:** `scubiee connect --copilot` writes **both** MCP files plus global instructions. Command Palette → **MCP: Open User Configuration** for the VS Code file. Project `.vscode/mcp.json` is unused (global-only).
+- **Notes:** `scubiee connect --copilot` writes **both** global MCP files plus global instructions. VS Code user global MCP does not expand `${workspaceFolder}` ([#245905](https://github.com/microsoft/vscode/issues/245905)); run connect inside each project for `.vscode/mcp.json` + `.mcp.json`.
 - **Refs:** [VS Code MCP](https://code.visualstudio.com/docs/copilot/customization/mcp-servers), [Copilot CLI MCP](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-mcp-servers), [custom instructions](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions)
 
 ### Cline
@@ -102,7 +113,7 @@
 | **Rules (global)** | `~/.cline/rules/context-engine.md` | `%USERPROFILE%\.cline\rules\context-engine.md` | same |
 
 - **Schema:** `mcpServers` (Claude-style).
-- **Notes:** Scubiee writes **both** VS Code extension + CLI MCP paths when possible so IDE and CLI stay in sync.
+- **Notes:** Scubiee writes **both** VS Code extension + CLI MCP paths globally. Global spawn cwd may be wrong; run `scubiee connect --cline` inside each project for `.cline/mcp.json`.
 - **Refs:** [docs.cline.bot/getting-started/config](https://docs.cline.bot/getting-started/config)
 
 ### Roo Code
@@ -113,6 +124,7 @@
 | **Rules** | _(project `.roo/rules` only — skip for global connect)_ | | |
 
 - **Schema:** `mcpServers` (Claude-style). Distinct from Cline extension id/filename.
+- **Notes:** Global MCP spawn cwd may be wrong; run `scubiee connect --roo-code` inside each project for `.roo/mcp.json`.
 
 ### Continue
 
