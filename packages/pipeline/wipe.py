@@ -512,13 +512,31 @@ def wipe_all(
 
     pkg_out: dict[str, Any] | None = None
     if package:
+        import shutil
+        import subprocess
+
         from pipeline.process_control import force_remove_uv_tool_dir, is_uv_tool_install, uv_tool_uninstall
 
-        if is_uv_tool_install():
+        # Try uv tool uninstall first (covers uv tool installs AND detects the tool dir)
+        uv_tool_dir = _uv_tool_dir()
+        uv_bin = shutil.which("uv")
+        if is_uv_tool_install() or (uv_tool_dir and uv_tool_dir.exists()):
             pkg_out = uv_tool_uninstall()
+        elif uv_bin:
+            # uv available but not a tool install — try uv pip uninstall
+            cmd = [uv_bin, "pip", "uninstall", "--python", sys.executable, "scubiee"]
+            try:
+                proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                pkg_out = {
+                    "ok": proc.returncode == 0,
+                    "cmd": cmd,
+                    "stdout": (proc.stdout or "")[-500:],
+                    "stderr": (proc.stderr or "")[-500:],
+                }
+            except Exception as exc:  # noqa: BLE001
+                pkg_out = {"ok": False, "error": str(exc)}
         else:
-            import subprocess
-
+            # Fallback: plain pip
             cmd = [sys.executable, "-m", "pip", "uninstall", "-y", "scubiee"]
             try:
                 proc = subprocess.run(cmd, capture_output=True, text=True, check=False)

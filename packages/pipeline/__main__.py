@@ -363,25 +363,45 @@ def cmd_wipe(args: argparse.Namespace) -> int:
         package=package,
         path=getattr(args, "path", None) or ".",
     )
-    print(json.dumps(out, indent=2, default=str))
-    if _needs_confirm_out(out):
-        _emit_confirm_warning(out)
-        return 2
-    remaining = out.get("remaining") if isinstance(out, dict) else None
-    if remaining:
-        print("[scubiee] Warning: some CE files may still be on disk:", file=sys.stderr)
-        for item in remaining[:12]:
-            if isinstance(item, dict):
-                path = item.get("path", "")
-                kind = item.get("kind", "artifact")
-                print(f"[scubiee]   - ({kind}) {path}", file=sys.stderr)
-        if len(remaining) > 12:
-            print(f"[scubiee]   … and {len(remaining) - 12} more (see JSON)", file=sys.stderr)
-        audit = out.get("audit") if isinstance(out, dict) else {}
-        if isinstance(audit, dict) and audit.get("hint"):
-            print(f"[scubiee] {audit['hint']}", file=sys.stderr)
-        return 2 if out.get("scope") == "all" else 1
-    return 0 if out.get("ok") else 1
+
+    if sys.stdout.isatty():
+        from pipeline.cli_ui import error, info, success, warn
+
+        print("", file=sys.stderr)
+        if _needs_confirm_out(out):
+            warn(out.get("message", "Confirmation required"), stream=sys.stderr)
+            if out.get("action") or out.get("hint"):
+                info(out.get("action") or out.get("hint", ""), stream=sys.stderr)
+            print("", file=sys.stderr)
+            return 2
+
+        remaining = out.get("remaining") if isinstance(out, dict) else None
+        # Filter out 0-byte empty dirs from remaining
+        remaining = [
+            r for r in (remaining or [])
+            if not (isinstance(r, dict) and r.get("size_bytes", 1) == 0)
+        ]
+
+        if out.get("ok") and not remaining:
+            success("Scubiee wiped completely", stream=sys.stderr)
+            if out.get("scope") == "all":
+                info("Reinstall: uv tool install scubiee && scubiee setup", stream=sys.stderr)
+        elif remaining:
+            warn(f"{len(remaining)} item(s) could not be removed", stream=sys.stderr)
+            for item in remaining[:5]:
+                if isinstance(item, dict):
+                    info(f"{item.get('kind', '?')}: {item.get('path', '?')}", stream=sys.stderr)
+        else:
+            success("Wipe completed", stream=sys.stderr)
+
+        print("", file=sys.stderr)
+    else:
+        print(json.dumps(out, indent=2, default=str))
+        if _needs_confirm_out(out):
+            _emit_confirm_warning(out)
+            return 2
+
+    return 0 if out.get("ok") or not out.get("remaining") else 1
 
 
 def cmd_doctor(args: argparse.Namespace) -> int:
