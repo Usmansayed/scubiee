@@ -96,19 +96,14 @@ def format_install_identity() -> str:
 
 
 def warn_extra_scubiee(stream=None) -> None:
+    """One-line notice when multiple scubiee installs are on PATH (setup only)."""
     extras = extra_scubiee_on_path()
     if not extras:
         return
     out = stream if stream is not None else sys.stderr
+    other = extras[0]
     out.write(
-        "[scubiee] WARNING: PATH has another scubiee besides this Python.\n"
-        f"[scubiee] this Python: {current_python()}\n"
-    )
-    for extra in extras:
-        out.write(f"[scubiee] also found: {extra}\n")
-    out.write(
-        "[scubiee] uninstall must match how you installed (uv tool vs pip).\n"
-        "[scubiee] uv:  uv tool uninstall scubiee\n"
-        f"[scubiee] pip: {current_python()} -m pip uninstall scubiee -y\n"
+        f"note: another scubiee install found at {other} "
+        "(run `scubiee doctor` for details)\n"
     )
     out.flush()

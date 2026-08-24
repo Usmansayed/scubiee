@@ -478,119 +478,154 @@ def confirm_action(
 class SetupProgress:
     """Clean phased progress for scubiee setup — replaces the single % bar.
 
-    Shows distinct steps with checkmarks, a single progress bar only for
-    the model download (the only step that takes > 5s).
+    Three visible stages: hardware detection, model download/prep, calibration.
+    Sub-steps within "getting the model ready" update the SAME line in place
+    (properly padded so no leftover characters survive a shorter message),
+    so the user always sees exactly one active line, never overlapping text.
     """
 
-    def __init__(self, stream: IO[str] | TextIO | None = None):
-        self.stream: IO[str] | TextIO = stream or sys.stderr
+    def __init__(self, stream=None):
+        self.stream = stream or sys.stderr
         self.c = colors(self.stream)
         self._tty = _is_tty(self.stream)
-        self._download_active = False
         self._last_phase = ""
+        self._last_key = ""
+        self._line_open = False
+        self._last_line_len = 0
+        self._non_tty_last_emit = ""
 
-    def start(self, notice: str | None = None) -> None:
+    def start(self, notice=None):
         self.stream.write(f"\n{self.c.bold}scubiee setup{self.c.reset}\n\n")
         self.stream.flush()
 
-    def step_done(self, message: str, detail: str = "") -> None:
-        """Mark a step as completed."""
+    def _clear_line(self):
+        if self._tty and self._line_open:
+            pad = " " * self._last_line_len
+            self.stream.write("\r" + pad + "\r")
+        self._line_open = False
+        self._last_line_len = 0
+
+    def step_done(self, message, detail=""):
+        self._clear_line()
         detail_str = f"  {self.c.muted}{detail}{self.c.reset}" if detail else ""
         self.stream.write(f"  {self.c.green}{ICON_OK}{self.c.reset} {message}{detail_str}\n")
         self.stream.flush()
 
-    def step_active(self, message: str) -> None:
-        """Show an active/in-progress step."""
+    def step_active(self, message):
+        self._clear_line()
         if self._tty:
+            line = f"  {ICON_RUN} {message}"
             self.stream.write(f"  {self.c.blue}{ICON_RUN}{self.c.reset} {message}")
             self.stream.flush()
+            self._line_open = True
+            self._last_line_len = len(line)
         else:
-            self.stream.write(f"  {ICON_RUN} {message}\n")
-            self.stream.flush()
+            if message != self._non_tty_last_emit:
+                self.stream.write(f"  {ICON_RUN} {message}\n")
+                self.stream.flush()
+                self._non_tty_last_emit = message
 
-    def step_update(self, message: str) -> None:
-        """Update the current active step text (TTY only, rewrites line)."""
-        if self._tty:
-            self.stream.write(f"\r  {self.c.blue}{ICON_RUN}{self.c.reset} {message}    ")
-            self.stream.flush()
+    def step_update(self, message):
+        if not self._tty:
+            return
+        line = f"  {ICON_RUN} {message}"
+        pad = max(0, self._last_line_len - len(line))
+        self.stream.write(f"\r  {self.c.blue}{ICON_RUN}{self.c.reset} {message}{' ' * pad}")
+        self.stream.flush()
+        self._last_line_len = max(self._last_line_len, len(line))
+        self._line_open = True
 
-    def step_finish(self, message: str, detail: str = "") -> None:
-        """Finish the current active step (replaces the ▶ with ✓)."""
+    def step_finish(self, message, detail=""):
         detail_str = f"  {self.c.muted}{detail}{self.c.reset}" if detail else ""
         if self._tty:
-            self.stream.write(f"\r  {self.c.green}{ICON_OK}{self.c.reset} {message}{detail_str}    \n")
+            plain = f"  {ICON_OK} {message}" + (f"  {detail}" if detail else "")
+            pad = max(0, self._last_line_len - len(plain))
+            self.stream.write(
+                f"\r  {self.c.green}{ICON_OK}{self.c.reset} {message}{detail_str}{' ' * pad}\n"
+            )
         else:
             self.stream.write(f"  {ICON_OK} {message}{detail_str}\n")
         self.stream.flush()
+        self._line_open = False
+        self._last_line_len = 0
+        self._non_tty_last_emit = ""
 
-    def finish(self, message: str) -> None:
-        """Final success message."""
+    def finish(self, message):
+        self._clear_line()
         self.stream.write(f"\n  {self.c.green}{ICON_OK}{self.c.reset} {self.c.bold}{message}{self.c.reset}\n\n")
         self.stream.flush()
 
-    def fail(self, message: str) -> None:
-        """Final failure message."""
+    def fail(self, message):
         if self._tty:
-            self.stream.write(f"\r  {self.c.red}{ICON_FAIL}{self.c.reset} {message}    \n\n")
+            pad = max(0, self._last_line_len - (len(message) + 4))
+            self.stream.write(f"\r  {self.c.red}{ICON_FAIL}{self.c.reset} {message}{' ' * pad}\n\n")
         else:
             self.stream.write(f"  {ICON_FAIL} {message}\n\n")
         self.stream.flush()
+        self._line_open = False
 
-    # ── Adapter for the existing progress_ui.InstallProgress interface ────
-    # So existing code that calls progress.set(pct, phase) still works.
+    # ── Adapter for the old progress_ui.InstallProgress interface ─────────
+    # Sub-steps of "getting the model ready" collapse onto ONE active line
+    # instead of each opening/closing their own line — that mismatch (a
+    # shorter message not erasing a longer one) was the overlapping-text bug.
 
-    def set(self, pct: int, phase: str) -> None:
-        """Adapter: map the old percentage-based API to phased output."""
+    _MODEL_STEP_KEYS = ("downloading", "converting", "preparing", "quantizing")
+
+    def set(self, pct, phase):
         if phase == self._last_phase:
             return
-        # Avoid duplicate lines for similar phases
         phase_key = phase.lower().split("(")[0].strip()
-        if hasattr(self, "_last_key") and phase_key == self._last_key:
+        if phase_key == self._last_key:
             return
         self._last_key = phase_key
         self._last_phase = phase
-        # Map known phases to clean output
         phase_lower = phase.lower()
-        if "detecting" in phase_lower or "hardware" in phase_lower:
-            self.step_active("Detecting hardware...")
-        elif "using" in phase_lower and "profile" in phase_lower:
-            self.step_finish("Hardware detected", phase.replace("Using ", ""))
-        elif "already installed" in phase_lower or "runtime already" in phase_lower:
+
+        if "starting" in phase_lower or "checking" in phase_lower:
+            return
+
+        if "detecting" in phase_lower or ("hardware" in phase_lower and "using" not in phase_lower):
+            self.step_active("Detecting hardware")
+            return
+        if "using" in phase_lower and "profile" in phase_lower:
+            self.step_finish("Hardware detected", phase.replace("Using ", "").replace(" profile", ""))
+            return
+        if "already installed" in phase_lower or "runtime already" in phase_lower:
             self.step_done("Runtime installed")
-        elif "downloading" in phase_lower and "model" in phase_lower:
-            self.step_active("Downloading model...")
-        elif "downloading" in phase_lower and "weight" in phase_lower:
-            self.step_active("Downloading model weights...")
-        elif "converting" in phase_lower or "preparing" in phase_lower:
-            self.step_update("Converting model to FP16...")
-        elif "quantizing" in phase_lower:
-            self.step_update("Quantizing to INT8...")
-        elif "embedding model ready" in phase_lower:
+            return
+
+        if any(key in phase_lower for key in self._MODEL_STEP_KEYS):
+            self.step_update("Preparing model (this can take a minute)…")
+            return
+        if "embedding model ready" in phase_lower or "model ready" in phase_lower:
             self.step_finish("Model ready")
-        elif "calibrating" in phase_lower:
-            self.step_active("Calibrating speed...")
-        elif "saving" in phase_lower:
+            return
+
+        if "calibrating" in phase_lower:
+            self.step_active("Calibrating speed")
+            return
+        if "saving" in phase_lower:
             self.step_finish("Calibrated")
-        elif "supervisor" in phase_lower:
+            return
+        if "supervisor" in phase_lower:
             self.step_done("Supervisor registered")
-        elif "cursor" in phase_lower or "mcp" in phase_lower.lower():
+            return
+        if "cursor" in phase_lower or "mcp" in phase_lower:
             self.step_done("MCP registered")
-        elif "starting" in phase_lower or "checking" in phase_lower:
-            pass  # Skip noise
-        elif "directml" in phase_lower:
+            return
+        if "directml" in phase_lower or "coreml" in phase_lower:
             self.step_done(phase)
-        elif "coreml" in phase_lower:
+            return
+
+        if pct >= 90:
             self.step_done(phase)
         else:
-            # Unknown phase — just show it
-            if pct >= 90:
-                self.step_done(phase)
-            else:
-                self.step_update(phase)
+            self.step_update(phase)
 
-    def pulse(self, phase: str, *, until: int) -> None:
+    def pulse(self, phase, *, until):
         self.set(until, phase)
 
-    def notice(self, message: str) -> None:
+    def notice(self, message):
+        self._clear_line()
         self.stream.write(f"  {self.c.muted}{message}{self.c.reset}\n")
         self.stream.flush()

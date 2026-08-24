@@ -18,9 +18,12 @@ from pipeline.env_guard import format_install_identity, warn_extra_scubiee
 
 def _version_only(argv: list[str] | None) -> bool:
     args = list(argv) if argv is not None else sys.argv[1:]
-    if args == ["--version"]:
-        return True
-    return len(args) == 1 and args[0] in {"version", "-version", "-V"}
+    return args in (["--version"], ["-V"])
+
+
+def _version_verbose(argv: list[str] | None) -> bool:
+    args = list(argv) if argv is not None else sys.argv[1:]
+    return args == ["--version", "--verbose"]
 
 
 def _requires_faiss_guard(argv: list[str] | None) -> bool:
@@ -1098,14 +1101,8 @@ def cmd_setup(args: argparse.Namespace) -> int:
         bar = SetupProgress()
     else:
         bar = InstallProgress()
+    bar.start()
     warn_extra_scubiee(bar.stream)
-    identity = format_install_identity().splitlines()
-    if len(identity) >= 2:
-        bar.stream.write(identity[1] + "\n")
-        bar.stream.flush()
-    bar.start(
-        "This may take a few minutes. Downloading and installing the Scubiee engine."
-    )
     reused_runtime = False
     try:
         bar.set(4, "Checking engine modules")
@@ -1123,9 +1120,11 @@ def cmd_setup(args: argparse.Namespace) -> int:
             bar.fail(faiss_err)
             return 1
 
+        from pipeline.accel import setup_finish_message
+
         bar.set(10, "Detecting hardware")
         if not args.skip_accel:
-            from pipeline.accel import load_accel, profile_packages_satisfied, setup_finish_message
+            from pipeline.accel import load_accel, profile_packages_satisfied
 
             prior = load_accel()
             rc = _configure_machine(args, report=False, progress=bar)
@@ -1140,12 +1139,6 @@ def cmd_setup(args: argparse.Namespace) -> int:
                 and coderank_fp16_onnx_ready()
             ):
                 reused_runtime = True
-                bar.stream.write(
-                    f"[setup] Reusing existing {after.profile} runtime + model cache "
-                    f"(accel.json present). Use `scubiee wipe --all --yes` then setup "
-                    f"again for a full re-download.\n"
-                )
-                bar.stream.flush()
         else:
             try:
                 from pipeline.hardware import ensure_hardware_snapshot
@@ -1470,8 +1463,15 @@ def _write_mcp_config(repo: Path, host: str, port: int) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    if _version_only(argv):
+    if _version_verbose(argv):
         print(format_install_identity())
+        return 0
+    if _version_only(argv):
+        try:
+            from importlib.metadata import version as pkg_version
+            print(f"scubiee {pkg_version('scubiee')}")
+        except Exception:  # noqa: BLE001
+            print("scubiee unknown")
         return 0
 
     if _requires_faiss_guard(argv):
@@ -1490,7 +1490,6 @@ def main(argv: list[str] | None = None) -> int:
         prog="scubiee",
         description="Scubiee — local AI code context engine: setup once, connect per tool, search everything.",
     )
-    parser.add_argument("--version", action=_IdentityVersion)
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     p_index = sub.add_parser("index", help="Index a repository")
