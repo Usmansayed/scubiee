@@ -240,18 +240,21 @@ Trajectory: soft → read → edit → test. Call CE when needed, then continue 
 
 
 def _is_repo_managed() -> bool:
-    """Check if the current CTX_REPO is managed by Context Engine.
+    """Check if the resolved repository is managed by Context Engine.
 
     Returns True if the repo has a project ID and is in the registry as managed.
     Falls back to True if detection fails (don't suppress instructions on errors).
     """
     try:
-        # If CTX_REPO is explicitly empty or unset, treat as unmanaged
-        explicit = (os.environ.get("CTX_REPO") or "").strip()
-        if not explicit:
+        repo = _default_repo()
+
+        # If the resolved repo is the user home or a system root, it's almost
+        # certainly a wrong fallback from a global MCP launch — not managed.
+        repo_str = str(repo).replace("\\", "/").rstrip("/").lower()
+        home_str = str(Path.home()).replace("\\", "/").rstrip("/").lower()
+        if repo_str == home_str or repo == repo.parent:
             return False
 
-        repo = _default_repo()
         from pipeline.project_id import read_id_file, load_registry
 
         project_id = read_id_file(repo)
@@ -359,6 +362,9 @@ def _default_repo() -> Path:
     for key in (
         "CURSOR_PROJECT_DIR",
         "CURSOR_WORKSPACE",
+        "COPILOT_WORKSPACE_FOLDER",
+        "COPILOT_WORKSPACE",
+        "VSCODE_WORKSPACE_FOLDER",
         "VSCODE_CWD",
         "WORKSPACE_FOLDER",
         "INIT_CWD",

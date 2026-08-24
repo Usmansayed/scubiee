@@ -67,9 +67,17 @@ def format_server_entry(
     if use_schema == "claude":
         return {"command": cmd, "args": args, "env": env}
     if use_schema == "vscode":
+        # When repo-neutral (no CTX_REPO in env), inject WORKSPACE_FOLDER so
+        # VS Code resolves the active workspace before launching the process.
+        # _default_repo() already checks this variable for workspace discovery.
+        if "CTX_REPO" not in env:
+            env.setdefault("WORKSPACE_FOLDER", "${workspaceFolder}")
         return {"type": "stdio", "command": cmd, "args": args, "env": env}
     if use_schema == "copilot_cli":
         # GitHub Copilot CLI ~/.copilot/mcp-config.json
+        # Inject WORKSPACE_FOLDER for workspace discovery when repo-neutral.
+        if "CTX_REPO" not in env:
+            env.setdefault("WORKSPACE_FOLDER", "${workspaceFolder}")
         return {
             "type": "local",
             "command": cmd,
