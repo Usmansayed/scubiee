@@ -1068,7 +1068,7 @@ def cmd_init(args: argparse.Namespace) -> int:
 
     # --- Run init ---
     if is_tty:
-        from pipeline.cli_ui import InitProgress
+        from pipeline.cli_ui import InitProgress, suppress_stderr_noise
         bar = InitProgress()
         # Only print header if we didn't already (from the confirm prompt)
         if not getattr(args, "confirm", False) or not is_tty:
@@ -1078,7 +1078,11 @@ def cmd_init(args: argparse.Namespace) -> int:
 
     from pipeline.repo_lifecycle import initialize_repo
 
+    # Suppress internal library noise ([index], [embed], [graphify]) in TTY mode
+    noise_ctx = suppress_stderr_noise() if is_tty else None
     try:
+        if noise_ctx:
+            noise_ctx.__enter__()
         out = initialize_repo(
             root,
             index=not bool(getattr(args, "no_index", False)),
@@ -1089,6 +1093,8 @@ def cmd_init(args: argparse.Namespace) -> int:
             confirm=bool(getattr(args, "confirm", False)),
         )
     except IndexConfirmRequired as exc:
+        if noise_ctx:
+            noise_ctx.__exit__(None, None, None)
         if is_tty:
             bar.fail("Safety pause", hint="Re-run with --confirm or use a narrower path")
         else:
@@ -1096,12 +1102,18 @@ def cmd_init(args: argparse.Namespace) -> int:
             return _fail_confirm(root, exc)
         return 2
     except Exception as exc:  # noqa: BLE001
+        if noise_ctx:
+            noise_ctx.__exit__(None, None, None)
         if is_tty:
             bar.fail(f"Init failed: {str(exc)[:80]}", hint="Run: scubiee init .")
         else:
             bar.fail(str(exc))
             raise
         return 1
+
+    # Restore stderr before printing results
+    if noise_ctx:
+        noise_ctx.__exit__(None, None, None)
 
     if out.get("ok"):
         try:

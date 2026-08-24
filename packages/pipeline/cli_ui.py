@@ -1047,9 +1047,12 @@ class InitProgress:
 
     # Adapter for pipeline progress_ui interface
     def set(self, pct, phase):
-        if "indexing" in phase.lower() or "embedding" in phase.lower():
+        phase_lower = phase.lower()
+        if "parsing" in phase_lower:
             self.indexing()
-        elif "daemon" in phase.lower():
+        elif "indexing" in phase_lower or "embedding" in phase_lower or "chunk" in phase_lower:
+            self.indexing()
+        elif "daemon" in phase_lower:
             self.daemon_started()
 
     def pulse(self, phase, *, until=100):
