@@ -22,7 +22,7 @@ from pipeline.store import PipelineStore
 MemoryMode = Literal["bootstrap", "background", "large_reindex"]
 
 BOOTSTRAP_RSS_CAP_MB = 800
-BACKGROUND_RSS_CAP_MB = 800
+BACKGROUND_RSS_CAP_MB = 500  # Light sync: 1-5 files, stay invisible
 LARGE_REINDEX_RSS_CAP_MB = 8000
 LARGE_REINDEX_CHUNK_THRESHOLD = 6000
 
@@ -37,8 +37,9 @@ class IndexMemoryBudget:
     aggressive_unload: bool
     # CPU thread budget as percentage of os.cpu_count(). On CPU-only profiles
     # (no GPU), this controls how much CPU the embedding phase uses.
-    # Bootstrap/large_reindex: 35% (faster initial index, acceptable for one-time cost)
-    # Background: 15% (barely noticeable during coding)
+    # Synced with RSS cap: heavy work (800MB+) gets 35%, light sync (500MB) gets 15%.
+    # Bootstrap/large_reindex: 800MB RAM + 35% CPU (faster initial index)
+    # Background: 500MB RAM + 15% CPU (invisible during coding)
     cpu_thread_pct: float = 0.35
 
 
@@ -116,8 +117,9 @@ def resolve_index_memory_budget(
             return large_reindex_budget()
         if background:
             return background_budget()
-        # Force/full reindex of an existing modest corpus: still 800 MB.
-        return background_budget()
+        # Force/full reindex of an existing modest corpus: same weight as bootstrap
+        # (800MB RAM + 35% CPU) since it processes all chunks, not just a few.
+        return bootstrap_budget()
     if background:
         return background_budget()
     return bootstrap_budget()
