@@ -1,4 +1,4 @@
-"""CLI: python -m pipeline index|search|status|serve"""
+﻿"""CLI: python -m pipeline index|search|status|serve"""
 
 from __future__ import annotations
 
@@ -1080,13 +1080,16 @@ def cmd_init(args: argparse.Namespace) -> int:
 
     from pipeline.repo_lifecycle import initialize_repo
 
-    # Silence internal library noise ([index], [embed], [graphify]) via env vars
-    # instead of redirecting stderr (which would also kill progress output).
+    # Silence ALL stderr noise during init by redirecting stderr to devnull.
+    # The progress bar writes to _real_stderr (saved before redirect).
     _prev_graphify_quiet = os.environ.get("GRAPHIFY_QUIET")
     _prev_ctx_quiet = os.environ.get("CTX_QUIET")
+    _real_stderr = sys.stderr  # Progress bar will use this
     if is_tty:
         os.environ["GRAPHIFY_QUIET"] = "1"
         os.environ["CTX_QUIET"] = "1"
+        sys.stderr = open(os.devnull, "w")
+        bar.stream = _real_stderr  # Ensure bar writes to real terminal
     try:
         out = initialize_repo(
             root,
@@ -1112,7 +1115,13 @@ def cmd_init(args: argparse.Namespace) -> int:
             raise
         return 1
     finally:
-        # Restore env vars
+        # Restore stderr and env vars
+        if is_tty:
+            try:
+                sys.stderr.close()
+            except Exception:
+                pass
+            sys.stderr = _real_stderr
         if _prev_graphify_quiet is None:
             os.environ.pop("GRAPHIFY_QUIET", None)
         else:
