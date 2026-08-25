@@ -10,11 +10,44 @@ import importlib
 import json
 import os
 import platform
+import re
 import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+
+def resolve_diagnose_output_path(
+    output: str | Path | None = None,
+    *,
+    desktop: bool = False,
+) -> Path | None:
+    """Resolve diagnose --output / --desktop to a real filesystem path.
+
+    Handles CMD ``%USERPROFILE%``, PowerShell ``$env:USERPROFILE`` (when pasted
+    literally into CMD), and ``~``. ``--desktop`` writes to the user Desktop.
+    """
+    if desktop:
+        desk = Path.home() / "Desktop"
+        desk.mkdir(parents=True, exist_ok=True)
+        return desk / "scubiee-diagnose.json"
+    if output is None or str(output).strip() == "":
+        return None
+    text = str(output).strip().strip('"').strip("'")
+    # PowerShell env syntax accidentally pasted into cmd.exe
+    text = re.sub(
+        r"\$env:([A-Za-z_][A-Za-z0-9_]*)",
+        lambda m: os.environ.get(m.group(1), ""),
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = os.path.expandvars(text)
+    text = os.path.expanduser(text)
+    path = Path(text)
+    if path.parent and str(path.parent) not in {".", ""}:
+        path.parent.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 def _safe_import_version(module: str) -> str | None:

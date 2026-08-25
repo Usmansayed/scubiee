@@ -1371,9 +1371,12 @@ def cmd_migrate(args: argparse.Namespace) -> int:
 
 def cmd_diagnose(args: argparse.Namespace) -> int:
     """Run installation diagnostics with progress bar and save a shareable log."""
-    from pipeline.diagnose import diagnose
+    from pipeline.diagnose import diagnose, resolve_diagnose_output_path
 
-    output_path = Path(args.output) if args.output else None
+    output_path = resolve_diagnose_output_path(
+        getattr(args, "output", None),
+        desktop=bool(getattr(args, "desktop", False)),
+    )
     report = diagnose(
         run_tests=not bool(args.no_tests),
         output_path=output_path,
@@ -2055,6 +2058,11 @@ def main(argv: list[str] | None = None) -> int:
         "--no-tests",
         action="store_true",
         help="Skip running the quick test suite",
+    )
+    p_diag.add_argument(
+        "--desktop",
+        action="store_true",
+        help="Save report to Desktop/scubiee-diagnose.json (easiest to share)",
     )
     p_diag.add_argument(
         "--output",
