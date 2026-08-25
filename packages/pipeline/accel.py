@@ -18,6 +18,7 @@ import json
 import math
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -261,6 +262,190 @@ def _windows_pci_vendor(gpu: dict[str, Any] | str) -> str | None:
     return None
 
 
+def _windows_pci_device_id(gpu: dict[str, Any] | str) -> str | None:
+    """Return lowercase 4-hex PCI device id from PNPDeviceID (DEV_XXXX), if present."""
+    pnp = _windows_gpu_pnp(gpu)
+    m = re.search(r"DEV_([0-9A-F]{4})", pnp)
+    if m:
+        return m.group(1).lower()
+    if isinstance(gpu, dict):
+        raw = gpu.get("device_id") or gpu.get("DeviceId")
+        if raw is not None:
+            try:
+                return f"{int(raw):04x}"
+            except (TypeError, ValueError):
+                text = str(raw).strip().lower().removeprefix("0x")
+                if len(text) == 4 and all(c in "0123456789abcdef" for c in text):
+                    return text
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Structural PCI ID tables (industry approach — names alone can never be 100%).
+# Microsoft DXGI has NO discrete/integrated flag (only SOFTWARE). Vulkan has
+# PHYSICAL_DEVICE_TYPE_*; on Windows without Vulkan we use PCI device IDs.
+# Sources: AMD/Linux pci tables, rusty-stack INTEGRATED_PCI_DEVICE_IDS +
+# DISCRETE_PCI_ID_TO_GFX, public APU reports (Rembrandt 1638, Strix 150e, …).
+# Conservative: APU denylist only IDs that are definitively integrated.
+# ---------------------------------------------------------------------------
+
+# AMD APU / iGPU PCI device IDs — NEVER select DirectML for these.
+_AMD_APU_PCI_DEVICE_IDS: frozenset[str] = frozenset(
+    {
+        # Raven Ridge / Picasso
+        "15d8",
+        "15dd",
+        "15d9",
+        # Renoir
+        "15e7",
+        "1636",
+        "1638",  # also Rembrandt overlap in some tables; Rembrandt confirmed 1638
+        "164c",
+        "15e0",
+        "1506",
+        # Cezanne / Barcelo
+        "1638",
+        "1640",
+        "15e7",
+        # Rembrandt / Yellow Carp (Ryzen 6000 / 7x35)
+        "164d",
+        "1681",
+        # Raphael desktop iGPU
+        "164e",
+        # Phoenix / Hawk Point
+        "15bf",
+        "15c8",
+        "15d0",
+        "1900",
+        "1901",
+        # Mendocino
+        "150e",  # also reported for Strix 880M/890M APU iGPU
+        "150f",
+        # Van Gogh (Steam Deck APU)
+        "163f",
+        # Older Llano/Trinity/Kaveri/Carrizo/Bristol/Stoney APU ranges (common)
+        "9802",
+        "9803",
+        "9804",
+        "9805",
+        "9806",
+        "9807",
+        "9808",
+        "9809",
+        "980a",
+        "9640",
+        "9641",
+        "9642",
+        "9643",
+        "9644",
+        "9645",
+        "9647",
+        "9648",
+        "9649",
+        "964a",
+        "9900",
+        "9901",
+        "9902",
+        "9903",
+        "9904",
+        "9905",
+        "9906",
+        "9907",
+        "9908",
+        "9909",
+        "990a",
+        "990b",
+        "990c",
+        "990d",
+        "990e",
+        "990f",
+        "1304",
+        "1305",
+        "1306",
+        "1307",
+        "1309",
+        "130a",
+        "130b",
+        "130c",
+        "130d",
+        "130e",
+        "130f",
+        "1310",
+        "1311",
+        "1312",
+        "1313",
+        "1315",
+        "1316",
+        "1317",
+        "1318",
+        "131b",
+        "131c",
+        "131d",
+        "9870",
+        "9874",
+        "9875",
+        "9876",
+        "9877",
+        "98e4",
+    }
+)
+
+# Known AMD *discrete* PCI device IDs (RDNA2/3/4 + common Navi). Weird OEM
+# marketing names still classify as discrete when the silicon ID is known.
+_AMD_DISCRETE_PCI_DEVICE_IDS: frozenset[str] = frozenset(
+    {
+        # RDNA4
+        "7550",
+        "7551",
+        "7590",
+        # RDNA3 Navi31/32/33
+        "744c",
+        "7448",
+        "7449",
+        "744a",
+        "744b",
+        "745e",
+        "747e",
+        "7470",
+        "7460",
+        "7461",
+        "7480",
+        "7483",
+        "7489",
+        "749f",
+        "73f0",
+        # RDNA2 Navi21/22/23/24 (incl. RX 6500M = 743f)
+        "73bf",
+        "73af",
+        "73a5",
+        "73a1",
+        "73a2",
+        "73a3",
+        "73df",
+        "73c3",
+        "73ff",
+        "73ef",
+        "73e0",
+        "73e1",
+        "73e3",
+        "743f",
+        "7424",
+        "7421",
+        "7422",
+        "7423",
+        # RDNA1 / older discrete common
+        "731f",
+        "7340",
+        "73a0",
+        "67df",  # Polaris RX 470/480/570/580
+        "67ff",
+        "6fdf",
+        "687f",
+        "6867",
+    }
+)
+
+
 def _is_windows_software_adapter(gpu: dict[str, Any] | str) -> bool:
     name = _windows_gpu_name(gpu)
     return (
@@ -282,6 +467,10 @@ def _is_windows_intel_or_igpu_denied(gpu: dict[str, Any] | str) -> bool:
         return True
     vendor = _windows_pci_vendor(gpu)
     if vendor == "intel":
+        return True
+    # Structural: known AMD APU PCI device IDs are never DML-eligible.
+    dev = _windows_pci_device_id(gpu)
+    if dev and (vendor in {None, "amd"}) and dev in _AMD_APU_PCI_DEVICE_IDS:
         return True
     name = _windows_gpu_name(gpu)
     if not name:
@@ -373,6 +562,10 @@ def _is_windows_amd_discrete(gpu: dict[str, Any] | str) -> bool:
     vendor = _windows_pci_vendor(gpu)
     if vendor not in {None, "amd"} and "radeon" not in name and "amd" not in name:
         return False
+    # Structural: known discrete silicon IDs win even with weird OEM names.
+    dev = _windows_pci_device_id(gpu)
+    if dev and dev in _AMD_DISCRETE_PCI_DEVICE_IDS:
+        return True
     if not name:
         return False
 
@@ -438,8 +631,13 @@ def _is_windows_amd_discrete(gpu: dict[str, Any] | str) -> bool:
 def _is_windows_discrete_amd_or_nvidia(gpu: dict[str, Any] | str) -> bool:
     """True only for discrete NVIDIA / AMD GPUs (not Intel iGPU / APU graphics).
 
-    Multi-signal: adapter name + optional PCI VEN from PNPDeviceID.
+    Multi-signal (closest to 100% without a living silicon DB update loop):
+    1. PCI device-ID denylist for known AMD APUs (structural)
+    2. PCI device-ID allowlist for known AMD discrete chips
+    3. NVIDIA VEN_10DE / name markers
+    4. Marketing-name allow/deny (OEM strings)
     Ambiguous / unknown → False (CPU path). Prefer a rare CPU miss over a DML hang.
+    Escape hatch: ``scubiee setup --profile dml``.
     """
     if _is_windows_intel_or_igpu_denied(gpu):
         return False

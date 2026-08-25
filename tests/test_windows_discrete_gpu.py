@@ -8,6 +8,7 @@ from pipeline.accel import (
     _is_windows_amd_discrete,
     _is_windows_discrete_amd_or_nvidia,
     _is_windows_nvidia_discrete,
+    _windows_pci_device_id,
     _windows_pci_vendor,
     recommend_profile,
 )
@@ -97,6 +98,28 @@ def test_pci_vendor_amd_rx_still_dml() -> None:
         "pnp_device_id": r"PCI\VEN_1002&DEV_73DF&SUBSYS_0000&REV_C1",
         "adapter_compatibility": "Advanced Micro Devices, Inc.",
     }
+    assert _is_windows_discrete_amd_or_nvidia(gpu) is True
+
+
+def test_pci_device_id_apu_denied_even_with_weird_name() -> None:
+    """Structural: Rembrandt APU DEV_1638 never DML even if OEM renames it."""
+    gpu = {
+        "name": "OEM Mystery Graphics Adapter",
+        "pnp_device_id": r"PCI\VEN_1002&DEV_1638&SUBSYS_13AB1462&REV_C2",
+        "adapter_compatibility": "Advanced Micro Devices, Inc.",
+    }
+    assert _windows_pci_device_id(gpu) == "1638"
+    assert _is_windows_discrete_amd_or_nvidia(gpu) is False
+
+
+def test_pci_device_id_known_discrete_even_with_weird_name() -> None:
+    """Structural: Navi24 DEV_743F (RX 6500M) is discrete even with empty marketing name."""
+    gpu = {
+        "name": "AMD Display Adapter",
+        "pnp_device_id": r"PCI\VEN_1002&DEV_743F&SUBSYS_13AB1462&REV_C1",
+        "adapter_compatibility": "Advanced Micro Devices, Inc.",
+    }
+    assert _windows_pci_device_id(gpu) == "743f"
     assert _is_windows_discrete_amd_or_nvidia(gpu) is True
 
 
