@@ -1416,7 +1416,50 @@ def _fallback_to_cpu_profile(
     *,
     progress: Any | None = None,
 ) -> None:
-    """Mutate profile in-place to CPU so setup/init can continue."""
+    """Mutate profile in-place to CPU so setup/init can continue.
+
+    Never demotes Apple Silicon MacBooks to CPU-only — they have a Metal GPU.
+    Prefer MLX when available; otherwise leave the existing Mac GPU profile.
+    """
+    # MLX is already the correct Mac GPU path — do not overwrite.
+    if profile.profile == "mlx" or profile.backend == "mlx":
+        return
+
+    detected = profile.detected if isinstance(profile.detected, dict) else {}
+    apple = _is_apple_silicon(detected) or (
+        platform.system() == "Darwin"
+        and platform.machine().lower() in {"arm64", "aarch64"}
+    )
+    if apple and not _env_disables_mlx():
+        if _mlx_importable():
+            from pipeline.memory_budget import bootstrap_budget
+
+            if progress is not None:
+                progress.set(87, "Keeping Apple Silicon GPU (MLX)")
+            else:
+                print(
+                    f"[accel] {reason} — Apple Silicon keeps MLX Metal GPU (not CPU)",
+                    file=sys.stderr,
+                    flush=True,
+                )
+            profile.profile = "mlx"
+            profile.provider = "MLX"
+            profile.backend = "mlx"
+            profile.device_id = 0
+            profile.batch_size = int(profile.batch_size or bootstrap_budget().mlx_batch)
+            profile.reason = (
+                f"Apple Silicon Metal GPU (MLX) — refused CPU demotion ({reason})"
+            )
+            return
+        # mlx package missing: keep CoreML Metal rather than FastEmbed CPU
+        if profile.profile == "coreml":
+            if progress is not None:
+                progress.set(87, "Keeping CoreML Metal GPU")
+            profile.reason = (
+                f"Apple Silicon CoreML Metal — refused CPU demotion ({reason})"
+            )
+            return
+
     if progress is not None:
         progress.set(87, "GPU path failed — switching to CPU")
     else:
@@ -2417,11 +2460,11 @@ def resolve_runtime() -> AccelProfile:
 
     Apple Silicon: ``scubiee setup`` persists ``profile=mlx`` (FP16). A saved
     CoreML profile is overlaid with MLX when the ``mlx`` package is installed.
-    ``accel.json`` is not rewritten here. Opt out with ``CTX_EMBED_BACKEND=fastembed``
-    or ``CTX_MLX=0``. An explicit CPU profile is left unchanged.
+    Opt out with ``CTX_EMBED_BACKEND=fastembed`` or ``CTX_MLX=0``.
 
-    Safeguard: a saved DirectML profile from older installs that only had Intel
-    iGPU / APU graphics is demoted to CPU so init cannot hang.
+    Safeguards:
+    - Stale DirectML (Intel iGPU) accel.json → demote to CPU (Windows only).
+    - Accidental CPU profile on Apple Silicon → promote back to MLX Metal GPU.
     """
     profile = load_accel()
     if profile is None:
@@ -2432,12 +2475,42 @@ def resolve_runtime() -> AccelProfile:
         and not _saved_dml_still_has_discrete_gpu(profile)
     ):
         return _demote_stale_dml_profile(profile)
+
     env = os.environ.get("CTX_EMBED_BACKEND", "").strip().lower()
+    # Never leave M-series MacBooks on a CPU-only profile when MLX is available.
+    if (
+        profile.profile == "cpu"
+        and env not in {"cpu", "fastembed", "st", "coderank"}
+        and not _env_disables_mlx()
+        and _is_apple_silicon(profile.detected or {})
+        and _mlx_importable()
+    ):
+        from dataclasses import replace
+
+        from pipeline.memory_budget import bootstrap_budget
+
+        promoted = replace(
+            profile,
+            profile="mlx",
+            provider="MLX",
+            backend="mlx",
+            batch_size=bootstrap_budget().mlx_batch,
+            reason=(
+                "Apple Silicon Metal GPU (MLX) — restored from accidental CPU profile"
+            ),
+        )
+        try:
+            save_accel(promoted)
+        except Exception:  # noqa: BLE001
+            pass
+        return promoted
+
     want_mlx = env == "mlx" or (profile.profile == "mlx" or profile.backend == "mlx")
     if profile.profile in {"dml", "cuda"} and env != "mlx":
         return profile
     if not want_mlx and not _env_disables_mlx() and _is_apple_silicon(profile.detected or {}):
-        # Promote the old CoreML path only. An explicit CPU profile stays CPU.
+        # Promote the old CoreML path only. An explicit CPU profile stays CPU
+        # only when MLX is disabled/unavailable (handled above).
         if profile.profile == "coreml" and _mlx_importable():
             want_mlx = True
     if not want_mlx:

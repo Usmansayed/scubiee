@@ -15,6 +15,7 @@ from pipeline.accel import (
     _fallback_to_cpu_profile,
     _run_with_timeout,
     _saved_dml_still_has_discrete_gpu,
+    recommend_profile,
     resolve_runtime,
 )
 
@@ -92,10 +93,101 @@ def test_resolve_runtime_demotes_stale_dml(tmp_path: Path, monkeypatch) -> None:
     assert reloaded.profile == "cpu"
 
 
+def test_apple_silicon_never_demoted_to_cpu(monkeypatch) -> None:
+    monkeypatch.setattr("pipeline.accel._mlx_importable", lambda: True)
+    monkeypatch.delenv("CTX_MLX", raising=False)
+    monkeypatch.delenv("CTX_EMBED_BACKEND", raising=False)
+    profile = AccelProfile(
+        profile="coreml",
+        provider="CoreMLExecutionProvider",
+        detected={
+            "os": "Darwin",
+            "machine": "arm64",
+            "apple_silicon": True,
+            "gpus": [{"name": "Apple M3"}],
+        },
+    )
+    _fallback_to_cpu_profile(profile, "should not become cpu", progress=None)
+    assert profile.profile == "mlx"
+    assert profile.provider == "MLX"
+    assert profile.backend == "mlx"
+    assert "CPU" not in profile.reason or "refused CPU" in profile.reason
+
+
+def test_mlx_profile_not_overwritten_by_fallback() -> None:
+    profile = AccelProfile(
+        profile="mlx",
+        provider="MLX",
+        backend="mlx",
+        reason="already mlx",
+        detected={"os": "Darwin", "machine": "arm64", "apple_silicon": True},
+    )
+    _fallback_to_cpu_profile(profile, "ignored", progress=None)
+    assert profile.profile == "mlx"
+    assert profile.reason == "already mlx"
+
+
+def test_recommend_profile_m_series_is_mlx_not_cpu() -> None:
+    profile = recommend_profile(
+        {
+            "os": "Darwin",
+            "machine": "arm64",
+            "nvidia": False,
+            "apple_silicon": True,
+            "gpus": [{"name": "Apple M2 Pro", "adapter_ram": 0}],
+        }
+    )
+    assert profile.profile == "mlx"
+    assert profile.profile != "cpu"
+
+
+def test_resolve_runtime_promotes_cpu_on_apple_silicon(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setattr("pipeline.accel._mlx_importable", lambda: True)
+    monkeypatch.delenv("CTX_MLX", raising=False)
+    monkeypatch.delenv("CTX_EMBED_BACKEND", raising=False)
+    accel_path = tmp_path / "accel.json"
+    monkeypatch.setattr("pipeline.accel.ACCEL_PATH", accel_path)
+    from pipeline.accel import save_accel
+
+    save_accel(
+        AccelProfile(
+            profile="cpu",
+            provider="CPUExecutionProvider",
+            backend="fastembed",
+            reason="accidental cpu",
+            detected={
+                "os": "Darwin",
+                "machine": "arm64",
+                "apple_silicon": True,
+                "gpus": [{"name": "Apple M3"}],
+            },
+        )
+    )
+    got = resolve_runtime()
+    assert got.profile == "mlx"
+    assert got.provider == "MLX"
+    assert "accidental CPU" in got.reason
+    assert resolve_runtime().profile == "mlx"
+
+
+def test_windows_cpu_path_does_not_apply_to_darwin() -> None:
+    """Intel-iGPU-style names on a fake Darwin detect still stay on Mac GPU path."""
+    profile = recommend_profile(
+        {
+            "os": "Darwin",
+            "machine": "arm64",
+            "nvidia": False,
+            "apple_silicon": True,
+            "gpus": [{"name": "Intel(R) UHD Graphics", "adapter_ram": 1}],
+        }
+    )
+    assert profile.profile == "mlx"
+
+
 def test_cpu_calibrate_uses_light_corpus(monkeypatch) -> None:
     from pipeline import accel
-
-    seen: dict[str, object] = {}
 
     class FakeEmbed:
         def __init__(self, *a, **k):
@@ -124,6 +216,8 @@ def test_cpu_calibrate_uses_light_corpus(monkeypatch) -> None:
     assert out["winner"] == 16
     assert list(out["candidates"].keys()) == ["16"]
 
+
+def test_gpu_probe_timeout_falls_back_to_cpu(monkeypatch) -> None:
     profile = AccelProfile(
         profile="dml",
         provider="DmlExecutionProvider",
