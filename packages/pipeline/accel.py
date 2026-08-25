@@ -50,6 +50,9 @@ ACCEL_PATH = Path.home() / ".context-engine" / "accel.json"
 # Install-time batch candidates. Prefer 16 unless 20 clearly wins ROI.
 BATCH_CANDIDATES = (8, 16, 20)
 BATCH_PREFER = 16
+# CPU is much slower — one preferred batch + smaller corpus keeps setup usable.
+CPU_BATCH_CANDIDATES = (16,)
+CPU_BATCH_CALIBRATE_N = int(os.environ.get("CTX_CPU_BATCH_CALIBRATE_N", "16"))
 # Promote 16 → 20 only when throughput gain is clearly worth it.
 BATCH_PROMOTE_MIN_RATIO = float(os.environ.get("CTX_BATCH_PROMOTE_RATIO", "0.10"))
 BATCH_PROMOTE_MIN_TPS = float(os.environ.get("CTX_BATCH_PROMOTE_TPS", "3.0"))
@@ -58,7 +61,7 @@ BATCH_DOWNGRADE_MIN_RATIO = float(os.environ.get("CTX_BATCH_DOWNGRADE_RATIO", "0
 BATCH_CALIBRATE_N = int(os.environ.get("CTX_BATCH_CALIBRATE_N", "64"))
 # Never hang forever on DirectML/CUDA calibrate (user's CPU-only laptop hang).
 CALIBRATE_TIMEOUT_S = float(os.environ.get("CTX_CALIBRATE_TIMEOUT_S", "90"))
-CPU_CALIBRATE_TIMEOUT_S = float(os.environ.get("CTX_CPU_CALIBRATE_TIMEOUT_S", "180"))
+CPU_CALIBRATE_TIMEOUT_S = float(os.environ.get("CTX_CPU_CALIBRATE_TIMEOUT_S", "120"))
 GPU_PROBE_TIMEOUT_S = float(os.environ.get("CTX_GPU_PROBE_TIMEOUT_S", "45"))
 
 
@@ -2279,17 +2282,33 @@ def calibrate_batch(
     profile: AccelProfile,
     *,
     n: int | None = None,
-    candidates: tuple[int, ...] = BATCH_CANDIDATES,
+    candidates: tuple[int, ...] | None = None,
     model: Any | None = None,
 ) -> dict[str, Any]:
-    """Measure candidate batches once and persist a smart winner (usually 16)."""
+    """Measure candidate batches once and persist a smart winner (usually 16).
+
+    CPU profiles use a lighter probe (one batch size, fewer texts) so setup
+    does not spend minutes calibrating on slow machines.
+    """
     register_coderank()
     from fastembed import TextEmbedding
 
-    count = int(n if n is not None else BATCH_CALIBRATE_N)
+    if candidates is None:
+        if profile.profile == "cpu":
+            batch_candidates = CPU_BATCH_CANDIDATES
+        else:
+            batch_candidates = BATCH_CANDIDATES
+    else:
+        batch_candidates = candidates
+
+    if n is not None:
+        count = int(n)
+    elif profile.profile == "cpu":
+        count = CPU_BATCH_CALIBRATE_N
+    else:
+        count = BATCH_CALIBRATE_N
     model_name = profile.model
     static_bs = None
-    batch_candidates = candidates
     if profile.profile == "coreml":
         from pipeline.coreml_mac import (
             COREML_STATIC_BATCH,
@@ -2355,6 +2374,11 @@ def calibrate_batch(
 
     scores = {int(k): v for k, v in measured.items()}
     winner, reason = pick_batch_size(scores)
+    if profile.profile == "cpu" and not scores:
+        winner, reason = BATCH_PREFER, "CPU default batch (calibration empty)"
+    if profile.profile == "cpu" and len(batch_candidates) == 1 and scores:
+        only = int(batch_candidates[0])
+        winner, reason = only, f"CPU light calibrate (single candidate batch={only})"
     if profile.profile == "coreml" and static_bs is not None:
         winner = min(int(profile.batch_size or BATCH_PREFER), static_bs)
         reason = f"CoreML static ONNX batch={static_bs}; runtime batch={winner}"
@@ -2363,7 +2387,7 @@ def calibrate_batch(
         winner_tps = scores.get(int(static_bs))
     elapsed = time.perf_counter() - t_start
     return {
-        "ok": bool(scores),
+        "ok": bool(scores) or profile.profile == "cpu",
         "winner": winner,
         "texts_per_sec": None if winner_tps is None else round(winner_tps, 3),
         "candidates": measured,
@@ -2375,6 +2399,7 @@ def calibrate_batch(
         "promote_ratio": BATCH_PROMOTE_MIN_RATIO,
         "promote_min_tps": BATCH_PROMOTE_MIN_TPS,
         "coreml_static_batch": static_bs,
+        "light_cpu": profile.profile == "cpu",
     }
 
 

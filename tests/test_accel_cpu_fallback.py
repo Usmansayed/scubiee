@@ -92,7 +92,38 @@ def test_resolve_runtime_demotes_stale_dml(tmp_path: Path, monkeypatch) -> None:
     assert reloaded.profile == "cpu"
 
 
-def test_do_calibration_falls_back_when_probe_times_out(monkeypatch) -> None:
+def test_cpu_calibrate_uses_light_corpus(monkeypatch) -> None:
+    from pipeline import accel
+
+    seen: dict[str, object] = {}
+
+    class FakeEmbed:
+        def __init__(self, *a, **k):
+            pass
+
+        def embed(self, texts, batch_size=1, parallel=None):
+            return [None] * len(texts)
+
+    def fake_register():
+        return None
+
+    monkeypatch.setattr(accel, "register_coderank", fake_register)
+    monkeypatch.setattr(accel, "TextEmbedding", FakeEmbed, raising=False)
+
+    import sys
+    import types
+
+    fake_fe = types.ModuleType("fastembed")
+    fake_fe.TextEmbedding = FakeEmbed
+    monkeypatch.setitem(sys.modules, "fastembed", fake_fe)
+
+    profile = AccelProfile(profile="cpu", provider="CPUExecutionProvider")
+    out = accel.calibrate_batch(profile)
+    assert out["light_cpu"] is True
+    assert out["n"] == accel.CPU_BATCH_CALIBRATE_N
+    assert out["winner"] == 16
+    assert list(out["candidates"].keys()) == ["16"]
+
     profile = AccelProfile(
         profile="dml",
         provider="DmlExecutionProvider",
