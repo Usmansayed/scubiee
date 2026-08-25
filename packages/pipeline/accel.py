@@ -227,6 +227,40 @@ def _windows_gpu_name(gpu: dict[str, Any] | str) -> str:
     return str(gpu or "").strip().lower()
 
 
+def _windows_gpu_pnp(gpu: dict[str, Any] | str) -> str:
+    if isinstance(gpu, dict):
+        return str(gpu.get("pnp_device_id") or gpu.get("PNPDeviceID") or "").strip().upper()
+    return ""
+
+
+def _windows_gpu_compat(gpu: dict[str, Any] | str) -> str:
+    if isinstance(gpu, dict):
+        return str(
+            gpu.get("adapter_compatibility") or gpu.get("AdapterCompatibility") or ""
+        ).strip().lower()
+    return ""
+
+
+def _windows_pci_vendor(gpu: dict[str, Any] | str) -> str | None:
+    """Return nvidia | amd | intel from PNPDeviceID / AdapterCompatibility when known."""
+    pnp = _windows_gpu_pnp(gpu)
+    # PCI\VEN_10DE&DEV_...  (NVIDIA), VEN_1002 (AMD), VEN_8086 (Intel)
+    if "VEN_10DE" in pnp:
+        return "nvidia"
+    if "VEN_1002" in pnp:
+        return "amd"
+    if "VEN_8086" in pnp:
+        return "intel"
+    compat = _windows_gpu_compat(gpu)
+    if "nvidia" in compat:
+        return "nvidia"
+    if "advanced micro devices" in compat or compat == "amd":
+        return "amd"
+    if "intel" in compat:
+        return "intel"
+    return None
+
+
 def _is_windows_software_adapter(gpu: dict[str, Any] | str) -> bool:
     name = _windows_gpu_name(gpu)
     return (
@@ -235,61 +269,184 @@ def _is_windows_software_adapter(gpu: dict[str, Any] | str) -> bool:
         or "basic display" in name
         or "remote desktop" in name
         or "virtual" in name
+        or "hyper-v" in name
+        or "parsec" in name
+        or "citrix" in name
+        or "vmware" in name
     )
 
 
-def _is_windows_discrete_amd_or_nvidia(gpu: dict[str, Any] | str) -> bool:
-    """True only for discrete NVIDIA / AMD GPUs (not Intel iGPU / APU graphics).
-
-    Integrated chips ("Intel UHD", "AMD Radeon Graphics") often make DirectML hang
-    or crawl during setup calibration on machines users think of as CPU-only.
-    """
+def _is_windows_intel_or_igpu_denied(gpu: dict[str, Any] | str) -> bool:
+    """Adapters that must never select DirectML (hang / crawl risk)."""
     if _is_windows_software_adapter(gpu):
-        return False
+        return True
+    vendor = _windows_pci_vendor(gpu)
+    if vendor == "intel":
+        return True
     name = _windows_gpu_name(gpu)
     if not name:
-        return False
-
-    # NVIDIA discrete (desktop + laptop GeForce / Quadro / etc.)
-    nvidia_markers = (
-        "nvidia",
-        "geforce",
-        "rtx ",
-        "rtx-",
-        "gtx ",
-        "gtx-",
-        "quadro",
-        "tesla",
-        "titan",
-    )
-    if any(m in name for m in nvidia_markers):
         return True
 
-    # AMD discrete — require RX / Pro / FirePro / Instinct style names.
-    # Plain "AMD Radeon Graphics" is the APU iGPU and must NOT select DML.
+    intel_markers = (
+        "intel",
+        "uhd graphics",
+        "hd graphics",
+        "iris",
+        "arc a",  # Intel Arc — not on our DML allowlist by policy
+        "xe graphics",
+    )
+    if any(m in name for m in intel_markers):
+        return True
+
+    # AMD APU / integrated — plain "Radeon Graphics", Vega Graphics, RDNA iGPU M parts.
     amd_igpu = (
         "radeon(tm) graphics",
         "radeon graphics",
         "amd radeon graphics",
         "radeon vega graphics",
+        "vega graphics",
         "graphics (radeon",
+        "radeon(tm) rx vega 3",
+        "radeon(tm) rx vega 6",
+        "radeon(tm) rx vega 8",
+        "radeon(tm) rx vega 10",
+        "radeon(tm) rx vega 11",
+        "radeon rx vega 3",
+        "radeon rx vega 6",
+        "radeon rx vega 8",
+        "radeon rx vega 10",
+        "radeon rx vega 11",
+        # RDNA2/3/4 laptop APU iGPUs (not discrete RX cards)
+        "radeon 610m",
+        "radeon 660m",
+        "radeon 680m",
+        "radeon 740m",
+        "radeon 760m",
+        "radeon 780m",
+        "radeon 880m",
+        "radeon 890m",
+        "radeon 8050s",
+        "radeon 8060s",
     )
     if any(m in name for m in amd_igpu):
+        return True
+    # "… Vega N Graphics" APU wording (without discrete RX Vega 56/64)
+    if "vega" in name and "graphics" in name and "rx vega 5" not in name and "rx vega 6" not in name:
+        # rx vega 56/64 are discrete; rx vega 3/8/11 graphics already denied above
+        if not any(x in name for x in ("rx vega 56", "rx vega 64", "vega 56", "vega 64")):
+            return True
+    return False
+
+
+def _is_windows_nvidia_discrete(gpu: dict[str, Any] | str) -> bool:
+    if _is_windows_intel_or_igpu_denied(gpu):
         return False
+    name = _windows_gpu_name(gpu)
+    vendor = _windows_pci_vendor(gpu)
+    nvidia_markers = (
+        "nvidia",
+        "geforce",
+        "rtx ",
+        "rtx-",
+        "rtx a",  # RTX A2000 workstation
+        "gtx ",
+        "gtx-",
+        "quadro",
+        "tesla",
+        "titan",
+        "nvs ",
+        "rtx 20",
+        "rtx 30",
+        "rtx 40",
+        "rtx 50",
+    )
+    if vendor == "nvidia":
+        return True
+    return any(m in name for m in nvidia_markers)
+
+
+def _is_windows_amd_discrete(gpu: dict[str, Any] | str) -> bool:
+    """True only for discrete AMD GPUs. Ambiguous AMD names → False (CPU-safe)."""
+    if _is_windows_intel_or_igpu_denied(gpu):
+        return False
+    name = _windows_gpu_name(gpu)
+    vendor = _windows_pci_vendor(gpu)
+    if vendor not in {None, "amd"} and "radeon" not in name and "amd" not in name:
+        return False
+    if not name:
+        return False
+
+    # Discrete allowlist — prefer explicit product lines over bare "AMD".
     amd_discrete = (
         "radeon rx",
-        "rx 5",
-        "rx 6",
-        "rx 7",
-        "rx 8",
+        "rx 460",
+        "rx 470",
+        "rx 480",
+        "rx 550",
+        "rx 560",
+        "rx 570",
+        "rx 580",
+        "rx 590",
+        "rx 5500",
+        "rx 5600",
+        "rx 5700",
+        "rx 6400",
+        "rx 6500",
+        "rx 6600",
+        "rx 6650",
+        "rx 6700",
+        "rx 6750",
+        "rx 6800",
+        "rx 6900",
+        "rx 6950",
+        "rx 7600",
+        "rx 7700",
+        "rx 7800",
+        "rx 7900",
+        "rx 9060",
+        "rx 9070",
         "radeon pro",
         "radeon vii",
         "firepro",
         "radeon instinct",
         "instinct mi",
+        "radeon hd 5",
+        "radeon hd 6",
+        "radeon hd 7",
+        "radeon hd 8",
+        "radeon r5 2",
+        "radeon r7 2",
+        "radeon r7 3",
+        "radeon r9 2",
+        "radeon r9 3",
+        "radeon r9 m",
+        "radeon r7 m",
+        "radeon hd 77",
+        "radeon hd 78",
+        "radeon hd 79",
+        "rx vega 56",
+        "rx vega 64",
+        "vega 56",
+        "vega 64",
     )
-    if "radeon" in name or "amd" in name:
-        return any(m in name for m in amd_discrete)
+    if any(m in name for m in amd_discrete):
+        return True
+    # PCI says AMD but name is not an allowlisted discrete product → treat as CPU-safe.
+    return False
+
+
+def _is_windows_discrete_amd_or_nvidia(gpu: dict[str, Any] | str) -> bool:
+    """True only for discrete NVIDIA / AMD GPUs (not Intel iGPU / APU graphics).
+
+    Multi-signal: adapter name + optional PCI VEN from PNPDeviceID.
+    Ambiguous / unknown → False (CPU path). Prefer a rare CPU miss over a DML hang.
+    """
+    if _is_windows_intel_or_igpu_denied(gpu):
+        return False
+    if _is_windows_nvidia_discrete(gpu):
+        return True
+    if _is_windows_amd_discrete(gpu):
+        return True
     return False
 
 
@@ -302,12 +459,13 @@ def _windows_discrete_gpu_candidates(gpus: list[dict[str, Any]]) -> list[tuple[i
 
 
 def _windows_d3d12_gpus() -> list[dict[str, Any]]:
-    """Best-effort DXGI adapter list via PowerShell (no extra deps)."""
+    """Best-effort Win32_VideoController list via PowerShell (no extra deps)."""
     if platform.system() != "Windows":
         return []
     ps = (
         "Get-CimInstance Win32_VideoController | "
-        "Select-Object Name, AdapterRAM, DriverVersion | ConvertTo-Json -Compress"
+        "Select-Object Name, AdapterRAM, DriverVersion, PNPDeviceID, AdapterCompatibility | "
+        "ConvertTo-Json -Compress"
     )
     try:
         r = subprocess.run(
@@ -326,7 +484,15 @@ def _windows_d3d12_gpus() -> list[dict[str, Any]]:
         for row in data or []:
             name = str(row.get("Name") or "")
             ram = int(row.get("AdapterRAM") or 0)
-            out.append({"name": name, "adapter_ram": ram, "driver": row.get("DriverVersion")})
+            out.append(
+                {
+                    "name": name,
+                    "adapter_ram": ram,
+                    "driver": row.get("DriverVersion"),
+                    "pnp_device_id": str(row.get("PNPDeviceID") or ""),
+                    "adapter_compatibility": str(row.get("AdapterCompatibility") or ""),
+                }
+            )
         return out
     except Exception:  # noqa: BLE001
         return []
@@ -343,7 +509,7 @@ def detect_hardware() -> dict[str, Any]:
         for i, g in discrete:
             score = int(g.get("adapter_ram") or 0)
             name = _windows_gpu_name(g)
-            if "rtx" in name or "rx 7" in name or "rx 8" in name:
+            if "rtx" in name or "rx 7" in name or "rx 8" in name or "rx 9" in name:
                 score += 10**12
             scored.append((score, i))
         scored.sort(reverse=True)
@@ -365,34 +531,34 @@ def detect_hardware() -> dict[str, Any]:
         "suggested_dml_device_id": dml_id,
         "apple_silicon": apple_silicon,
         "coreml_compute_units": coreml_units if platform.system() == "Darwin" else None,
-        "windows_discrete_amd_nvidia": bool(discrete) or bool(nvidia),
+        # Only true when an allowlisted discrete adapter was found — never bare nvidia-smi.
+        "windows_discrete_amd_nvidia": bool(discrete),
     }
 
 
 def recommend_profile(detected: dict[str, Any] | None = None) -> AccelProfile:
     d = detected or detect_hardware()
-    # Windows: DirectML only for discrete AMD / NVIDIA GPUs.
-    # Intel iGPU / "AMD Radeon Graphics" APU adapters → CPU (avoids setup hangs).
+    # Windows: DirectML only when a discrete AMD/NVIDIA adapter is identified.
+    # Never select DML from a bare nvidia-smi / ORT hint alone (device_id may be iGPU).
     if d.get("os") == "Windows":
         gpus = [g for g in (d.get("gpus") or []) if isinstance(g, dict)]
         discrete = _windows_discrete_gpu_candidates(gpus)
-        if discrete or d.get("nvidia") or d.get("windows_discrete_amd_nvidia"):
+        if discrete:
             device_id = int(d.get("suggested_dml_device_id") or 0)
-            if discrete:
-                device_id = discrete[0][0]
-                # Prefer highest-RAM discrete if detect_hardware already scored one
-                best = max(
-                    discrete,
-                    key=lambda item: int(item[1].get("adapter_ram") or 0),
-                )
-                device_id = best[0]
+            best = max(
+                discrete,
+                key=lambda item: int(item[1].get("adapter_ram") or 0),
+            )
+            device_id = best[0]
             vendor = "NVIDIA/AMD"
-            if discrete:
-                names = " ".join(_windows_gpu_name(g) for _, g in discrete)
-                if any(m in names for m in ("nvidia", "geforce", "rtx", "gtx", "quadro")):
-                    vendor = "NVIDIA"
-                elif "radeon" in names or "amd" in names:
-                    vendor = "AMD"
+            names = " ".join(_windows_gpu_name(g) for _, g in discrete)
+            if any(
+                m in names
+                for m in ("nvidia", "geforce", "rtx", "gtx", "quadro", "tesla", "titan")
+            ):
+                vendor = "NVIDIA"
+            elif "radeon" in names or "amd" in names or "firepro" in names:
+                vendor = "AMD"
             return AccelProfile(
                 profile="dml",
                 provider="DmlExecutionProvider",
