@@ -56,6 +56,10 @@ BATCH_PROMOTE_MIN_TPS = float(os.environ.get("CTX_BATCH_PROMOTE_TPS", "3.0"))
 # Prefer 16 over 8 unless 8 is meaningfully faster (pathological 16 case).
 BATCH_DOWNGRADE_MIN_RATIO = float(os.environ.get("CTX_BATCH_DOWNGRADE_RATIO", "0.15"))
 BATCH_CALIBRATE_N = int(os.environ.get("CTX_BATCH_CALIBRATE_N", "64"))
+# Never hang forever on DirectML/CUDA calibrate (user's CPU-only laptop hang).
+CALIBRATE_TIMEOUT_S = float(os.environ.get("CTX_CALIBRATE_TIMEOUT_S", "90"))
+CPU_CALIBRATE_TIMEOUT_S = float(os.environ.get("CTX_CPU_CALIBRATE_TIMEOUT_S", "180"))
+GPU_PROBE_TIMEOUT_S = float(os.environ.get("CTX_GPU_PROBE_TIMEOUT_S", "45"))
 
 
 @dataclass
@@ -1233,17 +1237,115 @@ def _refuse_cuda_cpu_fallback(
 
 
 def _do_calibration(profile: AccelProfile, progress: Any | None = None) -> None:
-    """Run batch-size calibration on the active acceleration provider."""
+    """Run batch-size calibration; DML/CUDA failures time out into CPU."""
     if profile.profile == "mlx":
         calibration = _calibrate_mlx(profile)
-    else:
-        calibration = calibrate_batch(profile)
-    if profile.profile == "coreml" and not calibration.get("ok"):
-        raise RuntimeError(
-            "CoreML calibration failed: "
-            f"{calibration.get('errors') or calibration.get('error') or calibration}"
+        _apply_calibration_result(profile, calibration, progress=progress)
+        return
+
+    if profile.profile in {"dml", "cuda"}:
+        try:
+            _probe_gpu_embed(profile, timeout_s=GPU_PROBE_TIMEOUT_S)
+            calibration = _calibrate_with_timeout(
+                profile, timeout_s=CALIBRATE_TIMEOUT_S
+            )
+            if not calibration.get("ok"):
+                raise RuntimeError(
+                    calibration.get("errors")
+                    or calibration.get("error")
+                    or "calibration produced no scores"
+                )
+            _apply_calibration_result(profile, calibration, progress=progress)
+            return
+        except Exception as exc:  # noqa: BLE001
+            _fallback_to_cpu_profile(
+                profile,
+                f"{profile.profile} calibration failed ({exc})",
+                progress=progress,
+            )
+
+    # CPU path (native or after GPU fallback)
+    try:
+        calibration = _calibrate_with_timeout(
+            profile, timeout_s=CPU_CALIBRATE_TIMEOUT_S
         )
-    profile.batch_size = int(calibration["winner"])
+        if not calibration.get("ok"):
+            raise RuntimeError(
+                calibration.get("errors")
+                or calibration.get("error")
+                or "CPU calibration produced no scores"
+            )
+        _apply_calibration_result(profile, calibration, progress=progress)
+    except Exception as exc:  # noqa: BLE001
+        from pipeline.coreml_mac import mac_gpu_only
+
+        if profile.profile == "coreml" and mac_gpu_only():
+            raise RuntimeError(
+                f"CoreML GPU calibration failed: {exc}. Refusing CPU fallback."
+            ) from exc
+        # Last resort: keep going with safe defaults so setup/init can continue.
+        if progress is not None:
+            progress.set(88, "Calibration skipped — using safe CPU defaults")
+        else:
+            print(
+                f"[accel] calibration failed ({exc}); using safe defaults",
+                file=sys.stderr,
+                flush=True,
+            )
+        if profile.profile != "cpu":
+            _fallback_to_cpu_profile(profile, str(exc), progress=None)
+        profile.batch_size = BATCH_PREFER
+        profile.texts_per_sec = None
+        profile.meets_target = None
+        profile.batch_calibration = {
+            "ok": False,
+            "winner": BATCH_PREFER,
+            "error": str(exc),
+            "reason": "safe defaults after calibration failure",
+        }
+
+    if (
+        profile.profile == "coreml"
+        and (profile.texts_per_sec or 0) < TARGET_TPS
+        and profile.batch_calibration.get("ok")
+    ):
+        # Existing CoreML→CPU slow-path (unchanged behaviour)
+        coreml_tps = float(profile.texts_per_sec or 0)
+        msg = (
+            f"CoreML Metal path is {coreml_tps:.2f} t/s (RoPE dim-0 splits "
+            "the graph into many CPU/GPU partitions). Switching to Apple "
+            "Silicon CPU FastEmbed, which is much faster on this model."
+        )
+        if progress is None:
+            print(f"[accel] {msg}", file=sys.stderr, flush=True)
+        else:
+            progress.set(88, "CoreML too slow — using CPU")
+        _fallback_to_cpu_profile(profile, msg, progress=None)
+        calibration = _calibrate_with_timeout(
+            profile, timeout_s=CPU_CALIBRATE_TIMEOUT_S
+        )
+        _apply_calibration_result(profile, calibration, progress=progress)
+        profile.batch_calibration = {
+            **(profile.batch_calibration or {}),
+            "coreml_rejected_tps": coreml_tps,
+        }
+
+    if not profile.meets_target and progress is None and profile.texts_per_sec is not None:
+        print(
+            "[accel] WARNING: below 10 t/s target — indexing will still work; "
+            "consider a stronger GPU or shorter embed recipe.",
+            file=sys.stderr,
+            flush=True,
+        )
+
+
+def _apply_calibration_result(
+    profile: AccelProfile,
+    calibration: dict[str, Any],
+    *,
+    progress: Any | None = None,
+) -> None:
+    profile.batch_size = int(calibration.get("winner") or BATCH_PREFER)
     profile.texts_per_sec = calibration.get("texts_per_sec")
     profile.meets_target = (
         profile.texts_per_sec is not None and profile.texts_per_sec >= TARGET_TPS
@@ -1258,49 +1360,109 @@ def _do_calibration(profile: AccelProfile, progress: Any | None = None) -> None:
             file=sys.stderr,
             flush=True,
         )
-    if (
-        profile.profile == "coreml"
-        and (profile.texts_per_sec or 0) < TARGET_TPS
-    ):
-        coreml_tps = float(profile.texts_per_sec or 0)
-        msg = (
-            f"CoreML Metal path is {coreml_tps:.2f} t/s (RoPE dim-0 splits "
-            "the graph into many CPU/GPU partitions). Switching to Apple "
-            "Silicon CPU FastEmbed, which is much faster on this model."
+
+
+def _run_with_timeout(fn: Callable[[], Any], timeout_s: float, *, label: str) -> Any:
+    """Run ``fn`` in a daemon thread; raise TimeoutError if it exceeds ``timeout_s``."""
+    from concurrent.futures import ThreadPoolExecutor
+    from concurrent.futures import TimeoutError as FuturesTimeout
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        fut = pool.submit(fn)
+        try:
+            return fut.result(timeout=max(1.0, float(timeout_s)))
+        except FuturesTimeout as exc:
+            raise TimeoutError(
+                f"{label} exceeded {timeout_s:.0f}s — falling back"
+            ) from exc
+
+
+def _probe_gpu_embed(profile: AccelProfile, *, timeout_s: float) -> None:
+    """Fail fast if DML/CUDA cannot embed a single string."""
+    if profile.profile not in {"dml", "cuda"}:
+        return
+
+    def _once() -> None:
+        register_coderank()
+        from fastembed import TextEmbedding
+
+        model = TextEmbedding(
+            model_name=profile.model,
+            threads=1,
+            providers=profile.providers(),
+            lazy_load=True,
         )
-        if progress is None:
-            print(f"[accel] {msg}", file=sys.stderr, flush=True)
-        else:
-            progress.set(88, "CoreML too slow — using CPU")
-        profile.profile = "cpu"
-        profile.provider = "CPUExecutionProvider"
-        profile.model = CODERANK_MODEL
-        profile.reason = msg
-        calibration = calibrate_batch(profile)
-        profile.batch_size = int(calibration["winner"])
-        profile.texts_per_sec = calibration.get("texts_per_sec")
-        profile.meets_target = (
-            profile.texts_per_sec is not None
-            and profile.texts_per_sec >= TARGET_TPS
-        )
-        profile.batch_calibration = {
-            **calibration,
-            "coreml_rejected_tps": coreml_tps,
-        }
-        if progress is None:
-            print(
-                f"[accel] CPU batch={profile.batch_size} "
-                f"{profile.texts_per_sec or 0:.2f} t/s",
-                file=sys.stderr,
-                flush=True,
-            )
-    if not profile.meets_target and progress is None:
-        print(
-            "[accel] WARNING: below 10 t/s target — indexing will still work; "
-            "consider a stronger GPU or shorter embed recipe.",
-            file=sys.stderr,
-            flush=True,
-        )
+        list(model.embed(["scubiee gpu probe"], batch_size=1, parallel=None))
+
+    _run_with_timeout(_once, timeout_s, label=f"{profile.profile} probe")
+
+
+def _calibrate_with_timeout(
+    profile: AccelProfile, *, timeout_s: float
+) -> dict[str, Any]:
+    return _run_with_timeout(
+        lambda: calibrate_batch(profile),
+        timeout_s,
+        label=f"{profile.profile} calibration",
+    )
+
+
+def _fallback_to_cpu_profile(
+    profile: AccelProfile,
+    reason: str,
+    *,
+    progress: Any | None = None,
+) -> None:
+    """Mutate profile in-place to CPU so setup/init can continue."""
+    if progress is not None:
+        progress.set(87, "GPU path failed — switching to CPU")
+    else:
+        print(f"[accel] {reason} — using CPU", file=sys.stderr, flush=True)
+    profile.profile = "cpu"
+    profile.provider = "CPUExecutionProvider"
+    profile.backend = "fastembed"
+    profile.device_id = 0
+    profile.model = CODERANK_MODEL
+    profile.reason = reason
+    profile.meets_target = None
+
+
+def _saved_dml_still_has_discrete_gpu(profile: AccelProfile) -> bool:
+    """True when a saved DML profile still looks like discrete AMD/NVIDIA."""
+    detected = profile.detected if isinstance(profile.detected, dict) else {}
+    if detected.get("nvidia") or detected.get("windows_discrete_amd_nvidia"):
+        return True
+    gpus = [g for g in (detected.get("gpus") or []) if isinstance(g, dict)]
+    return bool(_windows_discrete_gpu_candidates(gpus))
+
+
+def _demote_stale_dml_profile(profile: AccelProfile) -> AccelProfile:
+    """Rewrite leftover DML accel.json from older installs (Intel iGPU hang)."""
+    from dataclasses import replace
+
+    demoted = replace(
+        profile,
+        profile="cpu",
+        provider="CPUExecutionProvider",
+        backend="fastembed",
+        device_id=0,
+        reason=(
+            "Saved DirectML profile demoted to CPU — no discrete AMD/NVIDIA GPU "
+            "in accel.json (re-run scubiee setup --repair to re-detect)."
+        ),
+        batch_calibration={
+            **(profile.batch_calibration or {}),
+            "demoted_from": "dml",
+            "ok": True,
+            "winner": int(profile.batch_size or BATCH_PREFER),
+            "reason": "stale_dml_demoted",
+        },
+    )
+    try:
+        save_accel(demoted)
+    except Exception:  # noqa: BLE001
+        pass
+    return demoted
 
 
 def configure(
@@ -1462,11 +1624,45 @@ def configure(
                     raise RuntimeError(
                         f"CoreML GPU calibration failed: {exc}. Refusing CPU fallback."
                     ) from exc
-                if progress is None:
-                    print(f"[accel] batch calibration failed: {exc}", file=sys.stderr, flush=True)
-                profile.texts_per_sec = None
-                profile.meets_target = None
-                profile.batch_calibration = {"ok": False, "error": str(exc)}
+                if profile.profile in {"dml", "cuda"}:
+                    _fallback_to_cpu_profile(
+                        profile,
+                        f"{profile.profile} calibration crashed ({exc})",
+                        progress=progress,
+                    )
+                    try:
+                        _do_calibration(profile, progress=progress)
+                    except Exception as cpu_exc:  # noqa: BLE001
+                        if progress is None:
+                            print(
+                                f"[accel] CPU calibration also failed: {cpu_exc}",
+                                file=sys.stderr,
+                                flush=True,
+                            )
+                        profile.batch_size = BATCH_PREFER
+                        profile.texts_per_sec = None
+                        profile.meets_target = None
+                        profile.batch_calibration = {
+                            "ok": False,
+                            "winner": BATCH_PREFER,
+                            "error": str(cpu_exc),
+                            "reason": "safe defaults after GPU+CPU calibration failure",
+                        }
+                else:
+                    if progress is None:
+                        print(
+                            f"[accel] batch calibration failed: {exc}",
+                            file=sys.stderr,
+                            flush=True,
+                        )
+                    profile.texts_per_sec = None
+                    profile.meets_target = None
+                    profile.batch_calibration = {"ok": False, "error": str(exc)}
+                    if profile.profile != "cpu":
+                        profile.batch_size = int(profile.batch_size or BATCH_PREFER)
+                    else:
+                        profile.batch_size = BATCH_PREFER
+
 
     from pipeline.resource_envelope import derive_envelope
 
@@ -2198,10 +2394,19 @@ def resolve_runtime() -> AccelProfile:
     CoreML profile is overlaid with MLX when the ``mlx`` package is installed.
     ``accel.json`` is not rewritten here. Opt out with ``CTX_EMBED_BACKEND=fastembed``
     or ``CTX_MLX=0``. An explicit CPU profile is left unchanged.
+
+    Safeguard: a saved DirectML profile from older installs that only had Intel
+    iGPU / APU graphics is demoted to CPU so init cannot hang.
     """
     profile = load_accel()
     if profile is None:
         raise RuntimeError("acceleration profile is not configured; run `scubiee setup`")
+    if (
+        profile.profile == "dml"
+        and not (os.environ.get("CTX_FORCE_DML") or "").strip()
+        and not _saved_dml_still_has_discrete_gpu(profile)
+    ):
+        return _demote_stale_dml_profile(profile)
     env = os.environ.get("CTX_EMBED_BACKEND", "").strip().lower()
     want_mlx = env == "mlx" or (profile.profile == "mlx" or profile.backend == "mlx")
     if profile.profile in {"dml", "cuda"} and env != "mlx":
