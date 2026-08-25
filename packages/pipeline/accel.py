@@ -214,6 +214,86 @@ def _env_disables_mlx() -> bool:
     return raw in {"fastembed", "cpu", "coreml", "st", "coderank", "sentence-transformers", "ollama"}
 
 
+def _windows_gpu_name(gpu: dict[str, Any] | str) -> str:
+    if isinstance(gpu, dict):
+        return str(gpu.get("name") or "").strip().lower()
+    return str(gpu or "").strip().lower()
+
+
+def _is_windows_software_adapter(gpu: dict[str, Any] | str) -> bool:
+    name = _windows_gpu_name(gpu)
+    return (
+        "microsoft" in name
+        or "basic render" in name
+        or "basic display" in name
+        or "remote desktop" in name
+        or "virtual" in name
+    )
+
+
+def _is_windows_discrete_amd_or_nvidia(gpu: dict[str, Any] | str) -> bool:
+    """True only for discrete NVIDIA / AMD GPUs (not Intel iGPU / APU graphics).
+
+    Integrated chips ("Intel UHD", "AMD Radeon Graphics") often make DirectML hang
+    or crawl during setup calibration on machines users think of as CPU-only.
+    """
+    if _is_windows_software_adapter(gpu):
+        return False
+    name = _windows_gpu_name(gpu)
+    if not name:
+        return False
+
+    # NVIDIA discrete (desktop + laptop GeForce / Quadro / etc.)
+    nvidia_markers = (
+        "nvidia",
+        "geforce",
+        "rtx ",
+        "rtx-",
+        "gtx ",
+        "gtx-",
+        "quadro",
+        "tesla",
+        "titan",
+    )
+    if any(m in name for m in nvidia_markers):
+        return True
+
+    # AMD discrete — require RX / Pro / FirePro / Instinct style names.
+    # Plain "AMD Radeon Graphics" is the APU iGPU and must NOT select DML.
+    amd_igpu = (
+        "radeon(tm) graphics",
+        "radeon graphics",
+        "amd radeon graphics",
+        "radeon vega graphics",
+        "graphics (radeon",
+    )
+    if any(m in name for m in amd_igpu):
+        return False
+    amd_discrete = (
+        "radeon rx",
+        "rx 5",
+        "rx 6",
+        "rx 7",
+        "rx 8",
+        "radeon pro",
+        "radeon vii",
+        "firepro",
+        "radeon instinct",
+        "instinct mi",
+    )
+    if "radeon" in name or "amd" in name:
+        return any(m in name for m in amd_discrete)
+    return False
+
+
+def _windows_discrete_gpu_candidates(gpus: list[dict[str, Any]]) -> list[tuple[int, dict[str, Any]]]:
+    return [
+        (i, g)
+        for i, g in enumerate(gpus or [])
+        if isinstance(g, dict) and _is_windows_discrete_amd_or_nvidia(g)
+    ]
+
+
 def _windows_d3d12_gpus() -> list[dict[str, Any]]:
     """Best-effort DXGI adapter list via PowerShell (no extra deps)."""
     if platform.system() != "Windows":
@@ -248,21 +328,19 @@ def _windows_d3d12_gpus() -> list[dict[str, Any]]:
 def detect_hardware() -> dict[str, Any]:
     gpus = _windows_d3d12_gpus()
     nvidia = _has_nvidia()
-    # Prefer discrete-looking adapters for DML device_id (non-Microsoft Basic, larger RAM)
+    # Prefer discrete AMD/NVIDIA adapters for DML device_id
     dml_id = 0
-    if gpus:
-        scored = []
-        for i, g in enumerate(gpus):
-            name = g["name"].lower()
-            score = g.get("adapter_ram") or 0
-            if "microsoft" in name or "basic render" in name:
-                score = -1
-            if "radeon" in name or "geforce" in name or "rtx" in name or "arc" in name:
+    discrete = _windows_discrete_gpu_candidates(gpus)
+    if discrete:
+        scored: list[tuple[int, int]] = []
+        for i, g in discrete:
+            score = int(g.get("adapter_ram") or 0)
+            name = _windows_gpu_name(g)
+            if "rtx" in name or "rx 7" in name or "rx 8" in name:
                 score += 10**12
-            scored.append((score, i, g))
+            scored.append((score, i))
         scored.sort(reverse=True)
-        if scored and scored[0][0] >= 0:
-            dml_id = scored[0][1]
+        dml_id = scored[0][1]
     machine = platform.machine()
     apple_silicon = platform.system() == "Darwin" and machine.lower() in {"arm64", "aarch64"}
     if apple_silicon and not gpus:
@@ -280,26 +358,43 @@ def detect_hardware() -> dict[str, Any]:
         "suggested_dml_device_id": dml_id,
         "apple_silicon": apple_silicon,
         "coreml_compute_units": coreml_units if platform.system() == "Darwin" else None,
+        "windows_discrete_amd_nvidia": bool(discrete) or bool(nvidia),
     }
 
 
 def recommend_profile(detected: dict[str, Any] | None = None) -> AccelProfile:
     d = detected or detect_hardware()
-    # Windows: use DirectML if a real GPU is present (not just a basic display adapter)
-    if d.get("os") == "Windows" and d.get("gpus"):
-        # Filter out software rasterizers (Microsoft Basic Display Adapter, etc.)
-        real_gpus = [
-            g for g in d["gpus"]
-            if "microsoft" not in g.get("name", "").lower()
-            and "basic" not in g.get("name", "").lower()
-        ]
-        if real_gpus:
+    # Windows: DirectML only for discrete AMD / NVIDIA GPUs.
+    # Intel iGPU / "AMD Radeon Graphics" APU adapters → CPU (avoids setup hangs).
+    if d.get("os") == "Windows":
+        gpus = [g for g in (d.get("gpus") or []) if isinstance(g, dict)]
+        discrete = _windows_discrete_gpu_candidates(gpus)
+        if discrete or d.get("nvidia") or d.get("windows_discrete_amd_nvidia"):
+            device_id = int(d.get("suggested_dml_device_id") or 0)
+            if discrete:
+                device_id = discrete[0][0]
+                # Prefer highest-RAM discrete if detect_hardware already scored one
+                best = max(
+                    discrete,
+                    key=lambda item: int(item[1].get("adapter_ram") or 0),
+                )
+                device_id = best[0]
+            vendor = "NVIDIA/AMD"
+            if discrete:
+                names = " ".join(_windows_gpu_name(g) for _, g in discrete)
+                if any(m in names for m in ("nvidia", "geforce", "rtx", "gtx", "quadro")):
+                    vendor = "NVIDIA"
+                elif "radeon" in names or "amd" in names:
+                    vendor = "AMD"
             return AccelProfile(
                 profile="dml",
                 provider="DmlExecutionProvider",
-                device_id=int(d.get("suggested_dml_device_id") or 0),
+                device_id=device_id,
                 batch_size=BATCH_PREFER,
-                reason="Windows GPU via DirectML — zero-config acceleration for NVIDIA/AMD/Intel",
+                reason=(
+                    f"Windows discrete {vendor} GPU via DirectML "
+                    "(Intel iGPU / APU graphics use CPU instead)"
+                ),
                 detected=d,
             )
     # Linux NVIDIA: use CUDA (DLL locking is not an issue on Linux)
@@ -348,9 +443,9 @@ def recommend_profile(detected: dict[str, Any] | None = None) -> AccelProfile:
             detected=detected,
         )
     # Final fallback — but never allow CPU-only on Apple Silicon (has Metal GPU)
-    import platform
+    import platform as _platform
 
-    if platform.system() == "Darwin" and platform.machine() in ("arm64", "aarch64"):
+    if _platform.system() == "Darwin" and _platform.machine() in ("arm64", "aarch64"):
         # Force MLX even if earlier detection failed (Apple Silicon always has Metal)
         return AccelProfile(
             profile="mlx",
@@ -366,7 +461,12 @@ def recommend_profile(detected: dict[str, Any] | None = None) -> AccelProfile:
         provider="CPUExecutionProvider",
         device_id=0,
         batch_size=BATCH_PREFER,
-        reason="No usable GPU accelerator — FastEmbed CPU (multi-core)",
+        reason=(
+            "No discrete AMD/NVIDIA GPU — FastEmbed CPU (multi-core). "
+            "On Windows, Intel iGPU / APU graphics are ignored for DirectML."
+            if d.get("os") == "Windows"
+            else "No usable GPU accelerator — FastEmbed CPU (multi-core)"
+        ),
         detected=d,
     )
 

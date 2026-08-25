@@ -13,7 +13,7 @@ from pipeline.accel import AccelProfile, recommend_profile
         (
             "Windows",
             False,
-            [{"name": "AMD Radeon", "adapter_ram": 8_000_000_000}],
+            [{"name": "AMD Radeon RX 7800 XT", "adapter_ram": 16_000_000_000}],
             ["DmlExecutionProvider", "CPUExecutionProvider"],
             "dml",
         ),
