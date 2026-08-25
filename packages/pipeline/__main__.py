@@ -1173,6 +1173,13 @@ def cmd_init(args: argparse.Namespace) -> int:
             if daemon.get("ok"):
                 bar.daemon_started()
             bar.finish()
+            from pipeline.cli_ui import info
+
+            info(
+                "Agent: call Scubiee status() again to re-check managed "
+                "(init does not write MCP/rules — use scubiee connect for that).",
+                stream=sys.stderr,
+            )
         else:
             bar.finish("Ready")
             print(json.dumps(out, indent=2, default=str))
@@ -1458,11 +1465,16 @@ def cmd_disconnect(args: argparse.Namespace) -> int:
         else:
             print(json.dumps({"ok": False, "error": "no tools specified"}, indent=2))
         return 1
-        return 1
 
     dry_run = getattr(args, "dry_run", False)
     repo = getattr(args, "repo", None)
-    results = uninstall_tools(selected, dry_run=dry_run, repo=repo)
+    all_workspaces = bool(getattr(args, "all_workspaces", False))
+    results = uninstall_tools(
+        selected,
+        dry_run=dry_run,
+        repo=repo,
+        all_workspaces=all_workspaces,
+    )
 
     if sys.stdout.isatty():
         from pipeline.cli_ui import print_connect_summary
@@ -2090,6 +2102,14 @@ def main(argv: list[str] | None = None) -> int:
         )
     p_disconnect.add_argument("--all", action="store_true", help="Disconnect from all supported tools")
     p_disconnect.add_argument("--dry-run", action="store_true", help="Show what would be removed")
+    p_disconnect.add_argument(
+        "--all-workspaces",
+        action="store_true",
+        help=(
+            "Also remove workspace-local MCP files for Kiro/Copilot/Cline/Roo "
+            "under every registered repo (not just cwd)"
+        ),
+    )
     p_disconnect.add_argument(
         "--repo",
         type=Path,

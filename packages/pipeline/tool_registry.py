@@ -361,6 +361,20 @@ def resolve_mcp_project_path(tool: ToolDef, repo: Path | None) -> Path | None:
     return paths[0] if paths else None
 
 
+def all_workspace_local_mcp_paths(repo: Path | None) -> list[Path]:
+    """Every workspace-local MCP path connect may write for the special-4 hosts."""
+    if repo is None:
+        return []
+    root = Path(repo).resolve()
+    return [
+        root / ".kiro" / "settings" / "mcp.json",
+        root / ".vscode" / "mcp.json",
+        root / ".mcp.json",
+        root / ".cline" / "mcp.json",
+        root / ".roo" / "mcp.json",
+    ]
+
+
 def resolve_rule_project_path(tool: ToolDef, repo: Path | None) -> Path | None:
     """Global-only install: never writes project rules."""
     return None

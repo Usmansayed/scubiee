@@ -729,11 +729,51 @@ _RULE_REMOVERS = {
 }
 
 
+def _registered_connect_repos(extra: Path | None = None) -> list[Path]:
+    """Repos where workspace-local MCP may have been written."""
+    roots: list[Path] = []
+    seen: set[str] = set()
+
+    def add(path: Path) -> None:
+        try:
+            resolved = path.resolve()
+        except OSError:
+            return
+        key = str(resolved).replace("\\", "/").lower()
+        if key in seen:
+            return
+        seen.add(key)
+        roots.append(resolved)
+
+    try:
+        from pipeline.project_id import load_registry
+
+        for meta in (load_registry().get("projects") or {}).values():
+            if not isinstance(meta, dict):
+                continue
+            for key in ("root",):
+                raw = meta.get(key)
+                if isinstance(raw, str) and raw.strip():
+                    add(Path(raw))
+            paths = meta.get("paths")
+            if isinstance(paths, list):
+                for raw in paths:
+                    if isinstance(raw, str) and raw.strip():
+                        add(Path(raw))
+    except Exception:  # noqa: BLE001
+        pass
+    if extra is not None:
+        add(Path(extra))
+    add(Path.cwd())
+    return roots
+
+
 def uninstall_tool(
     tool: ToolDef,
     *,
     dry_run: bool = False,
     repo: Path | str | None = None,
+    all_workspaces: bool = False,
 ) -> dict[str, Any]:
     target_repo = _connect_repo(repo)
     write_targets = resolve_mcp_write_targets(tool)
@@ -742,7 +782,14 @@ def uninstall_tool(
     primary = mcp_paths[0] if mcp_paths else None
     primary_rule = rule_paths[0] if rule_paths else None
     workspace_local = is_workspace_local_mcp_tool(tool.slug)
-    workspace_paths = resolve_mcp_project_paths(tool, target_repo) if workspace_local else []
+    workspace_roots = (
+        _registered_connect_repos(target_repo)
+        if (workspace_local and all_workspaces)
+        else ([target_repo] if workspace_local else [])
+    )
+    workspace_paths: list[Path] = []
+    for root in workspace_roots:
+        workspace_paths.extend(resolve_mcp_project_paths(tool, root))
 
     report: dict[str, Any] = {
         "tool": tool.name,
@@ -753,6 +800,7 @@ def uninstall_tool(
         "rule_path": str(primary_rule) if primary_rule else None,
         "rule_paths": [str(p) for p in rule_paths],
         "workspace_mcp_paths": [str(p) for p in workspace_paths],
+        "all_workspaces": bool(all_workspaces and workspace_local),
         "dry_run": dry_run,
         "ok": True,
         "errors": [],
@@ -783,7 +831,10 @@ def uninstall_tool(
 
     if workspace_local:
         try:
-            report["workspace_mcp_removed"] = _remove_workspace_mcp(tool, target_repo)
+            any_removed = False
+            for root in workspace_roots:
+                any_removed = _remove_workspace_mcp(tool, root) or any_removed
+            report["workspace_mcp_removed"] = any_removed
         except Exception as exc:  # noqa: BLE001
             report["errors"].append(f"workspace mcp removal failed: {exc}")
             report["ok"] = False
@@ -809,6 +860,7 @@ def uninstall_tools(
     *,
     dry_run: bool = False,
     repo: Path | str | None = None,
+    all_workspaces: bool = False,
 ) -> list[dict[str, Any]]:
     results = []
     for slug in slugs:
@@ -816,5 +868,12 @@ def uninstall_tools(
         if not tool:
             results.append({"tool": slug, "ok": False, "errors": [f"unknown tool: {slug}"]})
             continue
-        results.append(uninstall_tool(tool, dry_run=dry_run, repo=repo))
+        results.append(
+            uninstall_tool(
+                tool,
+                dry_run=dry_run,
+                repo=repo,
+                all_workspaces=all_workspaces,
+            )
+        )
     return results

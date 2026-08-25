@@ -9,4 +9,9 @@ alwaysApply: true
 - If `status.managed` is `true` and `status.warming` is `true`: the engine is starting up. Use Scubiee MCP tools — if a tool returns a warming/not-ready response, wait 5s and retry once. Do not fall back to native search.
 - If `status.managed` is `false`, or the MCP is missing/unhealthy: use native tools for now. **Do not permanently disable Scubiee for this session.**
 
-**Retry `status()`** when the user runs `scubiee init`, `scubiee connect`, or asks to index or use Scubiee — then switch to Scubiee MCP if `managed` becomes `true`. If a Scubiee tool returns not-managed after init was likely done, call `status()` once more before falling back.
+**Retry `status()`** when:
+- the user runs `scubiee init`, `scubiee connect`, or asks to index or use Scubiee
+- the user asks whether this repo is managed / to check or test Scubiee
+- any Scubiee tool returns `should_retry_status: true` or `managed: false` after init was likely done
+
+Then switch to Scubiee MCP if `managed` becomes `true`.

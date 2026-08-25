@@ -1,7 +1,8 @@
-"""MCP repo resolution — must not default to user home when daemon has a bind."""
+"""MCP repo resolution — enrolled identity beats stale CTX_REPO pins."""
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from pipeline import mcp_locate
@@ -10,9 +11,105 @@ from pipeline import mcp_locate
 def test_default_repo_uses_ctx_repo_env(tmp_path: Path, monkeypatch) -> None:
     repo = tmp_path / "app"
     repo.mkdir()
+    unrelated = tmp_path / "cwd"
+    unrelated.mkdir()
+    monkeypatch.chdir(unrelated)
     monkeypatch.setenv("CTX_REPO", str(repo))
     monkeypatch.delenv("CONTEXT_ENGINE_REPO", raising=False)
+    for key in (
+        "CURSOR_PROJECT_DIR",
+        "CTX_PROJECT_ID",
+        "WORKSPACE_FOLDER",
+    ):
+        monkeypatch.delenv(key, raising=False)
     assert mcp_locate._default_repo() == repo.resolve()
+
+
+def test_default_repo_ignores_missing_ctx_repo_pin(tmp_path: Path, monkeypatch) -> None:
+    live = tmp_path / "live"
+    live.mkdir()
+    (live / ".context-engine").mkdir()
+    (live / ".context-engine" / "id.json").write_text(
+        json.dumps({"project_id": "ce_live"}), encoding="utf-8"
+    )
+    missing = tmp_path / "gone-old-path"
+    monkeypatch.chdir(live)
+    monkeypatch.setenv("CTX_REPO", str(missing))
+    monkeypatch.delenv("CTX_PROJECT_ID", raising=False)
+    for key in ("CURSOR_PROJECT_DIR", "WORKSPACE_FOLDER", "INIT_CWD"):
+        monkeypatch.delenv(key, raising=False)
+    assert mcp_locate._default_repo() == live.resolve()
+    assert mcp_locate._ctx_repo_stale(missing.resolve()) is True
+
+
+def test_default_repo_prefers_ide_enrolled_over_stale_pin(
+    tmp_path: Path, monkeypatch
+) -> None:
+    opened = tmp_path / "opened"
+    opened.mkdir()
+    (opened / ".context-engine").mkdir()
+    (opened / ".context-engine" / "id.json").write_text(
+        json.dumps({"project_id": "ce_open"}), encoding="utf-8"
+    )
+    pinned = tmp_path / "old-pin"
+    pinned.mkdir()
+    (pinned / ".git").mkdir()
+    junk = tmp_path / "ide-install"
+    junk.mkdir()
+    monkeypatch.chdir(junk)
+    monkeypatch.setenv("CURSOR_PROJECT_DIR", str(opened))
+    monkeypatch.setenv("CTX_REPO", str(pinned))
+    monkeypatch.delenv("CTX_PROJECT_ID", raising=False)
+    assert mcp_locate._default_repo() == opened.resolve()
+
+
+def test_default_repo_resolves_ctx_project_id_from_registry(
+    tmp_path: Path, monkeypatch
+) -> None:
+    home = tmp_path / "ce-home"
+    home.mkdir()
+    monkeypatch.setenv("CTX_HOME", str(home))
+    moved = tmp_path / "renamed-repo"
+    moved.mkdir()
+    (moved / ".context-engine").mkdir()
+    (moved / ".context-engine" / "id.json").write_text(
+        json.dumps({"project_id": "ce_moved"}), encoding="utf-8"
+    )
+    from pipeline.project_id import save_registry
+
+    save_registry(
+        {
+            "projects": {
+                "ce_moved": {
+                    "managed": True,
+                    "root": str(moved.resolve()),
+                    "paths": [str(moved.resolve())],
+                }
+            }
+        }
+    )
+    junk = tmp_path / "cwd"
+    junk.mkdir()
+    monkeypatch.chdir(junk)
+    monkeypatch.delenv("CTX_REPO", raising=False)
+    monkeypatch.setenv("CTX_PROJECT_ID", "ce_moved")
+    for key in ("CURSOR_PROJECT_DIR", "WORKSPACE_FOLDER", "INIT_CWD"):
+        monkeypatch.delenv(key, raising=False)
+    assert mcp_locate._default_repo() == moved.resolve()
+
+
+def test_managed_signal_fields_unmanaged(tmp_path: Path, monkeypatch) -> None:
+    plain = tmp_path / "plain"
+    plain.mkdir()
+    monkeypatch.chdir(plain)
+    monkeypatch.delenv("CTX_REPO", raising=False)
+    monkeypatch.delenv("CTX_PROJECT_ID", raising=False)
+    for key in ("CURSOR_PROJECT_DIR", "WORKSPACE_FOLDER"):
+        monkeypatch.delenv(key, raising=False)
+    fields = mcp_locate._managed_signal_fields()
+    assert fields["managed"] is False
+    assert fields["should_retry_status"] is True
+    assert fields["should_use_mcp"] is False
 
 
 def test_default_repo_does_not_use_daemon_bound_repo_without_workspace_identity(
@@ -20,6 +117,7 @@ def test_default_repo_does_not_use_daemon_bound_repo_without_workspace_identity(
 ) -> None:
     monkeypatch.delenv("CTX_REPO", raising=False)
     monkeypatch.delenv("CONTEXT_ENGINE_REPO", raising=False)
+    monkeypatch.delenv("CTX_PROJECT_ID", raising=False)
     monkeypatch.chdir(tmp_path)
 
     class FakeClient:
@@ -105,6 +203,7 @@ def test_kiro_workspace_entry_routes_from_an_unrelated_process_cwd(
         "VSCODE_CWD",
         "WORKSPACE_FOLDER",
         "INIT_CWD",
+        "CTX_PROJECT_ID",
     ):
         monkeypatch.delenv(key, raising=False)
     # This is the environment Kiro supplies when it launches the workspace
@@ -112,3 +211,17 @@ def test_kiro_workspace_entry_routes_from_an_unrelated_process_cwd(
     monkeypatch.setenv("CTX_REPO", configured_repo)
 
     assert mcp_locate._default_repo() == project_root.resolve()
+
+
+def test_server_entry_pins_project_id_when_enrolled(tmp_path: Path, monkeypatch) -> None:
+    from pipeline.mcp_install import server_entry
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / ".context-engine").mkdir()
+    (repo / ".context-engine" / "id.json").write_text(
+        json.dumps({"project_id": "ce_pin"}), encoding="utf-8"
+    )
+    entry = server_entry(repo)
+    assert "repo" in entry["env"]["CTX_REPO"]
+    assert entry["env"]["CTX_PROJECT_ID"] == "ce_pin"

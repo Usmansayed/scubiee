@@ -15,7 +15,6 @@ def test_wipe_all_requires_yes(tmp_path: Path, monkeypatch) -> None:
     out = wipe_all(yes=False)
     assert out["ok"] is False
     assert out["error"] == "confirm_required"
-    assert "--yes" in out["hint"]
     assert "--confirm" in out["hint"]
     assert home.is_dir()
 
@@ -96,8 +95,11 @@ def test_wipe_repo_removes_id_and_rule(tmp_path: Path, monkeypatch) -> None:
     assert out["scope"] == "repo"
     assert not id_dir.exists()
     assert not rule.exists()
-    data = json.loads(mcp.read_text(encoding="utf-8"))
-    assert "context-engine" not in (data.get("mcpServers") or {})
+    if mcp.is_file():
+        data = json.loads(mcp.read_text(encoding="utf-8"))
+        assert "context-engine" not in (data.get("mcpServers") or {})
+    else:
+        assert not mcp.exists()
 
 
 def test_wipe_repo_hint_mentions_all(tmp_path: Path, monkeypatch) -> None:
@@ -108,7 +110,7 @@ def test_wipe_repo_hint_mentions_all(tmp_path: Path, monkeypatch) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
     out = wipe_repo(repo)
-    assert "wipe --all --yes" in out["hint"]
+    assert "wipe --all --confirm" in out["hint"]
     assert out["still_on_machine"]["accel_json"] is True
 
 
@@ -122,24 +124,86 @@ def test_audit_reports_ctx_home(tmp_path: Path, monkeypatch) -> None:
     assert "ctx_home" in kinds
 
 
-def test_wipe_all_plan_lists_registered_repos(tmp_path: Path, monkeypatch) -> None:
+def test_wipe_repo_removes_workspace_local_mcp_files(tmp_path: Path, monkeypatch) -> None:
     home = tmp_path / "ce-home"
     home.mkdir()
     monkeypatch.setenv("CTX_HOME", str(home))
     repo = tmp_path / "repo"
     repo.mkdir()
+    files = [
+        repo / ".kiro" / "settings" / "mcp.json",
+        repo / ".vscode" / "mcp.json",
+        repo / ".mcp.json",
+        repo / ".cline" / "mcp.json",
+        repo / ".roo" / "mcp.json",
+    ]
+    for path in files:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        key = "servers" if ".vscode" in path.parts else "mcpServers"
+        path.write_text(
+            json.dumps({key: {"context-engine": {"command": "x"}}}),
+            encoding="utf-8",
+        )
+
+    out = wipe_repo(repo)
+    assert out["ok"] is True
+    for path in files:
+        if path.is_file():
+            data = json.loads(path.read_text(encoding="utf-8"))
+            servers = data.get("mcpServers") or data.get("servers") or {}
+            assert "context-engine" not in servers
+        else:
+            assert not path.exists()
+
+
+def test_disconnect_all_workspaces_removes_other_repo_local_mcp(
+    tmp_path: Path, monkeypatch
+) -> None:
+    from pipeline.rules_installer import uninstall_tool
+    from pipeline.tool_registry import TOOL_MAP
+
+    home = tmp_path / "ce-home"
+    home.mkdir()
+    monkeypatch.setenv("CTX_HOME", str(home))
+    monkeypatch.setenv("HOME", str(tmp_path / "user-home"))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "user-home"))
+    (tmp_path / "user-home").mkdir()
+    monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path / "user-home"))
+
+    repo_a = tmp_path / "a"
+    repo_b = tmp_path / "b"
+    for repo in (repo_a, repo_b):
+        repo.mkdir()
+        (repo / ".git").mkdir()
+        mcp = repo / ".kiro" / "settings" / "mcp.json"
+        mcp.parent.mkdir(parents=True)
+        mcp.write_text(
+            json.dumps({"mcpServers": {"context-engine": {"command": "x", "env": {}}}}),
+            encoding="utf-8",
+        )
+
     from pipeline.project_id import save_registry
 
     save_registry(
         {
             "projects": {
-                "ce_test": {
+                "ce_aaaaa": {
                     "managed": True,
-                    "root": str(repo.resolve()),
-                    "paths": [str(repo.resolve())],
-                }
+                    "root": str(repo_a.resolve()),
+                    "paths": [str(repo_a.resolve())],
+                },
+                "ce_bbbbb": {
+                    "managed": True,
+                    "root": str(repo_b.resolve()),
+                    "paths": [str(repo_b.resolve())],
+                },
             }
         }
     )
-    out = wipe_all(yes=False)
-    assert str(repo.resolve()) in out["plan"]["registered_repos"]
+
+    monkeypatch.chdir(repo_a)
+    report = uninstall_tool(TOOL_MAP["kiro"], repo=repo_a, all_workspaces=True)
+    assert report["ok"] is True
+    assert report.get("all_workspaces") is True
+    assert not (repo_a / ".kiro" / "settings" / "mcp.json").is_file()
+    assert not (repo_b / ".kiro" / "settings" / "mcp.json").is_file()

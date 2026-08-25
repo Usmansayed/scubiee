@@ -62,7 +62,16 @@ def server_entry(
         "PYTHONUTF8": "1",
     }
     if repo is not None:
-        env["CTX_REPO"] = str(Path(repo).resolve()).replace("\\", "/")
+        resolved = Path(repo).resolve()
+        env["CTX_REPO"] = str(resolved).replace("\\", "/")
+        try:
+            from pipeline.project_id import read_id_file
+
+            project_id = read_id_file(resolved)
+            if project_id:
+                env["CTX_PROJECT_ID"] = project_id
+        except Exception:  # noqa: BLE001
+            pass
 
     # Prefer the installed scubiee-mcp executable — it's a proper entry point
     # that IDEs can spawn without knowing the Python path. This fixes Kiro and

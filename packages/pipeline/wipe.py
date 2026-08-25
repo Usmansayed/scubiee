@@ -69,21 +69,36 @@ def _drop_mcp_server(path: Path, *, name: str = "context-engine") -> dict[str, A
         return {"path": str(path), "removed": False, "error": str(exc)}
     if not isinstance(data, dict):
         return {"path": str(path), "removed": False, "error": "not_object"}
-    servers = data.get("mcpServers")
-    if not isinstance(servers, dict) or name not in servers:
-        return {"path": str(path), "removed": False, "absent": True}
-    servers.pop(name, None)
-    try:
+
+    removed = False
+    for key in ("mcpServers", "servers"):
+        servers = data.get(key)
+        if not isinstance(servers, dict) or name not in servers:
+            continue
+        servers.pop(name, None)
+        removed = True
         if servers:
+            data[key] = servers
+        else:
+            data.pop(key, None)
+
+    if not removed:
+        return {"path": str(path), "removed": False, "absent": True}
+    try:
+        if data:
             path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
         else:
-            # Empty mcpServers — leave a clean stub so Cursor stays happy.
-            path.write_text(
-                json.dumps({"mcpServers": {}}, indent=2) + "\n", encoding="utf-8"
-            )
+            path.unlink(missing_ok=True)
         return {"path": str(path), "removed": True, "name": name}
     except OSError as exc:
         return {"path": str(path), "removed": False, "error": str(exc)}
+
+
+def _workspace_local_mcp_paths(repo: Path) -> list[Path]:
+    """Local MCP files written by connect for Kiro/Copilot/Cline/Roo."""
+    from pipeline.tool_registry import all_workspace_local_mcp_paths
+
+    return all_workspace_local_mcp_paths(repo)
 
 
 def _coderank_model_dirs() -> list[Path]:
@@ -274,8 +289,13 @@ def _mcp_has_context_engine(path: Path, *, name: str = "context-engine") -> bool
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError):
         return False
-    servers = data.get("mcpServers") if isinstance(data, dict) else None
-    return isinstance(servers, dict) and name in servers
+    if not isinstance(data, dict):
+        return False
+    for key in ("mcpServers", "servers"):
+        servers = data.get(key)
+        if isinstance(servers, dict) and name in servers:
+            return True
+    return False
 
 
 def audit_scubiee_artifacts(*, include_package: bool = True, include_models: bool = True) -> dict[str, Any]:
@@ -344,10 +364,9 @@ def audit_scubiee_artifacts(*, include_package: bool = True, include_models: boo
         project_mcp = repo / ".cursor" / "mcp.json"
         if _mcp_has_context_engine(project_mcp):
             note(project_mcp, kind="repo_mcp")
-        # Kiro project-level MCP
-        for kiro_mcp in _kiro_mcp_paths(repo):
-            if _mcp_has_context_engine(kiro_mcp):
-                note(kiro_mcp, kind="kiro_repo_mcp")
+        for local_mcp in _workspace_local_mcp_paths(repo):
+            if _mcp_has_context_engine(local_mcp):
+                note(local_mcp, kind="workspace_local_mcp")
         for steering_path in _kiro_steering_paths(repo):
             if steering_path.is_file():
                 note(steering_path, kind="kiro_repo_steering")
@@ -389,10 +408,8 @@ def wipe_repo(root: Path | str, *, mcp: bool = True, rule: bool = True) -> dict[
         out["actions"].append(
             {"mcp": _drop_mcp_server(root / ".cursor" / "mcp.json")}
         )
-        for kiro_mcp in _kiro_mcp_paths(root):
-            out["actions"].append(
-                {"kiro_mcp": _drop_mcp_server(kiro_mcp)}
-            )
+        for local_mcp in _workspace_local_mcp_paths(root):
+            out["actions"].append({"workspace_local_mcp": _drop_mcp_server(local_mcp)})
     if rule:
         for rule_path in _cursor_rule_paths(root):
             out["actions"].append({"rule": _rm_tree(rule_path)})
@@ -476,8 +493,8 @@ def wipe_all(
     # Also remove project-level MCP for the target repo (cwd or explicit)
     target_early = Path(repo).resolve() if repo else Path.cwd().resolve()
     actions.append({"project_cursor_mcp_early": _drop_mcp_server(target_early / ".cursor" / "mcp.json")})
-    for kiro_mcp in _kiro_mcp_paths(target_early):
-        actions.append({"kiro_project_mcp_early": _drop_mcp_server(kiro_mcp)})
+    for local_mcp in _workspace_local_mcp_paths(target_early):
+        actions.append({"workspace_local_mcp_early": _drop_mcp_server(local_mcp)})
 
     # STEP 1: Stop background processes so files unlock on Windows.
     try:

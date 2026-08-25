@@ -294,7 +294,9 @@ def _server_instructions(surface: str) -> str:
     if not _is_repo_managed():
         return (
             "Context Engine MCP is available but the current folder is not managed. "
-            "Use status() to check. To manage this folder: scubiee init <path>. "
+            "Call status() to check managed=true/false (user may ask you to re-test anytime). "
+            "To manage this folder: scubiee init <path>. "
+            "If status returns should_retry_status, call status() again after init/connect. "
             "CE tools remain usable but are not required for this workspace."
         )
 
@@ -354,20 +356,36 @@ def _register_mcp_client(repo: Path) -> str:
     return client_id
 
 
-def _default_repo() -> Path:
-    # Priority 1: IDE workspace env vars ? if the IDE tells us which workspace
-    # it launched from AND that workspace is enrolled, use it. This prevents
-    # stale CTX_REPO from routing to the wrong project after wipe/reinstall.
-    for key in (
-        "CURSOR_PROJECT_DIR",
-        "CURSOR_WORKSPACE",
-        "COPILOT_WORKSPACE_FOLDER",
-        "COPILOT_WORKSPACE",
-        "VSCODE_WORKSPACE_FOLDER",
-        "VSCODE_CWD",
-        "WORKSPACE_FOLDER",
-        "INIT_CWD",
-    ):
+_IDE_WORKSPACE_ENV_KEYS = (
+    "CURSOR_PROJECT_DIR",
+    "CURSOR_WORKSPACE",
+    "COPILOT_WORKSPACE_FOLDER",
+    "COPILOT_WORKSPACE",
+    "VSCODE_WORKSPACE_FOLDER",
+    "VSCODE_CWD",
+    "WORKSPACE_FOLDER",
+    "INIT_CWD",
+)
+
+
+def _is_enrolled(path: Path) -> bool:
+    try:
+        return (path / ".context-engine" / "id.json").is_file()
+    except OSError:
+        return False
+
+
+def _path_exists(path: Path) -> bool:
+    try:
+        return path.exists()
+    except OSError:
+        return False
+
+
+def _ide_workspace_candidates() -> list[Path]:
+    found: list[Path] = []
+    seen: set[str] = set()
+    for key in _IDE_WORKSPACE_ENV_KEYS:
         hint = os.environ.get(key)
         if not hint:
             continue
@@ -375,53 +393,191 @@ def _default_repo() -> Path:
             candidate = Path(hint).resolve()
         except OSError:
             continue
-        if (candidate / ".context-engine" / "id.json").is_file():
-            return candidate
+        key_s = str(candidate).replace("\\", "/").lower()
+        if key_s in seen:
+            continue
+        seen.add(key_s)
+        found.append(candidate)
+    return found
 
-    # Priority 2: Explicit CTX_REPO env var (set by connect/init configs)
+
+def _enrolled_walk(start: Path) -> Path | None:
+    try:
+        for candidate in (start, *start.parents):
+            if _is_enrolled(candidate):
+                return candidate
+    except OSError:
+        return None
+    return None
+
+
+def _resolve_ctx_project_id() -> Path | None:
+    """Resolve CTX_PROJECT_ID via registry live paths (survives folder renames)."""
+    pid = (os.environ.get("CTX_PROJECT_ID") or "").strip()
+    if not pid:
+        return None
+    try:
+        from pipeline.project_id import load_registry, read_id_file
+
+        entry = (load_registry().get("projects") or {}).get(pid)
+        if not isinstance(entry, dict):
+            return None
+        candidates: list[str] = []
+        root = entry.get("root")
+        if isinstance(root, str) and root.strip():
+            candidates.append(root)
+        paths = entry.get("paths")
+        if isinstance(paths, list):
+            candidates.extend(p for p in paths if isinstance(p, str) and p.strip())
+        for raw in candidates:
+            try:
+                path = Path(raw).resolve()
+            except OSError:
+                continue
+            if not _path_exists(path):
+                continue
+            if read_id_file(path) == pid or _is_enrolled(path):
+                return path
+    except Exception:  # noqa: BLE001
+        return None
+    return None
+
+
+def _ctx_repo_raw() -> Path | None:
     env = os.environ.get("CTX_REPO") or os.environ.get("CONTEXT_ENGINE_REPO")
-    if env:
-        resolved = Path(env).resolve()
-        # Only trust CTX_REPO if it's actually enrolled or at least a real project dir
-        if (resolved / ".context-engine" / "id.json").is_file() or (resolved / ".git").exists():
-            return resolved
+    if not env:
+        return None
+    try:
+        return Path(env).resolve()
+    except OSError:
+        return None
 
-    # Priority 3: Walk up from cwd looking for enrolled project
-    cwd = Path.cwd().resolve()
-    for candidate in (cwd, *cwd.parents):
-        if (candidate / ".context-engine" / "id.json").is_file():
+
+def _ctx_repo_stale(pin: Path | None) -> bool:
+    """True when pin is missing, wiped, or no longer a real project dir."""
+    if pin is None:
+        return False
+    if not _path_exists(pin):
+        return True
+    if _is_enrolled(pin):
+        return False
+    if (pin / ".git").exists():
+        return False
+    return True
+
+
+def _managed_candidates() -> list[dict[str, str]]:
+    """Enrolled projects visible from IDE env / cwd / pin (for ambiguous multi-repo)."""
+    out: list[dict[str, str]] = []
+    seen: set[str] = set()
+    try:
+        from pipeline.project_id import read_id_file
+    except Exception:  # noqa: BLE001
+        return out
+
+    def add(path: Path, source: str) -> None:
+        if not _is_enrolled(path):
+            return
+        key = str(path).replace("\\", "/").lower()
+        if key in seen:
+            return
+        seen.add(key)
+        out.append(
+            {
+                "path": str(path),
+                "project_id": read_id_file(path) or "",
+                "source": source,
+            }
+        )
+
+    for candidate in _ide_workspace_candidates():
+        add(candidate, "ide")
+    add(Path.cwd().resolve(), "cwd")
+    walked = _enrolled_walk(Path.cwd().resolve())
+    if walked is not None:
+        add(walked, "cwd_walk")
+    pin = _ctx_repo_raw()
+    if pin is not None and not _ctx_repo_stale(pin):
+        add(pin, "ctx_repo")
+    pid_path = _resolve_ctx_project_id()
+    if pid_path is not None:
+        add(pid_path, "ctx_project_id")
+    return out
+
+
+def _default_repo() -> Path:
+    """Resolve the active repository for this MCP process.
+
+    Enrolled IDE/cwd identity beats a stale absolute ``CTX_REPO`` pin (moves,
+    wipe leftovers). ``CTX_PROJECT_ID`` survives renames via the registry.
+    """
+    # 1) IDE workspace that is already enrolled
+    for candidate in _ide_workspace_candidates():
+        if _is_enrolled(candidate):
             return candidate
 
-    # Priority 4: IDE workspace with .git (not enrolled yet, but a valid project)
-    for key in (
-        "CURSOR_PROJECT_DIR",
-        "COPILOT_WORKSPACE_FOLDER",
-        "VSCODE_WORKSPACE_FOLDER",
-        "WORKSPACE_FOLDER",
-    ):
-        hint = os.environ.get(key)
-        if not hint:
-            continue
-        try:
-            candidate = Path(hint).resolve()
-        except OSError:
-            continue
+    # 2) Durable project id (local MCP after connect) → registry path
+    by_id = _resolve_ctx_project_id()
+    if by_id is not None:
+        return by_id
+
+    # 3) Walk up from cwd for enrolled project
+    walked = _enrolled_walk(Path.cwd().resolve())
+    if walked is not None:
+        return walked
+
+    # 4) Live CTX_REPO pin (exists + enrolled or .git)
+    pin = _ctx_repo_raw()
+    if pin is not None and not _ctx_repo_stale(pin):
+        return pin
+
+    # 5) IDE workspace with .git (not enrolled yet)
+    for candidate in _ide_workspace_candidates():
         if (candidate / ".git").exists():
             return candidate
 
-    # Fallback: CTX_REPO even if not enrolled (for first-time init scenarios)
-    if env:
-        return Path(env).resolve()
+    # 6) Raw CTX_REPO if the path still exists (first-time init before id.json)
+    if pin is not None and _path_exists(pin):
+        return pin
 
-    return cwd
+    return Path.cwd().resolve()
 
 
 def _dumps(obj: Any) -> str:
     return json.dumps(obj, indent=2, default=str)
 
 
+def _managed_signal_fields() -> dict[str, Any]:
+    """Fields agents use to decide whether to keep / retry Scubiee MCP."""
+    managed = _is_repo_managed()
+    pin = _ctx_repo_raw()
+    stale = _ctx_repo_stale(pin)
+    candidates = _managed_candidates()
+    fields: dict[str, Any] = {
+        "managed": managed,
+        "should_use_mcp": managed,
+        "should_retry_status": not managed,
+        "stale_ctx_repo": stale,
+    }
+    if stale and pin is not None:
+        fields["stale_ctx_repo_path"] = str(pin)
+    if len(candidates) > 1:
+        fields["ambiguous_repos"] = True
+        fields["candidates"] = candidates
+    if not managed:
+        fields["hint"] = (
+            "Repo is not managed. User can ask you to check again after "
+            "`scubiee init .` — call status() to re-test. "
+            "For Kiro/Copilot/Cline/Roo also run connect inside the project."
+        )
+    return fields
+
+
 def _err(tool: str, error: str, *, hint: str = "", **extra: Any) -> str:
     payload: dict[str, Any] = {"ok": False, "tool": tool, "error": error, **extra}
+    # Surface managed/retry signals on errors so agents can re-check after init.
+    for key, value in _managed_signal_fields().items():
+        payload.setdefault(key, value)
     if hint:
         payload["hint"] = hint
     return _dumps(payload)
@@ -1894,6 +2050,7 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
                 "server": "context_engine_mcp",
                 "managed": False,
                 "should_use_mcp": False,
+                "should_retry_status": True,
                 "hint": "Scubiee is paused. Resume with: scubiee wake",
             })
 
@@ -1989,13 +2146,9 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
                     "meta": daemon_status.get("meta") if healthy else None,
                 },
                 "repo": str(repo), "token_mode": token_mode(),
-                "managed": _is_repo_managed(),
-                # should_use_mcp stays true during cold start (managed but not
-                # yet healthy) so agents keep using Scubiee tools instead of
-                # permanently falling back to native search for the session.
-                # The "warming" flag tells the agent to retry if a tool returns
-                # not-ready rather than treating the whole MCP as broken.
-                "should_use_mcp": _is_repo_managed(),
+                # Managed check: user can ask the agent to call status() anytime
+                # to re-test after scubiee init / connect.
+                **_managed_signal_fields(),
                 "warming": bool(_is_repo_managed() and not healthy),
                 "index_available": bool(
                     healthy
