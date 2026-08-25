@@ -16,6 +16,15 @@ def _profile(*, batch_size: int = 16) -> AccelProfile:
         provider="DmlExecutionProvider",
         batch_size=batch_size,
         batch_calibration={"winner": batch_size},
+        detected={
+            "os": "Windows",
+            "nvidia": True,
+            "gpus": [
+                {"name": "NVIDIA GeForce RTX 3060", "adapter_ram": 12_000_000_000},
+            ],
+            "windows_discrete_amd_nvidia": True,
+            "suggested_dml_device_id": 0,
+        },
         envelope={
             "tier": "standard",
             "batch_ceiling": batch_size,
