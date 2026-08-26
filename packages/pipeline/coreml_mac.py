@@ -364,6 +364,39 @@ def _prune_unused_nodes(graph: Any) -> int:
     return dropped
 
 
+def _topological_sort_nodes(graph: Any) -> None:
+    """Reorder graph.node so producers precede consumers.
+
+    CodeRank/FastEmbed ONNX exports often place Cast helpers after their Range
+    consumers. ORT tolerates that; onnx.checker and some CoreML tooling do not.
+    """
+    nodes = list(graph.node)
+    if not nodes:
+        return
+    available = {t.name for t in graph.initializer}
+    available.update(inp.name for inp in graph.input)
+    ordered: list[Any] = []
+    remaining = nodes
+    while remaining:
+        next_remaining: list[Any] = []
+        progress = False
+        for node in remaining:
+            if all((not inp) or inp in available for inp in node.input):
+                ordered.append(node)
+                for out in node.output:
+                    if out:
+                        available.add(out)
+                progress = True
+            else:
+                next_remaining.append(node)
+        if not progress:
+            ordered.extend(remaining)
+            break
+        remaining = next_remaining
+    del graph.node[:]
+    graph.node.extend(ordered)
+
+
 def _match_empty_rotary_remainder(
     concat: Any, consts: dict[str, Any], by_out: dict[str, Any]
 ) -> Any | None:
@@ -444,6 +477,7 @@ def bypass_empty_rotary_remainders(model: Any) -> int:
     del graph.node[:]
     graph.node.extend(keep)
     _prune_unused_nodes(graph)
+    _topological_sort_nodes(graph)
     return len(rewire)
 
 

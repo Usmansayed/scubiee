@@ -20,9 +20,80 @@ def test_default_repo_uses_ctx_repo_env(tmp_path: Path, monkeypatch) -> None:
         "CURSOR_PROJECT_DIR",
         "CTX_PROJECT_ID",
         "WORKSPACE_FOLDER",
+        "CLAUDE_PROJECT_DIR",
+        "CODEX_WORKSPACE_ROOT",
+        "CURSOR_CWD",
     ):
         monkeypatch.delenv(key, raising=False)
     assert mcp_locate._default_repo() == repo.resolve()
+
+
+def test_default_repo_ignores_unexpanded_workspace_folder_token(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Hosts that don't expand ${workspaceFolder} must not poison resolution."""
+    live = tmp_path / "live"
+    live.mkdir()
+    (live / ".context-engine").mkdir()
+    (live / ".context-engine" / "id.json").write_text(
+        json.dumps({"project_id": "ce_live"}), encoding="utf-8"
+    )
+    junk = tmp_path / "home"
+    junk.mkdir()
+    monkeypatch.chdir(live)
+    monkeypatch.setenv("CTX_REPO", "${workspaceFolder}")
+    monkeypatch.setenv("CURSOR_PROJECT_DIR", "${workspaceFolder}")
+    monkeypatch.setenv("WORKSPACE_FOLDER", "${workspaceFolder}")
+    monkeypatch.delenv("CTX_PROJECT_ID", raising=False)
+    monkeypatch.delenv("CONTEXT_ENGINE_REPO", raising=False)
+    for key in ("CLAUDE_PROJECT_DIR", "CODEX_WORKSPACE_ROOT", "CURSOR_CWD", "INIT_CWD"):
+        monkeypatch.delenv(key, raising=False)
+    assert mcp_locate._default_repo() == live.resolve()
+
+
+def test_default_repo_prefers_claude_project_dir(tmp_path: Path, monkeypatch) -> None:
+    opened = tmp_path / "claude-ws"
+    opened.mkdir()
+    (opened / ".context-engine").mkdir()
+    (opened / ".context-engine" / "id.json").write_text(
+        json.dumps({"project_id": "ce_claude"}), encoding="utf-8"
+    )
+    junk = tmp_path / "spawn-cwd"
+    junk.mkdir()
+    monkeypatch.chdir(junk)
+    monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(opened))
+    monkeypatch.delenv("CTX_REPO", raising=False)
+    monkeypatch.delenv("CTX_PROJECT_ID", raising=False)
+    for key in (
+        "CURSOR_PROJECT_DIR",
+        "CURSOR_CWD",
+        "WORKSPACE_FOLDER",
+        "CODEX_WORKSPACE_ROOT",
+        "INIT_CWD",
+    ):
+        monkeypatch.delenv(key, raising=False)
+    assert mcp_locate._default_repo() == opened.resolve()
+
+
+def test_default_repo_prefers_codex_workspace_root(tmp_path: Path, monkeypatch) -> None:
+    opened = tmp_path / "codex-ws"
+    opened.mkdir()
+    (opened / ".git").mkdir()
+    junk = tmp_path / "spawn-cwd"
+    junk.mkdir()
+    monkeypatch.chdir(junk)
+    monkeypatch.setenv("CODEX_WORKSPACE_ROOT", str(opened))
+    monkeypatch.delenv("CTX_REPO", raising=False)
+    monkeypatch.delenv("CTX_PROJECT_ID", raising=False)
+    for key in (
+        "CURSOR_PROJECT_DIR",
+        "CURSOR_CWD",
+        "CLAUDE_PROJECT_DIR",
+        "WORKSPACE_FOLDER",
+        "INIT_CWD",
+    ):
+        monkeypatch.delenv(key, raising=False)
+    assert mcp_locate._default_repo() == opened.resolve()
 
 
 def test_default_repo_ignores_missing_ctx_repo_pin(tmp_path: Path, monkeypatch) -> None:

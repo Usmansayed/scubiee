@@ -357,15 +357,32 @@ def _register_mcp_client(repo: Path) -> str:
 
 
 _IDE_WORKSPACE_ENV_KEYS = (
+    # Cursor — connect may set these via ${workspaceFolder} interpolation
     "CURSOR_PROJECT_DIR",
     "CURSOR_WORKSPACE",
+    "CURSOR_CWD",
+    # Claude Code — official MCP spawn env (do not rely on process cwd)
+    "CLAUDE_PROJECT_DIR",
+    # Codex IDE may inject this when extension cwd is wrong
+    "CODEX_WORKSPACE_ROOT",
     "COPILOT_WORKSPACE_FOLDER",
     "COPILOT_WORKSPACE",
     "VSCODE_WORKSPACE_FOLDER",
     "VSCODE_CWD",
     "WORKSPACE_FOLDER",
     "INIT_CWD",
+    "OPENCODE_DEFAULT_PROJECT",
 )
+
+_UNEXPANDED_PLACEHOLDER_MARKERS = ("${", "$(", "%{")
+
+
+def _is_unexpanded_placeholder(raw: str) -> bool:
+    """True when a host left ${workspaceFolder} (etc.) unexpanded in env/config."""
+    s = (raw or "").strip()
+    if not s:
+        return True
+    return any(m in s for m in _UNEXPANDED_PLACEHOLDER_MARKERS)
 
 
 def _is_enrolled(path: Path) -> bool:
@@ -387,11 +404,16 @@ def _ide_workspace_candidates() -> list[Path]:
     seen: set[str] = set()
     for key in _IDE_WORKSPACE_ENV_KEYS:
         hint = os.environ.get(key)
-        if not hint:
+        if not hint or _is_unexpanded_placeholder(hint):
+            continue
+        # VSCODE_CWD=/ is a known useless sentinel on some Cursor builds.
+        if hint.strip() in {"/", "\\"}:
             continue
         try:
-            candidate = Path(hint).resolve()
+            candidate = Path(hint).expanduser().resolve()
         except OSError:
+            continue
+        if not _path_exists(candidate):
             continue
         key_s = str(candidate).replace("\\", "/").lower()
         if key_s in seen:
@@ -399,7 +421,6 @@ def _ide_workspace_candidates() -> list[Path]:
         seen.add(key_s)
         found.append(candidate)
     return found
-
 
 def _enrolled_walk(start: Path) -> Path | None:
     try:
@@ -445,10 +466,10 @@ def _resolve_ctx_project_id() -> Path | None:
 
 def _ctx_repo_raw() -> Path | None:
     env = os.environ.get("CTX_REPO") or os.environ.get("CONTEXT_ENGINE_REPO")
-    if not env:
+    if not env or _is_unexpanded_placeholder(env):
         return None
     try:
-        return Path(env).resolve()
+        return Path(env).expanduser().resolve()
     except OSError:
         return None
 

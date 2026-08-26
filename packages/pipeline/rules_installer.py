@@ -5,10 +5,12 @@ Usage:
     scubiee connect --cursor --claude-code --codex
     scubiee connect --kiro --copilot --cline --roo-code   # run inside each repo
 
-Most tools get user-global MCP only (no CTX_REPO pin).
+Most tools get user-global MCP with ``CTX_REPO=${workspaceFolder}`` (host expands
+the open folder; Scubiee ignores the token if left literal).
 
 Kiro, Copilot, Cline, and Roo Code also write a workspace-local MCP file when
-connect is run from a project folder (or with --repo).
+connect is run from a project folder (or with --repo) — those hosts cannot
+rely on global ``${workspaceFolder}`` expansion.
 """
 
 from __future__ import annotations
@@ -48,6 +50,41 @@ _MARKER_START = "<!-- context-engine:start -->"
 _MARKER_END = "<!-- context-engine:end -->"
 _SERVER_NAME = "context-engine"
 
+# Hosts that expand ${workspaceFolder} in global MCP env (not special-4).
+# Special-4 keep absolute CTX_REPO in *project* files only.
+# Claude Code: host injects CLAUDE_PROJECT_DIR — still set CTX_REPO token so
+# hosts that expand it win; unexpanded tokens are ignored by the resolver.
+_WORKSPACE_FOLDER_TOKEN = "${workspaceFolder}"
+
+
+def _is_absolute_repo_pin(value: str) -> bool:
+    """True for real filesystem pins; false for ${workspaceFolder} tokens."""
+    raw = (value or "").strip()
+    if not raw or "${" in raw or "$(" in raw or "%{" in raw:
+        return False
+    try:
+        return Path(raw).expanduser().is_absolute()
+    except OSError:
+        return False
+
+
+def _inject_global_workspace_hints(tool: ToolDef, env: dict[str, str]) -> None:
+    """For non-special-4 global MCP: hint the open folder without absolute pins."""
+    if is_workspace_local_mcp_tool(tool.slug):
+        return
+    # Interpolated pin — Cursor (and similar) expand at spawn; others ignore if literal.
+    env.setdefault("CTX_REPO", _WORKSPACE_FOLDER_TOKEN)
+    if tool.slug == "cursor":
+        env.setdefault("CURSOR_PROJECT_DIR", _WORKSPACE_FOLDER_TOKEN)
+        env.setdefault("CURSOR_CWD", _WORKSPACE_FOLDER_TOKEN)
+    elif tool.slug == "opencode":
+        env.setdefault("OPENCODE_DEFAULT_PROJECT", _WORKSPACE_FOLDER_TOKEN)
+    elif tool.slug in {"windsurf", "continue", "zed", "amp", "pi", "claude-code"}:
+        env.setdefault("WORKSPACE_FOLDER", _WORKSPACE_FOLDER_TOKEN)
+    elif tool.slug == "codex":
+        # Codex may inject CODEX_WORKSPACE_ROOT; also set WORKSPACE_FOLDER for parity.
+        env.setdefault("WORKSPACE_FOLDER", _WORKSPACE_FOLDER_TOKEN)
+
 
 # ---------------------------------------------------------------------------
 # Entry shaping
@@ -68,6 +105,8 @@ def format_server_entry(
     cmd = str(base["command"])
     args = [str(a) for a in base.get("args") or []]
     env = {str(k): str(v) for k, v in (base.get("env") or {}).items()}
+    if not pin_repo:
+        _inject_global_workspace_hints(tool, env)
 
     use_schema = schema or tool.mcp_schema
     if use_schema == "claude":
@@ -76,7 +115,7 @@ def format_server_entry(
         # Global user mcp.json does not expand ${workspaceFolder} (VS Code #245905).
         # Only project .vscode/mcp.json should rely on WORKSPACE_FOLDER / cwd.
         if "CTX_REPO" not in env and pin_repo:
-            env.setdefault("WORKSPACE_FOLDER", "${workspaceFolder}")
+            env.setdefault("WORKSPACE_FOLDER", _WORKSPACE_FOLDER_TOKEN)
         payload: dict[str, Any] = {
             "type": "stdio",
             "command": cmd,
@@ -84,13 +123,13 @@ def format_server_entry(
             "env": env,
         }
         if pin_repo:
-            payload["cwd"] = "${workspaceFolder}"
+            payload["cwd"] = _WORKSPACE_FOLDER_TOKEN
         return payload
     if use_schema == "copilot_cli":
         # GitHub Copilot CLI ~/.copilot/mcp-config.json
         # Inject WORKSPACE_FOLDER for workspace discovery when repo-neutral.
         if "CTX_REPO" not in env:
-            env.setdefault("WORKSPACE_FOLDER", "${workspaceFolder}")
+            env.setdefault("WORKSPACE_FOLDER", _WORKSPACE_FOLDER_TOKEN)
         return {
             "type": "local",
             "command": cmd,
@@ -109,7 +148,14 @@ def format_server_entry(
     if use_schema == "amp":
         return {"command": cmd, "args": args, "env": env}
     if use_schema == "codex":
-        return {"command": cmd, "args": args, "env": env}
+        # Official Codex mcp_servers.cwd — IDE may expand ${workspaceFolder}.
+        # Unexpanded tokens are ignored by Scubiee's resolver as placeholders.
+        return {
+            "command": cmd,
+            "args": args,
+            "env": env,
+            "cwd": _WORKSPACE_FOLDER_TOKEN,
+        }
     if use_schema == "continue":
         return {"name": _SERVER_NAME, "command": cmd, "args": args, "env": env}
     if use_schema == "zed":
@@ -359,6 +405,9 @@ def _write_mcp_toml(path: Path, entry: dict[str, Any]) -> None:
     lines.append(f'command = "{entry["command"]}"')
     args_str = ", ".join(f'"{a}"' for a in entry.get("args", []))
     lines.append(f"args = [{args_str}]")
+    cwd = entry.get("cwd")
+    if cwd:
+        lines.append(f'cwd = "{cwd}"')
     if entry.get("env"):
         env_parts = [f'{k} = "{v}"' for k, v in entry["env"].items()]
         lines.append(f"env = {{ {', '.join(env_parts)} }}")
@@ -531,11 +580,11 @@ def install_tool(
             for path, schema, key in write_targets:
                 entry = format_server_entry(tool, pin_repo=False, schema=schema)
                 write_mcp_config(tool, path, entry, schema=schema, key=key)
-                if "CTX_REPO" in (entry.get("env") or {}) or "CTX_REPO" in (
-                    entry.get("environment") or {}
-                ):
+                env_blob = entry.get("env") or entry.get("environment") or {}
+                ctx = str(env_blob.get("CTX_REPO") or "")
+                if ctx and _is_absolute_repo_pin(ctx):
                     report["errors"].append(
-                        "internal error: CTX_REPO leaked into global entry"
+                        "internal error: absolute CTX_REPO leaked into global entry"
                     )
                     report["ok"] = False
             report["mcp_written"] = True

@@ -832,20 +832,24 @@ def recommend_profile(detected: dict[str, Any] | None = None) -> AccelProfile:
             reason=why,
             detected=detected,
         )
-    # Final fallback — but never allow CPU-only on Apple Silicon (has Metal GPU)
+    # Final fallback — but never allow CPU-only on Apple Silicon (has Metal GPU).
+    # Only use the host Darwin safety net when `detected` omitted os or said Darwin.
+    # Explicit Linux/Windows mocks must not flip to MLX just because the host is an M-series Mac.
     import platform as _platform
 
-    if _platform.system() == "Darwin" and _platform.machine() in ("arm64", "aarch64"):
-        # Force MLX even if earlier detection failed (Apple Silicon always has Metal)
-        return AccelProfile(
-            profile="mlx",
-            provider="MLX",
-            backend="mlx",
-            device_id=0,
-            batch_size=24,
-            reason="Apple Silicon GPU via MLX FP16 (fallback — detection may have failed)",
-            detected=d,
-        )
+    detected_os = str(d.get("os") or "").strip()
+    if detected_os in {"", "Darwin"}:
+        if _platform.system() == "Darwin" and _platform.machine() in ("arm64", "aarch64"):
+            # Force MLX even if earlier detection failed (Apple Silicon always has Metal)
+            return AccelProfile(
+                profile="mlx",
+                provider="MLX",
+                backend="mlx",
+                device_id=0,
+                batch_size=24,
+                reason="Apple Silicon GPU via MLX FP16 (fallback — detection may have failed)",
+                detected=d,
+            )
     return AccelProfile(
         profile="cpu",
         provider="CPUExecutionProvider",
@@ -2861,9 +2865,10 @@ def resolve_runtime() -> AccelProfile:
 
     env = os.environ.get("CTX_EMBED_BACKEND", "").strip().lower()
     # Never leave M-series MacBooks on a CPU-only profile when MLX is available.
+    # Explicit CTX_EMBED_BACKEND=mlx is an in-memory overlay only (do not rewrite accel.json).
     if (
         profile.profile == "cpu"
-        and env not in {"cpu", "fastembed", "st", "coderank"}
+        and env not in {"cpu", "fastembed", "st", "coderank", "mlx"}
         and not _env_disables_mlx()
         and _is_apple_silicon(profile.detected or {})
         and _mlx_importable()

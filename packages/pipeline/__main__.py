@@ -2017,8 +2017,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_wipe.add_argument(
         "--confirm",
+        "--yes",
         action="store_true",
-        help="Skip interactive prompt (for scripts). Without this, prompts Y/N.",
+        help="Skip interactive prompt (for scripts). Without this, prompts Y/N. (--yes is an alias)",
     )
     p_wipe.add_argument(
         "--keep-models",

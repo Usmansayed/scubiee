@@ -284,3 +284,71 @@ def test_disconnect_all_workspaces_removes_other_repo_local_mcp(
     assert report.get("all_workspaces") is True
     assert not (repo_a / ".kiro" / "settings" / "mcp.json").is_file()
     assert not (repo_b / ".kiro" / "settings" / "mcp.json").is_file()
+
+
+def test_wipe_all_removes_mlx_and_fastembed_model_caches(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """--all must delete MLX weights under CTX_HOME and FastEmbed CodeRank caches."""
+    from pipeline.wipe import _coderank_model_dirs
+
+    home = tmp_path / "ce-home"
+    mlx = home / "mlx" / "CodeRankEmbed"
+    mlx.mkdir(parents=True)
+    (mlx / "weights.fp16.npz").write_bytes(b"fake-mlx")
+    (home / "accel.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setenv("CTX_HOME", str(home))
+
+    fe_cache = tmp_path / "fastembed_cache"
+    model = fe_cache / "models--jamie8johnson--CodeRankEmbed-onnx"
+    model.mkdir(parents=True)
+    (model / "model_fp16.onnx").write_bytes(b"fake-onnx")
+    monkeypatch.setenv("FASTEMBED_CACHE_PATH", str(fe_cache))
+    monkeypatch.setenv("FASTEMBED_CACHE", str(fe_cache))
+
+    fake_user = tmp_path / "user"
+    fake_user.mkdir()
+    monkeypatch.setattr(Path, "home", staticmethod(lambda: fake_user))
+    cwd = tmp_path / "cwd"
+    cwd.mkdir()
+    monkeypatch.chdir(cwd)
+
+    targets = {p.resolve() for p in _coderank_model_dirs()}
+    assert mlx.resolve() in targets
+    assert fe_cache.resolve() in targets or model.resolve() in targets
+
+    out = wipe_all(yes=True, models=True, package=False)
+    assert out["scope"] == "all"
+    assert not home.exists(), "CTX_HOME (incl. MLX weights) must be gone"
+    model_actions = next(
+        (a["models"] for a in out.get("actions", []) if isinstance(a.get("models"), list)),
+        [],
+    )
+    removed_paths = {item["path"] for item in model_actions if item.get("removed")}
+    assert str(fe_cache.resolve()) in removed_paths or str(model.resolve()) in removed_paths
+    assert not model.exists(), "CodeRank model files must be gone"
+    remaining_models = [
+        item for item in (out.get("remaining") or []) if item.get("kind") == "model_cache"
+    ]
+    assert remaining_models == []
+
+
+def test_wipe_cli_accepts_yes_as_confirm_alias(tmp_path: Path, monkeypatch, capsys) -> None:
+    from pipeline.__main__ import main
+
+    home = tmp_path / "ce-home"
+    home.mkdir()
+    monkeypatch.setenv("CTX_HOME", str(home))
+    fake_user = tmp_path / "user"
+    fake_user.mkdir()
+    monkeypatch.setattr(Path, "home", staticmethod(lambda: fake_user))
+    monkeypatch.chdir(tmp_path)
+    # Non-TTY → JSON path
+    monkeypatch.setattr("sys.stdout.isatty", lambda: False)
+    monkeypatch.setattr("sys.stderr.isatty", lambda: False)
+
+    rc = main(["wipe", "--all", "--yes", "--keep-package"])
+    assert rc in {0, 1}  # 1 if audit finds unrelated leftovers
+    assert not home.exists()
+    err = capsys.readouterr()
+    assert "unrecognized arguments" not in err.err

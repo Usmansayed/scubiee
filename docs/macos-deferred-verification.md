@@ -73,4 +73,4 @@ python -m pytest tests/test_mcp_locate.py::test_live_search_read_flow -q
 
 | Date | Machine | scubiee version | Setup profile | Init/connect | Pytest summary | Notes |
 |------|---------|-----------------|---------------|--------------|----------------|-------|
-| | | | | | | |
+| 2026-08-26 | Mac17,3 / Apple M5 | 0.2.82 (from repo via uv) | mlx | PASS (tiny repo + connect --cursor) | 38 passed, 4 failed | See `docs/mac-cursor-session-handoff-2026-08-26.md` §4 for failure names. Setup never stayed on cpu. |

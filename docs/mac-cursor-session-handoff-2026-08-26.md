@@ -169,7 +169,7 @@ Fill this table (also mirrored in `docs/macos-deferred-verification.md`):
 
 | Date | Machine | Chip | scubiee version | Setup profile | Init/connect | Pytest summary | Notes / failures |
 |------|---------|------|-----------------|---------------|--------------|----------------|------------------|
-| | | | | | | | |
+| 2026-08-26 | Mac17,3 (macOS 26.5.2) | Apple M5 | **0.2.82** (`uv tool install --force --from .`) | **`mlx`** (batch 48, ~29 t/s); diagnose `acceleration.profile=mlx` | PASS: tiny repo `/tmp/scubiee-mac-smoke-*` init (1 chunk, MLX embed); `connect --cursor` wrote global MCP+rules; `status` via MCP API `managed=true ok=true`; map/focus/search hit `app.py`; stop then resume (no `scubiee wake`); after stop, `engine start` needed once (`resume` left `globally_paused` until start); `--profile cpu` did **not** stick (stayed mlx) then `--repair` mlx | **38 passed, 4 failed** | Failures (existing tests, not rewritten): `test_patched_coderank_graph_has_no_empty_rotary_remainders` (ONNX topological sort / Range cast); `test_resolve_runtime_mlx_overlay_does_not_rewrite_accel` (accel rewritten cpu→mlx); `test_simulated_platform_profile…[Linux-…-cpu]` and `…[Linux-AMD Radeon 7900]` assert cpu but got mlx on this host. Init logged TurboQuant matmul RuntimeWarnings on 1-chunk index. Stale Homebrew daemon (0.2.59) briefly held :8765 until cleaned; health then reported **0.2.82**. Cursor live MCP discovery was briefly broken after `stop` disabled mcp.json — fixed by `connect --cursor`. |
 
 Paste any failing pytest names + first assertion line. If setup picks `cpu` on Apple Silicon, that is a **P0** for Mac — capture `accel.json` + diagnose JSON.
 

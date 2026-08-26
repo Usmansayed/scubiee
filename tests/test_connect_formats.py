@@ -60,11 +60,26 @@ def test_format_opencode_schema(tmp_path: Path) -> None:
     assert "env" not in entry
 
 
-def test_format_global_entry_has_no_ctx_repo() -> None:
-    for slug in ("cursor", "claude-code", "codex", "kiro", "opencode", "amp", "copilot"):
-        entry = format_server_entry(TOOL_MAP[slug], pin_repo=False)
+def test_format_global_entry_uses_workspace_folder_token_not_absolute_pin() -> None:
+    special4 = WORKSPACE_LOCAL_MCP_SLUGS
+    for slug, tool in TOOL_MAP.items():
+        entry = format_server_entry(tool, pin_repo=False)
         blob = json.dumps(entry)
-        assert "CTX_REPO" not in blob
+        # Absolute path pins must never appear in global connect entries.
+        assert "/Users/" not in blob
+        assert "C:\\\\" not in blob and "C:/" not in blob
+        env = entry.get("env") or entry.get("environment") or {}
+        if slug in special4:
+            # Special-4: global stays unpinned (absolute pin is project-only).
+            assert "CTX_REPO" not in env
+        else:
+            assert env.get("CTX_REPO") == "${workspaceFolder}", slug
+    cursor_env = format_server_entry(TOOL_MAP["cursor"], pin_repo=False)["env"]
+    assert cursor_env["CURSOR_PROJECT_DIR"] == "${workspaceFolder}"
+    assert cursor_env["CURSOR_CWD"] == "${workspaceFolder}"
+    codex = format_server_entry(TOOL_MAP["codex"], pin_repo=False)
+    assert codex.get("cwd") == "${workspaceFolder}"
+    assert (codex.get("env") or {}).get("WORKSPACE_FOLDER") == "${workspaceFolder}"
 
 
 def test_format_vscode_has_type_stdio() -> None:
@@ -79,7 +94,9 @@ def test_install_cursor_global_mcp_and_rules(fake_home: Path, tmp_path: Path) ->
     assert report["ok"]
     assert report.get("repo_ignored") is True
     mcp = json.loads((fake_home / ".cursor" / "mcp.json").read_text(encoding="utf-8"))
-    assert "CTX_REPO" not in mcp["mcpServers"]["context-engine"]["env"]
+    env = mcp["mcpServers"]["context-engine"]["env"]
+    assert env.get("CTX_REPO") == "${workspaceFolder}"
+    assert env.get("CURSOR_PROJECT_DIR") == "${workspaceFolder}"
     assert (fake_home / ".cursor" / "rules" / "context-agent.mdc").is_file()
     # Must not touch the project
     assert not (workspace / ".cursor").exists()
@@ -115,7 +132,8 @@ def test_install_claude_code_global(fake_home: Path, tmp_path: Path) -> None:
     workspace.mkdir()
     install_tool(TOOL_MAP["claude-code"], repo=workspace)
     data = json.loads((fake_home / ".claude.json").read_text(encoding="utf-8"))
-    assert "CTX_REPO" not in data["mcpServers"]["context-engine"]["env"]
+    env = data["mcpServers"]["context-engine"]["env"]
+    assert env.get("CTX_REPO") == "${workspaceFolder}"
     assert "<!-- context-engine:start -->" in (fake_home / ".claude" / "CLAUDE.md").read_text(
         encoding="utf-8"
     )
@@ -126,7 +144,8 @@ def test_install_codex_toml_and_agents_md(fake_home: Path) -> None:
     install_tool(TOOL_MAP["codex"])
     text = (fake_home / ".codex" / "config.toml").read_text(encoding="utf-8")
     assert "[mcp_servers.context-engine]" in text
-    assert "CTX_REPO" not in text
+    assert 'cwd = "${workspaceFolder}"' in text
+    assert 'CTX_REPO = "${workspaceFolder}"' in text
     assert (fake_home / ".codex" / "AGENTS.md").is_file()
 
 
@@ -140,7 +159,8 @@ def test_install_opencode_global_opencode_json(fake_home: Path, tmp_path: Path) 
     assert entry["type"] == "local"
     assert isinstance(entry["command"], list)
     assert "environment" in entry
-    assert "CTX_REPO" not in entry["environment"]
+    assert entry["environment"].get("CTX_REPO") == "${workspaceFolder}"
+    assert entry["environment"].get("OPENCODE_DEFAULT_PROJECT") == "${workspaceFolder}"
     assert not (workspace / "opencode.json").exists()
 
 
@@ -148,7 +168,8 @@ def test_install_amp_dotted_key(fake_home: Path) -> None:
     install_tool(TOOL_MAP["amp"])
     data = json.loads((fake_home / ".config" / "amp" / "settings.json").read_text(encoding="utf-8"))
     assert "amp.mcpServers" in data
-    assert "CTX_REPO" not in data["amp.mcpServers"]["context-engine"].get("env", {})
+    env = data["amp.mcpServers"]["context-engine"].get("env", {})
+    assert env.get("CTX_REPO") == "${workspaceFolder}"
 
 
 def test_install_copilot_user_profile_and_cli(fake_home: Path, tmp_path: Path) -> None:
@@ -205,7 +226,29 @@ def test_install_cline_writes_vscode_and_cli(fake_home: Path) -> None:
 def test_install_pi_global(fake_home: Path) -> None:
     install_tool(TOOL_MAP["pi"])
     data = json.loads((fake_home / ".pi" / "agent" / "mcp.json").read_text(encoding="utf-8"))
-    assert "CTX_REPO" not in data["mcpServers"]["context-engine"]["env"]
+    assert data["mcpServers"]["context-engine"]["env"].get("CTX_REPO") == "${workspaceFolder}"
+
+
+def test_install_windsurf_continue_zed_global_use_workspace_token(fake_home: Path) -> None:
+    """Non-special-4 globals get ${workspaceFolder}, never an absolute pin."""
+    install_tool(TOOL_MAP["windsurf"])
+    windsurf = json.loads(
+        (fake_home / ".codeium" / "windsurf" / "mcp_config.json").read_text(encoding="utf-8")
+    )
+    assert windsurf["mcpServers"]["context-engine"]["env"]["CTX_REPO"] == "${workspaceFolder}"
+    assert windsurf["mcpServers"]["context-engine"]["env"]["WORKSPACE_FOLDER"] == "${workspaceFolder}"
+
+    install_tool(TOOL_MAP["continue"])
+    cont = (fake_home / ".continue" / "config.yaml").read_text(encoding="utf-8")
+    assert 'CTX_REPO: "${workspaceFolder}"' in cont
+    assert 'WORKSPACE_FOLDER: "${workspaceFolder}"' in cont
+    assert "/Users/" not in cont
+
+    install_tool(TOOL_MAP["zed"])
+    zed = json.loads((fake_home / ".config" / "zed" / "settings.json").read_text(encoding="utf-8"))
+    zenv = zed["context_servers"]["context-engine"]["env"]
+    assert zenv["CTX_REPO"] == "${workspaceFolder}"
+    assert zenv["WORKSPACE_FOLDER"] == "${workspaceFolder}"
 
 
 def test_uninstall_global(fake_home: Path) -> None:
@@ -234,3 +277,101 @@ def test_kiro_cli_dry_run_global(tmp_path: Path, monkeypatch, capsys) -> None:
     assert str(target / ".kiro" / "settings" / "mcp.json") in report[0][
         "would_write_workspace_mcp_paths"
     ]
+
+
+def _mock_os(monkeypatch: pytest.MonkeyPatch, os_name: str) -> None:
+    """Force tool_registry path tokens onto Darwin / Windows / Linux."""
+    from pipeline import tool_registry as tr
+
+    monkeypatch.setattr(tr, "_is_windows", lambda: os_name == "Windows")
+    monkeypatch.setattr(tr, "_is_darwin", lambda: os_name == "Darwin")
+
+
+@pytest.mark.parametrize(
+    ("os_name", "vscode_user_rel"),
+    [
+        ("Darwin", Path("Library") / "Application Support" / "Code" / "User"),
+        ("Windows", Path("AppData") / "Roaming" / "Code" / "User"),
+        ("Linux", Path(".config") / "Code" / "User"),
+    ],
+)
+def test_vscode_family_global_mcp_paths_respect_os(
+    fake_home: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    os_name: str,
+    vscode_user_rel: Path,
+) -> None:
+    """Copilot/Cline/Roo resolve under Library (Mac) vs AppData (Win) vs .config (Linux)."""
+    _mock_os(monkeypatch, os_name)
+    vscode_user = fake_home / vscode_user_rel
+
+    copilot = resolve_mcp_user_paths(TOOL_MAP["copilot"])
+    assert copilot[0] == vscode_user / "mcp.json"
+    assert copilot[1] == fake_home / ".copilot" / "mcp-config.json"
+
+    cline = resolve_mcp_user_paths(TOOL_MAP["cline"])
+    assert cline[0] == (
+        vscode_user
+        / "globalStorage"
+        / "saoudrizwan.claude-dev"
+        / "settings"
+        / "cline_mcp_settings.json"
+    )
+    assert cline[1] == (
+        fake_home / ".cline" / "data" / "settings" / "cline_mcp_settings.json"
+    )
+
+    roo = resolve_mcp_user_paths(TOOL_MAP["roo-code"])
+    assert roo == [
+        vscode_user
+        / "globalStorage"
+        / "rooveterinaryinc.roo-cline"
+        / "settings"
+        / "mcp_settings.json"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("os_name", "zed_rel"),
+    [
+        ("Darwin", Path(".config") / "zed" / "settings.json"),
+        ("Linux", Path(".config") / "zed" / "settings.json"),
+        ("Windows", Path("AppData") / "Roaming" / "Zed" / "settings.json"),
+    ],
+)
+def test_zed_global_mcp_path_respects_os(
+    fake_home: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    os_name: str,
+    zed_rel: Path,
+) -> None:
+    _mock_os(monkeypatch, os_name)
+    assert resolve_mcp_user_path(TOOL_MAP["zed"]) == fake_home / zed_rel
+
+
+@pytest.mark.parametrize("os_name", ["Darwin", "Windows", "Linux"])
+def test_install_copilot_writes_os_specific_vscode_mcp(
+    fake_home: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    os_name: str,
+) -> None:
+    """connect --copilot must create the VS Code user mcp.json for the mocked OS."""
+    _mock_os(monkeypatch, os_name)
+    workspace = _git_repo(tmp_path / "ws")
+    report = install_tool(TOOL_MAP["copilot"], repo=workspace)
+    assert report["ok"]
+
+    vscode_path = resolve_mcp_user_path(TOOL_MAP["copilot"])
+    assert vscode_path is not None
+    assert vscode_path.is_file()
+    if os_name == "Darwin":
+        assert "Library/Application Support/Code/User" in vscode_path.as_posix()
+    elif os_name == "Windows":
+        assert "AppData/Roaming/Code/User" in vscode_path.as_posix()
+    else:
+        assert ".config/Code/User" in vscode_path.as_posix()
+
+    data = json.loads(vscode_path.read_text(encoding="utf-8"))
+    assert data["servers"]["context-engine"]["type"] == "stdio"
+    assert "CTX_REPO" not in data["servers"]["context-engine"]["env"]

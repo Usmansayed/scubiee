@@ -114,15 +114,7 @@ def _coderank_model_dirs() -> list[Path]:
         "models--jamie8johnson--CodeRankEmbed-onnx",
     )
 
-    roots: list[Path] = []
-    try:
-        from fastembed.common.utils import define_cache_dir
-
-        roots.append(Path(define_cache_dir()))
-    except Exception:  # noqa: BLE001
-        pass
-
-    roots.append(default_fastembed_cache_root())
+    roots: list[Path] = [default_fastembed_cache_root()]
 
     home = Path.home()
     candidates = [
@@ -195,6 +187,23 @@ def _coderank_model_dirs() -> list[Path]:
         if any(str(p).startswith(str(keep) + os.sep) or p == keep for keep in pruned):
             continue
         pruned.append(p)
+
+    # MLX FP16 weights live under ~/.context-engine/mlx/CodeRankEmbed — include
+    # them explicitly so --all plans/audits list model data even when only the
+    # parent home was expected to vanish.
+    for home in _context_engine_homes():
+        mlx_dir = home / "mlx" / "CodeRankEmbed"
+        if mlx_dir.is_dir():
+            try:
+                resolved = mlx_dir.resolve()
+            except OSError:
+                resolved = mlx_dir
+            if not any(
+                str(resolved).startswith(str(keep) + os.sep) or resolved == keep
+                for keep in pruned
+            ):
+                # Prefer listing the leaf model dir; home wipe still removes parent.
+                pruned.append(resolved)
     return pruned
 
 
