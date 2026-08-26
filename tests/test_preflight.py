@@ -19,10 +19,37 @@ def _finder(available: set[str]):
 def test_preflight_reports_required_parser_and_accel_dependencies(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from pipeline.preflight import inspect_capabilities
+    from pipeline import accel
+    from pipeline.accel import AccelProfile
+    from pipeline.preflight import ProviderValidation, inspect_capabilities
 
     monkeypatch.delenv("CTX_EMBED_BACKEND", raising=False)
     monkeypatch.delenv("CTX_MLX", raising=False)
+    # Without a persisted profile, missing packages collapse to ``not_configured``.
+    # Stub an installed CPU plan so the finder-driven package gaps are asserted.
+    monkeypatch.setattr(
+        accel,
+        "load_accel",
+        lambda: AccelProfile(
+            profile="cpu",
+            provider="CPUExecutionProvider",
+            backend="fastembed",
+            batch_size=16,
+            reason="pytest stub",
+        ),
+    )
+    monkeypatch.setattr(
+        "pipeline.preflight.validate_provider",
+        lambda *_a, **_k: ProviderValidation(
+            True,
+            "cpu",
+            "CPUExecutionProvider",
+            ("CPUExecutionProvider",),
+            True,
+            True,
+            "ok",
+        ),
+    )
 
     report = inspect_capabilities(
         require_semantic=True,

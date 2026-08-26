@@ -6,10 +6,7 @@ import threading
 from dataclasses import dataclass, replace
 from typing import Any, Mapping
 
-from pipeline.accel import ACCEL_PATH as DEFAULT_ACCEL_PATH
-from pipeline.accel import AccelProfile, load_accel
-
-ACCEL_PATH = DEFAULT_ACCEL_PATH
+from pipeline.accel import ACCEL_PATH, AccelProfile, load_accel
 
 
 @dataclass(frozen=True)

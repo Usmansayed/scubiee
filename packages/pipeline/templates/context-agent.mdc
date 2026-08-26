@@ -1,16 +1,17 @@
 ---
-description: Scubiee — call status(), retry after init
+description: Scubiee — call status() once, retry only on init/connect/user ask
 alwaysApply: true
 ---
 
-**Start of session:** call `status()` from the Scubiee MCP.
+**Start of session:** call `status()` once from the Scubiee MCP. Do not call it every turn.
 
 - If `status.managed` is `true` and `status.ok` is `true`: use Scubiee MCP (`map`, `focus`, `grep`, `glob`, `workspace`) for all code discovery this session. Do not use native Grep, Glob, rg, find, or codebase_search for discovery. Native Read = only lines you will Edit. Shell = tests, build, git.
 - If `status.managed` is `true` and `status.warming` is `true`: the engine is starting up. Use Scubiee MCP tools — if a tool returns a warming/not-ready response, wait 5s and retry once. Do not fall back to native search.
+- If `status.paused` is `true`: tell the user to run `scubiee resume`. Do not poll `status()`.
 - If `status.managed` is `false`, or the MCP is missing/unhealthy: use native tools for now. **Do not permanently disable Scubiee for this session.**
 
-**Retry `status()`** when:
-- the user runs `scubiee init`, `scubiee connect`, or asks to index or use Scubiee
+**Retry `status()` only when** (never every turn / never in a loop):
+- the user runs `scubiee init`, `scubiee connect`, `scubiee resume`, or asks to index or use Scubiee
 - the user asks whether this repo is managed / to check or test Scubiee
 - any Scubiee tool returns `should_retry_status: true` or `managed: false` after init was likely done
 

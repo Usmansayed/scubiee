@@ -28,6 +28,14 @@ import os
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
+
+import pytest
+
+pytestmark = pytest.mark.skipif(
+    sys.platform != "darwin",
+    reason="Mac production suite — see docs/macos-deferred-verification.md",
+)
 import threading
 import time
 from pathlib import Path

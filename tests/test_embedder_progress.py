@@ -12,8 +12,9 @@ from pipeline.embedder import Embedder
 
 
 def test_embed_many_suppresses_stderr_when_progress_set(
-    monkeypatch, capsys
+    monkeypatch, capsys, cpu_accel_profile
 ) -> None:
+    del cpu_accel_profile
     embedder = Embedder(model="nomic-ai/CodeRankEmbed", batch_size=2, quiet=True)
     embedder.backend = "fastembed"
     embedder.device = "cpu"
@@ -37,7 +38,8 @@ def test_embed_many_suppresses_stderr_when_progress_set(
     assert progress.call_count >= 1
 
 
-def test_embed_many_prints_without_progress(monkeypatch, capsys) -> None:
+def test_embed_many_prints_without_progress(monkeypatch, capsys, cpu_accel_profile) -> None:
+    del cpu_accel_profile
     embedder = Embedder(model="nomic-ai/CodeRankEmbed", batch_size=2)
     embedder.backend = "fastembed"
     embedder.device = "cpu"

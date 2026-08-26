@@ -1168,6 +1168,11 @@ def test_run_post_tests_maps_success_and_failure_metadata(monkeypatch, tmp_path)
         return next(results)
 
     monkeypatch.setattr(trial.subprocess, "run", fake_run)
+    # Empty fixture workspaces skip post-tests unless the CE regression module exists.
+    mod = workspace / trial.REGRESSION_TEST_MODULE
+    mod.parent.mkdir(parents=True, exist_ok=True)
+    mod.write_text("# fixture\n", encoding="utf-8")
+    monkeypatch.setattr(trial, "TRIAL_PROFILE", "ce")
     success = trial.run_post_tests(workspace, python, root)
     failure = trial.run_post_tests(workspace, python, root)
 
@@ -1196,6 +1201,10 @@ def test_run_post_tests_only_repoints_engine_for_context_engine_arm(
     trial = _load_trial()
     workspace = tmp_path / "workspace"
     workspace.mkdir()
+    mod = workspace / trial.REGRESSION_TEST_MODULE
+    mod.parent.mkdir(parents=True, exist_ok=True)
+    mod.write_text("# fixture\n", encoding="utf-8")
+    monkeypatch.setattr(trial, "TRIAL_PROFILE", "ce")
     engine_calls = []
     monkeypatch.setattr(
         trial.smoke,

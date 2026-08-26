@@ -18,7 +18,7 @@ from pipeline.env_guard import format_install_identity, warn_extra_scubiee
 
 def _version_only(argv: list[str] | None) -> bool:
     args = list(argv) if argv is not None else sys.argv[1:]
-    return args in (["--version"], ["-V"])
+    return args in (["--version"], ["-V"], ["version"], ["-version"])
 
 
 def _version_verbose(argv: list[str] | None) -> bool:
@@ -595,14 +595,18 @@ def cmd_search(args: argparse.Namespace) -> int:
                 use_server=not args.local,
                 server_url=args.url if not args.local else None,
             )
-        except SearchEngineError:
-            # Daemon unreachable ? fall back to local search silently
-            hits = search_repo(
-                root,
-                query,
-                top_k=args.top_k,
-                use_server=False,
-            )
+        except SearchEngineError as server_exc:
+            # Daemon unreachable → try local index; if that also fails, keep the
+            # original unreachable error (clearer than mixed-generation noise).
+            try:
+                hits = search_repo(
+                    root,
+                    query,
+                    top_k=args.top_k,
+                    use_server=False,
+                )
+            except Exception:
+                raise server_exc from None
     except Exception as exc:
         from pipeline.searcher import SearchEngineError as _SE
 
@@ -955,14 +959,14 @@ def _configure_machine(
     progress: object | None = None,
 ) -> int:
     """Once-per-machine accel: detect profile, install, model, calibrate batch."""
-    from pipeline.accel import ACCEL_PATH, configure, load_accel
+    from pipeline.accel import accel_path, configure, load_accel
 
     if getattr(args, "status", False):
         prof = load_accel()
         print(
             json.dumps(
                 {
-                    "accel_path": str(ACCEL_PATH),
+                    "accel_path": str(accel_path()),
                     "preferred_profile": None if prof is None else prof.__dict__,
                     "envelope": None if prof is None else prof.envelope,
                 },
@@ -1176,8 +1180,8 @@ def cmd_init(args: argparse.Namespace) -> int:
             from pipeline.cli_ui import info
 
             info(
-                "Agent: call Scubiee status() again to re-check managed "
-                "(init does not write MCP/rules — use scubiee connect for that).",
+                "Next: scubiee connect --cursor  (or --kiro / --copilot / --cline / --roo-code). "
+                "Init does not write MCP/rules. Kiro/Copilot/Cline/Roo: run connect inside each project.",
                 stream=sys.stderr,
             )
         else:
@@ -1533,8 +1537,17 @@ def cmd_upgrade(args: argparse.Namespace) -> int:
             migration = result.get("migration", {})
             if isinstance(migration, dict) and migration.get("migrated"):
                 success(f"Migrated {migration['migrated']} project(s)", stream=sys.stderr)
+            for step in result.get("next_steps") or []:
+                info(step, stream=sys.stderr)
         else:
             warn(f"Upgrade failed: {result.get('error', 'unknown')}", stream=sys.stderr)
+            if result.get("pre_stop") is False:
+                info(
+                    "If Access denied on Windows: stop Scubiee first "
+                    "(`scubiee stop`), end ContextEngineSupervisor in Task Manager, "
+                    "then retry `scubiee upgrade` (or reinstall with uv).",
+                    stream=sys.stderr,
+                )
         print("", file=sys.stderr)
     else:
         print(json.dumps(result, indent=2, default=str))
@@ -1774,6 +1787,14 @@ def main(argv: list[str] | None = None) -> int:
     p_activate = sub.add_parser("activate", help="Activate a managed repository")
     p_activate.add_argument("path", nargs="?", default=".")
     p_activate.set_defaults(func=cmd_repo_lifecycle, command="activate")
+
+    p_pause = sub.add_parser(
+        "pause",
+        help="Pause indexing for a managed repository (per-repo; global stop is `scubiee stop`)",
+    )
+    p_pause.add_argument("path", nargs="?", default=".")
+    p_pause.add_argument("--reason", default=None)
+    p_pause.set_defaults(func=cmd_repo_lifecycle, command="pause")
 
     p_resume = sub.add_parser("resume", help="Resume Scubiee (re-enables MCP, restores rules, reconciles changes)")
     p_resume.set_defaults(func=cmd_global_resume)

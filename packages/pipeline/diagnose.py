@@ -123,6 +123,40 @@ def _accel_profile() -> dict[str, Any]:
         return {"error": str(exc)}
 
 
+def _stale_accel_vs_packages(
+    acceleration: dict[str, Any], libraries: dict[str, str | None]
+) -> dict[str, Any] | None:
+    """Flag calibrate numbers that look healthy while required packages are missing."""
+    profile = acceleration.get("profile")
+    if not profile:
+        return None
+    backend = str(acceleration.get("backend") or profile).lower()
+    missing: list[str] = []
+    if backend in {"cpu", "dml", "cuda", "fastembed", "coreml"} or profile in {
+        "cpu",
+        "dml",
+        "cuda",
+        "coreml",
+    }:
+        if not libraries.get("fastembed"):
+            missing.append("fastembed")
+        if not libraries.get("onnxruntime"):
+            missing.append("onnxruntime")
+    elif backend == "mlx" or profile == "mlx":
+        if not libraries.get("mlx"):
+            missing.append("mlx")
+    if not missing:
+        return None
+    return {
+        "stale_accel": True,
+        "missing_packages": missing,
+        "hint": (
+            "accel.json has a profile/throughput, but required packages are missing "
+            f"({', '.join(missing)}). Run `scubiee setup --repair` before `init`."
+        ),
+    }
+
+
 def _library_versions() -> dict[str, str | None]:
     libs = [
         "numpy",
@@ -281,6 +315,11 @@ def diagnose(*, run_tests: bool = True, output_path: Path | None = None) -> dict
     bar.set(35, "Checking libraries")
     report["libraries"] = _library_versions()
 
+    stale = _stale_accel_vs_packages(report["acceleration"], report["libraries"])
+    if stale:
+        report["acceleration"] = {**report["acceleration"], **stale}
+        report["warnings"] = list(report.get("warnings") or []) + [stale["hint"]]
+
     # 6. Capabilities (preflight)
     bar.set(45, "Validating capabilities")
     report["capabilities"] = _capabilities_check()
@@ -314,13 +353,15 @@ def diagnose(*, run_tests: bool = True, output_path: Path | None = None) -> dict
     tests_ok = bool((report.get("tests") or {}).get("ok", True))
     daemon_ok = bool((report.get("daemon") or {}).get("reachable"))
     accel_ok = bool((report.get("acceleration") or {}).get("profile"))
+    stale_accel = bool((report.get("acceleration") or {}).get("stale_accel"))
 
     report["verdict"] = {
-        "ok": caps_ok and tests_ok,
+        "ok": caps_ok and tests_ok and not stale_accel,
         "capabilities": "pass" if caps_ok else "FAIL",
         "tests": "pass" if tests_ok else "FAIL",
         "daemon": "running" if daemon_ok else "not running",
         "acceleration": report.get("acceleration", {}).get("profile") or "none",
+        "stale_accel": stale_accel,
     }
 
     bar.set(98, "Saving report")

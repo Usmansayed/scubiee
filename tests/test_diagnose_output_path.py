@@ -27,3 +27,28 @@ def test_cmd_percent_env_is_expanded(tmp_path: Path, monkeypatch) -> None:
     raw = r"%USERPROFILE%\Desktop\scubiee-diagnose.json"
     out = resolve_diagnose_output_path(raw)
     assert out == Path(os.path.expandvars(raw))
+
+
+def test_stale_accel_flagged_when_fastembed_missing() -> None:
+    from pipeline.diagnose import _stale_accel_vs_packages
+
+    warn = _stale_accel_vs_packages(
+        {"profile": "cpu", "backend": "fastembed", "texts_per_sec": 2.6},
+        {"fastembed": None, "onnxruntime": None},
+    )
+    assert warn is not None
+    assert warn["stale_accel"] is True
+    assert "fastembed" in warn["missing_packages"]
+    assert "setup --repair" in warn["hint"]
+
+
+def test_stale_accel_clear_when_packages_present() -> None:
+    from pipeline.diagnose import _stale_accel_vs_packages
+
+    assert (
+        _stale_accel_vs_packages(
+            {"profile": "cpu", "backend": "fastembed"},
+            {"fastembed": "0.4", "onnxruntime": "1.20"},
+        )
+        is None
+    )

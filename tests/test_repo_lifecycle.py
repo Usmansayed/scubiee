@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "packages"))
 
 from pipeline.project_id import (
+    _norm_path,
     git_common_dir,
     id_file_path,
     load_registry,
@@ -105,7 +106,7 @@ def test_moved_repository_reuses_in_repo_id(ce_home: Path, tmp_path: Path) -> No
 
     assert second["project_id"] == first["project_id"]
     old_entry = load_registry()["projects"][first["project_id"]]
-    assert old_entry["paths"] == [str(moved.resolve())]
+    assert old_entry["paths"] == [_norm_path(moved)]
 
     original.mkdir()
     replacement = initialize_repo(original, index=False)
@@ -123,7 +124,7 @@ def test_reverse_order_vacated_path_does_not_inherit_moved_id(
     shutil.move(str(original), moved)
 
     # Vacated path is recreated before the moved checkout refreshes the registry.
-    assert str(original.resolve()) in load_registry()["projects"][first["project_id"]]["paths"]
+    assert _norm_path(original) in load_registry()["projects"][first["project_id"]]["paths"]
     original.mkdir()
     from pipeline.project_id import find_id_by_path, resolve_project
 
@@ -190,8 +191,8 @@ def test_linked_worktrees_share_one_project_identity(
     assert git_common_dir(repo) == git_common_dir(linked)
     assert len(load_registry()["projects"]) == 1
     paths = load_registry()["projects"][main["project_id"]]["paths"]
-    assert str(repo.resolve()) in paths
-    assert str(linked.resolve()) in paths
+    assert _norm_path(repo) in paths
+    assert _norm_path(linked) in paths
 
 
 def test_initialize_supersedes_preexisting_git_family_duplicate(

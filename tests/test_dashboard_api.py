@@ -235,6 +235,7 @@ def test_forget_route_requires_confirm(dashboard_http):
 
 def test_dashboard_lists_root_and_action_fields(isolated_ce_home, tmp_path):
     from pipeline.dashboard_server import DashboardAPI
+    from pipeline.project_id import _norm_path
     from pipeline.repo_lifecycle import initialize_repo
 
     repo = tmp_path / "listed"
@@ -250,7 +251,7 @@ def test_dashboard_lists_root_and_action_fields(isolated_ce_home, tmp_path):
     assert status == 200
     listed = payload["repositories"][0]
     assert listed["project_id"] == project_id
-    assert listed["root"] == str(repo.resolve())
+    assert _norm_path(listed["root"]) == _norm_path(repo)
     assert listed["primary_path"] == listed["root"]
     assert listed["path"] == listed["root"]
     assert listed["paused"] is False

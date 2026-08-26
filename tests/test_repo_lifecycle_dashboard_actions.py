@@ -9,6 +9,7 @@ import pytest
 
 import pipeline.project_id as project_identity
 from pipeline.project_id import (
+    _norm_path,
     load_registry,
     read_id_file,
     save_registry,
@@ -77,8 +78,8 @@ def test_locate_reattaches_only_path_with_matching_durable_id(
     result = locate_repo(project_id, moved)
 
     assert result["ok"] is True
-    assert result["root"] == str(moved.resolve())
-    assert load_registry()["projects"][project_id]["paths"] == [str(moved.resolve())]
+    assert _norm_path(result["root"]) == _norm_path(moved)
+    assert load_registry()["projects"][project_id]["paths"] == [_norm_path(moved)]
 
     replacement = tmp_path / "replacement"
     replacement.mkdir()

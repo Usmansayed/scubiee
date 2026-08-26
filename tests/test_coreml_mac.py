@@ -214,6 +214,10 @@ def test_bypass_does_not_remove_non_rotary_concat():
 
 
 def test_patched_coderank_graph_has_no_empty_rotary_remainders():
+    import sys
+
+    if sys.platform != "darwin":
+        pytest.skip("CodeRank CoreML graph patch verified on macOS — see docs/macos-deferred-verification.md")
     import onnx
     pytest.importorskip("onnxruntime")
 
@@ -237,6 +241,10 @@ def test_patched_coderank_graph_has_no_empty_rotary_remainders():
 
 
 def test_patched_coderank_embeddings_match_original(tmp_path):
+    import sys
+
+    if sys.platform != "darwin":
+        pytest.skip("CodeRank CoreML embed parity verified on macOS — see docs/macos-deferred-verification.md")
     import numpy as np
     import onnx
     import onnxruntime as ort

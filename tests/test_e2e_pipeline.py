@@ -21,7 +21,8 @@ MINI = ROOT / "fixtures" / "mini-repo"
 
 
 @pytest.mark.skipif(not MINI.exists(), reason="mini-repo fixture missing")
-def test_full_pipeline_stores_in_faiss_collection(tmp_path: Path):
+def test_full_pipeline_stores_in_faiss_collection(tmp_path: Path, cpu_accel_profile: Path):
+    del cpu_accel_profile
     vdb_root = tmp_path / "vectordb"
     index_base = tmp_path / "indexes" / "mini"
     vdb = VectorDatabase(root=vdb_root)

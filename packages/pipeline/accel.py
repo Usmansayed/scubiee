@@ -47,6 +47,25 @@ FASTEMBED_RUNTIME_DEPS = [
     "tqdm>=4.66",
 ]
 TARGET_TPS = float(os.environ.get("CTX_TARGET_TPS", "10"))
+
+
+def accel_path() -> Path:
+    """Resolved accel.json path.
+
+    Honors an explicit ``ACCEL_PATH`` monkeypatch (tests), then ``CTX_HOME``,
+    then ``~/.context-engine/accel.json``.
+    """
+    # Tests commonly ``monkeypatch.setattr(accel, "ACCEL_PATH", tmp/...)``.
+    current = globals().get("ACCEL_PATH")
+    default = Path.home() / ".context-engine" / "accel.json"
+    if isinstance(current, Path) and current != default:
+        return current
+    override = (os.environ.get("CTX_HOME") or "").strip()
+    if override:
+        return Path(override) / "accel.json"
+    return default
+
+
 ACCEL_PATH = Path.home() / ".context-engine" / "accel.json"
 # Install-time batch candidates. Prefer 16 unless 20 clearly wins ROI.
 BATCH_CANDIDATES = (8, 16, 20)
@@ -110,7 +129,7 @@ class AccelProfile:
 
 
 def load_accel(path: Path | None = None) -> AccelProfile | None:
-    p = path or ACCEL_PATH
+    p = path or accel_path()
     if not p.exists():
         return None
     try:
@@ -127,7 +146,7 @@ def load_accel(path: Path | None = None) -> AccelProfile | None:
 
 
 def save_accel(profile: AccelProfile, path: Path | None = None) -> Path:
-    p = path or ACCEL_PATH
+    p = path or accel_path()
     p.parent.mkdir(parents=True, exist_ok=True)
     from datetime import datetime, timezone
 
@@ -2124,7 +2143,7 @@ def configure(
     if progress is not None:
         progress.set(92, "Saving machine profile")
     else:
-        print(f"[accel] wrote {ACCEL_PATH}", file=sys.stderr, flush=True)
+        print(f"[accel] wrote {accel_path()}", file=sys.stderr, flush=True)
     return profile
 
 

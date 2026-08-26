@@ -23,6 +23,8 @@ def _load_smoke():
 
 def test_build_configs_isolates_mcp_and_rule_sources(tmp_path):
     smoke = _load_smoke()
+    if getattr(smoke, "StdioMcpServerConfig", None) is None:
+        pytest.skip("cursor-sdk is not installed")
     graph = tmp_path / "graph.json"
     graph.write_text('{"nodes": [], "links": []}', encoding="utf-8")
 

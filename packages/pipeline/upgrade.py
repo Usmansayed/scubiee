@@ -183,20 +183,26 @@ def do_upgrade(*, pre_release: bool = False) -> dict[str, Any]:
     old_version = installed_version()
     report["old_version"] = old_version
 
-    # 0. Stop running processes first (avoids Windows DLL locks on uv tool env)
+    # 0. Stop ALL CE processes first (daemon, watchdog, supervisor, MCP).
+    #    Critical on Windows: ContextEngineSupervisor / uv tool python.exe hold
+    #    locks under %APPDATA%\uv\tools\scubiee — Access denied on upgrade.
     #    Also clear paused state — upgrading implies intent to use scubiee.
     try:
-        from pipeline.daemon import stop_daemon
         from pipeline.pause_resume import _save_state, is_paused
-        from pipeline.watchdog import stop_watchdog
+        from pipeline.process_control import stop_all_context_engine_processes
 
         if is_paused():
             _save_state({"paused": False})
-        stop_watchdog()
-        stop_daemon()
-        report["pre_stop"] = True
-    except Exception:  # noqa: BLE001
+        stop_report = stop_all_context_engine_processes()
+        report["pre_stop"] = bool(stop_report.get("ok", True))
+        report["pre_stop_detail"] = {
+            "ok": stop_report.get("ok"),
+            "remaining": stop_report.get("remaining") or [],
+            "extra_killed": stop_report.get("extra_killed") or [],
+        }
+    except Exception as exc:  # noqa: BLE001
         report["pre_stop"] = False
+        report["pre_stop_error"] = str(exc)
 
     # 1. Upgrade the package
     uv = shutil.which("uv")
@@ -268,7 +274,14 @@ def do_upgrade(*, pre_release: bool = False) -> dict[str, Any]:
     except Exception as exc:  # noqa: BLE001
         report["migration"] = {"ok": False, "error": str(exc)}
 
-    # 4. Clear update check cache
+    # 4. Loud reminder: upgrade does not refresh IDE MCP/rules.
+    report["next_steps"] = [
+        "Run `scubiee connect --cursor` (or --kiro / --copilot / --cline / --roo-code) "
+        "inside each project so MCP + agent rules match this version.",
+        "Kiro / Copilot / Cline / Roo need connect inside every repo (workspace-local MCP).",
+    ]
+
+    # 5. Clear update check cache
     _save_update_check({
         "latest": new_version,
         "current": new_version,

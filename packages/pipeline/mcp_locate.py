@@ -2043,6 +2043,9 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
         from pipeline.pause_resume import is_paused
 
         if is_paused():
+            # should_retry_status=False: polling status cannot unpause the engine.
+            # Agents should tell the user to run `scubiee resume`, then retry only
+            # after the user confirms / asks (event-driven — avoids token burn).
             return _dumps({
                 "ok": False,
                 "paused": True,
@@ -2050,8 +2053,8 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
                 "server": "context_engine_mcp",
                 "managed": False,
                 "should_use_mcp": False,
-                "should_retry_status": True,
-                "hint": "Scubiee is paused. Resume with: scubiee wake",
+                "should_retry_status": False,
+                "hint": "Scubiee is paused. Resume with: scubiee resume",
             })
 
         from pipeline.client import EngineClient
@@ -2134,8 +2137,14 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
                     if key in daemon_status:
                         contract[key] = daemon_status[key]
                 contract["error"] = daemon_status.get("error") if daemon_status.get("ok") is False else None
-            return _dumps({
-                "ok": healthy or _is_repo_managed(), "tool": "status", "server": "context_engine_mcp",
+            managed = _is_repo_managed()
+            warming = bool(managed and not healthy)
+            payload: dict[str, Any] = {
+                # ok = daemon reachable only. Do not conflate with managed (agents misread
+                # readiness when ok=true while warming=true). Use warming branch in rules.
+                "ok": healthy,
+                "tool": "status",
+                "server": "context_engine_mcp",
                 "surface": surface,
                 "engine": {
                     "healthy": healthy,
@@ -2145,11 +2154,12 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
                     "project_id": daemon_status.get("project_id") if healthy else None,
                     "meta": daemon_status.get("meta") if healthy else None,
                 },
-                "repo": str(repo), "token_mode": token_mode(),
+                "repo": str(repo),
+                "token_mode": token_mode(),
                 # Managed check: user can ask the agent to call status() anytime
                 # to re-test after scubiee init / connect.
                 **_managed_signal_fields(),
-                "warming": bool(_is_repo_managed() and not healthy),
+                "warming": warming,
                 "index_available": bool(
                     healthy
                     and daemon_status.get("meta")
@@ -2165,7 +2175,13 @@ def create_mcp(name: str = "context_engine_mcp") -> "FastMCP":
                     "n_focus_seen": len(store.get("focus_seen") or {}),
                     "ledger": store.get("ledger") or {},
                 },
-            })
+            }
+            if warming:
+                payload["hint"] = (
+                    "Engine is starting. Use Scubiee tools — if a tool returns warming, "
+                    "wait 5s and retry once. Do not poll status() in a loop."
+                )
+            return _dumps(payload)
         except Exception as exc:  # noqa: BLE001
             return _err("status", str(exc))
 

@@ -282,9 +282,15 @@ class ResourceManager:
 
         cap = rss_cap_mb()
         proc_rss = process_rss_mb()
-        if cap and proc_rss is not None and proc_rss >= cap * 0.9:
+        if (
+            allow
+            and cap
+            and proc_rss is not None
+            and proc_rss >= cap * 0.9
+        ):
+            # Near process RSS cap: shrink batch, but never override a critical
+            # free-RAM refuse (that path already set allow=False).
             batch = max(1, int(batch) // 2)
-            allow = True
             reason = f"process RSS {proc_rss:.0f}MB near CE cap {cap}MB — halving batch"
 
         worker_ceiling = envelope.embed_workers if job == "embed" else envelope.index_workers

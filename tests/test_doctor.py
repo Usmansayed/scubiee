@@ -20,7 +20,7 @@ def test_doctor_ok_when_only_daemon_unbound(tmp_path: Path, monkeypatch) -> None
             return {"collection": "test", "chunks": 1}
 
     monkeypatch.setattr(
-        "pipeline.preflight.inspect_capabilities",
+        "pipeline.doctor.inspect_capabilities",
         lambda **kwargs: {"ok": True, "accel": {}},
     )
     monkeypatch.setattr(

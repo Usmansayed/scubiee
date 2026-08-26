@@ -39,7 +39,7 @@ def test_bootstrap_budget_defaults() -> None:
 def test_background_budget_defaults() -> None:
     b = background_budget()
     assert b.mode == "background"
-    assert b.rss_cap_mb == BACKGROUND_RSS_CAP_MB == 800
+    assert b.rss_cap_mb == BACKGROUND_RSS_CAP_MB == 500
     assert b.mlx_batch == 24
     assert b.mlx_cache_mb == 128
     assert b.aggressive_unload is True
@@ -48,7 +48,7 @@ def test_background_budget_defaults() -> None:
 def test_large_reindex_budget_defaults() -> None:
     b = large_reindex_budget()
     assert b.mode == "large_reindex"
-    assert b.rss_cap_mb == LARGE_REINDEX_RSS_CAP_MB == 8000
+    assert b.rss_cap_mb == LARGE_REINDEX_RSS_CAP_MB == 1000
     assert b.aggressive_unload is False
 
 
@@ -83,7 +83,7 @@ def test_resolve_large_reindex_when_chunks_exceed_threshold(tmp_path: Path) -> N
 
     budget = resolve_index_memory_budget(background=True, store=store)
     assert budget.mode == "large_reindex"
-    assert budget.rss_cap_mb == 8000
+    assert budget.rss_cap_mb == LARGE_REINDEX_RSS_CAP_MB
 
 
 def test_apply_index_memory_budget_respects_existing_env(monkeypatch) -> None:

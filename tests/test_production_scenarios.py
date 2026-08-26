@@ -33,8 +33,10 @@ def test_scenario_checks_cover_core_faults(tmp_path: Path, monkeypatch) -> None:
     assert not (root / ".ce-scenario-store").exists()
 
 
-def test_certify_required_gate_passes_without_daemon(tmp_path: Path, monkeypatch) -> None:
-    monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
+def test_certify_required_gate_passes_without_daemon(
+    tmp_path: Path, monkeypatch, cpu_accel_profile: Path
+) -> None:
+    del cpu_accel_profile
     from pipeline.certify import certify
 
     root = tmp_path / "repo"
@@ -56,9 +58,9 @@ def test_certify_required_gate_passes_without_daemon(tmp_path: Path, monkeypatch
 
 
 def test_skipped_checks_are_neutral_and_never_counted_as_passed(
-    tmp_path: Path, monkeypatch
+    tmp_path: Path, monkeypatch, cpu_accel_profile: Path
 ) -> None:
-    monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
+    del cpu_accel_profile
     from pipeline import certify as certification
 
     original = certification.scenario_checks

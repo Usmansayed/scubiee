@@ -32,12 +32,31 @@ def _reset(monkeypatch):
     loc._CACHE._data.clear()
     monkeypatch.setenv("CTX_REPO", str(WORK))
     monkeypatch.setenv("CTX_MCP_SURFACE", "read")
+    # Keep resolution from latching onto the real enrolled checkout while tests
+    # pin CTX_REPO to a tmp fixture (Windows/dev machine pollution).
+    for key in (
+        "CURSOR_PROJECT_DIR",
+        "WORKSPACE_FOLDER",
+        "INIT_CWD",
+        "PWD",
+        "CTX_PROJECT_ID",
+        "CONTEXT_ENGINE_REPO",
+    ):
+        monkeypatch.delenv(key, raising=False)
     if WORK.is_dir():
         clear_session(WORK)
     yield
     loc._CACHE._data.clear()
     if WORK.is_dir():
         clear_session(WORK)
+
+
+def _isolate_repo(monkeypatch, tmp_path: Path) -> Path:
+    """Pin MCP resolution to tmp_path and leave the real checkout cwd."""
+    monkeypatch.setenv("CTX_REPO", str(tmp_path))
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".git").mkdir(exist_ok=True)
+    return tmp_path
 
 
 def test_mcp_exposes_three_tools():
@@ -103,8 +122,10 @@ def test_read_resolves_top_hit_and_dedupes(monkeypatch, tmp_path):
     pytest.importorskip("mcp")
     from pipeline import locate as loc
     from pipeline.mcp_locate import create_mcp
+    from pipeline.session_store import clear_store
 
-    monkeypatch.setenv("CTX_REPO", str(tmp_path))
+    _isolate_repo(monkeypatch, tmp_path)
+    clear_store(tmp_path)
     monkeypatch.setattr(
         loc,
         "_search_hits",
@@ -360,8 +381,8 @@ def test_read_explicit_line_range(monkeypatch, tmp_path):
 
     src = "\n".join(f"line{i}" for i in range(1, 21)) + "\n"
     (tmp_path / "f.py").write_text(src, encoding="utf-8")
+    _isolate_repo(monkeypatch, tmp_path)
     monkeypatch.setenv("CTX_MCP_SURFACE", "rich")
-    monkeypatch.setenv("CTX_REPO", str(tmp_path))
     read_fn = _tool_fn(create_mcp(), "read")
 
     out = json.loads(read_fn(path="f.py", start_line=3, end_line=6))
@@ -378,8 +399,8 @@ def test_read_attaches_neighbors_when_requested(monkeypatch, tmp_path):
 
     src = "\n".join(f"line{i}" for i in range(1, 21)) + "\n"
     (tmp_path / "f.py").write_text(src, encoding="utf-8")
+    _isolate_repo(monkeypatch, tmp_path)
     monkeypatch.setenv("CTX_MCP_SURFACE", "rich")
-    monkeypatch.setenv("CTX_REPO", str(tmp_path))
     monkeypatch.setattr(pd, "ensure_daemon", lambda *a, **k: None)
     monkeypatch.setattr(pc, "EngineClient", lambda *a, **k: _FakeEngine())
     read_fn = _tool_fn(create_mcp(), "read")
@@ -601,8 +622,8 @@ def test_nav_files_and_recall_expand_smoke(monkeypatch, tmp_path):
     (tmp_path / "pkg").mkdir()
     (tmp_path / "pkg" / "mod.py").write_text("class Foo:\n    pass\n", encoding="utf-8")
     (tmp_path / "README.md").write_text("# hi\n", encoding="utf-8")
+    _isolate_repo(monkeypatch, tmp_path)
     monkeypatch.setenv("CTX_MCP_SURFACE", "nav")
-    monkeypatch.setenv("CTX_REPO", str(tmp_path))
     clear_store(tmp_path)
     mcp = create_mcp()
     files_fn = _tool_fn(mcp, "files")
@@ -679,8 +700,8 @@ def test_nav_search_records_duplicates_without_blocking(monkeypatch, tmp_path):
     from pipeline.mcp_locate import create_mcp
     from pipeline.session_store import clear_store
 
+    _isolate_repo(monkeypatch, tmp_path)
     monkeypatch.setenv("CTX_MCP_SURFACE", "nav")
-    monkeypatch.setenv("CTX_REPO", str(tmp_path))
     clear_store(tmp_path)
     monkeypatch.setattr(pd, "ensure_daemon", lambda *a, **k: None)
     monkeypatch.setattr(pc, "EngineClient", lambda *a, **k: _FakeEngine())
@@ -717,8 +738,8 @@ def test_read_detail_outline_and_neighbors(monkeypatch, tmp_path):
     (tmp_path / "pkg" / "mod.py").write_text(
         "\n".join(f"line{i}" for i in range(1, 30)) + "\n", encoding="utf-8"
     )
+    _isolate_repo(monkeypatch, tmp_path)
     monkeypatch.setenv("CTX_MCP_SURFACE", "nav")
-    monkeypatch.setenv("CTX_REPO", str(tmp_path))
     monkeypatch.setattr(pd, "ensure_daemon", lambda *a, **k: None)
     monkeypatch.setattr(pc, "EngineClient", lambda *a, **k: _FakeEngine())
     read_fn = _tool_fn(create_mcp(), "read")
@@ -794,7 +815,98 @@ def test_cursor_rule_mirrors_short_decision_card():
     assert "status" in template
     assert "Do not use native Grep" in template or "do not use native Grep" in template.lower()
     assert "status()" in template
+    assert "Do not call it every turn" in template
+    assert "never every turn" in template
+    assert "scubiee resume" in template
+    assert "ignore this rule entirely" not in template.lower()
     assert len(template) <= 4000
+
+
+def test_append_host_rule_matches_cursor_retry_policy_not_ignore_forever():
+    """Kiro/Cline/Continue/append hosts must not permanently drop Scubiee mid-session."""
+    md = (REPO / "packages" / "pipeline" / "templates" / "context-engine.md").read_text(
+        encoding="utf-8"
+    )
+    legacy = (REPO / "packages" / "pipeline" / "templates" / "context-engine.mdc").read_text(
+        encoding="utf-8"
+    )
+    for template in (md, legacy):
+        assert "ignore this rule entirely" not in template.lower()
+        assert "Do not permanently disable Scubiee" in template
+        assert "Do not call it every turn" in template
+        assert "never every turn" in template
+        assert "scubiee resume" in template
+        assert "Retry `status()` only when" in template
+        assert len(template) <= 4000
+
+
+def test_status_ok_false_while_warming_managed(monkeypatch, tmp_path):
+    """Managed repo with daemon down: ok must be false (not conflated with managed)."""
+    pytest.importorskip("mcp")
+    repo = tmp_path / "proj"
+    repo.mkdir()
+    ce = repo / ".context-engine"
+    ce.mkdir()
+    (ce / "id.json").write_text(json.dumps({"project_id": "ce_test"}), encoding="utf-8")
+    monkeypatch.setenv("CTX_MCP_SURFACE", "read")
+    monkeypatch.setenv("CTX_REPO", str(repo))
+    monkeypatch.chdir(repo)
+
+    from pipeline.project_id import save_registry
+
+    save_registry(
+        {
+            "projects": {
+                "ce_test": {
+                    "managed": True,
+                    "root": str(repo.resolve()),
+                    "paths": [str(repo.resolve())],
+                }
+            }
+        }
+    )
+
+    class FakeEng:
+        base = "http://127.0.0.1:8765"
+
+        def healthy(self) -> bool:
+            return False
+
+        def status(self, _root: str) -> dict:
+            raise AssertionError("status should not be called when unhealthy")
+
+    monkeypatch.setattr("pipeline.daemon.ensure_daemon", lambda *a, **k: None)
+    monkeypatch.setattr("pipeline.client.EngineClient", lambda *a, **k: FakeEng())
+    monkeypatch.setattr(
+        "pipeline.session_store.load_store",
+        lambda _r: {"topic": None, "spans": {}, "focus_seen": {}, "ledger": {}},
+    )
+
+    from pipeline.mcp_locate import create_mcp
+
+    card = json.loads(_tool_fn(create_mcp(), "status")())
+    assert card["managed"] is True
+    assert card["warming"] is True
+    assert card["ok"] is False
+    assert card["should_retry_status"] is False
+    assert "Do not poll status()" in card.get("hint", "")
+
+
+def test_status_paused_hint_uses_resume_not_wake(monkeypatch, tmp_path):
+    """Paused status must not advertise a non-existent `wake` command or invite polling."""
+    pytest.importorskip("mcp")
+    monkeypatch.setenv("CTX_MCP_SURFACE", "read")
+    monkeypatch.setenv("CTX_REPO", str(tmp_path))
+    from pipeline.mcp_locate import create_mcp
+
+    monkeypatch.setattr("pipeline.pause_resume.is_paused", lambda: True)
+    status_fn = _tool_fn(create_mcp(), "status")
+    card = json.loads(status_fn())
+    assert card["paused"] is True
+    assert card["ok"] is False
+    assert card["should_retry_status"] is False
+    assert "scubiee resume" in card["hint"]
+    assert "wake" not in card["hint"].lower()
 
 
 def test_mcp_reports_routing_errors_instead_of_successful_zero_hits(
@@ -1023,7 +1135,7 @@ def test_optional_graph_failures_preserve_primary_results(monkeypatch, tmp_path)
 
     (tmp_path / "pkg").mkdir()
     (tmp_path / "pkg" / "mod.py").write_text("value = 1\n", encoding="utf-8")
-    monkeypatch.setenv("CTX_REPO", str(tmp_path))
+    _isolate_repo(monkeypatch, tmp_path)
     monkeypatch.setattr(pd, "ensure_daemon", lambda *a, **k: None)
 
     class _GraphCrashEngine:

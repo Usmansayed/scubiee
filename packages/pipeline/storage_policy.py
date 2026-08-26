@@ -73,12 +73,25 @@ def _vector_counts(collection_dir: Path) -> tuple[int | None, int | None]:
     if not (collection_dir / "meta.json").is_file():
         return None, None
     meta = _read_json(collection_dir / "meta.json")
-    live = meta.get("ntotal")
-    dead = meta.get("dead_ids")
-    return (
-        int(live) if isinstance(live, (int, float)) else None,
-        len(dead) if isinstance(dead, list) else 0,
-    )
+    dead_ids = meta.get("dead_ids")
+    dead = len(dead_ids) if isinstance(dead_ids, list) else 0
+    # ``ids.npy`` keeps every vector id (including tombstones). ``meta.ntotal`` is
+    # rewritten from FAISS ``index.ntotal`` on save — which is live-only when
+    # ``remove_ids`` succeeded, or still full when it failed. Prefer ids length.
+    ids_path = collection_dir / "ids.npy"
+    if ids_path.is_file():
+        try:
+            import numpy as np
+
+            n_ids = int(np.load(ids_path).shape[0])
+            return max(0, n_ids - dead), dead
+        except Exception:  # noqa: BLE001
+            pass
+    ntotal = meta.get("ntotal")
+    if isinstance(ntotal, (int, float)):
+        # Fall back: assume ntotal is live when remove_ids worked.
+        return int(ntotal), dead
+    return None, dead
 
 
 def repo_storage_status(project_id: str) -> dict[str, Any]:

@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "packages"))
 
 from pipeline.project_id import (
+    _norm_path,
     git_common_dir,
     id_file_path,
     index_is_usable,
@@ -52,13 +53,15 @@ def test_resolve_mints_and_writes(ce_home: Path, tmp_path: Path):
     assert ref.store_dir.is_dir()
     reg = load_registry()
     assert ref.project_id in reg["projects"]
-    assert str(repo.resolve()) in reg["projects"][ref.project_id]["paths"]
+    assert _norm_path(repo) in reg["projects"][ref.project_id]["paths"]
 
 
-def test_resolve_reuses_id_file(ce_home: Path, tmp_path: Path):
+def test_resolve_reuses_id_file(ce_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     repo = tmp_path / "r"
     repo.mkdir()
     write_id_file(repo, "ce_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    # Orphan id.json is untrusted until registry/store match; force-trust for this case.
+    monkeypatch.setenv("CTX_TRUST_ID_FILE", "1")
     ref = resolve_project(repo)
     assert ref.project_id == "ce_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 

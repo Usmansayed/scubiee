@@ -108,7 +108,8 @@ class FaissCollection:
 
     @property
     def ntotal(self) -> int:
-        return int(self.index.ntotal)
+        # Prefer live rows so logical deletes work when FAISS remove_ids is broken.
+        return max(0, len(self.ids) - len(self.meta.dead_ids))
 
     @property
     def dead_count(self) -> int:
@@ -202,11 +203,16 @@ class FaissCollection:
         removed = sorted(drop.intersection(self.ids) - already_dead)
         if not removed:
             return 0
-        self.index.remove_ids(np.asarray(removed, dtype=np.int64))
         for vector_id in removed:
             self.payloads.pop(vector_id, None)
         self.meta.dead_ids = sorted(already_dead.union(removed))
-        self.meta.ntotal = int(self.index.ntotal)
+        try:
+            self.index.remove_ids(np.asarray(removed, dtype=np.int64))
+        except (RecursionError, RuntimeError, AttributeError):
+            # Some FAISS wheels recurse on IndexIDMap2.remove_ids. Keep logical
+            # deletes in dead_ids; compact() rebuilds live rows later.
+            pass
+        self.meta.ntotal = max(0, len(self.ids) - len(self.meta.dead_ids))
         self.meta.updated_at = time.time()
         return len(removed)
 
@@ -268,7 +274,10 @@ class FaissCollection:
     def save(self) -> None:
         with self._lock:
             self.path.mkdir(parents=True, exist_ok=True)
-            self.meta.ntotal = int(self.index.ntotal)
+            # Persist logical live count (ids − tombstones). FAISS index.ntotal may
+            # already exclude removed ids when remove_ids worked, or still include
+            # them when it failed — either way dead_ids is the source of truth.
+            self.meta.ntotal = max(0, len(self.ids) - len(self.meta.dead_ids))
             self.meta.updated_at = time.time()
             meta_text = json.dumps(self.meta.to_dict(), indent=2) + "\n"
             atomic_write_text(self.path / "meta.json", meta_text)
@@ -323,7 +332,7 @@ class FaissCollection:
                 col._rebuild_faiss_from_compressed()
         else:
             col._rebuild_faiss_from_compressed()
-        col.meta.ntotal = int(col.index.ntotal)
+        col.meta.ntotal = col.live_count
         return col
 
     def stats(self) -> dict[str, Any]:

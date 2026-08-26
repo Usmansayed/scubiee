@@ -8,7 +8,12 @@ from pathlib import Path
 from pipeline.mcp_install import server_entry, merge_mcp_json, write_cursor_mcp
 
 
-def test_server_entry_uses_module_invocation_without_source_pythonpath(tmp_path: Path) -> None:
+def test_server_entry_uses_module_invocation_without_source_pythonpath(
+    tmp_path: Path, monkeypatch
+) -> None:
+    # Force module fallback so the assertion is stable whether or not scubiee-mcp
+    # is on PATH in the developer environment.
+    monkeypatch.setattr("shutil.which", lambda _name: None)
     entry = server_entry(tmp_path)
     assert entry["args"] == ["-u", "-m", "pipeline.mcp_locate"]
     env = entry["env"]
