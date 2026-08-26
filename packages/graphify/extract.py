@@ -4298,12 +4298,29 @@ def _safe_extract_with_xaml_root(extractor, path: Path, root: Path) -> dict:
         _XAML_ACTIVE_EXTRACT_ROOT = previous_root
 
 
-def _print_ast_progress(message: str) -> None:
-    """AST progress lines. GRAPHIFY_QUIET=1 keeps a parent progress bar clean."""
+_GRAPHIFY_TAG_RE = re.compile(r"\[graphify\]\s*", re.IGNORECASE)
+
+
+def scrub_graphify_brand(message: str) -> str:
+    """Strip the internal ``[graphify]`` log brand from user-facing text."""
+    return _GRAPHIFY_TAG_RE.sub("", str(message))
+
+
+def graphify_log(message: str, *, stream=None) -> None:
+    """Parent CLIs set GRAPHIFY_QUIET=1 so a single progress bar stays intact."""
     flag = (os.environ.get("GRAPHIFY_QUIET") or "").strip().lower()
     if flag in {"1", "true", "yes", "on"}:
         return
-    print(message, flush=True)
+    print(
+        scrub_graphify_brand(message),
+        file=sys.stderr if stream is None else stream,
+        flush=True,
+    )
+
+
+def _print_ast_progress(message: str) -> None:
+    """AST progress lines. GRAPHIFY_QUIET=1 keeps a parent progress bar clean."""
+    graphify_log(message, stream=sys.stdout)
 
 
 def _extract_single_file(args: tuple) -> tuple[int, dict]:

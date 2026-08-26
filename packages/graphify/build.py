@@ -1112,7 +1112,9 @@ def deduplicate_by_label(nodes: list[dict], edges: list[dict]) -> tuple[list[dic
     if not remap:
         return nodes, edges
 
-    print(f"[graphify] Deduplicated {len(remap)} duplicate node(s) by label.", file=sys.stderr)
+    from graphify.extract import graphify_log
+
+    graphify_log(f"Deduplicated {len(remap)} duplicate node(s) by label.")
     deduped_nodes = list(canonical.values())
     deduped_edges = []
     for edge in edges:

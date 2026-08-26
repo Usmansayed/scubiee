@@ -26,8 +26,9 @@ from pipeline.paths import collect_index_paths, collect_index_relpaths
 from pipeline.store import ChunkRecord, PipelineStore
 from pipeline.vectordb import VectorDatabase
 
-# Auto-touch without asking. Above this, require explicit --confirm (not --force/--fast).
-DEFAULT_MAX_TOUCH = 400
+# Auto-touch without asking. Normal repos are 500–thousands of files; this
+# cap is only for "that looks like a mistake" (home/drive is a separate gate).
+DEFAULT_MAX_TOUCH = 25_000
 
 _BG_SYNC_LOCK = threading.Lock()
 _BG_SYNC_RUNNING = False
@@ -363,18 +364,17 @@ def incremental_sync(
 
     if report.strategy == "full" and not force_files and not confirm:
         n = report.changed_count
-        return IncrementalResult(
-            refreshed=False,
-            files=[],
-            chunks_upserted=0,
-            chunks_removed=0,
-            ms=(time.perf_counter() - t0) * 1000,
-            strategy="full",
-            error=_confirm_hint(
-                n,
-                max_touch=int(os.environ.get("CTX_INCREMENTAL_MAX_TOUCH", str(DEFAULT_MAX_TOUCH))),
-            ),
-        )
+        max_touch = max_index_touch()
+        if n > max_touch:
+            return IncrementalResult(
+                refreshed=False,
+                files=[],
+                chunks_upserted=0,
+                chunks_removed=0,
+                ms=(time.perf_counter() - t0) * 1000,
+                strategy="full",
+                error=_confirm_hint(n, max_touch=max_touch),
+            )
 
     changed = sorted(set(report.diff.changed_files) | set(force_files or []))
     removed = list(report.diff.removed)

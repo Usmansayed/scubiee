@@ -1,4 +1,4 @@
-"""Full index uses the same ≤400 auto-touch cap as incremental sync."""
+"""Confirm is for mistake-scale scopes, not normal 500–1000 file repos."""
 
 from __future__ import annotations
 
@@ -15,18 +15,21 @@ from pipeline.incremental import (
 from pipeline.indexer import count_indexable_files
 
 
-def test_require_index_confirm_blocks_large_repo() -> None:
+def test_require_index_confirm_allows_normal_codebases() -> None:
+    require_index_confirm(401, confirm=False, force=False)
+    require_index_confirm(1000, confirm=False, force=False)
+    require_index_confirm(5000, confirm=False, force=False)
+
+
+def test_require_index_confirm_blocks_mistake_scale() -> None:
+    n = DEFAULT_MAX_TOUCH + 1
     with pytest.raises(IndexConfirmRequired) as exc:
-        require_index_confirm(401, confirm=False, force=False)
-    assert exc.value.n_files == 401
+        require_index_confirm(n, confirm=False, force=False)
+    assert exc.value.n_files == n
     assert exc.value.max_touch == DEFAULT_MAX_TOUCH
     assert "Safety pause" in str(exc.value)
-
-
-def test_require_index_confirm_allows_up_to_cap() -> None:
-    require_index_confirm(400, confirm=False, force=False)
-    require_index_confirm(401, confirm=True, force=False)
-    require_index_confirm(9000, confirm=False, force=True)
+    require_index_confirm(n, confirm=True, force=False)
+    require_index_confirm(n, confirm=False, force=True)
 
 
 def test_count_indexable_files_respects_fast_roots(tmp_path: Path) -> None:

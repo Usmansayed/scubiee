@@ -10,6 +10,7 @@ Design: clean, focused, zero noise. Inspired by Vercel and Linear.
 from __future__ import annotations
 
 import os
+import re
 import sys
 import time
 from typing import IO, Any, TextIO
@@ -225,6 +226,62 @@ def format_bytes(n: int | float) -> str:
 def format_count(n: int) -> str:
     """Format number with comma separators."""
     return f"{n:,}"
+
+
+def format_index_eta(n_files: int) -> str:
+    """Wall-clock range from observed ~0.45–0.55s per indexable file.
+
+    446 files on a typical GPU box takes ~3–4 min, not the old 1 min
+    (~600 files/min) estimate.
+    """
+    n = max(0, int(n_files))
+    lo_s = max(20, int(round(n * 0.45)))
+    hi_s = max(lo_s, int(round(n * 0.55)))
+    lo_m = max(1, int(round(lo_s / 60)))
+    hi_m = max(lo_m, int(round(hi_s / 60)))
+    if lo_m == hi_m:
+        return f"~{lo_m} min"
+    return f"~{lo_m}–{hi_m} min"
+
+
+def _clean_progress_label(label: str) -> str:
+    first = (label or "").splitlines()[0].strip()
+    first = re.sub(r"\[graphify\]\s*", "", first, flags=re.IGNORECASE)
+    first = re.sub(r"(?i)\bgraphify\b", "", first)
+    first = re.sub(r"\s{2,}", " ", first).strip(" -·|:;") or "Working"
+    return first[:48]
+
+
+class _ScrubGraphifyStream:
+    """Drop the internal ``[graphify]`` brand from anything written to a TTY."""
+
+    __slots__ = ("_inner",)
+
+    def __init__(self, inner: IO[str] | TextIO):
+        self._inner = inner
+
+    def write(self, s: str) -> int:  # type: ignore[override]
+        if isinstance(s, str) and "graphify" in s.lower():
+            s = re.sub(r"\[graphify\]\s*", "", s, flags=re.IGNORECASE)
+        return self._inner.write(s)
+
+    def flush(self) -> None:
+        self._inner.flush()
+
+    def isatty(self) -> bool:
+        return bool(getattr(self._inner, "isatty", lambda: False)())
+
+    def __getattr__(self, name: str):
+        return getattr(self._inner, name)
+
+
+def install_graphify_brand_scrubbers() -> None:
+    """Wrap stdout/stderr so leaked graphify log tags never reach the user."""
+    for name in ("stdout", "stderr"):
+        stream = getattr(sys, name, None)
+        if stream is None or isinstance(stream, _ScrubGraphifyStream):
+            continue
+        setattr(sys, name, _ScrubGraphifyStream(stream))
 
 def print_status_summary(data: dict[str, Any], *, stream: IO[str] | TextIO | None = None) -> None:
     """Print a clean human-readable status summary from the status JSON."""
@@ -994,15 +1051,22 @@ class InitProgress:
         self.c = colors(self.stream)
         self._tty = _is_tty(self.stream)
         self._last_line_len = 0
-        self._pct = 0
+        self._pct = 0.0
+        self._parse_pulse = 0.0
 
     def start(self):
         branded_header("init", stream=self.stream)
 
+    def announce_scope(self, n_files: int):
+        eta = format_index_eta(n_files)
+        info(f"{n_files:,} files  ·  {eta}", stream=self.stream)
+
     def _bar(self, pct: float, label: str):
-        """Render [????????] pct%  label ? single line, overwritten in place."""
+        """Render one in-place line. Graphify/other logs must not share this stream."""
         bar_width = 24
         pct = max(0.0, min(1.0, pct))
+        self._pct = pct
+        label = _clean_progress_label(label)
         filled = int(bar_width * pct)
         bar = "\u2588" * filled + "\u2591" * (bar_width - filled)
         if pct > 0:
@@ -1077,8 +1141,11 @@ class InitProgress:
         if "scanning" in phase_lower:
             self._bar(0.03, "Scanning")
         elif "parsing" in phase_lower:
-            self._bar(0.08, "Parsing")
+            if self._parse_pulse < 0.08:
+                self._parse_pulse = 0.08
+            self._bar(self._parse_pulse, "Parsing")
         elif "building" in phase_lower or "chunk" in phase_lower:
+            self._parse_pulse = 0.35
             self._bar(0.35, "Chunking")
         elif "embedding" in phase_lower:
             import re as _re
@@ -1095,6 +1162,10 @@ class InitProgress:
             pass  # handled by daemon_started()
 
     def pulse(self, phase, *, until=100):
+        if "parsing" in str(phase).lower():
+            self._parse_pulse = min(0.35, max(self._parse_pulse, 0.08) + 0.005)
+            self._bar(self._parse_pulse, "Parsing")
+            return
         self.set(until, phase)
 
     def notice(self, msg):

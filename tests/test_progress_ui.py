@@ -254,3 +254,93 @@ def test_cmd_setup_succeeds_when_logon_task_access_denied(
     assert "Failed:" not in err
     assert "Access is denied" not in err
     assert "Ready" in err or "100%" in err or "scubiee init" in err
+
+
+def test_graphify_log_silent_when_quiet(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from graphify.extract import graphify_log
+
+    monkeypatch.setenv("GRAPHIFY_QUIET", "1")
+    graphify_log("[graphify] Deduplicated 7 node(s) (1 exact, 6 fuzzy).")
+    captured = capsys.readouterr()
+    assert "Deduplicated" not in captured.out
+    assert "Deduplicated" not in captured.err
+
+
+def test_graphify_log_never_prints_graphify_brand(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from graphify.extract import graphify_log
+
+    monkeypatch.delenv("GRAPHIFY_QUIET", raising=False)
+    graphify_log("[graphify] Deduplicated 7 node(s) (1 exact, 6 fuzzy).")
+    captured = capsys.readouterr()
+    text = captured.out + captured.err
+    assert "Deduplicated" in text
+    assert "graphify" not in text.lower()
+
+
+def test_scrub_stream_strips_graphify_tag() -> None:
+    from pipeline.cli_ui import _ScrubGraphifyStream
+
+    buf = io.StringIO()
+    scrubbed = _ScrubGraphifyStream(buf)
+    scrubbed.write("[graphify] Deduplicated 7 node(s).\n")
+    scrubbed.write("packages/graphify/build.py\n")  # path kept
+    assert "graphify]" not in buf.getvalue()
+    assert "[graphify]" not in buf.getvalue()
+    assert "Deduplicated 7 node(s)." in buf.getvalue()
+    assert "packages/graphify/build.py" in buf.getvalue()
+
+
+def test_init_progress_done_replaces_partial_bar() -> None:
+    buf = io.StringIO()
+    buf.isatty = lambda: True  # type: ignore[method-assign]
+    from pipeline.cli_ui import InitProgress
+
+    bar = InitProgress(stream=buf)
+    bar._bar(0.08, "Parsing")
+    bar.done(3652)
+    text = buf.getvalue()
+    assert "Indexed" in text
+    assert "3,652" in text
+    assert text.strip().endswith("chunks") or "Indexed" in text.splitlines()[-1]
+
+
+def test_init_progress_strips_graphify_noise_from_label() -> None:
+    buf = io.StringIO()
+    buf.isatty = lambda: True  # type: ignore[method-assign]
+    from pipeline.cli_ui import InitProgress
+
+    bar = InitProgress(stream=buf)
+    bar.set(8, "Parsing [graphify] Deduplicated 7 node(s) (1 exact, 6 fuzzy).")
+    text = buf.getvalue()
+    assert "graphify" not in text.lower()
+    assert "Deduplicated" not in text
+    assert "Parsing" in text or "Working" in text
+
+
+def test_init_progress_parse_pulse_advances_off_8_percent() -> None:
+    buf = io.StringIO()
+    buf.isatty = lambda: True  # type: ignore[method-assign]
+    from pipeline.cli_ui import InitProgress
+
+    bar = InitProgress(stream=buf)
+    bar.set(8, "Parsing code")
+    for _ in range(20):
+        bar.pulse("Parsing code", until=40)
+    last = buf.getvalue().split("\r")[-1]
+    assert bar._pct > 0.08
+    assert "Parsing" in last
+    assert f"{bar._pct:.0%}" in last
+
+
+def test_format_index_eta_matches_observed_throughput() -> None:
+    from pipeline.cli_ui import format_index_eta
+
+    eta = format_index_eta(446)
+    assert "3" in eta
+    assert "4" in eta
+    assert "1 min" not in eta
+

@@ -1049,12 +1049,14 @@ def cmd_init(args: argparse.Namespace) -> int:
     if roots and not fast:
         fast = True
 
-    # --- Preflight: check scope and prompt if large ---
+    # --- Preflight: mistake-scale scopes need confirm; normal repos just run ---
+    n_files = 0
+    prompted_header = False
     if not bool(getattr(args, "no_index", False)):
         from pipeline.incremental import IndexConfirmRequired, preflight_index_scope
 
         try:
-            preflight_index_scope(
+            n_files = preflight_index_scope(
                 root,
                 fast=fast,
                 fast_roots=roots,
@@ -1062,21 +1064,32 @@ def cmd_init(args: argparse.Namespace) -> int:
             )
         except IndexConfirmRequired as exc:
             if is_tty:
-                # Interactive Y/N instead of failing with JSON
-                from pipeline.cli_ui import branded_header, confirm_action
+                from pipeline.cli_ui import branded_header, confirm_action, format_index_eta
 
                 branded_header("init", stream=sys.stderr)
-                n_files = getattr(exc, "n_files", 0)
-                est_min = max(1, n_files // 600)  # rough: ~600 files/min
+                prompted_header = True
+                n_files = int(getattr(exc, "n_files", 0) or 0)
+                if getattr(exc, "kind", "") == "broad_root":
+                    message = str(exc)
+                    details = None
+                else:
+                    message = (
+                        f"{n_files:,} files — this looks unintentionally large "
+                        f"({format_index_eta(n_files)})"
+                    )
+                    details = [
+                        "Re-run with --confirm if you really meant this path, "
+                        "or use `scubiee init . --fast --roots packages`.",
+                    ]
                 confirmed = confirm_action(
-                    f"This repository has {n_files:,} files (est. ~{est_min} min to index)",
-                    default=True,
+                    message,
+                    details=details,
+                    default=False,
                     stream=sys.stderr,
                 )
                 if not confirmed:
                     sys.stderr.write("  Cancelled.\n\n")
                     return 0
-                # User said yes — proceed with confirm=True
                 args.confirm = True
             else:
                 return _fail_confirm(root, exc)
@@ -1085,9 +1098,10 @@ def cmd_init(args: argparse.Namespace) -> int:
     if is_tty:
         from pipeline.cli_ui import InitProgress
         bar = InitProgress()
-        # Only print header if we didn't already (from the confirm prompt)
-        if not getattr(args, "confirm", False) or not is_tty:
+        if not prompted_header:
             bar.start()
+        if n_files:
+            bar.announce_scope(n_files)
     else:
         bar = _progress_bar("Initializing repository…")
 
@@ -1097,16 +1111,20 @@ def cmd_init(args: argparse.Namespace) -> int:
     if is_tty:
         bar._bar(0.0, "Starting…")
 
-    # Silence ALL stderr noise during init by redirecting stderr to devnull.
-    # The progress bar writes to _real_stderr (saved before redirect).
+    # Silence graphify/index logs so they cannot break the in-place bar
+    # (Windows consoles merge stdout+stderr onto one line).
     _prev_graphify_quiet = os.environ.get("GRAPHIFY_QUIET")
     _prev_ctx_quiet = os.environ.get("CTX_QUIET")
-    _real_stderr = sys.stderr  # Progress bar will use this
+    _real_stderr = sys.stderr
+    _real_stdout = sys.stdout
+    _devnull = None
     if is_tty:
         os.environ["GRAPHIFY_QUIET"] = "1"
         os.environ["CTX_QUIET"] = "1"
-        sys.stderr = open(os.devnull, "w")
-        bar.stream = _real_stderr  # Ensure bar writes to real terminal
+        _devnull = open(os.devnull, "w")
+        sys.stderr = _devnull
+        sys.stdout = _devnull
+        bar.stream = _real_stderr
     try:
         out = initialize_repo(
             root,
@@ -1134,11 +1152,13 @@ def cmd_init(args: argparse.Namespace) -> int:
     finally:
         # Restore stderr and env vars
         if is_tty:
-            try:
-                sys.stderr.close()
-            except Exception:
-                pass
             sys.stderr = _real_stderr
+            sys.stdout = _real_stdout
+            if _devnull is not None:
+                try:
+                    _devnull.close()
+                except Exception:
+                    pass
         if _prev_graphify_quiet is None:
             os.environ.pop("GRAPHIFY_QUIET", None)
         else:
@@ -1626,6 +1646,11 @@ def _write_mcp_config(repo: Path, host: str, port: int) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    if sys.stdout.isatty() or sys.stderr.isatty():
+        from pipeline.cli_ui import install_graphify_brand_scrubbers
+
+        install_graphify_brand_scrubbers()
+
     if _version_verbose(argv):
         print(format_install_identity())
         return 0
@@ -1682,7 +1707,7 @@ def main(argv: list[str] | None = None) -> int:
     p_index.add_argument(
         "--confirm",
         action="store_true",
-        help="Proceed when indexing more than CTX_INCREMENTAL_MAX_TOUCH files (default 400)",
+        help="Required only for home/drive roots or huge trees (>25k files)",
     )
     p_index.set_defaults(func=cmd_index)
 
@@ -1762,7 +1787,7 @@ def main(argv: list[str] | None = None) -> int:
     p_reg.add_argument(
         "--confirm",
         action="store_true",
-        help="Allow indexing when more than 400 files changed (safety opt-in)",
+        help="Required only for home/drive roots or huge trees (>25k files)",
     )
     p_reg.set_defaults(func=cmd_register)
 
@@ -1780,7 +1805,7 @@ def main(argv: list[str] | None = None) -> int:
     p_initialize.add_argument(
         "--confirm",
         action="store_true",
-        help="Allow indexing when more than 400 files changed (safety opt-in)",
+        help="Required only for home/drive roots or huge trees (>25k files)",
     )
     p_initialize.set_defaults(func=cmd_repo_lifecycle, command="initialize")
 
@@ -1804,7 +1829,7 @@ def main(argv: list[str] | None = None) -> int:
     p_sync_now.add_argument(
         "--confirm",
         action="store_true",
-        help="Allow indexing when more than 400 files changed (safety opt-in)",
+        help="Required only for home/drive roots or huge trees (>25k files)",
     )
     p_sync_now.set_defaults(func=cmd_repo_lifecycle, command="sync-now")
 
@@ -1877,7 +1902,7 @@ def main(argv: list[str] | None = None) -> int:
     p_sync.add_argument(
         "--confirm",
         action="store_true",
-        help="Allow indexing when more than 400 files changed (safety opt-in)",
+        help="Required only for home/drive roots or huge trees (>25k files)",
     )
     p_sync.set_defaults(func=cmd_sync)
 
@@ -1964,7 +1989,7 @@ def main(argv: list[str] | None = None) -> int:
     p_init.add_argument(
         "--confirm",
         action="store_true",
-        help="Allow indexing when more than 400 files changed (safety opt-in)",
+        help="Required only for home/drive roots or huge trees (>25k files)",
     )
     p_init.set_defaults(func=cmd_init)
 
