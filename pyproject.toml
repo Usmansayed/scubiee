@@ -1,6 +1,6 @@
 [project]
 name = "scubiee"
-version = "0.2.82"
+version = "0.2.83"
 description = "Scubiee — local AI code context engine: setup once, connect tools, CUDA/DirectML/MLX/CPU."
 readme = "README.md"
 requires-python = ">=3.10"

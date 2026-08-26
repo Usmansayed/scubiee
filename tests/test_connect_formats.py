@@ -61,16 +61,17 @@ def test_format_opencode_schema(tmp_path: Path) -> None:
 
 
 def test_format_global_entry_uses_workspace_folder_token_not_absolute_pin() -> None:
-    special4 = WORKSPACE_LOCAL_MCP_SLUGS
+    from pipeline.rules_installer import _GLOBAL_OMIT_CTX_REPO_SLUGS, _is_absolute_repo_pin
+
     for slug, tool in TOOL_MAP.items():
         entry = format_server_entry(tool, pin_repo=False)
-        blob = json.dumps(entry)
-        # Absolute path pins must never appear in global connect entries.
-        assert "/Users/" not in blob
-        assert "C:\\\\" not in blob and "C:/" not in blob
         env = entry.get("env") or entry.get("environment") or {}
-        if slug in special4:
-            # Special-4: global stays unpinned (absolute pin is project-only).
+        ctx = str(env.get("CTX_REPO") or "")
+        assert not _is_absolute_repo_pin(ctx), slug
+        cwd = str(entry.get("cwd") or "")
+        assert not _is_absolute_repo_pin(cwd), slug
+        if slug in _GLOBAL_OMIT_CTX_REPO_SLUGS:
+            # Classic special-4: global stays unpinned (absolute pin is project-only).
             assert "CTX_REPO" not in env
         else:
             assert env.get("CTX_REPO") == "${workspaceFolder}", slug
@@ -87,19 +88,86 @@ def test_format_vscode_has_type_stdio() -> None:
     assert entry["type"] == "stdio"
 
 
-def test_install_cursor_global_mcp_and_rules(fake_home: Path, tmp_path: Path) -> None:
-    workspace = tmp_path / "ws"
-    workspace.mkdir()
+def test_install_cursor_global_and_project_mcp(fake_home: Path, tmp_path: Path) -> None:
+    """Cursor needs project .cursor/mcp.json — global ${workspaceFolder} does not expand."""
+    workspace = _git_repo(tmp_path / "ws")
     report = install_tool(TOOL_MAP["cursor"], repo=workspace)
     assert report["ok"]
-    assert report.get("repo_ignored") is True
+    assert report.get("workspace_mcp_written") is True
+    assert report.get("repo_ignored") is not True
     mcp = json.loads((fake_home / ".cursor" / "mcp.json").read_text(encoding="utf-8"))
     env = mcp["mcpServers"]["context-engine"]["env"]
     assert env.get("CTX_REPO") == "${workspaceFolder}"
     assert env.get("CURSOR_PROJECT_DIR") == "${workspaceFolder}"
     assert (fake_home / ".cursor" / "rules" / "context-agent.mdc").is_file()
-    # Must not touch the project
-    assert not (workspace / ".cursor").exists()
+    project = json.loads((workspace / ".cursor" / "mcp.json").read_text(encoding="utf-8"))
+    assert project["mcpServers"]["context-engine"]["env"]["CTX_REPO"] == str(workspace).replace(
+        "\\", "/"
+    )
+    assert report.get("notice")
+
+
+def test_install_codex_project_toml_absolute_cwd(fake_home: Path, tmp_path: Path) -> None:
+    workspace = _git_repo(tmp_path / "ws")
+    report = install_tool(TOOL_MAP["codex"], repo=workspace)
+    assert report["ok"]
+    assert report.get("workspace_mcp_written") is True
+    global_text = (fake_home / ".codex" / "config.toml").read_text(encoding="utf-8")
+    assert 'cwd = "${workspaceFolder}"' in global_text
+    project = (workspace / ".codex" / "config.toml").read_text(encoding="utf-8")
+    repo_s = str(workspace.resolve()).replace("\\", "/")
+    assert f'cwd = "{repo_s}"' in project
+    assert f'CTX_REPO = "{repo_s}"' in project
+
+
+def test_install_opencode_project_json(fake_home: Path, tmp_path: Path) -> None:
+    workspace = _git_repo(tmp_path / "ws")
+    report = install_tool(TOOL_MAP["opencode"], repo=workspace)
+    assert report["ok"]
+    assert report.get("workspace_mcp_written") is True
+    path = fake_home / ".config" / "opencode" / "opencode.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    assert data["mcp"]["context-engine"]["environment"].get("CTX_REPO") == "${workspaceFolder}"
+    project = json.loads((workspace / "opencode.json").read_text(encoding="utf-8"))
+    entry = project["mcp"]["context-engine"]
+    repo_s = str(workspace.resolve()).replace("\\", "/")
+    assert entry["environment"]["CTX_REPO"] == repo_s
+    assert entry.get("cwd") == repo_s
+
+
+def test_install_amp_project_settings(fake_home: Path, tmp_path: Path) -> None:
+    workspace = _git_repo(tmp_path / "ws")
+    report = install_tool(TOOL_MAP["amp"], repo=workspace)
+    assert report["ok"]
+    assert report.get("workspace_mcp_written") is True
+    project = json.loads((workspace / ".amp" / "settings.json").read_text(encoding="utf-8"))
+    env = project["amp.mcpServers"]["context-engine"]["env"]
+    assert env["CTX_REPO"] == str(workspace.resolve()).replace("\\", "/")
+    assert "approve" in (report.get("notice") or "").lower()
+
+
+def test_install_pi_project_mcp_json(fake_home: Path, tmp_path: Path) -> None:
+    workspace = _git_repo(tmp_path / "ws")
+    report = install_tool(TOOL_MAP["pi"], repo=workspace)
+    assert report["ok"]
+    assert report.get("workspace_mcp_written") is True
+    project = json.loads((workspace / ".mcp.json").read_text(encoding="utf-8"))
+    assert project["mcpServers"]["context-engine"]["env"]["CTX_REPO"] == str(
+        workspace.resolve()
+    ).replace("\\", "/")
+
+
+def test_install_continue_project_mcp_servers_yaml(fake_home: Path, tmp_path: Path) -> None:
+    workspace = _git_repo(tmp_path / "ws")
+    report = install_tool(TOOL_MAP["continue"], repo=workspace)
+    assert report["ok"]
+    assert report.get("workspace_mcp_written") is True
+    path = workspace / ".continue" / "mcpServers" / "context-engine.yaml"
+    text = path.read_text(encoding="utf-8")
+    repo_s = str(workspace.resolve()).replace("\\", "/")
+    assert "schema: v1" in text
+    assert f'CTX_REPO: "{repo_s}"' in text
+    assert f'cwd: "{repo_s}"' in text
 
 
 def test_install_kiro_global_and_workspace_mcp(fake_home: Path, tmp_path: Path) -> None:
@@ -150,9 +218,8 @@ def test_install_codex_toml_and_agents_md(fake_home: Path) -> None:
 
 
 def test_install_opencode_global_opencode_json(fake_home: Path, tmp_path: Path) -> None:
-    workspace = tmp_path / "ws"
-    workspace.mkdir()
-    install_tool(TOOL_MAP["opencode"], repo=workspace)
+    # No repo= → global only
+    install_tool(TOOL_MAP["opencode"])
     path = fake_home / ".config" / "opencode" / "opencode.json"
     data = json.loads(path.read_text(encoding="utf-8"))
     entry = data["mcp"]["context-engine"]
@@ -161,7 +228,6 @@ def test_install_opencode_global_opencode_json(fake_home: Path, tmp_path: Path) 
     assert "environment" in entry
     assert entry["environment"].get("CTX_REPO") == "${workspaceFolder}"
     assert entry["environment"].get("OPENCODE_DEFAULT_PROJECT") == "${workspaceFolder}"
-    assert not (workspace / "opencode.json").exists()
 
 
 def test_install_amp_dotted_key(fake_home: Path) -> None:
@@ -242,10 +308,12 @@ def test_install_windsurf_continue_zed_global_use_workspace_token(fake_home: Pat
     cont = (fake_home / ".continue" / "config.yaml").read_text(encoding="utf-8")
     assert 'CTX_REPO: "${workspaceFolder}"' in cont
     assert 'WORKSPACE_FOLDER: "${workspaceFolder}"' in cont
-    assert "/Users/" not in cont
+    assert "CTX_REPO: \"C:" not in cont and "CTX_REPO: \"/" not in cont
 
     install_tool(TOOL_MAP["zed"])
-    zed = json.loads((fake_home / ".config" / "zed" / "settings.json").read_text(encoding="utf-8"))
+    zed_path = resolve_mcp_user_path(TOOL_MAP["zed"])
+    assert zed_path is not None and zed_path.is_file()
+    zed = json.loads(zed_path.read_text(encoding="utf-8"))
     zenv = zed["context_servers"]["context-engine"]["env"]
     assert zenv["CTX_REPO"] == "${workspaceFolder}"
     assert zenv["WORKSPACE_FOLDER"] == "${workspaceFolder}"

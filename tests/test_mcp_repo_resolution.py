@@ -51,6 +51,34 @@ def test_default_repo_ignores_unexpanded_workspace_folder_token(
     assert mcp_locate._default_repo() == live.resolve()
 
 
+def test_default_repo_prefers_workspace_folder_paths(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Cursor injects WORKSPACE_FOLDER_PATHS; use first existing path."""
+    opened = tmp_path / "cursor-ws"
+    opened.mkdir()
+    (opened / ".context-engine").mkdir()
+    (opened / ".context-engine" / "id.json").write_text(
+        json.dumps({"project_id": "ce_wfp"}), encoding="utf-8"
+    )
+    junk = tmp_path / "spawn-cwd"
+    junk.mkdir()
+    monkeypatch.chdir(junk)
+    monkeypatch.setenv("WORKSPACE_FOLDER_PATHS", f"{opened},/nonexistent")
+    monkeypatch.delenv("CTX_REPO", raising=False)
+    monkeypatch.delenv("CTX_PROJECT_ID", raising=False)
+    for key in (
+        "CURSOR_PROJECT_DIR",
+        "CURSOR_CWD",
+        "WORKSPACE_FOLDER",
+        "CLAUDE_PROJECT_DIR",
+        "CODEX_WORKSPACE_ROOT",
+        "INIT_CWD",
+    ):
+        monkeypatch.delenv(key, raising=False)
+    assert mcp_locate._default_repo() == opened.resolve()
+
+
 def test_default_repo_prefers_claude_project_dir(tmp_path: Path, monkeypatch) -> None:
     opened = tmp_path / "claude-ws"
     opened.mkdir()
@@ -70,6 +98,7 @@ def test_default_repo_prefers_claude_project_dir(tmp_path: Path, monkeypatch) ->
         "WORKSPACE_FOLDER",
         "CODEX_WORKSPACE_ROOT",
         "INIT_CWD",
+        "WORKSPACE_FOLDER_PATHS",
     ):
         monkeypatch.delenv(key, raising=False)
     assert mcp_locate._default_repo() == opened.resolve()

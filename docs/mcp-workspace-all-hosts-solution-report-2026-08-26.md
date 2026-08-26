@@ -1,7 +1,7 @@
 # All-hosts MCP workspace resolution — solution report
 
 **Date:** 2026-08-26  
-**Status:** Research complete; implementation not started (except prior special-4 + token experiment)  
+**Status:** Wave 1 implemented in **0.2.83** (project MCP pins for Cursor/Codex/Continue/OpenCode/Amp/Pi + `WORKSPACE_FOLDER_PATHS`). Windsurf / Roots still deferred.  
 **Scope:** Every slug in `pipeline.tool_registry.TOOLS`  
 **Why rewrite:** Prior research preferred Cursor **global** `${workspaceFolder}`. Live Mac proof + fresh web research show that is **wrong** for durable Scubiee. This report is the corrected per-tool plan.
 

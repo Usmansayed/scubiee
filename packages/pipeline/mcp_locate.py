@@ -361,6 +361,8 @@ _IDE_WORKSPACE_ENV_KEYS = (
     "CURSOR_PROJECT_DIR",
     "CURSOR_WORKSPACE",
     "CURSOR_CWD",
+    # Cursor (and some VS Code forks) inject open folder(s); may be comma-separated
+    "WORKSPACE_FOLDER_PATHS",
     # Claude Code — official MCP spawn env (do not rely on process cwd)
     "CLAUDE_PROJECT_DIR",
     # Codex IDE may inject this when extension cwd is wrong
@@ -399,6 +401,21 @@ def _path_exists(path: Path) -> bool:
         return False
 
 
+def _split_workspace_env_hints(raw: str) -> list[str]:
+    """Split multi-root env values (e.g. WORKSPACE_FOLDER_PATHS=a,b)."""
+    text = (raw or "").strip()
+    if not text:
+        return []
+    if "," not in text and ";" not in text:
+        return [text]
+    parts: list[str] = []
+    for chunk in text.replace(";", ",").split(","):
+        piece = chunk.strip().strip('"').strip("'")
+        if piece:
+            parts.append(piece)
+    return parts or [text]
+
+
 def _ide_workspace_candidates() -> list[Path]:
     found: list[Path] = []
     seen: set[str] = set()
@@ -406,20 +423,21 @@ def _ide_workspace_candidates() -> list[Path]:
         hint = os.environ.get(key)
         if not hint or _is_unexpanded_placeholder(hint):
             continue
-        # VSCODE_CWD=/ is a known useless sentinel on some Cursor builds.
-        if hint.strip() in {"/", "\\"}:
-            continue
-        try:
-            candidate = Path(hint).expanduser().resolve()
-        except OSError:
-            continue
-        if not _path_exists(candidate):
-            continue
-        key_s = str(candidate).replace("\\", "/").lower()
-        if key_s in seen:
-            continue
-        seen.add(key_s)
-        found.append(candidate)
+        for piece in _split_workspace_env_hints(hint):
+            # VSCODE_CWD=/ is a known useless sentinel on some Cursor builds.
+            if piece.strip() in {"/", "\\"}:
+                continue
+            try:
+                candidate = Path(piece).expanduser().resolve()
+            except OSError:
+                continue
+            if not _path_exists(candidate):
+                continue
+            key_s = str(candidate).replace("\\", "/").lower()
+            if key_s in seen:
+                continue
+            seen.add(key_s)
+            found.append(candidate)
     return found
 
 def _enrolled_walk(start: Path) -> Path | None:

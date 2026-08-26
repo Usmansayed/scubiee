@@ -57,6 +57,13 @@ _SERVER_NAME = "context-engine"
 _WORKSPACE_FOLDER_TOKEN = "${workspaceFolder}"
 
 
+# Classic special-4: omit CTX_REPO from *global* MCP (absolute pin is project-only).
+# Newer project-pin hosts still get ${workspaceFolder} hints in global + absolute in project.
+_GLOBAL_OMIT_CTX_REPO_SLUGS: frozenset[str] = frozenset(
+    {"kiro", "copilot", "cline", "roo-code"}
+)
+
+
 def _is_absolute_repo_pin(value: str) -> bool:
     """True for real filesystem pins; false for ${workspaceFolder} tokens."""
     raw = (value or "").strip()
@@ -69,10 +76,10 @@ def _is_absolute_repo_pin(value: str) -> bool:
 
 
 def _inject_global_workspace_hints(tool: ToolDef, env: dict[str, str]) -> None:
-    """For non-special-4 global MCP: hint the open folder without absolute pins."""
-    if is_workspace_local_mcp_tool(tool.slug):
+    """Hint the open folder in global MCP without absolute pins."""
+    if tool.slug in _GLOBAL_OMIT_CTX_REPO_SLUGS:
         return
-    # Interpolated pin — Cursor (and similar) expand at spawn; others ignore if literal.
+    # Interpolated pin — hosts that expand win; unexpanded tokens are ignored by resolver.
     env.setdefault("CTX_REPO", _WORKSPACE_FOLDER_TOKEN)
     if tool.slug == "cursor":
         env.setdefault("CURSOR_PROJECT_DIR", _WORKSPACE_FOLDER_TOKEN)
@@ -138,26 +145,40 @@ def format_server_entry(
             "tools": ["*"],
         }
     if use_schema == "opencode":
-        return {
+        payload: dict[str, Any] = {
             "type": "local",
             "enabled": True,
             "command": [cmd, *args],
             "environment": env,
             "timeout": 120000,
         }
+        if pin_repo and repo is not None:
+            payload["cwd"] = str(Path(repo).resolve()).replace("\\", "/")
+        return payload
     if use_schema == "amp":
         return {"command": cmd, "args": args, "env": env}
     if use_schema == "codex":
-        # Official Codex mcp_servers.cwd — IDE may expand ${workspaceFolder}.
-        # Unexpanded tokens are ignored by Scubiee's resolver as placeholders.
+        # Global: token cwd (may not expand). Project pin: absolute cwd (Desktop fix).
+        if pin_repo and repo is not None:
+            cwd = str(Path(repo).resolve()).replace("\\", "/")
+        else:
+            cwd = _WORKSPACE_FOLDER_TOKEN
         return {
             "command": cmd,
             "args": args,
             "env": env,
-            "cwd": _WORKSPACE_FOLDER_TOKEN,
+            "cwd": cwd,
         }
     if use_schema == "continue":
-        return {"name": _SERVER_NAME, "command": cmd, "args": args, "env": env}
+        out: dict[str, Any] = {
+            "name": _SERVER_NAME,
+            "command": cmd,
+            "args": args,
+            "env": env,
+        }
+        if pin_repo and repo is not None:
+            out["cwd"] = str(Path(repo).resolve()).replace("\\", "/")
+        return out
     if use_schema == "zed":
         return {"command": cmd, "args": args, "env": env}
     raise ValueError(f"unknown mcp_schema: {use_schema}")
@@ -214,6 +235,48 @@ def _write_workspace_mcp(tool: ToolDef, repo: Path) -> list[Path]:
         written.append(path)
         return written
 
+    if slug == "cursor":
+        path = repo / ".cursor" / "mcp.json"
+        entry = format_server_entry(tool, repo, pin_repo=True)
+        write_mcp_config(tool, path, entry)
+        written.append(path)
+        return written
+
+    if slug == "codex":
+        path = repo / ".codex" / "config.toml"
+        entry = format_server_entry(tool, repo, pin_repo=True)
+        write_mcp_config(tool, path, entry)
+        written.append(path)
+        return written
+
+    if slug == "continue":
+        path = repo / ".continue" / "mcpServers" / "context-engine.yaml"
+        entry = format_server_entry(tool, repo, pin_repo=True)
+        _write_continue_project_mcp(path, entry)
+        written.append(path)
+        return written
+
+    if slug == "opencode":
+        path = repo / "opencode.json"
+        entry = format_server_entry(tool, repo, pin_repo=True)
+        write_mcp_config(tool, path, entry)
+        written.append(path)
+        return written
+
+    if slug == "amp":
+        path = repo / ".amp" / "settings.json"
+        entry = format_server_entry(tool, repo, pin_repo=True)
+        write_mcp_config(tool, path, entry)
+        written.append(path)
+        return written
+
+    if slug == "pi":
+        path = repo / ".mcp.json"
+        entry = format_server_entry(tool, repo, pin_repo=True)
+        write_mcp_config(tool, path, entry)
+        written.append(path)
+        return written
+
     return written
 
 
@@ -226,6 +289,15 @@ def _remove_workspace_mcp(tool: ToolDef, repo: Path) -> bool:
             removed = _remove_mcp_json_keyed(path, "mcpServers") or removed
         elif tool.slug == "copilot" and ".vscode" in path.parts:
             removed = remove_mcp_config(tool, path, schema="vscode", key="servers") or removed
+        elif tool.slug == "continue" and path.suffix in {".yaml", ".yml"}:
+            # Standalone Continue block file — delete when ours.
+            try:
+                text = path.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            if "context-engine" in text or "# context-engine" in text:
+                path.unlink(missing_ok=True)
+                removed = True
         else:
             removed = remove_mcp_config(tool, path) or removed
     return removed
@@ -438,12 +510,37 @@ def _write_mcp_continue_yaml(path: Path, entry: dict[str, Any]) -> None:
     new_lines.append(f'    command: "{entry["command"]}"')
     args_yaml = ", ".join(f'"{a}"' for a in entry.get("args", []))
     new_lines.append(f"    args: [{args_yaml}]")
+    if entry.get("cwd"):
+        new_lines.append(f'    cwd: "{entry["cwd"]}"')
     if entry.get("env"):
         new_lines.append("    env:")
         for k, v in entry["env"].items():
             new_lines.append(f'      {k}: "{v}"')
     new_lines.append("")
     path.write_text("\n".join(new_lines), encoding="utf-8")
+
+
+def _write_continue_project_mcp(path: Path, entry: dict[str, Any]) -> None:
+    """Standalone Continue workspace block (`.continue/mcpServers/*.yaml`)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines = [
+        "name: Context Engine",
+        "version: 0.0.1",
+        "schema: v1",
+        "mcpServers:",
+        f"  - name: {entry.get('name', _SERVER_NAME)}",
+        f'    command: "{entry["command"]}"',
+    ]
+    args_yaml = ", ".join(f'"{a}"' for a in entry.get("args", []))
+    lines.append(f"    args: [{args_yaml}]")
+    if entry.get("cwd"):
+        lines.append(f'    cwd: "{entry["cwd"]}"')
+    if entry.get("env"):
+        lines.append("    env:")
+        for k, v in entry["env"].items():
+            lines.append(f'      {k}: "{v}"')
+    lines.append("")
+    path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def write_mcp_config(
@@ -523,7 +620,7 @@ def install_tool(
     dry_run: bool = False,
     repo: Path | str | None = None,
 ) -> dict[str, Any]:
-    """Install global MCP + rule; workspace-local MCP for Kiro/Copilot/Cline/Roo."""
+    """Install global MCP + rule; workspace-local MCP for project-pin hosts."""
     explicit_repo = repo is not None
     target_repo = _connect_repo(repo)
     write_targets = resolve_mcp_write_targets(tool)

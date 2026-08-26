@@ -4,7 +4,7 @@ Scubiee is a **local** context engine for AI coding tools (Cursor, Claude Code, 
 
 You need **Python 3.10+**. You do **not** need to clone the GitHub repo to use it.
 
-**Current PyPI release:** [scubiee 0.2.82](https://pypi.org/project/scubiee/).
+**Current PyPI release:** [scubiee 0.2.83](https://pypi.org/project/scubiee/).
 
 ---
 
@@ -12,7 +12,7 @@ You need **Python 3.10+**. You do **not** need to clone the GitHub repo to use i
 
 | Step | Command | What it does |
 |------|---------|--------------|
-| 1 | `uv tool install scubiee==0.2.82 …` | Install the CLI |
+| 1 | `uv tool install scubiee==0.2.83 …` | Install the CLI |
 | 2 | `scubiee setup --repair` | One-time **machine** setup (GPU/CPU/MLX, model, `accel.json`) |
 | 3 | `cd your-repo` → `scubiee init .` | Enroll + **index this repo** |
 | 4 | `scubiee connect --cursor` | Write **MCP + agent rules** for your IDE |

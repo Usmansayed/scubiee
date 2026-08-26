@@ -224,10 +224,23 @@ TOOLS: list[ToolDef] = [
 TOOL_MAP: dict[str, ToolDef] = {t.slug: t for t in TOOLS}
 ALL_SLUGS: list[str] = [t.slug for t in TOOLS]
 
-# Hosts where user-global MCP cannot resolve the workspace (IDE spawn/cwd bugs).
+# Hosts where user-global MCP cannot reliably resolve the workspace.
 # connect still writes global rules + global MCP, but also needs a per-repo file.
+# (Special-4 + Cursor/Codex/Continue/OpenCode/Amp/Pi — see
+# docs/mcp-workspace-all-hosts-solution-report-2026-08-26.md)
 WORKSPACE_LOCAL_MCP_SLUGS: frozenset[str] = frozenset(
-    {"kiro", "copilot", "cline", "roo-code"}
+    {
+        "kiro",
+        "copilot",
+        "cline",
+        "roo-code",
+        "cursor",
+        "codex",
+        "continue",
+        "opencode",
+        "amp",
+        "pi",
+    }
 )
 
 WORKSPACE_LOCAL_MCP_NOTICES: dict[str, str] = {
@@ -250,6 +263,34 @@ WORKSPACE_LOCAL_MCP_NOTICES: dict[str, str] = {
         "Roo Code global MCP may spawn with the wrong working directory. "
         "Run `scubiee connect --roo-code` inside each project to write "
         "`.roo/mcp.json` for that repo."
+    ),
+    "cursor": (
+        "Cursor does not expand ${workspaceFolder} in global ~/.cursor/mcp.json. "
+        "Run `scubiee connect --cursor` inside each project to write "
+        "`.cursor/mcp.json` with an absolute CTX_REPO pin."
+    ),
+    "codex": (
+        "Codex Desktop often spawns MCP with cwd=/. "
+        "Run `scubiee connect --codex` inside each project to write "
+        "`.codex/config.toml` with absolute cwd + CTX_REPO."
+    ),
+    "continue": (
+        "Continue resolves workspace best from project MCP blocks. "
+        "Run `scubiee connect --continue` inside each project to write "
+        "`.continue/mcpServers/context-engine.yaml`."
+    ),
+    "opencode": (
+        "OpenCode project `opencode.json` overrides global MCP. "
+        "Run `scubiee connect --opencode` inside each project to pin CTX_REPO."
+    ),
+    "amp": (
+        "Amp workspace MCP lives in `.amp/settings.json` and needs approval. "
+        "Run `scubiee connect --amp` inside each project, then "
+        "`amp mcp approve context-engine`."
+    ),
+    "pi": (
+        "Pi prefers project `.mcp.json` over global-only MCP. "
+        "Run `scubiee connect --pi` inside each project to pin CTX_REPO."
     ),
 }
 
@@ -353,6 +394,18 @@ def resolve_mcp_project_paths(tool: ToolDef, repo: Path | None) -> list[Path]:
         return [root / ".cline" / "mcp.json"]
     if tool.slug == "roo-code":
         return [root / ".roo" / "mcp.json"]
+    if tool.slug == "cursor":
+        return [root / ".cursor" / "mcp.json"]
+    if tool.slug == "codex":
+        return [root / ".codex" / "config.toml"]
+    if tool.slug == "continue":
+        return [root / ".continue" / "mcpServers" / "context-engine.yaml"]
+    if tool.slug == "opencode":
+        return [root / "opencode.json"]
+    if tool.slug == "amp":
+        return [root / ".amp" / "settings.json"]
+    if tool.slug == "pi":
+        return [root / ".mcp.json"]
     return []
 
 
@@ -362,7 +415,7 @@ def resolve_mcp_project_path(tool: ToolDef, repo: Path | None) -> Path | None:
 
 
 def all_workspace_local_mcp_paths(repo: Path | None) -> list[Path]:
-    """Every workspace-local MCP path connect may write for the special-4 hosts."""
+    """Every workspace-local MCP path connect may write for project-pin hosts."""
     if repo is None:
         return []
     root = Path(repo).resolve()
@@ -372,6 +425,11 @@ def all_workspace_local_mcp_paths(repo: Path | None) -> list[Path]:
         root / ".mcp.json",
         root / ".cline" / "mcp.json",
         root / ".roo" / "mcp.json",
+        root / ".cursor" / "mcp.json",
+        root / ".codex" / "config.toml",
+        root / ".continue" / "mcpServers" / "context-engine.yaml",
+        root / "opencode.json",
+        root / ".amp" / "settings.json",
     ]
 
 
