@@ -1,124 +1,131 @@
 # FAQ
 
-Short answers to common questions.
+Short answers to common questions. Docs assume **scubiee 0.2.82** ([PyPI](https://pypi.org/project/scubiee/)).
 
 ---
 
 ## General
 
 **What is Scubiee?**  
-A local code context engine for Cursor: indexes your repo, embeds with CodeRank (GPU when available), and exposes search/locate via MCP.
+A local code context engine: indexes your repo, embeds with CodeRank (GPU when available), and exposes search/map/focus via MCP to AI coding tools.
 
 **Do I need to clone the GitHub repo?**  
-No. Install from PyPI: `uv tool install scubiee`.
+No. Install from PyPI: `uv tool install scubiee==0.2.82`.
 
 **What Python version?**  
 3.10 or newer.
 
-**Latest version?**  
-Check PyPI: [scubiee 0.2.54](https://pypi.org/project/scubiee/0.2.54/). Docs assume **0.2.54**.
+**Correct first-time order?**  
+`setup --repair` → `init` in the repo → `connect` for your IDE → reload MCP.
 
-**What changed in 0.2.54?**  
-Merged live-reindexing features (`connect`, `disconnect`, `migrate`, `diagnose`) with production hardening (wipe audit, safety-pause gates, unified Cursor rule).
-
-**How do I connect Cursor?**  
-`scubiee connect --cursor` (after `scubiee setup --repair`).
-
-**`init` says `machine_not_setup`?**  
-Run `scubiee setup --repair` — needs `~/.context-engine/accel.json`.
+**Does `init` connect Cursor?**  
+No. **`connect`** writes MCP + rules. **`init`** only enrolls/indexes the repo.
 
 ---
 
 ## Install
 
 **uv or pip?**  
-Prefer **uv tool install** — isolated CLI, easier upgrades on Windows.
+Prefer **uv tool install** — isolated CLI, clearer upgrades on Windows.
 
-**Why `setup --repair` instead of `setup`?**  
-On Windows, `--repair` is safer after fresh install or upgrade; it avoids ordering bugs with FastEmbed and reuses valid GPU caches.
+**Why `setup --repair`?**  
+Safest after fresh install, upgrade, or broken reinstall. Installs missing FastEmbed/ORT extras and refreshes `accel.json`.
 
-**Where is the embedding model stored?**  
-Downloaded during setup (~270 MB FP16 CodeRank). Cached under FastEmbed cache dirs (`%TEMP%\fastembed_cache` on Windows, `~/.cache/fastembed` on Unix).
+**Where is the embedding model?**  
+Downloaded during setup (~270 MB FP16 CodeRank). Cached under FastEmbed cache dirs.
+
+**Share diagnose with support?**  
+`scubiee diagnose --no-tests --desktop` → send `Desktop/scubiee-diagnose.json`.
+
+---
+
+## GPU / CPU / Mac
+
+**Windows laptop with only Intel UHD / AMD APU graphics?**  
+Current builds use **`cpu`** (not DirectML). Discrete AMD/NVIDIA → **`dml`**.
+
+**Force CPU?**  
+`scubiee setup --profile cpu --repair`
+
+**Apple Silicon?**  
+Default **`mlx`** (Metal). Should not stay on CPU after `--repair`. See [Mac & Linux](./mac-and-linux.md).
 
 ---
 
 ## Usage
 
 **Why won't init run from my home folder?**  
-Safety — indexing `C:\Users\you` or `$HOME` would pull in personal files. `cd` into your project first.
+Safety — don’t index all of `C:\Users\you` or `$HOME`. `cd` into the project.
 
 **What does `--fast` do?**  
-Indexes only `.py` files under common code directories (`packages`, `src`, …) or your `--roots` list.
+Indexes `.py` under common code directories (`packages`, `src`, …) or your `--roots` list.
 
 **What does `--confirm` do?**  
-Required when more than 400 indexable files would be touched (configurable via `CTX_INCREMENTAL_MAX_TOUCH`).
+Required when more than 400 indexable files would be touched.
 
 **How do I search from terminal?**  
-`scubiee search "query" . --local`
+`scubiee search "query" .`
 
 **How do I update after git pull?**  
 `scubiee sync .`
+
+**Pause / resume?**  
+`scubiee stop` or `scubiee pause .` → continue with **`scubiee resume`** (not `wake`).
 
 ---
 
 ## Cursor / MCP
 
-**MCP not showing tools?**  
-Run `scubiee setup --repair`, then reload MCP in Cursor Settings.
+**How do I connect Cursor?**  
+After setup + init: `scubiee connect --cursor`, then reload MCP.
+
+**Kiro / Copilot / Cline / Roo don’t see the repo?**  
+Run `scubiee connect --<tool>` **inside that project** (workspace-local MCP).
+
+**`status` shows `warming`?**  
+Daemon starting. Retry the tool once after a few seconds; don’t poll `status()` every turn.
 
 **Agent still uses native Grep?**  
-Check project Cursor rules; CE MCP should be primary when healthy.
+MCP green? Re-run `connect` to refresh rules. After mid-session `init`, call `status()` once again.
 
 **Does MCP work offline?**  
-Yes — everything is local. HuggingFace is only needed once for model download during setup.
+Yes after setup. HuggingFace is only needed once for the model download.
 
 ---
 
 ## Windows
 
-**Why Access denied on uninstall?**  
-Cursor MCP locks the uv tool Python. Run `scubiee stop`, wipe, quit Cursor. See [Uninstall on Windows](./uninstall-windows.md).
+**Access denied on upgrade/reinstall?**  
+Stop Scubiee, quit Cursor, delete `%APPDATA%\uv\tools\scubiee`, reinstall, `setup --repair`. See [Windows](./windows.md).
 
-**AMD GPU support?**  
-Yes via DirectML (`dml` profile). Verify with `scubiee setup --status`.
-
-**faiss import error?**  
-Incomplete wheel extract — run repair script or see [Windows guide](./windows.md).
-
----
-
-## Mac
-
-**Apple Silicon GPU?**  
-Uses MLX Metal by default — see [Mac & Linux](./mac-and-linux.md).
+**AMD discrete GPU?**  
+Yes via DirectML (`dml`). Verify with `scubiee setup --status`.
 
 ---
 
 ## Data & privacy
 
 **Does my code leave the machine?**  
-No — indexing and search are local. Only the embedding model downloads from HuggingFace during setup.
+No — indexing and search are local. Only the embedding model downloads during setup.
 
 **How do I delete everything?**  
-`scubiee stop` → `scubiee wipe --all --yes --package`. Check JSON `audit.remaining` if folders persist (quit Cursor first on Windows).
+`scubiee stop` → quit IDE → `scubiee wipe --all --yes --package`. Check JSON `audit.remaining`.
 
 ---
 
 ## Errors
 
-**project_id_mismatch**  
-Often stale registration of your home directory. `scubiee remove ~ --delete-store` and delete `~/.context-engine/id.json` in home if present.
-
-**never_index**  
-Path was blocked with `scubiee never-index`.
-
-**Preflight missing fastembed**  
-`scubiee setup --repair`
+**`machine_not_setup`** → `scubiee setup --repair`  
+**`not_configured` / missing fastembed** → `setup --repair`  
+**Stale accel after reinstall** → `setup --repair` before `init`  
+**`project_id_mismatch`** → remove stale home registration (`scubiee remove … --delete-store`)  
+**`never_index`** → path was blocked with `scubiee never-index`
 
 ---
 
 ## More detail
 
+- [Getting started](./getting-started.md)
 - [Troubleshooting](./troubleshooting.md)
 - [Commands reference](./commands-reference.md)
-- [Indexing & projects](./indexing-and-projects.md)
+- [Cursor & MCP](./cursor-mcp.md)

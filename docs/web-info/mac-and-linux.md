@@ -2,22 +2,26 @@
 
 Install and GPU behavior on macOS and Linux.
 
+**Docs assume scubiee 0.2.82.**
+
 ---
 
 ## Install
 
 ```bash
-uv tool install scubiee==0.2.54 --index-url https://pypi.org/simple
+uv tool install --force scubiee==0.2.82 --index-url https://pypi.org/simple
 uv tool update-shell
+# new terminal
 scubiee setup --repair
 cd ~/your/project
-scubiee init . --fast
+scubiee init .
+scubiee connect --cursor    # or --kiro / --copilot / … inside each Special-4 project
 ```
 
 **pip alternative:**
 
 ```bash
-pip install -U scubiee==0.2.54
+pip install -U scubiee==0.2.82
 scubiee setup --repair
 ```
 
@@ -28,7 +32,7 @@ scubiee setup --repair
 | Platform | Default profile | Backend |
 |----------|-----------------|---------|
 | **Apple Silicon** | `mlx` | MLX Metal FP16 CodeRank |
-| **Intel Mac** | `coreml` or `cpu` | CoreML when viable; CPU fallback |
+| **Intel Mac** | `coreml` or `cpu` | CoreML when viable; CPU otherwise |
 | **Linux + NVIDIA** | `cuda` | ONNX Runtime CUDA |
 | **Linux AMD / no GPU** | `cpu` | ONNX Runtime CPU |
 
@@ -36,20 +40,30 @@ Check:
 
 ```bash
 scubiee setup --status
+scubiee diagnose --no-tests --desktop
 ```
 
-Force a profile:
+### Apple Silicon must not stay on CPU
+
+After `setup --repair`, profile should be **`mlx`**. If you forced CPU for debugging:
 
 ```bash
-scubiee setup --profile mlx --repair    # Apple Silicon
-scubiee setup --profile cuda --repair   # Linux NVIDIA
-scubiee setup --profile cpu --repair
+scubiee setup --repair
+# or explicitly:
+scubiee setup --profile mlx --repair
 ```
 
-Disable MLX on Mac:
+Disable MLX only if you intend CPU:
 
 ```bash
 export CTX_MLX=0
+scubiee setup --profile cpu --repair
+```
+
+Force other profiles:
+
+```bash
+scubiee setup --profile cuda --repair   # Linux NVIDIA
 scubiee setup --profile cpu --repair
 ```
 
@@ -57,27 +71,26 @@ scubiee setup --profile cpu --repair
 
 ## Mac MCP notes
 
-- MCP must use the **venv Python**, not a Homebrew symlink that drops site-packages. `scubiee setup --repair` rewrites `~/.cursor/mcp.json`.
-- MLX models require embed work on the correct thread; daemon sync is the real-world path — test with MCP `sync_index`, not only CLI sync.
+- MCP must use the **venv / uv tool Python**, not a Homebrew symlink that drops site-packages. `scubiee connect --cursor` or `setup --repair` rewrites `~/.cursor/mcp.json`.
+- After `init`, always **`connect`** so the agent rule is present.
+- Pause/stop → **`scubiee resume`** (not `wake`).
 
 ---
 
 ## Linux notes
 
-- No DirectML on Linux — AMD GPUs use CPU embed unless you configure CUDA-capable hardware with NVIDIA.
+- No DirectML on Linux — AMD GPUs use CPU embed unless you have NVIDIA + CUDA.
 - Ensure `~/.local/bin` is on PATH for uv tool shims.
 
 ---
 
 ## Data paths
 
-Same as other platforms:
-
-- `~/.context-engine/` — state, indexes, accel.json
-- `~/.cursor/mcp.json` — Cursor MCP config
+- `~/.context-engine/` — state, indexes, `accel.json`
+- `~/.cursor/mcp.json` — Cursor MCP (from **connect**)
 - `<repo>/.context-engine/id.json` — project identity
 
-Model cache: `~/.cache/fastembed/` (Linux/macOS).
+Model cache: `~/.cache/fastembed/` (and MLX-related caches as configured).
 
 ---
 
@@ -92,3 +105,4 @@ See [Uninstall (Mac/Linux)](./uninstall-mac-linux.md).
 - [Getting started](./getting-started.md)
 - [Troubleshooting](./troubleshooting.md)
 - [Cursor & MCP](./cursor-mcp.md)
+- Mac verification checklist (maintainers): [`../macos-deferred-verification.md`](../macos-deferred-verification.md)

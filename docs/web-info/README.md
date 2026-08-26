@@ -2,7 +2,8 @@
 
 These docs are for **operators and end users**: install, daily use, troubleshooting, and uninstall. They are written so you can resolve most issues without reading engineering notes.
 
-**Current release:** `scubiee 0.2.54` on [PyPI](https://pypi.org/project/scubiee/0.2.54/).
+**Current release:** `scubiee 0.2.82` on [PyPI](https://pypi.org/project/scubiee/).  
+(Pin this version in install commands until you intentionally upgrade.)
 
 ---
 
@@ -17,8 +18,8 @@ These docs are for **operators and end users**: install, daily use, troubleshoot
 | Understand indexing, confirm gates, fast mode | [Indexing & projects](./indexing-and-projects.md) |
 | Use Scubiee inside Cursor (MCP) | [Cursor & MCP](./cursor-mcp.md) |
 | Connect/disconnect AI tools from CLI | [Commands reference](./commands-reference.md#connect--disconnect) |
-| What's new in recent releases | [Getting started → Upgrade](./getting-started.md#upgrade-path) |
 | Open the operator dashboard or manage the engine | [Dashboard & engine](./dashboard-and-engine.md) |
+| Short Q&A | [FAQ](./faq.md) |
 
 ---
 
@@ -26,7 +27,7 @@ These docs are for **operators and end users**: install, daily use, troubleshoot
 
 | Platform | Doc |
 |----------|-----|
-| **Windows** (DirectML, uv tool install) | [Windows guide](./windows.md) |
+| **Windows** (DirectML, CPU-only laptops, uv locks) | [Windows guide](./windows.md) |
 | **Windows uninstall / repair** | [Uninstall on Windows](./uninstall-windows.md) |
 | **macOS / Linux** | [Mac & Linux](./mac-and-linux.md) |
 | **Uninstall (general)** | [Uninstall (Mac/Linux)](./uninstall-mac-linux.md) |
@@ -37,13 +38,29 @@ These docs are for **operators and end users**: install, daily use, troubleshoot
 
 | Question | Answer |
 |----------|--------|
-| What do I run first on a new PC? | `uv tool install scubiee==0.2.54` → `scubiee setup --repair` → `scubiee connect --cursor` → `cd your-repo` → `scubiee init . --fast` |
-| How do I wire Cursor / other AI tools? | `scubiee connect --cursor` (or `--all`). See [Cursor & MCP](./cursor-mcp.md). |
-| `init` says `machine_not_setup`? | Run `scubiee setup --repair` first — `~/.context-engine/accel.json` must exist. |
-| Why did init refuse my home folder? | Safety gate — run init **inside your project directory**, not `C:\Users\you` or `/`. See [Indexing & projects](./indexing-and-projects.md). |
-| Why does `uv tool uninstall` fail? | MCP/daemon locks Python on Windows. Run `scubiee stop` then `scubiee wipe --all --yes --package`. See [Uninstall on Windows](./uninstall-windows.md). |
-| Setup worked before but preflight fails now? | Run `scubiee setup --repair`. |
-| More short Q&A | [FAQ](./faq.md) |
+| What do I run on a new PC? | `uv tool install scubiee==0.2.82` → `scubiee setup --repair` → `cd your-repo` → `scubiee init .` → `scubiee connect --cursor` |
+| Does `init` wire Cursor? | **No.** `init` indexes the repo. **`connect`** writes MCP + agent rules. |
+| Agent says unmanaged? | Run `connect` in that project (and for Kiro/Copilot/Cline/Roo: run connect **inside each repo**). |
+| Pause / stop — how do I continue? | `scubiee resume` (global) or `scubiee resume .` (per-repo). There is **no** `scubiee wake`. |
+| `status` shows warming? | Daemon is starting. Use tools once; wait briefly and retry the **tool** — do not poll `status()` in a loop. |
+| `init` says `machine_not_setup`? | Run `scubiee setup --repair` first. |
+| Diagnose looks fine but `init` fails after reinstall? | Stale `accel.json` with missing packages — run `scubiee setup --repair`, then `scubiee diagnose --desktop`. |
+| Why did init refuse my home folder? | Safety gate — run init **inside your project**, not `C:\Users\you` or `/`. |
+| `uv tool install` Access denied (Windows)? | Stop Scubiee / quit Cursor, remove the uv tool dir, reinstall. See [Windows](./windows.md) / [Uninstall](./uninstall-windows.md). |
+| Setup worked before but preflight fails now? | `scubiee setup --repair`. |
+
+---
+
+## Canonical install sequence
+
+```text
+1. uv tool install --force scubiee==0.2.82 --index-url https://pypi.org/simple
+2. scubiee setup --repair          # once per machine (GPU/CPU/MLX + model)
+3. cd path\to\your\repo
+4. scubiee init .                  # index this repo (does NOT write MCP)
+5. scubiee connect --cursor        # MCP + rules (Special-4: inside each project)
+6. Reload MCP in the IDE
+```
 
 ---
 
@@ -54,9 +71,9 @@ These docs are for **operators and end users**: install, daily use, troubleshoot
 | `<repo>/.context-engine/id.json` | Stable project id for this repo (small; often gitignored) |
 | `~/.context-engine/registry.json` | Which repos are managed |
 | `~/.context-engine/projects/<id>/` | Index store (chunks, graph, vectors) |
-| `~/.context-engine/accel.json` | GPU/CPU profile and calibrated batch size |
-| `~/.cursor/mcp.json` | Cursor MCP wiring (written by `setup` or `connect`) |
-| `~/.cursor/rules/context-agent.mdc` | Cursor agent rule (same file from `setup` and `connect`) |
+| `~/.context-engine/accel.json` | GPU/CPU/MLX profile and calibrated batch size |
+| `~/.cursor/mcp.json` | Cursor MCP wiring (from **`connect`**, also refreshed by setup) |
+| `~/.cursor/rules/context-agent.mdc` | Cursor agent rule (from **`connect`** / setup) |
 
 ---
 
@@ -65,3 +82,4 @@ These docs are for **operators and end users**: install, daily use, troubleshoot
 - Architecture / internals: [`../engg/`](../engg/)
 - Maintainer release notes: [`../session-info/`](../session-info/)
 - Publishing to PyPI: [`../publish-setup.md`](../publish-setup.md)
+- Pre-production journey notes: [`../journey-audit-pre-production-2026-08-26.md`](../journey-audit-pre-production-2026-08-26.md)

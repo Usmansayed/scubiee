@@ -30,7 +30,7 @@ scubiee wipe --all --yes --package
 What that does:
 
 1. **`scubiee stop`** — stops watchdog, engine daemon, and processes under `%APPDATA%\uv\tools\scubiee` (MCP / ctx-mcp).
-2. **`scubiee wipe --all --yes --package`** — removes indexes, MCP wiring, model caches, Cursor rules (`context-agent.mdc` and legacy `context-engine.mdc`), enrolled repo markers, and uninstalls scubiee (uv tool or pip). JSON **`audit.remaining`** lists paths still on disk if locks prevented deletion.
+2. **`scubiee wipe --all --yes --package`** — removes indexes, MCP wiring for every connect target (Cursor, Claude Code, Codex, Windsurf, Copilot, Cline, Roo, …), model caches, tool rules/steering, enrolled repo markers, and uninstalls scubiee (uv tool or pip). JSON **`audit.remaining`** lists paths still on disk if locks prevented deletion.
 
 Then **reload Cursor** (or quit fully) so MCP does not respawn `ctx-mcp`.
 
@@ -43,9 +43,21 @@ uv tool uninstall scubiee
 Fresh install:
 
 ```powershell
-uv tool install --force scubiee==0.2.54 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.2.82 --index-url https://pypi.org/simple --refresh
 scubiee setup --repair
 ```
+
+### Upgrade / reinstall also hits Access denied
+
+Same locks apply to `uv tool install --force`. Prefer:
+
+```powershell
+scubiee stop
+scubiee upgrade
+# or remove the tool dir then reinstall — see Windows guide
+```
+
+Then always `scubiee setup --repair` and re-run `scubiee connect --…`.
 
 ---
 
@@ -75,7 +87,7 @@ scubiee remove . --delete-store
 The tool env is already broken. **Quit Cursor**, then:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/repair-uv-scubiee.ps1 0.2.54
+powershell -ExecutionPolicy Bypass -File scripts/repair-uv-scubiee.ps1 0.2.82
 scubiee setup --repair
 ```
 
@@ -83,7 +95,7 @@ Or nuclear cleanup without scubiee running:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/uninstall-uv-scubiee.ps1
-uv tool install --force scubiee==0.2.54 --index-url https://pypi.org/simple
+uv tool install --force scubiee==0.2.82 --index-url https://pypi.org/simple
 scubiee setup --repair
 ```
 
@@ -96,7 +108,7 @@ scubiee setup --repair
 | Release file locks | `scubiee stop` (+ quit Cursor if stop reports remaining processes) |
 | Clean machine + remove package | `scubiee wipe --all --yes --package` |
 | Remove leftover uv tool dir | `uv tool uninstall scubiee` |
-| Fresh install | `uv tool install scubiee==0.2.54 --index-url https://pypi.org/simple` → `scubiee setup --repair` |
+| Fresh install | `uv tool install scubiee==0.2.82 --index-url https://pypi.org/simple` → `scubiee setup --repair` |
 
 Do **not** run raw `uv tool uninstall` while MCP is active.
 
@@ -116,7 +128,7 @@ uv pip install --force-reinstall "$env:TEMP\faiss_whl\faiss_cpu-*.whl" --python 
 scubiee --version
 ```
 
-Or run `scripts/repair-uv-scubiee.ps1 0.2.54` (reinstall + faiss fix).
+Or run `scripts/repair-uv-scubiee.ps1 0.2.82` (reinstall + faiss fix).
 
 **0.2.45+:** `scubiee` auto-repairs faiss on startup in many cases; `scubiee --version` works even before manual repair.
 

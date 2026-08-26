@@ -1,6 +1,7 @@
 # Troubleshooting
 
-Symptom → cause → fix. Start with `scubiee doctor .` and `scubiee preflight .`.
+Symptom → cause → fix. Start with `scubiee doctor .` and `scubiee preflight .`.  
+Shareable report: `scubiee diagnose --no-tests --desktop` → `Desktop/scubiee-diagnose.json`.
 
 ---
 
@@ -12,9 +13,24 @@ scubiee setup --status
 scubiee preflight .
 scubiee doctor .
 scubiee list
+scubiee diagnose --no-tests --desktop
 ```
 
 If semantic preflight fails: `scubiee setup --repair` then retry.
+
+---
+
+## Install sequence mistakes (most common)
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| Agent `status()` → `managed: false` | Never ran `init` and/or `connect` | `scubiee init .` then `scubiee connect --cursor` (reload MCP) |
+| Index exists but MCP missing | Ran `init` only | `scubiee connect --…` |
+| Kiro / Copilot / Cline / Roo “MCP doesn’t work” | Connected only globally | `cd` into **that** project → `scubiee connect --kiro` (etc.) |
+| Agent polls `status()` every turn | Old rule template | Re-run `scubiee connect` to refresh rules |
+| Hint says `scubiee wake` | Old build / old rule | Use **`scubiee resume`**; upgrade + reconnect |
+
+Correct order: **setup → init → connect → reload IDE**.
 
 ---
 
@@ -26,22 +42,57 @@ If semantic preflight fails: `scubiee setup --repair` then retry.
 {"ok": false, "error": "machine_not_setup"}
 ```
 
-**Cause:** No saved profile in `~/.context-engine/accel.json` (fresh machine, after partial wipe, or upgrade without repair).
+**Cause:** No saved profile in `~/.context-engine/accel.json`.
 
 **Fix:**
 
 ```bash
 scubiee setup --repair
-scubiee setup --status    # preferred_profile should be non-null
+scubiee setup --status
 ```
+
+---
+
+## Diagnose looks healthy but `init` still fails (after reinstall)
+
+**Symptom:** `acceleration.profile` and `texts_per_sec` look fine; `libraries.fastembed` / `onnxruntime` are null; `init` or preflight fails.
+
+**Cause:** Stale `accel.json` left from a previous setup while packages were wiped by a broken upgrade.
+
+**Fix:**
+
+```bash
+scubiee setup --repair
+scubiee diagnose --no-tests --desktop   # should no longer be “stale”
+scubiee init .
+```
+
+---
+
+## Access denied on `uv tool install --force` (Windows)
+
+**Symptom:** Cannot replace files under `%APPDATA%\uv\tools\scubiee\Scripts`; afterward `No module named 'pipeline'` or broken CLI.
+
+**Cause:** `ContextEngineSupervisor` / daemon / Cursor MCP still locking the uv tool Python.
+
+**Fix:**
+
+```powershell
+scubiee stop
+# Task Manager → end ContextEngineSupervisor if still present
+# Quit Cursor (or disable Scubiee MCP)
+Remove-Item -Recurse -Force "$env:APPDATA\uv\tools\scubiee" -ErrorAction SilentlyContinue
+uv tool install --force scubiee==0.2.82 --index-url https://pypi.org/simple --refresh
+scubiee setup --repair
+```
+
+Also see [Uninstall on Windows](./uninstall-windows.md). Prefer `scubiee upgrade` (stops processes first) when available.
 
 ---
 
 ## Install & setup
 
-### `No module named 'fastembed'` during `scubiee setup`
-
-**Cause:** Fresh uv install on Windows; FastEmbed is installed by setup, but an existing `accel.json` can trigger model checks before pip install completes.
+### `No module named 'fastembed'` during setup / init
 
 **Fix:**
 
@@ -49,9 +100,11 @@ scubiee setup --status    # preferred_profile should be non-null
 scubiee setup --repair
 ```
 
+Windows base wheel does not always ship FastEmbed; repair installs platform extras.
+
 ---
 
-### Preflight fails: missing `fastembed` / `onnxruntime`
+### Preflight fails: missing `fastembed` / `onnxruntime` / `not_configured`
 
 **Fix:**
 
@@ -60,7 +113,7 @@ scubiee setup --repair
 scubiee preflight .
 ```
 
-For lexical-only (no GPU embed):
+Lexical-only:
 
 ```bash
 scubiee preflight . --lexical-only
@@ -68,89 +121,66 @@ scubiee preflight . --lexical-only
 
 ---
 
-### `scubiee setup` stuck at ~31% (Windows)
+### Setup picks DirectML on a laptop with only Intel UHD / AMD “Radeon Graphics”
 
-**Cause:** Historical pip stdout pipe deadlock during ORT install (fixed 0.2.14+).
+**Expected on older builds; on current builds:** Intel iGPU / AMD APU graphics are **not** used for DirectML. Profile should be **`cpu`**. Discrete AMD/NVIDIA → **`dml`**.
 
-**Fix:** Upgrade to latest scubiee, quit Cursor, `scubiee setup --repair`.
-
----
-
-### Wipe did not remove everything
-
-**Symptom:** After `scubiee wipe --all --yes`, `.context-engine` or uv tool dir still present.
-
-**Cause:** Cursor MCP or daemon still locking files (Windows).
-
-**Fix:**
+If stuck on a bad DML profile:
 
 ```bash
-scubiee stop
-# quit Cursor completely
-scubiee wipe --all --yes --package
+scubiee setup --profile cpu --repair
 ```
 
-Read stderr/JSON **`audit.remaining`** for honest list of leftover paths. Re-run wipe until `audit.clean` is true.
+Escape hatch for a missed discrete AMD GPU: `scubiee setup --profile dml --repair`.
 
 ---
 
-### `connect` fails before faiss is fixed
+### Apple Silicon stuck on `cpu`
 
-**Fixed in 0.2.54:** `connect`, `disconnect`, `migrate`, and `diagnose` no longer require faiss. Upgrade if an older build blocks them.
+**Not expected.** Run:
+
+```bash
+scubiee setup --repair
+scubiee setup --status   # should show mlx
+```
+
+If you forced CPU: `scubiee setup --profile mlx --repair` (or `--repair` alone to promote back).
 
 ---
 
-**Symptom:** Setup says `dml` but embed uses CPU; `available_providers` lacks `DmlExecutionProvider`.
-
-**Cause:** Wrong ORT wheel (CPU wheel left after mixed installs).
+### Profile is `dml` but embed uses CPU / missing `DmlExecutionProvider`
 
 **Fix:**
 
 ```bash
 scubiee setup --repair
-# if still broken on Windows, see windows.md ORT purge steps
 ```
+
+If still broken, purge ORT wheels — see [Windows guide](./windows.md).
 
 ---
 
 ### `onnxruntime has no attribute SessionOptions`
 
-**Cause:** Conflicting/partial ORT uninstall left a broken `site-packages/onnxruntime` tree.
-
-**Fix:** Quit all Python using that env. Delete leftover `onnxruntime` folder in site-packages. Run `scubiee setup --repair`.
+Conflicting/partial ORT install. Quit Cursor, `scubiee stop`, delete leftover `onnxruntime` under the uv tool `site-packages`, then `scubiee setup --repair`.
 
 ---
 
 ### faiss `cannot import name 'class_wrappers'`
 
-**Cause:** Incomplete `faiss-cpu` extract from uv on Windows.
-
-**Fix (manual):**
-
-```powershell
-pip download faiss-cpu==1.15.0 -d $env:TEMP\faiss_whl --no-deps
-uv pip install --force-reinstall "$env:TEMP\faiss_whl\faiss_cpu-*.whl" --python "$env:APPDATA\uv\tools\scubiee\Scripts\python.exe"
-```
-
-Or run `scripts/repair-uv-scubiee.ps1` (see [Windows guide](./windows.md)).
-
-**0.2.45+:** startup may auto-repair faiss; `scubiee --version` should still work.
+Incomplete `faiss-cpu` extract (Windows uv). Run `scripts/repair-uv-scubiee.ps1` or see [Windows guide](./windows.md).
 
 ---
 
 ### `failed to locate pyvenv.cfg`
 
-**Cause:** Broken/partial uv tool directory (often after Access denied uninstall).
-
-**Fix:** Quit Cursor → [Uninstall on Windows](./uninstall-windows.md) or `scripts/repair-uv-scubiee.ps1`.
+Broken uv tool directory. Quit Cursor → [Uninstall on Windows](./uninstall-windows.md) or repair script → reinstall.
 
 ---
 
 ### Two Pythons on PATH (`pip` ≠ `scubiee`)
 
-**Symptom:** `pip uninstall scubiee` says not installed; `scubiee --version` still runs.
-
-**Fix:** Read `scubiee --version` output — it prints the Python path and uninstall instructions. Use **that** Python’s pip/uv, not conda’s.
+Read `scubiee --version` — use **that** Python’s pip/uv, not conda’s.
 
 ---
 
@@ -158,52 +188,68 @@ Or run `scripts/repair-uv-scubiee.ps1` (see [Windows guide](./windows.md)).
 
 ### Refusing to index home directory
 
-**Expected.** `cd` to project root. See [Indexing & projects](./indexing-and-projects.md).
+**Expected.** `cd` to the project root. See [Indexing & projects](./indexing-and-projects.md).
 
 ---
 
-### `"539 files need indexing (>400)"` or similar
+### `">400 files need indexing"`
 
-**Expected safety gate.** Use `--confirm` or `--fast --roots …` to reduce scope.
-
----
-
-### False huge file count (historical)
-
-**Symptom:** Count included `testdata/` / vendor while actual index excluded them.
-
-**Fix:** Upgrade to **0.2.49+** where preflight uses the same path rules as indexing.
+Safety gate. Use `--confirm` or `--fast --roots …`.
 
 ---
 
 ### `never_index` error
 
-You ran `scubiee never-index` on this path. Clear via dashboard forget or lifecycle remove (advanced).
+Path was blocked with `scubiee never-index`. Clear via dashboard forget or lifecycle remove.
 
 ---
 
 ### project_id_mismatch / stale home registration
 
-**Symptom:** `certify` or `doctor --all` fails; daemon reconciles `C:\Users\you`.
-
-**Fix:**
-
 ```bash
 scubiee list
 scubiee remove C:\Users\YOUR_USER --delete-store
-# delete C:\Users\YOUR_USER\.context-engine\id.json if it remains
+# delete leftover id.json under home if present
 ```
 
 ---
 
-## MCP & Cursor
+## MCP, agent status, pause
 
 ### MCP red / not connecting
 
 1. `scubiee engine ensure . --wait 45`
-2. `scubiee setup --repair` (rewrites mcp.json)
-3. Reload MCP in Cursor
-4. `scubiee stop` then retry if zombie processes
+2. `scubiee connect --cursor` (rewrites mcp.json + rules)
+3. Reload MCP in the IDE
+4. `scubiee stop` then retry if zombies remain
+
+---
+
+### Agent `status()`: `warming: true`, `ok: false`
+
+Daemon is starting or temporarily down. **Use MCP tools** (they may return warming once). Wait ~5s and retry the **tool** once. Do **not** call `status()` every turn.
+
+When healthy: `managed: true`, `ok: true`, `warming: false`.
+
+---
+
+### Agent fell back to native Grep forever
+
+1. Confirm MCP server is green  
+2. Re-run `scubiee connect --cursor` (refreshes rules — event-driven retry, not “ignore forever”)  
+3. After mid-session `init`, ask the agent to call `status()` again once  
+
+---
+
+### Paused / stopped — agent tells you to `wake`
+
+Use:
+
+```bash
+scubiee resume
+# or per-repo:
+scubiee resume .
+```
 
 ---
 
@@ -213,7 +259,7 @@ scubiee remove C:\Users\YOUR_USER --delete-store
 scubiee sync .
 ```
 
-Test with a unique token in a **`.py`** file.
+Test with a unique token in a **`.py`** file that is in scope.
 
 ---
 
@@ -221,54 +267,43 @@ Test with a unique token in a **`.py`** file.
 
 ### Dashboard unhealthy on Windows
 
-Upgrade to **scubiee 0.2.54+**. See [Dashboard & engine](./dashboard-and-engine.md).
+Upgrade to current scubiee; see [Dashboard & engine](./dashboard-and-engine.md).
 
 ---
 
-### `engine status` shows server not warm
+### Engine not warm
 
 ```bash
 scubiee engine ensure . --wait 45
-scubiee init . --no-index    # ensures registration
+scubiee init . --no-index
 ```
 
 ---
 
-## Uninstall & upgrade
-
-### `uv tool uninstall` Access denied
-
-**Fix:** [Uninstall on Windows](./uninstall-windows.md) — `scubiee stop` → wipe → quit Cursor.
-
----
-
-## Tests & certify
-
-### `scubiee test quick` fails on progress_ui tests
-
-Known test drift in some releases (mock/message assertions). Runtime CLI is unaffected. Report if all 89 tests must pass for your CI.
-
-### `scubiee certify` fails
-
-Run `scubiee doctor . --fix`, remove stale home registration, ensure single scubiee on PATH, then:
+## Uninstall & upgrade leftovers
 
 ```bash
-scubiee certify . --skip-daemon
+scubiee stop
+# quit Cursor
+scubiee wipe --all --yes --package
 ```
+
+Read JSON **`audit.remaining`**. Re-run until clean. Platform guides: [Windows](./uninstall-windows.md) | [Mac/Linux](./uninstall-mac-linux.md).
 
 ---
 
 ## Still stuck?
 
-Collect and attach:
+Collect and share:
 
 ```bash
 scubiee --version
 scubiee setup --status
 scubiee doctor .
 scubiee list
+scubiee diagnose --no-tests --desktop
 ```
 
-Plus tail of `~/.context-engine/engine.log`.
+Attach `Desktop/scubiee-diagnose.json` and a short tail of `~/.context-engine/engine.log` if present.
 
 Platform-specific: [Windows](./windows.md) | [Mac & Linux](./mac-and-linux.md)

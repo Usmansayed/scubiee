@@ -1,6 +1,8 @@
 # Daily use
 
-Once `scubiee setup --repair`, `scubiee connect --cursor`, and `scubiee init` are done, these are the commands you use day to day.
+Once `scubiee setup --repair`, `scubiee init .`, and `scubiee connect --…` are done, these are the commands you use day to day.
+
+**Docs assume scubiee 0.2.82.**
 
 ---
 
@@ -10,10 +12,10 @@ Once `scubiee setup --repair`, `scubiee connect --cursor`, and `scubiee init` ar
 cd your-project
 scubiee status .          # index health + sync state
 scubiee sync .            # incremental update after git pull / edits
-scubiee search "AuthService" . --local
+scubiee search "AuthService" .
 ```
 
-In Cursor, the MCP tools call the same engine automatically after you save files (keeper sync every ~5 minutes in automatic mode).
+In Cursor, MCP tools use the same engine. After large edits, `sync` (or wait for background refresh).
 
 ---
 
@@ -31,7 +33,7 @@ If sync refuses with a file count message, add `--confirm`:
 scubiee sync . --confirm
 ```
 
-**Tip:** Semantic search works best on **`.py`** files that are part of the index. Plain `.txt` or ignored paths may not appear in search results.
+**Tip:** Semantic search works best on files that are part of the index (e.g. `.py` under your init scope).
 
 ---
 
@@ -46,16 +48,20 @@ Argument order: **query first**, optional **path** second (defaults to `.`).
 
 ---
 
-## Connect / disconnect / upgrade helpers
+## Connect / disconnect / diagnose / upgrade
 
 ```bash
 scubiee connect --cursor --dry-run
 scubiee connect --all
+# Special-4: run inside each project
+scubiee connect --kiro
 scubiee disconnect --cursor
-scubiee migrate --check-all          # after upgrading scubiee
-scubiee migrate --apply-all          # apply schema migrations if needed
-scubiee diagnose --no-tests          # shareable install log
+scubiee diagnose --no-tests --desktop
+scubiee migrate --check-all          # after upgrading
+scubiee upgrade                      # stops processes, then upgrades
 ```
+
+After any upgrade, re-run **`connect`** so MCP + agent rules match the new version.
 
 ---
 
@@ -69,22 +75,22 @@ scubiee resume /path/to/repo
 scubiee remove /path/to/other --delete-store
 ```
 
-`list` prints JSON for every managed project: `project_id`, paths, index state, paused flag.
+---
+
+## Stop / resume (machine-wide)
+
+```bash
+scubiee stop      # stop engine, watchdog, free file locks
+scubiee resume    # bring Scubiee back (NOT "wake")
+```
 
 ---
 
 ## Registration without indexing
 
-Useful for CI or preparing a repo before a long index:
-
 ```bash
 scubiee register . --no-index
-scubiee initialize . --no-index
-```
-
-To register and skip future MCP consent prompts:
-
-```bash
+scubiee init . --no-index
 scubiee register . --always-allow --fast
 ```
 
@@ -98,7 +104,7 @@ scubiee settings --mode automatic    # IDE opens register + index automatically
 scubiee settings --mode mcp_cli      # first MCP use asks for consent
 ```
 
-Prefs are stored in `~/.context-engine/prefs.json`.
+Prefs: `~/.context-engine/prefs.json`.
 
 ---
 
@@ -109,9 +115,7 @@ scubiee resources
 scubiee resources --refresh
 ```
 
-Shows CPU/RAM pressure and the active embed batch from calibration. Indexing pauses only when **free RAM** is critically low (not when Windows reports high “used” RAM from file cache).
-
-Disable resource manager entirely (not recommended):
+Indexing pauses only when **free RAM** is critically low (not when Windows reports high “used” RAM from file cache).
 
 ```bash
 set CTX_RM_DISABLE=1          # Windows
@@ -123,37 +127,25 @@ export CTX_RM_DISABLE=1       # macOS/Linux
 ## Operator dashboard
 
 ```bash
-scubiee dashboard --no-open     # start on a free localhost port
-scubiee dashboard --status      # URL, PID, health
-scubiee dashboard stop          # stop dashboard process
+scubiee dashboard --no-open
+scubiee dashboard --status
+scubiee dashboard stop
 ```
 
-The dashboard is separate from the main engine port (`8765`). Use `--status` to see the actual URL (port is dynamic).
+Separate from engine port `8765`. Port is dynamic — use `--status` for the URL.
 
 ---
 
 ## Engine daemon
 
-Usually started automatically by MCP or `init`. Manual control:
-
 ```bash
 scubiee engine status .
 scubiee engine ensure . --wait 45
 scubiee engine stop
-scubiee stop                    # stop engine + watchdog + MCP-related processes (preferred before uninstall)
+scubiee stop                    # preferred before uninstall/upgrade on Windows
 ```
 
 Logs: `~/.context-engine/engine.log`, `~/.context-engine/watchdog.log`.
-
----
-
-## Stop before uninstall or upgrade (Windows)
-
-```bash
-scubiee stop
-```
-
-Then see [Uninstall on Windows](./uninstall-windows.md).
 
 ---
 
@@ -161,23 +153,11 @@ Then see [Uninstall on Windows](./uninstall-windows.md).
 
 ```bash
 scubiee doctor .
-scubiee doctor . --fix          # safe repairs only (no pip install / rebuild)
-scubiee doctor --all            # every managed repo
+scubiee doctor . --fix
+scubiee doctor --all
 scubiee preflight .
-scubiee certify . --skip-daemon # full certification gate
+scubiee diagnose --no-tests --desktop
 ```
-
----
-
-## Run tests (developers)
-
-From a **git checkout** with pytest installed:
-
-```bash
-pytest tests/test_wipe.py tests/test_hardening.py -q
-```
-
-The `scubiee test quick` command shells out to pytest in the **same Python** as the CLI. A uv tool install does not include pytest by default — use a dev checkout or `pip install pytest` in the tool venv if you need `scubiee test`.
 
 ---
 
@@ -185,20 +165,18 @@ The `scubiee test quick` command shells out to pytest in the **same Python** as 
 
 | Variable | Effect |
 |----------|--------|
-| `CTX_INCREMENTAL_MAX_TOUCH` | File-count cap before `--confirm` required (default `400`) |
+| `CTX_INCREMENTAL_MAX_TOUCH` | File-count cap before `--confirm` (default `400`) |
 | `CTX_FAST_ROOTS` | Comma roots for `--fast` indexing |
 | `CTX_RM_DISABLE=1` | Disable RAM admission pauses |
 | `CTX_WATCHDOG=0` | Disable daemon watchdog sidecar |
 | `CTX_MLX=0` | Force non-MLX path on Mac |
 | `CTX_COMPRESS=off` | Disable pre-embed compression (default is `mix`) |
 
-Full list: see [Commands reference](./commands-reference.md) and engineering docs.
-
 ---
 
 ## Related
 
 - [Commands reference](./commands-reference.md)
-- [Indexing & projects](./indexing-and-projects.md)
 - [Cursor & MCP](./cursor-mcp.md)
 - [Troubleshooting](./troubleshooting.md)
+- [Getting started](./getting-started.md)

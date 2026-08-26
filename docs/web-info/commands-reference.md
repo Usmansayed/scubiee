@@ -73,7 +73,9 @@ Run `scubiee <subcommand> --help` for flags on your installed version.
 | `scubiee certify [path]` | Release certification gate |
 | `scubiee certify . --skip-daemon` | Certify without daemon checks |
 | `scubiee diagnose [--no-tests]` | Installation diagnostics + shareable log file |
-| `scubiee diagnose --output path.json` | Custom log path |
+| `scubiee diagnose --desktop` | Write `Desktop/scubiee-diagnose.json` (easy to share) |
+| `scubiee diagnose --output path.json` | Custom log path (expands `$env:…` / `%VAR%`) |
+| `scubiee upgrade` | Stop CE processes, upgrade package, restart, migrate |
 | `scubiee migrate [path]` | Check if data migration is needed after upgrade |
 | `scubiee migrate --apply [path]` | Apply migration for one repo |
 | `scubiee migrate --check-all` | Check all managed projects |
@@ -98,29 +100,33 @@ Run `scubiee <subcommand> --help` for flags on your installed version.
 | `scubiee dashboard --status` | Dashboard URL / PID / health |
 | `scubiee dashboard stop` | Stop dashboard |
 | `scubiee stop` | Stop engine, watchdog, MCP-related processes |
+| `scubiee resume` | Resume after global stop/pause (**not** `wake`) |
 | `scubiee mcp [path]` | Run MCP adapter (normally invoked by Cursor) |
 
 ---
 
 ## Connect & disconnect
 
-Installs **global** MCP + rules once (under your user profile). No project files, no `CTX_REPO` pin — works in every repo. Paths: [connect-global-mcp-research.md](../connect-global-mcp-research.md).
+Writes MCP config + agent rules. **Cursor / Claude Code** are typically user-global. **Kiro, Copilot, Cline, Roo Code** also need connect **inside each project** (workspace-local MCP). See [Cursor & MCP](./cursor-mcp.md).
 
 | Command | Purpose |
 |---------|---------|
-| `scubiee connect --cursor` | Global Cursor MCP + `~/.cursor/rules/context-agent.mdc` |
-| `scubiee connect --claude-code --codex --kiro` | Wire selected tools (see `--help`) |
-| `scubiee connect --all` | Connect all supported tools (run once) |
-| `scubiee connect --all --dry-run` | Preview global paths that would be written |
-| `scubiee disconnect --cursor` | Remove global MCP entry + rule |
+| `scubiee connect --cursor` | Cursor MCP + `~/.cursor/rules/context-agent.mdc` |
+| `scubiee connect --kiro` | Kiro (+ workspace `.kiro/settings/mcp.json` when run in a repo) |
+| `scubiee connect --copilot` | Copilot/VS Code (+ `.vscode/mcp.json` when in a repo) |
+| `scubiee connect --cline` / `--roo-code` | Same pattern — prefer run inside project |
+| `scubiee connect --all` | Connect all supported tools |
+| `scubiee connect --all --dry-run` | Preview paths that would be written |
+| `scubiee connect --cursor --repo <path>` | Target a specific repo for workspace-local writes |
+| `scubiee disconnect --cursor` | Remove MCP entry + rule |
 | `scubiee disconnect --all` | Disconnect all tools |
-| `scubiee disconnect --all --dry-run` | Preview removals |
-
-`--repo` is deprecated/ignored (connect is global-only).
+| `scubiee disconnect --all --all-workspaces` | Also remove workspace-local MCP files when supported |
 
 **Supported slugs:** `cursor`, `claude-code`, `codex`, `kiro`, `windsurf`, `copilot`, `cline`, `roo-code`, `continue`, `zed`, `opencode`.
 
 `connect`, `disconnect`, `migrate`, and `diagnose` skip the faiss bootstrap guard so they work on broken installs.
+
+**Remember:** `init` does **not** replace `connect`. After indexing, run connect (and reload the IDE).
 
 ---
 
@@ -133,7 +139,7 @@ Installs **global** MCP + rules once (under your user profile). No project files
 | `scubiee settings --mode mcp_cli` | Consent on first MCP use |
 | `scubiee wipe [path]` | Remove repo identity + local CE files for one repo |
 | `scubiee wipe --all` | **Blocked** until you confirm (see below) |
-| `scubiee wipe --all --yes` | Delete all CE state on this machine (models, MCP, rules, enrolled repos) |
+| `scubiee wipe --all --yes` | Delete all CE state on this machine (models, every connect-tool MCP/rules, enrolled repos) |
 | `scubiee wipe --all --yes --package` | Full wipe **and** uninstall scubiee uv tool / pip package |
 | `scubiee wipe --all --confirm` | Same as `--yes` (alias) |
 | `scubiee wipe --all --yes --keep-models` | Wipe but keep CodeRank/FastEmbed model caches |
@@ -149,13 +155,15 @@ Not CLI commands — exposed to the agent after MCP reload:
 
 | Tool | Role |
 |------|------|
-| `status` | Engine health + repo binding |
+| `status` | Engine health + managed/warming flags (call once per session) |
 | `map` | Ranked overview of relevant chunks/symbols |
 | `focus` | Deep context around a hit |
 | `grep` | Pattern search (supports `glob=`; reports truncation) |
 | `glob` | Find files by path pattern |
 | `workspace` | Session / workspace context |
 | `register_project` | Register repo with user consent (MCP or CLI) |
+
+If `status` shows `warming: true`, retry the **tool** once after a short wait — do not poll `status()` every turn. After pause/stop use **`scubiee resume`**.
 
 ---
 

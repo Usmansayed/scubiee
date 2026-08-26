@@ -1,8 +1,8 @@
 """Wipe Context Engine state — repo-local or full machine (``--all``).
 
 Normal path stays untouched: ``setup`` → ``init`` → use. Wipe is opt-in cleanup.
-``wipe --all --confirm`` removes home state, MCP wiring, Cursor rules, and CodeRank
-model caches so a fresh install starts clean on any laptop.
+``wipe --all --confirm`` removes home state, MCP wiring for every connect target,
+rules/steering, and CodeRank model caches so a fresh install starts clean.
 """
 
 from __future__ import annotations
@@ -286,16 +286,43 @@ def _mcp_has_context_engine(path: Path, *, name: str = "context-engine") -> bool
     if not path.is_file():
         return False
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError):
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
         return False
+    # Fast path for TOML/YAML and odd schemas: any CE server block.
+    if name in text and path.suffix.lower() in {".toml", ".yaml", ".yml"}:
+        return True
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return name in text
     if not isinstance(data, dict):
         return False
-    for key in ("mcpServers", "servers"):
+    for key in ("mcpServers", "servers", "mcp", "context_servers", "amp.mcpServers"):
         servers = data.get(key)
         if isinstance(servers, dict) and name in servers:
             return True
+        if isinstance(servers, list):
+            for item in servers:
+                if isinstance(item, dict) and item.get("name") == name:
+                    return True
     return False
+
+
+def _connected_tool_mcp_paths() -> list[tuple[str, Path]]:
+    """Global MCP paths connect may have written (for wipe audit)."""
+    from pipeline.tool_registry import TOOLS, resolve_mcp_write_targets
+
+    out: list[tuple[str, Path]] = []
+    seen: set[str] = set()
+    for tool in TOOLS:
+        for path, _schema, _key in resolve_mcp_write_targets(tool):
+            key = str(path)
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append((tool.slug, path))
+    return out
 
 
 def audit_scubiee_artifacts(*, include_package: bool = True, include_models: bool = True) -> dict[str, Any]:
@@ -331,17 +358,39 @@ def audit_scubiee_artifacts(*, include_package: bool = True, include_models: boo
     if include_models:
         for model in _coderank_model_dirs():
             note(model, kind="model_cache")
-    user_mcp = Path.home() / ".cursor" / "mcp.json"
-    if _mcp_has_context_engine(user_mcp):
-        note(user_mcp, kind="user_mcp")
-    # Kiro user-level MCP
-    for kiro_mcp in _kiro_mcp_paths(Path.home()):
-        if _mcp_has_context_engine(kiro_mcp):
-            note(kiro_mcp, kind="kiro_user_mcp")
+    for slug, mcp_path in _connected_tool_mcp_paths():
+        if _mcp_has_context_engine(mcp_path):
+            note(mcp_path, kind=f"tool_mcp:{slug}")
+    # Rules/steering connect may have written for any tool.
+    try:
+        from pipeline.tool_registry import TOOLS, resolve_rule_user_paths
+
+        for tool in TOOLS:
+            for rule_path in resolve_rule_user_paths(tool):
+                if not rule_path.is_file():
+                    continue
+                if tool.rule_format in {"mdc", "md"}:
+                    note(rule_path, kind=f"tool_rule:{tool.slug}")
+                elif tool.rule_format == "append-md":
+                    try:
+                        text = rule_path.read_text(encoding="utf-8")
+                    except (OSError, UnicodeError):
+                        continue
+                    if "<!-- context-engine:start -->" in text:
+                        note(rule_path, kind=f"tool_rule:{tool.slug}")
+    except Exception:  # noqa: BLE001
+        pass
+    # Legacy Cursor rule name + any path not listed on ToolDef.
     for rule_path in _cursor_rule_paths(Path.home()):
-        note(rule_path, kind="user_rule")
+        if rule_path.is_file() and not any(
+            r.get("path") == str(rule_path) for r in remaining
+        ):
+            note(rule_path, kind="user_rule")
     for steering_path in _kiro_steering_paths(Path.home()):
-        note(steering_path, kind="kiro_user_steering")
+        if steering_path.is_file() and not any(
+            r.get("path") == str(steering_path) for r in remaining
+        ):
+            note(steering_path, kind="kiro_user_steering")
     tool = _uv_tool_dir()
     if tool is not None and include_package:
         note(tool, kind="uv_tool")
@@ -470,10 +519,12 @@ def wipe_all(
             ),
             "hint": (
                 "This removes ALL Context Engine state: every enrolled repo's "
-                ".context-engine + MCP rule, all ctx home dirs (~/.context-engine), "
-                "CodeRank/FastEmbed/HuggingFace model caches, uv tool shims, and "
-                "the scubiee package. Re-run with: scubiee wipe --all --confirm. "
-                "Quit Cursor/Kiro first on Windows."
+                ".context-engine + MCP/rules, all connect tool MCP entries "
+                "(Cursor, Claude Code, Codex, Windsurf, Copilot, Cline, Roo, …), "
+                "all ctx home dirs (~/.context-engine), CodeRank/FastEmbed/"
+                "HuggingFace model caches, uv tool shims, and the scubiee package. "
+                "Re-run with: scubiee wipe --all --confirm. "
+                "Quit Cursor/Kiro and other IDEs first on Windows."
             ),
         }
 
@@ -485,12 +536,28 @@ def wipe_all(
 
     from pipeline.process_control import remove_tool_shims, stop_all_context_engine_processes
 
-    # STEP 0: Remove MCP configs FIRST so IDEs (Kiro, Cursor) don't respawn
+    # STEP 0: Remove MCP configs FIRST so IDEs (Kiro, Cursor, …) don't respawn
     # the server process immediately after we kill it.
-    actions.append({"user_cursor_mcp": _drop_mcp_server(Path.home() / ".cursor" / "mcp.json")})
-    for kiro_mcp in _kiro_mcp_paths(Path.home()):
-        actions.append({"kiro_user_mcp_early": _drop_mcp_server(kiro_mcp)})
-    # Also remove project-level MCP for the target repo (cwd or explicit)
+    # Disconnect ALL tools connect can write (not only Cursor/Kiro).
+    try:
+        from pipeline.rules_installer import uninstall_tools
+        from pipeline.tool_registry import ALL_SLUGS
+
+        disconnect = uninstall_tools(
+            list(ALL_SLUGS),
+            dry_run=False,
+            repo=Path(repo).resolve() if repo else Path.cwd().resolve(),
+            all_workspaces=True,
+        )
+        actions.append({"disconnect_all_tools": disconnect})
+    except Exception as exc:  # noqa: BLE001
+        actions.append({"disconnect_all_tools": {"ok": False, "error": str(exc)}})
+        # Fallback: at least clear Cursor + Kiro user MCP (legacy path).
+        actions.append({"user_cursor_mcp": _drop_mcp_server(Path.home() / ".cursor" / "mcp.json")})
+        for kiro_mcp in _kiro_mcp_paths(Path.home()):
+            actions.append({"kiro_user_mcp_early": _drop_mcp_server(kiro_mcp)})
+
+    # Also remove project-level Cursor MCP for the target repo (cwd or explicit)
     target_early = Path(repo).resolve() if repo else Path.cwd().resolve()
     actions.append({"project_cursor_mcp_early": _drop_mcp_server(target_early / ".cursor" / "mcp.json")})
     for local_mcp in _workspace_local_mcp_paths(target_early):

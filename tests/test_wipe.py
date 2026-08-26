@@ -156,6 +156,83 @@ def test_wipe_repo_removes_workspace_local_mcp_files(tmp_path: Path, monkeypatch
             assert not path.exists()
 
 
+def test_wipe_all_removes_all_connect_tool_mcp(tmp_path: Path, monkeypatch) -> None:
+    """wipe --all must clear every tool connect can write, not only Cursor/Kiro."""
+    home = tmp_path / "ce-home"
+    home.mkdir()
+    monkeypatch.setenv("CTX_HOME", str(home))
+
+    fake_user = tmp_path / "fake-user"
+    fake_user.mkdir()
+    monkeypatch.setenv("HOME", str(fake_user))
+    monkeypatch.setenv("USERPROFILE", str(fake_user))
+    monkeypatch.setenv("APPDATA", str(fake_user / "AppData" / "Roaming"))
+    monkeypatch.setattr(Path, "home", staticmethod(lambda: fake_user))
+
+    # Cursor (already covered elsewhere) + Claude Code + Windsurf user MCP.
+    cursor_mcp = fake_user / ".cursor" / "mcp.json"
+    cursor_mcp.parent.mkdir(parents=True)
+    cursor_mcp.write_text(
+        json.dumps(
+            {
+                "mcpServers": {
+                    "context-engine": {"command": "x"},
+                    "keep-me": {"command": "y"},
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    claude_mcp = fake_user / ".claude.json"
+    claude_mcp.write_text(
+        json.dumps({"mcpServers": {"context-engine": {"command": "x"}, "other": {}}}),
+        encoding="utf-8",
+    )
+    windsurf_mcp = fake_user / ".codeium" / "windsurf" / "mcp_config.json"
+    windsurf_mcp.parent.mkdir(parents=True)
+    windsurf_mcp.write_text(
+        json.dumps({"mcpServers": {"context-engine": {"command": "x"}}}),
+        encoding="utf-8",
+    )
+    # Codex TOML
+    codex_cfg = fake_user / ".codex" / "config.toml"
+    codex_cfg.parent.mkdir(parents=True)
+    codex_cfg.write_text(
+        '[mcp_servers.other]\ncommand = "y"\n\n[mcp_servers.context-engine]\ncommand = "x"\n',
+        encoding="utf-8",
+    )
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    monkeypatch.chdir(repo)
+
+    out = wipe_all(yes=True, models=False, package=False, repo=repo)
+    assert out["ok"] is True
+    assert any("disconnect_all_tools" in a for a in out.get("actions", []))
+
+    cursor = json.loads(cursor_mcp.read_text(encoding="utf-8"))
+    assert "context-engine" not in (cursor.get("mcpServers") or {})
+    assert "keep-me" in (cursor.get("mcpServers") or {})
+
+    claude = json.loads(claude_mcp.read_text(encoding="utf-8"))
+    assert "context-engine" not in (claude.get("mcpServers") or {})
+    assert "other" in (claude.get("mcpServers") or {})
+
+    if windsurf_mcp.is_file():
+        wind = json.loads(windsurf_mcp.read_text(encoding="utf-8"))
+        assert "context-engine" not in (wind.get("mcpServers") or {})
+    # Empty-only files may be deleted entirely.
+
+    if codex_cfg.is_file():
+        text = codex_cfg.read_text(encoding="utf-8")
+        assert "context-engine" not in text
+        assert "other" in text
+
+    audit = audit_scubiee_artifacts(include_package=False, include_models=False)
+    tool_leftovers = [r for r in audit["remaining"] if str(r["kind"]).startswith("tool_mcp:")]
+    assert tool_leftovers == [], tool_leftovers
+
+
 def test_disconnect_all_workspaces_removes_other_repo_local_mcp(
     tmp_path: Path, monkeypatch
 ) -> None:
