@@ -1,5 +1,9 @@
 # Research: MCP workspace / folder mismatch across all Scubiee connect hosts
 
+> **Superseded for solutions (2026-08-26):** Use  
+> [`mcp-workspace-all-hosts-solution-report-2026-08-26.md`](./mcp-workspace-all-hosts-solution-report-2026-08-26.md)  
+> for the corrected per-tool plan. This file’s **Cursor = global `${workspaceFolder}`** recommendation is **outdated** (live Mac + Cursor docs + Gortex show project MCP is required).
+
 **Date:** 2026-08-26  
 **Scope:** Every tool in `pipeline.tool_registry.TOOLS` — does global MCP get the open project, and what have vendors / other MCP installers already figured out?  
 **Companion:** [`cursor-mcp-workspace-resolution-research.md`](./cursor-mcp-workspace-resolution-research.md) (Cursor deep-dive)

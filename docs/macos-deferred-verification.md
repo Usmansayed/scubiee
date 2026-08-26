@@ -22,7 +22,7 @@ scubiee setup --repair
 | 3 | `scubiee init .` in a small repo | Index completes; daemon healthy |
 | 4 | `scubiee connect --cursor` (or `--kiro`) | MCP + rules written; agent `status()` → `managed: true` |
 
-**Open (2026-08-26):** Mac pytest / MLX looked good, but **non–special-4 connect** (esp. Cursor global `${workspaceFolder}`) can leave `status.managed=false` — Cursor may **not** expand the token. Details + next fixes: [`mac-session-2026-08-26-workspace-token-issue.md`](./mac-session-2026-08-26-workspace-token-issue.md). Special-4 (kiro / copilot / cline / roo) project pins are the working path.
+**Open (2026-08-26):** Mac pytest / MLX looked good, but **non–special-4 connect** (esp. Cursor global `${workspaceFolder}`) can leave `status.managed=false` — Cursor may **not** expand the token. Details: [`mac-session-2026-08-26-workspace-token-issue.md`](./mac-session-2026-08-26-workspace-token-issue.md). **All-hosts solution plan:** [`mcp-workspace-all-hosts-solution-report-2026-08-26.md`](./mcp-workspace-all-hosts-solution-report-2026-08-26.md). Special-4 (kiro / copilot / cline / roo) project pins are the working path.
 
 | 5 | Forced wrong path: `scubiee setup --profile cpu` then `scubiee setup --repair` | Should restore Mac GPU path (MLX) — never stay CPU-only on Apple Silicon |
 
