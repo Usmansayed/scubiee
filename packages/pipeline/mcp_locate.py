@@ -37,6 +37,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
 from contextlib import contextmanager
 from contextvars import ContextVar
 from pathlib import Path
@@ -273,6 +274,13 @@ def _is_repo_managed() -> bool:
 
 
 def _server_instructions(surface: str) -> str:
+    # Universal (all MCP hosts): lead with compact gate — no tool call needed.
+    gate = _gate_line(just_checked=False)
+    prefix = (
+        f"GATE {gate}. "
+        "Formats: 0=unmanaged, 1:ce_=managed, p=paused. "
+        "Pass root on locate when multi-repo. "
+    )
     # Open-locate trials: keep tool names visible but drop anti-Grep mandates so
     # the agent can freely choose native locate vs Scubiee.
     bare = (os.environ.get("CTX_MCP_BARE_INSTRUCTIONS") or "").strip().lower() in {
@@ -283,28 +291,20 @@ def _server_instructions(surface: str) -> str:
     if bare:
         if surface == "phase":
             return (
-                "Scubiee MCP tools: map, focus, grep, glob, workspace, status. "
-                "Recommended locate: map for meaning, grep/glob for known literals/paths — you decide."
+                prefix
+                + "Tools: map, focus, grep, glob, workspace, gate, status. "
+                "Recommended: map for meaning, grep/glob for literals."
             )
-        return (
-            "Scubiee MCP tools are available for this workspace. "
-            "Use any tools you prefer for the task."
-        )
+        return prefix + "Scubiee MCP tools available — use as you prefer."
 
-    # Gate: if the current folder is not managed by Scubiee, do not force
-    # the agent to use Scubiee tools. Provide a passive notice instead.
     if not _is_repo_managed():
         return (
-            "Scubiee MCP is available but the current folder is not managed. "
-            "Call status() to check managed=true/false (user may ask you to re-test anytime). "
-            "To manage this folder: scubiee init <path>. "
-            "If status returns should_retry_status, call status() again after init/connect. "
-            "Scubiee tools remain usable but are not required for this workspace."
+            prefix
+            + "Not managed — use native tools. Recheck with gate() after init only."
         )
 
     # Phase instructions are recommendations (agent decides).
-    # CTX_MCP_STRICT_NATIVE_BAN remains accepted for older trial flags but is a no-op.
-    return {
+    body = {
         "graph": SERVER_INSTRUCTIONS_GRAPH,
         "rich": SERVER_INSTRUCTIONS_RICH,
         "search": SERVER_INSTRUCTIONS_SEARCH,
@@ -312,6 +312,7 @@ def _server_instructions(surface: str) -> str:
         "nav": SERVER_INSTRUCTIONS_NAV,
         "phase": SERVER_INSTRUCTIONS_PHASE,
     }.get(surface, SERVER_INSTRUCTIONS_READ)
+    return prefix + body
 
 
 # Back-compat alias (imported by some tests/tools).
@@ -679,8 +680,40 @@ def _dumps(obj: Any) -> str:
     return json.dumps(obj, indent=2, default=str)
 
 
-def _managed_signal_fields() -> dict[str, Any]:
-    """Fields agents use to decide whether to keep / retry Scubiee MCP."""
+def _status_ttl_s() -> int:
+    """How long a status() result stays fresh (seconds). Default 5 minutes."""
+    raw = (os.environ.get("CTX_STATUS_TTL_S") or "").strip()
+    if raw.isdigit():
+        return max(60, min(int(raw), 3600))
+    return 300
+
+
+_LAST_STATUS_MONO: float | None = None
+
+
+def _managed_signal_fields(*, just_checked: bool = False) -> dict[str, Any]:
+    """Fields agents use to decide whether to keep / retry Scubiee MCP.
+
+    ``status()`` passes ``just_checked=True`` so we never ask for an immediate
+    retry (avoids loops). Locate tools pass the default: retry only if status
+    was never called on this MCP process, or the TTL elapsed.
+    Recheck on a new chat (agent calls status at start), after the TTL, or
+    when the user asks — not every turn.
+    """
+    global _LAST_STATUS_MONO
+    now = time.monotonic()
+    ttl = _status_ttl_s()
+    if just_checked:
+        _LAST_STATUS_MONO = now
+        age = 0.0
+        retry = False
+    elif _LAST_STATUS_MONO is None:
+        age = None
+        retry = True
+    else:
+        age = now - _LAST_STATUS_MONO
+        retry = age >= ttl
+
     managed = _is_repo_managed()
     pin = _ctx_repo_raw()
     stale = _ctx_repo_stale(pin)
@@ -688,7 +721,9 @@ def _managed_signal_fields() -> dict[str, Any]:
     fields: dict[str, Any] = {
         "managed": managed,
         "should_use_mcp": managed,
-        "should_retry_status": not managed,
+        "should_retry_status": retry,
+        "status_ttl_s": ttl,
+        "status_age_s": None if age is None else round(age, 1),
         "stale_ctx_repo": stale,
     }
     if stale and pin is not None:
@@ -698,11 +733,34 @@ def _managed_signal_fields() -> dict[str, Any]:
         fields["candidates"] = candidates
     if not managed:
         fields["hint"] = (
-            "Repo is not managed. User can ask you to check again after "
-            "`scubiee init .` — call status() to re-test. "
+            "Repo is not managed. Do not keep calling Scubiee. "
+            "Recheck status() only at a new chat, after status_ttl_s, "
+            "or when the user asks / runs `scubiee init .`. "
             "For Kiro/Copilot/Cline/Roo also run connect inside the project."
         )
     return fields
+
+
+def _gate_line(*, just_checked: bool = False) -> str:
+    """Ultra-compact managed signal (~1–8 tokens). No daemon / session I/O.
+
+    Formats:
+      ``0``     — not managed (use native tools; do not poll)
+      ``0:r``   — not managed; ``status_ttl_s`` elapsed — call ``gate()`` once
+      ``1:ce_…`` — managed; reuse ``ce_…`` as ``project_id`` on locate tools
+      ``p``     — Scubiee paused (``scubiee resume``)
+    """
+    fields = _managed_signal_fields(just_checked=just_checked)
+    if not fields["managed"]:
+        return "0:r" if fields["should_retry_status"] else "0"
+    pid = ""
+    try:
+        from pipeline.project_id import read_id_file
+
+        pid = read_id_file(_default_repo()) or ""
+    except Exception:  # noqa: BLE001
+        pid = ""
+    return f"1:{pid}" if pid else "1"
 
 
 def _err(tool: str, error: str, *, hint: str = "", **extra: Any) -> str:
@@ -712,7 +770,7 @@ def _err(tool: str, error: str, *, hint: str = "", **extra: Any) -> str:
         payload.setdefault(key, value)
     if hint:
         payload["hint"] = hint
-    return _dumps(payload)
+    return _dumps(_attach_gate(payload))
 
 
 _SUCCESS_BACKEND_STATUSES = {
@@ -1235,10 +1293,19 @@ def _to_markdown(card: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _attach_gate(card: dict[str, Any]) -> dict[str, Any]:
+    """Universal compact gate on every tool JSON (~8 tokens). All MCP hosts."""
+    if not isinstance(card, dict):
+        return card
+    out = dict(card)
+    out.setdefault("g", _gate_line(just_checked=False))
+    return out
+
+
 def _format(card: dict[str, Any], fmt: str) -> str:
     if fmt == "markdown":
-        return _to_markdown(card)
-    return _dumps(card)
+        return _to_markdown(_attach_gate(card))
+    return _dumps(_attach_gate(card))
 
 
 # ---- server -----------------------------------------------------------------
@@ -2207,19 +2274,46 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         return _format(out, args.response_format)
 
     # ---- status (all surfaces) --------------------------------------------
-    def status_impl(
+    def gate_impl(
         root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
         project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
     ) -> str:
-        """Health / tool list only — not for finding code."""
+        """Session gate — ~5 tokens. Call once at chat start instead of status()."""
         with _bind_request_repo(root=root, project_id=project_id):
             from pipeline.pause_resume import is_paused
 
             if is_paused():
-                # should_retry_status=False: polling status cannot unpause the engine.
-                # Agents should tell the user to run `scubiee resume`, then retry only
-                # after the user confirms / asks (event-driven — avoids token burn).
-                return _dumps({
+                return "p"
+            return _gate_line(just_checked=True)
+
+    def status_impl(
+        root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
+        project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
+        detail: Annotated[
+            str,
+            Field(
+                description=(
+                    "full = engine health + session (large). "
+                    "gate = same ~5-token line as gate() — use for managed checks."
+                ),
+            ),
+        ] = "full",
+    ) -> str:
+        """Health / tool list only — not for finding code."""
+        with _bind_request_repo(root=root, project_id=project_id):
+            if (detail or "full").strip().lower() == "gate":
+                from pipeline.pause_resume import is_paused
+
+                if is_paused():
+                    return "p"
+                return _gate_line(just_checked=True)
+
+            from pipeline.pause_resume import is_paused
+
+            if is_paused():
+                # Polling status cannot unpause. Recheck after resume / user ask / TTL.
+                fields = _managed_signal_fields(just_checked=True)
+                fields.update({
                     "ok": False,
                     "paused": True,
                     "tool": "status",
@@ -2229,6 +2323,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     "should_retry_status": False,
                     "hint": "Scubiee is paused. Resume with: scubiee resume",
                 })
+                return _dumps(fields)
 
             from pipeline.client import EngineClient
             from pipeline.daemon import ensure_daemon
@@ -2241,7 +2336,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 "rich": ["search", "read", "outline", "status"],
                 "search": ["search", "status"],
                 "grep": ["grep", "status"],
-                "phase": ["map", "focus", "grep", "glob", "workspace", "register_project", "status"],
+                "phase": ["gate", "map", "focus", "grep", "glob", "workspace", "register_project", "status"],
             }
             try:
                 repo = _default_repo()
@@ -2331,7 +2426,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     "token_mode": token_mode(),
                     # Managed check: user can ask the agent to call status() anytime
                     # to re-test after scubiee init / connect.
-                    **_managed_signal_fields(),
+                    **_managed_signal_fields(just_checked=True),
                     "warming": warming,
                     "index_available": bool(
                         healthy
@@ -2410,7 +2505,8 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             "Register/index this repo after explicit user consent (mcp_cli mode)",
             register_project_impl,
         )
-        _tool("status", "Engine + session status", status_impl)
+        _tool("gate", "Session gate — ~5 tokens (managed check)", gate_impl)
+        _tool("status", "Engine + session status (detail=gate for tiny check)", status_impl)
         return mcp
 
     if surface == "nav":

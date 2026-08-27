@@ -149,14 +149,15 @@ def _context_agent_rule_template() -> Path:
     return Path(pipeline.__file__).resolve().parent / "templates" / "scubiee.mdc"
 
 
-def write_cursor_rule() -> str | None:
-    """Write MCP-only retrieval rule to project .cursor/rules (gitignored locally)."""
-    src = _context_agent_rule_template()
-    if not src.is_file():
-        return None
-    dest = Path.cwd() / ".cursor" / "rules" / "scubiee.mdc"
+def write_cursor_rule(repo: Path | str | None = None) -> str | None:
+    """Write repo rule with real ``GATE 1:ce_…`` (included every chat by Cursor)."""
+    from pipeline.rules_installer import _rule_content_mdc, gate_line_for_repo
+
+    target = Path(repo or Path.cwd()).resolve()
+    dest = target / ".cursor" / "rules" / "scubiee.mdc"
     dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+    gate = gate_line_for_repo(target)
+    dest.write_text(_rule_content_mdc(gate_line=gate), encoding="utf-8")
     return str(dest)
 
 

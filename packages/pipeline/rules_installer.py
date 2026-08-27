@@ -5,12 +5,12 @@ Usage:
     scubiee connect --cursor --claude-code --codex
     scubiee connect --kiro --copilot --cline --roo-code   # run inside each repo
 
-Most tools get user-global MCP with ``CTX_REPO=${workspaceFolder}`` (host expands
-the open folder; Scubiee ignores the token if left literal).
+Most tools get user-global MCP with **no** workspace pin (command + engine env
+only). Hosts often leave ``${workspaceFolder}`` literal in global config;
+Codex on Windows treats it as ``cwd`` and fails with os error 267.
 
-Kiro, Copilot, Cline, and Roo Code also write a workspace-local MCP file when
-connect is run from a project folder (or with --repo) — those hosts cannot
-rely on global ``${workspaceFolder}`` expansion.
+Project MCP files (when the host loads them) get an absolute ``CTX_REPO`` pin.
+Kiro, Copilot, Cline, and Roo Code always need that workspace-local file.
 """
 
 from __future__ import annotations
@@ -39,12 +39,87 @@ def _templates_dir() -> Path:
     return Path(__file__).resolve().parent / "templates"
 
 
-def _rule_content_md() -> str:
+def _rule_content_md(*, gate_line: str | None = None) -> str:
+    if gate_line:
+        return _render_gate_rule_md(gate_line)
     return (_templates_dir() / "scubiee.md").read_text(encoding="utf-8")
 
 
-def _rule_content_mdc() -> str:
+def _rule_content_mdc(*, gate_line: str | None = None) -> str:
+    if gate_line:
+        return _render_gate_rule_mdc(gate_line)
     return (_templates_dir() / "scubiee.mdc").read_text(encoding="utf-8")
+
+
+def _render_gate_rule_mdc(gate_line: str) -> str:
+    """Ultra-compact project rule — injected on init/connect (~25 tokens + id)."""
+    if gate_line == "p":
+        return (
+            "---\n"
+            "description: Scubiee GATE p paused\n"
+            "alwaysApply: true\n"
+            "---\n\n"
+            "**GATE p** — paused. Tell user `scubiee resume`.\n"
+        )
+    if gate_line.startswith("1:"):
+        pid = gate_line.split(":", 1)[1]
+        return (
+            "---\n"
+            f"description: GATE {gate_line} Scubiee managed\n"
+            "alwaysApply: true\n"
+            "---\n\n"
+            f"**GATE {gate_line}** — Scubiee locate + `project_id={pid!r}`. "
+            'Tool `"g"` matches. No `gate()`/`status()` for managed checks.\n'
+        )
+    return (
+        "---\n"
+        f"description: GATE {gate_line or '0'} Scubiee\n"
+        "alwaysApply: true\n"
+        "---\n\n"
+        f"**GATE {gate_line or '0'}** — not managed; native tools. "
+        "Run `scubiee init` then reconnect.\n"
+    )
+
+
+def _render_gate_rule_md(gate_line: str) -> str:
+    if gate_line == "p":
+        return "**GATE p** — paused. Tell user `scubiee resume`.\n"
+    if gate_line.startswith("1:"):
+        pid = gate_line.split(":", 1)[1]
+        return (
+            f"**GATE {gate_line}** — Scubiee locate + `project_id={pid!r}`. "
+            'Tool `"g"` matches. No `gate()`/`status()` for managed checks.\n'
+        )
+    return (
+        f"**GATE {gate_line or '0'}** — not managed; native tools. "
+        "Run `scubiee init` then reconnect.\n"
+    )
+
+
+def gate_line_for_repo(repo: Path | str) -> str:
+    """Gate line from repo ``.scubiee/id.json`` (for project rules, no daemon)."""
+    from pipeline.pause_resume import is_paused
+    from pipeline.project_id import read_id_file
+
+    root = Path(repo).resolve()
+    if is_paused():
+        return "p"
+    try:
+        pid = read_id_file(root) or ""
+        if pid:
+            return f"1:{pid}"
+    except Exception:  # noqa: BLE001
+        pass
+    return "0"
+
+
+def _project_rules_eligible(repo: Path) -> bool:
+    root = Path(repo).resolve()
+    if (root / ".scubiee" / "id.json").is_file():
+        return True
+    if (root / ".git").is_dir():
+        return True
+    return False
 
 
 from pipeline.branding import (
@@ -60,20 +135,10 @@ _MARKER_START = MARKER_START
 _MARKER_END = MARKER_END
 _SERVER_NAME = MCP_SERVER_NAME
 
-# Hosts that expand ${workspaceFolder} in global MCP env (not special-4).
-# Special-4 keep absolute CTX_REPO in *project* files only.
-# Claude Code: host injects CLAUDE_PROJECT_DIR — still set CTX_REPO token so
-# hosts that expand it win; unexpanded tokens are ignored by the resolver.
-_WORKSPACE_FOLDER_TOKEN = "${workspaceFolder}"
-
-
-# Classic special-4 + Cursor: omit CTX_REPO from *global* MCP.
-# Absolute pin lives in project files only. Cursor does not expand
-# ${workspaceFolder} in ~/.cursor/mcp.json (live Mac/Win observation) —
-# a literal token poisons resolution to $HOME → managed=false.
-_GLOBAL_OMIT_CTX_REPO_SLUGS: frozenset[str] = frozenset(
-    {"kiro", "copilot", "cline", "roo-code", "cursor"}
-)
+# Never put ${workspaceFolder} or an absolute CTX_REPO in *global* MCP.
+# Absolute pin lives in project files only. Literal tokens poison resolution
+# or crash spawn (Codex Windows os error 267).
+_GLOBAL_OMIT_CTX_REPO_SLUGS: frozenset[str] = frozenset(TOOL_MAP)
 
 
 def _is_absolute_repo_pin(value: str) -> bool:
@@ -88,18 +153,10 @@ def _is_absolute_repo_pin(value: str) -> bool:
 
 
 def _inject_global_workspace_hints(tool: ToolDef, env: dict[str, str]) -> None:
-    """Hint the open folder in global MCP without absolute pins."""
+    """Global MCP must not interpolate workspace tokens (hosts often leave them literal)."""
     if tool.slug in _GLOBAL_OMIT_CTX_REPO_SLUGS:
         return
-    # Interpolated pin — hosts that expand win; unexpanded tokens are ignored by resolver.
-    env.setdefault("CTX_REPO", _WORKSPACE_FOLDER_TOKEN)
-    if tool.slug == "opencode":
-        env.setdefault("OPENCODE_DEFAULT_PROJECT", _WORKSPACE_FOLDER_TOKEN)
-    elif tool.slug in {"windsurf", "continue", "zed", "amp", "pi", "claude-code"}:
-        env.setdefault("WORKSPACE_FOLDER", _WORKSPACE_FOLDER_TOKEN)
-    elif tool.slug == "codex":
-        # Codex may inject CODEX_WORKSPACE_ROOT; also set WORKSPACE_FOLDER for parity.
-        env.setdefault("WORKSPACE_FOLDER", _WORKSPACE_FOLDER_TOKEN)
+    env.pop("CTX_REPO", None)
 
 
 # ---------------------------------------------------------------------------
@@ -128,24 +185,18 @@ def format_server_entry(
     if use_schema == "claude":
         return {"command": cmd, "args": args, "env": env}
     if use_schema == "vscode":
-        # Global user mcp.json does not expand ${workspaceFolder} (VS Code #245905).
-        # Only project .vscode/mcp.json should rely on WORKSPACE_FOLDER / cwd.
-        if "CTX_REPO" not in env and pin_repo:
-            env.setdefault("WORKSPACE_FOLDER", _WORKSPACE_FOLDER_TOKEN)
+        # Global user mcp.json does not expand ${workspaceFolder}.
+        # Project .vscode/mcp.json gets an absolute cwd + CTX_REPO pin.
         payload: dict[str, Any] = {
             "type": "stdio",
             "command": cmd,
             "args": args,
             "env": env,
         }
-        if pin_repo:
-            payload["cwd"] = _WORKSPACE_FOLDER_TOKEN
+        if pin_repo and repo is not None:
+            payload["cwd"] = str(Path(repo).resolve()).replace("\\", "/")
         return payload
     if use_schema == "copilot_cli":
-        # GitHub Copilot CLI ~/.copilot/mcp-config.json
-        # Inject WORKSPACE_FOLDER for workspace discovery when repo-neutral.
-        if "CTX_REPO" not in env:
-            env.setdefault("WORKSPACE_FOLDER", _WORKSPACE_FOLDER_TOKEN)
         return {
             "type": "local",
             "command": cmd,
@@ -167,17 +218,17 @@ def format_server_entry(
     if use_schema == "amp":
         return {"command": cmd, "args": args, "env": env}
     if use_schema == "codex":
-        # Global: token cwd (may not expand). Project pin: absolute cwd (Desktop fix).
-        if pin_repo and repo is not None:
-            cwd = str(Path(repo).resolve()).replace("\\", "/")
-        else:
-            cwd = _WORKSPACE_FOLDER_TOKEN
-        return {
+        # Global: no cwd — Codex CLI does not expand ${workspaceFolder}
+        # (Windows: os error 267). Spawn inherits the CLI's project cwd.
+        # Project pin: absolute cwd (Desktop / per-repo .codex/config.toml).
+        payload: dict[str, Any] = {
             "command": cmd,
             "args": args,
             "env": env,
-            "cwd": cwd,
         }
+        if pin_repo and repo is not None:
+            payload["cwd"] = str(Path(repo).resolve()).replace("\\", "/")
+        return payload
     if use_schema == "continue":
         out: dict[str, Any] = {
             "name": _SERVER_NAME,
@@ -582,16 +633,96 @@ def write_mcp_config(
 # Rule writers
 # ---------------------------------------------------------------------------
 
-def _write_rule_mdc(path: Path) -> None:
+def _write_rule_mdc(path: Path, *, gate_line: str | None = None) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(_rule_content_mdc(), encoding="utf-8")
-    # Drop legacy Cursor rule filenames from older installs.
+    path.write_text(_rule_content_mdc(gate_line=gate_line), encoding="utf-8")
 
 
-def _write_rule_md(path: Path) -> None:
+def _write_rule_md(path: Path, *, gate_line: str | None = None) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(_rule_content_md(), encoding="utf-8")
-    # Drop legacy steering/rule filenames.
+    path.write_text(_rule_content_md(gate_line=gate_line), encoding="utf-8")
+
+
+def _write_rule_append_md(path: Path, *, gate_line: str | None = None) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    existing = path.read_text(encoding="utf-8") if path.is_file() else ""
+    existing = _strip_marked_sections(existing)
+    content = _rule_content_md(gate_line=gate_line)
+    section = f"{_MARKER_START}\n{content}\n{_MARKER_END}\n"
+    if existing and not existing.endswith("\n"):
+        existing += "\n"
+    if existing and not existing.endswith("\n\n"):
+        existing += "\n"
+    path.write_text(existing + section, encoding="utf-8")
+
+
+_RULE_WRITERS = {
+    "mdc": _write_rule_mdc,
+    "md": _write_rule_md,
+    "append-md": _write_rule_append_md,
+    "none": lambda _path, gate_line=None: None,
+}
+
+
+def _write_rule(tool: ToolDef, path: Path, *, gate_line: str | None = None) -> None:
+    writer = _RULE_WRITERS.get(tool.rule_format)
+    if writer:
+        writer(path, gate_line=gate_line)
+
+
+def write_project_gate_rules(
+    repo: Path | str,
+    *,
+    dry_run: bool = False,
+    slugs: list[str] | None = None,
+) -> dict[str, Any]:
+    """Write repo-local rules with the real ``GATE 1:ce_…`` line (every chat, all hosts)."""
+    root = Path(repo).resolve()
+    report: dict[str, Any] = {
+        "repo": str(root),
+        "ok": True,
+        "gate_line": None,
+        "paths": [],
+        "dry_run": dry_run,
+        "errors": [],
+    }
+    if not _project_rules_eligible(root):
+        report["skipped"] = True
+        report["skip_reason"] = "not a project folder"
+        return report
+
+    gate = gate_line_for_repo(root)
+    report["gate_line"] = gate
+
+    from pipeline.tool_registry import TOOL_MAP, resolve_rule_project_paths
+
+    use_slugs = slugs or list(TOOL_MAP.keys())
+    paths_written: list[str] = []
+    for slug in use_slugs:
+        tool = TOOL_MAP.get(slug)
+        if not tool or tool.rule_format == "none":
+            continue
+        for path in resolve_rule_project_paths(tool, root):
+            paths_written.append(str(path))
+            if dry_run:
+                continue
+            try:
+                _write_rule(tool, path, gate_line=gate)
+            except Exception as exc:  # noqa: BLE001
+                report["errors"].append(f"{path}: {exc}")
+                report["ok"] = False
+
+    agents = root / "AGENTS.md"
+    paths_written.append(str(agents))
+    if not dry_run:
+        try:
+            _write_rule_append_md(agents, gate_line=gate)
+        except Exception as exc:  # noqa: BLE001
+            report["errors"].append(f"{agents}: {exc}")
+            report["ok"] = False
+
+    report["paths"] = paths_written
+    return report
 
 
 def _strip_marked_sections(existing: str) -> str:
@@ -606,33 +737,6 @@ def _strip_marked_sections(existing: str) -> str:
         if after.strip():
             text += after.lstrip()
     return text
-
-
-def _write_rule_append_md(path: Path) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    existing = path.read_text(encoding="utf-8") if path.is_file() else ""
-    existing = _strip_marked_sections(existing)
-    content = _rule_content_md()
-    section = f"{_MARKER_START}\n{content}\n{_MARKER_END}\n"
-    if existing and not existing.endswith("\n"):
-        existing += "\n"
-    if existing and not existing.endswith("\n\n"):
-        existing += "\n"
-    path.write_text(existing + section, encoding="utf-8")
-
-
-_RULE_WRITERS = {
-    "mdc": _write_rule_mdc,
-    "md": _write_rule_md,
-    "append-md": _write_rule_append_md,
-    "none": lambda _path: None,
-}
-
-
-def _write_rule(tool: ToolDef, path: Path) -> None:
-    writer = _RULE_WRITERS.get(tool.rule_format)
-    if writer:
-        writer(path)
 
 
 # ---------------------------------------------------------------------------
@@ -741,6 +845,25 @@ def install_tool(
         report["errors"].append(f"rule write failed: {exc}")
         report["ok"] = False
 
+    if (
+        not dry_run
+        and tool.rule_format != "none"
+        and _project_rules_eligible(target_repo)
+    ):
+        try:
+            from pipeline.tool_registry import resolve_rule_project_paths
+
+            gate = gate_line_for_repo(target_repo)
+            report["gate_line"] = gate
+            proj_written: list[str] = []
+            for proj_path in resolve_rule_project_paths(tool, target_repo):
+                _write_rule(tool, proj_path, gate_line=gate)
+                proj_written.append(str(proj_path))
+            report["project_rule_paths"] = proj_written
+        except Exception as exc:  # noqa: BLE001
+            report["errors"].append(f"project rule write failed: {exc}")
+            report["ok"] = False
+
     return report
 
 
@@ -757,6 +880,18 @@ def install_tools(
             results.append({"tool": slug, "ok": False, "errors": [f"unknown tool: {slug}"]})
             continue
         results.append(install_tool(tool, dry_run=dry_run, repo=repo))
+    target = _connect_repo(repo)
+    if _project_rules_eligible(target) and not dry_run:
+        try:
+            gate = gate_line_for_repo(target)
+            _write_rule_append_md(target / "AGENTS.md", gate_line=gate)
+            for r in results:
+                r["repo_agents_gate"] = str(target / "AGENTS.md")
+                r["gate_line"] = gate
+        except Exception as exc:  # noqa: BLE001
+            for r in results:
+                r.setdefault("errors", []).append(f"AGENTS.md gate: {exc}")
+                r["ok"] = False
     return results
 
 

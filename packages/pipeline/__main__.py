@@ -1222,6 +1222,13 @@ def cmd_init(args: argparse.Namespace) -> int:
 
     if out.get("ok"):
         try:
+            from pipeline.rules_installer import write_project_gate_rules
+
+            out["gate_rules"] = write_project_gate_rules(root)
+        except Exception as exc:  # noqa: BLE001
+            out["gate_rules"] = {"ok": False, "error": str(exc)}
+
+        try:
             from pipeline.daemon import ensure_daemon
             from pipeline.pause_resume import _save_state, is_paused
 
@@ -1479,6 +1486,15 @@ def cmd_diagnose(args: argparse.Namespace) -> int:
 
     return 0 if verdict.get("ok") else 1
 
+
+
+def cmd_gate(args: argparse.Namespace) -> int:
+    """Print compact gate line for a repo path (local check, no daemon)."""
+    from pipeline.gate_cli import gate_line_for_root
+
+    root = getattr(args, "path", None) or "."
+    print(gate_line_for_root(root))
+    return 0
 
 
 def cmd_connect(args: argparse.Namespace) -> int:
@@ -1945,6 +1961,10 @@ def main(argv: list[str] | None = None) -> int:
     p_status.add_argument("--url", default="http://127.0.0.1:8765")
     p_status.add_argument("--json", action="store_true", help="Output raw JSON (default when piped)")
     p_status.set_defaults(func=cmd_status)
+
+    p_gate = sub.add_parser("gate", help="Compact managed check (~5 tokens, local only)")
+    p_gate.add_argument("path", nargs="?", default=".", help="Repo path (default: cwd)")
+    p_gate.set_defaults(func=cmd_gate)
 
     p_sync = sub.add_parser("sync", help="Incremental re-embed files changed since last index")
     p_sync.add_argument("path", nargs="?", default=".")

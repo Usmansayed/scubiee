@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from pipeline import mcp_locate
 
 
@@ -206,10 +208,88 @@ def test_managed_signal_fields_unmanaged(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.delenv("CTX_PROJECT_ID", raising=False)
     for key in ("CURSOR_PROJECT_DIR", "WORKSPACE_FOLDER"):
         monkeypatch.delenv(key, raising=False)
-    fields = mcp_locate._managed_signal_fields()
+    fields = mcp_locate._managed_signal_fields(just_checked=True)
     assert fields["managed"] is False
-    assert fields["should_retry_status"] is True
+    assert fields["should_retry_status"] is False
     assert fields["should_use_mcp"] is False
+    assert fields["status_ttl_s"] == 300
+
+
+def test_gate_line_unmanaged(tmp_path: Path, monkeypatch) -> None:
+    plain = tmp_path / "plain"
+    plain.mkdir()
+    monkeypatch.chdir(plain)
+    monkeypatch.delenv("CTX_REPO", raising=False)
+    assert mcp_locate._gate_line(just_checked=True) == "0"
+
+
+def test_gate_line_managed_enrolled(tmp_path: Path, monkeypatch) -> None:
+    repo = tmp_path / "app"
+    repo.mkdir()
+    sc = repo / ".scubiee"
+    sc.mkdir()
+    pid = "ce_gate_test1234567890abcdef"
+    (sc / "id.json").write_text(
+        json.dumps({"version": 1, "project_id": pid}),
+        encoding="utf-8",
+    )
+    reg = tmp_path / "registry.json"
+    reg.write_text(
+        json.dumps(
+            {
+                "projects": {
+                    pid: {
+                        "managed": True,
+                        "paths": [str(repo).replace("\\", "/")],
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(repo)
+    monkeypatch.setenv("CTX_REPO", str(repo))
+    monkeypatch.setattr("pipeline.project_id.registry_path", lambda: reg)
+    line = mcp_locate._gate_line(just_checked=True)
+    assert line == f"1:{pid}"
+
+
+def test_status_detail_gate_skips_daemon(tmp_path: Path, monkeypatch) -> None:
+    pytest.importorskip("mcp")
+    plain = tmp_path / "plain"
+    plain.mkdir()
+    monkeypatch.chdir(plain)
+    monkeypatch.delenv("CTX_REPO", raising=False)
+
+    class Boom:
+        def __init__(self, *a, **k):
+            raise AssertionError("status(detail=gate) must not call daemon")
+
+    monkeypatch.setattr("pipeline.daemon.ensure_daemon", Boom)
+    monkeypatch.setattr("pipeline.client.EngineClient", Boom)
+
+    from pipeline.mcp_locate import create_mcp
+
+    mcp = create_mcp(name="test-gate-status")
+    fn = mcp._tool_manager._tools["status"].fn
+    assert fn(detail="gate") == "0"
+
+
+def test_should_retry_status_after_ttl(tmp_path: Path, monkeypatch) -> None:
+    plain = tmp_path / "plain"
+    plain.mkdir()
+    monkeypatch.chdir(plain)
+    monkeypatch.delenv("CTX_REPO", raising=False)
+    monkeypatch.delenv("CTX_PROJECT_ID", raising=False)
+    monkeypatch.setenv("CTX_STATUS_TTL_S", "120")
+    ticks = iter([1_000.0, 1_120.0])
+    monkeypatch.setattr(mcp_locate.time, "monotonic", lambda: next(ticks))
+    fresh = mcp_locate._managed_signal_fields(just_checked=True)
+    assert fresh["should_retry_status"] is False
+    assert fresh["status_age_s"] == 0
+    later = mcp_locate._managed_signal_fields(just_checked=False)
+    assert later["should_retry_status"] is True
+    assert later["status_ttl_s"] == 120
 
 
 def test_default_repo_does_not_use_daemon_bound_repo_without_workspace_identity(

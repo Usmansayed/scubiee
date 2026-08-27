@@ -12,6 +12,14 @@ REPO = Path(__file__).resolve().parents[1]
 WORK = REPO / "testdata" / "cursor_sdk_ab" / "work_d_channel_best_mcponly"
 
 
+def _gate_instruction_prefix(line: str = "0") -> str:
+    return (
+        f"GATE {line}. "
+        "Formats: 0=unmanaged, 1:ce_=managed, p=paused. "
+        "Pass root on locate when multi-repo. "
+    )
+
+
 def _tool_fn(mcp, name: str):
     return mcp._tool_manager._tools[name].fn
 
@@ -547,9 +555,10 @@ def test_nav_surface_active_and_instructions_budget(monkeypatch):
 
     monkeypatch.setenv("CTX_MCP_SURFACE", "nav")
     monkeypatch.setattr(ml, "_is_repo_managed", lambda: True)
+    monkeypatch.setattr(ml, "_gate_line", lambda just_checked=False: "0")
     assert ml._active_surface() == "nav"
     text = ml.SERVER_INSTRUCTIONS_NAV
-    assert ml._server_instructions("nav") == text
+    assert ml._server_instructions("nav") == _gate_instruction_prefix() + text
     assert len(text) <= 2400, f"nav instructions too long: {len(text)} chars"
     assert len(text) // 4 <= 600, f"nav instructions over ~600 tok: {len(text) // 4}"
     assert "search | files | read | recall | expand | status" in text
@@ -568,8 +577,9 @@ def test_phase_surface_grep_glob_and_trajectory(monkeypatch):
     pytest.importorskip("mcp")
     monkeypatch.setenv("CTX_MCP_SURFACE", "phase")
     monkeypatch.setattr(ml, "_is_repo_managed", lambda: True)
+    monkeypatch.setattr(ml, "_gate_line", lambda just_checked=False: "0")
     text = ml.SERVER_INSTRUCTIONS_PHASE
-    assert ml._server_instructions("phase") == text
+    assert ml._server_instructions("phase") == _gate_instruction_prefix() + text
     assert "map | focus | grep | glob | workspace | status" in text
     assert "you decide" in text.lower()
     assert "never hard-blocked" in text.lower()
@@ -577,6 +587,7 @@ def test_phase_surface_grep_glob_and_trajectory(monkeypatch):
     assert "MANDATORY" not in text
     tools = set(ml.create_mcp()._tool_manager._tools)
     assert tools == {
+        "gate",
         "map",
         "focus",
         "grep",
@@ -761,6 +772,7 @@ def test_server_instructions_are_short_grep_like_cards(monkeypatch):
     from pipeline import mcp_locate as ml
 
     monkeypatch.setattr(ml, "_is_repo_managed", lambda: True)
+    monkeypatch.setattr(ml, "_gate_line", lambda just_checked=False: "0")
 
     cards = {
         "read": ml.SERVER_INSTRUCTIONS_READ,
@@ -801,29 +813,36 @@ def test_server_instructions_are_short_grep_like_cards(monkeypatch):
     assert "Grep ≪ 10%" in ml.SERVER_INSTRUCTIONS_READ or "Grep << 10%" in ml.SERVER_INSTRUCTIONS_READ
     assert "neighbors=true" in ml.SERVER_INSTRUCTIONS_READ
     assert "default code locate" in ml.SERVER_INSTRUCTIONS_READ
-    assert ml._server_instructions("read") == ml.SERVER_INSTRUCTIONS_READ
-    assert ml._server_instructions("rich") == ml.SERVER_INSTRUCTIONS_RICH
-    assert ml._server_instructions("nav") == ml.SERVER_INSTRUCTIONS_NAV
+    prefix = _gate_instruction_prefix()
+    assert ml._server_instructions("read") == prefix + ml.SERVER_INSTRUCTIONS_READ
+    assert ml._server_instructions("rich") == prefix + ml.SERVER_INSTRUCTIONS_RICH
+    assert ml._server_instructions("nav") == prefix + ml.SERVER_INSTRUCTIONS_NAV
+
+
+def test_tool_responses_include_gate_field(monkeypatch):
+    """Every JSON tool payload includes compact ``g`` for all MCP hosts."""
+    pytest.importorskip("mcp")
+    from pipeline import mcp_locate as ml
+
+    monkeypatch.setattr(ml, "_gate_line", lambda just_checked=False: "1:ce_test")
+    card = {"ok": True, "tool": "map"}
+    out = json.loads(ml._format(card, "json"))
+    assert out["g"] == "1:ce_test"
 
 
 def test_cursor_rule_mirrors_short_decision_card():
     template = (REPO / "packages" / "pipeline" / "templates" / "scubiee.mdc").read_text(
         encoding="utf-8"
     )
-    assert "map" in template and "focus" in template
-    assert "grep" in template
-    assert "status" in template
-    assert "Do not use native Grep" in template or "do not use native Grep" in template.lower()
-    assert "status()" in template
-    assert "Do not call it every turn" in template
-    assert "never every turn" in template
+    assert "GATE" in template
+    assert "project_id" in template or "`g`" in template
     assert "scubiee resume" in template
     assert "ignore this rule entirely" not in template.lower()
     assert len(template) <= 4000
 
 
-def test_append_host_rule_matches_cursor_retry_policy_not_ignore_forever():
-    """Kiro/Cline/Continue/append hosts must not permanently drop Scubiee mid-session."""
+def test_append_host_rule_matches_universal_gate_policy():
+    """Append hosts (Kiro/Cline/Continue) use GATE instructions, not ignore-forever."""
     md = (REPO / "packages" / "pipeline" / "templates" / "scubiee.md").read_text(
         encoding="utf-8"
     )
@@ -832,10 +851,8 @@ def test_append_host_rule_matches_cursor_retry_policy_not_ignore_forever():
     )
     for template in (md, mdc):
         assert "ignore this rule entirely" not in template.lower()
-        assert "Do not permanently disable Scubiee" in template
-        assert "Do not call it every turn" in template or "call `status()` from the Scubiee MCP" in template
-        assert "scubiee resume" in template
-        assert "status()" in template
+        assert "GATE" in template
+        assert "should_retry_status" in template or "init/connect" in template or '"g"' in template
         assert len(template) <= 4000
 
 

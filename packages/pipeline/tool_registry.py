@@ -408,6 +408,17 @@ def all_workspace_local_mcp_paths(repo: Path | None) -> list[Path]:
     ]
 
 
+def resolve_rule_project_paths(tool: ToolDef, repo: Path | None) -> list[Path]:
+    """Repo-local rule paths (same relative layout as global, under project root)."""
+    if repo is None or tool.rule_format == "none" or not tool.rule_user_path:
+        return []
+    root = Path(repo).resolve()
+    paths: list[Path] = [root / tool.rule_user_path]
+    for extra in tool.rule_user_path_extra:
+        paths.append(root / extra)
+    return paths
+
+
 def resolve_rule_project_path(tool: ToolDef, repo: Path | None) -> Path | None:
-    """Global-only install: never writes project rules."""
-    return None
+    paths = resolve_rule_project_paths(tool, repo)
+    return paths[0] if paths else None

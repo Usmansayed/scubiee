@@ -1,20 +1,6 @@
 ---
-description: Scubiee — call status() once, retry only on init/connect/user ask
+description: Scubiee — read GATE from MCP instructions
 alwaysApply: true
 ---
 
-**Start of session:** call `status()` once from the Scubiee MCP. Do not call it every turn.
-
-- If `status.managed` is `true` and `status.ok` is `true`: use Scubiee MCP (`map`, `focus`, `grep`, `glob`, `workspace`) for all code discovery this session. Do not use native Grep, Glob, rg, find, or codebase_search for discovery. Native Read = only lines you will Edit. Shell = tests, build, git.
-- If `status.managed` is `true` and `status.warming` is `true`: the engine is starting up. Use Scubiee MCP tools — if a tool returns a warming/not-ready response, wait 5s and retry once. Do not fall back to native search.
-- If `status.paused` is `true`: tell the user to run `scubiee resume`. Do not poll `status()`.
-- If `status.managed` is `false`, or the MCP is missing/unhealthy: use native tools for now. **Do not permanently disable Scubiee for this session.**
-
-When the host shows a Workspace Path (Cursor multi-repo sidebar / Desktop), pass it as `root` on `status()` and on later locate tools (`map`, `focus`, `grep`, `glob`). That folder's `.scubiee/id.json` decides managed — do not search another pinned repo. After `status()`, you may pass `project_id` (`ce_…`) instead of the long path.
-
-**Retry `status()` only when** (never every turn / never in a loop):
-- the user runs `scubiee init`, `scubiee connect`, `scubiee resume`, or asks to index or use Scubiee
-- the user asks whether this repo is managed / to check or test Scubiee
-- any Scubiee tool returns `should_retry_status: true` or `managed: false` after init was likely done
-
-Then switch to Scubiee MCP if `managed` becomes `true`.
+Read Scubiee MCP `GATE …` prefix and tool JSON `"g"`. `1:ce_*`=managed→Scubiee locate+project_id; `0`=native; `p`=paused→`scubiee resume`. No `gate()`/`status()` for managed checks. Project folder also has a repo rule with your real `GATE 1:ce_…` after init/connect.

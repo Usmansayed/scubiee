@@ -48,7 +48,12 @@ def test_project_paths_only_for_workspace_local_tools(tmp_path: Path) -> None:
             assert paths
         else:
             assert paths == []
-        assert resolve_rule_project_path(tool, tmp_path) is None
+        rule_proj = resolve_rule_project_path(tool, tmp_path)
+        if tool.rule_format != "none" and tool.rule_user_path:
+            assert rule_proj is not None
+            assert rule_proj.is_relative_to(tmp_path)
+        else:
+            assert rule_proj is None
 
 
 def test_format_opencode_schema(tmp_path: Path) -> None:
@@ -60,29 +65,38 @@ def test_format_opencode_schema(tmp_path: Path) -> None:
     assert "env" not in entry
 
 
-def test_format_global_entry_uses_workspace_folder_token_not_absolute_pin() -> None:
-    from pipeline.rules_installer import _GLOBAL_OMIT_CTX_REPO_SLUGS, _is_absolute_repo_pin
+def _assert_no_workspace_token(value: object, *, where: str) -> None:
+    if isinstance(value, dict):
+        for k, v in value.items():
+            _assert_no_workspace_token(v, where=f"{where}.{k}")
+        return
+    if isinstance(value, list):
+        for i, v in enumerate(value):
+            _assert_no_workspace_token(v, where=f"{where}[{i}]")
+        return
+    if isinstance(value, str):
+        assert "${workspaceFolder}" not in value, where
+        assert "${" not in value, where
+
+
+def test_format_global_entry_has_no_workspace_folder_token() -> None:
+    from pipeline.rules_installer import _is_absolute_repo_pin
 
     for slug, tool in TOOL_MAP.items():
         entry = format_server_entry(tool, pin_repo=False)
+        _assert_no_workspace_token(entry, where=slug)
         env = entry.get("env") or entry.get("environment") or {}
         ctx = str(env.get("CTX_REPO") or "")
         assert not _is_absolute_repo_pin(ctx), slug
+        assert "CTX_REPO" not in env, slug
         cwd = str(entry.get("cwd") or "")
         assert not _is_absolute_repo_pin(cwd), slug
-        if slug in _GLOBAL_OMIT_CTX_REPO_SLUGS:
-            # Special-4 + Cursor: global stays unpinned (absolute pin is project-only).
-            assert "CTX_REPO" not in env
-        else:
-            assert env.get("CTX_REPO") == "${workspaceFolder}", slug
+        assert "cwd" not in entry, slug
     cursor_env = format_server_entry(TOOL_MAP["cursor"], pin_repo=False)["env"]
-    assert "CTX_REPO" not in cursor_env
     assert "CURSOR_PROJECT_DIR" not in cursor_env
     assert "CURSOR_CWD" not in cursor_env
-    assert "cursor" in _GLOBAL_OMIT_CTX_REPO_SLUGS
-    codex = format_server_entry(TOOL_MAP["codex"], pin_repo=False)
-    assert codex.get("cwd") == "${workspaceFolder}"
-    assert (codex.get("env") or {}).get("WORKSPACE_FOLDER") == "${workspaceFolder}"
+    cli = format_server_entry(TOOL_MAP["copilot"], pin_repo=False, schema="copilot_cli")
+    _assert_no_workspace_token(cli, where="copilot_cli")
 
 
 def test_format_vscode_has_type_stdio() -> None:
@@ -93,6 +107,10 @@ def test_format_vscode_has_type_stdio() -> None:
 def test_install_cursor_global_and_project_mcp(fake_home: Path, tmp_path: Path) -> None:
     """Cursor: omit unexpanded tokens from global; absolute pin in project MCP only."""
     workspace = _git_repo(tmp_path / "ws")
+    ce = workspace / ".scubiee"
+    ce.mkdir()
+    pid = "ce_connect_test1234567890abcdef"
+    (ce / "id.json").write_text(json.dumps({"project_id": pid}), encoding="utf-8")
     report = install_tool(TOOL_MAP["cursor"], repo=workspace)
     assert report["ok"]
     assert report.get("workspace_mcp_written") is True
@@ -103,6 +121,12 @@ def test_install_cursor_global_and_project_mcp(fake_home: Path, tmp_path: Path) 
     assert "CURSOR_PROJECT_DIR" not in env
     assert "CURSOR_CWD" not in env
     assert (fake_home / ".cursor" / "rules" / "scubiee.mdc").is_file()
+    project_rule = workspace / ".cursor" / "rules" / "scubiee.mdc"
+    assert project_rule.is_file()
+    rule_text = project_rule.read_text(encoding="utf-8")
+    assert "GATE" in rule_text
+    assert pid in rule_text
+    assert "project_id" in rule_text
     project = json.loads((workspace / ".cursor" / "mcp.json").read_text(encoding="utf-8"))
     assert project["mcpServers"]["scubiee"]["env"]["CTX_REPO"] == str(workspace).replace(
         "\\", "/"
@@ -116,7 +140,8 @@ def test_install_codex_project_toml_absolute_cwd(fake_home: Path, tmp_path: Path
     assert report["ok"]
     assert report.get("workspace_mcp_written") is True
     global_text = (fake_home / ".codex" / "config.toml").read_text(encoding="utf-8")
-    assert 'cwd = "${workspaceFolder}"' in global_text
+    assert "${workspaceFolder}" not in global_text
+    assert "cwd =" not in global_text.split("[mcp_servers.scubiee]", 1)[-1].split("[", 1)[0]
     project = (workspace / ".codex" / "config.toml").read_text(encoding="utf-8")
     repo_s = str(workspace.resolve()).replace("\\", "/")
     assert f'cwd = "{repo_s}"' in project
@@ -130,7 +155,8 @@ def test_install_opencode_project_json(fake_home: Path, tmp_path: Path) -> None:
     assert report.get("workspace_mcp_written") is True
     path = fake_home / ".config" / "opencode" / "opencode.json"
     data = json.loads(path.read_text(encoding="utf-8"))
-    assert data["mcp"]["scubiee"]["environment"].get("CTX_REPO") == "${workspaceFolder}"
+    assert "CTX_REPO" not in data["mcp"]["scubiee"]["environment"]
+    assert "${workspaceFolder}" not in path.read_text(encoding="utf-8")
     project = json.loads((workspace / "opencode.json").read_text(encoding="utf-8"))
     entry = project["mcp"]["scubiee"]
     repo_s = str(workspace.resolve()).replace("\\", "/")
@@ -204,7 +230,8 @@ def test_install_claude_code_global(fake_home: Path, tmp_path: Path) -> None:
     install_tool(TOOL_MAP["claude-code"], repo=workspace)
     data = json.loads((fake_home / ".claude.json").read_text(encoding="utf-8"))
     env = data["mcpServers"]["scubiee"]["env"]
-    assert env.get("CTX_REPO") == "${workspaceFolder}"
+    assert "CTX_REPO" not in env
+    assert "WORKSPACE_FOLDER" not in env
     assert "<!-- scubiee:start -->" in (fake_home / ".claude" / "CLAUDE.md").read_text(
         encoding="utf-8"
     )
@@ -215,8 +242,9 @@ def test_install_codex_toml_and_agents_md(fake_home: Path) -> None:
     install_tool(TOOL_MAP["codex"])
     text = (fake_home / ".codex" / "config.toml").read_text(encoding="utf-8")
     assert "[mcp_servers.scubiee]" in text
-    assert 'cwd = "${workspaceFolder}"' in text
-    assert 'CTX_REPO = "${workspaceFolder}"' in text
+    assert "${workspaceFolder}" not in text
+    assert "CTX_REPO" not in text
+    assert "cwd =" not in text.split("[mcp_servers.scubiee]", 1)[-1].split("[", 1)[0]
     assert (fake_home / ".codex" / "AGENTS.md").is_file()
 
 
@@ -229,8 +257,8 @@ def test_install_opencode_global_opencode_json(fake_home: Path, tmp_path: Path) 
     assert entry["type"] == "local"
     assert isinstance(entry["command"], list)
     assert "environment" in entry
-    assert entry["environment"].get("CTX_REPO") == "${workspaceFolder}"
-    assert entry["environment"].get("OPENCODE_DEFAULT_PROJECT") == "${workspaceFolder}"
+    assert "CTX_REPO" not in entry["environment"]
+    assert "OPENCODE_DEFAULT_PROJECT" not in entry["environment"]
 
 
 def test_install_amp_dotted_key(fake_home: Path) -> None:
@@ -238,7 +266,7 @@ def test_install_amp_dotted_key(fake_home: Path) -> None:
     data = json.loads((fake_home / ".config" / "amp" / "settings.json").read_text(encoding="utf-8"))
     assert "amp.mcpServers" in data
     env = data["amp.mcpServers"]["scubiee"].get("env", {})
-    assert env.get("CTX_REPO") == "${workspaceFolder}"
+    assert "CTX_REPO" not in env
 
 
 def test_install_copilot_user_profile_and_cli(fake_home: Path, tmp_path: Path) -> None:
@@ -295,31 +323,31 @@ def test_install_cline_writes_vscode_and_cli(fake_home: Path) -> None:
 def test_install_pi_global(fake_home: Path) -> None:
     install_tool(TOOL_MAP["pi"])
     data = json.loads((fake_home / ".pi" / "agent" / "mcp.json").read_text(encoding="utf-8"))
-    assert data["mcpServers"]["scubiee"]["env"].get("CTX_REPO") == "${workspaceFolder}"
+    assert "CTX_REPO" not in data["mcpServers"]["scubiee"]["env"]
 
 
-def test_install_windsurf_continue_zed_global_use_workspace_token(fake_home: Path) -> None:
-    """Non-special-4 globals get ${workspaceFolder}, never an absolute pin."""
+def test_install_windsurf_continue_zed_global_omit_workspace_token(fake_home: Path) -> None:
+    """Global MCP launches Scubiee only — no folder tokens, no absolute pin."""
     install_tool(TOOL_MAP["windsurf"])
     windsurf = json.loads(
         (fake_home / ".codeium" / "windsurf" / "mcp_config.json").read_text(encoding="utf-8")
     )
-    assert windsurf["mcpServers"]["scubiee"]["env"]["CTX_REPO"] == "${workspaceFolder}"
-    assert windsurf["mcpServers"]["scubiee"]["env"]["WORKSPACE_FOLDER"] == "${workspaceFolder}"
+    wenv = windsurf["mcpServers"]["scubiee"]["env"]
+    assert "CTX_REPO" not in wenv
+    assert "WORKSPACE_FOLDER" not in wenv
 
     install_tool(TOOL_MAP["continue"])
     cont = (fake_home / ".continue" / "config.yaml").read_text(encoding="utf-8")
-    assert 'CTX_REPO: "${workspaceFolder}"' in cont
-    assert 'WORKSPACE_FOLDER: "${workspaceFolder}"' in cont
-    assert "CTX_REPO: \"C:" not in cont and "CTX_REPO: \"/" not in cont
+    assert "${workspaceFolder}" not in cont
+    assert "CTX_REPO:" not in cont
 
     install_tool(TOOL_MAP["zed"])
     zed_path = resolve_mcp_user_path(TOOL_MAP["zed"])
     assert zed_path is not None and zed_path.is_file()
     zed = json.loads(zed_path.read_text(encoding="utf-8"))
     zenv = zed["context_servers"]["scubiee"]["env"]
-    assert zenv["CTX_REPO"] == "${workspaceFolder}"
-    assert zenv["WORKSPACE_FOLDER"] == "${workspaceFolder}"
+    assert "CTX_REPO" not in zenv
+    assert "WORKSPACE_FOLDER" not in zenv
 
 
 def test_uninstall_global(fake_home: Path) -> None:
