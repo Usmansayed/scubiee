@@ -1,25 +1,88 @@
 # Repair a broken `uv tool install scubiee` on Windows.
 # Use when you see: "failed to locate pyvenv.cfg", faiss import errors, or Access denied on uninstall.
 #
-# Close Cursor first (or disable Scubiee MCP) so ctx-mcp/python releases file locks.
+# Order: disable MCP first → kill lockers → retry remove → reinstall.
+# Admin / reboot will NOT help — file locks, not ACLs.
+#
+# powershell -ExecutionPolicy Bypass -File scripts/repair-uv-scubiee.ps1 [version]
 
 $ErrorActionPreference = "Stop"
 $UvToolRoot = Join-Path $env:APPDATA "uv\tools\scubiee"
 $LocalBin = Join-Path $env:USERPROFILE ".local\bin"
-$Version = if ($args.Count -gt 0) { $args[0] } else { "0.2.53" }
+$Version = if ($args.Count -gt 0) { $args[0] } else { "0.2.87" }
 $IndexUrl = "https://pypi.org/simple"
 
+function Disable-ScubieeMcp([string]$Path, [string]$Key) {
+    if (-not (Test-Path $Path)) { return }
+    try {
+        $json = Get-Content $Path -Raw | ConvertFrom-Json
+        $servers = $json.$Key
+        if ($null -eq $servers) { return }
+        $changed = $false
+        foreach ($name in @("scubiee")) {
+            if ($servers.PSObject.Properties.Name -contains $name) {
+                $entry = $servers.$name
+                if ($entry -is [PSCustomObject]) {
+                    $entry | Add-Member -NotePropertyName disabled -NotePropertyValue $true -Force
+                }
+                $servers.$name = $entry
+                $changed = $true
+                Write-Host "[repair] Disabled $name in $Path"
+            }
+        }
+        if ($changed) {
+            $json.$Key = $servers
+            $json | ConvertTo-Json -Depth 20 | Set-Content $Path -Encoding UTF8
+        }
+    } catch {
+        Write-Host "[repair] Could not edit $Path : $_"
+    }
+}
+
+function Remove-PathWithRetry([string]$Path, [int]$Attempts = 5) {
+    if (-not (Test-Path $Path)) { return $true }
+    for ($i = 1; $i -le $Attempts; $i++) {
+        Write-Host "[repair] Removing $Path (attempt $i/$Attempts)"
+        Remove-Item -Recurse -Force $Path -ErrorAction SilentlyContinue
+        if (-not (Test-Path $Path)) { return $true }
+        $leaf = (Split-Path $Path -Leaf) + ".trash-$PID-$i"
+        $parent = Split-Path $Path -Parent
+        $trash = Join-Path $parent $leaf
+        try {
+            Rename-Item -Path $Path -NewName $leaf -ErrorAction Stop
+            Remove-Item -Recurse -Force $trash -ErrorAction SilentlyContinue
+        } catch { }
+        if (-not (Test-Path $Path)) { return $true }
+        # Re-kill in case MCP respawned
+        Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+            Where-Object { $_.ExecutablePath -and $_.ExecutablePath -like "*\uv\tools\scubiee\*" } |
+            ForEach-Object { taskkill /PID $_.ProcessId /T /F 2>$null | Out-Null }
+        Start-Sleep -Seconds (1 * $i)
+    }
+    return -not (Test-Path $Path)
+}
+
+Write-Host "[repair] Disabling MCP so Cursor cannot respawn lockers ..."
+Disable-ScubieeMcp (Join-Path $env:USERPROFILE ".cursor\mcp.json") "mcpServers"
+Disable-ScubieeMcp (Join-Path (Get-Location) ".cursor\mcp.json") "mcpServers"
+Start-Sleep -Seconds 1
+
 Write-Host "[repair] Stopping processes using uv scubiee tool ..."
-Get-Process python*, scubiee, ctx* -ErrorAction SilentlyContinue |
-    Where-Object { $_.Path -like "*\uv\tools\scubiee\*" } |
-    ForEach-Object { Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue }
+$pattern = 'scubiee|ctx-mcp|uv\\tools\\scubiee|pipeline\.'
+Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+    Where-Object {
+        ($_.ExecutablePath -and $_.ExecutablePath -like "*\uv\tools\scubiee\*") -or
+        ($_.CommandLine -and $_.CommandLine -match $pattern)
+    } |
+    ForEach-Object {
+        taskkill /PID $_.ProcessId /T /F 2>$null | Out-Null
+    }
 Start-Sleep -Seconds 2
 
 if (Test-Path $UvToolRoot) {
-    Write-Host "[repair] Removing broken tool env: $UvToolRoot"
-    Remove-Item -Recurse -Force $UvToolRoot -ErrorAction SilentlyContinue
-    if (Test-Path $UvToolRoot) {
-        Write-Host "[repair] ERROR: could not delete $UvToolRoot — quit Cursor and retry." -ForegroundColor Red
+    if (-not (Remove-PathWithRetry $UvToolRoot)) {
+        Write-Host "[repair] ERROR: could not delete $UvToolRoot" -ForegroundColor Red
+        Write-Host "  Quit Cursor completely, then retry. Admin will not help." -ForegroundColor Yellow
         exit 1
     }
 }
@@ -57,3 +120,4 @@ Write-Host "[repair] Verifying ..."
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "[repair] OK. Run: scubiee setup --repair" -ForegroundColor Green
+Write-Host "Then reconnect MCP: scubiee connect --cursor" -ForegroundColor Green

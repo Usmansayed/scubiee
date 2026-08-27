@@ -2,14 +2,14 @@
 
 Install and GPU behavior on macOS and Linux.
 
-**Docs assume scubiee 0.2.82.**
+**Docs assume [scubiee 0.2.87](https://pypi.org/project/scubiee/0.2.87/).** Full playbook: [Install & debug](./install-and-debug.md).
 
 ---
 
 ## Install
 
 ```bash
-uv tool install --force scubiee==0.2.82 --index-url https://pypi.org/simple
+uv tool install --force scubiee==0.2.87 --index-url https://pypi.org/simple --refresh
 uv tool update-shell
 # new terminal
 scubiee setup --repair
@@ -21,7 +21,7 @@ scubiee connect --cursor    # or --kiro / --copilot / … inside each Special-4 
 **pip alternative:**
 
 ```bash
-pip install -U scubiee==0.2.82
+pip install -U scubiee==0.2.87
 scubiee setup --repair
 ```
 
@@ -86,9 +86,9 @@ scubiee setup --profile cpu --repair
 
 ## Data paths
 
-- `~/.context-engine/` — state, indexes, `accel.json`
+- `~/.scubiee/` — state, indexes, `accel.json`
 - `~/.cursor/mcp.json` — Cursor MCP (from **connect**)
-- `<repo>/.context-engine/id.json` — project identity
+- `<repo>/.scubiee/id.json` — project identity
 
 Model cache: `~/.cache/fastembed/` (and MLX-related caches as configured).
 

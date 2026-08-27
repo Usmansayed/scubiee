@@ -14,7 +14,9 @@ from typing import Any
 
 
 def _session_path(repo: Path) -> Path:
-    base = repo / ".context-engine"
+    from pipeline.project_id import id_dir_path
+
+    base = id_dir_path(repo)
     base.mkdir(parents=True, exist_ok=True)
     name = os.environ.get("CTX_WORK_SESSION") or "work_session.json"
     return base / name

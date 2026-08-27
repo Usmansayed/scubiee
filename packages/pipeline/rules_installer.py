@@ -21,6 +21,7 @@ from typing import Any
 
 from pipeline.mcp_install import server_entry
 from pipeline.tool_registry import (
+    SPECIAL_WORKSPACE_MCP_SLUGS,
     TOOL_MAP,
     ToolDef,
     WORKSPACE_LOCAL_MCP_NOTICES,
@@ -39,16 +40,25 @@ def _templates_dir() -> Path:
 
 
 def _rule_content_md() -> str:
-    return (_templates_dir() / "context-engine.md").read_text(encoding="utf-8")
+    return (_templates_dir() / "scubiee.md").read_text(encoding="utf-8")
 
 
 def _rule_content_mdc() -> str:
-    return (_templates_dir() / "context-agent.mdc").read_text(encoding="utf-8")
+    return (_templates_dir() / "scubiee.mdc").read_text(encoding="utf-8")
 
 
-_MARKER_START = "<!-- context-engine:start -->"
-_MARKER_END = "<!-- context-engine:end -->"
-_SERVER_NAME = "context-engine"
+from pipeline.branding import (
+    CONTINUE_YAML_MARKER,
+    MARKER_END,
+    MARKER_START,
+    MCP_SERVER_NAME,
+    MCP_SERVER_NAMES,
+    strip_legacy_mcp_keys,
+)
+
+_MARKER_START = MARKER_START
+_MARKER_END = MARKER_END
+_SERVER_NAME = MCP_SERVER_NAME
 
 # Hosts that expand ${workspaceFolder} in global MCP env (not special-4).
 # Special-4 keep absolute CTX_REPO in *project* files only.
@@ -57,10 +67,12 @@ _SERVER_NAME = "context-engine"
 _WORKSPACE_FOLDER_TOKEN = "${workspaceFolder}"
 
 
-# Classic special-4: omit CTX_REPO from *global* MCP (absolute pin is project-only).
-# Newer project-pin hosts still get ${workspaceFolder} hints in global + absolute in project.
+# Classic special-4 + Cursor: omit CTX_REPO from *global* MCP.
+# Absolute pin lives in project files only. Cursor does not expand
+# ${workspaceFolder} in ~/.cursor/mcp.json (live Mac/Win observation) —
+# a literal token poisons resolution to $HOME → managed=false.
 _GLOBAL_OMIT_CTX_REPO_SLUGS: frozenset[str] = frozenset(
-    {"kiro", "copilot", "cline", "roo-code"}
+    {"kiro", "copilot", "cline", "roo-code", "cursor"}
 )
 
 
@@ -81,10 +93,7 @@ def _inject_global_workspace_hints(tool: ToolDef, env: dict[str, str]) -> None:
         return
     # Interpolated pin — hosts that expand win; unexpanded tokens are ignored by resolver.
     env.setdefault("CTX_REPO", _WORKSPACE_FOLDER_TOKEN)
-    if tool.slug == "cursor":
-        env.setdefault("CURSOR_PROJECT_DIR", _WORKSPACE_FOLDER_TOKEN)
-        env.setdefault("CURSOR_CWD", _WORKSPACE_FOLDER_TOKEN)
-    elif tool.slug == "opencode":
+    if tool.slug == "opencode":
         env.setdefault("OPENCODE_DEFAULT_PROJECT", _WORKSPACE_FOLDER_TOKEN)
     elif tool.slug in {"windsurf", "continue", "zed", "amp", "pi", "claude-code"}:
         env.setdefault("WORKSPACE_FOLDER", _WORKSPACE_FOLDER_TOKEN)
@@ -193,7 +202,7 @@ def _workspace_mcp_eligible(root: Path, *, explicit_repo: bool) -> bool:
         return True
     if (root / ".git").exists():
         return True
-    if (root / ".context-engine" / "id.json").is_file():
+    if (root / ".scubiee" / "id.json").is_file():
         return True
     return False
 
@@ -250,7 +259,7 @@ def _write_workspace_mcp(tool: ToolDef, repo: Path) -> list[Path]:
         return written
 
     if slug == "continue":
-        path = repo / ".continue" / "mcpServers" / "context-engine.yaml"
+        path = repo / ".continue" / "mcpServers" / "scubiee.yaml"
         entry = format_server_entry(tool, repo, pin_repo=True)
         _write_continue_project_mcp(path, entry)
         written.append(path)
@@ -295,7 +304,7 @@ def _remove_workspace_mcp(tool: ToolDef, repo: Path) -> bool:
                 text = path.read_text(encoding="utf-8")
             except OSError:
                 continue
-            if "context-engine" in text or "# context-engine" in text:
+            if "scubiee" in text or "# scubiee" in text:
                 path.unlink(missing_ok=True)
                 removed = True
         else:
@@ -356,6 +365,7 @@ def _write_mcp_json_keyed(path: Path, key: str, entry: dict[str, Any]) -> None:
     servers = data.get(key)
     if not isinstance(servers, dict):
         servers = {}
+    strip_legacy_mcp_keys(servers)
     servers[_SERVER_NAME] = entry
     data[key] = servers
     if key == "mcp" and "$schema" not in data:
@@ -368,6 +378,7 @@ def _write_mcp_amp(path: Path, entry: dict[str, Any]) -> None:
     servers = data.get("amp.mcpServers")
     if not isinstance(servers, dict):
         servers = {}
+    strip_legacy_mcp_keys(servers)
     servers[_SERVER_NAME] = entry
     data["amp.mcpServers"] = servers
     _write_json(path, data)
@@ -378,6 +389,7 @@ def _write_mcp_zed(path: Path, entry: dict[str, Any]) -> None:
     servers = data.get("context_servers")
     if not isinstance(servers, dict):
         servers = {}
+    strip_legacy_mcp_keys(servers)
     servers[_SERVER_NAME] = {
         "command": entry["command"],
         "args": entry.get("args") or [],
@@ -388,10 +400,10 @@ def _write_mcp_zed(path: Path, entry: dict[str, Any]) -> None:
 
 
 def verify_mcp_configs(slugs: list[str]) -> list[dict[str, Any]]:
-    """Verify MCP config files have a valid context-engine entry.
+    """Verify MCP config files have a valid scubiee entry.
 
     For each tool slug, reads its MCP config file(s) and checks that the
-    'context-engine' server entry exists with 'command' + 'args' keys.
+    'scubiee' server entry exists with 'command' + 'args' keys.
     Callable from `scubiee doctor`.
 
     Returns a list of {tool, path, ok, error} dicts.
@@ -459,12 +471,13 @@ def verify_mcp_configs(slugs: list[str]) -> list[dict[str, Any]]:
 def _write_mcp_toml(path: Path, entry: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     lines: list[str] = []
+    skip_headers = {f"[mcp_servers.{n}]" for n in MCP_SERVER_NAMES}
     if path.is_file():
         existing = path.read_text(encoding="utf-8")
         new_lines: list[str] = []
         skip = False
         for line in existing.splitlines():
-            if line.strip() == "[mcp_servers.context-engine]":
+            if line.strip() in skip_headers:
                 skip = True
                 continue
             if skip and line.startswith("["):
@@ -473,7 +486,7 @@ def _write_mcp_toml(path: Path, entry: dict[str, Any]) -> None:
                 new_lines.append(line)
         lines = new_lines
     lines.append("")
-    lines.append("[mcp_servers.context-engine]")
+    lines.append(f"[mcp_servers.{_SERVER_NAME}]")
     lines.append(f'command = "{entry["command"]}"')
     args_str = ", ".join(f'"{a}"' for a in entry.get("args", []))
     lines.append(f"args = [{args_str}]")
@@ -489,13 +502,13 @@ def _write_mcp_toml(path: Path, entry: dict[str, Any]) -> None:
 
 def _write_mcp_continue_yaml(path: Path, entry: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    marker = "# context-engine"
+    markers = (CONTINUE_YAML_MARKER,)
     existing = path.read_text(encoding="utf-8") if path.is_file() else ""
     lines = existing.splitlines()
     new_lines: list[str] = []
     skip = False
     for line in lines:
-        if marker in line:
+        if any(m in line for m in markers):
             skip = True
             continue
         if skip and line.strip() and not line.startswith(" ") and not line.startswith("\t"):
@@ -505,7 +518,7 @@ def _write_mcp_continue_yaml(path: Path, entry: dict[str, Any]) -> None:
     while new_lines and not new_lines[-1].strip():
         new_lines.pop()
     new_lines.append("")
-    new_lines.append(f"mcpServers:  {marker}")
+    new_lines.append(f"mcpServers:  {CONTINUE_YAML_MARKER}")
     new_lines.append(f"  - name: {entry.get('name', _SERVER_NAME)}")
     new_lines.append(f'    command: "{entry["command"]}"')
     args_yaml = ", ".join(f'"{a}"' for a in entry.get("args", []))
@@ -524,7 +537,7 @@ def _write_continue_project_mcp(path: Path, entry: dict[str, Any]) -> None:
     """Standalone Continue workspace block (`.continue/mcpServers/*.yaml`)."""
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
-        "name: Context Engine",
+        "name: Scubiee",
         "version: 0.0.1",
         "schema: v1",
         "mcpServers:",
@@ -572,21 +585,33 @@ def write_mcp_config(
 def _write_rule_mdc(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(_rule_content_mdc(), encoding="utf-8")
+    # Drop legacy Cursor rule filenames from older installs.
 
 
 def _write_rule_md(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(_rule_content_md(), encoding="utf-8")
+    # Drop legacy steering/rule filenames.
+
+
+def _strip_marked_sections(existing: str) -> str:
+    """Remove Scubiee (and legacy) marked rule sections from a file body."""
+    text = existing
+    for start, end in ((_MARKER_START, _MARKER_END),):
+        if start not in text:
+            continue
+        before = text.split(start)[0]
+        after = text.split(end)[-1] if end in text else ""
+        text = before.rstrip() + ("\n\n" if before.strip() else "")
+        if after.strip():
+            text += after.lstrip()
+    return text
 
 
 def _write_rule_append_md(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     existing = path.read_text(encoding="utf-8") if path.is_file() else ""
-    if _MARKER_START in existing:
-        before = existing.split(_MARKER_START)[0]
-        after = existing.split(_MARKER_END)[-1] if _MARKER_END in existing else ""
-        existing = before.rstrip() + "\n\n" if before.strip() else ""
-        existing += after.lstrip() if after.strip() else ""
+    existing = _strip_marked_sections(existing)
     content = _rule_content_md()
     section = f"{_MARKER_START}\n{content}\n{_MARKER_END}\n"
     if existing and not existing.endswith("\n"):
@@ -647,7 +672,9 @@ def install_tool(
     }
 
     if workspace_local:
-        report["notice"] = WORKSPACE_LOCAL_MCP_NOTICES.get(tool.slug, "")
+        # Only classic special-4 get the "run connect in each repo" note.
+        if tool.slug in SPECIAL_WORKSPACE_MCP_SLUGS:
+            report["notice"] = WORKSPACE_LOCAL_MCP_NOTICES.get(tool.slug, "")
         report["repo"] = str(target_repo)
         eligible = _workspace_mcp_eligible(target_repo, explicit_repo=explicit_repo)
         report["workspace_mcp_eligible"] = eligible
@@ -742,9 +769,15 @@ def _remove_mcp_json_keyed(path: Path, key: str) -> bool:
         return False
     data = _load_json(path)
     servers = data.get(key)
-    if not isinstance(servers, dict) or _SERVER_NAME not in servers:
+    if not isinstance(servers, dict):
         return False
-    del servers[_SERVER_NAME]
+    removed = False
+    for name in MCP_SERVER_NAMES:
+        if name in servers:
+            del servers[name]
+            removed = True
+    if not removed:
+        return False
     if servers:
         data[key] = servers
         _write_json(path, data)
@@ -762,9 +795,15 @@ def _remove_mcp_amp(path: Path) -> bool:
         return False
     data = _load_json(path)
     servers = data.get("amp.mcpServers")
-    if not isinstance(servers, dict) or _SERVER_NAME not in servers:
+    if not isinstance(servers, dict):
         return False
-    del servers[_SERVER_NAME]
+    removed = False
+    for name in MCP_SERVER_NAMES:
+        if name in servers:
+            del servers[name]
+            removed = True
+    if not removed:
+        return False
     data["amp.mcpServers"] = servers
     _write_json(path, data)
     return True
@@ -778,12 +817,13 @@ def _remove_mcp_toml(path: Path) -> bool:
     if not path.is_file():
         return False
     existing = path.read_text(encoding="utf-8")
-    if "[mcp_servers.context-engine]" not in existing:
+    skip_headers = {f"[mcp_servers.{n}]" for n in MCP_SERVER_NAMES}
+    if not any(h in existing for h in skip_headers):
         return False
     new_lines: list[str] = []
     skip = False
     for line in existing.splitlines():
-        if line.strip() == "[mcp_servers.context-engine]":
+        if line.strip() in skip_headers:
             skip = True
             continue
         if skip and line.startswith("["):
@@ -801,14 +841,14 @@ def _remove_mcp_continue_yaml(path: Path) -> bool:
     if not path.is_file():
         return False
     existing = path.read_text(encoding="utf-8")
-    marker = "# context-engine"
-    if marker not in existing:
+    markers = (CONTINUE_YAML_MARKER,)
+    if not any(m in existing for m in markers):
         return False
     lines = existing.splitlines()
     new_lines: list[str] = []
     skip = False
     for line in lines:
-        if marker in line:
+        if any(m in line for m in markers):
             skip = True
             continue
         if skip and line.strip() and not line.startswith(" ") and not line.startswith("\t"):
@@ -855,12 +895,7 @@ def _remove_rule_section(path: Path) -> bool:
     existing = path.read_text(encoding="utf-8")
     if _MARKER_START not in existing:
         return False
-    before = existing.split(_MARKER_START)[0]
-    after = existing.split(_MARKER_END)[-1] if _MARKER_END in existing else ""
-    result = before.rstrip()
-    if after.strip():
-        result += "\n\n" + after.lstrip()
-    result = result.strip()
+    result = _strip_marked_sections(existing).strip()
     if result:
         result += "\n"
     path.write_text(result, encoding="utf-8")

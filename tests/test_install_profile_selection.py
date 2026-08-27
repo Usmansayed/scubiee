@@ -187,6 +187,7 @@ def test_existing_init_profile_is_reused_unless_repair_requested(
 ) -> None:
     saved = _profile()
     monkeypatch.setattr(accel, "load_accel", lambda: saved)
+    monkeypatch.setattr(accel, "saved_accel_needs_reconfigure", lambda _existing: False)
     monkeypatch.setattr(
         accel,
         "configure",

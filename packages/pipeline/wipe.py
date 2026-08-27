@@ -1,4 +1,4 @@
-"""Wipe Context Engine state — repo-local or full machine (``--all``).
+"""Wipe Scubiee state — repo-local or full machine (``--all``).
 
 Normal path stays untouched: ``setup`` → ``init`` → use. Wipe is opt-in cleanup.
 ``wipe --all --confirm`` removes home state, MCP wiring for every connect target,
@@ -15,8 +15,15 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-# Cursor rule filenames: canonical + legacy (pre-0.2.54 connect wrote context-engine.mdc).
-_CURSOR_RULE_NAMES = ("context-agent.mdc", "context-engine.mdc")
+from pipeline.branding import (
+    DATA_DIR_NAMES,
+    MARKER_START,
+    MCP_SERVER_NAMES,
+)
+from pipeline.project_id import context_engine_home
+
+# Cursor rule filenames written by connect.
+_CURSOR_RULE_NAMES = ("scubiee.mdc",)
 
 
 def _cursor_rule_paths(base: Path) -> list[Path]:
@@ -30,8 +37,8 @@ def _kiro_mcp_paths(base: Path) -> list[Path]:
 
 
 def _kiro_steering_paths(base: Path) -> list[Path]:
-    """Steering files scubiee connect may have written."""
-    return [base / ".kiro" / "steering" / "context-engine.md"]
+    """Steering files scubiee connect may have written (current + legacy)."""
+    return [base / ".kiro" / "steering" / "scubiee.md"]
 
 
 def _rm_tree(path: Path) -> dict[str, Any]:
@@ -60,7 +67,8 @@ def _rm_tree(path: Path) -> dict[str, Any]:
         }
 
 
-def _drop_mcp_server(path: Path, *, name: str = "context-engine") -> dict[str, Any]:
+def _drop_mcp_server(path: Path, *, name: str | None = None) -> dict[str, Any]:
+    names = (name,) if name else MCP_SERVER_NAMES
     if not path.is_file():
         return {"path": str(path), "removed": False, "missing": True}
     try:
@@ -70,26 +78,29 @@ def _drop_mcp_server(path: Path, *, name: str = "context-engine") -> dict[str, A
     if not isinstance(data, dict):
         return {"path": str(path), "removed": False, "error": "not_object"}
 
-    removed = False
-    for key in ("mcpServers", "servers"):
+    removed_names: list[str] = []
+    for key in ("mcpServers", "servers", "mcp", "context_servers", "amp.mcpServers"):
         servers = data.get(key)
-        if not isinstance(servers, dict) or name not in servers:
+        if not isinstance(servers, dict):
             continue
-        servers.pop(name, None)
-        removed = True
+        for n in names:
+            if n not in servers:
+                continue
+            servers.pop(n, None)
+            removed_names.append(n)
         if servers:
             data[key] = servers
         else:
             data.pop(key, None)
 
-    if not removed:
+    if not removed_names:
         return {"path": str(path), "removed": False, "absent": True}
     try:
         if data:
             path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
         else:
             path.unlink(missing_ok=True)
-        return {"path": str(path), "removed": True, "name": name}
+        return {"path": str(path), "removed": True, "name": removed_names}
     except OSError as exc:
         return {"path": str(path), "removed": False, "error": str(exc)}
 
@@ -188,7 +199,7 @@ def _coderank_model_dirs() -> list[Path]:
             continue
         pruned.append(p)
 
-    # MLX FP16 weights live under ~/.context-engine/mlx/CodeRankEmbed — include
+    # MLX FP16 weights live under ~/.scubiee/mlx/CodeRankEmbed — include
     # them explicitly so --all plans/audits list model data even when only the
     # parent home was expected to vanish.
     for home in _context_engine_homes():
@@ -208,15 +219,10 @@ def _coderank_model_dirs() -> list[Path]:
 
 
 def _context_engine_homes() -> list[Path]:
-    """Every CE home directory (CTX_HOME override + default)."""
-    homes: list[Path] = []
-    try:
-        from pipeline.project_id import context_engine_home
-
-        homes.append(context_engine_home())
-    except Exception:  # noqa: BLE001
-        pass
-    homes.append(Path.home() / ".context-engine")
+    """Every Scubiee home directory (CTX_HOME / ``~/.scubiee``)."""
+    homes: list[Path] = [context_engine_home()]
+    for name in DATA_DIR_NAMES:
+        homes.append(Path.home() / name)
     seen: set[str] = set()
     out: list[Path] = []
     for home in homes:
@@ -291,29 +297,29 @@ def _uv_tool_dir() -> Path | None:
         return Path(raw) / "uv" / "tools" / "scubiee"
 
 
-def _mcp_has_context_engine(path: Path, *, name: str = "context-engine") -> bool:
+def _mcp_has_context_engine(path: Path, *, name: str | None = None) -> bool:
+    names = (name,) if name else MCP_SERVER_NAMES
     if not path.is_file():
         return False
     try:
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeError):
         return False
-    # Fast path for TOML/YAML and odd schemas: any CE server block.
-    if name in text and path.suffix.lower() in {".toml", ".yaml", ".yml"}:
+    if any(n in text for n in names) and path.suffix.lower() in {".toml", ".yaml", ".yml"}:
         return True
     try:
         data = json.loads(text)
     except json.JSONDecodeError:
-        return name in text
+        return any(n in text for n in names)
     if not isinstance(data, dict):
         return False
     for key in ("mcpServers", "servers", "mcp", "context_servers", "amp.mcpServers"):
         servers = data.get(key)
-        if isinstance(servers, dict) and name in servers:
+        if isinstance(servers, dict) and any(n in servers for n in names):
             return True
         if isinstance(servers, list):
             for item in servers:
-                if isinstance(item, dict) and item.get("name") == name:
+                if isinstance(item, dict) and item.get("name") in names:
                     return True
     return False
 
@@ -385,11 +391,10 @@ def audit_scubiee_artifacts(*, include_package: bool = True, include_models: boo
                         text = rule_path.read_text(encoding="utf-8")
                     except (OSError, UnicodeError):
                         continue
-                    if "<!-- context-engine:start -->" in text:
+                    if MARKER_START in text:
                         note(rule_path, kind=f"tool_rule:{tool.slug}")
     except Exception:  # noqa: BLE001
         pass
-    # Legacy Cursor rule name + any path not listed on ToolDef.
     for rule_path in _cursor_rule_paths(Path.home()):
         if rule_path.is_file() and not any(
             r.get("path") == str(rule_path) for r in remaining
@@ -413,9 +418,10 @@ def audit_scubiee_artifacts(*, include_package: bool = True, include_models: boo
 
     # Repo-local enrollment markers left behind.
     for repo in _registered_repo_roots():
-        id_dir = repo / ".context-engine"
-        if id_dir.exists():
-            note(id_dir, kind="repo_id_dir")
+        for dirname in DATA_DIR_NAMES:
+            id_dir = repo / dirname
+            if id_dir.exists():
+                note(id_dir, kind="repo_id_dir")
         for rule_path in _cursor_rule_paths(repo):
             if rule_path.is_file():
                 note(rule_path, kind="repo_rule")
@@ -458,9 +464,10 @@ def wipe_repo(root: Path | str, *, mcp: bool = True, rule: bool = True) -> dict[
         out["ok"] = False
         out["actions"].append({"remove_repo": {"ok": False, "error": str(exc)}})
 
-    id_path = id_file_path(root)
-    if id_path.is_file() or id_path.parent.is_dir():
-        out["actions"].append({"id_dir": _rm_tree(id_path.parent)})
+    for dirname in DATA_DIR_NAMES:
+        id_dir = root / dirname
+        if id_dir.exists():
+            out["actions"].append({"id_dir": _rm_tree(id_dir)})
 
     if mcp:
         out["actions"].append(
@@ -527,10 +534,10 @@ def wipe_all(
                 "This is intentional — confirm only when you mean to delete everything."
             ),
             "hint": (
-                "This removes ALL Context Engine state: every enrolled repo's "
-                ".context-engine + MCP/rules, all connect tool MCP entries "
+                "This removes ALL Scubiee state: every enrolled repo's "
+                ".scubiee + MCP/rules, all connect tool MCP entries "
                 "(Cursor, Claude Code, Codex, Windsurf, Copilot, Cline, Roo, …), "
-                "all ctx home dirs (~/.context-engine), CodeRank/FastEmbed/"
+                "all home dirs (~/.scubiee), CodeRank/FastEmbed/"
                 "HuggingFace model caches, uv tool shims, and the scubiee package. "
                 "Re-run with: scubiee wipe --all --confirm. "
                 "Quit Cursor/Kiro and other IDEs first on Windows."
@@ -726,7 +733,7 @@ def wipe_all(
             "uv tool install scubiee --index-url https://pypi.org/simple && scubiee setup"
             if package and audit.get("clean")
             else (
-                "Some CE files may remain (see remaining). Quit Cursor, run "
+                "Some Scubiee files may remain (see remaining). Quit Cursor, run "
                 "`scubiee stop`, then `scubiee wipe --all --confirm` again."
                 if audit.get("remaining")
                 else (

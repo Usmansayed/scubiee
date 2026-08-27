@@ -1,15 +1,15 @@
 # Cursor & MCP
 
-Scubiee integrates with AI coding tools through the **Model Context Protocol (MCP)**. The MCP server talks to a local Context Engine daemon (default `http://127.0.0.1:8765`).
+Scubiee integrates with AI coding tools through the **Model Context Protocol (MCP)**. The MCP server name is **`scubiee`**. It talks to the local Scubiee daemon (default `http://127.0.0.1:8765`).
 
-**Docs assume scubiee 0.2.82.**
+**Docs assume [scubiee 0.2.87](https://pypi.org/project/scubiee/0.2.87/)** (published on PyPI). Install/debug: [Install & debug](./install-and-debug.md).
 
 ---
 
 ## First-time setup
 
 ```text
-1. uv tool install --force scubiee==0.2.82 --index-url https://pypi.org/simple
+1. uv tool install --force scubiee==0.2.87 --index-url https://pypi.org/simple --refresh
 2. scubiee setup --repair
 3. cd your-project && scubiee init .
 4. scubiee connect --cursor
@@ -20,11 +20,11 @@ Scubiee integrates with AI coding tools through the **Model Context Protocol (MC
 
 | Command | Writes |
 |---------|--------|
-| `scubiee setup --repair` | Machine GPU/CPU/MLX profile, model cache, optional supervisor; may refresh MCP paths |
-| `scubiee init .` | Repo enrollment + **index** (`.context-engine/id.json`, project store). **Not** MCP/rules |
-| `scubiee connect --cursor` | `~/.cursor/mcp.json` + `~/.cursor/rules/context-agent.mdc` |
+| `scubiee setup --repair` | Machine GPU/CPU/MLX profile, model cache, optional supervisor |
+| `scubiee init .` | Repo enrollment + **index**. **Not** MCP/rules |
+| `scubiee connect --cursor` | Global `~/.cursor/mcp.json` + rules **and** project `.cursor/mcp.json` (absolute `CTX_REPO`) |
 
-Prefer **`connect`** after every upgrade so rules stay current. Prefer **`setup --repair`** after GPU change or missing FastEmbed/ORT.
+Prefer **`connect`** after every upgrade so rules and project pins stay current. Prefer **`setup --repair`** after GPU change or missing FastEmbed/ORT.
 
 ```bash
 scubiee disconnect --cursor
@@ -32,9 +32,22 @@ scubiee disconnect --cursor
 
 ---
 
+## Cursor workspace pin (important)
+
+Cursor does **not** expand `${workspaceFolder}` in global `~/.cursor/mcp.json`. A literal token makes MCP resolve to your home folder → `managed: false`.
+
+**0.2.87+ behavior:**
+
+- Global MCP entry: **no** `CTX_REPO` / `CURSOR_*` workspace tokens
+- Project `.cursor/mcp.json`: **absolute** `CTX_REPO` for the repo where you ran `connect`
+
+Always run `scubiee connect --cursor` **from the project** you want managed, then reload MCP.
+
+---
+
 ## Special-4 hosts (per-repo connect)
 
-These tools need a **workspace-local** MCP file in addition to (or instead of relying on) global MCP:
+These tools need a **workspace-local** MCP file:
 
 | Tool | Command (run inside the project) | Typical paths |
 |------|----------------------------------|---------------|
@@ -42,8 +55,6 @@ These tools need a **workspace-local** MCP file in addition to (or instead of re
 | Copilot / VS Code | `scubiee connect --copilot` | `.vscode/mcp.json`, `.mcp.json` |
 | Cline | `scubiee connect --cline` | `.cline/mcp.json` |
 | Roo Code | `scubiee connect --roo-code` | `.roo/mcp.json` |
-
-If connect runs outside a project folder, you may only get global wiring — the CLI warns you to run again inside the repo.
 
 ---
 
@@ -55,8 +66,8 @@ At session start the agent calls **`status()` once**:
 |--------|---------|
 | `managed: true` | This workspace is enrolled (after `init`) |
 | `ok: true` | Daemon is healthy — use Scubiee tools |
-| `warming: true` | Managed but daemon not ready yet — use tools; retry tool once if needed; **do not poll `status()` in a loop** |
-| `managed: false` | Use native tools for now; retry `status()` after you run `init` / `connect` (event-driven — not every turn) |
+| `warming: true` | Managed but daemon not ready yet — use tools; retry tool once; **do not poll `status()` in a loop** |
+| `managed: false` | Use native tools for now; retry `status()` after you run `init` / `connect` |
 
 When paused/stopped, follow **`scubiee resume`** (not `wake`).
 
@@ -79,7 +90,7 @@ When paused/stopped, follow **`scubiee resume`** (not `wake`).
 
 ## Cursor rule
 
-`connect` / `setup` install `.cursor/rules/context-agent.mdc`:
+`connect` / `setup` install `.cursor/rules/scubiee.mdc`:
 
 1. Call `status()` at session start  
 2. If managed + ok → use Scubiee MCP for discovery  
@@ -98,7 +109,7 @@ scubiee connect --cursor
 scubiee setup --repair
 ```
 
-On Windows, `mcp.json` should point at `%APPDATA%\uv\tools\scubiee\Scripts\python.exe`.
+On Windows, MCP should use `%APPDATA%\uv\tools\scubiee\Scripts\python.exe` (via the `scubiee-mcp` / `scubiee` shim).
 
 ---
 
@@ -112,20 +123,22 @@ Put a unique string in a **`.py`** file in scope, sync, then search.
 
 ---
 
-## Windows: MCP locks files
+## Windows: MCP locks files (Access denied on reinstall)
 
 ```bash
-scubiee stop
-# quit Cursor or disable MCP
-scubiee wipe --all --yes --package
+scubiee unlock-tool
+uv tool install --force scubiee==0.2.87 --index-url https://pypi.org/simple --refresh
+scubiee setup --repair
+scubiee connect --cursor
 ```
 
-See [Uninstall on Windows](./uninstall-windows.md).
+Do **not** rely on Admin/reboot. See [Install & debug](./install-and-debug.md) and [Uninstall on Windows](./uninstall-windows.md).
 
 ---
 
 ## Related
 
+- [Install & debug](./install-and-debug.md)
 - [Getting started](./getting-started.md)
 - [Troubleshooting](./troubleshooting.md)
 - [Commands reference](./commands-reference.md)

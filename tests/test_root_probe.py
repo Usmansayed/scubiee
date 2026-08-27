@@ -58,6 +58,18 @@ def test_root_probe_ignores_venv_junk(tmp_path: Path):
     assert not any("venv" in p for p in r.added)
 
 
+def test_root_probe_does_not_loop_on_kiro_specs(tmp_path: Path):
+    """IDE .kiro/*.md must not appear as permanent newcomers vs merkle snap."""
+    store = _seed_store(tmp_path, {"pkg/a.py": "x=1\n"})
+    store.save_meta({"fast": False, "git_head": None})
+    spec = tmp_path / ".kiro" / "specs" / "x" / "bugfix.md"
+    spec.parent.mkdir(parents=True)
+    spec.write_text("# kiro spec\n", encoding="utf-8")
+    r = root_probe(tmp_path, base_dir=store.base, discover_newcomers=True)
+    assert r.clean
+    assert not any(".kiro" in p for p in r.added)
+
+
 def test_root_probe_detects_new_file_on_fast_index(tmp_path: Path):
     store = _seed_store(tmp_path, {"pkg/a.py": "x=1\n"})
     (tmp_path / "pkg" / "new_mod.py").write_text("NEW=1\n", encoding="utf-8")

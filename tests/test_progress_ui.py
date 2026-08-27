@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import io
 import json
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -192,7 +193,7 @@ def test_cmd_init_shows_index_bar_not_resource_log(
         lambda *args, **kwargs: {"ok": True},
     )
     rc = cli.cmd_init(
-        argparse.Namespace(path=str(repo), no_index=False, allow_once=False)
+        argparse.Namespace(path=str(repo), no_index=False, allow_once=False, confirm=False)
     )
     out = capsys.readouterr()
     assert rc == 0
@@ -203,6 +204,42 @@ def test_cmd_init_shows_index_bar_not_resource_log(
     assert "[resources] index start" not in out.err
     assert "AST extraction" not in out.err
     assert "AST extraction" not in out.out
+
+
+def test_cmd_init_tty_always_asks_yn_with_file_count(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from pipeline import __main__ as cli
+
+    repo = tmp_path / "app"
+    repo.mkdir()
+    (repo / "a.py").write_text("x=1\n", encoding="utf-8")
+    asked: list[str] = []
+
+    monkeypatch.setattr("pipeline.accel.load_accel", lambda: object())
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    monkeypatch.setattr(sys.stderr, "isatty", lambda: True)
+    monkeypatch.setattr(
+        "pipeline.cli_ui.confirm_action",
+        lambda message, **kwargs: asked.append(message) or True,
+    )
+    monkeypatch.setattr(
+        "pipeline.repo_lifecycle.initialize_repo",
+        lambda *args, **kwargs: {"ok": True, "project_id": "ce_test", "chunks": 1},
+    )
+    monkeypatch.setattr(
+        "pipeline.daemon.ensure_daemon",
+        lambda *args, **kwargs: {"ok": True},
+    )
+
+    rc = cli.cmd_init(
+        argparse.Namespace(
+            path=str(repo), no_index=False, allow_once=False, confirm=False, fast=False, roots=None
+        )
+    )
+    assert rc == 0
+    assert asked, "interactive init must ask y/n"
+    assert "file" in asked[0].lower()
 
 
 def test_cmd_setup_succeeds_when_logon_task_access_denied(

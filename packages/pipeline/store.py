@@ -10,6 +10,7 @@ from typing import Any
 
 from pipeline.artifact_guard import atomic_write_text
 from pipeline.merkle import load_snapshot, save_snapshot
+from pipeline.project_id import context_engine_home
 from pipeline.vectordb import FaissCollection, VectorDatabase, cwd_collection_name
 
 
@@ -45,7 +46,7 @@ class PipelineStore:
             self.base = Path(base_dir).resolve()
             self.base.mkdir(parents=True, exist_ok=True)
             if self.project_id is None:
-                from pipeline.project_id import read_id_file
+                from pipeline.project_id import read_id_file, context_engine_home
 
                 self.project_id = read_id_file(self.root)
         elif resolve:
@@ -56,7 +57,7 @@ class PipelineStore:
             self.base = ref.store_dir
         else:
             # Tests / callers that want path-hash without side effects
-            home = Path.home() / ".context-engine"
+            home = context_engine_home()
             self.base = (home / "indexes" / repo_key(self.root)).resolve()
             self.base.mkdir(parents=True, exist_ok=True)
 
@@ -88,7 +89,7 @@ class PipelineStore:
             import sys
 
             print(
-                f"[context-engine] WARNING: corrupt meta at {self.meta_path}: {exc}",
+                f"[scubiee] WARNING: corrupt meta at {self.meta_path}: {exc}",
                 file=sys.stderr,
                 flush=True,
             )

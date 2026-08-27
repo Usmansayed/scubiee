@@ -1,8 +1,10 @@
 # Scubiee Website Content
 
-> **Version:** 0.2.82  
+> **Version:** [0.2.87](https://pypi.org/project/scubiee/0.2.87/) (published on PyPI)  
 > **Purpose:** Content reference for designing and building the Scubiee product website and public docs.  
-> **Full operator docs:** [`../docs/web-info/`](../docs/web-info/README.md)
+> **Product identity:** MCP key **`scubiee`** · data **`~/.scubiee`** / **`<repo>/.scubiee`** (no legacy `context-engine` paths)  
+> **Full operator docs:** [`../docs/web-info/`](../docs/web-info/README.md)  
+> **Install / debug playbook:** [`../docs/web-info/install-and-debug.md`](../docs/web-info/install-and-debug.md)
 
 ## Tagline options
 
@@ -36,13 +38,13 @@ Changed files re-index in the background so search stays current.
 Imports, calls, and structure — not only matching text.
 
 ### Completely local
-No cloud uploads for search. Model download only during setup.
+No cloud uploads for search. Model download only during setup. MCP server key: **`scubiee`**. Indexes live under `~/.scubiee`.
 
 ### Stop and resume
 `scubiee stop` frees processes and file locks. `scubiee resume` brings Scubiee back. There is no `wake`.
 
 ### One-command upgrade
-`scubiee upgrade` stops CE processes first (critical on Windows), upgrades, restarts, migrates. Then re-run `connect` so rules stay current.
+`scubiee upgrade` unlocks/stops Scubiee processes first (critical on Windows Access denied), upgrades, restarts, migrates. Then re-run `connect` so rules stay current. If the CLI is broken, use `scubiee unlock-tool` or `scripts/repair-uv-scubiee.ps1`.
 
 ### Self-healing setup
 `scubiee setup --repair` restores missing FastEmbed/ORT extras and refreshes `accel.json` after broken reinstalls.
@@ -126,7 +128,9 @@ DIY: weeks of plumbing. Scubiee: setup → init → connect in minutes.
 
 ```bash
 # Recommended
-uv tool install --force scubiee==0.2.82 --index-url https://pypi.org/simple
+uv tool install --force scubiee==0.2.87 --index-url https://pypi.org/simple --refresh
+
+# Windows Access denied? → scubiee unlock-tool  (then retry install)
 
 scubiee setup --repair
 cd your-repo
@@ -143,11 +147,15 @@ Share diagnostics: `scubiee diagnose --no-tests --desktop` → Desktop JSON.
 |---------|-------------------|
 | “MCP doesn’t work” | Did you **connect** after **init**? Reload MCP. |
 | Kiro/Copilot/Cline/Roo empty | Run `connect --tool` **inside that repo**. |
-| Access denied on Windows upgrade | `scubiee stop`, quit Cursor, remove uv tool dir, reinstall, `setup --repair`. |
+| Access denied on Windows upgrade | **`scubiee unlock-tool`**, then reinstall + `setup --repair`. File locks, not ACLs — Admin/reboot is not the fix. |
+| `No module named 'pipeline'` | Half-deleted uv tool dir — `unlock-tool` or `scripts/repair-uv-scubiee.ps1`, then reinstall. |
+| Cursor `managed: false` | Run `connect --cursor` **from the project** (project `.cursor/mcp.json` pin). |
 | Diagnose looks fine, init fails | Stale accel — `setup --repair` then init. |
 | Agent says `wake` | Run **`scubiee resume`**. |
 | Agent polls status forever | Re-run `connect` (rules are event-driven). |
 | Intel laptop stuck on DML hang | Current builds use **cpu** for iGPU — upgrade + `setup --repair`. |
+
+Full install/debug playbook: [`../docs/web-info/install-and-debug.md`](../docs/web-info/install-and-debug.md).
 
 ## CLI command tree (website)
 
@@ -157,6 +165,7 @@ scubiee
 ├── init <path>
 ├── connect / disconnect [--cursor|--kiro|…|--all]
 ├── stop / resume
+├── unlock-tool          # Windows: free uv tool locks before reinstall
 ├── upgrade
 ├── search / sync / status / rebuild
 ├── pause / resume <path>

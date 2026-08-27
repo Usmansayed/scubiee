@@ -1,10 +1,10 @@
 # Dashboard & engine
 
-Scubiee runs a local **Context Engine** HTTP daemon (default `127.0.0.1:8765`) plus an optional **operator dashboard** on a dynamic localhost port.
+Scubiee runs a local HTTP daemon (default `127.0.0.1:8765`) plus an optional **operator dashboard** on a dynamic localhost port.
 
 ---
 
-## Context Engine daemon
+## Scubiee daemon
 
 | Command | Action |
 |---------|--------|
@@ -23,8 +23,8 @@ Environment:
 
 Logs:
 
-- `~/.context-engine/engine.log`
-- `~/.context-engine/watchdog.log`
+- `~/.scubiee/engine.log`
+- `~/.scubiee/watchdog.log`
 
 The **watchdog** restarts the daemon if it crashes. Disable: `CTX_WATCHDOG=0`.
 
@@ -59,10 +59,10 @@ The port is **not fixed** — always use `scubiee dashboard --status` to get the
 
 **Cause (fixed in 0.2.82):** On Windows, process group creation made the spawned PID differ from the PID reported in health JSON.
 
-**Fix:** Upgrade to **scubiee 0.2.82+** and retry:
+**Fix:** Upgrade to **scubiee 0.2.87+** and retry:
 
 ```bash
-uv tool install --force scubiee==0.2.82 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.2.87 --index-url https://pypi.org/simple --refresh
 scubiee dashboard --no-open
 scubiee dashboard --status
 ```

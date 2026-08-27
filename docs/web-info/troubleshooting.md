@@ -3,6 +3,8 @@
 Symptom → cause → fix. Start with `scubiee doctor .` and `scubiee preflight .`.  
 Shareable report: `scubiee diagnose --no-tests --desktop` → `Desktop/scubiee-diagnose.json`.
 
+**Full install / upgrade / Access-denied playbook:** [Install & debug](./install-and-debug.md) (docs assume **[0.2.87](https://pypi.org/project/scubiee/0.2.87/)**).
+
 ---
 
 ## Quick triage order
@@ -42,7 +44,7 @@ Correct order: **setup → init → connect → reload IDE**.
 {"ok": false, "error": "machine_not_setup"}
 ```
 
-**Cause:** No saved profile in `~/.context-engine/accel.json`.
+**Cause:** No saved profile in `~/.scubiee/accel.json`.
 
 **Fix:**
 
@@ -73,20 +75,29 @@ scubiee init .
 
 **Symptom:** Cannot replace files under `%APPDATA%\uv\tools\scubiee\Scripts`; afterward `No module named 'pipeline'` or broken CLI.
 
-**Cause:** `ContextEngineSupervisor` / daemon / Cursor MCP still locking the uv tool Python.
+**Cause:** File **locks** (Cursor MCP / daemon holding `python.exe`) — **not** ACLs. Admin PowerShell does not help.
 
-**Fix:**
+**Fix (CLI works):**
 
 ```powershell
-scubiee stop
-# Task Manager → end ContextEngineSupervisor if still present
-# Quit Cursor (or disable Scubiee MCP)
-Remove-Item -Recurse -Force "$env:APPDATA\uv\tools\scubiee" -ErrorAction SilentlyContinue
-uv tool install --force scubiee==0.2.82 --index-url https://pypi.org/simple --refresh
+scubiee unlock-tool
+uv tool install --force scubiee==0.2.87 --index-url https://pypi.org/simple --refresh
+scubiee setup --repair
+scubiee connect --cursor
+```
+
+**Fix (CLI broken):**
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/uninstall-uv-scubiee.ps1
+# or:
+powershell -ExecutionPolicy Bypass -File scripts/repair-uv-scubiee.ps1 0.2.87
 scubiee setup --repair
 ```
 
-Also see [Uninstall on Windows](./uninstall-windows.md). Prefer `scubiee upgrade` (stops processes first) when available.
+Do **not** lead with reboot or raw `Remove-Item` while Cursor is open (partial deletes leave `No module named 'pipeline'`). Full playbook: [Install & debug](./install-and-debug.md).
+
+Also see [Uninstall on Windows](./uninstall-windows.md). `scubiee upgrade` uses the same unlock path when needed.
 
 ---
 
@@ -178,7 +189,7 @@ Broken uv tool directory. Quit Cursor → [Uninstall on Windows](./uninstall-win
 
 ---
 
-### Two Pythons on PATH (`pip` ≠ `scubiee`)
+### Two Pythons on PATH (`pip` â‰  `scubiee`)
 
 Read `scubiee --version` — use **that** Python’s pip/uv, not conda’s.
 
@@ -285,7 +296,7 @@ scubiee init . --no-index
 ```bash
 scubiee stop
 # quit Cursor
-scubiee wipe --all --yes --package
+scubiee wipe --all --confirm --package
 ```
 
 Read JSON **`audit.remaining`**. Re-run until clean. Platform guides: [Windows](./uninstall-windows.md) | [Mac/Linux](./uninstall-mac-linux.md).
@@ -304,6 +315,6 @@ scubiee list
 scubiee diagnose --no-tests --desktop
 ```
 
-Attach `Desktop/scubiee-diagnose.json` and a short tail of `~/.context-engine/engine.log` if present.
+Attach `Desktop/scubiee-diagnose.json` and a short tail of `~/.scubiee/engine.log` if present.
 
 Platform-specific: [Windows](./windows.md) | [Mac & Linux](./mac-and-linux.md)

@@ -15,6 +15,7 @@ import platform
 import shutil
 from pathlib import Path
 from typing import Any
+from pipeline.project_id import context_engine_home
 
 # Largest install-time calibration candidate — static ONNX is compiled for this.
 COREML_STATIC_BATCH = int(os.environ.get("CTX_COREML_STATIC_BATCH", "20"))
@@ -596,7 +597,7 @@ def register_coreml_coderank_model(
     except ValueError as exc:
         if "already registered" not in str(exc).lower():
             raise
-    marker = Path.home() / ".context-engine" / "coderank_coreml_static.json"
+    marker = context_engine_home() / "coderank_coreml_static.json"
     marker.parent.mkdir(parents=True, exist_ok=True)
     marker.write_text(
         f'{{"model":"{CODERANK_MODEL}-coreml-static","batch":{batch},"seq":{seq}}}\n',
@@ -657,7 +658,7 @@ def _register_coreml_static_alias(model: str, batch: int, seq: int) -> None:
 
 
 def coreml_model_name(default: str) -> str:
-    marker = Path.home() / ".context-engine" / "coderank_coreml_static.json"
+    marker = context_engine_home() / "coderank_coreml_static.json"
     if not marker.is_file():
         return default
     try:

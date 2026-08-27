@@ -83,3 +83,25 @@ def test_testdata_fixtures_skipped_by_default(tmp_path):
 def test_env_override_still_wins(monkeypatch):
     monkeypatch.setenv("CTX_FAST_ROOTS", "src,lib")
     assert fast_roots_from_env() == ("src/", "lib/")
+
+
+def test_indexer_skips_ide_dotdirs_like_merkle(tmp_path):
+    """Merkle skips all dotdirs; indexer must skip IDE trees or probe loops forever."""
+    _write(tmp_path, "packages/pkg/mod.py")
+    for rel in (
+        ".kiro/specs/foo/bugfix.md",
+        ".cursor/rules/x.md",
+        ".codex/notes.md",
+        ".cline/notes.md",
+        ".roo/notes.md",
+        ".amp/notes.md",
+        ".continue/notes.md",
+        ".claude/notes.md",
+    ):
+        p = tmp_path / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text("# ide\n", encoding="utf-8")
+
+    found = {p.relative_to(tmp_path).as_posix() for p in collect_index_paths(tmp_path)}
+    assert "packages/pkg/mod.py" in found
+    assert not any(p.startswith(".") for p in found)

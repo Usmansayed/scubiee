@@ -373,7 +373,7 @@ def require_capabilities(
     if accel.get("hint"):
         hints.append(str(accel["hint"]))
     raise CapabilityError(
-        "Context Engine required dependencies unavailable: "
+        "Scubiee required dependencies unavailable: "
         + ", ".join(report["missing_required"])
         + ". "
         + " ".join(hints)

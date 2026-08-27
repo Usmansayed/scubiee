@@ -1,6 +1,8 @@
 # FAQ
 
-Short answers to common questions. Docs assume **scubiee 0.2.82** ([PyPI](https://pypi.org/project/scubiee/)).
+Short answers to common questions. Docs assume **[scubiee 0.2.87](https://pypi.org/project/scubiee/0.2.87/)** (published on PyPI).
+
+Full install/debug playbook: [Install & debug](./install-and-debug.md).
 
 ---
 
@@ -9,8 +11,11 @@ Short answers to common questions. Docs assume **scubiee 0.2.82** ([PyPI](https:
 **What is Scubiee?**  
 A local code context engine: indexes your repo, embeds with CodeRank (GPU when available), and exposes search/map/focus via MCP to AI coding tools.
 
+**What is the MCP server name?**  
+**`scubiee`** (in `mcp.json`). Data lives under `~/.scubiee` and `<repo>/.scubiee`.
+
 **Do I need to clone the GitHub repo?**  
-No. Install from PyPI: `uv tool install scubiee==0.2.82`.
+No. Install from PyPI: `uv tool install scubiee==0.2.87` ([project page](https://pypi.org/project/scubiee/0.2.87/)).
 
 **What Python version?**  
 3.10 or newer.
@@ -77,7 +82,7 @@ Required when more than 400 indexable files would be touched.
 ## Cursor / MCP
 
 **How do I connect Cursor?**  
-After setup + init: `scubiee connect --cursor`, then reload MCP.
+After setup + init: `scubiee connect --cursor` **from the project**, then reload MCP. That writes project `.cursor/mcp.json` with an absolute pin (Cursor does not expand `${workspaceFolder}` in global MCP).
 
 **Kiro / Copilot / Cline / Roo don’t see the repo?**  
 Run `scubiee connect --<tool>` **inside that project** (workspace-local MCP).
@@ -96,7 +101,10 @@ Yes after setup. HuggingFace is only needed once for the model download.
 ## Windows
 
 **Access denied on upgrade/reinstall?**  
-Stop Scubiee, quit Cursor, delete `%APPDATA%\uv\tools\scubiee`, reinstall, `setup --repair`. See [Windows](./windows.md).
+`scubiee unlock-tool` → reinstall → `setup --repair`. **Not** Admin/reboot. See [Install & debug](./install-and-debug.md) / [Windows](./windows.md).
+
+**`No module named 'pipeline'`?**  
+Half-deleted uv tool env — unlock or `scripts/uninstall-uv-scubiee.ps1` / `repair-uv-scubiee.ps1`, then reinstall.
 
 **AMD discrete GPU?**  
 Yes via DirectML (`dml`). Verify with `scubiee setup --status`.
@@ -109,7 +117,7 @@ Yes via DirectML (`dml`). Verify with `scubiee setup --status`.
 No — indexing and search are local. Only the embedding model downloads during setup.
 
 **How do I delete everything?**  
-`scubiee stop` → quit IDE → `scubiee wipe --all --yes --package`. Check JSON `audit.remaining`.
+`scubiee unlock-tool` (if locked) → `scubiee wipe --all --confirm --package`. Check JSON `audit.remaining`.
 
 ---
 
@@ -118,6 +126,7 @@ No — indexing and search are local. Only the embedding model downloads during 
 **`machine_not_setup`** → `scubiee setup --repair`  
 **`not_configured` / missing fastembed** → `setup --repair`  
 **Stale accel after reinstall** → `setup --repair` before `init`  
+**Access denied (Windows)** → `scubiee unlock-tool` then reinstall  
 **`project_id_mismatch`** → remove stale home registration (`scubiee remove … --delete-store`)  
 **`never_index`** → path was blocked with `scubiee never-index`
 
@@ -125,6 +134,7 @@ No — indexing and search are local. Only the embedding model downloads during 
 
 ## More detail
 
+- [Install & debug](./install-and-debug.md)
 - [Getting started](./getting-started.md)
 - [Troubleshooting](./troubleshooting.md)
 - [Commands reference](./commands-reference.md)

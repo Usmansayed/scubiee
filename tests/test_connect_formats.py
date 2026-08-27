@@ -71,13 +71,15 @@ def test_format_global_entry_uses_workspace_folder_token_not_absolute_pin() -> N
         cwd = str(entry.get("cwd") or "")
         assert not _is_absolute_repo_pin(cwd), slug
         if slug in _GLOBAL_OMIT_CTX_REPO_SLUGS:
-            # Classic special-4: global stays unpinned (absolute pin is project-only).
+            # Special-4 + Cursor: global stays unpinned (absolute pin is project-only).
             assert "CTX_REPO" not in env
         else:
             assert env.get("CTX_REPO") == "${workspaceFolder}", slug
     cursor_env = format_server_entry(TOOL_MAP["cursor"], pin_repo=False)["env"]
-    assert cursor_env["CURSOR_PROJECT_DIR"] == "${workspaceFolder}"
-    assert cursor_env["CURSOR_CWD"] == "${workspaceFolder}"
+    assert "CTX_REPO" not in cursor_env
+    assert "CURSOR_PROJECT_DIR" not in cursor_env
+    assert "CURSOR_CWD" not in cursor_env
+    assert "cursor" in _GLOBAL_OMIT_CTX_REPO_SLUGS
     codex = format_server_entry(TOOL_MAP["codex"], pin_repo=False)
     assert codex.get("cwd") == "${workspaceFolder}"
     assert (codex.get("env") or {}).get("WORKSPACE_FOLDER") == "${workspaceFolder}"
@@ -89,22 +91,23 @@ def test_format_vscode_has_type_stdio() -> None:
 
 
 def test_install_cursor_global_and_project_mcp(fake_home: Path, tmp_path: Path) -> None:
-    """Cursor needs project .cursor/mcp.json — global ${workspaceFolder} does not expand."""
+    """Cursor: omit unexpanded tokens from global; absolute pin in project MCP only."""
     workspace = _git_repo(tmp_path / "ws")
     report = install_tool(TOOL_MAP["cursor"], repo=workspace)
     assert report["ok"]
     assert report.get("workspace_mcp_written") is True
     assert report.get("repo_ignored") is not True
     mcp = json.loads((fake_home / ".cursor" / "mcp.json").read_text(encoding="utf-8"))
-    env = mcp["mcpServers"]["context-engine"]["env"]
-    assert env.get("CTX_REPO") == "${workspaceFolder}"
-    assert env.get("CURSOR_PROJECT_DIR") == "${workspaceFolder}"
-    assert (fake_home / ".cursor" / "rules" / "context-agent.mdc").is_file()
+    env = mcp["mcpServers"]["scubiee"]["env"]
+    assert "CTX_REPO" not in env
+    assert "CURSOR_PROJECT_DIR" not in env
+    assert "CURSOR_CWD" not in env
+    assert (fake_home / ".cursor" / "rules" / "scubiee.mdc").is_file()
     project = json.loads((workspace / ".cursor" / "mcp.json").read_text(encoding="utf-8"))
-    assert project["mcpServers"]["context-engine"]["env"]["CTX_REPO"] == str(workspace).replace(
+    assert project["mcpServers"]["scubiee"]["env"]["CTX_REPO"] == str(workspace).replace(
         "\\", "/"
     )
-    assert report.get("notice")
+    assert not (report.get("notice") or "").strip()
 
 
 def test_install_codex_project_toml_absolute_cwd(fake_home: Path, tmp_path: Path) -> None:
@@ -127,9 +130,9 @@ def test_install_opencode_project_json(fake_home: Path, tmp_path: Path) -> None:
     assert report.get("workspace_mcp_written") is True
     path = fake_home / ".config" / "opencode" / "opencode.json"
     data = json.loads(path.read_text(encoding="utf-8"))
-    assert data["mcp"]["context-engine"]["environment"].get("CTX_REPO") == "${workspaceFolder}"
+    assert data["mcp"]["scubiee"]["environment"].get("CTX_REPO") == "${workspaceFolder}"
     project = json.loads((workspace / "opencode.json").read_text(encoding="utf-8"))
-    entry = project["mcp"]["context-engine"]
+    entry = project["mcp"]["scubiee"]
     repo_s = str(workspace.resolve()).replace("\\", "/")
     assert entry["environment"]["CTX_REPO"] == repo_s
     assert entry.get("cwd") == repo_s
@@ -141,9 +144,9 @@ def test_install_amp_project_settings(fake_home: Path, tmp_path: Path) -> None:
     assert report["ok"]
     assert report.get("workspace_mcp_written") is True
     project = json.loads((workspace / ".amp" / "settings.json").read_text(encoding="utf-8"))
-    env = project["amp.mcpServers"]["context-engine"]["env"]
+    env = project["amp.mcpServers"]["scubiee"]["env"]
     assert env["CTX_REPO"] == str(workspace.resolve()).replace("\\", "/")
-    assert "approve" in (report.get("notice") or "").lower()
+    assert not (report.get("notice") or "").strip()
 
 
 def test_install_pi_project_mcp_json(fake_home: Path, tmp_path: Path) -> None:
@@ -152,7 +155,7 @@ def test_install_pi_project_mcp_json(fake_home: Path, tmp_path: Path) -> None:
     assert report["ok"]
     assert report.get("workspace_mcp_written") is True
     project = json.loads((workspace / ".mcp.json").read_text(encoding="utf-8"))
-    assert project["mcpServers"]["context-engine"]["env"]["CTX_REPO"] == str(
+    assert project["mcpServers"]["scubiee"]["env"]["CTX_REPO"] == str(
         workspace.resolve()
     ).replace("\\", "/")
 
@@ -162,7 +165,7 @@ def test_install_continue_project_mcp_servers_yaml(fake_home: Path, tmp_path: Pa
     report = install_tool(TOOL_MAP["continue"], repo=workspace)
     assert report["ok"]
     assert report.get("workspace_mcp_written") is True
-    path = workspace / ".continue" / "mcpServers" / "context-engine.yaml"
+    path = workspace / ".continue" / "mcpServers" / "scubiee.yaml"
     text = path.read_text(encoding="utf-8")
     repo_s = str(workspace.resolve()).replace("\\", "/")
     assert "schema: v1" in text
@@ -176,10 +179,10 @@ def test_install_kiro_global_and_workspace_mcp(fake_home: Path, tmp_path: Path) 
     assert report["ok"]
     assert report.get("workspace_mcp_written") is True
     user = json.loads((fake_home / ".kiro" / "settings" / "mcp.json").read_text(encoding="utf-8"))
-    assert "CTX_REPO" not in user["mcpServers"]["context-engine"]["env"]
+    assert "CTX_REPO" not in user["mcpServers"]["scubiee"]["env"]
     project = json.loads((workspace / ".kiro" / "settings" / "mcp.json").read_text(encoding="utf-8"))
-    assert project["mcpServers"]["context-engine"]["env"]["CTX_REPO"] == str(workspace).replace("\\", "/")
-    assert (fake_home / ".kiro" / "steering" / "context-engine.md").is_file()
+    assert project["mcpServers"]["scubiee"]["env"]["CTX_REPO"] == str(workspace).replace("\\", "/")
+    assert (fake_home / ".kiro" / "steering" / "scubiee.md").is_file()
     assert report.get("notice")
 
 
@@ -200,9 +203,9 @@ def test_install_claude_code_global(fake_home: Path, tmp_path: Path) -> None:
     workspace.mkdir()
     install_tool(TOOL_MAP["claude-code"], repo=workspace)
     data = json.loads((fake_home / ".claude.json").read_text(encoding="utf-8"))
-    env = data["mcpServers"]["context-engine"]["env"]
+    env = data["mcpServers"]["scubiee"]["env"]
     assert env.get("CTX_REPO") == "${workspaceFolder}"
-    assert "<!-- context-engine:start -->" in (fake_home / ".claude" / "CLAUDE.md").read_text(
+    assert "<!-- scubiee:start -->" in (fake_home / ".claude" / "CLAUDE.md").read_text(
         encoding="utf-8"
     )
     assert not (workspace / ".mcp.json").exists()
@@ -211,7 +214,7 @@ def test_install_claude_code_global(fake_home: Path, tmp_path: Path) -> None:
 def test_install_codex_toml_and_agents_md(fake_home: Path) -> None:
     install_tool(TOOL_MAP["codex"])
     text = (fake_home / ".codex" / "config.toml").read_text(encoding="utf-8")
-    assert "[mcp_servers.context-engine]" in text
+    assert "[mcp_servers.scubiee]" in text
     assert 'cwd = "${workspaceFolder}"' in text
     assert 'CTX_REPO = "${workspaceFolder}"' in text
     assert (fake_home / ".codex" / "AGENTS.md").is_file()
@@ -222,7 +225,7 @@ def test_install_opencode_global_opencode_json(fake_home: Path, tmp_path: Path) 
     install_tool(TOOL_MAP["opencode"])
     path = fake_home / ".config" / "opencode" / "opencode.json"
     data = json.loads(path.read_text(encoding="utf-8"))
-    entry = data["mcp"]["context-engine"]
+    entry = data["mcp"]["scubiee"]
     assert entry["type"] == "local"
     assert isinstance(entry["command"], list)
     assert "environment" in entry
@@ -234,7 +237,7 @@ def test_install_amp_dotted_key(fake_home: Path) -> None:
     install_tool(TOOL_MAP["amp"])
     data = json.loads((fake_home / ".config" / "amp" / "settings.json").read_text(encoding="utf-8"))
     assert "amp.mcpServers" in data
-    env = data["amp.mcpServers"]["context-engine"].get("env", {})
+    env = data["amp.mcpServers"]["scubiee"].get("env", {})
     assert env.get("CTX_REPO") == "${workspaceFolder}"
 
 
@@ -248,26 +251,26 @@ def test_install_copilot_user_profile_and_cli(fake_home: Path, tmp_path: Path) -
     vscode_path = resolve_mcp_user_path(TOOL_MAP["copilot"])
     assert vscode_path is not None
     vscode = json.loads(vscode_path.read_text(encoding="utf-8"))
-    assert vscode["servers"]["context-engine"]["type"] == "stdio"
-    assert "CTX_REPO" not in vscode["servers"]["context-engine"]["env"]
+    assert vscode["servers"]["scubiee"]["type"] == "stdio"
+    assert "CTX_REPO" not in vscode["servers"]["scubiee"]["env"]
 
     cli = json.loads((fake_home / ".copilot" / "mcp-config.json").read_text(encoding="utf-8"))
-    entry = cli["mcpServers"]["context-engine"]
+    entry = cli["mcpServers"]["scubiee"]
     assert entry["type"] == "local"
     assert entry["tools"] == ["*"]
     assert "CTX_REPO" not in entry["env"]
 
     proj_vscode = json.loads((workspace / ".vscode" / "mcp.json").read_text(encoding="utf-8"))
-    assert proj_vscode["servers"]["context-engine"]["env"]["CTX_REPO"] == str(workspace).replace("\\", "/")
+    assert proj_vscode["servers"]["scubiee"]["env"]["CTX_REPO"] == str(workspace).replace("\\", "/")
     root_mcp = json.loads((workspace / ".mcp.json").read_text(encoding="utf-8"))
-    assert root_mcp["mcpServers"]["context-engine"]["env"]["CTX_REPO"] == str(workspace).replace("\\", "/")
+    assert root_mcp["mcpServers"]["scubiee"]["env"]["CTX_REPO"] == str(workspace).replace("\\", "/")
 
     instructions = (fake_home / ".copilot" / "copilot-instructions.md").read_text(encoding="utf-8")
-    assert "<!-- context-engine:start -->" in instructions
+    assert "<!-- scubiee:start -->" in instructions
     modular = (
-        fake_home / ".copilot" / "instructions" / "context-engine.instructions.md"
+        fake_home / ".copilot" / "instructions" / "scubiee.instructions.md"
     ).read_text(encoding="utf-8")
-    assert "<!-- context-engine:start -->" in modular
+    assert "<!-- scubiee:start -->" in modular
 
 
 def test_format_copilot_cli_schema() -> None:
@@ -285,14 +288,14 @@ def test_install_cline_writes_vscode_and_cli(fake_home: Path) -> None:
     install_tool(TOOL_MAP["cline"])
     for p in paths:
         data = json.loads(p.read_text(encoding="utf-8"))
-        assert "context-engine" in data["mcpServers"]
-    assert (fake_home / ".cline" / "rules" / "context-engine.md").is_file()
+        assert "scubiee" in data["mcpServers"]
+    assert (fake_home / ".cline" / "rules" / "scubiee.md").is_file()
 
 
 def test_install_pi_global(fake_home: Path) -> None:
     install_tool(TOOL_MAP["pi"])
     data = json.loads((fake_home / ".pi" / "agent" / "mcp.json").read_text(encoding="utf-8"))
-    assert data["mcpServers"]["context-engine"]["env"].get("CTX_REPO") == "${workspaceFolder}"
+    assert data["mcpServers"]["scubiee"]["env"].get("CTX_REPO") == "${workspaceFolder}"
 
 
 def test_install_windsurf_continue_zed_global_use_workspace_token(fake_home: Path) -> None:
@@ -301,8 +304,8 @@ def test_install_windsurf_continue_zed_global_use_workspace_token(fake_home: Pat
     windsurf = json.loads(
         (fake_home / ".codeium" / "windsurf" / "mcp_config.json").read_text(encoding="utf-8")
     )
-    assert windsurf["mcpServers"]["context-engine"]["env"]["CTX_REPO"] == "${workspaceFolder}"
-    assert windsurf["mcpServers"]["context-engine"]["env"]["WORKSPACE_FOLDER"] == "${workspaceFolder}"
+    assert windsurf["mcpServers"]["scubiee"]["env"]["CTX_REPO"] == "${workspaceFolder}"
+    assert windsurf["mcpServers"]["scubiee"]["env"]["WORKSPACE_FOLDER"] == "${workspaceFolder}"
 
     install_tool(TOOL_MAP["continue"])
     cont = (fake_home / ".continue" / "config.yaml").read_text(encoding="utf-8")
@@ -314,7 +317,7 @@ def test_install_windsurf_continue_zed_global_use_workspace_token(fake_home: Pat
     zed_path = resolve_mcp_user_path(TOOL_MAP["zed"])
     assert zed_path is not None and zed_path.is_file()
     zed = json.loads(zed_path.read_text(encoding="utf-8"))
-    zenv = zed["context_servers"]["context-engine"]["env"]
+    zenv = zed["context_servers"]["scubiee"]["env"]
     assert zenv["CTX_REPO"] == "${workspaceFolder}"
     assert zenv["WORKSPACE_FOLDER"] == "${workspaceFolder}"
 
@@ -326,9 +329,9 @@ def test_uninstall_global(fake_home: Path) -> None:
     data = json.loads(
         (fake_home / ".config" / "opencode" / "opencode.json").read_text(encoding="utf-8")
     )
-    assert "context-engine" not in data.get("mcp", {})
+    assert "scubiee" not in data.get("mcp", {})
     assert uninstall_tool(TOOL_MAP["codex"])["mcp_removed"]
-    assert "[mcp_servers.context-engine]" not in (
+    assert "[mcp_servers.scubiee]" not in (
         fake_home / ".codex" / "config.toml"
     ).read_text(encoding="utf-8")
 
@@ -441,5 +444,5 @@ def test_install_copilot_writes_os_specific_vscode_mcp(
         assert ".config/Code/User" in vscode_path.as_posix()
 
     data = json.loads(vscode_path.read_text(encoding="utf-8"))
-    assert data["servers"]["context-engine"]["type"] == "stdio"
-    assert "CTX_REPO" not in data["servers"]["context-engine"]["env"]
+    assert data["servers"]["scubiee"]["type"] == "stdio"
+    assert "CTX_REPO" not in data["servers"]["scubiee"]["env"]

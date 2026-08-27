@@ -8,7 +8,7 @@ Remove Scubiee from a machine without the Windows-specific uv lock issues (thoug
 
 ```bash
 scubiee stop
-scubiee wipe --all --yes --package
+scubiee wipe --all --confirm --package
 ```
 
 Then reload Cursor MCP (or restart Cursor).
@@ -33,7 +33,7 @@ Use the Python path printed by `scubiee --version`.
 
 | Flag | Effect |
 |------|--------|
-| `--all --yes` | Delete all CE state (indexes, registry, MCP wiring, rules) |
+| `--all --confirm` | Delete all Scubiee state (indexes, registry, MCP wiring, rules). `--yes` is an alias |
 | `--package` | Also uninstall scubiee package |
 | `--keep-models` | Keep CodeRank / FastEmbed download cache |
 | `--keep-package` | Wipe state but leave CLI installed |
@@ -41,8 +41,8 @@ Use the Python path printed by `scubiee --version`.
 Examples:
 
 ```bash
-scubiee wipe --all --yes --keep-models --package
-scubiee wipe --all --yes --keep-package    # reset CE but keep CLI
+scubiee wipe --all --confirm --keep-models --package
+scubiee wipe --all --confirm --keep-package    # reset Scubiee but keep CLI
 ```
 
 ---
@@ -56,15 +56,15 @@ scubiee wipe .
 scubiee remove . --delete-store
 ```
 
-Removes that repo’s `.context-engine/id.json`, Cursor rule snippet, and index store entry.
+Removes that repo’s `.scubiee/id.json`, Cursor rule snippet, and index store entry.
 
 ---
 
 ## Manual cleanup (if CLI broken)
 
 ```bash
-rm -rf ~/.context-engine
-# edit ~/.cursor/mcp.json — remove "context-engine" from mcpServers
+rm -rf ~/.scubiee
+# edit ~/.cursor/mcp.json — remove "scubiee" from mcpServers
 uv tool uninstall scubiee
 ```
 
@@ -72,7 +72,7 @@ Mac repair from git checkout (if you have the repo):
 
 ```bash
 # no Windows-only scripts needed; reinstall uv tool from PyPI
-uv tool install --force scubiee==0.2.82 --index-url https://pypi.org/simple
+uv tool install --force scubiee==0.2.87 --index-url https://pypi.org/simple
 scubiee setup --repair
 ```
 
@@ -81,7 +81,7 @@ scubiee setup --repair
 ## Reinstall fresh
 
 ```bash
-uv tool install scubiee==0.2.82 --index-url https://pypi.org/simple
+uv tool install scubiee==0.2.87 --index-url https://pypi.org/simple
 scubiee setup --repair
 cd your/project && scubiee init . --fast
 ```

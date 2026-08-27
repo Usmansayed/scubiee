@@ -320,7 +320,7 @@ def _xml_escape(text: str) -> str:
 
 def _launch_agent_plist(cmd: list[str]) -> str:
     args = "\n".join(f"    <string>{_xml_escape(part)}</string>" for part in cmd)
-    log = _user_home() / "Library" / "Logs" / "context-engine-supervisor.log"
+    log = _user_home() / "Library" / "Logs" / "scubiee-supervisor.log"
     log.parent.mkdir(parents=True, exist_ok=True)
     log_s = _xml_escape(str(log))
     return (
@@ -495,14 +495,14 @@ def _register_linux(cmd: list[str]) -> dict[str, Any]:
     # 1. XDG desktop autostart (GUI sessions)
     desktop_dir = _user_home() / ".config" / "autostart"
     desktop_dir.mkdir(parents=True, exist_ok=True)
-    desktop = desktop_dir / "context-engine-supervisor.desktop"
+    desktop = desktop_dir / "scubiee-supervisor.desktop"
     exec_line = " ".join(f'"{part}"' if " " in part else part for part in cmd)
     desktop.write_text(
         "\n".join(
             [
                 "[Desktop Entry]",
                 "Type=Application",
-                "Name=Context Engine Supervisor",
+                "Name=Scubiee Supervisor",
                 "X-GNOME-Autostart-enabled=true",
                 f"Exec={exec_line}",
                 "",
@@ -515,11 +515,11 @@ def _register_linux(cmd: list[str]) -> dict[str, Any]:
     # 2. systemd user service (headless + desktop, survives terminal close)
     systemd_dir = _user_home() / ".config" / "systemd" / "user"
     systemd_dir.mkdir(parents=True, exist_ok=True)
-    service_file = systemd_dir / "context-engine.service"
+    service_file = systemd_dir / "scubiee.service"
     python_bin = cmd[0] if cmd else sys.executable
     service_content = f"""\
 [Unit]
-Description=Context Engine daemon supervisor
+Description=Scubiee daemon supervisor
 After=default.target
 
 [Service]
@@ -542,11 +542,11 @@ WantedBy=default.target
             capture_output=True, check=False, timeout=10,
         )
         subprocess.run(
-            ["systemctl", "--user", "enable", "context-engine.service"],
+            ["systemctl", "--user", "enable", "scubiee.service"],
             capture_output=True, check=False, timeout=10,
         )
         subprocess.run(
-            ["systemctl", "--user", "start", "context-engine.service"],
+            ["systemctl", "--user", "start", "scubiee.service"],
             capture_output=True, check=False, timeout=10,
         )
         results["systemd_enabled"] = True
@@ -601,7 +601,7 @@ def unregister_logon_autostart(*, runner: Any | None = None) -> dict[str, Any]:
         plist.unlink(missing_ok=True)
         return {"ok": True, "platform": "darwin", "task": str(plist)}
     desktop_file = (
-        _user_home() / ".config" / "autostart" / "context-engine-supervisor.desktop"
+        _user_home() / ".config" / "autostart" / "scubiee-supervisor.desktop"
     )
     desktop_file.unlink(missing_ok=True)
     return {"ok": True, "platform": "linux", "task": str(desktop_file)}

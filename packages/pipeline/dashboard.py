@@ -7,7 +7,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Context Engine — Settings</title>
+  <title>Scubiee — Settings</title>
   <style>
     :root {
       --bg: #0f1419;
@@ -62,7 +62,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 </head>
 <body>
   <main>
-    <h1>Context Engine</h1>
+    <h1>Scubiee</h1>
     <p class="sub">Choose how projects are registered. Both modes use the same indexing pipeline; only the trigger differs.</p>
 
     <section>
@@ -71,7 +71,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         <input type="radio" name="mode" value="automatic" />
         <div>
           <div class="title">Automatic</div>
-          <div class="desc">When a supported IDE opens a project, Context Engine registers it once, then keeps incremental indexing on.</div>
+          <div class="desc">When a supported IDE opens a project, Scubiee registers it once, then keeps incremental indexing on.</div>
         </div>
       </label>
       <label class="option" id="opt-mcp">

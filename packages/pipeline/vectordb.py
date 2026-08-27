@@ -1,6 +1,6 @@
 """FAISS vector database with TurboQuant compression and named collections.
 
-Layout under ``~/.context-engine/vectordb/`` (override with CTX_VECTORDB_ROOT)::
+Layout under ``~/.scubiee/vectordb/`` (override with CTX_VECTORDB_ROOT)::
 
     catalog.json
     collections/
@@ -33,20 +33,21 @@ import numpy as np
 
 from pipeline.turbo_quant import CompressedEmbeddingStore
 from pipeline.artifact_guard import atomic_write_text
+from pipeline.project_id import context_engine_home
 
 DEFAULT_ROOT_ENV = "CTX_VECTORDB_ROOT"
 
 
 def default_vectordb_root() -> Path:
     return Path(
-        os.environ.get(DEFAULT_ROOT_ENV, str(Path.home() / ".context-engine" / "vectordb"))
+        os.environ.get(DEFAULT_ROOT_ENV, str(context_engine_home() / "vectordb"))
     )
 
 
 def cwd_collection_name(cwd: Path | str, project_id: str | None = None) -> str:
     """Stable collection id from project_id (preferred) or absolute path hash."""
     if project_id:
-        from pipeline.project_id import collection_name_for_project
+        from pipeline.project_id import collection_name_for_project, context_engine_home
 
         return collection_name_for_project(Path(cwd), project_id)
     key = str(Path(cwd).resolve())

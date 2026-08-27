@@ -91,7 +91,7 @@ def registration_prompt_payload(root: Path) -> dict[str, Any]:
         "registration_mode": get_registration_mode(),
         "repo": str(root),
         "message": (
-            "This project is not registered with Context Engine. "
+            "This project is not registered with Scubiee. "
             "Run `scubiee register <path>` (or MCP tool `register_project`) after user consent."
         ),
         "actions": [

@@ -4,6 +4,7 @@ import os
 import shutil
 import sys
 from pathlib import Path
+from pipeline.project_id import context_engine_home
 
 
 def active_install_prefix() -> str:
@@ -12,10 +13,10 @@ def active_install_prefix() -> str:
 
 
 def write_install_marker() -> None:
-    """Write current install's sys.prefix to ~/.context-engine/install_marker.json"""
+    """Write current install's sys.prefix to ~/.scubiee/install_marker.json"""
     import json
 
-    marker_path = Path.home() / ".context-engine" / "install_marker.json"
+    marker_path = context_engine_home() / "install_marker.json"
     marker_path.parent.mkdir(parents=True, exist_ok=True)
     data = {
         "sys_prefix": sys.prefix,
@@ -29,7 +30,7 @@ def check_install_conflict() -> dict | None:
     """Check if another install is active. Returns conflict info or None."""
     import json
 
-    marker_path = Path.home() / ".context-engine" / "install_marker.json"
+    marker_path = context_engine_home() / "install_marker.json"
     if not marker_path.is_file():
         return None
     try:
@@ -49,7 +50,7 @@ def check_install_conflict() -> dict | None:
             "recorded_version": data.get("version", ""),
             "hint": (
                 f"Another scubiee install is active at {recorded_prefix}. "
-                "Two installs sharing ~/.context-engine will fight over the daemon. "
+                "Two installs sharing ~/.scubiee will fight over the daemon. "
                 "Uninstall one: pip uninstall scubiee OR uv tool uninstall scubiee"
             ),
         }

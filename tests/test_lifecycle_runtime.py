@@ -278,7 +278,7 @@ def test_linux_register_uses_xdg_autostart(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(life, "current_desktop", lambda: "linux")
     monkeypatch.setattr(life, "_user_home", lambda: tmp_path)
     result = life.register_logon_autostart(python="/usr/bin/python3")
-    desktop = tmp_path / ".config" / "autostart" / "context-engine-supervisor.desktop"
+    desktop = tmp_path / ".config" / "autostart" / "scubiee-supervisor.desktop"
     assert result["ok"] is True
     assert result["platform"] == "linux"
     assert desktop.is_file()

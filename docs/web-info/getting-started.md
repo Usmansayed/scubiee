@@ -4,7 +4,9 @@ Scubiee is a **local** context engine for AI coding tools (Cursor, Claude Code, 
 
 You need **Python 3.10+**. You do **not** need to clone the GitHub repo to use it.
 
-**Current PyPI release:** [scubiee 0.2.83](https://pypi.org/project/scubiee/).
+**Current PyPI release:** [scubiee 0.2.87](https://pypi.org/project/scubiee/0.2.87/) (published). MCP key **`scubiee`**; data under **`~/.scubiee`**.
+
+Full install + debug playbook: **[Install & debug](./install-and-debug.md)**.
 
 ---
 
@@ -12,7 +14,7 @@ You need **Python 3.10+**. You do **not** need to clone the GitHub repo to use i
 
 | Step | Command | What it does |
 |------|---------|--------------|
-| 1 | `uv tool install scubiee==0.2.83 …` | Install the CLI |
+| 1 | `uv tool install scubiee==0.2.87 …` | Install the CLI |
 | 2 | `scubiee setup --repair` | One-time **machine** setup (GPU/CPU/MLX, model, `accel.json`) |
 | 3 | `cd your-repo` → `scubiee init .` | Enroll + **index this repo** |
 | 4 | `scubiee connect --cursor` | Write **MCP + agent rules** for your IDE |
@@ -22,7 +24,8 @@ You need **Python 3.10+**. You do **not** need to clone the GitHub repo to use i
 
 - **`init` does not write MCP or rules.** After init, you still need **`connect`**.
 - **`setup` alone does not make a repo managed.** You still need **`init`** inside the project.
-- For **Kiro, Copilot, Cline, and Roo Code**, run `connect` **inside each project** (they need a workspace-local MCP file). Cursor / Claude Code are usually fine with a single user-global connect.
+- For **Kiro, Copilot, Cline, and Roo Code**, run `connect` **inside each project** (workspace-local MCP).
+- **Cursor:** `connect --cursor` also writes project `.cursor/mcp.json` with an absolute repo pin (global `${workspaceFolder}` is not expanded by Cursor).
 
 ---
 
@@ -32,12 +35,12 @@ You need **Python 3.10+**. You do **not** need to clone the GitHub repo to use i
 
 ```powershell
 # Windows — pin PyPI + version
-uv tool install --force scubiee==0.2.82 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.2.87 --index-url https://pypi.org/simple --refresh
 ```
 
 ```bash
 # macOS / Linux
-uv tool install --force scubiee==0.2.82 --index-url https://pypi.org/simple
+uv tool install --force scubiee==0.2.87 --index-url https://pypi.org/simple --refresh
 ```
 
 Add uv’s bin directory to PATH once, then open a **new** terminal:
@@ -51,7 +54,7 @@ On Windows, shims usually live in `%USERPROFILE%\.local\bin`.
 **Alternative — pip:**
 
 ```bash
-pip install -U scubiee==0.2.82
+pip install -U scubiee==0.2.87
 ```
 
 Verify:
@@ -77,7 +80,7 @@ This:
 1. Detects hardware (CUDA, DirectML for **discrete** AMD/NVIDIA on Windows, MLX on Apple Silicon, or CPU)
 2. Installs the correct ONNX Runtime + FastEmbed stack (platform extras)
 3. Downloads the CodeRank **FP16** embedding model (~270 MB, cached)
-4. Calibrates embed batch size and saves `~/.context-engine/accel.json`
+4. Calibrates embed batch size and saves `~/.scubiee/accel.json`
 5. May register a session supervisor / refresh MCP paths
 
 Check without changing anything:
@@ -185,20 +188,18 @@ In the agent: call Scubiee **`status()`** once. Expect `managed: true` after ini
 ## Upgrade path
 
 ```bash
-# Prefer stopping first on Windows (file locks)
-scubiee stop
-
-uv tool install --force scubiee==0.2.82 --index-url https://pypi.org/simple --refresh
-# or:
 scubiee upgrade
+# or pin explicitly:
+scubiee unlock-tool   # Windows: if Access denied / half-broken tool dir
+uv tool install --force scubiee==0.2.87 --index-url https://pypi.org/simple --refresh
 
 scubiee setup --repair
 scubiee connect --cursor   # refresh MCP + rules after version bumps
 ```
 
-If `uv tool install --force` fails with **Access denied** on Windows, see [Windows guide](./windows.md#access-denied-on-upgrade-or-reinstall).
+If `uv tool install --force` fails with **Access denied** on Windows, run **`scubiee unlock-tool`** first (not Admin/reboot). See [Install & debug](./install-and-debug.md) and [Windows guide](./windows.md#access-denied-on-upgrade-or-reinstall).
 
-Note: `uv tool upgrade scubiee` may not bump the package version — prefer `--force` with an explicit version.
+Note: prefer `--force` with an explicit version over bare `uv tool upgrade`.
 
 ---
 

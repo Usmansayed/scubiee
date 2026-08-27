@@ -1,4 +1,4 @@
-<!-- context-engine:start -->
+<!-- scubiee:start -->
 # Scubiee
 
 **Start of session:** call `status()` from the Scubiee MCP.
@@ -16,4 +16,4 @@
 Scubiee, or asks whether this repo is managed / to check Scubiee — then switch to Scubiee MCP
 if `managed` becomes `true`. If a tool returns `should_retry_status`, call `status()` again.
 
-<!-- context-engine:end -->
+<!-- scubiee:end -->

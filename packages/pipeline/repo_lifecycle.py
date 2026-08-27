@@ -230,7 +230,7 @@ def initialize_repo(
                 "ok": False,
                 "root": str(root),
                 "error": "inside_ce_home",
-                "message": "Cannot manage a folder inside Context Engine's storage directory.",
+                "message": "Cannot manage a folder inside Scubiee's storage directory.",
             }
     except (ValueError, OSError):
         pass  # is_relative_to raises ValueError on unrelated paths on older Python
@@ -705,7 +705,7 @@ def forget_repo(
 
     Automated forget still requires presence eligibility. An operator console
     that already collected an exact project-id confirmation may pass
-    ``operator=True`` to remove a live repository from Context Engine.
+    ``operator=True`` to remove a live repository from Scubiee.
     """
     del force
     if confirm != project_id:

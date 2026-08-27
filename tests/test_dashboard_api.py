@@ -581,7 +581,7 @@ def test_resolve_spawn_dashboard_pid_accepts_windows_wrapper_pid() -> None:
 
     health = {
         "ok": True,
-        "dashboard_identity": "context-engine-operator-dashboard-v1",
+        "dashboard_identity": "scubiee-operator-dashboard-v1",
         "dashboard_pid": 4242,
     }
     with patch("pipeline.dashboard_server._pid_alive", return_value=True):

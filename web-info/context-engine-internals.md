@@ -1,25 +1,29 @@
-﻿# Context Engine Internals: Architecture and Operations
+# Scubiee Internals: Architecture and Operations
 
-> **Implementation baseline:** Scubiee `0.2.57`
+> Product name: **Scubiee**. CLI / `mcp.json` key: **`scubiee`**.  
+> On-disk data: **`~/.scubiee/`** and **`<repo>/.scubiee/`** (no legacy `.context-engine` path).  
+> "CE" below is optional engineering shorthand for the Scubiee engine only.
+
+> **Implementation baseline:** Scubiee `0.2.87`  
 > **Audience:** engineers, operators, integration authors, and maintainers building the technical sections of a documentation website.
 
-This document describes the current Context Engine (CE) architecture rather than the historical research prototypes. The public command and product guide is in [`commands-and-setup.md`](./commands-and-setup.md).
+This document describes the current Scubiee architecture rather than the historical research prototypes. The public command and product guide is in [`commands-and-setup.md`](./commands-and-setup.md).
 
 ## System purpose
 
-Context Engine is a local repository-context service with three faces:
+Scubiee is a local repository-context service with three faces:
 
 1. **CLI:** setup, registration, indexing, lifecycle, search, diagnostics, and operator control.
 2. **Daemon/runtime:** a local HTTP service that owns repository runtimes, index freshness, resources, and background lifecycle.
 3. **MCP adapter:** a thin client-facing process that exposes repository discovery tools and forwards work to the daemon.
 
-The central contract is: a coding tool may use CE discovery when the current repository is known, managed, and healthy; otherwise it must fall back to its native tools without treating CE as mandatory.
+The central contract is: a coding tool may use Scubiee discovery when the current repository is known, managed, and healthy; otherwise it must fall back to its native tools without treating Scubiee as mandatory.
 
 ## Architecture at a glance
 
 ```text
 +----------------------+       +--------------------------+
-| AI coding tool       |       | ctx CLI                  |
+| AI coding tool       |       | scubiee CLI                  |
 | global rule + MCP    |       | setup/init/search/status  |
 +----------+-----------+       +------------+-------------+
            |                                 |
@@ -47,7 +51,7 @@ The central contract is: a coding tool may use CE discovery when the current rep
 +-------------+-------------+       +------------+------------+
               |                                  |
               v                                  v
-       .context-engine/id.json       project store + vectordb
+       .scubiee/id.json       project store + vectordb
        registry/prefs                chunks/Merkle/meta/manifest
 ```
 
@@ -69,7 +73,7 @@ The control plane decides whether a repository is eligible and which runtime own
 | Watchdog | `watchdog.py` | Monitors the managed runtime and can wake/restart/reconcile it according to watchdog policy. |
 | MCP surface | `mcp_locate.py` | Selects the MCP surface, exposes tools, checks managed status, applies server instructions, and forwards requests to the daemon. |
 | MCP installation | `mcp_install.py`, `tool_registry.py`, `rules_installer.py` | Produces client-specific MCP entries, config paths, global rule/instruction files, and handles `connect`/`disconnect` operations. |
-| Vector storage | `vectordb.py`, TurboQuant/FAISS components | Stores compressed embeddings and vector catalogs under the Context Engine data root. |
+| Vector storage | `vectordb.py`, TurboQuant/FAISS components | Stores compressed embeddings and vector catalogs under the Scubiee data root. |
 | Path/scope policy | `paths.py`, `storage_policy.py` | Resolves fast roots, artifact layout, compaction and persistence policy, and storage safety constraints. |
 
 ## Lifecycle: setup, registration, indexing
@@ -125,9 +129,9 @@ Each phase has a different failure boundary. Admission and capability checks hap
 
 ### Repository and project identity
 
-A repository is not identified only by its current absolute path. Context Engine records evidence from:
+A repository is not identified only by its current absolute path. Scubiee records evidence from:
 
-- the in-repository `.context-engine/id.json`;
+- the in-repository `.scubiee/id.json`;
 - the trusted user registry;
 - the per-project store;
 - the Git common directory and worktree family; and
@@ -152,7 +156,7 @@ The graph captures structural affinity produced from parsed repository informati
 
 ### Vectors
 
-CodeRankEmbed converts chunks into dense vectors. FAISS provides approximate nearest-neighbor retrieval, while TurboQuant/compressed storage controls the memory and persistence cost. The vector catalog and per-project store are kept under the local Context Engine data root.
+CodeRankEmbed converts chunks into dense vectors. FAISS provides approximate nearest-neighbor retrieval, while TurboQuant/compressed storage controls the memory and persistence cost. The vector catalog and per-project store are kept under the local Scubiee data root.
 
 ### Published artifacts
 
@@ -237,14 +241,14 @@ The phase surface is optimized for a staged discovery workflow: map the area, fo
 
 ### The global rule contract
 
-`scubiee connect` installs both a client-specific MCP configuration and a global instruction where the client supports one. The instruction is deliberately conditional because global rules are loaded before the repository's CE state is known:
+`scubiee connect` installs both a client-specific MCP configuration and a global instruction where the client supports one. The instruction is deliberately conditional because global rules are loaded before the repository's Scubiee state is known:
 
 ```text
 call status() once
 if managed == true and ok == true:
-    use Context Engine discovery tools
+    use Scubiee discovery tools
 else:
-    explicitly ignore this CE rule for the rest of the session
+    explicitly ignore this Scubiee rule for the rest of the session
     use native search/read tools
 ```
 
@@ -257,7 +261,7 @@ The rule does not authorize indexing, registration, or writes. It is a discovery
 This behavior is important for two reasons:
 
 - a global rule can be installed once without contaminating unrelated folders; and
-- an assistant can continue working with native tools when CE is unavailable rather than retrying a denied or impossible CE request.
+- an assistant can continue working with native tools when Scubiee is unavailable rather than retrying a denied or impossible Scubiee request.
 
 ## Identity and Git worktree reconciliation
 
@@ -305,11 +309,11 @@ CPU-only profiles use a dual-budget strategy controlled by `IndexMemoryBudget.cp
 | Bootstrap / full reindex | 35% of cores (min 2) | One-time cost, users expect to wait |
 | Background incremental sync | 15% of cores (min 1) | Must be invisible during active coding |
 
-The budget is applied via `CTX_CPU_EMBED_THREADS` env var, consumed by `embedder.py` when initializing FastEmbed with `threads=N`. GPU profiles ignore this entirely — they set `threads=1` and offload compute to the GPU.
+The budget is applied via `CTX_CPU_EMBED_THREADS` env var, consumed by `embedder.py` when initializing FastEmbed with `threads=N`. GPU profiles ignore this entirely ? they set `threads=1` and offload compute to the GPU.
 
 ### GPU auto-repair
 
-`validate_dml_provider()` runs at engine startup. If the expected GPU execution provider is missing (e.g., a package upgrade pulled a newer `onnxruntime` that shadowed the DML wheel), it automatically reinstalls the correct ORT wheel and re-validates. Only reports failure after repair fails. Never silently falls back to CPU — users paid for GPU hardware.
+`validate_dml_provider()` runs at engine startup. If the expected GPU execution provider is missing (e.g., a package upgrade pulled a newer `onnxruntime` that shadowed the DML wheel), it automatically reinstalls the correct ORT wheel and re-validates. Only reports failure after repair fails. Never silently falls back to CPU ? users paid for GPU hardware.
 
 ## Storage and publication invariants
 
@@ -317,11 +321,11 @@ The budget is applied via `CTX_CPU_EMBED_THREADS` env var, consumed by `embedder
 
 | Path | Ownership |
 | --- | --- |
-| `<repo>/.context-engine/id.json` | Repository-local identity evidence |
-| `~/.context-engine/prefs.json` | User preferences |
-| `~/.context-engine/registry.json` | Trusted managed-project registry |
-| `~/.context-engine/projects/<project_id>/` | Per-project index/runtime store |
-| `~/.context-engine/vectordb/` | FAISS/TurboQuant vector root and catalog |
+| `<repo>/.scubiee/id.json` | Repository-local identity evidence |
+| `~/.scubiee/prefs.json` | User preferences |
+| `~/.scubiee/registry.json` | Trusted managed-project registry |
+| `~/.scubiee/projects/<project_id>/` | Per-project index/runtime store |
+| `~/.scubiee/vectordb/` | FAISS/TurboQuant vector root and catalog |
 
 `CTX_VECTORDB_ROOT` can override the default vector root. MCP/daemon entries also carry runtime environment such as `CTX_ENGINE_URL`, `CTX_REPO`, `CTX_MCP_SURFACE`, and background-sync defaults.
 
@@ -340,11 +344,12 @@ The budget is applied via `CTX_CPU_EMBED_THREADS` env var, consumed by `embedder
 ### First installation
 
 ```bash
-pip install -U scubiee
-scubiee setup
+uv tool install --force scubiee==0.2.87 --index-url https://pypi.org/simple --refresh
+scubiee setup --repair
 scubiee preflight
 scubiee connect --all --dry-run
 scubiee init C:\src\repository
+scubiee connect --cursor
 scubiee status C:\src\repository
 ```
 
@@ -370,7 +375,7 @@ scubiee mcp C:\src\repository
 
 Check the following in order:
 
-1. the client has a `context-engine` MCP entry;
+1. the client has a `scubiee` MCP entry;
 2. the entry uses the intended Python interpreter and `CTX_ENGINE_URL`;
 3. `CTX_REPO` is absent only when the client can provide the workspace path;
 4. `scubiee status` reports the repository as managed and healthy; and
@@ -399,21 +404,19 @@ scubiee migrate C:\src\repository --apply
 ### Complete cleanup
 
 ```bash
-# Preview first:
-scubiee wipe --dry-run --all
+# Nuclear: remove everything Scubiee created (+ package)
+scubiee wipe --all --confirm --package
 
-# Nuclear: remove everything Scubiee created
-scubiee wipe --confirm --all
-
-# Remove the package itself:
-pip uninstall scubiee -y
+# If the CLI is already gone / locked on Windows:
+#   scubiee unlock-tool
+#   then re-run wipe, or use scripts/uninstall-uv-scubiee.ps1
 ```
 
 ## Failure modes and safety boundaries
 
 | Condition | Expected behavior | Operator response |
 | --- | --- | --- |
-| Repository is not managed | MCP status reports unmanaged/not healthy for CE use; the global rule tells the AI to use native tools | Run `scubiee init PATH` if CE is intended for the repository |
+| Repository is not managed | MCP status reports unmanaged/not healthy for CE use; the global rule tells the AI to use native tools | Run `scubiee init PATH` if Scubiee is intended for the repository |
 | MCP has no repository context | The adapter cannot safely infer the target project | Supply the workspace path or configure `CTX_REPO` in the client entry |
 | Daemon is down or bound to another repository | Search/status fails or reports unhealthy rather than crossing repository boundaries | Run `scubiee engine status`, then `scubiee engine ensure`/`start` for the intended repository |
 | Provider/model capability is missing | Preflight/setup/indexing fails closed | Repair the profile or explicitly choose `cpu` |

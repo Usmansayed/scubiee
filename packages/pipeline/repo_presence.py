@@ -27,8 +27,15 @@ class PresenceReport:
 
 
 def _read_project_id(root: Path) -> tuple[str | None, str | None]:
-    marker = root / ".context-engine" / "id.json"
-    if not marker.is_file():
+    from pipeline.branding import DATA_DIR_NAMES
+
+    marker = None
+    for name in DATA_DIR_NAMES:
+        candidate = root / name / "id.json"
+        if candidate.is_file():
+            marker = candidate
+            break
+    if marker is None:
         return None, "identity marker is missing"
     try:
         payload = json.loads(marker.read_text(encoding="utf-8"))

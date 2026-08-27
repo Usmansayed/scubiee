@@ -18,7 +18,7 @@ from typing import Iterable
 
 from pipeline.dirty_journal import JournalingLedger
 from pipeline.dirty_ledger import DirtyLedger
-from pipeline.project_id import resolve_project
+from pipeline.project_id import resolve_project, context_engine_home
 from pipeline.sync_status import derive_sync_status
 
 DEFAULT_INTERVAL_MS = int(os.environ.get("CTX_SYNC_INTERVAL_MS", str(5 * 60 * 1000)))
@@ -547,15 +547,17 @@ class BackgroundSyncLoop:
     def _defer_for_active_session(
         self, paths: list[str], *, now: float, estimated_total: int
     ) -> dict | None:
-        """Hold heavy (and, with clients, all) sync while agents are locating.
+        """Hold bulk/heavy sync while agents are locating or MCP clients are attached.
 
-        Bulk reindex removes/replaces the live vector set — catastrophic mid-MCP.
-        With registered clients, defer *all* due sync and re-check shortly.
+        Tier-1 live batches (≤ bulk threshold) always proceed after debounce so
+        edits show up in the vector DB within seconds. Bulk reindex replaces the
+        live vector set — defer that mid-session and re-check shortly.
         """
         clients = self._clients_active()
         locate = self._locate_streak_active(now=now)
         bulk = estimated_total > self.bulk_reindex_threshold
-        if not clients and not (locate and bulk):
+        # Live path: never defer. Bulk path: defer if clients or locate-streak.
+        if not bulk or not (clients or locate):
             return None
         # Re-queue soon; do not drop dirty state.
         self.dirty_ledger.defer(paths, now=now + 15.0)
@@ -931,7 +933,7 @@ class BackgroundSyncLoop:
             return
 
         def _watch() -> None:
-            home = Path.home() / ".context-engine"
+            home = context_engine_home()
             home.mkdir(parents=True, exist_ok=True)
             trigger = home / TRIGGER_NAME
             last = trigger.stat().st_mtime if trigger.exists() else 0.0
@@ -962,7 +964,7 @@ KeeperLoop = BackgroundSyncLoop
 
 def touch_sync_trigger() -> Path:
     """Hook helper: touch after Write/Edit so MCP catches up (Claude Context)."""
-    home = Path.home() / ".context-engine"
+    home = context_engine_home()
     home.mkdir(parents=True, exist_ok=True)
     p = home / TRIGGER_NAME
     p.write_text(str(time.time()), encoding="utf-8")

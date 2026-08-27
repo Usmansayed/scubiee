@@ -135,7 +135,7 @@ def search_repo(
         if hits is not None:
             return hits
         raise SearchEngineError(
-            f"Context Engine unreachable at {url.rstrip('/')}",
+            f"Scubiee unreachable at {url.rstrip('/')}",
             hint="Run: scubiee engine ensure .   or   scubiee search --local",
         )
 

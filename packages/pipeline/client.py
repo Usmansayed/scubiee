@@ -53,7 +53,7 @@ class EngineClient:
                 raise ValueError(f"workspace path is not a directory: {supplied}")
         if self.workspace_path:
             return str(self.workspace_path)
-        raise ValueError("workspace path is required for Context Engine requests")
+        raise ValueError("workspace path is required for Scubiee requests")
 
     def healthy(self) -> bool:
         """True if /health returns ok. Always uses a short timeout."""
@@ -105,14 +105,14 @@ class EngineClient:
         except urllib.error.URLError as exc:
             return {
                 "ok": False,
-                "error": f"Context Engine unreachable at {self.base}: {exc.reason}",
+                "error": f"Scubiee unreachable at {self.base}: {exc.reason}",
                 "hint": "Run: scubiee setup   or   scubiee engine start",
             }
         except (TimeoutError, OSError, ConnectionError) as exc:
             # WinError 10054/10061 etc. — treat as unreachable, don't crash callers
             return {
                 "ok": False,
-                "error": f"Context Engine unreachable at {self.base}: {exc}",
+                "error": f"Scubiee unreachable at {self.base}: {exc}",
                 "hint": "Run: scubiee setup   or   scubiee engine start",
             }
 
@@ -134,7 +134,7 @@ class EngineClient:
 
     def end_session(self, path: str = "") -> dict[str, Any]:
         if not self.session_id:
-            raise ValueError("session_id is required to end a Context Engine session")
+            raise ValueError("session_id is required to end a Scubiee session")
         return self.post(
             "/v1/session/end",
             {"path": path or self.workspace_path, "session_id": self.session_id},

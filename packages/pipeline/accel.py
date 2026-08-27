@@ -7,7 +7,7 @@ Profiles (mutually exclusive ORT wheels, plus Mac MLX):
   - coreml  → onnxruntime  (Intel Mac / explicit --profile coreml)
   - cpu     → onnxruntime
 
-Persists choice to ``~/.context-engine/accel.json``.
+Persists choice to ``~/.scubiee/accel.json``.
 """
 
 from __future__ import annotations
@@ -27,6 +27,7 @@ import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Callable
+from pipeline.project_id import context_engine_home
 
 CODERANK_MODEL = "nomic-ai/CodeRankEmbed"
 CODERANK_HF_ONNX = "jamie8johnson/CodeRankEmbed-onnx"
@@ -53,11 +54,11 @@ def accel_path() -> Path:
     """Resolved accel.json path.
 
     Honors an explicit ``ACCEL_PATH`` monkeypatch (tests), then ``CTX_HOME``,
-    then ``~/.context-engine/accel.json``.
+    then ``~/.scubiee/accel.json``.
     """
     # Tests commonly ``monkeypatch.setattr(accel, "ACCEL_PATH", tmp/...)``.
     current = globals().get("ACCEL_PATH")
-    default = Path.home() / ".context-engine" / "accel.json"
+    default = context_engine_home() / "accel.json"
     if isinstance(current, Path) and current != default:
         return current
     override = (os.environ.get("CTX_HOME") or "").strip()
@@ -66,7 +67,7 @@ def accel_path() -> Path:
     return default
 
 
-ACCEL_PATH = Path.home() / ".context-engine" / "accel.json"
+ACCEL_PATH = context_engine_home() / "accel.json"
 # Install-time batch candidates. Prefer 16 unless 20 clearly wins ROI.
 BATCH_CANDIDATES = (8, 16, 20)
 BATCH_PREFER = 16

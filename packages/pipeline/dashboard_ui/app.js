@@ -108,7 +108,7 @@
     $$(".page").forEach((element) => element.classList.toggle("active", element.id === `page-${page}`));
     $$(".nav-item").forEach((element) => element.classList.toggle("active", element.dataset.page === page));
     $("#page-title").textContent = pageTitles[page];
-    document.title = `${pageTitles[page]} · Context Engine`;
+    document.title = `${pageTitles[page]} · Scubiee`;
     $("#sidebar").classList.remove("open");
     if (updateHash && location.hash !== `#${page}`) history.replaceState(null, "", `#${page}`);
     loadPage(page);
@@ -185,7 +185,7 @@
             <td><div class="actions">
               <button class="button quiet small" data-action="${paused ? "resume" : "pause"}" data-id="${escapeHtml(projectId)}">${paused ? "Resume" : "Pause"}</button>
               ${presence === "missing" ? `<button class="button quiet small" data-action="locate" data-id="${escapeHtml(projectId)}">Locate</button>` : ""}
-              <button class="button quiet small" data-action="forget" data-id="${escapeHtml(projectId)}" title="Remove this repository from Context Engine. Source files are not deleted.">Forget</button>
+              <button class="button quiet small" data-action="forget" data-id="${escapeHtml(projectId)}" title="Remove this repository from Scubiee. Source files are not deleted.">Forget</button>
             </div></td>
           </tr>`;
         }).join("")
@@ -305,7 +305,7 @@
       const payload = await api(endpoint);
       const entries = Object.entries(payload).filter(([key]) => key !== "ok");
       $(target).innerHTML = entries.map(([key, value]) =>
-        dataPanel(labelFor(key), `${title} data reported by Context Engine`, value)
+        dataPanel(labelFor(key), `${title} data reported by Scubiee`, value)
       ).join("") || dataPanel(title, "No additional details", {});
       setServiceState(true);
     } catch (error) {
@@ -487,7 +487,7 @@
     $("#path-dialog-title").textContent = locate ? "Locate repository" : "Add repository";
     $("#path-dialog-copy").textContent = locate
       ? "Choose the repository's new absolute path. Its stored identity must match."
-      : "Enter an absolute path on this machine. Context Engine will initialize and index it.";
+      : "Enter an absolute path on this machine. Scubiee will initialize and index it.";
     $("#repository-path").value = "";
     $("#path-dialog").showModal();
     $("#repository-path").focus();

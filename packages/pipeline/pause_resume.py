@@ -18,6 +18,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from pipeline.branding import MCP_SERVER_NAMES
 from pipeline.tool_registry import (
     ALL_SLUGS,
     TOOL_MAP,
@@ -65,11 +66,8 @@ def _save_state(data: dict[str, Any]) -> None:
 
 # ── MCP disable/enable ────────────────────────────────────────────────────────
 
-_SERVER_NAME = "context-engine"
-
-
 def _disable_mcp_json(path: Path, key: str) -> bool:
-    """Set "disabled": true on the context-engine server entry in a JSON MCP config."""
+    """Set disabled=true on every known Scubiee MCP server key."""
     if not path.is_file():
         return False
     try:
@@ -77,19 +75,26 @@ def _disable_mcp_json(path: Path, key: str) -> bool:
     except (json.JSONDecodeError, OSError):
         return False
     servers = data.get(key)
-    if not isinstance(servers, dict) or _SERVER_NAME not in servers:
+    if not isinstance(servers, dict):
         return False
-    entry = servers[_SERVER_NAME]
-    if isinstance(entry, dict):
-        entry["disabled"] = True
-    servers[_SERVER_NAME] = entry
+    changed = False
+    for name in MCP_SERVER_NAMES:
+        if name not in servers:
+            continue
+        entry = servers[name]
+        if isinstance(entry, dict):
+            entry["disabled"] = True
+            servers[name] = entry
+            changed = True
+    if not changed:
+        return False
     data[key] = servers
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
     return True
 
 
 def _enable_mcp_json(path: Path, key: str) -> bool:
-    """Remove "disabled" from the context-engine server entry in a JSON MCP config."""
+    """Clear disabled on Scubiee MCP keys."""
     if not path.is_file():
         return False
     try:
@@ -97,19 +102,26 @@ def _enable_mcp_json(path: Path, key: str) -> bool:
     except (json.JSONDecodeError, OSError):
         return False
     servers = data.get(key)
-    if not isinstance(servers, dict) or _SERVER_NAME not in servers:
+    if not isinstance(servers, dict):
         return False
-    entry = servers[_SERVER_NAME]
-    if isinstance(entry, dict):
-        entry.pop("disabled", None)
-    servers[_SERVER_NAME] = entry
+    changed = False
+    for name in MCP_SERVER_NAMES:
+        if name not in servers:
+            continue
+        entry = servers[name]
+        if isinstance(entry, dict):
+            entry.pop("disabled", None)
+            servers[name] = entry
+            changed = True
+    if not changed:
+        return False
     data[key] = servers
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
     return True
 
 
 def _disable_mcp_opencode(path: Path) -> bool:
-    """OpenCode uses "enabled": false."""
+    """OpenCode uses enabled: false."""
     if not path.is_file():
         return False
     try:
@@ -117,19 +129,26 @@ def _disable_mcp_opencode(path: Path) -> bool:
     except (json.JSONDecodeError, OSError):
         return False
     mcp = data.get("mcp")
-    if not isinstance(mcp, dict) or _SERVER_NAME not in mcp:
+    if not isinstance(mcp, dict):
         return False
-    entry = mcp[_SERVER_NAME]
-    if isinstance(entry, dict):
-        entry["enabled"] = False
-    mcp[_SERVER_NAME] = entry
+    changed = False
+    for name in MCP_SERVER_NAMES:
+        if name not in mcp:
+            continue
+        entry = mcp[name]
+        if isinstance(entry, dict):
+            entry["enabled"] = False
+            mcp[name] = entry
+            changed = True
+    if not changed:
+        return False
     data["mcp"] = mcp
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
     return True
 
 
 def _enable_mcp_opencode(path: Path) -> bool:
-    """OpenCode uses "enabled": true."""
+    """OpenCode uses enabled: true."""
     if not path.is_file():
         return False
     try:
@@ -137,12 +156,19 @@ def _enable_mcp_opencode(path: Path) -> bool:
     except (json.JSONDecodeError, OSError):
         return False
     mcp = data.get("mcp")
-    if not isinstance(mcp, dict) or _SERVER_NAME not in mcp:
+    if not isinstance(mcp, dict):
         return False
-    entry = mcp[_SERVER_NAME]
-    if isinstance(entry, dict):
-        entry["enabled"] = True
-    mcp[_SERVER_NAME] = entry
+    changed = False
+    for name in MCP_SERVER_NAMES:
+        if name not in mcp:
+            continue
+        entry = mcp[name]
+        if isinstance(entry, dict):
+            entry["enabled"] = True
+            mcp[name] = entry
+            changed = True
+    if not changed:
+        return False
     data["mcp"] = mcp
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
     return True
@@ -201,16 +227,23 @@ def _resume_rule_files(tool: ToolDef) -> list[str]:
     restored: list[str] = []
     for rule_path in resolve_rule_user_paths(tool):
         paused_path = rule_path.with_name(rule_path.name + _PAUSED_SUFFIX)
-        if paused_path.is_file():
-            paused_path.rename(rule_path)
+        if not paused_path.is_file():
+            continue
+        if rule_path.is_file():
+            # connect/setup may have already restored the live rule while paused
+            # still exists — drop the stale pause sidecar.
+            paused_path.unlink(missing_ok=True)
             restored.append(str(rule_path))
+            continue
+        paused_path.rename(rule_path)
+        restored.append(str(rule_path))
     return restored
 
 
 # ── Detect connected tools ────────────────────────────────────────────────────
 
 def _detect_connected_tools() -> list[str]:
-    """Return slugs of tools that currently have a context-engine MCP entry."""
+    """Return slugs of tools that currently have a Scubiee MCP entry."""
     connected: list[str] = []
     for slug in ALL_SLUGS:
         tool = TOOL_MAP[slug]
@@ -222,7 +255,7 @@ def _detect_connected_tools() -> list[str]:
             except (json.JSONDecodeError, OSError):
                 continue
             servers = data.get(key)
-            if isinstance(servers, dict) and _SERVER_NAME in servers:
+            if isinstance(servers, dict) and any(n in servers for n in MCP_SERVER_NAMES):
                 connected.append(slug)
                 break
     return connected

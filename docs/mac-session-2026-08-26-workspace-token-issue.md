@@ -2,11 +2,11 @@
 
 **Machine:** Apple Silicon, macOS 26.5.2  
 **Repo:** `hidden-context-engine-` (tree ~0.2.82)  
-**Scope:** Document what we changed this session, and the **open Cursor regression** found when live-testing `${workspaceFolder}`.
+**Scope:** Document what we changed this session, and the **Cursor `${workspaceFolder}`** issue (now fixed).
 
 ---
 
-## 1. Open issue: Cursor does not expand `${workspaceFolder}` in global MCP env
+## 1. Cursor does not expand `${workspaceFolder}` in global MCP env — **FIXED**
 
 ### Symptom (live, after disconnect → connect)
 
@@ -46,25 +46,15 @@ Resolver order (`mcp_locate._default_repo`):
 
 With unexpanded tokens + cwd=`$HOME`, step 5 wins → home → `managed=false`.
 
-### What we believed vs what we measured
+### Fix shipped (0.2.85+)
 
-| Prior research assumption | Live Mac Cursor observation |
-|---------------------------|-----------------------------|
-| Cursor expands `${workspaceFolder}` in **global** `~/.cursor/mcp.json` (unlike VS Code user MCP) | **Not expanded** — left as literal string in process env |
-| Global-only connect + token is enough for Cursor | **Insufficient** on this Cursor build / session |
+1. **Cursor is in `_GLOBAL_OMIT_CTX_REPO_SLUGS`** — global `~/.cursor/mcp.json` no longer gets `CTX_REPO` / `CURSOR_*` tokens (same pattern as special-4).
+2. **Project pin remains** — `connect --cursor` writes `.cursor/mcp.json` with absolute `CTX_REPO` (+ project id) so the workspace-attached MCP resolves correctly.
+3. Resolver still ignores unexpanded placeholders if an old global config remains.
 
-Related docs (pre-discovery research):
+**Acceptance:** after `scubiee connect --cursor` in a managed repo, agent `status()` reports that repo path and `managed=true` (attach to project MCP / reload MCP).
 
-- [`cursor-mcp-workspace-resolution-research.md`](./cursor-mcp-workspace-resolution-research.md)
-- [`mcp-workspace-mismatch-all-hosts-research.md`](./mcp-workspace-mismatch-all-hosts-research.md)
-
-### Likely next fix directions (not implemented yet)
-
-1. **Treat Cursor like optional project MCP** — write `.cursor/mcp.json` with absolute `CTX_REPO` + `CTX_PROJECT_ID` when connect runs inside a repo (special-4 style), keep global entry token-based or drop duplicate.
-2. **Find a Cursor-native var that actually expands** on this build (if any) and prefer it.
-3. **Document Cursor as “token preferred, project pin fallback”** until expansion is verified across Cursor versions.
-
-Special-4 remain unchanged by design: **kiro, copilot, cline, roo-code** (project absolute pins).
+Special-4 unchanged: **kiro, copilot, cline, roo-code** (project absolute pins). Cursor joins them for **global omit** only.
 
 ---
 
@@ -76,18 +66,14 @@ Special-4 remain unchanged by design: **kiro, copilot, cline, roo-code** (projec
 - Added `_is_unexpanded_placeholder()` — ignore literal `${workspaceFolder}` / `$(…)` / `%{…}`
 - `_ide_workspace_candidates` / `_ctx_repo_raw`: skip `/`, unexpanded tokens, nonexistent paths
 
-### B. Connect writers for non-special-4 (`packages/pipeline/rules_installer.py`)
+### B. Connect writers (`packages/pipeline/rules_installer.py`)
 
 - `_WORKSPACE_FOLDER_TOKEN = "${workspaceFolder}"`
-- `_inject_global_workspace_hints()` for global connect when `pin_repo=False`:
-  - all non-special-4: `CTX_REPO=${workspaceFolder}`
-  - Cursor: also `CURSOR_PROJECT_DIR` / `CURSOR_CWD`
-  - OpenCode: `OPENCODE_DEFAULT_PROJECT`
-  - windsurf / continue / zed / amp / pi / claude-code / codex: `WORKSPACE_FOLDER` as needed
+- `_inject_global_workspace_hints()` for global connect when `pin_repo=False`
+- **Cursor + special-4 omit** `CTX_REPO` from global; project files keep absolute pins
+- OpenCode / windsurf / continue / zed / amp / pi / claude-code / codex still get workspace tokens where useful
 - Codex: `cwd = ${workspaceFolder}` written via `_write_mcp_toml`
 - Leak guard: error only on **absolute** `CTX_REPO` in global entries (tokens allowed)
-
-Special-4 global entries still **omit** absolute `CTX_REPO` (project files keep absolute pins).
 
 ### C. Mac accel / Core ML pytest fixes
 

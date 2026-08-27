@@ -1,7 +1,7 @@
 """Hybrid project identity: in-repo id file + global registry + projects/<id>/.
 
 Resolve order:
-  1. ``<repo>/.context-engine/id.json`` → project_id
+  1. ``<repo>/.scubiee/id.json`` → project_id
   2. Registry lookup by absolute path (requires live id.json trust)
   3. Recover from a usable store whose ``meta.json`` root matches this path
   4. Reuse an existing git-family project (shared ``git_common_dir``)
@@ -28,8 +28,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Iterator, TypeVar
 
+from pipeline.branding import (
+    DATA_DIR_NAME,
+    LOG_PREFIX,
+    migrate_home_dir,
+    resolve_repo_data_dir,
+)
 
-ID_DIR_NAME = ".context-engine"
+ID_DIR_NAME = DATA_DIR_NAME
 ID_FILE_NAME = "id.json"
 REGISTRY_NAME = "registry.json"
 _REGISTRY_LOCK = threading.RLock()
@@ -100,16 +106,20 @@ def registry_lock() -> Iterator[None]:
 
 
 def context_engine_home() -> Path:
-    import os
-
+    """Scubiee machine home (``~/.scubiee``)."""
     override = os.environ.get("CTX_HOME", "").strip()
     if override:
         return Path(override).resolve()
-    return Path.home() / ".context-engine"
+    return migrate_home_dir(Path.home())
+
+
+def id_dir_path(root: Path) -> Path:
+    """Repo-local data directory (``.scubiee``, with legacy migration)."""
+    return resolve_repo_data_dir(root)
 
 
 def id_file_path(root: Path) -> Path:
-    return root.resolve() / ID_DIR_NAME / ID_FILE_NAME
+    return id_dir_path(root) / ID_FILE_NAME
 
 
 def registry_path() -> Path:
@@ -141,7 +151,7 @@ def _read_json(path: Path) -> dict[str, Any]:
         import sys
 
         print(
-            f"[context-engine] WARNING: corrupt JSON at {path}: {exc}",
+            f"{LOG_PREFIX} WARNING: corrupt JSON at {path}: {exc}",
             file=sys.stderr,
             flush=True,
         )
@@ -262,7 +272,7 @@ def _registry_path_identity_trusted(project_id: str, path: Path) -> bool:
     """Trust a registry path alias only when live ``id.json`` exactly matches.
 
     Missing or malformed identity files are treated as stale/untrusted so a
-    vacated path (even with an empty ``.context-engine/`` directory) cannot
+    vacated path (even with an empty ``.scubiee/`` directory) cannot
     inherit a moved repository's durable ID.
     """
     return read_id_file(path) == project_id

@@ -155,7 +155,7 @@ class RuntimeManager:
     @staticmethod
     def _repo_file_count(repo: Path, *, stop_after: int) -> int:
         count = 0
-        ignored = {".git", ".context-engine", "__pycache__"}
+        ignored = {".git", ".scubiee", "__pycache__"}
         for _root, dirs, files in os.walk(repo):
             dirs[:] = [name for name in dirs if name not in ignored]
             count += len(files)
@@ -351,7 +351,7 @@ class RuntimeManager:
                 index_usable = self.engine is not None
         return {
             "ok": True,
-            "service": "context-engine",
+            "service": "scubiee",
             "version": _daemon_version(),
             "warm": self.engine is not None,
             "warm_state": self.warm_state,
@@ -634,7 +634,7 @@ class RuntimeManager:
         prefs = load_prefs()
         payload: dict[str, Any] = {
             "ok": True,
-            "service": "context-engine",
+            "service": "scubiee",
             "repo": str(repo),
             "lifecycle": lifecycle["state"],
             "registration_mode": get_registration_mode(),

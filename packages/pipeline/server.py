@@ -610,7 +610,7 @@ def run_server(
     ce = get_context_engine()
     repo = repo.resolve()
     print(
-        f"[engine] Context Engine starting on http://{host}:{port}",
+        f"[engine] Scubiee starting on http://{host}:{port}",
         file=sys.stderr,
         flush=True,
     )

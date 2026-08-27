@@ -80,7 +80,7 @@ TOOLS: list[ToolDef] = [
         mcp_format="json",
         mcp_user_path=".cursor/mcp.json",
         rule_format="mdc",
-        rule_user_path=".cursor/rules/context-agent.mdc",
+        rule_user_path=".cursor/rules/scubiee.mdc",
         notes="Global MCP + machine-local ~/.cursor/rules/*.mdc (official help).",
     ),
     ToolDef(
@@ -113,7 +113,7 @@ TOOLS: list[ToolDef] = [
         mcp_format="json",
         mcp_user_path=".kiro/settings/mcp.json",
         rule_format="md",
-        rule_user_path=".kiro/steering/context-engine.md",
+        rule_user_path=".kiro/steering/scubiee.md",
         notes="Global ~/.kiro + workspace .kiro/settings/mcp.json when connect runs from a project folder.",
     ),
     ToolDef(
@@ -136,7 +136,7 @@ TOOLS: list[ToolDef] = [
         mcp_alt_targets=(("copilot_cli_mcp", "copilot_cli", "mcpServers"),),
         rule_format="append-md",
         rule_user_path=".copilot/copilot-instructions.md",
-        rule_user_path_extra=(".copilot/instructions/context-engine.instructions.md",),
+        rule_user_path_extra=(".copilot/instructions/scubiee.instructions.md",),
         notes=(
             "VS Code user mcp.json (servers+stdio) + Copilot CLI ~/.copilot/mcp-config.json "
             "(mcpServers+type:local) + global instructions. Also writes .vscode/mcp.json + "
@@ -152,7 +152,7 @@ TOOLS: list[ToolDef] = [
         mcp_user_path="cline_vscode",
         mcp_user_path_extra=("cline_cli",),
         rule_format="md",
-        rule_user_path=".cline/rules/context-engine.md",
+        rule_user_path=".cline/rules/scubiee.md",
         notes="Writes VS Code globalStorage + ~/.cline CLI MCP globally; .cline/mcp.json per repo when connect runs from a project folder.",
     ),
     ToolDef(
@@ -173,7 +173,7 @@ TOOLS: list[ToolDef] = [
         mcp_format="yaml",
         mcp_user_path=".continue/config.yaml",
         rule_format="md",
-        rule_user_path=".continue/rules/context-engine.md",
+        rule_user_path=".continue/rules/scubiee.md",
         notes="mcpServers is a YAML list of named objects.",
     ),
     ToolDef(
@@ -243,54 +243,29 @@ WORKSPACE_LOCAL_MCP_SLUGS: frozenset[str] = frozenset(
     }
 )
 
+# Classic special-4: global MCP cannot see the open folder — connect must run
+# inside each repo. Notices are only shown for these (not Cursor/Codex/…).
+SPECIAL_WORKSPACE_MCP_SLUGS: frozenset[str] = frozenset(
+    {"kiro", "copilot", "cline", "roo-code"}
+)
+
 WORKSPACE_LOCAL_MCP_NOTICES: dict[str, str] = {
     "kiro": (
-        "Kiro IDE cannot detect your workspace from global MCP alone. "
-        "Run `scubiee connect --kiro` inside each project to write "
-        "`.kiro/settings/mcp.json` (local MCP with CTX_REPO)."
+        "Kiro has a global MCP workspace issue — run `scubiee connect --kiro` "
+        "inside each project to write `.kiro/settings/mcp.json`."
     ),
     "copilot": (
-        "VS Code / Copilot global MCP does not expand ${workspaceFolder}. "
-        "Run `scubiee connect --copilot` inside each project to write "
-        "`.vscode/mcp.json` and `.mcp.json` for that repo."
+        "Copilot/VS Code has a global MCP workspace issue — run "
+        "`scubiee connect --copilot` inside each project to write "
+        "`.vscode/mcp.json` and `.mcp.json`."
     ),
     "cline": (
-        "Cline global MCP may spawn with the wrong working directory. "
-        "Run `scubiee connect --cline` inside each project to write "
-        "`.cline/mcp.json` for that repo."
+        "Cline has a global MCP workspace issue — run `scubiee connect --cline` "
+        "inside each project to write `.cline/mcp.json`."
     ),
     "roo-code": (
-        "Roo Code global MCP may spawn with the wrong working directory. "
-        "Run `scubiee connect --roo-code` inside each project to write "
-        "`.roo/mcp.json` for that repo."
-    ),
-    "cursor": (
-        "Cursor does not expand ${workspaceFolder} in global ~/.cursor/mcp.json. "
-        "Run `scubiee connect --cursor` inside each project to write "
-        "`.cursor/mcp.json` with an absolute CTX_REPO pin."
-    ),
-    "codex": (
-        "Codex Desktop often spawns MCP with cwd=/. "
-        "Run `scubiee connect --codex` inside each project to write "
-        "`.codex/config.toml` with absolute cwd + CTX_REPO."
-    ),
-    "continue": (
-        "Continue resolves workspace best from project MCP blocks. "
-        "Run `scubiee connect --continue` inside each project to write "
-        "`.continue/mcpServers/context-engine.yaml`."
-    ),
-    "opencode": (
-        "OpenCode project `opencode.json` overrides global MCP. "
-        "Run `scubiee connect --opencode` inside each project to pin CTX_REPO."
-    ),
-    "amp": (
-        "Amp workspace MCP lives in `.amp/settings.json` and needs approval. "
-        "Run `scubiee connect --amp` inside each project, then "
-        "`amp mcp approve context-engine`."
-    ),
-    "pi": (
-        "Pi prefers project `.mcp.json` over global-only MCP. "
-        "Run `scubiee connect --pi` inside each project to pin CTX_REPO."
+        "Roo Code has a global MCP workspace issue — run "
+        "`scubiee connect --roo-code` inside each project to write `.roo/mcp.json`."
     ),
 }
 
@@ -399,7 +374,7 @@ def resolve_mcp_project_paths(tool: ToolDef, repo: Path | None) -> list[Path]:
     if tool.slug == "codex":
         return [root / ".codex" / "config.toml"]
     if tool.slug == "continue":
-        return [root / ".continue" / "mcpServers" / "context-engine.yaml"]
+        return [root / ".continue" / "mcpServers" / "scubiee.yaml"]
     if tool.slug == "opencode":
         return [root / "opencode.json"]
     if tool.slug == "amp":
@@ -427,7 +402,7 @@ def all_workspace_local_mcp_paths(repo: Path | None) -> list[Path]:
         root / ".roo" / "mcp.json",
         root / ".cursor" / "mcp.json",
         root / ".codex" / "config.toml",
-        root / ".continue" / "mcpServers" / "context-engine.yaml",
+        root / ".continue" / "mcpServers" / "scubiee.yaml",
         root / "opencode.json",
         root / ".amp" / "settings.json",
     ]

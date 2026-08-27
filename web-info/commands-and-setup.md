@@ -1,8 +1,10 @@
 # Scubiee: Commands, Setup, and Product Guide
 
-> **Documentation baseline:** Scubiee `0.2.82`  
+> **Documentation baseline:** [Scubiee `0.2.87`](https://pypi.org/project/scubiee/0.2.87/) (published on PyPI)  
 > **Audience:** product pages, documentation websites, and developers using Scubiee from a terminal or an AI coding tool.  
-> **Canonical user docs:** [`../docs/web-info/`](../docs/web-info/README.md)
+> **Product identity:** MCP key **`scubiee`** · home **`~/.scubiee`** · repo **`<repo>/.scubiee`**  
+> **Canonical user docs:** [`../docs/web-info/`](../docs/web-info/README.md)  
+> **Install / upgrade / debug playbook:** [`../docs/web-info/install-and-debug.md`](../docs/web-info/install-and-debug.md)
 
 Scubiee is a local-first code context engine. It builds a searchable representation of your repository, keeps it fresh as files change, and exposes the result through a CLI, a local daemon, and MCP integrations for AI coding tools.
 
@@ -26,7 +28,7 @@ Most coding assistants can read files, but a large repository makes ad-hoc file 
 
 ```bash
 # 1. Install
-uv tool install --force scubiee==0.2.82 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.2.87 --index-url https://pypi.org/simple --refresh
 
 # 2. One-time machine setup
 scubiee setup --repair
@@ -76,12 +78,13 @@ scubiee connect --cursor
 | Command | What it does |
 |---------|-------------|
 | `scubiee diagnose --no-tests --desktop` | Shareable diagnose JSON on Desktop |
-| `scubiee upgrade` | Stop processes, upgrade package, restart, migrate |
+| `scubiee unlock-tool` | **Windows:** free `%APPDATA%\uv\tools\scubiee` locks (MCP-off → stop → rename). Use before reinstall on Access denied |
+| `scubiee upgrade` | Unlock/stop processes, upgrade package, restart, migrate |
 | `scubiee stop` / `scubiee resume` | Stop engine / bring back (**not** `wake`) |
 | `scubiee pause .` / `scubiee resume .` | Per-repo indexing pause |
 | `scubiee doctor <path> [--fix]` | Readiness report |
 | `scubiee preflight [path]` | Dependency / capability check |
-| `scubiee wipe --all --yes --package` | Full machine cleanup + uninstall |
+| `scubiee wipe --all --confirm --package` | Full machine cleanup + uninstall (`--yes` = `--confirm`) |
 
 ## Machine setup vs repository enrollment vs connect
 
@@ -142,9 +145,12 @@ Paused/stopped → user runs **`scubiee resume`**.
 |-------|-----|
 | Agent unmanaged | `init` + `connect` + reload MCP |
 | Special-4 broken | `connect --tool` inside that repo |
-| Access denied on Windows upgrade | `stop`, remove uv tool dir, reinstall, `setup --repair` |
+| Access denied on Windows upgrade | **`unlock-tool`** → reinstall → `setup --repair` (not Admin/reboot) |
+| `No module named 'pipeline'` | Unlock/PS1 repair → reinstall → `setup --repair` |
+| Cursor unmanaged | `connect --cursor` from the project + reload MCP |
 | Stale accel after reinstall | `setup --repair` before `init` |
 | Said “wake” | Use **`resume`** |
 | Warming forever | Ensure daemon: `engine ensure . --wait 45` |
 
+Install/debug playbook: [`../docs/web-info/install-and-debug.md`](../docs/web-info/install-and-debug.md).  
 Full guides: [`../docs/web-info/`](../docs/web-info/README.md).

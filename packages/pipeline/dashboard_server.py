@@ -30,7 +30,7 @@ from pipeline.dashboard_port import (
 DASHBOARD_HOST = "127.0.0.1"
 DASHBOARD_BASE = "/ce-dashboard"
 API_BASE = f"{DASHBOARD_BASE}/api"
-DASHBOARD_IDENTITY = "context-engine-operator-dashboard-v1"
+DASHBOARD_IDENTITY = "scubiee-operator-dashboard-v1"
 _LOGGER = logging.getLogger(__name__)
 _UI_ROOT = Path(__file__).with_name("dashboard_ui")
 _STATIC_ASSETS = {
@@ -116,7 +116,7 @@ def _with_action_message(action: str, result: dict[str, Any]) -> dict[str, Any]:
     if not result.get("ok") or result.get("message"):
         return result
     labels = {
-        "forget": "Repository removed from Context Engine. Source files were not deleted.",
+        "forget": "Repository removed from Scubiee. Source files were not deleted.",
         "pause": "Repository paused.",
         "resume": "Repository resumed.",
         "sync": "Sync started.",

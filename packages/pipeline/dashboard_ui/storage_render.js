@@ -115,7 +115,7 @@
       ? value.map(displayScalar).join(", ") || "None"
       : displayScalar(value);
     return `<article class="data-card">
-      <div class="data-card-header"><div><h3>${escapeHtml(title)}</h3><p>Storage data reported by Context Engine</p></div></div>
+      <div class="data-card-header"><div><h3>${escapeHtml(title)}</h3><p>Storage data reported by Scubiee</p></div></div>
       <div class="key-grid"><div class="key-value"><span>Value</span><strong>${escapeHtml(rendered)}</strong></div></div>
     </article>`;
   }

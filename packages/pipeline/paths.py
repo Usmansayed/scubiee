@@ -51,7 +51,17 @@ _SKIP_SUBSTRINGS = (
     "/design_benchmarks/",
     "/.git/",
     "/out/",
+    # IDE / agent tooling trees — merkle already skips dotdirs; indexer must
+    # match or root_probe treats every *.md under these as permanent "added"
+    # and the keeper never converges (same class as #3182).
     "/.cursor/",
+    "/.kiro/",
+    "/.codex/",
+    "/.cline/",
+    "/.roo/",
+    "/.amp/",
+    "/.continue/",
+    "/.claude/",
 )
 
 

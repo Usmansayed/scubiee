@@ -141,7 +141,7 @@ def _choose_backend(model: str, backend: str | None) -> str:
         from pipeline.preflight import CapabilityError
 
         raise CapabilityError(
-            "Context Engine accel profile requires FastEmbed + ONNX Runtime, but "
+            "Scubiee accel profile requires FastEmbed + ONNX Runtime, but "
             "fastembed is not installed in this Python. Run: python -m pipeline setup "
             "(or pip install -e \".[dml|cuda|coreml|cpu]\"). Refusing silent PyTorch/CPU fallback."
         )

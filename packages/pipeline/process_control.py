@@ -9,6 +9,7 @@ import sys
 import time
 from pathlib import Path
 from typing import Any
+from pipeline.project_id import context_engine_home
 
 
 def uv_tool_root(python: Path | None = None) -> Path | None:
@@ -85,39 +86,98 @@ def processes_under(root: Path) -> list[int]:
     return sorted(set(pids))
 
 
-def stop_processes_under(root: Path, *, grace_s: float = 1.0) -> dict[str, Any]:
-    """Terminate processes locking files under *root* (Windows-safe)."""
+def _pid_in_our_ancestry(pid: int, self_pid: int | None = None) -> bool:
+    """True if *pid* is us or an ancestor (taskkill /T on it would kill unlock)."""
+    me = os.getpid() if self_pid is None else self_pid
+    if pid == me:
+        return True
+    try:
+        import psutil
+
+        cur = me
+        for _ in range(64):
+            try:
+                cur = psutil.Process(cur).ppid()
+            except (psutil.NoSuchProcess, psutil.AccessDenied, ValueError):
+                break
+            if not cur or cur <= 0:
+                break
+            if cur == pid:
+                return True
+    except Exception:  # noqa: BLE001
+        return False
+    return False
+
+
+def _terminate_pid_no_tree(pid: int) -> None:
+    """Kill *pid* and its children except our own process tree."""
+    me = os.getpid()
+    try:
+        import psutil
+
+        proc = psutil.Process(pid)
+        for child in proc.children(recursive=True):
+            if child.pid == me or _pid_in_our_ancestry(child.pid, me):
+                continue
+            try:
+                child.kill()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+        if pid != me and not _pid_in_our_ancestry(pid, me):
+            proc.kill()
+        return
+    except Exception:  # noqa: BLE001
+        pass
+    if os.name == "nt":
+        # No /T — tree kill can take down the unlock process via a parent python.
+        subprocess.run(
+            ["taskkill", "/PID", str(pid), "/F"],
+            capture_output=True,
+            check=False,
+        )
+    else:
+        try:
+            os.kill(pid, 9)
+        except OSError:
+            pass
+
+
+def stop_processes_under(
+    root: Path,
+    *,
+    grace_s: float = 1.0,
+    exclude_pids: set[int] | None = None,
+) -> dict[str, Any]:
+    """Terminate processes locking files under *root* (Windows-safe).
+
+    Never kills the current process or its ancestors. Critical for
+    ``scubiee unlock-tool`` (runs from uv-tool python; a parent python shim
+    often also lives under the same tool dir — ``taskkill /T`` on it suicides).
+    """
+    skip = set(exclude_pids or ())
+    skip.add(os.getpid())
     killed: list[int] = []
     failed: list[int] = []
+    skipped: list[int] = []
     for pid in processes_under(root):
+        if pid in skip or _pid_in_our_ancestry(pid):
+            skipped.append(pid)
+            continue
         try:
-            if os.name == "nt":
-                subprocess.run(
-                    ["taskkill", "/PID", str(pid), "/T", "/F"],
-                    capture_output=True,
-                    check=False,
-                )
-            else:
-                os.kill(pid, 15)
-                deadline = time.time() + grace_s
-                while time.time() < deadline:
-                    try:
-                        os.kill(pid, 0)
-                        time.sleep(0.1)
-                    except OSError:
-                        break
-                else:
-                    os.kill(pid, 9)
+            _terminate_pid_no_tree(pid)
             killed.append(pid)
         except OSError:
             failed.append(pid)
     if grace_s:
         time.sleep(min(grace_s, 2.0))
-    remaining = processes_under(root)
+    remaining = [
+        p for p in processes_under(root) if p not in skip and not _pid_in_our_ancestry(p)
+    ]
     return {
         "root": str(root),
         "killed": killed,
         "failed": failed,
+        "skipped": skipped,
         "remaining": remaining,
         "ok": not remaining,
     }
@@ -127,7 +187,7 @@ def stop_uv_tool_processes(python: Path | None = None) -> dict[str, Any]:
     root = uv_tool_root(python)
     if root is None:
         return {"ok": True, "skipped": "not_uv_tool"}
-    return stop_processes_under(root)
+    return stop_processes_under(root, exclude_pids={os.getpid()})
 
 
 def process_cmdline(pid: int) -> str:
@@ -173,34 +233,23 @@ def is_context_engine_process(pid: int) -> bool:
         "pipeline.mcp_server",
         "pipeline.watchdog",
         "pipeline.__main__",
-        "context-engine",
         "scubiee",
     )
     return any(m in cmdline for m in markers)
 
 
 def safe_terminate_pid(pid: int, *, grace_s: float = 1.0) -> dict[str, Any]:
-    """Terminate *pid* only when it matches CE; never kill unrelated processes."""
+    """Terminate *pid* only when it matches CE; never kill ourselves or ancestors."""
     from pipeline.daemon import _pid_alive
 
     if not _pid_alive(pid):
         return {"pid": pid, "ok": True, "skipped": "not_alive"}
+    if pid == os.getpid() or _pid_in_our_ancestry(pid):
+        return {"pid": pid, "ok": True, "skipped": "self_or_ancestor"}
     if not is_context_engine_process(pid):
         return {"pid": pid, "ok": False, "skipped": "not_context_engine"}
     try:
-        if os.name == "nt":
-            subprocess.run(
-                ["taskkill", "/PID", str(pid), "/T", "/F"],
-                capture_output=True,
-                check=False,
-            )
-        else:
-            os.kill(pid, 15)
-            deadline = time.time() + grace_s
-            while time.time() < deadline and _pid_alive(pid):
-                time.sleep(0.1)
-            if _pid_alive(pid):
-                os.kill(pid, 9)
+        _terminate_pid_no_tree(pid)
         return {"pid": pid, "ok": True, "terminated": True}
     except OSError as exc:
         return {"pid": pid, "ok": False, "error": str(exc)}
@@ -213,7 +262,6 @@ def _cmdline_matches_ce(cmdline: list[str] | None) -> bool:
     needles = (
         "scubiee",
         "ctx-mcp",
-        "context-engine",
         r"uv\tools\scubiee",
         "pipeline.mcp_server",
         "pipeline.__main__",
@@ -245,7 +293,7 @@ def stop_all_context_engine_processes(*, ctx_home: Path | None = None) -> dict[s
 
     extra_killed: list[int] = []
     extra_failed: list[int] = []
-    home_s = str((ctx_home or Path.home() / ".context-engine").resolve()).lower()
+    home_s = str((ctx_home or context_engine_home()).resolve()).lower()
     try:
         import psutil
     except ImportError:
@@ -275,7 +323,9 @@ def stop_all_context_engine_processes(*, ctx_home: Path | None = None) -> dict[s
     root = uv_tool_root()
     remaining = [p for p in (processes_under(root) if root else []) if p != my_pid]
     actions["remaining"] = remaining
+    # ok if only this process still holds the tool dir (caller may rename-aside).
     actions["ok"] = not remaining
+    actions["self_pid"] = my_pid
     return actions
 
 
@@ -296,39 +346,308 @@ def remove_tool_shims() -> dict[str, Any]:
     return {"removed": removed, "failed": failed, "ok": not failed}
 
 
-def force_remove_uv_tool_dir(*, python: Path | None = None) -> dict[str, Any]:
+_ACCESS_DENIED_HINT = (
+    "Admin/reboot will not help — file locks, not ACLs. "
+    "Quit Cursor (or disable Scubiee MCP), then run: "
+    "scubiee unlock-tool  OR  "
+    "powershell -ExecutionPolicy Bypass -File scripts/uninstall-uv-scubiee.ps1"
+)
+
+
+def disable_mcp_to_prevent_respawn(*, project: Path | None = None) -> dict[str, Any]:
+    """Disable Scubiee in global + optional project MCP so hosts don't respawn lockers."""
+    from pipeline.pause_resume import _disable_mcp_for_tool, _disable_mcp_json
+    from pipeline.tool_registry import TOOLS
+
+    disabled: list[str] = []
+    for tool in TOOLS:
+        try:
+            disabled.extend(_disable_mcp_for_tool(tool))
+        except Exception:  # noqa: BLE001
+            continue
+
+    # Project pins (Cursor/Kiro/etc.) respawn independently of global MCP.
+    roots: list[Path] = []
+    if project is not None:
+        roots.append(Path(project).resolve())
+    try:
+        roots.append(Path.cwd().resolve())
+    except OSError:
+        pass
+    seen: set[str] = set()
+    project_targets: tuple[tuple[tuple[str, ...], str, str], ...] = (
+        ((".cursor",), "mcp.json", "mcpServers"),
+        ((".kiro", "settings"), "mcp.json", "mcpServers"),
+        ((".vscode",), "mcp.json", "servers"),
+        ((".cline",), "mcp.json", "mcpServers"),
+        ((".roo",), "mcp.json", "mcpServers"),
+    )
+    for root in roots:
+        key = str(root).lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        for dirs, fname, json_key in project_targets:
+            path = root.joinpath(*dirs, fname)
+            if _disable_mcp_json(path, json_key):
+                disabled.append(str(path))
+
+    return {"ok": True, "disabled": sorted(set(disabled))}
+
+
+def _rmtree_with_retries(
+    path: Path,
+    *,
+    attempts: int = 5,
+    delay_s: float = 0.5,
+) -> dict[str, Any]:
+    """Delete *path* with backoff.
+
+    On Windows, **rename-aside first** then delete the trash. In-place
+    ``rmtree`` can remove ``Lib/`` then fail on locked ``python.exe``, leaving
+    a half-deleted env where ``scubiee`` raises ModuleNotFoundError.
+    """
+    attempts_log: list[dict[str, Any]] = []
+    last_err = ""
+    for i in range(max(1, attempts)):
+        if not path.exists():
+            return {"ok": True, "attempts": attempts_log, "path": str(path)}
+
+        if os.name == "nt":
+            trash = path.with_name(f"{path.name}.trash-{os.getpid()}-{i}")
+            try:
+                path.rename(trash)
+                attempts_log.append({"n": i + 1, "action": "rename", "ok": True, "to": str(trash)})
+                try:
+                    shutil.rmtree(trash, ignore_errors=True)
+                except OSError as exc:
+                    last_err = str(exc)
+                    attempts_log.append(
+                        {"n": i + 1, "action": "rmtree_trash", "ok": False, "error": last_err}
+                    )
+                    # Original path is free even if trash delete is deferred.
+                    _schedule_delete_after_exit(trash, os.getpid())
+                if not path.exists():
+                    return {"ok": True, "attempts": attempts_log, "path": str(path)}
+            except OSError as exc:
+                last_err = str(exc)
+                attempts_log.append({"n": i + 1, "action": "rename", "ok": False, "error": last_err})
+        else:
+            try:
+                shutil.rmtree(path, ignore_errors=False)
+                if not path.exists():
+                    attempts_log.append({"n": i + 1, "action": "rmtree", "ok": True})
+                    return {"ok": True, "attempts": attempts_log, "path": str(path)}
+            except OSError as exc:
+                last_err = str(exc)
+                attempts_log.append({"n": i + 1, "action": "rmtree", "ok": False, "error": last_err})
+
+        stop_all_context_engine_processes()
+        time.sleep(delay_s * (i + 1))
+
+    return {
+        "ok": not path.exists(),
+        "attempts": attempts_log,
+        "path": str(path),
+        "error": None if not path.exists() else (last_err or "rmtree_failed"),
+    }
+
+
+def _running_from_uv_tool(root: Path | None, python: Path | None = None) -> bool:
+    """True when *this* process's interpreter lives under the uv tool root.
+
+    *python* is ignored for the check — it only selects which tool dir to remove.
+    Using it here falsely triggered rename/schedule when unlocking from conda/system
+    Python while passing an explicit tool interpreter path.
+    """
+    if root is None:
+        return False
+    del python  # selection only; see docstring
+    return _exe_under_root(str(Path(sys.executable)), root)
+
+
+def _schedule_delete_after_exit(path: Path, wait_pid: int) -> dict[str, Any]:
+    """Detach a cleaner that waits for *wait_pid* then deletes *path*."""
+    path_s = str(path)
+    if os.name == "nt":
+        lit = path_s.replace("'", "''")
+        ps = (
+            f"Wait-Process -Id {int(wait_pid)} -ErrorAction SilentlyContinue; "
+            f"Start-Sleep -Seconds 2; "
+            f"$p = '{lit}'; "
+            "Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | "
+            "Where-Object { $_.ExecutablePath -and $_.ExecutablePath -like ($p + '*') } | "
+            "ForEach-Object { taskkill /PID $_.ProcessId /T /F 2>$null | Out-Null }; "
+            "Start-Sleep -Seconds 1; "
+            "Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue"
+        )
+        flags = 0
+        if hasattr(subprocess, "DETACHED_PROCESS"):
+            flags |= subprocess.DETACHED_PROCESS  # type: ignore[attr-defined]
+        if hasattr(subprocess, "CREATE_NEW_PROCESS_GROUP"):
+            flags |= subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]
+        # CREATE_NO_WINDOW
+        flags |= 0x08000000
+        subprocess.Popen(
+            [
+                "powershell",
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                ps,
+            ],
+            close_fds=True,
+            creationflags=flags,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            stdin=subprocess.DEVNULL,
+        )
+        return {
+            "ok": True,
+            "scheduled": True,
+            "waiter": "powershell",
+            "path": path_s,
+            "wait_pid": wait_pid,
+        }
+
+    import shlex
+
+    script = (
+        f"while kill -0 {int(wait_pid)} 2>/dev/null; do sleep 0.5; done; "
+        f"sleep 1; rm -rf {shlex.quote(path_s)}"
+    )
+    subprocess.Popen(
+        ["/bin/bash", "-c", script],
+        start_new_session=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        stdin=subprocess.DEVNULL,
+    )
+    return {
+        "ok": True,
+        "scheduled": True,
+        "waiter": "bash",
+        "path": path_s,
+        "wait_pid": wait_pid,
+    }
+
+
+def force_remove_uv_tool_dir(
+    *,
+    python: Path | None = None,
+    stop_first: bool = True,
+) -> dict[str, Any]:
     """Last-resort delete when ``uv tool uninstall`` fails on Windows locks."""
     root = uv_tool_root(python)
     if root is None:
         return {"ok": True, "skipped": "not_uv_tool"}
-    stop = stop_all_context_engine_processes()
-    if root.exists():
+    stop: dict[str, Any] = {"ok": True, "skipped": "stop_first=false"}
+    if stop_first:
+        stop = stop_all_context_engine_processes()
+
+    if not root.exists():
+        shims = remove_tool_shims()
+        return {"ok": True, "root": str(root), "stop": stop, "shims": shims}
+
+    # Running *from* the tool env: we lock python.exe ourselves. Rename-aside so
+    # the original path is free for reinstall, then delete trash after we exit.
+    if _running_from_uv_tool(root, python):
+        trash = root.with_name(f"{root.name}.trash-{os.getpid()}")
+        rename_err = None
         try:
-            shutil.rmtree(root, ignore_errors=False)
+            root.rename(trash)
+            target = trash
         except OSError as exc:
-            try:
-                shutil.rmtree(root, ignore_errors=True)
-            except OSError:
-                pass
-            if root.exists():
-                return {
-                    "ok": False,
-                    "error": "rmtree_failed",
-                    "detail": str(exc),
-                    "stop": stop,
-                    "hint": "Quit Cursor completely (MCP holds python.exe), then re-run wipe.",
-                }
+            rename_err = str(exc)
+            target = root
+        schedule = _schedule_delete_after_exit(target, os.getpid())
+        shims = remove_tool_shims()
+        return {
+            "ok": not root.exists() or bool(schedule.get("ok")),
+            "scheduled": True,
+            "renamed_to": str(trash) if rename_err is None else None,
+            "rename_error": rename_err,
+            "schedule": schedule,
+            "root": str(root),
+            "stop": stop,
+            "shims": shims,
+            "hint": (
+                "Unlock finishes after this process exits. Then reinstall: "
+                "uv tool install --force scubiee --index-url https://pypi.org/simple"
+            ),
+        }
+
+    remove = _rmtree_with_retries(root)
+    if not remove.get("ok"):
+        return {
+            "ok": False,
+            "error": "rmtree_failed",
+            "detail": remove.get("error"),
+            "remove": remove,
+            "stop": stop,
+            "hint": _ACCESS_DENIED_HINT,
+        }
     shims = remove_tool_shims()
-    return {"ok": not root.exists(), "root": str(root), "stop": stop, "shims": shims}
+    return {
+        "ok": not root.exists(),
+        "root": str(root),
+        "stop": stop,
+        "remove": remove,
+        "shims": shims,
+    }
+
+
+def prepare_uv_tool_directory_for_swap(
+    *,
+    python: Path | None = None,
+    project: Path | None = None,
+    remove_dir: bool = False,
+) -> dict[str, Any]:
+    """MCP-off → stop lockers → optional force-remove. Call before uv tool install/upgrade."""
+    mcp = disable_mcp_to_prevent_respawn(project=project)
+    stop = stop_all_context_engine_processes()
+    report: dict[str, Any] = {
+        "ok": bool(stop.get("ok", True)),
+        "mcp": mcp,
+        "stop": stop,
+    }
+    if remove_dir:
+        forced = force_remove_uv_tool_dir(python=python, stop_first=False)
+        report["force_remove"] = forced
+        report["ok"] = bool(forced.get("ok"))
+        if not report["ok"]:
+            report["error"] = forced.get("error", "tool_dir_still_locked")
+            report["hint"] = forced.get("hint") or _ACCESS_DENIED_HINT
+    elif not report["ok"]:
+        report["error"] = "processes_still_running"
+        report["hint"] = _ACCESS_DENIED_HINT
+    return report
+
+
+def unlock_uv_tool_env(*, python: Path | None = None, project: Path | None = None) -> dict[str, Any]:
+    """Public API for ``scubiee unlock-tool`` — free the uv tool dir without uninstalling."""
+    report = prepare_uv_tool_directory_for_swap(
+        python=python,
+        project=project,
+        remove_dir=True,
+    )
+    forced = report.get("force_remove") or {}
+    if forced.get("scheduled"):
+        report["scheduled"] = True
+        report["ok"] = True
+        report["hint"] = forced.get("hint") or report.get("hint")
+    return report
 
 
 def uv_tool_uninstall(*, python: Path | None = None) -> dict[str, Any]:
-    """Stop locks, then ``uv tool uninstall scubiee``."""
+    """MCP-off → stop locks → ``uv tool uninstall scubiee`` → force-remove if needed."""
     root = uv_tool_root(python)
-    stop = stop_all_context_engine_processes()
+    prep = prepare_uv_tool_directory_for_swap(python=python, remove_dir=False)
+    stop = prep.get("stop") or {}
     uv = shutil.which("uv")
     if not uv:
-        return {"ok": False, "error": "uv_not_found", "stop": stop}
+        return {"ok": False, "error": "uv_not_found", "prep": prep, "stop": stop}
     proc = subprocess.run(
         [uv, "tool", "uninstall", "scubiee"],
         capture_output=True,
@@ -338,18 +657,16 @@ def uv_tool_uninstall(*, python: Path | None = None) -> dict[str, Any]:
     out = (proc.stdout or "") + (proc.stderr or "")
     ok = proc.returncode == 0
     if root and root.exists():
-        forced = force_remove_uv_tool_dir(python=python)
+        forced = force_remove_uv_tool_dir(python=python, stop_first=True)
         if not forced.get("ok"):
             return {
                 "ok": False,
                 "error": forced.get("error", "tool_dir_still_locked"),
+                "prep": prep,
                 "stop": stop,
                 "uv_output": out.strip()[-500:],
                 "forced": forced,
-                "hint": (
-                    "Quit Cursor completely (MCP keeps python.exe open), then run: "
-                    "powershell -ExecutionPolicy Bypass -File scripts/uninstall-uv-scubiee.ps1"
-                ),
+                "hint": forced.get("hint") or _ACCESS_DENIED_HINT,
             }
         ok = True
     shims = remove_tool_shims()
@@ -357,6 +674,7 @@ def uv_tool_uninstall(*, python: Path | None = None) -> dict[str, Any]:
         ok = False
     return {
         "ok": ok and (root is None or not root.exists()),
+        "prep": prep,
         "stop": stop,
         "shims": shims,
         "uv_returncode": proc.returncode,

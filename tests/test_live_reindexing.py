@@ -202,6 +202,44 @@ def test_active_clients_defer_bulk_reindex(monkeypatch, tmp_path: Path):
     assert loop.dirty_ledger.due_paths(now=time.monotonic() + 20.0)
 
 
+def test_active_clients_still_run_live_batch_after_debounce(monkeypatch, tmp_path: Path):
+    """Registered MCP clients must not block Tier-1 live sync (debounce → upsert)."""
+    from pipeline.sync_loop import BackgroundSyncLoop
+
+    loop = BackgroundSyncLoop(tmp_path, debounce_ms=0)
+    live_calls: list[list[str]] = []
+    monkeypatch.setattr(loop, "_clients_active", lambda *a, **k: True)
+    monkeypatch.setattr(
+        loop,
+        "_estimate_dirty_chunks",
+        lambda paths: (len(paths), {path: 1 for path in paths}),
+    )
+    monkeypatch.setattr(
+        loop,
+        "_sync_paths",
+        lambda paths, **_: (
+            live_calls.append(list(paths)),
+            loop.dirty_ledger.begin(paths),
+            loop.dirty_ledger.complete(paths, published=True),
+            {
+                "refreshed": True,
+                "strategy": "live",
+                "chunks_upserted": len(paths),
+                "chunks_removed": 0,
+            },
+        )[-1],
+    )
+
+    paths = [f"pkg/{n}.py" for n in range(3)]
+    loop.mark_dirty(paths, reason="watch")
+    out = loop.drain_due(now=time.monotonic() + 0.01)
+
+    assert live_calls == [paths]
+    assert out[0]["strategy"] == "live"
+    assert out[0]["chunks_upserted"] == 3
+    assert out[0].get("reason") != "clients_active"
+
+
 def test_estimated_oversized_change_requires_explicit_full_index(monkeypatch, tmp_path: Path):
     from pipeline.sync_loop import BackgroundSyncLoop
 

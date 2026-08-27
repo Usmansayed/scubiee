@@ -61,7 +61,7 @@ def test_http_v1_health(ce_home: Path, tmp_path: Path):
         c = EngineClient(f"http://127.0.0.1:{port}", timeout=5.0)
         h = c.get("/health")
         assert h.get("ok") is True
-        assert h.get("service") == "context-engine"
+        assert h.get("service") == "scubiee"
         settings = c.get("/api/settings")
         assert "registration_mode" in settings
     finally:

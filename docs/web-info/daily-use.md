@@ -2,7 +2,7 @@
 
 Once `scubiee setup --repair`, `scubiee init .`, and `scubiee connect --…` are done, these are the commands you use day to day.
 
-**Docs assume scubiee 0.2.82.**
+**Docs assume [scubiee 0.2.87](https://pypi.org/project/scubiee/0.2.87/).** Install/debug: [Install & debug](./install-and-debug.md).
 
 ---
 
@@ -104,7 +104,7 @@ scubiee settings --mode automatic    # IDE opens register + index automatically
 scubiee settings --mode mcp_cli      # first MCP use asks for consent
 ```
 
-Prefs: `~/.context-engine/prefs.json`.
+Prefs: `~/.scubiee/prefs.json`.
 
 ---
 
@@ -145,7 +145,7 @@ scubiee engine stop
 scubiee stop                    # preferred before uninstall/upgrade on Windows
 ```
 
-Logs: `~/.context-engine/engine.log`, `~/.context-engine/watchdog.log`.
+Logs: `~/.scubiee/engine.log`, `~/.scubiee/watchdog.log`.
 
 ---
 

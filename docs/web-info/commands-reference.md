@@ -75,7 +75,8 @@ Run `scubiee <subcommand> --help` for flags on your installed version.
 | `scubiee diagnose [--no-tests]` | Installation diagnostics + shareable log file |
 | `scubiee diagnose --desktop` | Write `Desktop/scubiee-diagnose.json` (easy to share) |
 | `scubiee diagnose --output path.json` | Custom log path (expands `$env:…` / `%VAR%`) |
-| `scubiee upgrade` | Stop CE processes, upgrade package, restart, migrate |
+| `scubiee unlock-tool` | **Windows:** free `%APPDATA%\uv\tools\scubiee` locks (MCP-off → stop → rename/remove). Use before reinstall when Access denied |
+| `scubiee upgrade` | Unlock/stop Scubiee processes, upgrade package, restart, migrate |
 | `scubiee migrate [path]` | Check if data migration is needed after upgrade |
 | `scubiee migrate --apply [path]` | Apply migration for one repo |
 | `scubiee migrate --check-all` | Check all managed projects |
@@ -111,7 +112,7 @@ Writes MCP config + agent rules. **Cursor / Claude Code** are typically user-glo
 
 | Command | Purpose |
 |---------|---------|
-| `scubiee connect --cursor` | Cursor MCP + `~/.cursor/rules/context-agent.mdc` |
+| `scubiee connect --cursor` | Cursor MCP + `~/.cursor/rules/scubiee.mdc` |
 | `scubiee connect --kiro` | Kiro (+ workspace `.kiro/settings/mcp.json` when run in a repo) |
 | `scubiee connect --copilot` | Copilot/VS Code (+ `.vscode/mcp.json` when in a repo) |
 | `scubiee connect --cline` / `--roo-code` | Same pattern — prefer run inside project |
@@ -137,15 +138,14 @@ Writes MCP config + agent rules. **Cursor / Claude Code** are typically user-glo
 | `scubiee settings --show` | Print `prefs.json` |
 | `scubiee settings --mode automatic` | Auto-register on IDE open |
 | `scubiee settings --mode mcp_cli` | Consent on first MCP use |
-| `scubiee wipe [path]` | Remove repo identity + local CE files for one repo |
+| `scubiee wipe [path]` | Remove repo identity + local Scubiee files for one repo |
 | `scubiee wipe --all` | **Blocked** until you confirm (see below) |
-| `scubiee wipe --all --yes` | Delete all CE state on this machine (models, every connect-tool MCP/rules, enrolled repos) |
-| `scubiee wipe --all --yes --package` | Full wipe **and** uninstall scubiee uv tool / pip package |
-| `scubiee wipe --all --confirm` | Same as `--yes` (alias) |
-| `scubiee wipe --all --yes --keep-models` | Wipe but keep CodeRank/FastEmbed model caches |
-| `scubiee wipe --all --yes --keep-package` | Wipe state but keep uv tool install |
+| `scubiee wipe --all --confirm` | Delete all Scubiee state on this machine (models, every connect-tool MCP/rules, enrolled repos). `--yes` is an alias |
+| `scubiee wipe --all --confirm --package` | Full wipe **and** uninstall scubiee uv tool / pip package |
+| `scubiee wipe --all --confirm --keep-models` | Wipe but keep CodeRank/FastEmbed model caches |
+| `scubiee wipe --all --confirm --keep-package` | Wipe state but keep uv tool install |
 
-After `--all --yes`, JSON includes an **`audit`** block listing any **`remaining`** paths still on disk (common on Windows when Cursor holds MCP locks). Re-run after `scubiee stop` and quitting Cursor.
+After `--all --confirm`, JSON includes an **`audit`** block listing any **`remaining`** paths still on disk (common on Windows when Cursor holds MCP locks). Re-run after `scubiee stop` and quitting Cursor.
 
 ---
 

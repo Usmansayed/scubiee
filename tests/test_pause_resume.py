@@ -24,7 +24,7 @@ def mock_tools(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, Pat
     cursor_mcp = tmp_path / "cursor_mcp.json"
     cursor_mcp.write_text(json.dumps({
         "mcpServers": {
-            "context-engine": {"command": "python", "args": ["-m", "pipeline.mcp_locate"]},
+            "scubiee": {"command": "python", "args": ["-m", "pipeline.mcp_locate"]},
             "other-server": {"command": "node", "args": ["index.js"]},
         }
     }, indent=2), encoding="utf-8")
@@ -37,7 +37,7 @@ def mock_tools(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, Pat
     kiro_mcp = tmp_path / "kiro_mcp.json"
     kiro_mcp.write_text(json.dumps({
         "mcpServers": {
-            "context-engine": {"command": "python", "args": ["-m", "pipeline.mcp_locate"]},
+            "scubiee": {"command": "python", "args": ["-m", "pipeline.mcp_locate"]},
         }
     }, indent=2), encoding="utf-8")
 
@@ -115,14 +115,14 @@ def test_disable_mcp_json_sets_disabled_field(ce_home: Path, mock_tools: dict[st
     # Disable
     assert _disable_mcp_json(path, "mcpServers") is True
     data = json.loads(path.read_text(encoding="utf-8"))
-    assert data["mcpServers"]["context-engine"]["disabled"] is True
+    assert data["mcpServers"]["scubiee"]["disabled"] is True
     # Other server untouched
     assert "disabled" not in data["mcpServers"]["other-server"]
 
     # Enable
     assert _enable_mcp_json(path, "mcpServers") is True
     data = json.loads(path.read_text(encoding="utf-8"))
-    assert "disabled" not in data["mcpServers"]["context-engine"]
+    assert "disabled" not in data["mcpServers"]["scubiee"]
 
 
 def test_pause_rule_rename_and_restore(ce_home: Path, mock_tools: dict[str, Path]) -> None:
@@ -143,6 +143,28 @@ def test_pause_rule_rename_and_restore(ce_home: Path, mock_tools: dict[str, Path
     assert cursor_rule.is_file()
     assert not paused_path.exists()
     assert cursor_rule.read_text(encoding="utf-8") == original_content
+
+
+def test_resume_rule_files_tolerates_already_restored_rule(
+    ce_home: Path, mock_tools: dict[str, Path], monkeypatch
+) -> None:
+    """connect may restore the live rule while *.paused still exists."""
+    from pipeline.pause_resume import _PAUSED_SUFFIX, _resume_rule_files
+    from pipeline.tool_registry import TOOL_MAP
+
+    cursor_rule = mock_tools["cursor_rule"]
+    paused_path = cursor_rule.with_name(cursor_rule.name + _PAUSED_SUFFIX)
+    paused_path.write_text("paused-copy\n", encoding="utf-8")
+    assert cursor_rule.is_file() and paused_path.is_file()
+
+    monkeypatch.setattr(
+        "pipeline.pause_resume.resolve_rule_user_paths",
+        lambda tool: [cursor_rule] if tool.slug == "cursor" else [],
+    )
+    restored = _resume_rule_files(TOOL_MAP["cursor"])
+    assert str(cursor_rule) in restored
+    assert cursor_rule.is_file()
+    assert not paused_path.exists()
 
 
 def test_engine_should_not_run_when_paused(ce_home: Path) -> None:

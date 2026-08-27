@@ -138,7 +138,7 @@ def validate_daemon_binding(repo: Path | str) -> dict[str, Any]:
             "ok": False,
             "reason": "lock_corrupt",
             "healthy": healthy,
-            "repair": "scubiee engine stop; remove ~/.context-engine/engine.lock if stale",
+            "repair": "scubiee engine stop; remove ~/.scubiee/engine.lock if stale",
             "repo": str(target),
         }
     bound = lock_repo
@@ -215,7 +215,7 @@ def start_daemon(
     wait_s: float = 90.0,
 ) -> dict[str, Any]:
     """Spawn Context Engine in background if not already healthy."""
-    # Guard: detect conflicting scubiee installations sharing ~/.context-engine
+    # Guard: detect conflicting scubiee installations sharing ~/.scubiee
     from pipeline.install_guard import check_install_conflict, write_install_marker
 
     conflict = check_install_conflict()

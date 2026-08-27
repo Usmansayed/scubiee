@@ -257,7 +257,7 @@ def cmd_resources(args: argparse.Namespace) -> int:
 
 
 def cmd_test(args: argparse.Namespace) -> int:
-    """Run a named CE verification tier and emit a JSON report."""
+    """Run a named Scubiee verification tier and emit a JSON report."""
     from pipeline.test_runner import build_test_plan, run_plan
 
     root = Path(args.path).resolve()
@@ -325,8 +325,40 @@ def cmd_stop(args: argparse.Namespace) -> int:
     return 0 if result.get("ok") else 1
 
 
+def cmd_unlock_tool(args: argparse.Namespace) -> int:
+    """Free Windows locks on the uv tool dir (MCP-off → stop → force-remove)."""
+    from pipeline.process_control import unlock_uv_tool_env
+
+    result = unlock_uv_tool_env()
+    if sys.stdout.isatty():
+        from pipeline.cli_ui import info, success, warn
+
+        print("", file=sys.stderr)
+        if result.get("ok"):
+            if result.get("force_remove", {}).get("scheduled") or result.get("scheduled"):
+                success("Unlock scheduled (finishes after this process exits)", stream=sys.stderr)
+            else:
+                success("uv tool directory unlocked", stream=sys.stderr)
+            info(
+                "Reinstall: uv tool install --force scubiee --index-url https://pypi.org/simple",
+                stream=sys.stderr,
+            )
+            info("Then: scubiee setup && scubiee connect --cursor", stream=sys.stderr)
+            hint = (result.get("force_remove") or {}).get("hint") or result.get("hint")
+            if hint:
+                info(str(hint), stream=sys.stderr)
+        else:
+            warn(f"Unlock incomplete: {result.get('error', 'unknown')}", stream=sys.stderr)
+            hint = result.get("hint") or (result.get("force_remove") or {}).get("hint")
+            if hint:
+                info(str(hint), stream=sys.stderr)
+        print("", file=sys.stderr)
+    else:
+        print(json.dumps(result, indent=2, default=str))
+    return 0 if result.get("ok") else 1
+
 def cmd_wipe(args: argparse.Namespace) -> int:
-    """Remove CE state for this repo, or everything with --all."""
+    """Remove Scubiee state for this repo, or everything with --all."""
     from pipeline.wipe import wipe
 
     confirmed = bool(getattr(args, "confirm", False))
@@ -769,7 +801,7 @@ def _notify_daemon_publish(root: Path, payload: dict | None = None) -> dict:
 
 
 def cmd_serve(args: argparse.Namespace) -> int:
-    """Alias for Context Engine daemon (foreground)."""
+    """Alias for Scubiee daemon (foreground)."""
     from pipeline.server import run_server
 
     run_server(Path(args.path).resolve(), host=args.host, port=args.port)
@@ -799,7 +831,7 @@ def cmd_dashboard(args: argparse.Namespace) -> int:
 
 
 def cmd_engine(args: argparse.Namespace) -> int:
-    """Context Engine daemon control: start | stop | status | run | ensure | watchdog."""
+    """Scubiee daemon control: start | stop | status | run | ensure | watchdog."""
     from pipeline.client import EngineClient, engine_url
     from pipeline.daemon import ensure_daemon, is_running, start_daemon, stop_daemon
     from pipeline.lifecycle_runtime import (
@@ -1024,7 +1056,7 @@ def _configure_machine(
 
 
 def cmd_init(args: argparse.Namespace) -> int:
-    """Enroll a repository under Context Engine and index it."""
+    """Enroll a repository under Scubiee and index it."""
     import os
 
     from pipeline.accel import load_accel
@@ -1049,11 +1081,12 @@ def cmd_init(args: argparse.Namespace) -> int:
     if roots and not fast:
         fast = True
 
-    # --- Preflight: mistake-scale scopes need confirm; normal repos just run ---
+    # --- Preflight + always ask y/n on a real terminal (file count + ETA) ---
     n_files = 0
     prompted_header = False
     if not bool(getattr(args, "no_index", False)):
         from pipeline.incremental import IndexConfirmRequired, preflight_index_scope
+        from pipeline.cli_ui import branded_header, confirm_action, format_index_eta
 
         try:
             n_files = preflight_index_scope(
@@ -1064,27 +1097,28 @@ def cmd_init(args: argparse.Namespace) -> int:
             )
         except IndexConfirmRequired as exc:
             if is_tty:
-                from pipeline.cli_ui import branded_header, confirm_action, format_index_eta
-
                 branded_header("init", stream=sys.stderr)
                 prompted_header = True
                 n_files = int(getattr(exc, "n_files", 0) or 0)
                 if getattr(exc, "kind", "") == "broad_root":
                     message = str(exc)
                     details = None
+                    default = False
                 else:
                     message = (
-                        f"{n_files:,} files — this looks unintentionally large "
-                        f"({format_index_eta(n_files)})"
+                        f"This repository has {n_files:,} files "
+                        f"(est. {format_index_eta(n_files)})"
                     )
                     details = [
-                        "Re-run with --confirm if you really meant this path, "
-                        "or use `scubiee init . --fast --roots packages`.",
+                        "This looks unintentionally large. Prefer a project folder, "
+                        "or `scubiee init . --fast --roots packages`.",
                     ]
+                    default = False
                 confirmed = confirm_action(
                     message,
                     details=details,
-                    default=False,
+                    default=default,
+                    icon=None,
                     stream=sys.stderr,
                 )
                 if not confirmed:
@@ -1093,6 +1127,23 @@ def cmd_init(args: argparse.Namespace) -> int:
                 args.confirm = True
             else:
                 return _fail_confirm(root, exc)
+        else:
+            # Every interactive init: show size + time and get y/n.
+            # --confirm skips the prompt for scripts.
+            if is_tty and not bool(getattr(args, "confirm", False)):
+                branded_header("init", stream=sys.stderr)
+                prompted_header = True
+                eta = format_index_eta(n_files) if n_files else "~1 min"
+                confirmed = confirm_action(
+                    f"This repository has {n_files:,} files (est. {eta})",
+                    default=True,
+                    icon=None,
+                    stream=sys.stderr,
+                )
+                if not confirmed:
+                    sys.stderr.write("  Cancelled.\n\n")
+                    return 0
+                args.confirm = True
 
     # --- Run init ---
     if is_tty:
@@ -1100,7 +1151,8 @@ def cmd_init(args: argparse.Namespace) -> int:
         bar = InitProgress()
         if not prompted_header:
             bar.start()
-        if n_files:
+        # Scope was already shown in the y/n prompt when interactive.
+        if n_files and not prompted_header:
             bar.announce_scope(n_files)
     else:
         bar = _progress_bar("Initializing repository…")
@@ -1197,13 +1249,6 @@ def cmd_init(args: argparse.Namespace) -> int:
             if daemon.get("ok"):
                 bar.daemon_started()
             bar.finish()
-            from pipeline.cli_ui import info
-
-            info(
-                "Next: scubiee connect --cursor  (or --kiro / --copilot / --cline / --roo-code). "
-                "Init does not write MCP/rules. Kiro/Copilot/Cline/Roo: run connect inside each project.",
-                stream=sys.stderr,
-            )
         else:
             bar.finish("Ready")
             print(json.dumps(out, indent=2, default=str))
@@ -1563,11 +1608,14 @@ def cmd_upgrade(args: argparse.Namespace) -> int:
             warn(f"Upgrade failed: {result.get('error', 'unknown')}", stream=sys.stderr)
             if result.get("pre_stop") is False:
                 info(
-                    "If Access denied on Windows: stop Scubiee first "
-                    "(`scubiee stop`), end ContextEngineSupervisor in Task Manager, "
-                    "then retry `scubiee upgrade` (or reinstall with uv).",
+                    "If Access denied on Windows: run `scubiee unlock-tool` "
+                    "(or quit Cursor), then retry `scubiee upgrade`. "
+                    "Admin will not help — these are file locks.",
                     stream=sys.stderr,
                 )
+            hint = result.get("hint")
+            if hint:
+                info(str(hint), stream=sys.stderr)
         print("", file=sys.stderr)
     else:
         print(json.dumps(result, indent=2, default=str))
@@ -1640,7 +1688,8 @@ def _write_mcp_config(repo: Path, host: str, port: int) -> None:
                 data = json.loads(path.read_text(encoding="utf-8"))
             except json.JSONDecodeError:
                 pass
-        data.setdefault("mcpServers", {})["context-engine"] = entry
+        data.setdefault("mcpServers", {})["scubiee"] = entry
+        # Drop legacy key so Cursor does not show two Scubiee servers.
         path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
         print(f"[setup] wrote {path}", file=sys.stderr)
 
@@ -1726,7 +1775,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p_test = sub.add_parser(
         "test",
-        help="Run CE verification tier: quick | core | fault | install | clients | all",
+        help="Run Scubiee verification tier: quick | core | fault | install | clients | all",
     )
     p_test.add_argument(
         "tier",
@@ -1742,7 +1791,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_test.set_defaults(func=cmd_test)
 
-    p_pre = sub.add_parser("preflight", help="Check required local CE dependencies")
+    p_pre = sub.add_parser("preflight", help="Check required local Scubiee dependencies")
     p_pre.add_argument("path", nargs="?", default=".")
     p_pre.add_argument(
         "--lexical-only",
@@ -1906,7 +1955,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_sync.set_defaults(func=cmd_sync)
 
-    p_serve = sub.add_parser("serve", help="Alias: run Context Engine HTTP daemon (foreground)")
+    p_serve = sub.add_parser("serve", help="Alias: run Scubiee HTTP daemon (foreground)")
     p_serve.add_argument("path", nargs="?", default=".")
     p_serve.add_argument("--host", default="127.0.0.1")
     p_serve.add_argument("--port", type=int, default=8765)
@@ -1929,7 +1978,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_dashboard.set_defaults(func=cmd_dashboard)
 
-    p_eng = sub.add_parser("engine", help="Context Engine daemon: start|stop|status|run|ensure")
+    p_eng = sub.add_parser("engine", help="Scubiee daemon: start|stop|status|run|ensure")
     p_eng.add_argument(
         "action",
         choices=[
@@ -1961,13 +2010,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_eng.set_defaults(func=cmd_engine)
 
-    p_mcp = sub.add_parser("mcp", help="Thin MCP adapter (forwards to Context Engine daemon)")
+    p_mcp = sub.add_parser("mcp", help="Thin MCP adapter (forwards to Scubiee daemon)")
     p_mcp.add_argument("path", nargs="?", default=None, help="Repo CTX_REPO")
     p_mcp.set_defaults(func=cmd_mcp)
 
     p_init = sub.add_parser(
         "init",
-        help="Enroll a repository under Context Engine and index it",
+        help="Enroll a repository under Scubiee and index it",
     )
     p_init.add_argument("path", nargs="?", default=".", help="Repo path (default: cwd)")
     p_init.add_argument("--no-index", action="store_true", help="Manage without indexing")
@@ -2032,13 +2081,13 @@ def main(argv: list[str] | None = None) -> int:
 
     p_wipe = sub.add_parser(
         "wipe",
-        help="Remove CE state (repo) or full uninstall (--all --confirm)",
+        help="Remove Scubiee state (repo) or full uninstall (--all --confirm)",
     )
     p_wipe.add_argument("path", nargs="?", default=".", help="Repo path (default: cwd)")
     p_wipe.add_argument(
         "--all",
         action="store_true",
-        help="Wipe machine state: daemon, ~/.context-engine, MCP, rules, models, scubiee tool",
+        help="Wipe machine state: daemon, ~/.scubiee, MCP, rules, models, scubiee tool",
     )
     p_wipe.add_argument(
         "--confirm",
@@ -2069,6 +2118,16 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_stop.add_argument("-y", "--yes", action="store_true", help="Skip confirmation prompt")
     p_stop.set_defaults(func=cmd_stop)
+
+    p_unlock = sub.add_parser(
+        "unlock-tool",
+        help=(
+            "Free Windows locks on %%APPDATA%%\\uv\\tools\\scubiee "
+            "(disable MCP → stop processes → force-remove). "
+            "Use when uv tool install/upgrade hits Access denied."
+        ),
+    )
+    p_unlock.set_defaults(func=cmd_unlock_tool)
 
     p_migrate = sub.add_parser(
         "migrate",
@@ -2114,7 +2173,7 @@ def main(argv: list[str] | None = None) -> int:
     p_diag.add_argument(
         "--output",
         default=None,
-        help="Custom path for the diagnostic log file (default: ~/.context-engine/logs/)",
+        help="Custom path for the diagnostic log file (default: ~/.scubiee/logs/)",
     )
     p_diag.set_defaults(func=cmd_diagnose)
 

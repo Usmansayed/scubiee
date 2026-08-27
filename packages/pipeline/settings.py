@@ -1,6 +1,6 @@
 """User preferences for Context Engine (dashboard + CLI + MCP).
 
-Stored at ``~/.context-engine/prefs.json`` (or ``$CTX_HOME/prefs.json``).
+Stored at ``~/.scubiee/prefs.json`` (or ``$CTX_HOME/prefs.json``).
 """
 
 from __future__ import annotations

@@ -30,7 +30,7 @@ DEFAULT_IGNORE_DIRS = {
     ".next",
     "out",
     "coverage",
-    ".context-engine",
+    ".scubiee",
     "site-packages",
     # Keep aligned with pipeline.paths._SKIP_SUBSTRINGS: fixture/vendored/
     # experimental trees are never part of the indexed universe. A mismatch

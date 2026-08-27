@@ -10,9 +10,9 @@ Each managed repository gets a stable **`project_id`** (e.g. `ce_ab9a0c9170ecd47
 
 | File / dir | Role |
 |------------|------|
-| `<repo>/.context-engine/id.json` | Binds this folder to `project_id` |
-| `~/.context-engine/registry.json` | Lists all managed roots and lifecycle state |
-| `~/.context-engine/projects/<project_id>/` | Index store (chunks, graph, FAISS, merkle) |
+| `<repo>/.scubiee/id.json` | Binds this folder to `project_id` |
+| `~/.scubiee/registry.json` | Lists all managed roots and lifecycle state |
+| `~/.scubiee/projects/<project_id>/` | Index store (chunks, graph, FAISS, merkle) |
 
 Git worktrees that share the same git common dir can share one project id across related paths — that is intentional.
 
@@ -142,7 +142,7 @@ If you accidentally registered **`C:\Users\you`** or your home folder earlier:
 
 1. List repos: `scubiee list`
 2. Remove: `scubiee remove C:\Users\you --delete-store`
-3. Delete leftover identity if present: `C:\Users\you\.context-engine\id.json`
+3. Delete leftover identity if present: `C:\Users\you\.scubiee\id.json`
 
 Symptoms of stale home registration:
 

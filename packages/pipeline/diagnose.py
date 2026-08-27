@@ -17,6 +17,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from pipeline.project_id import context_engine_home
+
 
 def resolve_diagnose_output_path(
     output: str | Path | None = None,
@@ -187,7 +189,7 @@ def _capabilities_check() -> dict[str, Any]:
 def _index_status() -> dict[str, Any]:
     """Check if any managed projects exist and their health."""
     try:
-        from pipeline.project_id import load_registry
+        from pipeline.project_id import load_registry, context_engine_home
 
         registry = load_registry()
         projects = registry.get("projects", {})
@@ -367,7 +369,7 @@ def diagnose(*, run_tests: bool = True, output_path: Path | None = None) -> dict
     bar.set(98, "Saving report")
 
     # Save log file
-    log_dir = Path.home() / ".context-engine" / "logs"
+    log_dir = context_engine_home() / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_file = output_path or (log_dir / f"diagnose_{ts}.json")

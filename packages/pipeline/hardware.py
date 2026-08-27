@@ -1,7 +1,7 @@
-"""Hardware / capability snapshot for Context Engine.
+"""Hardware / capability snapshot for Scubiee.
 
 Used at install and by the Resource Manager. Persists to
-``~/.context-engine/hardware.json``. Complements ``accel.py`` (ORT profile pick).
+``~/.scubiee/hardware.json``. Complements ``accel.py`` (ORT profile pick).
 """
 
 from __future__ import annotations
@@ -17,12 +17,9 @@ from typing import Any
 
 
 def _home() -> Path:
-    try:
-        from pipeline.project_id import context_engine_home
+    from pipeline.project_id import context_engine_home
 
-        return context_engine_home()
-    except Exception:  # noqa: BLE001
-        return Path.home() / ".context-engine"
+    return context_engine_home()
 
 
 def hardware_path() -> Path:

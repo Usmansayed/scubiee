@@ -807,7 +807,7 @@ def test_server_instructions_are_short_grep_like_cards(monkeypatch):
 
 
 def test_cursor_rule_mirrors_short_decision_card():
-    template = (REPO / "packages" / "pipeline" / "templates" / "context-agent.mdc").read_text(
+    template = (REPO / "packages" / "pipeline" / "templates" / "scubiee.mdc").read_text(
         encoding="utf-8"
     )
     assert "map" in template and "focus" in template

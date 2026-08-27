@@ -1,4 +1,4 @@
-"""Cursor MCP entry for an installed Context Engine package (no source tree)."""
+"""Cursor MCP entry for an installed Scubiee package (no source tree)."""
 
 from __future__ import annotations
 
@@ -94,11 +94,14 @@ def server_entry(
 def merge_mcp_json(
     path: Path,
     *,
-    name: str = "context-engine",
+    name: str | None = None,
     repo: Path | str | None = None,
     host: str = "127.0.0.1",
     port: int = 8765,
 ) -> None:
+    from pipeline.branding import MCP_SERVER_NAME, strip_legacy_mcp_keys
+
+    server_name = name or MCP_SERVER_NAME
     path.parent.mkdir(parents=True, exist_ok=True)
     data: dict[str, Any] = {"mcpServers": {}}
     if path.is_file():
@@ -112,7 +115,8 @@ def merge_mcp_json(
     if not isinstance(servers, dict):
         servers = {}
         data["mcpServers"] = servers
-    servers[name] = server_entry(repo, host=host, port=port)
+    strip_legacy_mcp_keys(servers)
+    servers[server_name] = server_entry(repo, host=host, port=port)
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
 
@@ -142,7 +146,7 @@ def write_kiro_mcp(
 def _context_agent_rule_template() -> Path:
     import pipeline
 
-    return Path(pipeline.__file__).resolve().parent / "templates" / "context-agent.mdc"
+    return Path(pipeline.__file__).resolve().parent / "templates" / "scubiee.mdc"
 
 
 def write_cursor_rule() -> str | None:
@@ -150,7 +154,7 @@ def write_cursor_rule() -> str | None:
     src = _context_agent_rule_template()
     if not src.is_file():
         return None
-    dest = Path.cwd() / ".cursor" / "rules" / "context-agent.mdc"
+    dest = Path.cwd() / ".cursor" / "rules" / "scubiee.mdc"
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
     return str(dest)
@@ -179,9 +183,11 @@ def _drop_user_context_engine_when_project_configured(
     project: Path,
     user: Path,
     *,
-    name: str = "context-engine",
+    name: str | None = None,
 ) -> None:
-    """Cursor merges user + project MCP; a user CE block without CTX_REPO breaks locate."""
+    """Cursor merges user + project MCP; a user Scubiee block without CTX_REPO breaks locate."""
+    from pipeline.branding import MCP_SERVER_NAMES
+
     if not project.is_file() or not user.is_file():
         return
     try:
@@ -191,7 +197,14 @@ def _drop_user_context_engine_when_project_configured(
     if not isinstance(data, dict):
         return
     servers = data.get("mcpServers")
-    if not isinstance(servers, dict) or name not in servers:
+    if not isinstance(servers, dict):
         return
-    servers.pop(name, None)
+    names = (name,) if name else MCP_SERVER_NAMES
+    changed = False
+    for n in names:
+        if n in servers:
+            servers.pop(n, None)
+            changed = True
+    if not changed:
+        return
     user.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")

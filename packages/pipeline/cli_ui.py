@@ -506,11 +506,13 @@ def confirm_action(
     default: bool = False,
     stream: IO[str] | TextIO | None = None,
     skip_if_not_tty: bool = True,
+    icon: str | None = ICON_WARN,
 ) -> bool:
     """Ask for y/n confirmation before a destructive action.
 
     Returns True if confirmed, False if declined.
     Non-TTY (piped) always returns default unless skip_if_not_tty is False.
+    Pass ``icon=None`` for a plain prompt (no warning mark).
     """
     s = stream or sys.stderr
     c = colors(s)
@@ -520,8 +522,11 @@ def confirm_action(
             return default
         return default
 
-    # Print the warning
-    s.write(f"\n  {c.yellow}{ICON_WARN}{c.reset} {c.bold}{message}{c.reset}\n")
+    s.write("\n")
+    if icon:
+        s.write(f"  {c.yellow}{icon}{c.reset} {c.bold}{message}{c.reset}\n")
+    else:
+        s.write(f"  {message}\n")
     if details:
         for detail in details:
             s.write(f"    {c.muted}{detail}{c.reset}\n")

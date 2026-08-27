@@ -2,14 +2,14 @@
 
 Windows-specific install, DirectML vs CPU-only laptops, uv tool locks, and repair.
 
-**Docs assume scubiee 0.2.82.**
+**Docs assume [scubiee 0.2.87](https://pypi.org/project/scubiee/0.2.87/).** Full playbook: [Install & debug](./install-and-debug.md).
 
 ---
 
 ## Recommended install
 
 ```powershell
-uv tool install --force scubiee==0.2.82 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.2.87 --index-url https://pypi.org/simple --refresh
 uv tool update-shell
 # open a NEW PowerShell window
 scubiee setup --repair
@@ -19,6 +19,8 @@ scubiee connect --cursor
 ```
 
 Always pin `--index-url https://pypi.org/simple` on Windows.
+
+If install hits **Access denied**, run `scubiee unlock-tool` first (see below) — **not** Admin PowerShell.
 
 ---
 
@@ -31,7 +33,7 @@ Always pin `--index-url https://pypi.org/simple` on Windows.
 | AMD laptop “Radeon Graphics” APU (no discrete card) | **`cpu`** |
 | No GPU | **`cpu`** |
 
-Current Scubiee **ignores Intel iGPU / AMD APU** for DirectML so setup does not hang. Friend-laptop validation: Intel i5-1235U → **`cpu`**, setup completes (~2–3 t/s typical).
+Current Scubiee **ignores Intel iGPU / AMD APU** for DirectML so setup does not hang.
 
 Verify:
 
@@ -58,22 +60,32 @@ scubiee setup --profile dml --repair
 
 **Symptom:** `uv tool install --force` cannot overwrite `Scripts\*.exe`; CLI later fails with `No module named 'pipeline'`.
 
-**Cause:** Supervisor / daemon / Cursor MCP locking `%APPDATA%\uv\tools\scubiee`.
+**Cause:** Supervisor / daemon / Cursor MCP locking `%APPDATA%\uv\tools\scubiee`. These are **file locks**, not ACLs. Admin does **not** help. Reboot only works because it kills the locker — use unlock instead.
 
-**Recovery:**
+**Recovery (preferred):**
 
 ```powershell
-scubiee stop
-# Task Manager → end "ContextEngineSupervisor" if needed
-# Quit Cursor completely
-Remove-Item -Recurse -Force "$env:APPDATA\uv\tools\scubiee" -ErrorAction SilentlyContinue
-uv tool install --force scubiee==0.2.82 --index-url https://pypi.org/simple --refresh
+scubiee unlock-tool
+uv tool install --force scubiee==0.2.87 --index-url https://pypi.org/simple --refresh
+scubiee setup --repair
+scubiee connect --cursor
+```
+
+`unlock-tool` turns MCP off (so Cursor cannot respawn), stops lockers, and frees the tool directory (rename-aside when needed).
+
+**If `scubiee` itself is broken:**
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/uninstall-uv-scubiee.ps1
+uv tool install --force scubiee==0.2.87 --index-url https://pypi.org/simple --refresh
 scubiee setup --repair
 ```
 
-Prefer `scubiee upgrade` when possible — it stops CE processes before swapping the package.
+Or: `scripts/repair-uv-scubiee.ps1 0.2.87`.
 
-After any half-broken reinstall: **`setup --repair` before `init`** (stale `accel.json` can look fine while FastEmbed is missing).
+Prefer `scubiee upgrade` when the CLI still works — it unlocks before swapping the package.
+
+After any half-broken reinstall: **`setup --repair` before `init`**.
 
 ---
 
@@ -85,7 +97,7 @@ After any half-broken reinstall: **`setup --repair` before `init`** (stale `acce
 | `%APPDATA%\uv\tools\scubiee\Scripts\python.exe` | Python used by MCP |
 | `%APPDATA%\uv\tools\scubiee\Scripts\scubiee.exe` | CLI entry |
 | `%USERPROFILE%\.local\bin\scubiee.exe` | uv shim (PATH) |
-| `%USERPROFILE%\.context-engine\` | Indexes, registry, accel |
+| `%USERPROFILE%\.scubiee\` | Indexes, registry, accel |
 
 ---
 
@@ -96,16 +108,12 @@ scubiee diagnose --no-tests --desktop
 # Creates: Desktop\scubiee-diagnose.json
 ```
 
-`$env:USERPROFILE\…` paths in `--output` are expanded; `--desktop` is the simplest share path.
-
 ---
 
 ## faiss / broken venv
 
-See [Troubleshooting](./troubleshooting.md) or:
-
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/repair-uv-scubiee.ps1 0.2.82
+powershell -ExecutionPolicy Bypass -File scripts/repair-uv-scubiee.ps1 0.2.87
 scubiee setup --repair
 ```
 
@@ -113,7 +121,7 @@ Nuclear:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/uninstall-uv-scubiee.ps1
-uv tool install --force scubiee==0.2.82 --index-url https://pypi.org/simple
+uv tool install --force scubiee==0.2.87 --index-url https://pypi.org/simple --refresh
 scubiee setup --repair
 ```
 
@@ -124,12 +132,10 @@ scubiee setup --repair
 If setup still shows CPU providers only on a machine that should be DML:
 
 ```powershell
-scubiee stop
-# Quit Cursor
+scubiee unlock-tool
+# Quit Cursor if unlock reports remaining locks
 $Py = "$env:APPDATA\uv\tools\scubiee\Scripts\python.exe"
 uv pip uninstall onnxruntime onnxruntime-gpu onnxruntime-directml --python $Py
-# Delete leftover folder if needed:
-# %APPDATA%\uv\tools\scubiee\Lib\site-packages\onnxruntime
 uv pip install onnxruntime-directml --python $Py
 scubiee setup --repair
 ```
@@ -156,6 +162,8 @@ scubiee connect --copilot
 scubiee connect --cline
 ```
 
+Cursor writes **project** `.cursor/mcp.json` with an absolute pin (required — global `${workspaceFolder}` is not expanded).
+
 ---
 
 ## Uninstall
@@ -166,6 +174,7 @@ See [Uninstall on Windows](./uninstall-windows.md).
 
 ## Related
 
+- [Install & debug](./install-and-debug.md)
 - [Getting started](./getting-started.md)
 - [Troubleshooting](./troubleshooting.md)
 - [Cursor & MCP](./cursor-mcp.md)
