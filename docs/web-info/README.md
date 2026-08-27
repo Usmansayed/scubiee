@@ -2,7 +2,7 @@
 
 These docs are for **operators and end users**: install, daily use, troubleshooting, and uninstall. They are written so you can resolve most issues without reading engineering notes.
 
-**Current release:** [`scubiee 0.2.87`](https://pypi.org/project/scubiee/0.2.87/) — **published on PyPI**.  
+**Current release:** [`scubiee 0.2.88`](https://pypi.org/project/scubiee/0.2.88/) — **published on PyPI**.  
 Pin this version in install commands until you intentionally upgrade.
 
 **Product identity:** CLI + MCP server key = **`scubiee`**. On-disk data = **`~/.scubiee`** and **`<repo>/.scubiee`**. There is no legacy `context-engine` MCP key or `.context-engine` data path.
@@ -41,7 +41,7 @@ Pin this version in install commands until you intentionally upgrade.
 
 | Question | Answer |
 |----------|--------|
-| What do I run on a new PC? | `uv tool install scubiee==0.2.87` → `scubiee setup --repair` → `cd your-repo` → `scubiee init .` → `scubiee connect --cursor` |
+| What do I run on a new PC? | `uv tool install scubiee==0.2.88` → `scubiee setup --repair` → `cd your-repo` → `scubiee init .` → `scubiee connect --cursor` |
 | Does `init` wire Cursor? | **No.** `init` indexes the repo. **`connect`** writes MCP + agent rules. |
 | Agent says unmanaged? | Run `connect` in that project (and for Kiro/Copilot/Cline/Roo: run connect **inside each repo**). Cursor also needs project `.cursor/mcp.json` (written by connect). |
 | Pause / stop — how do I continue? | `scubiee resume` (global) or `scubiee resume .` (per-repo). There is **no** `scubiee wake`. |
@@ -58,7 +58,7 @@ Pin this version in install commands until you intentionally upgrade.
 ## Canonical install sequence
 
 ```text
-1. uv tool install --force scubiee==0.2.87 --index-url https://pypi.org/simple --refresh
+1. uv tool install --force scubiee==0.2.88 --index-url https://pypi.org/simple --refresh
 2. scubiee setup --repair          # once per machine (GPU/CPU/MLX + model)
 3. cd path\to\your\repo
 4. scubiee init .                  # index this repo (does NOT write MCP)

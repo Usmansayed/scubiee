@@ -10,6 +10,8 @@ alwaysApply: true
 - If `status.paused` is `true`: tell the user to run `scubiee resume`. Do not poll `status()`.
 - If `status.managed` is `false`, or the MCP is missing/unhealthy: use native tools for now. **Do not permanently disable Scubiee for this session.**
 
+When the host shows a Workspace Path (Cursor multi-repo sidebar / Desktop), pass it as `root` on `status()` and on later locate tools (`map`, `focus`, `grep`, `glob`). That folder's `.scubiee/id.json` decides managed — do not search another pinned repo. After `status()`, you may pass `project_id` (`ce_…`) instead of the long path.
+
 **Retry `status()` only when** (never every turn / never in a loop):
 - the user runs `scubiee init`, `scubiee connect`, `scubiee resume`, or asks to index or use Scubiee
 - the user asks whether this repo is managed / to check or test Scubiee

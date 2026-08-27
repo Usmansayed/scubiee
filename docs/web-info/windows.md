@@ -2,14 +2,14 @@
 
 Windows-specific install, DirectML vs CPU-only laptops, uv tool locks, and repair.
 
-**Docs assume [scubiee 0.2.87](https://pypi.org/project/scubiee/0.2.87/).** Full playbook: [Install & debug](./install-and-debug.md).
+**Docs assume [scubiee 0.2.88](https://pypi.org/project/scubiee/0.2.88/).** Full playbook: [Install & debug](./install-and-debug.md).
 
 ---
 
 ## Recommended install
 
 ```powershell
-uv tool install --force scubiee==0.2.87 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.2.88 --index-url https://pypi.org/simple --refresh
 uv tool update-shell
 # open a NEW PowerShell window
 scubiee setup --repair
@@ -66,7 +66,7 @@ scubiee setup --profile dml --repair
 
 ```powershell
 scubiee unlock-tool
-uv tool install --force scubiee==0.2.87 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.2.88 --index-url https://pypi.org/simple --refresh
 scubiee setup --repair
 scubiee connect --cursor
 ```
@@ -77,11 +77,11 @@ scubiee connect --cursor
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/uninstall-uv-scubiee.ps1
-uv tool install --force scubiee==0.2.87 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.2.88 --index-url https://pypi.org/simple --refresh
 scubiee setup --repair
 ```
 
-Or: `scripts/repair-uv-scubiee.ps1 0.2.87`.
+Or: `scripts/repair-uv-scubiee.ps1 0.2.88`.
 
 Prefer `scubiee upgrade` when the CLI still works — it unlocks before swapping the package.
 
@@ -113,7 +113,7 @@ scubiee diagnose --no-tests --desktop
 ## faiss / broken venv
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/repair-uv-scubiee.ps1 0.2.87
+powershell -ExecutionPolicy Bypass -File scripts/repair-uv-scubiee.ps1 0.2.88
 scubiee setup --repair
 ```
 
@@ -121,7 +121,7 @@ Nuclear:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/uninstall-uv-scubiee.ps1
-uv tool install --force scubiee==0.2.87 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.2.88 --index-url https://pypi.org/simple --refresh
 scubiee setup --repair
 ```
 

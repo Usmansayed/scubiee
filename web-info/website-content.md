@@ -1,6 +1,6 @@
 # Scubiee Website Content
 
-> **Version:** [0.2.87](https://pypi.org/project/scubiee/0.2.87/) (published on PyPI)  
+> **Version:** [0.2.88](https://pypi.org/project/scubiee/0.2.88/) (published on PyPI)  
 > **Purpose:** Content reference for designing and building the Scubiee product website and public docs.  
 > **Product identity:** MCP key **`scubiee`** · data **`~/.scubiee`** / **`<repo>/.scubiee`** (no legacy `context-engine` paths)  
 > **Full operator docs:** [`../docs/web-info/`](../docs/web-info/README.md)  
@@ -128,7 +128,7 @@ DIY: weeks of plumbing. Scubiee: setup → init → connect in minutes.
 
 ```bash
 # Recommended
-uv tool install --force scubiee==0.2.87 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.2.88 --index-url https://pypi.org/simple --refresh
 
 # Windows Access denied? → scubiee unlock-tool  (then retry install)
 

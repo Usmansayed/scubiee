@@ -2,7 +2,7 @@
 
 Complete guide for removing Scubiee on Windows when MCP, the engine daemon, or uv file locks get in the way.
 
-**Docs assume [scubiee 0.2.87](https://pypi.org/project/scubiee/0.2.87/).** See also [Install & debug](./install-and-debug.md).
+**Docs assume [scubiee 0.2.88](https://pypi.org/project/scubiee/0.2.88/).** See also [Install & debug](./install-and-debug.md).
 
 ---
 
@@ -33,7 +33,7 @@ Or if you only need to free locks for reinstall:
 
 ```powershell
 scubiee unlock-tool
-uv tool install --force scubiee==0.2.87 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.2.88 --index-url https://pypi.org/simple --refresh
 scubiee setup --repair
 ```
 
@@ -53,7 +53,7 @@ Then **reload Cursor** so MCP picks up the new state.
 Fresh install:
 
 ```powershell
-uv tool install --force scubiee==0.2.87 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.2.88 --index-url https://pypi.org/simple --refresh
 scubiee setup --repair
 scubiee connect --cursor
 ```
@@ -63,7 +63,7 @@ scubiee connect --cursor
 ```powershell
 scubiee unlock-tool
 # or: scubiee upgrade   (unlocks before package swap when possible)
-uv tool install --force scubiee==0.2.87 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.2.88 --index-url https://pypi.org/simple --refresh
 scubiee setup --repair
 scubiee connect --cursor
 ```
@@ -96,7 +96,7 @@ scubiee remove . --delete-store
 The tool env is already broken. Prefer the standalone scripts (they disable MCP **before** killing processes):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/repair-uv-scubiee.ps1 0.2.87
+powershell -ExecutionPolicy Bypass -File scripts/repair-uv-scubiee.ps1 0.2.88
 scubiee setup --repair
 ```
 
@@ -104,7 +104,7 @@ Or nuclear cleanup without scubiee running:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/uninstall-uv-scubiee.ps1
-uv tool install --force scubiee==0.2.87 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.2.88 --index-url https://pypi.org/simple --refresh
 scubiee setup --repair
 scubiee connect --cursor
 ```
@@ -117,8 +117,8 @@ scubiee connect --cursor
 |------|---------|
 | Free Windows locks | `scubiee unlock-tool` |
 | Clean machine + remove package | `scubiee wipe --all --confirm --package` |
-| CLI already broken | `scripts/uninstall-uv-scubiee.ps1` or `repair-uv-scubiee.ps1 0.2.87` |
-| Fresh install | `uv tool install scubiee==0.2.87 …` → `setup --repair` → `connect` |
+| CLI already broken | `scripts/uninstall-uv-scubiee.ps1` or `repair-uv-scubiee.ps1 0.2.88` |
+| Fresh install | `uv tool install scubiee==0.2.88 …` → `setup --repair` → `connect` |
 
 Do **not** run raw `uv tool uninstall` / `Remove-Item` on the tool dir while MCP is active (partial delete → `No module named 'pipeline'`).
 
@@ -133,7 +133,7 @@ Do **not** run raw `uv tool uninstall` / `Remove-Item` on the tool dir while MCP
 **Fix:**
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/repair-uv-scubiee.ps1 0.2.87
+powershell -ExecutionPolicy Bypass -File scripts/repair-uv-scubiee.ps1 0.2.88
 scubiee --version
 ```
 

@@ -2,14 +2,14 @@
 
 Install and GPU behavior on macOS and Linux.
 
-**Docs assume [scubiee 0.2.87](https://pypi.org/project/scubiee/0.2.87/).** Full playbook: [Install & debug](./install-and-debug.md).
+**Docs assume [scubiee 0.2.88](https://pypi.org/project/scubiee/0.2.88/).** Full playbook: [Install & debug](./install-and-debug.md).
 
 ---
 
 ## Install
 
 ```bash
-uv tool install --force scubiee==0.2.87 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.2.88 --index-url https://pypi.org/simple --refresh
 uv tool update-shell
 # new terminal
 scubiee setup --repair
@@ -21,7 +21,7 @@ scubiee connect --cursor    # or --kiro / --copilot / … inside each Special-4 
 **pip alternative:**
 
 ```bash
-pip install -U scubiee==0.2.87
+pip install -U scubiee==0.2.88
 scubiee setup --repair
 ```
 

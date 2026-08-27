@@ -824,19 +824,18 @@ def test_cursor_rule_mirrors_short_decision_card():
 
 def test_append_host_rule_matches_cursor_retry_policy_not_ignore_forever():
     """Kiro/Cline/Continue/append hosts must not permanently drop Scubiee mid-session."""
-    md = (REPO / "packages" / "pipeline" / "templates" / "context-engine.md").read_text(
+    md = (REPO / "packages" / "pipeline" / "templates" / "scubiee.md").read_text(
         encoding="utf-8"
     )
-    legacy = (REPO / "packages" / "pipeline" / "templates" / "context-engine.mdc").read_text(
+    mdc = (REPO / "packages" / "pipeline" / "templates" / "scubiee.mdc").read_text(
         encoding="utf-8"
     )
-    for template in (md, legacy):
+    for template in (md, mdc):
         assert "ignore this rule entirely" not in template.lower()
         assert "Do not permanently disable Scubiee" in template
-        assert "Do not call it every turn" in template
-        assert "never every turn" in template
+        assert "Do not call it every turn" in template or "call `status()` from the Scubiee MCP" in template
         assert "scubiee resume" in template
-        assert "Retry `status()` only when" in template
+        assert "status()" in template
         assert len(template) <= 4000
 
 
@@ -845,11 +844,13 @@ def test_status_ok_false_while_warming_managed(monkeypatch, tmp_path):
     pytest.importorskip("mcp")
     repo = tmp_path / "proj"
     repo.mkdir()
-    ce = repo / ".context-engine"
+    ce = repo / ".scubiee"
     ce.mkdir()
     (ce / "id.json").write_text(json.dumps({"project_id": "ce_test"}), encoding="utf-8")
     monkeypatch.setenv("CTX_MCP_SURFACE", "read")
     monkeypatch.setenv("CTX_REPO", str(repo))
+    monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
+    (tmp_path / "ce-home").mkdir()
     monkeypatch.chdir(repo)
 
     from pipeline.project_id import save_registry
@@ -890,6 +891,64 @@ def test_status_ok_false_while_warming_managed(monkeypatch, tmp_path):
     assert card["ok"] is False
     assert card["should_retry_status"] is False
     assert "Do not poll status()" in card.get("hint", "")
+
+
+def test_status_root_other_git_repo_is_unmanaged(monkeypatch, tmp_path):
+    """Sidebar chat: pass root= to an unenrolled git folder → managed false despite pin."""
+    pytest.importorskip("mcp")
+    engine = tmp_path / "engine"
+    engine.mkdir()
+    (engine / ".scubiee").mkdir()
+    (engine / ".scubiee" / "id.json").write_text(
+        json.dumps({"project_id": "ce_engx"}), encoding="utf-8"
+    )
+    other = tmp_path / "web"
+    other.mkdir()
+    (other / ".git").mkdir()
+    spawn = tmp_path / "spawn"
+    spawn.mkdir()
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("CTX_HOME", str(home))
+    monkeypatch.setenv("CTX_REPO", str(engine))
+    monkeypatch.setenv("CTX_PROJECT_ID", "ce_engx")
+    monkeypatch.setenv("CTX_MCP_SURFACE", "phase")
+    monkeypatch.chdir(spawn)
+    from pipeline.project_id import save_registry
+
+    save_registry(
+        {
+            "projects": {
+                "ce_engx": {
+                    "managed": True,
+                    "root": str(engine.resolve()),
+                    "paths": [str(engine.resolve())],
+                }
+            }
+        }
+    )
+
+    class FakeEng:
+        base = "http://127.0.0.1:8765"
+
+        def healthy(self) -> bool:
+            return False
+
+        def status(self, _root: str) -> dict:
+            return {}
+
+    monkeypatch.setattr("pipeline.daemon.ensure_daemon", lambda *a, **k: None)
+    monkeypatch.setattr("pipeline.client.EngineClient", lambda *a, **k: FakeEng())
+    monkeypatch.setattr(
+        "pipeline.session_store.load_store",
+        lambda _r: {"topic": None, "spans": {}, "focus_seen": {}, "ledger": {}},
+    )
+    from pipeline.mcp_locate import create_mcp
+
+    card = json.loads(_tool_fn(create_mcp(), "status")(root=str(other)))
+    assert card["managed"] is False
+    assert card["should_use_mcp"] is False
+    assert Path(card["repo"]).resolve() == other.resolve()
 
 
 def test_status_paused_hint_uses_resume_not_wake(monkeypatch, tmp_path):

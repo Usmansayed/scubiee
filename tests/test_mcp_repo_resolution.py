@@ -34,8 +34,8 @@ def test_default_repo_ignores_unexpanded_workspace_folder_token(
     """Hosts that don't expand ${workspaceFolder} must not poison resolution."""
     live = tmp_path / "live"
     live.mkdir()
-    (live / ".context-engine").mkdir()
-    (live / ".context-engine" / "id.json").write_text(
+    (live / ".scubiee").mkdir()
+    (live / ".scubiee" / "id.json").write_text(
         json.dumps({"project_id": "ce_live"}), encoding="utf-8"
     )
     junk = tmp_path / "home"
@@ -57,8 +57,8 @@ def test_default_repo_prefers_workspace_folder_paths(
     """Cursor injects WORKSPACE_FOLDER_PATHS; use first existing path."""
     opened = tmp_path / "cursor-ws"
     opened.mkdir()
-    (opened / ".context-engine").mkdir()
-    (opened / ".context-engine" / "id.json").write_text(
+    (opened / ".scubiee").mkdir()
+    (opened / ".scubiee" / "id.json").write_text(
         json.dumps({"project_id": "ce_wfp"}), encoding="utf-8"
     )
     junk = tmp_path / "spawn-cwd"
@@ -82,8 +82,8 @@ def test_default_repo_prefers_workspace_folder_paths(
 def test_default_repo_prefers_claude_project_dir(tmp_path: Path, monkeypatch) -> None:
     opened = tmp_path / "claude-ws"
     opened.mkdir()
-    (opened / ".context-engine").mkdir()
-    (opened / ".context-engine" / "id.json").write_text(
+    (opened / ".scubiee").mkdir()
+    (opened / ".scubiee" / "id.json").write_text(
         json.dumps({"project_id": "ce_claude"}), encoding="utf-8"
     )
     junk = tmp_path / "spawn-cwd"
@@ -128,8 +128,8 @@ def test_default_repo_prefers_codex_workspace_root(tmp_path: Path, monkeypatch) 
 def test_default_repo_ignores_missing_ctx_repo_pin(tmp_path: Path, monkeypatch) -> None:
     live = tmp_path / "live"
     live.mkdir()
-    (live / ".context-engine").mkdir()
-    (live / ".context-engine" / "id.json").write_text(
+    (live / ".scubiee").mkdir()
+    (live / ".scubiee" / "id.json").write_text(
         json.dumps({"project_id": "ce_live"}), encoding="utf-8"
     )
     missing = tmp_path / "gone-old-path"
@@ -147,8 +147,8 @@ def test_default_repo_prefers_ide_enrolled_over_stale_pin(
 ) -> None:
     opened = tmp_path / "opened"
     opened.mkdir()
-    (opened / ".context-engine").mkdir()
-    (opened / ".context-engine" / "id.json").write_text(
+    (opened / ".scubiee").mkdir()
+    (opened / ".scubiee" / "id.json").write_text(
         json.dumps({"project_id": "ce_open"}), encoding="utf-8"
     )
     pinned = tmp_path / "old-pin"
@@ -171,8 +171,8 @@ def test_default_repo_resolves_ctx_project_id_from_registry(
     monkeypatch.setenv("CTX_HOME", str(home))
     moved = tmp_path / "renamed-repo"
     moved.mkdir()
-    (moved / ".context-engine").mkdir()
-    (moved / ".context-engine" / "id.json").write_text(
+    (moved / ".scubiee").mkdir()
+    (moved / ".scubiee" / "id.json").write_text(
         json.dumps({"project_id": "ce_moved"}), encoding="utf-8"
     )
     from pipeline.project_id import save_registry
@@ -238,7 +238,7 @@ def test_write_cursor_mcp_drops_user_duplicate(tmp_path: Path, monkeypatch) -> N
     user_mcp = user_home / ".cursor" / "mcp.json"
     user_mcp.parent.mkdir(parents=True)
     user_mcp.write_text(
-        '{"mcpServers": {"context-engine": {"command": "python", "args": []}}}\n',
+        '{"mcpServers": {"scubiee": {"command": "python", "args": []}}}\n',
         encoding="utf-8",
     )
     monkeypatch.chdir(project_root)
@@ -247,10 +247,10 @@ def test_write_cursor_mcp_drops_user_duplicate(tmp_path: Path, monkeypatch) -> N
     write_cursor_mcp(project_root)
 
     data = __import__("json").loads(user_mcp.read_text(encoding="utf-8"))
-    assert "context-engine" not in (data.get("mcpServers") or {})
+    assert "scubiee" not in (data.get("mcpServers") or {})
     project_mcp = project_root / ".cursor" / "mcp.json"
     project = __import__("json").loads(project_mcp.read_text(encoding="utf-8"))
-    env = project["mcpServers"]["context-engine"]["env"]
+    env = project["mcpServers"]["scubiee"]["env"]
     assert "CTX_REPO" in env
 
 
@@ -270,8 +270,8 @@ def test_write_kiro_mcp_writes_workspace_entry_and_neutral_global(
 
     user = __import__("json").loads(Path(paths["user"]).read_text(encoding="utf-8"))
     project = __import__("json").loads(Path(paths["project"]).read_text(encoding="utf-8"))
-    user_env = user["mcpServers"]["context-engine"]["env"]
-    project_env = project["mcpServers"]["context-engine"]["env"]
+    user_env = user["mcpServers"]["scubiee"]["env"]
+    project_env = project["mcpServers"]["scubiee"]["env"]
 
     assert "CTX_REPO" not in user_env
     assert project_env["CTX_REPO"] == str(project_root.resolve()).replace("\\", "/")
@@ -293,7 +293,7 @@ def test_kiro_workspace_entry_routes_from_an_unrelated_process_cwd(
     monkeypatch.setattr("pipeline.mcp_install.Path.home", lambda: user_home)
     paths = write_kiro_mcp(project_root)
     project = __import__("json").loads(Path(paths["project"]).read_text(encoding="utf-8"))
-    configured_repo = project["mcpServers"]["context-engine"]["env"]["CTX_REPO"]
+    configured_repo = project["mcpServers"]["scubiee"]["env"]["CTX_REPO"]
 
     monkeypatch.chdir(unrelated)
     for key in (
@@ -318,10 +318,178 @@ def test_server_entry_pins_project_id_when_enrolled(tmp_path: Path, monkeypatch)
 
     repo = tmp_path / "repo"
     repo.mkdir()
-    (repo / ".context-engine").mkdir()
-    (repo / ".context-engine" / "id.json").write_text(
+    (repo / ".scubiee").mkdir()
+    (repo / ".scubiee" / "id.json").write_text(
         json.dumps({"project_id": "ce_pin"}), encoding="utf-8"
     )
     entry = server_entry(repo)
     assert "repo" in entry["env"]["CTX_REPO"]
     assert entry["env"]["CTX_PROJECT_ID"] == "ce_pin"
+
+
+_CLEAR_IDE = (
+    "CURSOR_PROJECT_DIR",
+    "CURSOR_WORKSPACE",
+    "CURSOR_CWD",
+    "WORKSPACE_FOLDER_PATHS",
+    "WORKSPACE_FOLDER",
+    "CLAUDE_PROJECT_DIR",
+    "CODEX_WORKSPACE_ROOT",
+    "COPILOT_WORKSPACE_FOLDER",
+    "COPILOT_WORKSPACE",
+    "VSCODE_WORKSPACE_FOLDER",
+    "VSCODE_CWD",
+    "INIT_CWD",
+    "OPENCODE_DEFAULT_PROJECT",
+    "CONTEXT_ENGINE_REPO",
+)
+
+
+def _enroll_scubiee(repo: Path, project_id: str) -> None:
+    ident = repo / ".scubiee"
+    ident.mkdir(parents=True, exist_ok=True)
+    (ident / "id.json").write_text(
+        json.dumps({"project_id": project_id}), encoding="utf-8"
+    )
+
+
+def test_unenrolled_live_git_workspace_beats_enrolled_pin(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Sidebar/other-folder: live .git workspace must not inherit the pin."""
+    engine = tmp_path / "new-context-engine"
+    engine.mkdir()
+    _enroll_scubiee(engine, "ce_engine")
+    (engine / ".git").mkdir()
+    other = tmp_path / "web"
+    other.mkdir()
+    (other / ".git").mkdir()
+    spawn = tmp_path / "mcp-cwd"
+    spawn.mkdir()
+    monkeypatch.chdir(spawn)
+    monkeypatch.setenv("CTX_HOME", str(tmp_path / "home"))
+    (tmp_path / "home").mkdir()
+    from pipeline.project_id import save_registry
+
+    save_registry(
+        {
+            "projects": {
+                "ce_engine": {
+                    "managed": True,
+                    "root": str(engine.resolve()),
+                    "paths": [str(engine.resolve())],
+                }
+            }
+        }
+    )
+    monkeypatch.setenv("CTX_REPO", str(engine))
+    monkeypatch.setenv("CTX_PROJECT_ID", "ce_engine")
+    monkeypatch.setenv("CURSOR_PROJECT_DIR", str(other))
+    for key in _CLEAR_IDE:
+        if key != "CURSOR_PROJECT_DIR":
+            monkeypatch.delenv(key, raising=False)
+
+    assert mcp_locate._default_repo() == other.resolve()
+    assert mcp_locate._is_repo_managed() is False
+
+
+def test_request_root_unenrolled_beats_pin(tmp_path: Path, monkeypatch) -> None:
+    engine = tmp_path / "engine"
+    engine.mkdir()
+    _enroll_scubiee(engine, "ce_engine")
+    (engine / ".git").mkdir()
+    other = tmp_path / "neural-dust-cloud"
+    other.mkdir()
+    (other / ".git").mkdir()
+    spawn = tmp_path / "cwd"
+    spawn.mkdir()
+    monkeypatch.chdir(spawn)
+    monkeypatch.setenv("CTX_HOME", str(tmp_path / "home"))
+    (tmp_path / "home").mkdir()
+    from pipeline.project_id import save_registry
+
+    save_registry(
+        {
+            "projects": {
+                "ce_engine": {
+                    "managed": True,
+                    "root": str(engine.resolve()),
+                    "paths": [str(engine.resolve())],
+                }
+            }
+        }
+    )
+    monkeypatch.setenv("CTX_REPO", str(engine))
+    monkeypatch.setenv("CTX_PROJECT_ID", "ce_engine")
+    for key in _CLEAR_IDE:
+        monkeypatch.delenv(key, raising=False)
+
+    with mcp_locate._bind_request_repo(root=str(other)):
+        assert mcp_locate._default_repo() == other.resolve()
+        assert mcp_locate._is_repo_managed() is False
+
+
+def test_request_root_walks_to_enrolled_id(tmp_path: Path, monkeypatch) -> None:
+    repo = tmp_path / "app"
+    nested = repo / "packages" / "pkg"
+    nested.mkdir(parents=True)
+    _enroll_scubiee(repo, "ce_app")
+    spawn = tmp_path / "cwd"
+    spawn.mkdir()
+    monkeypatch.chdir(spawn)
+    monkeypatch.setenv("CTX_HOME", str(tmp_path / "home"))
+    (tmp_path / "home").mkdir()
+    from pipeline.project_id import save_registry
+
+    save_registry(
+        {
+            "projects": {
+                "ce_app": {
+                    "managed": True,
+                    "root": str(repo.resolve()),
+                    "paths": [str(repo.resolve())],
+                }
+            }
+        }
+    )
+    monkeypatch.setenv("CTX_REPO", str(tmp_path / "other-pin"))
+    (tmp_path / "other-pin").mkdir()
+    monkeypatch.delenv("CTX_PROJECT_ID", raising=False)
+    for key in _CLEAR_IDE:
+        monkeypatch.delenv(key, raising=False)
+
+    with mcp_locate._bind_request_repo(root=str(nested)):
+        assert mcp_locate._default_repo() == repo.resolve()
+        assert mcp_locate._is_repo_managed() is True
+
+
+def test_blind_spawn_keeps_project_id_pin(tmp_path: Path, monkeypatch) -> None:
+    """Mac Cursor: cwd is junk/home, no live workspace → pin still works."""
+    engine = tmp_path / "engine"
+    engine.mkdir()
+    _enroll_scubiee(engine, "ce_engine")
+    spawn = tmp_path / "cwd"
+    spawn.mkdir()
+    monkeypatch.chdir(spawn)
+    monkeypatch.setenv("CTX_HOME", str(tmp_path / "home"))
+    (tmp_path / "home").mkdir()
+    from pipeline.project_id import save_registry
+
+    save_registry(
+        {
+            "projects": {
+                "ce_engine": {
+                    "managed": True,
+                    "root": str(engine.resolve()),
+                    "paths": [str(engine.resolve())],
+                }
+            }
+        }
+    )
+    monkeypatch.setenv("CTX_PROJECT_ID", "ce_engine")
+    monkeypatch.delenv("CTX_REPO", raising=False)
+    for key in _CLEAR_IDE:
+        monkeypatch.delenv(key, raising=False)
+
+    assert mcp_locate._default_repo() == engine.resolve()
+    assert mcp_locate._is_repo_managed() is True

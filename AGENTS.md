@@ -12,6 +12,9 @@
 - If `status.managed` is `false`, or the MCP is unavailable/unhealthy: use native tools for now.
   **Do not permanently disable Scubiee for this session.**
 
+When the host gives a Workspace Path, pass it as `root` on `status()` and locate tools.
+That folder's `.scubiee/id.json` decides managed. After status, `project_id` (`ce_…`) is enough.
+
 **Retry `status()`** when the user runs `scubiee init` / `scubiee connect`, asks to index or use
 Scubiee, or asks whether this repo is managed / to check Scubiee — then switch to Scubiee MCP
 if `managed` becomes `true`. If a tool returns `should_retry_status`, call `status()` again.

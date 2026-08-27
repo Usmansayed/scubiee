@@ -37,8 +37,10 @@ from __future__ import annotations
 import json
 import os
 import sys
+from contextlib import contextmanager
+from contextvars import ContextVar
 from pathlib import Path
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Iterator, Literal
 
 ROOT = Path(__file__).resolve().parents[2]
 _src = ROOT / "packages"
@@ -452,10 +454,38 @@ def _enrolled_walk(start: Path) -> Path | None:
     return None
 
 
-def _resolve_ctx_project_id() -> Path | None:
-    """Resolve CTX_PROJECT_ID via registry live paths (survives folder renames)."""
-    pid = (os.environ.get("CTX_PROJECT_ID") or "").strip()
-    if not pid:
+def _git_root_walk(start: Path) -> Path | None:
+    try:
+        for candidate in (start, *start.parents):
+            if (candidate / ".git").exists():
+                return candidate
+    except OSError:
+        return None
+    return None
+
+
+def _is_home_or_volume_root(path: Path) -> bool:
+    try:
+        resolved = path.resolve()
+    except OSError:
+        return True
+    home = Path.home().resolve()
+    a = str(resolved).replace("\\", "/").rstrip("/").lower()
+    b = str(home).replace("\\", "/").rstrip("/").lower()
+    if a == b:
+        return True
+    return resolved == resolved.parent
+
+
+def _looks_like_project_root(path: Path) -> bool:
+    if not _path_exists(path) or _is_home_or_volume_root(path):
+        return False
+    return _is_enrolled(path) or (path / ".git").exists()
+
+
+def _registry_path_for_project_id(pid: str) -> Path | None:
+    """Resolve a project_id via registry live paths (survives folder renames)."""
+    if not pid or _is_unexpanded_placeholder(pid):
         return None
     try:
         from pipeline.project_id import load_registry, read_id_file
@@ -482,6 +512,59 @@ def _resolve_ctx_project_id() -> Path | None:
     except Exception:  # noqa: BLE001
         return None
     return None
+
+
+def _resolve_ctx_project_id() -> Path | None:
+    """Resolve CTX_PROJECT_ID via registry live paths (survives folder renames)."""
+    pid = (os.environ.get("CTX_PROJECT_ID") or "").strip()
+    return _registry_path_for_project_id(pid) if pid else None
+
+
+_REQUEST_REPO: ContextVar[Path | None] = ContextVar("scubiee_request_repo", default=None)
+
+_BIND_ROOT_DESC = (
+    "This chat's workspace folder (Cursor Workspace Path). Walks up to "
+    ".scubiee/id.json. Pass when several repos share one MCP. Unenrolled "
+    "folder → managed false; do not keep calling Scubiee."
+)
+_BIND_PID_DESC = "Optional enrolled project_id (ce_…). Shorter than root after status()."
+
+
+def _resolve_request_repo(*, root: str = "", project_id: str = "") -> Path | None:
+    pid = (project_id or "").strip()
+    if pid:
+        found = _registry_path_for_project_id(pid)
+        if found is not None:
+            return found
+    raw = (root or "").strip()
+    if not raw or _is_unexpanded_placeholder(raw):
+        return None
+    try:
+        start = Path(raw).expanduser()
+        start = start.resolve() if start.is_absolute() else (Path.cwd() / start).resolve()
+    except OSError:
+        return None
+    enrolled = _enrolled_walk(start)
+    if enrolled is not None:
+        return enrolled
+    git = _git_root_walk(start)
+    if git is not None:
+        return git
+    if _path_exists(start) and not _is_home_or_volume_root(start):
+        return start
+    return None
+
+
+@contextmanager
+def _bind_request_repo(*, root: str = "", project_id: str = "") -> Iterator[Path | None]:
+    """Bind this MCP call to a chat folder / project_id (shared process safe)."""
+    resolved = _resolve_request_repo(root=root, project_id=project_id)
+    token = _REQUEST_REPO.set(resolved) if resolved is not None else None
+    try:
+        yield resolved
+    finally:
+        if token is not None:
+            _REQUEST_REPO.reset(token)
 
 
 def _ctx_repo_raw() -> Path | None:
@@ -547,41 +630,49 @@ def _managed_candidates() -> list[dict[str, str]]:
 
 
 def _default_repo() -> Path:
-    """Resolve the active repository for this MCP process.
+    """Resolve the active repository for this MCP call.
 
-    Enrolled IDE/cwd identity beats a stale absolute ``CTX_REPO`` pin (moves,
-    wipe leftovers). ``CTX_PROJECT_ID`` survives renames via the registry.
+    Per-call bind (root / project_id) wins. A live IDE/cwd *project* folder
+    (``.git`` or ``.scubiee/id.json``) beats a process pin so a sidebar chat
+    in an unenrolled repo is unmanaged. Pin / ``CTX_PROJECT_ID`` remain the
+    fallback when spawn cwd is home and the host gives no workspace.
     """
-    # 1) IDE workspace that is already enrolled
+    bound = _REQUEST_REPO.get()
+    if bound is not None:
+        return bound
+
     for candidate in _ide_workspace_candidates():
         if _is_enrolled(candidate):
             return candidate
 
-    # 2) Durable project id (local MCP after connect) → registry path
-    by_id = _resolve_ctx_project_id()
-    if by_id is not None:
-        return by_id
+    for candidate in _ide_workspace_candidates():
+        if _looks_like_project_root(candidate):
+            return candidate
 
-    # 3) Walk up from cwd for enrolled project
     walked = _enrolled_walk(Path.cwd().resolve())
     if walked is not None:
         return walked
 
-    # 4) Live CTX_REPO pin (exists + enrolled or .git)
+    cwd = Path.cwd().resolve()
+    if _looks_like_project_root(cwd):
+        return cwd
+
+    by_id = _resolve_ctx_project_id()
+    if by_id is not None:
+        return by_id
+
     pin = _ctx_repo_raw()
     if pin is not None and not _ctx_repo_stale(pin):
         return pin
 
-    # 5) IDE workspace with .git (not enrolled yet)
     for candidate in _ide_workspace_candidates():
         if (candidate / ".git").exists():
             return candidate
 
-    # 6) Raw CTX_REPO if the path still exists (first-time init before id.json)
     if pin is not None and _path_exists(pin):
         return pin
 
-    return Path.cwd().resolve()
+    return cwd
 
 
 def _dumps(obj: Any) -> str:
@@ -1182,165 +1273,168 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         fetch: Annotated[bool, Field(description="Deprecated: true acts like include=span.")] = False,
         max_chars: Annotated[int, Field(description="Per-hit body budget when include=span.")] = 1200,
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
+        root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
+        project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
     ) -> str:
         """Semantic locate. Default include=hits (skinny). Prefer over Grep for meaning."""
-        try:
-            args = SearchArgs(
-                query=query,
-                k=k,
-                include=include,  # type: ignore[arg-type]
-                mode=mode,  # type: ignore[arg-type]
-                fetch=fetch,
-                max_chars=max_chars,
-                response_format=response_format,  # type: ignore[arg-type]
-            )
-        except ValidationError as exc:
-            return _err(
-                "search",
-                str(exc),
-                hint="query required; include=hits|span|graph; k in 1..25.",
-            )
-        repo = _default_repo()
-        surface = _active_surface()
-        # search-only product: soft meaning only; skinny k.
-        if surface == "search":
-            if str(args.mode).strip().lower() == "exact":
+        with _bind_request_repo(root=root, project_id=project_id):
+            try:
+                args = SearchArgs(
+                    query=query,
+                    k=k,
+                    include=include,  # type: ignore[arg-type]
+                    mode=mode,  # type: ignore[arg-type]
+                    fetch=fetch,
+                    max_chars=max_chars,
+                    response_format=response_format,  # type: ignore[arg-type]
+                )
+            except ValidationError as exc:
                 return _err(
                     "search",
-                    "exact mode disabled on search surface",
-                    thrash_blocked=True,
-                    hint="Use native Grep for true literals. search() is soft/meaning only.",
-                    next="Grep(literal) or search(full question)",
+                    str(exc),
+                    hint="query required; include=hits|span|graph; k in 1..25.",
                 )
-            args.mode = "soft"
-            args.k = max(3, min(int(args.k), 12))
-        include_mode = str(args.include or "hits").strip().lower()
-        if args.fetch and include_mode == "hits":
-            include_mode = "span"
-        usage_hint = _record_locate_query(repo, str(args.mode), args.query)
-
-        if args.mode == "exact":
-            try:
-                res = _client_for(repo).grep(
-                    args.query, glob="*", max_hits=max(args.k, 20), path=str(repo),
-                )
-            except Exception as exc:  # noqa: BLE001
-                return _err("search", str(exc), hint="Exact mode needs a warm engine; check status().")
-            backend_error = _backend_error(
-                "search",
-                repo,
-                res,
-                hint="Exact mode needs a warm engine; check status().",
-            )
-            if backend_error:
-                return backend_error
-            hits = _slim_grep(res.get("hits") or res.get("matches"), keep=max(args.k, 20))
-            out = {
-                "ok": True, "tool": "search", "mode": "exact", "query": args.query,
-                "count": len(hits), "hits": hits,
-                "next": "read(path) that one hit then edit.",
-            }
-            if usage_hint:
-                out["usage_hint"] = usage_hint
-            return _format(out, args.response_format)
-
-        try:
-            from pipeline.locate import _read_excerpt, _search_hits
-
-            hits = _search_hits(repo, args.query, top_k=args.k)
-            results: list[dict[str, Any]] = []
-            span_n = 3 if include_mode == "span" else 0
-            for rank, h in enumerate(hits[: args.k], 1):
-                f = h.get("file")
-                item: dict[str, Any] = {
-                    "rank": rank, "file": f,
-                    "start_line": h.get("start_line"), "end_line": h.get("end_line"),
-                    "score": round(float(h.get("score") or 0.0), 4),
-                    "why": h.get("why") or "",
-                }
-                if span_n and rank <= span_n and f:
-                    ex = _read_excerpt(
-                        repo, str(f), int(h.get("start_line") or 0),
-                        int(h.get("end_line") or 0), max_chars=args.max_chars,
+            repo = _default_repo()
+            surface = _active_surface()
+            # search-only product: soft meaning only; skinny k.
+            if surface == "search":
+                if str(args.mode).strip().lower() == "exact":
+                    return _err(
+                        "search",
+                        "exact mode disabled on search surface",
+                        thrash_blocked=True,
+                        hint="Use native Grep for true literals. search() is soft/meaning only.",
+                        next="Grep(literal) or search(full question)",
                     )
-                    item["code"] = ex.get("excerpt") or ex.get("text") or ""
-                results.append(item)
+                args.mode = "soft"
+                args.k = max(3, min(int(args.k), 12))
+            include_mode = str(args.include or "hits").strip().lower()
+            if args.fetch and include_mode == "hits":
+                include_mode = "span"
+            usage_hint = _record_locate_query(repo, str(args.mode), args.query)
 
-            neighbors: list[dict[str, Any]] = []
-            neighbors_error: str | None = None
-            if include_mode == "graph" and results:
-                top = results[0]
-                file_s = str(top.get("file") or "")
-                if file_s:
-                    try:
-                        gn = _client_for(repo).graph_neighbors(
-                            [file_s],
-                            keep=4,
-                            max_chars=min(400, int(args.max_chars)),
-                            repo=str(repo),
-                        )
-                        backend_error = _backend_error(
-                            "search", repo, gn,
-                            hint="Graph results need a warm engine; check status().",
-                        )
-                        if backend_error:
-                            return backend_error
-                        neighbors = _slim_spans(
-                            gn.get("spans") or [], keep=4, body_chars=400
-                        )
-                    except Exception as exc:  # noqa: BLE001
-                        backend_error = _backend_error(
-                            "search", repo, getattr(exc, "response", None),
-                            hint="Graph results need a warm engine; check status().",
-                        )
-                        if backend_error:
-                            return backend_error
-                        neighbors = []
-                        neighbors_error = str(exc)
+            if args.mode == "exact":
+                try:
+                    res = _client_for(repo).grep(
+                        args.query, glob="*", max_hits=max(args.k, 20), path=str(repo),
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    return _err("search", str(exc), hint="Exact mode needs a warm engine; check status().")
+                backend_error = _backend_error(
+                    "search",
+                    repo,
+                    res,
+                    hint="Exact mode needs a warm engine; check status().",
+                )
+                if backend_error:
+                    return backend_error
+                hits = _slim_grep(res.get("hits") or res.get("matches"), keep=max(args.k, 20))
+                out = {
+                    "ok": True, "tool": "search", "mode": "exact", "query": args.query,
+                    "count": len(hits), "hits": hits,
+                    "next": "read(path) that one hit then edit.",
+                }
+                if usage_hint:
+                    out["usage_hint"] = usage_hint
+                return _format(out, args.response_format)
 
-            if results:
-                if include_mode == "graph":
-                    nxt = "Use neighbors for wiring; native Read the top file once → EDIT."
-                elif include_mode == "span":
-                    nxt = "Peek done — native Read only if you need more, then EDIT."
+            try:
+                from pipeline.locate import _read_excerpt, _search_hits
+
+                hits = _search_hits(repo, args.query, top_k=args.k)
+                results: list[dict[str, Any]] = []
+                span_n = 3 if include_mode == "span" else 0
+                for rank, h in enumerate(hits[: args.k], 1):
+                    f = h.get("file")
+                    item: dict[str, Any] = {
+                        "rank": rank, "file": f,
+                        "start_line": h.get("start_line"), "end_line": h.get("end_line"),
+                        "score": round(float(h.get("score") or 0.0), 4),
+                        "why": h.get("why") or "",
+                    }
+                    if span_n and rank <= span_n and f:
+                        ex = _read_excerpt(
+                            repo, str(f), int(h.get("start_line") or 0),
+                            int(h.get("end_line") or 0), max_chars=args.max_chars,
+                        )
+                        item["code"] = ex.get("excerpt") or ex.get("text") or ""
+                    results.append(item)
+
+                neighbors: list[dict[str, Any]] = []
+                neighbors_error: str | None = None
+                if include_mode == "graph" and results:
+                    top = results[0]
+                    file_s = str(top.get("file") or "")
+                    if file_s:
+                        try:
+                            gn = _client_for(repo).graph_neighbors(
+                                [file_s],
+                                keep=4,
+                                max_chars=min(400, int(args.max_chars)),
+                                repo=str(repo),
+                            )
+                            backend_error = _backend_error(
+                                "search", repo, gn,
+                                hint="Graph results need a warm engine; check status().",
+                            )
+                            if backend_error:
+                                return backend_error
+                            neighbors = _slim_spans(
+                                gn.get("spans") or [], keep=4, body_chars=400
+                            )
+                        except Exception as exc:  # noqa: BLE001
+                            backend_error = _backend_error(
+                                "search", repo, getattr(exc, "response", None),
+                                hint="Graph results need a warm engine; check status().",
+                            )
+                            if backend_error:
+                                return backend_error
+                            neighbors = []
+                            neighbors_error = str(exc)
+
+                if results:
+                    if include_mode == "graph":
+                        nxt = "Use neighbors for wiring; native Read the top file once → EDIT."
+                    elif include_mode == "span":
+                        nxt = "Peek done — native Read only if you need more, then EDIT."
+                    else:
+                        nxt = "Skim hits; native Read ONLY the one file you will edit → EDIT."
                 else:
-                    nxt = "Skim hits; native Read ONLY the one file you will edit → EDIT."
-            else:
-                nxt = "no hits — one sharper soft query or k=10; then Grep once for a full literal."
-            out: dict[str, Any] = {
-                "ok": True,
-                "tool": "search",
-                "mode": "soft",
-                "include": include_mode,
-                "query": args.query,
-                "k": args.k,
-                "count": len(results),
-                "results": results,
-                "next": nxt,
-            }
-            if include_mode == "graph":
-                out["neighbors"] = neighbors
-                out["neighbors_count"] = len(neighbors)
-                if neighbors_error:
-                    out["neighbors_error"] = neighbors_error
-            if usage_hint:
-                out["usage_hint"] = usage_hint
-            return _format(out, args.response_format)
-        except Exception as exc:  # noqa: BLE001
-            backend_error = _backend_error(
-                "search",
-                repo,
-                getattr(exc, "response", None),
-                hint="Check status()/CTX_REPO; ensure index is warm.",
-            )
-            if backend_error:
-                return backend_error
-            return _err(
-                "search",
-                str(exc),
-                repo=str(repo),
-                hint="Check status()/CTX_REPO; ensure index is warm.",
-            )
+                    nxt = "no hits — one sharper soft query or k=10; then Grep once for a full literal."
+                out: dict[str, Any] = {
+                    "ok": True,
+                    "tool": "search",
+                    "mode": "soft",
+                    "include": include_mode,
+                    "query": args.query,
+                    "k": args.k,
+                    "count": len(results),
+                    "results": results,
+                    "next": nxt,
+                }
+                if include_mode == "graph":
+                    out["neighbors"] = neighbors
+                    out["neighbors_count"] = len(neighbors)
+                    if neighbors_error:
+                        out["neighbors_error"] = neighbors_error
+                if usage_hint:
+                    out["usage_hint"] = usage_hint
+                return _format(out, args.response_format)
+            except Exception as exc:  # noqa: BLE001
+                backend_error = _backend_error(
+                    "search",
+                    repo,
+                    getattr(exc, "response", None),
+                    hint="Check status()/CTX_REPO; ensure index is warm.",
+                )
+                if backend_error:
+                    return backend_error
+                return _err(
+                    "search",
+                    str(exc),
+                    repo=str(repo),
+                    hint="Check status()/CTX_REPO; ensure index is warm.",
+                )
 
     # ---- read (read, rich, nav) -------------------------------------------------
     def read_impl(
@@ -1357,6 +1451,8 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         max_neighbors: Annotated[int, Field(description="Cap how many neighbor spans ride along (1..10).")] = 4,
         max_chars: Annotated[int, Field(description="Body budget for the span.")] = 2000,
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
+        root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
+        project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
     ) -> str:
         """Open the right span before edit. detail=outline|neighbors for shape/wiring."""
         try:
@@ -1370,7 +1466,8 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             )
         except ValidationError as exc:
             return _err("read", str(exc), hint="Pass target= or path= or handle=.")
-        repo = _default_repo()
+        with _bind_request_repo(root=root, project_id=project_id):
+            repo = _default_repo()
 
         if args.detail == "outline":
             path_o = (args.path or "").replace("\\", "/").strip()
@@ -1562,6 +1659,8 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         glob: Annotated[str, Field(description="File glob. Default *.py; pass *.ts, *.md, or * to search others.")] = "*.py",
         max_hits: Annotated[int, Field(description="Max matches to return.")] = 20,
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
+        root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
+        project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
     ) -> str:
         """WHEN: you need an EXACT string / literal / regex (an import line, a config
         key, a specific token). Faster and more precise than semantic search for
@@ -1572,7 +1671,8 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                            response_format=response_format)  # type: ignore[arg-type]
         except ValidationError as exc:
             return _err("grep", str(exc), hint="pattern required.")
-        repo = _default_repo()
+        with _bind_request_repo(root=root, project_id=project_id):
+            repo = _default_repo()
         try:
             res = _client_for(repo).grep(
                 args.pattern, glob=args.glob, max_hits=args.max_hits, path=str(repo),
@@ -1614,6 +1714,8 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         path: Annotated[str, Field(description="Repo-relative file to outline.")],
         keep: Annotated[int, Field(description="Max symbols to list.")] = 60,
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
+        root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
+        project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
     ) -> str:
         """File shape only — classes/functions + lines, without reading the whole file."""
         try:
@@ -1621,7 +1723,8 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                               response_format=response_format)  # type: ignore[arg-type]
         except ValidationError as exc:
             return _err("outline", str(exc), hint="path required.")
-        repo = _default_repo()
+        with _bind_request_repo(root=root, project_id=project_id):
+            repo = _default_repo()
         try:
             res = _client_for(repo).outline(args.path.replace("\\", "/"), repo=str(repo))
         except Exception as exc:  # noqa: BLE001
@@ -1645,6 +1748,8 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         keep: Annotated[int, Field(description="How many neighbor spans (1..8).")] = 4,
         max_chars: Annotated[int, Field(description="Per-neighbor body budget.")] = 500,
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
+        root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
+        project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
     ) -> str:
         """1-hop callers/callees of a symbol or file (the graph)."""
         try:
@@ -1652,7 +1757,8 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                                 response_format=response_format)  # type: ignore[arg-type]
         except ValidationError as exc:
             return _err("neighbors", str(exc), hint="Pass a symbol or a repo-relative file.")
-        repo = _default_repo()
+        with _bind_request_repo(root=root, project_id=project_id):
+            repo = _default_repo()
         file_s = _resolve_to_file(repo, args.target)
         if not file_s:
             return _err("neighbors", f"could not resolve {args.target!r} to a file",
@@ -1682,6 +1788,8 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         keep: Annotated[int, Field(description="How many spans (1..10).")] = 6,
         max_chars: Annotated[int, Field(description="Per-span body budget.")] = 400,
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
+        root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
+        project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
     ) -> str:
         """Relationship query — how A connects to B (graph affinity, not just text)."""
         try:
@@ -1689,7 +1797,8 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                             response_format=response_format)  # type: ignore[arg-type]
         except ValidationError as exc:
             return _err("graph", str(exc), hint="Pass a natural-language question.")
-        repo = _default_repo()
+        with _bind_request_repo(root=root, project_id=project_id):
+            repo = _default_repo()
         try:
             gq = _client_for(repo).query_graph(
                 args.question, keep=args.keep, max_chars=args.max_chars, repo=str(repo),
@@ -1714,6 +1823,8 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         pattern: Annotated[str, Field(description="Name or glob: 'query_router.py', '*.md', 'packages/**/*.py'. Use '.' for repo shape.")] = ".",
         limit: Annotated[int, Field(description="Max file paths to return.")] = 50,
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
+        root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
+        project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
     ) -> str:
         """WHEN: locate files by NAME or path — "where is the file called X",
         "list the *.md docs", "which files are under packages/pipeline". Use this
@@ -1725,7 +1836,8 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                             response_format=response_format)  # type: ignore[arg-type]
         except ValidationError as exc:
             return _err("files", str(exc), hint="Pass a name or glob, e.g. '*.py' or 'query_*'.")
-        repo = _default_repo()
+        with _bind_request_repo(root=root, project_id=project_id):
+            repo = _default_repo()
         patt = (args.pattern or "").strip()
         if patt in {".", "./"}:
             card = _orient_repo(repo, limit=args.limit)
@@ -1767,9 +1879,14 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         ] = ".",
         limit: Annotated[int, Field(description="Max file paths to return.")] = 50,
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
+        root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
+        project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
     ) -> str:
         """Find files by name or glob."""
-        raw = files_impl(pattern=pattern, limit=limit, response_format=response_format)
+        raw = files_impl(
+            pattern=pattern, limit=limit, response_format=response_format,
+            root=root, project_id=project_id,
+        )
         try:
             card = json.loads(raw)
         except json.JSONDecodeError:
@@ -1852,6 +1969,8 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         query: Annotated[str, Field(description="Cold/new-topic query — CODE VOCABULARY 20–60 tokens.")],
         k: Annotated[int, Field(description="How many cards (default 8).")] = 8,
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
+        root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
+        project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
     ) -> str:
         """Cold / new topic locate — returns ranked cards (no bodies)."""
         try:
@@ -1867,6 +1986,8 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             fetch=False,
             max_chars=1200,
             response_format=args.response_format,
+            root=root,
+            project_id=project_id,
         )
         try:
             card = json.loads(raw)
@@ -1889,7 +2010,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             from pipeline.work_session import touch
 
             touch(
-                _default_repo(),
+                _resolve_request_repo(root=root, project_id=project_id) or _default_repo(),
                 [{"file": c.get("file"), "role": "map"} for c in (card.get("cards") or [])[:8]],
                 query=args.query,
             )
@@ -1909,6 +2030,8 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         max_chars: Annotated[int, Field(description="Body budget for span.")] = 2000,
         max_neighbors: Annotated[int, Field(description="Cap neighbors spans.")] = 4,
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
+        root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
+        project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
     ) -> str:
         """Deepen/relate — outline → span → neighbors."""
         try:
@@ -1920,6 +2043,8 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             )
         except ValidationError as exc:
             return _err("focus", str(exc), hint="Pass target= or path=; mode=outline|span|neighbors.")
+        with _bind_request_repo(root=root, project_id=project_id):
+            repo = _default_repo()
 
         path_s = (args.path or "").replace("\\", "/").strip()
         target_s = (args.target or "").strip()
@@ -1970,10 +2095,10 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 "workspace(show) — only focus again if you need a different mode/target."
             )
             card["next"] = "edit | workspace(show)"
-            _phase_focus_remember(_default_repo(), rem_key, card)
+            _phase_focus_remember(repo, rem_key, card)
             return _format(card, args.response_format)
 
-        _phase_focus_remember(_default_repo(), rem_key, card)
+        _phase_focus_remember(repo, rem_key, card)
         if args.mode == "outline":
             fp = str(card.get("file") or rem_path)
             suffix = Path(fp).suffix.lower()
@@ -1995,7 +2120,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             from pipeline.work_session import touch
 
             if rem_path:
-                touch(_default_repo(), [{"file": rem_path, "role": f"focus:{args.mode}"}], query=args.query or args.target)
+                touch(repo, [{"file": rem_path, "role": f"focus:{args.mode}"}], query=args.query or args.target)
         except Exception:  # noqa: BLE001
             pass
         return _format(card, args.response_format)
@@ -2004,13 +2129,16 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         action: Annotated[str, Field(description="show | pin | clear")] = "show",
         path: Annotated[str, Field(description="Repo-relative file — required for pin.")] = "",
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
+        root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
+        project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
     ) -> str:
         """Mid-session brain: show pins/heatmap/focus_seen; pin a file; clear for new topic."""
         try:
             args = WorkspaceArgs(action=action, path=path, response_format=response_format)  # type: ignore[arg-type]
         except ValidationError as exc:
             return _err("workspace", str(exc), hint="action=show|pin|clear; path= required for pin.")
-        repo = _default_repo()
+        with _bind_request_repo(root=root, project_id=project_id):
+            repo = _default_repo()
 
         if args.action == "clear":
             from pipeline.session_store import clear_store
@@ -2079,152 +2207,156 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         return _format(out, args.response_format)
 
     # ---- status (all surfaces) --------------------------------------------
-    def status_impl() -> str:
+    def status_impl(
+        root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
+        project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
+    ) -> str:
         """Health / tool list only — not for finding code."""
-        from pipeline.pause_resume import is_paused
+        with _bind_request_repo(root=root, project_id=project_id):
+            from pipeline.pause_resume import is_paused
 
-        if is_paused():
-            # should_retry_status=False: polling status cannot unpause the engine.
-            # Agents should tell the user to run `scubiee resume`, then retry only
-            # after the user confirms / asks (event-driven — avoids token burn).
-            return _dumps({
-                "ok": False,
-                "paused": True,
-                "tool": "status",
-                "server": "scubiee",
-                "managed": False,
-                "should_use_mcp": False,
-                "should_retry_status": False,
-                "hint": "Scubiee is paused. Resume with: scubiee resume",
-            })
-
-        from pipeline.client import EngineClient
-        from pipeline.daemon import ensure_daemon
-        from pipeline.session_store import load_store, token_mode
-
-        tool_lists = {
-            "read": ["search", "read", "status"],
-            "nav": ["search", "files", "read", "recall", "expand", "status"],
-            "graph": ["search", "neighbors", "graph", "status"],
-            "rich": ["search", "read", "outline", "status"],
-            "search": ["search", "status"],
-            "grep": ["grep", "status"],
-            "phase": ["map", "focus", "grep", "glob", "workspace", "register_project", "status"],
-        }
-        try:
-            repo = _default_repo()
-            try:
-                ensure_daemon(repo, force_if_hung=False)
-            except Exception:  # noqa: BLE001
-                pass
-            eng = EngineClient(timeout=8.0, workspace_path=str(repo))
-            store = load_store(repo)
-            healthy = eng.healthy()
-            daemon_status: dict[str, Any] = {}
-            if healthy:
-                try:
-                    daemon_status = eng.status(str(repo))
-                except Exception:  # noqa: BLE001
-                    daemon_status = {}
-                if daemon_status.get("ok") is False and "unreachable" in str(
-                    daemon_status.get("error") or ""
-                ):
-                    # /health was fine; a slow /v1/status must not flip the card to down.
-                    daemon_status = {
-                        "ok": True,
-                        "warm_state": "ready",
-                        "error": None,
-                    }
-            else:
-                daemon_status = {
+            if is_paused():
+                # should_retry_status=False: polling status cannot unpause the engine.
+                # Agents should tell the user to run `scubiee resume`, then retry only
+                # after the user confirms / asks (event-driven — avoids token burn).
+                return _dumps({
                     "ok": False,
-                    "error": f"Scubiee unreachable at {eng.base}",
-                    "hint": "Run: scubiee engine ensure .",
-                }
-            soft_search_ready = bool(
-                healthy
-                and (
-                    daemon_status.get("soft_search_ready")
-                    if "soft_search_ready" in daemon_status
-                    else (
-                        daemon_status.get("warm_state") == "ready"
-                        and daemon_status.get("engine") is not None
-                        and not daemon_status.get("warm_error")
+                    "paused": True,
+                    "tool": "status",
+                    "server": "scubiee",
+                    "managed": False,
+                    "should_use_mcp": False,
+                    "should_retry_status": False,
+                    "hint": "Scubiee is paused. Resume with: scubiee resume",
+                })
+
+            from pipeline.client import EngineClient
+            from pipeline.daemon import ensure_daemon
+            from pipeline.session_store import load_store, token_mode
+
+            tool_lists = {
+                "read": ["search", "read", "status"],
+                "nav": ["search", "files", "read", "recall", "expand", "status"],
+                "graph": ["search", "neighbors", "graph", "status"],
+                "rich": ["search", "read", "outline", "status"],
+                "search": ["search", "status"],
+                "grep": ["grep", "status"],
+                "phase": ["map", "focus", "grep", "glob", "workspace", "register_project", "status"],
+            }
+            try:
+                repo = _default_repo()
+                try:
+                    ensure_daemon(repo, force_if_hung=False)
+                except Exception:  # noqa: BLE001
+                    pass
+                eng = EngineClient(timeout=8.0, workspace_path=str(repo))
+                store = load_store(repo)
+                healthy = eng.healthy()
+                daemon_status: dict[str, Any] = {}
+                if healthy:
+                    try:
+                        daemon_status = eng.status(str(repo))
+                    except Exception:  # noqa: BLE001
+                        daemon_status = {}
+                    if daemon_status.get("ok") is False and "unreachable" in str(
+                        daemon_status.get("error") or ""
+                    ):
+                        # /health was fine; a slow /v1/status must not flip the card to down.
+                        daemon_status = {
+                            "ok": True,
+                            "warm_state": "ready",
+                            "error": None,
+                        }
+                else:
+                    daemon_status = {
+                        "ok": False,
+                        "error": f"Scubiee unreachable at {eng.base}",
+                        "hint": "Run: scubiee engine ensure .",
+                    }
+                soft_search_ready = bool(
+                    healthy
+                    and (
+                        daemon_status.get("soft_search_ready")
+                        if "soft_search_ready" in daemon_status
+                        else (
+                            daemon_status.get("warm_state") == "ready"
+                            and daemon_status.get("engine") is not None
+                            and not daemon_status.get("warm_error")
+                        )
                     )
                 )
-            )
-            from pipeline.sync_status import build_sync_contract
+                from pipeline.sync_status import build_sync_contract
 
-            contract = build_sync_contract(
-                warm_state=daemon_status.get("warm_state") if healthy else None,
-                warm_error=daemon_status.get("warm_error"),
-                keeper=daemon_status.get("keeper") if healthy else None,
-                soft_search_ready=soft_search_ready,
-                last_error=None if healthy else daemon_status.get("error"),
-            )
-            if healthy:
-                for key in (
-                    "sync_state",
-                    "ready",
-                    "syncing",
-                    "overlay_ready",
-                    "dense_pending",
-                    "deferred",
-                    "needs_full",
-                    "locate_streak_active",
-                    "publish_pending",
-                    "catchup_chunked",
-                ):
-                    if key in daemon_status:
-                        contract[key] = daemon_status[key]
-                contract["error"] = daemon_status.get("error") if daemon_status.get("ok") is False else None
-            managed = _is_repo_managed()
-            warming = bool(managed and not healthy)
-            payload: dict[str, Any] = {
-                # ok = daemon reachable only. Do not conflate with managed (agents misread
-                # readiness when ok=true while warming=true). Use warming branch in rules.
-                "ok": healthy,
-                "tool": "status",
-                "server": "scubiee",
-                "surface": surface,
-                "engine": {
-                    "healthy": healthy,
-                    "soft_search_ready": soft_search_ready,
-                    "warm_state": daemon_status.get("warm_state") if healthy else None,
-                    "warm_error": daemon_status.get("warm_error") if healthy else daemon_status.get("error"),
-                    "project_id": daemon_status.get("project_id") if healthy else None,
-                    "meta": daemon_status.get("meta") if healthy else None,
-                },
-                "repo": str(repo),
-                "token_mode": token_mode(),
-                # Managed check: user can ask the agent to call status() anytime
-                # to re-test after scubiee init / connect.
-                **_managed_signal_fields(),
-                "warming": warming,
-                "index_available": bool(
-                    healthy
-                    and daemon_status.get("meta")
-                    and (daemon_status.get("meta") or {}).get("chunks", 0) > 0
-                ),
-                "tools": tool_lists.get(surface, tool_lists["read"]),
-                "keeper": daemon_status.get("keeper") if healthy else None,
-                "soft_search_ready": soft_search_ready,
-                **contract,
-                "session": {
-                    "topic": store.get("topic"),
-                    "n_spans": len(store.get("spans") or {}),
-                    "n_focus_seen": len(store.get("focus_seen") or {}),
-                    "ledger": store.get("ledger") or {},
-                },
-            }
-            if warming:
-                payload["hint"] = (
-                    "Engine is starting. Use Scubiee tools — if a tool returns warming, "
-                    "wait 5s and retry once. Do not poll status() in a loop."
+                contract = build_sync_contract(
+                    warm_state=daemon_status.get("warm_state") if healthy else None,
+                    warm_error=daemon_status.get("warm_error"),
+                    keeper=daemon_status.get("keeper") if healthy else None,
+                    soft_search_ready=soft_search_ready,
+                    last_error=None if healthy else daemon_status.get("error"),
                 )
-            return _dumps(payload)
-        except Exception as exc:  # noqa: BLE001
-            return _err("status", str(exc))
+                if healthy:
+                    for key in (
+                        "sync_state",
+                        "ready",
+                        "syncing",
+                        "overlay_ready",
+                        "dense_pending",
+                        "deferred",
+                        "needs_full",
+                        "locate_streak_active",
+                        "publish_pending",
+                        "catchup_chunked",
+                    ):
+                        if key in daemon_status:
+                            contract[key] = daemon_status[key]
+                    contract["error"] = daemon_status.get("error") if daemon_status.get("ok") is False else None
+                managed = _is_repo_managed()
+                warming = bool(managed and not healthy)
+                payload: dict[str, Any] = {
+                    # ok = daemon reachable only. Do not conflate with managed (agents misread
+                    # readiness when ok=true while warming=true). Use warming branch in rules.
+                    "ok": healthy,
+                    "tool": "status",
+                    "server": "scubiee",
+                    "surface": surface,
+                    "engine": {
+                        "healthy": healthy,
+                        "soft_search_ready": soft_search_ready,
+                        "warm_state": daemon_status.get("warm_state") if healthy else None,
+                        "warm_error": daemon_status.get("warm_error") if healthy else daemon_status.get("error"),
+                        "project_id": daemon_status.get("project_id") if healthy else None,
+                        "meta": daemon_status.get("meta") if healthy else None,
+                    },
+                    "repo": str(repo),
+                    "token_mode": token_mode(),
+                    # Managed check: user can ask the agent to call status() anytime
+                    # to re-test after scubiee init / connect.
+                    **_managed_signal_fields(),
+                    "warming": warming,
+                    "index_available": bool(
+                        healthy
+                        and daemon_status.get("meta")
+                        and (daemon_status.get("meta") or {}).get("chunks", 0) > 0
+                    ),
+                    "tools": tool_lists.get(surface, tool_lists["read"]),
+                    "keeper": daemon_status.get("keeper") if healthy else None,
+                    "soft_search_ready": soft_search_ready,
+                    **contract,
+                    "session": {
+                        "topic": store.get("topic"),
+                        "n_spans": len(store.get("spans") or {}),
+                        "n_focus_seen": len(store.get("focus_seen") or {}),
+                        "ledger": store.get("ledger") or {},
+                    },
+                }
+                if warming:
+                    payload["hint"] = (
+                        "Engine is starting. Use Scubiee tools — if a tool returns warming, "
+                        "wait 5s and retry once. Do not poll status() in a loop."
+                    )
+                return _dumps(payload)
+            except Exception as exc:  # noqa: BLE001
+                return _err("status", str(exc))
 
     def register_project_impl(
         path: str = "",

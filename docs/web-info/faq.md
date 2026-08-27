@@ -1,6 +1,6 @@
 # FAQ
 
-Short answers to common questions. Docs assume **[scubiee 0.2.87](https://pypi.org/project/scubiee/0.2.87/)** (published on PyPI).
+Short answers to common questions. Docs assume **[scubiee 0.2.88](https://pypi.org/project/scubiee/0.2.88/)** (published on PyPI).
 
 Full install/debug playbook: [Install & debug](./install-and-debug.md).
 
@@ -15,7 +15,7 @@ A local code context engine: indexes your repo, embeds with CodeRank (GPU when a
 **`scubiee`** (in `mcp.json`). Data lives under `~/.scubiee` and `<repo>/.scubiee`.
 
 **Do I need to clone the GitHub repo?**  
-No. Install from PyPI: `uv tool install scubiee==0.2.87` ([project page](https://pypi.org/project/scubiee/0.2.87/)).
+No. Install from PyPI: `uv tool install scubiee==0.2.88` ([project page](https://pypi.org/project/scubiee/0.2.88/)).
 
 **What Python version?**  
 3.10 or newer.

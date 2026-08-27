@@ -3,7 +3,7 @@
 Symptom → cause → fix. Start with `scubiee doctor .` and `scubiee preflight .`.  
 Shareable report: `scubiee diagnose --no-tests --desktop` → `Desktop/scubiee-diagnose.json`.
 
-**Full install / upgrade / Access-denied playbook:** [Install & debug](./install-and-debug.md) (docs assume **[0.2.87](https://pypi.org/project/scubiee/0.2.87/)**).
+**Full install / upgrade / Access-denied playbook:** [Install & debug](./install-and-debug.md) (docs assume **[0.2.88](https://pypi.org/project/scubiee/0.2.88/)**).
 
 ---
 
@@ -81,7 +81,7 @@ scubiee init .
 
 ```powershell
 scubiee unlock-tool
-uv tool install --force scubiee==0.2.87 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.2.88 --index-url https://pypi.org/simple --refresh
 scubiee setup --repair
 scubiee connect --cursor
 ```
@@ -91,7 +91,7 @@ scubiee connect --cursor
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/uninstall-uv-scubiee.ps1
 # or:
-powershell -ExecutionPolicy Bypass -File scripts/repair-uv-scubiee.ps1 0.2.87
+powershell -ExecutionPolicy Bypass -File scripts/repair-uv-scubiee.ps1 0.2.88
 scubiee setup --repair
 ```
 
