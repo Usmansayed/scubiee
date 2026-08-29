@@ -91,6 +91,30 @@ def test_recall_lists_handles(repo: Path):
     assert card["spans"][0]["handle"].startswith("sp_")
 
 
+def test_session_ids_use_isolated_store_paths(repo: Path):
+    from pipeline.session_store import put_span
+
+    a = put_span(
+        repo,
+        path="pkg/mod.py",
+        start_line=1,
+        end_line=2,
+        text="session-a",
+        why="a",
+        session_id="chat-a",
+    )
+    b = put_span(
+        repo,
+        path="pkg/mod.py",
+        start_line=1,
+        end_line=2,
+        text="session-b",
+        why="b",
+        session_id="chat-b",
+    )
+    assert a["handle"] != b["handle"]
+
+
 def test_mcp_exposes_lean_surface(monkeypatch, tmp_path: Path):
     pytest.importorskip("mcp")
     repo = tmp_path / "proj"
@@ -158,5 +182,6 @@ def test_mcp_phase_surface_exposes_locate_toolkit(monkeypatch, tmp_path: Path):
         "grep",
         "glob",
         "workspace",
+        "expand",
         "status",
     }

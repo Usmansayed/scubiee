@@ -57,7 +57,28 @@ class LocateHit:
 
 
 def _norm_path(rel: str) -> str:
-    return rel.replace("\\", "/").lstrip("./")
+    """Normalize repo-relative paths; preserve dotfiles like ``.env``."""
+    rel = rel.replace("\\", "/")
+    while rel.startswith("./"):
+        rel = rel[2:]
+    return rel.lstrip("/")
+
+
+def _explicit_dot_dirs_in_pattern(pattern: str) -> set[str]:
+    """Dot-directory names explicitly named in a glob (e.g. ``.scubiee/**``)."""
+    out: set[str] = set()
+    for part in (pattern or "").replace("\\", "/").split("/"):
+        if part.startswith(".") and part not in {".", ".."}:
+            head = part.split("*", 1)[0].split("{", 1)[0].split("[", 1)[0]
+            if head:
+                out.add(head)
+    return out
+
+
+def _should_skip_glob_dir(name: str, glob_pat: str) -> bool:
+    if name in _explicit_dot_dirs_in_pattern(glob_pat):
+        return False
+    return _is_ignored_dir_name(name)
 
 
 def glob_to_regex(patt: str) -> re.Pattern[str]:
@@ -125,7 +146,7 @@ def iter_glob_files(root: Path, glob_pat: str = "**/*") -> list[str]:
     root = root.resolve()
     out: list[str] = []
     for dirpath, dirnames, filenames in os_walk_safe(root):
-        dirnames[:] = [d for d in dirnames if not _is_ignored_dir_name(d)]
+        dirnames[:] = [d for d in dirnames if not _should_skip_glob_dir(d, glob_pat)]
         for fname in filenames:
             p = Path(dirpath) / fname
             try:
@@ -465,6 +486,7 @@ def _grep_via_rg(
         "--line-number",
         "--no-heading",
         "--color=never",
+        "--hidden",
         "--max-count",
         str(cap + 1),
         "-e",
@@ -496,9 +518,9 @@ def _grep_via_rg(
             continue
         fpath, lno_s, text = parts[0], parts[1], parts[2]
         try:
-            rel = Path(fpath).resolve().relative_to(root_resolved).as_posix()
+            rel = (root_resolved / fpath).resolve().relative_to(root_resolved).as_posix()
         except ValueError:
-            rel = fpath.replace("\\", "/").lstrip("./")
+            rel = _norm_path(fpath)
         try:
             line_no = int(lno_s)
         except ValueError:
@@ -615,6 +637,51 @@ def grep_code(
     return list(grep_scan(root, pattern, glob=glob, max_hits=max_hits)["hits"])
 
 
+def read_python_source(path: Path) -> str:
+    """Read Python source, stripping UTF-8 BOM so ast.parse succeeds."""
+    return path.read_text(encoding="utf-8-sig", errors="replace").lstrip("\ufeff")
+
+
+def truncation_meta(
+    full_text: str,
+    *,
+    start_line: int,
+    end_line: int,
+    lines_total: int,
+    max_chars: int,
+    path: str = "",
+    handle: str = "",
+) -> dict[str, Any]:
+    """Pagination hints when span text exceeds max_chars."""
+    truncated = len(full_text) > max_chars
+    body = full_text[:max_chars] if truncated else full_text
+    chars_returned = len(body)
+    lines_returned_end = end_line
+    next_start_line: int | None = None
+    if truncated and body:
+        lines_in_body = body.count("\n") + 1
+        lines_returned_end = min(end_line, start_line + max(0, lines_in_body - 1))
+        next_start_line = min(end_line + 1, lines_returned_end + 1)
+        if next_start_line <= start_line:
+            next_start_line = start_line + 1
+    meta: dict[str, Any] = {
+        "truncated": truncated,
+        "chars_returned": chars_returned,
+        "lines_total": lines_total,
+        "lines_returned": f"{start_line}-{lines_returned_end} of {lines_total}",
+    }
+    if truncated:
+        meta["next_start_line"] = next_start_line
+        if path and next_start_line is not None:
+            meta["next"] = (
+                f"focus(path={path!r}, start_line={next_start_line}, "
+                f"end_line={end_line}, max_chars=12000)"
+            )
+        elif handle:
+            meta["next"] = f"expand(handle={handle!r}, max_chars=12000)"
+    return meta
+
+
 def file_outline(root: Path, rel: str) -> list[dict[str, Any]]:
     """Symbol outline for one file — no bodies."""
     rel = _norm_path(rel)
@@ -622,7 +689,7 @@ def file_outline(root: Path, rel: str) -> list[dict[str, Any]]:
     if not path.is_file():
         return []
     try:
-        source = path.read_text(encoding="utf-8", errors="replace")
+        source = read_python_source(path)
         tree = ast.parse(source)
     except (OSError, SyntaxError):
         return []

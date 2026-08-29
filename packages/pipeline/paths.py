@@ -62,6 +62,10 @@ _SKIP_SUBSTRINGS = (
     "/.amp/",
     "/.continue/",
     "/.claude/",
+    "/.config/",
+    "/.copilot/",
+    "/.pi/",
+    "/scubiee-0.",
 )
 
 

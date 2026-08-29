@@ -4,10 +4,27 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any
+
+_TRANSIENT_ENGINE_MARKERS = (
+    "unreachable",
+    "remote end closed",
+    "connection reset",
+    "connection refused",
+    "timed out",
+    "10054",
+    "10061",
+    "broken pipe",
+)
+
+
+def is_transient_engine_error(message: str) -> bool:
+    low = (message or "").lower()
+    return any(marker in low for marker in _TRANSIENT_ENGINE_MARKERS)
 
 DEFAULT_URL = "http://127.0.0.1:8765"
 
@@ -73,7 +90,14 @@ class EngineClient:
     def post(self, path: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
         return self._request("POST", path, body or {})
 
-    def _request(self, method: str, path: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
+    def _request(
+        self,
+        method: str,
+        path: str,
+        body: dict[str, Any] | None = None,
+        *,
+        _allow_retry: bool = True,
+    ) -> dict[str, Any]:
         url = f"{self.base}{path}"
         data = None
         headers = {"Accept": "application/json"}
@@ -101,19 +125,45 @@ class EngineClient:
                 payload = {"error": str(exc)}
             payload.setdefault("ok", False)
             payload.setdefault("http_status", exc.code)
+            if _allow_retry and exc.code in {502, 503, 504}:
+                time.sleep(0.35)
+                retried = self._request(method, path, body, _allow_retry=False)
+                if isinstance(retried, dict):
+                    retried["retried"] = True
+                    retried.setdefault("should_retry", False)
+                return retried
+            if is_transient_engine_error(str(payload.get("error") or exc)):
+                payload["should_retry"] = True
             return payload
         except urllib.error.URLError as exc:
+            err = f"Scubiee unreachable at {self.base}: {exc.reason}"
+            if _allow_retry and is_transient_engine_error(err):
+                time.sleep(0.35)
+                retried = self._request(method, path, body, _allow_retry=False)
+                if isinstance(retried, dict):
+                    retried["retried"] = True
+                    retried.setdefault("should_retry", False)
+                return retried
             return {
                 "ok": False,
-                "error": f"Scubiee unreachable at {self.base}: {exc.reason}",
+                "error": err,
                 "hint": "Run: scubiee setup   or   scubiee engine start",
+                "should_retry": is_transient_engine_error(err),
             }
         except (TimeoutError, OSError, ConnectionError) as exc:
-            # WinError 10054/10061 etc. — treat as unreachable, don't crash callers
+            err = f"Scubiee unreachable at {self.base}: {exc}"
+            if _allow_retry and is_transient_engine_error(err):
+                time.sleep(0.35)
+                retried = self._request(method, path, body, _allow_retry=False)
+                if isinstance(retried, dict):
+                    retried["retried"] = True
+                    retried.setdefault("should_retry", False)
+                return retried
             return {
                 "ok": False,
-                "error": f"Scubiee unreachable at {self.base}: {exc}",
+                "error": err,
                 "hint": "Run: scubiee setup   or   scubiee engine start",
+                "should_retry": is_transient_engine_error(err),
             }
 
     # Convenience wrappers matching CE API

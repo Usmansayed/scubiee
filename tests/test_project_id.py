@@ -20,8 +20,11 @@ from pipeline.project_id import (
     index_is_usable,
     load_registry,
     mint_project_id,
+    projects_root,
     read_id_file,
     resolve_project,
+    save_registry,
+    update_registry,
     write_id_file,
 )
 from pipeline.store import ChunkRecord, PipelineStore
@@ -352,3 +355,28 @@ def test_auto_index_gate(monkeypatch: pytest.MonkeyPatch):
     assert auto_index_enabled() is False
     monkeypatch.setenv("CTX_AUTO_INDEX", "1")
     assert auto_index_enabled() is True
+
+
+def test_update_registry_promotes_enrolled_indexed_project_to_managed(
+    ce_home: Path, tmp_path: Path,
+) -> None:
+    repo = tmp_path / "proj"
+    repo.mkdir()
+    pid = mint_project_id(repo)
+    write_id_file(repo, pid)
+    save_registry(
+        {
+            "projects": {
+                pid: {
+                    "paths": [str(repo.resolve())],
+                    "name": "proj",
+                }
+            }
+        }
+    )
+
+    update_registry(pid, repo)
+
+    entry = load_registry()["projects"][pid]
+    assert entry["managed"] is True
+    assert entry["lifecycle_state"] == "active"

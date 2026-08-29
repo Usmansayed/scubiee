@@ -88,6 +88,18 @@ def _project(root: Path) -> tuple[str | None, dict[str, Any]]:
     return project_id, dict(entry) if isinstance(entry, dict) else {}
 
 
+def _entry_managed(entry: dict[str, Any]) -> bool:
+    """True for enrolled registry rows unless explicitly opted out.
+
+    Legacy path-only rows (``paths`` without ``managed``) match MCP gate
+    semantics: id.json + registry entry implies managed until ``init`` writes
+    the explicit flag.
+    """
+    if not entry:
+        return False
+    return bool(entry.get("managed", True))
+
+
 def _update(project_id: str, **values: Any) -> dict[str, Any]:
     def apply(registry: dict[str, Any]) -> dict[str, Any]:
         projects = registry.setdefault("projects", {})
@@ -177,7 +189,7 @@ def _observed_presence(
 def managed_state(root: Path) -> str:
     """Return active, paused, never_index, or unmanaged."""
     project_id, entry = _project(_root(root))
-    if not project_id or not entry or not entry.get("managed"):
+    if not project_id or not _entry_managed(entry):
         return UNMANAGED
     state = entry.get("lifecycle_state", ACTIVE)
     return state if state in {ACTIVE, PAUSED, NEVER_INDEX} else ACTIVE
@@ -408,7 +420,7 @@ def initialize_repo(
 def activate_repo(root: Path) -> dict[str, Any]:
     root = _root(root)
     project_id, entry = _project(root)
-    if not project_id or not entry.get("managed"):
+    if not project_id or not _entry_managed(entry):
         return {
             "ok": False,
             "root": str(root),
@@ -416,6 +428,12 @@ def activate_repo(root: Path) -> dict[str, Any]:
             "status": "requires_initialize",
             "error": "requires_initialize",
         }
+    if entry.get("managed") is None:
+        entry = _update(
+            project_id,
+            managed=True,
+            lifecycle_state=entry.get("lifecycle_state") or ACTIVE,
+        )
     if entry.get("lifecycle_state") == NEVER_INDEX:
         entry = _update(project_id, last_access_at=time.time())
         return _result(
@@ -449,7 +467,7 @@ def activate_repo(root: Path) -> dict[str, Any]:
 def pause_repo(root: Path, *, reason: str | None = None) -> dict[str, Any]:
     root = _root(root)
     project_id, entry = _project(root)
-    if not project_id or not entry.get("managed"):
+    if not project_id or not _entry_managed(entry):
         return {"ok": False, "root": str(root), "state": UNMANAGED, "error": "unmanaged"}
     if entry.get("lifecycle_state") == NEVER_INDEX:
         return _result(project_id, entry)
@@ -466,7 +484,7 @@ def pause_repo(root: Path, *, reason: str | None = None) -> dict[str, Any]:
 def resume_repo(root: Path) -> dict[str, Any]:
     root = _root(root)
     project_id, entry = _project(root)
-    if not project_id or not entry.get("managed"):
+    if not project_id or not _entry_managed(entry):
         return {
             "ok": False,
             "root": str(root),
@@ -563,7 +581,7 @@ def never_index_repo(root: Path, *, reason: str | None = None) -> dict[str, Any]
 def remove_repo(root: Path, *, delete_store: bool = False) -> dict[str, Any]:
     root = _root(root)
     project_id, entry = _project(root)
-    if not project_id or not entry.get("managed"):
+    if not project_id or not _entry_managed(entry):
         return {"ok": False, "root": str(root), "state": UNMANAGED, "error": "unmanaged"}
     store = (projects_root() / project_id).resolve()
 

@@ -11,6 +11,7 @@ PHASE_EXPECTED = {
     "grep",
     "glob",
     "workspace",
+    "expand",
     "status",
 }
 READ_EXPECTED = {"search", "read", "status"}

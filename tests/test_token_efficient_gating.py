@@ -94,10 +94,11 @@ def test_managed_mcp_instructions_include_trajectory(monkeypatch) -> None:
     assert "map(query)" in text
     assert "focus" in text
     assert "grep(pattern" in text
-    assert "session_id" in text
-    assert "tool bans are in the project GATE rule" in text
+    assert "GATE rule bans native" in text or "tool bans are in the project GATE rule" in text
     assert "OVERRIDE" in text
-    assert "NEVER grep first" in text
+    assert "Flexibility" in text or "user intent wins" in text
+    assert "No tool path bans" in text or "no file-type restrictions" in text.lower()
+    assert "expand(handle" in text
     assert "BAN native" not in text
     assert "STRICTLY" not in text
 
@@ -127,5 +128,6 @@ def test_managed_phase_surface_exposes_full_toolkit(monkeypatch, tmp_path: Path)
         "grep",
         "glob",
         "workspace",
+        "expand",
         "status",
     }

@@ -90,7 +90,7 @@ def build_sync_contract(
         status = "error"
     if warm_state == "error":
         status = "error"
-    return {
+    contract = {
         "sync_state": status,
         "sync_status": status,
         "ready": status == "ready" and soft_search_ready,
@@ -105,3 +105,67 @@ def build_sync_contract(
         "catchup_chunked": bool(keeper.get("catchup_chunked")),
         "warm_state": warm_state,
     }
+    contract["agent_ready"] = derive_agent_ready(
+        healthy=warm_state not in {None, "error"},
+        soft_search_ready=soft_search_ready,
+        sync_state=status,
+        ready=bool(contract["ready"]),
+        syncing=bool(contract["syncing"]),
+        overlay_ready=bool(contract["overlay_ready"]),
+        publish_pending=bool(contract["publish_pending"]),
+    )
+    contract["agent_ready_note"] = derive_agent_ready_note(
+        agent_ready=contract["agent_ready"],
+        sync_state=status,
+        syncing=bool(contract["syncing"]),
+        overlay_ready=bool(contract["overlay_ready"]),
+        publish_pending=bool(contract["publish_pending"]),
+        ready=bool(contract["ready"]),
+    )
+    return contract
+
+
+def derive_agent_ready_note(
+    *,
+    agent_ready: str,
+    sync_state: str,
+    syncing: bool,
+    overlay_ready: bool,
+    publish_pending: bool,
+    ready: bool,
+) -> str:
+    """One-line hint for agents reading status() without institutional knowledge."""
+    if agent_ready == "warming":
+        return "Engine or index still warming — map may work; wait before trusting edits on indexed files."
+    if agent_ready == "yes":
+        return "Locate and index are ready; map/focus reflect current repo state."
+    if syncing or overlay_ready or publish_pending:
+        return "Background sync active — recent file edits may be stale in map until sync finishes."
+    if sync_state in {"needs_full", "error"}:
+        return f"sync_state={sync_state} — run scubiee init or check engine logs."
+    if not ready:
+        return f"sync_state={sync_state} — ready=false while keeper catches up."
+    return "agent_ready=stale — locate works; index may lag recent edits."
+
+
+def derive_agent_ready(
+    *,
+    healthy: bool,
+    soft_search_ready: bool,
+    sync_state: str,
+    ready: bool,
+    syncing: bool,
+    overlay_ready: bool,
+    publish_pending: bool = False,
+    warming: bool = False,
+) -> str:
+    """Single field agents can trust: yes | warming | stale."""
+    if warming or not healthy or not soft_search_ready:
+        return "warming"
+    if ready and not syncing:
+        return "yes"
+    if syncing or overlay_ready or publish_pending:
+        return "stale"
+    if sync_state in {"error", "needs_full", "deferred", "dense_pending"}:
+        return "stale"
+    return "yes" if soft_search_ready else "warming"

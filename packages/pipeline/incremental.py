@@ -433,6 +433,9 @@ def incremental_sync(
                         if len(body) > max_chars:
                             body = body[:max_chars]
                         text_cap = max_chars
+                    raw_text = (ch.content or "").lstrip("\ufeff")
+                    if isinstance(body, str):
+                        body = body.lstrip("\ufeff")
                     new_records.append(
                         ChunkRecord(
                             id=next_id,
@@ -440,7 +443,7 @@ def incremental_sync(
                             start_line=ch.start_line,
                             end_line=ch.end_line,
                             symbol=ch.symbol,
-                            text=ch.content[:text_cap],
+                            text=raw_text[:text_cap],
                             enriched=body,
                         )
                     )

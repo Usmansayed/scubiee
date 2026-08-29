@@ -315,6 +315,35 @@ def test_activate_unmanaged_requires_initialize_without_persisting(
     assert not id_file_path(repo).exists()
 
 
+def test_activate_legacy_registry_row_without_managed_flag(
+    ce_home: Path, tmp_path: Path,
+) -> None:
+    """Path-only registry rows must activate (matches MCP managed default)."""
+    from pipeline.project_id import save_registry, write_id_file
+
+    repo = tmp_path / "legacy"
+    repo.mkdir()
+    project_id = "ce_legacy1234567890abcdef123456"
+    write_id_file(repo, project_id)
+    save_registry(
+        {
+            "projects": {
+                project_id: {
+                    "paths": [str(repo.resolve())],
+                    "name": "legacy",
+                }
+            }
+        }
+    )
+
+    result = activate_repo(repo)
+
+    assert result["ok"] is True
+    assert result["status"] == "activated"
+    assert result["project_id"] == project_id
+    assert load_registry()["projects"][project_id]["managed"] is True
+
+
 def test_initialize_and_rebuild_return_indexer_errors(
     ce_home: Path, tmp_path: Path
 ) -> None:

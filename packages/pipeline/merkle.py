@@ -120,6 +120,8 @@ def is_junk_rel(rel: str) -> bool:
     norm = "/" + rel.replace("\\", "/").strip("/") + "/"
     if any(m in norm for m in _JUNK_PATH_MARKERS):
         return True
+    if "/scubiee-0." in norm:
+        return True
     parts = rel.replace("\\", "/").split("/")
     return any(_is_ignored_dir_name(p) for p in parts[:-1])
 

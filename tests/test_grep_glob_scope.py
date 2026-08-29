@@ -64,6 +64,28 @@ def test_grep_truncated_when_cap_hit(tmp_path: Path) -> None:
     assert report["has_more"] is True
 
 
+def test_path_glob_match_dotfiles() -> None:
+    assert path_glob_match(".env", ".env")
+    assert path_glob_match(".env", "**/.env")
+    assert path_glob_match(".env.example", "**/.env*")
+    assert path_glob_match(".env", "**/*")
+
+
+def test_glob_and_grep_find_dotenv(tmp_path: Path) -> None:
+    (tmp_path / ".env").write_text("SECRET_TOKEN=CeDotEnv9910\n", encoding="utf-8")
+    (tmp_path / "plain.env").write_text("SECRET_TOKEN=CeDotEnv9910\n", encoding="utf-8")
+
+    found, truncated = _find_repo_files(tmp_path, ".env", limit=10)
+    assert ".env" in found
+    assert truncated is False
+
+    found_glob, _ = _find_repo_files(tmp_path, "**/.env", limit=10)
+    assert ".env" in found_glob
+
+    report = grep_scan(tmp_path, "CeDotEnv9910", glob=".env", max_hits=10)
+    assert any(h["path"] == ".env" for h in report["hits"])
+
+
 def test_glob_collects_then_slices_truncated(tmp_path: Path) -> None:
     nested = tmp_path / "a" / "b"
     nested.mkdir(parents=True)

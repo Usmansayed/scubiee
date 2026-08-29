@@ -62,6 +62,16 @@ def server_entry(
         "CTX_ENGINE_IDLE_S": "60",
         "PYTHONUTF8": "1",
     }
+    # Per-chat isolation: set in host mcp.json env, e.g. CTX_MCP_SESSION_ID=cursor@chat-<uuid>
+    for session_key in (
+        "CTX_MCP_SESSION_ID",
+        "MCP_SESSION_ID",
+        "CLAUDE_CODE_SESSION_ID",
+    ):
+        session_val = (os.environ.get(session_key) or "").strip()
+        if session_val:
+            env[session_key] = session_val
+            break
     if repo is not None:
         resolved = Path(repo).resolve()
         env["CTX_REPO"] = str(resolved).replace("\\", "/")

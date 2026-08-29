@@ -146,6 +146,83 @@ def run() -> list[Case]:
         )
     )
 
+    # --- parallel map burst (phase MCP map_impl path) ---
+    t0 = time.perf_counter()
+    map_errs = 0
+    map_retried = 0
+    map_queries = [
+        "daemon watchdog force_restart health",
+        "session store dedup handle expand",
+        "merkle incremental sync dirty journal",
+        "embedder CodeRank batch scheduler",
+        "mcp_locate map focus phase surface",
+        "graphify AST extract build dedup",
+        "conductor RRF BM25 dense fusion",
+        "resource manager memory budget admission",
+    ]
+
+    def one_map(i: int) -> bool:
+        nonlocal map_retried
+        try:
+            os.environ["CTX_MCP_SURFACE"] = "phase"
+            from pipeline.mcp_locate import create_mcp
+
+            mcp = create_mcp(name="resilience-parallel-map")
+            map_fn = mcp._tool_manager._tools["map"].fn
+            for attempt in range(2):
+                raw = map_fn(
+                    query=map_queries[i],
+                    k=6,
+                    response_format="json",
+                    session_id=f"resilience-map-{i}",
+                )
+                card = json.loads(raw)
+                if card.get("ok"):
+                    if attempt == 1:
+                        map_retried += 1
+                    return True
+                if not card.get("should_retry") or attempt == 1:
+                    return False
+                time.sleep(0.35)
+            return False
+        except Exception:
+            return False
+
+    try:
+        import mcp  # noqa: F401
+
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            futs = [pool.submit(one_map, i) for i in range(8)]
+            for f in as_completed(futs):
+                if not f.result():
+                    map_errs += 1
+        cases.append(
+            Case(
+                "parallel_map_mcp_x8",
+                map_errs == 0,
+                (time.perf_counter() - t0) * 1000,
+                f"errors={map_errs}/8 retried={map_retried}",
+            )
+        )
+    except ImportError:
+        cases.append(
+            Case(
+                "parallel_map_mcp_x8",
+                False,
+                (time.perf_counter() - t0) * 1000,
+                "mcp package not installed",
+            )
+        )
+    except Exception as exc:  # noqa: BLE001
+        cases.append(
+            Case(
+                "parallel_map_mcp_x8",
+                False,
+                (time.perf_counter() - t0) * 1000,
+                f"skip={type(exc).__name__}: {exc}"[:120],
+            )
+        )
+
     # --- soft-fail garbage ---
     t0 = time.perf_counter()
     try:

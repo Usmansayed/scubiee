@@ -472,6 +472,25 @@ def expand(
 
     max_chars = max(200, min(int(max_chars or 4000), 12000))
     body = text if len(text) <= max_chars else text[: max_chars - 1] + "…"
+    from pipeline.capability import truncation_meta
+
+    start_l = int(sp.get("start_line") or 0)
+    end_l = int(sp.get("end_line") or start_l)
+    lines_total = max(end_l, start_l)
+    try:
+        fp = repo_p / path_s
+        if fp.is_file():
+            lines_total = len(fp.read_text(encoding="utf-8-sig", errors="replace").splitlines())
+    except Exception:  # noqa: BLE001
+        pass
+    tmeta = truncation_meta(
+        text,
+        start_line=start_l or 1,
+        end_line=end_l or start_l,
+        lines_total=lines_total,
+        max_chars=max_chars,
+        handle=hid,
+    )
     return {
         "ok": True,
         "handle": hid,
@@ -482,7 +501,8 @@ def expand(
         "why": sp.get("why"),
         "text": body,
         "chars": len(body),
-        "truncated": len(text) > max_chars,
+        "truncated": tmeta.get("truncated", len(text) > max_chars),
+        **{k: tmeta[k] for k in ("lines_total", "lines_returned", "next_start_line", "next") if k in tmeta},
     }
 
 

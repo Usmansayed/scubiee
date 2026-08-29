@@ -371,6 +371,13 @@ class BackgroundSyncLoop:
 
     def drain_due(self, *, now: float | None = None) -> list[dict]:
         current_time = time.monotonic() if now is None else now
+        recovered = self.dirty_ledger.recover_stale_processing(now=current_time)
+        if recovered:
+            print(
+                f"[keeper] recovered {len(recovered)} stale processing path(s)",
+                file=sys.stderr,
+                flush=True,
+            )
         paths = self.dirty_ledger.due_paths(now=current_time)
         if not paths:
             self.drain_publish(now=current_time)

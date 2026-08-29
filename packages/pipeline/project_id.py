@@ -478,6 +478,14 @@ def update_registry(project_id: str, root: Path) -> None:
                 entry["fs_id"] = fs_id
         except Exception:
             pass
+        common = git_common_dir(root)
+        if common:
+            entry["git_common_dir"] = str(common)
+        # Enrolled projects (id.json present) must stay managed when keeper
+        # polls refresh path aliases — matches MCP gate semantics.
+        if read_id_file(root) == project_id:
+            entry.setdefault("managed", True)
+            entry.setdefault("lifecycle_state", entry.get("lifecycle_state") or "active")
         if read_id_file(root) != project_id:
             raise ValueError("project_id_mismatch")
         projects[project_id] = entry

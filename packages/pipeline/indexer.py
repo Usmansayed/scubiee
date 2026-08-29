@@ -298,8 +298,8 @@ def index_repo(
                 start_line=ch.start_line,
                 end_line=ch.end_line,
                 symbol=ch.symbol,
-                text=ch.content[: min(len(ch.content), cmax if cmode else max_chars)],
-                enriched=body,
+                text=(ch.content or "").lstrip("\ufeff")[: min(len(ch.content), cmax if cmode else max_chars)],
+                enriched=body.lstrip("\ufeff") if isinstance(body, str) else body,
             )
         )
     store.save_chunks(records)

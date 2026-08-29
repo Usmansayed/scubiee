@@ -85,10 +85,39 @@ def _repo(repo: Path | str | None) -> Path:
     return p
 
 
+_WEAK_PATH_MARKERS = (
+    "tests/",
+    "scripts/bench_",
+    "docs/",
+    ".worktrees/",
+    "fixtures/",
+)
+_STRONG_PATH_MARKERS = (
+    "packages/pipeline/",
+    "packages/",
+)
+
+
 def _is_weak(path: str | None) -> bool:
     if not path:
         return True
     return Path(str(path)).name.lower() in {"__init__.py", "__main__.py"}
+
+
+def _path_rank_penalty(path: str | None) -> float:
+    if not path:
+        return -10.0
+    pl = str(path).replace("\\", "/").lower()
+    penalty = -5.0 if _is_weak(path) else 0.0
+    for marker in _WEAK_PATH_MARKERS:
+        if marker in pl:
+            penalty -= 8.0
+            break
+    for marker in _STRONG_PATH_MARKERS:
+        if pl.startswith(marker):
+            penalty += 3.0
+            break
+    return penalty
 
 
 def _query_tokens(q: str) -> set[str]:
@@ -151,13 +180,15 @@ def _search_hits(repo: Path, query: str, top_k: int = 10) -> list[dict[str, Any]
                 "start_line": h.get("start_line"),
                 "end_line": h.get("end_line"),
                 "score": h.get("score"),
-                "why": (h.get("why") or "")[:200],
+                "why": (h.get("why") or "").lstrip("\ufeff")[:200],
                 "query_match": _path_query_score(str(f or ""), tokens),
             }
         )
     hits.sort(
         key=lambda h: (
-            float(h.get("score") or 0.0) + 0.2 * float(h.get("query_match") or 0),
+            float(h.get("score") or 0.0)
+            + 0.2 * float(h.get("query_match") or 0)
+            + _path_rank_penalty(h.get("file")),
         ),
         reverse=True,
     )
@@ -168,7 +199,7 @@ def _coerce_excerpt_text(blob: Any, max_chars: int) -> str:
     if blob is None:
         return ""
     if isinstance(blob, str):
-        text = blob
+        text = blob.lstrip("\ufeff")
     elif isinstance(blob, dict):
         inner = blob.get("text") or blob.get("span") or blob.get("content") or blob.get("code")
         if isinstance(inner, dict):
@@ -176,7 +207,7 @@ def _coerce_excerpt_text(blob: Any, max_chars: int) -> str:
         text = inner if isinstance(inner, str) else ""
     else:
         text = str(blob)
-    text = text.strip()
+    text = text.lstrip("\ufeff").strip()
     if len(text) > max_chars:
         return text[:max_chars] + "\n…[truncated]"
     return text

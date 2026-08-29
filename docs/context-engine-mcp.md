@@ -21,7 +21,7 @@ Grep/Read/Glob *can't* do — see [Design rationale](#design-rationale).
                      │  stdio (JSON-RPC)
                      ▼
         pipeline.mcp_locate  (FastMCP server)
-          search · read · outline · status
+          phase: map · focus · grep · glob · workspace · expand · status
                      │  HTTP (CTX_ENGINE_URL)
                      ▼
         Engine daemon  (per-repo, warmed once)
@@ -61,12 +61,37 @@ retrieval environment for A/B trials:
 
 | `CTX_MCP_SURFACE` | Tools | Purpose |
 |---|---|---|
-| `rich` (default for prod) | `search`, `read`, `outline`, `status` | Value-add only |
+| **`phase` (managed default)** | `gate`, `map`, `focus`, `grep`, `glob`, `workspace`, `expand`, `status` | Token-efficient locate trajectory — map for meaning, focus to deepen, grep/glob for literals/paths |
+| `rich` (legacy prod) | `search`, `read`, `outline`, `status` | Value-add only |
 | `read` | `search`, `read`, `status` | Minimal locate+read |
 | `nav` | `search`, `files`, `read`, `recall`, `expand`, `status` | Sealed locate (soft+exact+files+session) |
 | `search` | `search`, `status` | Single semantic tool |
 | `graph` | `search`, `neighbors`, `graph`, `status` | Graph-tool A/B |
 | `grep` | `grep`, `status` | Exact-only (paired w/ external graph) |
+
+### Phase surface (`CTX_MCP_SURFACE=phase`)
+
+Production default for managed repos after `scubiee init`. Agents should use:
+
+| Tool | When |
+|---|---|
+| `map(query)` | Cold / new topic — ranked cards, no bodies |
+| `focus(target, mode=outline\|span\|neighbors)` | Deepen a map hit — symbols, code span, import neighbors |
+| `grep(pattern, glob=…)` | Exact literals only |
+| `glob(pattern=…)` | File paths by name (`glob=` alias accepted; prefer `pattern=`) |
+| `expand(handle)` | Re-materialize a stored span after dedup |
+| `workspace(show)` | Mid-session heatmap / reorientation |
+| `status()` | Health; check top-level `agent_ready`: `yes` \| `warming` \| `stale` |
+
+**Phase behaviors (2026-08):**
+
+- Duplicate `map(query)` returns **cached** cards (`cached: true`) without re-querying the daemon.
+- Nonsense/vague maps may return `confidence: low` with at most 3 cards and `weak_match: true`.
+- `glob(pattern="packages/*")` lists immediate child directories under `packages/`.
+- Transient daemon drops auto-retry once; errors include `should_retry: true`.
+- Managed `gate()` echoes `sid:…` when session isolation is shared across chats.
+
+Recommended flow: `map` → `focus(outline)` → `focus(span)` → edit → `grep` for literals.
 
 ---
 

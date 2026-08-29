@@ -591,9 +591,11 @@ def test_phase_surface_grep_glob_and_trajectory(monkeypatch, tmp_path):
     text = ml.SERVER_INSTRUCTIONS_PHASE
     assert ml._server_instructions("phase") == _gate_instruction_prefix("1:ce_test") + text
     assert "map(query)" in text
-    assert "tool bans are in the project GATE rule" in text
+    assert "GATE rule bans native" in text
     assert "OVERRIDE" in text
-    assert "NEVER grep first" in text
+    assert "Flexibility" in text or "user intent wins" in text
+    assert "No tool path bans" in text or "no file-type restrictions" in text.lower()
+    assert "expand(handle" in text
     assert "BAN native" not in text
     assert "you decide" not in text.lower()
     tools = set(ml.create_mcp()._tool_manager._tools)
@@ -604,6 +606,7 @@ def test_phase_surface_grep_glob_and_trajectory(monkeypatch, tmp_path):
         "grep",
         "glob",
         "workspace",
+        "expand",
         "status",
     }
 
@@ -809,9 +812,12 @@ def test_server_instructions_are_short_grep_like_cards(monkeypatch):
         if name == "phase":
             assert "OVERRIDE" in text
             assert "map(query)" in text
-            assert "NEVER grep first" in text
-            assert "map → focus → edit" in text
-            assert "tool bans are in the project GATE rule" in text
+            assert "Flexibility" in text or "user intent wins" in text
+            assert "No tool path bans" in text or "no file-type restrictions" in text.lower()
+            assert "GATE rule bans native" in text or "tool bans are in the project GATE rule" in text
+            assert "agent_ready" in text
+            assert "expand(handle" in text
+            assert "cached" in text
             continue
         if name == "search":
             assert "WHEN →" in text

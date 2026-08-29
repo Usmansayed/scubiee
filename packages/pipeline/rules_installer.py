@@ -650,12 +650,18 @@ def write_mcp_config(
 
 def _write_rule_mdc(path: Path, *, gate_line: str | None = None) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(_rule_content_mdc(gate_line=gate_line), encoding="utf-8")
+    content = _rule_content_mdc(gate_line=gate_line)
+    if path.is_file() and path.read_text(encoding="utf-8") == content:
+        return
+    path.write_text(content, encoding="utf-8")
 
 
 def _write_rule_md(path: Path, *, gate_line: str | None = None) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(_rule_content_md(gate_line=gate_line), encoding="utf-8")
+    content = _rule_content_md(gate_line=gate_line)
+    if path.is_file() and path.read_text(encoding="utf-8") == content:
+        return
+    path.write_text(content, encoding="utf-8")
 
 
 def _write_rule_append_md(path: Path, *, gate_line: str | None = None) -> None:
@@ -668,7 +674,10 @@ def _write_rule_append_md(path: Path, *, gate_line: str | None = None) -> None:
         existing += "\n"
     if existing and not existing.endswith("\n\n"):
         existing += "\n"
-    path.write_text(existing + section, encoding="utf-8")
+    new_text = existing + section
+    if path.is_file() and path.read_text(encoding="utf-8") == new_text:
+        return
+    path.write_text(new_text, encoding="utf-8")
 
 
 _RULE_WRITERS = {

@@ -1,6 +1,6 @@
 {
   "name": "scubiee",
-  "version": "0.3.1",
+  "version": "0.3.3",
   "description": "Scubiee — one-command install. Wraps the Python package and runs scubiee setup.",
   "license": "UNLICENSED",
   "bin": {

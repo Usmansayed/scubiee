@@ -27,6 +27,7 @@ PHASE_MANAGED_TOOLS = {
     "grep",
     "glob",
     "workspace",
+    "expand",
     "status",
 }
 

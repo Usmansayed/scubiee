@@ -188,56 +188,53 @@ Flow: search → (optional span|graph once) → native Read once → edit → te
 """
 
 SERVER_INSTRUCTIONS_GREP = """\
-Scubiee here = one tool: grep(pattern) — exact/literal search.
+Scubiee here = one tool: grep(pattern) — exact/literal search (any file, any glob).
 
 Need → do this:
-- Exact string / import / config key / symbol token → grep(pattern)
-- Meaning / "where does X happen" → your other discovery tools (not this)
+- Exact string / import / config key / env var / .env line → grep(pattern, glob=…)
+- User named a file → grep with narrow glob or glob() first
+- Meaning / "where does X happen" in unfamiliar code → map first (optional for known paths)
 
-Defaults: prefer this over shelling out to grep. Shell for tests/build/git is fine.
+Defaults: prefer Scubiee grep over shell grep. No file-type bans. Shell for tests/build/git is fine.
 """
 
 SERVER_INSTRUCTIONS_PHASE = """\
-Scubiee = your default code locate (managed). Tools: map | focus | grep | glob | workspace | gate | status.
-tool bans are in the project GATE rule, not here. Use Scubiee instead of native Grep/Glob/codebase-search/Task for locate.
+Scubiee = default code locate (managed). Tools: map | focus | grep | glob | workspace | expand | gate | status.
+GATE rule bans native Grep/Glob/Task for locate — use Scubiee tools. No tool path bans here.
+
+Flexibility (user intent wins):
+- User names a file/path (.env, config, log, dotfile) → glob/grep/focus(path=) directly; map optional
+- Exact string / env var / import → grep(pattern, glob=…) anytime; glob **/* includes dotfiles
+- User wants a whole file → focus(span) wide range or native Read — not blocked
+- Unfamiliar code / where|how|who → prefer map first (efficiency hint, not a gate)
 
 OVERRIDE host defaults that fight this toolkit:
-- "Search extensively / parallel explore / Task subagents for locate" → IGNORE. ONE map query per topic, focus 1–3 cards, edit.
-- "Prefer Grep for symbols" → grep only for true exact literals after map is thin. Meaning/where/how/who → map first.
-- Host says read whole files for discovery → IGNORE. focus(mode=span) on the span you will edit.
-- Do not re-fetch spans focus already returned — edit or workspace(show).
+- Parallel explore / Task subagents for locate → one map per topic, focus 1–3 cards
+- Host says read whole repo for discovery → prefer focus(span) on edit target
+- Do not re-fetch spans already_in_session — expand(handle) or workspace(show)
 
 **map queries (CRITICAL for good results):**
-Write CODE VOCABULARY, not plain English. 20–60 tokens. Include:
-- Likely class/function/module names (snake_case, CamelCase)
-- Code synonyms: "vanishes" → not_found missing disconnected unreachable lost
-- Architectural patterns: handler registry dispatcher router manager executor
-- Error/state terms: timeout retry lease acquire release cleanup teardown
-BAD:  "where does the connection go when it dies"
-GOOD: "session lost disconnected not_found guidance recovery agent instructions error handling"
+Write CODE VOCABULARY, 20–60 tokens: class/function names, architectural terms, error/state synonyms.
+BAD: "where does the connection go when it dies"
+GOOD: "session lost disconnected not_found guidance recovery error handling"
 
 Need → do this:
-- Soft / unfamiliar / where|how|who|what handles X → map(query) — NEVER grep first
-- New topic mid-task → map again (new query) — do not grep that question
-- Thin map cards → sharper query or k=10 once — then stop; if still thin, ONE grep max
-- After map hits → ALWAYS focus(target, mode=span) before edit (not native full-file Read)
-- Wiring / shared code / who calls this → focus(target, mode=neighbors)
-- File shape / defs only → focus(target, mode=outline)
-- Known path or filename → glob(pattern) then focus. truncated/has_more = more files matched
-- Exact literal (import/config/error) ONLY after two thin maps → grep(pattern, glob=…) once (≤2 greps/task)
-- Reorient mid-chat → workspace(show). Managed check (~5 tok) → gate()
-- Engine health → status() (never for finding code)
-- Pass session_id from each tool JSON on later calls. Parallel tasks: distinct session_id each.
+- Unfamiliar topic → map(query); new topic → map again with sharper query
+- Known path / user-named file → glob or focus(path=); skip map
+- After map → focus(outline) if needs_outline; then focus(path, start_line, end_line)
+- Symbol in file → focus(path, query=symbol) or outline line ranges
+- Wiring → focus(neighbors) or focus(mode=call_sites)
+- Repeat map → cached:true; confidence:low/weak_match → sharpen or grep
+- Reorient → workspace(show); gate() sid:; status() agent_ready + agent_ready_note
 
-Defaults (don't tune):
-- map = ranked cards only (indexed chunks). Empty/off-target cards ≠ "symbol absent from repo".
-- grep default glob **/* ; brace groups *.{ts,tsx,md}. truncated/has_more = cap hit, not absence.
-- focus before edit. Do not grep-thrash or re-read spans focus already gave.
-- Prefer another map/focus over grep. grep ≪ 10% of locate calls.
-- Task asks for tests + docs: add a **new** test file + docs note before you finish.
-- Shell for tests/build/git stays native.
+Defaults:
+- map = ranked cards (indexed chunks). Empty cards ≠ symbol absent from repo.
+- grep/glob: no file-type restrictions — .env, yaml, md, json all allowed
+- Avoid grep-thrash (same pattern loop); dedup via focus_seen / expand
+- neighbors = imports; call_sites/grep for literal refs
+- Shell for tests/build/git stays native
 
-Flow: map → focus → edit → test. Call Scubiee like Grep: need → tool → continue.
+Flow (code discovery): map → focus → edit. Flow (named file): glob/grep/focus → edit.
 """
 
 SERVER_INSTRUCTIONS_NAV = """\
@@ -278,6 +275,7 @@ def _is_repo_managed() -> bool:
     """
     try:
         repo = _default_repo()
+        bound = _REQUEST_REPO.get()
 
         # If the resolved repo is the user home or a system root, it's almost
         # certainly a wrong fallback from a global MCP launch — not managed.
@@ -289,7 +287,6 @@ def _is_repo_managed() -> bool:
         from pipeline.project_id import read_id_file, load_registry
 
         # If explicit request repo is bound (e.g. root=...) check if that explicit repo is enrolled
-        bound = _REQUEST_REPO.get()
         if bound is not None and not _is_enrolled(bound):
             return False
 
@@ -573,6 +570,7 @@ def _resolve_ctx_project_id() -> Path | None:
 
 
 _REQUEST_REPO: ContextVar[Path | None] = ContextVar("scubiee_request_repo", default=None)
+_LAST_MANAGED_REPO: Path | None = None
 
 _BIND_ROOT_DESC = (
     "This chat's workspace folder (Cursor Workspace Path). Walks up to "
@@ -613,6 +611,9 @@ def _bind_request_repo(
     from pipeline.session_isolation import bind_request_session, reset_request_session
 
     resolved = _resolve_request_repo(root=root, project_id=project_id)
+    global _LAST_MANAGED_REPO
+    if resolved is not None and _is_enrolled(resolved):
+        _LAST_MANAGED_REPO = resolved
     repo_token = _REQUEST_REPO.set(resolved) if resolved is not None else None
     sess_token = bind_request_session(session_id) if (session_id or "").strip() else None
     try:
@@ -764,6 +765,22 @@ def _default_repo() -> Path:
     if pin is not None and _path_exists(pin):
         return pin
 
+    global _LAST_MANAGED_REPO
+    if _LAST_MANAGED_REPO is not None and _is_enrolled(_LAST_MANAGED_REPO):
+        return _LAST_MANAGED_REPO
+
+    for item in _managed_candidates():
+        try:
+            candidate = Path(item["path"]).resolve()
+        except OSError:
+            continue
+        if _is_enrolled(candidate):
+            return candidate
+
+    if _is_home_or_volume_root(cwd) or not _is_enrolled(cwd):
+        if pin is not None and _path_exists(pin):
+            return pin
+
     return cwd
 
 
@@ -854,8 +871,36 @@ def _gate_line(*, just_checked: bool = False) -> str:
     return f"1:{pid}" if pid else "1"
 
 
+def _slim_status_keeper(keeper: dict[str, Any] | None, *, file_cap: int = 25) -> dict[str, Any] | None:
+    """Trim verbose keeper payloads for MCP status() responses."""
+    if not isinstance(keeper, dict):
+        return keeper
+    out = dict(keeper)
+    ls = out.get("last_sync")
+    if isinstance(ls, dict):
+        ls = dict(ls)
+        files = ls.get("files")
+        if isinstance(files, list) and len(files) > file_cap:
+            ls["files"] = files[:file_cap]
+            ls["files_truncated"] = len(files)
+        out["last_sync"] = ls
+    dirty = out.get("dirty")
+    if isinstance(dirty, dict):
+        dirty = dict(dirty)
+        paths = dirty.get("paths")
+        if isinstance(paths, dict) and len(paths) > 40:
+            items = list(paths.items())[:40]
+            dirty["paths"] = dict(items)
+            dirty["paths_truncated"] = len(paths)
+        out["dirty"] = dirty
+    return out
+
+
 def _err(tool: str, error: str, *, hint: str = "", **extra: Any) -> str:
     payload: dict[str, Any] = {"ok": False, "tool": tool, "error": error, **extra}
+    if _is_transient_engine_error(error):
+        payload.setdefault("should_retry", True)
+        hint = hint or "Transient engine drop — retry the same call once immediately."
     # Surface managed/retry signals on errors so agents can re-check after init.
     for key, value in _managed_signal_fields().items():
         payload.setdefault(key, value)
@@ -928,6 +973,9 @@ def _backend_error(
         hint = f"Scubiee is still {status}; retry after status() reports ready."
 
     extra: dict[str, Any] = {"repo": str(repo)}
+    if _is_transient_engine_error(error):
+        extra["should_retry"] = True
+        hint = hint or "Transient engine drop — retry the same call once immediately."
     for key in (
         "status",
         "state",
@@ -947,6 +995,75 @@ def _backend_error(
 
 def _norm_query(query: str) -> str:
     return " ".join((query or "").lower().split())
+
+
+_MAP_STOPWORDS = frozenset({
+    "the", "a", "an", "where", "how", "what", "when", "is", "are", "in", "for", "to", "of", "and", "or",
+})
+
+# Live map scores from Conductor RRF land ~1–35; gibberish tops out ~2–3.
+_MAP_SCORE_LOW = 5.0
+_MAP_SCORE_MEDIUM = 8.0
+
+
+def _strip_bom_text(text: str) -> str:
+    return (text or "").lstrip("\ufeff")
+
+
+def _is_transient_engine_error(error: str) -> bool:
+    from pipeline.client import is_transient_engine_error
+
+    return is_transient_engine_error(error)
+
+
+def _assess_map_confidence(query: str, cards: list[dict[str, Any]]) -> dict[str, Any]:
+    if not cards:
+        return {"confidence": "none", "max_score": 0.0}
+    scores = [float(c.get("score") or 0.0) for c in cards]
+    max_score = max(scores) if scores else 0.0
+    tokens = [
+        t for t in _norm_query(query).split()
+        if len(t) > 3 and t not in _MAP_STOPWORDS
+    ]
+    top_paths = " ".join(str(c.get("file") or "") for c in cards[:5]).lower()
+    token_hits = sum(1 for t in tokens if t in top_paths)
+    if max_score < _MAP_SCORE_LOW or (
+        len(tokens) >= 3 and token_hits == 0 and max_score < _MAP_SCORE_MEDIUM
+    ):
+        return {"confidence": "low", "max_score": round(max_score, 4), "weak_match": True}
+    if max_score < _MAP_SCORE_MEDIUM:
+        return {"confidence": "medium", "max_score": round(max_score, 4)}
+    return {"confidence": "high", "max_score": round(max_score, 4)}
+
+
+def _map_cache_get(store: dict[str, Any], qn: str, k: int) -> list[dict[str, Any]] | None:
+    entry = (store.get("map_cache") or {}).get(qn)
+    if not isinstance(entry, dict):
+        return None
+    if int(entry.get("k") or 0) != int(k):
+        return None
+    cards = entry.get("cards")
+    return cards if isinstance(cards, list) and cards else None
+
+
+def _map_cache_put(
+    repo: Path,
+    qn: str,
+    k: int,
+    cards: list[dict[str, Any]],
+    *,
+    session_id: str | None = None,
+) -> None:
+    from pipeline.session_store import load_store, save_store
+
+    store = load_store(repo, session_id=session_id)
+    cache = store.setdefault("map_cache", {})
+    cache[qn] = {"k": k, "cards": cards, "ts": time.time()}
+    if len(cache) > 40:
+        oldest = sorted(cache.items(), key=lambda kv: float((kv[1] or {}).get("ts") or 0))[: len(cache) - 40]
+        for key, _ in oldest:
+            cache.pop(key, None)
+    save_store(repo, store, session_id=session_id)
 
 
 def _record_locate_query(
@@ -1041,7 +1158,9 @@ def _slim_spans(spans: list[dict[str, Any]], *, keep: int, body_chars: int) -> l
                 "start_line": s.get("start_line"),
                 "end_line": s.get("end_line"),
                 "why": (s.get("why") or s.get("label") or "")[:120],
-                "code": (s.get("text") or s.get("excerpt") or "")[:body_chars],
+                "code": _strip_bom_text(
+                    (s.get("text") or s.get("excerpt") or s.get("code") or "")[:body_chars]
+                ),
             }
         )
     return out
@@ -1061,9 +1180,22 @@ def _slim_grep(hits: Any, *, keep: int) -> list[dict[str, Any]]:
     return out
 
 
-def _slim_outline(symbols: Any, *, keep: int) -> list[dict[str, Any]]:
+_OUTLINE_KEEP_DEFAULT = 60
+_AUTO_SPAN_MAX_LINES = 200
+
+
+def _slim_outline(
+    symbols: Any,
+    *,
+    keep: int = _OUTLINE_KEEP_DEFAULT,
+    offset: int = 0,
+) -> tuple[list[dict[str, Any]], int, bool]:
+    raw = symbols if isinstance(symbols, list) else []
+    total = len(raw)
+    start = max(0, int(offset or 0))
+    window = raw[start : start + keep]
     out: list[dict[str, Any]] = []
-    for s in (symbols if isinstance(symbols, list) else [])[:keep]:
+    for s in window:
         if isinstance(s, dict):
             out.append(
                 {
@@ -1075,7 +1207,8 @@ def _slim_outline(symbols: Any, *, keep: int) -> list[dict[str, Any]]:
             )
         else:
             out.append({"name": str(s)})
-    return out
+    capped = start + len(window) < total
+    return out, total, capped
 
 
 # Dirs we never descend into when finding files — heavy, generated, or vendored.
@@ -1083,24 +1216,218 @@ _FILES_IGNORE_DIRS = {
     ".git", ".venv", ".venv-proof", "__pycache__", "node_modules", "out",
     "graphify-out", ".scubiee", ".pytest_cache", ".mypy_cache",
     ".ruff_cache", "dist", "build", ".cursor", "research", "testdata",
+    ".worktrees",
 }
+
+
+def _is_ignored_repo_dir(name: str) -> bool:
+    if name in _FILES_IGNORE_DIRS or name.startswith("."):
+        return True
+    return name.startswith("scubiee-0.")
+
+
+def _explicit_dot_dirs_in_pattern(pattern: str) -> set[str]:
+    """Dot-directory names explicitly named in a glob (e.g. ``.scubiee/**``)."""
+    out: set[str] = set()
+    for part in (pattern or "").replace("\\", "/").split("/"):
+        if part.startswith(".") and part not in {".", ".."}:
+            head = part.split("*", 1)[0].split("{", 1)[0].split("[", 1)[0]
+            if head:
+                out.add(head)
+    return out
+
+
+def _should_skip_walk_dir(name: str, pattern: str) -> bool:
+    if name in _explicit_dot_dirs_in_pattern(pattern):
+        return False
+    return _is_ignored_repo_dir(name)
+
+
+def _parse_call_sites_symbol(
+    *, query: str, target: str, path: str
+) -> tuple[str, str]:
+    """Return ``(ident, optional_scope_path)`` from focus call_sites args."""
+    sym_src = (query or "").strip()
+    scope = (path or "").replace("\\", "/").strip()
+    tgt = (target or "").strip()
+    if not sym_src and tgt:
+        if ":" in tgt:
+            head, _, tail = tgt.rpartition(":")
+            if tail and not tail.isdigit():
+                sym_src = tail
+                head_n = head.replace("\\", "/")
+                if not scope and ("/" in head_n or head_n.endswith(".py")):
+                    scope = head_n
+            else:
+                sym_src = tgt
+        else:
+            sym_src = tgt
+    ident = _normalize_symbol_query(sym_src or scope)
+    if ident and "." in ident and not ident.endswith(".py"):
+        ident = ident.split(".")[-1]
+    return ident, scope
+
+
+def _call_sites_for_ident(
+    repo: Path,
+    ident: str,
+    *,
+    keep: int = 4,
+    body_chars: int = 400,
+    scope_path: str = "",
+) -> list[dict[str, Any]]:
+    """Find Python call sites for ``ident`` (not definitions)."""
+    import re
+
+    from pipeline.capability import grep_scan
+
+    if not ident:
+        return []
+    glob_pat = "**/*.py"
+    scope_n = (scope_path or "").replace("\\", "/").strip()
+    if scope_n:
+        glob_pat = scope_n if scope_n.endswith(".py") else f"{scope_n.rstrip('/')}/**/*.py"
+    pattern = rf"\b{re.escape(ident)}\s*\("
+    def_re = re.compile(rf"^\s*(async\s+def|def|class)\s+{re.escape(ident)}\b")
+    report = grep_scan(repo, pattern, glob=glob_pat, max_hits=max(keep * 6, 24))
+    sites: list[dict[str, Any]] = []
+    seen: set[tuple[str, int]] = set()
+    for h in report.get("hits") or []:
+        rel = str(h.get("file") or h.get("path") or "").replace("\\", "/")
+        line = int(h.get("line") or 0)
+        text = str(h.get("text") or "")
+        if not rel or not line or def_re.search(text):
+            continue
+        key = (rel, line)
+        if key in seen:
+            continue
+        seen.add(key)
+        block = _read_line_range(repo, rel, max(1, line - 2), line + 8, body_chars)
+        sites.append(
+            {
+                "file": rel,
+                "start_line": block.get("start_line") or line,
+                "end_line": block.get("end_line") or line,
+                "why": "call",
+                "code": block.get("excerpt") or text,
+                "line": line,
+            }
+        )
+        if len(sites) >= keep:
+            break
+    return sites
+
+
+def _normalize_symbol_query(q: str) -> str:
+    t = (q or "").strip()
+    for prefix in ("async def ", "def ", "class "):
+        if t.lower().startswith(prefix):
+            t = t[len(prefix) :].strip()
+    return t.split("(")[0].strip()
+
+
+def _looks_like_symbol_query(q: str) -> bool:
+    """True when query is a single identifier (def/class name), not a phrase."""
+    import re
+
+    t = _normalize_symbol_query(q)
+    if not t or " " in t:
+        return False
+    return bool(re.match(r"^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$", t))
+
+
+def _outline_symbols(repo: Path, path_n: str) -> list[dict[str, Any]]:
+    from pipeline.capability import file_outline
+
+    return file_outline(repo, path_n.replace("\\", "/"))
+
+
+def _resolve_symbol_lines(repo: Path, path_n: str, symbol_query: str) -> tuple[int, int] | None:
+    """Match outline symbol to line range (Class.method, def name, etc.)."""
+    q = _normalize_symbol_query(symbol_query)
+    if not q:
+        return None
+    symbols = _outline_symbols(repo, path_n)
+    if not symbols:
+        return None
+    q_l = q.lower()
+    q_tail = q_l.split(".")[-1]
+    candidates: list[tuple[int, int, int, str]] = []
+    for s in symbols:
+        sym = str(s.get("symbol") or s.get("name") or "")
+        kind = str(s.get("kind") or "")
+        line = int(s.get("line") or s.get("start_line") or 0)
+        end = int(s.get("end_line") or line)
+        if not line:
+            continue
+        sym_l = sym.lower()
+        score = 0
+        if sym_l == q_l:
+            score = 20
+        elif sym_l.endswith("." + q_tail) or sym_l == q_tail:
+            score = 15 if kind in {"method", "function"} else 10
+        if score:
+            if kind in {"method", "function"}:
+                score += 2
+            candidates.append((score, line, end, sym))
+    if not candidates:
+        return None
+    candidates.sort(key=lambda x: -x[0])
+    _, line, end, _ = candidates[0]
+    return line, end
+
+
+def _resolve_auto_end_line(repo: Path, path_n: str, start_line: int, file_lines: int) -> int:
+    """When end_line omitted: symbol body or capped window (not +40 only)."""
+    symbols = _outline_symbols(repo, path_n)
+    s = max(1, int(start_line))
+    for sym in symbols:
+        line = int(sym.get("line") or sym.get("start_line") or 0)
+        end = int(sym.get("end_line") or line)
+        if line <= s <= end:
+            return min(end, s + _AUTO_SPAN_MAX_LINES - 1, file_lines)
+    for sym in symbols:
+        line = int(sym.get("line") or sym.get("start_line") or 0)
+        if line > s:
+            return min(line - 1, s + _AUTO_SPAN_MAX_LINES - 1, file_lines)
+    return min(s + _AUTO_SPAN_MAX_LINES - 1, file_lines)
 
 
 def _read_line_range(repo: Path, path: str, start: int, end: int, max_chars: int) -> dict[str, Any]:
     """Read an exact line range straight from the file (no index needed)."""
-    fp = (repo / path)
+    from pipeline.capability import truncation_meta
+
+    fp = repo / path
     if not fp.is_file():
-        return {"excerpt": "", "start_line": start, "end_line": end, "error": "file not found", "truncated": False}
-    lines = fp.read_text(encoding="utf-8", errors="replace").splitlines()
+        return {
+            "excerpt": "",
+            "start_line": start,
+            "end_line": end,
+            "error": f"file not found: {path}",
+            "truncated": False,
+            "ok": False,
+        }
+    lines = fp.read_text(encoding="utf-8-sig", errors="replace").splitlines()
     n = len(lines)
     s = max(1, int(start or 1))
-    e = int(end) if end and int(end) >= s else min(n, s + 40)
+    if end and int(end) >= s:
+        e = min(int(end), n)
+    else:
+        e = _resolve_auto_end_line(repo, path, s, n)
     e = min(max(e, s), n)
-    text = "\n".join(lines[s - 1:e])
-    truncated = len(text) > max_chars
-    if truncated:
-        text = text[:max_chars]
-    return {"excerpt": text, "start_line": s, "end_line": e, "truncated": truncated}
+    full_text = _strip_bom_text("\n".join(lines[s - 1 : e]))
+    truncated = len(full_text) > max_chars
+    text = full_text[:max_chars] if truncated else full_text
+    meta = truncation_meta(
+        full_text,
+        start_line=s,
+        end_line=e,
+        lines_total=n,
+        max_chars=max_chars,
+        path=path.replace("\\", "/"),
+    )
+    out = {"excerpt": text, "start_line": s, "end_line": e, "ok": True, **meta}
+    return out
 
 
 def _orient_repo(repo: Path, limit: int = 40) -> dict[str, Any]:
@@ -1140,16 +1467,42 @@ def _find_repo_files(repo: Path, pattern: str, limit: int) -> tuple[list[str], b
     path_like = "/" in patt
     cap = max(1, int(limit or 200))
 
+    if not has_magic:
+        candidate = repo / patt
+        if candidate.is_file():
+            return [candidate.relative_to(repo).as_posix()], False
+
     if not has_magic and path_like:
         candidate = repo / patt
         if candidate.is_file():
             return [patt.lstrip("./")], False
 
+    # Directory listing: packages/* → immediate children (dirs + files)
+    if has_magic and patt.endswith("/*") and "**" not in patt and "?" not in patt and "{" not in patt:
+        parent = patt[:-2].rstrip("/")
+        parent_path = repo / parent if parent else repo
+        if parent_path.is_dir():
+            entries: list[str] = []
+            try:
+                for child in sorted(parent_path.iterdir(), key=lambda p: p.name.lower()):
+                    name = child.name
+                    if _should_skip_walk_dir(name, patt):
+                        continue
+                    rel = f"{parent}/{name}" if parent else name
+                    if child.is_dir():
+                        entries.append(rel + "/")
+                    elif child.is_file():
+                        entries.append(rel)
+            except OSError:
+                entries = []
+            truncated = len(entries) > cap
+            return entries[:cap], truncated
+
     matched: list[str] = []
     for root, dirs, files in _os.walk(repo):
         dirs[:] = [
             d for d in dirs
-            if d not in _FILES_IGNORE_DIRS
+            if not _should_skip_walk_dir(d, patt)
             and not d.startswith(".sim-ce-home")
             and not d.endswith(".egg-info")
         ]
@@ -1188,6 +1541,11 @@ def _resolve_to_file(repo: Path, target: str) -> str:
 def _resolve_span_in_path(repo: Path, path_n: str, query: str) -> tuple[int, int]:
     if not query:
         return 0, 0
+    sym = _resolve_symbol_lines(repo, path_n, query)
+    if sym:
+        return sym
+    if _looks_like_symbol_query(query):
+        return 0, 0
     try:
         from pipeline.locate import _search_hits
 
@@ -1202,6 +1560,52 @@ def _resolve_span_in_path(repo: Path, path_n: str, query: str) -> tuple[int, int
     return 0, 0
 
 
+def _facade_hint_for_card(card: dict[str, Any]) -> dict[str, Any] | None:
+    """Lightweight facade detection for thin map cards."""
+    f = str(card.get("file") or "")
+    s = int(card.get("start_line") or 0)
+    e = int(card.get("end_line") or 0)
+    span = max(0, e - s + 1) if s and e else 0
+    if span > 15:
+        return None
+    fl = f.replace("\\", "/").lower()
+    if "extract.py" in fl or fl.endswith("/extract.py"):
+        return {
+            "facade_hint": True,
+            "follow_up": "grep def _extract_generic or map extractors/engine implementation",
+        }
+    why = str(card.get("why") or "").lower()
+    if span <= 15 and ("wrapper" in why or "facade" in why or "re-export" in why):
+        return {
+            "facade_hint": True,
+            "follow_up": "grep the symbol or map for implementation under extractors/",
+        }
+    return None
+
+
+def _enrich_map_cards(cards: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for c in cards or []:
+        item = dict(c)
+        if item.get("why"):
+            item["why"] = _strip_bom_text(str(item["why"]))
+        s = int(item.get("start_line") or 0)
+        e = int(item.get("end_line") or 0)
+        if not s or not e:
+            item["needs_outline"] = True
+        if s and e and (e - s + 1) > 200:
+            item["span_hint"] = "large chunk — use focus(outline) then line ranges"
+            item["display_end_line"] = min(e, s + 120)
+        hint = _facade_hint_for_card(item)
+        if hint:
+            item.update(hint)
+        score = float(item.get("score") or 0.0)
+        if score and score < _MAP_SCORE_LOW:
+            item["weak_match"] = True
+        out.append(item)
+    return out
+
+
 def _client_for(repo: Path):
     from pipeline.client import EngineClient
     from pipeline.daemon import ensure_daemon
@@ -1214,6 +1618,32 @@ def _client_for(repo: Path):
         client=mcp_client_name(),
         session_id=sid,
     )
+    # Admission must succeed before operational endpoints (/v1/grep, /v1/search).
+    # ensure_daemon open_repo is best-effort; retry explicitly so MCP reload races
+    # do not surface requires_initialize to agents.
+    try:
+        opened = client.open_repo(str(repo), wait=True)
+        if str(opened.get("status") or "") != "activated":
+            from pipeline.repo_lifecycle import _entry_managed, _project
+
+            pid, entry = _project(repo)
+            if pid and _entry_managed(entry):
+                from pipeline.daemon import force_restart_daemon
+
+                force_restart_daemon(repo)
+                import time
+
+                time.sleep(1.0)
+                client = EngineClient(
+                    workspace_path=str(repo),
+                    client=mcp_client_name(),
+                    session_id=sid,
+                )
+                client.open_repo(str(repo), wait=True)
+            else:
+                client.open_repo(str(repo), wait=True)
+    except Exception:  # noqa: BLE001
+        pass
     # Locate availability must not depend on the optional live reindex daemon.
     # This is deliberately best-effort: the next query still gets the normal
     # unreachable response if the daemon could not be started.
@@ -1316,15 +1746,17 @@ class MapArgs(BaseModel):
 class FocusArgs(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
     target: str = Field("", max_length=512, description="File path, path:line, or symbol/phrase.")
-    mode: Literal["outline", "span", "neighbors"] = Field(
-        "span", description="outline=structure; span=body; neighbors=callers/callees."
+    mode: Literal["outline", "span", "neighbors", "call_sites"] = Field(
+        "span",
+        description="outline=structure; span=body; neighbors=imports; call_sites=literal refs.",
     )
     path: str = Field("", max_length=512, description="Explicit repo-relative file.")
     query: str = Field("", max_length=2000, description="Help pick span inside path.")
     start_line: int = Field(0, ge=0, le=1_000_000)
     end_line: int = Field(0, ge=0, le=1_000_000)
-    max_chars: int = Field(2000, ge=200, le=12000)
+    max_chars: int = Field(6000, ge=200, le=12000)
     max_neighbors: int = Field(4, ge=1, le=10)
+    outline_offset: int = Field(0, ge=0, le=10_000, description="Paginate outline symbols.")
     response_format: Literal["json", "markdown"] = Field("json", description="json|markdown")
 
 
@@ -1715,13 +2147,20 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             )
             if backend_error:
                 return backend_error
-            symbols = _slim_outline(res.get("symbols") or res.get("outline"), keep=60)
+            symbols, symbols_total, symbols_capped = _slim_outline(
+                res.get("symbols") or res.get("outline"), keep=_OUTLINE_KEEP_DEFAULT,
+            )
             out = {
                 "ok": True, "tool": "read", "detail": "outline", "mode": "outline",
                 "path": res.get("path") or path_o, "count": len(symbols),
                 "symbols": symbols, "code": "",
+                "symbols_total": symbols_total,
+                "symbols_shown": len(symbols),
+                "symbols_capped": symbols_capped,
                 "next": "read(path, query='<symbol>') to open one body; detail=neighbors for wiring.",
             }
+            if symbols_capped:
+                out["next"] = f"focus(outline, outline_offset={len(symbols)}) for more symbols"
             return _format(out, args.response_format)
 
         if args.handle:
@@ -1757,13 +2196,29 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         start_l, end_l = 0, 0
         if path_s:
             if args.start_line:
-                # Exact known range — read it straight, no search needed.
                 start_l = int(args.start_line)
                 end_l = int(args.end_line or 0)
+                if not end_l and (q or target_s):
+                    sym_rng = _resolve_symbol_lines(repo, path_s, q or target_s)
+                    if sym_rng:
+                        start_l, end_l = sym_rng
                 resolved_from = "lines"
             else:
-                start_l, end_l = _resolve_span_in_path(repo, path_s, q or target_s)
-                resolved_from = "path"
+                sym_q = q or target_s
+                sym_rng = _resolve_symbol_lines(repo, path_s, sym_q)
+                if sym_rng:
+                    start_l, end_l = sym_rng
+                    resolved_from = "symbol"
+                elif _looks_like_symbol_query(sym_q):
+                    return _err(
+                        "read",
+                        f"symbol {_normalize_symbol_query(sym_q)!r} not found in {path_s!r}",
+                        file=path_s,
+                        hint="focus(mode=outline) for symbols in this file; grep repo-wide.",
+                    )
+                else:
+                    start_l, end_l = _resolve_span_in_path(repo, path_s, sym_q)
+                    resolved_from = "path"
             file_s = path_s
         else:
             tq = target_s or q
@@ -1799,13 +2254,15 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 ex = _read_excerpt(repo, file_s, start_l, end_l, max_chars=args.max_chars)
         except Exception as exc:  # noqa: BLE001
             return _err("read", str(exc), file=file_s)
+        if ex.get("error") and ex.get("ok") is False:
+            return _err("read", str(ex.get("error")), file=file_s, hint="Check path spelling.")
         backend_error = _backend_error(
             "read", repo, ex, hint="Ensure the engine is warm and the file exists.",
             require_ok=False,
         )
         if backend_error:
             return backend_error
-        code = ex.get("excerpt") or ex.get("text") or ""
+        code = _strip_bom_text(ex.get("excerpt") or ex.get("text") or "")
         if not str(code).strip():
             return _err(
                 "read", f"no readable span found for {file_s!r}",
@@ -1835,18 +2292,28 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             "status": status_s, "unchanged": unchanged,
             "code": "" if unchanged else code,
             "truncated": bool(ex.get("truncated")),
+            "session_id": sid,
         }
+        for key in ("lines_total", "lines_returned", "next_start_line", "chars_returned"):
+            if ex.get(key) is not None:
+                out[key] = ex[key]
         if unchanged:
             out["usage_hint"] = (
-                "Advisory: unchanged/already_in_session. Edit now, or recall()/expand(handle) — "
-                "only read again if you need a different span."
+                "Advisory: unchanged/already_in_session. Edit now, or expand(handle) "
+                "to re-materialize the body."
             )
-            out["next"] = "edit | recall() | expand(handle)"
+            out["next"] = f"edit | expand(handle={handle_s!r})" if handle_s else "edit | workspace(show)"
+        elif ex.get("truncated"):
+            out["next"] = ex.get("next") or (
+                f"focus(path={file_s!r}, start_line={ex.get('next_start_line')}, "
+                f"end_line={end_l}, max_chars=12000)"
+            )
         if alternatives:
             out["alternatives"] = alternatives
 
         if args.neighbors and file_s:
             keep_n = max(1, min(int(args.max_neighbors or 4), 10))
+            out["neighbors_mode"] = "import_adjacency"
             try:
                 gn = _client_for(repo).graph_neighbors(
                     [file_s], query=target_s or q or "", keep=keep_n,
@@ -1858,11 +2325,14 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 if backend_error:
                     return backend_error
                 nbrs = _slim_spans(gn.get("spans") or [], keep=keep_n, body_chars=400)
+                for n in nbrs:
+                    if isinstance(n.get("text"), str):
+                        n["text"] = _strip_bom_text(n["text"])
                 if nbrs:
                     out["neighbors"] = nbrs
                     out["neighbors_count"] = len(nbrs)
                 else:
-                    out["neighbors_note"] = "no 1-hop neighbors resolved for this span"
+                    out["neighbors_note"] = "no import-adjacent files resolved for this span"
             except Exception as exc:  # noqa: BLE001
                 backend_error = _backend_error(
                     "read", repo, getattr(exc, "response", None),
@@ -1872,11 +2342,22 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     return backend_error
                 out["neighbors_note"] = "neighbors unavailable (graph not warm)"
                 out["neighbors_error"] = str(exc)
+            ident = _normalize_symbol_query(q or target_s)
+            if ident and "." in ident:
+                ident = ident.split(".")[-1]
+            if ident and len(ident) >= 2:
+                try:
+                    cs = _call_sites_for_ident(repo, ident, keep=4, body_chars=400)
+                    if cs:
+                        out["call_sites"] = _slim_spans(cs, keep=4, body_chars=400)
+                except Exception:  # noqa: BLE001
+                    pass
 
-        out["next"] = (
-            "Edit now. About to change a shared symbol? read(neighbors=true) for "
-            "its callers/callees; read(handle=…) to re-open."
-        )
+        if not unchanged and not ex.get("truncated"):
+            out["next"] = (
+                "Edit now. Wiring: focus(mode=neighbors). "
+                "Re-open: expand(handle=…) if needed."
+            )
         return _format(out, args.response_format)
 
     # ---- expand (rich) -----------------------------------------------------
@@ -1977,12 +2458,19 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         )
         if backend_error:
             return backend_error
-        symbols = _slim_outline(res.get("symbols") or res.get("outline"), keep=args.keep)
+        symbols, symbols_total, symbols_capped = _slim_outline(
+            res.get("symbols") or res.get("outline"), keep=args.keep,
+        )
         out = {
             "ok": True, "tool": "outline", "path": res.get("path") or args.path,
             "count": len(symbols), "symbols": symbols,
-            "next": "read(path, query='<symbol>', neighbors=true) to open one with callers/callees.",
+            "symbols_total": symbols_total,
+            "symbols_shown": len(symbols),
+            "symbols_capped": symbols_capped,
+            "next": "read(path, query='<symbol>', neighbors=true) to open one with import-adjacent files.",
         }
+        if symbols_capped:
+            out["next"] = f"outline(path, keep={args.keep}) — more symbols exist ({symbols_total} total)"
         return _format(out, args.response_format)
 
     # ---- neighbors (graph, rich) ------------------------------------------
@@ -2131,10 +2619,17 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             Field(
                 description=(
                     "Filename or path glob — e.g. 'packages/pipeline/mcp_locate.py', "
-                    "'**/*.md', '*.{ts,tsx}'. Use '.' for shallow repo shape."
+                    "'**/*.md', 'packages/*'. Use '.' for shallow repo shape. "
+                    "Do NOT use glob= — this param is pattern=."
                 ),
             ),
         ] = "**/*",
+        glob: Annotated[
+            str,
+            Field(
+                description="Alias for pattern (some agents pass glob= by mistake).",
+            ),
+        ] = "",
         limit: Annotated[int, Field(description="Max file paths to return.")] = 200,
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
         root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
@@ -2142,8 +2637,16 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         session_id: Annotated[str, Field(description=_BIND_SESSION_DESC)] = "",
     ) -> str:
         """Find files by name or glob."""
+        glob_alias = (glob or "").strip()
+        effective = (pattern or "").strip()
+        if effective in {"", "**/*"} and glob_alias:
+            effective = glob_alias
+        elif glob_alias and effective != glob_alias and effective not in {".", "./"}:
+            effective = glob_alias
+        if not effective:
+            effective = "**/*"
         raw = files_impl(
-            pattern=pattern, limit=limit, response_format=response_format,
+            pattern=effective, limit=limit, response_format=response_format,
             root=root, project_id=project_id, session_id=session_id,
         )
         try:
@@ -2152,7 +2655,10 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             return raw
         card["tool"] = "glob"
         if card.get("ok"):
-            if (pattern or "").strip() in {".", "./"}:
+            card["pattern"] = effective
+            if glob_alias and (pattern or "").strip() in {"", "**/*"}:
+                card["pattern_source"] = "glob_alias"
+            if (effective or "").strip() in {".", "./"}:
                 card["next"] = (
                     "Repo shape only — next: glob('known/path.py') or map(query) for meaning."
                 )
@@ -2238,7 +2744,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         out = {
             "ok": True, "tool": "expand", "handle": handle,
             "file": card.get("path"), "start_line": card.get("start_line"),
-            "end_line": card.get("end_line"), "text": card.get("text") or "",
+            "end_line": card.get("end_line"), "text": _strip_bom_text(card.get("text") or ""),
             "chars": card.get("chars"), "truncated": card.get("truncated"),
             "next": "Edit now. recall() for other handles.",
         }
@@ -2265,6 +2771,43 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         if not _is_repo_managed():
             return _err("map", f"Repository at {repo} is not managed by Scubiee. Run `scubiee init .` first.")
 
+        from pipeline.session_store import load_store
+
+        qn = _norm_query(args.query)
+        store = load_store(repo, session_id=sid)
+        thrash = store.get("locate_thrash") or {}
+        duplicate = qn in (thrash.get("seen") or [])
+        cached_cards = _map_cache_get(store, qn, args.k) if duplicate else None
+        if duplicate and cached_cards:
+            cards = _enrich_map_cards(cached_cards)
+            conf = _assess_map_confidence(args.query, cards)
+            if conf.get("confidence") == "low":
+                cards = cards[:3]
+                for c in cards:
+                    c["weak_match"] = True
+            out = {
+                "ok": True,
+                "tool": "map",
+                "query": args.query,
+                "k": args.k,
+                "cards": cards,
+                "count": len(cards),
+                "scope": "indexed_chunks",
+                "ranked_only": True,
+                "cached": True,
+                "session_id": sid,
+                **conf,
+                "usage_hint": (
+                    "Advisory: this map query already ran — returning cached cards. "
+                    "Prefer focus() on prior hits or workspace(show)."
+                ),
+                "next": (
+                    "Recommended: pick 1–3 cards → focus(target, mode=outline|span|neighbors). "
+                    "map is not exhaustive; missing here does not mean the symbol is absent."
+                ),
+            }
+            return _format(out, args.response_format)
+
         # Reuse search path (hits only); duplicate queries get advisory usage_hint only
         raw = search_impl(
             query=args.query,
@@ -2284,17 +2827,35 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             return raw
         if not card.get("ok"):
             card["tool"] = "map"
+            if card.get("error") and _is_transient_engine_error(str(card.get("error"))):
+                card["should_retry"] = True
             return _format(card, args.response_format)
         card["tool"] = "map"
         card.pop("include", None)
-        card["cards"] = card.pop("results", [])
+        raw_cards = card.pop("results", [])
+        card["cards"] = _enrich_map_cards(raw_cards)
+        conf = _assess_map_confidence(args.query, card["cards"])
+        card.update(conf)
+        if conf.get("confidence") == "low":
+            card["cards"] = card["cards"][:3]
+            for c in card["cards"]:
+                c["weak_match"] = True
+            card["usage_hint"] = (
+                (card.get("usage_hint") or "")
+                + " Low-confidence map — results may be noise; sharpen query or use grep for literals."
+            ).strip()
         card["count"] = len(card.get("cards") or [])
         card["scope"] = "indexed_chunks"
         card["ranked_only"] = True
+        card["session_id"] = sid
         card["next"] = (
             "Recommended: pick 1–3 cards → focus(target, mode=outline|span|neighbors). "
             "map is not exhaustive; missing here does not mean the symbol is absent."
         )
+        try:
+            _map_cache_put(repo, qn, args.k, list(card["cards"]), session_id=sid)
+        except Exception:  # noqa: BLE001
+            pass
         try:
             from pipeline.work_session import touch
 
@@ -2311,14 +2872,15 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
     def focus_impl(
         target: Annotated[str, Field(description="File path, path:line, or symbol from a map card.")] = "",
         mode: Annotated[
-            str, Field(description="outline | span | neighbors")
+            str, Field(description="outline | span | neighbors | call_sites")
         ] = "span",
         path: Annotated[str, Field(description="Explicit repo-relative file.")] = "",
         query: Annotated[str, Field(description="Help pick span inside path.")] = "",
         start_line: Annotated[int, Field(description="Optional start line with path=.")] = 0,
         end_line: Annotated[int, Field(description="Optional end line with path=.")] = 0,
-        max_chars: Annotated[int, Field(description="Body budget for span.")] = 2000,
+        max_chars: Annotated[int, Field(description="Body budget for span.")] = 6000,
         max_neighbors: Annotated[int, Field(description="Cap neighbors spans.")] = 4,
+        outline_offset: Annotated[int, Field(description="Paginate outline symbols.")] = 0,
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
         root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
         project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
@@ -2330,10 +2892,11 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 target=target, mode=mode, path=path, query=query,  # type: ignore[arg-type]
                 start_line=start_line, end_line=end_line,
                 max_chars=max_chars, max_neighbors=max_neighbors,
+                outline_offset=outline_offset,
                 response_format=response_format,  # type: ignore[arg-type]
             )
         except ValidationError as exc:
-            return _err("focus", str(exc), hint="Pass target= or path=; mode=outline|span|neighbors.")
+            return _err("focus", str(exc), hint="Pass target= or path=; mode=outline|span|neighbors|call_sites.")
         sid = _resolve_session(session_id)
         with _bind_request_repo(root=root, project_id=project_id, session_id=session_id):
             repo = _default_repo()
@@ -2352,10 +2915,97 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                         args.start_line = int(tail)
             path_s = path_s or target_s.replace("\\", "/")
 
+        if args.mode == "call_sites":
+            ident, scope_path = _parse_call_sites_symbol(
+                query=args.query or "", target=target_s, path=path_s
+            )
+            if not ident or len(ident) < 2:
+                return _err(
+                    "focus",
+                    "call_sites needs a symbol name in query= or target=",
+                    hint="focus(query=func_name, mode=call_sites) or target=file.py:func_name",
+                )
+            try:
+                sites = _call_sites_for_ident(
+                    repo,
+                    ident,
+                    keep=max(1, min(int(args.max_neighbors or 4), 10)),
+                    body_chars=min(int(args.max_chars or 6000), 4000),
+                    scope_path=scope_path,
+                )
+            except Exception as exc:  # noqa: BLE001
+                return _err("focus", str(exc), hint="Ensure the engine is warm.")
+            card = {
+                "ok": True,
+                "tool": "focus",
+                "mode": "call_sites",
+                "ident": ident,
+                "count": len(sites),
+                "call_sites": _slim_spans(sites, keep=4, body_chars=400),
+                "session_id": sid,
+                "next": (
+                    "grep(pattern) for import-only or dynamic refs; "
+                    "focus(mode=span) on a hit file."
+                ),
+            }
+            if not sites:
+                card["usage_hint"] = (
+                    f"No call sites for {ident!r} in scope. "
+                    "Try grep(pattern) or broaden scope_path."
+                )
+            _phase_focus_remember(repo, _focus_key(ident, "call_sites", path_s or ident), card, session_id=sid)
+            return _format(card, args.response_format)
+
+        if args.mode == "outline":
+            path_o = path_s or _resolve_to_file(repo, target_s or args.query)
+            if not path_o:
+                return _err(
+                    "focus", "outline needs a file path",
+                    hint="Pass path= or a path-like target=.",
+                )
+            try:
+                res = _client_for(repo).outline(path_o.replace("\\", "/"), repo=str(repo))
+            except Exception as exc:  # noqa: BLE001
+                return _err("focus", str(exc), hint="Ensure the engine is warm.")
+            backend_error = _backend_error(
+                "focus", repo, res, hint="Ensure the engine is warm."
+            )
+            if backend_error:
+                return backend_error
+            symbols, symbols_total, symbols_capped = _slim_outline(
+                res.get("symbols") or res.get("outline"),
+                keep=_OUTLINE_KEEP_DEFAULT,
+                offset=args.outline_offset,
+            )
+            card = {
+                "ok": True,
+                "tool": "focus",
+                "mode": "outline",
+                "file": res.get("path") or path_o,
+                "path": res.get("path") or path_o,
+                "count": len(symbols),
+                "symbols": symbols,
+                "symbols_total": symbols_total,
+                "symbols_shown": len(symbols),
+                "symbols_capped": symbols_capped,
+                "session_id": sid,
+                "next": "focus(same target, mode=span, start_line/end_line from symbols)",
+            }
+            if symbols_capped:
+                nxt = args.outline_offset + len(symbols)
+                card["next"] = f"focus(outline, outline_offset={nxt}) for more symbols"
+            fp = str(card.get("file") or path_o)
+            suffix = Path(fp).suffix.lower()
+            if fp and suffix not in {".py", ".pyi"}:
+                card["language_unsupported"] = True
+                card["note"] = "outline is Python AST only; use focus(mode=span) for this file."
+            _phase_focus_remember(repo, _focus_key(path_o, "outline", path_o), card, session_id=sid)
+            return _format(card, args.response_format)
+
         key_target = path_s or target_s
         fkey = _focus_key(key_target, args.mode, path_s)
 
-        detail = {"outline": "outline", "span": "body", "neighbors": "neighbors"}[args.mode]
+        detail = {"outline": "outline", "span": "body", "neighbors": "neighbors", "call_sites": "body"}[args.mode]
         raw = read_impl(
             target=args.target,
             path=path_s or args.path,
@@ -2388,32 +3038,36 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         rem_key = _focus_key(rem_path, args.mode, rem_path)
         if card.get("unchanged") or card.get("status") == "already_in_session":
             card["already_shown"] = True
+            handle_h = card.get("handle")
             card["usage_hint"] = (
-                "Advisory: this target+mode was already fetched. Edit now or use "
-                "workspace(show) — only focus again if you need a different mode/target."
+                "Advisory: this target+mode was already fetched. Edit now, or "
+                "expand(handle) to re-materialize the body."
             )
-            card["next"] = "edit | workspace(show)"
+            card["next"] = (
+                f"edit | expand(handle={handle_h!r}) | workspace(show)"
+                if handle_h
+                else "edit | workspace(show)"
+            )
+            card["session_id"] = sid
             _phase_focus_remember(repo, rem_key, card, session_id=sid)
             return _format(card, args.response_format)
 
         _phase_focus_remember(repo, rem_key, card, session_id=sid)
-        if args.mode == "outline":
-            fp = str(card.get("file") or rem_path)
-            suffix = Path(fp).suffix.lower()
-            if fp and suffix not in {".py", ".pyi"}:
-                card["language_unsupported"] = True
-                card["note"] = "outline is Python AST only; use focus(mode=span) for this file."
-            card["next"] = "Recommended: focus(same target, mode=span) for body, or mode=neighbors for wiring."
-        elif args.mode == "neighbors":
-            card["next"] = "Edit if you have enough; workspace(show) to reorient."
+        card["session_id"] = sid
+        if args.mode == "neighbors":
+            card["neighbors_mode"] = card.get("neighbors_mode") or "import_adjacency"
+            card["next"] = "See focus(mode=call_sites) for literal references; workspace(show) to reorient."
         else:
             code = card.get("code") or card.get("excerpt") or ""
             if card.get("truncated") or (isinstance(code, str) and "…[truncated]" in code):
                 card["truncated"] = True
-            card["next"] = (
-                "Edit cited lines (native Read if you need more). "
-                "Wiring: focus(mode=neighbors). Span may be truncated at max_chars."
-            )
+            if card.get("truncated"):
+                card["next"] = card.get("next") or (
+                    f"focus(path={rem_path!r}, start_line={card.get('next_start_line')}, "
+                    f"max_chars=12000) or expand(handle={card.get('handle')!r})"
+                )
+            else:
+                card["next"] = "Edit cited lines. Wiring: focus(mode=neighbors)."
         try:
             from pipeline.work_session import touch
 
@@ -2527,7 +3181,19 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
 
             if is_paused():
                 return "p"
-            return _gate_line(just_checked=True)
+            line = _gate_line(just_checked=True)
+            if line.startswith("1:"):
+                sess = _session_fields(session_id)
+                sid = sess.get("session_id") or _resolve_session(session_id)
+                if sid:
+                    line = f"{line} sid:{sid}"
+                if sess.get("shared_process_risk"):
+                    line = f"{line} shared"
+                    hint = sess.get("hint") or (
+                        "Pass a distinct session_id per chat or set CTX_MCP_SESSION_ID in MCP env."
+                    )
+                    return f"{line}\n{hint}"
+            return line
 
     def status_impl(
         root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
@@ -2580,7 +3246,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 "rich": ["gate", "search", "read", "outline", "status"],
                 "search": ["gate", "search", "status"],
                 "grep": ["gate", "grep", "status"],
-                "phase": ["gate", "map", "focus", "grep", "glob", "workspace", "status"],
+                "phase": ["gate", "map", "focus", "grep", "glob", "workspace", "expand", "status"],
             }
             try:
                 repo = _default_repo()
@@ -2680,7 +3346,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                         and (daemon_status.get("meta") or {}).get("chunks", 0) > 0
                     ),
                     "tools": tool_lists.get(surface, tool_lists["read"]),
-                    "keeper": daemon_status.get("keeper") if healthy else None,
+                    "keeper": _slim_status_keeper(daemon_status.get("keeper") if healthy else None),
                     "soft_search_ready": soft_search_ready,
                     **contract,
                     "session": {
@@ -2701,6 +3367,18 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                         "Engine is starting. Use Scubiee tools — if a tool returns warming, "
                         "wait 5s and retry once. Do not poll status() in a loop."
                     )
+                from pipeline.sync_status import derive_agent_ready
+
+                payload["agent_ready"] = derive_agent_ready(
+                    healthy=healthy,
+                    soft_search_ready=soft_search_ready,
+                    sync_state=str(contract.get("sync_state") or "ready"),
+                    ready=bool(contract.get("ready")),
+                    syncing=bool(contract.get("syncing")),
+                    overlay_ready=bool(contract.get("overlay_ready")),
+                    publish_pending=bool(contract.get("publish_pending")),
+                    warming=warming,
+                )
                 return _dumps(payload)
             except Exception as exc:  # noqa: BLE001
                 return _err("status", str(exc))
@@ -2757,6 +3435,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             glob_impl,
         )
         _tool("workspace", "Scubiee-managed only (GATE 1). Mid reorient: show|pin|clear", workspace_impl)
+        _tool("expand", "Re-materialize a stored span by handle", expand_impl)
         _tool("status", "Engine + session status (detail=gate for tiny check)", status_impl)
         return mcp
 
