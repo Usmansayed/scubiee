@@ -101,10 +101,10 @@ def tool_search_code(repo: Path, query: str, top_k: int = 6) -> dict[str, Any]:
 
 
 def tool_grep_code(
-    repo: Path, pattern: str, glob: str = "*.py", max_hits: int = 12
+    repo: Path, pattern: str, glob: str = "**/*", max_hits: int = 200
 ) -> dict[str, Any]:
-    max_hits = max(1, min(int(max_hits or 12), 20))
-    out = _client(repo).grep(pattern, glob=glob or "*.py", max_hits=max_hits, path=str(repo))
+    max_hits = max(1, min(int(max_hits or 200), 500))
+    out = _client(repo).grep(pattern, glob=glob or "**/*", max_hits=max_hits, path=str(repo))
     hits = out.get("hits") or out.get("matches") or []
     slim = []
     for h in (hits if isinstance(hits, list) else [])[:max_hits]:

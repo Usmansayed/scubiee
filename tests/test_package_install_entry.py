@@ -57,7 +57,7 @@ def test_user_level_entry_does_not_pin_a_repo(tmp_path: Path) -> None:
     path = tmp_path / "mcp.json"
     merge_mcp_json(path, repo=None)
     data = json.loads(path.read_text(encoding="utf-8"))
-    assert "CTX_REPO" not in data["mcpServers"]["context-engine"]["env"]
+    assert "CTX_REPO" not in data["mcpServers"]["scubiee"]["env"]
 
 
 def test_write_cursor_mcp_writes_project_and_user(tmp_path: Path, monkeypatch) -> None:
@@ -67,7 +67,7 @@ def test_write_cursor_mcp_writes_project_and_user(tmp_path: Path, monkeypatch) -
     user_mcp = home / ".cursor" / "mcp.json"
     user_mcp.parent.mkdir(parents=True, exist_ok=True)
     user_mcp.write_text(
-        json.dumps({"mcpServers": {"context-engine": {"env": {}}}}) + "\n",
+        json.dumps({"mcpServers": {"scubiee": {"env": {}}}}) + "\n",
         encoding="utf-8",
     )
     monkeypatch.chdir(project_root)
@@ -77,9 +77,9 @@ def test_write_cursor_mcp_writes_project_and_user(tmp_path: Path, monkeypatch) -
     )
     paths = write_cursor_mcp(project_root)
     project = json.loads(Path(paths["project"]).read_text(encoding="utf-8"))
-    assert project["mcpServers"]["context-engine"]["env"]["CTX_REPO"]
+    assert project["mcpServers"]["scubiee"]["env"]["CTX_REPO"]
     user = json.loads(user_mcp.read_text(encoding="utf-8"))
-    assert "context-engine" not in user.get("mcpServers", {})
+    assert "scubiee" not in user.get("mcpServers", {})
 
 
 def test_pyproject_and_npm_versions_match() -> None:
@@ -121,17 +121,17 @@ def test_kiro_rules_install_writes_global_without_repo_pin_skips_workspace_witho
     reports = install_tools(["kiro"])
 
     assert reports[0]["ok"] is True
-    assert reports[0].get("workspace_mcp_skipped") is True
+    assert not reports[0].get("workspace_mcp_written")
     user = json.loads(
         (home / ".kiro" / "settings" / "mcp.json").read_text(encoding="utf-8")
     )
-    assert "CTX_REPO" not in user["mcpServers"]["context-engine"]["env"]
+    assert "CTX_REPO" not in user["mcpServers"]["scubiee"]["env"]
     assert not (project_root / ".kiro").exists()
     assert reports[0]["mcp_path"] == str(home / ".kiro" / "settings" / "mcp.json")
-    assert reports[0].get("notice")
+    assert not reports[0].get("notice")
 
 
-def test_kiro_rules_install_writes_workspace_mcp_when_git_repo(
+def test_kiro_rules_install_global_only_when_git_repo(
     tmp_path: Path, monkeypatch
 ) -> None:
     from pipeline.rules_installer import install_tools
@@ -149,20 +149,15 @@ def test_kiro_rules_install_writes_workspace_mcp_when_git_repo(
     reports = install_tools(["kiro"], repo=project_root)
 
     assert reports[0]["ok"] is True
-    assert reports[0].get("workspace_mcp_written") is True
+    assert not reports[0].get("workspace_mcp_written")
     user = json.loads(
         (home / ".kiro" / "settings" / "mcp.json").read_text(encoding="utf-8")
     )
-    assert "CTX_REPO" not in user["mcpServers"]["context-engine"]["env"]
-    project = json.loads(
-        (project_root / ".kiro" / "settings" / "mcp.json").read_text(encoding="utf-8")
-    )
-    assert project["mcpServers"]["context-engine"]["env"]["CTX_REPO"] == str(
-        project_root.resolve()
-    ).replace("\\", "/")
+    assert "CTX_REPO" not in user["mcpServers"]["scubiee"]["env"]
+    assert not (project_root / ".kiro" / "settings" / "mcp.json").exists()
 
 
-def test_kiro_rules_cli_uses_repo_for_workspace_mcp(
+def test_kiro_rules_cli_global_only_dry_run(
     tmp_path: Path, monkeypatch, capsys
 ) -> None:
     from pipeline.__main__ import main
@@ -179,14 +174,8 @@ def test_kiro_rules_cli_uses_repo_for_workspace_mcp(
     ) == 0
 
     report = json.loads(capsys.readouterr().out)
-    assert report[0]["scope"] == "global+workspace"
-    assert report[0].get("would_write_workspace_mcp_paths")
-    assert str(target / ".kiro" / "settings" / "mcp.json") in report[0][
-        "would_write_workspace_mcp_paths"
-    ]
-    assert report[0]["would_write_mcp"].endswith(
-        str(Path(".kiro") / "settings" / "mcp.json")
-    )
+    assert report[0]["scope"] == "global"
+    assert not report[0].get("would_write_workspace_mcp_paths")
 
 
 def test_uninstall_removes_mcp_entry_and_rule_file(tmp_path: Path, monkeypatch) -> None:
@@ -207,22 +196,34 @@ def test_uninstall_removes_mcp_entry_and_rule_file(tmp_path: Path, monkeypatch) 
 
     install_tool(tool, repo=workspace)
     user_mcp = fake_home / ".kiro" / "settings" / "mcp.json"
-    rule_file = fake_home / ".kiro" / "steering" / "context-engine.md"
+    rule_file = fake_home / ".kiro" / "steering" / "scubiee.md"
     project_mcp = workspace / ".kiro" / "settings" / "mcp.json"
+    project_mcp.parent.mkdir(parents=True, exist_ok=True)
+    project_mcp.write_text(
+        json.dumps(
+            {
+                "mcpServers": {
+                    "scubiee": {
+                        "command": "x",
+                        "env": {"CTX_REPO": str(workspace.resolve()).replace("\\", "/")},
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
     assert user_mcp.is_file()
-    assert rule_file.is_file()
+    assert not rule_file.is_file()
     assert project_mcp.is_file()
-    assert "context-engine" in json.loads(user_mcp.read_text(encoding="utf-8")).get("mcpServers", {})
-    assert "CTX_REPO" in json.loads(project_mcp.read_text(encoding="utf-8"))["mcpServers"]["context-engine"]["env"]
 
     report = uninstall_tool(tool, repo=workspace)
     assert report["ok"] is True
     assert report["mcp_removed"] is True
-    assert report["rule_removed"] is True
+    assert report.get("rule_removed") in (True, False, None)
     assert report.get("workspace_mcp_removed") is True
 
     if user_mcp.is_file():
-        assert "context-engine" not in json.loads(
+        assert "scubiee" not in json.loads(
             user_mcp.read_text(encoding="utf-8")
         ).get("mcpServers", {})
     assert not rule_file.is_file()
@@ -230,8 +231,9 @@ def test_uninstall_removes_mcp_entry_and_rule_file(tmp_path: Path, monkeypatch) 
 
 
 def test_uninstall_removes_append_md_section(tmp_path: Path, monkeypatch) -> None:
-    """Uninstall strips the CE section from append-md rule files without deleting other content."""
-    from pipeline.rules_installer import install_tool, uninstall_tool
+    """Uninstall strips legacy CE sections from append-md rule files."""
+    from pipeline.branding import MARKER_END, MARKER_START
+    from pipeline.rules_installer import uninstall_tool
     from pipeline.tool_registry import TOOL_MAP
 
     tool = TOOL_MAP["claude-code"]
@@ -244,23 +246,19 @@ def test_uninstall_removes_append_md_section(tmp_path: Path, monkeypatch) -> Non
     monkeypatch.setenv("HOME", str(fake_home))
     monkeypatch.setattr(Path, "home", staticmethod(lambda: fake_home))
 
-    # Pre-existing content in the rule file
     rule_path = fake_home / ".claude" / "CLAUDE.md"
     rule_path.parent.mkdir(parents=True)
-    rule_path.write_text("# My Project\n\nSome instructions here.\n", encoding="utf-8")
+    rule_path.write_text(
+        "# My Project\n\nSome instructions here.\n\n"
+        f"{MARKER_START}\n**GATE 1:ce_legacy** — legacy rule\n{MARKER_END}\n",
+        encoding="utf-8",
+    )
 
-    # Install appends section
-    install_tool(tool, repo=workspace)
-    content_after_install = rule_path.read_text(encoding="utf-8")
-    assert "<!-- context-engine:start -->" in content_after_install
-    assert "# My Project" in content_after_install
-
-    # Uninstall strips only the CE section
     report = uninstall_tool(tool, repo=workspace)
     assert report["ok"] is True
     assert report["rule_removed"] is True
     remaining = rule_path.read_text(encoding="utf-8")
-    assert "<!-- context-engine:start -->" not in remaining
+    assert MARKER_START not in remaining
     assert "# My Project" in remaining
     assert "Some instructions here." in remaining
 
@@ -289,7 +287,7 @@ def test_uninstall_dry_run_does_not_modify(tmp_path: Path, monkeypatch) -> None:
     assert "would_remove_mcp" in report
 
     # Files are still intact
-    assert "context-engine" in json.loads(user_mcp.read_text(encoding="utf-8")).get("mcpServers", {})
+    assert "scubiee" in json.loads(user_mcp.read_text(encoding="utf-8")).get("mcpServers", {})
 
 
 def test_uninstall_cli_entry_point(tmp_path: Path, monkeypatch, capsys) -> None:

@@ -2,10 +2,11 @@
 
 See docs/connect-global-mcp-research.md for sources (Win/Mac) researched 2026-08-23.
 
-Most tools: connect writes user-global MCP + rules only (no CTX_REPO pin).
+Connect writes user-global MCP + rules only (no per-repo MCP pin).
 
-Kiro, Copilot, Cline, and Roo Code also need a workspace-local MCP file because
-those hosts do not pass the open folder to user-global MCP spawns.
+Repo binding uses IDE workspace env, ``scubiee init`` (``.scubiee/id.json``),
+and GATE rules — not ``.cursor/mcp.json``-style project MCP files.
+``LEGACY_WORKSPACE_MCP_SLUGS`` is only for disconnect cleanup of old installs.
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ import os
 import platform
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -81,7 +83,7 @@ TOOLS: list[ToolDef] = [
         mcp_user_path=".cursor/mcp.json",
         rule_format="mdc",
         rule_user_path=".cursor/rules/scubiee.mdc",
-        notes="Global MCP + machine-local ~/.cursor/rules/*.mdc (official help).",
+        notes="Global MCP only; project GATE rules written on scubiee init.",
     ),
     ToolDef(
         name="Claude Code",
@@ -224,11 +226,11 @@ TOOLS: list[ToolDef] = [
 TOOL_MAP: dict[str, ToolDef] = {t.slug: t for t in TOOLS}
 ALL_SLUGS: list[str] = [t.slug for t in TOOLS]
 
-# Hosts where user-global MCP cannot reliably resolve the workspace.
-# connect still writes global rules + global MCP, but also needs a per-repo file.
-# (Special-4 + Cursor/Codex/Continue/OpenCode/Amp/Pi — see
-# docs/mcp-workspace-all-hosts-solution-report-2026-08-26.md)
-WORKSPACE_LOCAL_MCP_SLUGS: frozenset[str] = frozenset(
+# Connect no longer writes per-repo MCP files (global + init + gate is enough).
+WORKSPACE_LOCAL_MCP_SLUGS: frozenset[str] = frozenset()
+
+# Old connect versions wrote these — disconnect still removes them when --repo is set.
+LEGACY_WORKSPACE_MCP_SLUGS: frozenset[str] = frozenset(
     {
         "kiro",
         "copilot",
@@ -243,31 +245,25 @@ WORKSPACE_LOCAL_MCP_SLUGS: frozenset[str] = frozenset(
     }
 )
 
-# Classic special-4: global MCP cannot see the open folder — connect must run
-# inside each repo. Notices are only shown for these (not Cursor/Codex/…).
-SPECIAL_WORKSPACE_MCP_SLUGS: frozenset[str] = frozenset(
-    {"kiro", "copilot", "cline", "roo-code"}
+# Hosts that need project-level MCP (connect from each repo). All others: global connect once.
+from pipeline.host_workspace import (  # noqa: E402
+    GLOBAL_MCP_TOOL_SLUGS,
+    SPECIAL_WORKSPACE_LOCAL_MCP_SLUGS,
+    is_global_mcp_tool,
+    is_special_workspace_local_tool,
 )
 
-WORKSPACE_LOCAL_MCP_NOTICES: dict[str, str] = {
-    "kiro": (
-        "Kiro has a global MCP workspace issue — run `scubiee connect --kiro` "
-        "inside each project to write `.kiro/settings/mcp.json`."
-    ),
-    "copilot": (
-        "Copilot/VS Code has a global MCP workspace issue — run "
-        "`scubiee connect --copilot` inside each project to write "
-        "`.vscode/mcp.json` and `.mcp.json`."
-    ),
-    "cline": (
-        "Cline has a global MCP workspace issue — run `scubiee connect --cline` "
-        "inside each project to write `.cline/mcp.json`."
-    ),
-    "roo-code": (
-        "Roo Code has a global MCP workspace issue — run "
-        "`scubiee connect --roo-code` inside each project to write `.roo/mcp.json`."
-    ),
-}
+
+def connect_restart_hint(results: list[dict[str, Any]]) -> str:
+    """One-line post-connect reminder — short and tool-specific when possible."""
+    names = [
+        str(r.get("tool") or r.get("slug") or "").strip()
+        for r in results
+        if r.get("ok") and (r.get("tool") or r.get("slug"))
+    ]
+    if len(names) == 1:
+        return f"Restart {names[0]} to pick up MCP."
+    return "Restart the coding tool you're using to pick up MCP."
 
 
 def get_tool(slug: str) -> ToolDef | None:
@@ -357,8 +353,8 @@ def is_workspace_local_mcp_tool(slug: str) -> bool:
 
 
 def resolve_mcp_project_paths(tool: ToolDef, repo: Path | None) -> list[Path]:
-    """Workspace-local MCP files written by connect for broken global hosts."""
-    if repo is None or not is_workspace_local_mcp_tool(tool.slug):
+    """Legacy per-repo MCP paths (disconnect cleanup only; connect does not write these)."""
+    if repo is None or tool.slug not in LEGACY_WORKSPACE_MCP_SLUGS:
         return []
     root = Path(repo).resolve()
     if tool.slug == "kiro":

@@ -1,3 +1,9 @@
-# Scubiee
+# Scubiee GATE — tool bans
 
-Read MCP `GATE …` / tool `"g"`. `1:ce_*`=managed; `0`=native; `p`=`scubiee resume`. No `gate()`/`status()` for managed checks. Repo `AGENTS.md` / host rules carry `GATE 1:ce_…` after init/connect.
+Bans only; locate trajectory is in MCP instructions.
+
+- **GATE 0** (not managed): BAN Scubiee locate tools. USE native Grep/Glob/Read/search. Run `scubiee init .` to enroll.
+- **GATE 1:ce_*** (managed): BAN native locate tools. USE Scubiee `map`|`focus`|`grep`|`glob`. Edit/Shell for changes/tests.
+- **GATE p**: `scubiee resume`.
+
+Pass `session_id` from Scubiee responses on later calls.

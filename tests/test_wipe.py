@@ -39,7 +39,7 @@ def test_wipe_all_yes_removes_home(tmp_path: Path, monkeypatch) -> None:
     fake_user = tmp_path / "fake-user"
     (fake_user / ".cursor").mkdir(parents=True)
     (fake_user / ".cursor" / "mcp.json").write_text(
-        json.dumps({"mcpServers": {"context-engine": {"command": "x"}, "other": {}}}),
+        json.dumps({"mcpServers": {"scubiee": {"command": "x"}, "other": {}}}),
         encoding="utf-8",
     )
     monkeypatch.setattr(Path, "home", lambda: fake_user)
@@ -53,7 +53,7 @@ def test_wipe_all_yes_removes_home(tmp_path: Path, monkeypatch) -> None:
     assert out["scope"] == "all"
     assert not home.exists()
     mcp = json.loads((fake_user / ".cursor" / "mcp.json").read_text(encoding="utf-8"))
-    assert "context-engine" not in (mcp.get("mcpServers") or {})
+    assert "scubiee" not in (mcp.get("mcpServers") or {})
     assert "other" in (mcp.get("mcpServers") or {})
 
 
@@ -63,17 +63,17 @@ def test_wipe_repo_removes_id_and_rule(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("CTX_HOME", str(home))
     repo = tmp_path / "repo"
     repo.mkdir()
-    id_dir = repo / ".context-engine"
+    id_dir = repo / ".scubiee"
     id_dir.mkdir()
     (id_dir / "id.json").write_text(
         json.dumps({"project_id": "ce_test"}), encoding="utf-8"
     )
-    rule = repo / ".cursor" / "rules" / "context-agent.mdc"
+    rule = repo / ".cursor" / "rules" / "scubiee.mdc"
     rule.parent.mkdir(parents=True)
     rule.write_text("x", encoding="utf-8")
     mcp = repo / ".cursor" / "mcp.json"
     mcp.write_text(
-        json.dumps({"mcpServers": {"context-engine": {"command": "x"}}}),
+        json.dumps({"mcpServers": {"scubiee": {"command": "x"}}}),
         encoding="utf-8",
     )
 
@@ -97,7 +97,7 @@ def test_wipe_repo_removes_id_and_rule(tmp_path: Path, monkeypatch) -> None:
     assert not rule.exists()
     if mcp.is_file():
         data = json.loads(mcp.read_text(encoding="utf-8"))
-        assert "context-engine" not in (data.get("mcpServers") or {})
+        assert "scubiee" not in (data.get("mcpServers") or {})
     else:
         assert not mcp.exists()
 
@@ -141,7 +141,7 @@ def test_wipe_repo_removes_workspace_local_mcp_files(tmp_path: Path, monkeypatch
         path.parent.mkdir(parents=True, exist_ok=True)
         key = "servers" if ".vscode" in path.parts else "mcpServers"
         path.write_text(
-            json.dumps({key: {"context-engine": {"command": "x"}}}),
+            json.dumps({key: {"scubiee": {"command": "x"}}}),
             encoding="utf-8",
         )
 
@@ -151,7 +151,7 @@ def test_wipe_repo_removes_workspace_local_mcp_files(tmp_path: Path, monkeypatch
         if path.is_file():
             data = json.loads(path.read_text(encoding="utf-8"))
             servers = data.get("mcpServers") or data.get("servers") or {}
-            assert "context-engine" not in servers
+            assert "scubiee" not in servers
         else:
             assert not path.exists()
 
@@ -176,7 +176,7 @@ def test_wipe_all_removes_all_connect_tool_mcp(tmp_path: Path, monkeypatch) -> N
         json.dumps(
             {
                 "mcpServers": {
-                    "context-engine": {"command": "x"},
+                    "scubiee": {"command": "x"},
                     "keep-me": {"command": "y"},
                 }
             }
@@ -185,20 +185,20 @@ def test_wipe_all_removes_all_connect_tool_mcp(tmp_path: Path, monkeypatch) -> N
     )
     claude_mcp = fake_user / ".claude.json"
     claude_mcp.write_text(
-        json.dumps({"mcpServers": {"context-engine": {"command": "x"}, "other": {}}}),
+        json.dumps({"mcpServers": {"scubiee": {"command": "x"}, "other": {}}}),
         encoding="utf-8",
     )
     windsurf_mcp = fake_user / ".codeium" / "windsurf" / "mcp_config.json"
     windsurf_mcp.parent.mkdir(parents=True)
     windsurf_mcp.write_text(
-        json.dumps({"mcpServers": {"context-engine": {"command": "x"}}}),
+        json.dumps({"mcpServers": {"scubiee": {"command": "x"}}}),
         encoding="utf-8",
     )
     # Codex TOML
     codex_cfg = fake_user / ".codex" / "config.toml"
     codex_cfg.parent.mkdir(parents=True)
     codex_cfg.write_text(
-        '[mcp_servers.other]\ncommand = "y"\n\n[mcp_servers.context-engine]\ncommand = "x"\n',
+        '[mcp_servers.other]\ncommand = "y"\n\n[mcp_servers.scubiee]\ncommand = "x"\n',
         encoding="utf-8",
     )
 
@@ -211,21 +211,21 @@ def test_wipe_all_removes_all_connect_tool_mcp(tmp_path: Path, monkeypatch) -> N
     assert any("disconnect_all_tools" in a for a in out.get("actions", []))
 
     cursor = json.loads(cursor_mcp.read_text(encoding="utf-8"))
-    assert "context-engine" not in (cursor.get("mcpServers") or {})
+    assert "scubiee" not in (cursor.get("mcpServers") or {})
     assert "keep-me" in (cursor.get("mcpServers") or {})
 
     claude = json.loads(claude_mcp.read_text(encoding="utf-8"))
-    assert "context-engine" not in (claude.get("mcpServers") or {})
+    assert "scubiee" not in (claude.get("mcpServers") or {})
     assert "other" in (claude.get("mcpServers") or {})
 
     if windsurf_mcp.is_file():
         wind = json.loads(windsurf_mcp.read_text(encoding="utf-8"))
-        assert "context-engine" not in (wind.get("mcpServers") or {})
+        assert "scubiee" not in (wind.get("mcpServers") or {})
     # Empty-only files may be deleted entirely.
 
     if codex_cfg.is_file():
         text = codex_cfg.read_text(encoding="utf-8")
-        assert "context-engine" not in text
+        assert "scubiee" not in text
         assert "other" in text
 
     audit = audit_scubiee_artifacts(include_package=False, include_models=False)
@@ -255,7 +255,7 @@ def test_disconnect_all_workspaces_removes_other_repo_local_mcp(
         mcp = repo / ".kiro" / "settings" / "mcp.json"
         mcp.parent.mkdir(parents=True)
         mcp.write_text(
-            json.dumps({"mcpServers": {"context-engine": {"command": "x", "env": {}}}}),
+            json.dumps({"mcpServers": {"scubiee": {"command": "x", "env": {}}}}),
             encoding="utf-8",
         )
 

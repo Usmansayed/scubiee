@@ -11,7 +11,6 @@ PHASE_EXPECTED = {
     "grep",
     "glob",
     "workspace",
-    "register_project",
     "status",
 }
 READ_EXPECTED = {"search", "read", "status"}
@@ -29,9 +28,10 @@ def _tool_names(mcp) -> set[str]:
     raise AssertionError("cannot introspect FastMCP tools")
 
 
-def test_only_locate_mcp_is_shipped(monkeypatch):
+def test_only_locate_mcp_is_shipped(monkeypatch, tmp_path):
     pytest.importorskip("mcp")
     monkeypatch.delenv("CTX_MCP_SURFACE", raising=False)
+    monkeypatch.setattr("pipeline.mcp_locate._is_repo_managed", lambda: True)
     from pipeline.mcp_locate import create_mcp as create_locate
     from pipeline.mcp_server import create_mcp as create_compat
 
@@ -44,10 +44,11 @@ def test_only_locate_mcp_is_shipped(monkeypatch):
 def test_read_surface_still_available(monkeypatch):
     pytest.importorskip("mcp")
     monkeypatch.setenv("CTX_MCP_SURFACE", "read")
+    monkeypatch.setattr("pipeline.mcp_locate._is_repo_managed", lambda: True)
     from pipeline.mcp_locate import create_mcp as create_locate
 
     locate = create_locate(name="test-locate-read")
-    assert _tool_names(locate) == READ_EXPECTED
+    assert _tool_names(locate) == READ_EXPECTED | {"gate"}
 
 
 def test_ensure_daemon_soft_skips_force_restart(monkeypatch):

@@ -828,6 +828,7 @@ def ensure_fresh_for_search(
                         base_dir=base_dir,
                         vdb=vdb,
                         bits=int(meta.get("bits") or 4),
+                        quiesce=False,
                     )
                     from pipeline.engine import clear_engines
 

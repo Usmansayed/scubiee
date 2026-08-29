@@ -75,7 +75,7 @@ def test_nested_folder_does_not_mint_or_write_id(ce_home: Path, tmp_path: Path):
     ref = resolve_project(nested)
     assert ref.project_id == parent.project_id
     assert ref.root == repo.resolve()
-    assert not (nested / ".context-engine" / "id.json").exists()
+    assert not (nested / ".scubiee" / "id.json").exists()
 
 
 def test_write_id_file_refuses_missing_directory(tmp_path: Path):
@@ -93,7 +93,7 @@ def test_missing_id_json_does_not_recover_from_registry(ce_home: Path, tmp_path:
     pid = ref1.project_id
     id_file_path(repo).unlink()
     assert read_id_file(repo) is None
-    assert (repo / ".context-engine").is_dir()
+    assert (repo / ".scubiee").is_dir()
     from pipeline.project_id import find_id_by_path
 
     assert find_id_by_path(str(repo.resolve())) is None
@@ -112,7 +112,7 @@ def test_stale_registry_alias_without_id_json_is_not_trusted(
     ref = resolve_project(old)
     vacated = tmp_path / "vacated"
     vacated.mkdir()
-    (vacated / ".context-engine").mkdir()
+    (vacated / ".scubiee").mkdir()
     save_registry(
         {
             "projects": {

@@ -85,17 +85,42 @@ def glob_to_regex(patt: str) -> re.Pattern[str]:
     return re.compile("^" + "".join(parts) + "$", flags)
 
 
-def path_glob_match(rel: str, glob_pat: str) -> bool:
-    rel_n = _norm_path(rel)
+def expand_brace_glob(pattern: str) -> list[str]:
+    """Expand ``{a,b}`` groups (one level at a time, nested OK)."""
+    patt = (pattern or "**/*").replace("\\", "/").strip() or "**/*"
+    start = patt.find("{")
+    if start < 0:
+        return [patt]
+    end = patt.find("}", start)
+    if end < 0:
+        return [patt]
+    inner = patt[start + 1 : end]
+    prefix = patt[:start]
+    suffix = patt[end + 1 :]
+    out: list[str] = []
+    for alt in inner.split(","):
+        out.extend(expand_brace_glob(prefix + alt.strip() + suffix))
+    return out
+
+
+def _path_glob_match_one(rel_n: str, glob_pat: str) -> bool:
     name = rel_n.rsplit("/", 1)[-1]
-    patt = (glob_pat or "*").replace("\\", "/").strip() or "*"
+    patt = (glob_pat or "**/*").replace("\\", "/").strip() or "**/*"
     if patt in {"*", "**", "**/*"}:
         return True
     rx = glob_to_regex(patt)
     return rx.fullmatch(rel_n) is not None or rx.fullmatch(name) is not None
 
 
-def iter_glob_files(root: Path, glob_pat: str = "*.py") -> list[str]:
+def path_glob_match(rel: str, glob_pat: str) -> bool:
+    rel_n = _norm_path(rel)
+    for expanded in expand_brace_glob(glob_pat):
+        if _path_glob_match_one(rel_n, expanded):
+            return True
+    return False
+
+
+def iter_glob_files(root: Path, glob_pat: str = "**/*") -> list[str]:
     """Repo-relative files matching ``glob_pat``, skipping junk dirs."""
     root = root.resolve()
     out: list[str] = []
@@ -418,27 +443,114 @@ class CapabilityIndex:
         return (hits[0].score / (hits[1].score + 1e-9)) >= 1.12
 
 
+def _grep_via_rg(
+    root: Path,
+    pattern: str,
+    *,
+    glob: str,
+    max_hits: int,
+) -> dict[str, Any] | None:
+    """Fast path via ripgrep when available (native-like speed and glob semantics)."""
+    import shutil
+    import subprocess
+
+    rg = shutil.which("rg")
+    if not rg:
+        return None
+    glob_pat = (glob or "**/*").replace("\\", "/").strip() or "**/*"
+    cap = max(1, int(max_hits or 200))
+    timeout_s = float(os.environ.get("CTX_GREP_TIMEOUT_S", "15"))
+    args = [
+        rg,
+        "--line-number",
+        "--no-heading",
+        "--color=never",
+        "--max-count",
+        str(cap + 1),
+        "-e",
+        pattern,
+        "--glob",
+        glob_pat,
+        ".",
+    ]
+    try:
+        proc = subprocess.run(
+            args,
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+            cwd=str(root.resolve()),
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if proc.returncode not in (0, 1):
+        return None
+    hits: list[dict[str, Any]] = []
+    root_resolved = root.resolve()
+    for line in proc.stdout.splitlines():
+        if not line.strip():
+            continue
+        parts = line.split(":", 2)
+        if len(parts) < 3:
+            continue
+        fpath, lno_s, text = parts[0], parts[1], parts[2]
+        try:
+            rel = Path(fpath).resolve().relative_to(root_resolved).as_posix()
+        except ValueError:
+            rel = fpath.replace("\\", "/").lstrip("./")
+        try:
+            line_no = int(lno_s)
+        except ValueError:
+            continue
+        hits.append(
+            {
+                "path": rel,
+                "file": rel,
+                "line": line_no,
+                "text": text.strip()[:200],
+            }
+        )
+    truncated = len(hits) > cap
+    if truncated:
+        hits = hits[:cap]
+    return {
+        "hits": hits,
+        "truncated": truncated,
+        "has_more": truncated,
+        "glob": glob_pat,
+        "max_hits": cap,
+        "count": len(hits),
+        "backend": "rg",
+    }
+
+
 def grep_scan(
     root: Path,
     pattern: str,
     *,
-    glob: str = "*.py",
-    max_hits: int = 20,
+    glob: str = "**/*",
+    max_hits: int = 200,
 ) -> dict[str, Any]:
-    """Live-disk line grep. ``truncated`` means the hit cap fired — not absence."""
+    """Live-disk line grep. ``truncated`` means the hit cap or scan budget fired — not absence."""
     import time as _time
 
-    max_lines = int(os.environ.get("CTX_GREP_MAX_LINES", "50000"))
-    deadline = _time.monotonic() + float(os.environ.get("CTX_GREP_TIMEOUT_S", "8"))
+    glob_pat = (glob or "**/*").replace("\\", "/").strip() or "**/*"
+    cap = max(1, int(max_hits or 200))
+    rg_report = _grep_via_rg(root, pattern, glob=glob_pat, max_hits=cap)
+    if rg_report is not None:
+        return rg_report
+
+    max_lines = int(os.environ.get("CTX_GREP_MAX_LINES", "250000"))
+    deadline = _time.monotonic() + float(os.environ.get("CTX_GREP_TIMEOUT_S", "15"))
     try:
         rx = re.compile(pattern)
     except re.error:
         rx = re.compile(re.escape(pattern))
-    cap = max(1, int(max_hits or 20))
     hits: list[dict[str, Any]] = []
     truncated = False
     lines_scanned = 0
-    for rel in iter_glob_files(root, glob):
+    for rel in iter_glob_files(root, glob_pat):
         if _time.monotonic() > deadline:
             truncated = True
             break
@@ -478,22 +590,26 @@ def grep_scan(
             )
         if truncated:
             break
-    return {
+    out: dict[str, Any] = {
         "hits": hits,
         "truncated": truncated,
         "has_more": truncated,
-        "glob": glob,
+        "glob": glob_pat,
         "max_hits": cap,
         "count": len(hits),
+        "backend": "python",
     }
+    if truncated and not hits:
+        out["scan_incomplete"] = True
+    return out
 
 
 def grep_code(
     root: Path,
     pattern: str,
     *,
-    glob: str = "*.py",
-    max_hits: int = 20,
+    glob: str = "**/*",
+    max_hits: int = 200,
 ) -> list[dict[str, Any]]:
     """Cheap line grep over the repo (no LLM). Honors ``glob`` (not Python-only)."""
     return list(grep_scan(root, pattern, glob=glob, max_hits=max_hits)["hits"])

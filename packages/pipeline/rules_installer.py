@@ -1,16 +1,12 @@
-﻿"""Connect Scubiee to AI coding tools — global MCP + rules.
+﻿"""Connect Scubiee to AI coding tools — global MCP only.
 
 Usage:
     scubiee connect --all
     scubiee connect --cursor --claude-code --codex
-    scubiee connect --kiro --copilot --cline --roo-code   # run inside each repo
 
-Most tools get user-global MCP with **no** workspace pin (command + engine env
-only). Hosts often leave ``${workspaceFolder}`` literal in global config;
-Codex on Windows treats it as ``cwd`` and fails with os error 267.
-
-Project MCP files (when the host loads them) get an absolute ``CTX_REPO`` pin.
-Kiro, Copilot, Cline, and Roo Code always need that workspace-local file.
+Connect writes user-global MCP configs only (no always-on rules).
+Per-repo binding uses ``scubiee init`` (``.scubiee/id.json`` + compact GATE
+rules under the repo). After connect or init, reload MCP in each host.
 """
 
 from __future__ import annotations
@@ -21,10 +17,9 @@ from typing import Any
 
 from pipeline.mcp_install import server_entry
 from pipeline.tool_registry import (
-    SPECIAL_WORKSPACE_MCP_SLUGS,
+    LEGACY_WORKSPACE_MCP_SLUGS,
     TOOL_MAP,
     ToolDef,
-    WORKSPACE_LOCAL_MCP_NOTICES,
     is_workspace_local_mcp_tool,
     resolve_mcp_project_paths,
     resolve_mcp_user_path,
@@ -51,15 +46,41 @@ def _rule_content_mdc(*, gate_line: str | None = None) -> str:
     return (_templates_dir() / "scubiee.mdc").read_text(encoding="utf-8")
 
 
+# Shared GATE rule bodies — bans live here only, not in MCP instructions.
+
+
+def managed_gate_rule_body(gate_line: str, project_id: str) -> str:
+    return (
+        f"**GATE {gate_line}** — Managed repo. "
+        "BAN native Grep/Glob/codebase-search/Task for locate. "
+        "USE Scubiee `map`|`focus`|`grep`|`glob` only. "
+        "Native Edit/Shell for edits and tests. "
+        f"`project_id={project_id!r}`."
+    )
+
+
+def unmanaged_gate_rule_body(gate_line: str = "0") -> str:
+    return (
+        f"**GATE {gate_line or '0'}** — Not managed (no `scubiee init`). "
+        "BAN Scubiee MCP locate tools (`map`, `focus`, `grep`, `glob`, `workspace`). "
+        "USE native Grep/Glob/Read/codebase-search only. "
+        "Run `scubiee init .` to enroll."
+    )
+
+
+def paused_gate_rule_body() -> str:
+    return "**GATE p** — Paused. Tell user `scubiee resume`."
+
+
 def _render_gate_rule_mdc(gate_line: str) -> str:
-    """Ultra-compact project rule — injected on init/connect (~25 tokens + id)."""
+    """Project rule on init — tool bans only (trajectory is in MCP instructions)."""
     if gate_line == "p":
         return (
             "---\n"
             "description: Scubiee GATE p paused\n"
             "alwaysApply: true\n"
             "---\n\n"
-            "**GATE p** — paused. Tell user `scubiee resume`.\n"
+            f"{paused_gate_rule_body()}\n"
         )
     if gate_line.startswith("1:"):
         pid = gate_line.split(":", 1)[1]
@@ -68,32 +89,24 @@ def _render_gate_rule_mdc(gate_line: str) -> str:
             f"description: GATE {gate_line} Scubiee managed\n"
             "alwaysApply: true\n"
             "---\n\n"
-            f"**GATE {gate_line}** — Scubiee locate + `project_id={pid!r}`. "
-            'Tool `"g"` matches. No `gate()`/`status()` for managed checks.\n'
+            f"{managed_gate_rule_body(gate_line, pid)}\n"
         )
     return (
         "---\n"
         f"description: GATE {gate_line or '0'} Scubiee\n"
         "alwaysApply: true\n"
         "---\n\n"
-        f"**GATE {gate_line or '0'}** — not managed; native tools. "
-        "Run `scubiee init` then reconnect.\n"
+        f"{unmanaged_gate_rule_body(gate_line)}\n"
     )
 
 
 def _render_gate_rule_md(gate_line: str) -> str:
     if gate_line == "p":
-        return "**GATE p** — paused. Tell user `scubiee resume`.\n"
+        return f"{paused_gate_rule_body()}\n"
     if gate_line.startswith("1:"):
         pid = gate_line.split(":", 1)[1]
-        return (
-            f"**GATE {gate_line}** — Scubiee locate + `project_id={pid!r}`. "
-            'Tool `"g"` matches. No `gate()`/`status()` for managed checks.\n'
-        )
-    return (
-        f"**GATE {gate_line or '0'}** — not managed; native tools. "
-        "Run `scubiee init` then reconnect.\n"
-    )
+        return f"{managed_gate_rule_body(gate_line, pid)}\n"
+    return f"{unmanaged_gate_rule_body(gate_line)}\n"
 
 
 def gate_line_for_repo(repo: Path | str) -> str:
@@ -178,6 +191,8 @@ def format_server_entry(
     cmd = str(base["command"])
     args = [str(a) for a in base.get("args") or []]
     env = {str(k): str(v) for k, v in (base.get("env") or {}).items()}
+    env.setdefault("CTX_MCP_SESSION_ISOLATE", "1")
+    env.setdefault("CTX_MCP_CLIENT", tool.slug)
     if not pin_repo:
         _inject_global_workspace_hints(tool, env)
 
@@ -676,13 +691,77 @@ def write_project_gate_rules(
     dry_run: bool = False,
     slugs: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Write repo-local rules with the real ``GATE 1:ce_…`` line (every chat, all hosts)."""
+    """Write compact GATE tool-ban rules under the repo after ``scubiee init``.
+
+    Bans (native vs Scubiee) live here only. Locate trajectory (map→focus→grep)
+    lives in MCP server instructions when managed — not duplicated here.
+    """
+    root = Path(repo).resolve()
+    gate = gate_line_for_repo(root)
+    report: dict[str, Any] = {
+        "repo": str(root),
+        "gate_line": gate,
+        "ok": True,
+        "skipped": False,
+        "written": [],
+        "dry_run": dry_run,
+        "errors": [],
+    }
+    if not _project_rules_eligible(root):
+        report["skipped"] = True
+        report["skip_reason"] = "not a project folder"
+        return report
+    if not gate.startswith("1:") and gate != "p":
+        report["skipped"] = True
+        report["skip_reason"] = "repo not enrolled"
+        return report
+
+    from pipeline.tool_registry import TOOL_MAP, resolve_rule_project_paths
+
+    selected = TOOL_MAP.values()
+    if slugs:
+        selected = [TOOL_MAP[s] for s in slugs if s in TOOL_MAP]
+
+    for tool in selected:
+        if tool.rule_format == "none":
+            continue
+        for path in resolve_rule_project_paths(tool, root):
+            if dry_run:
+                report["written"].append(str(path))
+                continue
+            try:
+                _write_rule(tool, path, gate_line=gate)
+                report["written"].append(str(path))
+            except Exception as exc:  # noqa: BLE001
+                report["errors"].append(f"{path}: {exc}")
+                report["ok"] = False
+
+    agents = root / "AGENTS.md"
+    if dry_run:
+        report["written"].append(str(agents))
+    else:
+        try:
+            _write_rule_append_md(agents, gate_line=gate)
+            report["written"].append(str(agents))
+        except Exception as exc:  # noqa: BLE001
+            report["errors"].append(f"{agents}: {exc}")
+            report["ok"] = False
+
+    return report
+
+
+def cleanup_project_gate_rules(
+    repo: Path | str,
+    *,
+    dry_run: bool = False,
+) -> dict[str, Any]:
+    """Remove repo-local Scubiee rule files/sections left by older init/connect."""
     root = Path(repo).resolve()
     report: dict[str, Any] = {
         "repo": str(root),
         "ok": True,
-        "gate_line": None,
-        "paths": [],
+        "skipped": False,
+        "removed": [],
         "dry_run": dry_run,
         "errors": [],
     }
@@ -691,38 +770,55 @@ def write_project_gate_rules(
         report["skip_reason"] = "not a project folder"
         return report
 
-    gate = gate_line_for_repo(root)
-    report["gate_line"] = gate
-
     from pipeline.tool_registry import TOOL_MAP, resolve_rule_project_paths
 
-    use_slugs = slugs or list(TOOL_MAP.keys())
-    paths_written: list[str] = []
-    for slug in use_slugs:
-        tool = TOOL_MAP.get(slug)
-        if not tool or tool.rule_format == "none":
+    for tool in TOOL_MAP.values():
+        if tool.rule_format == "none":
+            continue
+        remover = _RULE_REMOVERS.get(tool.rule_format)
+        if not remover:
             continue
         for path in resolve_rule_project_paths(tool, root):
-            paths_written.append(str(path))
+            if not path.is_file():
+                continue
             if dry_run:
+                report["removed"].append(str(path))
                 continue
             try:
-                _write_rule(tool, path, gate_line=gate)
+                if remover(path):
+                    report["removed"].append(str(path))
+                    _prune_empty_parents(path, stop_at=root)
             except Exception as exc:  # noqa: BLE001
                 report["errors"].append(f"{path}: {exc}")
                 report["ok"] = False
 
     agents = root / "AGENTS.md"
-    paths_written.append(str(agents))
-    if not dry_run:
-        try:
-            _write_rule_append_md(agents, gate_line=gate)
-        except Exception as exc:  # noqa: BLE001
-            report["errors"].append(f"{agents}: {exc}")
-            report["ok"] = False
+    if agents.is_file():
+        if dry_run:
+            if _MARKER_START in agents.read_text(encoding="utf-8"):
+                report["removed"].append(str(agents))
+        else:
+            try:
+                if _remove_rule_section(agents):
+                    report["removed"].append(str(agents))
+            except Exception as exc:  # noqa: BLE001
+                report["errors"].append(f"{agents}: {exc}")
+                report["ok"] = False
 
-    report["paths"] = paths_written
+    report["gate_line"] = gate_line_for_repo(root)
     return report
+
+
+def _prune_empty_parents(path: Path, *, stop_at: Path) -> None:
+    """Remove empty dirs up to stop_at after deleting a scubiee-only rule file."""
+    current = path.parent
+    stop = stop_at.resolve()
+    while current != stop and current.is_dir():
+        try:
+            current.rmdir()
+        except OSError:
+            break
+        current = current.parent
 
 
 def _strip_marked_sections(existing: str) -> str:
@@ -764,7 +860,7 @@ def install_tool(
         "tool": tool.name,
         "slug": tool.slug,
         "mcp_schema": tool.mcp_schema,
-        "scope": "global+workspace" if workspace_local else "global",
+        "scope": "global",
         "mcp_path": str(primary) if primary else None,
         "mcp_paths": [str(p) for p in mcp_paths],
         "rule_path": str(primary_rule) if primary_rule else None,
@@ -776,9 +872,6 @@ def install_tool(
     }
 
     if workspace_local:
-        # Only classic special-4 get the "run connect in each repo" note.
-        if tool.slug in SPECIAL_WORKSPACE_MCP_SLUGS:
-            report["notice"] = WORKSPACE_LOCAL_MCP_NOTICES.get(tool.slug, "")
         report["repo"] = str(target_repo)
         eligible = _workspace_mcp_eligible(target_repo, explicit_repo=explicit_repo)
         report["workspace_mcp_eligible"] = eligible
@@ -833,36 +926,20 @@ def install_tool(
     elif workspace_local:
         report["workspace_mcp_written"] = False
 
-    try:
-        if rule_paths and tool.rule_format != "none":
-            for rule_path in rule_paths:
-                _write_rule(tool, rule_path)
-            report["rule_written"] = True
-        else:
-            report["rule_written"] = None
-    except Exception as exc:  # noqa: BLE001
-        report["rule_written"] = False
-        report["errors"].append(f"rule write failed: {exc}")
-        report["ok"] = False
-
     if (
         not dry_run
-        and tool.rule_format != "none"
+        and tool.slug in LEGACY_WORKSPACE_MCP_SLUGS
         and _project_rules_eligible(target_repo)
     ):
         try:
-            from pipeline.tool_registry import resolve_rule_project_paths
-
-            gate = gate_line_for_repo(target_repo)
-            report["gate_line"] = gate
-            proj_written: list[str] = []
-            for proj_path in resolve_rule_project_paths(tool, target_repo):
-                _write_rule(tool, proj_path, gate_line=gate)
-                proj_written.append(str(proj_path))
-            report["project_rule_paths"] = proj_written
+            if _remove_workspace_mcp(tool, target_repo):
+                report["legacy_workspace_mcp_removed"] = True
         except Exception as exc:  # noqa: BLE001
-            report["errors"].append(f"project rule write failed: {exc}")
-            report["ok"] = False
+            report.setdefault("errors", []).append(f"legacy workspace mcp cleanup: {exc}")
+
+    # Connect is MCP-only — project GATE rules are written on ``scubiee init``.
+    report["rule_written"] = None
+    report["rule_skipped"] = "connect is MCP-only; rules written on init"
 
     return report
 
@@ -882,15 +959,16 @@ def install_tools(
         results.append(install_tool(tool, dry_run=dry_run, repo=repo))
     target = _connect_repo(repo)
     if _project_rules_eligible(target) and not dry_run:
-        try:
-            gate = gate_line_for_repo(target)
-            _write_rule_append_md(target / "AGENTS.md", gate_line=gate)
-            for r in results:
-                r["repo_agents_gate"] = str(target / "AGENTS.md")
-                r["gate_line"] = gate
-        except Exception as exc:  # noqa: BLE001
-            for r in results:
-                r.setdefault("errors", []).append(f"AGENTS.md gate: {exc}")
+        cleanup = cleanup_project_gate_rules(target)
+        for r in results:
+            if cleanup.get("gate_line"):
+                r["gate_line"] = cleanup["gate_line"]
+            removed = cleanup.get("removed") or []
+            if removed:
+                r["legacy_project_rules_removed"] = removed
+            if cleanup.get("errors"):
+                for err in cleanup["errors"]:
+                    r.setdefault("errors", []).append(err)
                 r["ok"] = False
     return results
 
@@ -1097,11 +1175,11 @@ def uninstall_tool(
     rule_paths = resolve_rule_user_paths(tool)
     primary = mcp_paths[0] if mcp_paths else None
     primary_rule = rule_paths[0] if rule_paths else None
-    workspace_local = is_workspace_local_mcp_tool(tool.slug)
+    writes_legacy_workspace = tool.slug in LEGACY_WORKSPACE_MCP_SLUGS
     workspace_roots = (
         _registered_connect_repos(target_repo)
-        if (workspace_local and all_workspaces)
-        else ([target_repo] if workspace_local else [])
+        if (writes_legacy_workspace and all_workspaces)
+        else ([target_repo] if writes_legacy_workspace else [])
     )
     workspace_paths: list[Path] = []
     for root in workspace_roots:
@@ -1110,13 +1188,13 @@ def uninstall_tool(
     report: dict[str, Any] = {
         "tool": tool.name,
         "slug": tool.slug,
-        "scope": "global+workspace" if workspace_local else "global",
+        "scope": "global",
         "mcp_path": str(primary) if primary else None,
         "mcp_paths": [str(p) for p in mcp_paths],
         "rule_path": str(primary_rule) if primary_rule else None,
         "rule_paths": [str(p) for p in rule_paths],
         "workspace_mcp_paths": [str(p) for p in workspace_paths],
-        "all_workspaces": bool(all_workspaces and workspace_local),
+        "all_workspaces": bool(all_workspaces and writes_legacy_workspace),
         "dry_run": dry_run,
         "ok": True,
         "errors": [],
@@ -1124,7 +1202,7 @@ def uninstall_tool(
         "rule_removed": False,
         "workspace_mcp_removed": False,
     }
-    if workspace_local:
+    if writes_legacy_workspace:
         report["repo"] = str(target_repo)
 
     if dry_run:
@@ -1132,7 +1210,7 @@ def uninstall_tool(
         report["would_remove_mcp_paths"] = [str(p) for p in mcp_paths]
         report["would_remove_rule"] = str(primary_rule) if primary_rule else None
         report["would_remove_rule_paths"] = [str(p) for p in rule_paths]
-        if workspace_local:
+        if writes_legacy_workspace:
             report["would_remove_workspace_mcp_paths"] = [str(p) for p in workspace_paths]
         return report
 
@@ -1145,7 +1223,7 @@ def uninstall_tool(
         report["errors"].append(f"mcp removal failed: {exc}")
         report["ok"] = False
 
-    if workspace_local:
+    if writes_legacy_workspace:
         try:
             any_removed = False
             for root in workspace_roots:

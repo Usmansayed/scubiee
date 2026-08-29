@@ -116,6 +116,7 @@ def index_repo(
     progress=None,
     compress_mode: str | None = None,
     compress_max_chars: int = 512,
+    quiesce: bool = True,
 ) -> IndexStats:
     root = root.resolve()
     from pipeline.incremental import preflight_index_scope
@@ -173,6 +174,13 @@ def index_repo(
 
     require_capabilities(require_semantic=True)
     store = PipelineStore(root, base_dir=base_dir, vdb=vdb)
+    if quiesce:
+        try:
+            from pipeline.store_lock import quiesce_background_indexing
+
+            quiesce_background_indexing(store_dir=store.base)
+        except Exception:  # noqa: BLE001
+            pass
     from pipeline.memory_budget import (
         apply_index_memory_budget,
         is_bootstrap_index,

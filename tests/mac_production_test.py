@@ -222,7 +222,7 @@ def test_mcp_tools():
         ("glob", {"pattern": "*.py", "limit": 5}),
         ("workspace", {"action": "show"}),
         ("focus", {"path": "", "mode": "outline"}),  # empty path = best-effort
-        ("register_project", {"path": TEST_REPO}),
+        ("gate", {}),
     ]
 
     for name, args in tests:
@@ -303,7 +303,7 @@ def test_adversarial():
         ("focus", {"path": "../../../etc/passwd", "mode": "span"}, "path traversal"),
         ("map", {"query": "🚀💻🔥 emoji"}, "emoji query"),
         ("grep", {"pattern": "$(rm -rf /)", "glob": "*.py"}, "shell injection"),
-        ("register_project", {"path": "/nonexistent/path/foo"}, "nonexistent path"),
+        ("gate", {"root": "/nonexistent/path/foo"}, "nonexistent path"),
         ("glob", {"pattern": "**/*" * 50}, "absurd glob"),
         ("focus", {"path": "x.py", "mode": "invalid"}, "invalid mode"),
     ]
@@ -372,6 +372,26 @@ def test_multi_repo():
         run("remove", "--delete-store", timeout=10, cwd=str(repo2))
 
 
+def test_hardware_tracking():
+    section("10. Hardware-level tracking (moved folder resolution)")
+    with tempfile.TemporaryDirectory() as td:
+        p1 = Path(td) / "project_a"
+        p1.mkdir()
+        (p1 / ".scubiee").mkdir()
+        (p1 / ".scubiee" / "id.json").write_text('{"project_id": "ce_test"}', encoding="utf-8")
+
+        from pipeline.hw_track import get_filesystem_id, resolve_moved_path
+
+        fs_id = get_filesystem_id(p1)
+        check("Capture macOS filesystem ID (dev:ino)", fs_id is not None and fs_id.get("os") == "darwin")
+
+        p2 = Path(td) / "project_moved_b"
+        p1.rename(p2)
+
+        resolved = resolve_moved_path(fs_id)
+        check("Resolve moved folder via volfs & fcntl", resolved is not None and resolved.resolve() == p2.resolve())
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
@@ -390,6 +410,7 @@ if __name__ == "__main__":
     test_adversarial()
     test_recovery()
     test_multi_repo()
+    test_hardware_tracking()
 
     section("RESULTS")
     total = PASS + FAIL

@@ -254,7 +254,8 @@ def test_gate_line_managed_enrolled(tmp_path: Path, monkeypatch) -> None:
     assert line == f"1:{pid}"
 
 
-def test_status_detail_gate_skips_daemon(tmp_path: Path, monkeypatch) -> None:
+def test_gate_on_unmanaged_skips_daemon(tmp_path: Path, monkeypatch) -> None:
+    """Unmanaged workspace: gate() only (~5 tok), no daemon contact."""
     pytest.importorskip("mcp")
     plain = tmp_path / "plain"
     plain.mkdir()
@@ -263,16 +264,17 @@ def test_status_detail_gate_skips_daemon(tmp_path: Path, monkeypatch) -> None:
 
     class Boom:
         def __init__(self, *a, **k):
-            raise AssertionError("status(detail=gate) must not call daemon")
+            raise AssertionError("gate() on unmanaged must not call daemon")
 
     monkeypatch.setattr("pipeline.daemon.ensure_daemon", Boom)
     monkeypatch.setattr("pipeline.client.EngineClient", Boom)
 
     from pipeline.mcp_locate import create_mcp
 
-    mcp = create_mcp(name="test-gate-status")
-    fn = mcp._tool_manager._tools["status"].fn
-    assert fn(detail="gate") == "0"
+    mcp = create_mcp(name="test-gate-unmanaged")
+    assert set(mcp._tool_manager._tools) == {"gate"}
+    fn = mcp._tool_manager._tools["gate"].fn
+    assert fn() == "0"
 
 
 def test_should_retry_status_after_ttl(tmp_path: Path, monkeypatch) -> None:
@@ -408,19 +410,7 @@ def test_server_entry_pins_project_id_when_enrolled(tmp_path: Path, monkeypatch)
 
 
 _CLEAR_IDE = (
-    "CURSOR_PROJECT_DIR",
-    "CURSOR_WORKSPACE",
-    "CURSOR_CWD",
-    "WORKSPACE_FOLDER_PATHS",
-    "WORKSPACE_FOLDER",
-    "CLAUDE_PROJECT_DIR",
-    "CODEX_WORKSPACE_ROOT",
-    "COPILOT_WORKSPACE_FOLDER",
-    "COPILOT_WORKSPACE",
-    "VSCODE_WORKSPACE_FOLDER",
-    "VSCODE_CWD",
-    "INIT_CWD",
-    "OPENCODE_DEFAULT_PROJECT",
+    *(__import__("pipeline.host_workspace", fromlist=["ide_workspace_env_keys"]).ide_workspace_env_keys()),
     "CONTEXT_ENGINE_REPO",
 )
 

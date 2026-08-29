@@ -11,13 +11,11 @@ import pytest
 REPO = Path(__file__).resolve().parents[1]
 WORK = REPO / "testdata" / "cursor_sdk_ab" / "work_d_channel_best_mcponly"
 
+from pipeline.mcp_locate import _is_repo_managed as _REAL_IS_REPO_MANAGED
+
 
 def _gate_instruction_prefix(line: str = "0") -> str:
-    return (
-        f"GATE {line}. "
-        "Formats: 0=unmanaged, 1:ce_=managed, p=paused. "
-        "Pass root on locate when multi-repo. "
-    )
+    return f"GATE {line}. "
 
 
 def _tool_fn(mcp, name: str):
@@ -40,6 +38,8 @@ def _reset(monkeypatch):
     loc._CACHE._data.clear()
     monkeypatch.setenv("CTX_REPO", str(WORK))
     monkeypatch.setenv("CTX_MCP_SURFACE", "read")
+    # MCP locate tests exercise tool behavior in managed repos.
+    monkeypatch.setattr("pipeline.mcp_locate._is_repo_managed", lambda: True)
     # Keep resolution from latching onto the real enrolled checkout while tests
     # pin CTX_REPO to a tmp fixture (Windows/dev machine pollution).
     for key in (
@@ -71,7 +71,7 @@ def test_mcp_exposes_three_tools():
     pytest.importorskip("mcp")
     from pipeline.mcp_locate import create_mcp
 
-    assert set(create_mcp()._tool_manager._tools) == {"search", "read", "status"}
+    assert set(create_mcp()._tool_manager._tools) == {"gate", "search", "read", "status"}
 
 
 def test_search_tool_flat_results(monkeypatch):
@@ -288,6 +288,7 @@ def test_rich_surface_exposes_only_value_add_tools(monkeypatch):
     # and structure (outline). grep/files were dropped — they only reroute native
     # grep/glob with no capability gain, so native handles those now.
     assert set(create_mcp()._tool_manager._tools) == {
+        "gate",
         "search",
         "read",
         "outline",
@@ -359,7 +360,7 @@ def test_search_only_surface(monkeypatch):
     from pipeline.mcp_locate import create_mcp
 
     monkeypatch.setenv("CTX_MCP_SURFACE", "search")
-    assert set(create_mcp()._tool_manager._tools) == {"search", "status"}
+    assert set(create_mcp()._tool_manager._tools) == {"gate", "search", "status"}
 
 
 def test_grep_only_surface(monkeypatch):
@@ -368,7 +369,7 @@ def test_grep_only_surface(monkeypatch):
 
     monkeypatch.setenv("CTX_MCP_SURFACE", "grep")
     # grep-only surface has no semantic search — just grep + status.
-    assert set(create_mcp()._tool_manager._tools) == {"grep", "status"}
+    assert set(create_mcp()._tool_manager._tools) == {"gate", "grep", "status"}
 
 
 def test_rich_surface_has_no_native_equivalent_tools(monkeypatch):
@@ -461,6 +462,7 @@ def test_graph_surface_swaps_tool_set(monkeypatch):
 
     monkeypatch.setenv("CTX_MCP_SURFACE", "graph")
     assert set(create_mcp()._tool_manager._tools) == {
+        "gate",
         "search",
         "neighbors",
         "graph",
@@ -510,7 +512,7 @@ def test_status_lists_three_tools(monkeypatch, tmp_path):
     card = json.loads(status_fn())
     assert card["tool"] == "status"
     tools = card.get("tools") or card.get("tool_names") or []
-    assert set(tools) == {"search", "read", "status"}
+    assert set(tools) == {"gate", "search", "read", "status"}
 
 
 def test_work_session_heatmap():
@@ -570,21 +572,28 @@ def test_nav_surface_active_and_instructions_budget(monkeypatch):
     assert "unchanged" in text.lower()
 
 
-def test_phase_surface_grep_glob_and_trajectory(monkeypatch):
-    """Phase surface: recommend map/focus/grep/glob; agent decides."""
+def test_phase_surface_grep_glob_and_trajectory(monkeypatch, tmp_path):
+    """Phase surface: trajectory in MCP instructions; bans in project rule."""
     from pipeline import mcp_locate as ml
 
     pytest.importorskip("mcp")
+    repo = tmp_path / "proj"
+    repo.mkdir()
+    ce = repo / ".scubiee"
+    ce.mkdir()
+    (ce / "id.json").write_text('{"project_id": "ce_test"}', encoding="utf-8")
+    monkeypatch.setenv("CTX_REPO", str(repo))
+    monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
+    (tmp_path / "ce-home").mkdir()
     monkeypatch.setenv("CTX_MCP_SURFACE", "phase")
     monkeypatch.setattr(ml, "_is_repo_managed", lambda: True)
-    monkeypatch.setattr(ml, "_gate_line", lambda just_checked=False: "0")
+    monkeypatch.setattr(ml, "_gate_line", lambda just_checked=False: "1:ce_test")
     text = ml.SERVER_INSTRUCTIONS_PHASE
-    assert ml._server_instructions("phase") == _gate_instruction_prefix() + text
-    assert "map | focus | grep | glob | workspace | status" in text
-    assert "you decide" in text.lower()
-    assert "never hard-blocked" in text.lower()
-    assert "STRICT NATIVE BAN" not in text
-    assert "MANDATORY" not in text
+    assert ml._server_instructions("phase") == _gate_instruction_prefix("1:ce_test") + text
+    assert "map(query)" in text
+    assert "tool bans are in the project GATE rule" in text
+    assert "BAN native" not in text
+    assert "you decide" not in text.lower()
     tools = set(ml.create_mcp()._tool_manager._tools)
     assert tools == {
         "gate",
@@ -593,7 +602,6 @@ def test_phase_surface_grep_glob_and_trajectory(monkeypatch):
         "grep",
         "glob",
         "workspace",
-        "register_project",
         "status",
     }
 
@@ -604,7 +612,7 @@ def test_nav_surface_exposes_six_tools(monkeypatch):
 
     monkeypatch.setenv("CTX_MCP_SURFACE", "nav")
     tools = set(create_mcp()._tool_manager._tools)
-    assert tools == {"search", "files", "read", "recall", "expand", "status"}
+    assert tools == {"gate", "search", "files", "read", "recall", "expand", "status"}
     assert "outline" not in tools and "grep" not in tools and "neighbors" not in tools
 
 
@@ -622,7 +630,7 @@ def test_nav_status_lists_six_tools(monkeypatch):
     status_fn = _tool_fn(create_mcp(), "status")
     out = json.loads(status_fn())
     assert out["ok"] and out["surface"] == "nav"
-    assert set(out["tools"]) == {"search", "files", "read", "recall", "expand", "status"}
+    assert set(out["tools"]) == {"gate", "search", "files", "read", "recall", "expand", "status"}
 
 
 def test_nav_files_and_recall_expand_smoke(monkeypatch, tmp_path):
@@ -768,7 +776,7 @@ def test_read_detail_outline_and_neighbors(monkeypatch, tmp_path):
 
 
 def test_server_instructions_are_short_grep_like_cards(monkeypatch):
-    """Always-on MCP instructions must stay under ~800 tokens (~3200 chars)."""
+    """Managed MCP instructions must stay under ~800 tokens (~3200 chars)."""
     from pipeline import mcp_locate as ml
 
     monkeypatch.setattr(ml, "_is_repo_managed", lambda: True)
@@ -834,15 +842,17 @@ def test_cursor_rule_mirrors_short_decision_card():
     template = (REPO / "packages" / "pipeline" / "templates" / "scubiee.mdc").read_text(
         encoding="utf-8"
     )
-    assert "GATE" in template
-    assert "project_id" in template or "`g`" in template
-    assert "scubiee resume" in template
+    assert "GATE 0" in template
+    assert "GATE 1" in template
+    assert "BAN" in template
+    assert "native" in template.lower()
+    assert "scubiee resume" in template.lower() or "GATE p" in template
     assert "ignore this rule entirely" not in template.lower()
     assert len(template) <= 4000
 
 
 def test_append_host_rule_matches_universal_gate_policy():
-    """Append hosts (Kiro/Cline/Continue) use GATE instructions, not ignore-forever."""
+    """Append hosts use GATE ban policy; trajectory stays in MCP instructions."""
     md = (REPO / "packages" / "pipeline" / "templates" / "scubiee.md").read_text(
         encoding="utf-8"
     )
@@ -851,8 +861,9 @@ def test_append_host_rule_matches_universal_gate_policy():
     )
     for template in (md, mdc):
         assert "ignore this rule entirely" not in template.lower()
-        assert "GATE" in template
-        assert "should_retry_status" in template or "init/connect" in template or '"g"' in template
+        assert "GATE 0" in template
+        assert "BAN" in template
+        assert "MCP instructions" in template or "trajectory" in template.lower()
         assert len(template) <= 4000
 
 
@@ -897,7 +908,7 @@ def test_status_ok_false_while_warming_managed(monkeypatch, tmp_path):
     monkeypatch.setattr("pipeline.client.EngineClient", lambda *a, **k: FakeEng())
     monkeypatch.setattr(
         "pipeline.session_store.load_store",
-        lambda _r: {"topic": None, "spans": {}, "focus_seen": {}, "ledger": {}},
+        lambda _r, **_: {"topic": None, "spans": {}, "focus_seen": {}, "ledger": {}},
     )
 
     from pipeline.mcp_locate import create_mcp
@@ -913,6 +924,7 @@ def test_status_ok_false_while_warming_managed(monkeypatch, tmp_path):
 def test_status_root_other_git_repo_is_unmanaged(monkeypatch, tmp_path):
     """Sidebar chat: pass root= to an unenrolled git folder → managed false despite pin."""
     pytest.importorskip("mcp")
+    monkeypatch.setattr("pipeline.mcp_locate._is_repo_managed", _REAL_IS_REPO_MANAGED)
     engine = tmp_path / "engine"
     engine.mkdir()
     (engine / ".scubiee").mkdir()
@@ -958,7 +970,7 @@ def test_status_root_other_git_repo_is_unmanaged(monkeypatch, tmp_path):
     monkeypatch.setattr("pipeline.client.EngineClient", lambda *a, **k: FakeEng())
     monkeypatch.setattr(
         "pipeline.session_store.load_store",
-        lambda _r: {"topic": None, "spans": {}, "focus_seen": {}, "ledger": {}},
+        lambda _r, **_: {"topic": None, "spans": {}, "focus_seen": {}, "ledger": {}},
     )
     from pipeline.mcp_locate import create_mcp
 

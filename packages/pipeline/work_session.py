@@ -13,50 +13,65 @@ from pathlib import Path
 from typing import Any
 
 
-def _session_path(repo: Path) -> Path:
+def _session_path(repo: Path, session_id: str | None = None) -> Path:
+    from pipeline.session_isolation import effective_session_id, session_data_dir
     from pipeline.project_id import id_dir_path
 
-    base = id_dir_path(repo)
+    repo_p = Path(repo).resolve()
+    sid = effective_session_id(session_id)
+    if sid:
+        return session_data_dir(repo_p, sid) / "work_session.json"
+    base = id_dir_path(repo_p)
     base.mkdir(parents=True, exist_ok=True)
     name = os.environ.get("CTX_WORK_SESSION") or "work_session.json"
     return base / name
 
 
-def load_session(repo: Path | str) -> dict[str, Any]:
+def load_session(repo: Path | str, *, session_id: str | None = None) -> dict[str, Any]:
     repo_p = Path(repo).resolve()
-    path = _session_path(repo_p)
+    path = _session_path(repo_p, session_id)
+    empty = {
+        "repo": str(repo_p),
+        "updated_at": time.time(),
+        "topic": "",
+        "files": {},
+        "pins": [],
+    }
     if not path.is_file():
-        return {
-            "repo": str(repo_p),
-            "updated_at": time.time(),
-            "topic": "",
-            "files": {},  # path -> {hits, last_ts, roles, queries}
-            "pins": [],
-        }
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-        if not isinstance(data, dict):
-            raise ValueError("bad session")
-        data.setdefault("files", {})
-        data.setdefault("pins", [])
-        data.setdefault("topic", "")
-        return data
-    except Exception:  # noqa: BLE001
-        return {
-            "repo": str(repo_p),
-            "updated_at": time.time(),
-            "topic": "",
-            "files": {},
-            "pins": [],
-        }
+        return empty
+    from pipeline.session_isolation import session_json_lock
+
+    with session_json_lock(path):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(data, dict):
+                raise ValueError("bad session")
+            data.setdefault("files", {})
+            data.setdefault("pins", [])
+            data.setdefault("topic", "")
+            return data
+        except Exception:  # noqa: BLE001
+            return empty
 
 
-def save_session(repo: Path | str, data: dict[str, Any]) -> Path:
+def save_session(
+    repo: Path | str,
+    data: dict[str, Any],
+    *,
+    session_id: str | None = None,
+) -> Path:
     repo_p = Path(repo).resolve()
-    path = _session_path(repo_p)
+    path = _session_path(repo_p, session_id)
     data["repo"] = str(repo_p)
     data["updated_at"] = time.time()
-    path.write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")
+    from pipeline.session_isolation import effective_session_id, session_json_lock
+
+    sid = effective_session_id(session_id)
+    if sid:
+        data["session_id"] = sid
+    with session_json_lock(path):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")
     return path
 
 
@@ -66,10 +81,11 @@ def touch(
     *,
     query: str = "",
     weight: int = 1,
+    session_id: str | None = None,
 ) -> dict[str, Any]:
     """Record file touches (from map/focus results)."""
     repo_p = Path(repo).resolve()
-    sess = load_session(repo_p)
+    sess = load_session(repo_p, session_id=session_id)
     if query:
         sess["topic"] = (query or "")[:240]
     now = time.time()
@@ -94,21 +110,21 @@ def touch(
             if query not in qs:
                 qs.append(query[:160])
                 entry["queries"] = qs[-5:]
-    save_session(repo_p, sess)
+    save_session(repo_p, sess, session_id=session_id)
     return sess
 
 
-def pin(repo: Path | str, path: str) -> dict[str, Any]:
-    sess = load_session(repo)
+def pin(repo: Path | str, path: str, *, session_id: str | None = None) -> dict[str, Any]:
+    sess = load_session(repo, session_id=session_id)
     p = path.replace("\\", "/")
     pins = sess.setdefault("pins", [])
     if p and p not in pins:
         pins.append(p)
-    save_session(repo, sess)
+    save_session(repo, sess, session_id=session_id)
     return sess
 
 
-def clear_session(repo: Path | str) -> dict[str, Any]:
+def clear_session(repo: Path | str, *, session_id: str | None = None) -> dict[str, Any]:
     repo_p = Path(repo).resolve()
     empty = {
         "repo": str(repo_p),
@@ -117,12 +133,12 @@ def clear_session(repo: Path | str) -> dict[str, Any]:
         "files": {},
         "pins": [],
     }
-    save_session(repo_p, empty)
+    save_session(repo_p, empty, session_id=session_id)
     return empty
 
 
-def heatmap(repo: Path | str, *, top_n: int = 20) -> list[dict[str, Any]]:
-    sess = load_session(repo)
+def heatmap(repo: Path | str, *, top_n: int = 20, session_id: str | None = None) -> list[dict[str, Any]]:
+    sess = load_session(repo, session_id=session_id)
     rows = []
     now = time.time()
     for f, meta in (sess.get("files") or {}).items():
@@ -153,6 +169,7 @@ def working_subgraph(
     top_n: int = 12,
     depth: int = 0,
     token_budget: int = 0,
+    session_id: str | None = None,
 ) -> dict[str, Any]:
     """Induced neighborhood around hottest files (Graphify text pack).
 
@@ -162,7 +179,7 @@ def working_subgraph(
     import os
 
     repo_p = Path(repo).resolve()
-    hot_raw = heatmap(repo_p, top_n=top_n)
+    hot_raw = heatmap(repo_p, top_n=top_n, session_id=session_id)
     hot = [
         {
             "file": h.get("file"),
@@ -173,7 +190,7 @@ def working_subgraph(
         for h in hot_raw
     ]
     seeds = [h["file"] for h in hot if h.get("file")]
-    pins = load_session(repo_p).get("pins") or []
+    pins = load_session(repo_p, session_id=session_id).get("pins") or []
     for p in pins:
         if p not in seeds:
             seeds.insert(0, p)
@@ -199,7 +216,7 @@ def working_subgraph(
             question = (
                 " ".join(labels)
                 if labels
-                else (load_session(repo_p).get("topic") or "working set")
+                else (load_session(repo_p, session_id=session_id).get("topic") or "working set")
             )
             gb = int(token_budget) if token_budget else (800 if savings else 3500)
             graph_text = query_graph_text(
@@ -211,7 +228,7 @@ def working_subgraph(
         except Exception as exc:  # noqa: BLE001
             graph_text = f"(graph unavailable: {exc})"
 
-    sess = load_session(repo_p)
+    sess = load_session(repo_p, session_id=session_id)
     out: dict[str, Any] = {
         "ok": True,
         "tool": "workspace",

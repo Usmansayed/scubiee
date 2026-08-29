@@ -861,7 +861,7 @@ class RuntimeManager:
         return self.publish_engine(payload)
 
     def grep(
-        self, pattern: str, *, glob: str = "*.py", max_hits: int = 20, root: Path | str | None = None
+        self, pattern: str, *, glob: str = "**/*", max_hits: int = 200, root: Path | str | None = None
     ) -> dict[str, Any]:
         gate = self._gate(root)
         if gate:
@@ -1111,24 +1111,24 @@ class RuntimeManager:
         repo = Path(root).resolve() if root else self.repo
         if repo is None:
             return None
-        self._activate_runtime(repo)
-        if self.engine is not None:
-            return self.engine
-        if self.warm_state == "awaiting_registration":
-            return None
-        try:
-            self.repo = repo
-            eng = load_engine(repo)
-            self.engine = eng
-            self.warm_state = "ready"
-            if self.generation == 0:
-                self.generation = 1
-            self._save_active_runtime()
-            return eng
-        except Exception as exc:  # noqa: BLE001
-            if self.project_id:
-                self.hub.isolate_failure(self.project_id, exc)
-            return None
+        with self._lock:
+            runtime = self._activate_runtime(repo)
+            if runtime.engine is not None:
+                return runtime.engine
+            if runtime.warm_state == "awaiting_registration":
+                return None
+            try:
+                eng = load_engine(repo)
+                runtime.engine = eng
+                runtime.warm_state = "ready"
+                if runtime.generation == 0:
+                    runtime.generation = 1
+                self._load_runtime_facade(runtime)
+                return runtime.engine
+            except Exception as exc:  # noqa: BLE001
+                if runtime.project_id:
+                    self.hub.isolate_failure(runtime.project_id, exc)
+                return None
 
 
 # Back-compat alias

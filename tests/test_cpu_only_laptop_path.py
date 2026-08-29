@@ -301,7 +301,13 @@ def test_real_light_cpu_calibrate_against_installed_fastembed() -> None:
     """Live smoke: real FastEmbed CPU calibrate must finish quickly with light corpus."""
     pytest.importorskip("fastembed")
     profile = AccelProfile(profile="cpu", provider="CPUExecutionProvider")
-    out = calibrate_batch(profile)
+    try:
+        out = calibrate_batch(profile)
+    except Exception as exc:  # noqa: BLE001
+        msg = str(exc).lower()
+        if "no_suchfile" in msg or "cache" in msg or "local_files_only" in msg:
+            pytest.skip(f"CodeRank model not cached locally: {exc}")
+        raise
     assert out["ok"] is True
     assert out.get("light_cpu") is True
     assert out["winner"] == 16

@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import tempfile
+import time
 from pathlib import Path
 from typing import Iterable
 
@@ -13,8 +14,23 @@ from typing import Iterable
 MANIFEST_NAME = "publication_manifest.json"
 
 
-def atomic_write_text(path: Path, text: str) -> None:
+def atomic_write_text(
+    path: Path,
+    text: str,
+    *,
+    lock_dir: Path | None = None,
+) -> None:
     """Replace a text artifact atomically using a same-directory temporary file."""
+    if lock_dir is not None:
+        from pipeline.store_lock import store_write_lock
+
+        with store_write_lock(lock_dir):
+            _atomic_write_text_unlocked(path, text)
+        return
+    _atomic_write_text_unlocked(path, text)
+
+
+def _atomic_write_text_unlocked(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, temp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
     try:
@@ -22,9 +38,27 @@ def atomic_write_text(path: Path, text: str) -> None:
             handle.write(text)
             handle.flush()
             os.fsync(handle.fileno())
-        Path(temp_name).replace(path)
+        _atomic_replace(Path(temp_name), path)
     finally:
         Path(temp_name).unlink(missing_ok=True)
+
+
+def _atomic_replace(src: Path, dst: Path) -> None:
+    """os.replace with retries — Windows denies rename when readers hold dst open."""
+    last_exc: OSError | None = None
+    for attempt in range(30):
+        try:
+            src.replace(dst)
+            return
+        except OSError as exc:
+            last_exc = exc
+            winerr = getattr(exc, "winerror", None)
+            if winerr not in (5, 32) and exc.errno not in (13, 16):
+                raise
+            if attempt < 29:
+                time.sleep(min(0.25 * (attempt + 1), 2.0))
+    if last_exc is not None:
+        raise last_exc
 
 
 def _checksum(path: Path) -> str:
@@ -42,6 +76,7 @@ def publish_manifest(store: Path, files: Iterable[Path]) -> dict[str, object]:
     atomic_write_text(
         store / MANIFEST_NAME,
         json.dumps(payload, indent=2, sort_keys=True) + "\n",
+        lock_dir=store,
     )
     return payload
 

@@ -14,10 +14,16 @@ from pathlib import Path
 from typing import Any
 
 
-def _store_path(repo: Path) -> Path:
+def _store_path(repo: Path, session_id: str | None = None) -> Path:
+    from pipeline.session_isolation import effective_session_id, session_data_dir
+
+    repo_p = Path(repo).resolve()
+    sid = effective_session_id(session_id)
+    if sid:
+        return session_data_dir(repo_p, sid) / "session_store.json"
     from pipeline.project_id import id_dir_path
 
-    base = id_dir_path(repo)
+    base = id_dir_path(repo_p)
     base.mkdir(parents=True, exist_ok=True)
     name = os.environ.get("CTX_SESSION_STORE") or "session_store.json"
     return base / name
@@ -39,27 +45,51 @@ def _empty(repo: Path) -> dict[str, Any]:
     }
 
 
-def load_store(repo: Path | str) -> dict[str, Any]:
+def load_store(repo: Path | str, *, session_id: str | None = None) -> dict[str, Any]:
     repo_p = Path(repo).resolve()
-    path = _store_path(repo_p)
+    path = _store_path(repo_p, session_id)
     if not path.is_file():
         return _empty(repo_p)
+    from pipeline.session_isolation import session_json_lock
+
+    with session_json_lock(path):
+        return _read_store_file(path, repo_p, session_id)
+
+
+def _read_store_file(path: Path, repo_p: Path, session_id: str | None) -> dict[str, Any]:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(data, dict):
             raise ValueError("bad store")
         for k, v in _empty(repo_p).items():
             data.setdefault(k, v)
+        sid = effective_session_id(session_id)
+        if sid:
+            data.setdefault("session_id", sid)
         return data
     except Exception:  # noqa: BLE001
         return _empty(repo_p)
 
 
-def save_store(repo: Path | str, data: dict[str, Any]) -> Path:
+def effective_session_id(session_id: str | None = None) -> str | None:
+    from pipeline.session_isolation import effective_session_id as _eff
+
+    return _eff(session_id)
+
+
+def save_store(
+    repo: Path | str,
+    data: dict[str, Any],
+    *,
+    session_id: str | None = None,
+) -> Path:
     repo_p = Path(repo).resolve()
-    path = _store_path(repo_p)
+    path = _store_path(repo_p, session_id)
     data["repo"] = str(repo_p)
     data["updated_at"] = time.time()
+    sid = effective_session_id(session_id)
+    if sid:
+        data["session_id"] = sid
     # cap spans
     spans = data.get("spans") or {}
     if len(spans) > 200:
@@ -76,14 +106,17 @@ def save_store(repo: Path | str, data: dict[str, Any]) -> Path:
             f"{sp.get('path')}:{sp.get('start_line')}:{sp.get('end_line')}": hid
             for hid, sp in keep.items()
         }
-    path.write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")
+    from pipeline.session_isolation import session_json_lock
+
+    with session_json_lock(path):
+        path.write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")
     return path
 
 
-def clear_store(repo: Path | str) -> dict[str, Any]:
+def clear_store(repo: Path | str, *, session_id: str | None = None) -> dict[str, Any]:
     repo_p = Path(repo).resolve()
     empty = _empty(repo_p)
-    save_store(repo_p, empty)
+    save_store(repo_p, empty, session_id=session_id)
     return empty
 
 
@@ -96,7 +129,7 @@ def record_session_metadata(
 ) -> dict[str, Any]:
     """Persist session attribution without changing repository-global index state."""
     repo_p = Path(repo).resolve()
-    store = load_store(repo_p)
+    store = load_store(repo_p, session_id=session_id)
     now = time.time()
     sessions = store.setdefault("sessions", {})
     current = dict(sessions.get(session_id) or {})
@@ -111,29 +144,23 @@ def record_session_metadata(
         }
     )
     sessions[session_id] = current
-    save_store(repo_p, store)
+    save_store(repo_p, store, session_id=session_id)
     return dict(current)
 
 
 def end_session(repo: Path | str, session_id: str) -> dict[str, Any]:
     """Mark one session ended while retaining its attribution history."""
     repo_p = Path(repo).resolve()
-    store = load_store(repo_p)
+    store = load_store(repo_p, session_id=session_id)
     sessions = store.setdefault("sessions", {})
     current = dict(sessions.get(session_id) or {"session_id": session_id})
     current["ended_at"] = time.time()
     sessions[session_id] = current
-    save_store(repo_p, store)
+    save_store(repo_p, store, session_id=session_id)
     return dict(current)
 
 
-def invalidate_paths(repo: Path | str, paths: list[str]) -> dict[str, Any]:
-    """Drop cached session spans for files rewritten by incremental sync."""
-    repo_p = Path(repo).resolve()
-    normalized = {
-        str(path).replace("\\", "/").lstrip("./") for path in paths if str(path)
-    }
-    store = load_store(repo_p)
+def _invalidate_store_paths(store: dict[str, Any], normalized: set[str]) -> int:
     spans = store.get("spans") or {}
     removed_handles = [
         handle
@@ -157,8 +184,24 @@ def invalidate_paths(repo: Path | str, paths: list[str]) -> dict[str, Any]:
         for key, value in focus_seen.items()
         if key.split(":", 1)[-1].replace("\\", "/") not in normalized
     }
-    save_store(repo_p, store)
-    return {"ok": True, "paths": sorted(normalized), "removed": len(removed_handles)}
+    return len(removed_handles)
+
+
+def invalidate_paths(repo: Path | str, paths: list[str]) -> dict[str, Any]:
+    """Drop cached session spans for files rewritten by incremental sync."""
+    from pipeline.session_isolation import list_session_ids
+
+    repo_p = Path(repo).resolve()
+    normalized = {
+        str(path).replace("\\", "/").lstrip("./") for path in paths if str(path)
+    }
+    removed_total = 0
+    session_targets: list[str | None] = [None, *list_session_ids(repo_p)]
+    for sid in session_targets:
+        store = load_store(repo_p, session_id=sid)
+        removed_total += _invalidate_store_paths(store, normalized)
+        save_store(repo_p, store, session_id=sid)
+    return {"ok": True, "paths": sorted(normalized), "removed": removed_total}
 
 
 def content_hash(text: str) -> str:
@@ -195,6 +238,31 @@ def savings_defaults(mode: str = "map") -> dict[str, int]:
     return {"excerpt_chars": 480, "max_targets": 3, "graph_budget": 600, "top_k": 8}
 
 
+def _write_store_file(path: Path, repo_p: Path, data: dict[str, Any], session_id: str | None) -> None:
+    data["repo"] = str(repo_p)
+    data["updated_at"] = time.time()
+    sid = effective_session_id(session_id)
+    if sid:
+        data["session_id"] = sid
+    spans = data.get("spans") or {}
+    if len(spans) > 200:
+        ordered = sorted(
+            spans.items(),
+            key=lambda kv: float((kv[1] or {}).get("last_served_ts") or 0),
+        )
+        keep = dict(ordered[-200:])
+        data["spans"] = keep
+        data["by_hash"] = {
+            h: hid for hid, sp in keep.items() for h in [sp.get("content_hash")] if h
+        }
+        data["by_key"] = {
+            f"{sp.get('path')}:{sp.get('start_line')}:{sp.get('end_line')}": hid
+            for hid, sp in keep.items()
+        }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")
+
+
 def put_span(
     repo: Path | str,
     *,
@@ -214,94 +282,111 @@ def put_span(
 ) -> dict[str, Any]:
     """Store span body server-side; return compact card with handle."""
     repo_p = Path(repo).resolve()
-    if session_id:
-        record_session_metadata(
-            repo_p,
-            session_id,
-            client=client,
-            metadata=metadata,
-        )
-    store = load_store(repo_p)
-    path_s = (path or "").replace("\\", "/")
-    text_s = text or ""
-    h = content_hash(text_s)
-    key = f"{path_s}:{int(start_line or 0)}:{int(end_line or 0)}"
+    sid = effective_session_id(session_id)
+    store_path = _store_path(repo_p, sid)
+    from pipeline.session_isolation import session_json_lock
 
-    existing = store.get("by_hash", {}).get(h) or store.get("by_key", {}).get(key)
-    if existing and existing in (store.get("spans") or {}):
-        sp = store["spans"][existing]
-        sp["serve_count"] = int(sp.get("serve_count") or 0) + 1
-        sp["last_served_ts"] = time.time()
-        ledger = store.setdefault("ledger", {"served_handles": [], "approx_prompt_tokens": 0})
-        served = ledger.setdefault("served_handles", [])
-        if existing not in served:
-            served.append(existing)
-            served[:] = served[-100:]
+    with session_json_lock(store_path):
+        store = (
+            _read_store_file(store_path, repo_p, sid)
+            if store_path.is_file()
+            else _empty(repo_p)
+        )
+        if sid:
+            now = time.time()
+            sessions = store.setdefault("sessions", {})
+            current = dict(sessions.get(sid) or {})
+            current.setdefault("started_at", now)
+            current.update(metadata or {})
+            current.update(
+                {
+                    "session_id": sid,
+                    "client": client or current.get("client"),
+                    "last_seen_at": now,
+                    "session_authored": True,
+                }
+            )
+            sessions[sid] = current
+
+        path_s = (path or "").replace("\\", "/")
+        text_s = text or ""
+        h = content_hash(text_s)
+        key = f"{path_s}:{int(start_line or 0)}:{int(end_line or 0)}"
+
+        existing = store.get("by_hash", {}).get(h) or store.get("by_key", {}).get(key)
+        if existing and existing in (store.get("spans") or {}):
+            sp = store["spans"][existing]
+            sp["serve_count"] = int(sp.get("serve_count") or 0) + 1
+            sp["last_served_ts"] = time.time()
+            ledger = store.setdefault("ledger", {"served_handles": [], "approx_prompt_tokens": 0})
+            served = ledger.setdefault("served_handles", [])
+            if existing not in served:
+                served.append(existing)
+                served[:] = served[-100:]
+            if topic:
+                store["topic"] = topic[:240]
+            _write_store_file(store_path, repo_p, store, sid)
+            return {
+                "status": "already_in_session",
+                "handle": existing,
+                "path": sp.get("path"),
+                "start_line": sp.get("start_line"),
+                "end_line": sp.get("end_line"),
+                "content_hash": h,
+                "why": why or sp.get("why") or "",
+                "role": role or sp.get("role") or "",
+                "source": source or sp.get("source") or "",
+                "excerpt": None,
+                "hint": "already_in_session — call expand(handle) only if you need the body again",
+                "serve_count": sp["serve_count"],
+            }
+
+        handle = _new_handle(store)
+        store.setdefault("spans", {})[handle] = {
+            "path": path_s,
+            "start_line": int(start_line or 0),
+            "end_line": int(end_line or 0),
+            "content_hash": h,
+            "text": text_s,
+            "why": (why or "")[:200],
+            "role": (role or "")[:40],
+            "source": (source or "")[:40],
+            "session_id": sid,
+            "session_authored": bool(session_authored or sid),
+            "metadata": dict(metadata or {}),
+            "created_ts": time.time(),
+            "last_served_ts": time.time(),
+            "serve_count": 1,
+        }
+        store.setdefault("by_hash", {})[h] = handle
+        store.setdefault("by_key", {})[key] = handle
         if topic:
             store["topic"] = topic[:240]
-        save_store(repo_p, store)
+        ledger = store.setdefault("ledger", {"served_handles": [], "approx_prompt_tokens": 0})
+        served = ledger.setdefault("served_handles", [])
+        served.append(handle)
+        served[:] = served[-100:]
+        ledger["approx_prompt_tokens"] = int(ledger.get("approx_prompt_tokens") or 0) + max(
+            1, len(_excerpt(text_s, max(40, excerpt_chars))) // 4
+        )
+        _write_store_file(store_path, repo_p, store, sid)
         return {
-            "status": "already_in_session",
-            "handle": existing,
-            "path": sp.get("path"),
-            "start_line": sp.get("start_line"),
-            "end_line": sp.get("end_line"),
+            "status": "stored",
+            "handle": handle,
+            "path": path_s,
+            "start_line": int(start_line or 0),
+            "end_line": int(end_line or 0),
             "content_hash": h,
-            "why": why or sp.get("why") or "",
-            "role": role or sp.get("role") or "",
-            "source": source or sp.get("source") or "",
-            "excerpt": None,
-            "hint": "already_in_session — call expand(handle) only if you need the body again",
-            "serve_count": sp["serve_count"],
+            "why": (why or "")[:200],
+            "role": (role or "")[:40],
+            "source": (source or "")[:40],
+            "session_id": sid,
+            "session_authored": bool(session_authored or sid),
+            "metadata": dict(metadata or {}),
+            "excerpt": _excerpt(text_s, max(40, int(excerpt_chars))),
+            "hint": "Full text is in session store. expand(handle) to materialize.",
+            "serve_count": 1,
         }
-
-    handle = _new_handle(store)
-    store.setdefault("spans", {})[handle] = {
-        "path": path_s,
-        "start_line": int(start_line or 0),
-        "end_line": int(end_line or 0),
-        "content_hash": h,
-        "text": text_s,
-        "why": (why or "")[:200],
-        "role": (role or "")[:40],
-        "source": (source or "")[:40],
-        "session_id": session_id,
-        "session_authored": bool(session_authored or session_id),
-        "metadata": dict(metadata or {}),
-        "created_ts": time.time(),
-        "last_served_ts": time.time(),
-        "serve_count": 1,
-    }
-    store.setdefault("by_hash", {})[h] = handle
-    store.setdefault("by_key", {})[key] = handle
-    if topic:
-        store["topic"] = topic[:240]
-    ledger = store.setdefault("ledger", {"served_handles": [], "approx_prompt_tokens": 0})
-    served = ledger.setdefault("served_handles", [])
-    served.append(handle)
-    served[:] = served[-100:]
-    # rough token estimate of what we *would* have sent
-    ledger["approx_prompt_tokens"] = int(ledger.get("approx_prompt_tokens") or 0) + max(
-        1, len(_excerpt(text_s, max(40, excerpt_chars))) // 4
-    )
-    save_store(repo_p, store)
-    return {
-        "status": "stored",
-        "handle": handle,
-        "path": path_s,
-        "start_line": int(start_line or 0),
-        "end_line": int(end_line or 0),
-        "content_hash": h,
-        "why": (why or "")[:200],
-        "role": (role or "")[:40],
-        "source": (source or "")[:40],
-        "session_id": session_id,
-        "session_authored": bool(session_authored or session_id),
-        "metadata": dict(metadata or {}),
-        "excerpt": _excerpt(text_s, max(40, int(excerpt_chars))),
-        "hint": "Full text is in session store. expand(handle) to materialize.",
-        "serve_count": 1,
-    }
 
 
 def govern_targets(
@@ -347,9 +432,16 @@ def govern_targets(
     return out
 
 
-def expand(repo: Path | str, handle: str, max_chars: int = 4000) -> dict[str, Any]:
+def expand(
+    repo: Path | str,
+    handle: str,
+    max_chars: int = 4000,
+    *,
+    session_id: str | None = None,
+) -> dict[str, Any]:
     repo_p = Path(repo).resolve()
-    store = load_store(repo_p)
+    sid = effective_session_id(session_id)
+    store = load_store(repo_p, session_id=sid)
     hid = (handle or "").strip()
     sp = (store.get("spans") or {}).get(hid)
     if not sp:
@@ -376,7 +468,7 @@ def expand(repo: Path | str, handle: str, max_chars: int = 4000) -> dict[str, An
 
     sp["serve_count"] = int(sp.get("serve_count") or 0) + 1
     sp["last_served_ts"] = time.time()
-    save_store(repo_p, store)
+    save_store(repo_p, store, session_id=sid)
 
     max_chars = max(200, min(int(max_chars or 4000), 12000))
     body = text if len(text) <= max_chars else text[: max_chars - 1] + "…"
@@ -394,10 +486,17 @@ def expand(repo: Path | str, handle: str, max_chars: int = 4000) -> dict[str, An
     }
 
 
-def recall(repo: Path | str, need: str = "", top_n: int = 20) -> dict[str, Any]:
+def recall(
+    repo: Path | str,
+    need: str = "",
+    top_n: int = 20,
+    *,
+    session_id: str | None = None,
+) -> dict[str, Any]:
     """List what the session already knows — no file bodies."""
     repo_p = Path(repo).resolve()
-    store = load_store(repo_p)
+    sid = effective_session_id(session_id)
+    store = load_store(repo_p, session_id=sid)
     need_l = (need or "").strip().lower()
     spans_out = []
     for hid, sp in (store.get("spans") or {}).items():
@@ -430,8 +529,8 @@ def recall(repo: Path | str, need: str = "", top_n: int = 20) -> dict[str, Any]:
     try:
         from pipeline.work_session import heatmap, load_session
 
-        pins = list(load_session(repo_p).get("pins") or [])
-        hot_raw = heatmap(repo_p, top_n=8)
+        pins = list(load_session(repo_p, session_id=sid).get("pins") or [])
+        hot_raw = heatmap(repo_p, top_n=8, session_id=sid)
         hot = [
             {"file": h.get("file"), "heat": h.get("heat"), "pinned": h.get("pinned")}
             for h in hot_raw

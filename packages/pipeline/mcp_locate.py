@@ -198,18 +198,16 @@ Defaults: prefer this over shelling out to grep. Shell for tests/build/git is fi
 """
 
 SERVER_INSTRUCTIONS_PHASE = """\
-Scubiee tools: map | focus | grep | glob | workspace | status.
-Recommended locate — you decide; tools are never hard-blocked.
+Locate trajectory (tool bans are in the project GATE rule, not here):
 
 - Meaning / where is X → map(query) then focus 1–3 cards. map is a ranked shortlist of *indexed* chunks. Empty or off-target cards ≠ “not in the repo”.
 - Known path or filename → glob(pattern) then focus. truncated/has_more means more files matched than were returned.
-- Exact literal → grep(pattern, glob=…). Default glob is *.py; pass *.ts or * for other files. truncated/has_more means the hit cap fired, not absence. Absence is honest only when truncated is false.
-- Body → focus(mode=span) (bounded; may truncate). Shape → focus(outline) (Python AST; other languages may set language_unsupported). Wiring → focus(neighbors).
+- Exact literal → grep(pattern, glob=…). Default glob is **/* (all files). Brace groups work: *.{ts,tsx,md}. truncated/has_more means the hit cap or scan budget fired — not absence. Absence is honest only when truncated is false.
+- Body → focus(mode=span). Shape → focus(outline). Wiring → focus(neighbors).
 - Session → workspace(show). Health → status() (not for finding code).
-- Native Read/Edit/Shell for changing and testing.
+- Pass session_id from each tool JSON on later calls. Parallel tasks: distinct session_id each.
 
-map queries work better as 20–60 tokens of code vocabulary (symbols, handlers, error terms) than plain English.
-Prefer these MCP tools for locate. Native Grep/Glob/search for discovery is banned (Cursor rule); exception only if status() is unhealthy.
+map queries: 20–60 tokens of code vocabulary (symbols, handlers, error terms) beat plain English.
 """
 
 SERVER_INSTRUCTIONS_NAV = """\
@@ -230,6 +228,7 @@ Need → one tool:
 - Open to change → read(target); map defs → detail=outline; callers/callees → detail=neighbors
 - What did I already fetch → recall() before another search; reopen → expand(handle)
 - Health → status() (never to find code)
+- Pass session_id from the last Scubiee response on every call in this chat; use a new session_id for parallel tasks.
 
 USAGE (guidance — tools are never hard-blocked):
 - Prefer soft search for meaning; use exact only for true literals (full import line, error string).
@@ -245,8 +244,7 @@ Trajectory: soft → read → edit → test. Call Scubiee when needed, then cont
 def _is_repo_managed() -> bool:
     """Check if the resolved repository is managed by Scubiee.
 
-    Returns True if the repo has a project ID and is in the registry as managed.
-    Falls back to True if detection fails (don't suppress instructions on errors).
+    Returns True if the repo has an enrolled project ID and is in the registry as managed.
     """
     try:
         repo = _default_repo()
@@ -260,35 +258,65 @@ def _is_repo_managed() -> bool:
 
         from pipeline.project_id import read_id_file, load_registry
 
+        # If explicit request repo is bound (e.g. root=...) check if that explicit repo is enrolled
+        bound = _REQUEST_REPO.get()
+        if bound is not None and not _is_enrolled(bound):
+            return False
+
         project_id = read_id_file(repo)
         if not project_id:
             return False
+
         registry = load_registry()
         entry = registry.get("projects", {}).get(project_id)
         if not isinstance(entry, dict):
             return False
-        return bool(entry.get("managed", False))
+        return bool(entry.get("managed", True))
     except Exception:  # noqa: BLE001
-        # On any failure, default to showing full instructions (safe fallback).
-        return True
+        return False
 
 
-def _server_instructions(surface: str) -> str:
-    # Universal (all MCP hosts): lead with compact gate — no tool call needed.
-    gate = _gate_line(just_checked=False)
-    prefix = (
-        f"GATE {gate}. "
-        "Formats: 0=unmanaged, 1:ce_=managed, p=paused. "
-        "Pass root on locate when multi-repo. "
+def _minimal_gate_instructions(gate: str) -> str:
+    """Unmanaged workspace — no project rule; state native-only policy here."""
+    return (
+        f"GATE {gate}. Not managed — USE native Grep/Glob/Read/search only; "
+        "Scubiee locate unavailable. User asks Scubiee → gate() once."
     )
-    # Open-locate trials: keep tool names visible but drop anti-Grep mandates so
-    # the agent can freely choose native locate vs Scubiee.
-    bare = (os.environ.get("CTX_MCP_BARE_INSTRUCTIONS") or "").strip().lower() in {
+
+
+def _gate_instruction_prefix(gate: str | None = None) -> str:
+    g = gate if gate is not None else _gate_line(just_checked=False)
+    return f"GATE {g}. "
+
+
+def _bare_instructions_enabled() -> bool:
+    return (os.environ.get("CTX_MCP_BARE_INSTRUCTIONS") or "").strip().lower() in {
         "1",
         "true",
         "yes",
     }
-    if bare:
+
+
+def _verbose_instructions_enabled() -> bool:
+    """Legacy alias — managed repos now get trajectory by default."""
+    return (os.environ.get("CTX_MCP_VERBOSE_INSTRUCTIONS") or "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+
+
+def _server_instructions(surface: str) -> str:
+    """MCP instructions injected every turn.
+
+    - Unmanaged workspace: minimal native-only note (~40 tok); no project rule exists.
+    - Managed workspace: GATE prefix + locate trajectory only (bans in project rule).
+    - Init writes tool-ban rules; trajectory lives here — no duplication.
+    """
+    gate = _gate_line(just_checked=False)
+
+    if _bare_instructions_enabled():
+        prefix = _gate_instruction_prefix(gate)
         if surface == "phase":
             return (
                 prefix
@@ -298,12 +326,9 @@ def _server_instructions(surface: str) -> str:
         return prefix + "Scubiee MCP tools available — use as you prefer."
 
     if not _is_repo_managed():
-        return (
-            prefix
-            + "Not managed — use native tools. Recheck with gate() after init only."
-        )
+        return _minimal_gate_instructions(gate)
 
-    # Phase instructions are recommendations (agent decides).
+    prefix = _gate_instruction_prefix(gate)
     body = {
         "graph": SERVER_INSTRUCTIONS_GRAPH,
         "rich": SERVER_INSTRUCTIONS_RICH,
@@ -329,16 +354,28 @@ def _register_mcp_client(repo: Path) -> str:
     """Tell the daemon an MCP front-end is connected; unload after it exits."""
     import atexit
 
-    client_id = f"mcp:{os.getpid()}"
+    from pipeline.session_isolation import default_process_session_id, mcp_client_name
+
+    client_id = f"mcp:{default_process_session_id()}"
+    host = mcp_client_name()
     try:
         from pipeline.client import EngineClient
+        from pipeline.session_isolation import effective_session_id
 
-        EngineClient(workspace_path=str(repo), timeout=3.0).post(
+        sid = effective_session_id(None)
+        EngineClient(
+            workspace_path=str(repo),
+            timeout=3.0,
+            client=host,
+            session_id=sid,
+        ).post(
             "/v1/client/register",
             {
                 "client_id": client_id,
                 "pid": os.getpid(),
                 "kind": "mcp",
+                "client": host,
+                "session_id": sid,
             },
         )
     except Exception:  # noqa: BLE001
@@ -359,25 +396,9 @@ def _register_mcp_client(repo: Path) -> str:
     return client_id
 
 
-_IDE_WORKSPACE_ENV_KEYS = (
-    # Cursor — connect may set these via ${workspaceFolder} interpolation
-    "CURSOR_PROJECT_DIR",
-    "CURSOR_WORKSPACE",
-    "CURSOR_CWD",
-    # Cursor (and some VS Code forks) inject open folder(s); may be comma-separated
-    "WORKSPACE_FOLDER_PATHS",
-    # Claude Code — official MCP spawn env (do not rely on process cwd)
-    "CLAUDE_PROJECT_DIR",
-    # Codex IDE may inject this when extension cwd is wrong
-    "CODEX_WORKSPACE_ROOT",
-    "COPILOT_WORKSPACE_FOLDER",
-    "COPILOT_WORKSPACE",
-    "VSCODE_WORKSPACE_FOLDER",
-    "VSCODE_CWD",
-    "WORKSPACE_FOLDER",
-    "INIT_CWD",
-    "OPENCODE_DEFAULT_PROJECT",
-)
+from pipeline.host_workspace import ide_workspace_env_keys
+
+_IDE_WORKSPACE_ENV_KEYS = ide_workspace_env_keys()
 
 _UNEXPANDED_PLACEHOLDER_MARKERS = ("${", "$(", "%{")
 
@@ -529,43 +550,83 @@ _BIND_ROOT_DESC = (
     "folder → managed false; do not keep calling Scubiee."
 )
 _BIND_PID_DESC = "Optional enrolled project_id (ce_…). Shorter than root after status()."
+_BIND_SESSION_DESC = (
+    "Optional chat/session id — isolates recall/pins/handles. "
+    "Auto only when host provides one (e.g. CLAUDE_CODE_SESSION_ID) or MCP connection differs; "
+    "parallel chats on Cursor/Copilot often share one process — pass session_id or set CTX_MCP_SESSION_ID."
+)
 
 
-def _resolve_request_repo(*, root: str = "", project_id: str = "") -> Path | None:
-    pid = (project_id or "").strip()
-    if pid:
-        found = _registry_path_for_project_id(pid)
-        if found is not None:
-            return found
-    raw = (root or "").strip()
-    if not raw or _is_unexpanded_placeholder(raw):
-        return None
-    try:
-        start = Path(raw).expanduser()
-        start = start.resolve() if start.is_absolute() else (Path.cwd() / start).resolve()
-    except OSError:
-        return None
-    enrolled = _enrolled_walk(start)
-    if enrolled is not None:
-        return enrolled
-    git = _git_root_walk(start)
-    if git is not None:
-        return git
-    if _path_exists(start) and not _is_home_or_volume_root(start):
-        return start
-    return None
+def _resolve_session(session_id: str = "") -> str | None:
+    from pipeline.session_isolation import resolve_session
+
+    raw = (session_id or "").strip()
+    info = resolve_session(raw if raw else None)
+    sid = str(info.get("session_id") or "").strip()
+    return sid or None
+
+
+def _session_fields(session_id: str = "") -> dict[str, Any]:
+    from pipeline.session_isolation import resolve_session
+
+    return resolve_session((session_id or "").strip() or None)
 
 
 @contextmanager
-def _bind_request_repo(*, root: str = "", project_id: str = "") -> Iterator[Path | None]:
-    """Bind this MCP call to a chat folder / project_id (shared process safe)."""
+def _bind_request_repo(
+    *,
+    root: str = "",
+    project_id: str = "",
+    session_id: str = "",
+) -> Iterator[Path | None]:
+    """Bind this MCP call to repo + session (shared process safe)."""
+    from pipeline.session_isolation import bind_request_session, reset_request_session
+
     resolved = _resolve_request_repo(root=root, project_id=project_id)
-    token = _REQUEST_REPO.set(resolved) if resolved is not None else None
+    repo_token = _REQUEST_REPO.set(resolved) if resolved is not None else None
+    sess_token = bind_request_session(session_id) if (session_id or "").strip() else None
     try:
         yield resolved
     finally:
-        if token is not None:
-            _REQUEST_REPO.reset(token)
+        reset_request_session(sess_token)
+        if repo_token is not None:
+            _REQUEST_REPO.reset(repo_token)
+
+
+def _resolve_request_repo(*, root: str = "", project_id: str = "") -> Path | None:
+    raw = (root or "").strip()
+    pid = (project_id or "").strip()
+
+    # When explicit root is passed, the caller workspace path MUST match or contain the project
+    if raw and not _is_unexpanded_placeholder(raw):
+        try:
+            start = Path(raw).expanduser()
+            start = start.resolve() if start.is_absolute() else (Path.cwd() / start).resolve()
+        except OSError:
+            start = None
+        if start is not None and _path_exists(start) and not _is_home_or_volume_root(start):
+            enrolled = _enrolled_walk(start)
+            if enrolled is not None:
+                # If project_id was also specified, verify they match
+                if pid:
+                    from pipeline.project_id import read_id_file
+
+                    if read_id_file(enrolled) == pid:
+                        return enrolled
+                    return None
+                return enrolled
+            git = _git_root_walk(start)
+            if git is not None:
+                return git
+            return start
+
+    if pid:
+        found = _registry_path_for_project_id(pid)
+        if found is not None:
+            # Verify the project_id resolves to an actual enrolled path
+            return found
+
+    return None
 
 
 def _ctx_repo_raw() -> Path | None:
@@ -858,14 +919,20 @@ def _norm_query(query: str) -> str:
     return " ".join((query or "").lower().split())
 
 
-def _record_locate_query(repo: Path, mode: str, query: str) -> str | None:
+def _record_locate_query(
+    repo: Path,
+    mode: str,
+    query: str,
+    *,
+    session_id: str | None = None,
+) -> str | None:
     """Track locate queries for workspace(show); return advisory hint on duplicates."""
     surface = _active_surface()
     if surface not in {"nav", "search", "phase"}:
         return None
     from pipeline.session_store import load_store, save_store
 
-    store = load_store(repo)
+    store = load_store(repo, session_id=session_id)
     thrash = store.setdefault("locate_thrash", {"soft": [], "exact": [], "seen": []})
     qn = _norm_query(query)
     duplicate = qn in (thrash.get("seen") or [])
@@ -874,7 +941,7 @@ def _record_locate_query(repo: Path, mode: str, query: str) -> str | None:
     else:
         thrash.setdefault("soft", []).append(qn)
     thrash.setdefault("seen", []).append(qn)
-    save_store(repo, store)
+    save_store(repo, store, session_id=session_id)
     if not duplicate:
         return None
     tool = "map" if surface == "phase" else "search"
@@ -899,12 +966,18 @@ def _focus_key(target: str, mode: str, path: str = "") -> str:
     return f"{mode}:{t}"
 
 
-def _phase_focus_remember(repo: Path, key: str, card: dict[str, Any]) -> None:
+def _phase_focus_remember(
+    repo: Path,
+    key: str,
+    card: dict[str, Any],
+    *,
+    session_id: str | None = None,
+) -> None:
     if _active_surface() != "phase":
         return
     from pipeline.session_store import load_store, save_store
 
-    store = load_store(repo)
+    store = load_store(repo, session_id=session_id)
     seen = store.setdefault("focus_seen", {})
     seen[key] = {
         "file": card.get("file") or card.get("path"),
@@ -918,7 +991,7 @@ def _phase_focus_remember(repo: Path, key: str, card: dict[str, Any]) -> None:
     if len(seen) > 80:
         for old in list(seen.keys())[: len(seen) - 80]:
             seen.pop(old, None)
-    save_store(repo, store)
+    save_store(repo, store, session_id=session_id)
 
 def _looks_like_path(s: str) -> bool:
     s = (s or "").strip()
@@ -1033,9 +1106,9 @@ def _find_repo_files(repo: Path, pattern: str, limit: int) -> tuple[list[str], b
 
     patt = (pattern or "").strip().replace("\\", "/")
     lo = patt.lower()
-    has_magic = any(ch in patt for ch in "*?[")
+    has_magic = any(ch in patt for ch in "*?[{}")
     path_like = "/" in patt
-    cap = max(1, int(limit or 50))
+    cap = max(1, int(limit or 200))
 
     if not has_magic and path_like:
         candidate = repo / patt
@@ -1102,9 +1175,15 @@ def _resolve_span_in_path(repo: Path, path_n: str, query: str) -> tuple[int, int
 def _client_for(repo: Path):
     from pipeline.client import EngineClient
     from pipeline.daemon import ensure_daemon
+    from pipeline.session_isolation import effective_session_id, mcp_client_name
 
     ensure_daemon(repo, force_if_hung=True)
-    client = EngineClient(workspace_path=str(repo))
+    sid = effective_session_id(None)
+    client = EngineClient(
+        workspace_path=str(repo),
+        client=mcp_client_name(),
+        session_id=sid,
+    )
     # Locate availability must not depend on the optional live reindex daemon.
     # This is deliberately best-effort: the next query still gets the normal
     # unreachable response if the daemon could not be started.
@@ -1153,8 +1232,12 @@ class ReadArgs(BaseModel):
 class GrepArgs(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
     pattern: str = Field(..., min_length=1, max_length=512, description="Literal/regex string.")
-    glob: str = Field("*.py", max_length=128, description="File glob. Default *.py; pass * or *.ts to search others.")
-    max_hits: int = Field(20, ge=1, le=60, description="Max matches to return.")
+    glob: str = Field(
+        "**/*",
+        max_length=256,
+        description="File glob — default **/* (all files). Supports **, *, ? and brace groups like *.{ts,tsx,md}.",
+    )
+    max_hits: int = Field(200, ge=1, le=500, description="Max matches to return.")
     response_format: Literal["json", "markdown"] = Field("json", description="json|markdown")
 
 
@@ -1189,7 +1272,7 @@ class FilesArgs(BaseModel):
         max_length=256,
         description="Name or glob: 'query_router.py', 'query_*', '*.md', 'packages/**/*.py'.",
     )
-    limit: int = Field(50, ge=1, le=200, description="Max file paths to return.")
+    limit: int = Field(200, ge=1, le=2000, description="Max file paths to return.")
     response_format: Literal["json", "markdown"] = Field("json", description="json|markdown")
 
 
@@ -1294,11 +1377,23 @@ def _to_markdown(card: dict[str, Any]) -> str:
 
 
 def _attach_gate(card: dict[str, Any]) -> dict[str, Any]:
-    """Universal compact gate on every tool JSON (~8 tokens). All MCP hosts."""
+    """Universal compact gate + session echo on every tool JSON."""
     if not isinstance(card, dict):
         return card
     out = dict(card)
     out.setdefault("g", _gate_line(just_checked=False))
+    if out.get("ok") is not False and "session_id" not in out:
+        from pipeline.session_isolation import session_context_for_response
+
+        ctx = session_context_for_response()
+        sid = ctx.get("session_id")
+        if sid and sid != "default":
+            out.setdefault("session_id", sid)
+            out.setdefault("session_source", ctx.get("source"))
+            if ctx.get("shared_process_risk"):
+                out.setdefault("session_shared_risk", True)
+            if ctx.get("hint") and not out.get("session_hint"):
+                out.setdefault("session_hint", ctx.get("hint"))
     return out
 
 
@@ -1317,6 +1412,28 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
     mcp = FastMCP(name, instructions=_server_instructions(surface))
 
     def _tool(tool_name: str, title: str, fn) -> None:
+        from functools import wraps
+
+        from pipeline.session_isolation import (
+            bind_resolved_session,
+            bind_transport_session_from_mcp,
+            reset_resolved_session,
+            reset_transport_session,
+            resolve_session,
+        )
+
+        @wraps(fn)
+        def _wrapped(*args: Any, **kwargs: Any) -> Any:
+            ttok = bind_transport_session_from_mcp(mcp)
+            explicit = str(kwargs.get("session_id") or "").strip()
+            info = resolve_session(explicit or None)
+            rtok = bind_resolved_session(info)
+            try:
+                return fn(*args, **kwargs)
+            finally:
+                reset_resolved_session(rtok)
+                reset_transport_session(ttok)
+
         mcp.tool(
             name=tool_name,
             annotations={
@@ -1326,7 +1443,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 "idempotentHint": True,
                 "openWorldHint": False,
             },
-        )(fn)
+        )(_wrapped)
 
     # ---- search (all surfaces) --------------------------------------------
     def search_impl(
@@ -1342,9 +1459,10 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
         root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
         project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
+        session_id: Annotated[str, Field(description=_BIND_SESSION_DESC)] = "",
     ) -> str:
         """Semantic locate. Default include=hits (skinny). Prefer over Grep for meaning."""
-        with _bind_request_repo(root=root, project_id=project_id):
+        with _bind_request_repo(root=root, project_id=project_id, session_id=session_id):
             try:
                 args = SearchArgs(
                     query=query,
@@ -1362,6 +1480,10 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     hint="query required; include=hits|span|graph; k in 1..25.",
                 )
             repo = _default_repo()
+
+            if not _is_repo_managed():
+                return _err("search", f"Repository at {repo} is not managed by Scubiee. Run `scubiee init .` first.")
+
             surface = _active_surface()
             # search-only product: soft meaning only; skinny k.
             if surface == "search":
@@ -1378,7 +1500,9 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             include_mode = str(args.include or "hits").strip().lower()
             if args.fetch and include_mode == "hits":
                 include_mode = "span"
-            usage_hint = _record_locate_query(repo, str(args.mode), args.query)
+            usage_hint = _record_locate_query(
+                repo, str(args.mode), args.query, session_id=_resolve_session(session_id)
+            )
 
             if args.mode == "exact":
                 try:
@@ -1520,6 +1644,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
         root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
         project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
+        session_id: Annotated[str, Field(description=_BIND_SESSION_DESC)] = "",
     ) -> str:
         """Open the right span before edit. detail=outline|neighbors for shape/wiring."""
         try:
@@ -1533,8 +1658,12 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             )
         except ValidationError as exc:
             return _err("read", str(exc), hint="Pass target= or path= or handle=.")
-        with _bind_request_repo(root=root, project_id=project_id):
+        sid = _resolve_session(session_id)
+        with _bind_request_repo(root=root, project_id=project_id, session_id=session_id):
             repo = _default_repo()
+
+        if not _is_repo_managed():
+            return _err("read", f"Repository at {repo} is not managed by Scubiee. Run `scubiee init .` first.")
 
         if args.detail == "outline":
             path_o = (args.path or "").replace("\\", "/").strip()
@@ -1569,7 +1698,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             try:
                 from pipeline.session_store import expand as _expand
 
-                card = _expand(repo, args.handle, max_chars=args.max_chars)
+                card = _expand(repo, args.handle, max_chars=args.max_chars, session_id=sid)
                 if not card.get("ok"):
                     return _err("read", str(card.get("error") or "unknown handle"),
                                 handle=args.handle, hint="Search again; handle may be stale.")
@@ -1662,6 +1791,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 repo, path=file_s, start_line=start_l, end_line=end_l, text=code,
                 why=target_s or q or file_s, source="read",
                 topic=target_s or q or file_s, excerpt_chars=100,
+                session_id=sid,
             )
             handle_s = span.get("handle")
             status_s = span.get("status")
@@ -1723,11 +1853,12 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
     # ---- grep (rich) -------------------------------------------------------
     def grep_impl(
         pattern: Annotated[str, Field(description="Literal/regex string to match.")],
-        glob: Annotated[str, Field(description="File glob. Default *.py; pass *.ts, *.md, or * to search others.")] = "*.py",
-        max_hits: Annotated[int, Field(description="Max matches to return.")] = 20,
+        glob: Annotated[str, Field(description="File glob — default **/* (all files). Brace groups: *.{ts,tsx,md}.")] = "**/*",
+        max_hits: Annotated[int, Field(description="Max matches to return.")] = 200,
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
         root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
         project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
+        session_id: Annotated[str, Field(description=_BIND_SESSION_DESC)] = "",
     ) -> str:
         """WHEN: you need an EXACT string / literal / regex (an import line, a config
         key, a specific token). Faster and more precise than semantic search for
@@ -1738,8 +1869,12 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                            response_format=response_format)  # type: ignore[arg-type]
         except ValidationError as exc:
             return _err("grep", str(exc), hint="pattern required.")
-        with _bind_request_repo(root=root, project_id=project_id):
+        with _bind_request_repo(root=root, project_id=project_id, session_id=session_id):
             repo = _default_repo()
+
+        if not _is_repo_managed():
+            return _err("grep", f"Repository at {repo} is not managed by Scubiee. Run `scubiee init .` first.")
+
         try:
             res = _client_for(repo).grep(
                 args.pattern, glob=args.glob, max_hits=args.max_hits, path=str(repo),
@@ -1764,7 +1899,13 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             "max_hits": args.max_hits,
             "next": nxt,
         }
-        if truncated:
+        if truncated and not hits:
+            out["scan_incomplete"] = True
+            out["usage_hint"] = (
+                "Scan budget exhausted before any match — narrow glob (e.g. packages/**/*.py), "
+                "raise max_hits, or use map() for semantic search."
+            )
+        elif truncated:
             out["usage_hint"] = (
                 "Hit cap reached — more matches may exist. Raise max_hits or narrow glob. "
                 "Do not treat this as exhaustive."
@@ -1783,6 +1924,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
         root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
         project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
+        session_id: Annotated[str, Field(description=_BIND_SESSION_DESC)] = "",
     ) -> str:
         """File shape only — classes/functions + lines, without reading the whole file."""
         try:
@@ -1790,8 +1932,12 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                               response_format=response_format)  # type: ignore[arg-type]
         except ValidationError as exc:
             return _err("outline", str(exc), hint="path required.")
-        with _bind_request_repo(root=root, project_id=project_id):
+        with _bind_request_repo(root=root, project_id=project_id, session_id=session_id):
             repo = _default_repo()
+
+        if not _is_repo_managed():
+            return _err("outline", f"Repository at {repo} is not managed by Scubiee. Run `scubiee init .` first.")
+
         try:
             res = _client_for(repo).outline(args.path.replace("\\", "/"), repo=str(repo))
         except Exception as exc:  # noqa: BLE001
@@ -1817,6 +1963,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
         root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
         project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
+        session_id: Annotated[str, Field(description=_BIND_SESSION_DESC)] = "",
     ) -> str:
         """1-hop callers/callees of a symbol or file (the graph)."""
         try:
@@ -1824,8 +1971,12 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                                 response_format=response_format)  # type: ignore[arg-type]
         except ValidationError as exc:
             return _err("neighbors", str(exc), hint="Pass a symbol or a repo-relative file.")
-        with _bind_request_repo(root=root, project_id=project_id):
+        with _bind_request_repo(root=root, project_id=project_id, session_id=session_id):
             repo = _default_repo()
+
+        if not _is_repo_managed():
+            return _err("neighbors", f"Repository at {repo} is not managed by Scubiee. Run `scubiee init .` first.")
+
         file_s = _resolve_to_file(repo, args.target)
         if not file_s:
             return _err("neighbors", f"could not resolve {args.target!r} to a file",
@@ -1857,6 +2008,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
         root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
         project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
+        session_id: Annotated[str, Field(description=_BIND_SESSION_DESC)] = "",
     ) -> str:
         """Relationship query — how A connects to B (graph affinity, not just text)."""
         try:
@@ -1864,8 +2016,12 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                             response_format=response_format)  # type: ignore[arg-type]
         except ValidationError as exc:
             return _err("graph", str(exc), hint="Pass a natural-language question.")
-        with _bind_request_repo(root=root, project_id=project_id):
+        with _bind_request_repo(root=root, project_id=project_id, session_id=session_id):
             repo = _default_repo()
+
+        if not _is_repo_managed():
+            return _err("graph", f"Repository at {repo} is not managed by Scubiee. Run `scubiee init .` first.")
+
         try:
             gq = _client_for(repo).query_graph(
                 args.question, keep=args.keep, max_chars=args.max_chars, repo=str(repo),
@@ -1887,11 +2043,12 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
 
     # ---- files (rich, nav) ------------------------------------------------------
     def files_impl(
-        pattern: Annotated[str, Field(description="Name or glob: 'query_router.py', '*.md', 'packages/**/*.py'. Use '.' for repo shape.")] = ".",
-        limit: Annotated[int, Field(description="Max file paths to return.")] = 50,
+        pattern: Annotated[str, Field(description="Name or glob: 'query_router.py', '*.md', 'packages/**/*.py', '*.{ts,tsx}'. Use '.' for repo shape.")] = "**/*",
+        limit: Annotated[int, Field(description="Max file paths to return.")] = 200,
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
         root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
         project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
+        session_id: Annotated[str, Field(description=_BIND_SESSION_DESC)] = "",
     ) -> str:
         """WHEN: locate files by NAME or path — "where is the file called X",
         "list the *.md docs", "which files are under packages/pipeline". Use this
@@ -1903,8 +2060,12 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                             response_format=response_format)  # type: ignore[arg-type]
         except ValidationError as exc:
             return _err("files", str(exc), hint="Pass a name or glob, e.g. '*.py' or 'query_*'.")
-        with _bind_request_repo(root=root, project_id=project_id):
+        with _bind_request_repo(root=root, project_id=project_id, session_id=session_id):
             repo = _default_repo()
+
+        if not _is_repo_managed():
+            return _err("files", f"Repository at {repo} is not managed by Scubiee. Run `scubiee init .` first.")
+
         patt = (args.pattern or "").strip()
         if patt in {".", "./"}:
             card = _orient_repo(repo, limit=args.limit)
@@ -1940,19 +2101,20 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             Field(
                 description=(
                     "Filename or path glob — e.g. 'packages/pipeline/mcp_locate.py', "
-                    "'**/test_foo.py'. Use '.' for shallow repo shape."
+                    "'**/*.md', '*.{ts,tsx}'. Use '.' for shallow repo shape."
                 ),
             ),
-        ] = ".",
-        limit: Annotated[int, Field(description="Max file paths to return.")] = 50,
+        ] = "**/*",
+        limit: Annotated[int, Field(description="Max file paths to return.")] = 200,
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
         root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
         project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
+        session_id: Annotated[str, Field(description=_BIND_SESSION_DESC)] = "",
     ) -> str:
         """Find files by name or glob."""
         raw = files_impl(
             pattern=pattern, limit=limit, response_format=response_format,
-            root=root, project_id=project_id,
+            root=root, project_id=project_id, session_id=session_id,
         )
         try:
             card = json.loads(raw)
@@ -1985,18 +2147,28 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         need: Annotated[str, Field(description="Optional filter: topic / path fragment / symbol.")] = "",
         top_n: Annotated[int, Field(description="Max spans to list.")] = 20,
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
+        root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
+        project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
+        session_id: Annotated[str, Field(description=_BIND_SESSION_DESC)] = "",
     ) -> str:
         """List what this session already fetched — handles only, no file bodies."""
-        repo = _default_repo()
+        with _bind_request_repo(root=root, project_id=project_id, session_id=session_id):
+            repo = _default_repo()
+
+        if not _is_repo_managed():
+            return _err("recall", f"Repository at {repo} is not managed by Scubiee. Run `scubiee init .` first.")
+
+        sid = _resolve_session(session_id)
         try:
             from pipeline.session_store import recall as _recall
 
-            card = _recall(repo, need=need, top_n=max(1, min(int(top_n or 20), 50)))
+            card = _recall(repo, need=need, top_n=max(1, min(int(top_n or 20), 50)), session_id=sid)
         except Exception as exc:  # noqa: BLE001
             return _err("recall", str(exc))
         spans = card.get("spans") or []
         out = {
             "ok": True, "tool": "recall", "need": need or "",
+            "session_id": sid,
             "count": len(spans), "spans": spans,
             "pins": card.get("pins") or [],
             "hot": card.get("heatmap") or card.get("hot") or [],
@@ -2008,13 +2180,24 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         handle: Annotated[str, Field(description="Session span handle from read/recall.")],
         max_chars: Annotated[int, Field(description="Body budget.")] = 4000,
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
+        root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
+        project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
+        session_id: Annotated[str, Field(description=_BIND_SESSION_DESC)] = "",
     ) -> str:
         """Re-materialize a stored span by handle (edit-time body)."""
-        repo = _default_repo()
+        with _bind_request_repo(root=root, project_id=project_id, session_id=session_id):
+            repo = _default_repo()
+
+        if not _is_repo_managed():
+            return _err("expand", f"Repository at {repo} is not managed by Scubiee. Run `scubiee init .` first.")
+
+        sid = _resolve_session(session_id)
         try:
             from pipeline.session_store import expand as _expand
 
-            card = _expand(repo, handle, max_chars=max(200, min(int(max_chars or 4000), 12000)))
+            card = _expand(
+                repo, handle, max_chars=max(200, min(int(max_chars or 4000), 12000)), session_id=sid,
+            )
         except Exception as exc:  # noqa: BLE001
             return _err("expand", str(exc), handle=handle)
         if not card.get("ok"):
@@ -2038,12 +2221,20 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
         root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
         project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
+        session_id: Annotated[str, Field(description=_BIND_SESSION_DESC)] = "",
     ) -> str:
         """Cold / new topic locate — returns ranked cards (no bodies)."""
         try:
             args = MapArgs(query=query, k=k, response_format=response_format)  # type: ignore[arg-type]
         except ValidationError as exc:
             return _err("map", str(exc), hint="Pass query= with code vocabulary.")
+        sid = _resolve_session(session_id)
+        with _bind_request_repo(root=root, project_id=project_id, session_id=session_id):
+            repo = _default_repo()
+
+        if not _is_repo_managed():
+            return _err("map", f"Repository at {repo} is not managed by Scubiee. Run `scubiee init .` first.")
+
         # Reuse search path (hits only); duplicate queries get advisory usage_hint only
         raw = search_impl(
             query=args.query,
@@ -2055,6 +2246,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             response_format=args.response_format,
             root=root,
             project_id=project_id,
+            session_id=session_id,
         )
         try:
             card = json.loads(raw)
@@ -2080,6 +2272,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 _resolve_request_repo(root=root, project_id=project_id) or _default_repo(),
                 [{"file": c.get("file"), "role": "map"} for c in (card.get("cards") or [])[:8]],
                 query=args.query,
+                session_id=_resolve_session(session_id),
             )
         except Exception:  # noqa: BLE001
             pass
@@ -2099,6 +2292,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
         root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
         project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
+        session_id: Annotated[str, Field(description=_BIND_SESSION_DESC)] = "",
     ) -> str:
         """Deepen/relate — outline → span → neighbors."""
         try:
@@ -2110,8 +2304,12 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             )
         except ValidationError as exc:
             return _err("focus", str(exc), hint="Pass target= or path=; mode=outline|span|neighbors.")
-        with _bind_request_repo(root=root, project_id=project_id):
+        sid = _resolve_session(session_id)
+        with _bind_request_repo(root=root, project_id=project_id, session_id=session_id):
             repo = _default_repo()
+
+        if not _is_repo_managed():
+            return _err("focus", f"Repository at {repo} is not managed by Scubiee. Run `scubiee init .` first.")
 
         path_s = (args.path or "").replace("\\", "/").strip()
         target_s = (args.target or "").strip()
@@ -2140,6 +2338,9 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             max_neighbors=args.max_neighbors,
             max_chars=args.max_chars,
             response_format=args.response_format,
+            root=root,
+            project_id=project_id,
+            session_id=session_id,
         )
         try:
             card = json.loads(raw)
@@ -2162,10 +2363,10 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 "workspace(show) — only focus again if you need a different mode/target."
             )
             card["next"] = "edit | workspace(show)"
-            _phase_focus_remember(repo, rem_key, card)
+            _phase_focus_remember(repo, rem_key, card, session_id=sid)
             return _format(card, args.response_format)
 
-        _phase_focus_remember(repo, rem_key, card)
+        _phase_focus_remember(repo, rem_key, card, session_id=sid)
         if args.mode == "outline":
             fp = str(card.get("file") or rem_path)
             suffix = Path(fp).suffix.lower()
@@ -2187,7 +2388,12 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             from pipeline.work_session import touch
 
             if rem_path:
-                touch(repo, [{"file": rem_path, "role": f"focus:{args.mode}"}], query=args.query or args.target)
+                touch(
+                    repo,
+                    [{"file": rem_path, "role": f"focus:{args.mode}"}],
+                    query=args.query or args.target,
+                    session_id=sid,
+                )
         except Exception:  # noqa: BLE001
             pass
         return _format(card, args.response_format)
@@ -2198,21 +2404,26 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
         root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
         project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
+        session_id: Annotated[str, Field(description=_BIND_SESSION_DESC)] = "",
     ) -> str:
         """Mid-session brain: show pins/heatmap/focus_seen; pin a file; clear for new topic."""
         try:
             args = WorkspaceArgs(action=action, path=path, response_format=response_format)  # type: ignore[arg-type]
         except ValidationError as exc:
             return _err("workspace", str(exc), hint="action=show|pin|clear; path= required for pin.")
-        with _bind_request_repo(root=root, project_id=project_id):
+        sid = _resolve_session(session_id)
+        with _bind_request_repo(root=root, project_id=project_id, session_id=session_id):
             repo = _default_repo()
+
+        if not _is_repo_managed():
+            return _err("workspace", f"Repository at {repo} is not managed by Scubiee. Run `scubiee init .` first.")
 
         if args.action == "clear":
             from pipeline.session_store import clear_store
             from pipeline.work_session import clear_session
 
-            clear_store(repo)
-            clear_session(repo)
+            clear_store(repo, session_id=sid)
+            clear_session(repo, session_id=sid)
             return _format(
                 {
                     "ok": True,
@@ -2229,7 +2440,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 return _err("workspace", "path required for pin", hint="workspace(action=pin, path='pkg/x.py')")
             from pipeline.work_session import pin as _pin
 
-            sess = _pin(repo, p)
+            sess = _pin(repo, p, session_id=sid)
             return _format(
                 {
                     "ok": True,
@@ -2246,10 +2457,10 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         from pipeline.session_store import load_store, recall as _recall
         from pipeline.work_session import heatmap, load_session
 
-        store = load_store(repo)
-        sess = load_session(repo)
+        store = load_store(repo, session_id=sid)
+        sess = load_session(repo, session_id=sid)
         try:
-            recalled = _recall(repo, need="", top_n=20)
+            recalled = _recall(repo, need="", top_n=20, session_id=sid)
         except Exception:  # noqa: BLE001
             recalled = {"spans": [], "pins": [], "heatmap": []}
         focus_seen = store.get("focus_seen") or {}
@@ -2257,9 +2468,10 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             "ok": True,
             "tool": "workspace",
             "action": "show",
+            "session_id": sid,
             "topic": sess.get("topic") or store.get("topic") or "",
             "pins": list(sess.get("pins") or recalled.get("pins") or []),
-            "heatmap": heatmap(repo, top_n=8),
+            "heatmap": heatmap(repo, top_n=8, session_id=sid),
             "spans": recalled.get("spans") or [],
             "focus_seen": [
                 {"key": k, **(v if isinstance(v, dict) else {"pointer": v})}
@@ -2277,9 +2489,10 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
     def gate_impl(
         root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
         project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
+        session_id: Annotated[str, Field(description=_BIND_SESSION_DESC)] = "",
     ) -> str:
         """Session gate — ~5 tokens. Call once at chat start instead of status()."""
-        with _bind_request_repo(root=root, project_id=project_id):
+        with _bind_request_repo(root=root, project_id=project_id, session_id=session_id):
             from pipeline.pause_resume import is_paused
 
             if is_paused():
@@ -2289,6 +2502,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
     def status_impl(
         root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
         project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
+        session_id: Annotated[str, Field(description=_BIND_SESSION_DESC)] = "",
         detail: Annotated[
             str,
             Field(
@@ -2300,7 +2514,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         ] = "full",
     ) -> str:
         """Health / tool list only — not for finding code."""
-        with _bind_request_repo(root=root, project_id=project_id):
+        with _bind_request_repo(root=root, project_id=project_id, session_id=session_id):
             if (detail or "full").strip().lower() == "gate":
                 from pipeline.pause_resume import is_paused
 
@@ -2330,22 +2544,24 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             from pipeline.session_store import load_store, token_mode
 
             tool_lists = {
-                "read": ["search", "read", "status"],
-                "nav": ["search", "files", "read", "recall", "expand", "status"],
-                "graph": ["search", "neighbors", "graph", "status"],
-                "rich": ["search", "read", "outline", "status"],
-                "search": ["search", "status"],
-                "grep": ["grep", "status"],
-                "phase": ["gate", "map", "focus", "grep", "glob", "workspace", "register_project", "status"],
+                "read": ["gate", "search", "read", "status"],
+                "nav": ["gate", "search", "files", "read", "recall", "expand", "status"],
+                "graph": ["gate", "search", "neighbors", "graph", "status"],
+                "rich": ["gate", "search", "read", "outline", "status"],
+                "search": ["gate", "search", "status"],
+                "grep": ["gate", "grep", "status"],
+                "phase": ["gate", "map", "focus", "grep", "glob", "workspace", "status"],
             }
             try:
                 repo = _default_repo()
+                sid = _resolve_session(session_id)
+                sess = _session_fields(session_id)
                 try:
                     ensure_daemon(repo, force_if_hung=False)
                 except Exception:  # noqa: BLE001
                     pass
                 eng = EngineClient(timeout=8.0, workspace_path=str(repo))
-                store = load_store(repo)
+                store = load_store(repo, session_id=sid)
                 healthy = eng.healthy()
                 daemon_status: dict[str, Any] = {}
                 if healthy:
@@ -2438,6 +2654,12 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     "soft_search_ready": soft_search_ready,
                     **contract,
                     "session": {
+                        "session_id": sid,
+                        "source": sess.get("source"),
+                        "host": sess.get("host"),
+                        "shared_process_risk": bool(sess.get("shared_process_risk")),
+                        "env_key": sess.get("env_key"),
+                        "hint": sess.get("hint"),
                         "topic": store.get("topic"),
                         "n_spans": len(store.get("spans") or {}),
                         "n_focus_seen": len(store.get("focus_seen") or {}),
@@ -2486,36 +2708,42 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             return _err("register_project", str(exc))
 
     # ---- register per surface ---------------------------------------------
+    managed = _is_repo_managed()
+
     if surface == "phase":
-        _tool("map", "Cold/new-topic locate — ranked cards (no bodies)", map_impl)
-        _tool("focus", "Deepen/relate — outline|span|neighbors", focus_impl)
+        _tool("gate", "Session gate — ~5 tokens (managed check)", gate_impl)
+        if not managed:
+            return mcp
+        _tool("map", "Scubiee-managed only (GATE 1). Cold/new-topic locate — ranked cards (no bodies)", map_impl)
+        _tool("focus", "Scubiee-managed only (GATE 1). Deepen/relate — outline|span|neighbors", focus_impl)
         _tool(
             "grep",
-            "Exact literal when you know the string (import line, error text, symbol token)",
+            "Scubiee-managed only (GATE 1). Exact literal text search in indexed code",
             grep_impl,
         )
         _tool(
             "glob",
-            "Known file path or filename only — not for discovery",
+            "Scubiee-managed only (GATE 1). Known file path or pattern in indexed code",
             glob_impl,
         )
-        _tool("workspace", "Mid reorient: show|pin|clear (no body dumps)", workspace_impl)
-        _tool(
-            "register_project",
-            "Register/index this repo after explicit user consent (mcp_cli mode)",
-            register_project_impl,
-        )
-        _tool("gate", "Session gate — ~5 tokens (managed check)", gate_impl)
+        _tool("workspace", "Scubiee-managed only (GATE 1). Mid reorient: show|pin|clear", workspace_impl)
         _tool("status", "Engine + session status (detail=gate for tiny check)", status_impl)
         return mcp
 
     if surface == "nav":
+        _tool("gate", "Session gate — managed check (~5 tok)", gate_impl)
+        if not managed:
+            return mcp
         _tool("search", "Soft or exact locate (mode=soft|exact)", search_impl)
         _tool("files", "Find files by name/glob; '.' = repo shape", files_impl)
         _tool("read", "Read span (detail=body|outline|neighbors)", read_impl)
         _tool("recall", "List session handles (no bodies)", recall_impl)
         _tool("expand", "Materialize a stored span by handle", expand_impl)
         _tool("status", "Engine + session status", status_impl)
+        return mcp
+
+    _tool("gate", "Session gate — managed check (~5 tok)", gate_impl)
+    if not managed:
         return mcp
 
     if surface != "grep":
@@ -2554,6 +2782,10 @@ def main() -> None:
     # allocator, causing SIGSEGV in random threads.
     os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
+    os.environ.setdefault("CTX_MCP_SESSION_ISOLATE", "1")
+    from pipeline.session_isolation import detect_mcp_host
+
+    os.environ.setdefault("CTX_MCP_CLIENT", detect_mcp_host())
     repo = _default_repo()
     os.environ.setdefault("CTX_REPO", str(repo))
     os.environ.setdefault("CTX_TOKEN_MODE", "savings")
@@ -2587,7 +2819,7 @@ def main() -> None:
         "rich": "search,read,outline,status",
         "search": "search,status",
         "grep": "grep,status",
-        "phase": "map,focus,grep,glob,workspace,register_project,status",
+        "phase": "gate,map,focus,grep,glob,workspace,status",
     }
     _stderr(
         f"[scubiee] surface={surface} tools={tool_lists.get(surface)} "

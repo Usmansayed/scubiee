@@ -250,7 +250,7 @@ def test_mcp_tools():
         ("glob", {"pattern": "*.py", "limit": 5}),
         ("workspace", {"action": "show"}),
         ("focus", {"path": "", "mode": "outline"}),
-        ("register_project", {"path": TEST_REPO}),
+        ("gate", {}),
     ]
 
     for name, args in tests:
@@ -330,7 +330,7 @@ def test_adversarial():
         ("focus", {"path": "..\\..\\..\\Windows\\System32\\config\\SAM", "mode": "span"}, "path traversal"),
         ("map", {"query": "emoji"}, "emoji query"),
         ("grep", {"pattern": "$(cmd /c del *)", "glob": "*.py"}, "shell injection"),
-        ("register_project", {"path": "C:\\NonExistent\\Path"}, "nonexistent path"),
+        ("gate", {"root": "C:\\NonExistent\\Path"}, "nonexistent path"),
         ("glob", {"pattern": "**\\*" * 50}, "absurd glob"),
         ("focus", {"path": "x.py", "mode": "invalid"}, "invalid mode"),
     ]

@@ -333,6 +333,12 @@ def initialize_repo(
     chunks = 0
     if index:
         try:
+            from pipeline.store_lock import quiesce_background_indexing
+
+            quiesce_background_indexing(store_dir=store_dir)
+        except Exception:  # noqa: BLE001
+            pass
+        try:
             from pipeline.incremental import preflight_index_scope
 
             preflight_index_scope(
@@ -569,6 +575,15 @@ def remove_repo(root: Path, *, delete_store: bool = False) -> dict[str, Any]:
     if delete_store and store.exists():
         shutil.rmtree(store)
         deleted = True
+    try:
+        id_f = id_file_path(root)
+        if id_f.is_file():
+            id_f.unlink(missing_ok=True)
+        id_d = id_dir_path(root)
+        if id_d.is_dir() and not any(id_d.iterdir()):
+            shutil.rmtree(id_d, ignore_errors=True)
+    except Exception:
+        pass
     return {
         "ok": True,
         "project_id": project_id,

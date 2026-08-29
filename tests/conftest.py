@@ -63,15 +63,43 @@ def cpu_accel_profile(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
     path = home / "accel.json"
     monkeypatch.setattr(accel, "ACCEL_PATH", path)
-    save_accel(
-        AccelProfile(
-            profile="cpu",
-            provider="CPUExecutionProvider",
-            backend="fastembed",
-            batch_size=16,
-            texts_per_sec=2.0,
-            reason="pytest fixture",
-        ),
-        path=path,
+    profile = AccelProfile(
+        profile="cpu",
+        provider="CPUExecutionProvider",
+        backend="fastembed",
+        batch_size=16,
+        texts_per_sec=2.0,
+        reason="pytest fixture",
     )
+    save_accel(profile, path=path)
+
+    def _fake_inspect_accel(**kwargs):
+        validation = {
+            "ok": True,
+            "profile": profile.profile,
+            "provider": profile.provider,
+            "available_providers": [profile.provider],
+            "provider_available": True,
+            "model_warm": True,
+            "detail": "pytest fixture",
+        }
+        return {
+            "ok": True,
+            "profile": profile.profile,
+            "provider": profile.provider,
+            "batch_size": profile.batch_size,
+            "backend": profile.backend,
+            "texts_per_sec": profile.texts_per_sec,
+            "reason": profile.reason,
+            "fastembed": True,
+            "onnxruntime": True,
+            "providers": [profile.provider],
+            "provider_ok": True,
+            "model_warm": True,
+            "provider_validation": validation,
+            "missing": [],
+            "hint": "",
+        }
+
+    monkeypatch.setattr("pipeline.preflight.inspect_accel", _fake_inspect_accel)
     return path

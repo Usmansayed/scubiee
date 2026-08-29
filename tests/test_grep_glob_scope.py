@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pipeline.capability import grep_scan, path_glob_match
+from pipeline.capability import expand_brace_glob, grep_scan, path_glob_match
 from pipeline.mcp_locate import _find_repo_files
 
 
@@ -10,6 +10,28 @@ def test_path_glob_match_double_star_nested() -> None:
     assert path_glob_match("docs/a/b.md", "**/*.md")
     assert path_glob_match("readme.md", "**/*.md")
     assert not path_glob_match("docs/a/b.py", "**/*.md")
+
+
+def test_path_glob_match_brace_groups() -> None:
+    assert path_glob_match("src/app.tsx", "*.{ts,tsx}")
+    assert path_glob_match("src/app.ts", "*.{ts,tsx}")
+    assert path_glob_match("docs/readme.md", "*.{ts,tsx,md}")
+    assert not path_glob_match("src/app.js", "*.{ts,tsx}")
+    assert expand_brace_glob("*.{a,b}") == ["*.a", "*.b"]
+
+
+def test_grep_brace_glob_finds_md_and_ts(tmp_path: Path) -> None:
+    (tmp_path / "pkg").mkdir()
+    (tmp_path / "pkg" / "note.md").write_text("token CeBraceGlob9910\n", encoding="utf-8")
+    (tmp_path / "pkg" / "app.ts").write_text("token CeBraceGlob9910\n", encoding="utf-8")
+    (tmp_path / "pkg" / "skip.js").write_text("token CeBraceGlob9910\n", encoding="utf-8")
+
+    report = grep_scan(tmp_path, "CeBraceGlob9910", glob="*.{md,ts}", max_hits=20)
+    paths = {h["path"] for h in report["hits"]}
+    assert "pkg/note.md" in paths
+    assert "pkg/app.ts" in paths
+    assert "pkg/skip.js" not in paths
+    assert report["truncated"] is False
 
 
 def test_grep_honors_non_python_glob(tmp_path: Path) -> None:
@@ -24,6 +46,13 @@ def test_grep_honors_non_python_glob(tmp_path: Path) -> None:
     assert md_only["hits"] and md_only["hits"][0]["path"].endswith("note.md")
     assert py_only["truncated"] is False
     assert md_only["truncated"] is False
+
+
+def test_grep_default_glob_is_all_files(tmp_path: Path) -> None:
+    (tmp_path / "note.md").write_text("token CeDefaultGlob9910\n", encoding="utf-8")
+    report = grep_scan(tmp_path, "CeDefaultGlob9910")
+    assert report["hits"]
+    assert report["glob"] == "**/*"
 
 
 def test_grep_truncated_when_cap_hit(tmp_path: Path) -> None:

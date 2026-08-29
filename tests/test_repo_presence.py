@@ -4,7 +4,7 @@ from pipeline.repo_presence import assess_presence
 
 
 def _write_project_id(root, project_id):
-    marker = root / ".context-engine" / "id.json"
+    marker = root / ".scubiee" / "id.json"
     marker.parent.mkdir(parents=True)
     marker.write_text(json.dumps({"project_id": project_id}), encoding="utf-8")
 

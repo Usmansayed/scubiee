@@ -1214,7 +1214,14 @@ def _install_ort_wheel(profile: str, progress: Any | None = None) -> None:
             "onnxruntime imported without SessionOptions (broken leftover install). "
             "Close other Python processes and re-run `scubiee setup --repair`."
         )
-    if profile in {"cuda", "dml", "coreml"} and not _ort_profile_ready(profile):
+    if profile in {"cuda", "coreml"} and not _ort_profile_ready(profile):
+        have = ort_available_providers()
+        raise RuntimeError(
+            f"{ort_packages_for(profile)[0]} is installed but "
+            f"{profile} EP is missing (providers={have}). "
+            "Close other Python/ctx processes and re-run `scubiee setup --repair`."
+        )
+    if profile == "dml" and platform.system() != "Windows" and not _ort_profile_ready(profile):
         have = ort_available_providers()
         raise RuntimeError(
             f"{ort_packages_for(profile)[0]} is installed but "

@@ -682,9 +682,11 @@ def cmd_search(args: argparse.Namespace) -> int:
 
 def cmd_status(args: argparse.Namespace) -> int:
     from pipeline.store import PipelineStore
+    from pipeline.project_id import read_id_file
 
     root = Path(args.path).resolve()
-    store = PipelineStore(root)
+    pid = read_id_file(root)
+    store = PipelineStore(root, resolve=bool(pid))
     meta = store.load_meta()
     col = store.get_collection()
     from pipeline.freshness import check_freshness
@@ -1225,6 +1227,9 @@ def cmd_init(args: argparse.Namespace) -> int:
             from pipeline.rules_installer import write_project_gate_rules
 
             out["gate_rules"] = write_project_gate_rules(root)
+            out["mcp_reconnect_hint"] = (
+                "Reconnect MCP or start a new chat to expose locate tools."
+            )
         except Exception as exc:  # noqa: BLE001
             out["gate_rules"] = {"ok": False, "error": str(exc)}
 
@@ -1381,11 +1386,6 @@ def cmd_setup(args: argparse.Namespace) -> int:
         if isinstance(runtime, dict) and runtime.get("ok") is False:
             bar.fail("Could not start the session supervisor")
             return 1
-
-        bar.set(98, "Registering MCP")
-        from pipeline.mcp_install import write_cursor_mcp
-
-        write_cursor_mcp(repo, host=host, port=port)
 
         if args.index_path or args.register:
             bar.set(99, "Enrolling repository")

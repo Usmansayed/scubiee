@@ -271,6 +271,36 @@ def _cmdline_matches_ce(cmdline: list[str] | None) -> bool:
     return any(n in joined for n in needles)
 
 
+def stop_engine_worker_processes() -> dict[str, Any]:
+    """Terminate orphan ``python -m pipeline.engine`` workers (not this CLI)."""
+    killed: list[int] = []
+    skipped: list[int] = []
+    my_pid = os.getpid()
+    try:
+        import psutil
+    except ImportError:
+        return {"ok": True, "killed": [], "skipped": "no_psutil"}
+
+    for proc in psutil.process_iter(["pid", "cmdline"]):
+        try:
+            info = proc.info
+            pid = int(info["pid"])
+            if pid == my_pid:
+                continue
+            cmdline = info.get("cmdline") or []
+            joined = " ".join(str(x) for x in cmdline).lower()
+            if "pipeline.engine" not in joined:
+                continue
+            result = safe_terminate_pid(pid, grace_s=1.5)
+            if result.get("terminated"):
+                killed.append(pid)
+            else:
+                skipped.append(pid)
+        except (psutil.NoSuchProcess, psutil.AccessDenied, TypeError, ValueError):
+            continue
+    return {"ok": True, "killed": sorted(set(killed)), "skipped": sorted(set(skipped))}
+
+
 def stop_all_context_engine_processes(*, ctx_home: Path | None = None) -> dict[str, Any]:
     """Stop daemon, watchdog, MCP, and anything locking the uv tool env."""
     actions: dict[str, Any] = {}

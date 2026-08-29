@@ -15,6 +15,8 @@ import sys
 import time
 from typing import IO, Any, TextIO
 
+from pipeline.tool_registry import connect_restart_hint
+
 # ── Color support ─────────────────────────────────────────────────────────────
 
 def _supports_color(stream: IO[str] | TextIO | None = None) -> bool:
@@ -388,15 +390,7 @@ def print_connect_summary(
         tool = r.get("tool") or r.get("slug") or "?"
         ok = r.get("ok", False)
         icon = f"{c.green}{ICON_OK}{c.reset}" if ok else f"{c.red}{ICON_FAIL}{c.reset}"
-        detail = ""
-        if not ok:
-            detail = r.get("error", "failed")
-        elif r.get("workspace_mcp_written"):
-            paths = r.get("workspace_mcp_paths") or []
-            if paths:
-                detail = f"local: {paths[0]}"
-        elif r.get("workspace_mcp_skipped"):
-            detail = "global only (run again in repo)"
+        detail = "" if ok else r.get("error", "failed")
         rows.append([icon, tool, detail])
 
     table(rows, headers=["", "Tool", ""], stream=s)
@@ -412,24 +406,16 @@ def print_connect_summary(
         else:
             warn(f"{action} {ok_count}/{total} tools", detail=f"{total - ok_count} failed", stream=s)
 
+    if not dry_run and action == "Connected" and ok_count > 0:
+        info(connect_restart_hint(results), stream=s)
+
     seen_notices: set[str] = set()
     for r in results:
         notice = (r.get("notice") or "").strip()
         if not notice or notice in seen_notices:
             continue
         seen_notices.add(notice)
-        if r.get("workspace_mcp_skipped"):
-            warn(notice, stream=s)
-            reason = r.get("workspace_mcp_skip_reason")
-            if reason:
-                info(f"  → {reason}", stream=s)
-        elif r.get("workspace_mcp_written"):
-            info(notice, stream=s)
-            paths = r.get("workspace_mcp_paths") or []
-            for p in paths[1:]:
-                info(f"  also wrote {p}", stream=s)
-        else:
-            info(notice, stream=s)
+        info(notice, stream=s)
 
     s.write("\n")
     s.flush()

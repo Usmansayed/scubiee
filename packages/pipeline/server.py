@@ -387,8 +387,8 @@ class Handler(BaseHTTPRequestHandler):
                 200,
                 ce.grep(
                     pattern,
-                    glob=str(data.get("glob") or "*.py"),
-                    max_hits=int(data.get("max_hits") or 20),
+                    glob=str(data.get("glob") or "**/*"),
+                    max_hits=int(data.get("max_hits") or 200),
                     root=data.get("path") or None,
                 ),
             )

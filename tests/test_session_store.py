@@ -14,7 +14,7 @@ WORK = REPO / "testdata" / "cursor_sdk_ab" / "work_d_channel_best_mcponly"
 def repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     root = tmp_path / "proj"
     root.mkdir()
-    (root / ".context-engine").mkdir()
+    (root / ".scubiee").mkdir()
     src = root / "pkg"
     src.mkdir()
     f = src / "mod.py"
@@ -91,28 +91,72 @@ def test_recall_lists_handles(repo: Path):
     assert card["spans"][0]["handle"].startswith("sp_")
 
 
-def test_mcp_exposes_lean_surface(monkeypatch):
+def test_mcp_exposes_lean_surface(monkeypatch, tmp_path: Path):
     pytest.importorskip("mcp")
+    repo = tmp_path / "proj"
+    repo.mkdir()
+    (repo / ".git").mkdir()
+    pid = "ce_sessionstore1234567890abcdef"
+    ce = repo / ".scubiee"
+    ce.mkdir()
+    (ce / "id.json").write_text(f'{{"project_id": "{pid}"}}', encoding="utf-8")
+    from pipeline.project_id import save_registry
+
+    save_registry(
+        {
+            "projects": {
+                pid: {
+                    "managed": True,
+                    "root": str(repo.resolve()),
+                    "paths": [str(repo.resolve())],
+                }
+            }
+        }
+    )
+    monkeypatch.setenv("CTX_REPO", str(repo.resolve()))
+    monkeypatch.chdir(repo)
     monkeypatch.setenv("CTX_MCP_SURFACE", "read")
     from pipeline.mcp_locate import create_mcp
 
     names = set(create_mcp()._tool_manager._tools)
     # Session reuse (recall/expand) is now folded INTO read's dedupe, not a tool.
-    assert names == {"search", "read", "status"}
+    assert names == {"gate", "search", "read", "status"}
 
 
-def test_mcp_phase_surface_exposes_locate_toolkit(monkeypatch):
+def test_mcp_phase_surface_exposes_locate_toolkit(monkeypatch, tmp_path: Path):
     pytest.importorskip("mcp")
+    repo = tmp_path / "proj"
+    repo.mkdir()
+    (repo / ".git").mkdir()
+    pid = "ce_sessionstore1234567890abcdef"
+    ce = repo / ".scubiee"
+    ce.mkdir()
+    (ce / "id.json").write_text(f'{{"project_id": "{pid}"}}', encoding="utf-8")
+    from pipeline.project_id import save_registry
+
+    save_registry(
+        {
+            "projects": {
+                pid: {
+                    "managed": True,
+                    "root": str(repo.resolve()),
+                    "paths": [str(repo.resolve())],
+                }
+            }
+        }
+    )
+    monkeypatch.setenv("CTX_REPO", str(repo.resolve()))
+    monkeypatch.chdir(repo)
     monkeypatch.setenv("CTX_MCP_SURFACE", "phase")
     from pipeline.mcp_locate import create_mcp
 
     names = set(create_mcp()._tool_manager._tools)
     assert names == {
+        "gate",
         "map",
         "focus",
         "grep",
         "glob",
         "workspace",
-        "register_project",
         "status",
     }

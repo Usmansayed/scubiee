@@ -58,6 +58,7 @@ def server_entry(
         "CTX_SYNC_INTERVAL_MS": "300000",
         "CTX_REGISTRATION_MODE": reg_mode,
         "CTX_MCP_SURFACE": "phase",
+        "CTX_MCP_SESSION_ISOLATE": "1",
         "CTX_ENGINE_IDLE_S": "60",
         "PYTHONUTF8": "1",
     }

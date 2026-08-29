@@ -173,7 +173,7 @@ class EngineClient:
         return self.post("/v1/note_locate", {"path": path})
 
     def grep(
-        self, pattern: str, *, glob: str = "*.py", max_hits: int = 20, path: str = ""
+        self, pattern: str, *, glob: str = "**/*", max_hits: int = 200, path: str = ""
     ) -> dict[str, Any]:
         return self.post(
             "/v1/grep",

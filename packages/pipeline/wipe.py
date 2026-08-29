@@ -252,8 +252,9 @@ def _vectordb_roots() -> list[Path]:
 
 
 def _registered_repo_roots() -> list[Path]:
-    """All checkout paths known to the registry (before home is deleted)."""
+    """All checkout paths known to the registry, including resolved moved paths (before home is deleted)."""
     from pipeline.project_id import load_registry
+    from pipeline.hw_track import resolve_moved_path
 
     roots: list[Path] = []
     seen: set[str] = set()
@@ -261,6 +262,7 @@ def _registered_repo_roots() -> list[Path]:
     for meta in (reg.get("projects") or {}).values():
         if not isinstance(meta, dict):
             continue
+        # Check standard registered paths
         for raw in meta.get("paths") or []:
             try:
                 path = Path(str(raw)).resolve()
@@ -278,10 +280,22 @@ def _registered_repo_roots() -> list[Path]:
             except OSError:
                 continue
             key = str(path).lower() if os.name == "nt" else str(path)
-            if key in seen or not path.exists():
-                continue
-            seen.add(key)
-            roots.append(path)
+            if key not in seen and path.exists():
+                seen.add(key)
+                roots.append(path)
+
+        # Hardware reference check: if paths moved, resolve via permanent OS File ID / Inode
+        fs_id = meta.get("fs_id")
+        if isinstance(fs_id, dict):
+            try:
+                resolved_moved = resolve_moved_path(fs_id)
+                if resolved_moved and resolved_moved.exists():
+                    key = str(resolved_moved).lower() if os.name == "nt" else str(resolved_moved)
+                    if key not in seen:
+                        seen.add(key)
+                        roots.append(resolved_moved)
+            except Exception:
+                pass
     return roots
 
 

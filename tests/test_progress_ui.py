@@ -137,10 +137,6 @@ def test_cmd_setup_uses_progress_bar_not_step_log(
         "pipeline.lifecycle_runtime.install_session_runtime",
         lambda: {"ok": True, "desktop": "windows"},
     )
-    monkeypatch.setattr(
-        "pipeline.mcp_install.write_cursor_mcp",
-        lambda *args, **kwargs: {"project": "x", "user": "y"},
-    )
     monkeypatch.setitem(__import__("sys").modules, "graphify.extract", SimpleNamespace(extract=lambda: None))
     monkeypatch.setitem(__import__("sys").modules, "graphify.build", SimpleNamespace(build=lambda: None))
 
@@ -265,10 +261,6 @@ def test_cmd_setup_succeeds_when_logon_task_access_denied(
             "supervisor": {"ok": True, "started": True, "pid": 19428},
             "warning": "logon autostart not registered; supervisor is running for this session",
         },
-    )
-    monkeypatch.setattr(
-        "pipeline.mcp_install.write_cursor_mcp",
-        lambda *args, **kwargs: {"project": "x", "user": "y"},
     )
 
     args = argparse.Namespace(

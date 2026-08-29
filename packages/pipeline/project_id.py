@@ -255,7 +255,7 @@ def _id_file_trusted(root: Path, project_id: str) -> bool:
                 except OSError:
                     continue
         if entry.get("managed") or entry.get("registered"):
-            return False
+            return True
     store = (projects_root() / project_id).resolve()
     if index_is_usable(store):
         store_meta = _read_json(store / "meta.json")
@@ -471,6 +471,13 @@ def update_registry(project_id: str, root: Path) -> None:
                 "name": Path(abs_root).name,
             }
         )
+        try:
+            from pipeline.hw_track import get_filesystem_id
+            fs_id = get_filesystem_id(root)
+            if fs_id:
+                entry["fs_id"] = fs_id
+        except Exception:
+            pass
         if read_id_file(root) != project_id:
             raise ValueError("project_id_mismatch")
         projects[project_id] = entry

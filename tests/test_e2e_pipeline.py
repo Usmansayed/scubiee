@@ -21,8 +21,18 @@ MINI = ROOT / "fixtures" / "mini-repo"
 
 
 @pytest.mark.skipif(not MINI.exists(), reason="mini-repo fixture missing")
-def test_full_pipeline_stores_in_faiss_collection(tmp_path: Path, cpu_accel_profile: Path):
+def test_full_pipeline_stores_in_faiss_collection(
+    tmp_path: Path, cpu_accel_profile: Path, monkeypatch: pytest.MonkeyPatch
+):
     del cpu_accel_profile
+    import numpy as np
+
+    def _fake_embed_many(self, texts, progress=None):
+        return np.ones((len(texts), 768), dtype=np.float32)
+
+    monkeypatch.setattr("pipeline.embedder.Embedder.embed_many", _fake_embed_many)
+    monkeypatch.delenv("CTX_SEARCH_URL", raising=False)
+    monkeypatch.delenv("CTX_ENGINE_URL", raising=False)
     vdb_root = tmp_path / "vectordb"
     index_base = tmp_path / "indexes" / "mini"
     vdb = VectorDatabase(root=vdb_root)
@@ -48,7 +58,13 @@ def test_full_pipeline_stores_in_faiss_collection(tmp_path: Path, cpu_accel_prof
     catalog = json.loads((vdb_root / "catalog.json").read_text(encoding="utf-8"))
     assert any(c["name"] == col.name for c in catalog["collections"])
 
-    hits = search_repo(MINI, "login validatePassword", base_dir=index_base, vdb=vdb)
+    hits = search_repo(
+        MINI,
+        "login validatePassword",
+        base_dir=index_base,
+        vdb=vdb,
+        use_server=False,
+    )
     assert len(hits) >= 1
     files = {h.file for h in hits}
     assert any("login" in f or "validate" in f for f in files)
