@@ -96,6 +96,8 @@ def test_managed_mcp_instructions_include_trajectory(monkeypatch) -> None:
     assert "grep(pattern" in text
     assert "session_id" in text
     assert "tool bans are in the project GATE rule" in text
+    assert "OVERRIDE" in text
+    assert "NEVER grep first" in text
     assert "BAN native" not in text
     assert "STRICTLY" not in text
 

@@ -592,6 +592,8 @@ def test_phase_surface_grep_glob_and_trajectory(monkeypatch, tmp_path):
     assert ml._server_instructions("phase") == _gate_instruction_prefix("1:ce_test") + text
     assert "map(query)" in text
     assert "tool bans are in the project GATE rule" in text
+    assert "OVERRIDE" in text
+    assert "NEVER grep first" in text
     assert "BAN native" not in text
     assert "you decide" not in text.lower()
     tools = set(ml.create_mcp()._tool_manager._tools)
@@ -789,15 +791,27 @@ def test_server_instructions_are_short_grep_like_cards(monkeypatch):
         "graph": ml.SERVER_INSTRUCTIONS_GRAPH,
         "grep": ml.SERVER_INSTRUCTIONS_GREP,
         "nav": ml.SERVER_INSTRUCTIONS_NAV,
+        "phase": ml.SERVER_INSTRUCTIONS_PHASE,
     }
     for name, text in cards.items():
         # Hard cap: <800 tokens ≈ 3200 chars (keep always-on tax bounded).
-        # Sealed nav: ≤600 tok / 2400 chars — checked in nav-specific test too.
-        cap = 2400 if name == "nav" else 3200
+        # Sealed nav/phase full guides: ≤600 tok / 2400 chars — checked in surface tests too.
+        cap = 3200 if name in {"nav", "phase"} else 3200
+        if name == "nav":
+            cap = 2400
+        elif name == "phase":
+            cap = 3200  # full managed trajectory (production default)
         assert len(text) <= cap, f"{name} instructions too long: {len(text)}"
         if name == "nav":
             assert "Need → one tool" in text or "Need → tool" in text
             assert "OVERRIDE" in text
+            continue
+        if name == "phase":
+            assert "OVERRIDE" in text
+            assert "map(query)" in text
+            assert "NEVER grep first" in text
+            assert "map → focus → edit" in text
+            assert "tool bans are in the project GATE rule" in text
             continue
         if name == "search":
             assert "WHEN →" in text
@@ -825,6 +839,7 @@ def test_server_instructions_are_short_grep_like_cards(monkeypatch):
     assert ml._server_instructions("read") == prefix + ml.SERVER_INSTRUCTIONS_READ
     assert ml._server_instructions("rich") == prefix + ml.SERVER_INSTRUCTIONS_RICH
     assert ml._server_instructions("nav") == prefix + ml.SERVER_INSTRUCTIONS_NAV
+    assert ml._server_instructions("phase") == prefix + ml.SERVER_INSTRUCTIONS_PHASE
 
 
 def test_tool_responses_include_gate_field(monkeypatch):
