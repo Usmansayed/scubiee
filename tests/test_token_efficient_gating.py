@@ -65,7 +65,8 @@ def test_init_writes_project_gate_rules(tmp_path: Path) -> None:
     assert f"GATE 1:{pid}" in text
     assert "map" in text
     assert pid in text
-    assert "BAN native Grep" in text
+    assert "Prefer Scubiee" in text or "prefer Scubiee" in text.lower()
+    assert "budget" in text.lower()
     assert "Locate trajectory" not in text
 
     agents = repo / "AGENTS.md"
@@ -107,7 +108,7 @@ def test_managed_mcp_instructions_include_trajectory(monkeypatch) -> None:
     assert "map(query)" in text
     assert "focus" in text
     assert "grep(pattern" in text
-    assert "GATE rule bans native" in text or "tool bans are in the project GATE rule" in text
+    assert "Project GATE rule" in text or "prefer Scubiee" in text.lower()
     assert "OVERRIDE" in text
     assert "Flexibility" in text or "user intent wins" in text
     assert "No tool path bans" in text or "no file-type restrictions" in text.lower()

@@ -265,8 +265,9 @@ def test_scenario_path_outcome(
         assert state["tools"] == PHASE_MANAGED_TOOLS
         assert "map(query)" in state["instructions"]
         assert (
-            "GATE rule bans native" in state["instructions"]
-            or "tool bans are in the project GATE rule" in state["instructions"]
+            "Project GATE rule" in state["instructions"]
+            or "prefer Scubiee" in state["instructions"].lower()
+            or "focus budget" in state["instructions"].lower()
         )
         assert state.get("managed") is True
 

@@ -599,7 +599,8 @@ def test_phase_surface_grep_glob_and_trajectory(monkeypatch, tmp_path):
     text = ml.SERVER_INSTRUCTIONS_PHASE
     assert ml._server_instructions("phase") == _gate_instruction_prefix("1:ce_test") + text
     assert "map(query)" in text
-    assert "GATE rule bans native" in text
+    assert "prefer Scubiee" in text.lower() or "Project GATE rule" in text
+    assert "budget=cap" in text or "focus budget" in text
     assert "OVERRIDE" in text
     assert "Flexibility" in text or "user intent wins" in text
     assert "No tool path bans" in text or "no file-type restrictions" in text.lower()
@@ -822,7 +823,8 @@ def test_server_instructions_are_short_grep_like_cards(monkeypatch):
             assert "map(query)" in text
             assert "Flexibility" in text or "user intent wins" in text
             assert "No tool path bans" in text or "no file-type restrictions" in text.lower()
-            assert "GATE rule bans native" in text or "tool bans are in the project GATE rule" in text
+            assert "Project GATE rule" in text or "prefer Scubiee" in text.lower()
+            assert "budget=cap" in text or "focus budget" in text.lower()
             assert "agent_ready" in text
             assert "expand(handle" in text
             assert "cached" in text
@@ -892,7 +894,11 @@ def test_append_host_rule_matches_universal_gate_policy():
         assert "ignore this rule entirely" not in template.lower()
         assert "GATE 0" in template
         assert "BAN" in template
-        assert "MCP instructions" in template or "trajectory" in template.lower()
+        assert (
+            "MCP instructions" in template
+            or "MCP server instructions" in template
+            or "trajectory" in template.lower()
+        )
         assert len(template) <= 4000
 
 
@@ -1281,3 +1287,92 @@ def test_optional_graph_failures_preserve_primary_results(monkeypatch, tmp_path)
     assert read_result["ok"] is True
     assert read_result["code"] == "value = 1"
     assert "graph unavailable" in read_result["neighbors_error"]
+
+
+def test_budget_limits_profiles() -> None:
+    from pipeline import mcp_locate as ml
+
+    chars, lines = ml._budget_limits("cap", max_chars=12_000, default_max_chars=12_000)
+    assert chars == 12_000
+    assert lines == 400
+    chars, lines = ml._budget_limits("wide", max_chars=20_000, default_max_chars=12_000)
+    assert chars == 20_000
+    assert lines == 800
+    chars, lines = ml._budget_limits("full", max_chars=100_000, default_max_chars=12_000)
+    assert chars == 100_000
+    assert lines == 100_000
+
+
+def test_read_line_range_full_budget(tmp_path: Path) -> None:
+    from pipeline import mcp_locate as ml
+
+    repo = tmp_path / "proj"
+    repo.mkdir()
+    lines = [f"line {i}" for i in range(1, 51)]
+    (repo / "sample.py").write_text("\n".join(lines), encoding="utf-8")
+    out = ml._read_line_range(
+        repo,
+        "sample.py",
+        1,
+        0,
+        100_000,
+        max_lines=100_000,
+        budget="full",
+    )
+    assert out["ok"] is True
+    assert out["start_line"] == 1
+    assert out["end_line"] == 50
+    assert out["budget"] == "full"
+    assert "line 50" in out["excerpt"]
+
+
+def test_focus_overlap_blocks_redundant_cap_span(tmp_path: Path) -> None:
+    from pipeline import mcp_locate as ml
+    from pipeline.session_store import clear_store, save_store
+
+    repo = tmp_path / "proj"
+    repo.mkdir()
+    clear_store(repo)
+    save_store(
+        repo,
+        {
+            "focus_seen": {
+                "span:pkg/mod.py": {
+                    "file": "pkg/mod.py",
+                    "mode": "span",
+                    "start_line": 1,
+                    "end_line": 200,
+                    "handle": "h1",
+                }
+            }
+        },
+    )
+    overlap = ml._check_focus_overlap(
+        repo,
+        "pkg/mod.py",
+        100,
+        250,
+        budget="cap",
+    )
+    assert overlap is not None
+    assert overlap["error"] == "overlapping_span"
+    assert overlap["handle"] == "h1"
+
+    allowed = ml._check_focus_overlap(
+        repo,
+        "pkg/mod.py",
+        100,
+        250,
+        budget="full",
+    )
+    assert allowed is None
+
+
+def test_managed_gate_rule_includes_budget_cheat_sheet() -> None:
+    from pipeline.rules_installer import managed_gate_rule_body
+
+    text = managed_gate_rule_body("1:ce_test", "ce_test")
+    assert "budget" in text.lower()
+    assert "Prefer Scubiee" in text or "prefer Scubiee" in text.lower()
+    assert "BAN native" not in text
+    assert "map" in text

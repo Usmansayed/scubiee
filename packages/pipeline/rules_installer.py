@@ -55,13 +55,26 @@ def _rule_content_mdc(*, gate_line: str | None = None) -> str:
 # Shared GATE rule bodies — bans live here only, not in MCP instructions.
 
 
+def managed_gate_usage_short() -> str:
+    """Compact locate cheat sheet for repo-local GATE rules (not MCP instructions)."""
+    return (
+        "**Tools:** `map` = find by meaning · `focus` = read code · "
+        "`grep`/`glob` = literal/path · `workspace` = session · `status` = health.\n"
+        "**focus budget:** `cap` (default, ~400 lines / 12k chars) · "
+        "`wide` (~800 lines / 20k chars) · "
+        "`full` (whole file, up to 100k chars). One call — don't overlap spans.\n"
+        "**Flow:** unfamiliar → map → focus(outline) → focus(span, budget=cap). "
+        "Known file → focus(path, budget=wide|full) or native Read. "
+        "Exact string → grep.\n"
+        "Prefer Scubiee for discovery. Native Grep/Glob/Read OK when the path "
+        "is known or the user wants a full file. Edit/Shell for changes and tests."
+    )
+
+
 def managed_gate_rule_body(gate_line: str, project_id: str) -> str:
     return (
-        f"**GATE {gate_line}** — Managed repo. "
-        "BAN native Grep/Glob/codebase-search/Task for locate. "
-        "USE Scubiee `map`|`focus`|`grep`|`glob` only. "
-        "Native Edit/Shell for edits and tests. "
-        f"`project_id={project_id!r}`."
+        f"**GATE {gate_line}** — Managed repo. `project_id={project_id!r}`.\n\n"
+        f"{managed_gate_usage_short()}"
     )
 
 

@@ -153,7 +153,7 @@ def test_s4_managed_repo_full_tools_and_trajectory(
     text = _instructions(monkeypatch)
     assert "map(query)" in text
     assert "grep(pattern" in text
-    assert "GATE rule bans native" in text or "tool bans are in the project GATE rule" in text
+    assert "Project GATE rule" in text or "prefer Scubiee" in text.lower()
     assert "BAN native" not in text
 
 
@@ -193,7 +193,7 @@ def test_s6_init_writes_project_rules_not_global(
     assert (repo / ".cursor" / "rules" / "scubiee.mdc").is_file()
     rule = (repo / ".cursor" / "rules" / "scubiee.mdc").read_text(encoding="utf-8")
     assert pid in rule
-    assert "BAN native" in rule
+    assert "Prefer Scubiee" in rule or "prefer Scubiee" in rule.lower()
     assert "map(query)" not in rule
     assert not (fake_home / ".cursor" / "rules" / "scubiee.mdc").exists()
 
@@ -311,12 +311,12 @@ def test_s13_rules_and_instructions_do_not_duplicate_bans(
     rule = (repo / ".cursor" / "rules" / "scubiee.mdc").read_text(encoding="utf-8")
     instr = _instructions(monkeypatch)
 
-    assert "BAN native" in rule
-    assert "USE Scubiee" in rule
+    assert "Prefer Scubiee" in rule or "prefer Scubiee" in rule.lower()
+    assert "map" in rule
     assert "map(query)" not in rule
     assert "Locate trajectory" in instr or "map(query)" in instr
     assert "BAN native" not in instr
-    assert "GATE rule bans native" in instr or "tool bans are in the project GATE rule" in instr
+    assert "budget=cap" in instr or "focus budget" in instr
 
 
 # ---------------------------------------------------------------------------
@@ -360,7 +360,7 @@ def test_s15_init_writes_agents_md_ban_section(tmp_path: Path, monkeypatch) -> N
     write_project_gate_rules(repo)
     agents = (repo / "AGENTS.md").read_text(encoding="utf-8")
     assert pid in agents
-    assert "BAN native" in agents
+    assert "Prefer Scubiee" in agents or "prefer Scubiee" in agents.lower()
     assert "map(query)" not in agents
 
 
@@ -392,7 +392,7 @@ def test_s17_reinit_refreshes_gate_rule(tmp_path: Path, monkeypatch) -> None:
     write_project_gate_rules(repo)
     text = rule_path.read_text(encoding="utf-8")
     assert pid in text
-    assert "BAN native" in text
+    assert "Prefer Scubiee" in text or "prefer Scubiee" in text.lower()
     assert "stale content" not in text
 
 

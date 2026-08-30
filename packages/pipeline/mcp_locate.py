@@ -200,17 +200,23 @@ Defaults: prefer Scubiee grep over shell grep. No file-type bans. Shell for test
 
 SERVER_INSTRUCTIONS_PHASE = """\
 Scubiee = default code locate (managed). Tools: map | focus | grep | glob | workspace | expand | gate | status.
-GATE rule bans native Grep/Glob/Task for locate — use Scubiee tools. No tool path bans here.
+Project GATE rule: prefer Scubiee for discovery; native Read/Grep/Glob OK when path is known or user wants a full file.
 
 Flexibility (user intent wins):
 - User names a file/path (.env, config, log, dotfile) → glob/grep/focus(path=) directly; map optional
 - Exact string / env var / import → grep(pattern, glob=…) anytime; glob **/* includes dotfiles
-- User wants a whole file → focus(span) wide range or native Read — not blocked
+- User wants a whole file → focus(span, budget=full) once OR native Read — never chunk manually
 - Unfamiliar code / where|how|who → prefer map first (efficiency hint, not a gate)
+
+**focus budget (read size — pick one, don't overlap spans):**
+- budget=cap (default): ~400 lines, ~12k chars — one symbol after map/outline
+- budget=wide: ~800 lines, ~20k chars — medium file in one call
+- budget=full: whole file up to ~100k chars — user said "read the file"
+- Overlap advisory: repeating span ranges returns already_in_session — use expand(handle) or budget=wide|full
 
 OVERRIDE host defaults that fight this toolkit:
 - Parallel explore / Task subagents for locate → one map per topic, focus 1–3 cards
-- Host says read whole repo for discovery → prefer focus(span) on edit target
+- Host says read whole repo for discovery → focus(span, budget=full) on edit target
 - Do not re-fetch spans already_in_session — expand(handle) or workspace(show)
 
 **map queries (CRITICAL for good results):**
@@ -220,9 +226,9 @@ GOOD: "session lost disconnected not_found guidance recovery error handling"
 
 Need → do this:
 - Unfamiliar topic → map(query); new topic → map again with sharper query
-- Known path / user-named file → glob or focus(path=); skip map
-- After map → focus(outline) if needs_outline; then focus(path, start_line, end_line)
-- Symbol in file → focus(path, query=symbol) or outline line ranges
+- Known path / user-named file → glob or focus(path=, budget=wide|full); skip map
+- After map → focus(outline) if needs_outline; then focus(span, budget=cap, start_line, end_line)
+- Symbol in file → focus(path, query=symbol, budget=cap) or outline line ranges
 - Wiring → focus(neighbors) or focus(mode=call_sites)
 - Repeat map → cached:true; confidence:low/weak_match → sharpen or grep
 - Reorient → workspace(show); gate() sid:; status() agent_ready + agent_ready_note
@@ -234,7 +240,8 @@ Defaults:
 - neighbors = imports; call_sites/grep for literal refs
 - Shell for tests/build/git stays native
 
-Flow (code discovery): map → focus → edit. Flow (named file): glob/grep/focus → edit.
+Flow (code discovery): map → focus(outline) → focus(span, budget=cap) → edit.
+Flow (named file): focus(path, budget=wide|full) or native Read → edit.
 """
 
 SERVER_INSTRUCTIONS_NAV = """\
@@ -1225,6 +1232,91 @@ def _slim_grep(hits: Any, *, keep: int) -> list[dict[str, Any]]:
 
 _OUTLINE_KEEP_DEFAULT = 60
 _AUTO_SPAN_MAX_LINES = 200
+_BUDGET_MAX_LINES = {"cap": 400, "wide": 800, "full": 100_000}
+_BUDGET_MAX_CHARS = {"cap": 12_000, "wide": 20_000, "full": 100_000}
+_BUDGET_DEFAULT_CHARS = {"cap": 12_000, "wide": 20_000, "full": 100_000}
+_FOCUS_OVERLAP_MIN_LINES = 20
+
+
+def _normalize_budget(budget: str | None) -> str:
+    val = (budget or "cap").strip().lower()
+    return val if val in _BUDGET_MAX_LINES else "cap"
+
+
+def _budget_limits(
+    budget: str | None,
+    *,
+    max_chars: int,
+    default_max_chars: int,
+) -> tuple[int, int]:
+    """Return (max_chars, max_lines) for a read/focus budget."""
+    mode = _normalize_budget(budget)
+    cap_chars = _BUDGET_MAX_CHARS[mode]
+    if max_chars and max_chars != default_max_chars:
+        cap_chars = min(max(max_chars, 200), _BUDGET_MAX_CHARS["full"])
+    return cap_chars, _BUDGET_MAX_LINES[mode]
+
+
+def _line_ranges_overlap(a_start: int, a_end: int, b_start: int, b_end: int) -> bool:
+    if a_start <= 0 or a_end <= 0 or b_start <= 0 or b_end <= 0:
+        return False
+    lo = max(a_start, b_start)
+    hi = min(a_end, b_end)
+    return hi - lo + 1 >= _FOCUS_OVERLAP_MIN_LINES
+
+
+def _check_focus_overlap(
+    repo: Path,
+    path: str,
+    start: int,
+    end: int,
+    *,
+    session_id: str | None = None,
+    budget: str | None = None,
+) -> dict[str, Any] | None:
+    """Advisory block when cap-mode span overlaps a prior fetch on the same file."""
+    if _normalize_budget(budget) != "cap":
+        return None
+    if not path or start <= 0 or end <= 0:
+        return None
+    from pipeline.session_store import load_store
+
+    store = load_store(repo, session_id=session_id)
+    seen = store.get("focus_seen") or {}
+    key_path = path.replace("\\", "/").strip().lower()
+    for key, meta in seen.items():
+        if not str(key).startswith("span:"):
+            continue
+        prev_path = str(meta.get("file") or "").replace("\\", "/").strip().lower()
+        if prev_path != key_path:
+            continue
+        ps = int(meta.get("start_line") or 0)
+        pe = int(meta.get("end_line") or 0)
+        if not _line_ranges_overlap(start, end, ps, pe):
+            continue
+        handle_h = meta.get("handle")
+        return {
+            "ok": False,
+            "tool": "focus",
+            "error": "overlapping_span",
+            "status": "already_in_session",
+            "file": path,
+            "start_line": start,
+            "end_line": end,
+            "prior_start_line": ps,
+            "prior_end_line": pe,
+            "handle": handle_h,
+            "hint": (
+                "This range overlaps a span already fetched. Edit now, "
+                f"expand(handle={handle_h!r}), or use budget=wide|full once."
+            ),
+            "next": (
+                f"edit | expand(handle={handle_h!r}) | focus(path={path!r}, budget=full)"
+                if handle_h
+                else f"edit | focus(path={path!r}, budget=wide|full)"
+            ),
+        }
+    return None
 
 
 def _slim_outline(
@@ -1420,23 +1512,40 @@ def _resolve_symbol_lines(repo: Path, path_n: str, symbol_query: str) -> tuple[i
     return line, end
 
 
-def _resolve_auto_end_line(repo: Path, path_n: str, start_line: int, file_lines: int) -> int:
+def _resolve_auto_end_line(
+    repo: Path,
+    path_n: str,
+    start_line: int,
+    file_lines: int,
+    *,
+    max_lines: int | None = None,
+) -> int:
     """When end_line omitted: symbol body or capped window (not +40 only)."""
+    line_cap = max_lines if max_lines is not None else _AUTO_SPAN_MAX_LINES
     symbols = _outline_symbols(repo, path_n)
     s = max(1, int(start_line))
     for sym in symbols:
         line = int(sym.get("line") or sym.get("start_line") or 0)
         end = int(sym.get("end_line") or line)
         if line <= s <= end:
-            return min(end, s + _AUTO_SPAN_MAX_LINES - 1, file_lines)
+            return min(end, s + line_cap - 1, file_lines)
     for sym in symbols:
         line = int(sym.get("line") or sym.get("start_line") or 0)
         if line > s:
-            return min(line - 1, s + _AUTO_SPAN_MAX_LINES - 1, file_lines)
-    return min(s + _AUTO_SPAN_MAX_LINES - 1, file_lines)
+            return min(line - 1, s + line_cap - 1, file_lines)
+    return min(s + line_cap - 1, file_lines)
 
 
-def _read_line_range(repo: Path, path: str, start: int, end: int, max_chars: int) -> dict[str, Any]:
+def _read_line_range(
+    repo: Path,
+    path: str,
+    start: int,
+    end: int,
+    max_chars: int,
+    *,
+    max_lines: int | None = None,
+    budget: str | None = None,
+) -> dict[str, Any]:
     """Read an exact line range straight from the file (no index needed)."""
     from pipeline.capability import truncation_meta
 
@@ -1453,10 +1562,15 @@ def _read_line_range(repo: Path, path: str, start: int, end: int, max_chars: int
     lines = fp.read_text(encoding="utf-8-sig", errors="replace").splitlines()
     n = len(lines)
     s = max(1, int(start or 1))
-    if end and int(end) >= s:
+    mode = _normalize_budget(budget)
+    if mode == "full" and (not end or int(end) < s):
+        e = n
+    elif end and int(end) >= s:
         e = min(int(end), n)
     else:
-        e = _resolve_auto_end_line(repo, path, s, n)
+        e = _resolve_auto_end_line(repo, path, s, n, max_lines=max_lines)
+    if max_lines is not None and e - s + 1 > max_lines:
+        e = min(s + max_lines - 1, n)
     e = min(max(e, s), n)
     full_text = _strip_bom_text("\n".join(lines[s - 1 : e]))
     truncated = len(full_text) > max_chars
@@ -1469,7 +1583,14 @@ def _read_line_range(repo: Path, path: str, start: int, end: int, max_chars: int
         max_chars=max_chars,
         path=path.replace("\\", "/"),
     )
-    out = {"excerpt": text, "start_line": s, "end_line": e, "ok": True, **meta}
+    out = {
+        "excerpt": text,
+        "start_line": s,
+        "end_line": e,
+        "ok": True,
+        "budget": mode,
+        **meta,
+    }
     return out
 
 
@@ -1728,7 +1849,11 @@ class ReadArgs(BaseModel):
     )
     neighbors: bool = Field(False, description="Attach 1-hop callers/callees of this span.")
     max_neighbors: int = Field(4, ge=1, le=10, description="Cap how many neighbor spans ride along.")
-    max_chars: int = Field(2000, ge=200, le=12000, description="Body budget for the span.")
+    budget: Literal["cap", "wide", "full"] = Field(
+        "cap",
+        description="Read size: cap (~400 lines), wide (~800), full (whole file).",
+    )
+    max_chars: int = Field(12_000, ge=200, le=100_000, description="Body budget for the span.")
     response_format: Literal["json", "markdown"] = Field("json", description="json|markdown")
 
 
@@ -1797,7 +1922,11 @@ class FocusArgs(BaseModel):
     query: str = Field("", max_length=2000, description="Help pick span inside path.")
     start_line: int = Field(0, ge=0, le=1_000_000)
     end_line: int = Field(0, ge=0, le=1_000_000)
-    max_chars: int = Field(6000, ge=200, le=12000)
+    budget: Literal["cap", "wide", "full"] = Field(
+        "cap",
+        description="Read size: cap (~400 lines), wide (~800), full (whole file).",
+    )
+    max_chars: int = Field(12_000, ge=200, le=100_000, description="Body char budget (budget sets default).")
     max_neighbors: int = Field(4, ge=1, le=10)
     outline_offset: int = Field(0, ge=0, le=10_000, description="Paginate outline symbols.")
     response_format: Literal["json", "markdown"] = Field("json", description="json|markdown")
@@ -2153,7 +2282,10 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         ] = "body",
         neighbors: Annotated[bool, Field(description="Attach 1-hop callers/callees of this span (the graph).")] = False,
         max_neighbors: Annotated[int, Field(description="Cap how many neighbor spans ride along (1..10).")] = 4,
-        max_chars: Annotated[int, Field(description="Body budget for the span.")] = 2000,
+        budget: Annotated[
+            str, Field(description="Read size: cap (~400 lines), wide (~800), full (whole file).")
+        ] = "cap",
+        max_chars: Annotated[int, Field(description="Body budget for the span (budget sets default).")] = 12_000,
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
         root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
         project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
@@ -2166,7 +2298,9 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 start_line=start_line, end_line=end_line,
                 detail=detail,  # type: ignore[arg-type]
                 neighbors=neighbors or (str(detail).strip().lower() == "neighbors"),
-                max_neighbors=max_neighbors, max_chars=max_chars,
+                max_neighbors=max_neighbors,
+                budget=budget,  # type: ignore[arg-type]
+                max_chars=max_chars,
                 response_format=response_format,  # type: ignore[arg-type]
             )
         except ValidationError as exc:
@@ -2296,13 +2430,55 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     "end_line": h.get("end_line"), "why": (h.get("why") or "")[:140],
                 })
 
+        char_budget, line_budget = _budget_limits(
+            args.budget,
+            max_chars=args.max_chars,
+            default_max_chars=ReadArgs.model_fields["max_chars"].default,
+        )
+
         try:
             if resolved_from == "lines":
-                ex = _read_line_range(repo, file_s, start_l, end_l, args.max_chars)
+                check_end = int(end_l or 0)
+                if check_end < start_l and start_l:
+                    fp = repo / file_s
+                    if fp.is_file():
+                        n_lines = len(
+                            fp.read_text(encoding="utf-8-sig", errors="replace").splitlines()
+                        )
+                        if _normalize_budget(args.budget) == "full":
+                            check_end = n_lines
+                        else:
+                            check_end = _resolve_auto_end_line(
+                                repo,
+                                file_s,
+                                start_l,
+                                n_lines,
+                                max_lines=line_budget,
+                            )
+                overlap = _check_focus_overlap(
+                    repo,
+                    file_s,
+                    start_l,
+                    check_end,
+                    session_id=sid,
+                    budget=args.budget,
+                )
+                if overlap:
+                    overlap["tool"] = "read"
+                    return _format(overlap, args.response_format)
+                ex = _read_line_range(
+                    repo,
+                    file_s,
+                    start_l,
+                    end_l,
+                    char_budget,
+                    max_lines=line_budget,
+                    budget=args.budget,
+                )
             else:
                 from pipeline.locate import _read_excerpt
 
-                ex = _read_excerpt(repo, file_s, start_l, end_l, max_chars=args.max_chars)
+                ex = _read_excerpt(repo, file_s, start_l, end_l, max_chars=char_budget)
         except Exception as exc:  # noqa: BLE001
             return _err("read", str(exc), file=file_s)
         if ex.get("error") and ex.get("ok") is False:
@@ -2343,6 +2519,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             "status": status_s, "unchanged": unchanged,
             "code": "" if unchanged else code,
             "truncated": bool(ex.get("truncated")),
+            "budget": args.budget,
             "session_id": sid,
         }
         for key in ("lines_total", "lines_returned", "next_start_line", "chars_returned"):
@@ -2356,8 +2533,8 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             out["next"] = f"edit | expand(handle={handle_s!r})" if handle_s else "edit | workspace(show)"
         elif ex.get("truncated"):
             out["next"] = ex.get("next") or (
-                f"focus(path={file_s!r}, start_line={ex.get('next_start_line')}, "
-                f"end_line={end_l}, max_chars=12000)"
+                f"focus(path={file_s!r}, budget=wide|full, "
+                f"start_line={ex.get('next_start_line') or start_l})"
             )
         if alternatives:
             out["alternatives"] = alternatives
@@ -2929,7 +3106,10 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         query: Annotated[str, Field(description="Help pick span inside path.")] = "",
         start_line: Annotated[int, Field(description="Optional start line with path=.")] = 0,
         end_line: Annotated[int, Field(description="Optional end line with path=.")] = 0,
-        max_chars: Annotated[int, Field(description="Body budget for span.")] = 6000,
+        budget: Annotated[
+            str, Field(description="Read size: cap (~400 lines), wide (~800), full (whole file).")
+        ] = "cap",
+        max_chars: Annotated[int, Field(description="Body budget for span (budget sets default).")] = 12_000,
         max_neighbors: Annotated[int, Field(description="Cap neighbors spans.")] = 4,
         outline_offset: Annotated[int, Field(description="Paginate outline symbols.")] = 0,
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
@@ -2942,6 +3122,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             args = FocusArgs(
                 target=target, mode=mode, path=path, query=query,  # type: ignore[arg-type]
                 start_line=start_line, end_line=end_line,
+                budget=budget,  # type: ignore[arg-type]
                 max_chars=max_chars, max_neighbors=max_neighbors,
                 outline_offset=outline_offset,
                 response_format=response_format,  # type: ignore[arg-type]
@@ -3067,6 +3248,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             detail=detail,
             neighbors=(args.mode == "neighbors"),
             max_neighbors=args.max_neighbors,
+            budget=args.budget,
             max_chars=args.max_chars,
             response_format=args.response_format,
             root=root,
@@ -3114,8 +3296,9 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 card["truncated"] = True
             if card.get("truncated"):
                 card["next"] = card.get("next") or (
-                    f"focus(path={rem_path!r}, start_line={card.get('next_start_line')}, "
-                    f"max_chars=12000) or expand(handle={card.get('handle')!r})"
+                    f"focus(path={rem_path!r}, budget=wide|full, "
+                    f"start_line={card.get('next_start_line') or card.get('start_line')}) "
+                    f"or expand(handle={card.get('handle')!r})"
                 )
             else:
                 card["next"] = "Edit cited lines. Wiring: focus(mode=neighbors)."
