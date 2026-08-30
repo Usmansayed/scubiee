@@ -1,19 +1,27 @@
-"""Global pause/resume for Scubiee.
+"""Global stop/resume for Scubiee (`scubiee stop` / `scubiee resume`).
 
-scubiee pause  — stop all processes, disable MCP configs, rename rules, save state.
-scubiee resume — restore MCP configs, rename rules back, start engine, reconcile.
+``scubiee stop`` — kill processes, remove Scubiee MCP keys + GATE rules +
+repo ``.scubiee`` folders. Registry + index stores in ``~/.scubiee`` are kept
+so ``scubiee resume`` can reconnect without re-indexing.
 
-While paused:
-- No background CPU/memory/disk usage.
-- MCP server entries are disabled (agents won't attempt to connect).
-- Rule files are renamed to *.paused (invisible to IDE agent loaders).
-- status() MCP call returns {"ok": false, "paused": true} so agents skip Scubiee.
-- Watchdog/lifecycle_runtime refuse to restart anything.
+**MCP:** edit ``mcp.json`` in place — add/remove only the ``scubiee`` key;
+never delete the user's other MCP servers.
+
+**Rules:** delete only Scubiee-owned files (``scubiee.mdc``, etc.) or the
+marked section in ``AGENTS.md``; other rules in ``.cursor/rules/`` are kept.
+
+**Repo data:** only ``<repo>/.scubiee/`` is removed (Scubiee-owned).
+
+While stopped:
+- No Scubiee MCP, rules, or repo ``.scubiee`` on disk.
+- CLI action commands are blocked (except ``resume`` and read-only diagnostics).
+- MCP tools return ``paused: true`` if a stale session is still loaded.
 """
 
 from __future__ import annotations
 
 import json
+import shutil
 import time
 from pathlib import Path
 from typing import Any
@@ -28,6 +36,7 @@ from pipeline.tool_registry import (
     resolve_rule_user_paths,
 )
 
+PAUSED_BLOCK_MESSAGE = "Scubiee is stopped. Run `scubiee resume` to use commands."
 
 # ── State file ────────────────────────────────────────────────────────────────
 
@@ -38,7 +47,10 @@ def _state_path() -> Path:
 
 
 def is_paused() -> bool:
-    """Return True if Scubiee is globally paused."""
+    """Return True if Scubiee is globally stopped.
+
+    Fail-closed: corrupt ``pause_state.json`` is treated as stopped.
+    """
     path = _state_path()
     if not path.is_file():
         return False
@@ -46,7 +58,7 @@ def is_paused() -> bool:
         data = json.loads(path.read_text(encoding="utf-8"))
         return bool(data.get("paused"))
     except (json.JSONDecodeError, OSError):
-        return False
+        return True
 
 
 def _load_state() -> dict[str, Any]:
@@ -65,10 +77,11 @@ def _save_state(data: dict[str, Any]) -> None:
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
 
-# ── MCP disable/enable ────────────────────────────────────────────────────────
+# paused_blocks_command lives in lifecycle_guard.py (re-exported below).
+
+# ── MCP disable/enable (legacy helpers — tests only) ─────────────────────────
 
 def _disable_mcp_json(path: Path, key: str) -> bool:
-    """Set disabled=true on every known Scubiee MCP server key."""
     if not path.is_file():
         return False
     try:
@@ -95,7 +108,6 @@ def _disable_mcp_json(path: Path, key: str) -> bool:
 
 
 def _enable_mcp_json(path: Path, key: str) -> bool:
-    """Clear disabled on Scubiee MCP keys."""
     if not path.is_file():
         return False
     try:
@@ -121,163 +133,161 @@ def _enable_mcp_json(path: Path, key: str) -> bool:
     return True
 
 
-def _disable_mcp_opencode(path: Path) -> bool:
-    """OpenCode uses enabled: false."""
-    if not path.is_file():
-        return False
+_PAUSED_SUFFIX = ".paused"  # legacy — resume cleans up if present
+
+
+def _registry_project_id_for_repo(repo: Path) -> str | None:
+    from pipeline.project_id import load_registry
+
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return False
-    mcp = data.get("mcp")
-    if not isinstance(mcp, dict):
-        return False
-    changed = False
-    for name in MCP_SERVER_NAMES:
-        if name not in mcp:
+        repo_key = str(repo.resolve()).replace("\\", "/").lower()
+    except OSError:
+        return None
+    for pid, entry in (load_registry().get("projects") or {}).items():
+        if not isinstance(entry, dict) or not isinstance(pid, str):
             continue
-        entry = mcp[name]
-        if isinstance(entry, dict):
-            entry["enabled"] = False
-            mcp[name] = entry
-            changed = True
-    if not changed:
-        return False
-    data["mcp"] = mcp
-    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-    return True
-
-
-def _enable_mcp_opencode(path: Path) -> bool:
-    """OpenCode uses enabled: true."""
-    if not path.is_file():
-        return False
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return False
-    mcp = data.get("mcp")
-    if not isinstance(mcp, dict):
-        return False
-    changed = False
-    for name in MCP_SERVER_NAMES:
-        if name not in mcp:
+        if not pid.startswith("ce_"):
             continue
-        entry = mcp[name]
-        if isinstance(entry, dict):
-            entry["enabled"] = True
-            mcp[name] = entry
-            changed = True
-    if not changed:
-        return False
-    data["mcp"] = mcp
-    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-    return True
+        for raw in list(entry.get("paths") or []) + ([entry.get("root")] if entry.get("root") else []):
+            try:
+                candidate = str(Path(str(raw)).resolve()).replace("\\", "/").lower()
+            except OSError:
+                continue
+            if candidate == repo_key:
+                return pid
+    return None
 
 
-def _iter_connected_mcp_paths(tool: ToolDef):
-    """Yield (path, schema, key) for project MCP + legacy global cleanup paths."""
+def _hide_repo_scubiee_dirs() -> list[str]:
+    """Remove repo-local ``.scubiee`` dirs; keep registry + home index stores."""
     from pipeline.managed_repos import managed_repo_paths
+    from pipeline.project_id import id_dir_path
 
+    removed: list[str] = []
     for repo in managed_repo_paths(enrolled_only=False):
-        for target in resolve_mcp_project_write_targets(tool, repo):
-            yield target
-    for target in resolve_mcp_legacy_global_paths(tool):
-        yield target
-
-
-def _disable_mcp_for_tool(tool: ToolDef) -> list[str]:
-    """Disable MCP config entries for a single tool. Returns list of disabled paths."""
-    disabled: list[str] = []
-    for path, schema, key in _iter_connected_mcp_paths(tool):
-        if schema == "opencode":
-            if _disable_mcp_opencode(path):
-                disabled.append(str(path))
-        elif schema in ("codex", "continue"):
-            pass
-        else:
-            if _disable_mcp_json(path, key):
-                disabled.append(str(path))
-    return disabled
-
-
-def _enable_mcp_for_tool(tool: ToolDef) -> list[str]:
-    """Re-enable MCP config entries for a single tool. Returns list of enabled paths."""
-    enabled: list[str] = []
-    for path, schema, key in _iter_connected_mcp_paths(tool):
-        if schema == "opencode":
-            if _enable_mcp_opencode(path):
-                enabled.append(str(path))
-        elif schema in ("codex", "continue"):
-            pass
-        else:
-            if _enable_mcp_json(path, key):
-                enabled.append(str(path))
-    return enabled
-
-
-# ── Rule rename ───────────────────────────────────────────────────────────────
-
-_PAUSED_SUFFIX = ".paused"
-
-
-def _pause_rule_files(tool: ToolDef) -> list[str]:
-    """Rename rule files to *.paused. Returns list of renamed paths."""
-    renamed: list[str] = []
-    from pipeline.managed_repos import managed_repo_paths
-
-    candidates: list[Path] = list(resolve_rule_user_paths(tool))
-    for repo in managed_repo_paths(enrolled_only=False):
-        candidates.extend(resolve_rule_project_paths(tool, repo))
-        agents = repo / "AGENTS.md"
-        if agents.is_file():
-            candidates.append(agents)
-
-    seen: set[str] = set()
-    for rule_path in candidates:
-        key = str(rule_path.resolve()).replace("\\", "/").lower()
-        if key in seen:
+        id_dir = id_dir_path(repo)
+        if not id_dir.is_dir():
             continue
-        seen.add(key)
-        if rule_path.is_file() and not rule_path.name.endswith(_PAUSED_SUFFIX):
-            paused_path = rule_path.with_name(rule_path.name + _PAUSED_SUFFIX)
-            rule_path.rename(paused_path)
-            renamed.append(str(rule_path))
-    return renamed
+        try:
+            shutil.rmtree(id_dir)
+            removed.append(str(id_dir))
+        except OSError as exc:
+            removed.append(f"{id_dir} (error: {exc})")
+    return removed
 
 
-def _resume_rule_files(tool: ToolDef) -> list[str]:
-    """Rename *.paused back to original. Returns list of restored paths."""
+def _restore_enrolled_id_files() -> list[str]:
+    from pipeline.managed_repos import managed_repo_paths
+    from pipeline.project_id import read_id_file, write_id_file
+
     restored: list[str] = []
-    from pipeline.managed_repos import managed_repo_paths
-
-    candidates: list[Path] = list(resolve_rule_user_paths(tool))
     for repo in managed_repo_paths(enrolled_only=False):
-        candidates.extend(resolve_rule_project_paths(tool, repo))
-        candidates.append(repo / "AGENTS.md")
-
-    seen: set[str] = set()
-    for rule_path in candidates:
-        key = str(rule_path.resolve()).replace("\\", "/").lower()
-        if key in seen:
+        if read_id_file(repo):
             continue
-        seen.add(key)
-        paused_path = rule_path.with_name(rule_path.name + _PAUSED_SUFFIX)
-        if not paused_path.is_file():
+        pid = _registry_project_id_for_repo(repo)
+        if not pid:
             continue
-        if rule_path.is_file():
-            paused_path.unlink(missing_ok=True)
-            restored.append(str(rule_path))
+        try:
+            write_id_file(repo, pid)
+            restored.append(str(repo))
+        except OSError:
             continue
-        paused_path.rename(rule_path)
-        restored.append(str(rule_path))
     return restored
 
 
-# ── Detect connected tools ────────────────────────────────────────────────────
+def _strip_agents_md_all_repos() -> list[str]:
+    from pipeline.managed_repos import managed_repo_paths
+    from pipeline.rules_installer import _remove_rule_section
+
+    stripped: list[str] = []
+    for repo in managed_repo_paths(enrolled_only=False):
+        agents = repo / "AGENTS.md"
+        if agents.is_file():
+            try:
+                if _remove_rule_section(agents):
+                    stripped.append(str(agents))
+            except OSError:
+                pass
+    return stripped
+
+
+def _teardown_tool_surfaces(tool: ToolDef) -> dict[str, Any]:
+    """Remove Scubiee MCP keys + GATE rules for one tool (does not touch connect_state)."""
+    from pipeline.rules_installer import (
+        _RULE_REMOVERS,
+        _remove_legacy_global_mcp,
+        fan_out_tool_to_enrolled_repos,
+    )
+
+    mcp_skipped: list[dict[str, str]] = []
+    report: dict[str, Any] = {
+        "slug": tool.slug,
+        "legacy_global_removed": _remove_legacy_global_mcp(tool, warnings=mcp_skipped),
+    }
+    fan = fan_out_tool_to_enrolled_repos(
+        tool, remove=True, dry_run=False, mcp_warnings=mcp_skipped
+    )
+    report["project_fan_out"] = fan
+    if mcp_skipped:
+        report["mcp_skipped"] = mcp_skipped
+
+    user_removed: list[str] = []
+    remover = _RULE_REMOVERS.get(tool.rule_format)
+    if remover and tool.rule_format != "none":
+        for path in resolve_rule_user_paths(tool):
+            if path.is_file() and remover(path):
+                user_removed.append(str(path))
+    report["user_rules_removed"] = user_removed
+    return report
+
+
+def _collect_teardown_mcp_skipped(teardown: list[dict[str, Any]]) -> list[dict[str, str]]:
+    skipped: list[dict[str, str]] = []
+    for entry in teardown:
+        skipped.extend(entry.get("mcp_skipped") or [])
+        fan = entry.get("project_fan_out") or {}
+        for sub in fan.get("reports") or []:
+            skipped.extend(sub.get("mcp_skipped") or [])
+    return skipped
+
+
+def _teardown_all_tool_surfaces() -> list[dict[str, Any]]:
+    """Stop cleanup for every supported IDE/agent — not only connected slugs."""
+    return [_teardown_tool_surfaces(tool) for tool in TOOL_MAP.values()]
+
+
+def _cleanup_legacy_paused_rules(tool: ToolDef) -> list[str]:
+    """Remove leftover ``*.paused`` rule files from older stop implementations."""
+    cleaned: list[str] = []
+    candidates: list[Path] = list(resolve_rule_user_paths(tool))
+    from pipeline.managed_repos import managed_repo_paths
+
+    for repo in managed_repo_paths(enrolled_only=False):
+        candidates.extend(resolve_rule_project_paths(tool, repo))
+
+    seen: set[str] = set()
+    for rule_path in candidates:
+        paused_path = rule_path.with_name(rule_path.name + _PAUSED_SUFFIX)
+        key = str(paused_path).replace("\\", "/").lower()
+        if key in seen or not paused_path.is_file():
+            continue
+        seen.add(key)
+        try:
+            paused_path.unlink()
+            cleaned.append(str(paused_path))
+        except OSError:
+            pass
+        marker = rule_path.parent / "scubiee-stopped.mdc"
+        if marker.is_file():
+            try:
+                marker.unlink()
+                cleaned.append(str(marker))
+            except OSError:
+                pass
+    return cleaned
+
 
 def _detect_connected_tools() -> list[str]:
-    """Return slugs of tools the user has connected (local-first store)."""
     from pipeline.connect_state import load_connected_tools
 
     return load_connected_tools()
@@ -286,82 +296,99 @@ def _detect_connected_tools() -> list[str]:
 # ── Core pause/resume ─────────────────────────────────────────────────────────
 
 def pause() -> dict[str, Any]:
-    """Globally pause Scubiee. Returns a report dict."""
+    """Globally stop Scubiee — tear down MCP, rules, repo .scubiee."""
     if is_paused():
         return {"ok": True, "already_paused": True}
 
     report: dict[str, Any] = {"ok": True, "paused_at": time.time()}
 
-    # 1. Detect which tools are connected (before we disable them)
     connected = _detect_connected_tools()
     report["connected_tools"] = connected
 
-    # 2. Stop all processes
     try:
-        from pipeline.daemon import stop_daemon
-        from pipeline.lifecycle_runtime import DESIRED_STANDBY, set_desired_mode
-        from pipeline.watchdog import stop_watchdog
+        from pipeline.process_control import release_scubiee_process_locks
 
-        set_desired_mode(DESIRED_STANDBY)
-        report["watchdog"] = stop_watchdog()
-        report["engine"] = stop_daemon()
+        report["process_release"] = release_scubiee_process_locks()
+        if not report["process_release"].get("ok"):
+            report["process_warning"] = report["process_release"].get("hint")
     except Exception as exc:  # noqa: BLE001
         report["stop_error"] = str(exc)
 
-    # 3. Disable MCP configs for connected tools
-    disabled_mcp: list[str] = []
-    for slug in connected:
-        tool = TOOL_MAP.get(slug)
-        if tool:
-            disabled_mcp.extend(_disable_mcp_for_tool(tool))
-    report["disabled_mcp"] = disabled_mcp
+    teardown: list[dict[str, Any]] = _teardown_all_tool_surfaces()
+    report["teardown"] = teardown
+    mcp_skipped = _collect_teardown_mcp_skipped(teardown)
+    if mcp_skipped:
+        report["mcp_skipped"] = mcp_skipped
+        report["mcp_skip_warning"] = (
+            f"{len(mcp_skipped)} MCP file(s) could not be updated "
+            "(invalid syntax — scubiee entry may remain; fix manually)"
+        )
+    report["agents_stripped"] = _strip_agents_md_all_repos()
 
-    # 4. Rename rule files
-    renamed_rules: list[str] = []
-    for slug in connected:
-        tool = TOOL_MAP.get(slug)
-        if tool:
-            renamed_rules.extend(_pause_rule_files(tool))
-    report["renamed_rules"] = renamed_rules
+    report["hidden_scubiee_dirs"] = _hide_repo_scubiee_dirs()
 
-    # 5. Save state
     _save_state({
         "paused": True,
         "paused_at": report["paused_at"],
         "connected_tools": connected,
-        "disabled_mcp": disabled_mcp,
-        "renamed_rules": renamed_rules,
+        "teardown": teardown,
+        "hidden_scubiee_dirs": report["hidden_scubiee_dirs"],
     })
 
     return report
 
 
 def resume() -> dict[str, Any]:
-    """Globally resume Scubiee. Returns a report dict."""
+    """Restore MCP, rules, repo id files, and engine after ``scubiee stop``."""
     if not is_paused():
         return {"ok": True, "already_active": True}
 
     state = _load_state()
-    connected = state.get("connected_tools", [])
+    connected = list(state.get("connected_tools") or _detect_connected_tools())
     report: dict[str, Any] = {"ok": True, "resumed_at": time.time()}
 
-    # 1. Re-enable MCP configs
-    enabled_mcp: list[str] = []
+    # Stay paused until MCP restore succeeds — never leave a half-resumed state.
+    _save_state({
+        "paused": True,
+        "resuming": True,
+        "paused_at": state.get("paused_at"),
+        "connected_tools": connected,
+    })
+
+    report["restored_id_files"] = _restore_enrolled_id_files()
+
+    restored: list[dict[str, Any]] = []
+    restore_errors: list[str] = []
     for slug in connected:
         tool = TOOL_MAP.get(slug)
-        if tool:
-            enabled_mcp.extend(_enable_mcp_for_tool(tool))
-    report["enabled_mcp"] = enabled_mcp
+        if not tool:
+            continue
+        _cleanup_legacy_paused_rules(tool)
+        from pipeline.rules_installer import install_tool
 
-    # 2. Restore rule files
-    restored_rules: list[str] = []
-    for slug in connected:
-        tool = TOOL_MAP.get(slug)
-        if tool:
-            restored_rules.extend(_resume_rule_files(tool))
-    report["restored_rules"] = restored_rules
+        result = install_tool(tool)
+        restored.append(result)
+        if not result.get("ok", True):
+            restore_errors.extend(result.get("errors") or [f"{slug}: MCP restore failed"])
 
-    # 3. Set lifecycle back to active and start engine + watchdog
+    report["connect_restore"] = restored
+
+    if restore_errors:
+        report["ok"] = False
+        report["errors"] = restore_errors
+        report["hint"] = (
+            "MCP restore failed — Scubiee is still stopped. "
+            "Fix the errors above and run `scubiee resume` again."
+        )
+        _save_state({
+            "paused": True,
+            "resuming": False,
+            "paused_at": state.get("paused_at"),
+            "connected_tools": connected,
+            "last_resume_error": restore_errors,
+        })
+        return report
+
     try:
         from pipeline.lifecycle_runtime import DESIRED_RUN, set_desired_mode
 
@@ -373,15 +400,15 @@ def resume() -> dict[str, Any]:
         from pipeline.daemon import ensure_daemon
         from pipeline.project_id import load_registry
 
-        # Find first managed repo to bind the daemon to
         repo = None
         registry = load_registry()
         for entry in (registry.get("projects") or {}).values():
             if isinstance(entry, dict) and entry.get("managed"):
-                paths = entry.get("paths", [])
+                paths = entry.get("paths") or []
                 if paths:
-                    from pathlib import Path
-                    candidate = Path(str(paths[0]))
+                    from pathlib import Path as _Path
+
+                    candidate = _Path(str(paths[0]))
                     if candidate.exists():
                         repo = candidate
                         break
@@ -404,7 +431,6 @@ def resume() -> dict[str, Any]:
     except Exception as exc:  # noqa: BLE001
         report["watchdog_error"] = str(exc)
 
-    # 4. Reconcile dirty files (merkle diff since pause)
     reconciled = 0
     try:
         from pipeline.daemon import reconcile_managed_repositories
@@ -418,7 +444,59 @@ def resume() -> dict[str, Any]:
     report["files_reconciled"] = reconciled
     report["connected_tools"] = connected
 
-    # 5. Clear pause state
+    if not connected:
+        report["connect_hint"] = (
+            "No tools were connected before stop — run "
+            "`scubiee connect --cursor` (or your IDE) after resume."
+        )
+
     _save_state({"paused": False, "resumed_at": report["resumed_at"]})
 
     return report
+
+
+# ── Back-compat aliases for tests ─────────────────────────────────────────────
+
+def _pause_rule_files(tool: ToolDef) -> list[str]:
+    """Legacy — stop now deletes surfaces instead of renaming."""
+    report = _teardown_tool_surfaces(tool)
+    removed: list[str] = []
+    fan = report.get("project_fan_out") or {}
+    for sub in fan.get("reports") or []:
+        rules = sub.get("rules") or {}
+        removed.extend(rules.get("removed") or [])
+    removed.extend(report.get("user_rules_removed") or [])
+    return removed
+
+
+def _resume_rule_files(tool: ToolDef) -> list[str]:
+    """Legacy — resume reconnects via install_tool."""
+    from pipeline.rules_installer import install_tool
+
+    install_tool(tool)
+    return []
+
+
+def _disable_mcp_for_tool(tool: ToolDef) -> list[str]:
+    from pipeline.rules_installer import _remove_legacy_global_mcp, fan_out_tool_to_enrolled_repos
+
+    removed = list(_remove_legacy_global_mcp(tool))
+    fan = fan_out_tool_to_enrolled_repos(tool, remove=True, dry_run=False)
+    for sub in fan.get("reports") or []:
+        if sub.get("mcp_removed"):
+            removed.append(str(sub.get("repo") or tool.slug))
+    return removed
+
+
+def _enable_mcp_for_tool(tool: ToolDef) -> list[str]:
+    from pipeline.rules_installer import install_tool
+
+    report = install_tool(tool)
+    enabled: list[str] = []
+    for path in report.get("mcp_paths") or []:
+        enabled.append(str(path))
+    fan = report.get("project_fan_out") or {}
+    for sub in fan.get("reports") or []:
+        for p in sub.get("mcp_paths") or []:
+            enabled.append(str(p))
+    return enabled

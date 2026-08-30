@@ -42,3 +42,17 @@ def test_requires_faiss_guard_skips_setup_and_wipe() -> None:
     assert not _requires_faiss_guard(["diagnose", "--no-tests"])
     assert _requires_faiss_guard(["init"])
     assert _requires_faiss_guard(["index"])
+
+
+def test_top_level_help_does_not_crash(capsys) -> None:
+    """Regression: unlock-tool help used %APPDATA% which broke argparse."""
+    import pytest
+
+    from pipeline.__main__ import main
+
+    with pytest.raises(SystemExit) as exc:
+        main(["--help"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "unlock-tool" in out
+    assert "%APPDATA%" in out or "APPDATA" in out

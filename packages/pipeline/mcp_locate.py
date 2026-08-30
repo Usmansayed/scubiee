@@ -242,6 +242,21 @@ Defaults:
 
 Flow (code discovery): map → focus(outline) → focus(span, budget=cap) → edit.
 Flow (named file): focus(path, budget=wide|full) or native Read → edit.
+
+Lifecycle (stop / connect / resume — use status() or gate() next_action):
+- scubiee stop = global pause → scubiee resume (NOT init). Reload IDE MCP after resume.
+- scubiee disconnect = remove MCP pins → scubiee connect --<tool> (repo stays enrolled).
+- Wiped or missing id.json → scubiee init . (once), then connect if needed.
+- Never ran setup → scubiee setup before connect.
+- IDE MCP toggled off only → enable in Cursor OR scubiee connect --cursor; no init.
+"""
+
+SERVER_INSTRUCTIONS_PAUSED = """\
+Scubiee is STOPPED (user ran scubiee stop). Do NOT call any Scubiee MCP tool.
+BAN: map, focus, grep, glob, workspace, expand, search, read, files, recall, neighbors, graph, outline.
+USE native Read/Grep/Glob/codebase-search only. Shell for tests/build/git is fine.
+gate() returns p. Other Scubiee tools return paused:true — do not retry or poll status().
+Tell user: scubiee resume (NOT init), then reload MCP in the IDE.
 """
 
 SERVER_INSTRUCTIONS_NAV = """\
@@ -348,6 +363,25 @@ def _managed_locate_err(tool: str, repo: Path) -> str:
     )
 
 
+def _paused_locate_err(tool: str) -> str:
+    """Hard stop when Scubiee is globally paused — agent must not retry locate tools."""
+    return _dumps({
+        "ok": False,
+        "tool": tool,
+        "paused": True,
+        "gate": "p",
+        "error": "Scubiee is stopped (scubiee stop).",
+        "should_use_mcp": False,
+        "should_retry_status": False,
+        "managed": False,
+        "next_action": "scubiee resume",
+        "hint": (
+            "Do not call Scubiee MCP tools while stopped. "
+            "Use native Read/Grep/Glob. Tell user: scubiee resume (not init)."
+        ),
+    })
+
+
 def _bind_first_instructions(gate: str, *, surface: str) -> str:
     """Spawn-unmanaged — compact bind-first note; full trajectory only when managed."""
     prefix = f"GATE {gate}. "
@@ -390,6 +424,9 @@ def _server_instructions(surface: str) -> str:
     - Init writes tool-ban rules; trajectory lives here — no duplication.
     """
     gate = _gate_line(just_checked=False)
+
+    if gate == "p":
+        return f"GATE p. {SERVER_INSTRUCTIONS_PAUSED}"
 
     if _bare_instructions_enabled():
         prefix = _gate_instruction_prefix(gate)
@@ -899,6 +936,15 @@ def _managed_signal_fields(*, just_checked: bool = False) -> dict[str, Any]:
     return fields
 
 
+def _paused_gate_response() -> str:
+    """Compact gate/status line when globally stopped."""
+    return (
+        "p\n"
+        "STOPPED — BAN Scubiee locate tools. Native Read/Grep/Glob only. "
+        "User: scubiee resume (not init)."
+    )
+
+
 def _gate_line(*, just_checked: bool = False) -> str:
     """Ultra-compact managed signal (~1–8 tokens). No daemon / session I/O.
 
@@ -906,8 +952,15 @@ def _gate_line(*, just_checked: bool = False) -> str:
       ``0``     — not managed (use native tools; do not poll)
       ``0:r``   — not managed; ``status_ttl_s`` elapsed — call ``gate()`` once
       ``1:ce_…`` — managed; reuse ``ce_…`` as ``project_id`` on locate tools
-      ``p``     — Scubiee paused (``scubiee resume``)
+      ``p``     — Scubiee stopped; BAN locate tools; native Read/Grep/Glob only
     """
+    try:
+        from pipeline.pause_resume import is_paused
+
+        if is_paused():
+            return "p"
+    except Exception:  # noqa: BLE001
+        pass
     fields = _managed_signal_fields(just_checked=just_checked)
     if not fields["managed"]:
         return "0:r" if fields["should_retry_status"] else "0"
@@ -1017,6 +1070,8 @@ def _backend_error(
     )
     if status == "requires_initialize" or error == "requires_initialize":
         hint = f"Run: scubiee init {repo} and then reload/reconnect the MCP server."
+    elif status == "paused" or error == "paused":
+        hint = "Run: scubiee activate . (per-repo pause — not the same as scubiee stop)."
     elif status == "needs_registration":
         hint = f"Register this workspace first: scubiee register {repo}."
     elif status in {"warming", "starting", "loading", "syncing", "initializing", "not_ready"}:
@@ -2058,6 +2113,14 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
 
         @wraps(fn)
         def _wrapped(*args: Any, **kwargs: Any) -> Any:
+            if tool_name not in {"gate", "status"}:
+                try:
+                    from pipeline.pause_resume import is_paused
+
+                    if is_paused():
+                        return _paused_locate_err(tool_name)
+                except Exception:  # noqa: BLE001
+                    pass
             ttok = bind_transport_session_from_mcp(mcp)
             explicit = str(kwargs.get("session_id") or "").strip()
             info = resolve_session(explicit or None)
@@ -3414,7 +3477,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             from pipeline.pause_resume import is_paused
 
             if is_paused():
-                return "p"
+                return _paused_gate_response()
             line = _gate_line(just_checked=True)
             if line.startswith("1:"):
                 sess = _session_fields(session_id)
@@ -3449,13 +3512,16 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 from pipeline.pause_resume import is_paused
 
                 if is_paused():
-                    return "p"
+                    return _paused_gate_response()
                 return _gate_line(just_checked=True)
 
             from pipeline.pause_resume import is_paused
 
             if is_paused():
                 # Polling status cannot unpause. Recheck after resume / user ask / TTL.
+                from pipeline.lifecycle_guidance import next_actions, primary_recovery_action
+
+                guide = next_actions(_default_repo())
                 fields = _managed_signal_fields(just_checked=True)
                 fields.update({
                     "ok": False,
@@ -3465,7 +3531,14 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     "managed": False,
                     "should_use_mcp": False,
                     "should_retry_status": False,
-                    "hint": "Scubiee is paused. Resume with: scubiee resume",
+                    "lifecycle_state": guide.get("state"),
+                    "next_action": primary_recovery_action(guide) or "scubiee resume",
+                    "agent_action": (guide.get("steps") or [{}])[0].get("action"),
+                    "hint": (
+                        "Scubiee is stopped. Do not call Scubiee MCP tools. "
+                        "Use native Read/Grep/Glob. User: scubiee resume (not init)."
+                    ),
+                    "lifecycle": guide,
                 })
                 return _dumps(fields)
 
@@ -3613,6 +3686,24 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     publish_pending=bool(contract.get("publish_pending")),
                     warming=warming,
                 )
+                try:
+                    from pipeline.lifecycle_guidance import next_actions, primary_recovery_action
+
+                    guide = next_actions(repo)
+                    payload["lifecycle"] = guide
+                    if guide.get("state") != "ready":
+                        recovery = primary_recovery_action(guide)
+                        if recovery:
+                            payload.setdefault("next_action", recovery)
+                            for step in guide.get("steps") or []:
+                                if step.get("action") == recovery:
+                                    payload.setdefault(
+                                        "lifecycle_hint",
+                                        str(step.get("why") or ""),
+                                    )
+                                    break
+                except Exception:  # noqa: BLE001
+                    pass
                 return _dumps(payload)
             except Exception as exc:  # noqa: BLE001
                 return _err("status", str(exc))

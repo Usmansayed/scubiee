@@ -52,6 +52,15 @@ def _clear_leaky_ctx_env():
             os.environ[key] = value
 
 
+@pytest.fixture(autouse=True)
+def _isolate_scubiee_home(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    """Each test gets a fresh ``~/.scubiee`` — no leaked global pause state."""
+    home = tmp_path / "scubiee-test-home"
+    home.mkdir()
+    monkeypatch.setenv("CTX_HOME", str(home))
+    yield home
+
+
 def write_machine_setup(home: Path) -> Path:
     """Minimal ``accel.json`` so ``require_machine_setup()`` passes in tests."""
     home.mkdir(parents=True, exist_ok=True)

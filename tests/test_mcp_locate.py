@@ -1032,6 +1032,19 @@ def test_status_paused_hint_uses_resume_not_wake(monkeypatch, tmp_path):
     assert "wake" not in card["hint"].lower()
 
 
+def test_status_gate_detail_paused_includes_resume_hint(monkeypatch, tmp_path):
+    pytest.importorskip("mcp")
+    monkeypatch.setenv("CTX_MCP_SURFACE", "read")
+    monkeypatch.setenv("CTX_REPO", str(tmp_path))
+    from pipeline.mcp_locate import create_mcp
+
+    monkeypatch.setattr("pipeline.pause_resume.is_paused", lambda: True)
+    status_fn = _tool_fn(create_mcp(), "status")
+    out = status_fn(detail="gate")
+    assert out.startswith("p\n")
+    assert "resume" in out.lower()
+
+
 def test_mcp_reports_routing_errors_instead_of_successful_zero_hits(
     monkeypatch, tmp_path
 ) -> None:

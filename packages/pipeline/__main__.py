@@ -35,6 +35,8 @@ def _requires_faiss_guard(argv: list[str] | None) -> bool:
     if cmd in {
         "setup",
         "stop",
+        "halt",
+        "unlock-tool",
         "wipe",
         "doctor",
         "preflight",
@@ -43,6 +45,7 @@ def _requires_faiss_guard(argv: list[str] | None) -> bool:
         "disconnect",
         "migrate",
         "diagnose",
+        "upgrade",
     }:
         return False
     if cmd == "engine" and len(args) > 1 and args[1] in {
@@ -106,7 +109,10 @@ def _needs_confirm_out(out: dict) -> bool:
         return True
     if out.get("error") == "confirm_required":
         return True
-    from pipeline.incremental import is_safety_pause_message
+    try:
+        from pipeline.incremental import is_safety_pause_message
+    except ImportError:
+        is_safety_pause_message = lambda s: "safety pause" in s.lower()  # noqa: E731
 
     for key in ("message", "hint", "error"):
         val = out.get(key)
@@ -304,7 +310,10 @@ def cmd_stop(args: argparse.Namespace) -> int:
 
         if not confirm_action(
             "Stop Scubiee?",
-            details=["Agents will fall back to native search. Resume with: scubiee resume"],
+            details=[
+                "Removes MCP configs, GATE rules, and repo .scubiee folders.",
+                "Resume with: scubiee resume",
+            ],
         ):
             print("  Cancelled.\n", file=sys.stderr)
             return 0
@@ -316,6 +325,12 @@ def cmd_stop(args: argparse.Namespace) -> int:
         sys.stderr.write("\n")
         if result.get("ok"):
             success("Stopped", stream=sys.stderr)
+            skip_warn = result.get("mcp_skip_warning")
+            if skip_warn:
+                warn(str(skip_warn), stream=sys.stderr)
+            proc_warn = result.get("process_warning")
+            if proc_warn:
+                warn(str(proc_warn), stream=sys.stderr)
         else:
             warn("Stop may be incomplete", stream=sys.stderr)
         sys.stderr.write("\n")
@@ -357,6 +372,41 @@ def cmd_unlock_tool(args: argparse.Namespace) -> int:
         print(json.dumps(result, indent=2, default=str))
     return 0 if result.get("ok") else 1
 
+
+def cmd_halt(args: argparse.Namespace) -> int:
+    """Disable MCP and kill all Scubiee processes (safe pre-wipe / pre-upgrade step)."""
+    from pipeline.process_control import release_scubiee_process_locks
+
+    project = getattr(args, "path", None)
+    proj_path = Path(project).resolve() if project else None
+    result = release_scubiee_process_locks(project=proj_path, strip_mcp=False)
+
+    if sys.stdout.isatty():
+        from pipeline.cli_ui import info, success, warn
+
+        print("", file=sys.stderr)
+        if result.get("ok"):
+            success("Scubiee halted (MCP stubbed to no-op, processes stopped)", stream=sys.stderr)
+            info(
+                "Cursor/Claude can stay open — they will respawn a no-op, not scubiee.",
+                stream=sys.stderr,
+            )
+        else:
+            warn("Halt incomplete — some processes may still be running", stream=sys.stderr)
+            hint = result.get("hint")
+            if hint:
+                info(str(hint), stream=sys.stderr)
+        info(
+            "Next: scubiee wipe --all --confirm  OR  uv tool install --force scubiee",
+            stream=sys.stderr,
+        )
+        print("", file=sys.stderr)
+    else:
+        print(json.dumps(result, indent=2, default=str))
+
+    return 0 if result.get("ok") else 1
+
+
 def cmd_wipe(args: argparse.Namespace) -> int:
     """Remove Scubiee state for this repo, or everything with --all."""
     from pipeline.wipe import wipe
@@ -371,8 +421,8 @@ def cmd_wipe(args: argparse.Namespace) -> int:
         if not confirm_action(
             "Wipe ALL Scubiee data?",
             details=[
-                "Deletes indexes, models, MCP configs, and uninstalls the package.",
-                "This cannot be undone.",
+                "Stubs MCP, kills processes, unlocks files, deletes everything.",
+                "Cursor/Claude can stay open. This cannot be undone.",
             ],
         ):
             print("  Cancelled.\n", file=sys.stderr)
@@ -405,8 +455,13 @@ def cmd_wipe(args: argparse.Namespace) -> int:
             sys.stderr.write("\n")
             return 2
 
-        from pipeline.cli_ui import print_wipe_summary
-        print_wipe_summary(out)
+        try:
+            from pipeline.cli_ui import print_wipe_summary
+
+            print_wipe_summary(out)
+        except Exception as exc:  # noqa: BLE001
+            print(json.dumps(out, indent=2, default=str), file=sys.stderr)
+            print(f"[scubiee] Summary unavailable: {exc}", file=sys.stderr)
     else:
         print(json.dumps(out, indent=2, default=str))
         if _needs_confirm_out(out):
@@ -853,6 +908,25 @@ def cmd_engine(args: argparse.Namespace) -> int:
     )
 
     action = args.action
+
+    from pipeline.lifecycle_guard import guard_engine_action
+
+    blocked = guard_engine_action(action)
+    if blocked is not None and action in {"start", "stop", "ensure", "run"}:
+        if sys.stdout.isatty():
+            from pipeline.cli_ui import info, warn
+
+            print("", file=sys.stderr)
+            hint = str(blocked.get("hint") or "")
+            if blocked.get("ok"):
+                info(hint, stream=sys.stderr)
+            else:
+                warn(hint, stream=sys.stderr)
+            print("", file=sys.stderr)
+        else:
+            print(json.dumps(blocked, indent=2, default=str))
+        return 0 if blocked.get("ok") else 1
+
     if action == "run":
         from pipeline.server import run_server
 
@@ -924,11 +998,14 @@ def cmd_engine(args: argparse.Namespace) -> int:
             print(json.dumps({"ok": True, "watchdog": wd, "engine": eng}, indent=2))
         return 0
     if action == "status":
+        from pipeline.pause_resume import is_paused
+
         client = EngineClient()
         healthy = is_running()
         payload = {
             "url": engine_url(),
             "running": healthy,
+            "globally_paused": is_paused(),
             "health": client.get("/health") if healthy else None,
             "watchdog": watchdog_status(),
         }
@@ -943,6 +1020,9 @@ def cmd_engine(args: argparse.Namespace) -> int:
                 kv("URL", engine_url(), stream=sys.stderr)
                 wd = payload.get("watchdog", {})
                 kv("Watchdog", "active" if wd.get("running") else "stopped", stream=sys.stderr)
+            elif payload.get("globally_paused"):
+                ui_error("Scubiee globally stopped", stream=sys.stderr)
+                info("Run: scubiee resume (not engine start)", stream=sys.stderr)
             else:
                 ui_error("Engine not running", stream=sys.stderr)
                 info("Start with: scubiee engine start", stream=sys.stderr)
@@ -964,7 +1044,8 @@ def cmd_engine(args: argparse.Namespace) -> int:
                 else:
                     success("Engine started", stream=sys.stderr)
             elif result.get("reason") == "globally_paused":
-                info("Scubiee is stopped. Resume with: scubiee resume", stream=sys.stderr)
+                hint = str(result.get("hint") or "Scubiee is stopped. Resume with: scubiee resume")
+                info(hint, stream=sys.stderr)
             else:
                 ui_error(f"Engine failed: {result.get('error', 'unknown')}", stream=sys.stderr)
             print("", file=sys.stderr)
@@ -1234,10 +1315,7 @@ def cmd_init(args: argparse.Namespace) -> int:
     if out.get("ok"):
         try:
             from pipeline.daemon import ensure_daemon
-            from pipeline.pause_resume import _save_state, is_paused
 
-            if is_paused():
-                _save_state({"paused": False})
             out["daemon"] = ensure_daemon(root)
         except Exception as exc:  # noqa: BLE001
             out["daemon"] = {"ok": False, "error": str(exc)}
@@ -1308,14 +1386,7 @@ def cmd_setup(args: argparse.Namespace) -> int:
     warnings.filterwarnings("ignore", message=".*Cannot enable progress bars.*")
     warnings.filterwarnings("ignore", message=".*onnxruntime.*")
 
-    # Setup implies intent to use scubiee — clear any global pause
-    try:
-        from pipeline.pause_resume import _save_state, is_paused
-        if is_paused():
-            _save_state({"paused": False})
-    except Exception:  # noqa: BLE001
-        pass
-
+    # Setup blocked while stopped — user must run scubiee resume first.
     is_tty = sys.stderr.isatty()
     if is_tty:
         from pipeline.cli_ui import SetupProgress, suppress_stderr_noise
@@ -1680,8 +1751,16 @@ def cmd_global_resume(args: argparse.Namespace) -> int:
         sys.stderr.write("\n")
         if result.get("ok"):
             success("Resumed", stream=sys.stderr)
+            connect_hint = result.get("connect_hint")
+            if connect_hint:
+                from pipeline.cli_ui import info
+                info(str(connect_hint), stream=sys.stderr)
         else:
-            warn("Resumed with warnings", stream=sys.stderr)
+            warn(
+                "Resume failed — Scubiee is still stopped",
+                detail=str(result.get("hint") or ""),
+                stream=sys.stderr,
+            )
         sys.stderr.write("\n")
     else:
         print(json.dumps(result, indent=2, default=str))
@@ -1736,6 +1815,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if _version_verbose(argv):
         print(format_install_identity())
+        try:
+            from pipeline.lifecycle_guard import emit_lifecycle_notice
+
+            emit_lifecycle_notice()
+        except Exception:  # noqa: BLE001
+            pass
         return 0
     if _version_only(argv):
         try:
@@ -1743,6 +1828,12 @@ def main(argv: list[str] | None = None) -> int:
             print(f"scubiee {pkg_version('scubiee')}")
         except Exception:  # noqa: BLE001
             print("scubiee unknown")
+        try:
+            from pipeline.lifecycle_guard import emit_lifecycle_notice
+
+            emit_lifecycle_notice()
+        except Exception:  # noqa: BLE001
+            pass
         return 0
 
     if _requires_faiss_guard(argv):
@@ -1759,7 +1850,7 @@ def main(argv: list[str] | None = None) -> int:
 
     parser = argparse.ArgumentParser(
         prog="scubiee",
-        description="Scubiee — local AI code context engine: setup once, connect per tool, search everything.",
+        description="Scubiee - local AI code context engine: setup once, connect per tool, search everything.",
     )
     sub = parser.add_subparsers(dest="cmd", required=True)
 
@@ -2157,11 +2248,26 @@ def main(argv: list[str] | None = None) -> int:
     p_stop.add_argument("-y", "--yes", action="store_true", help="Skip confirmation prompt")
     p_stop.set_defaults(func=cmd_stop)
 
+    p_halt = sub.add_parser(
+        "halt",
+        help=(
+            "Stop Scubiee without quitting Cursor/Claude: rewrite MCP to a "
+            "no-op, then kill processes. Safe before wipe/upgrade."
+        ),
+    )
+    p_halt.add_argument(
+        "path",
+        nargs="?",
+        default=".",
+        help="Repo path for project MCP pins (default: cwd)",
+    )
+    p_halt.set_defaults(func=cmd_halt)
+
     p_unlock = sub.add_parser(
         "unlock-tool",
         help=(
             "Free Windows locks on %%APPDATA%%\\uv\\tools\\scubiee "
-            "(disable MCP → stop processes → force-remove). "
+            "(disable MCP -> stop processes -> force-remove). "
             "Use when uv tool install/upgrade hits Access denied."
         ),
     )
@@ -2282,6 +2388,47 @@ def main(argv: list[str] | None = None) -> int:
     p_upgrade.set_defaults(func=cmd_upgrade)
 
     args = parser.parse_args(argv)
+    cli_argv = list(argv) if argv is not None else sys.argv[1:]
+
+    from pipeline.pause_resume import is_paused, resume
+
+    auto_resumed = False
+    if is_paused():
+        cmd = getattr(args, "cmd", None)
+        should_auto_resume = cmd == "connect" or (
+            cmd == "setup" and "--repair" in cli_argv
+        )
+        if should_auto_resume:
+            result = resume()
+            if not result.get("ok"):
+                hint = str(
+                    result.get("hint")
+                    or "Fix errors and run `scubiee resume` before continuing."
+                )
+                print(f"[scubiee] {hint}", file=sys.stderr)
+                if not sys.stdout.isatty():
+                    print(json.dumps(result, indent=2, default=str))
+                return 1
+            auto_resumed = True
+
+    from pipeline.lifecycle_guard import paused_blocks_command
+
+    block_msg = None if auto_resumed else paused_blocks_command(getattr(args, "cmd", None), cli_argv)
+    if block_msg:
+        print(f"[scubiee] {block_msg}", file=sys.stderr)
+        return 1
+
+    try:
+        from pipeline.lifecycle_guard import (
+            COMMANDS_WITH_LIFECYCLE_NOTICE,
+            emit_lifecycle_notice,
+        )
+
+        if getattr(args, "cmd", None) in COMMANDS_WITH_LIFECYCLE_NOTICE:
+            emit_lifecycle_notice()
+    except Exception:  # noqa: BLE001
+        pass
+
     return int(args.func(args))
 
 

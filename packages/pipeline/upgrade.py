@@ -185,13 +185,9 @@ def do_upgrade(*, pre_release: bool = False) -> dict[str, Any]:
 
     # 0. Unlock uv tool dir before package swap (Windows Access denied / os error 5).
     #    MCP-off first so Cursor cannot respawn python.exe, then stop lockers.
-    #    Also clear paused state — upgrading implies intent to use scubiee.
     try:
-        from pipeline.pause_resume import _save_state, is_paused
         from pipeline.process_control import prepare_uv_tool_directory_for_swap
 
-        if is_paused():
-            _save_state({"paused": False})
         prep = prepare_uv_tool_directory_for_swap(remove_dir=False)
         stop_report = prep.get("stop") or {}
         report["pre_stop"] = bool(prep.get("ok", True))

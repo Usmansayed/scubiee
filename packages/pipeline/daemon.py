@@ -429,7 +429,14 @@ def ensure_daemon(
     from pipeline.pause_resume import is_paused
 
     if is_paused():
-        return {"ok": False, "skipped": True, "reason": "globally_paused"}
+        from pipeline.lifecycle_guard import globally_paused_hint
+
+        return {
+            "ok": False,
+            "skipped": True,
+            "reason": "globally_paused",
+            "hint": globally_paused_hint(),
+        }
     try:
         from pipeline.watchdog import watchdog_enabled
 

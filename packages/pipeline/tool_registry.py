@@ -397,7 +397,7 @@ def resolve_mcp_project_write_targets(
     for path in resolve_mcp_project_paths(tool, repo):
         if tool.slug == "copilot" and ".vscode" in path.parts:
             targets.append((path, "vscode", "servers"))
-        elif tool.slug == "copilot" and path.name == "mcp.json" and path.parent == Path(repo).resolve():
+        elif tool.slug == "copilot" and path.resolve() == (Path(repo).resolve() / ".mcp.json").resolve():
             targets.append((path, "claude", "mcpServers"))
         else:
             targets.append((path, tool.mcp_schema, tool.mcp_key))

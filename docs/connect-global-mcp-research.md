@@ -174,6 +174,7 @@ Run `scubiee connect --kiro` (etc.) **inside each repo** after `scubiee init .`.
   ```
 - **Critical:** Key is `environment` (not `env`). `command` is a **single array**. Global file name is **`opencode.json`**, not `config.json`.
 - **Caveat:** Some OpenCode versions shallow-replace `mcp` when a project `opencode.json` defines `mcp` — avoid project MCP files if you rely on global servers.
+- **OpenCode v2 (2026):** newer docs use `mcp.servers.{name}` with `disabled` instead of top-level `mcp.{name}` with `enabled`. Scubiee currently emits **v1** shape; verify on your OpenCode version or track [scubiee-connect-e2e-manual-test.md](./scubiee-connect-e2e-manual-test.md).
 - **Refs:** [opencode.ai/docs/config](https://opencode.ai/docs/config/), [opencode.ai/docs/mcp-servers](https://opencode.ai/docs/mcp-servers/)
 
 ### Amp

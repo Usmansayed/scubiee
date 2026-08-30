@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -475,25 +476,206 @@ def remove_tool_shims() -> dict[str, Any]:
 
 _ACCESS_DENIED_HINT = (
     "Admin/reboot will not help — file locks, not ACLs. "
-    "Quit Cursor (or disable Scubiee MCP), then run: "
-    "scubiee unlock-tool  OR  "
-    "powershell -ExecutionPolicy Bypass -File scripts/uninstall-uv-scubiee.ps1"
+    "You do not need to quit Cursor: `scubiee halt` then `scubiee unlock-tool` "
+    "(or powershell -ExecutionPolicy Bypass -File scripts/uninstall-uv-scubiee.ps1). "
+    "Quit the IDE only if those still fail."
 )
 
 
-def disable_mcp_to_prevent_respawn(*, project: Path | None = None) -> dict[str, Any]:
-    """Disable Scubiee in global + optional project MCP so hosts don't respawn lockers."""
-    from pipeline.pause_resume import _disable_mcp_for_tool, _disable_mcp_json
-    from pipeline.tool_registry import TOOLS
+_PROCESS_STILL_RUNNING_HINT = (
+    "An IDE still holds a Scubiee MCP child (Cursor/Claude often ignore disable "
+    "and respawn from memory). You do not need to quit the tool: "
+    "`scubiee halt` already rewired MCP to a no-op. If files stay locked, run "
+    "`scubiee unlock-tool` (renames the uv dir aside). Quit the IDE only as a last resort."
+)
 
-    disabled: list[str] = []
-    for tool in TOOLS:
-        try:
-            disabled.extend(_disable_mcp_for_tool(tool))
-        except Exception:  # noqa: BLE001
+_MCP_STUB_SETTLE_S = 1.5
+
+
+def mcp_noop_command() -> tuple[str, list[str]]:
+    """Command that exits immediately — safe for MCP hosts to respawn."""
+    if os.name == "nt":
+        return "cmd", ["/c", "exit", "0"]
+    return "true", []
+
+
+def _stub_server_entry(entry: dict[str, Any]) -> bool:
+    """Rewrite one MCP server dict so a host respawn cannot lock Scubiee files."""
+    cmd, args = mcp_noop_command()
+    changed = False
+    existing_cmd = entry.get("command")
+    if isinstance(existing_cmd, list):
+        new_cmd = [cmd, *args]
+        if existing_cmd != new_cmd:
+            entry["command"] = new_cmd
+            changed = True
+    else:
+        if existing_cmd != cmd:
+            entry["command"] = cmd
+            changed = True
+        if list(entry.get("args") or []) != args:
+            entry["args"] = args
+            changed = True
+    if entry.get("enabled") is True:
+        entry["enabled"] = False
+        changed = True
+    return changed
+
+
+def _servers_dict_from_json(data: dict[str, Any], key: str) -> dict[str, Any] | None:
+    if key in data and isinstance(data[key], dict):
+        return data[key]
+    if "." in key:
+        cur: Any = data
+        for part in key.split("."):
+            if not isinstance(cur, dict) or part not in cur:
+                return None
+            cur = cur[part]
+        return cur if isinstance(cur, dict) else None
+    return None
+
+
+def _stub_mcp_json_file(path: Path, key: str) -> bool:
+    from pipeline.branding import MCP_SERVER_NAMES
+
+    if not path.is_file():
+        return False
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError, ValueError):
+        return False
+    if not isinstance(data, dict):
+        return False
+    servers = _servers_dict_from_json(data, key)
+    if not isinstance(servers, dict):
+        return False
+    changed = False
+    for name in MCP_SERVER_NAMES:
+        entry = servers.get(name)
+        if isinstance(entry, dict) and _stub_server_entry(entry):
+            changed = True
+    if not changed:
+        return False
+    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    return True
+
+
+def _stub_mcp_toml_file(path: Path) -> bool:
+    """Best-effort Codex-style TOML: point [mcp_servers.scubiee] at a no-op."""
+    from pipeline.branding import MCP_SERVER_NAME
+
+    if not path.is_file():
+        return False
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    marker = f"[mcp_servers.{MCP_SERVER_NAME}]"
+    if marker not in text:
+        return False
+    cmd, args = mcp_noop_command()
+    args_toml = ", ".join(f'"{a}"' for a in args)
+    lines = text.splitlines(keepends=True)
+    out: list[str] = []
+    in_section = False
+    replaced_cmd = False
+    replaced_args = False
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("[") and stripped.endswith("]"):
+            in_section = stripped == marker or stripped == f'[mcp_servers."{MCP_SERVER_NAME}"]'
+        if in_section and stripped.startswith("command"):
+            out.append(f'command = "{cmd}"\n' if not line.endswith("\r\n") else f'command = "{cmd}"\r\n')
+            replaced_cmd = True
             continue
+        if in_section and stripped.startswith("args"):
+            out.append(f"args = [{args_toml}]\n")
+            replaced_args = True
+            continue
+        out.append(line)
+    if not replaced_cmd:
+        return False
+    if args and not replaced_args:
+        # Insert args after command inside the section.
+        rebuilt: list[str] = []
+        inserted = False
+        in_section = False
+        for line in out:
+            stripped = line.strip()
+            if stripped.startswith("[") and stripped.endswith("]"):
+                in_section = stripped == marker or stripped == f'[mcp_servers."{MCP_SERVER_NAME}"]'
+            rebuilt.append(line)
+            if in_section and stripped.startswith("command") and not inserted:
+                rebuilt.append(f"args = [{args_toml}]\n")
+                inserted = True
+        out = rebuilt
+    new_text = "".join(out)
+    if new_text == text:
+        return False
+    path.write_text(new_text, encoding="utf-8")
+    return True
 
-    # Project pins (Cursor/Kiro/etc.) respawn independently of global MCP.
+
+def _yaml_quote(value: str) -> str:
+    return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def _stub_mcp_continue_yaml(path: Path) -> bool:
+    """Rewrite Continue YAML Scubiee command/args to a no-op.
+
+    Handles both ``.continue/config.yaml`` (marked list) and standalone
+    ``.continue/mcpServers/scubiee.yaml``.
+    """
+    from pipeline.branding import CONTINUE_YAML_MARKER, MCP_SERVER_NAME
+
+    if not path.is_file() or path.suffix.lower() not in {".yaml", ".yml"}:
+        return False
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    if MCP_SERVER_NAME not in text and CONTINUE_YAML_MARKER not in text:
+        return False
+    cmd, args = mcp_noop_command()
+    args_yaml = ", ".join(_yaml_quote(a) for a in args)
+    lines = text.splitlines(keepends=True)
+    out: list[str] = []
+    in_scubiee = False
+    replaced = False
+    for line in lines:
+        stripped = line.strip()
+        indent = line[: len(line) - len(line.lstrip(" \t"))] if line.strip() else ""
+        if CONTINUE_YAML_MARKER in line or (
+            stripped.startswith("- name:") and MCP_SERVER_NAME in stripped
+        ):
+            in_scubiee = True
+        elif in_scubiee and stripped.startswith("- name:") and MCP_SERVER_NAME not in stripped:
+            in_scubiee = False
+        elif in_scubiee and stripped and not line.startswith((" ", "\t")) and CONTINUE_YAML_MARKER not in line:
+            in_scubiee = False
+        if in_scubiee and stripped.startswith("command:"):
+            nl = "\r\n" if line.endswith("\r\n") else "\n"
+            out.append(f"{indent}command: {_yaml_quote(cmd)}{nl}")
+            replaced = True
+            continue
+        if in_scubiee and stripped.startswith("args:"):
+            nl = "\r\n" if line.endswith("\r\n") else "\n"
+            out.append(f"{indent}args: [{args_yaml}]{nl}")
+            replaced = True
+            continue
+        out.append(line)
+    if not replaced:
+        return False
+    new_text = "".join(out)
+    if new_text == text:
+        return False
+    path.write_text(new_text, encoding="utf-8")
+    return True
+
+
+def _mcp_config_roots(*, project: Path | None = None) -> list[Path]:
+    from pipeline.managed_repos import managed_repo_paths
+
     roots: list[Path] = []
     if project is not None:
         roots.append(Path(project).resolve())
@@ -501,25 +683,140 @@ def disable_mcp_to_prevent_respawn(*, project: Path | None = None) -> dict[str, 
         roots.append(Path.cwd().resolve())
     except OSError:
         pass
+    for repo in managed_repo_paths(enrolled_only=False):
+        roots.append(Path(repo).resolve())
     seen: set[str] = set()
-    project_targets: tuple[tuple[tuple[str, ...], str, str], ...] = (
-        ((".cursor",), "mcp.json", "mcpServers"),
-        ((".kiro", "settings"), "mcp.json", "mcpServers"),
-        ((".vscode",), "mcp.json", "servers"),
-        ((".cline",), "mcp.json", "mcpServers"),
-        ((".roo",), "mcp.json", "mcpServers"),
-    )
+    unique: list[Path] = []
     for root in roots:
-        key = str(root).lower()
-        if key in seen:
+        rkey = str(root).replace("\\", "/").lower()
+        if rkey in seen:
             continue
-        seen.add(key)
-        for dirs, fname, json_key in project_targets:
-            path = root.joinpath(*dirs, fname)
-            if _disable_mcp_json(path, json_key):
-                disabled.append(str(path))
+        seen.add(rkey)
+        unique.append(root)
+    return unique
+
+
+def stub_mcp_commands_to_noop(*, project: Path | None = None) -> dict[str, Any]:
+    """Point every Scubiee MCP entry at a no-op so hosts can stay open.
+
+    Cursor/Claude often ignore ``disabled`` and respawn from the last command.
+    A no-op spawn exits immediately and does not lock ``uv/tools/scubiee``.
+    """
+    from pipeline.tool_registry import TOOL_MAP, resolve_mcp_legacy_global_paths, resolve_mcp_project_write_targets
+
+    stubbed: list[str] = []
+    for tool in TOOL_MAP.values():
+        for path, schema, key in resolve_mcp_legacy_global_paths(tool):
+            if not path.is_file():
+                continue
+            if schema == "codex" or path.suffix.lower() == ".toml":
+                if _stub_mcp_toml_file(path):
+                    stubbed.append(str(path))
+            elif schema == "continue" or path.suffix.lower() in {".yaml", ".yml"}:
+                if _stub_mcp_continue_yaml(path):
+                    stubbed.append(str(path))
+            elif _stub_mcp_json_file(path, key or "mcpServers"):
+                stubbed.append(str(path))
+        for root in _mcp_config_roots(project=project):
+            for path, schema, key in resolve_mcp_project_write_targets(tool, root):
+                if not path.is_file():
+                    continue
+                if schema == "codex" or path.suffix.lower() == ".toml":
+                    if _stub_mcp_toml_file(path):
+                        stubbed.append(str(path))
+                elif schema == "continue" or path.suffix.lower() in {".yaml", ".yml"}:
+                    if _stub_mcp_continue_yaml(path):
+                        stubbed.append(str(path))
+                elif _stub_mcp_json_file(path, key or "mcpServers"):
+                    stubbed.append(str(path))
+    return {"ok": True, "stubbed": sorted(set(stubbed))}
+
+
+def disable_mcp_to_prevent_respawn(*, project: Path | None = None) -> dict[str, Any]:
+    """Remove/disable Scubiee MCP everywhere so hosts don't respawn lockers mid-wipe."""
+    from pipeline.managed_repos import managed_repo_paths
+    from pipeline.pause_resume import _disable_mcp_for_tool, _disable_mcp_json
+    from pipeline.rules_installer import remove_mcp_config
+    from pipeline.tool_registry import TOOL_MAP, resolve_mcp_project_write_targets
+
+    disabled: list[str] = []
+    for tool in TOOL_MAP.values():
+        try:
+            disabled.extend(_disable_mcp_for_tool(tool))
+        except Exception:  # noqa: BLE001
+            continue
+
+    roots: list[Path] = []
+    if project is not None:
+        roots.append(Path(project).resolve())
+    try:
+        roots.append(Path.cwd().resolve())
+    except OSError:
+        pass
+    for repo in managed_repo_paths(enrolled_only=False):
+        roots.append(Path(repo).resolve())
+
+    seen: set[str] = set()
+    for root in roots:
+        rkey = str(root).replace("\\", "/").lower()
+        if rkey in seen:
+            continue
+        seen.add(rkey)
+        for tool in TOOL_MAP.values():
+            for path, schema, key in resolve_mcp_project_write_targets(tool, root):
+                if not path.is_file():
+                    continue
+                try:
+                    if remove_mcp_config(tool, path, schema=schema, key=key):
+                        disabled.append(str(path))
+                        continue
+                except Exception:  # noqa: BLE001
+                    pass
+                if path.suffix == ".json":
+                    if _disable_mcp_json(path, key):
+                        disabled.append(str(path))
 
     return {"ok": True, "disabled": sorted(set(disabled))}
+
+
+def release_scubiee_process_locks(
+    *,
+    project: Path | None = None,
+    rounds: int = 5,
+    strip_mcp: bool = True,
+    settle_s: float | None = None,
+) -> dict[str, Any]:
+    """Stub MCP → wait for host reload → kill Scubiee PIDs.
+
+    Hosts (Cursor, Claude Code, …) often ignore ``disabled`` and respawn the
+    last command without quitting. Stubbing to a no-op means a respawn cannot
+    lock ``uv/tools/scubiee``. Optional ``strip_mcp`` then removes the keys.
+    """
+    report: dict[str, Any] = {"ok": True}
+
+    report["mcp_stub"] = stub_mcp_commands_to_noop(project=project)
+    wait = _MCP_STUB_SETTLE_S if settle_s is None else max(0.0, settle_s)
+    if wait:
+        time.sleep(wait)
+
+    try:
+        from pipeline.lifecycle_runtime import DESIRED_STANDBY, set_desired_mode
+
+        set_desired_mode(DESIRED_STANDBY)
+    except Exception as exc:  # noqa: BLE001
+        report["lifecycle_mode"] = {"ok": False, "error": str(exc)}
+
+    report["kill"] = kill_all_scubiee_processes(exclude_self=True, rounds=rounds)
+
+    if strip_mcp:
+        report["mcp"] = disable_mcp_to_prevent_respawn(project=project)
+
+    remaining = list(report["kill"].get("remaining_pids") or [])
+    if remaining:
+        report["ok"] = False
+        report["remaining_pids"] = remaining
+        report["hint"] = _PROCESS_STILL_RUNNING_HINT
+    return report
 
 
 def _rmtree_with_retries(
@@ -732,12 +1029,12 @@ def prepare_uv_tool_directory_for_swap(
     remove_dir: bool = False,
 ) -> dict[str, Any]:
     """MCP-off → stop lockers → optional force-remove. Call before uv tool install/upgrade."""
-    mcp = disable_mcp_to_prevent_respawn(project=project)
-    stop = stop_all_context_engine_processes()
+    release = release_scubiee_process_locks(project=project)
     report: dict[str, Any] = {
-        "ok": bool(stop.get("ok", True)),
-        "mcp": mcp,
-        "stop": stop,
+        "ok": bool(release.get("ok", True)),
+        "mcp": release.get("mcp") or {},
+        "stop": release.get("kill") or {},
+        "process_release": release,
     }
     if remove_dir:
         forced = force_remove_uv_tool_dir(python=python, stop_first=False)

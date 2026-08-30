@@ -53,18 +53,24 @@ def test_rmtree_with_retries_rename_first_on_windows(tmp_path: Path, monkeypatch
 def test_prepare_uv_tool_disables_mcp_before_stop(tmp_path: Path, monkeypatch) -> None:
     order: list[str] = []
 
+    def fake_stub(*, project=None):  # noqa: ANN001
+        order.append("stub")
+        return {"ok": True, "stubbed": []}
+
     def fake_disable(*, project=None):  # noqa: ANN001
         order.append("mcp")
         return {"ok": True, "disabled": ["~/.cursor/mcp.json"]}
 
-    def fake_stop(*, ctx_home=None):  # noqa: ANN001
+    def fake_kill(*, exclude_self=True, rounds=5):  # noqa: ANN001
         order.append("stop")
-        return {"ok": True, "remaining": [], "extra_killed": []}
+        return {"ok": True, "remaining": [], "remaining_pids": []}
 
+    monkeypatch.setattr(process_control, "stub_mcp_commands_to_noop", fake_stub)
     monkeypatch.setattr(process_control, "disable_mcp_to_prevent_respawn", fake_disable)
-    monkeypatch.setattr(process_control, "stop_all_context_engine_processes", fake_stop)
+    monkeypatch.setattr(process_control, "kill_all_scubiee_processes", fake_kill)
+    monkeypatch.setattr(process_control.time, "sleep", lambda _s: None)
     report = process_control.prepare_uv_tool_directory_for_swap(remove_dir=False)
-    assert order == ["mcp", "stop"]
+    assert order == ["stub", "stop", "mcp"]
     assert report["ok"] is True
     assert report["mcp"]["disabled"] == ["~/.cursor/mcp.json"]
 
@@ -75,7 +81,7 @@ def test_disable_mcp_marks_project_cursor(tmp_path: Path, monkeypatch) -> None:
     mcp_dir.mkdir(parents=True)
     mcp = mcp_dir / "mcp.json"
     mcp.write_text(
-        '{"mcpServers":{"scubiee":{"command":"scubiee-mcp"}}}\n',
+        '{"mcpServers":{"scubiee":{"command":"scubiee-mcp"},"other":{"command":"keep"}}}\n',
         encoding="utf-8",
     )
     monkeypatch.setattr(
@@ -84,8 +90,9 @@ def test_disable_mcp_marks_project_cursor(tmp_path: Path, monkeypatch) -> None:
     )
     report = process_control.disable_mcp_to_prevent_respawn(project=proj)
     data = __import__("json").loads(mcp.read_text(encoding="utf-8"))
-    assert data["mcpServers"]["scubiee"]["disabled"] is True
-    assert any(str(mcp) == p or p.endswith("mcp.json") for p in report["disabled"])
+    assert "scubiee" not in (data.get("mcpServers") or {})
+    assert data["mcpServers"]["other"]["command"] == "keep"
+    assert any("mcp.json" in p.replace("\\", "/") for p in report["disabled"])
 
 
 def test_stop_processes_under_skips_self_and_ancestors(tmp_path: Path, monkeypatch) -> None:

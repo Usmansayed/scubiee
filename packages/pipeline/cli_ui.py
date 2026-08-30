@@ -964,9 +964,12 @@ def print_wipe_summary(data: dict[str, Any], *, stream: IO[str] | TextIO | None 
 
     # Map action keys to human-readable labels
     step_map = {
-        "halt": "Scubiee stopped (MCP + processes)",
+        "halt": "Prepared machine (stub MCP, kill, unlock)",
+        "process_release": "MCP stubbed + processes stopped",
+        "unlock_tool": "uv tool directory unlocked",
         "kill_all": "Scubiee processes killed",
         "final_kill": "Final process sweep",
+        "engine_restart": "Engine restarted",
         "pause": None,
         "stop_all": "Processes stopped",
         "disconnect_all_tools": "MCP configs removed",

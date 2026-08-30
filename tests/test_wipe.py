@@ -24,12 +24,28 @@ def _fast_wipe_process_kill(monkeypatch: pytest.MonkeyPatch, request: pytest.Fix
         lambda **kw: {"ok": True, "remaining": [], "remaining_pids": []},
     )
     monkeypatch.setattr(
-        "pipeline.pause_resume.pause",
-        lambda: {"ok": True, "already_paused": False},
+        "pipeline.process_control.release_scubiee_process_locks",
+        lambda **kw: {"ok": True, "mcp": {"disabled": []}, "kill": {"ok": True, "remaining": []}},
     )
     monkeypatch.setattr(
-        "pipeline.pause_resume.is_paused",
-        lambda: False,
+        "pipeline.process_control.unlock_uv_tool_env",
+        lambda **kw: {"ok": True},
+    )
+    monkeypatch.setattr(
+        "pipeline.daemon.stop_daemon",
+        lambda: {"ok": True},
+    )
+    monkeypatch.setattr(
+        "pipeline.watchdog.stop_watchdog",
+        lambda: {"ok": True},
+    )
+    monkeypatch.setattr(
+        "pipeline.daemon.ensure_daemon",
+        lambda repo=None, **kw: {"ok": True, "started": True},
+    )
+    monkeypatch.setattr(
+        "pipeline.pause_resume.pause",
+        lambda: {"ok": True, "already_paused": False},
     )
     monkeypatch.setattr(
         "pipeline.process_control.stop_all_context_engine_processes",
@@ -59,6 +75,132 @@ def test_wipe_repo_halts_before_removal(tmp_path: Path, monkeypatch) -> None:
 
     wipe_repo(repo)
     assert order == ["halt", "remove"]
+
+
+def test_wipe_repo_does_not_global_pause(tmp_path: Path, monkeypatch) -> None:
+    """Repo wipe stops engine only — no global pause or MCP disable."""
+    home = tmp_path / "ce-home"
+    home.mkdir()
+    monkeypatch.setenv("CTX_HOME", str(home))
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    pause_called = False
+    release_called = False
+
+    def _fake_pause() -> dict:
+        nonlocal pause_called
+        pause_called = True
+        return {"ok": True}
+
+    def _fake_release(**kw: object) -> dict:
+        nonlocal release_called
+        release_called = True
+        return {"ok": True}
+
+    monkeypatch.setattr("pipeline.pause_resume.pause", _fake_pause)
+    monkeypatch.setattr(
+        "pipeline.process_control.release_scubiee_process_locks",
+        _fake_release,
+    )
+    monkeypatch.setattr("pipeline.daemon.stop_daemon", lambda: {"ok": True})
+    monkeypatch.setattr("pipeline.watchdog.stop_watchdog", lambda: {"ok": True})
+    monkeypatch.setattr(
+        "pipeline.repo_lifecycle.remove_repo",
+        lambda *_a, **_k: {"ok": True},
+    )
+
+    halt = __import__("pipeline.wipe", fromlist=["_halt_scubiee_before_wipe"])._halt_scubiee_before_wipe(
+        scope="repo", repo=repo
+    )
+
+    assert pause_called is False
+    assert release_called is False
+    assert "pause" not in (halt.get("actions") or {})
+    assert "process_release" not in (halt.get("actions") or {})
+    assert "engine_stop" in (halt.get("actions") or {})
+
+
+def test_wipe_repo_restarts_engine(tmp_path: Path, monkeypatch) -> None:
+    """Repo wipe: stop → wipe → restart engine."""
+    home = tmp_path / "ce-home"
+    home.mkdir()
+    monkeypatch.setenv("CTX_HOME", str(home))
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    order: list[str] = []
+
+    monkeypatch.setattr(
+        "pipeline.wipe._halt_scubiee_before_wipe",
+        lambda **kw: order.append("halt") or {"ok": True, "actions": {}},
+    )
+    monkeypatch.setattr(
+        "pipeline.repo_lifecycle.remove_repo",
+        lambda *_a, **_k: order.append("wipe") or {"ok": True, "error": "unmanaged"},
+    )
+    monkeypatch.setattr(
+        "pipeline.wipe._restart_engine_after_repo_wipe",
+        lambda r: order.append("restart") or {"ok": True},
+    )
+
+    wipe_repo(repo)
+    assert order == ["halt", "wipe", "restart"]
+
+
+def test_wipe_all_does_not_global_pause(tmp_path: Path, monkeypatch) -> None:
+    """Full wipe hard-stops processes — must not call pause() backup."""
+    home = tmp_path / "ce-home"
+    home.mkdir()
+    monkeypatch.setenv("CTX_HOME", str(home))
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    pause_called = False
+
+    def _fake_pause() -> dict:
+        nonlocal pause_called
+        pause_called = True
+        return {"ok": True}
+
+    monkeypatch.setattr("pipeline.pause_resume.pause", _fake_pause)
+    monkeypatch.setattr(
+        "pipeline.process_control.release_scubiee_process_locks",
+        lambda **kw: {"ok": True, "kill": {"ok": True, "remaining": []}},
+    )
+    monkeypatch.setattr(
+        "pipeline.process_control.kill_all_scubiee_processes",
+        lambda **kw: {"ok": True, "remaining": []},
+    )
+    monkeypatch.setattr(
+        "pipeline.process_control.unlock_uv_tool_env",
+        lambda **kw: {"ok": True},
+    )
+    monkeypatch.setattr(
+        "pipeline.process_control.is_uv_tool_install",
+        lambda **kw: False,
+    )
+    monkeypatch.setattr(
+        "pipeline.process_control.uv_tool_root",
+        lambda **kw: None,
+    )
+    monkeypatch.setattr(
+        "pipeline.rules_installer.uninstall_tools",
+        lambda *a, **k: {"ok": True},
+    )
+    monkeypatch.setattr(
+        "pipeline.lifecycle_runtime.unregister_logon_autostart",
+        lambda: {"ok": True},
+    )
+
+    halt = __import__("pipeline.wipe", fromlist=["_halt_scubiee_before_wipe"])._halt_scubiee_before_wipe(
+        scope="all", repo=repo
+    )
+
+    assert pause_called is False
+    assert "pause" not in (halt.get("actions") or {})
+    assert "process_release" in (halt.get("actions") or {})
+    assert "kill_all" in (halt.get("actions") or {})
 
 
 def test_wipe_all_runs_final_kill_after_cleanup(tmp_path: Path, monkeypatch) -> None:

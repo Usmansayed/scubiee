@@ -375,6 +375,7 @@ def test_s16_paused_managed_rule(tmp_path: Path, monkeypatch) -> None:
     write_project_gate_rules(repo)
     rule = (repo / ".cursor" / "rules" / "scubiee.mdc").read_text(encoding="utf-8")
     assert "GATE p" in rule
+    assert "BAN" in rule
     assert "resume" in rule.lower()
 
 

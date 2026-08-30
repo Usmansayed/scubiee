@@ -7,6 +7,6 @@ Short guide here; full workflow is in Scubiee MCP server instructions every turn
 
 - **GATE 0** (not managed): BAN Scubiee locate (`map`, `focus`, `grep`, `glob`, `workspace`). USE native Grep/Glob/Read/codebase-search. Run `scubiee init .` to enroll.
 - **GATE 1:ce_*** (managed): Prefer Scubiee `map`|`focus`|`grep`|`glob` for discovery. Native Grep/Glob/Read OK for known paths or full-file reads. `focus` budget: `cap` (~400 lines) · `wide` (20k chars) · `full` (100k chars). Edit/Shell for edits/tests.
-- **GATE p** (paused): Tell user `scubiee resume`.
+- **GATE p** (stopped): BAN all Scubiee MCP tools. USE native Grep/Glob/Read/search only. User runs `scubiee resume` (NOT init), then reload MCP.
 
 Pass `session_id` from Scubiee tool JSON on later calls in this chat.

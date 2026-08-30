@@ -87,8 +87,29 @@ def unmanaged_gate_rule_body(gate_line: str = "0") -> str:
     )
 
 
+PAUSED_AGENT_BAN = (
+    "BAN all Scubiee MCP tools (map, focus, grep, glob, workspace, expand, search, read, "
+    "files, recall, neighbors, graph, outline, status loops). "
+    "USE native Read/Grep/Glob/codebase-search only."
+)
+
+
 def paused_gate_rule_body() -> str:
-    return "**GATE p** — Paused. Tell user `scubiee resume`."
+    return (
+        "**GATE p** — Scubiee STOPPED (`scubiee stop`). "
+        f"{PAUSED_AGENT_BAN} "
+        "Run `scubiee resume` (NOT `init`)."
+    )
+
+
+def paused_gate_rule_mdc() -> str:
+    return (
+        "---\n"
+        "description: Scubiee STOPPED — native tools only\n"
+        "alwaysApply: true\n"
+        "---\n\n"
+        f"{paused_gate_rule_body()}\n"
+    )
 
 
 def _render_gate_rule_mdc(gate_line: str) -> str:
@@ -166,6 +187,95 @@ from pipeline.branding import (
 _MARKER_START = MARKER_START
 _MARKER_END = MARKER_END
 _SERVER_NAME = MCP_SERVER_NAME
+
+
+class MCPConfigMergeError(RuntimeError):
+    """Refusing to merge into a broken or incompatible MCP config file."""
+
+
+def _load_json(path: Path) -> dict[str, Any]:
+    """Load JSON object; missing file → empty dict (non-merge reads)."""
+    if not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _load_json_for_merge(path: Path) -> dict[str, Any]:
+    """Load JSON for surgical merge; never silently discard an existing file."""
+    if not path.is_file():
+        return {}
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise MCPConfigMergeError(f"cannot read {path}: {exc}") from exc
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise MCPConfigMergeError(
+            f"refusing to modify {path}: invalid JSON "
+            f"({exc.msg} at line {exc.lineno}, col {exc.colno})"
+        ) from exc
+    if not isinstance(data, dict):
+        raise MCPConfigMergeError(
+            f"refusing to modify {path}: root must be a JSON object, not {type(data).__name__}"
+        )
+    return data
+
+
+def _validate_json_file(path: Path) -> None:
+    """Ensure written JSON is parseable."""
+    try:
+        json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise MCPConfigMergeError(
+            f"wrote invalid JSON to {path}: {exc.msg} at line {exc.lineno}"
+        ) from exc
+
+
+def _validate_toml_file(path: Path) -> None:
+    """Ensure written TOML is parseable and contains the Scubiee MCP section."""
+    text = path.read_text(encoding="utf-8")
+    try:
+        try:
+            import tomllib
+        except ImportError:
+            import tomli as tomllib  # type: ignore[no-redef]
+        tomllib.loads(text)
+    except Exception as exc:
+        raise MCPConfigMergeError(
+            f"wrote invalid TOML to {path}: {exc}"
+        ) from exc
+    if f"[mcp_servers.{_SERVER_NAME}]" not in text:
+        raise MCPConfigMergeError(
+            f"wrote TOML to {path} but [{_SERVER_NAME}] section is missing"
+        )
+
+
+def _validate_continue_yaml_file(path: Path) -> None:
+    """Ensure Continue YAML contains the Scubiee MCP block."""
+    text = path.read_text(encoding="utf-8")
+    if CONTINUE_YAML_MARKER not in text:
+        raise MCPConfigMergeError(
+            f"wrote Continue YAML to {path} but marker is missing"
+        )
+    if _SERVER_NAME not in text:
+        raise MCPConfigMergeError(
+            f"wrote Continue YAML to {path} but {_SERVER_NAME} entry is missing"
+        )
+
+
+def _record_mcp_skip(
+    warnings: list[dict[str, str]] | None,
+    path: Path,
+    reason: str,
+) -> None:
+    if warnings is None:
+        return
+    warnings.append({"path": str(path), "reason": reason})
 
 # Never put ${workspaceFolder} or an absolute CTX_REPO in *global* MCP.
 # Absolute pin lives in project files only. Literal tokens poison resolution
@@ -388,27 +498,35 @@ def _write_workspace_mcp(tool: ToolDef, repo: Path) -> list[Path]:
     return written
 
 
-def _remove_workspace_mcp(tool: ToolDef, repo: Path) -> bool:
+def _remove_workspace_mcp(
+    tool: ToolDef,
+    repo: Path,
+    *,
+    warnings: list[dict[str, str]] | None = None,
+) -> bool:
     removed = False
     root = Path(repo).resolve()
     for path in resolve_mcp_project_paths(tool, root):
         if not path.is_file():
             continue
         path_removed = False
-        if tool.slug == "copilot" and path.name == "mcp.json" and path.parent == root:
-            path_removed = _remove_mcp_json_keyed(path, "mcpServers") or path_removed
+        if (
+            tool.slug == "copilot"
+            and path.resolve() == (root / ".mcp.json").resolve()
+        ):
+            path_removed = _remove_mcp_json_keyed(
+                path, "mcpServers", warnings=warnings
+            ) or path_removed
         elif tool.slug == "copilot" and ".vscode" in path.parts:
-            path_removed = remove_mcp_config(tool, path, schema="vscode", key="servers") or path_removed
+            path_removed = remove_mcp_config(
+                tool, path, schema="vscode", key="servers", warnings=warnings
+            ) or path_removed
         elif tool.slug == "continue" and path.suffix in {".yaml", ".yml"}:
-            try:
-                text = path.read_text(encoding="utf-8")
-            except OSError:
-                continue
-            if "scubiee" in text or "# scubiee" in text:
-                path.unlink(missing_ok=True)
-                path_removed = True
+            path_removed = remove_mcp_config(
+                tool, path, schema="continue", warnings=warnings
+            ) or path_removed
         else:
-            path_removed = remove_mcp_config(tool, path) or path_removed
+            path_removed = remove_mcp_config(tool, path, warnings=warnings) or path_removed
         if path_removed:
             removed = True
             if not path.is_file():
@@ -424,35 +542,21 @@ def _server_entry_for_tool(tool: ToolDef, repo: Path | str | None = None) -> dic
 # MCP writers
 # ---------------------------------------------------------------------------
 
-def _load_json(path: Path) -> dict[str, Any]:
-    if not path.is_file():
-        return {}
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return {}
-    return data if isinstance(data, dict) else {}
-
-
 def _write_json(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    _validate_json_file(path)
 
 
 def _write_mcp_json_keyed(path: Path, key: str, entry: dict[str, Any]) -> None:
     """Write a server entry into a keyed MCP JSON config file.
 
-    Defensive read-before-write: validates the loaded structure is a dict
-    and logs a warning if it contains unexpected data (but still proceeds
-    to avoid blocking the user's workflow).
+    Defensive read-before-write: refuses corrupt JSON; preserves other servers.
     """
     import sys
 
-    data = _load_json(path)
+    data = _load_json_for_merge(path)
 
-    # Defensive check: warn if the file has unexpected structure.
-    # _load_json already returns {} for non-dict data, but if the file has
-    # keys suggesting a completely different format, log a heads-up.
     if path.is_file() and data:
         _KNOWN_MCP_KEYS = {
             "mcpServers", "servers", "mcp", "$schema",
@@ -478,7 +582,7 @@ def _write_mcp_json_keyed(path: Path, key: str, entry: dict[str, Any]) -> None:
 
 
 def _write_mcp_amp(path: Path, entry: dict[str, Any]) -> None:
-    data = _load_json(path)
+    data = _load_json_for_merge(path)
     servers = data.get("amp.mcpServers")
     if not isinstance(servers, dict):
         servers = {}
@@ -489,7 +593,7 @@ def _write_mcp_amp(path: Path, entry: dict[str, Any]) -> None:
 
 
 def _write_mcp_zed(path: Path, entry: dict[str, Any]) -> None:
-    data = _load_json(path)
+    data = _load_json_for_merge(path)
     servers = data.get("context_servers")
     if not isinstance(servers, dict):
         servers = {}
@@ -503,14 +607,19 @@ def _write_mcp_zed(path: Path, entry: dict[str, Any]) -> None:
     _write_json(path, data)
 
 
-def _remove_legacy_global_mcp(tool: ToolDef) -> list[str]:
+def _remove_legacy_global_mcp(
+    tool: ToolDef,
+    *,
+    warnings: list[dict[str, str]] | None = None,
+) -> list[str]:
     """Remove stale user-global MCP entries from pre-local-first installs."""
     removed: list[str] = []
     for path, schema, key in resolve_mcp_legacy_global_paths(tool):
         try:
-            if remove_mcp_config(tool, path, schema=schema, key=key):
+            if remove_mcp_config(tool, path, schema=schema, key=key, warnings=warnings):
                 removed.append(str(path))
-        except Exception:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
+            _record_mcp_skip(warnings, path, str(exc))
             continue
     return removed
 
@@ -627,6 +736,7 @@ def _write_mcp_toml(path: Path, entry: dict[str, Any]) -> None:
         lines.append(f"env = {{ {', '.join(env_parts)} }}")
     lines.append("")
     path.write_text("\n".join(lines), encoding="utf-8")
+    _validate_toml_file(path)
 
 
 def _write_mcp_continue_yaml(path: Path, entry: dict[str, Any]) -> None:
@@ -660,6 +770,22 @@ def _write_mcp_continue_yaml(path: Path, entry: dict[str, Any]) -> None:
             new_lines.append(f'      {k}: "{v}"')
     new_lines.append("")
     path.write_text("\n".join(new_lines), encoding="utf-8")
+    _validate_continue_yaml_file(path)
+
+
+def _is_continue_project_mcp(path: Path) -> bool:
+    """Scubiee-owned standalone file — safe to delete whole file on stop."""
+    return (
+        path.name in {"scubiee.yaml", "scubiee.yml"}
+        and "mcpServers" in path.parts
+    )
+
+
+def _remove_continue_project_mcp(path: Path) -> bool:
+    if not path.is_file():
+        return False
+    path.unlink(missing_ok=True)
+    return True
 
 
 def _write_continue_project_mcp(path: Path, entry: dict[str, Any]) -> None:
@@ -683,6 +809,10 @@ def _write_continue_project_mcp(path: Path, entry: dict[str, Any]) -> None:
             lines.append(f'      {k}: "{v}"')
     lines.append("")
     path.write_text("\n".join(lines), encoding="utf-8")
+    if _SERVER_NAME not in path.read_text(encoding="utf-8"):
+        raise MCPConfigMergeError(
+            f"wrote Continue project MCP to {path} but {_SERVER_NAME} entry is missing"
+        )
 
 
 def write_mcp_config(
@@ -693,6 +823,11 @@ def write_mcp_config(
     schema: str | None = None,
     key: str | None = None,
 ) -> None:
+    """Merge the Scubiee server entry into an existing MCP config file.
+
+    Never replaces the whole file — only adds/updates the ``scubiee`` key
+    (see ``MCP_SERVER_NAMES``). Other MCP servers in the same file are kept.
+    """
     use_schema = schema or tool.mcp_schema
     use_key = key if key is not None else tool.mcp_key
     if use_schema == "amp":
@@ -975,6 +1110,7 @@ def remove_project_tool_surface(
     tool: ToolDef,
     *,
     dry_run: bool = False,
+    mcp_warnings: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     """Remove repo-local MCP pin + GATE rules for one connected tool."""
     root = Path(repo).resolve()
@@ -984,6 +1120,7 @@ def remove_project_tool_surface(
         "ok": True,
         "dry_run": dry_run,
         "errors": [],
+        "mcp_skipped": [],
     }
     if dry_run:
         report["would_remove_mcp"] = [
@@ -993,12 +1130,19 @@ def remove_project_tool_surface(
             root, slugs=[tool.slug], dry_run=True, include_agents=False
         )
         return report
+    path_warnings: list[dict[str, str]] = []
     try:
-        report["mcp_removed"] = _remove_workspace_mcp(tool, root)
+        report["mcp_removed"] = _remove_workspace_mcp(
+            tool, root, warnings=path_warnings
+        )
     except Exception as exc:  # noqa: BLE001
         report["errors"].append(f"mcp removal failed: {exc}")
         report["ok"] = False
         report["mcp_removed"] = False
+    if path_warnings:
+        report["mcp_skipped"] = path_warnings
+        if mcp_warnings is not None:
+            mcp_warnings.extend(path_warnings)
     rules = cleanup_project_gate_rules(
         root, slugs=[tool.slug], dry_run=False, include_agents=False
     )
@@ -1014,12 +1158,17 @@ def fan_out_tool_to_enrolled_repos(
     *,
     remove: bool = False,
     dry_run: bool = False,
+    mcp_warnings: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     repos = _fan_out_managed_repos()
     reports: list[dict[str, Any]] = []
     for repo in repos:
         if remove:
-            reports.append(remove_project_tool_surface(repo, tool, dry_run=dry_run))
+            reports.append(
+                remove_project_tool_surface(
+                    repo, tool, dry_run=dry_run, mcp_warnings=mcp_warnings
+                )
+            )
         else:
             reports.append(write_project_tool_surface(repo, tool, dry_run=dry_run))
     return {
@@ -1220,10 +1369,19 @@ def install_tools(
 # Removers
 # ---------------------------------------------------------------------------
 
-def _remove_mcp_json_keyed(path: Path, key: str) -> bool:
+def _remove_mcp_json_keyed(
+    path: Path,
+    key: str,
+    *,
+    warnings: list[dict[str, str]] | None = None,
+) -> bool:
     if not path.is_file():
         return False
-    data = _load_json(path)
+    try:
+        data = _load_json_for_merge(path)
+    except MCPConfigMergeError as exc:
+        _record_mcp_skip(warnings, path, str(exc))
+        return False
     servers = data.get(key)
     if not isinstance(servers, dict):
         return False
@@ -1248,10 +1406,18 @@ def _remove_mcp_json_keyed(path: Path, key: str) -> bool:
     return True
 
 
-def _remove_mcp_amp(path: Path) -> bool:
+def _remove_mcp_amp(
+    path: Path,
+    *,
+    warnings: list[dict[str, str]] | None = None,
+) -> bool:
     if not path.is_file():
         return False
-    data = _load_json(path)
+    try:
+        data = _load_json_for_merge(path)
+    except MCPConfigMergeError as exc:
+        _record_mcp_skip(warnings, path, str(exc))
+        return False
     servers = data.get("amp.mcpServers")
     if not isinstance(servers, dict):
         return False
@@ -1271,11 +1437,19 @@ def _remove_mcp_amp(path: Path) -> bool:
     return True
 
 
-def _remove_mcp_zed(path: Path) -> bool:
-    return _remove_mcp_json_keyed(path, "context_servers")
+def _remove_mcp_zed(
+    path: Path,
+    *,
+    warnings: list[dict[str, str]] | None = None,
+) -> bool:
+    return _remove_mcp_json_keyed(path, "context_servers", warnings=warnings)
 
 
-def _remove_mcp_toml(path: Path) -> bool:
+def _remove_mcp_toml(
+    path: Path,
+    *,
+    warnings: list[dict[str, str]] | None = None,
+) -> bool:
     if not path.is_file():
         return False
     existing = path.read_text(encoding="utf-8")
@@ -1298,11 +1472,24 @@ def _remove_mcp_toml(path: Path) -> bool:
         path.unlink(missing_ok=True)
         return True
     new_lines.append("")
-    path.write_text("\n".join(new_lines), encoding="utf-8")
+    try:
+        path.write_text("\n".join(new_lines), encoding="utf-8")
+        try:
+            import tomllib
+        except ImportError:
+            import tomli as tomllib  # type: ignore[no-redef]
+        tomllib.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        _record_mcp_skip(warnings, path, f"TOML rewrite failed: {exc}")
+        return False
     return True
 
 
-def _remove_mcp_continue_yaml(path: Path) -> bool:
+def _remove_mcp_continue_yaml(
+    path: Path,
+    *,
+    warnings: list[dict[str, str]] | None = None,
+) -> bool:
     if not path.is_file():
         return False
     existing = path.read_text(encoding="utf-8")
@@ -1333,18 +1520,26 @@ def remove_mcp_config(
     *,
     schema: str | None = None,
     key: str | None = None,
+    warnings: list[dict[str, str]] | None = None,
 ) -> bool:
+    """Remove only Scubiee MCP entries from a config file.
+
+    Deletes the ``scubiee`` key (or TOML/YAML section) and leaves every other
+    server untouched. The file itself is removed only when it becomes empty.
+    """
     use_schema = schema or tool.mcp_schema
     use_key = key if key is not None else tool.mcp_key
     if use_schema == "amp":
-        return _remove_mcp_amp(path)
+        return _remove_mcp_amp(path, warnings=warnings)
     if use_schema == "zed":
-        return _remove_mcp_zed(path)
+        return _remove_mcp_zed(path, warnings=warnings)
     if use_schema == "codex":
-        return _remove_mcp_toml(path)
+        return _remove_mcp_toml(path, warnings=warnings)
     if use_schema == "continue":
-        return _remove_mcp_continue_yaml(path)
-    return _remove_mcp_json_keyed(path, use_key)
+        if _is_continue_project_mcp(path):
+            return _remove_continue_project_mcp(path)
+        return _remove_mcp_continue_yaml(path, warnings=warnings)
+    return _remove_mcp_json_keyed(path, use_key, warnings=warnings)
 
 
 def _remove_rule_file(path: Path) -> bool:
