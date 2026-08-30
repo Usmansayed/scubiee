@@ -20,10 +20,11 @@ from typing import Any
 
 from pipeline.branding import MCP_SERVER_NAMES
 from pipeline.tool_registry import (
-    ALL_SLUGS,
     TOOL_MAP,
     ToolDef,
-    resolve_mcp_write_targets,
+    resolve_mcp_legacy_global_paths,
+    resolve_mcp_project_write_targets,
+    resolve_rule_project_paths,
     resolve_rule_user_paths,
 )
 
@@ -174,16 +175,25 @@ def _enable_mcp_opencode(path: Path) -> bool:
     return True
 
 
+def _iter_connected_mcp_paths(tool: ToolDef):
+    """Yield (path, schema, key) for project MCP + legacy global cleanup paths."""
+    from pipeline.managed_repos import managed_repo_paths
+
+    for repo in managed_repo_paths(enrolled_only=False):
+        for target in resolve_mcp_project_write_targets(tool, repo):
+            yield target
+    for target in resolve_mcp_legacy_global_paths(tool):
+        yield target
+
+
 def _disable_mcp_for_tool(tool: ToolDef) -> list[str]:
     """Disable MCP config entries for a single tool. Returns list of disabled paths."""
     disabled: list[str] = []
-    for path, schema, key in resolve_mcp_write_targets(tool):
+    for path, schema, key in _iter_connected_mcp_paths(tool):
         if schema == "opencode":
             if _disable_mcp_opencode(path):
                 disabled.append(str(path))
         elif schema in ("codex", "continue"):
-            # TOML/YAML: can't set disabled field easily, so just skip
-            # (the rule rename + process stop is sufficient)
             pass
         else:
             if _disable_mcp_json(path, key):
@@ -194,7 +204,7 @@ def _disable_mcp_for_tool(tool: ToolDef) -> list[str]:
 def _enable_mcp_for_tool(tool: ToolDef) -> list[str]:
     """Re-enable MCP config entries for a single tool. Returns list of enabled paths."""
     enabled: list[str] = []
-    for path, schema, key in resolve_mcp_write_targets(tool):
+    for path, schema, key in _iter_connected_mcp_paths(tool):
         if schema == "opencode":
             if _enable_mcp_opencode(path):
                 enabled.append(str(path))
@@ -214,7 +224,21 @@ _PAUSED_SUFFIX = ".paused"
 def _pause_rule_files(tool: ToolDef) -> list[str]:
     """Rename rule files to *.paused. Returns list of renamed paths."""
     renamed: list[str] = []
-    for rule_path in resolve_rule_user_paths(tool):
+    from pipeline.managed_repos import managed_repo_paths
+
+    candidates: list[Path] = list(resolve_rule_user_paths(tool))
+    for repo in managed_repo_paths(enrolled_only=False):
+        candidates.extend(resolve_rule_project_paths(tool, repo))
+        agents = repo / "AGENTS.md"
+        if agents.is_file():
+            candidates.append(agents)
+
+    seen: set[str] = set()
+    for rule_path in candidates:
+        key = str(rule_path.resolve()).replace("\\", "/").lower()
+        if key in seen:
+            continue
+        seen.add(key)
         if rule_path.is_file() and not rule_path.name.endswith(_PAUSED_SUFFIX):
             paused_path = rule_path.with_name(rule_path.name + _PAUSED_SUFFIX)
             rule_path.rename(paused_path)
@@ -225,13 +249,23 @@ def _pause_rule_files(tool: ToolDef) -> list[str]:
 def _resume_rule_files(tool: ToolDef) -> list[str]:
     """Rename *.paused back to original. Returns list of restored paths."""
     restored: list[str] = []
-    for rule_path in resolve_rule_user_paths(tool):
+    from pipeline.managed_repos import managed_repo_paths
+
+    candidates: list[Path] = list(resolve_rule_user_paths(tool))
+    for repo in managed_repo_paths(enrolled_only=False):
+        candidates.extend(resolve_rule_project_paths(tool, repo))
+        candidates.append(repo / "AGENTS.md")
+
+    seen: set[str] = set()
+    for rule_path in candidates:
+        key = str(rule_path.resolve()).replace("\\", "/").lower()
+        if key in seen:
+            continue
+        seen.add(key)
         paused_path = rule_path.with_name(rule_path.name + _PAUSED_SUFFIX)
         if not paused_path.is_file():
             continue
         if rule_path.is_file():
-            # connect/setup may have already restored the live rule while paused
-            # still exists — drop the stale pause sidecar.
             paused_path.unlink(missing_ok=True)
             restored.append(str(rule_path))
             continue
@@ -243,22 +277,10 @@ def _resume_rule_files(tool: ToolDef) -> list[str]:
 # ── Detect connected tools ────────────────────────────────────────────────────
 
 def _detect_connected_tools() -> list[str]:
-    """Return slugs of tools that currently have a Scubiee MCP entry."""
-    connected: list[str] = []
-    for slug in ALL_SLUGS:
-        tool = TOOL_MAP[slug]
-        for path, schema, key in resolve_mcp_write_targets(tool):
-            if not path.is_file():
-                continue
-            try:
-                data = json.loads(path.read_text(encoding="utf-8"))
-            except (json.JSONDecodeError, OSError):
-                continue
-            servers = data.get(key)
-            if isinstance(servers, dict) and any(n in servers for n in MCP_SERVER_NAMES):
-                connected.append(slug)
-                break
-    return connected
+    """Return slugs of tools the user has connected (local-first store)."""
+    from pipeline.connect_state import load_connected_tools
+
+    return load_connected_tools()
 
 
 # ── Core pause/resume ─────────────────────────────────────────────────────────
@@ -363,7 +385,15 @@ def resume() -> dict[str, Any]:
                     if candidate.exists():
                         repo = candidate
                         break
-        report["engine"] = ensure_daemon(repo)
+        if repo is None:
+            report["engine"] = {
+                "ok": False,
+                "skipped": True,
+                "reason": "no_managed_repos",
+                "hint": "run `scubiee init .` in a project before resuming engine",
+            }
+        else:
+            report["engine"] = ensure_daemon(repo)
     except Exception as exc:  # noqa: BLE001
         report["engine_error"] = str(exc)
 

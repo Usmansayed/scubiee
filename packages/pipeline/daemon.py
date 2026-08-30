@@ -184,6 +184,9 @@ def reconcile_managed_repositories(*, reason: str = "daemon_recovery") -> dict[s
     from pipeline.repo_lifecycle import list_managed_repos
     from pipeline.sync_loop import BackgroundSyncLoop
 
+    from pipeline.checkout_identity import reconcile_registry_copy_collisions
+
+    copy_collisions = reconcile_registry_copy_collisions()
     family = reconcile_git_families().to_dict()
     managed = list_managed_repos()
     results: list[dict[str, Any]] = []
@@ -200,6 +203,7 @@ def reconcile_managed_repositories(*, reason: str = "daemon_recovery") -> dict[s
             errors.append({"repo": str(root), "error": str(exc)})
     return {
         "git_family": family,
+        "copy_collisions": copy_collisions,
         "managed": len(managed),
         "reconciled": len(results),
         "results": results,

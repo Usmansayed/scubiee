@@ -204,6 +204,28 @@ def scenario_checks(root: Path) -> list[dict[str, Any]]:
                 repo_b = sandbox / "repo-b"
                 repo_a.mkdir()
                 repo_b.mkdir()
+                from pipeline.project_id import save_registry, write_id_file
+
+                pid_a = "ce_certify_a1234567890abcdef"
+                pid_b = "ce_certify_b1234567890abcdef"
+                write_id_file(repo_a, pid_a)
+                write_id_file(repo_b, pid_b)
+                save_registry(
+                    {
+                        "projects": {
+                            pid_a: {
+                                "managed": True,
+                                "root": str(repo_a.resolve()),
+                                "paths": [str(repo_a.resolve())],
+                            },
+                            pid_b: {
+                                "managed": True,
+                                "root": str(repo_b.resolve()),
+                                "paths": [str(repo_b.resolve())],
+                            },
+                        }
+                    }
+                )
                 hub = RepoHub()
                 runtime_a = hub.ensure(repo_a)
                 runtime_b = hub.ensure(repo_b)
@@ -284,7 +306,29 @@ def scenario_checks(root: Path) -> list[dict[str, Any]]:
                 watched.mkdir()
                 changed = watched / "recovered.py"
                 changed.write_text("recovered = False\n", encoding="utf-8")
-                store = PipelineStore(watched)
+                from pipeline.project_id import projects_root, save_registry, write_id_file
+
+                watch_pid = "ce_certifywatch1234567890abc"
+                write_id_file(watched, watch_pid)
+                save_registry(
+                    {
+                        "projects": {
+                            watch_pid: {
+                                "managed": True,
+                                "root": str(watched.resolve()),
+                                "paths": [str(watched.resolve())],
+                            }
+                        }
+                    }
+                )
+                watch_store = projects_root() / watch_pid
+                watch_store.mkdir(parents=True, exist_ok=True)
+                store = PipelineStore(
+                    watched,
+                    base_dir=watch_store,
+                    project_id=watch_pid,
+                    resolve=False,
+                )
                 store.save_merkle({"recovered.py": file_sha256(changed)})
                 store.save_meta({"fast": False, "git_head": None})
                 loop = BackgroundSyncLoop(watched, debounce_ms=0)

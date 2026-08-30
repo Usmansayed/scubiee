@@ -7,6 +7,8 @@ from pathlib import Path
 
 from pipeline.mcp_install import server_entry, merge_mcp_json, write_cursor_mcp
 
+from conftest import write_machine_setup
+
 
 def test_server_entry_uses_module_invocation_without_source_pythonpath(
     tmp_path: Path, monkeypatch
@@ -104,7 +106,7 @@ def test_pyproject_and_npm_versions_match() -> None:
     )
 
 
-def test_kiro_rules_install_writes_global_without_repo_pin_skips_workspace_without_git(
+def test_kiro_connect_without_enrolled_repo_fans_out_zero(
     tmp_path: Path, monkeypatch
 ) -> None:
     from pipeline.rules_installer import install_tools
@@ -113,25 +115,25 @@ def test_kiro_rules_install_writes_global_without_repo_pin_skips_workspace_witho
     project_root.mkdir()
     home = tmp_path / "home"
     home.mkdir()
+    ce_home = tmp_path / "ce-home"
+    ce_home.mkdir()
+    write_machine_setup(ce_home)
     monkeypatch.chdir(project_root)
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.setenv("CTX_HOME", str(ce_home))
     monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
 
     reports = install_tools(["kiro"])
 
     assert reports[0]["ok"] is True
-    assert not reports[0].get("workspace_mcp_written")
-    user = json.loads(
-        (home / ".kiro" / "settings" / "mcp.json").read_text(encoding="utf-8")
-    )
-    assert "CTX_REPO" not in user["mcpServers"]["scubiee"]["env"]
+    assert reports[0]["scope"] == "project-local"
+    assert reports[0]["project_fan_out"]["repos"] == 0
+    assert not (home / ".kiro" / "settings" / "mcp.json").exists()
     assert not (project_root / ".kiro").exists()
-    assert reports[0]["mcp_path"] == str(home / ".kiro" / "settings" / "mcp.json")
-    assert not reports[0].get("notice")
 
 
-def test_kiro_rules_install_global_only_when_git_repo(
+def test_kiro_connect_fans_out_to_enrolled_git_repo(
     tmp_path: Path, monkeypatch
 ) -> None:
     from pipeline.rules_installer import install_tools
@@ -139,22 +141,40 @@ def test_kiro_rules_install_global_only_when_git_repo(
     project_root = tmp_path / "workspace"
     project_root.mkdir()
     (project_root / ".git").mkdir()
+    ce = project_root / ".scubiee"
+    ce.mkdir()
+    pid = "ce_kiro_pkg1234567890abcdef"
+    (ce / "id.json").write_text(json.dumps({"project_id": pid}), encoding="utf-8")
     home = tmp_path / "home"
     home.mkdir()
+    ce_home = tmp_path / "ce-home"
+    ce_home.mkdir()
+    write_machine_setup(ce_home)
     monkeypatch.chdir(project_root)
     monkeypatch.setenv("HOME", str(home))
     monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.setenv("CTX_HOME", str(ce_home))
     monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+    from pipeline.project_id import save_registry
+
+    save_registry(
+        {
+            "projects": {
+                pid: {
+                    "managed": True,
+                    "root": str(project_root.resolve()),
+                    "paths": [str(project_root.resolve())],
+                }
+            }
+        }
+    )
 
     reports = install_tools(["kiro"], repo=project_root)
 
     assert reports[0]["ok"] is True
-    assert not reports[0].get("workspace_mcp_written")
-    user = json.loads(
-        (home / ".kiro" / "settings" / "mcp.json").read_text(encoding="utf-8")
-    )
-    assert "CTX_REPO" not in user["mcpServers"]["scubiee"]["env"]
-    assert not (project_root / ".kiro" / "settings" / "mcp.json").exists()
+    assert reports[0]["project_fan_out"]["repos"] == 1
+    assert (project_root / ".kiro" / "settings" / "mcp.json").is_file()
+    assert not (home / ".kiro" / "settings" / "mcp.json").exists()
 
 
 def test_kiro_rules_cli_global_only_dry_run(
@@ -174,8 +194,8 @@ def test_kiro_rules_cli_global_only_dry_run(
     ) == 0
 
     report = json.loads(capsys.readouterr().out)
-    assert report[0]["scope"] == "global"
-    assert not report[0].get("would_write_workspace_mcp_paths")
+    assert report[0]["scope"] == "project-local"
+    assert report[0].get("project_fan_out")
 
 
 def test_uninstall_removes_mcp_entry_and_rule_file(tmp_path: Path, monkeypatch) -> None:
@@ -187,46 +207,42 @@ def test_uninstall_removes_mcp_entry_and_rule_file(tmp_path: Path, monkeypatch) 
     workspace = tmp_path / "project"
     workspace.mkdir()
     (workspace / ".git").mkdir()
+    ce = workspace / ".scubiee"
+    ce.mkdir()
+    pid = "ce_uninst_kiro1234567890abcd"
+    (ce / "id.json").write_text(json.dumps({"project_id": pid}), encoding="utf-8")
 
     fake_home = tmp_path / "home"
     fake_home.mkdir()
+    ce_home = tmp_path / "ce-home"
+    ce_home.mkdir()
+    write_machine_setup(ce_home)
     monkeypatch.setenv("USERPROFILE", str(fake_home))
     monkeypatch.setenv("HOME", str(fake_home))
+    monkeypatch.setenv("CTX_HOME", str(ce_home))
     monkeypatch.setattr(Path, "home", staticmethod(lambda: fake_home))
+    from pipeline.project_id import save_registry
 
-    install_tool(tool, repo=workspace)
-    user_mcp = fake_home / ".kiro" / "settings" / "mcp.json"
-    rule_file = fake_home / ".kiro" / "steering" / "scubiee.md"
-    project_mcp = workspace / ".kiro" / "settings" / "mcp.json"
-    project_mcp.parent.mkdir(parents=True, exist_ok=True)
-    project_mcp.write_text(
-        json.dumps(
-            {
-                "mcpServers": {
-                    "scubiee": {
-                        "command": "x",
-                        "env": {"CTX_REPO": str(workspace.resolve()).replace("\\", "/")},
-                    }
+    save_registry(
+        {
+            "projects": {
+                pid: {
+                    "managed": True,
+                    "root": str(workspace.resolve()),
+                    "paths": [str(workspace.resolve())],
                 }
             }
-        ),
-        encoding="utf-8",
+        }
     )
-    assert user_mcp.is_file()
-    assert not rule_file.is_file()
+
+    install_tool(tool, repo=workspace)
+    project_mcp = workspace / ".kiro" / "settings" / "mcp.json"
     assert project_mcp.is_file()
 
-    report = uninstall_tool(tool, repo=workspace)
+    report = uninstall_tool(tool, repo=workspace, all_workspaces=False)
     assert report["ok"] is True
     assert report["mcp_removed"] is True
-    assert report.get("rule_removed") in (True, False, None)
-    assert report.get("workspace_mcp_removed") is True
-
-    if user_mcp.is_file():
-        assert "scubiee" not in json.loads(
-            user_mcp.read_text(encoding="utf-8")
-        ).get("mcpServers", {})
-    assert not rule_file.is_file()
+    assert report.get("project_surface", {}).get("mcp_removed") is True
     assert not project_mcp.is_file()
 
 
@@ -271,23 +287,43 @@ def test_uninstall_dry_run_does_not_modify(tmp_path: Path, monkeypatch) -> None:
     tool = TOOL_MAP["kiro"]
     workspace = tmp_path / "project"
     workspace.mkdir()
+    (workspace / ".git").mkdir()
+    ce = workspace / ".scubiee"
+    ce.mkdir()
+    pid = "ce_dryrun_kiro1234567890abcd"
+    (ce / "id.json").write_text(json.dumps({"project_id": pid}), encoding="utf-8")
     fake_home = tmp_path / "home"
     fake_home.mkdir()
+    ce_home = tmp_path / "ce-home"
+    ce_home.mkdir()
+    write_machine_setup(ce_home)
     monkeypatch.setenv("USERPROFILE", str(fake_home))
     monkeypatch.setenv("HOME", str(fake_home))
+    monkeypatch.setenv("CTX_HOME", str(ce_home))
     monkeypatch.setattr(Path, "home", staticmethod(lambda: fake_home))
+    from pipeline.project_id import save_registry
+
+    save_registry(
+        {
+            "projects": {
+                pid: {
+                    "managed": True,
+                    "root": str(workspace.resolve()),
+                    "paths": [str(workspace.resolve())],
+                }
+            }
+        }
+    )
 
     install_tool(tool, repo=workspace)
-    user_mcp = fake_home / ".kiro" / "settings" / "mcp.json"
-    assert user_mcp.is_file()
+    project_mcp = workspace / ".kiro" / "settings" / "mcp.json"
+    assert project_mcp.is_file()
 
-    # Dry-run uninstall
     report = uninstall_tool(tool, repo=workspace, dry_run=True)
     assert report["dry_run"] is True
-    assert "would_remove_mcp" in report
+    assert report.get("would_remove_legacy_global") is not None
 
-    # Files are still intact
-    assert "scubiee" in json.loads(user_mcp.read_text(encoding="utf-8")).get("mcpServers", {})
+    assert "scubiee" in json.loads(project_mcp.read_text(encoding="utf-8")).get("mcpServers", {})
 
 
 def test_uninstall_cli_entry_point(tmp_path: Path, monkeypatch, capsys) -> None:

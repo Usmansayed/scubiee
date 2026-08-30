@@ -53,22 +53,71 @@ def test_repeat_initialize_reconciles_without_forced_rebuild(
     usable = [False, True, True]
     stats = MagicMock(chunks=3)
     sync = MagicMock()
+    sync.refreshed = True
+    sync.strategy = "incremental"
     sync.to_dict.return_value = {"refreshed": True, "files": ["a.py"], "error": None}
 
     with patch(
         "pipeline.repo_lifecycle.index_is_usable", side_effect=lambda _store: usable.pop(0)
     ), patch("pipeline.indexer.index_repo", return_value=stats) as index_repo, patch(
         "pipeline.incremental.incremental_sync", return_value=sync
-    ) as incremental_sync:
+    ) as incremental_sync, patch(
+        "pipeline.rules_installer.apply_connected_tools_to_repo",
+        return_value={"ok": True},
+    ):
         first = initialize_repo(repo)
         second = initialize_repo(repo)
 
     assert first["project_id"] == second["project_id"]
     assert first["indexed"] is True
     assert second["reconciled"] is True
+    assert second["already_initialized"] is False
     index_repo.assert_called_once()
     assert index_repo.call_args.kwargs["force"] is False
     incremental_sync.assert_called_once()
+
+
+def test_repeat_initialize_reports_already_indexed_when_unchanged(
+    ce_home: Path, tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    usable = [False, True, True]
+    stats = MagicMock(chunks=3)
+    sync = MagicMock()
+    sync.refreshed = False
+    sync.strategy = "none"
+    sync.to_dict.return_value = {"refreshed": False, "strategy": "none", "files": []}
+
+    with patch(
+        "pipeline.repo_lifecycle.index_is_usable", side_effect=lambda _store: usable.pop(0)
+    ), patch("pipeline.indexer.index_repo", return_value=stats), patch(
+        "pipeline.incremental.incremental_sync", return_value=sync
+    ), patch(
+        "pipeline.rules_installer.apply_connected_tools_to_repo",
+        return_value={"ok": True},
+    ):
+        initialize_repo(repo)
+        second = initialize_repo(repo)
+
+    assert second["already_initialized"] is True
+    assert second["reconciled"] is True
+
+
+def test_repeat_initialize_restores_missing_id_json(
+    ce_home: Path, tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    first = initialize_repo(repo, index=False)
+    pid = first["project_id"]
+    id_path = id_file_path(repo)
+    assert id_path.is_file()
+    id_path.unlink()
+
+    second = initialize_repo(repo, index=False)
+    assert second["project_id"] == pid
+    assert id_file_path(repo).is_file()
 
 
 def test_symlink_aliases_share_durable_project_identity(

@@ -267,6 +267,13 @@ USAGE (guidance — tools are never hard-blocked):
 Trajectory: soft → read → edit → test. Call Scubiee when needed, then continue — avoid redundant re-fetch.
 """
 
+# Spawn-unmanaged recovery (~40 tok) — NOT a truncated SERVER_INSTRUCTIONS_PHASE.
+SERVER_INSTRUCTIONS_BIND_FIRST = (
+    "Pass root=<workspace> or project_id=ce_… on every call. "
+    "Tools: map|focus|grep|glob|workspace|gate|status. "
+    "gate(root=…) first; then locate with the same root/project_id."
+)
+
 
 def _is_repo_managed() -> bool:
     """Check if the resolved repository is managed by Scubiee.
@@ -303,11 +310,46 @@ def _is_repo_managed() -> bool:
         return False
 
 
-def _minimal_gate_instructions(gate: str) -> str:
-    """Unmanaged workspace — no project rule; state native-only policy here."""
+def _registry_has_enrollments() -> bool:
+    """True when at least one managed project exists in the registry."""
+    try:
+        from pipeline.project_id import load_registry
+
+        projects = load_registry().get("projects") or {}
+        for entry in projects.values():
+            if isinstance(entry, dict) and entry.get("managed", True):
+                return True
+    except Exception:  # noqa: BLE001
+        pass
+    return False
+
+
+def _locate_bind_hint() -> str:
+    if _registry_has_enrollments():
+        return (
+            "Spawn did not bind a repo. Pass root=<workspace path> or project_id=ce_… "
+            "on gate/map/grep/focus and every locate call."
+        )
+    return "Run `scubiee init .` in the project, then pass root=<workspace> on locate calls."
+
+
+def _managed_locate_err(tool: str, repo: Path) -> str:
+    return _err(
+        tool,
+        f"Repository at {repo} is not managed by Scubiee.",
+        hint=_locate_bind_hint(),
+    )
+
+
+def _bind_first_instructions(gate: str, *, surface: str) -> str:
+    """Spawn-unmanaged — compact bind-first note; full trajectory only when managed."""
+    prefix = f"GATE {gate}. "
+    if surface == "phase":
+        return prefix + SERVER_INSTRUCTIONS_BIND_FIRST
     return (
-        f"GATE {gate}. Not managed — USE native Grep/Glob/Read/search only; "
-        "Scubiee locate unavailable. User asks Scubiee → gate() once."
+        prefix
+        + "Pass root=<workspace> or project_id=ce_… on every call. "
+        "Scubiee locate tools are available after bind."
     )
 
 
@@ -336,8 +378,8 @@ def _verbose_instructions_enabled() -> bool:
 def _server_instructions(surface: str) -> str:
     """MCP instructions injected every turn.
 
-    - Unmanaged workspace: minimal native-only note (~40 tok); no project rule exists.
-    - Managed workspace: GATE prefix + locate trajectory only (bans in project rule).
+    - Managed workspace: GATE prefix + full locate trajectory (never truncated).
+    - Spawn-unmanaged: compact bind-first note (~40 tok); tools still registered.
     - Init writes tool-ban rules; trajectory lives here — no duplication.
     """
     gate = _gate_line(just_checked=False)
@@ -353,7 +395,7 @@ def _server_instructions(surface: str) -> str:
         return prefix + "Scubiee MCP tools available — use as you prefer."
 
     if not _is_repo_managed():
-        return _minimal_gate_instructions(gate)
+        return _bind_first_instructions(gate, surface=surface)
 
     prefix = _gate_instruction_prefix(gate)
     body = {
@@ -840,12 +882,13 @@ def _managed_signal_fields(*, just_checked: bool = False) -> dict[str, Any]:
         fields["ambiguous_repos"] = True
         fields["candidates"] = candidates
     if not managed:
-        fields["hint"] = (
-            "Repo is not managed. Do not keep calling Scubiee. "
-            "Recheck status() only at a new chat, after status_ttl_s, "
-            "or when the user asks / runs `scubiee init .`. "
-            "For Kiro/Copilot/Cline/Roo also run connect inside the project."
-        )
+        if _registry_has_enrollments():
+            fields["hint"] = _locate_bind_hint()
+        else:
+            fields["hint"] = (
+                "Repo is not managed. Run `scubiee init .`, then pass root=<workspace> "
+                "on locate calls. Recheck gate() at a new chat or after status_ttl_s."
+            )
     return fields
 
 
@@ -1890,8 +1933,16 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             explicit = str(kwargs.get("session_id") or "").strip()
             info = resolve_session(explicit or None)
             rtok = bind_resolved_session(info)
+            root = str(kwargs.get("root") or "")
+            project_id = str(kwargs.get("project_id") or "")
+            session_id_kw = str(kwargs.get("session_id") or "")
             try:
-                return fn(*args, **kwargs)
+                with _bind_request_repo(
+                    root=root,
+                    project_id=project_id,
+                    session_id=session_id_kw,
+                ):
+                    return fn(*args, **kwargs)
             finally:
                 reset_resolved_session(rtok)
                 reset_transport_session(ttok)
@@ -1944,7 +1995,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             repo = _default_repo()
 
             if not _is_repo_managed():
-                return _err("search", f"Repository at {repo} is not managed by Scubiee. Run `scubiee init .` first.")
+                return _managed_locate_err("search", repo)
 
             surface = _active_surface()
             # search-only product: soft meaning only; skinny k.
@@ -2125,7 +2176,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             repo = _default_repo()
 
         if not _is_repo_managed():
-            return _err("read", f"Repository at {repo} is not managed by Scubiee. Run `scubiee init .` first.")
+            return _managed_locate_err("read", repo)
 
         if args.detail == "outline":
             path_o = (args.path or "").replace("\\", "/").strip()
@@ -2384,7 +2435,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             repo = _default_repo()
 
         if not _is_repo_managed():
-            return _err("grep", f"Repository at {repo} is not managed by Scubiee. Run `scubiee init .` first.")
+            return _managed_locate_err("grep", repo)
 
         try:
             res = _client_for(repo).grep(
@@ -2447,7 +2498,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             repo = _default_repo()
 
         if not _is_repo_managed():
-            return _err("outline", f"Repository at {repo} is not managed by Scubiee. Run `scubiee init .` first.")
+            return _managed_locate_err("outline", repo)
 
         try:
             res = _client_for(repo).outline(args.path.replace("\\", "/"), repo=str(repo))
@@ -2493,7 +2544,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             repo = _default_repo()
 
         if not _is_repo_managed():
-            return _err("neighbors", f"Repository at {repo} is not managed by Scubiee. Run `scubiee init .` first.")
+            return _managed_locate_err("neighbors", repo)
 
         file_s = _resolve_to_file(repo, args.target)
         if not file_s:
@@ -2538,7 +2589,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             repo = _default_repo()
 
         if not _is_repo_managed():
-            return _err("graph", f"Repository at {repo} is not managed by Scubiee. Run `scubiee init .` first.")
+            return _managed_locate_err("graph", repo)
 
         try:
             gq = _client_for(repo).query_graph(
@@ -2582,7 +2633,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             repo = _default_repo()
 
         if not _is_repo_managed():
-            return _err("files", f"Repository at {repo} is not managed by Scubiee. Run `scubiee init .` first.")
+            return _managed_locate_err("files", repo)
 
         patt = (args.pattern or "").strip()
         if patt in {".", "./"}:
@@ -2692,7 +2743,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             repo = _default_repo()
 
         if not _is_repo_managed():
-            return _err("recall", f"Repository at {repo} is not managed by Scubiee. Run `scubiee init .` first.")
+            return _managed_locate_err("recall", repo)
 
         sid = _resolve_session(session_id)
         try:
@@ -2725,7 +2776,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             repo = _default_repo()
 
         if not _is_repo_managed():
-            return _err("expand", f"Repository at {repo} is not managed by Scubiee. Run `scubiee init .` first.")
+            return _managed_locate_err("expand", repo)
 
         sid = _resolve_session(session_id)
         try:
@@ -2769,7 +2820,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             repo = _default_repo()
 
         if not _is_repo_managed():
-            return _err("map", f"Repository at {repo} is not managed by Scubiee. Run `scubiee init .` first.")
+            return _managed_locate_err("map", repo)
 
         from pipeline.session_store import load_store
 
@@ -2902,7 +2953,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             repo = _default_repo()
 
         if not _is_repo_managed():
-            return _err("focus", f"Repository at {repo} is not managed by Scubiee. Run `scubiee init .` first.")
+            return _managed_locate_err("focus", repo)
 
         path_s = (args.path or "").replace("\\", "/").strip()
         target_s = (args.target or "").strip()
@@ -3100,7 +3151,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             repo = _default_repo()
 
         if not _is_repo_managed():
-            return _err("workspace", f"Repository at {repo} is not managed by Scubiee. Run `scubiee init .` first.")
+            return _managed_locate_err("workspace", repo)
 
         if args.action == "clear":
             from pipeline.session_store import clear_store
@@ -3416,33 +3467,19 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             return _err("register_project", str(exc))
 
     # ---- register per surface ---------------------------------------------
-    managed = _is_repo_managed()
-
     if surface == "phase":
         _tool("gate", "Session gate — ~5 tokens (managed check)", gate_impl)
-        if not managed:
-            return mcp
-        _tool("map", "Scubiee-managed only (GATE 1). Cold/new-topic locate — ranked cards (no bodies)", map_impl)
-        _tool("focus", "Scubiee-managed only (GATE 1). Deepen/relate — outline|span|neighbors", focus_impl)
-        _tool(
-            "grep",
-            "Scubiee-managed only (GATE 1). Exact literal text search in indexed code",
-            grep_impl,
-        )
-        _tool(
-            "glob",
-            "Scubiee-managed only (GATE 1). Known file path or pattern in indexed code",
-            glob_impl,
-        )
-        _tool("workspace", "Scubiee-managed only (GATE 1). Mid reorient: show|pin|clear", workspace_impl)
+        _tool("map", "Cold/new-topic locate — ranked cards (no bodies)", map_impl)
+        _tool("focus", "Deepen/relate — outline|span|neighbors|call_sites", focus_impl)
+        _tool("grep", "Exact literal text search in indexed code", grep_impl)
+        _tool("glob", "Known file path or pattern in indexed code", glob_impl)
+        _tool("workspace", "Mid reorient: show|pin|clear", workspace_impl)
         _tool("expand", "Re-materialize a stored span by handle", expand_impl)
         _tool("status", "Engine + session status (detail=gate for tiny check)", status_impl)
         return mcp
 
     if surface == "nav":
         _tool("gate", "Session gate — managed check (~5 tok)", gate_impl)
-        if not managed:
-            return mcp
         _tool("search", "Soft or exact locate (mode=soft|exact)", search_impl)
         _tool("files", "Find files by name/glob; '.' = repo shape", files_impl)
         _tool("read", "Read span (detail=body|outline|neighbors)", read_impl)
@@ -3452,8 +3489,6 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         return mcp
 
     _tool("gate", "Session gate — managed check (~5 tok)", gate_impl)
-    if not managed:
-        return mcp
 
     if surface != "grep":
         _tool("search", "Semantic code search (simple, flexible)", search_impl)

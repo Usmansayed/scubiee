@@ -5,7 +5,99 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from pipeline.wipe import audit_scubiee_artifacts, wipe, wipe_all, wipe_repo
+
+
+@pytest.fixture(autouse=True)
+def _fast_wipe_process_kill(monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest) -> None:
+    """Avoid scanning/killing real OS processes in wipe integration tests."""
+    if request.node.name in {
+        "test_wipe_all_runs_final_kill_after_cleanup",
+        "test_wipe_repo_halts_before_removal",
+    }:
+        return
+
+    monkeypatch.setattr(
+        "pipeline.process_control.kill_all_scubiee_processes",
+        lambda **kw: {"ok": True, "remaining": [], "remaining_pids": []},
+    )
+    monkeypatch.setattr(
+        "pipeline.pause_resume.pause",
+        lambda: {"ok": True, "already_paused": False},
+    )
+    monkeypatch.setattr(
+        "pipeline.pause_resume.is_paused",
+        lambda: False,
+    )
+    monkeypatch.setattr(
+        "pipeline.process_control.stop_all_context_engine_processes",
+        lambda **kw: {"ok": True, "remaining": [], "remaining_pids": []},
+    )
+
+
+def test_wipe_repo_halts_before_removal(tmp_path: Path, monkeypatch) -> None:
+    """Repo wipe must stop MCP/processes before deleting files."""
+    home = tmp_path / "ce-home"
+    home.mkdir()
+    monkeypatch.setenv("CTX_HOME", str(home))
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    order: list[str] = []
+
+    def _halt(**kwargs: object) -> dict:
+        order.append("halt")
+        return {"ok": True, "scope": "repo", "actions": {"stop_all": {"ok": True}}}
+
+    def _remove_repo(*_a, **_k) -> dict:
+        order.append("remove")
+        return {"ok": True, "error": "unmanaged"}
+
+    monkeypatch.setattr("pipeline.wipe._halt_scubiee_before_wipe", _halt)
+    monkeypatch.setattr("pipeline.repo_lifecycle.remove_repo", _remove_repo)
+
+    wipe_repo(repo)
+    assert order == ["halt", "remove"]
+
+
+def test_wipe_all_runs_final_kill_after_cleanup(tmp_path: Path, monkeypatch) -> None:
+    home = tmp_path / "ce-home"
+    home.mkdir()
+    monkeypatch.setenv("CTX_HOME", str(home))
+    fake_user = tmp_path / "fake-user"
+    fake_user.mkdir()
+    monkeypatch.setattr(Path, "home", lambda: fake_user)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    monkeypatch.chdir(repo)
+
+    calls: list[str] = []
+
+    def _halt(**kwargs: object) -> dict:
+        calls.append("halt")
+        return {"ok": True, "scope": "all", "actions": {}, "remaining_processes": []}
+
+    def _final_kill(**kwargs: object) -> dict:
+        calls.append("final_kill")
+        return {"ok": True, "remaining": [], "remaining_pids": []}
+
+    monkeypatch.setattr("pipeline.wipe._halt_scubiee_before_wipe", _halt)
+    monkeypatch.setattr(
+        "pipeline.process_control.kill_all_scubiee_processes", _final_kill
+    )
+    monkeypatch.setattr(
+        "pipeline.wipe.audit_scubiee_artifacts",
+        lambda **kw: {"clean": True, "remaining": []},
+    )
+    monkeypatch.setattr(
+        "pipeline.wipe.wipe_repo",
+        lambda *a, **k: {"ok": True, "scope": "repo", "root": str(repo), "actions": []},
+    )
+
+    out = wipe_all(yes=True, models=False, package=False, repo=repo)
+    assert out["ok"] is True
+    assert calls == ["halt", "final_kill"]
 
 
 def test_wipe_all_requires_yes(tmp_path: Path, monkeypatch) -> None:
@@ -100,6 +192,44 @@ def test_wipe_repo_removes_id_and_rule(tmp_path: Path, monkeypatch) -> None:
         assert "scubiee" not in (data.get("mcpServers") or {})
     else:
         assert not mcp.exists()
+
+
+def test_wipe_repo_removes_nested_scubiee_dirs(tmp_path: Path, monkeypatch) -> None:
+    home = tmp_path / "ce-home"
+    home.mkdir()
+    monkeypatch.setenv("CTX_HOME", str(home))
+    repo = tmp_path / "mono"
+    nested = repo / "packages" / "web"
+    nested.mkdir(parents=True)
+    root_id = repo / ".scubiee"
+    root_id.mkdir()
+    (root_id / "id.json").write_text(
+        json.dumps({"project_id": "ce_root1234567890abcdef"}), encoding="utf-8"
+    )
+    nested_id = nested / ".scubiee"
+    nested_id.mkdir()
+    (nested_id / "id.json").write_text(
+        json.dumps({"project_id": "ce_web1234567890abcdef"}), encoding="utf-8"
+    )
+
+    from pipeline.project_id import save_registry
+
+    save_registry(
+        {
+            "projects": {
+                "ce_root1234567890abcdef": {
+                    "managed": True,
+                    "root": str(repo.resolve()),
+                    "lifecycle_state": "active",
+                }
+            }
+        }
+    )
+
+    out = wipe_repo(repo)
+    assert out["ok"] is True
+    assert not root_id.exists()
+    assert not nested_id.exists()
 
 
 def test_wipe_repo_hint_mentions_all(tmp_path: Path, monkeypatch) -> None:
@@ -252,12 +382,16 @@ def test_disconnect_all_workspaces_removes_other_repo_local_mcp(
     for repo in (repo_a, repo_b):
         repo.mkdir()
         (repo / ".git").mkdir()
+        ce = repo / ".scubiee"
+        ce.mkdir(parents=True)
         mcp = repo / ".kiro" / "settings" / "mcp.json"
         mcp.parent.mkdir(parents=True)
         mcp.write_text(
             json.dumps({"mcpServers": {"scubiee": {"command": "x", "env": {}}}}),
             encoding="utf-8",
         )
+        pid = "ce_aaaaa" if repo == repo_a else "ce_bbbbb"
+        (ce / "id.json").write_text(json.dumps({"project_id": pid}), encoding="utf-8")
 
     from pipeline.project_id import save_registry
 

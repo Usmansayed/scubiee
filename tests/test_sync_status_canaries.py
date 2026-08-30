@@ -121,11 +121,14 @@ def test_normal_stale_window_maps_overlay_then_ready():
 
 
 def test_background_loop_exposes_derived_status(tmp_path, monkeypatch):
+    from conftest import enroll_test_repo
     from pipeline.sync_loop import BackgroundSyncLoop
 
     repo = tmp_path / "repo"
     repo.mkdir()
-    monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
+    home = tmp_path / "ce-home"
+    monkeypatch.setenv("CTX_HOME", str(home))
+    enroll_test_repo(repo, home=home, project_id="ce_sync_canary1234567890abcdef")
     loop = BackgroundSyncLoop(repo)
 
     loop.mark_dirty(["a.py"], reason="write")

@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 
 from pipeline.rules_installer import (
+    apply_connected_tools_to_repo,
     cleanup_project_gate_rules,
     format_server_entry,
     install_tool,
@@ -30,7 +31,10 @@ from pipeline.scenario_tree import (
     iter_minimal_cover,
     scenarios_by_outcome,
 )
+from pipeline.connect_state import load_connected_tools
 from pipeline.tool_registry import TOOL_MAP
+
+from conftest import write_machine_setup
 
 PHASE_MANAGED_TOOLS = {
     "gate",
@@ -53,6 +57,7 @@ def fake_home(tmp_path: Path, monkeypatch) -> Path:
     monkeypatch.setenv("APPDATA", str(home / "AppData" / "Roaming"))
     monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
     (tmp_path / "ce-home").mkdir()
+    write_machine_setup(tmp_path / "ce-home")
     monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
     return home
 
@@ -112,28 +117,39 @@ def _apply_path(
     pid_a = "ce_backtrack_a1234567890abcdef12"
 
     state: dict = {"mcp_json": False, "tools": set(), "instructions": "", "gate": ""}
+    connected = False
 
     if path.connect == Connect.GLOBAL:
         install_tool(TOOL_MAP["cursor"], repo=repo_u)
-        state["mcp_json"] = (fake_home / ".cursor" / "mcp.json").is_file()
+        connected = "cursor" in load_connected_tools()
 
     if path.workspace == Workspace.MANAGED:
         _enroll(repo_a, pid_a, monkeypatch, tmp_path)
         write_project_gate_rules(repo_a)
+        if connected:
+            apply_connected_tools_to_repo(repo_a)
+        state["mcp_json"] = connected and (repo_a / ".cursor" / "mcp.json").is_file()
         active = repo_a
     elif path.workspace == Workspace.WRONG_REPO:
         _enroll(repo_a, pid_a, monkeypatch, tmp_path)
+        if connected:
+            apply_connected_tools_to_repo(repo_a)
         monkeypatch.setenv("CTX_REPO", str(repo_b.resolve()))
         monkeypatch.chdir(repo_b)
         active = repo_b
+        state["mcp_json"] = connected
     else:
         monkeypatch.setenv("CTX_REPO", str(repo_u.resolve()))
         monkeypatch.chdir(repo_u)
         active = repo_u
+        state["mcp_json"] = connected
 
     if path.init_timing == InitTiming.MID_SESSION:
         _enroll(active, "ce_backtrack_mid1234567890abcdef", monkeypatch, tmp_path)
         write_project_gate_rules(active)
+        if connected:
+            apply_connected_tools_to_repo(active)
+            state["mcp_json"] = (active / ".cursor" / "mcp.json").is_file()
         if path.mcp_spawn == McpSpawn.FIRST:
             state["tools"] = _mcp_tools(monkeypatch)
             state["instructions"] = _instructions(monkeypatch)
@@ -241,18 +257,21 @@ def test_scenario_path_outcome(
     assert state["mcp_json"]
 
     if path.outcome == Outcome.GATE_ONLY_NATIVE:
-        assert state["tools"] == {"gate"}
-        assert "native" in state["instructions"].lower()
+        assert state["tools"] == PHASE_MANAGED_TOOLS
+        assert "Pass root=" in state["instructions"]
         assert "map(query)" not in state["instructions"]
 
     elif path.outcome == Outcome.FULL_MANAGED:
         assert state["tools"] == PHASE_MANAGED_TOOLS
         assert "map(query)" in state["instructions"]
-        assert "tool bans are in the project GATE rule" in state["instructions"]
+        assert (
+            "GATE rule bans native" in state["instructions"]
+            or "tool bans are in the project GATE rule" in state["instructions"]
+        )
         assert state.get("managed") is True
 
     elif path.outcome == Outcome.WRONG_REPO_GATE:
-        assert state["tools"] == {"gate"}
+        assert state["tools"] == PHASE_MANAGED_TOOLS
         assert state.get("managed") is False
 
     elif path.outcome == Outcome.PAUSED_RULE:
@@ -267,18 +286,19 @@ def test_scenario_path_outcome(
 # Explicit branch-and-bound decision tree (documented paths)
 # ---------------------------------------------------------------------------
 def test_bound_disconnect_branch(fake_home: Path, tmp_path: Path, monkeypatch) -> None:
-    """Pruned branch: disconnect after connect — MCP gone, rules remain."""
+    """Pruned branch: disconnect removes global MCP and project rules."""
     repo = _git_repo(tmp_path / "disc")
-    install_tool(TOOL_MAP["cursor"], repo=repo)
     pid = "ce_backtrack_disc1234567890abcdef"
     _enroll(repo, pid, monkeypatch, tmp_path)
+    install_tool(TOOL_MAP["cursor"], repo=repo)
     write_project_gate_rules(repo)
     rule = repo / ".cursor" / "rules" / "scubiee.mdc"
+    assert rule.is_file()
 
     report = uninstall_tool(TOOL_MAP["cursor"], repo=repo)
     assert report["mcp_removed"] is True
     assert not (fake_home / ".cursor" / "mcp.json").exists()
-    assert rule.is_file()
+    assert not rule.is_file()
 
 
 def test_bound_unmanaged_pause_is_noop(tmp_path: Path, monkeypatch) -> None:
@@ -290,8 +310,9 @@ def test_bound_unmanaged_pause_is_noop(tmp_path: Path, monkeypatch) -> None:
 
     tools = _mcp_tools(monkeypatch)
     text = _instructions(monkeypatch)
-    assert tools == {"gate"}
+    assert tools == PHASE_MANAGED_TOOLS
     assert text.startswith("GATE 0.") or text.startswith("GATE 0:r")
+    assert "Pass root=" in text
 
 
 def test_backtrack_managed_then_wipe_returns_unmanaged(tmp_path: Path, monkeypatch) -> None:

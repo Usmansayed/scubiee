@@ -38,6 +38,7 @@ _SHARED_PROCESS_HOSTS: frozenset[str] = frozenset(
         "codex",
         "vscode",
         "kiro",
+        "devin-desktop",
         "windsurf",
         "cline",
         "roo-code",
@@ -341,18 +342,18 @@ def _session_isolate_enabled() -> bool:
 
 
 def session_data_dir(repo: Path | str, session_id: str) -> Path:
-    from pipeline.project_id import id_dir_path
+    from pipeline.project_id import repo_runtime_dir
 
     sid = sanitize_session_id(session_id)
-    path = id_dir_path(Path(repo).resolve()) / "sessions" / sid
+    path = repo_runtime_dir(Path(repo).resolve()) / "sessions" / sid
     path.mkdir(parents=True, exist_ok=True)
     return path
 
 
 def list_session_ids(repo: Path | str) -> list[str]:
-    from pipeline.project_id import id_dir_path
+    from pipeline.project_id import repo_runtime_dir
 
-    root = id_dir_path(Path(repo).resolve()) / "sessions"
+    root = repo_runtime_dir(Path(repo).resolve()) / "sessions"
     if not root.is_dir():
         return []
     return sorted(p.name for p in root.iterdir() if p.is_dir())

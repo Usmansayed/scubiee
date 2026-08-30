@@ -8,6 +8,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from conftest import enroll_test_repo, write_machine_setup
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "packages"))
 
@@ -48,6 +50,8 @@ def test_publish_engine_bumps_generation(runtime, tmp_path: Path):
 def test_keeper_on_refresh_wired(runtime, tmp_path: Path):
     repo = tmp_path / "r"
     repo.mkdir()
+    home = tmp_path / "ce-home"
+    enroll_test_repo(repo, home=home, project_id="ce_runtime_pub1234567890abcdef")
     with patch.object(runtime, "_should_start_keeper", return_value=True):
         with patch("pipeline.ce_service.BackgroundSyncLoop") as Loop:
             loop = MagicMock()
@@ -81,6 +85,8 @@ def test_runtime_routes_live_events_to_active_keeper(runtime, tmp_path: Path):
 def test_sync_publishes_when_refreshed(runtime, tmp_path: Path, monkeypatch):
     repo = tmp_path / "r"
     repo.mkdir()
+    home = tmp_path / "ce-home"
+    enroll_test_repo(repo, home=home, project_id="ce_runtime_sync1234567890abcdef")
     runtime.repo = repo
     monkeypatch.setattr(
         runtime,
@@ -103,6 +109,8 @@ def test_sync_publishes_when_refreshed(runtime, tmp_path: Path, monkeypatch):
 def test_publish_reloads_without_resync(runtime, tmp_path: Path, monkeypatch):
     repo = tmp_path / "r"
     repo.mkdir()
+    home = tmp_path / "ce-home"
+    enroll_test_repo(repo, home=home, project_id="ce_runtime_pub21234567890abcdef")
     runtime.repo = repo
     monkeypatch.setattr(runtime, "_gate", lambda root=None: None)
     with patch.object(

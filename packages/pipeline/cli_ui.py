@@ -467,6 +467,21 @@ def print_doctor_summary(data: dict[str, Any], *, stream: IO[str] | TextIO | Non
         elif caps.get("ok"):
             success("Dependencies OK", stream=s)
 
+    connect = data.get("connect_registry")
+    if isinstance(connect, dict):
+        connected = connect.get("connected_tools") or []
+        if connected:
+            kv("Connected tools", ", ".join(connected), stream=s)
+        managed = connect.get("managed_repos", 0)
+        enrolled = connect.get("enrolled_repos", 0)
+        if managed or enrolled or connected:
+            kv("Managed repos", f"{managed} on disk ({enrolled} enrolled)", stream=s)
+        for warning in connect.get("warnings") or []:
+            if isinstance(warning, dict):
+                warn(str(warning.get("detail") or warning.get("id")), stream=s)
+            else:
+                warn(str(warning), stream=s)
+
     repairs = data.get("repairs", [])
     if repairs:
         s.write("\n")
@@ -949,7 +964,13 @@ def print_wipe_summary(data: dict[str, Any], *, stream: IO[str] | TextIO | None 
 
     # Map action keys to human-readable labels
     step_map = {
+        "halt": "Scubiee stopped (MCP + processes)",
+        "kill_all": "Scubiee processes killed",
+        "final_kill": "Final process sweep",
+        "pause": None,
         "stop_all": "Processes stopped",
+        "disconnect_all_tools": "MCP configs removed",
+        "project_tool_surfaces": "Project MCP/rules removed",
         "stop_watchdog": None,  # redundant with stop_all
         "stop_daemon": None,
         "user_cursor_mcp": "MCP configs removed",
@@ -1013,18 +1034,37 @@ def print_wipe_summary(data: dict[str, Any], *, stream: IO[str] | TextIO | None 
         if scope == "all":
             success("Clean. Reinstall: uv tool install scubiee", stream=s)
         else:
-            success("Repository cleaned", stream=s)
+            success("Repository wipe complete", stream=s)
     else:
-        if failed_steps:
-            hint = "Close Cursor/Kiro, then run: scubiee wipe --all --confirm"
-            error(f"{failed_steps[0]}", stream=s)
-            info(hint, stream=s)
-        else:
-            remaining = data.get("remaining") or []
-            if remaining:
-                warn("Some files remain", detail="close IDE and retry", stream=s)
-            else:
-                success("Clean", stream=s)
+        remaining = data.get("remaining") or []
+        if remaining:
+            warn(
+                "Some Scubiee files remain — quit Cursor completely so MCP releases locks, "
+                "then run wipe again",
+                stream=s,
+            )
+        elif data.get("scope") == "all":
+            warn(
+                "Wipe finished with warnings — quit Cursor so MCP does not recreate `.scubiee/sessions/`",
+                stream=s,
+            )
+
+    repo_wipes = []
+    for action_dict in actions:
+        val = action_dict.get("wipe_repos")
+        if isinstance(val, list):
+            repo_wipes = val
+    removed = [
+        str(path)
+        for item in repo_wipes
+        for path in (item.get("removed_id_dirs") or [])
+    ]
+    if removed:
+        info(f"Removed {len(removed)} `.scubiee` folder(s) under wiped repos", stream=s)
+        for path in removed[:5]:
+            kv("removed", path, stream=s)
+        if len(removed) > 5:
+            info(f"... and {len(removed) - 5} more", stream=s)
     s.write("\n")
     s.flush()
 
@@ -1100,7 +1140,17 @@ class InitProgress:
         self._last_line_len = 0
 
     def already_initialized(self, chunks: int):
-        success(f"Already initialized", detail=f"{chunks:,} chunks", stream=self.stream)
+        success(
+            "Codebase already indexed",
+            detail=f"{chunks:,} chunks",
+            stream=self.stream,
+        )
+
+    def index_updated(self, chunks: int, *, files: int = 0):
+        detail = f"{files} file(s) updated" if files else "incremental sync"
+        if chunks:
+            detail = f"{detail}, {chunks:,} chunks"
+        success("Index updated", detail=detail, stream=self.stream)
 
     def daemon_started(self):
         success("Daemon started", stream=self.stream)

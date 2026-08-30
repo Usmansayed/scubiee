@@ -118,6 +118,30 @@ def id_dir_path(root: Path) -> Path:
     return resolve_repo_data_dir(root)
 
 
+def repo_runtime_dir(root: Path) -> Path:
+    """Writable per-repo runtime dir (enrollment vs MCP scratch).
+
+    Enrolled checkouts use ``<repo>/.scubiee``. Unenrolled repos (including
+    immediately after ``wipe``) must not recreate ``.scubiee`` — MCP session
+    state goes under ``~/.scubiee/scratch/<key>/`` or a temp dir when home is
+    gone.
+    """
+    root = root.resolve()
+    try:
+        from pipeline.mcp_locate import _is_enrolled
+
+        if _is_enrolled(root):
+            return id_dir_path(root)
+    except Exception:  # noqa: BLE001
+        pass
+    home = context_engine_home()
+    if home.is_dir():
+        return home / "scratch" / legacy_repo_key(root)
+    import tempfile
+
+    return Path(tempfile.gettempdir()) / "scubiee-scratch" / legacy_repo_key(root)
+
+
 def id_file_path(root: Path) -> Path:
     return id_dir_path(root) / ID_FILE_NAME
 
@@ -255,6 +279,22 @@ def _id_file_trusted(root: Path, project_id: str) -> bool:
                 except OSError:
                     continue
         if entry.get("managed") or entry.get("registered"):
+            # Require fs_id agreement when both registry and checkout expose it.
+            try:
+                from pipeline.checkout_identity import (
+                    _canonical_fs_id,
+                    _current_fs_id,
+                    fs_ids_match,
+                )
+
+                canonical_fs = _canonical_fs_id(entry)
+                current_fs = _current_fs_id(root)
+                if canonical_fs and current_fs and not fs_ids_match(
+                    canonical_fs, current_fs
+                ):
+                    return False
+            except Exception:  # noqa: BLE001
+                pass
             return True
     store = (projects_root() / project_id).resolve()
     if index_is_usable(store):
@@ -473,8 +513,15 @@ def update_registry(project_id: str, root: Path) -> None:
         )
         try:
             from pipeline.hw_track import get_filesystem_id
+            from pipeline.checkout_identity import fs_ids_match
+
             fs_id = get_filesystem_id(root)
-            if fs_id:
+            existing = entry.get("fs_id")
+            if fs_id and (
+                not isinstance(existing, dict)
+                or fs_ids_match(existing, fs_id)
+                or _norm_path(entry.get("root") or abs_root) == abs_root
+            ):
                 entry["fs_id"] = fs_id
         except Exception:
             pass
@@ -517,6 +564,18 @@ def migrate_legacy_index(project_id: str, root: Path, dest: Path) -> bool:
     return True
 
 
+class ProjectNotBoundError(FileNotFoundError):
+    """Repo is not enrolled — caller must run ``scubiee init .`` (no auto-bind)."""
+
+
+def peek_project(root: Path) -> ProjectRef | None:
+    """Read project identity without minting ``id.json`` or registry rows."""
+    try:
+        return resolve_project(root, migrate=False, bind=False)
+    except ProjectNotBoundError:
+        return None
+
+
 @dataclass(frozen=True)
 class ProjectRef:
     root: Path
@@ -526,8 +585,13 @@ class ProjectRef:
     migrated_legacy: bool = False
 
 
-def resolve_project(root: Path, *, migrate: bool = True) -> ProjectRef:
-    """Ensure id file + registry + projects/<id>/ exist; migrate legacy indexes."""
+def resolve_project(root: Path, *, migrate: bool = True, bind: bool = True) -> ProjectRef:
+    """Ensure or read project identity for ``root``.
+
+    When ``bind=False`` (doctor/diagnostics), never mint ``id.json``, touch the
+    registry, or create store directories — raises ``ProjectNotBoundError`` when
+    the checkout is not already enrolled.
+    """
     root = root.resolve()
     if not root.is_dir():
         raise FileNotFoundError(f"not a directory: {root}")
@@ -562,6 +626,32 @@ def resolve_project(root: Path, *, migrate: bool = True) -> ProjectRef:
             pass
 
     pid = read_id_file(root)
+    on_disk_pid = pid
+    if bind and on_disk_pid:
+        from pipeline.checkout_identity import (
+            _is_copy_of_registry_checkout,
+            resolve_checkout_project_id,
+        )
+
+        if _is_copy_of_registry_checkout(root, on_disk_pid):
+            pid, _identity = resolve_checkout_project_id(root, on_disk_pid)
+            update_registry(pid, root)
+            from pipeline.git_family import reconcile_git_families
+
+            reconcile_git_families(prefer_root=root, prefer_project_id=pid)
+            pid = read_id_file(root) or pid
+            store_dir = (projects_root() / pid).resolve()
+            store_dir.mkdir(parents=True, exist_ok=True)
+            if migrate:
+                migrated = migrate_legacy_index(pid, root, store_dir)
+            return ProjectRef(
+                root=root,
+                project_id=pid,
+                store_dir=store_dir,
+                id_file=id_file_path(root),
+                migrated_legacy=migrated,
+            )
+
     if pid and not _id_file_trusted(root, pid):
         import sys
 
@@ -581,20 +671,20 @@ def resolve_project(root: Path, *, migrate: bool = True) -> ProjectRef:
             pid = None
     if not pid:
         pid = find_id_by_path(abs_root)
-        if pid:
+        if pid and bind:
             write_id_file(root, pid)
 
     if not pid:
         pid = find_recoverable_by_store(root)
-        if pid:
+        if pid and bind:
             write_id_file(root, pid)
 
     if not pid and common:
         pid = find_id_by_git_common_dir(common)
-        if pid:
+        if pid and bind:
             write_id_file(root, pid)
 
-    if pid and common:
+    if pid and common and bind:
         canonical = find_id_by_git_common_dir(common)
         if canonical and canonical != pid:
             entry = (load_registry().get("projects") or {}).get(pid)
@@ -607,20 +697,38 @@ def resolve_project(root: Path, *, migrate: bool = True) -> ProjectRef:
                     pass
 
     if not pid:
-        pid = mint_project_id(root)
-        write_id_file(root, pid)
+        if not bind:
+            from pipeline.managed_repos import find_managed_project_by_path
 
-    update_registry(pid, root)
-    from pipeline.git_family import reconcile_git_families
+            pid = find_managed_project_by_path(root)
+        if not pid:
+            if bind:
+                pid = mint_project_id(root)
+                write_id_file(root, pid)
+            else:
+                raise ProjectNotBoundError(
+                    f"not enrolled at {root} — run `scubiee init .` to bind this checkout"
+                )
 
-    reconcile_git_families(prefer_root=root, prefer_project_id=pid)
-    pid = read_id_file(root) or pid
+    if bind:
+        from pipeline.checkout_identity import resolve_checkout_project_id
 
-    store_dir = (projects_root() / pid).resolve()
-    store_dir.mkdir(parents=True, exist_ok=True)
+        pid, _identity = resolve_checkout_project_id(root, pid)
 
-    if migrate:
-        migrated = migrate_legacy_index(pid, root, store_dir)
+        update_registry(pid, root)
+        from pipeline.git_family import reconcile_git_families
+
+        reconcile_git_families(prefer_root=root, prefer_project_id=pid)
+        pid = read_id_file(root) or pid
+
+        store_dir = (projects_root() / pid).resolve()
+        store_dir.mkdir(parents=True, exist_ok=True)
+
+        if migrate:
+            migrated = migrate_legacy_index(pid, root, store_dir)
+    else:
+        pid = read_id_file(root) or pid
+        store_dir = (projects_root() / pid).resolve()
 
     return ProjectRef(
         root=root,

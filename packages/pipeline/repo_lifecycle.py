@@ -20,6 +20,7 @@ from pipeline.project_id import (
     registry_lock,
     resolve_project,
     update_registry,
+    write_id_file,
 )
 from pipeline.registration import mark_registered
 from pipeline.repo_presence import PresenceReport, assess_presence
@@ -81,7 +82,13 @@ def _is_too_broad(root: Path) -> bool:
 
 
 def _project(root: Path) -> tuple[str | None, dict[str, Any]]:
-    project_id = read_id_file(root) or find_id_by_path(str(root))
+    project_id = read_id_file(root)
+    if not project_id:
+        from pipeline.managed_repos import find_managed_project_by_path
+
+        project_id = find_managed_project_by_path(root)
+    if not project_id:
+        project_id = find_id_by_path(str(root))
     if not project_id:
         return None, {}
     entry = (load_registry().get("projects") or {}).get(project_id)
@@ -219,6 +226,23 @@ def lifecycle_status(root: Path | str) -> dict[str, Any]:
     }
 
 
+def describe_init_state(root: Path | str) -> dict[str, Any]:
+    """Cheap snapshot for init: first-time enroll vs repeat reconcile."""
+    root = _root(root)
+    project_id, entry = _project(root)
+    managed = bool(project_id and _entry_managed(entry))
+    store_dir = _store_dir(project_id) if project_id else None
+    usable = index_is_usable(store_dir) if store_dir else False
+    return {
+        "project_id": project_id,
+        "managed": managed,
+        "enrolled": read_id_file(root) is not None,
+        "index_usable": usable,
+        "repeat_init": managed and usable,
+        "store_dir": str(store_dir) if store_dir else None,
+    }
+
+
 def initialize_repo(
     root: Path,
     *,
@@ -285,6 +309,9 @@ def initialize_repo(
             family = _rgf(prefer_root=None, prefer_project_id=None)
             # Reconciliation may have synced id files to a canonical winner
             ref_pid = read_id_file(root) or project_id
+            from pipeline.checkout_identity import resolve_checkout_project_id
+
+            ref_pid, _identity = resolve_checkout_project_id(root, ref_pid)
             if ref_pid != project_id:
                 store_dir = (projects_root() / ref_pid).resolve()
             # Now update timestamps and path aliases on the canonical entry
@@ -295,6 +322,8 @@ def initialize_repo(
             except (ValueError, RegistryConflictError):
                 pass
             entry = _entry_by_id(ref_pid) or entry
+            if not read_id_file(root):
+                write_id_file(root, ref_pid)
         else:
             ref = resolve_project(root)
             now = time.time()
@@ -343,6 +372,8 @@ def initialize_repo(
     indexed = False
     reconciled = False
     chunks = 0
+    sync_data: dict[str, Any] | None = None
+    already_initialized = False
     if index:
         try:
             from pipeline.store_lock import quiesce_background_indexing
@@ -353,12 +384,6 @@ def initialize_repo(
         try:
             from pipeline.incremental import preflight_index_scope
 
-            preflight_index_scope(
-                root,
-                fast=fast,
-                fast_roots=fast_roots,
-                confirm=confirm,
-            )
             if index_is_usable(store_dir):
                 from pipeline.incremental import incremental_sync
 
@@ -378,7 +403,16 @@ def initialize_repo(
                         error=sync_data["error"],
                     )
                 reconciled = True
+                already_initialized = (
+                    not sync.refreshed and sync.strategy == "none"
+                )
             else:
+                preflight_index_scope(
+                    root,
+                    fast=fast,
+                    fast_roots=fast_roots,
+                    confirm=confirm,
+                )
                 from pipeline.indexer import index_repo
 
                 stats = index_repo(
@@ -391,6 +425,15 @@ def initialize_repo(
                 )
                 chunks = int(stats.chunks)
                 indexed = True
+            if reconciled:
+                try:
+                    from pipeline.store import PipelineStore
+
+                    store = PipelineStore(root, base_dir=store_dir)
+                    meta = store.load_meta()
+                    chunks = int(meta.get("chunks") or len(store.load_chunks()) or 0)
+                except Exception:  # noqa: BLE001
+                    chunks = 0
         except Exception as exc:  # noqa: BLE001
             entry = _update(
                 ref_pid,
@@ -407,12 +450,22 @@ def initialize_repo(
             )
 
     entry = _update(ref_pid, last_access_at=time.time())
+    try:
+        from pipeline.rules_installer import apply_connected_tools_to_repo
+
+        project_tools = apply_connected_tools_to_repo(root)
+    except Exception as exc:  # noqa: BLE001
+        project_tools = {"ok": False, "error": str(exc)}
+
     return _result(
         ref_pid,
         entry,
         indexed=indexed,
         reconciled=reconciled,
+        already_initialized=already_initialized,
         chunks=chunks,
+        sync=sync_data,
+        project_tools=project_tools,
         git_family=family.to_dict(),
     )
 
@@ -585,14 +638,12 @@ def remove_repo(root: Path, *, delete_store: bool = False) -> dict[str, Any]:
         return {"ok": False, "root": str(root), "state": UNMANAGED, "error": "unmanaged"}
     store = (projects_root() / project_id).resolve()
 
-    def remove(registry: dict[str, Any]) -> None:
-        registry.setdefault("projects", {}).pop(project_id, None)
+    from pipeline.checkout_identity import remove_registry_checkout
 
-    mutate_registry(remove)
-    deleted = False
-    if delete_store and store.exists():
-        shutil.rmtree(store)
-        deleted = True
+    registry_result = remove_registry_checkout(
+        root, project_id, delete_store=delete_store
+    )
+    deleted = bool(registry_result.get("store_deleted"))
     try:
         id_f = id_file_path(root)
         if id_f.is_file():
@@ -609,6 +660,8 @@ def remove_repo(root: Path, *, delete_store: bool = False) -> dict[str, Any]:
         "state": UNMANAGED,
         "store_dir": str(store),
         "store_deleted": deleted,
+        "siblings_remaining": registry_result.get("siblings_remaining", 0),
+        "registry_row_removed": registry_result.get("removed_project", False),
     }
 
 

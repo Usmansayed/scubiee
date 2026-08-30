@@ -1,10 +1,7 @@
-"""Per-host MCP workspace discovery and global vs special-4 classification.
+"""Per-host MCP workspace discovery and project-local connect classification.
 
-Research: docs/global-mcp-hosts-research.md
-
-Global MCP tools work with ``scubiee connect`` once (no per-repo MCP pin).
-Special-4 tools (Kiro, Copilot, Cline, Roo) need project-level MCP or connect
-from inside each repo — see docs/mcp-workspace-resolution-issue.md.
+Connect fans out repo-pinned MCP to enrolled repos. Host env keys still drive
+runtime repo resolution when MCP is spawned from a project pin.
 """
 
 from __future__ import annotations
@@ -24,11 +21,6 @@ class HostWorkspaceSpec:
     notes: str = ""
 
 
-# Hosts that cannot resolve workspace from user-global MCP alone.
-SPECIAL_WORKSPACE_LOCAL_MCP_SLUGS: frozenset[str] = frozenset(
-    {"kiro", "copilot", "cline", "roo-code"}
-)
-
 _HOST_SPECS: tuple[HostWorkspaceSpec, ...] = (
     HostWorkspaceSpec(
         slug="cursor",
@@ -39,73 +31,78 @@ _HOST_SPECS: tuple[HostWorkspaceSpec, ...] = (
             "CURSOR_CWD",
             "WORKSPACE_FOLDER_PATHS",
         ),
-        global_connect=True,
-        discovery="env",
-        notes="Official spawn env; WORKSPACE_FOLDER_PATHS when sidebar multi-root.",
+        global_connect=False,
+        discovery="project_mcp_required",
+        notes="Project .cursor/mcp.json + GATE rules on enrolled repos.",
     ),
     HostWorkspaceSpec(
         slug="claude-code",
         name="Claude Code",
         workspace_env_keys=("CLAUDE_PROJECT_DIR", "CLAUDE_CODE_PROJECT_DIR"),
-        global_connect=True,
-        discovery="env",
-        notes="Official CLAUDE_PROJECT_DIR on MCP child; do not trust process cwd.",
+        global_connect=False,
+        discovery="project_mcp_required",
+        notes="Official CLAUDE_PROJECT_DIR on MCP child; project .mcp.json pin.",
     ),
     HostWorkspaceSpec(
         slug="codex",
         name="Codex (OpenAI)",
         workspace_env_keys=("CODEX_WORKSPACE_ROOT",),
-        global_connect=True,
-        discovery="env_or_cwd",
-        notes="CLI cwd OK; Desktop/IDE uses CODEX_WORKSPACE_ROOT or project cwd.",
+        global_connect=False,
+        discovery="project_mcp_required",
+        notes="Project .codex/config.toml with absolute cwd + CTX_REPO pin.",
     ),
     HostWorkspaceSpec(
-        slug="windsurf",
-        name="Windsurf",
-        workspace_env_keys=("CODEIUM_WINDSURF_WORKSPACE", "WINDSURF_WORKSPACE"),
-        global_connect=True,
-        discovery="env_or_cwd",
-        notes="Global ~/.codeium/windsurf/mcp_config.json; Cascade cwd often project root.",
+        slug="devin-desktop",
+        name="Devin Desktop",
+        workspace_env_keys=(
+            "DEVIN_PROJECT_DIR",
+            "DEVIN_WORKSPACE",
+            "CODEIUM_WINDSURF_WORKSPACE",
+            "WINDSURF_WORKSPACE",
+        ),
+        global_connect=False,
+        discovery="project_mcp_required",
+        notes="Devin Local: .devin/mcp_config.json per repo. Legacy Cascade global paths cleaned on connect.",
     ),
     HostWorkspaceSpec(
         slug="continue",
         name="Continue",
         workspace_env_keys=("CONTINUE_PROJECT_DIR", "CONTINUE_WORKSPACE"),
-        global_connect=True,
-        discovery="env_or_cwd",
+        global_connect=False,
+        discovery="project_mcp_required",
         notes="VS Code extension may also inject VSCODE_WORKSPACE_FOLDER.",
     ),
     HostWorkspaceSpec(
         slug="zed",
         name="Zed",
         workspace_env_keys=("ZED_PROJECT_DIR", "ZED_WORKSPACE"),
-        global_connect=True,
-        discovery="env_or_cwd",
-        notes="Project-scoped context_servers use project root cwd; global may be $HOME.",
+        global_connect=False,
+        discovery="project_mcp_required",
+        notes="Project .zed/settings.json context_servers with repo pin.",
     ),
     HostWorkspaceSpec(
         slug="opencode",
         name="OpenCode",
         workspace_env_keys=("OPENCODE_DEFAULT_PROJECT", "OPENCODE_PROJECT"),
-        global_connect=True,
-        discovery="env_or_cwd",
-        notes="CLI --dir sets cwd; global opencode.json without project override.",
+        global_connect=False,
+        discovery="project_mcp_required",
+        notes="Project opencode.json with cwd override.",
     ),
     HostWorkspaceSpec(
         slug="amp",
         name="Amp",
         workspace_env_keys=("AMP_PROJECT_DIR", "AMP_WORKSPACE"),
-        global_connect=True,
-        discovery="env_or_cwd",
-        notes="Global ~/.config/amp/settings.json skips workspace approval.",
+        global_connect=False,
+        discovery="project_mcp_required",
+        notes="Project .amp/settings.json with absolute pin.",
     ),
     HostWorkspaceSpec(
         slug="pi",
         name="Pi",
         workspace_env_keys=("PI_PROJECT_DIR", "PI_WORKSPACE"),
-        global_connect=True,
-        discovery="env_or_cwd",
-        notes="Launched from repo dir when using pi agent in project.",
+        global_connect=False,
+        discovery="project_mcp_required",
+        notes="Project .mcp.json when using pi agent in project.",
     ),
     HostWorkspaceSpec(
         slug="kiro",
@@ -142,6 +139,7 @@ _HOST_SPECS: tuple[HostWorkspaceSpec, ...] = (
 )
 
 HOST_SPECS: dict[str, HostWorkspaceSpec] = {s.slug: s for s in _HOST_SPECS}
+HOST_SPECS["windsurf"] = HOST_SPECS["devin-desktop"]
 
 # Shared fallbacks (VS Code family, npm INIT_CWD, etc.)
 _SHARED_WORKSPACE_ENV_KEYS: tuple[str, ...] = (
@@ -151,9 +149,19 @@ _SHARED_WORKSPACE_ENV_KEYS: tuple[str, ...] = (
     "INIT_CWD",
 )
 
+SPECIAL_WORKSPACE_LOCAL_MCP_SLUGS: frozenset[str] = frozenset(
+    s.slug for s in _HOST_SPECS if not s.global_connect
+)
+
 GLOBAL_MCP_TOOL_SLUGS: frozenset[str] = frozenset(
     s.slug for s in _HOST_SPECS if s.global_connect
 )
+
+
+def normalize_host_slug(slug: str) -> str:
+    if slug == "windsurf":
+        return "devin-desktop"
+    return slug
 
 
 def host_env_signals() -> tuple[tuple[str, tuple[str, ...]], ...]:
@@ -165,6 +173,7 @@ def host_env_signals() -> tuple[tuple[str, tuple[str, ...]], ...]:
         if spec.slug == "copilot":
             keys = keys + vscode_keys
         out.append((spec.slug, keys))
+    out.append(("windsurf", HOST_SPECS["devin-desktop"].workspace_env_keys))
     out.append(("vscode", vscode_keys))
     return tuple(out)
 
@@ -190,8 +199,8 @@ def global_mcp_slugs() -> frozenset[str]:
 
 
 def is_global_mcp_tool(slug: str) -> bool:
-    return slug in GLOBAL_MCP_TOOL_SLUGS
+    return normalize_host_slug(slug) in GLOBAL_MCP_TOOL_SLUGS
 
 
 def is_special_workspace_local_tool(slug: str) -> bool:
-    return slug in SPECIAL_WORKSPACE_LOCAL_MCP_SLUGS
+    return normalize_host_slug(slug) in SPECIAL_WORKSPACE_LOCAL_MCP_SLUGS

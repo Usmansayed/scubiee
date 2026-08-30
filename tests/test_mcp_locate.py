@@ -504,12 +504,20 @@ def test_neighbors_and_graph_tools_return_spans(monkeypatch, tmp_path):
 
 def test_status_lists_three_tools(monkeypatch, tmp_path):
     pytest.importorskip("mcp")
+    from conftest import enroll_test_repo
+
     monkeypatch.setenv("CTX_MCP_SURFACE", "read")
+    monkeypatch.setattr("pipeline.pause_resume.is_paused", lambda: False)
+    home = tmp_path / "ce-home"
+    monkeypatch.setenv("CTX_HOME", str(home))
+    (tmp_path / ".git").mkdir()
+    enroll_test_repo(tmp_path, home=home, project_id="ce_mcp_status1234567890abcdef")
     monkeypatch.setenv("CTX_REPO", str(tmp_path))
+    monkeypatch.chdir(tmp_path)
     from pipeline.mcp_locate import create_mcp
 
     status_fn = _tool_fn(create_mcp(), "status")
-    card = json.loads(status_fn())
+    card = json.loads(status_fn(root=str(tmp_path)))
     assert card["tool"] == "status"
     tools = card.get("tools") or card.get("tool_names") or []
     assert set(tools) == {"gate", "search", "read", "status"}

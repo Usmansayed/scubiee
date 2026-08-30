@@ -1,12 +1,17 @@
-﻿"""Connect Scubiee to AI coding tools — global MCP only.
+﻿"""Connect Scubiee to AI coding tools — project-local MCP on managed repos.
 
 Usage:
     scubiee connect --all
     scubiee connect --cursor --claude-code --codex
 
-Connect writes user-global MCP configs only (no always-on rules).
-Per-repo binding uses ``scubiee init`` (``.scubiee/id.json`` + compact GATE
-rules under the repo). After connect or init, reload MCP in each host.
+Connect records the tool in ``~/.scubiee/connected_tools.json``, removes stale
+user-global MCP entries from older installs, and fans out repo-pinned MCP +
+compact GATE rules to every managed registry checkout (even when repo-local
+``.scubiee/id.json`` was deleted).
+
+``scubiee init`` enrolls the repo (recreates ``id.json``) and applies project
+files for connected tools only. GATE rules require enrollment; MCP pins do not.
+Reload MCP after connect or init.
 """
 
 from __future__ import annotations
@@ -17,11 +22,12 @@ from typing import Any
 
 from pipeline.mcp_install import server_entry
 from pipeline.tool_registry import (
-    LEGACY_WORKSPACE_MCP_SLUGS,
     TOOL_MAP,
     ToolDef,
-    is_workspace_local_mcp_tool,
+    get_tool,
+    resolve_mcp_legacy_global_paths,
     resolve_mcp_project_paths,
+    resolve_mcp_project_write_targets,
     resolve_mcp_user_path,
     resolve_mcp_user_paths,
     resolve_mcp_write_targets,
@@ -345,8 +351,22 @@ def _write_workspace_mcp(tool: ToolDef, repo: Path) -> list[Path]:
         written.append(path)
         return written
 
-    if slug == "pi":
+    if slug == "pi" or slug == "claude-code":
         path = repo / ".mcp.json"
+        entry = format_server_entry(tool, repo, pin_repo=True)
+        write_mcp_config(tool, path, entry)
+        written.append(path)
+        return written
+
+    if slug == "zed":
+        path = repo / ".zed" / "settings.json"
+        entry = format_server_entry(tool, repo, pin_repo=True)
+        write_mcp_config(tool, path, entry)
+        written.append(path)
+        return written
+
+    if slug == "devin-desktop":
+        path = repo / ".devin" / "mcp_config.json"
         entry = format_server_entry(tool, repo, pin_repo=True)
         write_mcp_config(tool, path, entry)
         written.append(path)
@@ -357,24 +377,29 @@ def _write_workspace_mcp(tool: ToolDef, repo: Path) -> list[Path]:
 
 def _remove_workspace_mcp(tool: ToolDef, repo: Path) -> bool:
     removed = False
-    for path in resolve_mcp_project_paths(tool, repo):
+    root = Path(repo).resolve()
+    for path in resolve_mcp_project_paths(tool, root):
         if not path.is_file():
             continue
-        if tool.slug == "copilot" and path.name == "mcp.json" and path.parent == repo:
-            removed = _remove_mcp_json_keyed(path, "mcpServers") or removed
+        path_removed = False
+        if tool.slug == "copilot" and path.name == "mcp.json" and path.parent == root:
+            path_removed = _remove_mcp_json_keyed(path, "mcpServers") or path_removed
         elif tool.slug == "copilot" and ".vscode" in path.parts:
-            removed = remove_mcp_config(tool, path, schema="vscode", key="servers") or removed
+            path_removed = remove_mcp_config(tool, path, schema="vscode", key="servers") or path_removed
         elif tool.slug == "continue" and path.suffix in {".yaml", ".yml"}:
-            # Standalone Continue block file — delete when ours.
             try:
                 text = path.read_text(encoding="utf-8")
             except OSError:
                 continue
             if "scubiee" in text or "# scubiee" in text:
                 path.unlink(missing_ok=True)
-                removed = True
+                path_removed = True
         else:
-            removed = remove_mcp_config(tool, path) or removed
+            path_removed = remove_mcp_config(tool, path) or path_removed
+        if path_removed:
+            removed = True
+            if not path.is_file():
+                _prune_empty_parents(path, stop_at=root)
     return removed
 
 
@@ -465,72 +490,97 @@ def _write_mcp_zed(path: Path, entry: dict[str, Any]) -> None:
     _write_json(path, data)
 
 
+def _remove_legacy_global_mcp(tool: ToolDef) -> list[str]:
+    """Remove stale user-global MCP entries from pre-local-first installs."""
+    removed: list[str] = []
+    for path, schema, key in resolve_mcp_legacy_global_paths(tool):
+        try:
+            if remove_mcp_config(tool, path, schema=schema, key=key):
+                removed.append(str(path))
+        except Exception:  # noqa: BLE001
+            continue
+    return removed
+
+
 def verify_mcp_configs(slugs: list[str]) -> list[dict[str, Any]]:
-    """Verify MCP config files have a valid scubiee entry.
-
-    For each tool slug, reads its MCP config file(s) and checks that the
-    'scubiee' server entry exists with 'command' + 'args' keys.
-    Callable from `scubiee doctor`.
-
-    Returns a list of {tool, path, ok, error} dicts.
-    """
+    """Verify project MCP configs on enrolled repos for connected tools."""
     results: list[dict[str, Any]] = []
+    repos = _enrolled_managed_repos()
+    if not repos:
+        repos = _fan_out_managed_repos()
     for slug in slugs:
-        tool = TOOL_MAP.get(slug)
+        tool = get_tool(slug)
         if not tool:
             results.append({"tool": slug, "path": None, "ok": False, "error": f"unknown tool: {slug}"})
             continue
-        write_targets = resolve_mcp_write_targets(tool)
-        if not write_targets:
-            results.append({"tool": slug, "path": None, "ok": False, "error": "no MCP path configured"})
+        if not repos:
+            results.append({
+                "tool": slug,
+                "path": None,
+                "ok": False,
+                "error": "no enrolled repos — run scubiee init in a project first",
+            })
             continue
-        for path, schema, key in write_targets:
-            result: dict[str, Any] = {"tool": slug, "path": str(path), "ok": False, "error": None}
-            if not path.is_file():
-                result["error"] = "file does not exist"
-                results.append(result)
+        for repo in repos:
+            write_targets = resolve_mcp_project_write_targets(tool, repo)
+            if not write_targets:
+                results.append({"tool": slug, "path": None, "ok": False, "error": "no project MCP path configured"})
                 continue
-            data = _load_json(path)
-            if not data:
-                result["error"] = "file is empty or not valid JSON"
+            for path, schema, key in write_targets:
+                result: dict[str, Any] = {"tool": slug, "path": str(path), "ok": False, "error": None}
+                if not path.is_file():
+                    result["error"] = "file does not exist"
+                    results.append(result)
+                    continue
+                if schema in ("codex", "continue"):
+                    text = path.read_text(encoding="utf-8")
+                    if f"[mcp_servers.{_SERVER_NAME}]" in text or _SERVER_NAME in text:
+                        result["ok"] = True
+                    else:
+                        result["error"] = f"'{_SERVER_NAME}' entry missing"
+                    results.append(result)
+                    continue
+                data = _load_json(path)
+                if not data:
+                    result["error"] = "file is empty or not valid JSON"
+                    results.append(result)
+                    continue
+                use_key = key if key is not None else tool.mcp_key
+                if schema == "amp":
+                    servers = data.get("amp.mcpServers", {})
+                elif schema == "zed":
+                    servers = data.get("context_servers", {})
+                elif schema == "opencode":
+                    servers = data.get("mcp", {})
+                else:
+                    servers = data.get(use_key, {})
+                if not isinstance(servers, dict):
+                    result["error"] = f"'{use_key}' is not a dict"
+                    results.append(result)
+                    continue
+                entry = servers.get(_SERVER_NAME)
+                if entry is None:
+                    result["error"] = f"'{_SERVER_NAME}' entry missing"
+                    results.append(result)
+                    continue
+                if not isinstance(entry, dict):
+                    result["error"] = f"'{_SERVER_NAME}' entry is not a dict"
+                    results.append(result)
+                    continue
+                has_command = "command" in entry
+                has_args = "args" in entry or (
+                    isinstance(entry.get("command"), list) and len(entry["command"]) > 1
+                )
+                if not has_command:
+                    result["error"] = "'command' key missing in server entry"
+                    results.append(result)
+                    continue
+                if not has_args and schema != "opencode":
+                    result["error"] = "'args' key missing in server entry"
+                    results.append(result)
+                    continue
+                result["ok"] = True
                 results.append(result)
-                continue
-            # Find the server entry depending on schema
-            use_key = key if key is not None else tool.mcp_key
-            if schema == "amp":
-                servers = data.get("amp.mcpServers", {})
-            elif schema == "zed":
-                servers = data.get("context_servers", {})
-            else:
-                servers = data.get(use_key, {})
-            if not isinstance(servers, dict):
-                result["error"] = f"'{use_key}' is not a dict"
-                results.append(result)
-                continue
-            entry = servers.get(_SERVER_NAME)
-            if entry is None:
-                result["error"] = f"'{_SERVER_NAME}' entry missing"
-                results.append(result)
-                continue
-            if not isinstance(entry, dict):
-                result["error"] = f"'{_SERVER_NAME}' entry is not a dict"
-                results.append(result)
-                continue
-            # Check for required keys: command + args (or 'command' list for opencode)
-            has_command = "command" in entry
-            has_args = "args" in entry or (
-                isinstance(entry.get("command"), list) and len(entry["command"]) > 1
-            )
-            if not has_command:
-                result["error"] = "'command' key missing in server entry"
-                results.append(result)
-                continue
-            if not has_args and schema != "opencode":
-                result["error"] = "'args' key missing in server entry"
-                results.append(result)
-                continue
-            result["ok"] = True
-            results.append(result)
     return results
 
 
@@ -763,8 +813,10 @@ def cleanup_project_gate_rules(
     repo: Path | str,
     *,
     dry_run: bool = False,
+    slugs: list[str] | None = None,
+    include_agents: bool | None = None,
 ) -> dict[str, Any]:
-    """Remove repo-local Scubiee rule files/sections left by older init/connect."""
+    """Remove repo-local Scubiee rule files/sections left by init/connect."""
     root = Path(repo).resolve()
     report: dict[str, Any] = {
         "repo": str(root),
@@ -781,7 +833,11 @@ def cleanup_project_gate_rules(
 
     from pipeline.tool_registry import TOOL_MAP, resolve_rule_project_paths
 
-    for tool in TOOL_MAP.values():
+    selected = TOOL_MAP.values()
+    if slugs is not None:
+        selected = [TOOL_MAP[s] for s in slugs if s in TOOL_MAP]
+
+    for tool in selected:
         if tool.rule_format == "none":
             continue
         remover = _RULE_REMOVERS.get(tool.rule_format)
@@ -801,8 +857,10 @@ def cleanup_project_gate_rules(
                 report["errors"].append(f"{path}: {exc}")
                 report["ok"] = False
 
+    if include_agents is None:
+        include_agents = slugs is None
     agents = root / "AGENTS.md"
-    if agents.is_file():
+    if include_agents and agents.is_file():
         if dry_run:
             if _MARKER_START in agents.read_text(encoding="utf-8"):
                 report["removed"].append(str(agents))
@@ -844,8 +902,222 @@ def _strip_marked_sections(existing: str) -> str:
     return text
 
 
+def _enrolled_managed_repos() -> list[Path]:
+    """Managed registry rows whose checkout still has ``.scubiee/id.json``."""
+    from pipeline.managed_repos import managed_repo_paths
+
+    return managed_repo_paths(enrolled_only=True)
+
+
+def _fan_out_managed_repos() -> list[Path]:
+    """All managed registry checkouts — survives deleted repo ``.scubiee/``."""
+    from pipeline.managed_repos import managed_repo_paths
+
+    return managed_repo_paths(enrolled_only=False)
+
+
+def write_project_tool_surface(
+    repo: Path | str,
+    tool: ToolDef,
+    *,
+    dry_run: bool = False,
+) -> dict[str, Any]:
+    """Write repo-local MCP pin + GATE rules for one connected tool."""
+    root = Path(repo).resolve()
+    from pipeline.mcp_locate import _is_enrolled
+
+    enrolled = _is_enrolled(root)
+    report: dict[str, Any] = {
+        "repo": str(root),
+        "slug": tool.slug,
+        "ok": True,
+        "dry_run": dry_run,
+        "enrolled": enrolled,
+        "errors": [],
+    }
+    if dry_run:
+        report["would_write_mcp"] = [
+            str(p) for p in resolve_mcp_project_paths(tool, root)
+        ]
+        report["rules"] = write_project_gate_rules(
+            root, slugs=[tool.slug], dry_run=True
+        )
+        return report
+    try:
+        written = _write_workspace_mcp(tool, root)
+        report["mcp_paths"] = [str(p) for p in written]
+    except Exception as exc:  # noqa: BLE001
+        report["errors"].append(f"mcp write failed: {exc}")
+        report["ok"] = False
+    rules = write_project_gate_rules(root, slugs=[tool.slug], dry_run=False)
+    report["rules"] = rules
+    if not rules.get("ok", True):
+        report["ok"] = False
+        report["errors"].extend(rules.get("errors") or [])
+    return report
+
+
+def remove_project_tool_surface(
+    repo: Path | str,
+    tool: ToolDef,
+    *,
+    dry_run: bool = False,
+) -> dict[str, Any]:
+    """Remove repo-local MCP pin + GATE rules for one connected tool."""
+    root = Path(repo).resolve()
+    report: dict[str, Any] = {
+        "repo": str(root),
+        "slug": tool.slug,
+        "ok": True,
+        "dry_run": dry_run,
+        "errors": [],
+    }
+    if dry_run:
+        report["would_remove_mcp"] = [
+            str(p) for p in resolve_mcp_project_paths(tool, root)
+        ]
+        report["rules"] = cleanup_project_gate_rules(
+            root, slugs=[tool.slug], dry_run=True, include_agents=False
+        )
+        return report
+    try:
+        report["mcp_removed"] = _remove_workspace_mcp(tool, root)
+    except Exception as exc:  # noqa: BLE001
+        report["errors"].append(f"mcp removal failed: {exc}")
+        report["ok"] = False
+        report["mcp_removed"] = False
+    rules = cleanup_project_gate_rules(
+        root, slugs=[tool.slug], dry_run=False, include_agents=False
+    )
+    report["rules"] = rules
+    if not rules.get("ok", True):
+        report["ok"] = False
+        report["errors"].extend(rules.get("errors") or [])
+    return report
+
+
+def fan_out_tool_to_enrolled_repos(
+    tool: ToolDef,
+    *,
+    remove: bool = False,
+    dry_run: bool = False,
+) -> dict[str, Any]:
+    repos = _fan_out_managed_repos()
+    reports: list[dict[str, Any]] = []
+    for repo in repos:
+        if remove:
+            reports.append(remove_project_tool_surface(repo, tool, dry_run=dry_run))
+        else:
+            reports.append(write_project_tool_surface(repo, tool, dry_run=dry_run))
+    return {
+        "repos": len(repos),
+        "reports": reports,
+        "ok": all(r.get("ok", True) for r in reports),
+    }
+
+
+def strip_all_project_tool_surfaces(
+    repo: Path | str,
+    *,
+    dry_run: bool = False,
+) -> dict[str, Any]:
+    """Remove every Scubiee project MCP pin + GATE rule file under a repo."""
+    root = Path(repo).resolve()
+    report: dict[str, Any] = {
+        "repo": str(root),
+        "ok": True,
+        "dry_run": dry_run,
+        "tools": [],
+        "errors": [],
+    }
+    for tool in TOOL_MAP.values():
+        entry: dict[str, Any] = {"slug": tool.slug}
+        paths = resolve_mcp_project_paths(tool, root)
+        if dry_run:
+            entry["would_remove_mcp"] = [str(p) for p in paths]
+        else:
+            try:
+                entry["mcp_removed"] = _remove_workspace_mcp(tool, root)
+            except Exception as exc:  # noqa: BLE001
+                entry["error"] = str(exc)
+                report["ok"] = False
+                report["errors"].append(f"{tool.slug} mcp: {exc}")
+        report["tools"].append(entry)
+    rules = cleanup_project_gate_rules(root, dry_run=dry_run)
+    report["rules"] = rules
+    if not rules.get("ok", True):
+        report["ok"] = False
+        report["errors"].extend(rules.get("errors") or [])
+    return report
+
+
+def apply_connected_tools_to_repo(
+    repo: Path | str,
+    *,
+    dry_run: bool = False,
+) -> dict[str, Any]:
+    """After init, write project MCP + rules for every connected tool."""
+    from pipeline.connect_state import load_connected_tools
+
+    root = Path(repo).resolve()
+    slugs = load_connected_tools()
+    report: dict[str, Any] = {
+        "repo": str(root),
+        "ok": True,
+        "skipped": False,
+        "connected_tools": slugs,
+        "mcp_paths": [],
+        "dry_run": dry_run,
+        "errors": [],
+    }
+    if not slugs:
+        report["skipped"] = True
+        report["skip_reason"] = (
+            "no tools connected yet — run scubiee connect --<tool>"
+        )
+        return report
+    if not _project_rules_eligible(root):
+        report["skipped"] = True
+        report["skip_reason"] = "not a project folder"
+        return report
+    gate = gate_line_for_repo(root)
+    if not gate.startswith("1:") and gate != "p":
+        report["skipped"] = True
+        report["skip_reason"] = "repo not enrolled"
+        return report
+
+    if dry_run:
+        for slug in slugs:
+            tool = TOOL_MAP.get(slug)
+            if tool:
+                report["mcp_paths"].extend(
+                    str(p) for p in resolve_mcp_project_paths(tool, root)
+                )
+        rules = write_project_gate_rules(root, slugs=slugs, dry_run=True)
+        report["rules"] = rules
+        return report
+
+    for slug in slugs:
+        tool = get_tool(slug)
+        if not tool:
+            continue
+        try:
+            written = _write_workspace_mcp(tool, root)
+            report["mcp_paths"].extend(str(p) for p in written)
+        except Exception as exc:  # noqa: BLE001
+            report["errors"].append(f"{slug} mcp write failed: {exc}")
+            report["ok"] = False
+
+    rules = write_project_gate_rules(root, slugs=slugs, dry_run=False)
+    report["rules"] = rules
+    if not rules.get("ok", True):
+        report["ok"] = False
+        report["errors"].extend(rules.get("errors") or [])
+    return report
+
+
 # ---------------------------------------------------------------------------
-# Public installer (global only)
+# Public installer
 # ---------------------------------------------------------------------------
 
 def install_tool(
@@ -854,102 +1126,64 @@ def install_tool(
     dry_run: bool = False,
     repo: Path | str | None = None,
 ) -> dict[str, Any]:
-    """Install global MCP + rule; workspace-local MCP for project-pin hosts."""
-    explicit_repo = repo is not None
-    target_repo = _connect_repo(repo)
-    write_targets = resolve_mcp_write_targets(tool)
-    mcp_paths = [p for p, _s, _k in write_targets]
+    """Record connected tool, clean legacy global MCP, fan-out project files."""
+    from pipeline.connect_state import add_connected_tool, load_connected_tools
+
+    project_paths = resolve_mcp_project_paths(tool, Path.cwd())
     rule_paths = resolve_rule_user_paths(tool)
-    primary = mcp_paths[0] if mcp_paths else None
     primary_rule = rule_paths[0] if rule_paths else None
-    workspace_local = is_workspace_local_mcp_tool(tool.slug)
-    workspace_paths = resolve_mcp_project_paths(tool, target_repo) if workspace_local else []
 
     report: dict[str, Any] = {
         "tool": tool.name,
         "slug": tool.slug,
         "mcp_schema": tool.mcp_schema,
-        "scope": "global",
-        "mcp_path": str(primary) if primary else None,
-        "mcp_paths": [str(p) for p in mcp_paths],
+        "scope": "project-local",
+        "mcp_path": str(project_paths[0]) if project_paths else None,
+        "mcp_paths": [str(p) for p in project_paths],
         "rule_path": str(primary_rule) if primary_rule else None,
-        "rule_paths": [str(p) for p in rule_paths],
-        "workspace_mcp_paths": [str(p) for p in workspace_paths],
+        "rule_paths": [],
         "dry_run": dry_run,
         "ok": True,
         "errors": [],
     }
-
-    if workspace_local:
-        report["repo"] = str(target_repo)
-        eligible = _workspace_mcp_eligible(target_repo, explicit_repo=explicit_repo)
-        report["workspace_mcp_eligible"] = eligible
-        if not eligible:
-            report["workspace_mcp_skipped"] = True
-            report["workspace_mcp_skip_reason"] = (
-                "not a project folder — cd into the repo (or pass --repo) and run connect again"
-            )
-    elif repo is not None:
+    if repo is not None:
         report["repo_ignored"] = True
-        report["note"] = "connect is global-only for this tool; --repo is ignored"
+        report["note"] = (
+            "connect fans out to all enrolled repos; --repo is ignored"
+        )
+
+    legacy_paths = [str(p) for p, _s, _k in resolve_mcp_legacy_global_paths(tool)]
 
     if dry_run:
-        report["would_write_mcp"] = str(primary) if primary else None
-        report["would_write_mcp_paths"] = [str(p) for p in mcp_paths]
-        report["would_write_rule"] = str(primary_rule) if primary_rule else None
-        report["would_write_rule_paths"] = [str(p) for p in rule_paths]
-        if workspace_local and report.get("workspace_mcp_eligible"):
-            report["would_write_workspace_mcp_paths"] = [str(p) for p in workspace_paths]
+        report["would_remove_legacy_global"] = legacy_paths
+        report["project_fan_out"] = fan_out_tool_to_enrolled_repos(
+            tool, dry_run=True
+        )
+        report["connected_tools"] = load_connected_tools()
         return report
 
+    from pipeline.connect_state import MachineSetupRequiredError, require_machine_setup
+
     try:
-        if not write_targets:
-            report["errors"].append(f"{tool.slug}: no global MCP path configured")
-            report["ok"] = False
-        else:
-            for path, schema, key in write_targets:
-                entry = format_server_entry(tool, pin_repo=False, schema=schema)
-                write_mcp_config(tool, path, entry, schema=schema, key=key)
-                env_blob = entry.get("env") or entry.get("environment") or {}
-                ctx = str(env_blob.get("CTX_REPO") or "")
-                if ctx and _is_absolute_repo_pin(ctx):
-                    report["errors"].append(
-                        "internal error: absolute CTX_REPO leaked into global entry"
-                    )
-                    report["ok"] = False
-            report["mcp_written"] = True
-    except Exception as exc:  # noqa: BLE001
-        report["mcp_written"] = False
-        report["errors"].append(f"mcp write failed: {exc}")
+        require_machine_setup()
+    except MachineSetupRequiredError as exc:
         report["ok"] = False
+        report["errors"].append(str(exc))
+        return report
 
-    if workspace_local and report.get("workspace_mcp_eligible"):
-        try:
-            written = _write_workspace_mcp(tool, target_repo)
-            report["workspace_mcp_written"] = True
-            report["workspace_mcp_paths"] = [str(p) for p in written]
-        except Exception as exc:  # noqa: BLE001
-            report["workspace_mcp_written"] = False
-            report["errors"].append(f"workspace mcp write failed: {exc}")
-            report["ok"] = False
-    elif workspace_local:
-        report["workspace_mcp_written"] = False
+    report["legacy_global_removed"] = _remove_legacy_global_mcp(tool)
 
-    if (
-        not dry_run
-        and tool.slug in LEGACY_WORKSPACE_MCP_SLUGS
-        and _project_rules_eligible(target_repo)
-    ):
-        try:
-            if _remove_workspace_mcp(tool, target_repo):
-                report["legacy_workspace_mcp_removed"] = True
-        except Exception as exc:  # noqa: BLE001
-            report.setdefault("errors", []).append(f"legacy workspace mcp cleanup: {exc}")
+    fan = fan_out_tool_to_enrolled_repos(tool, dry_run=False)
+    report["project_fan_out"] = fan
+    if not fan.get("ok", True):
+        report["ok"] = False
+        for sub in fan.get("reports") or []:
+            for err in sub.get("errors") or []:
+                report["errors"].append(err)
 
-    # Connect is MCP-only — project GATE rules are written on ``scubiee init``.
+    report["connected_tools"] = add_connected_tool(tool.slug)
     report["rule_written"] = None
-    report["rule_skipped"] = "connect is MCP-only; rules written on init"
-
+    report["rule_skipped"] = "project rules written on enrolled repos"
     return report
 
 
@@ -961,24 +1195,11 @@ def install_tools(
 ) -> list[dict[str, Any]]:
     results = []
     for slug in slugs:
-        tool = TOOL_MAP.get(slug)
+        tool = get_tool(slug)
         if not tool:
             results.append({"tool": slug, "ok": False, "errors": [f"unknown tool: {slug}"]})
             continue
         results.append(install_tool(tool, dry_run=dry_run, repo=repo))
-    target = _connect_repo(repo)
-    if _project_rules_eligible(target) and not dry_run:
-        cleanup = cleanup_project_gate_rules(target)
-        for r in results:
-            if cleanup.get("gate_line"):
-                r["gate_line"] = cleanup["gate_line"]
-            removed = cleanup.get("removed") or []
-            if removed:
-                r["legacy_project_rules_removed"] = removed
-            if cleanup.get("errors"):
-                for err in cleanup["errors"]:
-                    r.setdefault("errors", []).append(err)
-                r["ok"] = False
     return results
 
 
@@ -1005,6 +1226,8 @@ def _remove_mcp_json_keyed(path: Path, key: str) -> bool:
         _write_json(path, data)
     else:
         data.pop(key, None)
+        if set(data.keys()) <= {"$schema"}:
+            data.clear()
         if data:
             _write_json(path, data)
         else:
@@ -1026,8 +1249,12 @@ def _remove_mcp_amp(path: Path) -> bool:
             removed = True
     if not removed:
         return False
-    data["amp.mcpServers"] = servers
-    _write_json(path, data)
+    if not servers:
+        data.pop("amp.mcpServers", None)
+    if data:
+        _write_json(path, data)
+    else:
+        path.unlink(missing_ok=True)
     return True
 
 
@@ -1054,6 +1281,9 @@ def _remove_mcp_toml(path: Path) -> bool:
             new_lines.append(line)
     while new_lines and not new_lines[-1].strip():
         new_lines.pop()
+    if not any(line.strip() for line in new_lines):
+        path.unlink(missing_ok=True)
+        return True
     new_lines.append("")
     path.write_text("\n".join(new_lines), encoding="utf-8")
     return True
@@ -1133,41 +1363,19 @@ _RULE_REMOVERS = {
 
 
 def _registered_connect_repos(extra: Path | None = None) -> list[Path]:
-    """Repos where workspace-local MCP may have been written."""
-    roots: list[Path] = []
-    seen: set[str] = set()
+    """Back-compat alias — prefer ``managed_repo_paths()`` from managed_repos."""
+    from pipeline.managed_repos import managed_repo_paths
 
-    def add(path: Path) -> None:
-        try:
-            resolved = path.resolve()
-        except OSError:
-            return
-        key = str(resolved).replace("\\", "/").lower()
-        if key in seen:
-            return
-        seen.add(key)
-        roots.append(resolved)
-
-    try:
-        from pipeline.project_id import load_registry
-
-        for meta in (load_registry().get("projects") or {}).values():
-            if not isinstance(meta, dict):
-                continue
-            for key in ("root",):
-                raw = meta.get(key)
-                if isinstance(raw, str) and raw.strip():
-                    add(Path(raw))
-            paths = meta.get("paths")
-            if isinstance(paths, list):
-                for raw in paths:
-                    if isinstance(raw, str) and raw.strip():
-                        add(Path(raw))
-    except Exception:  # noqa: BLE001
-        pass
+    roots = managed_repo_paths(enrolled_only=False)
     if extra is not None:
-        add(Path(extra))
-    add(Path.cwd())
+        try:
+            path = Path(extra).resolve()
+        except OSError:
+            path = None
+        if path is not None and path.is_dir():
+            key = str(path).replace("\\", "/").lower()
+            if not any(str(r).replace("\\", "/").lower() == key for r in roots):
+                roots.append(path)
     return roots
 
 
@@ -1176,71 +1384,68 @@ def uninstall_tool(
     *,
     dry_run: bool = False,
     repo: Path | str | None = None,
-    all_workspaces: bool = False,
+    all_workspaces: bool = True,
 ) -> dict[str, Any]:
+    from pipeline.connect_state import load_connected_tools, remove_connected_tool
+
     target_repo = _connect_repo(repo)
-    write_targets = resolve_mcp_write_targets(tool)
-    mcp_paths = [p for p, _s, _k in write_targets]
+    project_paths = resolve_mcp_project_paths(tool, target_repo)
     rule_paths = resolve_rule_user_paths(tool)
-    primary = mcp_paths[0] if mcp_paths else None
     primary_rule = rule_paths[0] if rule_paths else None
-    writes_legacy_workspace = tool.slug in LEGACY_WORKSPACE_MCP_SLUGS
-    workspace_roots = (
-        _registered_connect_repos(target_repo)
-        if (writes_legacy_workspace and all_workspaces)
-        else ([target_repo] if writes_legacy_workspace else [])
-    )
-    workspace_paths: list[Path] = []
-    for root in workspace_roots:
-        workspace_paths.extend(resolve_mcp_project_paths(tool, root))
 
     report: dict[str, Any] = {
         "tool": tool.name,
         "slug": tool.slug,
-        "scope": "global",
-        "mcp_path": str(primary) if primary else None,
-        "mcp_paths": [str(p) for p in mcp_paths],
+        "scope": "project-local",
+        "mcp_path": str(project_paths[0]) if project_paths else None,
+        "mcp_paths": [str(p) for p in project_paths],
         "rule_path": str(primary_rule) if primary_rule else None,
-        "rule_paths": [str(p) for p in rule_paths],
-        "workspace_mcp_paths": [str(p) for p in workspace_paths],
-        "all_workspaces": bool(all_workspaces and writes_legacy_workspace),
+        "rule_paths": [],
+        "all_workspaces": all_workspaces,
         "dry_run": dry_run,
         "ok": True,
         "errors": [],
         "mcp_removed": False,
         "rule_removed": False,
-        "workspace_mcp_removed": False,
+        "project_rules_removed": False,
     }
-    if writes_legacy_workspace:
-        report["repo"] = str(target_repo)
 
     if dry_run:
-        report["would_remove_mcp"] = str(primary) if primary else None
-        report["would_remove_mcp_paths"] = [str(p) for p in mcp_paths]
-        report["would_remove_rule"] = str(primary_rule) if primary_rule else None
-        report["would_remove_rule_paths"] = [str(p) for p in rule_paths]
-        if writes_legacy_workspace:
-            report["would_remove_workspace_mcp_paths"] = [str(p) for p in workspace_paths]
+        report["would_remove_legacy_global"] = [
+            str(p) for p, _s, _k in resolve_mcp_legacy_global_paths(tool)
+        ]
+        if all_workspaces:
+            report["project_fan_out"] = fan_out_tool_to_enrolled_repos(
+                tool, remove=True, dry_run=True
+            )
+        else:
+            report["project_surface"] = remove_project_tool_surface(
+                target_repo, tool, dry_run=True
+            )
+        report["connected_tools"] = load_connected_tools()
         return report
 
-    try:
-        removed = False
-        for path, schema, key in write_targets:
-            removed = remove_mcp_config(tool, path, schema=schema, key=key) or removed
-        report["mcp_removed"] = removed
-    except Exception as exc:  # noqa: BLE001
-        report["errors"].append(f"mcp removal failed: {exc}")
-        report["ok"] = False
-
-    if writes_legacy_workspace:
-        try:
-            any_removed = False
-            for root in workspace_roots:
-                any_removed = _remove_workspace_mcp(tool, root) or any_removed
-            report["workspace_mcp_removed"] = any_removed
-        except Exception as exc:  # noqa: BLE001
-            report["errors"].append(f"workspace mcp removal failed: {exc}")
+    report["legacy_global_removed"] = _remove_legacy_global_mcp(tool)
+    if all_workspaces:
+        fan = fan_out_tool_to_enrolled_repos(tool, remove=True, dry_run=False)
+        report["project_fan_out"] = fan
+        report["project_rules_removed"] = bool(fan.get("reports"))
+        report["mcp_removed"] = any(
+            sub.get("mcp_removed") for sub in (fan.get("reports") or [])
+        )
+        if not fan.get("ok", True):
             report["ok"] = False
+            for sub in fan.get("reports") or []:
+                for err in sub.get("errors") or []:
+                    report["errors"].append(err)
+    else:
+        surface = remove_project_tool_surface(target_repo, tool, dry_run=False)
+        report["project_surface"] = surface
+        report["project_rules_removed"] = bool(surface.get("rules", {}).get("removed"))
+        report["mcp_removed"] = bool(surface.get("mcp_removed"))
+        if not surface.get("ok", True):
+            report["ok"] = False
+            report["errors"].extend(surface.get("errors") or [])
 
     try:
         remover = _RULE_REMOVERS.get(tool.rule_format)
@@ -1252,8 +1457,21 @@ def uninstall_tool(
         else:
             report["rule_removed"] = None
     except Exception as exc:  # noqa: BLE001
-        report["errors"].append(f"rule removal failed: {exc}")
+        report["errors"].append(f"legacy global rule removal failed: {exc}")
         report["ok"] = False
+
+    remaining = remove_connected_tool(tool.slug)
+    report["connected_tools"] = remaining
+    if not remaining:
+        for repo_root in _fan_out_managed_repos():
+            agents = repo_root / "AGENTS.md"
+            if agents.is_file():
+                try:
+                    if _remove_rule_section(agents):
+                        report["project_rules_removed"] = True
+                except Exception as exc:  # noqa: BLE001
+                    report["errors"].append(f"{agents}: {exc}")
+                    report["ok"] = False
 
     return report
 
@@ -1263,11 +1481,11 @@ def uninstall_tools(
     *,
     dry_run: bool = False,
     repo: Path | str | None = None,
-    all_workspaces: bool = False,
+    all_workspaces: bool = True,
 ) -> list[dict[str, Any]]:
     results = []
     for slug in slugs:
-        tool = TOOL_MAP.get(slug)
+        tool = get_tool(slug)
         if not tool:
             results.append({"tool": slug, "ok": False, "errors": [f"unknown tool: {slug}"]})
             continue

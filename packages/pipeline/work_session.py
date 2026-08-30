@@ -15,13 +15,15 @@ from typing import Any
 
 def _session_path(repo: Path, session_id: str | None = None) -> Path:
     from pipeline.session_isolation import effective_session_id, session_data_dir
-    from pipeline.project_id import id_dir_path
+    from pipeline.project_id import repo_runtime_dir
 
     repo_p = Path(repo).resolve()
     sid = effective_session_id(session_id)
     if sid:
         return session_data_dir(repo_p, sid) / "work_session.json"
-    base = id_dir_path(repo_p)
+    from pipeline.project_id import repo_runtime_dir
+
+    base = repo_runtime_dir(repo_p)
     base.mkdir(parents=True, exist_ok=True)
     name = os.environ.get("CTX_WORK_SESSION") or "work_session.json"
     return base / name

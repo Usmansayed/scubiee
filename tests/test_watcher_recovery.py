@@ -9,8 +9,11 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def isolated_context_engine_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    from conftest import enroll_test_repo
+
     home = tmp_path / "ce-home"
     monkeypatch.setenv("CTX_HOME", str(home))
+    enroll_test_repo(tmp_path, home=home, project_id="ce_watcher_test1234567890abcdef")
     return home
 
 

@@ -41,6 +41,7 @@ def fake_home(tmp_path: Path, monkeypatch) -> Path:
     monkeypatch.setenv("APPDATA", str(home / "AppData" / "Roaming"))
     monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
     (tmp_path / "ce-home").mkdir()
+    (tmp_path / "ce-home" / "accel.json").write_text("{}\n", encoding="utf-8")
     monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
     return home
 
@@ -97,39 +98,43 @@ def test_s1_setup_only_no_mcp_no_rules(fake_home: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Scenario S2: Global connect once — MCP yes, global rules no
+# Scenario S2: Connect records tool; project files appear on enrolled repos
 # ---------------------------------------------------------------------------
-def test_s2_connect_global_mcp_only(fake_home: Path, tmp_path: Path) -> None:
-    """User ran scubiee connect cursor once (any folder)."""
+def test_s2_connect_project_local_when_enrolled(
+    fake_home: Path, tmp_path: Path, monkeypatch
+) -> None:
+    """User ran scubiee connect cursor with an enrolled repo."""
     repo = _git_repo(tmp_path / "any-ws")
+    pid = "ce_s2_cursor1234567890abcdef"
+    _enroll(repo, pid, monkeypatch, tmp_path)
     report = install_tool(TOOL_MAP["cursor"], repo=repo)
     assert report["ok"]
-    assert (fake_home / ".cursor" / "mcp.json").is_file()
+    assert report["scope"] == "project-local"
+    assert (repo / ".cursor" / "mcp.json").is_file()
     assert report["rule_written"] is None
-    assert not (fake_home / ".cursor" / "rules" / "scubiee.mdc").exists()
-    assert not (repo / ".cursor" / "rules" / "scubiee.mdc").exists()
+    assert not (fake_home / ".cursor" / "mcp.json").exists()
 
 
 # ---------------------------------------------------------------------------
-# Scenario S3: Connected, opens unmanaged repo — gate-only, minimal instructions
+# Scenario S3: Connected, spawn-unmanaged — full tools + bind-first instructions
 # ---------------------------------------------------------------------------
-def test_s3_unmanaged_repo_gate_only_and_minimal_instructions(
+def test_s3_spawn_unmanaged_full_tools_and_bind_first_instructions(
     tmp_path: Path, monkeypatch
 ) -> None:
-    """User connected globally but opened a repo without scubiee init."""
+    """User connected globally but MCP spawn did not bind a repo."""
     repo = _git_repo(tmp_path / "fresh-clone")
     monkeypatch.setenv("CTX_REPO", str(repo.resolve()))
     monkeypatch.chdir(repo)
 
     tools = _mcp_tools(monkeypatch)
-    assert tools == {"gate"}
+    assert tools == PHASE_MANAGED_TOOLS
 
     text = _instructions(monkeypatch)
     assert text.startswith("GATE 0.") or text.startswith("GATE 0:r")
     assert len(text) <= 220
+    assert "Pass root=" in text
     assert "map(query)" not in text
-    assert "native" in text.lower()
-    assert "Not managed" in text or "USE native" in text
+    assert "USE native" not in text
 
 
 # ---------------------------------------------------------------------------
@@ -148,8 +153,7 @@ def test_s4_managed_repo_full_tools_and_trajectory(
     text = _instructions(monkeypatch)
     assert "map(query)" in text
     assert "grep(pattern" in text
-    assert "session_id" in text
-    assert "tool bans are in the project GATE rule" in text
+    assert "GATE rule bans native" in text or "tool bans are in the project GATE rule" in text
     assert "BAN native" not in text
 
 
@@ -170,7 +174,7 @@ def test_s5_init_a_open_b_b_stays_unmanaged(tmp_path: Path, monkeypatch) -> None
     from pipeline.mcp_locate import _is_repo_managed
 
     assert _is_repo_managed() is False
-    assert _mcp_tools(monkeypatch) == {"gate"}
+    assert _mcp_tools(monkeypatch) == PHASE_MANAGED_TOOLS
 
 
 # ---------------------------------------------------------------------------
@@ -234,42 +238,46 @@ def test_s9_wipe_repo_rules_cleanup(tmp_path: Path, monkeypatch) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Scenario S10: Disconnect removes global MCP, not project rules from init
+# Scenario S10: Disconnect removes global MCP and project rules
 # ---------------------------------------------------------------------------
-def test_s10_disconnect_removes_global_mcp_only(
+def test_s10_disconnect_removes_global_and_project_files(
     fake_home: Path, tmp_path: Path, monkeypatch
 ) -> None:
     repo = _git_repo(tmp_path / "proj")
-    install_tool(TOOL_MAP["cursor"], repo=repo)
     pid = "ce_scenario_disc1234567890abcdef"
     _enroll(repo, pid, monkeypatch, tmp_path)
-    write_project_gate_rules(repo)
+    install_tool(TOOL_MAP["cursor"], repo=repo)
+    write_project_gate_rules(repo, slugs=["cursor"])
     project_rule = repo / ".cursor" / "rules" / "scubiee.mdc"
+    project_mcp = repo / ".cursor" / "mcp.json"
     assert project_rule.is_file()
 
     report = uninstall_tool(TOOL_MAP["cursor"], repo=repo)
     assert report["mcp_removed"] is True
     assert not (fake_home / ".cursor" / "mcp.json").exists()
-    # Project init rule remains until user deletes or re-inits cleanup
-    assert project_rule.is_file()
+    assert not project_rule.is_file()
+    assert not project_mcp.is_file()
 
 
 # ---------------------------------------------------------------------------
-# Scenario S11: Locate tool hard-block if somehow called on unmanaged
+# Scenario S11: Locate tool returns bind hint when repo not managed at runtime
 # ---------------------------------------------------------------------------
-def test_s11_map_blocked_on_unmanaged_runtime(tmp_path: Path, monkeypatch) -> None:
-    """Defense in depth: runtime gate even if stale tool list."""
+def test_s11_map_returns_bind_hint_on_unmanaged_runtime(tmp_path: Path, monkeypatch) -> None:
+    """Tools stay registered; runtime returns bind hint without root=."""
     pytest.importorskip("mcp")
     repo = _git_repo(tmp_path / "unmanaged")
     monkeypatch.setenv("CTX_REPO", str(repo.resolve()))
     monkeypatch.chdir(repo)
     monkeypatch.setattr("pipeline.mcp_locate._is_repo_managed", lambda: False)
+    monkeypatch.setattr("pipeline.mcp_locate._registry_has_enrollments", lambda: True)
 
     from pipeline.mcp_locate import create_mcp
 
     mcp = create_mcp(name="test-block")
-    # gate-only surface — map not registered
-    assert "map" not in mcp._tool_manager._tools
+    assert "map" in mcp._tool_manager._tools
+    raw = mcp._tool_manager._tools["map"].fn(query="test query")
+    assert "not managed" in raw.lower()
+    assert "root=" in raw.lower() or "project_id" in raw.lower()
 
 
 # ---------------------------------------------------------------------------
@@ -308,7 +316,7 @@ def test_s13_rules_and_instructions_do_not_duplicate_bans(
     assert "map(query)" not in rule
     assert "Locate trajectory" in instr or "map(query)" in instr
     assert "BAN native" not in instr
-    assert "tool bans are in the project GATE rule" in instr
+    assert "GATE rule bans native" in instr or "tool bans are in the project GATE rule" in instr
 
 
 # ---------------------------------------------------------------------------
@@ -389,22 +397,25 @@ def test_s17_reinit_refreshes_gate_rule(tmp_path: Path, monkeypatch) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Scenario S18: Global connect all hosts — no workspace MCP pins
+# Scenario S18: Project-local connect — fans out to enrolled repos only
 # ---------------------------------------------------------------------------
-@pytest.mark.parametrize("slug", ["cursor", "claude-code", "codex", "windsurf", "opencode"])
-def test_s18_global_connect_no_workspace_pins(
-    slug: str, fake_home: Path, tmp_path: Path
+@pytest.mark.parametrize("slug", ["cursor", "claude-code", "codex", "devin-desktop", "opencode"])
+def test_s18_project_connect_fans_out_when_enrolled(
+    slug: str, fake_home: Path, tmp_path: Path, monkeypatch
 ) -> None:
-    from pipeline.host_workspace import is_global_mcp_tool
+    from pipeline.host_workspace import is_special_workspace_local_tool
 
-    assert is_global_mcp_tool(slug)
+    assert is_special_workspace_local_tool(slug)
     repo = _git_repo(tmp_path / f"ws-{slug}")
+    pid = f"ce_s18_{slug.replace('-', '_')[:16]}1234567890abcd"
+    _enroll(repo, pid, monkeypatch, tmp_path)
     report = install_tool(TOOL_MAP[slug], repo=repo)
     assert report["ok"]
-    assert not report.get("workspace_mcp_written")
-    entry = format_server_entry(TOOL_MAP[slug], pin_repo=False)
+    assert report.get("scope") == "project-local"
+    assert report["project_fan_out"]["repos"] == 1
+    entry = format_server_entry(TOOL_MAP[slug], repo, pin_repo=True)
     env = entry.get("env") or entry.get("environment") or {}
-    assert "CTX_REPO" not in env
+    assert "CTX_REPO" in env
 
 
 # ---------------------------------------------------------------------------
@@ -415,6 +426,9 @@ def test_s19_unexpanded_workspace_token_falls_back_to_cwd(
 ) -> None:
     from pipeline import mcp_locate
 
+    ce_home = tmp_path / "ce-home"
+    ce_home.mkdir()
+    monkeypatch.setenv("CTX_HOME", str(ce_home))
     live = _git_repo(tmp_path / "live-ws")
     pid = "ce_scenario_token1234567890abcdef"
     _enroll(live, pid, monkeypatch, tmp_path)
@@ -438,7 +452,7 @@ def test_s20_mid_session_init_then_mcp_reload(
     monkeypatch.delenv("CTX_REPO", raising=False)
 
     tools_before = _mcp_tools(monkeypatch)
-    assert tools_before == {"gate"}
+    assert tools_before == PHASE_MANAGED_TOOLS
 
     pid = "ce_scenario_mid1234567890abcdef"
     _enroll(repo, pid, monkeypatch, tmp_path)
@@ -456,7 +470,7 @@ def test_s20_mid_session_init_then_mcp_reload(
 USER_JOURNEY_SCENARIOS = [
     ("S1", "setup only", "no MCP, no rules"),
     ("S2", "connect global once", "MCP yes, global rules no"),
-    ("S3", "open unmanaged repo", "gate-only; native-only MCP note"),
+    ("S3", "spawn unmanaged", "full tools + bind-first MCP note"),
     ("S4", "init enrolled repo", "full tools + trajectory (no bans in MCP)"),
     ("S5", "init A, open B", "B unmanaged despite registry"),
     ("S6", "init project rules", "repo GATE ban rule, not ~/.cursor/rules"),
@@ -464,7 +478,7 @@ USER_JOURNEY_SCENARIOS = [
     ("S8", "paused", "gate line p"),
     ("S9", "wipe/cleanup", "project rules removed"),
     ("S10", "disconnect", "global MCP removed"),
-    ("S11", "stale locate call", "map not registered unmanaged"),
+    ("S11", "unmanaged locate call", "map registered; bind hint at runtime"),
     ("S12", "bare instructions env", "managed stripped for trials"),
     ("S13", "rules vs instructions", "bans in rule only, trajectory in MCP"),
     ("S14", "IDE beats stale pin", "sidebar repo wins over CTX_REPO"),

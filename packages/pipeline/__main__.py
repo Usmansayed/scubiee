@@ -1083,10 +1083,15 @@ def cmd_init(args: argparse.Namespace) -> int:
     if roots and not fast:
         fast = True
 
-    # --- Preflight + always ask y/n on a real terminal (file count + ETA) ---
+    from pipeline.repo_lifecycle import describe_init_state
+
+    init_state = describe_init_state(root)
+    repeat_init = bool(init_state.get("repeat_init"))
+
+    # --- Preflight + y/n on first init only (repeat init uses incremental sync) ---
     n_files = 0
     prompted_header = False
-    if not bool(getattr(args, "no_index", False)):
+    if not bool(getattr(args, "no_index", False)) and not repeat_init:
         from pipeline.incremental import IndexConfirmRequired, preflight_index_scope
         from pipeline.cli_ui import branded_header, confirm_action, format_index_eta
 
@@ -1146,6 +1151,10 @@ def cmd_init(args: argparse.Namespace) -> int:
                     sys.stderr.write("  Cancelled.\n\n")
                     return 0
                 args.confirm = True
+
+    elif repeat_init and not bool(getattr(args, "confirm", False)):
+        # Incremental sync applies its own safety gates for large deltas.
+        args.confirm = True
 
     # --- Run init ---
     if is_tty:
@@ -1224,16 +1233,6 @@ def cmd_init(args: argparse.Namespace) -> int:
 
     if out.get("ok"):
         try:
-            from pipeline.rules_installer import write_project_gate_rules
-
-            out["gate_rules"] = write_project_gate_rules(root)
-            out["mcp_reconnect_hint"] = (
-                "Reconnect MCP or start a new chat to expose locate tools."
-            )
-        except Exception as exc:  # noqa: BLE001
-            out["gate_rules"] = {"ok": False, "error": str(exc)}
-
-        try:
             from pipeline.daemon import ensure_daemon
             from pipeline.pause_resume import _save_state, is_paused
 
@@ -1245,8 +1244,6 @@ def cmd_init(args: argparse.Namespace) -> int:
 
         if is_tty:
             chunks = out.get("chunks", 0)
-            # Fallback: if chunks not in result (reconciled/already-managed path),
-            # read from the store's meta.json.
             if not chunks and out.get("store_dir"):
                 try:
                     import json as _json
@@ -1256,7 +1253,15 @@ def cmd_init(args: argparse.Namespace) -> int:
                         chunks = int(_meta.get("chunks", 0))
                 except (OSError, ValueError, KeyError):
                     pass
-            bar.done(chunks)
+            sync = out.get("sync") if isinstance(out.get("sync"), dict) else {}
+            if out.get("already_initialized"):
+                bar.already_initialized(chunks)
+            elif out.get("reconciled") and sync.get("refreshed"):
+                bar.index_updated(chunks, files=len(sync.get("files") or []))
+            elif out.get("indexed"):
+                bar.done(chunks)
+            elif out.get("reconciled"):
+                bar.already_initialized(chunks)
             daemon = out.get("daemon", {})
             if daemon.get("ok"):
                 bar.daemon_started()
@@ -1500,13 +1505,18 @@ def cmd_gate(args: argparse.Namespace) -> int:
 def cmd_connect(args: argparse.Namespace) -> int:
     """Connect Scubiee to AI coding tools (MCP config + rules)."""
     from pipeline.rules_installer import install_tools
-    from pipeline.tool_registry import ALL_SLUGS
+    from pipeline.tool_registry import ALL_SLUGS, CONNECT_SLUGS, normalize_tool_slug
 
     # Collect selected tools
     if getattr(args, "all", False):
         selected = list(ALL_SLUGS)
     else:
-        selected = [slug for slug in ALL_SLUGS if getattr(args, slug.replace("-", "_"), False)]
+        selected = []
+        for slug in CONNECT_SLUGS:
+            if getattr(args, slug.replace("-", "_"), False):
+                selected.append(normalize_tool_slug(slug))
+        seen: set[str] = set()
+        selected = [s for s in selected if not (s in seen or seen.add(s))]
 
     if not selected:
         if sys.stdout.isatty():
@@ -1536,13 +1546,18 @@ def cmd_connect(args: argparse.Namespace) -> int:
 def cmd_disconnect(args: argparse.Namespace) -> int:
     """Disconnect Scubiee from AI coding tools (removes MCP config + rules)."""
     from pipeline.rules_installer import uninstall_tools
-    from pipeline.tool_registry import ALL_SLUGS
+    from pipeline.tool_registry import ALL_SLUGS, CONNECT_SLUGS, normalize_tool_slug
 
     # Collect selected tools
     if getattr(args, "all", False):
         selected = list(ALL_SLUGS)
     else:
-        selected = [slug for slug in ALL_SLUGS if getattr(args, slug.replace("-", "_"), False)]
+        selected = []
+        for slug in CONNECT_SLUGS:
+            if getattr(args, slug.replace("-", "_"), False):
+                selected.append(normalize_tool_slug(slug))
+        seen: set[str] = set()
+        selected = [s for s in selected if not (s in seen or seen.add(s))]
 
     if not selected:
         if sys.stdout.isatty():
@@ -1556,7 +1571,10 @@ def cmd_disconnect(args: argparse.Namespace) -> int:
 
     dry_run = getattr(args, "dry_run", False)
     repo = getattr(args, "repo", None)
-    all_workspaces = bool(getattr(args, "all_workspaces", False))
+    if repo is not None:
+        all_workspaces = bool(getattr(args, "all_workspaces", False))
+    else:
+        all_workspaces = True
     results = uninstall_tools(
         selected,
         dry_run=dry_run,
@@ -2202,9 +2220,9 @@ def main(argv: list[str] | None = None) -> int:
         "connect",
         help="Connect Scubiee to AI coding tools (installs MCP config + rules)",
     )
-    from pipeline.tool_registry import ALL_SLUGS
+    from pipeline.tool_registry import CONNECT_SLUGS
 
-    for slug in ALL_SLUGS:
+    for slug in CONNECT_SLUGS:
         p_connect.add_argument(
             f"--{slug}",
             action="store_true",
@@ -2228,7 +2246,7 @@ def main(argv: list[str] | None = None) -> int:
         "disconnect",
         help="Disconnect Scubiee from AI coding tools (removes MCP config + rules)",
     )
-    for slug in ALL_SLUGS:
+    for slug in CONNECT_SLUGS:
         p_disconnect.add_argument(
             f"--{slug}",
             action="store_true",
@@ -2240,8 +2258,8 @@ def main(argv: list[str] | None = None) -> int:
         "--all-workspaces",
         action="store_true",
         help=(
-            "Also remove workspace-local MCP files for Kiro/Copilot/Cline/Roo "
-            "under every registered repo (not just cwd)"
+            "Remove project MCP + rules from every enrolled repo (default when "
+            "--repo is omitted)"
         ),
     )
     p_disconnect.add_argument(
@@ -2249,8 +2267,8 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         default=None,
         help=(
-            "Project folder for workspace-local MCP removal (Kiro, Copilot, Cline, Roo). "
-            "Defaults to current directory."
+            "Limit project MCP + rule removal to one repo (pass --all-workspaces "
+            "to also clean other enrolled repos)"
         ),
     )
     p_disconnect.set_defaults(func=cmd_disconnect)

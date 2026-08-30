@@ -18,10 +18,11 @@ def resolve_graph_json(repo: Path | str) -> Path:
     root = Path(repo).resolve()
     candidates: list[Path] = []
     try:
-        from pipeline.store import PipelineStore
+        from pipeline.project_id import peek_project
 
-        store = PipelineStore(root)
-        candidates.append(store.base / "graph.json")
+        ref = peek_project(root)
+        if ref is not None:
+            candidates.append(ref.store_dir / "graph.json")
     except Exception:  # noqa: BLE001
         pass
     candidates.append(root / "graphify-out" / "graph.json")

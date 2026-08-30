@@ -52,6 +52,47 @@ def _clear_leaky_ctx_env():
             os.environ[key] = value
 
 
+def write_machine_setup(home: Path) -> Path:
+    """Minimal ``accel.json`` so ``require_machine_setup()`` passes in tests."""
+    home.mkdir(parents=True, exist_ok=True)
+    accel = home / "accel.json"
+    if not accel.is_file():
+        accel.write_text("{}\n", encoding="utf-8")
+    return home
+
+
+def enroll_test_repo(
+    repo: Path,
+    *,
+    home: Path,
+    project_id: str = "ce_test1234567890abcdef12345678",
+) -> str:
+    """Register *repo* as managed without implicit bind side effects."""
+    import json
+
+    from pipeline.project_id import mutate_registry
+
+    write_machine_setup(home)
+    ce = repo / ".scubiee"
+    ce.mkdir(parents=True, exist_ok=True)
+    (ce / "id.json").write_text(
+        json.dumps({"project_id": project_id}), encoding="utf-8"
+    )
+    root = str(repo.resolve())
+
+    def _add(reg: dict) -> str:
+        projects = reg.setdefault("projects", {})
+        projects[project_id] = {
+            "managed": True,
+            "root": root,
+            "paths": [root],
+        }
+        return project_id
+
+    mutate_registry(_add)
+    return project_id
+
+
 @pytest.fixture
 def cpu_accel_profile(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Persist a CPU accel.json under an isolated ``CTX_HOME`` for semantic tests."""

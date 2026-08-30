@@ -145,17 +145,34 @@ def test_search_cli_fails_when_daemon_unreachable(tmp_path: Path, monkeypatch, c
     assert "unreachable" in err["error"].lower()
 
 
-def test_init_accepts_fast_roots(tmp_path: Path, monkeypatch):
+def test_init_skips_preflight_prompt_for_repeat_init(tmp_path: Path, monkeypatch):
     repo = tmp_path / "app"
     repo.mkdir()
-    captured: dict[str, object] = {}
-
     monkeypatch.setattr("pipeline.accel.load_accel", lambda: object())
+    monkeypatch.setattr(
+        "pipeline.repo_lifecycle.describe_init_state",
+        lambda _root: {"repeat_init": True, "managed": True, "index_usable": True},
+    )
+
+    preflight_calls: list[dict[str, object]] = []
+
+    def fake_preflight(*_args, **kwargs):
+        preflight_calls.append(kwargs)
+        return 99999
+
+    captured: dict[str, object] = {}
 
     def fake_initialize(root, **kwargs):
         captured.update(kwargs)
-        return {"ok": True, "project_id": "ce_test"}
+        return {
+            "ok": True,
+            "project_id": "ce_test",
+            "already_initialized": True,
+            "chunks": 42,
+            "store_dir": str(tmp_path / "store"),
+        }
 
+    monkeypatch.setattr("pipeline.incremental.preflight_index_scope", fake_preflight)
     monkeypatch.setattr("pipeline.repo_lifecycle.initialize_repo", fake_initialize)
     monkeypatch.setattr("pipeline.daemon.ensure_daemon", lambda *_a, **_k: {"ok": True})
     monkeypatch.setattr("sys.stdout.isatty", lambda: True)
@@ -166,7 +183,42 @@ def test_init_accepts_fast_roots(tmp_path: Path, monkeypatch):
             no_index=False,
             allow_once=False,
             fast=False,
+            roots=None,
+            confirm=False,
+        )
+    )
+    assert rc == 0
+    assert preflight_calls == []
+    assert captured.get("confirm") is True
+
+
+def test_init_accepts_fast_roots(tmp_path: Path, monkeypatch):
+    repo = tmp_path / "app"
+    repo.mkdir()
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr("pipeline.accel.load_accel", lambda: object())
+    monkeypatch.setattr(
+        "pipeline.repo_lifecycle.describe_init_state",
+        lambda _root: {"repeat_init": False},
+    )
+
+    def fake_initialize(root, **kwargs):
+        captured.update(kwargs)
+        return {"ok": True, "project_id": "ce_test"}
+
+    monkeypatch.setattr("pipeline.repo_lifecycle.initialize_repo", fake_initialize)
+    monkeypatch.setattr("pipeline.daemon.ensure_daemon", lambda *_a, **_k: {"ok": True})
+    monkeypatch.setattr("sys.stdout.isatty", lambda: False)
+
+    rc = cli.cmd_init(
+        argparse.Namespace(
+            path=str(repo),
+            no_index=False,
+            allow_once=False,
+            fast=False,
             roots="src,packages",
+            confirm=True,
         )
     )
     assert rc == 0

@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from pipeline.project_id import resolve_project
+from pipeline.project_id import peek_project
 
 
 @dataclass
@@ -106,7 +106,11 @@ class RepoHub:
         metadata: dict[str, Any] | None = None,
         priority: str = "active",
     ) -> RepoRuntime:
-        ref = resolve_project(Path(root).resolve())
+        ref = peek_project(Path(root).resolve())
+        if ref is None:
+            raise RuntimeError(
+                f"not enrolled at {Path(root).resolve()} — run `scubiee init .` first"
+            )
         with self._lock:
             runtime = self._runtimes.get(ref.project_id)
             if runtime is None:

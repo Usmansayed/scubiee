@@ -47,15 +47,25 @@ class PipelineStore:
             self.base = Path(base_dir).resolve()
             self.base.mkdir(parents=True, exist_ok=True)
             if self.project_id is None:
-                from pipeline.project_id import read_id_file, context_engine_home
+                from pipeline.project_id import read_id_file
 
                 self.project_id = read_id_file(self.root)
         elif resolve:
-            from pipeline.project_id import resolve_project
+            from pipeline.project_id import ProjectNotBoundError, read_id_file, resolve_project
 
-            ref = resolve_project(self.root)
-            self.project_id = ref.project_id
-            self.base = ref.store_dir
+            try:
+                ref = resolve_project(self.root, migrate=False, bind=False)
+                self.project_id = ref.project_id
+                self.base = ref.store_dir
+            except ProjectNotBoundError:
+                self.project_id = read_id_file(self.root)
+                home = context_engine_home()
+                if self.project_id:
+                    from pipeline.project_id import projects_root
+
+                    self.base = (projects_root() / self.project_id).resolve()
+                else:
+                    self.base = (home / "indexes" / repo_key(self.root)).resolve()
         else:
             # Tests / callers that want path-hash without side effects
             home = context_engine_home()

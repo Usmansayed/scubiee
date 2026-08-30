@@ -9,6 +9,17 @@ import pytest
 
 from pipeline import mcp_locate
 
+PHASE_MANAGED_TOOLS = {
+    "gate",
+    "map",
+    "focus",
+    "grep",
+    "glob",
+    "workspace",
+    "expand",
+    "status",
+}
+
 
 def test_default_repo_uses_ctx_repo_env(tmp_path: Path, monkeypatch) -> None:
     repo = tmp_path / "app"
@@ -203,11 +214,15 @@ def test_default_repo_resolves_ctx_project_id_from_registry(
 def test_managed_signal_fields_unmanaged(tmp_path: Path, monkeypatch) -> None:
     plain = tmp_path / "plain"
     plain.mkdir()
+    home = tmp_path / "ce-home"
+    home.mkdir()
+    monkeypatch.setenv("CTX_HOME", str(home))
     monkeypatch.chdir(plain)
     monkeypatch.delenv("CTX_REPO", raising=False)
     monkeypatch.delenv("CTX_PROJECT_ID", raising=False)
     for key in ("CURSOR_PROJECT_DIR", "WORKSPACE_FOLDER"):
         monkeypatch.delenv(key, raising=False)
+    mcp_locate._LAST_MANAGED_REPO = None
     fields = mcp_locate._managed_signal_fields(just_checked=True)
     assert fields["managed"] is False
     assert fields["should_retry_status"] is False
@@ -272,7 +287,7 @@ def test_gate_on_unmanaged_skips_daemon(tmp_path: Path, monkeypatch) -> None:
     from pipeline.mcp_locate import create_mcp
 
     mcp = create_mcp(name="test-gate-unmanaged")
-    assert set(mcp._tool_manager._tools) == {"gate"}
+    assert set(mcp._tool_manager._tools) == PHASE_MANAGED_TOOLS
     fn = mcp._tool_manager._tools["gate"].fn
     assert fn() == "0"
 
@@ -301,6 +316,7 @@ def test_default_repo_does_not_use_daemon_bound_repo_without_workspace_identity(
     monkeypatch.delenv("CONTEXT_ENGINE_REPO", raising=False)
     monkeypatch.delenv("CTX_PROJECT_ID", raising=False)
     monkeypatch.chdir(tmp_path)
+    mcp_locate._LAST_MANAGED_REPO = None
 
     class FakeClient:
         def __init__(self, *args, **kwargs):

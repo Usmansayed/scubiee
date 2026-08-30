@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+from conftest import enroll_test_repo
+
 
 def _wait_until(predicate, timeout_s: float = 1.0) -> None:
     deadline = time.monotonic() + timeout_s
@@ -17,11 +19,13 @@ def _wait_until(predicate, timeout_s: float = 1.0) -> None:
 
 
 def test_same_repo_sessions_share_one_runtime(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
+    home = tmp_path / "ce-home"
+    monkeypatch.setenv("CTX_HOME", str(home))
     from pipeline.repo_runtime import RepoHub
 
     repo = tmp_path / "repo"
     repo.mkdir()
+    enroll_test_repo(repo, home=home, project_id="ce_multi_same1234567890abcdef")
     hub = RepoHub()
 
     first = hub.ensure(repo, session_id="session-a")
@@ -34,12 +38,15 @@ def test_same_repo_sessions_share_one_runtime(tmp_path: Path, monkeypatch: pytes
 def test_different_repositories_keep_independent_engines_and_keepers(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
+    home = tmp_path / "ce-home"
+    monkeypatch.setenv("CTX_HOME", str(home))
     from pipeline.repo_runtime import RepoHub
 
     left, right = tmp_path / "left", tmp_path / "right"
     left.mkdir()
     right.mkdir()
+    enroll_test_repo(left, home=home, project_id="ce_multi_left1234567890abcdef")
+    enroll_test_repo(right, home=home, project_id="ce_multi_right1234567890abcdef")
     hub = RepoHub()
     left_runtime = hub.ensure(left)
     right_runtime = hub.ensure(right)
@@ -56,12 +63,15 @@ def test_different_repositories_keep_independent_engines_and_keepers(
 def test_runtime_manager_preserves_active_facade_per_repository(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
+    home = tmp_path / "ce-home"
+    monkeypatch.setenv("CTX_HOME", str(home))
     from pipeline.ce_service import RuntimeManager
 
     first, second = tmp_path / "first", tmp_path / "second"
     first.mkdir()
     second.mkdir()
+    enroll_test_repo(first, home=home, project_id="ce_multi_first1234567890abcdef")
+    enroll_test_repo(second, home=home, project_id="ce_multi_second1234567890abcdef")
     manager = RuntimeManager()
     manager._activate_runtime(first)
     first_engine = object()
@@ -182,12 +192,15 @@ def test_drop_engine_preserves_other_repository_cache(tmp_path: Path, monkeypatc
 
 
 def test_failure_is_isolated_to_its_repository(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
+    home = tmp_path / "ce-home"
+    monkeypatch.setenv("CTX_HOME", str(home))
     from pipeline.repo_runtime import RepoHub
 
     left, right = tmp_path / "left", tmp_path / "right"
     left.mkdir()
     right.mkdir()
+    enroll_test_repo(left, home=home, project_id="ce_multi_fail1234567890abcdef")
+    enroll_test_repo(right, home=home, project_id="ce_multi_ok1234567890abcdef")
     hub = RepoHub()
     failed = hub.ensure(left)
     healthy = hub.ensure(right)

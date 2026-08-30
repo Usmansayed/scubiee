@@ -189,7 +189,7 @@ def _path_id(p: _Partial, outcome: Outcome) -> str:
 def _notes_for(p: _Partial, outcome: Outcome) -> str:
     notes = {
         Outcome.NO_MCP: "S1: setup only, never connect",
-        Outcome.GATE_ONLY_NATIVE: "S3: global connect, open clone without init",
+        Outcome.GATE_ONLY_NATIVE: "S3: global connect, spawn-unmanaged — full tools + bind-first note",
         Outcome.FULL_MANAGED: "S4: connect + init + open managed repo",
         Outcome.WRONG_REPO_GATE: "S5/S14: init A, IDE opens B",
         Outcome.PAUSED_RULE: "S8/S16: scubiee pause on managed repo",

@@ -251,6 +251,33 @@ def _vectordb_roots() -> list[Path]:
     return [root]
 
 
+def _discover_repo_id_dirs(root: Path) -> list[Path]:
+    """Every repo-local ``.scubiee`` directory under ``root`` (includes nested checkouts)."""
+    root = root.resolve()
+    if not root.is_dir():
+        return []
+    found: list[Path] = []
+    seen: set[str] = set()
+    for name in DATA_DIR_NAMES:
+        try:
+            for path in root.rglob(name):
+                if path.name != name or not path.is_dir():
+                    continue
+                try:
+                    key = str(path.resolve())
+                except OSError:
+                    continue
+                if os.name == "nt":
+                    key = key.lower()
+                if key in seen:
+                    continue
+                seen.add(key)
+                found.append(path)
+        except OSError:
+            continue
+    return sorted(found, key=lambda p: len(str(p)), reverse=True)
+
+
 def _registered_repo_roots() -> list[Path]:
     """All checkout paths known to the registry, including resolved moved paths (before home is deleted)."""
     from pipeline.project_id import load_registry
@@ -430,12 +457,15 @@ def audit_scubiee_artifacts(*, include_package: bool = True, include_models: boo
     ):
         note(shim, kind="tool_shim")
 
-    # Repo-local enrollment markers left behind.
+    # Repo-local enrollment markers left behind (root + nested checkouts).
+    checked_roots: set[str] = set()
     for repo in _registered_repo_roots():
-        for dirname in DATA_DIR_NAMES:
-            id_dir = repo / dirname
-            if id_dir.exists():
-                note(id_dir, kind="repo_id_dir")
+        repo_key = str(repo.resolve()).lower() if os.name == "nt" else str(repo.resolve())
+        if repo_key in checked_roots:
+            continue
+        checked_roots.add(repo_key)
+        for id_dir in _discover_repo_id_dirs(repo):
+            note(id_dir, kind="repo_id_dir")
         for rule_path in _cursor_rule_paths(repo):
             if rule_path.is_file():
                 note(rule_path, kind="repo_rule")
@@ -461,14 +491,127 @@ def audit_scubiee_artifacts(*, include_package: bool = True, include_models: boo
     }
 
 
+def _halt_scubiee_before_wipe(
+    *,
+    scope: str,
+    repo: Path | None = None,
+) -> dict[str, Any]:
+    """Kill/disable everything that can respawn or lock files during wipe.
+
+    Wipe is destructive cleanup — same intent as ``scubiee stop``, then kill any
+    stragglers. Callers must run this *before* deleting on-disk state.
+    """
+    actions: dict[str, Any] = {}
+    target = (repo or Path.cwd()).resolve()
+    home = context_engine_home()
+
+    # 1. Remove MCP wiring first so IDEs do not respawn scubiee-mcp mid-wipe.
+    if scope == "all":
+        try:
+            from pipeline.rules_installer import uninstall_tools
+            from pipeline.tool_registry import ALL_SLUGS
+
+            actions["disconnect_all_tools"] = uninstall_tools(
+                list(ALL_SLUGS),
+                dry_run=False,
+                repo=target,
+                all_workspaces=True,
+            )
+        except Exception as exc:  # noqa: BLE001
+            actions["disconnect_all_tools"] = {"ok": False, "error": str(exc)}
+            actions["user_cursor_mcp"] = _drop_mcp_server(Path.home() / ".cursor" / "mcp.json")
+            for kiro_mcp in _kiro_mcp_paths(Path.home()):
+                actions[f"kiro_user_mcp:{kiro_mcp.name}"] = _drop_mcp_server(kiro_mcp)
+        actions["project_cursor_mcp"] = _drop_mcp_server(target / ".cursor" / "mcp.json")
+        for local_mcp in _workspace_local_mcp_paths(target):
+            actions[f"workspace_local_mcp:{local_mcp.name}"] = _drop_mcp_server(local_mcp)
+    elif repo is not None:
+        try:
+            from pipeline.rules_installer import strip_all_project_tool_surfaces
+
+            actions["project_tool_surfaces"] = strip_all_project_tool_surfaces(repo)
+        except Exception as exc:  # noqa: BLE001
+            actions["project_tool_surfaces"] = {"ok": False, "error": str(exc)}
+
+    # 2. Same as ``scubiee stop``: disable MCP + stop daemon/watchdog.
+    try:
+        from pipeline.pause_resume import is_paused, pause
+
+        actions["pause"] = (
+            {"ok": True, "already_paused": True}
+            if is_paused()
+            else pause()
+        )
+    except Exception as exc:  # noqa: BLE001
+        actions["pause"] = {"ok": False, "error": str(exc)}
+
+    # 3. Kill uv-tool / mcp_locate / daemon stragglers (Windows file locks).
+    try:
+        from pipeline.process_control import (
+            kill_all_scubiee_processes,
+            stop_all_context_engine_processes,
+        )
+
+        if scope == "all":
+            actions["kill_all"] = kill_all_scubiee_processes(exclude_self=True)
+        else:
+            actions["stop_all"] = stop_all_context_engine_processes(ctx_home=home)
+    except Exception as exc:  # noqa: BLE001
+        actions["stop_all" if scope != "all" else "kill_all"] = {
+            "ok": False,
+            "error": str(exc),
+        }
+
+    if scope == "all":
+        try:
+            from pipeline.lifecycle_runtime import unregister_logon_autostart
+
+            actions["unregister_autostart"] = unregister_logon_autostart()
+        except Exception as exc:  # noqa: BLE001
+            actions["unregister_autostart"] = {"ok": False, "error": str(exc)}
+
+    critical = ("kill_all", "stop_all")
+    halt_ok = all(
+        not isinstance(actions.get(key), dict) or actions[key].get("ok", True) is not False
+        for key in critical
+        if key in actions
+    )
+    remaining = []
+    for key in ("kill_all", "stop_all"):
+        block = actions.get(key)
+        if isinstance(block, dict):
+            remaining.extend(block.get("remaining") or [])
+    return {
+        "ok": halt_ok,
+        "scope": scope,
+        "actions": actions,
+        "remaining_processes": remaining,
+    }
+
+
 def wipe_repo(root: Path | str, *, mcp: bool = True, rule: bool = True) -> dict[str, Any]:
     """Remove this repository's CE enrollment + on-disk index store."""
-    from pipeline.project_id import id_file_path, read_id_file
+    from pipeline.project_id import read_id_file
     from pipeline.repo_lifecycle import remove_repo
 
     root = Path(root).resolve()
     out: dict[str, Any] = {"ok": True, "scope": "repo", "root": str(root), "actions": []}
+
+    halt = _halt_scubiee_before_wipe(scope="repo", repo=root)
+    out["actions"].append({"halt": halt})
+    for key, val in (halt.get("actions") or {}).items():
+        out["actions"].append({key: val})
+    if not halt.get("ok"):
+        out["halt_warning"] = (
+            "Some Scubiee processes may still be running — quit Cursor/Kiro, then retry wipe."
+        )
+
     project_id = read_id_file(root)
+    if not project_id:
+        from pipeline.repo_lifecycle import _project
+
+        project_id, _entry = _project(root)
+
     try:
         removed = remove_repo(root, delete_store=True)
         out["actions"].append({"remove_repo": removed})
@@ -478,22 +621,16 @@ def wipe_repo(root: Path | str, *, mcp: bool = True, rule: bool = True) -> dict[
         out["ok"] = False
         out["actions"].append({"remove_repo": {"ok": False, "error": str(exc)}})
 
-    for dirname in DATA_DIR_NAMES:
-        id_dir = root / dirname
+    removed_id_dirs: list[str] = []
+    for id_dir in _discover_repo_id_dirs(root):
         if id_dir.exists():
-            out["actions"].append({"id_dir": _rm_tree(id_dir)})
+            result = _rm_tree(id_dir)
+            out["actions"].append({"id_dir": result})
+            removed_id_dirs.append(str(id_dir))
 
-    if mcp:
-        out["actions"].append(
-            {"mcp": _drop_mcp_server(root / ".cursor" / "mcp.json")}
-        )
-        for local_mcp in _workspace_local_mcp_paths(root):
-            out["actions"].append({"workspace_local_mcp": _drop_mcp_server(local_mcp)})
-    if rule:
-        for rule_path in _cursor_rule_paths(root):
-            out["actions"].append({"rule": _rm_tree(rule_path)})
-        for steering_path in _kiro_steering_paths(root):
-            out["actions"].append({"kiro_steering": _rm_tree(steering_path)})
+    out["removed_id_dirs"] = removed_id_dirs
+    if removed_id_dirs:
+        out["id_dirs_removed"] = len(removed_id_dirs)
 
     out["project_id"] = project_id
     from pipeline.project_id import context_engine_home
@@ -554,7 +691,8 @@ def wipe_all(
                 "all home dirs (~/.scubiee), CodeRank/FastEmbed/"
                 "HuggingFace model caches, uv tool shims, and the scubiee package. "
                 "Re-run with: scubiee wipe --all --confirm. "
-                "Quit Cursor/Kiro and other IDEs first on Windows."
+                "Wipe stops Scubiee automatically; quit Cursor/Kiro first on Windows "
+                "so MCP does not hold file locks."
             ),
         }
 
@@ -564,61 +702,11 @@ def wipe_all(
 
     actions: list[dict[str, Any]] = []
 
-    from pipeline.process_control import remove_tool_shims, stop_all_context_engine_processes
-
-    # STEP 0: Remove MCP configs FIRST so IDEs (Kiro, Cursor, …) don't respawn
-    # the server process immediately after we kill it.
-    # Disconnect ALL tools connect can write (not only Cursor/Kiro).
-    try:
-        from pipeline.rules_installer import uninstall_tools
-        from pipeline.tool_registry import ALL_SLUGS
-
-        disconnect = uninstall_tools(
-            list(ALL_SLUGS),
-            dry_run=False,
-            repo=Path(repo).resolve() if repo else Path.cwd().resolve(),
-            all_workspaces=True,
-        )
-        actions.append({"disconnect_all_tools": disconnect})
-    except Exception as exc:  # noqa: BLE001
-        actions.append({"disconnect_all_tools": {"ok": False, "error": str(exc)}})
-        # Fallback: at least clear Cursor + Kiro user MCP (legacy path).
-        actions.append({"user_cursor_mcp": _drop_mcp_server(Path.home() / ".cursor" / "mcp.json")})
-        for kiro_mcp in _kiro_mcp_paths(Path.home()):
-            actions.append({"kiro_user_mcp_early": _drop_mcp_server(kiro_mcp)})
-
-    # Also remove project-level Cursor MCP for the target repo (cwd or explicit)
-    target_early = Path(repo).resolve() if repo else Path.cwd().resolve()
-    actions.append({"project_cursor_mcp_early": _drop_mcp_server(target_early / ".cursor" / "mcp.json")})
-    for local_mcp in _workspace_local_mcp_paths(target_early):
-        actions.append({"workspace_local_mcp_early": _drop_mcp_server(local_mcp)})
-
-    # STEP 1: Stop background processes so files unlock on Windows.
-    try:
-        actions.append({"stop_all": stop_all_context_engine_processes(ctx_home=home)})
-    except Exception as exc:  # noqa: BLE001
-        actions.append({"stop_all": {"ok": False, "error": str(exc)}})
-
-    try:
-        from pipeline.watchdog import stop_watchdog
-
-        actions.append({"stop_watchdog": stop_watchdog()})
-    except Exception as exc:  # noqa: BLE001
-        actions.append({"stop_watchdog": {"ok": False, "error": str(exc)}})
-
-    try:
-        from pipeline.daemon import stop_daemon
-
-        actions.append({"stop_daemon": stop_daemon()})
-    except Exception as exc:  # noqa: BLE001
-        actions.append({"stop_daemon": {"ok": False, "error": str(exc)}})
-
-    try:
-        from pipeline.lifecycle_runtime import unregister_logon_autostart
-
-        actions.append({"unregister_autostart": unregister_logon_autostart()})
-    except Exception as exc:  # noqa: BLE001
-        actions.append({"unregister_autostart": {"ok": False, "error": str(exc)}})
+    target = Path(repo).resolve() if repo else Path.cwd().resolve()
+    halt = _halt_scubiee_before_wipe(scope="all", repo=target)
+    actions.append({"halt": halt})
+    for key, val in (halt.get("actions") or {}).items():
+        actions.append({key: val})
 
     # Every enrolled checkout (registry) + explicit target/cwd.
     repo_targets: list[Path] = []
@@ -629,7 +717,6 @@ def wipe_all(
             continue
         seen_repo.add(key)
         repo_targets.append(candidate)
-    target = Path(repo).resolve() if repo else Path.cwd().resolve()
     target_key = str(target).lower() if os.name == "nt" else str(target)
     if target_key not in seen_repo:
         repo_targets.append(target)
@@ -660,6 +747,8 @@ def wipe_all(
 
     for vroot in _vectordb_roots():
         actions.append({f"vectordb:{vroot.name}": _rm_tree(vroot)})
+
+    from pipeline.process_control import remove_tool_shims
 
     actions.append({"tool_shims": remove_tool_shims()})
 
@@ -716,8 +805,20 @@ def wipe_all(
                     pkg_out["ok"] = False
         actions.append({"uninstall_scubiee": pkg_out})
 
+    # After all state is gone, any remaining Scubiee process is pointless — kill again.
+    try:
+        from pipeline.process_control import kill_all_scubiee_processes
+
+        final_kill = kill_all_scubiee_processes(exclude_self=True, rounds=3)
+        actions.append({"final_kill": final_kill})
+    except Exception as exc:  # noqa: BLE001
+        final_kill = {"ok": False, "error": str(exc), "remaining": []}
+        actions.append({"final_kill": final_kill})
+
     audit = audit_scubiee_artifacts(include_package=package, include_models=models)
     actions.append({"audit": audit})
+
+    remaining_processes = final_kill.get("remaining") or []
 
     ok = True
     for a in actions:
@@ -734,6 +835,8 @@ def wipe_all(
                         ok = False
     if not audit.get("clean"):
         ok = False
+    if not final_kill.get("ok"):
+        ok = False
 
     return {
         "ok": ok,
@@ -741,19 +844,25 @@ def wipe_all(
         "plan": plan,
         "actions": actions,
         "remaining": audit.get("remaining") or [],
+        "remaining_processes": remaining_processes,
         "audit": audit,
         "next": (
             "Machine is clean. Reinstall: "
             "uv tool install scubiee --index-url https://pypi.org/simple && scubiee setup"
-            if package and audit.get("clean")
+            if package and audit.get("clean") and final_kill.get("ok")
             else (
-                "Some Scubiee files may remain (see remaining). Quit Cursor, run "
-                "`scubiee stop`, then `scubiee wipe --all --confirm` again."
+                "Some Scubiee files may remain (see remaining). Quit Cursor completely "
+                "so MCP releases file locks, then run `scubiee wipe --all --confirm` again."
                 if audit.get("remaining")
                 else (
-                    "Re-run: scubiee setup && scubiee init ."
-                    if not package
-                    else "Reinstall: uv tool install scubiee && scubiee setup"
+                    "Scubiee processes still running after wipe (see remaining_processes). "
+                    "Quit Cursor/Kiro — its MCP host may have respawned scubiee-mcp."
+                    if remaining_processes
+                    else (
+                        "Re-run: scubiee setup && scubiee init ."
+                        if not package
+                        else "Reinstall: uv tool install scubiee && scubiee setup"
+                    )
                 )
             )
         ),

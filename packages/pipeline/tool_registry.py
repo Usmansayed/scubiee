@@ -1,12 +1,11 @@
-"""Registry of AI coding tools: global MCP + rules paths.
+"""Registry of AI coding tools: project-local MCP + GATE rules paths.
 
-See docs/connect-global-mcp-research.md for sources (Win/Mac) researched 2026-08-23.
+Connect records tools in ``~/.scubiee/connected_tools.json`` and fans out
+repo-pinned MCP + compact GATE rules to every enrolled managed repo.
+``scubiee init`` applies connected tools to that repo only.
 
-Connect writes user-global MCP + rules only (no per-repo MCP pin).
-
-Repo binding uses IDE workspace env, ``scubiee init`` (``.scubiee/id.json``),
-and GATE rules — not ``.cursor/mcp.json``-style project MCP files.
-``LEGACY_WORKSPACE_MCP_SLUGS`` is only for disconnect cleanup of old installs.
+Legacy user-global MCP paths are removed on connect/disconnect (migration).
+See docs/connect-global-mcp-research.md for host path sources.
 """
 
 from __future__ import annotations
@@ -119,14 +118,18 @@ TOOLS: list[ToolDef] = [
         notes="Global ~/.kiro + workspace .kiro/settings/mcp.json when connect runs from a project folder.",
     ),
     ToolDef(
-        name="Windsurf",
-        slug="windsurf",
+        name="Devin Desktop",
+        slug="devin-desktop",
         mcp_schema="claude",
         mcp_key="mcpServers",
         mcp_format="json",
-        mcp_user_path=".codeium/windsurf/mcp_config.json",
-        rule_format="none",
-        notes="Cascade mcp_config.json is user-global.",
+        mcp_user_path=None,
+        rule_format="md",
+        rule_user_path=".devin/rules/scubiee.md",
+        notes=(
+            "Devin Local project MCP: .devin/mcp_config.json. Legacy Cascade global "
+            "paths (~/.codeium/*/mcp_config.json) cleaned on connect."
+        ),
     ),
     ToolDef(
         name="VS Code / Copilot",
@@ -226,24 +229,15 @@ TOOLS: list[ToolDef] = [
 TOOL_MAP: dict[str, ToolDef] = {t.slug: t for t in TOOLS}
 ALL_SLUGS: list[str] = [t.slug for t in TOOLS]
 
-# Connect no longer writes per-repo MCP files (global + init + gate is enough).
-WORKSPACE_LOCAL_MCP_SLUGS: frozenset[str] = frozenset()
+# CLI backward compat: ``scubiee connect --windsurf`` → devin-desktop.
+SLUG_ALIASES: dict[str, str] = {"windsurf": "devin-desktop"}
+CONNECT_SLUGS: list[str] = ALL_SLUGS + ["windsurf"]
 
-# Old connect versions wrote these — disconnect still removes them when --repo is set.
-LEGACY_WORKSPACE_MCP_SLUGS: frozenset[str] = frozenset(
-    {
-        "kiro",
-        "copilot",
-        "cline",
-        "roo-code",
-        "cursor",
-        "codex",
-        "continue",
-        "opencode",
-        "amp",
-        "pi",
-    }
-)
+# Every host gets project-local MCP on enrolled repos.
+WORKSPACE_LOCAL_MCP_SLUGS: frozenset[str] = frozenset(ALL_SLUGS)
+
+# Back-compat alias for older tests/docs.
+LEGACY_WORKSPACE_MCP_SLUGS: frozenset[str] = WORKSPACE_LOCAL_MCP_SLUGS
 
 # Hosts that need project-level MCP (connect from each repo). All others: global connect once.
 from pipeline.host_workspace import (  # noqa: E402
@@ -266,8 +260,13 @@ def connect_restart_hint(results: list[dict[str, Any]]) -> str:
     return "Restart the coding tool you're using to pick up MCP."
 
 
+def normalize_tool_slug(slug: str) -> str:
+    raw = (slug or "").strip()
+    return SLUG_ALIASES.get(raw, raw)
+
+
 def get_tool(slug: str) -> ToolDef | None:
-    return TOOL_MAP.get(slug)
+    return TOOL_MAP.get(normalize_tool_slug(slug))
 
 
 def _resolve_token(token: str) -> Path:
@@ -289,6 +288,10 @@ def _resolve_token(token: str) -> Path:
         return _home() / ".config" / "zed" / "settings.json"
     if token == "copilot_cli_mcp":
         return _home() / ".copilot" / "mcp-config.json"
+    if token == "devin_user_mcp":
+        if _is_windows():
+            return _appdata() / "devin" / "mcp_config.json"
+        return _home() / ".config" / "devin" / "mcp_config.json"
     return _home() / token
 
 
@@ -353,8 +356,8 @@ def is_workspace_local_mcp_tool(slug: str) -> bool:
 
 
 def resolve_mcp_project_paths(tool: ToolDef, repo: Path | None) -> list[Path]:
-    """Legacy per-repo MCP paths (disconnect cleanup only; connect does not write these)."""
-    if repo is None or tool.slug not in LEGACY_WORKSPACE_MCP_SLUGS:
+    """Per-repo MCP paths written by connect fan-out / removed on disconnect."""
+    if repo is None or tool.slug not in WORKSPACE_LOCAL_MCP_SLUGS:
         return []
     root = Path(repo).resolve()
     if tool.slug == "kiro":
@@ -375,9 +378,44 @@ def resolve_mcp_project_paths(tool: ToolDef, repo: Path | None) -> list[Path]:
         return [root / "opencode.json"]
     if tool.slug == "amp":
         return [root / ".amp" / "settings.json"]
-    if tool.slug == "pi":
+    if tool.slug in ("claude-code", "pi"):
         return [root / ".mcp.json"]
+    if tool.slug == "zed":
+        return [root / ".zed" / "settings.json"]
+    if tool.slug == "devin-desktop":
+        return [root / ".devin" / "mcp_config.json"]
     return []
+
+
+def resolve_mcp_project_write_targets(
+    tool: ToolDef, repo: Path | None
+) -> list[tuple[Path, str, str]]:
+    """(path, schema, key) for every project MCP file this tool writes."""
+    if repo is None:
+        return []
+    targets: list[tuple[Path, str, str]] = []
+    for path in resolve_mcp_project_paths(tool, repo):
+        if tool.slug == "copilot" and ".vscode" in path.parts:
+            targets.append((path, "vscode", "servers"))
+        elif tool.slug == "copilot" and path.name == "mcp.json" and path.parent == Path(repo).resolve():
+            targets.append((path, "claude", "mcpServers"))
+        else:
+            targets.append((path, tool.mcp_schema, tool.mcp_key))
+    return targets
+
+
+def resolve_mcp_legacy_global_paths(tool: ToolDef) -> list[tuple[Path, str, str]]:
+    """Old user-global MCP locations removed during local-first migration."""
+    targets = list(resolve_mcp_write_targets(tool))
+    if tool.slug == "devin-desktop":
+        targets.extend(
+            [
+                (_home() / ".codeium" / "windsurf" / "mcp_config.json", "claude", "mcpServers"),
+                (_home() / ".codeium" / "mcp_config.json", "claude", "mcpServers"),
+                (_resolve_token("devin_user_mcp"), "claude", "mcpServers"),
+            ]
+        )
+    return targets
 
 
 def resolve_mcp_project_path(tool: ToolDef, repo: Path | None) -> Path | None:
@@ -386,22 +424,16 @@ def resolve_mcp_project_path(tool: ToolDef, repo: Path | None) -> Path | None:
 
 
 def all_workspace_local_mcp_paths(repo: Path | None) -> list[Path]:
-    """Every workspace-local MCP path connect may write for project-pin hosts."""
+    """Every workspace-local MCP path connect may write under a repo."""
     if repo is None:
         return []
     root = Path(repo).resolve()
-    return [
-        root / ".kiro" / "settings" / "mcp.json",
-        root / ".vscode" / "mcp.json",
-        root / ".mcp.json",
-        root / ".cline" / "mcp.json",
-        root / ".roo" / "mcp.json",
-        root / ".cursor" / "mcp.json",
-        root / ".codex" / "config.toml",
-        root / ".continue" / "mcpServers" / "scubiee.yaml",
-        root / "opencode.json",
-        root / ".amp" / "settings.json",
-    ]
+    paths: list[Path] = []
+    for slug in WORKSPACE_LOCAL_MCP_SLUGS:
+        tool = TOOL_MAP.get(slug)
+        if tool:
+            paths.extend(resolve_mcp_project_paths(tool, root))
+    return paths
 
 
 def resolve_rule_project_paths(tool: ToolDef, repo: Path | None) -> list[Path]:

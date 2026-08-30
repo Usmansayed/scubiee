@@ -16,7 +16,10 @@ def write_install_marker() -> None:
     """Write current install's sys.prefix to ~/.scubiee/install_marker.json"""
     import json
 
-    marker_path = context_engine_home() / "install_marker.json"
+    home = context_engine_home()
+    if not (home / "accel.json").is_file():
+        return
+    marker_path = home / "install_marker.json"
     marker_path.parent.mkdir(parents=True, exist_ok=True)
     data = {
         "sys_prefix": sys.prefix,

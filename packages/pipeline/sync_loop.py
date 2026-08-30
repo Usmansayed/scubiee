@@ -18,7 +18,7 @@ from typing import Iterable
 
 from pipeline.dirty_journal import JournalingLedger
 from pipeline.dirty_ledger import DirtyLedger
-from pipeline.project_id import resolve_project, context_engine_home
+from pipeline.project_id import context_engine_home, peek_project
 from pipeline.sync_status import derive_sync_status
 
 DEFAULT_INTERVAL_MS = int(os.environ.get("CTX_SYNC_INTERVAL_MS", str(5 * 60 * 1000)))
@@ -95,7 +95,14 @@ class BackgroundSyncLoop:
         wake_gap_ms: int = DEFAULT_WAKE_GAP_MS,
     ):
         self.repo = repo.resolve()
-        self.project_id = resolve_project(self.repo).project_id
+        from pipeline.repo_lifecycle import _project
+
+        pid, _entry = _project(self.repo)
+        if not pid:
+            raise RuntimeError(
+                f"keeper requires an enrolled repo (run `scubiee init .`): {self.repo}"
+            )
+        self.project_id = pid
         self.interval_ms = max(1000, interval_ms)
         self.on_refresh = on_refresh
         self.locate_streak_ms = max(0, locate_streak_ms)
@@ -189,11 +196,14 @@ class BackgroundSyncLoop:
         try:
             from pipeline.store import PipelineStore
 
-            ref = resolve_project(self.repo)
+            ref = peek_project(self.repo)
+            if ref is None:
+                return 0, {}
             store = PipelineStore(
                 self.repo,
                 base_dir=ref.store_dir,
                 project_id=ref.project_id,
+                resolve=False,
             )
             for chunk in store.load_chunks():
                 rel = chunk.file.replace("\\", "/")

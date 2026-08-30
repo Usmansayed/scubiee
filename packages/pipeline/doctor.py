@@ -8,7 +8,7 @@ from typing import Any
 
 from pipeline.artifact_guard import MANIFEST_NAME, validate_manifest
 from pipeline.preflight import inspect_capabilities
-from pipeline.project_id import index_is_usable, resolve_project
+from pipeline.project_id import ProjectNotBoundError, index_is_usable, resolve_project
 from pipeline.store import PipelineStore
 
 
@@ -114,7 +114,18 @@ def plan_repairs(
         )
     readiness = report.get("readiness") or {}
     manifest = readiness.get("manifest") if isinstance(readiness.get("manifest"), dict) else {}
-    if manifest.get("ok") is False:
+    enrollment = report.get("enrollment") or {}
+    if enrollment.get("enrolled") is False:
+        actions.append(
+            {
+                "id": "initialize_repo",
+                "kind": "manual",
+                "detail": str(
+                    enrollment.get("repair") or "run: scubiee init ."
+                ),
+            }
+        )
+    elif manifest.get("ok") is False:
         actions.append(
             {
                 "id": "rebuild_index",
@@ -150,28 +161,69 @@ def plan_repairs(
                 "detail": "merge duplicate git worktree indexes into one project store",
             }
         )
+    connect = report.get("connect_registry") or {}
+    for warning in connect.get("warnings") or []:
+        wid = str(warning.get("id") or "")
+        detail = str(warning.get("detail") or wid)
+        if wid == "unenrolled_managed_repo":
+            actions.append({"id": "reenroll_repo", "kind": "manual", "detail": detail})
+        elif wid in ("stale_registry_path", "connected_tools_no_managed_repos"):
+            actions.append({"id": wid, "kind": "manual", "detail": detail})
+        elif wid == "shared_id_copy_collision":
+            actions.append(
+                {
+                    "id": "fork_copy_collisions",
+                    "kind": "safe",
+                    "detail": detail,
+                }
+            )
     return actions
 
 
 def doctor_repo(root: Path | str | None = None) -> dict[str, Any]:
     """Deep check for one repository — capabilities, readiness, repairs."""
     repo = Path(root).resolve() if root else Path.cwd()
-    caps = inspect_capabilities(require_semantic=True)
-    ref = resolve_project(repo, migrate=False)
-    store = PipelineStore(repo)
-    meta: dict[str, Any] = {}
-    try:
-        meta = store.load_meta()
-    except Exception as exc:  # noqa: BLE001
-        meta = {"_error": str(exc)}
+    from pipeline.managed_repos import audit_connect_registry
 
-    collection = meta.get("collection") if isinstance(meta, dict) else None
-    usable = index_is_usable(store.base, collection_name=collection)
-    manifest = (
-        validate_manifest(store.base)
-        if (store.base / MANIFEST_NAME).is_file()
-        else {"ok": None, "reason": "manifest_absent_legacy"}
-    )
+    connect_registry = audit_connect_registry()
+    caps = inspect_capabilities(require_semantic=True)
+    from pipeline.project_id import detect_git_family_duplicates
+
+    enrollment: dict[str, Any] = {"enrolled": True}
+    try:
+        ref = resolve_project(repo, migrate=False, bind=False)
+    except ProjectNotBoundError as exc:
+        ref = None
+        enrollment = {
+            "enrolled": False,
+            "reason": str(exc),
+            "repair": "scubiee init .",
+        }
+
+    if ref is None:
+        meta = {}
+        usable = False
+        manifest: dict[str, Any] = {"ok": None, "reason": "not_enrolled"}
+        journal: dict[str, Any] = {"pending": False}
+        project_id: str | None = None
+    else:
+        store = PipelineStore(
+            repo, base_dir=ref.store_dir, project_id=ref.project_id, resolve=False
+        )
+        meta = {}
+        try:
+            meta = store.load_meta()
+        except Exception as exc:  # noqa: BLE001
+            meta = {"_error": str(exc)}
+        collection = meta.get("collection") if isinstance(meta, dict) else None
+        usable = index_is_usable(store.base, collection_name=collection)
+        manifest = (
+            validate_manifest(store.base)
+            if (store.base / MANIFEST_NAME).is_file()
+            else {"ok": None, "reason": "manifest_absent_legacy"}
+        )
+        journal = _journal_pending(ref.project_id)
+        project_id = ref.project_id
 
     binding = {"ok": None, "reason": "daemon_unchecked"}
     try:
@@ -185,16 +237,15 @@ def doctor_repo(root: Path | str | None = None) -> dict[str, Any]:
         **(caps.get("accel") or {}),
         **doctor_report()["accel"],
     }
-    journal = _journal_pending(ref.project_id)
-    from pipeline.project_id import detect_git_family_duplicates
-
     git_family = detect_git_family_duplicates()
     report: dict[str, Any] = {
         "ok": False,
         "repo": str(repo),
-        "project_id": ref.project_id,
+        "project_id": project_id,
+        "enrollment": enrollment,
         "capabilities": caps,
         "accel": accel,
+        "connect_registry": connect_registry,
         "readiness": {
             "index_usable": usable,
             "manifest": manifest,
@@ -223,6 +274,7 @@ def doctor_repo(root: Path | str | None = None) -> dict[str, Any]:
         and usable
         and manifest.get("ok") is not False
         and not git_family.get("needs_reconcile")
+        and connect_registry.get("ok", True)
         and not blocking
     )
     return report
@@ -230,8 +282,10 @@ def doctor_repo(root: Path | str | None = None) -> dict[str, Any]:
 
 def doctor_all() -> dict[str, Any]:
     """Doctor every managed repository."""
+    from pipeline.managed_repos import audit_connect_registry
     from pipeline.repo_lifecycle import list_managed_repos
 
+    connect_registry = audit_connect_registry()
     repositories: list[dict[str, Any]] = []
     for entry in list_managed_repos():
         root = _managed_root(entry)
@@ -245,9 +299,18 @@ def doctor_all() -> dict[str, Any]:
         for item in repositories
         for action in (item.get("repair_plan") or [])
     ]
+    for warning in connect_registry.get("warnings") or []:
+        wid = str(warning.get("id") or "")
+        detail = str(warning.get("detail") or wid)
+        kind = "manual" if wid != "unenrolled_managed_repo" else "manual"
+        planned.append({"id": wid, "kind": kind, "detail": detail, "repo": None})
     return {
-        "ok": all(item.get("ok") for item in repositories) if repositories else True,
+        "ok": (
+            all(item.get("ok") for item in repositories) if repositories else True
+        )
+        and connect_registry.get("ok", True),
         "repositories": repositories,
+        "connect_registry": connect_registry,
         "repair_plan": planned,
         "repairs": planned,
         "checked_at": time.time(),
@@ -285,6 +348,10 @@ def apply_safe_repairs(root: Path | str | None = None) -> dict[str, Any]:
             from pipeline.git_family import reconcile_git_families
 
             result = reconcile_git_families(prefer_root=repo).to_dict()
+        elif action_id == "fork_copy_collisions":
+            from pipeline.checkout_identity import reconcile_registry_copy_collisions
+
+            result = reconcile_registry_copy_collisions()
         else:
             manual.append({**action, "kind": "manual"})
             continue

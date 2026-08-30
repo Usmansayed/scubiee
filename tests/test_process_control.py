@@ -6,6 +6,14 @@ from pathlib import Path
 from pipeline import process_control
 
 
+def test_cmdline_matches_mcp_locate_module() -> None:
+    from pipeline.process_control import _cmdline_matches_ce
+
+    assert _cmdline_matches_ce(["python", "-m", "pipeline.mcp_locate"])
+    assert _cmdline_matches_ce(["scubiee-mcp"])
+    assert not _cmdline_matches_ce(["python", "-m", "pip", "install", "requests"])
+
+
 def test_uv_tool_root_from_scripts_python() -> None:
     py = Path("C:/Users/me/AppData/Roaming/uv/tools/scubiee/Scripts/python.exe")
     root = process_control.uv_tool_root(py)

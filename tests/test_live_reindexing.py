@@ -8,6 +8,16 @@ from pathlib import Path
 
 import pytest
 
+from conftest import enroll_test_repo
+
+
+@pytest.fixture(autouse=True)
+def enrolled_sync_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    home = tmp_path / "ce-home"
+    monkeypatch.setenv("CTX_HOME", str(home))
+    enroll_test_repo(tmp_path, home=home, project_id="ce_live_reindex1234567890abcdef")
+    return tmp_path
+
 
 @pytest.fixture(autouse=True)
 def _default_no_engine_clients(monkeypatch):

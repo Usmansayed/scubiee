@@ -343,10 +343,10 @@ class RuntimeManager:
         index_usable = False
         if self.repo is not None:
             try:
-                from pipeline.project_id import index_is_usable, resolve_project
+                from pipeline.project_id import index_is_usable, peek_project
 
-                ref = resolve_project(self.repo)
-                index_usable = index_is_usable(ref.store_dir)
+                ref = peek_project(self.repo)
+                index_usable = index_is_usable(ref.store_dir) if ref else False
             except Exception:  # noqa: BLE001
                 index_usable = self.engine is not None
         return {
@@ -481,14 +481,16 @@ class RuntimeManager:
             return {"ok": False, "error": str(exc), "warm_state": "error"}
 
     def _warm_registered(self, root: Path) -> dict[str, Any]:
-        from pipeline.project_id import index_is_usable, resolve_project
+        from pipeline.project_id import index_is_usable, peek_project
 
         self.warming = True
         self.warm_error = None
         self.warm_state = "warming"
         t0 = time.perf_counter()
         try:
-            ref = resolve_project(root)
+            ref = peek_project(root)
+            if ref is None:
+                raise RuntimeError(f"not enrolled at {root}; run: scubiee init .")
             self.project_id = ref.project_id
             self.repo = root
             store = PipelineStore(root, base_dir=ref.store_dir, project_id=ref.project_id)
@@ -713,7 +715,15 @@ class RuntimeManager:
             return payload
 
         try:
-            store = PipelineStore(repo)
+            from pipeline.project_id import projects_root
+
+            base_dir = (projects_root() / project_id).resolve() if project_id else None
+            store = PipelineStore(
+                repo,
+                base_dir=base_dir,
+                project_id=project_id,
+                resolve=False,
+            )
             payload["project_id"] = project_id or store.project_id
             payload["root_probe"] = self.index.probe(repo)
             payload["meta"] = {

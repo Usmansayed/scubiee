@@ -131,7 +131,7 @@ def test_host_chat_env_isolates_sessions(repo: Path, monkeypatch: pytest.MonkeyP
         ("COPILOT_WORKSPACE_FOLDER", "/tmp/p", "copilot"),
         ("CLINE_PROJECT_DIR", "/tmp/p", "cline"),
         ("OPENCODE_DEFAULT_PROJECT", "/tmp/p", "opencode"),
-        ("WINDSURF_WORKSPACE", "/tmp/p", "windsurf"),
+        ("WINDSURF_WORKSPACE", "/tmp/p", "devin-desktop"),
         ("CONTINUE_PROJECT_DIR", "/tmp/p", "continue"),
         ("ZED_PROJECT_DIR", "/tmp/p", "zed"),
         ("AMP_PROJECT_DIR", "/tmp/p", "amp"),

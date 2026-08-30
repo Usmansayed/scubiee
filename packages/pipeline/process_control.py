@@ -258,17 +258,107 @@ def safe_terminate_pid(pid: int, *, grace_s: float = 1.0) -> dict[str, Any]:
 def _cmdline_matches_ce(cmdline: list[str] | None) -> bool:
     if not cmdline:
         return False
-    joined = " ".join(str(x) for x in cmdline).lower()
+    joined = " ".join(str(x) for x in cmdline).lower().replace("/", "\\")
     needles = (
         "scubiee",
+        "scubiee-mcp",
         "ctx-mcp",
         r"uv\tools\scubiee",
+        "context-engine",
+        ".scubiee",
+        "pipeline.mcp_locate",
         "pipeline.mcp_server",
         "pipeline.__main__",
         "pipeline.engine",
         "pipeline.watchdog",
+        "pipeline.server",
+        "pipeline.daemon",
+        "pipeline.sync_loop",
     )
     return any(n in joined for n in needles)
+
+
+def _exe_matches_scubiee(exe: str | None) -> bool:
+    if not exe:
+        return False
+    low = str(exe).lower().replace("/", "\\")
+    return (
+        "scubiee" in low
+        or "ctx-mcp" in low
+        or r"uv\tools\scubiee" in low
+        or "context-engine" in low
+    )
+
+
+def enumerate_scubiee_processes(*, exclude_self: bool = True) -> list[dict[str, Any]]:
+    """Return PIDs that look like Scubiee daemon/MCP/engine (not arbitrary python)."""
+    my_pid = os.getpid()
+    found: list[dict[str, Any]] = []
+    try:
+        import psutil
+    except ImportError:
+        return found
+
+    for proc in psutil.process_iter(["pid", "exe", "cmdline", "name"]):
+        try:
+            info = proc.info
+            pid = int(info["pid"])
+            if exclude_self and (pid == my_pid or _pid_in_our_ancestry(pid)):
+                continue
+            cmdline = info.get("cmdline") or []
+            exe = info.get("exe") or ""
+            if (
+                is_context_engine_process(pid)
+                or _exe_matches_scubiee(exe)
+                or _cmdline_matches_ce(cmdline)
+            ):
+                found.append(
+                    {
+                        "pid": pid,
+                        "exe": exe,
+                        "cmdline": " ".join(str(x) for x in cmdline)[:240],
+                    }
+                )
+        except (psutil.NoSuchProcess, psutil.AccessDenied, TypeError, ValueError):
+            continue
+    return found
+
+
+def kill_all_scubiee_processes(
+    *,
+    exclude_self: bool = True,
+    rounds: int = 3,
+) -> dict[str, Any]:
+    """Kill every Scubiee-related process (for wipe --all after state is gone)."""
+    actions: dict[str, Any] = {}
+    actions["stop_engine_workers"] = stop_engine_worker_processes()
+    actions["stop_all"] = stop_all_context_engine_processes()
+
+    killed_rounds: list[list[int]] = []
+    for _ in range(max(1, rounds)):
+        round_killed: list[int] = []
+        for proc in enumerate_scubiee_processes(exclude_self=exclude_self):
+            pid = int(proc["pid"])
+            result = safe_terminate_pid(pid, grace_s=0.5)
+            if result.get("terminated"):
+                round_killed.append(pid)
+        killed_rounds.append(round_killed)
+        if not enumerate_scubiee_processes(exclude_self=exclude_self):
+            break
+        time.sleep(0.75)
+
+    root = uv_tool_root()
+    if root is not None:
+        skip = {os.getpid()} if exclude_self else set()
+        actions["stop_uv_tool"] = stop_processes_under(root, exclude_pids=skip)
+
+    remaining = enumerate_scubiee_processes(exclude_self=exclude_self)
+    actions["killed_rounds"] = killed_rounds
+    actions["remaining"] = remaining
+    actions["remaining_pids"] = [p["pid"] for p in remaining]
+    actions["ok"] = not remaining
+    actions["self_pid"] = os.getpid()
+    return actions
 
 
 def stop_engine_worker_processes() -> dict[str, Any]:
@@ -323,7 +413,8 @@ def stop_all_context_engine_processes(*, ctx_home: Path | None = None) -> dict[s
 
     extra_killed: list[int] = []
     extra_failed: list[int] = []
-    home_s = str((ctx_home or context_engine_home()).resolve()).lower()
+    home = ctx_home or context_engine_home()
+    home_s = str(home.resolve()).lower() if home.exists() else ""
     try:
         import psutil
     except ImportError:
@@ -338,7 +429,13 @@ def stop_all_context_engine_processes(*, ctx_home: Path | None = None) -> dict[s
                     continue  # Never kill ourselves (wipe, stop, etc.)
                 cmdline = info.get("cmdline") or []
                 joined = " ".join(str(x) for x in cmdline).lower()
-                if not _cmdline_matches_ce(cmdline) and home_s not in joined:
+                exe = info.get("exe") or ""
+                matches = (
+                    _cmdline_matches_ce(cmdline)
+                    or _exe_matches_scubiee(exe)
+                    or is_context_engine_process(pid)
+                )
+                if not matches and (not home_s or home_s not in joined):
                     continue
                 result = safe_terminate_pid(pid, grace_s=1.0)
                 if result.get("terminated"):
@@ -350,10 +447,10 @@ def stop_all_context_engine_processes(*, ctx_home: Path | None = None) -> dict[s
     time.sleep(1.0)
     actions["extra_killed"] = sorted(set(extra_killed))
     actions["extra_failed"] = sorted(set(x for x in extra_failed if x))
-    root = uv_tool_root()
-    remaining = [p for p in (processes_under(root) if root else []) if p != my_pid]
+    remaining = enumerate_scubiee_processes(exclude_self=True)
     actions["remaining"] = remaining
-    # ok if only this process still holds the tool dir (caller may rename-aside).
+    actions["remaining_pids"] = [p["pid"] for p in remaining]
+    # ok if only this wipe/stop CLI remains (excluded from enumerate).
     actions["ok"] = not remaining
     actions["self_pid"] = my_pid
     return actions

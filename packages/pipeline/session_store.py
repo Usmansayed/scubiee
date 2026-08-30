@@ -21,9 +21,9 @@ def _store_path(repo: Path, session_id: str | None = None) -> Path:
     sid = effective_session_id(session_id)
     if sid:
         return session_data_dir(repo_p, sid) / "session_store.json"
-    from pipeline.project_id import id_dir_path
+    from pipeline.project_id import repo_runtime_dir
 
-    base = id_dir_path(repo_p)
+    base = repo_runtime_dir(repo_p)
     base.mkdir(parents=True, exist_ok=True)
     name = os.environ.get("CTX_SESSION_STORE") or "session_store.json"
     return base / name
