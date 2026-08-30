@@ -3,7 +3,7 @@
 **Date:** August 30, 2026  
 **Repo:** already on your Mac — **pull latest from `origin/main`**  
 **Remote:** `https://github.com/Usmansayed/new-context-engine.git`  
-**Package:** scubiee **v0.3.5** (+ uncommitted fixes pushed in this handoff)  
+**Pull commit:** `be700f9` on `main` (pushed from Windows, Aug 30 2026)  
 **Prior handoff:** [session-handoff-aug24-2026.md](./session-handoff-aug24-2026.md)
 
 ---
