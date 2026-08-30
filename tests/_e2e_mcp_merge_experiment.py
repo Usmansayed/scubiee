@@ -11,11 +11,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-try:
-    import tomllib
-except ImportError:
-    import tomli as tomllib  # type: ignore[no-redef]
-
 NEIGHBOR = "figma"
 SERVER = "scubiee"
 LOG_PATH = Path(__file__).resolve().parent / "_mcp_merge_cli_results.txt"
@@ -58,6 +53,15 @@ def vjson(path: Path) -> dict[str, Any]:
 
 def vtoml(path: Path) -> None:
     raw = path.read_text(encoding="utf-8")
+    try:
+        import tomllib
+    except ImportError:
+        try:
+            import tomli as tomllib  # type: ignore[no-redef]
+        except ImportError:
+            if "[mcp_servers." not in raw:
+                raise ValueError(f"not valid codex mcp toml: {path}") from None
+            return
     try:
         tomllib.loads(raw)
     except TypeError:

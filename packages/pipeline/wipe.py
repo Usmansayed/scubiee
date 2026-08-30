@@ -449,13 +449,16 @@ def audit_scubiee_artifacts(*, include_package: bool = True, include_models: boo
     tool = _uv_tool_dir()
     if tool is not None and include_package:
         note(tool, kind="uv_tool")
-    for shim in (
-        Path.home() / ".local" / "bin" / "scubiee.exe",
-        Path.home() / ".local" / "bin" / "scubiee",
-        Path.home() / ".local" / "bin" / "ctx.exe",
-        Path.home() / ".local" / "bin" / "ctx-mcp.exe",
-    ):
-        note(shim, kind="tool_shim")
+    if include_package:
+        for shim in (
+            Path.home() / ".local" / "bin" / "scubiee.exe",
+            Path.home() / ".local" / "bin" / "scubiee",
+            Path.home() / ".local" / "bin" / "ctx",
+            Path.home() / ".local" / "bin" / "ctx.exe",
+            Path.home() / ".local" / "bin" / "ctx-mcp.exe",
+            Path.home() / ".local" / "bin" / "scubiee-mcp",
+        ):
+            note(shim, kind="tool_shim")
 
     # Repo-local enrollment markers left behind (root + nested checkouts).
     checked_roots: set[str] = set()
@@ -865,10 +868,6 @@ def wipe_all(
     for vroot in _vectordb_roots():
         actions.append({f"vectordb:{vroot.name}": _rm_tree(vroot)})
 
-    from pipeline.process_control import remove_tool_shims
-
-    actions.append({"tool_shims": remove_tool_shims()})
-
     model_removed: list[dict[str, Any]] = []
     if models:
         for d in _coderank_model_dirs():
@@ -884,9 +883,12 @@ def wipe_all(
             _running_from_uv_tool,
             force_remove_uv_tool_dir,
             is_uv_tool_install,
+            remove_tool_shims,
             uv_tool_root,
             uv_tool_uninstall,
         )
+
+        actions.append({"tool_shims": remove_tool_shims()})
 
         uv_tool_dir = _uv_tool_dir()
         uv_bin = shutil.which("uv")

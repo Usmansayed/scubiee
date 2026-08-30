@@ -14,6 +14,26 @@ from pathlib import Path
 from typing import Any
 
 
+def _darwin_getpath(fd: int) -> str | None:
+    """Return the absolute path for an open file descriptor (macOS ``F_GETPATH``)."""
+    try:
+        import fcntl
+    except ImportError:
+        return None
+    if not hasattr(fcntl, "F_GETPATH"):
+        return None
+    try:
+        # Python's fcntl module requires a bytes buffer (<=1024 on 3.10); ctypes
+        # create_string_buffer does not work reliably for F_GETPATH on Darwin.
+        raw = fcntl.fcntl(fd, fcntl.F_GETPATH, b"\x00" * 1024)
+    except OSError:
+        return None
+    if not raw:
+        return None
+    text = raw.split(b"\x00", 1)[0].decode("utf-8", errors="surrogateescape").strip()
+    return text or None
+
+
 def get_filesystem_id(path: Path | str) -> dict[str, Any] | None:
     """Capture permanent OS hardware filesystem identifier for a directory."""
     p = Path(path).resolve()
@@ -180,11 +200,8 @@ def resolve_moved_path(fs_id: dict[str, Any]) -> Path | None:
                 return None
 
             try:
-                # F_GETPATH = 50 on macOS Darwin
-                libc = ctypes.CDLL("libc.dylib")
-                buf = ctypes.create_string_buffer(4096)
-                if libc.fcntl(fd, 50, buf) >= 0:
-                    resolved = buf.value.decode("utf-8")
+                resolved = _darwin_getpath(fd)
+                if resolved:
                     p = Path(resolved).resolve()
                     if p.is_dir():
                         return p

@@ -29,6 +29,7 @@ dependencies = [
   "Pillow>=10.0",
   "loguru>=0.7.2",
   "mmh3>=4.1.0",
+  "tomli>=2.0.0",
   "py-rust-stemmers>=0.1.0",
   "tokenizers>=0.15",
   "onnx>=1.16",

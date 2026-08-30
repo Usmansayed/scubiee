@@ -193,6 +193,18 @@ class MCPConfigMergeError(RuntimeError):
     """Refusing to merge into a broken or incompatible MCP config file."""
 
 
+def _loads_toml(text: str) -> Any:
+    """Parse TOML on Python 3.10+ (tomllib or tomli)."""
+    try:
+        import tomllib
+    except ImportError:
+        import tomli as tomllib  # type: ignore[no-redef]
+    try:
+        return tomllib.loads(text)
+    except TypeError:
+        return tomllib.loads(text.encode("utf-8"))
+
+
 def _load_json(path: Path) -> dict[str, Any]:
     """Load JSON object; missing file → empty dict (non-merge reads)."""
     if not path.is_file():
@@ -240,11 +252,7 @@ def _validate_toml_file(path: Path) -> None:
     """Ensure written TOML is parseable and contains the Scubiee MCP section."""
     text = path.read_text(encoding="utf-8")
     try:
-        try:
-            import tomllib
-        except ImportError:
-            import tomli as tomllib  # type: ignore[no-redef]
-        tomllib.loads(text)
+        _loads_toml(text)
     except Exception as exc:
         raise MCPConfigMergeError(
             f"wrote invalid TOML to {path}: {exc}"
@@ -607,6 +615,117 @@ def _write_mcp_zed(path: Path, entry: dict[str, Any]) -> None:
     _write_json(path, data)
 
 
+def _opencode_servers_bucket(data: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+    """Return (servers dict, is_v2). v2 nests servers under ``mcp.servers``."""
+    mcp = data.get("mcp")
+    if not isinstance(mcp, dict):
+        return {}, False
+    nested = mcp.get("servers")
+    if isinstance(nested, dict):
+        return nested, True
+    return mcp, False
+
+
+def _opencode_entry_for_write(entry: dict[str, Any], *, v2: bool) -> dict[str, Any]:
+    out = {str(k): v for k, v in entry.items()}
+    if not v2:
+        return out
+    if "enabled" in out:
+        out["disabled"] = not bool(out.pop("enabled"))
+    elif "disabled" not in out:
+        out["disabled"] = False
+    return out
+
+
+def _opencode_use_v2_schema(data: dict[str, Any]) -> bool:
+    """Pick v2 when file already uses it, or when creating a fresh opencode.json."""
+    if not data:
+        return True
+    mcp = data.get("mcp")
+    if isinstance(mcp, dict) and isinstance(mcp.get("servers"), dict):
+        return True
+    # Legacy flat mcp.{name} shape
+    if isinstance(mcp, dict) and any(
+        isinstance(v, dict) and ("command" in v or "type" in v)
+        for k, v in mcp.items()
+        if k != "servers"
+    ):
+        return False
+    return True
+
+
+def _write_mcp_opencode(path: Path, entry: dict[str, Any]) -> None:
+    data = _load_json_for_merge(path)
+    use_v2 = _opencode_use_v2_schema(data)
+    mcp = data.get("mcp")
+    if not isinstance(mcp, dict):
+        mcp = {}
+        data["mcp"] = mcp
+
+    if use_v2:
+        servers = mcp.get("servers")
+        if not isinstance(servers, dict):
+            servers = {}
+        # Migrate flat v1 neighbors into v2 bucket when upgrading.
+        for key in list(mcp.keys()):
+            if key == "servers":
+                continue
+            val = mcp.pop(key)
+            if isinstance(val, dict) and ("command" in val or "type" in val):
+                servers.setdefault(key, val)
+        mcp["servers"] = servers
+        strip_legacy_mcp_keys(servers)
+        servers[_SERVER_NAME] = _opencode_entry_for_write(entry, v2=True)
+    else:
+        strip_legacy_mcp_keys(mcp)
+        mcp[_SERVER_NAME] = _opencode_entry_for_write(entry, v2=False)
+
+    if "$schema" not in data:
+        data = {"$schema": "https://opencode.ai/config.json", **data}
+    _write_json(path, data)
+
+
+def _remove_mcp_opencode(
+    path: Path,
+    *,
+    warnings: list[dict[str, str]] | None = None,
+) -> bool:
+    if not path.is_file():
+        return False
+    try:
+        data = _load_json_for_merge(path)
+    except MCPConfigMergeError as exc:
+        _record_mcp_skip(warnings, path, str(exc))
+        return False
+    mcp = data.get("mcp")
+    if not isinstance(mcp, dict):
+        return False
+    removed = False
+    for name in MCP_SERVER_NAMES:
+        if name in mcp:
+            del mcp[name]
+            removed = True
+    servers = mcp.get("servers")
+    if isinstance(servers, dict):
+        for name in MCP_SERVER_NAMES:
+            if name in servers:
+                del servers[name]
+                removed = True
+        if not servers:
+            mcp.pop("servers", None)
+    if not removed:
+        return False
+    if not mcp:
+        data.pop("mcp", None)
+    if set(data.keys()) <= {"$schema"}:
+        data.clear()
+    if data:
+        _write_json(path, data)
+    else:
+        path.unlink(missing_ok=True)
+    return True
+
+
 def _remove_legacy_global_mcp(
     tool: ToolDef,
     *,
@@ -673,7 +792,7 @@ def verify_mcp_configs(slugs: list[str]) -> list[dict[str, Any]]:
                 elif schema == "zed":
                     servers = data.get("context_servers", {})
                 elif schema == "opencode":
-                    servers = data.get("mcp", {})
+                    servers, _ = _opencode_servers_bucket(data)
                 else:
                     servers = data.get(use_key, {})
                 if not isinstance(servers, dict):
@@ -838,6 +957,8 @@ def write_mcp_config(
         _write_mcp_toml(path, entry)
     elif use_schema == "continue":
         _write_mcp_continue_yaml(path, entry)
+    elif use_schema == "opencode":
+        _write_mcp_opencode(path, entry)
     else:
         _write_mcp_json_keyed(path, use_key, entry)
 
@@ -1474,11 +1595,7 @@ def _remove_mcp_toml(
     new_lines.append("")
     try:
         path.write_text("\n".join(new_lines), encoding="utf-8")
-        try:
-            import tomllib
-        except ImportError:
-            import tomli as tomllib  # type: ignore[no-redef]
-        tomllib.loads(path.read_text(encoding="utf-8"))
+        _loads_toml(path.read_text(encoding="utf-8"))
     except Exception as exc:
         _record_mcp_skip(warnings, path, f"TOML rewrite failed: {exc}")
         return False
@@ -1539,6 +1656,8 @@ def remove_mcp_config(
         if _is_continue_project_mcp(path):
             return _remove_continue_project_mcp(path)
         return _remove_mcp_continue_yaml(path, warnings=warnings)
+    if use_schema == "opencode":
+        return _remove_mcp_opencode(path, warnings=warnings)
     return _remove_mcp_json_keyed(path, use_key, warnings=warnings)
 
 

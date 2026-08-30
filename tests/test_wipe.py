@@ -628,3 +628,37 @@ def test_wipe_cli_accepts_yes_as_confirm_alias(tmp_path: Path, monkeypatch, caps
     assert not home.exists()
     err = capsys.readouterr()
     assert "unrecognized arguments" not in err.err
+
+
+def test_wipe_all_keep_package_preserves_tool_shims(tmp_path: Path, monkeypatch) -> None:
+    """--keep-package must not remove ~/.local/bin/scubiee (W5 / G16b matrix)."""
+    home = tmp_path / "ce-home"
+    home.mkdir()
+    monkeypatch.setenv("CTX_HOME", str(home))
+
+    fake_user = tmp_path / "user"
+    shim = fake_user / ".local" / "bin" / "scubiee"
+    shim.parent.mkdir(parents=True)
+    shim.write_text("#!/bin/sh\necho scubiee\n", encoding="utf-8")
+    mcp = fake_user / ".cursor" / "mcp.json"
+    mcp.parent.mkdir(parents=True)
+    mcp.write_text(
+        json.dumps({"mcpServers": {"scubiee": {"command": "x"}, "neighbor": {}}}),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(Path, "home", staticmethod(lambda: fake_user))
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    monkeypatch.chdir(repo)
+
+    out = wipe_all(yes=True, models=False, package=False, repo=repo)
+    assert out["ok"] is True
+    assert shim.is_file(), "keep-package must not unlink uv tool shims"
+    assert not any("tool_shims" in a for a in out.get("actions", []))
+    cursor = json.loads(mcp.read_text(encoding="utf-8"))
+    assert "scubiee" not in (cursor.get("mcpServers") or {})
+    assert "neighbor" in (cursor.get("mcpServers") or {})
+    audit = audit_scubiee_artifacts(include_package=False, include_models=False)
+    shim_left = [r for r in audit["remaining"] if r.get("kind") == "tool_shim"]
+    assert shim_left == [], shim_left

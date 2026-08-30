@@ -76,7 +76,10 @@ def _servers_dict(data: dict, schema: str, key: str) -> dict:
     if schema == "zed":
         return data["context_servers"]
     if schema == "opencode":
-        return data["mcp"]
+        mcp = data.get("mcp", {})
+        if isinstance(mcp.get("servers"), dict):
+            return mcp["servers"]
+        return mcp
     return data[key]
 
 
@@ -238,6 +241,78 @@ def test_copilot_dual_paths_independent(tmp_path: Path) -> None:
     assert OTHER in vscode_after["servers"]
     assert MCP_SERVER_NAME not in root_after["mcpServers"]
     assert OTHER in root_after["mcpServers"]
+
+
+def test_opencode_v1_flat_schema_roundtrip(tmp_path: Path) -> None:
+    tool = TOOL_MAP["opencode"]
+    repo = _repo(tmp_path)
+    path = repo / "opencode.json"
+    _seed_json(path, "mcp", "opencode")
+    entry = format_server_entry(tool, repo, pin_repo=True)
+
+    write_mcp_config(tool, path, entry, schema="opencode", key="mcp")
+    data = _assert_valid_json(path)
+    assert isinstance(data["mcp"].get("servers"), dict) is False
+    assert MCP_SERVER_NAME in data["mcp"]
+    assert OTHER in data["mcp"]
+    assert "enabled" in data["mcp"][MCP_SERVER_NAME]
+
+    assert remove_mcp_config(tool, path, schema="opencode", key="mcp") is True
+    after = _assert_valid_json(path)
+    assert MCP_SERVER_NAME not in after["mcp"]
+    assert OTHER in after["mcp"]
+
+
+def test_opencode_v2_servers_schema_roundtrip(tmp_path: Path) -> None:
+    tool = TOOL_MAP["opencode"]
+    repo = _repo(tmp_path)
+    path = repo / "opencode.json"
+    path.write_text(
+        json.dumps(
+            {
+                "$schema": "https://opencode.ai/config.json",
+                "mcp": {
+                    "servers": {
+                        OTHER: {
+                            "type": "local",
+                            "disabled": False,
+                            "command": ["node", "other.js"],
+                        }
+                    }
+                },
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    entry = format_server_entry(tool, repo, pin_repo=True)
+
+    write_mcp_config(tool, path, entry, schema="opencode", key="mcp")
+    data = _assert_valid_json(path)
+    servers = data["mcp"]["servers"]
+    assert MCP_SERVER_NAME in servers
+    assert OTHER in servers
+    assert "disabled" in servers[MCP_SERVER_NAME]
+    assert "enabled" not in servers[MCP_SERVER_NAME]
+
+    assert remove_mcp_config(tool, path, schema="opencode", key="mcp") is True
+    after = _assert_valid_json(path)
+    assert MCP_SERVER_NAME not in after["mcp"]["servers"]
+    assert OTHER in after["mcp"]["servers"]
+
+
+def test_opencode_fresh_file_uses_v2_schema(tmp_path: Path) -> None:
+    tool = TOOL_MAP["opencode"]
+    repo = _repo(tmp_path)
+    path = repo / "opencode.json"
+    entry = format_server_entry(tool, repo, pin_repo=True)
+
+    write_mcp_config(tool, path, entry, schema="opencode", key="mcp")
+    data = _assert_valid_json(path)
+    assert isinstance(data["mcp"]["servers"], dict)
+    assert MCP_SERVER_NAME in data["mcp"]["servers"]
+    assert "disabled" in data["mcp"]["servers"][MCP_SERVER_NAME]
 
 
 def test_copilot_remove_workspace_mcp_dotfile_name(tmp_path: Path) -> None:

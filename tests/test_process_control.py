@@ -3,6 +3,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+import pytest
+
 from pipeline import process_control
 
 
@@ -14,12 +16,14 @@ def test_cmdline_matches_mcp_locate_module() -> None:
     assert not _cmdline_matches_ce(["python", "-m", "pip", "install", "requests"])
 
 
+@pytest.mark.skipif(os.name != "nt", reason="Windows uv tool Scripts layout")
 def test_uv_tool_root_from_scripts_python() -> None:
     py = Path("C:/Users/me/AppData/Roaming/uv/tools/scubiee/Scripts/python.exe")
     root = process_control.uv_tool_root(py)
     assert root == Path("C:/Users/me/AppData/Roaming/uv/tools/scubiee")
 
 
+@pytest.mark.skipif(os.name != "nt", reason="Windows conda path layout")
 def test_uv_tool_root_none_for_conda() -> None:
     py = Path("C:/Users/me/Miniconda3/python.exe")
     assert process_control.uv_tool_root(py) is None

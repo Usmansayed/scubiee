@@ -79,6 +79,16 @@ echo "[G16b-check] ~/.scubiee exists=$home_exists (expect false)" >> "$LOG"
 id_after=$([ -f .scubiee/id.json ] && echo true || echo false)
 echo "[G16b-check] .scubiee/id.json exists=$id_after (expect false)" >> "$LOG"
 
+# Belt-and-suspenders: keep-package wipe must leave the CLI on PATH (W5 regression).
+if ! command -v scubiee >/dev/null 2>&1; then
+  echo "[G16b-recover] scubiee missing after keep-package wipe — reinstalling from repo" >> "$LOG"
+  if command -v uv >/dev/null 2>&1; then
+    uv tool install --force . >> "$LOG" 2>&1 || true
+  fi
+fi
+scubiee_ok=$([ -x "$(command -v scubiee 2>/dev/null || true)" ] && echo true || echo false)
+echo "[G16b-check] scubiee on PATH=$scubiee_ok (expect true)" >> "$LOG"
+
 # --- Post full wipe ---
 run P1 "scubiee setup --repair" "OK after full wipe"
 run P2 "scubiee init ." "OK fresh init"

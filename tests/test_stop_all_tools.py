@@ -92,6 +92,35 @@ def test_remove_opencode_preserves_other_mcp(tmp_path: Path) -> None:
     assert "other" in data["mcp"]
 
 
+def test_remove_opencode_v2_preserves_other_mcp(tmp_path: Path) -> None:
+    from pipeline.rules_installer import remove_mcp_config
+    from pipeline.tool_registry import TOOL_MAP
+
+    path = tmp_path / "opencode.json"
+    path.write_text(json.dumps({
+        "$schema": "https://opencode.ai/config.json",
+        "mcp": {
+            "servers": {
+                "scubiee": {
+                    "type": "local",
+                    "disabled": False,
+                    "command": ["python", "-m", "x"],
+                },
+                "other": {
+                    "type": "local",
+                    "disabled": False,
+                    "command": ["node", "y.js"],
+                },
+            }
+        },
+    }, indent=2), encoding="utf-8")
+
+    assert remove_mcp_config(TOOL_MAP["opencode"], path) is True
+    data = json.loads(path.read_text(encoding="utf-8"))
+    assert "scubiee" not in data["mcp"]["servers"]
+    assert "other" in data["mcp"]["servers"]
+
+
 def test_remove_codex_toml_preserves_other_sections(tmp_path: Path) -> None:
     from pipeline.rules_installer import remove_mcp_config
     from pipeline.tool_registry import TOOL_MAP

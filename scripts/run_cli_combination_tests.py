@@ -290,6 +290,14 @@ def run_all(*, repo: Path, quick: bool) -> list[Result]:
     return results
 
 
+def _json_safe(value: object) -> object:
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    if isinstance(value, Path):
+        return str(value)
+    raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Scubiee CLI combination tests")
     parser.add_argument("--json", default="", help="Write JSON results here")
@@ -327,7 +335,10 @@ def main() -> int:
         ],
     }
     if args.json:
-        Path(args.json).write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        Path(args.json).write_text(
+            json.dumps(payload, indent=2, default=_json_safe),
+            encoding="utf-8",
+        )
         print(f"\nWrote {args.json}")
 
     return 0 if passed == total else 1

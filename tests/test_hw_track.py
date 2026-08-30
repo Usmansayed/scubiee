@@ -37,6 +37,20 @@ def test_hardware_tracking_capture_and_resolve(tmp_path: Path):
     # 3. Resolve moved directory using the hardware ID
     resolved = resolve_moved_path(fs_id)
     if os.name == "nt" or sys.platform == "darwin":
-        assert resolved is not None
+        assert resolved is not None, "resolve_moved_path unavailable on this host"
         assert resolved.resolve() == moved_dir.resolve()
         assert (resolved / ".scubiee" / "id.json").is_file()
+
+
+def test_hardware_tracking_shutil_move(tmp_path: Path) -> None:
+    orig_dir = tmp_path / "orig_project_b"
+    orig_dir.mkdir(parents=True, exist_ok=True)
+    fs_id = get_filesystem_id(orig_dir)
+    assert fs_id is not None
+
+    moved_dir = tmp_path / "moved_via_shutil"
+    shutil.move(str(orig_dir), moved_dir)
+    resolved = resolve_moved_path(fs_id)
+    if os.name == "nt" or sys.platform == "darwin":
+        assert resolved is not None
+        assert resolved.resolve() == moved_dir.resolve()
