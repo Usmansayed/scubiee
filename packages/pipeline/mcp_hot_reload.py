@@ -109,14 +109,6 @@ def nudge_mcp_hot_reload(version: str | None = None) -> dict[str, Any]:
     except Exception as exc:  # noqa: BLE001
         report["kill"] = {"ok": False, "error": str(exc)}
 
-    try:
-        from pipeline.lifecycle_runtime import DESIRED_RUN, note_engine_transition, set_desired_mode
-
-        set_desired_mode(DESIRED_RUN)
-        report["lifecycle"] = note_engine_transition("start")
-    except Exception as exc:  # noqa: BLE001
-        report["lifecycle"] = {"ok": False, "error": str(exc)}
-
     return report
 
 

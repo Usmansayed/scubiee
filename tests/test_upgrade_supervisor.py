@@ -121,23 +121,59 @@ def test_ensure_daemon_after_upgrade_always_restarts(tmp_path, monkeypatch):
         lambda: "0.3.9",
     )
     monkeypatch.setattr(
-        "pipeline.daemon.stop_daemon",
+        "pipeline.daemon.stop_daemon_for_upgrade",
         lambda: calls.append("stop") or {"ok": True},
     )
     monkeypatch.setattr(
         "pipeline.daemon.force_restart_daemon",
-        lambda repo: calls.append("restart") or {"ok": True, "repo": str(repo)},
+        lambda repo, upgrade=False: calls.append(f"restart:{upgrade}") or {"ok": True, "repo": str(repo)},
     )
     monkeypatch.setattr(
-        "pipeline.lifecycle_runtime.set_desired_mode",
-        lambda mode: calls.append(f"mode:{mode}"),
+        "pipeline.lifecycle_runtime.begin_upgrade_transition",
+        lambda **kwargs: calls.append("begin") or {"ok": True},
     )
     monkeypatch.setattr(
-        "pipeline.lifecycle_runtime.note_engine_transition",
-        lambda action: calls.append(f"transition:{action}"),
+        "pipeline.lifecycle_runtime.complete_upgrade_transition",
+        lambda **kwargs: calls.append("complete") or {"ok": True},
+    )
+    monkeypatch.setattr(
+        "pipeline.lifecycle_runtime.upgrade_in_progress",
+        lambda: False,
     )
 
     out = ensure_daemon_after_upgrade(tmp_path)
     assert out["ok"] is True
     assert out["action"] == "restarted_after_upgrade"
-    assert calls == ["stop", "restart", "mode:run", "transition:start"]
+    assert calls == ["begin", "stop", "restart:True", "complete"]
+
+
+def test_ensure_daemon_after_upgrade_aborts_on_restart_failure(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    aborted: list[str] = []
+
+    monkeypatch.setattr("pipeline.upgrade.installed_version", lambda: "0.4.0")
+    monkeypatch.setattr("pipeline.upgrade.daemon_version", lambda: "0.3.9")
+    monkeypatch.setattr(
+        "pipeline.daemon.stop_daemon_for_upgrade",
+        lambda: {"ok": True},
+    )
+    monkeypatch.setattr(
+        "pipeline.daemon.force_restart_daemon",
+        lambda repo, upgrade=False: {"ok": False, "error": "health timeout"},
+    )
+    monkeypatch.setattr(
+        "pipeline.lifecycle_runtime.upgrade_in_progress",
+        lambda **kwargs: False,
+    )
+    monkeypatch.setattr(
+        "pipeline.lifecycle_runtime.begin_upgrade_transition",
+        lambda **kwargs: {"ok": True},
+    )
+    monkeypatch.setattr(
+        "pipeline.lifecycle_runtime.abort_upgrade_transition",
+        lambda **kwargs: aborted.append(kwargs.get("reason", "")) or {"ok": True},
+    )
+
+    out = ensure_daemon_after_upgrade(tmp_path)
+    assert out["ok"] is False
+    assert aborted == ["restart_failed"]

@@ -49,13 +49,17 @@ def quiesce_for_upgrade(*, project: Path | None = None) -> dict[str, Any]:
 
     Uses strip_mcp=False so a failed package swap can still restore via reconnect.
     """
+    from pipeline.lifecycle_runtime import begin_upgrade_transition
     from pipeline.process_control import release_scubiee_process_locks
+    from pipeline.upgrade import installed_version
 
     report: dict[str, Any] = {
         "ok": True,
         "platform": platform_name(),
         "phases": [],
     }
+    report["upgrade_transition"] = begin_upgrade_transition(version=installed_version())
+    report["phases"].append("upgrade_begin")
 
     # Prefer halt-style release: stub MCP, kill processes, do NOT strip keys.
     try:
@@ -69,6 +73,10 @@ def quiesce_for_upgrade(*, project: Path | None = None) -> dict[str, Any]:
             report["ok"] = False
             report["error"] = release.get("error") or "processes_still_running"
             report["hint"] = release.get("hint")
+            from pipeline.lifecycle_runtime import abort_upgrade_transition
+
+            report["upgrade_abort"] = abort_upgrade_transition(reason="release_failed")
+            return report
     except TypeError:
         # Older signature without strip_mcp — fall back then note.
         release = release_scubiee_process_locks(project=project)
@@ -78,17 +86,24 @@ def quiesce_for_upgrade(*, project: Path | None = None) -> dict[str, Any]:
         if not release.get("ok", True):
             report["ok"] = False
             report["error"] = "processes_still_running"
+            from pipeline.lifecycle_runtime import abort_upgrade_transition
+
+            report["upgrade_abort"] = abort_upgrade_transition(reason="release_failed")
+            return report
     except Exception as exc:  # noqa: BLE001
         report["ok"] = False
         report["error"] = str(exc)
+        from pipeline.lifecycle_runtime import abort_upgrade_transition
+
+        report["upgrade_abort"] = abort_upgrade_transition(reason="quiesce_exception")
         return report
 
     host, port = engine_host_port()
     # Best-effort stop daemon if still up
     try:
-        from pipeline.daemon import stop_daemon
+        from pipeline.daemon import stop_daemon_for_upgrade
 
-        stop_daemon()
+        report["stop_daemon"] = stop_daemon_for_upgrade()
         report["phases"].append("stop_daemon")
     except Exception as exc:  # noqa: BLE001
         report["stop_daemon_error"] = str(exc)
@@ -116,6 +131,9 @@ def quiesce_for_upgrade(*, project: Path | None = None) -> dict[str, Any]:
             or "Quit IDE MCP sessions holding the tool dir, run `scubiee halt`, then retry. "
             "A computer restart is not required if processes are stopped."
         )
+        from pipeline.lifecycle_runtime import abort_upgrade_transition
+
+        report["upgrade_abort"] = abort_upgrade_transition(reason="quiesce_failed")
     return report
 
 
@@ -170,26 +188,40 @@ def verify_quiesced(*, host: str | None = None, port: int | None = None) -> dict
 
 def ensure_daemon_after_upgrade(repo: Path | str | None = None) -> dict[str, Any]:
     """Always bounce the daemon onto the newly installed package after upgrade."""
-    from pipeline.daemon import force_restart_daemon, stop_daemon
-    from pipeline.lifecycle_runtime import DESIRED_RUN, note_engine_transition, set_desired_mode
+    from pipeline.daemon import force_restart_daemon, stop_daemon_for_upgrade
+    from pipeline.lifecycle_runtime import (
+        begin_upgrade_transition,
+        complete_upgrade_transition,
+        upgrade_in_progress,
+    )
     from pipeline.upgrade import daemon_version, installed_version
 
     target = Path(repo).resolve() if repo else Path.cwd().resolve()
     iv = installed_version()
+    transition_begin = None
+    if not upgrade_in_progress():
+        transition_begin = begin_upgrade_transition(version=iv)
 
     try:
-        stop_daemon()
+        stop_daemon_for_upgrade()
     except Exception:  # noqa: BLE001
         pass
 
-    restarted = force_restart_daemon(target)
+    restarted = force_restart_daemon(target, upgrade=True)
     ok = bool(restarted.get("ok"))
+    lifecycle = None
     if ok:
         try:
-            set_desired_mode(DESIRED_RUN)
-            note_engine_transition("start")
+            lifecycle = complete_upgrade_transition(version=iv)
         except Exception:  # noqa: BLE001
-            pass
+            lifecycle = None
+    else:
+        try:
+            from pipeline.lifecycle_runtime import abort_upgrade_transition
+
+            lifecycle = abort_upgrade_transition(reason="restart_failed")
+        except Exception:  # noqa: BLE001
+            lifecycle = None
 
     dv = daemon_version()
     action = "restarted_after_upgrade" if ok else "restart_failed_after_upgrade"
@@ -201,6 +233,8 @@ def ensure_daemon_after_upgrade(repo: Path | str | None = None) -> dict[str, Any
         "daemon_version": dv,
         "version_match": dv == iv if dv is not None else None,
         "restart": restarted,
+        "transition_begin": transition_begin,
+        "lifecycle": lifecycle,
         "hint": (
             "Daemon restarted on the new package. Quit and reopen your IDE once "
             "so MCP reloads the bridge — no other steps required."

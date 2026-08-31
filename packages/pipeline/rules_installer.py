@@ -376,8 +376,8 @@ def format_server_entry(
 
     use_schema = schema or tool.mcp_schema
     if use_schema == "claude":
-        return {"command": cmd, "args": args, "env": env}
-    if use_schema == "vscode":
+        entry: dict[str, Any] = {"command": cmd, "args": args, "env": env}
+    elif use_schema == "vscode":
         # Global user mcp.json does not expand ${workspaceFolder}.
         # Project .vscode/mcp.json gets an absolute cwd + CTX_REPO pin.
         payload: dict[str, Any] = {
@@ -388,16 +388,16 @@ def format_server_entry(
         }
         if pin_repo and repo is not None:
             payload["cwd"] = str(Path(repo).resolve()).replace("\\", "/")
-        return payload
-    if use_schema == "copilot_cli":
-        return {
+        entry = payload
+    elif use_schema == "copilot_cli":
+        entry = {
             "type": "local",
             "command": cmd,
             "args": args,
             "env": env,
             "tools": ["*"],
         }
-    if use_schema == "opencode":
+    elif use_schema == "opencode":
         payload: dict[str, Any] = {
             "type": "local",
             "enabled": True,
@@ -407,10 +407,10 @@ def format_server_entry(
         }
         if pin_repo and repo is not None:
             payload["cwd"] = str(Path(repo).resolve()).replace("\\", "/")
-        return payload
-    if use_schema == "amp":
-        return {"command": cmd, "args": args, "env": env}
-    if use_schema == "codex":
+        entry = payload
+    elif use_schema == "amp":
+        entry = {"command": cmd, "args": args, "env": env}
+    elif use_schema == "codex":
         # Global: no cwd — Codex CLI does not expand ${workspaceFolder}
         # (Windows: os error 267). Spawn inherits the CLI's project cwd.
         # Project pin: absolute cwd (Desktop / per-repo .codex/config.toml).
@@ -421,8 +421,8 @@ def format_server_entry(
         }
         if pin_repo and repo is not None:
             payload["cwd"] = str(Path(repo).resolve()).replace("\\", "/")
-        return payload
-    if use_schema == "continue":
+        entry = payload
+    elif use_schema == "continue":
         out: dict[str, Any] = {
             "name": _SERVER_NAME,
             "command": cmd,
@@ -431,10 +431,15 @@ def format_server_entry(
         }
         if pin_repo and repo is not None:
             out["cwd"] = str(Path(repo).resolve()).replace("\\", "/")
-        return out
-    if use_schema == "zed":
-        return {"command": cmd, "args": args, "env": env}
-    raise ValueError(f"unknown mcp_schema: {use_schema}")
+        entry = out
+    elif use_schema == "zed":
+        entry = {"command": cmd, "args": args, "env": env}
+    else:
+        raise ValueError(f"unknown mcp_schema: {use_schema}")
+
+    from pipeline.mcp_permissions import enrich_server_entry_permissions
+
+    return enrich_server_entry_permissions(entry, tool.slug)
 
 
 def _connect_repo(repo: Path | str | None) -> Path:
@@ -465,11 +470,15 @@ def _write_workspace_mcp(tool: ToolDef, repo: Path) -> list[Path]:
 
     if slug == "copilot":
         vscode_path = repo / ".vscode" / "mcp.json"
-        vscode_entry = format_server_entry(tool, repo, pin_repo=True, schema="vscode")
+        vscode_entry = format_server_entry(
+            tool, repo, pin_repo=True, schema="vscode"
+        )
         write_mcp_config(tool, vscode_path, vscode_entry, schema="vscode", key="servers")
 
         root_mcp = repo / ".mcp.json"
-        agent_entry = format_server_entry(tool, repo, pin_repo=True, schema="claude")
+        agent_entry = format_server_entry(
+            tool, repo, pin_repo=True, schema="claude"
+        )
         _write_mcp_json_keyed(root_mcp, "mcpServers", agent_entry)
         written.extend([vscode_path, root_mcp])
         return written
@@ -1252,6 +1261,11 @@ def write_project_tool_surface(
         report["rules"] = write_project_gate_rules(
             root, slugs=[tool.slug], dry_run=True
         )
+        from pipeline.mcp_permissions import apply_permissions_to_repo_tool_surface
+
+        report["permissions"] = apply_permissions_to_repo_tool_surface(
+            tool.slug, root, dry_run=True
+        )
         return report
     try:
         written = _write_workspace_mcp(tool, root)
@@ -1277,6 +1291,12 @@ def write_project_tool_surface(
     if not rules.get("ok", True):
         report["ok"] = False
         report["errors"].extend(rules.get("errors") or [])
+    from pipeline.mcp_permissions import apply_permissions_to_repo_tool_surface
+
+    perm = apply_permissions_to_repo_tool_surface(tool.slug, root, dry_run=False)
+    report["permissions"] = perm
+    if not perm.get("ok", True):
+        report["ok"] = False
     return report
 
 
@@ -1345,7 +1365,9 @@ def fan_out_tool_to_enrolled_repos(
                 )
             )
         else:
-            reports.append(write_project_tool_surface(repo, tool, dry_run=dry_run))
+            reports.append(
+                write_project_tool_surface(repo, tool, dry_run=dry_run)
+            )
     return {
         "repos": len(repos),
         "reports": reports,
@@ -1430,6 +1452,11 @@ def apply_connected_tools_to_repo(
                 report["mcp_paths"].extend(
                     str(p) for p in resolve_mcp_project_paths(tool, root)
                 )
+                from pipeline.mcp_permissions import (
+                    apply_permissions_to_repo_tool_surface,
+                )
+
+                apply_permissions_to_repo_tool_surface(slug, root, dry_run=True)
         rules = write_project_gate_rules(root, slugs=slugs, dry_run=True)
         report["rules"] = rules
         return report
@@ -1438,12 +1465,11 @@ def apply_connected_tools_to_repo(
         tool = get_tool(slug)
         if not tool:
             continue
-        try:
-            written = _write_workspace_mcp(tool, root)
-            report["mcp_paths"].extend(str(p) for p in written)
-        except Exception as exc:  # noqa: BLE001
-            report["errors"].append(f"{slug} mcp write failed: {exc}")
+        sub = write_project_tool_surface(root, tool, dry_run=False)
+        report["mcp_paths"].extend(sub.get("mcp_paths") or [])
+        if not sub.get("ok", True):
             report["ok"] = False
+            report["errors"].extend(sub.get("errors") or [])
 
     rules = write_project_gate_rules(root, slugs=slugs, dry_run=False)
     report["rules"] = rules

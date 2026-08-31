@@ -29,6 +29,22 @@ def _note_user_activity() -> None:
         pass
 
 
+# HTTP paths that must not refresh idle clocks (background polls / health).
+_PASSIVE_GET_PATHS = frozenset({"/health", "/", "/dashboard"})
+_PASSIVE_GET_PREFIXES = ("/api/settings", "/v1/settings", "/status", "/v1/status", "/v1/resources")
+_PASSIVE_POST_PATHS = frozenset({"/v1/shutdown", "/shutdown", "/v1/status", "/status"})
+
+
+def _is_passive_http_path(path: str, *, method: str) -> bool:
+    if method == "GET":
+        if path in _PASSIVE_GET_PATHS:
+            return True
+        return any(path.startswith(prefix) for prefix in _PASSIVE_GET_PREFIXES)
+    if method == "POST":
+        return path in _PASSIVE_POST_PATHS
+    return False
+
+
 def _json(handler: BaseHTTPRequestHandler, code: int, payload: dict) -> None:
     context = getattr(handler, "_request_context", None)
     if isinstance(context, dict):
@@ -72,7 +88,8 @@ class Handler(BaseHTTPRequestHandler):
         if path in ("/health", "/"):
             _json(self, 200, ce.health())
             return
-        _note_user_activity()
+        if not _is_passive_http_path(path, method="GET"):
+            _note_user_activity()
         if path == "/dashboard":
             from pipeline.dashboard import DASHBOARD_HTML
 
@@ -101,7 +118,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
-        if path not in ("/v1/shutdown", "/shutdown"):
+        if not _is_passive_http_path(path, method="POST"):
             _note_user_activity()
         data = _read_json(self)
         ce = get_context_engine()
@@ -252,10 +269,7 @@ class Handler(BaseHTTPRequestHandler):
             if not root:
                 _json(self, 400, {"ok": False, "error": "workspace path required"})
                 return
-            admission = admit(root)
-            self._request_context = admission
             status = ce.status(root)
-            status["admission"] = admission
             _json(self, 200, status)
             return
 

@@ -605,6 +605,9 @@ def test_phase_surface_grep_glob_and_trajectory(monkeypatch, tmp_path):
     assert "Flexibility" in text or "user intent wins" in text
     assert "No tool path bans" in text or "no file-type restrictions" in text.lower()
     assert "expand(handle" in text
+    assert "RETRIEVAL SKILL" in text
+    assert "ANTI-THRASH" in text
+    assert "≤2 map" in text or "<=2 map" in text
     assert "BAN native" not in text
     assert "you decide" not in text.lower()
     tools = set(ml.create_mcp()._tool_manager._tools)
@@ -828,6 +831,8 @@ def test_server_instructions_are_short_grep_like_cards(monkeypatch):
             assert "agent_ready" in text
             assert "expand(handle" in text
             assert "cached" in text
+            assert "RETRIEVAL SKILL" in text
+            assert "ANTI-THRASH" in text
             continue
         if name == "search":
             assert "WHEN →" in text

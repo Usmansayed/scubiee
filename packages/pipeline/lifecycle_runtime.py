@@ -26,6 +26,12 @@ DEFAULT_TRANSITION_DEBOUNCE_S = 25.0
 DESIRED_RUN = "run"
 DESIRED_STANDBY = "standby"
 TRANSITION_NAME = "engine_transition.json"
+# Why the engine last started/stopped — separates normal idle from upgrade/user paths.
+TRANSITION_REASON_NORMAL = "normal"
+TRANSITION_REASON_UPGRADE = "upgrade"
+TRANSITION_REASON_USER = "user"
+# If upgrade quiesce/rebind dies mid-flight, auto-clear so idle policy cannot stay blocked forever.
+DEFAULT_UPGRADE_STALE_S = 600.0
 
 
 def _home() -> Path:
@@ -72,7 +78,7 @@ def idle_seconds() -> float:
 
 
 def transition_debounce_seconds() -> float:
-    """Min gap after a start before an *automatic* idle stop may fire (spam/hysteresis)."""
+    """Min gap after a *normal* start before an automatic idle stop may fire (spam/hysteresis)."""
     raw = os.environ.get("CTX_ENGINE_TRANSITION_DEBOUNCE_S")
     if raw is None or raw.strip() == "":
         return idle_seconds() if idle_seconds() > 0 else DEFAULT_TRANSITION_DEBOUNCE_S
@@ -82,6 +88,35 @@ def transition_debounce_seconds() -> float:
         return idle_seconds() if idle_seconds() > 0 else DEFAULT_TRANSITION_DEBOUNCE_S
 
 
+def upgrade_stale_seconds() -> float:
+    raw = os.environ.get("CTX_UPGRADE_STALE_S")
+    if raw is None or raw.strip() == "":
+        return DEFAULT_UPGRADE_STALE_S
+    try:
+        return max(30.0, float(raw))
+    except ValueError:
+        return DEFAULT_UPGRADE_STALE_S
+
+
+def _upgrade_started_at(data: dict[str, Any] | None = None) -> float | None:
+    document = load_transition() if data is None else _normalize_transition(data)
+    raw = document.get("upgrade_started_at")
+    if raw is None:
+        return None
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def _upgrade_is_stale(*, now: float | None = None, data: dict[str, Any] | None = None) -> bool:
+    started = _upgrade_started_at(data)
+    if started is None:
+        return False
+    current = time.time() if now is None else now
+    return (current - started) >= upgrade_stale_seconds()
+
+
 def transition_path() -> Path:
     return _home() / TRANSITION_NAME
 
@@ -89,28 +124,46 @@ def transition_path() -> Path:
 def load_transition() -> dict[str, Any]:
     path = transition_path()
     if not path.is_file():
-        return {"last_start_at": None, "last_stop_at": None, "last_action": None}
+        return _default_transition()
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError):
         data = {}
     if not isinstance(data, dict):
         data = {}
+    return _normalize_transition(data)
+
+
+def _default_transition() -> dict[str, Any]:
     return {
-        "last_start_at": data.get("last_start_at"),
-        "last_stop_at": data.get("last_stop_at"),
-        "last_action": data.get("last_action"),
+        "last_start_at": None,
+        "last_stop_at": None,
+        "last_action": None,
+        "last_start_reason": None,
+        "last_stop_reason": None,
+        "upgrade_in_progress": False,
+        "upgrade_epoch": 0,
+        "upgrade_started_at": None,
+        "last_upgrade_at": None,
+        "last_upgrade_version": None,
     }
+
+
+def _normalize_transition(data: dict[str, Any]) -> dict[str, Any]:
+    base = _default_transition()
+    base.update(data)
+    try:
+        base["upgrade_epoch"] = int(base.get("upgrade_epoch") or 0)
+    except (TypeError, ValueError):
+        base["upgrade_epoch"] = 0
+    base["upgrade_in_progress"] = bool(base.get("upgrade_in_progress"))
+    return base
 
 
 def save_transition(data: dict[str, Any]) -> dict[str, Any]:
     from pipeline.artifact_guard import atomic_write_text
 
-    document = {
-        "last_start_at": data.get("last_start_at"),
-        "last_stop_at": data.get("last_stop_at"),
-        "last_action": data.get("last_action"),
-    }
+    document = _normalize_transition(data)
     _home().mkdir(parents=True, exist_ok=True)
     atomic_write_text(
         transition_path(),
@@ -119,23 +172,133 @@ def save_transition(data: dict[str, Any]) -> dict[str, Any]:
     return document
 
 
-def note_engine_transition(action: str, *, now: float | None = None) -> dict[str, Any]:
+def upgrade_in_progress(*, now: float | None = None) -> bool:
+    """True while package swap / daemon rebind is in flight (auto-clears when stale)."""
+    data = load_transition()
+    if not data.get("upgrade_in_progress"):
+        return False
+    if _upgrade_is_stale(now=now, data=data):
+        abort_upgrade_transition(reason="stale_timeout", now=now)
+        return False
+    return True
+
+
+def abort_upgrade_transition(
+    *,
+    reason: str = "aborted",
+    now: float | None = None,
+) -> dict[str, Any]:
+    """Fail-safe: clear a stuck upgrade flag so normal idle policy can resume."""
+    data = load_transition()
+    if not data.get("upgrade_in_progress"):
+        return {"ok": True, "action": "upgrade_not_in_progress"}
+    current = time.time() if now is None else now
+    data["upgrade_in_progress"] = False
+    data["last_upgrade_abort_at"] = current
+    data["last_upgrade_abort_reason"] = str(reason or "aborted")
+    saved = save_transition(data)
+    return {"ok": True, "action": "upgrade_aborted", "reason": reason, "transition": saved}
+
+
+def clear_clients() -> dict[str, Any]:
+    """Drop all registered front-end clients (upgrade quiesce / stale PID cleanup)."""
+    return save_clients({"clients": {}})
+
+
+def begin_upgrade_transition(
+    *,
+    version: str | None = None,
+    now: float | None = None,
+) -> dict[str, Any]:
+    """Enter upgrade path: force-stop allowed, idle debounce suspended."""
+    current = time.time() if now is None else now
+    data = load_transition()
+    if data.get("upgrade_in_progress") and not _upgrade_is_stale(now=current, data=data):
+        return {"ok": True, "action": "upgrade_begin_already", "transition": data}
+
+    if data.get("upgrade_in_progress"):
+        abort_upgrade_transition(reason="stale_replaced", now=current)
+        data = load_transition()
+
+    data["upgrade_in_progress"] = True
+    data["upgrade_started_at"] = current
+    data["upgrade_epoch"] = int(data.get("upgrade_epoch") or 0) + 1
+    if version:
+        data["last_upgrade_version"] = str(version)
+    saved = save_transition(data)
+    clear_clients()
+    policy = load_policy()
+    policy["desired_mode"] = DESIRED_RUN
+    policy["last_client_left_at"] = None
+    save_policy(policy)
+    return {"ok": True, "action": "upgrade_begin", "transition": saved}
+
+
+def complete_upgrade_transition(
+    *,
+    version: str | None = None,
+    now: float | None = None,
+) -> dict[str, Any]:
+    """Exit upgrade path: new daemon is authoritative; normal disconnect grace resumes."""
+    current = time.time() if now is None else now
+    data = load_transition()
+    data["upgrade_in_progress"] = False
+    data["last_upgrade_at"] = current
+    if version:
+        data["last_upgrade_version"] = str(version)
+    data["last_start_at"] = current
+    data["last_action"] = "start"
+    data["last_start_reason"] = TRANSITION_REASON_UPGRADE
+    data["last_stop_reason"] = TRANSITION_REASON_UPGRADE
+    save_transition(data)
+    policy = load_policy()
+    policy["desired_mode"] = DESIRED_RUN
+    policy["last_activity"] = current
+    policy["last_client_left_at"] = None
+    save_policy(policy)
+    return {"ok": True, "action": "upgrade_complete", "transition": data}
+
+
+def note_engine_transition(
+    action: str,
+    *,
+    reason: str = TRANSITION_REASON_NORMAL,
+    now: float | None = None,
+) -> dict[str, Any]:
     """Record a completed start or stop for debounce bookkeeping."""
     current = time.time() if now is None else now
     data = load_transition()
     if action == "start":
         data["last_start_at"] = current
         data["last_action"] = "start"
+        data["last_start_reason"] = str(reason or TRANSITION_REASON_NORMAL)
     elif action == "stop":
         data["last_stop_at"] = current
         data["last_action"] = "stop"
+        data["last_stop_reason"] = str(reason or TRANSITION_REASON_NORMAL)
     else:
         raise ValueError(f"unknown transition action {action}")
     return save_transition(data)
 
 
+def _transition_debounce_applies(data: dict[str, Any] | None = None) -> bool:
+    """Anti-thrash debounce applies only to normal automatic idle stops."""
+    document = load_transition() if data is None else _normalize_transition(data)
+    if document.get("upgrade_in_progress"):
+        return False
+    reason = str(document.get("last_start_reason") or TRANSITION_REASON_NORMAL)
+    if reason in {TRANSITION_REASON_UPGRADE, TRANSITION_REASON_USER}:
+        return False
+    return True
+
+
 def idle_stop_debounced(*, now: float | None = None) -> dict[str, Any] | None:
-    """Block automatic idle-stop if a start happened too recently (start/stop spam guard)."""
+    """Block automatic idle-stop if a normal start happened too recently (spam guard).
+
+    Upgrade and explicit user stops bypass this — they use separate transition reasons.
+    """
+    if not _transition_debounce_applies():
+        return None
     debounce = transition_debounce_seconds()
     if debounce <= 0:
         return None
@@ -211,8 +374,10 @@ def set_desired_mode(mode: str) -> dict[str, Any]:
 
 
 def note_activity(*, now: float | None = None) -> dict[str, Any]:
-    """Mark engine use. Clears stale disconnect anchors so HTTP/CLI activity
-    keeps the idle clock honest (search/status must not race a prior client leave).
+    """Mark interactive engine use (MCP tools, locate, CLI work).
+
+    Passive polls (/status, /health, keeper) must not call this — they would
+    prevent idle stop after MCP disconnect.
     """
     policy = load_policy()
     current = time.time() if now is None else now
@@ -243,6 +408,36 @@ def _pid_alive(pid: int) -> bool:
         return False
     except Exception:  # noqa: BLE001
         return False
+
+
+def _client_pid_trustworthy(meta: dict[str, Any]) -> bool:
+    """Avoid false 'client connected' when a PID was reused by an unrelated process."""
+    pid = int(meta.get("pid") or 0)
+    if not _pid_alive(pid):
+        return False
+    kind = str(meta.get("kind") or "mcp").strip().lower()
+    if kind not in {"mcp", "bridge"}:
+        return True
+    try:
+        from pipeline.process_control import is_context_engine_process, process_cmdline
+
+        if is_context_engine_process(pid):
+            return True
+        cmd = process_cmdline(pid)
+        if not cmd:
+            return _pid_alive(pid)
+        blob = " ".join(str(part) for part in cmd).lower()
+        markers = (
+            "scubiee",
+            "mcp-bridge",
+            "mcp_bridge",
+            "pipeline",
+            "context-engine",
+            "context_engine",
+        )
+        return any(marker in blob for marker in markers)
+    except Exception:  # noqa: BLE001
+        return _pid_alive(pid)
 
 
 def load_clients() -> dict[str, Any]:
@@ -288,6 +483,7 @@ def register_client(
 ) -> dict[str, Any]:
     """Track an IDE/MCP/CLI front-end so idle unload waits for disconnect."""
     current = time.time() if now is None else now
+    reconcile_clients(now=current)
     owner = int(pid if pid is not None else os.getpid())
     data = load_clients()
     clients = data.setdefault("clients", {})
@@ -311,23 +507,59 @@ def register_client(
     }
 
 
+def touch_client(client_id: str, *, now: float | None = None) -> bool:
+    """Refresh liveness for a registered front-end (best-effort)."""
+    current = time.time() if now is None else now
+    data = load_clients()
+    clients = data.get("clients")
+    clients = clients if isinstance(clients, dict) else {}
+    meta = clients.get(str(client_id))
+    if not isinstance(meta, dict):
+        return False
+    meta["last_seen_at"] = current
+    save_clients(data)
+    return True
+
+
+def _client_last_seen_at(meta: dict[str, Any]) -> float | None:
+    raw = meta.get("last_seen_at")
+    if raw is None:
+        raw = meta.get("registered_at")
+    if raw is None:
+        return None
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def _client_is_stale(meta: dict[str, Any], *, now: float | None = None) -> bool:
+    """True when a live PID has not invoked MCP tools recently (zombie bridge)."""
+    seen = _client_last_seen_at(meta)
+    if seen is None:
+        return False
+    current = time.time() if now is None else now
+    return (current - seen) >= idle_seconds()
+
+
 def unregister_client(client_id: str, *, now: float | None = None) -> dict[str, Any]:
     data = load_clients()
     clients = data.setdefault("clients", {})
     clients.pop(str(client_id), None)
     save_clients(data)
-    remaining = len(clients)
-    if remaining == 0:
+    remaining = reconcile_clients(now=now)
+    if not remaining:
         _mark_clients_gone(now=now)
     return {
         "ok": True,
         "client_id": str(client_id),
-        "active_clients": remaining,
+        "active_clients": len(remaining),
     }
 
 
 def reconcile_clients(*, now: float | None = None) -> list[dict[str, Any]]:
-    """Drop dead client PIDs; record when the last live client disappears."""
+    """Drop dead, untrusted, or stale client PIDs; record when the last disappears."""
+    current = time.time() if now is None else now
     data = load_clients()
     clients = data.get("clients")
     clients = clients if isinstance(clients, dict) else {}
@@ -336,13 +568,15 @@ def reconcile_clients(*, now: float | None = None) -> list[dict[str, Any]]:
     for client_id, meta in clients.items():
         if not isinstance(meta, dict):
             continue
-        pid = int(meta.get("pid") or 0)
-        if _pid_alive(pid):
-            alive[str(client_id)] = meta
+        if not _client_pid_trustworthy(meta):
+            continue
+        if _client_is_stale(meta, now=current):
+            continue
+        alive[str(client_id)] = meta
     data["clients"] = alive
     save_clients(data)
     if before > 0 and not alive:
-        _mark_clients_gone(now=now)
+        _mark_clients_gone(now=current)
     return [dict(item) for item in alive.values()]
 
 
@@ -363,18 +597,21 @@ def should_idle_stop(*, now: float | None = None) -> bool:
     policy = load_policy()
     last_left = policy.get("last_client_left_at")
     last_activity = policy.get("last_activity")
-    # Use the most recent signal of use. Preferring only last_client_left_at
-    # ignored search/health activity and killed warm engines mid-session.
-    candidates = [float(x) for x in (last_left, last_activity) if x is not None]
-    if not candidates:
+    # After MCP/IDE disconnect, anchor strictly on client-leave time so unrelated
+    # stale last_activity cannot delay or accelerate shutdown incorrectly.
+    if last_left is not None:
+        return (current - float(last_left)) >= idle_s
+    if last_activity is None:
         return False
-    return (current - max(candidates)) >= idle_s
+    return (current - float(last_activity)) >= idle_s
 
 
 def apply_idle_policy(*, now: float | None = None) -> dict[str, Any]:
     """Stop the engine after the idle window once clients are gone."""
     from pipeline.daemon import is_running
 
+    if upgrade_in_progress(now=now):
+        return {"ok": True, "action": "upgrade_in_progress"}
     if load_policy().get("desired_mode") == DESIRED_STANDBY:
         return {"ok": True, "action": "already_standby"}
     if not should_idle_stop(now=now):
@@ -382,6 +619,8 @@ def apply_idle_policy(*, now: float | None = None) -> dict[str, Any]:
     blocked = idle_stop_debounced(now=now)
     if blocked is not None:
         return {**blocked, "action": "debounced"}
+    if reconcile_clients(now=now):
+        return {"ok": True, "action": "clients_reconnected"}
     running = is_running()
     result = enter_standby(stop_engine=running)
     return {**result, "action": "standby" if running else "policy_only"}

@@ -29,7 +29,7 @@ def test_run_mode_idles_after_quiet_period(tmp_path: Path, monkeypatch) -> None:
 def test_active_client_blocks_idle_stop(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
     monkeypatch.setenv("CTX_ENGINE_IDLE_S", "30")
-    monkeypatch.setattr(life, "_pid_alive", lambda pid: pid == 4242)
+    monkeypatch.setattr(life, "_client_pid_trustworthy", lambda meta: int(meta.get("pid") or 0) == 4242)
     life.note_activity(now=100.0)
     life.register_client("mcp:4242", pid=4242, now=100.0)
     assert life.should_idle_stop(now=200.0) is False
@@ -46,11 +46,23 @@ def test_idle_after_last_client_disconnects(tmp_path: Path, monkeypatch) -> None
 
 def test_reconcile_dead_client_marks_disconnect(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
-    monkeypatch.setattr(life, "_pid_alive", lambda _pid: False)
+    monkeypatch.setattr(life, "_client_pid_trustworthy", lambda _meta: False)
     life.register_client("mcp:9999", pid=9999, now=50.0)
     assert life.reconcile_clients(now=60.0) == []
     policy = life.load_policy()
     assert policy["last_client_left_at"] == 60.0
+
+
+def test_reconcile_stale_client_marks_disconnect(tmp_path: Path, monkeypatch) -> None:
+    """Zombie MCP PID with no tool calls must not block idle stop forever."""
+    monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
+    monkeypatch.setenv("CTX_ENGINE_IDLE_S", "25")
+    monkeypatch.setattr(life, "_client_pid_trustworthy", lambda _meta: True)
+    life.register_client("mcp:1", pid=4242, now=100.0)
+    assert life.reconcile_clients(now=130.0) == []
+    policy = life.load_policy()
+    assert policy["last_client_left_at"] == 130.0
+    assert life.should_idle_stop(now=155.0) is True
 
 
 def test_zero_idle_never_stops(tmp_path: Path, monkeypatch) -> None:
@@ -74,13 +86,12 @@ def test_note_activity_clears_stale_client_left_anchor(tmp_path: Path, monkeypat
     assert life.should_idle_stop(now=151.0) is True
 
 
-def test_should_idle_stop_uses_most_recent_activity_signal(
+def test_should_idle_stop_anchors_on_client_disconnect(
     tmp_path: Path, monkeypatch
 ) -> None:
+    """After MCP disconnect, idle clock follows last_client_left_at — not stale activity."""
     monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
     monkeypatch.setenv("CTX_ENGINE_IDLE_S", "30")
-    # Simulate a policy that still has last_left but fresher last_activity
-    # (belt-and-suspenders if note_activity wasn't called).
     life.save_policy(
         {
             **life.load_policy(),
@@ -89,8 +100,8 @@ def test_should_idle_stop_uses_most_recent_activity_signal(
             "last_activity": 200.0,
         }
     )
-    assert life.should_idle_stop(now=220.0) is False
-    assert life.should_idle_stop(now=231.0) is True
+    assert life.should_idle_stop(now=129.0) is False
+    assert life.should_idle_stop(now=131.0) is True
 
 
 def test_register_logon_autostart_uses_onlogon_task(

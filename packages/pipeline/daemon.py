@@ -339,7 +339,13 @@ def start_daemon(
     }
 
 
-def stop_daemon() -> dict[str, Any]:
+def stop_daemon(*, reason: str | None = None) -> dict[str, Any]:
+    from pipeline.lifecycle_runtime import (
+        TRANSITION_REASON_USER,
+        note_engine_transition,
+    )
+
+    stop_reason = str(reason or TRANSITION_REASON_USER)
     client = EngineClient()
     try:
         client.post("/v1/shutdown", {})
@@ -373,9 +379,7 @@ def stop_daemon() -> dict[str, Any]:
     still_running = is_running()
     if not still_running:
         try:
-            from pipeline.lifecycle_runtime import note_engine_transition
-
-            note_engine_transition("stop")
+            note_engine_transition("stop", reason=stop_reason)
         except Exception:  # noqa: BLE001
             pass
     return {
@@ -383,13 +387,22 @@ def stop_daemon() -> dict[str, Any]:
         "running": still_running,
         "killed": killed,
         "skipped_pids": skipped,
+        "stop_reason": stop_reason,
     }
 
 
-def force_restart_daemon(repo: Path | str | None = None) -> dict[str, Any]:
+def stop_daemon_for_upgrade() -> dict[str, Any]:
+    """Force-stop during package upgrade — bypasses normal idle debounce bookkeeping."""
+    from pipeline.lifecycle_runtime import TRANSITION_REASON_UPGRADE
+
+    return stop_daemon(reason=TRANSITION_REASON_UPGRADE)
+
+
+def force_restart_daemon(repo: Path | str | None = None, *, upgrade: bool = False) -> dict[str, Any]:
     """Kill hung/dead engine (even if lock pid is alive) and start fresh.
 
     Used by the watchdog sidecar — not by casual ensure_daemon.
+    When ``upgrade=True``, stop bookkeeping uses the upgrade transition path.
     """
     meta: dict[str, Any] = {}
     if meta_path().is_file():
@@ -418,7 +431,10 @@ def force_restart_daemon(repo: Path | str | None = None) -> dict[str, Any]:
     )
 
     # Best-effort kill whatever holds the lock / pid
-    stop_daemon()
+    if upgrade:
+        stop_daemon_for_upgrade()
+    else:
+        stop_daemon()
     # Extra: clear refuse path for hung lock
     existing = _read_lock_pid()
     if existing is not None and _pid_alive(existing):

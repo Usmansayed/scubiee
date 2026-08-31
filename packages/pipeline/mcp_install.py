@@ -152,6 +152,16 @@ def _find_mcp_server_entry(data: dict[str, Any], name: str) -> dict[str, Any] | 
         entry = servers.get(name)
         if isinstance(entry, dict):
             return entry
+    amp_servers = data.get("amp.mcpServers")
+    if isinstance(amp_servers, dict):
+        entry = amp_servers.get(name)
+        if isinstance(entry, dict):
+            return entry
+    context = data.get("context_servers")
+    if isinstance(context, dict):
+        entry = context.get(name)
+        if isinstance(entry, dict):
+            return entry
     mcp = data.get("mcp")
     if isinstance(mcp, dict):
         nested = mcp.get("servers")

@@ -236,7 +236,24 @@ class MemoryGovernor:
             return self.active_tier
 
     def _last_activity_at_locked(self, hub: "RepoHub | None" = None) -> float | None:
-        """Newest serve signal: semantic query or any MCP/HTTP repo touch."""
+        """Newest serve signal: semantic query or MCP/HTTP front-end use.
+
+        When no MCP clients are registered, ignore passive hub touches from
+        status polls — only semantic queries count for serve demotion.
+        """
+        try:
+            from pipeline.lifecycle_runtime import active_client_count, load_policy
+
+            if active_client_count() == 0:
+                candidates: list[float] = []
+                if self.last_semantic_at is not None:
+                    candidates.append(float(self.last_semantic_at))
+                if not candidates:
+                    return None
+                return max(candidates)
+        except Exception:  # noqa: BLE001
+            pass
+
         candidates: list[float] = []
         if self.last_semantic_at is not None:
             candidates.append(float(self.last_semantic_at))

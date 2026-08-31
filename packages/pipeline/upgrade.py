@@ -154,11 +154,25 @@ def restart_daemon_if_stale() -> dict[str, Any]:
     if dv == iv:
         return {"ok": True, "action": "version_match", "version": iv}
 
-    # Version mismatch -- restart
+    # Version mismatch -- restart on upgrade transition path (bypass idle debounce).
     try:
-        from pipeline.daemon import force_restart_daemon
+        from pipeline.daemon import force_restart_daemon, stop_daemon_for_upgrade
+        from pipeline.lifecycle_runtime import (
+            begin_upgrade_transition,
+            complete_upgrade_transition,
+            upgrade_in_progress,
+        )
 
-        result = force_restart_daemon()
+        if not upgrade_in_progress():
+            begin_upgrade_transition(version=iv)
+        stop_daemon_for_upgrade()
+        result = force_restart_daemon(upgrade=True)
+        if result.get("ok"):
+            complete_upgrade_transition(version=iv)
+        else:
+            from pipeline.lifecycle_runtime import abort_upgrade_transition
+
+            abort_upgrade_transition(reason="restart_failed")
         return {
             "ok": result.get("ok", False),
             "action": "restarted",
@@ -167,6 +181,12 @@ def restart_daemon_if_stale() -> dict[str, Any]:
             "restart": result,
         }
     except Exception as exc:  # noqa: BLE001
+        try:
+            from pipeline.lifecycle_runtime import abort_upgrade_transition
+
+            abort_upgrade_transition(reason="restart_exception")
+        except Exception:  # noqa: BLE001
+            pass
         return {"ok": False, "action": "restart_failed", "error": str(exc)}
 
 
