@@ -65,9 +65,10 @@ def test_init_writes_project_gate_rules(tmp_path: Path) -> None:
     assert f"GATE 1:{pid}" in text
     assert "map" in text
     assert pid in text
-    assert "Prefer Scubiee" in text or "prefer Scubiee" in text.lower()
-    assert "budget" in text.lower()
+    assert "USE Scubiee" in text or "use Scubiee" in text.lower()
+    assert "BAN native" in text
     assert "Locate trajectory" not in text
+    assert "focus budget" not in text.lower()
 
     agents = repo / "AGENTS.md"
     assert agents.is_file()

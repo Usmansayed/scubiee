@@ -38,12 +38,12 @@ def server_entry(
 ) -> dict[str, Any]:
     """MCP server block that works after `pip install scubiee`.
 
-    Prefers the installed `scubiee-mcp` executable (works cross-platform,
-    doesn't depend on knowing the exact Python path, and handles PATH-based
-    discovery in IDEs like Kiro/Cursor that spawn the process). Falls back to
-    ``python -m pipeline.mcp_locate`` when the executable isn't found.
+    Prefers ``scubiee-mcp-bridge`` (stable stdio proxy; hot-respawns workers after
+    upgrade). Falls back to ``scubiee-mcp``, then ``python -m pipeline.mcp_locate``.
     """
     import shutil
+
+    from pipeline.mcp_hot_reload import current_build_id, write_active_build_stamp
 
     engine_url = os.environ.get("CTX_ENGINE_URL") or f"http://{host}:{port}"
     from pipeline.settings import get_registration_mode
@@ -59,10 +59,17 @@ def server_entry(
         "CTX_REGISTRATION_MODE": reg_mode,
         "CTX_MCP_SURFACE": "phase",
         "CTX_MCP_SESSION_ISOLATE": "1",
-        "CTX_ENGINE_IDLE_S": "60",
+        "CTX_MCP_BRIDGE_MODE": "auto",
+        "CTX_ENGINE_IDLE_S": "25",
+        "CTX_ENGINE_TRANSITION_DEBOUNCE_S": "25",
         "PYTHONUTF8": "1",
     }
-    # Per-chat isolation: set in host mcp.json env, e.g. CTX_MCP_SESSION_ID=cursor@chat-<uuid>
+    build_id = current_build_id()
+    if not build_id:
+        build_id = write_active_build_stamp()["build_id"]
+    env["CTX_SCUBIEE_BUILD"] = build_id
+    # Per-chat isolation: host-native keys (CLAUDE_CODE_SESSION_ID, MCP_SESSION_ID, …)
+    # or explicit CTX_MCP_SESSION_ID — see session_isolation.detect_host_chat_session_from_env
     for session_key in (
         "CTX_MCP_SESSION_ID",
         "MCP_SESSION_ID",
@@ -84,9 +91,15 @@ def server_entry(
         except Exception:  # noqa: BLE001
             pass
 
-    # Prefer the installed scubiee-mcp executable — it's a proper entry point
-    # that IDEs can spawn without knowing the Python path. This fixes Kiro and
-    # other tools that couldn't launch the raw python.exe path reliably.
+    # Prefer the bridge — stable entry for hot reload after upgrade.
+    bridge_exe = shutil.which("scubiee-mcp-bridge")
+    if bridge_exe:
+        return {
+            "command": bridge_exe.replace("\\", "/"),
+            "args": [],
+            "env": env,
+        }
+    # Fallback: direct scubiee-mcp executable.
     mcp_exe = shutil.which("scubiee-mcp")
     if mcp_exe:
         return {
@@ -129,6 +142,80 @@ def merge_mcp_json(
     strip_legacy_mcp_keys(servers)
     servers[server_name] = server_entry(repo, host=host, port=port)
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+
+def _find_mcp_server_entry(data: dict[str, Any], name: str) -> dict[str, Any] | None:
+    servers = data.get("mcpServers")
+    if not isinstance(servers, dict):
+        servers = data.get("servers")
+    if isinstance(servers, dict):
+        entry = servers.get(name)
+        if isinstance(entry, dict):
+            return entry
+    mcp = data.get("mcp")
+    if isinstance(mcp, dict):
+        nested = mcp.get("servers")
+        if isinstance(nested, dict):
+            entry = nested.get(name)
+            if isinstance(entry, dict):
+                return entry
+        entry = mcp.get(name)
+        if isinstance(entry, dict):
+            return entry
+    return None
+
+
+def _entry_command_text(entry: dict[str, Any]) -> str:
+    cmd = entry.get("command")
+    if isinstance(cmd, list):
+        return " ".join(str(x) for x in cmd)
+    return str(cmd or "")
+
+
+def verify_mcp_json(path: Path, *, server_name: str | None = None) -> dict[str, Any]:
+    """Post-write check: scubiee entry exists and points at bridge/worker with build env."""
+    from pipeline.branding import MCP_SERVER_NAME
+
+    name = server_name or MCP_SERVER_NAME
+    report: dict[str, Any] = {"ok": False, "path": str(path)}
+    if not path.is_file():
+        report["error"] = "missing_file"
+        return report
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        report["error"] = f"invalid_json: {exc}"
+        return report
+    if not isinstance(data, dict):
+        report["error"] = "invalid_root"
+        return report
+    entry = _find_mcp_server_entry(data, name)
+    if entry is None:
+        report["error"] = "server_missing"
+        return report
+    cmd = _entry_command_text(entry)
+    uses_bridge = "scubiee-mcp-bridge" in cmd
+    uses_worker = "scubiee-mcp" in cmd and not uses_bridge
+    env_raw = entry.get("env")
+    if not isinstance(env_raw, dict):
+        env_raw = entry.get("environment")
+    env = env_raw if isinstance(env_raw, dict) else {}
+    has_build = bool(str(env.get("CTX_SCUBIEE_BUILD") or "").strip())
+    report.update(
+        {
+            "uses_bridge": uses_bridge,
+            "uses_worker": uses_worker,
+            "has_build_env": has_build,
+        }
+    )
+    if not (uses_bridge or uses_worker):
+        report["error"] = "bad_command"
+        return report
+    if not has_build:
+        report["error"] = "missing_build_env"
+        return report
+    report["ok"] = True
+    return report
 
 
 def write_kiro_mcp(

@@ -1,6 +1,6 @@
 [project]
 name = "scubiee"
-version = "0.3.6"
+version = "0.3.7"
 description = "Scubiee — local AI code context engine: setup once, connect tools, CUDA/DirectML/MLX/CPU."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -59,6 +59,7 @@ mcp = ["mcp>=1.0,<2"]
 [project.scripts]
 scubiee = "pipeline.__main__:main"
 scubiee-mcp = "pipeline.mcp_server:main"
+scubiee-mcp-bridge = "pipeline.mcp_bridge:main"
 
 [project.urls]
 Homepage = "https://github.com/Usmansayed/new-context-engine"

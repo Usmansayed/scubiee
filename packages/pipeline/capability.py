@@ -651,34 +651,47 @@ def truncation_meta(
     max_chars: int,
     path: str = "",
     handle: str = "",
+    budget: str = "cap",
+    line_truncated: bool = False,
 ) -> dict[str, Any]:
-    """Pagination hints when span text exceeds max_chars."""
-    truncated = len(full_text) > max_chars
-    body = full_text[:max_chars] if truncated else full_text
+    """Pagination hints when span text exceeds line or char budget."""
+    char_truncated = len(full_text) > max_chars
+    body = full_text[:max_chars] if char_truncated else full_text
     chars_returned = len(body)
     lines_returned_end = end_line
     next_start_line: int | None = None
-    if truncated and body:
+    if char_truncated and body:
         lines_in_body = body.count("\n") + 1
         lines_returned_end = min(end_line, start_line + max(0, lines_in_body - 1))
         next_start_line = min(end_line + 1, lines_returned_end + 1)
         if next_start_line <= start_line:
             next_start_line = start_line + 1
+    elif line_truncated and end_line < lines_total:
+        next_start_line = end_line + 1
+    truncated = char_truncated or line_truncated
+    truncated_by: str | None = None
+    if char_truncated and line_truncated:
+        truncated_by = "lines" if line_truncated and end_line < lines_total else "chars"
+    elif char_truncated:
+        truncated_by = "chars"
+    elif line_truncated:
+        truncated_by = "lines"
     meta: dict[str, Any] = {
         "truncated": truncated,
+        "truncated_by": truncated_by,
         "chars_returned": chars_returned,
         "lines_total": lines_total,
         "lines_returned": f"{start_line}-{lines_returned_end} of {lines_total}",
     }
-    if truncated:
+    if truncated and next_start_line is not None:
         meta["next_start_line"] = next_start_line
-        if path and next_start_line is not None:
+        if path:
             meta["next"] = (
                 f"focus(path={path!r}, start_line={next_start_line}, "
-                f"end_line={end_line}, max_chars=12000)"
+                f"budget={budget!r}, max_chars={max_chars})"
             )
         elif handle:
-            meta["next"] = f"expand(handle={handle!r}, max_chars=12000)"
+            meta["next"] = f"expand(handle={handle!r}, max_chars={max_chars})"
     return meta
 
 

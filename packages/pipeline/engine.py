@@ -107,19 +107,92 @@ def _store_generation_mtime(store: PipelineStore) -> float:
     return latest
 
 
-def get_embedder(model: str, *, dim: int | None, cache_path: Path | None) -> Embedder:
+class _LazyEmbedder:
+    """Defer model weights until the first semantic query (locate_only tier)."""
+
+    def __init__(self, model: str, *, dim: int | None, cache_path: Path | None) -> None:
+        self.model = model
+        self.dim = dim
+        self.cache_path = cache_path
+        self.backend = "lazy"
+        self._inner: Embedder | None = None
+
+    def _ensure(self) -> Embedder:
+        if self._inner is None:
+            self._inner = get_embedder(
+                self.model,
+                dim=self.dim,
+                cache_path=self.cache_path,
+                eager=True,
+            )
+            self.backend = self._inner.backend
+            try:
+                from pipeline.memory_governor import get_governor
+
+                get_governor().note_embedder_loaded()
+            except Exception:  # noqa: BLE001
+                pass
+        return self._inner
+
+    def unload(self) -> None:
+        self._inner = None
+        self.backend = "lazy"
+
+    def embed_one(self, *args: Any, **kwargs: Any) -> Any:
+        try:
+            from pipeline.memory_governor import get_governor
+
+            get_governor().note_semantic_activity()
+        except Exception:  # noqa: BLE001
+            pass
+        return self._ensure().embed_one(*args, **kwargs)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._ensure(), name)
+
+
+def get_embedder(
+    model: str,
+    *,
+    dim: int | None,
+    cache_path: Path | None,
+    eager: bool = True,
+) -> Embedder:
     """Process-wide CodeRank/Ollama embedder cache (load weights once)."""
     key = f"{model}|{dim}|{cache_path}"
     with _LOCK:
         if key not in _EMBEDDERS:
             emb = Embedder(model=model, dim=dim, cache_path=cache_path)
-            # Force model load now so first HTTP request is fast
-            if emb.backend == "coderank":
-                emb._ensure_coderank()
-            elif emb.backend == "mlx":
-                emb._ensure_mlx()
+            if eager:
+                if emb.backend == "coderank":
+                    emb._ensure_coderank()
+                elif emb.backend == "mlx":
+                    emb._ensure_mlx()
             _EMBEDDERS[key] = emb
         return _EMBEDDERS[key]
+
+
+def release_embedders() -> int:
+    """Unload cached embedder weights; lazy wrappers drop their inner reference."""
+    with _LOCK:
+        for eng in _ENGINES.values():
+            emb = eng.embedder
+            if isinstance(emb, _LazyEmbedder):
+                emb.unload()
+        count = len(_EMBEDDERS)
+        _EMBEDDERS.clear()
+        try:
+            from pipeline.memory_governor import get_governor
+
+            get_governor().note_embedder_unloaded()
+        except Exception:  # noqa: BLE001
+            pass
+        return count
+
+
+def embedder_is_loaded() -> bool:
+    with _LOCK:
+        return bool(_EMBEDDERS)
 
 
 @dataclass
@@ -413,14 +486,43 @@ def load_engine(
         )
         meta = store.load_meta()
         model = str(meta.get("embed_model") or "nomic-ai/CodeRankEmbed")
-        embedder = get_embedder(model, dim=col.meta.dim, cache_path=store.embed_cache)
         try:
-            embedder.embed_one("warmup", is_query=True)
-        except Exception:
-            pass
+            from pipeline.memory_governor import (
+                current_serve_tier,
+                get_governor,
+                should_lazy_embedder,
+            )
 
-        # Verify GPU provider at warm-up (detect silent CPU fallback)
-        _verify_gpu_provider(embedder)
+            tier = current_serve_tier()
+            cfg = get_governor().config(tier)
+            lazy = should_lazy_embedder() or not cfg.load_embedder
+        except Exception:  # noqa: BLE001
+            lazy = os.environ.get("CTX_CE_LAZY_EMBEDDER", "").strip().lower() in {
+                "1",
+                "true",
+                "yes",
+            }
+            cfg = None  # type: ignore[assignment]
+
+        if lazy:
+            embedder: Embedder | _LazyEmbedder = _LazyEmbedder(
+                model,
+                dim=col.meta.dim,
+                cache_path=store.embed_cache,
+            )
+        else:
+            embedder = get_embedder(
+                model,
+                dim=col.meta.dim,
+                cache_path=store.embed_cache,
+                eager=True,
+            )
+            try:
+                if cfg is None or cfg.warmup_embedder:
+                    embedder.embed_one("warmup", is_query=True)
+            except Exception:
+                pass
+            _verify_gpu_provider(embedder)
 
         # Rebuild cards on force_reload so docstring/intent updates apply without re-embed.
         cards = ensure_cards(

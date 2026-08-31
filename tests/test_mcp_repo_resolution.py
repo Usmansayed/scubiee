@@ -579,3 +579,40 @@ def test_blind_spawn_keeps_project_id_pin(tmp_path: Path, monkeypatch) -> None:
 
     assert mcp_locate._default_repo() == engine.resolve()
     assert mcp_locate._is_repo_managed() is True
+
+
+def test_wrong_ctx_repo_with_project_id_fails_closed_not_cwd(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """MCP pin mismatch must not fall through to enrolled process cwd or registry."""
+    engine = tmp_path / "engine"
+    engine.mkdir()
+    _enroll_scubiee(engine, "ce_engine")
+    fake = tmp_path / "fake-mcp-pin"
+    fake.mkdir()
+    spawn = tmp_path / "cwd"
+    spawn.mkdir()
+    monkeypatch.chdir(engine)  # process cwd is the real enrolled repo
+    monkeypatch.setenv("CTX_HOME", str(tmp_path / "home"))
+    (tmp_path / "home").mkdir()
+    from pipeline.project_id import save_registry
+
+    save_registry(
+        {
+            "projects": {
+                "ce_engine": {
+                    "managed": True,
+                    "root": str(engine.resolve()),
+                    "paths": [str(engine.resolve())],
+                }
+            }
+        }
+    )
+    monkeypatch.setenv("CTX_REPO", str(fake))
+    monkeypatch.setenv("CTX_PROJECT_ID", "ce_engine")
+    for key in _CLEAR_IDE:
+        monkeypatch.delenv(key, raising=False)
+
+    assert mcp_locate._default_repo() == fake.resolve()
+    assert mcp_locate._is_repo_managed() is False
+    assert mcp_locate._env_pin_project_mismatch() is True

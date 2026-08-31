@@ -457,6 +457,9 @@ def audit_scubiee_artifacts(*, include_package: bool = True, include_models: boo
             Path.home() / ".local" / "bin" / "ctx.exe",
             Path.home() / ".local" / "bin" / "ctx-mcp.exe",
             Path.home() / ".local" / "bin" / "scubiee-mcp",
+            Path.home() / ".local" / "bin" / "scubiee-mcp.exe",
+            Path.home() / ".local" / "bin" / "scubiee-mcp-bridge",
+            Path.home() / ".local" / "bin" / "scubiee-mcp-bridge.exe",
         ):
             note(shim, kind="tool_shim")
 

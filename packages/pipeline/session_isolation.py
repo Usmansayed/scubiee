@@ -249,6 +249,52 @@ def detect_host_chat_session_from_env() -> dict[str, Any] | None:
     return None
 
 
+BridgeSessionSource = Literal["tool_arg", "meta", "host_env", "client_info", "none"]
+
+
+def bridge_routing_session_key(msg: dict[str, Any]) -> tuple[str | None, BridgeSessionSource]:
+    """Session key for ``scubiee-mcp-bridge`` worker routing (all MCP hosts).
+
+    Priority matches worker ``resolve_session``: explicit tool args, host env
+    signals (``CLAUDE_CODE_SESSION_ID``, ``MCP_SESSION_ID``, …), then initialize
+    client metadata. Uses ``detect_mcp_host()`` / ``CTX_MCP_CLIENT`` — never
+    hardcodes a single IDE.
+    """
+    method = str(msg.get("method") or "")
+    params = msg.get("params")
+    if isinstance(params, dict):
+        if method == "tools/call":
+            arguments = params.get("arguments")
+            if isinstance(arguments, dict):
+                for key in ("session_id", "sessionId"):
+                    raw = str(arguments.get(key) or "").strip()
+                    if raw:
+                        return sanitize_session_id(raw), "tool_arg"
+            meta = params.get("_meta")
+            if isinstance(meta, dict):
+                for key in ("sessionId", "session_id", "muxSessionId"):
+                    raw = str(meta.get(key) or "").strip()
+                    if raw:
+                        return sanitize_session_id(raw), "meta"
+
+        if method == "initialize":
+            client_info = params.get("clientInfo")
+            if isinstance(client_info, dict):
+                for key in ("sessionId", "session_id", "instanceId", "id"):
+                    raw = str(client_info.get(key) or "").strip()
+                    if raw:
+                        host = detect_mcp_host()
+                        return sanitize_session_id(f"{host}@chat-{raw}"), "client_info"
+
+    from_env = detect_host_chat_session_from_env()
+    if from_env:
+        sid = str(from_env.get("session_id") or "").strip()
+        if sid:
+            return sid, "host_env"
+
+    return None, "none"
+
+
 def _scan_env_for_session_id(host: str) -> tuple[str, str] | None:
     """Best-effort: host-prefixed env vars containing SESSION/CHAT/THREAD/etc."""
     skip = set(_HOST_CHAT_SESSION_ENV_KEYS) | set(_HOST_CHAT_SESSION_ENV_KEYS_BEST_EFFORT) | _ENV_SCAN_SKIP

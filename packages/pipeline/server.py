@@ -552,13 +552,38 @@ class Handler(BaseHTTPRequestHandler):
         _json(self, 404, {"error": "not found"})
 
 
-def _start_idle_sweeper(*, interval_s: float = 30.0) -> None:
+def _start_idle_sweeper(*, interval_s: float | None = None) -> None:
     import gc
     import threading
 
     def _loop() -> None:
         while True:
-            time.sleep(max(5.0, interval_s))
+            try:
+                from pipeline.lifecycle_runtime import idle_seconds
+
+                # Poll often enough to honor a 25s idle window (was fixed 30s).
+                idle = idle_seconds()
+                sleep_s = interval_s if interval_s is not None else (
+                    5.0 if idle <= 0 else max(5.0, min(10.0, idle / 5.0))
+                )
+            except Exception:  # noqa: BLE001
+                sleep_s = 5.0
+            time.sleep(max(5.0, float(sleep_s)))
+            try:
+                from pipeline.memory_governor import get_governor
+                from pipeline.ce_service import get_context_engine
+
+                demote = get_governor().maybe_demote_idle()
+                if demote:
+                    print(
+                        f"[engine] memory demote: tier={demote.get('tier')} "
+                        f"idle_s={demote.get('idle_s')}",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+                get_governor().refresh_from_hub(get_context_engine().hub)
+            except Exception:  # noqa: BLE001
+                pass
             try:
                 from pipeline.lifecycle_runtime import apply_idle_policy
 
@@ -597,6 +622,13 @@ def run_server(
 
     enable_session_keeper_defaults()
     from pipeline.git_family import reconcile_git_families
+
+    try:
+        from pipeline.memory_governor import get_governor
+
+        get_governor().apply_tier("locate_only")
+    except Exception:  # noqa: BLE001
+        pass
 
     family = reconcile_git_families(prefer_root=repo)
     if family.superseded_project_ids:

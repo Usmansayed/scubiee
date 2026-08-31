@@ -2,18 +2,15 @@
 
 Handles:
 - Checking PyPI for newer versions (cached, max once per 24h)
-- Self-upgrade via pip/uv
-- Daemon version mismatch detection and auto-restart
-- Post-upgrade migrations
+- Version-aware upgrade supervisor (quiesce → swap → migrate → rebind → health)
+- Daemon version mismatch detection and restart
+- Post-upgrade migrations and MCP/rules refresh
 """
 
 from __future__ import annotations
 
 import json
 import os
-import shutil
-import subprocess
-import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -173,143 +170,42 @@ def restart_daemon_if_stale() -> dict[str, Any]:
         return {"ok": False, "action": "restart_failed", "error": str(exc)}
 
 
-def do_upgrade(*, pre_release: bool = False) -> dict[str, Any]:
-    """Perform the full upgrade: pull package -> restart daemon -> migrate.
+def do_upgrade(
+    *,
+    pre_release: bool = False,
+    check_only: bool = False,
+    connect: bool = True,
+    repair: bool = False,
+    reindex: bool = False,
+    skip_package: bool = False,
+) -> dict[str, Any]:
+    """Run the version-aware upgrade supervisor (one-command upgrade).
 
-    Order: stop processes -> upgrade package -> restart daemon -> migrate.
-    Stopping first ensures no DLL/file locks (critical on Windows with uv tools).
+    Phases: detect → plan → snapshot → quiesce → swap → migrate → rebind → health.
+    See ``pipeline.upgrade_supervisor.run_upgrade``.
     """
-    report: dict[str, Any] = {"ok": True}
-    old_version = installed_version()
-    report["old_version"] = old_version
+    from pipeline.upgrade_supervisor import run_upgrade
 
-    # 0. Unlock uv tool dir before package swap (Windows Access denied / os error 5).
-    #    MCP-off first so Cursor cannot respawn python.exe, then stop lockers.
-    try:
-        from pipeline.process_control import prepare_uv_tool_directory_for_swap
-
-        prep = prepare_uv_tool_directory_for_swap(remove_dir=False)
-        stop_report = prep.get("stop") or {}
-        report["pre_stop"] = bool(prep.get("ok", True))
-        report["pre_unlock"] = {
-            "ok": prep.get("ok"),
-            "mcp_disabled": (prep.get("mcp") or {}).get("disabled") or [],
-            "remaining": stop_report.get("remaining") or [],
-            "extra_killed": stop_report.get("extra_killed") or [],
-        }
-        report["pre_stop_detail"] = report["pre_unlock"]
-    except Exception as exc:  # noqa: BLE001
-        report["pre_stop"] = False
-        report["pre_stop_error"] = str(exc)
-
-    # 1. Upgrade the package
-    uv = shutil.which("uv")
-    from pipeline.process_control import is_uv_tool_install, unlock_uv_tool_env
-
-    if is_uv_tool_install() and uv:
-        # uv tool upgrade pulls the latest; extras are preserved from original install
-        cmd = [uv, "tool", "upgrade", "scubiee"]
-        if pre_release:
-            cmd.append("--prerelease=allow")
-    elif uv:
-        # uv is available but not a tool install (pip/venv) — use uv pip for speed
-        # No extras needed: pyproject.toml base deps include platform-conditional packages
-        cmd = [uv, "pip", "install", "--upgrade", "--python", sys.executable, "scubiee"]
-    else:
-        # Fallback: plain pip
-        # No extras needed: base deps pull mlx/fastembed/ort on macOS automatically
-        cmd = [sys.executable, "-m", "pip", "install", "--upgrade", "scubiee"]
-
-    def _run_upgrade() -> subprocess.CompletedProcess[str]:
-        return subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=120,
-        )
-
-    try:
-        proc = _run_upgrade()
-        combined = ((proc.stdout or "") + (proc.stderr or "")).lower()
-        access_denied = (
-            proc.returncode != 0
-            and ("access is denied" in combined or "os error 5" in combined)
-            and is_uv_tool_install()
-        )
-        if access_denied:
-            # Force-free the tool dir; upgrade cannot replace locked files.
-            # After remove, reinstall (upgrade has nothing left to upgrade).
-            unlock = unlock_uv_tool_env()
-            report["access_denied_unlock"] = unlock
-            if unlock.get("ok") and uv:
-                install_cmd = [uv, "tool", "install", "--force", "scubiee"]
-                if pre_release:
-                    install_cmd.append("--prerelease=allow")
-                cmd = install_cmd
-                proc = _run_upgrade()
-                combined = ((proc.stdout or "") + (proc.stderr or "")).lower()
-        report["pip"] = {
-            "ok": proc.returncode == 0,
-            "cmd": cmd,
-            "stdout": (proc.stdout or "").strip()[-300:],
-            "stderr": (proc.stderr or "").strip()[-300:],
-        }
-        if proc.returncode != 0:
-            report["ok"] = False
-            report["error"] = "package_upgrade_failed"
-            if "access is denied" in combined or "os error 5" in combined:
-                report["hint"] = (
-                    "Windows file lock on uv tool dir. Quit Cursor, run "
-                    "`scubiee unlock-tool`, then retry upgrade. Admin will not help."
-                )
-            return report
-    except subprocess.TimeoutExpired:
-        report["ok"] = False
-        report["error"] = "package_upgrade_timeout"
-        return report
-    except Exception as exc:  # noqa: BLE001
-        report["ok"] = False
-        report["error"] = str(exc)
-        return report
-
-    # Re-read version (importlib caches; re-import to see new)
-    try:
-        from importlib.metadata import version
-
-        new_version = version("scubiee")
-    except Exception:  # noqa: BLE001
-        new_version = "unknown"
-    report["new_version"] = new_version
-
-    if new_version == old_version:
-        report["already_latest"] = True
-
-    # 2. Restart daemon with new code
-    restart = restart_daemon_if_stale()
-    report["daemon_restart"] = restart
-
-    # 3. Run migrations
-    try:
-        from pipeline.migrate import migrate_all
-
-        migration = migrate_all()
-        report["migration"] = migration
-    except Exception as exc:  # noqa: BLE001
-        report["migration"] = {"ok": False, "error": str(exc)}
-
-    # 4. Loud reminder: upgrade does not refresh IDE MCP/rules.
-    report["next_steps"] = [
-        "Run `scubiee connect --cursor` (or --kiro / --copilot / --cline / --roo-code) "
-        "inside each project so MCP + agent rules match this version.",
-        "Kiro / Copilot / Cline / Roo need connect inside every repo (workspace-local MCP).",
-    ]
-
-    # 5. Clear update check cache
-    _save_update_check({
-        "latest": new_version,
-        "current": new_version,
-        "checked_at": time.time(),
-    })
-
+    report = run_upgrade(
+        pre_release=pre_release,
+        check_only=check_only,
+        connect=connect,
+        repair=repair,
+        reindex=reindex,
+        skip_package=skip_package,
+    )
+    # Compatibility keys for existing CLI/TTY formatting
+    if "daemon" in report and "daemon_restart" not in report:
+        report["daemon_restart"] = report["daemon"]
+    if report.get("new_version") and report.get("old_version"):
+        if report["new_version"] == report["old_version"] and not report.get("swap", {}).get(
+            "skipped"
+        ):
+            report["already_latest"] = True
+        elif report.get("swap", {}).get("skipped"):
+            report["already_latest"] = True
+    if report.get("quiesce") is not None:
+        report["pre_stop"] = bool((report.get("quiesce") or {}).get("ok", True))
+    if report.get("swap") and not report["swap"].get("skipped"):
+        report["pip"] = report["swap"]
     return report

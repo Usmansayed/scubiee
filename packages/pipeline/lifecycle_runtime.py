@@ -19,9 +19,13 @@ TASK_NAME = "ContextEngineSupervisor"
 LAUNCH_AGENT_LABEL = "com.contextengine.supervisor"
 POLICY_NAME = "lifecycle_policy.json"
 CLIENTS_NAME = "active_clients.json"
-DEFAULT_IDLE_S = 60.0
+# After the last MCP/app client leaves, wait this long before stopping the engine.
+# Also used as the start/stop transition debounce so accidental spam cannot thrash.
+DEFAULT_IDLE_S = 25.0
+DEFAULT_TRANSITION_DEBOUNCE_S = 25.0
 DESIRED_RUN = "run"
 DESIRED_STANDBY = "standby"
+TRANSITION_NAME = "engine_transition.json"
 
 
 def _home() -> Path:
@@ -65,6 +69,97 @@ def idle_seconds() -> float:
         return max(0.0, float(raw))
     except ValueError:
         return DEFAULT_IDLE_S
+
+
+def transition_debounce_seconds() -> float:
+    """Min gap after a start before an *automatic* idle stop may fire (spam/hysteresis)."""
+    raw = os.environ.get("CTX_ENGINE_TRANSITION_DEBOUNCE_S")
+    if raw is None or raw.strip() == "":
+        return idle_seconds() if idle_seconds() > 0 else DEFAULT_TRANSITION_DEBOUNCE_S
+    try:
+        return max(0.0, float(raw))
+    except ValueError:
+        return idle_seconds() if idle_seconds() > 0 else DEFAULT_TRANSITION_DEBOUNCE_S
+
+
+def transition_path() -> Path:
+    return _home() / TRANSITION_NAME
+
+
+def load_transition() -> dict[str, Any]:
+    path = transition_path()
+    if not path.is_file():
+        return {"last_start_at": None, "last_stop_at": None, "last_action": None}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        data = {}
+    if not isinstance(data, dict):
+        data = {}
+    return {
+        "last_start_at": data.get("last_start_at"),
+        "last_stop_at": data.get("last_stop_at"),
+        "last_action": data.get("last_action"),
+    }
+
+
+def save_transition(data: dict[str, Any]) -> dict[str, Any]:
+    from pipeline.artifact_guard import atomic_write_text
+
+    document = {
+        "last_start_at": data.get("last_start_at"),
+        "last_stop_at": data.get("last_stop_at"),
+        "last_action": data.get("last_action"),
+    }
+    _home().mkdir(parents=True, exist_ok=True)
+    atomic_write_text(
+        transition_path(),
+        json.dumps(document, sort_keys=True, separators=(",", ":")) + "\n",
+    )
+    return document
+
+
+def note_engine_transition(action: str, *, now: float | None = None) -> dict[str, Any]:
+    """Record a completed start or stop for debounce bookkeeping."""
+    current = time.time() if now is None else now
+    data = load_transition()
+    if action == "start":
+        data["last_start_at"] = current
+        data["last_action"] = "start"
+    elif action == "stop":
+        data["last_stop_at"] = current
+        data["last_action"] = "stop"
+    else:
+        raise ValueError(f"unknown transition action {action}")
+    return save_transition(data)
+
+
+def idle_stop_debounced(*, now: float | None = None) -> dict[str, Any] | None:
+    """Block automatic idle-stop if a start happened too recently (start/stop spam guard)."""
+    debounce = transition_debounce_seconds()
+    if debounce <= 0:
+        return None
+    current = time.time() if now is None else now
+    data = load_transition()
+    last_start = data.get("last_start_at")
+    if last_start is None:
+        return None
+    age = current - float(last_start)
+    if age >= debounce:
+        return None
+    wait_s = round(debounce - age, 3)
+    return {
+        "ok": True,
+        "blocked": True,
+        "action": "stop",
+        "reason": "transition_debounce",
+        "wait_s": wait_s,
+        "debounce_s": debounce,
+        "hint": (
+            f"Engine started {age:.1f}s ago; automatic stop waits "
+            f"{wait_s:.1f}s more (debounce={debounce:.0f}s)."
+        ),
+    }
 
 
 def load_policy() -> dict[str, Any]:
@@ -284,6 +379,9 @@ def apply_idle_policy(*, now: float | None = None) -> dict[str, Any]:
         return {"ok": True, "action": "already_standby"}
     if not should_idle_stop(now=now):
         return {"ok": True, "action": "none"}
+    blocked = idle_stop_debounced(now=now)
+    if blocked is not None:
+        return {**blocked, "action": "debounced"}
     running = is_running()
     result = enter_standby(stop_engine=running)
     return {**result, "action": "standby" if running else "policy_only"}

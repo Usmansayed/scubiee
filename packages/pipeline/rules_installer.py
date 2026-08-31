@@ -40,34 +40,30 @@ def _templates_dir() -> Path:
     return Path(__file__).resolve().parent / "templates"
 
 
-def _rule_content_md(*, gate_line: str | None = None) -> str:
-    if gate_line:
-        return _render_gate_rule_md(gate_line)
-    return (_templates_dir() / "scubiee.md").read_text(encoding="utf-8")
-
-
-def _rule_content_mdc(*, gate_line: str | None = None) -> str:
-    if gate_line:
-        return _render_gate_rule_mdc(gate_line)
-    return (_templates_dir() / "scubiee.mdc").read_text(encoding="utf-8")
-
-
 # Shared GATE rule bodies — bans live here only, not in MCP instructions.
+# Templates + written project rules + MCP header must all derive from these.
 
 
 def managed_gate_usage_short() -> str:
-    """Compact locate cheat sheet for repo-local GATE rules (not MCP instructions)."""
+    """Policy-only GATE body — how-to lives in MCP server instructions."""
     return (
-        "**Tools:** `map` = find by meaning · `focus` = read code · "
-        "`grep`/`glob` = literal/path · `workspace` = session · `status` = health.\n"
-        "**focus budget:** `cap` (default, ~400 lines / 12k chars) · "
-        "`wide` (~800 lines / 20k chars) · "
-        "`full` (whole file, up to 100k chars). One call — don't overlap spans.\n"
-        "**Flow:** unfamiliar → map → focus(outline) → focus(span, budget=cap). "
-        "Known file → focus(path, budget=wide|full) or native Read. "
-        "Exact string → grep.\n"
-        "Prefer Scubiee for discovery. Native Grep/Glob/Read OK when the path "
-        "is known or the user wants a full file. Edit/Shell for changes and tests."
+        "**USE Scubiee only** for all code retrieval/locate "
+        "(`map`|`focus`|`grep`|`glob`|`workspace`|`expand`|`gate`|`status`).\n"
+        "**BAN native** Grep/Glob/Read/codebase-search for finding or reading code.\n"
+        "**Native OK only for:** Edit/Write/Shell (tests, build, git) — never for locate.\n"
+        "**If Scubiee fails** (error, paused, not ready): follow `status()`/`gate()` `next_action`; "
+        "do not fall back to native locate.\n"
+        "How to call tools / budgets / trajectory → Scubiee MCP server instructions (every turn)."
+    )
+
+
+def managed_gate_mcp_header() -> str:
+    """Short reinforce of GATE policy inside MCP instructions (full ban text stays in rules)."""
+    return (
+        "Project GATE rule: Scubiee-only for retrieval/locate "
+        "(native Grep/Glob/Read/codebase-search banned for finding or reading code). "
+        "Edit/Write/Shell stay native. Failures → status()/gate() next_action — "
+        "do not switch to native locate."
     )
 
 
@@ -102,6 +98,39 @@ def paused_gate_rule_body() -> str:
     )
 
 
+def gate_overview_mdc() -> str:
+    """Fallback/overview mdc when no live gate_line — same policy as written rules."""
+    return (
+        "---\n"
+        "description: Scubiee GATE — when to use (how-to in MCP instructions)\n"
+        "alwaysApply: true\n"
+        "---\n\n"
+        "Policy only; full workflow is in Scubiee MCP server instructions every turn.\n\n"
+        f"- {unmanaged_gate_rule_body('0')}\n"
+        "- **GATE 1:ce_*** (managed): "
+        "USE Scubiee only for all retrieval/locate. "
+        "BAN native Grep/Glob/Read/codebase-search for finding or reading code. "
+        "Native OK only for Edit/Write/Shell. "
+        "If Scubiee fails → `status()`/`gate()` `next_action` — do not fall back to native locate.\n"
+        f"- {paused_gate_rule_body()}\n"
+    )
+
+
+def gate_overview_md() -> str:
+    """Fallback/overview md when no live gate_line — same policy as written rules."""
+    return (
+        "# Scubiee GATE — when to use\n\n"
+        "Policy only; full workflow is in Scubiee MCP server instructions.\n\n"
+        f"- {unmanaged_gate_rule_body('0')}\n"
+        "- **GATE 1:ce_*** (managed): "
+        "USE Scubiee only for all retrieval/locate. "
+        "BAN native Grep/Glob/Read/codebase-search for finding or reading code. "
+        "Native OK only for Edit/Write/Shell. "
+        "If Scubiee fails → `status()`/`gate()` `next_action` — do not fall back to native locate.\n"
+        f"- {paused_gate_rule_body()}\n"
+    )
+
+
 def paused_gate_rule_mdc() -> str:
     return (
         "---\n"
@@ -110,6 +139,18 @@ def paused_gate_rule_mdc() -> str:
         "---\n\n"
         f"{paused_gate_rule_body()}\n"
     )
+
+
+def _rule_content_md(*, gate_line: str | None = None) -> str:
+    if gate_line:
+        return _render_gate_rule_md(gate_line)
+    return gate_overview_md()
+
+
+def _rule_content_mdc(*, gate_line: str | None = None) -> str:
+    if gate_line:
+        return _render_gate_rule_mdc(gate_line)
+    return gate_overview_mdc()
 
 
 def _render_gate_rule_mdc(gate_line: str) -> str:
@@ -1021,8 +1062,8 @@ def write_project_gate_rules(
 ) -> dict[str, Any]:
     """Write compact GATE tool-ban rules under the repo after ``scubiee init``.
 
-    Bans (native vs Scubiee) live here only. Locate trajectory (map→focus→grep)
-    lives in MCP server instructions when managed — not duplicated here.
+    Managed repos: Scubiee-only for retrieval; BAN native Grep/Glob/Read for locate.
+    How-to (budgets, trajectory) lives in MCP server instructions — not duplicated here.
     """
     root = Path(repo).resolve()
     gate = gate_line_for_repo(root)
@@ -1215,6 +1256,19 @@ def write_project_tool_surface(
     try:
         written = _write_workspace_mcp(tool, root)
         report["mcp_paths"] = [str(p) for p in written]
+        verify_failures: list[dict[str, Any]] = []
+        from pipeline.mcp_install import verify_mcp_json
+
+        for mcp_path in written:
+            if mcp_path.suffix.lower() != ".json":
+                continue
+            checked = verify_mcp_json(mcp_path)
+            if not checked.get("ok"):
+                verify_failures.append(checked)
+        if verify_failures:
+            report["mcp_verify"] = verify_failures
+            report["errors"].append("mcp post-write verify failed")
+            report["ok"] = False
     except Exception as exc:  # noqa: BLE001
         report["errors"].append(f"mcp write failed: {exc}")
         report["ok"] = False

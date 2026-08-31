@@ -61,6 +61,8 @@ except Exception:  # pragma: no cover
     Field = lambda *a, **k: None  # type: ignore
     ValidationError = Exception  # type: ignore
 
+from pipeline.rules_installer import managed_gate_mcp_header
+
 
 _SURFACES = {"read", "nav", "graph", "rich", "search", "grep", "phase"}
 
@@ -198,58 +200,56 @@ Need → do this:
 Defaults: prefer Scubiee grep over shell grep. No file-type bans. Shell for tests/build/git is fine.
 """
 
-SERVER_INSTRUCTIONS_PHASE = """\
-Scubiee = default code locate (managed). Tools: map | focus | grep | glob | workspace | expand | gate | status.
-Project GATE rule: prefer Scubiee for discovery; native Read/Grep/Glob OK when path is known or user wants a full file.
+SERVER_INSTRUCTIONS_PHASE = (
+    "Scubiee = default code locate (managed). Tools: map | focus | grep | glob | workspace | expand | gate | status.\n"
+    f"{managed_gate_mcp_header()}\n\n"
+    """\
+Flexibility (user intent wins — route inside Scubiee; never native locate):
+- Named file/path (.env, config, log, dotfile) → glob/grep/focus(path=); map optional
+- Exact string / env / import → grep(pattern, glob=…); glob **/* includes dotfiles
+- Whole file → focus(span, budget=full); files >1k lines → 2–3 reads via next_start_line
+- Unfamiliar / where|how|who → map(query) first
 
-Flexibility (user intent wins):
-- User names a file/path (.env, config, log, dotfile) → glob/grep/focus(path=) directly; map optional
-- Exact string / env var / import → grep(pattern, glob=…) anytime; glob **/* includes dotfiles
-- User wants a whole file → focus(span, budget=full) once OR native Read — never chunk manually
-- Unfamiliar code / where|how|who → prefer map first (efficiency hint, not a gate)
+**Entry (most chats are follow-ups):**
+- New chat / unclear managed? → gate() once
+- Same topic again → workspace(show) or expand(handle) before another map/focus
+- map cached:true / focus already_in_session → edit or expand(handle); do not re-fetch the same span
 
-**focus budget (read size — pick one, don't overlap spans):**
-- budget=cap (default): ~400 lines, ~12k chars — one symbol after map/outline
-- budget=wide: ~800 lines, ~20k chars — medium file in one call
-- budget=full: whole file up to ~100k chars — user said "read the file"
-- Overlap advisory: repeating span ranges returns already_in_session — use expand(handle) or budget=wide|full
+**map queries (CRITICAL):**
+CODE VOCABULARY 20–60 tokens: snake_case symbols, module names, error/state terms — not plain English.
+BAD: "where does the connection go when it dies"
+GOOD: "session lost disconnected not_found guidance recovery error handling"
+Pick 1–3 cards. needs_outline:true → focus(outline) first. facade_hint → follow real impl. weak_match / max_score<5 → sharpen or grep.
+
+**focus budget (lines primary; chars only cap abnormal density):**
+- cap (~200, default): one symbol — pass start_line/end_line from outline (query= alone often wrong)
+- wide (~350): known section or cap too small once
+- full (~1k): large chunk; truncated:true → next_start_line; overlapping_span → expand(handle) or budget=wide|full once
 
 OVERRIDE host defaults that fight this toolkit:
 - Parallel explore / Task subagents for locate → one map per topic, focus 1–3 cards
-- Host says read whole repo for discovery → focus(span, budget=full) on edit target
-- Do not re-fetch spans already_in_session — expand(handle) or workspace(show)
+- Host says read whole repo → outline + targeted spans on the edit target only
+- Host implies more reads = thorough → already_in_session = stop; edit or expand
 
-**map queries (CRITICAL for good results):**
-Write CODE VOCABULARY, 20–60 tokens: class/function names, architectural terms, error/state synonyms.
-BAD: "where does the connection go when it dies"
-GOOD: "session lost disconnected not_found guidance recovery error handling"
-
-Need → do this:
-- Unfamiliar topic → map(query); new topic → map again with sharper query
-- Known path / user-named file → glob or focus(path=, budget=wide|full); skip map
-- After map → focus(outline) if needs_outline; then focus(span, budget=cap, start_line, end_line)
-- Symbol in file → focus(path, query=symbol, budget=cap) or outline line ranges
-- Wiring → focus(neighbors) or focus(mode=call_sites)
-- Repeat map → cached:true; confidence:low/weak_match → sharpen or grep
-- Reorient → workspace(show); gate() sid:; status() agent_ready + agent_ready_note
+Validated flow:
+1. gate() (new chat) or workspace(show) (follow-up)
+2. map(query) with code-vocab → pick 1–3 cards
+3. focus(outline) when needed; if count=0 try grep (BOM / unsupported)
+4. focus(span, budget=cap, start_line, end_line) from outline — verify symbol name in code
+5. grep / call_sites for literals; neighbors = imports only (not call graph)
+6. expand(handle) if body was deduped; status() for agent_ready before editing indexed files
 
 Defaults:
-- map = ranked cards (indexed chunks). Empty cards ≠ symbol absent from repo.
+- map = ranked indexed chunks (no bodies). Empty ≠ absent from repo.
 - grep/glob: no file-type restrictions — .env, yaml, md, json all allowed
-- Avoid grep-thrash (same pattern loop); dedup via focus_seen / expand
-- neighbors = imports; call_sites/grep for literal refs
+- Avoid map/grep thrash; one sharpened retry then focus with line ranges
 - Shell for tests/build/git stays native
 
-Flow (code discovery): map → focus(outline) → focus(span, budget=cap) → edit.
-Flow (named file): focus(path, budget=wide|full) or native Read → edit.
-
-Lifecycle (stop / connect / resume — use status() or gate() next_action):
-- scubiee stop = global pause → scubiee resume (NOT init). Reload IDE MCP after resume.
-- scubiee disconnect = remove MCP pins → scubiee connect --<tool> (repo stays enrolled).
-- Wiped or missing id.json → scubiee init . (once), then connect if needed.
-- Never ran setup → scubiee setup before connect.
-- IDE MCP toggled off only → enable in Cursor OR scubiee connect --cursor; no init.
+Flow (discovery): map → focus(outline) → focus(span, budget=cap, lines from outline) → edit.
+Flow (named file): focus(path=, budget=wide|full) → edit.
+Lifecycle issues → status()/gate() next_action (resume/connect/init). Do not invent native locate.
 """
+)
 
 SERVER_INSTRUCTIONS_PAUSED = """\
 Scubiee is STOPPED (user ran scubiee stop). Do NOT call any Scubiee MCP tool.
@@ -355,7 +355,37 @@ def _locate_bind_hint() -> str:
     return "Run `scubiee init .` in the project, then pass root=<workspace> on locate calls."
 
 
+def _env_pin_project_mismatch() -> bool:
+    """True when MCP env pins CTX_REPO + CTX_PROJECT_ID that disagree."""
+    pin = _ctx_repo_raw()
+    pid = (os.environ.get("CTX_PROJECT_ID") or "").strip()
+    if pin is None or not pid:
+        return False
+    from pipeline.project_id import read_id_file
+
+    by_id = _registry_path_for_project_id(pid)
+    if by_id is None:
+        return False
+    enrolled_pin = _enrolled_walk(pin) if _path_exists(pin) else None
+    if enrolled_pin is None:
+        return True
+    try:
+        if read_id_file(enrolled_pin) != pid:
+            return True
+        return enrolled_pin.resolve() != by_id.resolve()
+    except OSError:
+        return True
+
+
 def _managed_locate_err(tool: str, repo: Path) -> str:
+    if _env_pin_project_mismatch():
+        pin = _ctx_repo_raw()
+        pid = (os.environ.get("CTX_PROJECT_ID") or "").strip()
+        return _err(
+            tool,
+            f"CTX_REPO ({pin}) does not match CTX_PROJECT_ID ({pid!r}).",
+            hint="Run `scubiee connect` in the workspace or fix MCP env pins.",
+        )
     return _err(
         tool,
         f"Repository at {repo} is not managed by Scubiee.",
@@ -828,6 +858,15 @@ def _default_repo() -> Path:
         if _looks_like_project_root(candidate):
             return candidate
 
+    pin = _ctx_repo_raw()
+    pid_env = (os.environ.get("CTX_PROJECT_ID") or "").strip()
+    if pin is not None and pid_env:
+        if _env_pin_project_mismatch():
+            return pin
+        enrolled_pin = _enrolled_walk(pin) if _path_exists(pin) else None
+        if enrolled_pin is not None:
+            return enrolled_pin.resolve()
+
     walked = _enrolled_walk(Path.cwd().resolve())
     if walked is not None:
         return walked
@@ -836,11 +875,11 @@ def _default_repo() -> Path:
     if _looks_like_project_root(cwd):
         return cwd
 
-    by_id = _resolve_ctx_project_id()
-    if by_id is not None:
-        return by_id
+    if not (pin is not None and pid_env):
+        by_id = _resolve_ctx_project_id()
+        if by_id is not None:
+            return by_id
 
-    pin = _ctx_repo_raw()
     if pin is not None and not _ctx_repo_stale(pin):
         return pin
 
@@ -1286,10 +1325,10 @@ def _slim_grep(hits: Any, *, keep: int) -> list[dict[str, Any]]:
 
 
 _OUTLINE_KEEP_DEFAULT = 60
-_AUTO_SPAN_MAX_LINES = 200
-_BUDGET_MAX_LINES = {"cap": 400, "wide": 800, "full": 100_000}
-_BUDGET_MAX_CHARS = {"cap": 12_000, "wide": 20_000, "full": 100_000}
-_BUDGET_DEFAULT_CHARS = {"cap": 12_000, "wide": 20_000, "full": 100_000}
+_BUDGET_MAX_LINES = {"cap": 200, "wide": 350, "full": 1_000}
+_BUDGET_MAX_CHARS = {"cap": 50_000, "wide": 100_000, "full": 500_000}
+_BUDGET_DEFAULT_CHARS = {"cap": 50_000, "wide": 100_000, "full": 500_000}
+_FOCUS_CHAR_CEILING = _BUDGET_MAX_CHARS["full"]
 _FOCUS_OVERLAP_MIN_LINES = 20
 
 
@@ -1576,7 +1615,7 @@ def _resolve_auto_end_line(
     max_lines: int | None = None,
 ) -> int:
     """When end_line omitted: symbol body or capped window (not +40 only)."""
-    line_cap = max_lines if max_lines is not None else _AUTO_SPAN_MAX_LINES
+    line_cap = max_lines if max_lines is not None else _BUDGET_MAX_LINES["cap"]
     symbols = _outline_symbols(repo, path_n)
     s = max(1, int(start_line))
     for sym in symbols:
@@ -1624,12 +1663,14 @@ def _read_line_range(
         e = min(int(end), n)
     else:
         e = _resolve_auto_end_line(repo, path, s, n, max_lines=max_lines)
+    wanted_e = e
     if max_lines is not None and e - s + 1 > max_lines:
         e = min(s + max_lines - 1, n)
     e = min(max(e, s), n)
+    line_truncated = wanted_e > e
     full_text = _strip_bom_text("\n".join(lines[s - 1 : e]))
-    truncated = len(full_text) > max_chars
-    text = full_text[:max_chars] if truncated else full_text
+    char_truncated = len(full_text) > max_chars
+    text = full_text[:max_chars] if char_truncated else full_text
     meta = truncation_meta(
         full_text,
         start_line=s,
@@ -1637,6 +1678,8 @@ def _read_line_range(
         lines_total=n,
         max_chars=max_chars,
         path=path.replace("\\", "/"),
+        budget=mode,
+        line_truncated=line_truncated,
     )
     out = {
         "excerpt": text,
@@ -1837,6 +1880,7 @@ def _client_for(repo: Path):
         client=mcp_client_name(),
         session_id=sid,
     )
+    admission: dict[str, Any] = {"ok": True}
     # Admission must succeed before operational endpoints (/v1/grep, /v1/search).
     # ensure_daemon open_repo is best-effort; retry explicitly so MCP reload races
     # do not surface requires_initialize to agents.
@@ -1858,18 +1902,39 @@ def _client_for(repo: Path):
                     client=mcp_client_name(),
                     session_id=sid,
                 )
-                client.open_repo(str(repo), wait=True)
+                opened = client.open_repo(str(repo), wait=True)
             else:
-                client.open_repo(str(repo), wait=True)
-    except Exception:  # noqa: BLE001
-        pass
+                opened = client.open_repo(str(repo), wait=True)
+        if str(opened.get("status") or "") != "activated":
+            admission = {
+                "ok": False,
+                "error": "repo_not_activated",
+                "status": opened.get("status"),
+                "hint": "Run scubiee init in this repo or check scubiee status()",
+            }
+    except Exception as exc:  # noqa: BLE001
+        admission = {
+            "ok": False,
+            "error": "open_repo_failed",
+            "detail": str(exc),
+            "hint": "Run scubiee engine start or scubiee doctor",
+        }
+    if not admission.get("ok"):
+        _stderr(
+            f"[scubiee] admission warning for {repo}: "
+            f"{admission.get('error')} ({admission.get('detail') or admission.get('status')})"
+        )
+    setattr(client, "_scubiee_admission", admission)
     # Locate availability must not depend on the optional live reindex daemon.
     # This is deliberately best-effort: the next query still gets the normal
     # unreachable response if the daemon could not be started.
     try:
         client.note_locate(path=str(repo))
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        note_err = str(exc)
+        _stderr(f"[scubiee] note_locate failed for {repo}: {note_err}")
+        admission.setdefault("note_locate_error", note_err)
+        setattr(client, "_scubiee_admission", admission)
     return client
 
 
@@ -1906,9 +1971,9 @@ class ReadArgs(BaseModel):
     max_neighbors: int = Field(4, ge=1, le=10, description="Cap how many neighbor spans ride along.")
     budget: Literal["cap", "wide", "full"] = Field(
         "cap",
-        description="Read size: cap (~400 lines), wide (~800), full (whole file).",
+        description="Read size: cap (~200 lines), wide (~350), full (~1k lines). Chars guard density only.",
     )
-    max_chars: int = Field(12_000, ge=200, le=100_000, description="Body budget for the span.")
+    max_chars: int = Field(50_000, ge=200, le=500_000, description="Body budget for the span.")
     response_format: Literal["json", "markdown"] = Field("json", description="json|markdown")
 
 
@@ -1979,9 +2044,9 @@ class FocusArgs(BaseModel):
     end_line: int = Field(0, ge=0, le=1_000_000)
     budget: Literal["cap", "wide", "full"] = Field(
         "cap",
-        description="Read size: cap (~400 lines), wide (~800), full (whole file).",
+        description="Read size: cap (~200 lines), wide (~350), full (~1k lines). Chars guard density only.",
     )
-    max_chars: int = Field(12_000, ge=200, le=100_000, description="Body char budget (budget sets default).")
+    max_chars: int = Field(50_000, ge=200, le=500_000, description="Body char budget (budget sets default).")
     max_neighbors: int = Field(4, ge=1, le=10)
     outline_offset: int = Field(0, ge=0, le=10_000, description="Paginate outline symbols.")
     response_format: Literal["json", "markdown"] = Field("json", description="json|markdown")
@@ -2346,9 +2411,9 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         neighbors: Annotated[bool, Field(description="Attach 1-hop callers/callees of this span (the graph).")] = False,
         max_neighbors: Annotated[int, Field(description="Cap how many neighbor spans ride along (1..10).")] = 4,
         budget: Annotated[
-            str, Field(description="Read size: cap (~400 lines), wide (~800), full (whole file).")
+            str, Field(description="Read size: cap (~200 lines), wide (~350), full (~1k).")
         ] = "cap",
-        max_chars: Annotated[int, Field(description="Body budget for the span (budget sets default).")] = 12_000,
+        max_chars: Annotated[int, Field(description="Body budget for the span (budget sets default).")] = 50_000,
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
         root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
         project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
@@ -3023,7 +3088,10 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             from pipeline.session_store import expand as _expand
 
             card = _expand(
-                repo, handle, max_chars=max(200, min(int(max_chars or 4000), 12000)), session_id=sid,
+                repo,
+                handle,
+                max_chars=max(200, min(int(max_chars or 4000), _FOCUS_CHAR_CEILING)),
+                session_id=sid,
             )
         except Exception as exc:  # noqa: BLE001
             return _err("expand", str(exc), handle=handle)
@@ -3170,9 +3238,9 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         start_line: Annotated[int, Field(description="Optional start line with path=.")] = 0,
         end_line: Annotated[int, Field(description="Optional end line with path=.")] = 0,
         budget: Annotated[
-            str, Field(description="Read size: cap (~400 lines), wide (~800), full (whole file).")
+            str, Field(description="Read size: cap (~200 lines), wide (~350), full (~1k).")
         ] = "cap",
-        max_chars: Annotated[int, Field(description="Body budget for span (budget sets default).")] = 12_000,
+        max_chars: Annotated[int, Field(description="Body budget for span (budget sets default).")] = 50_000,
         max_neighbors: Annotated[int, Field(description="Cap neighbors spans.")] = 4,
         outline_offset: Annotated[int, Field(description="Paginate outline symbols.")] = 0,
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
@@ -3788,6 +3856,9 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
 
 
 def main() -> None:
+    from pipeline.ctx_home_guard import enforce_ctx_home_or_exit
+
+    enforce_ctx_home_or_exit()
     # Disable automatic GC in the MCP process. Native extensions (tokenizers,
     # MLX, numpy) release the GIL; concurrent GC can traverse freed objects → SIGSEGV.
     # Same fix as the daemon (server.py). Manual gc.collect() at safe points.
@@ -3808,7 +3879,8 @@ def main() -> None:
     os.environ.setdefault("CTX_REPO", str(repo))
     os.environ.setdefault("CTX_TOKEN_MODE", "savings")
     os.environ.setdefault("CTX_SESSION_GOVERNOR", "1")
-    os.environ.setdefault("CTX_ENGINE_IDLE_S", "60")
+    os.environ.setdefault("CTX_ENGINE_IDLE_S", "25")
+    os.environ.setdefault("CTX_ENGINE_TRANSITION_DEBOUNCE_S", "25")
     try:
         from pipeline.daemon import ensure_daemon
 

@@ -1665,57 +1665,100 @@ def cmd_disconnect(args: argparse.Namespace) -> int:
 
 
 def cmd_upgrade(args: argparse.Namespace) -> int:
-    """Upgrade scubiee to the latest version, restart daemon, run migrations."""
+    """One-command upgrade: swap package, migrate, rebind MCP/rules, health-check."""
     from pipeline.upgrade import check_pypi_version, do_upgrade, installed_version
 
-    # Check if update is available first
+    check_only = bool(getattr(args, "check", False))
+    connect = not bool(getattr(args, "no_connect", False))
+    repair = bool(getattr(args, "repair", False))
+    reindex = bool(getattr(args, "reindex", False))
+    pre_release = bool(getattr(args, "pre", False))
+
+    pypi = check_pypi_version(force=True)
+    skip_package = not bool(pypi.get("update_available"))
+
     if sys.stdout.isatty():
-        from pipeline.cli_ui import info, kv, success, warn
+        from pipeline.cli_ui import info, success, warn
 
         print("", file=sys.stderr)
         info(f"Current version: {installed_version()}", stream=sys.stderr)
 
-        check = check_pypi_version(force=True)
-        if check.get("error"):
-            warn("Could not reach PyPI", detail=check["error"], stream=sys.stderr)
-        elif not check.get("update_available"):
-            success("Already on the latest version", stream=sys.stderr)
-            print("", file=sys.stderr)
-            return 0
+        if pypi.get("error"):
+            warn("Could not reach PyPI", detail=pypi["error"], stream=sys.stderr)
+            skip_package = False  # still attempt swap if network failed mid-flight intent
+        elif skip_package:
+            success("Already on the latest package version", stream=sys.stderr)
+            if not check_only:
+                info(
+                    "Refreshing daemon / migrations / MCP pins (no package swap)...",
+                    stream=sys.stderr,
+                )
         else:
-            info(f"Latest available: {check['latest']}", stream=sys.stderr)
+            info(f"Latest available: {pypi['latest']}", stream=sys.stderr)
 
         print("", file=sys.stderr)
-        info("Upgrading...", stream=sys.stderr)
+        if check_only:
+            info("Planning only (--check)...", stream=sys.stderr)
+        else:
+            info("Running upgrade supervisor...", stream=sys.stderr)
 
-    result = do_upgrade(pre_release=bool(getattr(args, "pre", False)))
+    result = do_upgrade(
+        pre_release=pre_release,
+        check_only=check_only,
+        connect=connect,
+        repair=repair,
+        reindex=reindex,
+        skip_package=skip_package,
+    )
 
     if sys.stdout.isatty():
+        from pipeline.cli_ui import info, kv, success, warn
+
         print("", file=sys.stderr)
         if result.get("ok"):
             old = result.get("old_version", "?")
             new = result.get("new_version", "?")
-            if result.get("already_latest"):
-                success(f"Already on latest ({new})", stream=sys.stderr)
+            if result.get("check_only"):
+                success("Upgrade plan ready", stream=sys.stderr)
+            elif result.get("already_latest") or skip_package:
+                success(f"On latest package ({new}); post-upgrade steps done", stream=sys.stderr)
             else:
                 success(f"Upgraded {old} → {new}", stream=sys.stderr)
-            restart = result.get("daemon_restart", {})
-            if restart.get("action") == "restarted":
-                success("Daemon restarted with new version", stream=sys.stderr)
-            elif restart.get("action") == "version_match":
-                kv("Daemon", "already current", stream=sys.stderr)
+            plan = result.get("plan") or {}
+            for action in plan.get("actions") or []:
+                if action.get("action") == "skip":
+                    continue
+                kv(
+                    str(action.get("component")),
+                    f"{action.get('action')}: {action.get('reason')}",
+                    stream=sys.stderr,
+                )
+            daemon = result.get("daemon_restart") or result.get("daemon") or {}
+            if daemon.get("action") in {"started", "force_restarted", "force_restart_fallback", "restarted"}:
+                success(f"Daemon {daemon.get('action')}", stream=sys.stderr)
+            elif daemon.get("action") == "already_running":
+                kv("Daemon", "already running", stream=sys.stderr)
             migration = result.get("migration", {})
             if isinstance(migration, dict) and migration.get("migrated"):
                 success(f"Migrated {migration['migrated']} project(s)", stream=sys.stderr)
+            rebind = result.get("rebind") or {}
+            if rebind.get("ok") and not rebind.get("skipped"):
+                n = len(rebind.get("repos") or [])
+                success(f"Refreshed MCP/rules on {n} enrolled repo(s)", stream=sys.stderr)
+            if result.get("health", {}).get("ok"):
+                success("Health check passed", stream=sys.stderr)
             for step in result.get("next_steps") or []:
                 info(step, stream=sys.stderr)
+            for warning in (plan.get("warnings") or []):
+                warn(str(warning), stream=sys.stderr)
         else:
             warn(f"Upgrade failed: {result.get('error', 'unknown')}", stream=sys.stderr)
-            if result.get("pre_stop") is False:
+            if result.get("pre_stop") is False or result.get("error") == "quiesce_failed":
                 info(
                     "If Access denied on Windows: run `scubiee unlock-tool` "
                     "(or quit Cursor), then retry `scubiee upgrade`. "
-                    "Admin will not help — these are file locks.",
+                    "Admin will not help — these are file locks. "
+                    "A full computer restart is not required.",
                     stream=sys.stderr,
                 )
             hint = result.get("hint")
@@ -1807,6 +1850,19 @@ def _write_mcp_config(repo: Path, host: str, port: int) -> None:
         print(f"[setup] wrote {path}", file=sys.stderr)
 
 
+def _argv_skips_ctx_home_guard(argv: list[str] | None) -> bool:
+    args = argv if argv is not None else sys.argv[1:]
+    if not args:
+        return False
+    head = args[0]
+    if head in {"--version", "-V", "--help", "-h", "version"}:
+        return True
+    # Allow wiping a polluted temp home.
+    if head == "wipe":
+        return True
+    return False
+
+
 def main(argv: list[str] | None = None) -> int:
     if sys.stdout.isatty() or sys.stderr.isatty():
         from pipeline.cli_ui import install_graphify_brand_scrubbers
@@ -1835,6 +1891,11 @@ def main(argv: list[str] | None = None) -> int:
         except Exception:  # noqa: BLE001
             pass
         return 0
+
+    if not _argv_skips_ctx_home_guard(argv):
+        from pipeline.ctx_home_guard import enforce_ctx_home_or_exit
+
+        enforce_ctx_home_or_exit()
 
     if _requires_faiss_guard(argv):
         from pipeline.install_health import ensure_faiss_importable
@@ -2382,9 +2443,32 @@ def main(argv: list[str] | None = None) -> int:
     # --- upgrade ---
     p_upgrade = sub.add_parser(
         "upgrade",
-        help="Upgrade scubiee to the latest version (pulls from PyPI, restarts daemon, runs migrations)",
+        help=(
+            "One-command upgrade: package swap, migrations, MCP/rules rebind, "
+            "daemon restart, health check (cross-OS)"
+        ),
     )
     p_upgrade.add_argument("--pre", action="store_true", help="Allow pre-release versions")
+    p_upgrade.add_argument(
+        "--check",
+        action="store_true",
+        help="Show DiffPlan only (no package swap or migrations)",
+    )
+    p_upgrade.add_argument(
+        "--no-connect",
+        action="store_true",
+        help="Skip MCP/GATE rewrite for enrolled repos",
+    )
+    p_upgrade.add_argument(
+        "--repair",
+        action="store_true",
+        help="Also refresh accel/setup packages after upgrade",
+    )
+    p_upgrade.add_argument(
+        "--reindex",
+        action="store_true",
+        help="Force embedding/index rebuild even if embed ABI unchanged",
+    )
     p_upgrade.set_defaults(func=cmd_upgrade)
 
     args = parser.parse_args(argv)

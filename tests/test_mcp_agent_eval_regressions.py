@@ -58,10 +58,64 @@ def test_truncation_meta_includes_next_start_line() -> None:
         lines_total=100,
         max_chars=20,
         path="pkg/mod.py",
+        budget="cap",
     )
     assert meta["truncated"] is True
+    assert meta["truncated_by"] == "chars"
     assert meta.get("next_start_line")
-    assert "focus(path=" in meta.get("next", "")
+    assert "max_chars=20" in meta.get("next", "")
+    assert "budget='cap'" in meta.get("next", "")
+
+
+def test_truncation_meta_line_budget_pagination() -> None:
+    text = "x\n" * 300
+    meta = truncation_meta(
+        text,
+        start_line=1,
+        end_line=300,
+        lines_total=800,
+        max_chars=50_000,
+        path="big.py",
+        budget="cap",
+        line_truncated=True,
+    )
+    assert meta["truncated"] is True
+    assert meta["truncated_by"] == "lines"
+    assert meta["next_start_line"] == 301
+    assert "start_line=301" in meta.get("next", "")
+
+
+def test_auto_span_uses_cap_line_budget(tmp_path: Path) -> None:
+    repo = tmp_path / "proj"
+    repo.mkdir()
+    lines = [f"line {i}" for i in range(1, 401)]
+    (repo / "long.py").write_text("\n".join(lines), encoding="utf-8")
+    out = _read_line_range(
+        repo,
+        "long.py",
+        1,
+        0,
+        50_000,
+        max_lines=200,
+        budget="cap",
+    )
+    assert out["ok"] is True
+    assert out["end_line"] == 200
+    assert "line 200" in out["excerpt"]
+    assert "line 201" not in out["excerpt"]
+
+    explicit = _read_line_range(
+        repo,
+        "long.py",
+        1,
+        400,
+        50_000,
+        max_lines=200,
+        budget="cap",
+    )
+    assert explicit["end_line"] == 200
+    assert explicit.get("truncated_by") == "lines"
+    assert explicit.get("next_start_line") == 201
 
 
 def test_read_line_range_file_not_found(tmp_path: Path) -> None:

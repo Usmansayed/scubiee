@@ -269,6 +269,8 @@ def _cmdline_matches_ce(cmdline: list[str] | None) -> bool:
         ".scubiee",
         "pipeline.mcp_locate",
         "pipeline.mcp_server",
+        "pipeline.mcp_bridge",
+        "mcp-bridge",
         "pipeline.__main__",
         "pipeline.engine",
         "pipeline.watchdog",
@@ -325,36 +327,104 @@ def enumerate_scubiee_processes(*, exclude_self: bool = True) -> list[dict[str, 
     return found
 
 
+def _is_mcp_bridge_process(proc: dict[str, Any]) -> bool:
+    cmdline = str(proc.get("cmdline") or "").lower().replace("/", "\\")
+    exe = str(proc.get("exe") or "").lower().replace("/", "\\")
+    return "mcp-bridge" in cmdline or "mcp_bridge" in cmdline or "mcp-bridge" in exe
+
+
+def _is_mcp_worker_process(proc: dict[str, Any]) -> bool:
+    if _is_mcp_bridge_process(proc):
+        return False
+    cmdline = str(proc.get("cmdline") or "").lower().replace("/", "\\")
+    exe = str(proc.get("exe") or "").lower().replace("/", "\\")
+    return (
+        "scubiee-mcp" in cmdline
+        or "scubiee-mcp" in exe
+        or "pipeline.mcp_locate" in cmdline
+        or "pipeline.mcp_server" in cmdline
+    )
+
+
+def kill_mcp_worker_processes(*, exclude_bridge: bool = True) -> dict[str, Any]:
+    """Kill MCP worker processes; keep ``scubiee-mcp-bridge`` alive for hot reload."""
+    killed: list[int] = []
+    skipped: list[int] = []
+    for proc in enumerate_scubiee_processes(exclude_self=True):
+        pid = int(proc["pid"])
+        if exclude_bridge and _is_mcp_bridge_process(proc):
+            skipped.append(pid)
+            continue
+        if not _is_mcp_worker_process(proc):
+            continue
+        result = safe_terminate_pid(pid, grace_s=0.5)
+        if result.get("terminated"):
+            killed.append(pid)
+
+    remaining_workers = [
+        p
+        for p in enumerate_scubiee_processes(exclude_self=True)
+        if _is_mcp_worker_process(p) and not (exclude_bridge and _is_mcp_bridge_process(p))
+    ]
+    return {
+        "ok": not remaining_workers,
+        "killed": killed,
+        "skipped_bridge_pids": skipped,
+        "remaining_pids": [int(p["pid"]) for p in remaining_workers],
+    }
+
+
 def kill_all_scubiee_processes(
     *,
     exclude_self: bool = True,
+    exclude_bridge: bool = False,
     rounds: int = 3,
 ) -> dict[str, Any]:
-    """Kill every Scubiee-related process (for wipe --all after state is gone)."""
-    actions: dict[str, Any] = {}
+    """Kill every Scubiee-related process (for wipe --all after state is gone).
+
+    When ``exclude_bridge`` is true, ``scubiee-mcp-bridge`` stdio proxies stay alive
+    so IDE MCP sessions survive upgrade quiesce and hot-reload can respawn workers.
+    """
+    actions: dict[str, Any] = {"exclude_bridge": exclude_bridge}
     actions["stop_engine_workers"] = stop_engine_worker_processes()
     actions["stop_all"] = stop_all_context_engine_processes()
 
+    skipped_bridge: list[int] = []
     killed_rounds: list[list[int]] = []
     for _ in range(max(1, rounds)):
         round_killed: list[int] = []
         for proc in enumerate_scubiee_processes(exclude_self=exclude_self):
             pid = int(proc["pid"])
+            if exclude_bridge and _is_mcp_bridge_process(proc):
+                skipped_bridge.append(pid)
+                continue
             result = safe_terminate_pid(pid, grace_s=0.5)
             if result.get("terminated"):
                 round_killed.append(pid)
         killed_rounds.append(round_killed)
-        if not enumerate_scubiee_processes(exclude_self=exclude_self):
+        remaining_now = [
+            p
+            for p in enumerate_scubiee_processes(exclude_self=exclude_self)
+            if not (exclude_bridge and _is_mcp_bridge_process(p))
+        ]
+        if not remaining_now:
             break
         time.sleep(0.75)
 
     root = uv_tool_root()
     if root is not None:
         skip = {os.getpid()} if exclude_self else set()
+        if exclude_bridge:
+            skip.update(skipped_bridge)
         actions["stop_uv_tool"] = stop_processes_under(root, exclude_pids=skip)
 
-    remaining = enumerate_scubiee_processes(exclude_self=exclude_self)
+    remaining = [
+        p
+        for p in enumerate_scubiee_processes(exclude_self=exclude_self)
+        if not (exclude_bridge and _is_mcp_bridge_process(p))
+    ]
     actions["killed_rounds"] = killed_rounds
+    actions["skipped_bridge_pids"] = sorted(set(skipped_bridge))
     actions["remaining"] = remaining
     actions["remaining_pids"] = [p["pid"] for p in remaining]
     actions["ok"] = not remaining
@@ -1027,9 +1097,13 @@ def prepare_uv_tool_directory_for_swap(
     python: Path | None = None,
     project: Path | None = None,
     remove_dir: bool = False,
+    strip_mcp: bool = True,
 ) -> dict[str, Any]:
-    """MCP-off → stop lockers → optional force-remove. Call before uv tool install/upgrade."""
-    release = release_scubiee_process_locks(project=project)
+    """MCP-off → stop lockers → optional force-remove. Call before uv tool install/upgrade.
+
+    Pass ``strip_mcp=False`` for upgrades that will reconnect (stub only; restore pins after swap).
+    """
+    release = release_scubiee_process_locks(project=project, strip_mcp=strip_mcp)
     report: dict[str, Any] = {
         "ok": bool(release.get("ok", True)),
         "mcp": release.get("mcp") or {},

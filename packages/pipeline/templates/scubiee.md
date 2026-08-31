@@ -1,9 +1,7 @@
-# Scubiee GATE — short locate guide
+# Scubiee GATE — when to use
 
-Short guide here; full workflow is in Scubiee MCP server instructions.
+Policy only; full workflow is in Scubiee MCP server instructions.
 
-- **GATE 0** (not managed): BAN Scubiee locate tools. USE native Grep/Glob/Read/search. Run `scubiee init .` to enroll.
-- **GATE 1:ce_*** (managed): Prefer Scubiee `map`|`focus`|`grep`|`glob` for discovery. Native Grep/Glob/Read OK for known paths or full-file reads. `focus` budget: `cap` (~400 lines) · `wide` (20k chars) · `full` (100k chars). Edit/Shell for changes/tests.
-- **GATE p** (stopped): BAN Scubiee MCP. Native tools only. User: `scubiee resume` (NOT init), reload MCP.
-
-Pass `session_id` from Scubiee responses on later calls.
+- **GATE 0** — Not managed (no `scubiee init`). BAN Scubiee MCP locate tools (`map`, `focus`, `grep`, `glob`, `workspace`). USE native Grep/Glob/Read/codebase-search only. Run `scubiee init .` to enroll.
+- **GATE 1:ce_*** (managed): USE Scubiee only for all retrieval/locate. BAN native Grep/Glob/Read/codebase-search for finding or reading code. Native OK only for Edit/Write/Shell. If Scubiee fails → `status()`/`gate()` `next_action` — do not fall back to native locate.
+- **GATE p** — Scubiee STOPPED (`scubiee stop`). BAN all Scubiee MCP tools (map, focus, grep, glob, workspace, expand, search, read, files, recall, neighbors, graph, outline, status loops). USE native Read/Grep/Glob/codebase-search only. Run `scubiee resume` (NOT `init`).

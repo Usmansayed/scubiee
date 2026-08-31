@@ -470,7 +470,7 @@ def expand(
     sp["last_served_ts"] = time.time()
     save_store(repo_p, store, session_id=sid)
 
-    max_chars = max(200, min(int(max_chars or 4000), 12000))
+    max_chars = max(200, min(int(max_chars or 4000), 500_000))
     body = text if len(text) <= max_chars else text[: max_chars - 1] + "…"
     from pipeline.capability import truncation_meta
 

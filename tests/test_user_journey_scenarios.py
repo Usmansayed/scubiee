@@ -193,7 +193,7 @@ def test_s6_init_writes_project_rules_not_global(
     assert (repo / ".cursor" / "rules" / "scubiee.mdc").is_file()
     rule = (repo / ".cursor" / "rules" / "scubiee.mdc").read_text(encoding="utf-8")
     assert pid in rule
-    assert "Prefer Scubiee" in rule or "prefer Scubiee" in rule.lower()
+    assert "USE Scubiee" in rule or "use Scubiee" in rule.lower()
     assert "map(query)" not in rule
     assert not (fake_home / ".cursor" / "rules" / "scubiee.mdc").exists()
 
@@ -311,9 +311,11 @@ def test_s13_rules_and_instructions_do_not_duplicate_bans(
     rule = (repo / ".cursor" / "rules" / "scubiee.mdc").read_text(encoding="utf-8")
     instr = _instructions(monkeypatch)
 
-    assert "Prefer Scubiee" in rule or "prefer Scubiee" in rule.lower()
+    assert "USE Scubiee" in rule or "use Scubiee" in rule.lower()
+    assert "BAN native" in rule
     assert "map" in rule
     assert "map(query)" not in rule
+    assert "focus budget" not in rule.lower()
     assert "Locate trajectory" in instr or "map(query)" in instr
     assert "BAN native" not in instr
     assert "budget=cap" in instr or "focus budget" in instr
@@ -360,7 +362,7 @@ def test_s15_init_writes_agents_md_ban_section(tmp_path: Path, monkeypatch) -> N
     write_project_gate_rules(repo)
     agents = (repo / "AGENTS.md").read_text(encoding="utf-8")
     assert pid in agents
-    assert "Prefer Scubiee" in agents or "prefer Scubiee" in agents.lower()
+    assert "USE Scubiee" in agents or "use Scubiee" in agents.lower()
     assert "map(query)" not in agents
 
 
@@ -393,7 +395,7 @@ def test_s17_reinit_refreshes_gate_rule(tmp_path: Path, monkeypatch) -> None:
     write_project_gate_rules(repo)
     text = rule_path.read_text(encoding="utf-8")
     assert pid in text
-    assert "Prefer Scubiee" in text or "prefer Scubiee" in text.lower()
+    assert "USE Scubiee" in text or "use Scubiee" in text.lower()
     assert "stale content" not in text
 
 

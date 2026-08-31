@@ -1305,15 +1305,15 @@ def test_optional_graph_failures_preserve_primary_results(monkeypatch, tmp_path)
 def test_budget_limits_profiles() -> None:
     from pipeline import mcp_locate as ml
 
-    chars, lines = ml._budget_limits("cap", max_chars=12_000, default_max_chars=12_000)
-    assert chars == 12_000
-    assert lines == 400
-    chars, lines = ml._budget_limits("wide", max_chars=20_000, default_max_chars=12_000)
-    assert chars == 20_000
-    assert lines == 800
-    chars, lines = ml._budget_limits("full", max_chars=100_000, default_max_chars=12_000)
+    chars, lines = ml._budget_limits("cap", max_chars=50_000, default_max_chars=50_000)
+    assert chars == 50_000
+    assert lines == 200
+    chars, lines = ml._budget_limits("wide", max_chars=100_000, default_max_chars=50_000)
     assert chars == 100_000
-    assert lines == 100_000
+    assert lines == 350
+    chars, lines = ml._budget_limits("full", max_chars=500_000, default_max_chars=50_000)
+    assert chars == 500_000
+    assert lines == 1_000
 
 
 def test_read_line_range_full_budget(tmp_path: Path) -> None:
@@ -1381,11 +1381,29 @@ def test_focus_overlap_blocks_redundant_cap_span(tmp_path: Path) -> None:
     assert allowed is None
 
 
-def test_managed_gate_rule_includes_budget_cheat_sheet() -> None:
-    from pipeline.rules_installer import managed_gate_rule_body
+def test_managed_gate_rule_is_policy_not_product_howto() -> None:
+    from pipeline.rules_installer import (
+        gate_overview_mdc,
+        managed_gate_mcp_header,
+        managed_gate_rule_body,
+        managed_gate_usage_short,
+    )
+    from pipeline import mcp_locate as ml
 
     text = managed_gate_rule_body("1:ce_test", "ce_test")
-    assert "budget" in text.lower()
-    assert "Prefer Scubiee" in text or "prefer Scubiee" in text.lower()
-    assert "BAN native" not in text
-    assert "map" in text
+    assert "USE Scubiee only" in text or "use Scubiee only" in text.lower()
+    assert "BAN native" in text
+    assert "Edit/Write/Shell" in text or "Edit/Shell" in text
+    assert (
+        "do not switch to native locate" in text.lower()
+        or "do not fall back to native locate" in text.lower()
+        or "next_action" in text
+    )
+    assert "MCP server instructions" in text or "server instructions" in text.lower()
+    # How-to belongs in MCP instructions, not the GATE rule
+    assert "focus budget" not in text.lower()
+    assert "budget=cap" not in text
+    # Single source: MCP header matches policy; overview templates use same bans
+    assert managed_gate_mcp_header() in ml.SERVER_INSTRUCTIONS_PHASE
+    assert "BAN native" in gate_overview_mdc()
+    assert "USE Scubiee only" in managed_gate_usage_short()

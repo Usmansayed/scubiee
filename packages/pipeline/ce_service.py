@@ -262,6 +262,12 @@ class RuntimeManager:
                 "reused": True,
             }
         self._save_active_runtime()
+        try:
+            from pipeline.memory_governor import get_governor
+
+            get_governor().refresh_from_hub(self.hub)
+        except Exception:  # noqa: BLE001
+            pass
         return {
             **admission,
             "status": "activated",
@@ -325,6 +331,14 @@ class RuntimeManager:
                 self.warm_state = "ready"
                 self.warm_error = None
                 self._save_active_runtime()
+                try:
+                    from pipeline.memory_governor import get_governor
+
+                    gov = get_governor()
+                    gov.refresh_from_hub(self.hub)
+                    gov.demote_after_index()
+                except Exception:  # noqa: BLE001
+                    pass
                 return {
                     "ok": True,
                     "generation": self.generation,
@@ -513,6 +527,12 @@ class RuntimeManager:
                     return payload
                 self.indexing = True
                 self.warm_state = "indexing"
+                try:
+                    from pipeline.memory_governor import get_governor
+
+                    get_governor().set_indexing(True)
+                except Exception:  # noqa: BLE001
+                    pass
                 idx = self.index.full_index(root, force=False, fast=False)
                 self.indexing = False
                 if idx.get("deferred"):
@@ -528,10 +548,19 @@ class RuntimeManager:
             if not pub.get("ok"):
                 raise RuntimeError(pub.get("error") or "publish failed")
             eng = self.engine
-            self.warm_ms = (time.perf_counter() - t0) * 1000
-            self.warm_state = "ready"
-            self._start_keeper(root)
-            return {
+                self.warm_ms = (time.perf_counter() - t0) * 1000
+                self.warm_state = "ready"
+                self._start_keeper(root)
+                try:
+                    from pipeline.memory_governor import get_governor
+
+                    gov = get_governor()
+                    gov.set_indexing(False)
+                    gov.refresh_from_hub(self.hub)
+                    gov.apply_tier("locate_only")
+                except Exception:  # noqa: BLE001
+                    pass
+                return {
                 "ok": True,
                 "repo": str(root),
                 "project_id": self.project_id,
@@ -687,6 +716,12 @@ class RuntimeManager:
             payload["resources"] = get_resource_manager().status()
         except Exception:  # noqa: BLE001
             payload["resources"] = None
+        try:
+            from pipeline.memory_governor import get_governor
+
+            payload["memory"] = get_governor().status()
+        except Exception:  # noqa: BLE001
+            payload["memory"] = None
         from pipeline.runtime_profile import get_runtime_profile_state
 
         profile_state = get_runtime_profile_state()
@@ -777,6 +812,14 @@ class RuntimeManager:
         max_q = int(os.environ.get("CTX_QUERY_MAX_CHARS", "2000") or "2000")
         if len(q) > max_q:
             q = q[:max_q]
+        try:
+            from pipeline.memory_governor import get_governor
+
+            gov = get_governor()
+            gov.ensure_semantic_tier()
+            gov.refresh_from_hub(self.hub)
+        except Exception:  # noqa: BLE001
+            pass
         eng = self._ensure_engine(root)
         if eng is None:
             return {"status": "warming", "ready": False, "warm_state": self.warm_state}

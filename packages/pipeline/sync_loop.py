@@ -872,6 +872,22 @@ class BackgroundSyncLoop:
                 file=sys.stderr,
                 flush=True,
             )
+            try:
+                from pipeline.memory_governor import get_governor
+                from pipeline.ce_service import get_context_engine
+
+                ce = get_context_engine()
+                gov = get_governor()
+                gov.refresh_from_hub(ce.hub)
+                gov.demote_after_index()
+                print(
+                    f"[keeper] serve tier demoted to {gov.active_tier} "
+                    f"(target {gov.config().rss_target_mb}MB)",
+                    file=sys.stderr,
+                    flush=True,
+                )
+            except Exception as exc:  # noqa: BLE001
+                print(f"[keeper] serve tier demote failed: {exc}", file=sys.stderr, flush=True)
         except Exception as exc:  # noqa: BLE001
             print(f"[keeper] budget restore failed: {exc}", file=sys.stderr, flush=True)
 

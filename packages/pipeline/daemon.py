@@ -228,6 +228,12 @@ def start_daemon(
     write_install_marker()
 
     if is_running():
+        try:
+            from pipeline.lifecycle_runtime import note_engine_transition
+
+            note_engine_transition("start")
+        except Exception:  # noqa: BLE001
+            pass
         return {"ok": True, "already_running": True, "url": engine_url()}
 
     # Live engine process without health: wait/refuse. Never spawn a second
@@ -317,6 +323,12 @@ def start_daemon(
     while time.time() < deadline:
         if client.healthy():
             recovery = reconcile_managed_repositories(reason="daemon_start")
+            try:
+                from pipeline.lifecycle_runtime import note_engine_transition
+
+                note_engine_transition("start")
+            except Exception:  # noqa: BLE001
+                pass
             return {"ok": True, "started": True, **meta, "registry_recovery": recovery}
         time.sleep(0.4)
     return {
@@ -358,9 +370,17 @@ def stop_daemon() -> dict[str, Any]:
     deadline = time.time() + 5.0
     while time.time() < deadline and is_running():
         time.sleep(0.2)
+    still_running = is_running()
+    if not still_running:
+        try:
+            from pipeline.lifecycle_runtime import note_engine_transition
+
+            note_engine_transition("stop")
+        except Exception:  # noqa: BLE001
+            pass
     return {
         "ok": True,
-        "running": is_running(),
+        "running": still_running,
         "killed": killed,
         "skipped_pids": skipped,
     }

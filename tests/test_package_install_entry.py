@@ -100,6 +100,7 @@ def test_pyproject_and_npm_versions_match() -> None:
     assert "mlx" in extras
     assert "scubiee" in py["project"]["scripts"]
     assert "scubiee-mcp" in py["project"]["scripts"]
+    assert "scubiee-mcp-bridge" in py["project"]["scripts"]
     assert npm["bin"]["scubiee"]
     assert "mcp" in str(py["project"]["dependencies"]).lower() or any(
         "mcp" in dep for dep in py["project"]["dependencies"]

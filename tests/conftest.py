@@ -58,6 +58,7 @@ def _isolate_scubiee_home(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     home = tmp_path / "scubiee-test-home"
     home.mkdir()
     monkeypatch.setenv("CTX_HOME", str(home))
+    monkeypatch.setenv("CTX_ALLOW_TEST_HOME", "1")
     yield home
 
 
