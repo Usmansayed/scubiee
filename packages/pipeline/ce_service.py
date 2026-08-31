@@ -548,19 +548,19 @@ class RuntimeManager:
             if not pub.get("ok"):
                 raise RuntimeError(pub.get("error") or "publish failed")
             eng = self.engine
-                self.warm_ms = (time.perf_counter() - t0) * 1000
-                self.warm_state = "ready"
-                self._start_keeper(root)
-                try:
-                    from pipeline.memory_governor import get_governor
+            self.warm_ms = (time.perf_counter() - t0) * 1000
+            self.warm_state = "ready"
+            self._start_keeper(root)
+            try:
+                from pipeline.memory_governor import get_governor
 
-                    gov = get_governor()
-                    gov.set_indexing(False)
-                    gov.refresh_from_hub(self.hub)
-                    gov.apply_tier("locate_only")
-                except Exception:  # noqa: BLE001
-                    pass
-                return {
+                gov = get_governor()
+                gov.set_indexing(False)
+                gov.refresh_from_hub(self.hub)
+                gov.apply_tier("locate_only")
+            except Exception:  # noqa: BLE001
+                pass
+            return {
                 "ok": True,
                 "repo": str(root),
                 "project_id": self.project_id,
