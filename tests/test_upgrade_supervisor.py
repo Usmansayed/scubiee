@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pipeline.upgrade_manifest import ComponentAction, DiffPlan, build_diff_plan
-from pipeline.upgrade_platform import platform_name
+from pipeline.upgrade_platform import ensure_daemon_after_upgrade, platform_name
 
 
 def test_platform_name_known():
@@ -106,3 +106,38 @@ def test_do_upgrade_check_only(tmp_path, monkeypatch):
     assert report.get("check_only") is True
     assert "plan" in report
     assert "quiesce" not in report["phases"]
+
+
+def test_ensure_daemon_after_upgrade_always_restarts(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    calls: list[str] = []
+
+    monkeypatch.setattr(
+        "pipeline.upgrade.installed_version",
+        lambda: "0.3.9",
+    )
+    monkeypatch.setattr(
+        "pipeline.upgrade.daemon_version",
+        lambda: "0.3.9",
+    )
+    monkeypatch.setattr(
+        "pipeline.daemon.stop_daemon",
+        lambda: calls.append("stop") or {"ok": True},
+    )
+    monkeypatch.setattr(
+        "pipeline.daemon.force_restart_daemon",
+        lambda repo: calls.append("restart") or {"ok": True, "repo": str(repo)},
+    )
+    monkeypatch.setattr(
+        "pipeline.lifecycle_runtime.set_desired_mode",
+        lambda mode: calls.append(f"mode:{mode}"),
+    )
+    monkeypatch.setattr(
+        "pipeline.lifecycle_runtime.note_engine_transition",
+        lambda action: calls.append(f"transition:{action}"),
+    )
+
+    out = ensure_daemon_after_upgrade(tmp_path)
+    assert out["ok"] is True
+    assert out["action"] == "restarted_after_upgrade"
+    assert calls == ["stop", "restart", "mode:run", "transition:start"]

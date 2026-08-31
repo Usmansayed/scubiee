@@ -51,7 +51,16 @@ def _env_float(name: str, default: float) -> float:
 
 
 def embed_idle_demote_s() -> float:
-    return _env_float("CTX_EMBED_IDLE_DEMOTE_S", 120.0)
+    """Align serve demotion with lifecycle idle window (default 25s)."""
+    raw = os.environ.get("CTX_EMBED_IDLE_DEMOTE_S", "").strip()
+    if raw:
+        return _env_float("CTX_EMBED_IDLE_DEMOTE_S", 25.0)
+    try:
+        from pipeline.lifecycle_runtime import idle_seconds
+
+        return idle_seconds()
+    except Exception:  # noqa: BLE001
+        return 25.0
 
 
 EMBED_IDLE_DEMOTE_S = embed_idle_demote_s()  # import-time default for docs/tests
@@ -226,18 +235,58 @@ class MemoryGovernor:
             self._apply_locked(tier)
             return self.active_tier
 
-    def maybe_demote_idle(self, *, now: float | None = None) -> dict[str, Any] | None:
-        """Drop embedder after semantic idle while MCP clients stay connected."""
+    def _last_activity_at_locked(self, hub: "RepoHub | None" = None) -> float | None:
+        """Newest serve signal: semantic query or any MCP/HTTP repo touch."""
+        candidates: list[float] = []
+        if self.last_semantic_at is not None:
+            candidates.append(float(self.last_semantic_at))
+        if hub is not None:
+            try:
+                for item in hub.list_status():
+                    runtime = hub.get(str(item.get("project_id")))
+                    if runtime is not None and runtime.last_activity_at:
+                        candidates.append(float(runtime.last_activity_at))
+            except Exception:  # noqa: BLE001
+                pass
+        if not candidates:
+            return None
+        return max(candidates)
+
+    def maybe_demote_idle(
+        self,
+        hub: "RepoHub | None" = None,
+        *,
+        now: float | None = None,
+    ) -> dict[str, Any] | None:
+        """Drop warm engine after idle window while MCP clients stay connected."""
         current = time.time() if now is None else now
         with self._lock:
             if self.indexing:
                 return None
-            if self.active_tier == "locate_only":
+            if self.active_tier == "locate_only" and not self.embedder_loaded and self.engine_count == 0:
                 return None
-            if self.last_semantic_at is None:
+
+            try:
+                from pipeline.lifecycle_runtime import idle_stop_debounced
+
+                blocked = idle_stop_debounced(now=current)
+                if blocked is not None:
+                    return {
+                        "ok": True,
+                        "action": "demote_debounced",
+                        "blocked": True,
+                        "wait_s": blocked.get("wait_s"),
+                        "reason": blocked.get("reason"),
+                    }
+            except Exception:  # noqa: BLE001
+                blocked = None
+
+            last_active = self._last_activity_at_locked(hub)
+            if last_active is None:
                 return None
-            idle_s = current - self.last_semantic_at
-            if idle_s < embed_idle_demote_s():
+            idle_s = current - last_active
+            demote_after = embed_idle_demote_s()
+            if idle_s < demote_after:
                 return None
             self.demotions += 1
             self._demote_embedder_locked()
@@ -246,6 +295,7 @@ class MemoryGovernor:
                 "ok": True,
                 "action": "demote_serve",
                 "idle_s": round(idle_s, 1),
+                "demote_after_s": demote_after,
                 "tier": self.active_tier,
                 "engines_dropped": True,
             }

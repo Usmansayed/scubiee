@@ -515,7 +515,8 @@ def run_upgrade(
     clear_dirty_marker()
     report["phases"].append("commit")
     report["next_steps"] = [
-        "Next MCP tool call auto-reloads the new version — no Cursor restart needed.",
+        "Upgrade complete — daemon restarted on the new package.",
+        "Quit and reopen your IDE once (or toggle MCP off/on) so the bridge reloads.",
     ]
     if report.get("rebind", {}).get("skipped"):
         report["next_steps"].append(

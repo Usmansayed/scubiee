@@ -169,43 +169,45 @@ def verify_quiesced(*, host: str | None = None, port: int | None = None) -> dict
 
 
 def ensure_daemon_after_upgrade(repo: Path | str | None = None) -> dict[str, Any]:
-    """Start or force-restart daemon so it is never left down after upgrade."""
-    from pipeline.daemon import ensure_daemon, force_restart_daemon, is_running
+    """Always bounce the daemon onto the newly installed package after upgrade."""
+    from pipeline.daemon import force_restart_daemon, stop_daemon
+    from pipeline.lifecycle_runtime import DESIRED_RUN, note_engine_transition, set_desired_mode
     from pipeline.upgrade import daemon_version, installed_version
 
     target = Path(repo).resolve() if repo else Path.cwd().resolve()
-    report: dict[str, Any] = {"ok": False, "repo": str(target)}
+    iv = installed_version()
 
-    if is_running():
-        dv = daemon_version()
-        iv = installed_version()
-        if dv is not None and dv != iv:
-            restarted = force_restart_daemon(target)
-            report["action"] = "force_restarted"
-            report["restart"] = restarted
-            report["ok"] = bool(restarted.get("ok"))
-            return report
-        # Already running correct version
-        report["action"] = "already_running"
-        report["ok"] = True
-        report["daemon_version"] = dv
-        return report
+    try:
+        stop_daemon()
+    except Exception:  # noqa: BLE001
+        pass
 
-    # No daemon — start one (fixes prior no_daemon false success)
-    started = ensure_daemon(target)
-    if started.get("ok"):
-        report["action"] = "started"
-        report["ensure"] = started
-        report["ok"] = True
-        return report
-
-    # ensure failed — try force restart path
     restarted = force_restart_daemon(target)
-    report["action"] = "force_restart_fallback"
-    report["restart"] = restarted
-    report["ensure"] = started
-    report["ok"] = bool(restarted.get("ok"))
-    return report
+    ok = bool(restarted.get("ok"))
+    if ok:
+        try:
+            set_desired_mode(DESIRED_RUN)
+            note_engine_transition("start")
+        except Exception:  # noqa: BLE001
+            pass
+
+    dv = daemon_version()
+    action = "restarted_after_upgrade" if ok else "restart_failed_after_upgrade"
+    return {
+        "ok": ok,
+        "action": action,
+        "repo": str(target),
+        "installed_version": iv,
+        "daemon_version": dv,
+        "version_match": dv == iv if dv is not None else None,
+        "restart": restarted,
+        "hint": (
+            "Daemon restarted on the new package. Quit and reopen your IDE once "
+            "so MCP reloads the bridge — no other steps required."
+        )
+        if ok
+        else "Run `scubiee engine start` then reload IDE MCP.",
+    }
 
 
 def health_check(*, timeout: float = 5.0) -> dict[str, Any]:
@@ -223,40 +225,28 @@ def health_check(*, timeout: float = 5.0) -> dict[str, Any]:
 
         client = EngineClient(timeout=timeout)
         health = client.get("/health")
-        result["health"] = health
-        dv = health.get("version") or daemon_version()
+        dv = health.get("version")
         result["daemon_version"] = dv
-        result["ok"] = bool(health.get("ok", True)) and (dv is None or dv == iv)
-        if dv is not None and dv != iv:
-            result["error"] = "daemon_version_mismatch"
-        return result
+        result["health"] = health
+        result["ok"] = bool(health.get("ok")) and dv == iv
+        if dv and dv != iv:
+            result["error"] = "version_mismatch"
+            result["hint"] = "Run `scubiee engine restart` or `scubiee upgrade` again."
+        elif not health.get("ok"):
+            result["error"] = "health_not_ok"
     except Exception as exc:  # noqa: BLE001
         result["error"] = str(exc)
-        return result
+        result["hint"] = "Run `scubiee engine start`."
+    return result
 
 
 def package_swap_commands(*, pre_release: bool = False) -> list[list[str]]:
-    """Ordered install commands. Prefer force install for uv tool (reliable bump)."""
+    """Return ordered install commands for the active platform/channel."""
     import shutil
 
-    from pipeline.process_control import is_uv_tool_install
-
-    uv = shutil.which("uv")
-    cmds: list[list[str]] = []
-    if is_uv_tool_install() and uv:
-        force = [uv, "tool", "install", "--force", "scubiee", "--index-url", "https://pypi.org/simple"]
-        if pre_release:
-            force.append("--prerelease=allow")
-        cmds.append(force)
-        # Fallback if force unavailable on older uv
-        upgrade = [uv, "tool", "upgrade", "scubiee"]
-        if pre_release:
-            upgrade.append("--prerelease=allow")
-        cmds.append(upgrade)
-    elif uv:
-        cmds.append(
-            [uv, "pip", "install", "--upgrade", "--python", sys.executable, "scubiee"]
-        )
-    else:
-        cmds.append([sys.executable, "-m", "pip", "install", "--upgrade", "scubiee"])
-    return cmds
+    uv = shutil.which("uv") or "uv"
+    spec = "scubiee" if pre_release else "scubiee"
+    force = [uv, "tool", "install", "--force", spec, "--index-url", "https://pypi.org/simple"]
+    if pre_release:
+        force.append("--pre")
+    return [force]

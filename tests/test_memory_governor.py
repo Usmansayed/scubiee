@@ -66,6 +66,14 @@ def test_governor_promotes_on_semantic(monkeypatch) -> None:
     assert os.environ["CTX_CE_RSS_CAP_MB"] == str(SERVE_1REPO_TARGET_MB)
 
 
+def test_embed_idle_demote_defaults_to_lifecycle_idle(monkeypatch) -> None:
+    monkeypatch.delenv("CTX_EMBED_IDLE_DEMOTE_S", raising=False)
+    monkeypatch.delenv("CTX_ENGINE_IDLE_S", raising=False)
+    from pipeline.memory_governor import embed_idle_demote_s
+
+    assert embed_idle_demote_s() == 25.0
+
+
 def test_governor_demotes_after_semantic_idle(monkeypatch) -> None:
     reset_governor_for_tests()
     monkeypatch.setenv("CTX_EMBED_IDLE_DEMOTE_S", "10")

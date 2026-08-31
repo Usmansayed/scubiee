@@ -573,8 +573,8 @@ def _start_idle_sweeper(*, interval_s: float | None = None) -> None:
                 from pipeline.memory_governor import get_governor
                 from pipeline.ce_service import get_context_engine
 
-                demote = get_governor().maybe_demote_idle()
-                if demote:
+                demote = get_governor().maybe_demote_idle(get_context_engine().hub)
+                if demote and demote.get("action") == "demote_serve":
                     print(
                         f"[engine] memory demote: tier={demote.get('tier')} "
                         f"idle_s={demote.get('idle_s')}",
