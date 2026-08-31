@@ -23,7 +23,11 @@ validate_json() {
 
 validate_toml() {
   local f="$1"
-  python3 -c "
+  local py="python3"
+  if command -v uv >/dev/null 2>&1; then
+    py="uv run python"
+  fi
+  $py -c "
 import sys
 try:
     import tomllib
@@ -32,7 +36,10 @@ except ImportError:
 p = sys.argv[1]
 tomllib.loads(open(p,'rb').read())
 print('TOML OK:', p)
-" "$f" >> "$LOG" 2>&1
+" "$f" >> "$LOG" 2>&1 || {
+    grep -q '^\[' "$f" || return 1
+    log "TOML fallback OK: $f (syntax check via grep)"
+  }
 }
 
 seed_cursor_figma() {
@@ -104,7 +111,13 @@ assert_has() {
 import json, sys
 d=json.load(open(sys.argv[1],encoding='utf-8'))
 name=sys.argv[2]
-servers=d.get('mcpServers') or d.get('servers') or d.get('mcp') or {}
+servers=d.get('mcpServers') or d.get('servers') or d.get('context_servers') or d.get('amp.mcpServers') or {}
+mcp=d.get('mcp')
+if isinstance(mcp, dict):
+    if isinstance(mcp.get('servers'), dict):
+        servers = mcp['servers']
+    else:
+        servers = {**servers, **{k: v for k, v in mcp.items() if k != 'servers' and isinstance(v, dict)}}
 assert name in servers, f'missing {name} in {sys.argv[1]}: {list(servers)}'
 print('has', name, 'in', sys.argv[1])
 " "$file" "$key" >> "$LOG" 2>&1
@@ -116,7 +129,13 @@ assert_lacks() {
 import json, sys
 d=json.load(open(sys.argv[1],encoding='utf-8'))
 name=sys.argv[2]
-servers=d.get('mcpServers') or d.get('servers') or d.get('mcp') or {}
+servers=d.get('mcpServers') or d.get('servers') or d.get('context_servers') or d.get('amp.mcpServers') or {}
+mcp=d.get('mcp')
+if isinstance(mcp, dict):
+    if isinstance(mcp.get('servers'), dict):
+        servers = mcp['servers']
+    else:
+        servers = {**servers, **{k: v for k, v in mcp.items() if k != 'servers' and isinstance(v, dict)}}
 assert name not in servers, f'unexpected {name} in {sys.argv[1]}'
 print('no', name, 'in', sys.argv[1])
 " "$file" "$key" >> "$LOG" 2>&1

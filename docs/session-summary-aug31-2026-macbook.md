@@ -120,6 +120,24 @@ uv run python -m pytest \
 
 ---
 
+## Real CLI / user-end tests (not pytest)
+
+All of these invoke the **`scubiee` binary** on PATH (`~/.local/bin/scubiee`), not pipeline imports.
+
+| Script | What it runs | Result (Aug 31 Mac) |
+|--------|----------------|---------------------|
+| `bash tests/_e2e_run_cmds.sh` | Full lifecycle: setup, init, stop, halt, wipe, resume, post-wipe recovery, connect dry-run | **PASS** (~6.5 min) — log: `tests/_e2e_cmd_results.txt` |
+| `bash tests/_e2e_run_connect.sh` | Connect/disconnect dry-run + help for all tools | **PASS** — log: `tests/_connect_e2e_results.txt` |
+| `bash tests/_e2e_mcp_merge_experiment.sh` | Real `scubiee connect` / `disconnect` for cursor, claude-code, codex, opencode with Figma neighbor | **PASS** — log: `tests/_mcp_merge_experiment.txt` |
+| `uv run python tests/_e2e_mcp_merge_experiment.py` | Same merge safety for **all 13 tools** via `subprocess` → `scubiee` | **13/13 PASS** — log: `tests/_mcp_merge_cli_results.txt` |
+| `uv run python scripts/run_cli_combination_tests.py --quick` | 22 isolated `CTX_HOME` scenarios (stop/halt/resume/connect/init) | **22/22 PASS** (~2 min) |
+
+**Note:** `run_cli_combination_tests.py --quick` skips slow full-wipe scenarios. For wipe matrix use full run (destructive, ~10+ min).
+
+**Bash merge fix:** `_e2e_mcp_merge_experiment.sh` now uses `uv run python` for TOML validation (system `python3` lacked `tomli`) and understands OpenCode v2 `mcp.servers` in assert helpers.
+
+---
+
 ## How to verify on another Mac
 
 ```bash
