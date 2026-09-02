@@ -143,7 +143,8 @@ class TurboQuantCodec:
         norms = np.linalg.norm(x, axis=1)
         norms = np.maximum(norms, 1e-12)
         unit = x / norms[:, None]
-        rotated = unit @ self.rotation  # (N, D)
+        with np.errstate(divide="ignore", over="ignore", invalid="ignore"):
+            rotated = unit @ self.rotation  # (N, D)
         # digitize
         codes = np.zeros(rotated.shape, dtype=np.uint8)
         for d in range(self.dim):

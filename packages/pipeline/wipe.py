@@ -731,6 +731,7 @@ def wipe_repo(
     rule: bool = True,
     halt_first: bool = True,
     restart_engine: bool = True,
+    progress: Any | None = None,
 ) -> dict[str, Any]:
     """Remove this repository's CE enrollment + on-disk index store."""
     from pipeline.project_id import read_id_file
@@ -739,14 +740,27 @@ def wipe_repo(
     root = Path(root).resolve()
     out: dict[str, Any] = {"ok": True, "scope": "repo", "root": str(root), "actions": []}
 
+    if progress is not None:
+        progress.configure(
+            scope="repo",
+            halt_first=halt_first,
+            restart_engine=restart_engine,
+        )
+
     if halt_first:
+        if progress is not None:
+            progress.step_active("Preparing (stub MCP, stop processes)")
         halt = _halt_scubiee_before_wipe(scope="repo", repo=root)
         out["actions"].append({"halt": halt})
         for key, val in (halt.get("actions") or {}).items():
             out["actions"].append({key: val})
         if not halt.get("ok"):
             out["halt_warning"] = "Engine may not have stopped cleanly before wipe."
+        if progress is not None:
+            progress.step_finish("Prepared machine (stub MCP, kill, unlock)")
 
+    if progress is not None:
+        progress.step_active("Removing repository data")
     project_id = read_id_file(root)
     if not project_id:
         from pipeline.repo_lifecycle import _project
@@ -784,6 +798,9 @@ def wipe_repo(
     legacy = _cleanup_legacy_index_store(root)
     out["actions"].append({"legacy_index": legacy})
 
+    if progress is not None:
+        progress.step_finish("Repository data wiped")
+
     from pipeline.project_id import context_engine_home
 
     home = context_engine_home()
@@ -801,8 +818,17 @@ def wipe_repo(
     )
 
     if restart_engine:
+        if progress is not None:
+            progress.step_active("Restarting engine")
         engine = _restart_engine_after_repo_wipe(root)
         out["actions"].append({"engine_restart": engine})
+        if progress is not None:
+            if engine.get("ok") and not engine.get("skipped"):
+                progress.step_finish("Engine restarted")
+            elif engine.get("skipped"):
+                progress.step_finish("Engine restart skipped")
+            else:
+                progress.step_finish("Engine restart failed")
         if engine.get("ok") and not engine.get("skipped"):
             out["engine_restarted"] = True
         elif not engine.get("ok") and not engine.get("skipped"):
@@ -817,6 +843,7 @@ def wipe_all(
     models: bool = True,
     package: bool | None = None,
     repo: Path | str | None = None,
+    progress: Any | None = None,
 ) -> dict[str, Any]:
     """Nuclear wipe: daemon, home, MCP, rules, and optionally models / pip package."""
     homes = _context_engine_homes()
@@ -863,11 +890,18 @@ def wipe_all(
     actions: list[dict[str, Any]] = []
 
     target = Path(repo).resolve() if repo else Path.cwd().resolve()
+    if progress is not None:
+        progress.configure(scope="all", models=models, package=bool(package))
+        progress.step_active("Preparing (stub MCP, stop processes)")
     halt = _halt_scubiee_before_wipe(scope="all", repo=target)
     actions.append({"halt": halt})
     for key, val in (halt.get("actions") or {}).items():
         actions.append({key: val})
+    if progress is not None:
+        progress.step_finish("Prepared machine (stub MCP, kill, unlock)")
 
+    if progress is not None:
+        progress.step_active("Removing repository data")
     # Every enrolled checkout (registry) + explicit target/cwd.
     repo_targets: list[Path] = []
     seen_repo: set[str] = set()
@@ -893,6 +927,7 @@ def wipe_all(
                         rule=True,
                         halt_first=False,
                         restart_engine=False,
+                        progress=progress,
                     ),
                 }
             )
@@ -901,6 +936,9 @@ def wipe_all(
                 {"root": str(repo_root), "ok": False, "error": str(exc)}
             )
     actions.append({"wipe_repos": repo_actions})
+    if progress is not None:
+        progress.step_finish("Repository data wiped")
+        progress.step_active("Removing MCP, rules, and home directories")
 
     actions.append({"user_mcp": _drop_mcp_server(Path.home() / ".cursor" / "mcp.json")})
     # Also clean Kiro user-level MCP and steering
@@ -917,14 +955,23 @@ def wipe_all(
     for vroot in _vectordb_roots():
         actions.append({f"vectordb:{vroot.name}": _rm_tree(vroot)})
 
+    if progress is not None:
+        progress.step_finish("MCP, rules, and home removed")
+
     model_removed: list[dict[str, Any]] = []
     if models:
+        if progress is not None:
+            progress.step_active("Removing model caches")
         for d in _coderank_model_dirs():
             model_removed.append(_rm_tree(d))
         actions.append({"models": model_removed})
+        if progress is not None:
+            progress.step_finish("Model caches removed")
 
     pkg_out: dict[str, Any] | None = None
     if package:
+        if progress is not None:
+            progress.step_active("Removing scubiee package")
         import shutil
         import subprocess
 
@@ -1003,6 +1050,8 @@ def wipe_all(
                 if not forced.get("ok"):
                     pkg_out["ok"] = False
         actions.append({"uninstall_scubiee": pkg_out})
+        if progress is not None:
+            progress.step_finish("scubiee package removed")
 
     # After all state is gone, any remaining Scubiee process is pointless — kill again.
     try:
@@ -1074,9 +1123,10 @@ def wipe(
     models: bool = True,
     package: bool | None = None,
     path: Path | str | None = None,
+    progress: Any | None = None,
 ) -> dict[str, Any]:
     if all:
-        return wipe_all(yes=yes, models=models, package=package, repo=path)
+        return wipe_all(yes=yes, models=models, package=package, repo=path, progress=progress)
     root = Path(path).resolve() if path else Path.cwd().resolve()
     if not yes:
         return {
@@ -1093,4 +1143,4 @@ def wipe(
             ),
             "hint": f"Re-run with: scubiee wipe {root} --confirm",
         }
-    return wipe_repo(root)
+    return wipe_repo(root, progress=progress)

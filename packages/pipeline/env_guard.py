@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 
 def current_python() -> Path:
@@ -65,6 +66,50 @@ def extra_scubiee_on_path() -> list[Path]:
             continue
         extras.append(path)
     return extras
+
+
+def install_identity_report() -> dict[str, Any]:
+    """Structured install identity for doctor and --version --verbose."""
+    try:
+        from importlib.metadata import version as pkg_version
+
+        ver = pkg_version("scubiee")
+    except Exception:  # noqa: BLE001
+        ver = "unknown"
+    py = current_python()
+    expected = expected_scubiee_exe(py)
+    try:
+        invoked = Path(sys.argv[0]).resolve()
+    except OSError:
+        invoked = expected
+    extras = extra_scubiee_on_path()
+    same_binary = False
+    try:
+        same_binary = invoked.resolve() == expected.resolve()
+    except OSError:
+        pass
+    hint = None
+    if extras:
+        hint = (
+            f"Multiple scubiee installs on PATH. This session: {invoked}. "
+            f"Expected for this Python: {expected}. "
+            "Use one install (uv tool or venv) to avoid version drift."
+        )
+    elif not same_binary:
+        hint = (
+            f"Invoked as {invoked} but this Python's scubiee is {expected}. "
+            "Call the expected binary or fix PATH."
+        )
+    return {
+        "version": ver,
+        "python": str(py),
+        "active_binary": str(invoked),
+        "expected_binary": str(expected),
+        "binaries_match": same_binary,
+        "extra_on_path": [str(p) for p in extras],
+        "multiple_installs": bool(extras),
+        "hint": hint,
+    }
 
 
 def format_install_identity() -> str:

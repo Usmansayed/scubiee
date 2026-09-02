@@ -563,6 +563,14 @@ def sync_now_repo(root: Path, *, confirm: bool = False) -> dict[str, Any]:
     state = managed_state(root)
     if not project_id or state == UNMANAGED:
         return {"ok": False, "root": str(root), "state": state, "error": "unmanaged"}
+    if state == PAUSED:
+        return _result(
+            project_id,
+            entry,
+            ok=False,
+            error="paused",
+            hint="Repository is paused — run `scubiee activate .` before sync-now.",
+        )
     if state == NEVER_INDEX:
         return _result(project_id, entry, ok=False, error="never_index")
     from pipeline.incremental import incremental_sync

@@ -19,9 +19,96 @@ from pipeline.tool_registry import connect_restart_hint
 
 # ── Color support ─────────────────────────────────────────────────────────────
 
+_terminal_initialized = False
+_color_enabled: bool | None = None
+
+
+def _init_windows_ansi() -> bool:
+    """Enable ANSI colors on legacy Windows consoles (cmd.exe without VT mode)."""
+    try:
+        import colorama
+
+        if hasattr(colorama, "just_fix_windows_console"):
+            colorama.just_fix_windows_console()
+        else:
+            colorama.init(strip=False, convert=True)
+        return True
+    except ImportError:
+        pass
+    except Exception:  # noqa: BLE001
+        pass
+
+    try:
+        import ctypes
+
+        kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+        enable_vt = 0x0004
+        for handle_id in (-11, -12):  # STD_OUTPUT_HANDLE, STD_ERROR_HANDLE
+            handle = kernel32.GetStdHandle(handle_id)
+            mode = ctypes.c_ulong()
+            if kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+                kernel32.SetConsoleMode(handle, mode.value | enable_vt)
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _init_windows_console() -> None:
+    """UTF-8 output so block-letter banner renders on cmd/PowerShell."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            if hasattr(stream, "reconfigure"):
+                stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:  # noqa: BLE001
+            pass
+    try:
+        import ctypes
+
+        ctypes.windll.kernel32.SetConsoleOutputCP(65001)  # type: ignore[attr-defined]
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def init_terminal() -> None:
+    """Prepare stdout/stderr for styled CLI output (call once from main())."""
+    global _terminal_initialized, _color_enabled
+    if _terminal_initialized:
+        return
+    _terminal_initialized = True
+
+    if sys.platform == "win32":
+        any_tty = (
+            (hasattr(sys.stdout, "isatty") and sys.stdout.isatty())
+            or (hasattr(sys.stderr, "isatty") and sys.stderr.isatty())
+        )
+        if any_tty:
+            _init_windows_console()
+
+    if os.environ.get("SCUBIEE_FORCE_COLOR"):
+        _color_enabled = True
+        return
+    if os.environ.get("NO_COLOR"):
+        _color_enabled = False
+        return
+    if os.environ.get("TERM") == "dumb":
+        _color_enabled = False
+        return
+
+    if sys.platform == "win32":
+        any_tty = (
+            (hasattr(sys.stdout, "isatty") and sys.stdout.isatty())
+            or (hasattr(sys.stderr, "isatty") and sys.stderr.isatty())
+        )
+        _color_enabled = _init_windows_ansi() if any_tty else False
+    else:
+        _color_enabled = True
+
+
 def _supports_color(stream: IO[str] | TextIO | None = None) -> bool:
     """Detect whether the output stream supports ANSI colors."""
-    if os.environ.get("NO_COLOR"):
+    if _color_enabled is None:
+        init_terminal()
+    if not _color_enabled:
         return False
     if os.environ.get("TERM") == "dumb":
         return False
@@ -102,13 +189,10 @@ def header(title: str, *, stream: IO[str] | TextIO | None = None) -> None:
     s.flush()
 
 def branded_header(cmd: str, *, stream: IO[str] | TextIO | None = None) -> None:
-    """Print a branded command header — used only for setup and init."""
-    s = stream or sys.stderr
-    if not _is_tty(s):
-        return
-    c = colors(s)
-    s.write(f"\n{c.bold}scubiee {cmd}{c.reset}\n\n")
-    s.flush()
+    """Print a branded command header — used for setup, init, and wipe."""
+    from pipeline.cli_banner import print_brand_banner
+
+    print_brand_banner(cmd, stream=stream)
 
 def divider(*, stream: IO[str] | TextIO | None = None, width: int = 48) -> None:
     """Print a subtle horizontal divider."""
@@ -468,6 +552,15 @@ def print_doctor_summary(data: dict[str, Any], *, stream: IO[str] | TextIO | Non
         success("All checks passed", stream=s)
     else:
         error("Issues detected", stream=s)
+
+    install = data.get("install")
+    if isinstance(install, dict):
+        kv("Active binary", install.get("active_binary", "?"), stream=s)
+        if install.get("multiple_installs"):
+            for extra in install.get("extra_on_path") or []:
+                warn(f"Also on PATH: {extra}", stream=s)
+        if install.get("hint"):
+            info(str(install["hint"]), stream=s)
 
     caps = data.get("capabilities", {})
     if caps:
@@ -1226,4 +1319,133 @@ class InitProgress:
     def notice(self, msg):
         warn(msg, stream=self.stream)
 
+
+# ── Wipe progress (single bar) ────────────────────────────────────────────────
+
+class WipeProgress:
+    """Single progress bar for wipe — label + % update in place; checkmarks stack above."""
+
+    _BAR_WIDTH = 24
+    _INDENT = 2
+
+    def __init__(self, stream: IO[str] | TextIO | None = None):
+        self.stream = stream or sys.stderr
+        self.c = colors(self.stream)
+        self._tty = _is_tty(self.stream)
+        self._phase_idx = 0
+        self._phase_count = 1
+        self._phase_sub = 0.0
+        self._phase_start = 0.0
+        self._active_label = ""
+        self._last_line_len = 0
+        self._line_open = False
+        self._finished_messages: set[str] = set()
+        self._scope = "all"
+
+    def configure(
+        self,
+        *,
+        scope: str = "all",
+        models: bool = True,
+        package: bool = True,
+        halt_first: bool = True,
+        restart_engine: bool = True,
+    ) -> None:
+        self._scope = scope
+        if scope == "repo":
+            self._phase_count = sum([halt_first, True, restart_engine])
+        else:
+            n = 6
+            if models:
+                n += 1
+            if package:
+                n += 1
+            self._phase_count = max(n, 1)
+
+    def start(self) -> None:
+        branded_header("wipe", stream=self.stream)
+
+    def _pct(self) -> float:
+        if self._phase_count <= 0:
+            return 1.0
+        step = 1.0 / self._phase_count
+        return min(1.0, self._phase_idx * step + step * self._phase_sub)
+
+    def _bar_text(self) -> str:
+        pct = self._pct()
+        filled = int(self._BAR_WIDTH * pct)
+        bar = "\u2588" * filled + "\u2591" * (self._BAR_WIDTH - filled)
+        elapsed = int(time.monotonic() - self._phase_start) if self._phase_start else 0
+        elapsed_str = f"  {elapsed}s" if elapsed >= 2 else ""
+        label = self._active_label or "Working\u2026"
+        return f"[{bar}] {pct:.0%}  {label}{elapsed_str}"
+
+    def _render_bar(self) -> None:
+        pad = " " * self._INDENT
+        line = f"{pad}{self._bar_text()}"
+
+        if not self._tty:
+            if line != getattr(self, "_non_tty_last", ""):
+                self.stream.write(f"{line}\n")
+                self.stream.flush()
+                self._non_tty_last = line  # type: ignore[attr-defined]
+            return
+
+        if not self._line_open:
+            self.stream.write(line)
+        else:
+            pad_erase = max(0, self._last_line_len - len(line))
+            self.stream.write(f"\r{line}{' ' * pad_erase}")
+        self.stream.flush()
+        self._last_line_len = len(line)
+        self._line_open = True
+
+    def step_active(self, message: str) -> None:
+        self._active_label = message
+        self._phase_sub = 0.05
+        self._phase_start = time.monotonic()
+        self._render_bar()
+
+    def step_update(self, message: str) -> None:
+        self._active_label = message
+        match = re.search(r"\((\d+)/(\d+)\)", message)
+        if match:
+            cur, total = int(match.group(1)), max(int(match.group(2)), 1)
+            self._phase_sub = min(1.0, cur / total)
+        self._render_bar()
+
+    def step_finish(self, message: str, detail: str = "") -> None:
+        if message in self._finished_messages:
+            return
+        self._finished_messages.add(message)
+        self._phase_idx += 1
+        self._phase_sub = 0.0
+        detail_str = f"  {self.c.muted}{detail}{self.c.reset}" if detail else ""
+        pad = " " * self._INDENT
+        check = f"{pad}{self.c.green}{ICON_OK}{self.c.reset} {message}{detail_str}"
+
+        if self._tty and self._line_open:
+            self.stream.write(f"\033[1A\033[K{check}\n")
+            self._line_open = False
+        else:
+            self.stream.write(f"{check}\n")
+            self.stream.flush()
+
+        self._phase_start = 0.0
+
+    def finish(self, message: str = "") -> None:
+        pad = " " * self._INDENT
+        if self._line_open and self._tty:
+            self._active_label = message or "Done"
+            self._phase_idx = self._phase_count
+            self._phase_sub = 1.0
+            self._render_bar()
+            erase = " " * self._last_line_len
+            self.stream.write(f"\r{erase}\r")
+            self._line_open = False
+        if message:
+            self.stream.write(
+                f"{pad}{self.c.green}{ICON_OK}{self.c.reset} {self.c.bold}{message}{self.c.reset}\n\n"
+            )
+        self.stream.flush()
 

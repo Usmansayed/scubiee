@@ -305,6 +305,17 @@ def pause() -> dict[str, Any]:
     connected = _detect_connected_tools()
     report["connected_tools"] = connected
 
+    # Persist paused state before process teardown so a killed CLI (Windows stop
+    # under load) still leaves Scubiee globally stopped.
+    _save_state({
+        "paused": True,
+        "paused_at": report["paused_at"],
+        "connected_tools": connected,
+        "teardown": [],
+        "hidden_scubiee_dirs": [],
+        "pause_in_progress": True,
+    })
+
     try:
         from pipeline.process_control import release_scubiee_process_locks
 
@@ -333,6 +344,7 @@ def pause() -> dict[str, Any]:
         "connected_tools": connected,
         "teardown": teardown,
         "hidden_scubiee_dirs": report["hidden_scubiee_dirs"],
+        "pause_in_progress": False,
     })
 
     return report

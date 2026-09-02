@@ -330,6 +330,9 @@ def test_pause_resume_sync_rebuild_and_activate(
 
     assert pause_repo(repo, reason="maintenance")["state"] == "paused"
     assert managed_state(repo) == "paused"
+    paused_sync = sync_now_repo(repo)
+    assert paused_sync["ok"] is False
+    assert paused_sync["error"] == "paused"
     repeated = initialize_repo(repo, index=False)
     assert repeated["state"] == "paused"
     assert load_registry()["projects"][initialized["project_id"]]["pause_reason"] == "maintenance"

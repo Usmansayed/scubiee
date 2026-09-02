@@ -455,13 +455,24 @@ def cmd_wipe(args: argparse.Namespace) -> int:
     else:
         package = None
 
+    progress = None
+    if is_tty and confirmed:
+        from pipeline.cli_ui import WipeProgress
+
+        progress = WipeProgress()
+        progress.start()
+
     out = wipe(
         all=bool(getattr(args, "all", False)),
         yes=confirmed,
         models=not bool(getattr(args, "keep_models", False)),
         package=package,
         path=getattr(args, "path", None) or ".",
+        progress=progress,
     )
+
+    if progress is not None and not _needs_confirm_out(out):
+        progress.finish("Wipe complete" if out.get("ok") else "Wipe finished with warnings")
 
     if is_tty:
         if _needs_confirm_out(out):
@@ -1905,8 +1916,9 @@ def _argv_skips_ctx_home_guard(argv: list[str] | None) -> bool:
 
 def main(argv: list[str] | None = None) -> int:
     if sys.stdout.isatty() or sys.stderr.isatty():
-        from pipeline.cli_ui import install_graphify_brand_scrubbers
+        from pipeline.cli_ui import init_terminal, install_graphify_brand_scrubbers
 
+        init_terminal()
         install_graphify_brand_scrubbers()
 
     if _version_verbose(argv):

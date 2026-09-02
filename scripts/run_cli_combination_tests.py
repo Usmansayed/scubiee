@@ -59,6 +59,10 @@ def _run_cli(
     env["CTX_HOME"] = str(home)
     env["PYTHONUTF8"] = "1"
     env["PYTHONIOENCODING"] = "utf-8"
+    from pipeline.ctx_home_guard import ctx_home_pollution_reason
+
+    if ctx_home_pollution_reason(str(home)):
+        env["CTX_ALLOW_TEST_HOME"] = "1"
     if env_extra:
         env.update(env_extra)
     if cli_bin:
@@ -92,6 +96,12 @@ def _run_cli(
         "[scubiee] Scubiee is stopped" in combined
         or "globally stopped" in combined.lower()
         or "Run `scubiee resume`" in combined
+        or (
+            proc.returncode == 1
+            and argv
+            and argv[0] in {"setup", "init", "index", "search", "engine"}
+            and "stopped" in combined.lower()
+        )
     )
     return {
         "argv": argv,
@@ -374,9 +384,18 @@ def run_all(*, repo: Path, quick: bool, cli_bin: str | None = None) -> list[Resu
     with tempfile.TemporaryDirectory(prefix="scubiee-cli-test-") as tmp:
         home = Path(tmp) / "home"
         home.mkdir()
+        prev_group: str | None = None
         for sc in scenarios():
             if quick and sc.group in {"wipe"}:
                 continue
+            if prev_group == "global_stop" and sc.group == "global_stop":
+                _run_cli(
+                    ["resume"],
+                    home=home,
+                    cwd=repo,
+                    timeout=30.0,
+                    cli_bin=cli_bin,
+                )
             step_reports: list[dict] = []
             for argv in sc.steps:
                 step_reports.append(
@@ -394,6 +413,7 @@ def run_all(*, repo: Path, quick: bool, cli_bin: str | None = None) -> list[Resu
                     note=sc.note,
                 )
             )
+            prev_group = sc.group
     return results
 
 

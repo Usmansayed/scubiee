@@ -110,6 +110,29 @@ def _pid_in_our_ancestry(pid: int, self_pid: int | None = None) -> bool:
     return False
 
 
+def _protected_process_tree_pids(self_pid: int | None = None) -> set[int]:
+    """PIDs that must never be killed during stop/wipe (this CLI + tree)."""
+    me = os.getpid() if self_pid is None else self_pid
+    protected = {me}
+    try:
+        import psutil
+
+        proc = psutil.Process(me)
+        for ancestor in proc.parents():
+            protected.add(ancestor.pid)
+        for child in proc.children(recursive=True):
+            protected.add(child.pid)
+    except Exception:  # noqa: BLE001
+        pass
+    return protected
+
+
+def _pid_is_protected(pid: int, self_pid: int | None = None) -> bool:
+    if pid in _protected_process_tree_pids(self_pid):
+        return True
+    return _pid_in_our_ancestry(pid, self_pid)
+
+
 def _terminate_pid_no_tree(pid: int) -> None:
     """Kill *pid* and its children except our own process tree."""
     me = os.getpid()
@@ -156,12 +179,12 @@ def stop_processes_under(
     often also lives under the same tool dir — ``taskkill /T`` on it suicides).
     """
     skip = set(exclude_pids or ())
-    skip.add(os.getpid())
+    skip.update(_protected_process_tree_pids())
     killed: list[int] = []
     failed: list[int] = []
     skipped: list[int] = []
     for pid in processes_under(root):
-        if pid in skip or _pid_in_our_ancestry(pid):
+        if pid in skip or _pid_is_protected(pid):
             skipped.append(pid)
             continue
         try:
@@ -172,7 +195,7 @@ def stop_processes_under(
     if grace_s:
         time.sleep(min(grace_s, 2.0))
     remaining = [
-        p for p in processes_under(root) if p not in skip and not _pid_in_our_ancestry(p)
+        p for p in processes_under(root) if p not in skip and not _pid_is_protected(p)
     ]
     return {
         "root": str(root),
@@ -245,7 +268,7 @@ def safe_terminate_pid(pid: int, *, grace_s: float = 1.0) -> dict[str, Any]:
 
     if not _pid_alive(pid):
         return {"pid": pid, "ok": True, "skipped": "not_alive"}
-    if pid == os.getpid() or _pid_in_our_ancestry(pid):
+    if _pid_is_protected(pid):
         return {"pid": pid, "ok": True, "skipped": "self_or_ancestor"}
     if not is_context_engine_process(pid):
         return {"pid": pid, "ok": False, "skipped": "not_context_engine"}
@@ -306,7 +329,7 @@ def enumerate_scubiee_processes(*, exclude_self: bool = True) -> list[dict[str, 
         try:
             info = proc.info
             pid = int(info["pid"])
-            if exclude_self and (pid == my_pid or _pid_in_our_ancestry(pid)):
+            if exclude_self and _pid_is_protected(pid, my_pid):
                 continue
             cmdline = info.get("cmdline") or []
             exe = info.get("exe") or ""
@@ -413,7 +436,7 @@ def kill_all_scubiee_processes(
 
     root = uv_tool_root()
     if root is not None:
-        skip = {os.getpid()} if exclude_self else set()
+        skip = _protected_process_tree_pids() if exclude_self else set()
         if exclude_bridge:
             skip.update(skipped_bridge)
         actions["stop_uv_tool"] = stop_processes_under(root, exclude_pids=skip)

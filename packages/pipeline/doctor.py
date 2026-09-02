@@ -237,11 +237,15 @@ def doctor_repo(root: Path | str | None = None) -> dict[str, Any]:
         **(caps.get("accel") or {}),
         **doctor_report()["accel"],
     }
+    from pipeline.env_guard import install_identity_report
+
+    install = install_identity_report()
     git_family = detect_git_family_duplicates()
     report: dict[str, Any] = {
         "ok": False,
         "repo": str(repo),
         "project_id": project_id,
+        "install": install,
         "enrollment": enrollment,
         "capabilities": caps,
         "accel": accel,
