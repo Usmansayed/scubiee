@@ -3303,7 +3303,7 @@ wheels = [
 
 [[package]]
 name = "scubiee"
-version = "0.3.11"
+version = "0.3.12"
 source = { editable = "." }
 dependencies = [
     { name = "faiss-cpu" },

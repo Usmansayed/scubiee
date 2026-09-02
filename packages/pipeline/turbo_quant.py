@@ -148,7 +148,6 @@ class TurboQuantCodec:
         codes = np.zeros(rotated.shape, dtype=np.uint8)
         for d in range(self.dim):
             codes[:, d] = np.digitize(rotated[:, d], self.boundaries).astype(np.uint8)
-        # pack bits into uint8 stream per row
         packed = self._pack(codes)
         return {
             "dim": self.dim,
@@ -160,10 +159,17 @@ class TurboQuantCodec:
         }
 
     def dequantize(self, blob: dict) -> np.ndarray:
-        codes = self._unpack(blob["codes"], int(blob["n"]))
+        n = int(blob.get("n", 0))
+        if n <= 0:
+            return np.zeros((0, self.dim), dtype=np.float32)
+        codes = self._unpack(blob["codes"], n)
         centers = self.centers
         recon_rot = centers[codes]  # (N, D)
-        unit = recon_rot @ self.rotation.T
+        with np.errstate(divide="ignore", over="ignore", invalid="ignore"):
+            unit = recon_rot @ self.rotation.T
+            row_norms = np.linalg.norm(unit, axis=1, keepdims=True)
+            row_norms = np.maximum(row_norms, 1e-12)
+            unit = unit / row_norms
         norms = np.asarray(blob["norms"], dtype=np.float32).reshape(-1, 1)
         return (unit * norms).astype(np.float32)
 

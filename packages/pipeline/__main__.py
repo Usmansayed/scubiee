@@ -429,6 +429,23 @@ def cmd_wipe(args: argparse.Namespace) -> int:
             return 0
         confirmed = True
 
+    # Interactive confirmation for repo wipe without --confirm
+    if not bool(getattr(args, "all", False)) and not confirmed and is_tty:
+        from pipeline.cli_ui import confirm_action
+
+        root = Path(getattr(args, "path", None) or ".").resolve()
+        repo_name = root.name or str(root)
+        if not confirm_action(
+            f"Wipe Scubiee data for {repo_name}?",
+            details=[
+                "Removes enrollment, index store, and VectorDB collection for this repo.",
+                "MCP stays connected. Re-run `scubiee init` to re-enroll.",
+            ],
+        ):
+            print("  Cancelled.\n", file=sys.stderr)
+            return 0
+        confirmed = True
+
     keep_package = bool(getattr(args, "keep_package", False))
     package_arg = getattr(args, "package", False)
     if keep_package:
@@ -468,7 +485,9 @@ def cmd_wipe(args: argparse.Namespace) -> int:
             _emit_confirm_warning(out)
             return 2
 
-    return 0 if out.get("ok") or not out.get("remaining") else 1
+    if _needs_confirm_out(out):
+        return 2
+    return 0 if out.get("ok") else 1
 
 
 def cmd_doctor(args: argparse.Namespace) -> int:
@@ -736,10 +755,29 @@ def cmd_search(args: argparse.Namespace) -> int:
 
 
 def cmd_status(args: argparse.Namespace) -> int:
-    from pipeline.store import PipelineStore
+    from pipeline.repo_lifecycle import UNMANAGED, managed_state
     from pipeline.project_id import read_id_file
 
     root = Path(args.path).resolve()
+    state = managed_state(root)
+    if state == UNMANAGED:
+        data = {
+            "root": str(root),
+            "enrolled": False,
+            "state": UNMANAGED,
+            "project_id": read_id_file(root),
+            "hint": "Run `scubiee init .` to enroll this repository.",
+        }
+        if sys.stdout.isatty() and not getattr(args, "json", False):
+            from pipeline.cli_ui import print_status_summary
+
+            print_status_summary(data)
+        else:
+            print(json.dumps(data, indent=2))
+        return 0
+
+    from pipeline.store import PipelineStore
+
     pid = read_id_file(root)
     store = PipelineStore(root, resolve=bool(pid))
     meta = store.load_meta()
@@ -765,6 +803,8 @@ def cmd_status(args: argparse.Namespace) -> int:
 
     data = {
         "root": str(root),
+        "enrolled": True,
+        "state": state,
         "store": str(store.base),
         "collection": store.collection_name,
         "meta": meta,

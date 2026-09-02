@@ -290,6 +290,17 @@ def print_status_summary(data: dict[str, Any], *, stream: IO[str] | TextIO | Non
     s = stream or sys.stderr
     c = colors(s)
 
+    if data.get("enrolled") is False or data.get("state") == "unmanaged":
+        s.write(f"\n{c.bold}scubiee{c.reset}\n")
+        divider(stream=s, width=40)
+        root = data.get("root", "")
+        if root:
+            repo_name = os.path.basename(root) or root
+            kv("Repository", repo_name, stream=s)
+        warn("Not enrolled", detail=data.get("hint", "Run `scubiee init .`"), stream=s)
+        s.write("\n")
+        return
+
     meta = data.get("meta") or {}
     server = data.get("server") or {}
     freshness = data.get("freshness") or {}

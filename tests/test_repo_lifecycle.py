@@ -37,6 +37,23 @@ from pipeline.repo_lifecycle import (
 )
 
 
+def test_status_unmanaged_returns_enrolled_false(
+    ce_home: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from argparse import Namespace
+
+    from pipeline.__main__ import cmd_status
+
+    repo = tmp_path / "fresh"
+    repo.mkdir()
+    code = cmd_status(Namespace(path=str(repo), url=None, json=True))
+    assert code == 0
+    data = json.loads(capsys.readouterr().out)
+    assert data["enrolled"] is False
+    assert data["state"] == "unmanaged"
+    assert "hint" in data
+
+
 @pytest.fixture
 def ce_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     home = tmp_path / "ce-home"

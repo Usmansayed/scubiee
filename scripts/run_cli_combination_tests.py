@@ -312,7 +312,7 @@ def scenarios() -> list[Scenario]:
             "wipe",
             [["wipe", "."]],
             "any",
-            "repo wipe on unmanaged repo",
+            "repo wipe needs confirm (non-interactive)",
         ),
         Scenario(
             "W2",

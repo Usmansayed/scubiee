@@ -688,6 +688,42 @@ def _halt_scubiee_before_wipe(
     }
 
 
+def _drop_repo_vectordb_collections(
+    root: Path, project_id: str | None = None
+) -> dict[str, Any]:
+    """Remove VectorDB collections tied to *root* (by cwd or naming convention)."""
+    from pipeline.vectordb import VectorDatabase, cwd_collection_name
+
+    vdb = VectorDatabase()
+    root_s = str(root.resolve())
+    dropped: list[str] = []
+    for entry in list(vdb.list_collections()):
+        cwd = entry.get("cwd")
+        name = entry.get("name")
+        if name and cwd == root_s:
+            vdb.drop_collection(name)
+            dropped.append(name)
+    guesses = {cwd_collection_name(root)}
+    if project_id:
+        guesses.add(cwd_collection_name(root, project_id))
+    for guess in guesses:
+        if guess and vdb.has_collection(guess) and guess not in dropped:
+            vdb.drop_collection(guess)
+            dropped.append(guess)
+    return {"ok": True, "dropped": dropped}
+
+
+def _cleanup_legacy_index_store(root: Path) -> dict[str, Any]:
+    """Remove path-hash index dir left from pre-enrollment or orphan stores."""
+    from pipeline.project_id import context_engine_home
+    from pipeline.store import repo_key
+
+    legacy = (context_engine_home() / "indexes" / repo_key(root)).resolve()
+    if legacy.exists():
+        return _rm_tree(legacy)
+    return {"ok": True, "skipped": True, "path": str(legacy)}
+
+
 def wipe_repo(
     root: Path | str,
     *,
@@ -738,6 +774,16 @@ def wipe_repo(
         out["id_dirs_removed"] = len(removed_id_dirs)
 
     out["project_id"] = project_id
+
+    try:
+        vdb_drop = _drop_repo_vectordb_collections(root, project_id)
+        out["actions"].append({"vectordb_drop": vdb_drop})
+    except Exception as exc:  # noqa: BLE001
+        out["actions"].append({"vectordb_drop": {"ok": False, "error": str(exc)}})
+
+    legacy = _cleanup_legacy_index_store(root)
+    out["actions"].append({"legacy_index": legacy})
+
     from pipeline.project_id import context_engine_home
 
     home = context_engine_home()
@@ -1032,4 +1078,19 @@ def wipe(
     if all:
         return wipe_all(yes=yes, models=models, package=package, repo=path)
     root = Path(path).resolve() if path else Path.cwd().resolve()
+    if not yes:
+        return {
+            "ok": False,
+            "status": "warning",
+            "scope": "repo",
+            "warning": "confirm_required",
+            "error": "confirm_required",
+            "needs_confirm": True,
+            "root": str(root),
+            "message": (
+                "Safety pause: repo wipe was not run. "
+                "This is intentional — confirm only when you mean to remove this repo."
+            ),
+            "hint": f"Re-run with: scubiee wipe {root} --confirm",
+        }
     return wipe_repo(root)

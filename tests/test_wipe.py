@@ -253,6 +253,21 @@ def test_wipe_all_requires_yes(tmp_path: Path, monkeypatch) -> None:
     assert home.is_dir()
 
 
+def test_wipe_repo_requires_yes(tmp_path: Path, monkeypatch) -> None:
+    home = tmp_path / "ce-home"
+    home.mkdir()
+    monkeypatch.setenv("CTX_HOME", str(home))
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    from pipeline.wipe import wipe
+
+    out = wipe(all=False, yes=False, path=repo)
+    assert out["ok"] is False
+    assert out["scope"] == "repo"
+    assert out["error"] == "confirm_required"
+    assert "--confirm" in out["hint"]
+
+
 def test_wipe_all_confirm_alias_via_dispatch(tmp_path: Path, monkeypatch) -> None:
     home = tmp_path / "ce-home"
     home.mkdir()
