@@ -637,5 +637,6 @@ Long-tail: “semantic search for cursor”, “local mcp code index”, “scub
 | [`commands-and-setup.md`](./commands-and-setup.md) | Command tables for docs site |
 | [`context-engine-internals.md`](./context-engine-internals.md) | Engineering architecture |
 | [`../docs/web-info/README.md`](../docs/web-info/README.md) | End-user operator docs |
+| [`README.md`](./README.md) | Detailed hub — fix guide, errors, files, concepts |
 | [`../docs/web-info/mcp-tools-reference.md`](../docs/web-info/mcp-tools-reference.md) | MCP tool parameters |
 | [`../docs/web-info/repo-lifecycle.md`](../docs/web-info/repo-lifecycle.md) | Wipe / pause / unmanage |

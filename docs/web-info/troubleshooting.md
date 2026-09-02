@@ -3,7 +3,9 @@
 Symptom → cause → fix. Start with `scubiee doctor .` and `scubiee preflight .`.  
 Shareable report: `scubiee diagnose --no-tests --desktop` → `Desktop/scubiee-diagnose.json`.
 
-**Full install / upgrade / Access-denied playbook:** [Install & debug](./install-and-debug.md) (docs assume **[0.3.13](https://pypi.org/project/scubiee/0.3.13/)**).
+**Full install / upgrade / Access-denied playbook:** [Install & debug](./install-and-debug.md) (docs assume **[0.3.14](https://pypi.org/project/scubiee/0.3.14/)**).
+
+**Need explanations (why + verify)?** **[Complete fix guide](../../web-info/complete-fix-guide.md)** · **[Error codes](../../web-info/error-codes-reference.md)** · **[How everything works](../../web-info/how-everything-works.md)**
 
 ---
 

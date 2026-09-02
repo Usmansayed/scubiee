@@ -2,6 +2,9 @@
 
 These docs are for **operators and end users**: install, daily use, troubleshooting, and uninstall. They are written so you can resolve most issues without reading engineering notes.
 
+**Need more detail (why things break, every error code, every file path)?**  
+See **[`web-info/` — detailed documentation hub](../../web-info/README.md)** (`how-everything-works`, `complete-fix-guide`, `error-codes-reference`, `data-and-files-reference`).
+
 **Current release:** [`scubiee 0.3.14`](https://pypi.org/project/scubiee/0.3.14/) — **published on PyPI**.  
 Pin this version in install commands until you intentionally upgrade.
 
@@ -22,7 +25,7 @@ Pin this version in install commands until you intentionally upgrade.
 | **Unmanage a repo / delete its index data** | **[Repository lifecycle](./repo-lifecycle.md)** |
 | Look up a specific command | [Commands reference](./commands-reference.md) |
 | **All MCP tools — what they do** | **[MCP tools reference](./mcp-tools-reference.md)** |
-| Fix something that broke | [Troubleshooting](./troubleshooting.md) |
+| Fix something that broke | [Troubleshooting](./troubleshooting.md) · **[Detailed fix guide](../../web-info/complete-fix-guide.md)** |
 | Understand indexing, confirm gates, fast mode | [Indexing & projects](./indexing-and-projects.md) |
 | Use Scubiee inside Cursor (MCP) | [Cursor & MCP](./cursor-mcp.md) |
 | Connect/disconnect AI tools from CLI | [Commands reference](./commands-reference.md#connect--disconnect) |

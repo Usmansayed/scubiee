@@ -2,7 +2,9 @@
 
 Complete operator guide for **installing**, **upgrading**, and **fixing** Scubiee when something goes wrong.
 
-**Current release:** [scubiee 0.3.13](https://pypi.org/project/scubiee/0.3.13/) — live on PyPI (`uv tool install scubiee==0.3.13`).
+**Current release:** [scubiee 0.3.14](https://pypi.org/project/scubiee/0.3.14/) — live on PyPI (`uv tool install scubiee==0.3.14`).
+
+**Detailed explanations:** [web-info complete fix guide](../../web-info/complete-fix-guide.md) · [how everything works](../../web-info/how-everything-works.md)
 
 **Names that matter:** MCP key **`scubiee`**, home **`~/.scubiee`**, repo **`<repo>/.scubiee`**. Fresh installs do not use or migrate `.context-engine`.
 

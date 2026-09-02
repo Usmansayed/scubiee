@@ -154,4 +154,5 @@ Paused/stopped → user runs **`scubiee resume`**.
 | Warming forever | Ensure daemon: `engine ensure . --wait 45` |
 
 Install/debug playbook: [`../docs/web-info/install-and-debug.md`](../docs/web-info/install-and-debug.md).  
-Full guides: [`../docs/web-info/`](../docs/web-info/README.md).
+Full guides: [`../docs/web-info/`](../docs/web-info/README.md).  
+**Detailed fix & understanding:** [`README.md`](./README.md) · [`complete-fix-guide.md`](./complete-fix-guide.md) · [`how-everything-works.md`](./how-everything-works.md).
