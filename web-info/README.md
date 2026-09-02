@@ -18,7 +18,8 @@ Use this folder when you need **detail**, not just commands.
 | **Know what every file/path means** | **[Data & files reference](./data-and-files-reference.md)** |
 | **Write website / marketing copy** | [Product guide for website](./product-guide-for-website.md) |
 | **Short marketing snippets** | [Website content](./website-content.md) |
-| **Command tables** | [Commands and setup](./commands-and-setup.md) |
+| **Every CLI command & flag (exhaustive + context)** | **[Complete CLI reference](./complete-cli-reference.md)** — workflows, mental model, troubleshooting, disk effects |
+| **Command tables (short)** | [Commands and setup](./commands-and-setup.md) |
 | **Engineering architecture** | [Context engine internals](./context-engine-internals.md) |
 
 ---
@@ -35,7 +36,7 @@ These live in `docs/web-info/` — shorter paths for day-to-day use. They link b
 | MCP tools (parameters) | [mcp-tools-reference.md](../docs/web-info/mcp-tools-reference.md) | Same + [How everything works](./how-everything-works.md) |
 | Repo wipe / pause / unmanage | [repo-lifecycle.md](../docs/web-info/repo-lifecycle.md) | [How everything works § Lifecycle](./how-everything-works.md#repository-lifecycle) |
 | Indexing rules | [indexing-and-projects.md](../docs/web-info/indexing-and-projects.md) | [Data reference § Project store](./data-and-files-reference.md) |
-| All CLI commands | [commands-reference.md](../docs/web-info/commands-reference.md) | [Commands and setup](./commands-and-setup.md) |
+| All CLI commands | [commands-reference.md](../docs/web-info/commands-reference.md) | **[Complete CLI reference](./complete-cli-reference.md)** |
 
 ---
 
@@ -50,6 +51,7 @@ web-info/
 ├── data-and-files-reference.md    ← ~/.scubiee, .scubiee, MCP paths, logs
 ├── product-guide-for-website.md   ← marketing / website bible
 ├── website-content.md             ← short copy snippets
+├── complete-cli-reference.md      ← every command, flags, JSON glossaries, FAQ, platforms
 ├── commands-and-setup.md          ← command tables for docs site
 └── context-engine-internals.md    ← engineering architecture
 ```

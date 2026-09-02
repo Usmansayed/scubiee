@@ -4,6 +4,9 @@ All commands are `scubiee <subcommand>`.
 
 Run `scubiee <subcommand> --help` for flags on your installed version.
 
+**Exhaustive reference (every command, every parameter, workflows, context, troubleshooting):**  
+[Complete CLI reference](../../web-info/complete-cli-reference.md)
+
 ---
 
 ## Install & machine
@@ -37,7 +40,7 @@ Run `scubiee <subcommand> --help` for flags on your installed version.
 | `scubiee initialize [path]` | Managed repo init + reconcile existing index |
 | `scubiee activate [path]` | Mark repo active (also un-pauses a **paused** repo since 0.3.11) |
 | `scubiee pause [path] [--reason text]` | Pause background indexing for this repo |
-| `scubiee resume [path]` | Resume **global** stop after `scubiee stop` (not per-repo pause — use `activate`) |
+| `scubiee resume` | Resume **global** stop after `scubiee stop` (not per-repo pause — use `activate`) |
 | `scubiee list` | JSON list of managed repos |
 | `scubiee remove [path]` | Unmanage repo in registry only (keeps index store unless `--delete-store`) — prefer **`wipe --confirm`** for full cleanup |
 | `scubiee remove [path] --delete-store` | Unmanage + delete `~/.scubiee/projects/<id>/` (no VectorDB / `.scubiee` / repo rules cleanup) |
@@ -186,6 +189,7 @@ If `status` shows `warming: true`, retry the **tool** once after a short wait �
 
 ## Related
 
+- **[Complete CLI reference](../../web-info/complete-cli-reference.md)** — full parameter docs
 - [Repository lifecycle](./repo-lifecycle.md)
 - [MCP tools reference](./mcp-tools-reference.md)
 - [Getting started](./getting-started.md)
