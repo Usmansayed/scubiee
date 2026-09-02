@@ -2,7 +2,7 @@
 
 Once `scubiee setup --repair`, `scubiee init .`, and `scubiee connect --…` are done, these are the commands you use day to day.
 
-**Docs assume [scubiee 0.3.13](https://pypi.org/project/scubiee/0.3.13/).** Install/debug: [Install & debug](./install-and-debug.md).
+**Docs assume [scubiee 0.3.14](https://pypi.org/project/scubiee/0.3.14/).** Install/debug: [Install & debug](./install-and-debug.md).
 
 ---
 
@@ -69,11 +69,21 @@ After any upgrade, re-run **`connect`** so MCP + agent rules match the new versi
 
 ```bash
 scubiee list
-scubiee activate /path/to/repo
+scubiee activate /path/to/repo      # also un-pauses a paused repo
 scubiee pause /path/to/repo --reason "maintenance"
-scubiee resume /path/to/repo
-scubiee remove /path/to/other --delete-store
 ```
+
+**Per-repo pause** → resume with **`scubiee activate`**, not `scubiee resume`.
+
+### Unmanage one repo and delete its data
+
+```bash
+scubiee wipe /path/to/repo --confirm
+```
+
+Removes enrollment, index store, VectorDB, `.scubiee`, and repo MCP/rules. Does **not** delete your source code. Full details: [Repository lifecycle](./repo-lifecycle.md).
+
+`scubiee remove` only drops registry tracking (optional `--delete-store`); prefer **`wipe --confirm`** for a complete cleanup.
 
 ---
 
@@ -176,6 +186,8 @@ scubiee diagnose --no-tests --desktop
 
 ## Related
 
+- [Repository lifecycle](./repo-lifecycle.md)
+- [MCP tools reference](./mcp-tools-reference.md)
 - [Commands reference](./commands-reference.md)
 - [Cursor & MCP](./cursor-mcp.md)
 - [Troubleshooting](./troubleshooting.md)

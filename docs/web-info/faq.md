@@ -1,6 +1,6 @@
 # FAQ
 
-Short answers to common questions. Docs assume **[scubiee 0.3.13](https://pypi.org/project/scubiee/0.3.13/)** (published on PyPI).
+Short answers to common questions. Docs assume **[scubiee 0.3.14](https://pypi.org/project/scubiee/0.3.14/)** (published on PyPI).
 
 Full install/debug playbook: [Install & debug](./install-and-debug.md).
 
@@ -17,7 +17,7 @@ A local code context engine: indexes your repo, embeds with CodeRank (GPU when a
 **`scubiee`** (in `mcp.json`). Data lives under `~/.scubiee` and `<repo>/.scubiee`.
 
 **Do I need to clone the GitHub repo?**  
-No. Install from PyPI: `uv tool install scubiee==0.3.13` ([project page](https://pypi.org/project/scubiee/0.3.13/)).
+No. Install from PyPI: `uv tool install scubiee==0.3.14` ([project page](https://pypi.org/project/scubiee/0.3.14/)).
 
 **What Python version?**  
 3.10 or newer.
@@ -81,13 +81,22 @@ Required when more than 400 indexable files would be touched.
 - **Global:** `scubiee stop` → continue with **`scubiee resume`** (not `engine start`). There is no `wake`.
 
 **Wipe one repo without a prompt?**  
-`scubiee wipe . --confirm` (since 0.3.12). Without confirm, exit code **2**.
+`scubiee wipe . --confirm` (since 0.3.12). Without confirm, exit code **2**. See [Repository lifecycle](./repo-lifecycle.md).
+
+**How do I unmanage a repo and delete its Scubiee data?**  
+`scubiee wipe . --confirm` — removes enrollment, index, VectorDB, `.scubiee`, and repo MCP/rules. Your source code is **not** deleted. Not the same as `pause` or `stop`. Details: [Repository lifecycle](./repo-lifecycle.md).
+
+**`remove` vs `wipe`?**  
+`remove` drops registry tracking (optional `--delete-store`). **`wipe --confirm`** is the full per-repo cleanup.
+
+**What does each MCP tool do?**  
+[MCP tools reference](./mcp-tools-reference.md) — `gate`, `map`, `focus`, `grep`, `glob`, `workspace`, etc.
 
 **`status` on a folder I never initialized?**  
 `enrolled: false`, `state: "unmanaged"` — run `scubiee init .` to enroll.
 
 **Upgrading from 0.2.88?**  
-See [What's changed since 0.2.88](../whats-changed-since-0.2.88.md) — pin `scubiee==0.3.13`, run `setup --repair`, re-run `connect`.
+See [What's changed since 0.2.88](../whats-changed-since-0.2.88.md) — pin `scubiee==0.3.14`, run `setup --repair`, re-run `connect`.
 
 ---
 

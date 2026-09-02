@@ -1,6 +1,6 @@
 # Scubiee Website Content
 
-> **Version:** [0.3.13](https://pypi.org/project/scubiee/0.3.13/) (published on PyPI)  
+> **Version:** [0.3.14](https://pypi.org/project/scubiee/0.3.14/) (published on PyPI)  
 > **Purpose:** Content reference for designing and building the Scubiee product website and public docs.  
 > **Product identity:** MCP key **`scubiee`** · data **`~/.scubiee`** / **`<repo>/.scubiee`** (no legacy `context-engine` paths)  
 > **Full operator docs:** [`../docs/web-info/`](../docs/web-info/README.md)  
@@ -42,7 +42,10 @@ Imports, calls, and structure — not only matching text.
 No cloud uploads for search. Model download only during setup. MCP server key: **`scubiee`**. Indexes live under `~/.scubiee`.
 
 ### Safer wipe (0.3.12+)
-Repo wipe requires confirmation (`--confirm` or TTY prompt). Full wipe still uses `--all --confirm`. VectorDB collections are removed with the repo.
+Repo wipe requires confirmation (`--confirm` or TTY prompt). Removes enrollment, index, VectorDB, `.scubiee`, and repo tool files — not your source code. Full guide: [`repo-lifecycle.md`](../docs/web-info/repo-lifecycle.md).
+
+### MCP tools (phase surface)
+`gate`, `map`, `focus`, `grep`, `glob`, `workspace`, `expand`, `status`, `register_project` — full operator reference: [`mcp-tools-reference.md`](../docs/web-info/mcp-tools-reference.md).
 
 ### Windows terminal polish (0.3.13)
 Setup and wipe show a branded banner and single progress bar. ANSI colors work in cmd/PowerShell without raw `[90m` escape codes.

@@ -39,8 +39,8 @@ Run `scubiee <subcommand> --help` for flags on your installed version.
 | `scubiee pause [path] [--reason text]` | Pause background indexing for this repo |
 | `scubiee resume [path]` | Resume **global** stop after `scubiee stop` (not per-repo pause — use `activate`) |
 | `scubiee list` | JSON list of managed repos |
-| `scubiee remove [path]` | Unmanage repo (keeps store unless `--delete-store`) |
-| `scubiee remove [path] --delete-store` | Also delete index data |
+| `scubiee remove [path]` | Unmanage repo in registry only (keeps index store unless `--delete-store`) — prefer **`wipe --confirm`** for full cleanup |
+| `scubiee remove [path] --delete-store` | Unmanage + delete `~/.scubiee/projects/<id>/` (no VectorDB / `.scubiee` / repo rules cleanup) |
 | `scubiee never-index [path] [--reason text]` | Permanently refuse indexing for this path |
 
 ---
@@ -133,13 +133,15 @@ Writes MCP config + agent rules. **Cursor / Claude Code** are typically user-glo
 
 ## Settings & wipe
 
+See **[Repository lifecycle](./repo-lifecycle.md)** for pause vs stop vs wipe vs `remove`.
+
 | Command | Purpose |
 |---------|---------|
 | `scubiee settings --show` | Print `prefs.json` |
 | `scubiee settings --mode automatic` | Auto-register on IDE open |
 | `scubiee settings --mode mcp_cli` | Consent on first MCP use |
-| `scubiee wipe [path]` | Remove repo enrollment + index + VectorDB for one repo (**requires `--confirm` or TTY prompt** since 0.3.12) |
-| `scubiee wipe [path] --confirm` | Non-interactive repo wipe |
+| `scubiee wipe [path]` | **Unmanage + delete** repo enrollment, index store, VectorDB, `.scubiee`, repo MCP/rules (**requires `--confirm` or TTY prompt** since 0.3.12) |
+| `scubiee wipe [path] --confirm` | Non-interactive single-repo wipe |
 | `scubiee wipe --all` | **Blocked** until you confirm (see below) |
 | `scubiee wipe --all --confirm` | Delete all Scubiee state on this machine (models, every connect-tool MCP/rules, enrolled repos). `--yes` is an alias |
 | `scubiee wipe --all --confirm --package` | Full wipe **and** uninstall scubiee uv tool / pip package |
@@ -152,16 +154,20 @@ After `--all --confirm`, JSON includes an **`audit`** block listing any **`remai
 
 ## MCP tools (inside Cursor)
 
-Not CLI commands — exposed to the agent after MCP reload:
+Not CLI commands — exposed to the agent after MCP reload. **Full guide:** [MCP tools reference](./mcp-tools-reference.md).
+
+Default **`phase`** surface:
 
 | Tool | Role |
 |------|------|
-| `status` | Engine health + managed/warming flags (call once per session) |
-| `map` | Ranked overview of relevant chunks/symbols |
-| `focus` | Deep context around a hit |
-| `grep` | Pattern search (supports `glob=`; reports truncation) |
-| `glob` | Find files by path pattern |
-| `workspace` | Session / workspace context |
+| `gate` | Tiny managed check (~5 tokens) — prefer at session start |
+| `status` | Engine health + managed/warming flags (`detail=gate` for tiny check) |
+| `map` | Ranked overview of relevant chunks/symbols (no bodies) |
+| `focus` | Deep context — outline, span, neighbors, call_sites |
+| `grep` | Exact literal/regex search in indexed files (`glob=`; reports truncation) |
+| `glob` | Find files by path pattern in the index |
+| `workspace` | Session pins / heatmap / `clear` for new topic |
+| `expand` | Re-materialize a stored span by handle |
 | `register_project` | Register repo with user consent (MCP or CLI) |
 
 If `status` shows `warming: true`, retry the **tool** once after a short wait — do not poll `status()` every turn. After pause/stop use **`scubiee resume`**.
@@ -180,6 +186,8 @@ If `status` shows `warming: true`, retry the **tool** once after a short wait �
 
 ## Related
 
+- [Repository lifecycle](./repo-lifecycle.md)
+- [MCP tools reference](./mcp-tools-reference.md)
 - [Getting started](./getting-started.md)
 - [Indexing & projects](./indexing-and-projects.md)
 - [Troubleshooting](./troubleshooting.md)

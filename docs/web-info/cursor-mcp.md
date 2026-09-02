@@ -2,14 +2,14 @@
 
 Scubiee integrates with AI coding tools through the **Model Context Protocol (MCP)**. The MCP server name is **`scubiee`**. It talks to the local Scubiee daemon (default `http://127.0.0.1:8765`).
 
-**Docs assume [scubiee 0.3.13](https://pypi.org/project/scubiee/0.3.13/)** (published on PyPI). Install/debug: [Install & debug](./install-and-debug.md).
+**Docs assume [scubiee 0.3.14](https://pypi.org/project/scubiee/0.3.14/)** (published on PyPI). Install/debug: [Install & debug](./install-and-debug.md).
 
 ---
 
 ## First-time setup
 
 ```text
-1. uv tool install --force scubiee==0.3.13 --index-url https://pypi.org/simple --refresh
+1. uv tool install --force scubiee==0.3.14 --index-url https://pypi.org/simple --refresh
 2. scubiee setup --repair
 3. cd your-project && scubiee init .
 4. scubiee connect --cursor
@@ -84,14 +84,19 @@ When paused/stopped, follow **`scubiee resume`** (not `wake`).
 
 ## MCP tools (default `phase` surface)
 
+**Full reference:** [MCP tools reference](./mcp-tools-reference.md)
+
 | Tool | Use for |
 |------|---------|
-| `status` | Health + managed flag (once per session / after init) |
+| `gate` | Tiny managed check at session start (~5 tokens) |
+| `status` | Health + managed flag (`detail=gate` for tiny check) |
 | `map` | Ranked overview of relevant chunks/symbols |
-| `focus` | Deepen context around a hit |
-| `grep` | Text pattern search (`glob=` supported; may set `truncated`) |
+| `focus` | Deepen context — outline, span, neighbors, call_sites |
+| `grep` | Exact literal search (`glob=` supported; may set `truncated`) |
 | `glob` | Find files by path pattern |
-| `workspace` | Session / workspace context |
+| `workspace` | Session pins / heatmap — `show`, `pin`, `clear` |
+| `expand` | Re-open a stored span by handle |
+| `register_project` | Enroll repo from MCP with consent |
 
 `grep`/`glob` search **indexed** content. Empty + `truncated: false` means no match in that scope — not “file missing on disk.”
 
@@ -147,6 +152,8 @@ Do **not** rely on Admin/reboot. See [Install & debug](./install-and-debug.md) a
 
 ## Related
 
+- [MCP tools reference](./mcp-tools-reference.md)
+- [Repository lifecycle](./repo-lifecycle.md)
 - [Install & debug](./install-and-debug.md)
 - [Getting started](./getting-started.md)
 - [Troubleshooting](./troubleshooting.md)

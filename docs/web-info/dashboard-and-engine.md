@@ -32,7 +32,10 @@ The **watchdog** restarts the daemon if it crashes. Disable: `CTX_WATCHDOG=0`.
 
 ## Operator dashboard
 
-Separate lightweight UI for repo list, pause/resume, forget, and accel status.
+Separate lightweight UI for repo list, pause/activate, **Forget**, and accel status.
+
+- **Pause / activate** — same as CLI `pause` / `activate` (keeps data)
+- **Forget** — registry + store removal with typed project-id confirm; for full cleanup of one checkout (VectorDB, `.scubiee`, repo rules), use CLI **`scubiee wipe . --confirm`**. See [Repository lifecycle](./repo-lifecycle.md).
 
 ```bash
 scubiee dashboard --no-open     # start without opening browser
