@@ -15,7 +15,10 @@ def current_python() -> Path:
 def expected_scubiee_exe(python: Path | None = None) -> Path:
     py = python or current_python()
     if sys.platform == "win32":
-        return py.parent / "Scripts" / "scubiee.exe"
+        scripts = py.parent
+        if scripts.name.lower() != "scripts":
+            scripts = py.parent / "Scripts"
+        return scripts / "scubiee.exe"
     return py.parent / "scubiee"
 
 

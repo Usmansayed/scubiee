@@ -37,6 +37,16 @@ def test_warn_extra_scubiee_silent_when_only_ours(monkeypatch) -> None:
     assert buf.getvalue() == ""
 
 
+def test_expected_scubiee_exe_windows_scripts_layout() -> None:
+    uv_py = Path("C:/Users/me/AppData/Roaming/uv/tools/scubiee/Scripts/python.exe")
+    assert env_guard.expected_scubiee_exe(uv_py) == uv_py.parent / "scubiee.exe"
+
+
+def test_expected_scubiee_exe_windows_root_python_layout() -> None:
+    py = Path("C:/Python312/python.exe")
+    assert env_guard.expected_scubiee_exe(py) == py.parent / "Scripts" / "scubiee.exe"
+
+
 def test_uv_tool_shim_not_counted_as_duplicate(monkeypatch) -> None:
     uv_py = Path("C:/Users/me/AppData/Roaming/uv/tools/scubiee/Scripts/python.exe")
     uv_exe = uv_py.parent / "scubiee.exe"

@@ -244,8 +244,8 @@ def ensure_daemon_after_upgrade(repo: Path | str | None = None) -> dict[str, Any
     }
 
 
-def health_check(*, timeout: float = 5.0) -> dict[str, Any]:
-    """Readiness probe: daemon health + version match."""
+def _health_probe(*, timeout: float = 5.0) -> dict[str, Any]:
+    """Single readiness probe: daemon health + version match."""
     from pipeline.upgrade import daemon_version, installed_version
 
     iv = installed_version()
@@ -272,6 +272,22 @@ def health_check(*, timeout: float = 5.0) -> dict[str, Any]:
         result["error"] = str(exc)
         result["hint"] = "Run `scubiee engine start`."
     return result
+
+
+def health_check(*, timeout: float = 5.0, retries: int = 1, pause_s: float = 1.0) -> dict[str, Any]:
+    """Readiness probe with optional retries after upgrade."""
+    import time
+
+    attempts = max(1, int(retries))
+    last: dict[str, Any] = {"ok": False, "error": "no_attempts"}
+    for attempt in range(1, attempts + 1):
+        last = _health_probe(timeout=timeout)
+        last["attempts"] = attempt
+        if last.get("ok"):
+            return last
+        if attempt < attempts and pause_s > 0:
+            time.sleep(pause_s)
+    return last
 
 
 def package_swap_commands(*, pre_release: bool = False) -> list[list[str]]:

@@ -45,6 +45,7 @@ class DiffPlan:
     to_version: str
     actions: list[ComponentAction] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    release_path: list[str] = field(default_factory=list)
 
     def needs(self, component: ComponentId) -> bool:
         for a in self.actions:
@@ -64,6 +65,7 @@ class DiffPlan:
             "to_version": self.to_version,
             "actions": [asdict(a) for a in self.actions],
             "warnings": list(self.warnings),
+            "release_path": list(self.release_path),
         }
 
 
@@ -311,5 +313,14 @@ def build_diff_plan(
         )
     else:
         plan.actions.append(ComponentAction("home_layout", "skip", "home layout current"))
+
+    try:
+        from pipeline import upgrade_releases as _load_releases  # noqa: F401
+        from pipeline.upgrade_registry import compose_upgrade
+
+        composed = compose_upgrade(from_version, to_version)
+        plan.release_path = [r.version for r in composed.releases]
+    except Exception:  # noqa: BLE001
+        plan.release_path = []
 
     return plan
