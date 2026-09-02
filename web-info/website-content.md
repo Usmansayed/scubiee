@@ -1,9 +1,10 @@
 # Scubiee Website Content
 
-> **Version:** [0.2.88](https://pypi.org/project/scubiee/0.2.88/) (published on PyPI)  
+> **Version:** [0.3.13](https://pypi.org/project/scubiee/0.3.13/) (published on PyPI)  
 > **Purpose:** Content reference for designing and building the Scubiee product website and public docs.  
 > **Product identity:** MCP key **`scubiee`** · data **`~/.scubiee`** / **`<repo>/.scubiee`** (no legacy `context-engine` paths)  
 > **Full operator docs:** [`../docs/web-info/`](../docs/web-info/README.md)  
+> **Upgrade guide:** [`../docs/whats-changed-since-0.2.88.md`](../docs/whats-changed-since-0.2.88.md)  
 > **Install / debug playbook:** [`../docs/web-info/install-and-debug.md`](../docs/web-info/install-and-debug.md)
 
 ## Tagline options
@@ -39,6 +40,15 @@ Imports, calls, and structure — not only matching text.
 
 ### Completely local
 No cloud uploads for search. Model download only during setup. MCP server key: **`scubiee`**. Indexes live under `~/.scubiee`.
+
+### Safer wipe (0.3.12+)
+Repo wipe requires confirmation (`--confirm` or TTY prompt). Full wipe still uses `--all --confirm`. VectorDB collections are removed with the repo.
+
+### Windows terminal polish (0.3.13)
+Setup and wipe show a branded banner and single progress bar. ANSI colors work in cmd/PowerShell without raw `[90m` escape codes.
+
+### Honest status (0.3.12+)
+`scubiee status` on an uninitialized folder reports `enrolled: false` instead of fake store paths.
 
 ### Stop and resume
 `scubiee stop` frees processes and file locks. `scubiee resume` brings Scubiee back. There is no `wake`.
@@ -128,7 +138,7 @@ DIY: weeks of plumbing. Scubiee: setup → init → connect in minutes.
 
 ```bash
 # Recommended
-uv tool install --force scubiee==0.2.88 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.3.13 --index-url https://pypi.org/simple --refresh
 
 # Windows Access denied? → scubiee unlock-tool  (then retry install)
 

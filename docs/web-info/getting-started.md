@@ -4,7 +4,9 @@ Scubiee is a **local** context engine for AI coding tools (Cursor, Claude Code, 
 
 You need **Python 3.10+**. You do **not** need to clone the GitHub repo to use it.
 
-**Current PyPI release:** [scubiee 0.2.88](https://pypi.org/project/scubiee/0.2.88/) (published). MCP key **`scubiee`**; data under **`~/.scubiee`**.
+**Current PyPI release:** [scubiee 0.3.13](https://pypi.org/project/scubiee/0.3.13/) (published). MCP key **`scubiee`**; data under **`~/.scubiee`**.
+
+**Upgrading from 0.2.x?** [What's changed since 0.2.88](../whats-changed-since-0.2.88.md)
 
 Full install + debug playbook: **[Install & debug](./install-and-debug.md)**.
 
@@ -14,7 +16,7 @@ Full install + debug playbook: **[Install & debug](./install-and-debug.md)**.
 
 | Step | Command | What it does |
 |------|---------|--------------|
-| 1 | `uv tool install scubiee==0.2.88 …` | Install the CLI |
+| 1 | `uv tool install scubiee==0.3.13 …` | Install the CLI |
 | 2 | `scubiee setup --repair` | One-time **machine** setup (GPU/CPU/MLX, model, `accel.json`) |
 | 3 | `cd your-repo` → `scubiee init .` | Enroll + **index this repo** |
 | 4 | `scubiee connect --cursor` | Write **MCP + agent rules** for your IDE |
@@ -35,12 +37,12 @@ Full install + debug playbook: **[Install & debug](./install-and-debug.md)**.
 
 ```powershell
 # Windows — pin PyPI + version
-uv tool install --force scubiee==0.2.88 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.3.13 --index-url https://pypi.org/simple --refresh
 ```
 
 ```bash
 # macOS / Linux
-uv tool install --force scubiee==0.2.88 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.3.13 --index-url https://pypi.org/simple --refresh
 ```
 
 Add uv’s bin directory to PATH once, then open a **new** terminal:
@@ -54,7 +56,7 @@ On Windows, shims usually live in `%USERPROFILE%\.local\bin`.
 **Alternative — pip:**
 
 ```bash
-pip install -U scubiee==0.2.88
+pip install -U scubiee==0.3.13
 ```
 
 Verify:
@@ -191,7 +193,7 @@ In the agent: call Scubiee **`status()`** once. Expect `managed: true` after ini
 scubiee upgrade
 # or pin explicitly:
 scubiee unlock-tool   # Windows: if Access denied / half-broken tool dir
-uv tool install --force scubiee==0.2.88 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.3.13 --index-url https://pypi.org/simple --refresh
 
 scubiee setup --repair
 scubiee connect --cursor   # refresh MCP + rules after version bumps

@@ -4,7 +4,7 @@
 > On-disk data: **`~/.scubiee/`** and **`<repo>/.scubiee/`** (no legacy `.context-engine` path).  
 > "CE" below is optional engineering shorthand for the Scubiee engine only.
 
-> **Implementation baseline:** Scubiee `0.2.88`  
+> **Implementation baseline:** Scubiee `0.3.13`  
 > **Audience:** engineers, operators, integration authors, and maintainers building the technical sections of a documentation website.
 
 This document describes the current Scubiee architecture rather than the historical research prototypes. The public command and product guide is in [`commands-and-setup.md`](./commands-and-setup.md).
@@ -344,7 +344,7 @@ The budget is applied via `CTX_CPU_EMBED_THREADS` env var, consumed by `embedder
 ### First installation
 
 ```bash
-uv tool install --force scubiee==0.2.88 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.3.13 --index-url https://pypi.org/simple --refresh
 scubiee setup --repair
 scubiee preflight
 scubiee connect --all --dry-run

@@ -35,9 +35,9 @@ Run `scubiee <subcommand> --help` for flags on your installed version.
 | `scubiee register [path]` | Same consent flow as MCP registration |
 | `scubiee register . --always-allow` | Skip future MCP prompts |
 | `scubiee initialize [path]` | Managed repo init + reconcile existing index |
-| `scubiee activate [path]` | Mark repo active |
-| `scubiee pause [path] [--reason text]` | Pause background indexing |
-| `scubiee resume [path]` | Resume indexing |
+| `scubiee activate [path]` | Mark repo active (also un-pauses a **paused** repo since 0.3.11) |
+| `scubiee pause [path] [--reason text]` | Pause background indexing for this repo |
+| `scubiee resume [path]` | Resume **global** stop after `scubiee stop` (not per-repo pause — use `activate`) |
 | `scubiee list` | JSON list of managed repos |
 | `scubiee remove [path]` | Unmanage repo (keeps store unless `--delete-store`) |
 | `scubiee remove [path] --delete-store` | Also delete index data |
@@ -55,11 +55,11 @@ Run `scubiee <subcommand> --help` for flags on your installed version.
 | `scubiee index . --force` | Force full re-index |
 | `scubiee sync [path]` | Incremental sync (changed files) |
 | `scubiee sync . --confirm` | Sync when >400 files would change |
-| `scubiee sync-now [path]` | Lifecycle freshness reconciliation |
+| `scubiee sync-now [path]` | Lifecycle freshness reconciliation (blocked when repo is **paused** — use `activate` first) |
 | `scubiee rebuild [path]` | Force full rebuild |
 | `scubiee search <query> [path]` | Semantic + lexical search |
 | `scubiee search "foo" . --local --top-k 5` | In-process search |
-| `scubiee status [path]` | Index + freshness JSON |
+| `scubiee status [path]` | Index + freshness JSON (`enrolled: false` / `unmanaged` if never initialized) |
 
 ---
 
@@ -67,7 +67,7 @@ Run `scubiee <subcommand> --help` for flags on your installed version.
 
 | Command | Purpose |
 |---------|---------|
-| `scubiee doctor [path]` | Readiness report |
+| `scubiee doctor [path]` | Readiness report + **install identity** (active binary, PATH duplicates) |
 | `scubiee doctor . --fix` | Apply safe fixes |
 | `scubiee doctor --all` | All managed repos |
 | `scubiee certify [path]` | Release certification gate |
@@ -100,8 +100,8 @@ Run `scubiee <subcommand> --help` for flags on your installed version.
 | `scubiee dashboard --no-open` | Start operator dashboard |
 | `scubiee dashboard --status` | Dashboard URL / PID / health |
 | `scubiee dashboard stop` | Stop dashboard |
-| `scubiee stop` | Stop engine, watchdog, MCP-related processes |
-| `scubiee resume` | Resume after global stop/pause (**not** `wake`) |
+| `scubiee stop` | **Global stop** — tears down MCP/rules, blocks most CLI until `scubiee resume` |
+| `scubiee resume` | Resume after **global** `scubiee stop` (**not** per-repo pause — use `activate`) |
 | `scubiee mcp [path]` | Run MCP adapter (normally invoked by Cursor) |
 
 ---
@@ -138,7 +138,8 @@ Writes MCP config + agent rules. **Cursor / Claude Code** are typically user-glo
 | `scubiee settings --show` | Print `prefs.json` |
 | `scubiee settings --mode automatic` | Auto-register on IDE open |
 | `scubiee settings --mode mcp_cli` | Consent on first MCP use |
-| `scubiee wipe [path]` | Remove repo identity + local Scubiee files for one repo |
+| `scubiee wipe [path]` | Remove repo enrollment + index + VectorDB for one repo (**requires `--confirm` or TTY prompt** since 0.3.12) |
+| `scubiee wipe [path] --confirm` | Non-interactive repo wipe |
 | `scubiee wipe --all` | **Blocked** until you confirm (see below) |
 | `scubiee wipe --all --confirm` | Delete all Scubiee state on this machine (models, every connect-tool MCP/rules, enrolled repos). `--yes` is an alias |
 | `scubiee wipe --all --confirm --package` | Full wipe **and** uninstall scubiee uv tool / pip package |
@@ -173,7 +174,7 @@ If `status` shows `warming: true`, retry the **tool** once after a short wait �
 |------|---------|
 | `0` | Success |
 | `1` | Error (check JSON `error` field) |
-| `2` | Safety pause — confirm required (`wipe --all` without `--yes`, or large index/sync without `--confirm`) |
+| `2` | Safety pause — confirm required (`wipe` without `--confirm`, `wipe --all` without `--yes`, or large index/sync without `--confirm`) |
 
 ---
 

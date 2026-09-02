@@ -2,14 +2,14 @@
 
 Scubiee integrates with AI coding tools through the **Model Context Protocol (MCP)**. The MCP server name is **`scubiee`**. It talks to the local Scubiee daemon (default `http://127.0.0.1:8765`).
 
-**Docs assume [scubiee 0.2.88](https://pypi.org/project/scubiee/0.2.88/)** (published on PyPI). Install/debug: [Install & debug](./install-and-debug.md).
+**Docs assume [scubiee 0.3.13](https://pypi.org/project/scubiee/0.3.13/)** (published on PyPI). Install/debug: [Install & debug](./install-and-debug.md).
 
 ---
 
 ## First-time setup
 
 ```text
-1. uv tool install --force scubiee==0.2.88 --index-url https://pypi.org/simple --refresh
+1. uv tool install --force scubiee==0.3.13 --index-url https://pypi.org/simple --refresh
 2. scubiee setup --repair
 3. cd your-project && scubiee init .
 4. scubiee connect --cursor
@@ -36,7 +36,7 @@ scubiee disconnect --cursor
 
 Cursor does **not** expand `${workspaceFolder}` in global `~/.cursor/mcp.json`. A literal token makes MCP resolve to your home folder → `managed: false`.
 
-**0.2.87+ pin / 0.2.88+ sidebar bind:**
+**0.2.87+ pin / 0.3.13+ sidebar bind:**
 
 - Global MCP entry: **no** `CTX_REPO` / `CURSOR_*` workspace tokens
 - Project `.cursor/mcp.json`: **absolute** `CTX_REPO` for the repo where you ran `connect`
@@ -136,7 +136,7 @@ Put a unique string in a **`.py`** file in scope, sync, then search.
 
 ```bash
 scubiee unlock-tool
-uv tool install --force scubiee==0.2.88 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.3.13 --index-url https://pypi.org/simple --refresh
 scubiee setup --repair
 scubiee connect --cursor
 ```

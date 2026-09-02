@@ -1,8 +1,10 @@
 # FAQ
 
-Short answers to common questions. Docs assume **[scubiee 0.2.88](https://pypi.org/project/scubiee/0.2.88/)** (published on PyPI).
+Short answers to common questions. Docs assume **[scubiee 0.3.13](https://pypi.org/project/scubiee/0.3.13/)** (published on PyPI).
 
 Full install/debug playbook: [Install & debug](./install-and-debug.md).
+
+**Upgrading from 0.2.x?** [What's changed since 0.2.88](../whats-changed-since-0.2.88.md)
 
 ---
 
@@ -15,7 +17,7 @@ A local code context engine: indexes your repo, embeds with CodeRank (GPU when a
 **`scubiee`** (in `mcp.json`). Data lives under `~/.scubiee` and `<repo>/.scubiee`.
 
 **Do I need to clone the GitHub repo?**  
-No. Install from PyPI: `uv tool install scubiee==0.2.88` ([project page](https://pypi.org/project/scubiee/0.2.88/)).
+No. Install from PyPI: `uv tool install scubiee==0.3.13` ([project page](https://pypi.org/project/scubiee/0.3.13/)).
 
 **What Python version?**  
 3.10 or newer.
@@ -75,7 +77,17 @@ Required when more than 400 indexable files would be touched.
 `scubiee sync .`
 
 **Pause / resume?**  
-`scubiee stop` or `scubiee pause .` → continue with **`scubiee resume`** (not `wake`).
+- **Per-repo:** `scubiee pause .` → continue with **`scubiee activate .`** (since 0.3.11).  
+- **Global:** `scubiee stop` → continue with **`scubiee resume`** (not `engine start`). There is no `wake`.
+
+**Wipe one repo without a prompt?**  
+`scubiee wipe . --confirm` (since 0.3.12). Without confirm, exit code **2**.
+
+**`status` on a folder I never initialized?**  
+`enrolled: false`, `state: "unmanaged"` — run `scubiee init .` to enroll.
+
+**Upgrading from 0.2.88?**  
+See [What's changed since 0.2.88](../whats-changed-since-0.2.88.md) — pin `scubiee==0.3.13`, run `setup --repair`, re-run `connect`.
 
 ---
 

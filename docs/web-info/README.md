@@ -2,8 +2,10 @@
 
 These docs are for **operators and end users**: install, daily use, troubleshooting, and uninstall. They are written so you can resolve most issues without reading engineering notes.
 
-**Current release:** [`scubiee 0.2.88`](https://pypi.org/project/scubiee/0.2.88/) — **published on PyPI**.  
+**Current release:** [`scubiee 0.3.13`](https://pypi.org/project/scubiee/0.3.13/) — **published on PyPI**.  
 Pin this version in install commands until you intentionally upgrade.
+
+**Upgrading from 0.2.x?** Read **[What's changed since 0.2.88](../whats-changed-since-0.2.88.md)** first.
 
 **Product identity:** CLI + MCP server key = **`scubiee`**. On-disk data = **`~/.scubiee`** and **`<repo>/.scubiee`**. There is no legacy `context-engine` MCP key or `.context-engine` data path.
 
@@ -13,6 +15,7 @@ Pin this version in install commands until you intentionally upgrade.
 
 | If you want to… | Read |
 |-----------------|------|
+| **Upgrade from 0.2.x — what changed?** | **[What's changed since 0.2.88](../whats-changed-since-0.2.88.md)** |
 | **Install, upgrade, or debug package issues** | **[Install & debug](./install-and-debug.md)** ← full end-user playbook |
 | Install and index your first repo | [Getting started](./getting-started.md) |
 | Learn everyday commands and workflows | [Daily use](./daily-use.md) |
@@ -41,10 +44,13 @@ Pin this version in install commands until you intentionally upgrade.
 
 | Question | Answer |
 |----------|--------|
-| What do I run on a new PC? | `uv tool install scubiee==0.2.88` → `scubiee setup --repair` → `cd your-repo` → `scubiee init .` → `scubiee connect --cursor` |
+| What do I run on a new PC? | `uv tool install scubiee==0.3.13` → `scubiee setup --repair` → `cd your-repo` → `scubiee init .` → `scubiee connect --cursor` |
 | Does `init` wire Cursor? | **No.** `init` indexes the repo. **`connect`** writes MCP + agent rules. |
 | Agent says unmanaged? | Run `connect` in that project (and for Kiro/Copilot/Cline/Roo: run connect **inside each repo**). Cursor also needs project `.cursor/mcp.json` (written by connect). |
-| Pause / stop — how do I continue? | `scubiee resume` (global) or `scubiee resume .` (per-repo). There is **no** `scubiee wake`. |
+| Pause / stop — how do I continue? | **Per-repo pause:** `scubiee activate .` · **Global stop:** `scubiee resume` (not `engine start`). There is **no** `scubiee wake`. |
+| `status` on a new folder? | `enrolled: false`, `state: "unmanaged"` until you run `scubiee init .` |
+| Wipe one repo without prompt? | `scubiee wipe . --confirm` (required since 0.3.12; exit **2** without confirm) |
+| `sync-now` while repo paused? | Blocked — run `scubiee activate .` first (0.3.13+) |
 | `status` shows warming? | Daemon is starting. Use tools once; wait briefly and retry the **tool** — do not poll `status()` in a loop. |
 | `init` says `machine_not_setup`? | Run `scubiee setup --repair` first. |
 | Diagnose looks fine but `init` fails after reinstall? | Stale `accel.json` with missing packages — run `scubiee setup --repair`, then `scubiee diagnose --desktop`. |
@@ -58,7 +64,7 @@ Pin this version in install commands until you intentionally upgrade.
 ## Canonical install sequence
 
 ```text
-1. uv tool install --force scubiee==0.2.88 --index-url https://pypi.org/simple --refresh
+1. uv tool install --force scubiee==0.3.13 --index-url https://pypi.org/simple --refresh
 2. scubiee setup --repair          # once per machine (GPU/CPU/MLX + model)
 3. cd path\to\your\repo
 4. scubiee init .                  # index this repo (does NOT write MCP)
@@ -89,5 +95,6 @@ Windows Access denied during step 1 → `scubiee unlock-tool` (or `scripts/unins
 
 - Architecture / internals: [`../engg/`](../engg/)
 - Maintainer release notes: [`../session-info/`](../session-info/)
+- **What's changed since 0.2.88:** [`../whats-changed-since-0.2.88.md`](../whats-changed-since-0.2.88.md)
 - Publishing to PyPI: [`../publish-setup.md`](../publish-setup.md)
 - Pre-production journey notes: [`../journey-audit-pre-production-2026-08-26.md`](../journey-audit-pre-production-2026-08-26.md)
