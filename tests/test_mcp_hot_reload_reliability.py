@@ -5,8 +5,12 @@ from __future__ import annotations
 import json
 import sys
 import textwrap
-import tomllib
 from pathlib import Path
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python < 3.11
+    import tomli as tomllib  # type: ignore[no-redef]
 
 import pytest
 
@@ -327,7 +331,7 @@ def test_upgrade_supervisor_includes_hot_reload_on_connect(tmp_path, monkeypatch
     assert nudge_calls == ["0.3.6"]
     assert rebind_calls == ["yes"]
     assert "mcp_hot_reload" in report
-    assert "auto-reloads" in report["next_steps"][0]
+    assert "bridge reloads" in report["next_steps"][1].lower()
 
 
 def test_kill_workers_leaves_bridge_running(monkeypatch):

@@ -53,6 +53,7 @@ def _run_cli(
     cwd: Path,
     env_extra: dict[str, str] | None = None,
     timeout: float = 120.0,
+    cli_bin: str | None = None,
 ) -> dict:
     env = os.environ.copy()
     env["CTX_HOME"] = str(home)
@@ -60,7 +61,10 @@ def _run_cli(
     env["PYTHONIOENCODING"] = "utf-8"
     if env_extra:
         env.update(env_extra)
-    cmd = [sys.executable, "-m", "pipeline", *argv]
+    if cli_bin:
+        cmd = [cli_bin, *argv]
+    else:
+        cmd = [sys.executable, "-m", "pipeline", *argv]
     t0 = time.time()
     try:
         proc = subprocess.run(
@@ -84,8 +88,11 @@ def _run_cli(
             "timeout": True,
         }
     combined = (proc.stdout or "") + (proc.stderr or "")
-    blocked = "[scubiee] Scubiee is stopped" in combined or "globally stopped" in combined.lower()
-    blocked = blocked or "Run `scubiee resume`" in combined
+    blocked = proc.returncode != 0 and (
+        "[scubiee] Scubiee is stopped" in combined
+        or "globally stopped" in combined.lower()
+        or "Run `scubiee resume`" in combined
+    )
     return {
         "argv": argv,
         "exit": proc.returncode,
@@ -201,6 +208,104 @@ def scenarios() -> list[Scenario]:
             "any",
             "init after engine-only stop (needs setup)",
         ),
+        Scenario(
+            "G10",
+            "global_stop",
+            [["stop", "-y"], ["search", ".", "def"]],
+            "blocked",
+            "search after global stop blocked",
+        ),
+        Scenario(
+            "G11",
+            "global_stop",
+            [["stop", "-y"], ["index", "."]],
+            "blocked",
+            "index after global stop blocked",
+        ),
+        Scenario(
+            "G13",
+            "global_stop",
+            [["stop", "-y"], ["gate", "."]],
+            "any",
+            "gate read-only while stopped (prints p)",
+        ),
+        Scenario(
+            "E3",
+            "engine_stop",
+            [["engine", "stop"], ["engine", "start", "."]],
+            "any",
+            "engine start after engine-only stop",
+        ),
+        Scenario(
+            "E5",
+            "engine_stop",
+            [["engine", "stop"], ["connect", "--cursor", "--dry-run"]],
+            "any",
+            "connect dry-run after engine-only stop",
+        ),
+        Scenario(
+            "E7",
+            "engine_stop",
+            [["engine", "stop"], ["engine", "ensure", "."]],
+            "any",
+            "engine ensure after engine-only stop",
+        ),
+        Scenario(
+            "C1",
+            "connect",
+            [["connect", "--cursor", "--dry-run"]],
+            "ok",
+            "connect cursor dry-run",
+        ),
+        Scenario(
+            "C2",
+            "connect",
+            [["connect", "--all", "--dry-run"]],
+            "ok",
+            "connect all tools dry-run",
+        ),
+        Scenario(
+            "C3",
+            "connect",
+            [["disconnect", "--cursor"]],
+            "any",
+            "disconnect cursor noop or ok",
+        ),
+        Scenario(
+            "L4",
+            "lifecycle",
+            [["pause", "."], ["activate", "."]],
+            "any",
+            "pause then activate repo",
+        ),
+        Scenario(
+            "L6",
+            "lifecycle",
+            [["sync-now", "."]],
+            "any",
+            "sync-now on repo",
+        ),
+        Scenario(
+            "X2",
+            "recovery",
+            [["unlock-tool"]],
+            "any",
+            "unlock uv tool dir",
+        ),
+        Scenario(
+            "X4",
+            "recovery",
+            [["upgrade", "--check"]],
+            "any",
+            "upgrade check only",
+        ),
+        Scenario(
+            "X8",
+            "recovery",
+            [["stop", "-y"], ["engine", "start", "."]],
+            "blocked",
+            "engine start after global stop must block",
+        ),
         # --- Wipe combinations ---
         Scenario(
             "W1",
@@ -264,7 +369,7 @@ def scenarios() -> list[Scenario]:
     ]
 
 
-def run_all(*, repo: Path, quick: bool) -> list[Result]:
+def run_all(*, repo: Path, quick: bool, cli_bin: str | None = None) -> list[Result]:
     results: list[Result] = []
     with tempfile.TemporaryDirectory(prefix="scubiee-cli-test-") as tmp:
         home = Path(tmp) / "home"
@@ -274,7 +379,9 @@ def run_all(*, repo: Path, quick: bool) -> list[Result]:
                 continue
             step_reports: list[dict] = []
             for argv in sc.steps:
-                step_reports.append(_run_cli(argv, home=home, cwd=repo, timeout=90.0))
+                step_reports.append(
+                    _run_cli(argv, home=home, cwd=repo, timeout=90.0, cli_bin=cli_bin)
+                )
             ok, observed = _last_step_observed(step_reports, sc.expect)
             results.append(
                 Result(
@@ -303,10 +410,22 @@ def main() -> int:
     parser.add_argument("--json", default="", help="Write JSON results here")
     parser.add_argument("--repo", default=str(ROOT), help="Repo path for cwd")
     parser.add_argument("--quick", action="store_true", help="Skip slow wipe scenarios")
+    parser.add_argument(
+        "--cli",
+        default="",
+        help="Path to scubiee binary (real user CLI). Default: python -m pipeline",
+    )
     args = parser.parse_args()
 
     repo = Path(args.repo).resolve()
-    results = run_all(repo=repo, quick=args.quick)
+    cli_bin = args.cli.strip() or None
+    if cli_bin:
+        cli_path = Path(cli_bin)
+        if not cli_path.is_file():
+            print(f"scubiee binary not found: {cli_bin}", file=sys.stderr)
+            return 2
+        cli_bin = str(cli_path.resolve())
+    results = run_all(repo=repo, quick=args.quick, cli_bin=cli_bin)
     passed = sum(1 for r in results if r.ok)
     total = len(results)
 

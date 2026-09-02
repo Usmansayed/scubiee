@@ -1,4 +1,4 @@
-﻿"""Persistent repository lifecycle built on the global project registry."""
+"""Persistent repository lifecycle built on the global project registry."""
 
 from __future__ import annotations
 
@@ -497,15 +497,15 @@ def activate_repo(root: Path) -> dict[str, Any]:
             error=NEVER_INDEX,
         )
     if entry.get("lifecycle_state") == PAUSED:
-        entry = _update(project_id, last_access_at=time.time())
-        return _result(
+        now = time.time()
+        entry = _update(
             project_id,
-            entry,
-            ok=False,
-            status=PAUSED,
-            error=PAUSED,
-            pause_reason=entry.get("pause_reason"),
+            lifecycle_state=ACTIVE,
+            last_activated_at=now,
+            last_access_at=now,
+            pause_reason=None,
         )
+        return _result(project_id, entry, status="activated")
     now = time.time()
     entry = _update(
         project_id,
