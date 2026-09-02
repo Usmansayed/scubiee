@@ -1,7 +1,8 @@
 # Scubiee: Commands, Setup, and Product Guide
 
-> **Documentation baseline:** [Scubiee `0.3.13`](https://pypi.org/project/scubiee/0.3.13/) (published on PyPI)  
+> **Documentation baseline:** [Scubiee `0.3.14`](https://pypi.org/project/scubiee/0.3.14/) (published on PyPI)  
 > **Audience:** product pages, documentation websites, and developers using Scubiee from a terminal or an AI coding tool.  
+> **Website product bible:** [`product-guide-for-website.md`](./product-guide-for-website.md)  
 > **Product identity:** MCP key **`scubiee`** · home **`~/.scubiee`** · repo **`<repo>/.scubiee`**  
 > **Canonical user docs:** [`../docs/web-info/`](../docs/web-info/README.md)  
 > **Install / upgrade / debug playbook:** [`../docs/web-info/install-and-debug.md`](../docs/web-info/install-and-debug.md)
@@ -28,7 +29,7 @@ Most coding assistants can read files, but a large repository makes ad-hoc file 
 
 ```bash
 # 1. Install
-uv tool install --force scubiee==0.3.13 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.3.14 --index-url https://pypi.org/simple --refresh
 
 # 2. One-time machine setup
 scubiee setup --repair

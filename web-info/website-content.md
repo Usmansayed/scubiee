@@ -1,11 +1,22 @@
-# Scubiee Website Content
+# Scubiee Website Content — quick reference
 
 > **Version:** [0.3.14](https://pypi.org/project/scubiee/0.3.14/) (published on PyPI)  
-> **Purpose:** Content reference for designing and building the Scubiee product website and public docs.  
-> **Product identity:** MCP key **`scubiee`** · data **`~/.scubiee`** / **`<repo>/.scubiee`** (no legacy `context-engine` paths)  
-> **Full operator docs:** [`../docs/web-info/`](../docs/web-info/README.md)  
-> **Upgrade guide:** [`../docs/whats-changed-since-0.2.88.md`](../docs/whats-changed-since-0.2.88.md)  
-> **Install / debug playbook:** [`../docs/web-info/install-and-debug.md`](../docs/web-info/install-and-debug.md)
+> **Purpose:** Short snippets, taglines, and SEO for marketing pages.  
+> **Full product bible (use this to write the website):** **[`product-guide-for-website.md`](./product-guide-for-website.md)**  
+> **Operator docs:** [`../docs/web-info/`](../docs/web-info/README.md)
+
+---
+
+## Start here for website writing
+
+| Writing task | Read |
+|--------------|------|
+| **Full product story, features, pages, FAQ** | **[Product guide for website](./product-guide-for-website.md)** |
+| Command tables & setup flows | [Commands and setup](./commands-and-setup.md) |
+| Engineering / architecture depth | [Context engine internals](./context-engine-internals.md) |
+| End-user troubleshooting | [docs/web-info](../docs/web-info/README.md) |
+
+---
 
 ## Tagline options
 
@@ -13,59 +24,37 @@
 - "Give every AI coding tool semantic search. Locally."
 - "Index once, search from anywhere. No cloud required."
 - "The missing context layer for AI coding assistants."
+- "Your codebase, indexed once — ready for every AI tool."
 
 ## One-liner
 
 Scubiee is a local code context engine that gives AI coding tools semantic search, graph-aware retrieval, and live re-indexing — without uploading your code anywhere.
 
-## Key features (for feature grid/cards)
+## Hero subhead (2 lines)
 
-### Semantic code search
-Search by meaning, not just text. "authentication middleware" finds auth handlers even if they don't contain those exact words. Powered by CodeRankEmbed + FAISS.
+Index your repository on your machine. Connect Cursor, Copilot, Claude Code, or Kiro via MCP.  
+Agents find code by meaning — not random grepping — and stay current as you ship.
 
-### Many AI tools, one connect family
-Connect Cursor, Claude Code, Codex, Kiro, Copilot/VS Code, Windsurf, Cline, Roo Code, Continue, Zed, OpenCode, and more with `scubiee connect`. Disconnect cleanly with `scubiee disconnect`.
+---
 
-### GPU-aware indexing (auto profile)
-- **Windows discrete AMD/NVIDIA** → DirectML (`dml`)
-- **Windows Intel iGPU / AMD APU / no discrete GPU** → CPU (`cpu`) — no DML hang
-- **Apple Silicon** → MLX Metal (`mlx`) — must not stay on CPU
-- **Linux NVIDIA** → CUDA (`cuda`)
+## Key features (feature grid — expand in product guide)
 
-### Live re-indexing
-Changed files re-index in the background so search stays current.
+| Feature | One sentence |
+|---------|--------------|
+| Semantic search | Find code by meaning with CodeRankEmbed + FAISS |
+| Graph-aware | Follow imports, callers, and structure |
+| Live sync | Merkle incremental re-index after edits |
+| MCP-native | map · focus · grep · glob · workspace tools |
+| Multi-tool connect | One `scubiee connect` family for 12+ AI tools |
+| GPU-aware | CUDA · DirectML · MLX · CPU auto-detected |
+| Fully local | No code upload; model download only at setup |
+| Safe lifecycle | Confirm-gated wipe; honest audit on full uninstall |
 
-### Graph-aware retrieval
-Imports, calls, and structure — not only matching text.
+Details: [product-guide-for-website.md § Features in depth](./product-guide-for-website.md#features-in-depth)
 
-### Completely local
-No cloud uploads for search. Model download only during setup. MCP server key: **`scubiee`**. Indexes live under `~/.scubiee`.
+---
 
-### Safer wipe (0.3.12+)
-Repo wipe requires confirmation (`--confirm` or TTY prompt). Removes enrollment, index, VectorDB, `.scubiee`, and repo tool files — not your source code. Full guide: [`repo-lifecycle.md`](../docs/web-info/repo-lifecycle.md).
-
-### MCP tools (phase surface)
-`gate`, `map`, `focus`, `grep`, `glob`, `workspace`, `expand`, `status`, `register_project` — full operator reference: [`mcp-tools-reference.md`](../docs/web-info/mcp-tools-reference.md).
-
-### Windows terminal polish (0.3.13)
-Setup and wipe show a branded banner and single progress bar. ANSI colors work in cmd/PowerShell without raw `[90m` escape codes.
-
-### Honest status (0.3.12+)
-`scubiee status` on an uninitialized folder reports `enrolled: false` instead of fake store paths.
-
-### Stop and resume
-`scubiee stop` frees processes and file locks. `scubiee resume` brings Scubiee back. There is no `wake`.
-
-### One-command upgrade
-`scubiee upgrade` unlocks/stops Scubiee processes first (critical on Windows Access denied), upgrades, restarts, migrates. Then re-run `connect` so rules stay current. If the CLI is broken, use `scubiee unlock-tool` or `scripts/repair-uv-scubiee.ps1`.
-
-### Self-healing setup
-`scubiee setup --repair` restores missing FastEmbed/ORT extras and refreshes `accel.json` after broken reinstalls.
-
-### Multi-repository
-`scubiee init <path>` per repo. Special-4 hosts (Kiro/Copilot/Cline/Roo) need `connect` inside each project.
-
-## How it works (3-step explanation)
+## How it works (homepage diagram)
 
 ```
 1. SETUP                 2. INDEX               3. CONNECT
@@ -74,128 +63,70 @@ scubiee setup --repair    scubiee init .         scubiee connect --cursor
      v                    v                      v
 Detect GPU/CPU/MLX   Parse + embed code     Write MCP + agent rules
 Download model       Store vectors/graph    Reload IDE MCP
-Calibrate speed      Start daemon           Agent status() → managed
 ```
 
-**Remember for docs copy:** `init` does **not** wire the IDE. `connect` does.
+**Critical copy rule:** `init` indexes · `connect` wires the IDE · reload MCP.
 
-## Architecture (simplified for website)
+---
+
+## Architecture (simplified)
 
 ```
-Your AI Tool (Cursor / Kiro / Claude Code / …)
-        |
-        | MCP protocol (stdio)
+AI Tool (Cursor / Copilot / …)
+        | MCP
         v
-+------------------+
-| Scubiee MCP      |  status, map, focus, grep, glob, workspace
-+------------------+
-        |
-        | HTTP (localhost)
-        v
-+------------------+
-| Scubiee Engine   |  Daemon + live re-indexing
-+------------------+
-        |
-        v
-+------------------+
-| Your Code Index  |  Vectors + Graph + Chunks (all local)
-+------------------+
+Scubiee MCP  →  Local Engine (daemon)  →  Vectors + Graph + Chunks
+                      ↑
+               ~/.scubiee + <repo>/.scubiee
 ```
 
-## MCP tools (docs/API section)
+---
 
-| Tool | What it does | When AI uses it |
-|------|-------------|-----------------|
-| `status` | Managed / healthy / warming | Once at session start (not every turn) |
-| `map` | Ranked code areas for a query | "Where is authentication handled?" |
-| `focus` | Deep-dive into a span + neighbors | "Show login and its callers" |
-| `grep` | Exact text/regex | "Find all uses of `API_KEY`" |
-| `glob` | Files by pattern | "List all `*.test.ts`" |
-| `workspace` | Session context | Tracking what was explored |
-
-**Warming:** If `warming: true`, retry the tool once after a few seconds — do not spam `status()`.
-
-## Comparison angles
-
-### vs native file search
-Native: text matching. Scubiee: semantic + structure + live updates.
-
-### vs cloud code search
-Cloud: uploads + keys + network. Scubiee: local, offline after setup.
-
-### vs DIY RAG
-DIY: weeks of plumbing. Scubiee: setup → init → connect in minutes.
-
-## Supported platforms
-
-| Platform | Acceleration | Status |
-|----------|--------------|--------|
-| Windows + discrete AMD/NVIDIA | DirectML FP16 | Production |
-| Windows CPU-only / iGPU-only | CPU | Production (validated on Intel UHD laptops) |
-| Linux + NVIDIA | CUDA | Production |
-| macOS Apple Silicon | MLX Metal | Production (verify on device) |
-| macOS Intel | CoreML / CPU | Supported |
-| Linux no GPU | CPU | Supported |
-
-## Installation (website copy)
+## Install block (website code panel)
 
 ```bash
-# Recommended
-uv tool install --force scubiee==0.3.13 --index-url https://pypi.org/simple --refresh
-
-# Windows Access denied? → scubiee unlock-tool  (then retry install)
-
+uv tool install --force scubiee==0.3.14 --index-url https://pypi.org/simple --refresh
 scubiee setup --repair
-cd your-repo
-scubiee init .
-scubiee connect --cursor          # Special-4: inside each project
-# Reload MCP in the IDE
+cd your-repo && scubiee init .
+scubiee connect --cursor    # reload MCP in IDE
 ```
 
-Share diagnostics: `scubiee diagnose --no-tests --desktop` → Desktop JSON.
+Windows Access denied → `scubiee unlock-tool` then retry.
 
-## User-facing issues (docs FAQ / support page)
+---
 
-| Problem | What to tell users |
-|---------|-------------------|
-| “MCP doesn’t work” | Did you **connect** after **init**? Reload MCP. |
-| Kiro/Copilot/Cline/Roo empty | Run `connect --tool` **inside that repo**. |
-| Access denied on Windows upgrade | **`scubiee unlock-tool`**, then reinstall + `setup --repair`. File locks, not ACLs — Admin/reboot is not the fix. |
-| `No module named 'pipeline'` | Half-deleted uv tool dir — `unlock-tool` or `scripts/repair-uv-scubiee.ps1`, then reinstall. |
-| Cursor `managed: false` | Run `connect --cursor` **from the project** (project `.cursor/mcp.json` pin). |
-| Diagnose looks fine, init fails | Stale accel — `setup --repair` then init. |
-| Agent says `wake` | Run **`scubiee resume`**. |
-| Agent polls status forever | Re-run `connect` (rules are event-driven). |
-| Intel laptop stuck on DML hang | Current builds use **cpu** for iGPU — upgrade + `setup --repair`. |
+## MCP tools (marketing table)
 
-Full install/debug playbook: [`../docs/web-info/install-and-debug.md`](../docs/web-info/install-and-debug.md).
+| Tool | Hook for website |
+|------|------------------|
+| `map` | "Where is X handled?" — ranked code map |
+| `focus` | Deep-dive spans, neighbors, call sites |
+| `grep` | Exact literals when you know the string |
+| `gate` / `status` | One check: is this repo ready? |
 
-## CLI command tree (website)
+Full reference: [mcp-tools-reference.md](../docs/web-info/mcp-tools-reference.md)
 
-```
-scubiee
-├── setup [--repair] [--status] [--profile …]
-├── init <path>
-├── connect / disconnect [--cursor|--kiro|…|--all]
-├── stop / resume
-├── unlock-tool          # Windows: free uv tool locks before reinstall
-├── upgrade
-├── search / sync / status / rebuild
-├── pause / resume <path>
-├── diagnose [--desktop]
-├── doctor / preflight / resources
-├── engine / dashboard / wipe
-└── settings / migrate / list / remove
-```
+---
+
+## Comparison one-liners
+
+- **vs grep alone:** meaning + structure + freshness  
+- **vs cloud index:** private, air-gapped, your disk  
+- **vs DIY RAG:** minutes not weeks; MCP included  
+
+---
 
 ## SEO keywords
 
-scubiee, local code search, semantic code search, AI coding tools, MCP server, code context engine, repository indexing, vector search code, cursor mcp, kiro mcp, claude code mcp, code embeddings, directml, mlx, local ai code assistant
+scubiee, local code search, semantic code search, MCP server, AI coding tools, code context engine, repository indexing, cursor mcp, copilot mcp, claude code mcp, directml, mlx, offline code ai
 
-## Social proof / use cases
+---
 
-- "CPU-only Windows laptop finished setup without hanging on DirectML"
-- "One connect wired Cursor; Kiro needed connect inside the project"
-- "The AI finds the right code instead of grepping randomly"
-- "Completely local — security approved it"
-- "wipe --all with an honest leftover audit"
+## Social proof bullets
+
+- CPU-only Windows laptop: setup completes without DirectML hang  
+- Security review: code never uploaded for search  
+- Monorepo: agent finds the right module on first `map`  
+- Multi-IDE: same local index for Cursor and Copilot  
+
+More stories: [product guide § Social proof](./product-guide-for-website.md#social-proof--use-case-stories)

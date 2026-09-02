@@ -96,6 +96,7 @@ Windows Access denied during step 1 → `scubiee unlock-tool` (or `scripts/unins
 
 ## Engineering docs (not for end users)
 
+- **Website / product writing:** [`../../web-info/product-guide-for-website.md`](../../web-info/product-guide-for-website.md)
 - Architecture / internals: [`../engg/`](../engg/)
 - Maintainer release notes: [`../session-info/`](../session-info/)
 - **What's changed since 0.2.88:** [`../whats-changed-since-0.2.88.md`](../whats-changed-since-0.2.88.md)
