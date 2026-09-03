@@ -5,12 +5,7 @@
 <p align="center">
   <a href="https://pypi.org/project/scubiee/"><img src="https://img.shields.io/pypi/v/scubiee?style=flat&color=C4783A" alt="PyPI"></a>
   <a href="https://pypi.org/project/scubiee/"><img src="https://img.shields.io/badge/python-3.10%2B-3776AB?style=flat" alt="Python 3.10+"></a>
-  <a href="https://pypi.org/project/scubiee/"><img src="https://img.shields.io/pypi/dm/scubiee?style=flat&color=blue" alt="Downloads"></a>
-  <a href="https://github.com/Usmansayed/new-context-engine"><img src="https://img.shields.io/github/stars/Usmansayed/new-context-engine?style=flat" alt="GitHub stars"></a>
-  <br>
-  <img src="https://img.shields.io/badge/OS-Windows-0078D6?style=flat&logo=windows&logoColor=white" alt="Windows">
-  <img src="https://img.shields.io/badge/OS-macOS-000000?style=flat&logo=apple&logoColor=white" alt="macOS">
-  <img src="https://img.shields.io/badge/OS-Linux-FCC624?style=flat&logo=linux&logoColor=black" alt="Linux">
+  <img src="https://img.shields.io/badge/OS-macOS%2C%20Windows%2C%20Linux-111111?style=flat" alt="OS">
   <img src="https://img.shields.io/badge/MCP-compatible-8A2BE2?style=flat" alt="MCP">
   <img src="https://img.shields.io/badge/privacy-local%20first-2ea44f?style=flat" alt="Local first">
 </p>
