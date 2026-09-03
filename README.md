@@ -14,12 +14,12 @@
 
 <p align="center">
   <b>Local context engine for AI coding tools.</b><br>
-  Index your repository on your machine. Agents search by meaning — <code>map</code> · <code>focus</code> · <code>grep</code> — instead of grepping blindly through files.
+  Index your repository on your machine. Agents search by meaning - <code>map</code> · <code>focus</code> · <code>grep</code> - instead of grepping blindly through files.
 </p>
 
 ---
 
-Type `scubiee connect` once and your AI coding assistant gets a **local index** of the repo — ranked discovery, deep focus, and exact search — without uploading code to a vendor.
+Type `scubiee connect` once and your AI coding assistant gets a **local index** of the repo - ranked discovery, deep focus, and exact search - without uploading code to a vendor.
 
 - **Fully local.** Tree-sitter + embeddings on disk. Code never leaves the machine. The only network step is a one-time model download at setup (~270 MB).
 - **Built for agents.** MCP tools `map` · `focus` · `grep` in Cursor, Claude Code, Copilot, Kiro, and more.
@@ -29,7 +29,7 @@ Type `scubiee connect` once and your AI coding assistant gets a **local index** 
   <img src="visuals/image.png" alt="Scubiee map, focus, and grep" width="900">
 </p>
 <p align="center">
-  <em>Ranked map hits, focused spans, exact grep — all against a local index.</em>
+  <em>Ranked map hits, focused spans, exact grep - all against a local index.</em>
 </p>
 
 ---
@@ -82,7 +82,7 @@ Wires MCP + agent rules so the assistant can call Scubiee. Then **reload MCP** i
 scubiee connect --cursor
 ```
 
-Other tools: `--claude-code`, `--copilot`, `--kiro`, `--all`, and more — see [getting started](docs/web-info/getting-started.md).
+Other tools: `--claude-code`, `--copilot`, `--kiro`, `--all`, and more - see [getting started](docs/web-info/getting-started.md).
 
 `init` indexes. `connect` attaches the assistant. You need both.
 
@@ -92,12 +92,12 @@ Other tools: `--claude-code`, `--copilot`, `--kiro`, `--all`, and more — see [
 
 | Tool | Role |
 |------|------|
-| **`map`** | Ranked files & symbols — overview without dumping bodies |
+| **`map`** | Ranked files & symbols - overview without dumping bodies |
 | **`focus`** | Deep context for one target (span, outline, neighbors) |
 | **`grep`** | Exact search inside the index |
 | **`gate` / `status`** | Tiny managed check at session start |
 
-Also: `glob`, `workspace`, `expand` — [MCP tools reference](docs/web-info/mcp-tools-reference.md).
+Also: `glob`, `workspace`, `expand` - [MCP tools reference](docs/web-info/mcp-tools-reference.md).
 
 ---
 
@@ -152,7 +152,7 @@ Lifecycle (pause / stop / wipe) is covered in [repo lifecycle](docs/web-info/rep
 
 ## Privacy
 
-- **Code** stays on disk — parsed and embedded locally; nothing leaves for search.
+- **Code** stays on disk - parsed and embedded locally; nothing leaves for search.
 - **Model** downloads once during `setup` (~270 MB). After that, indexing is offline.
 - Data lives under `~/.scubiee` and `<repo>/.scubiee`.
 
@@ -185,7 +185,7 @@ Run `init` and `connect` in that project, then reload MCP. For Kiro / Copilot / 
 `scubiee unlock-tool`, then retry. Quitting the IDE helps.
 
 **Need a support bundle?**  
-`scubiee diagnose --no-tests --desktop` — attach the Desktop JSON and a tail of `~/.scubiee/engine.log`.
+`scubiee diagnose --no-tests --desktop` - attach the Desktop JSON and a tail of `~/.scubiee/engine.log`.
 
 ---
 
