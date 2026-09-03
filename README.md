@@ -84,29 +84,6 @@ Other tools: `--claude-code`, `--copilot`, `--kiro`, `--all`, and more — see [
 
 ---
 
-## See it in action
-
-<p align="center">
-  <img src="visuals/demo.svg" alt="Scubiee demo: init, connect, then map focus grep" width="900">
-</p>
-
-Once the index is ready, agents query it instead of dumping whole files into chat:
-
-```text
-$ map("auth middleware")
-  api/handlers.ts     0.93
-  core/engine.rs      0.88
-  middleware.ts       0.81
-
-$ focus("validate_token")
-  span + neighbors · scoped context
-
-$ grep('logger.debug("cache hit")')
-  3 hits in the local index
-```
-
----
-
 ## What agents get
 
 | Tool | Role |
