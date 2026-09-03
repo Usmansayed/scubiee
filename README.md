@@ -9,6 +9,7 @@
   <br>
   <img src="https://img.shields.io/badge/MCP-compatible-8A2BE2?style=flat" alt="MCP">
   <img src="https://img.shields.io/badge/privacy-local%20first-2ea44f?style=flat" alt="Local first">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat" alt="License"></a>
 </p>
 
 <p align="center">
@@ -189,3 +190,9 @@ Run `init` and `connect` in that project, then reload MCP. For Kiro / Copilot / 
 ---
 
 **PyPI:** [scubiee](https://pypi.org/project/scubiee/) · **Release:** 0.3.14 · Contributors: `uv pip install -e .` then `scubiee setup`
+
+## License
+
+Copyright 2026 Usman Sayed
+
+Licensed under the [Apache License, Version 2.0](LICENSE).
