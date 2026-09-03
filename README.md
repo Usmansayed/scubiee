@@ -68,13 +68,7 @@ scubiee setup --repair
 ## See it in action
 
 <p align="center">
-  <video src="visuals/video.mp4" width="720" controls muted autoplay loop playsinline poster="visuals/image.png">
-    <a href="visuals/video.mp4">Watch the Scubiee demo (MP4)</a>
-  </video>
-</p>
-
-<p align="center">
-  <a href="visuals/video.mp4"><b>▶ Watch demo (MP4)</b></a>
+  <img src="visuals/video.gif" alt="Scubiee walking a repository, building a local index, and locking on the brand" width="720">
 </p>
 
 Scubiee walks your repository, harvests structure, and builds a local index agents can query — on your hardware.
