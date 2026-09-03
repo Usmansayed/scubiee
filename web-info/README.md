@@ -1,6 +1,6 @@
 # Scubiee web-info — detailed documentation hub
 
-> **Version:** [0.3.14](https://pypi.org/project/scubiee/0.3.14/)  
+> **Version:** [0.3.15](https://pypi.org/project/scubiee/0.3.15/)  
 > **Purpose:** In-depth documentation with **explanations** — so operators, support, and website writers understand *why* things work and *how* to fix them.  
 > **End-user quick guides:** [`../docs/web-info/`](../docs/web-info/README.md) (shorter, task-focused)
 

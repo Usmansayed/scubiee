@@ -131,7 +131,7 @@ def test_s3_spawn_unmanaged_full_tools_and_bind_first_instructions(
 
     text = _instructions(monkeypatch)
     assert text.startswith("GATE 0.") or text.startswith("GATE 0:r")
-    assert len(text) <= 220
+    assert len(text) <= 320
     assert "Pass root=" in text
     assert "map(query)" not in text
     assert "USE native" not in text

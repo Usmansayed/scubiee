@@ -67,6 +67,7 @@ def test_init_writes_project_gate_rules(tmp_path: Path) -> None:
     assert pid in text
     assert "USE Scubiee" in text or "use Scubiee" in text.lower()
     assert "BAN native" in text
+    assert "HOST OVERRIDE" in text
     assert "Locate trajectory" not in text
     assert "focus budget" not in text.lower()
 
@@ -91,7 +92,7 @@ def test_bind_first_mcp_instructions_when_spawn_unmanaged(monkeypatch) -> None:
     monkeypatch.setattr(ml, "_gate_line", lambda just_checked=False: "0")
     text = ml._server_instructions("phase")
     assert text.startswith("GATE 0.")
-    assert len(text) <= 220, f"instructions too long: {len(text)} chars"
+    assert len(text) <= 320, f"instructions too long: {len(text)} chars"
     assert "Pass root=" in text
     assert "map|focus|grep" in text or "map" in text
     assert "map(query)" not in text

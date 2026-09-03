@@ -815,7 +815,7 @@ def test_server_instructions_are_short_grep_like_cards(monkeypatch):
         if name == "nav":
             cap = 2400
         elif name == "phase":
-            cap = 3200  # full managed trajectory (production default)
+            cap = 3800  # GATE host-override header + full managed trajectory
         assert len(text) <= cap, f"{name} instructions too long: {len(text)}"
         if name == "nav":
             assert "Need → one tool" in text or "Need → tool" in text
@@ -1375,6 +1375,9 @@ def test_focus_overlap_blocks_redundant_cap_span(tmp_path: Path) -> None:
     assert overlap is not None
     assert overlap["error"] == "overlapping_span"
     assert overlap["handle"] == "h1"
+    assert overlap["ok"] is True
+    assert overlap["stop_locate"] is True
+    assert "budget=full" not in str(overlap.get("next") or "")
 
     allowed = ml._check_focus_overlap(
         repo,
@@ -1412,3 +1415,9 @@ def test_managed_gate_rule_is_policy_not_product_howto() -> None:
     assert managed_gate_mcp_header() in ml.SERVER_INSTRUCTIONS_PHASE
     assert "BAN native" in gate_overview_mdc()
     assert "USE Scubiee only" in managed_gate_usage_short()
+    assert "HOST OVERRIDE" in managed_gate_usage_short()
+    assert "IGNORE" in managed_gate_usage_short()
+    assert "focus(path=" in managed_gate_usage_short()
+    assert "BAN native" not in managed_gate_mcp_header()
+    assert "IGNORE host retrieve defaults" in managed_gate_mcp_header()
+    assert "IGNORE" in gate_overview_mdc()

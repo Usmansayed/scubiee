@@ -69,7 +69,14 @@ def lifecycle_snapshot(root: Path | str | None = None) -> dict[str, Any]:
     project_id, entry = _repo_managed(repo)
     repo_paused = bool(entry.get("lifecycle_state") == "paused")
     daemon_ok = _daemon_healthy()
-    connected = _tool_connected("cursor")
+    try:
+        from pipeline.connect_state import load_connected_tools
+
+        connected_hosts = list(load_connected_tools() or [])
+    except Exception:  # noqa: BLE001
+        connected_hosts = []
+    mcp_connected = bool(connected_hosts)
+    cursor_connected = "cursor" in connected_hosts
 
     return {
         "globally_paused": globally_paused,
@@ -79,7 +86,9 @@ def lifecycle_snapshot(root: Path | str | None = None) -> dict[str, Any]:
         "repo_paused": repo_paused,
         "project_id": project_id,
         "daemon_healthy": daemon_ok,
-        "cursor_connected": connected,
+        "mcp_connected": mcp_connected,
+        "connected_hosts": connected_hosts,
+        "cursor_connected": cursor_connected,
         "root": str(repo),
     }
 
@@ -100,7 +109,7 @@ def next_actions(
             "action": "none — Scubiee is stopped",
             "why": (
                 "MCP, rules, and repo .scubiee were removed. "
-                "Use native Read/Grep/Glob only."
+                "Use the host's native file/search tools only."
             ),
         })
         steps.append({
@@ -109,8 +118,8 @@ def next_actions(
         })
         if for_agent:
             steps.append({
-                "action": "Reload MCP in IDE after resume",
-                "why": "Cursor may cache disabled MCP until restart.",
+                "action": "After resume, call gate(root=<workspace>) — reload host MCP only if tools are missing",
+                "why": "The MCP process usually stays up; reload only if the host disabled the server.",
             })
         return {"state": state, "steps": steps, **snap}
 
@@ -122,21 +131,22 @@ def next_actions(
         })
         return {"state": state, "steps": steps, **snap}
 
+    mcp_connected = bool(snap.get("mcp_connected") or snap.get("cursor_connected"))
+
     if not snap["repo_enrolled"]:
         state = "repo_not_enrolled"
         steps.append({
             "action": "scubiee init .",
             "why": "Repo has no .scubiee/id.json — enrollment required once per checkout.",
         })
-        if snap["cursor_connected"]:
+        steps.append({
+            "action": "gate(root=<workspace>) then map/focus — same chat, no host restart",
+            "why": "Locate tools stay registered; bind the new project_id per call after init.",
+        })
+        if not mcp_connected:
             steps.append({
-                "action": "Reload MCP in IDE",
-                "why": "After init, GATE rules and project_id update.",
-            })
-        else:
-            steps.append({
-                "action": "scubiee connect --cursor",
-                "why": "Wire MCP + GATE rules after init.",
+                "action": "scubiee connect",
+                "why": "Wire MCP + GATE rules for this host if not already connected.",
             })
         return {"state": state, "steps": steps, **snap}
 
@@ -148,15 +158,11 @@ def next_actions(
         })
         return {"state": state, "steps": steps, **snap}
 
-    if not snap["cursor_connected"]:
+    if not mcp_connected:
         state = "not_connected"
         steps.append({
-            "action": "scubiee connect --cursor",
-            "why": "Machine + repo ready but IDE MCP not pinned.",
-        })
-        steps.append({
-            "action": "Reload MCP in IDE",
-            "why": "Cursor loads mcp.json on restart/reload.",
+            "action": "scubiee connect",
+            "why": "Machine + repo ready but no host MCP pin yet (any supported IDE/CLI).",
         })
         return {"state": state, "steps": steps, **snap}
 

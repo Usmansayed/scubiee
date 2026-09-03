@@ -5,7 +5,7 @@ These docs are for **operators and end users**: install, daily use, troubleshoot
 **Need more detail (why things break, every error code, every file path)?**  
 See **[`web-info/` — detailed documentation hub](../../web-info/README.md)** (`how-everything-works`, `complete-fix-guide`, `error-codes-reference`, `data-and-files-reference`).
 
-**Current release:** [`scubiee 0.3.14`](https://pypi.org/project/scubiee/0.3.14/) — **published on PyPI**.  
+**Current release:** [`scubiee 0.3.15`](https://pypi.org/project/scubiee/0.3.15/) — **published on PyPI**.  
 Pin this version in install commands until you intentionally upgrade.
 
 **Upgrading from 0.2.x?** Read **[What's changed since 0.2.88](../whats-changed-since-0.2.88.md)** first.
@@ -49,7 +49,7 @@ Pin this version in install commands until you intentionally upgrade.
 
 | Question | Answer |
 |----------|--------|
-| What do I run on a new PC? | `uv tool install scubiee==0.3.14` → `scubiee setup --repair` → `cd your-repo` → `scubiee init .` → `scubiee connect --cursor` |
+| What do I run on a new PC? | `uv tool install scubiee==0.3.15` → `scubiee setup --repair` → `cd your-repo` → `scubiee init .` → `scubiee connect --cursor` |
 | Does `init` wire Cursor? | **No.** `init` indexes the repo. **`connect`** writes MCP + agent rules. |
 | Agent says unmanaged? | Run `connect` in that project (and for Kiro/Copilot/Cline/Roo: run connect **inside each repo**). Cursor also needs project `.cursor/mcp.json` (written by connect). |
 | Pause / stop — how do I continue? | **Per-repo pause:** `scubiee activate .` · **Global stop:** `scubiee resume` (not `engine start`). There is **no** `scubiee wake`. |
@@ -70,7 +70,7 @@ Pin this version in install commands until you intentionally upgrade.
 ## Canonical install sequence
 
 ```text
-1. uv tool install --force scubiee==0.3.14 --index-url https://pypi.org/simple --refresh
+1. uv tool install --force scubiee==0.3.15 --index-url https://pypi.org/simple --refresh
 2. scubiee setup --repair          # once per machine (GPU/CPU/MLX + model)
 3. cd path\to\your\repo
 4. scubiee init .                  # index this repo (does NOT write MCP)

@@ -63,6 +63,9 @@ def test_next_action_not_enrolled(monkeypatch, tmp_path: Path) -> None:
     guide = lg.next_actions(tmp_path)
     assert guide["state"] == "repo_not_enrolled"
     assert guide["steps"][0]["action"] == "scubiee init ."
+    joined = " ".join(s.get("action", "") + " " + s.get("why", "") for s in guide["steps"])
+    assert "reload mcp" not in joined.lower()
+    assert any("root=" in (s.get("action") or "") or "root=" in (s.get("why") or "") for s in guide["steps"])
 
 
 def test_next_action_ready(monkeypatch, tmp_path: Path) -> None:

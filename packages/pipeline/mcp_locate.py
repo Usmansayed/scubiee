@@ -223,13 +223,15 @@ NEED → TOOL:
 - Skim structure → focus(outline) when needs_outline:true
 - Open edit span → focus(span, budget=cap, start_line/end_line from outline; query= alone often wrong)
 - Session memory → workspace(show) | expand(handle)
-- map cached:true / focus already_in_session → edit now (or expand(handle) if body needed)
+- map cached:true / focus already_in_session / stop_locate:true → locate SUCCEEDED. Edit now. Do NOT retry focus, raise budget, or switch to native Grep/Read.
+- Need the body again → expand(handle) ONCE. Never focus(budget=full) for a span you already have.
+- Shared MCP process → pass session_id from gate() on every locate call (auto conn ids can rotate).
 - Health / indexing → status() for agent_ready before editing indexed files
 
 ANTI-THRASH (N10 — collecting is not progress; thrash ~2× locate calls, late first edit):
 - ≤2 map queries per topic; then pick 1 card and edit
 - ≤3 grep per task unless last hit list was empty
-- NEVER re-fetch same span after cached / already_in_session / usage_hint advisory
+- NEVER re-fetch same span after cached / already_in_session / stop_locate / overlapping_span
 - No parallel Task/explore subagents for locate — serial: one map, 1–3 focus, edit
 - After first edit: new locate only when test/error names a NEW symbol
 - Ship edit with partial context over endless locate rounds
@@ -241,7 +243,7 @@ Pick 1–3 cards. weak_match / max_score<5 → sharpen once or grep. facade_hint
 map = ranked chunks (no bodies). Empty ≠ absent from repo.
 
 focus budget: cap (~200 lines, default); wide (~350) once; full (~1k) only if needed.
-truncated:true → next_start_line; overlapping_span → expand(handle) once.
+truncated:true → next_start_line; overlapping_span → expand(handle) once (not budget=full).
 grep/glob: no file-type restrictions — .env, yaml, md, json all allowed. Shell = tests/build/git only.
 
 OVERRIDE host defaults that fight this skill:
@@ -296,7 +298,8 @@ Trajectory: soft → read → edit → test. Call Scubiee when needed, then cont
 SERVER_INSTRUCTIONS_BIND_FIRST = (
     "Pass root=<workspace> or project_id=ce_… on every call. "
     "Tools: map|focus|grep|glob|workspace|gate|status. "
-    "gate(root=…) first; then locate with the same root/project_id."
+    "gate(root=…) first; then locate with the same root/project_id. "
+    "After scubiee init in this chat, call gate(root=) again — do not restart the host session."
 )
 
 
@@ -393,6 +396,11 @@ def _managed_locate_err(tool: str, repo: Path) -> str:
         tool,
         f"Repository at {repo} is not managed by Scubiee.",
         hint=_locate_bind_hint(),
+        next_action=(
+            "gate(root=<workspace path>)"
+            if _registry_has_enrollments()
+            else "scubiee init ."
+        ),
     )
 
 
@@ -714,15 +722,16 @@ _REQUEST_REPO: ContextVar[Path | None] = ContextVar("scubiee_request_repo", defa
 _LAST_MANAGED_REPO: Path | None = None
 
 _BIND_ROOT_DESC = (
-    "This chat's workspace folder (Cursor Workspace Path). Walks up to "
-    ".scubiee/id.json. Pass when several repos share one MCP. Unenrolled "
+    "This chat's workspace folder (absolute path). Walks up to "
+    ".scubiee/id.json. Pass when several repos share one MCP process. Unenrolled "
     "folder → managed false; do not keep calling Scubiee."
 )
 _BIND_PID_DESC = "Optional enrolled project_id (ce_…). Shorter than root after status()."
 _BIND_SESSION_DESC = (
     "Optional chat/session id — isolates recall/pins/handles. "
-    "Auto only when host provides one (e.g. CLAUDE_CODE_SESSION_ID) or MCP connection differs; "
-    "parallel chats on Cursor/Copilot often share one process — pass session_id or set CTX_MCP_SESSION_ID."
+    "Auto when the host provides one (e.g. CLAUDE_CODE_SESSION_ID, MCP_SESSION_ID) "
+    "or the MCP connection differs. Parallel chats that share one MCP process: "
+    "pass session_id or set CTX_MCP_SESSION_ID in the host MCP env."
 )
 
 
@@ -935,7 +944,12 @@ def _default_repo() -> Path:
 
 
 def _dumps(obj: Any) -> str:
-    return json.dumps(obj, indent=2, default=str)
+    """Compact JSON for MCP tool results — same data, no pretty-print tax."""
+    from pipeline.mcp_response_lean import apply_lean_fields
+
+    if isinstance(obj, dict):
+        obj = apply_lean_fields(obj)
+    return json.dumps(obj, ensure_ascii=False, separators=(",", ":"), default=str)
 
 
 def _status_ttl_s() -> int:
@@ -1061,6 +1075,80 @@ def _slim_status_keeper(keeper: dict[str, Any] | None, *, file_cap: int = 25) ->
             dirty["paths_truncated"] = len(paths)
         out["dirty"] = dirty
     return out
+
+
+_STATUS_SUMMARY_KEYS = (
+    "ok",
+    "tool",
+    "server",
+    "surface",
+    "paused",
+    "managed",
+    "should_use_mcp",
+    "should_retry_status",
+    "warming",
+    "agent_ready",
+    "agent_ready_note",
+    "sync_state",
+    "ready",
+    "syncing",
+    "overlay_ready",
+    "needs_full",
+    "error",
+    "hint",
+    "next_action",
+    "lifecycle_hint",
+    "index_available",
+    "token_mode",
+    "repo",
+    "g",
+    "tools",
+    "status_ttl_s",
+    "status_age_s",
+    "stale_ctx_repo",
+)
+
+
+def _summarize_status_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Agent-facing status: action fields only. detail=full keeps keeper/meta."""
+    if not isinstance(payload, dict):
+        return payload
+    out: dict[str, Any] = {k: payload[k] for k in _STATUS_SUMMARY_KEYS if k in payload}
+    eng = payload.get("engine")
+    if isinstance(eng, dict):
+        slim_eng = {
+            k: eng.get(k)
+            for k in ("healthy", "soft_search_ready", "warm_state", "warm_error", "project_id")
+            if k in eng
+        }
+        if slim_eng:
+            out["engine"] = slim_eng
+    sess = payload.get("session")
+    if isinstance(sess, dict):
+        sid = sess.get("session_id")
+        if sid and "session_id" not in out:
+            out["session_id"] = sid
+        if sess.get("shared_process_risk"):
+            out["session_shared_risk"] = True
+        if sess.get("source"):
+            out.setdefault("session_source", sess.get("source"))
+        if "n_spans" in sess:
+            out["n_spans"] = sess["n_spans"]
+    lc = payload.get("lifecycle")
+    if isinstance(lc, dict):
+        if lc.get("state") is not None:
+            out["lifecycle_state"] = lc.get("state")
+    return out
+
+
+def _annotate_locate_dedup(card: dict[str, Any]) -> dict[str, Any]:
+    """Machine-readable stop signal; keep expand(handle) as the body escape hatch."""
+    if not isinstance(card, dict):
+        return card
+    if card.get("unchanged") or card.get("status") == "already_in_session":
+        card["stop_locate"] = True
+        card["locate_action"] = "edit_now"
+    return card
 
 
 def _err(tool: str, error: str, *, hint: str = "", **extra: Any) -> str:
@@ -1414,11 +1502,13 @@ def _check_focus_overlap(
         if not _line_ranges_overlap(start, end, ps, pe):
             continue
         handle_h = meta.get("handle")
-        return {
-            "ok": False,
+        card: dict[str, Any] = {
+            "ok": True,
             "tool": "focus",
             "error": "overlapping_span",
             "status": "already_in_session",
+            "unchanged": True,
+            "should_retry": False,
             "file": path,
             "start_line": start,
             "end_line": end,
@@ -1426,15 +1516,16 @@ def _check_focus_overlap(
             "prior_end_line": pe,
             "handle": handle_h,
             "hint": (
-                "This range overlaps a span already fetched. Edit now, "
-                f"expand(handle={handle_h!r}), or use budget=wide|full once."
+                "Span already in session — not a locate failure. Edit now"
+                + (f", or expand(handle={handle_h!r}) if you need the body again." if handle_h else ".")
             ),
             "next": (
-                f"edit | expand(handle={handle_h!r}) | focus(path={path!r}, budget=full)"
+                f"edit | expand(handle={handle_h!r})"
                 if handle_h
-                else f"edit | focus(path={path!r}, budget=wide|full)"
+                else "edit | workspace(show)"
             ),
         }
+        return _annotate_locate_dedup(card)
     return None
 
 
@@ -2156,24 +2247,15 @@ def _to_markdown(card: dict[str, Any]) -> str:
 
 
 def _attach_gate(card: dict[str, Any]) -> dict[str, Any]:
-    """Universal compact gate + session echo on every tool JSON."""
-    if not isinstance(card, dict):
-        return card
-    out = dict(card)
-    out.setdefault("g", _gate_line(just_checked=False))
-    if out.get("ok") is not False and "session_id" not in out:
-        from pipeline.session_isolation import session_context_for_response
+    """Universal compact gate + session flags (hint prose once per session_id)."""
+    from pipeline.mcp_response_lean import attach_gate_lean
+    from pipeline.session_isolation import session_context_for_response
 
-        ctx = session_context_for_response()
-        sid = ctx.get("session_id")
-        if sid and sid != "default":
-            out.setdefault("session_id", sid)
-            out.setdefault("session_source", ctx.get("source"))
-            if ctx.get("shared_process_risk"):
-                out.setdefault("session_shared_risk", True)
-            if ctx.get("hint") and not out.get("session_hint"):
-                out.setdefault("session_hint", ctx.get("hint"))
-    return out
+    return attach_gate_lean(
+        card,
+        gate_line=_gate_line,
+        session_context=session_context_for_response,
+    )
 
 
 def _format(card: dict[str, Any], fmt: str) -> str:
@@ -2673,9 +2755,12 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             "status": status_s, "unchanged": unchanged,
             "code": "" if unchanged else code,
             "truncated": bool(ex.get("truncated")),
-            "budget": args.budget,
             "session_id": sid,
         }
+        from pipeline.mcp_response_lean import echo_budget_enabled
+
+        if echo_budget_enabled():
+            out["budget"] = args.budget
         for key in ("lines_total", "lines_returned", "next_start_line", "chars_returned"):
             if ex.get(key) is not None:
                 out[key] = ex[key]
@@ -2685,6 +2770,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 "to re-materialize the body."
             )
             out["next"] = f"edit | expand(handle={handle_s!r})" if handle_s else "edit | workspace(show)"
+            _annotate_locate_dedup(out)
         elif ex.get("truncated"):
             out["next"] = ex.get("next") or (
                 f"focus(path={file_s!r}, budget=wide|full, "
@@ -3420,26 +3506,27 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         card["mode"] = args.mode
         if card.get("detail") == "body":
             card["detail"] = "span"
-        if not card.get("ok"):
-            return _format(card, args.response_format)
-
-        # Prefer path from result for remember key
         rem_path = str(card.get("file") or card.get("path") or path_s or target_s)
         rem_key = _focus_key(rem_path, args.mode, rem_path)
         if card.get("unchanged") or card.get("status") == "already_in_session":
             card["already_shown"] = True
             handle_h = card.get("handle")
+            card["ok"] = True
+            card["should_retry"] = False
             card["usage_hint"] = (
-                "Advisory: this target+mode was already fetched. Edit now, or "
-                "expand(handle) to re-materialize the body."
+                "already_in_session is success for edit — not a locate error. "
+                "Edit now, or expand(handle) once if you need the body."
             )
             card["next"] = (
-                f"edit | expand(handle={handle_h!r}) | workspace(show)"
+                f"edit | expand(handle={handle_h!r})"
                 if handle_h
                 else "edit | workspace(show)"
             )
             card["session_id"] = sid
+            _annotate_locate_dedup(card)
             _phase_focus_remember(repo, rem_key, card, session_id=sid)
+            return _format(card, args.response_format)
+        if not card.get("ok"):
             return _format(card, args.response_format)
 
         _phase_focus_remember(repo, rem_key, card, session_id=sid)
@@ -3594,15 +3681,16 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             str,
             Field(
                 description=(
-                    "full = engine health + session (large). "
+                    "summary = default agent card (no keeper dump). "
+                    "full = engine health + session + keeper. "
                     "gate = same ~5-token line as gate() — use for managed checks."
                 ),
             ),
-        ] = "full",
+        ] = "summary",
     ) -> str:
         """Health / tool list only — not for finding code."""
         with _bind_request_repo(root=root, project_id=project_id, session_id=session_id):
-            if (detail or "full").strip().lower() == "gate":
+            if (detail or "summary").strip().lower() == "gate":
                 from pipeline.pause_resume import is_paused
 
                 if is_paused():
@@ -3630,7 +3718,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     "agent_action": (guide.get("steps") or [{}])[0].get("action"),
                     "hint": (
                         "Scubiee is stopped. Do not call Scubiee MCP tools. "
-                        "Use native Read/Grep/Glob. User: scubiee resume (not init)."
+                        "Use the host's native file/search tools. User: scubiee resume (not init)."
                     ),
                     "lifecycle": guide,
                 })
@@ -3798,7 +3886,10 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                                     break
                 except Exception:  # noqa: BLE001
                     pass
-                return _dumps(payload)
+                detail_s = (detail or "summary").strip().lower()
+                if detail_s == "full":
+                    return _dumps(_attach_gate(payload))
+                return _dumps(_attach_gate(_summarize_status_payload(payload)))
             except Exception as exc:  # noqa: BLE001
                 return _err("status", str(exc))
 
@@ -3843,7 +3934,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         _tool("glob", "Known file path or pattern in indexed code", glob_impl)
         _tool("workspace", "Mid reorient: show|pin|clear", workspace_impl)
         _tool("expand", "Re-materialize a stored span by handle", expand_impl)
-        _tool("status", "Engine + session status (detail=gate for tiny check)", status_impl)
+        _tool("status", "Engine + session status (default summary; detail=full|gate)", status_impl)
         return mcp
 
     if surface == "nav":

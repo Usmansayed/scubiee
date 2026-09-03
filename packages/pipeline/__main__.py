@@ -1,4 +1,4 @@
-﻿"""CLI: python -m pipeline index|search|status|serve"""
+"""CLI: python -m pipeline index|search|status|serve"""
 
 from __future__ import annotations
 

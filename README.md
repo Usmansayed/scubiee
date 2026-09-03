@@ -189,7 +189,7 @@ Run `init` and `connect` in that project, then reload MCP. For Kiro / Copilot / 
 
 ---
 
-**PyPI:** [scubiee](https://pypi.org/project/scubiee/) · **Release:** 0.3.14 · Contributors: `uv pip install -e .` then `scubiee setup`
+**PyPI:** [scubiee](https://pypi.org/project/scubiee/) · **Release:** 0.3.15 · Contributors: `uv pip install -e .` then `scubiee setup`
 
 ## License
 
