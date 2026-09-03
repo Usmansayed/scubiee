@@ -5,7 +5,8 @@
 <p align="center">
   <a href="https://pypi.org/project/scubiee/"><img src="https://img.shields.io/pypi/v/scubiee?style=flat&color=C4783A" alt="PyPI"></a>
   <a href="https://pypi.org/project/scubiee/"><img src="https://img.shields.io/badge/python-3.10%2B-3776AB?style=flat" alt="Python 3.10+"></a>
-  <img src="https://img.shields.io/badge/OS-macOS%2C%20Windows%2C%20Linux-111111?style=flat" alt="OS">
+  <img src="https://img.shields.io/badge/OS-macOS%2C%20Windows%2C%20Linux-14B8A6?style=flat" alt="OS">
+  <br>
   <img src="https://img.shields.io/badge/MCP-compatible-8A2BE2?style=flat" alt="MCP">
   <img src="https://img.shields.io/badge/privacy-local%20first-2ea44f?style=flat" alt="Local first">
 </p>
