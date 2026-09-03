@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 480" width="900" height="480" role="img" aria-label="Scubiee demo: local index, then map focus grep">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#12151a"/>
+      <stop offset="100%" stop-color="#0b0d10"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="2.2" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="900" height="480" fill="url(#bg)"/>
+  <rect x="16" y="16" width="868" height="448" rx="16" fill="#101318" stroke="#2a3038"/>
+
+  <!-- left: terminal -->
+  <rect x="36" y="40" width="390" height="400" rx="12" fill="#0d1014" stroke="#2c333c"/>
+  <circle cx="58" cy="62" r="5" fill="#c4783a"/>
+  <circle cx="76" cy="62" r="5" fill="#7a8088"/>
+  <circle cx="94" cy="62" r="5" fill="#7a8088"/>
+  <text x="118" y="67" fill="#8b929a" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="12">scubiee</text>
+
+  <text x="56" y="104" fill="#6ee7b7" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="13">$</text>
+  <text x="74" y="104" fill="#e8ede8" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="13">scubiee init .</text>
+  <text x="56" y="128" fill="#8b929a" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="12">Indexed 1,284 files · local</text>
+
+  <text x="56" y="164" fill="#6ee7b7" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="13">$</text>
+  <text x="74" y="164" fill="#e8ede8" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="13">scubiee connect --cursor</text>
+  <text x="56" y="188" fill="#8b929a" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="12">MCP ready · reload IDE</text>
+
+  <text x="56" y="232" fill="#3ec8c8" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="13">agent</text>
+  <text x="108" y="232" fill="#e8ede8" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="13">map("auth middleware")</text>
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;1;1" keyTimes="0;0.28;0.38;1" dur="8s" repeatCount="indefinite"/>
+    <text x="56" y="260" fill="#c4783a" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="12">map</text>
+    <text x="96" y="260" fill="#cfcfcf" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="12">api/handlers.ts   0.93</text>
+    <text x="96" y="280" fill="#9aa0a6" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="12">core/engine.rs    0.88</text>
+    <text x="96" y="300" fill="#9aa0a6" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="12">middleware.ts     0.81</text>
+  </g>
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;1;1" keyTimes="0;0.48;0.58;1" dur="8s" repeatCount="indefinite"/>
+    <text x="56" y="336" fill="#3ec8c8" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="12">focus</text>
+    <text x="104" y="336" fill="#cfcfcf" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="12">validate_token()</text>
+    <text x="56" y="356" fill="#8b929a" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="12">span + neighbors · no dump</text>
+  </g>
+  <g opacity="0">
+    <animate attributeName="opacity" values="0;0;1;1" keyTimes="0;0.68;0.78;1" dur="8s" repeatCount="indefinite"/>
+    <text x="56" y="392" fill="#9fd46a" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="12">grep</text>
+    <text x="100" y="392" fill="#cfcfcf" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="12">logger.debug("cache hit")</text>
+    <text x="56" y="412" fill="#8b929a" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="12">3 hits in the index</text>
+  </g>
+
+  <!-- right: local index -->
+  <rect x="446" y="40" width="418" height="400" rx="12" fill="#0d1014" stroke="#2c333c"/>
+  <circle cx="655" cy="230" r="118" fill="none" stroke="#232a32"/>
+  <circle cx="655" cy="230" r="78" fill="none" stroke="#232a32"/>
+  <circle cx="655" cy="230" r="42" fill="none" stroke="#2c333c"/>
+  <circle cx="655" cy="230" r="118" fill="none" stroke="#c4783a" stroke-opacity="0.35" stroke-dasharray="740">
+    <animate attributeName="stroke-dashoffset" values="740;0" dur="8s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- nodes -->
+  <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="11">
+    <circle cx="655" cy="230" r="7" fill="#e8ede8"/>
+    <circle cx="575" cy="168" r="6" fill="#c4783a" filter="url(#glow)">
+      <animate attributeName="r" values="5;7;5" dur="8s" repeatCount="indefinite"/>
+    </circle>
+    <text x="548" y="154" fill="#c4783a">map</text>
+    <circle cx="742" cy="158" r="6" fill="#3ec8c8" filter="url(#glow)">
+      <animate attributeName="opacity" values="0.35;1;1;0.35" keyTimes="0;0.5;0.85;1" dur="8s" repeatCount="indefinite"/>
+    </circle>
+    <text x="754" y="154" fill="#3ec8c8">focus</text>
+    <circle cx="730" cy="300" r="6" fill="#9fd46a" filter="url(#glow)">
+      <animate attributeName="opacity" values="0.35;0.35;1;1" keyTimes="0;0.65;0.8;1" dur="8s" repeatCount="indefinite"/>
+    </circle>
+    <text x="742" y="318" fill="#9fd46a">grep</text>
+    <circle cx="568" cy="292" r="5" fill="#6b7280"/>
+    <circle cx="620" cy="120" r="4" fill="#4b5563"/>
+    <circle cx="700" cy="112" r="4" fill="#4b5563"/>
+  </g>
+
+  <path d="M655 230 L575 168" stroke="#c4783a" stroke-width="1.6" fill="none" stroke-dasharray="120">
+    <animate attributeName="stroke-dashoffset" values="120;0" dur="8s" repeatCount="indefinite"/>
+  </path>
+  <path d="M655 230 L742 158" stroke="#3ec8c8" stroke-width="1.4" fill="none" stroke-dasharray="130" stroke-opacity="0.4">
+    <animate attributeName="stroke-opacity" values="0.2;1;1;0.2" keyTimes="0;0.5;0.85;1" dur="8s" repeatCount="indefinite"/>
+  </path>
+  <path d="M655 230 L730 300" stroke="#9fd46a" stroke-width="1.4" fill="none" stroke-dasharray="120" stroke-opacity="0.3">
+    <animate attributeName="stroke-opacity" values="0.15;0.15;1;1" keyTimes="0;0.65;0.8;1" dur="8s" repeatCount="indefinite"/>
+  </path>
+
+  <text x="655" y="412" text-anchor="middle" fill="#9aa0a6" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">3 hops. Zero files dumped into chat.</text>
+  <text x="655" y="68" text-anchor="middle" fill="#e8ede8" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="600">local index</text>
+</svg>
