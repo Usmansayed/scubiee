@@ -57,3 +57,19 @@ vendor/graphify/.git/
 *_raw.json
 *_benchmark.json
 test_graph_speed_output.json
+
+# ---- OSS hygiene / local scratch (do not publish) ---------------------------
+.worktrees/
+.config/
+scubiee-0.2.*/
+node_modules/
+**/node_modules/
+
+# Local test / prod run dumps (keep curated tests/test_*.py)
+tests/_*.json
+tests/_*.txt
+tests/_*.log
+
+# Scratch / unused media
+visuals/image2.png
+visuals/*.mp4
