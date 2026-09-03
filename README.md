@@ -1,171 +1,206 @@
-# Scubiee
+<p align="center">
+  <img src="visuals/image.png" alt="Scubiee — local context engine for AI coding tools" width="820">
+</p>
 
-Local Context Engine: Merkle sync → Graphify AST → **mix** compress → CodeRankEmbed FP16 (MLX on Apple Silicon, FastEmbed CUDA/DirectML/CPU elsewhere) → TurboQuant/FAISS → Conductor `R_plan`
+<p align="center">
+  <b>Local context engine for AI coding tools.</b><br>
+  Index your repository on your machine. Agents <code>map</code> · <code>focus</code> · <code>grep</code> by meaning — not random search.<br>
+  <i>Code never leaves the machine.</i>
+</p>
 
-## Install (no git clone)
+<p align="center">
+  <a href="https://pypi.org/project/scubiee/"><img src="https://img.shields.io/pypi/v/scubiee.svg?color=C4783A" alt="PyPI"></a>
+  <a href="https://pypi.org/project/scubiee/"><img src="https://img.shields.io/pypi/pyversions/scubiee.svg" alt="Python versions"></a>
+  <a href="https://github.com/Usmansayed/new-context-engine"><img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-111111" alt="Platforms"></a>
+</p>
 
-Requires **Python 3.10+**. Two steps on a clean machine.
+---
 
-**Recommended — [uv](https://docs.astral.sh/uv/)** (fast, isolated CLI; no venv juggling):
+## Why Scubiee
+
+AI coding assistants are strong at editing files you point them to — and weak at **finding** the right files in a large repo.
+
+Scubiee runs a **local** index on your disk, keeps it fresh as you code, and connects to Cursor, Claude Code, Copilot, Kiro, and other tools over **MCP**. Agents get ranked discovery (`map`), deep context (`focus`), and exact search in the index (`grep`) — without uploading your source.
+
+| Without Scubiee | With Scubiee |
+|-----------------|--------------|
+| Broad greps, wrong modules, stale chat context | Ranked locations from a live local index |
+| Re-explore the repo every session | One index, shared across tools |
+| Cloud index = privacy tradeoff | Index stays under `~/.scubiee` on your machine |
+
+---
+
+## Get started (about a minute)
+
+Requires **Python 3.10+**. Recommended installer: [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv tool install scubiee
 scubiee setup
+cd /path/to/your/repo
+scubiee init .
+scubiee connect --cursor   # or --claude-code, --copilot, --all, …
 ```
 
-Always pin the PyPI index on Windows (avoids stale uv cache and broken partial upgrades):
+Then **reload MCP** in your IDE (Cursor: Settings → MCP → refresh).
 
-```bash
-uv tool install --force scubiee==0.2.49 --index-url https://pypi.org/simple
-scubiee setup --repair
-```
+That’s it. `init` indexes the repo. `connect` wires the IDE. You need both.
 
-If `uv tool install scubiee==X.Y.Z` says “no version found”, run `uv cache clean` and retry with `--index-url https://pypi.org/simple`.
-
-**Broken install (`failed to locate pyvenv.cfg`, faiss errors):** quit Cursor, then `scripts/repair-uv-scubiee.ps1`. See [`docs/web-info/uninstall-windows.md`](docs/web-info/uninstall-windows.md).
-
-**Uninstall / `uv tool uninstall` Access denied:** run `scubiee stop`, then `scubiee wipe --all --yes --package`, reload Cursor. Do not use raw `uv tool uninstall` while MCP is running.
-
-Upgrade later: `uv tool install --force scubiee --index-url https://pypi.org/simple` then `scubiee setup --repair`.
-
-Note: `uv tool upgrade scubiee` refreshes dependencies but may **not** bump the scubiee version — use `--force` with an explicit version when release notes say to.
-
-**Alternative — pip:**
+<details>
+<summary>pip / alternative install</summary>
 
 ```bash
 pip install -U scubiee
 scubiee setup
 ```
 
-**npm** (optional wrapper — installs Python package + runs setup):
+On Windows, pinning the PyPI index avoids stale uv caches:
 
 ```bash
-npm install -g scubiee
+uv tool install --force scubiee --index-url https://pypi.org/simple
+scubiee setup --repair
 ```
 
-Then `scubiee init <repo>` (or `ctx init`) for each codebase, and reload MCP in Cursor (Settings → MCP → refresh).
+</details>
 
-After `uv tool install scubiee`, add tools to PATH once per machine:
+---
 
-```bash
-uv tool update-shell    # restart terminal after
-# or one session:  export PATH="$HOME/.local/bin:$PATH"  (Windows: see uv's hint)
+## See it in action
+
+<p align="center">
+  <video src="visuals/video.mp4" width="720" controls muted autoplay loop playsinline poster="visuals/image.png">
+    <a href="visuals/video.mp4">Watch the Scubiee demo (MP4)</a>
+  </video>
+</p>
+
+<p align="center">
+  <a href="visuals/video.mp4"><b>▶ Watch demo (MP4)</b></a>
+</p>
+
+Scubiee walks your repository, harvests structure, and builds a local index agents can query — on your hardware.
+
+---
+
+## How it works
+
+```text
+  SETUP (once)          INDEX (per repo)         CONNECT (per IDE)
+  scubiee setup    →    scubiee init .      →    scubiee connect --cursor
+       │                      │                         │
+       ▼                      ▼                         ▼
+  Detect GPU/CPU         Parse + embed             MCP + agent rules
+  Download model         Store under ~/.scubiee    Reload IDE MCP
 ```
 
-`scubiee setup` picks **CUDA** (NVIDIA), **DirectML** (Windows AMD/Intel), **MLX FP16** (Apple Silicon Metal), **CoreML** (Intel Mac), or **CPU**. On a MacBook, `uv tool install scubiee` / `pip install scubiee` pulls FastEmbed, ONNX Runtime, and **MLX** — no `[mlx]` / `[coreml]` extra required. Then `scubiee setup` (or `scubiee setup --repair` after an upgrade) writes the MLX FP16 profile. Opt out: `CTX_MLX=0` or `scubiee setup --profile cpu`.
-
-If PyPI is behind GitHub, install the tagged release:
-
-```bash
-uv tool install "scubiee @ git+https://github.com/Usmansayed/new-context-engine.git@v0.2.6"
-scubiee setup
+```text
+  AI coding tool  ──MCP──►  Scubiee engine (localhost)  ──►  ~/.scubiee
 ```
 
-From a git checkout (contributors): `uv pip install -e ".[dml]"` (or `pip install -e .`) then `scubiee setup`. Maintainers: see `docs/publish-setup.md`.
+A small local daemon serves search. Background sync keeps enrolled repos fresh. One-time model download at setup (~270 MB); indexing and retrieval stay local.
 
-## Use
+---
 
-Inside the engine process there are **three managers** only:
+## What agents get
 
-| Manager | Role |
-|---------|------|
-| **RuntimeManager** | Workspace lifecycle, publish search generation after sync, serve queries |
-| **IndexManager** | Merkle probe, full index, incremental sync |
-| **ResourceManager** | CPU/RAM admission and embed batching |
-
-A tiny **watchdog** sidecar (not a manager) polls `/health` and restarts the daemon if it crashes. Disable: `CTX_WATCHDOG=0`.
-
-**Install-and-forget check** (isolated port/home):
-
-```powershell
-.\.venv\Scripts\python.exe -u scripts\sim_install_forget.py
-```
-
-## Use
-
-In Cursor: call MCP tools after reload.
-
-CLI (optional):
-
-```powershell
-ctx index .
-ctx search "login validate"
-ctx sync .
-ctx status .
-```
-
-Or: `python -m pipeline index .`
-
-Default pre-embed compression is **`mix`** with a **512-char** cap (locked). Opt out: `CTX_COMPRESS=off`.
-
-## Resource management
-
-Indexing and embedding run at the calibrated batch. The resource manager **only pauses** if free RAM is near empty (default under 256 MB). CPU spikes and Windows “RAM % used” (file cache) do not stop work.
-
-```powershell
-ctx resources              # live pressure + hardware
-ctx resources --refresh    # re-detect CPU/RAM/GPU/libs
-ctx init                   # also writes hardware.json + picks fastest ORT backend
-```
-
-Disable entirely: `CTX_RM_DISABLE=1`. Emergency floor: `CTX_RM_MIN_FREE_RAM_MB`.
-
-## Cursor MCP
-
-After install, MCP tools talk to the local Context Engine service (`CTX_ENGINE_URL`, default `http://127.0.0.1:8765`). The MCP process auto-starts that service if needed.
-
-Tools: `search_code`, `locate_capability`, `grep_code`, `file_outline`, `status`, `sync_index`, `set_repo`, `register_project`.
-
-Dashboard (optional): http://127.0.0.1:8765/dashboard
-
-Advanced (usually unnecessary):
-
-```powershell
-ctx engine status
-ctx engine stop
-ctx engine run .                   # foreground service
-```
-
-`ctx engine start` also starts the watchdog sidecar. Logs: `~/.context-engine/watchdog.log`.
-
-**Registration modes** (dashboard or CLI):
-
-| Mode | Trigger |
-|------|---------|
-| **Automatic** (default) | IDE/MCP open registers the project once, then incremental indexing |
-| **MCP / CLI** | No auto-init; first tool call returns a consent prompt; use `register_project` (optional `always_allow`) or `ctx register` |
-
-```powershell
-ctx settings --mode automatic
-ctx settings --mode mcp_cli
-ctx register . --always-allow --fast
-ctx serve .   # open http://127.0.0.1:8765/dashboard
-```
-
-On open (automatic): resolves a stable **project id**, indexes if needed (`CTX_AUTO_INDEX=1`), then keeps the index fresh every **5 minutes** (changed files only — graph patch + embed together).
-
-## Project data
-
-| Location | Role |
-|----------|------|
-| `<repo>/.context-engine/id.json` | Tiny identity (`project_id`). Prefer gitignore. |
-| `~/.context-engine/prefs.json` | Registration mode + indexing prefs |
-| `~/.context-engine/projects/<project_id>/` | Chunks, graph, merkle, embed cache |
-| `~/.context-engine/registry.json` | Maps `project_id` ↔ paths, `registered`, `always_allow` |
-| `~/.context-engine/vectordb/` | FAISS + TurboQuant collections |
-
-Path moved → id file recovers the store. Id file deleted → registry path recovers. Both gone → new id + reindex.
-
-## Layout
-
-| Path | Role |
+| Tool | Role |
 |------|------|
-| `packages/pipeline/` | Index, embed, FAISS+TurboQuant, MCP, sync |
-| `packages/conductor/` | Retrieval fusion (`R_plan`, etc.) |
-| `packages/graphify/` | Bundled AST / graph |
-| `packages/enrich/`, `metadata/`, `repo_ir/` | Chunk enrichment |
-| `scripts/install*` | Setup + MCP install |
-| `tests/` | Unit / integration tests |
-| `docs/` | Design notes + ship notes |
+| **`map`** | Ranked files & symbols — overview without dumping bodies |
+| **`focus`** | Deep context for one target (span, outline, neighbors) |
+| **`grep`** | Exact search inside the **index** |
+| **`gate` / `status`** | Tiny managed check at session start |
 
-See `VENDOR.md` and `docs/compress-mix-shipped.md`.
+Also: `glob`, `workspace`, `expand`, and more — see the [MCP tools reference](docs/web-info/mcp-tools-reference.md).
+
+---
+
+## Highlights
+
+- **Fully local** — source stays on disk; no cloud index
+- **MCP-native** — one connect family for Cursor, Claude Code, Copilot, Kiro, Cline, Roo, Continue, Zed, OpenCode, and others
+- **Live sync** — Merkle incremental updates after edits and pulls
+- **Hardware-aware** — CUDA · DirectML · MLX · CPU, chosen at `setup`
+- **Safe lifecycle** — pause one repo, stop globally, or `wipe` with confirmation
+- **Honest uninstall** — `scubiee wipe --all --confirm` with audit of anything left on disk
+
+---
+
+## Everyday commands
+
+```bash
+scubiee status .                 # enrollment + freshness
+scubiee sync .                   # incremental re-index after big changes
+scubiee search "auth middleware" .
+scubiee doctor .                 # readiness + install identity
+scubiee upgrade                  # package + migrate + rebind MCP
+```
+
+| Goal | Command |
+|------|---------|
+| Pause indexing for one repo | `scubiee pause .` → later `scubiee activate .` |
+| Stop Scubiee machine-wide | `scubiee stop` → later `scubiee resume` |
+| Unmanage + delete one repo’s data | `scubiee wipe . --confirm` |
+| Full machine wipe | `scubiee wipe --all --confirm` |
+
+**Note:** `engine stop` ≠ `scubiee stop`. Global stop tears down MCP until `resume`. Per-repo pause needs `activate`, not `resume`.
+
+---
+
+## Documentation
+
+| Guide | Link |
+|-------|------|
+| Getting started | [docs/web-info/getting-started.md](docs/web-info/getting-started.md) |
+| Install & debug | [docs/web-info/install-and-debug.md](docs/web-info/install-and-debug.md) |
+| Commands (quick) | [docs/web-info/commands-reference.md](docs/web-info/commands-reference.md) |
+| **Every CLI flag** | [web-info/complete-cli-reference.md](web-info/complete-cli-reference.md) |
+| MCP tools | [docs/web-info/mcp-tools-reference.md](docs/web-info/mcp-tools-reference.md) |
+| Repo lifecycle (pause / wipe) | [docs/web-info/repo-lifecycle.md](docs/web-info/repo-lifecycle.md) |
+| Troubleshooting | [docs/web-info/troubleshooting.md](docs/web-info/troubleshooting.md) |
+| How everything works | [web-info/how-everything-works.md](web-info/how-everything-works.md) |
+| Product / website copy | [web-info/product-guide-for-website.md](web-info/product-guide-for-website.md) |
+
+---
+
+## FAQ
+
+**Does `init` connect Cursor?**  
+No. `init` indexes. `connect` writes MCP and rules. Then reload MCP.
+
+**Does my code get uploaded?**  
+No. Indexing and search are local. Only the embedding model downloads during setup.
+
+**Agent says `managed: false`?**  
+Run `scubiee init .` and `scubiee connect --cursor` in that project, then reload MCP. For Kiro / Copilot / Cline / Roo, run `connect` **inside each repo**.
+
+**Windows “Access denied” on upgrade?**  
+`scubiee unlock-tool`, then retry install / `scubiee upgrade`. Quitting the IDE helps; admin usually does not (file locks, not ACLs).
+
+**Upgrade from 0.2.x?**  
+See [What's changed since 0.2.88](docs/whats-changed-since-0.2.88.md), then `scubiee upgrade` and `scubiee setup --repair` if doctor reports missing libs.
+
+---
+
+## Support bundle
+
+```bash
+scubiee --version --verbose
+scubiee setup --status
+scubiee doctor .
+scubiee list
+scubiee diagnose --no-tests --desktop
+```
+
+Attach `Desktop/scubiee-diagnose.json` and a tail of `~/.scubiee/engine.log` when filing issues.
+
+---
+
+## Project
+
+| | |
+|--|--|
+| **PyPI** | [pypi.org/project/scubiee](https://pypi.org/project/scubiee/) |
+| **CLI / MCP key** | `scubiee` |
+| **Data** | `~/.scubiee` · `<repo>/.scubiee` |
+| **Current release** | 0.3.14 |
+
+Contributors: editable install from this checkout — `uv pip install -e .` then `scubiee setup`. Maintainers: see `docs/publish-setup.md`.
