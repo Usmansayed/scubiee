@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="visuals/image.png" alt="Scubiee — local context engine for AI coding tools" width="820">
+  <img src="visuals/banner.png" alt="Scubiee" width="720">
 </p>
 
 <p align="center">
@@ -16,17 +16,15 @@
 
 ---
 
-## Why Scubiee
+Type `scubiee connect` once, and your AI coding assistant gets a **local index** of the repo — ranked discovery, deep focus, and exact search — instead of grepping blindly through files.
 
-AI coding assistants are strong at editing files you point them to — and weak at **finding** the right files in a large repo.
+- **Fully local** — tree-sitter + embeddings on your disk; code never leaves the machine (model downloads once at setup).
+- **Built for agents** — MCP tools `map` · `focus` · `grep` in Cursor, Claude Code, Copilot, Kiro, and more.
+- **Not a cloud index** — a real local engine with live Merkle sync, not an upload-to-vendor RAG.
 
-Scubiee runs a **local** index on your disk, keeps it fresh as you code, and connects to Cursor, Claude Code, Copilot, Kiro, and other tools over **MCP**. Agents get ranked discovery (`map`), deep context (`focus`), and exact search in the index (`grep`) — without uploading your source.
-
-| Without Scubiee | With Scubiee |
-|-----------------|--------------|
-| Broad greps, wrong modules, stale chat context | Ranked locations from a live local index |
-| Re-explore the repo every session | One index, shared across tools |
-| Cloud index = privacy tradeoff | Index stays under `~/.scubiee` on your machine |
+<p align="center">
+  <img src="visuals/image.png" alt="Scubiee map, focus, and grep" width="820">
+</p>
 
 ---
 
@@ -44,7 +42,7 @@ scubiee connect --cursor   # or --claude-code, --copilot, --all, …
 
 Then **reload MCP** in your IDE (Cursor: Settings → MCP → refresh).
 
-That’s it. `init` indexes the repo. `connect` wires the IDE. You need both.
+That's it. `init` indexes the repo. `connect` wires the IDE. You need both.
 
 <details>
 <summary>pip / alternative install</summary>
@@ -132,7 +130,7 @@ scubiee upgrade                  # package + migrate + rebind MCP
 |------|---------|
 | Pause indexing for one repo | `scubiee pause .` → later `scubiee activate .` |
 | Stop Scubiee machine-wide | `scubiee stop` → later `scubiee resume` |
-| Unmanage + delete one repo’s data | `scubiee wipe . --confirm` |
+| Unmanage + delete one repo's data | `scubiee wipe . --confirm` |
 | Full machine wipe | `scubiee wipe --all --confirm` |
 
 **Note:** `engine stop` ≠ `scubiee stop`. Global stop tears down MCP until `resume`. Per-repo pause needs `activate`, not `resume`.
@@ -166,7 +164,7 @@ No. Indexing and search are local. Only the embedding model downloads during set
 **Agent says `managed: false`?**  
 Run `scubiee init .` and `scubiee connect --cursor` in that project, then reload MCP. For Kiro / Copilot / Cline / Roo, run `connect` **inside each repo**.
 
-**Windows “Access denied” on upgrade?**  
+**Windows "Access denied" on upgrade?**  
 `scubiee unlock-tool`, then retry install / `scubiee upgrade`. Quitting the IDE helps; admin usually does not (file locks, not ACLs).
 
 **Upgrade from 0.2.x?**  
