@@ -142,11 +142,11 @@ def test_derive_agent_ready_note_stale_sync() -> None:
     assert "sync" in note.lower()
 
 
-def test_enrich_map_cards_needs_outline_and_bom_strip() -> None:
+def test_enrich_map_cards_bom_strip_no_coaching() -> None:
     cards = _enrich_map_cards(
         [{"file": "a.py", "start_line": None, "end_line": None, "why": "\ufeffsnippet"}]
     )
-    assert cards[0]["needs_outline"] is True
+    assert "needs_outline" not in cards[0]
     assert not cards[0]["why"].startswith("\ufeff")
 
 

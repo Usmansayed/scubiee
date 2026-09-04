@@ -176,6 +176,20 @@ def rebuild_embeddings_if_needed(plan: DiffPlan) -> dict[str, Any]:
     return {"ok": ok, "skipped": False, "reports": reports, "destructive": True}
 
 
+def _restore_mcp_after_failed_upgrade() -> dict[str, Any]:
+    """Best-effort undo of quiesce MCP stubs when upgrade aborts mid-flight."""
+    try:
+        from pipeline.mcp_restore import restore_live_mcp_pins
+
+        return restore_live_mcp_pins(force=True)
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "ok": False,
+            "error": str(exc),
+            "hint": "Run `scubiee connect` to restore MCP pins on all AI coding hosts.",
+        }
+
+
 def rebind_mcp_and_rules() -> dict[str, Any]:
     """Rewrite MCP + GATE for all enrolled repos using connected tools."""
     from pipeline.connect_state import load_connected_tools
@@ -320,6 +334,9 @@ def run_upgrade(
             report["ok"] = False
             report["error"] = quiet.get("error") or "quiesce_failed"
             report["hint"] = quiet.get("hint")
+            # Quiesce stubs MCP for all hosts — restore so Cursor/Claude/etc.
+            # do not stay on no-op / "off" after a failed upgrade.
+            report["mcp_restore"] = _restore_mcp_after_failed_upgrade()
             # Leave dirty marker for resume/doctor
             return report
 
@@ -340,19 +357,16 @@ def run_upgrade(
             report["ok"] = False
             report["error"] = swapped.get("error") or "package_upgrade_failed"
             report["hint"] = swapped.get("hint")
+            report["mcp_restore"] = _restore_mcp_after_failed_upgrade()
             return report
         record_component_applied("package", version=str(target), detail="swap")
     else:
         report["swap"] = {"ok": True, "skipped": True}
         report["phases"].append("swap_skipped")
 
-    # Re-read installed version after swap
-    try:
-        from importlib.metadata import version as pkg_version
-
-        new_version = pkg_version("scubiee")
-    except Exception:  # noqa: BLE001
-        new_version = installed_version()
+    # Re-read installed version after swap (use installed_version so tests /
+    # wrappers can patch one function — avoid raw importlib.metadata here).
+    new_version = installed_version()
     report["new_version"] = new_version
     if need_swap and new_version == old_version:
         report["warning"] = (
@@ -457,7 +471,10 @@ def run_upgrade(
         report["mcp_hot_reload"] = nudge_mcp_hot_reload(new_version)
 
     need_rebind = plan.needs("mcp_pins") or plan.needs("gate_rules")
-    if connect and need_rebind:
+    # Quiesce always stubs MCP when need_swap — must rewrite live pins even if
+    # pin-format stamps look current (otherwise Cursor/other hosts stay "off").
+    must_rebind = connect and (need_rebind or need_swap)
+    if must_rebind:
         from pipeline.upgrade_manifest import GATE_RULES_FORMAT, MCP_PIN_FORMAT
 
         rebound = rebind_mcp_and_rules()
@@ -489,6 +506,16 @@ def run_upgrade(
         else:
             skip_reason = "not needed"
         report["rebind"] = {"ok": True, "skipped": True, "reason": skip_reason}
+        # Still heal stub/disabled pins left by a prior failed upgrade/unlock.
+        if connect:
+            try:
+                from pipeline.mcp_restore import heal_mcp_pins_if_stubbed
+
+                healed = heal_mcp_pins_if_stubbed()
+                if healed.get("restored"):
+                    report["mcp_heal"] = healed
+            except Exception as exc:  # noqa: BLE001
+                report["mcp_heal"] = {"ok": False, "error": str(exc)}
     report["phases"].append("rebind")
 
     # HEALTH

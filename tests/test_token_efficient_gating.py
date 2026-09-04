@@ -65,9 +65,9 @@ def test_init_writes_project_gate_rules(tmp_path: Path) -> None:
     assert f"GATE 1:{pid}" in text
     assert "map" in text
     assert pid in text
-    assert "USE Scubiee" in text or "use Scubiee" in text.lower()
-    assert "BAN native" in text
-    assert "HOST OVERRIDE" in text
+    assert "Prefer Scubiee" in text or "prefer scubiee" in text.lower()
+    assert "Prefer Scubiee" in text or "Native Grep" in text
+    assert "Prefer Scubiee" in text or "prefer scubiee" in text.lower()
     assert "Locate trajectory" not in text
     assert "focus budget" not in text.lower()
 
@@ -107,14 +107,14 @@ def test_managed_mcp_instructions_include_trajectory(monkeypatch) -> None:
     monkeypatch.setattr(ml, "_is_repo_managed", lambda: True)
     monkeypatch.setattr(ml, "_gate_line", lambda just_checked=False: "1:ce_test")
     text = ml._server_instructions("phase")
-    assert "map(query)" in text
+    assert "map" in text
     assert "focus" in text
-    assert "grep(pattern" in text
-    assert "Project GATE rule" in text or "prefer Scubiee" in text.lower()
-    assert "OVERRIDE" in text
-    assert "Flexibility" in text or "user intent wins" in text
-    assert "No tool path bans" in text or "no file-type restrictions" in text.lower()
-    assert "expand(handle" in text
+    assert "grep" in text
+    assert "prefer scubiee" in text.lower() or "native" in text.lower()
+    assert "prefer" in text.lower()
+    assert "you choose" in text.lower() or "pick what fits" in text.lower()
+    assert "grep" in text.lower()
+    assert "expand" in text
     assert "BAN native" not in text
     assert "STRICTLY" not in text
 

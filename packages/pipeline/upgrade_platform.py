@@ -76,6 +76,12 @@ def quiesce_for_upgrade(*, project: Path | None = None) -> dict[str, Any]:
             from pipeline.lifecycle_runtime import abort_upgrade_transition
 
             report["upgrade_abort"] = abort_upgrade_transition(reason="release_failed")
+            try:
+                from pipeline.mcp_restore import restore_live_mcp_pins
+
+                report["mcp_restore"] = restore_live_mcp_pins(force=True)
+            except Exception as restore_exc:  # noqa: BLE001
+                report["mcp_restore"] = {"ok": False, "error": str(restore_exc)}
             return report
     except TypeError:
         # Older signature without strip_mcp — fall back then note.
@@ -89,6 +95,12 @@ def quiesce_for_upgrade(*, project: Path | None = None) -> dict[str, Any]:
             from pipeline.lifecycle_runtime import abort_upgrade_transition
 
             report["upgrade_abort"] = abort_upgrade_transition(reason="release_failed")
+            try:
+                from pipeline.mcp_restore import restore_live_mcp_pins
+
+                report["mcp_restore"] = restore_live_mcp_pins(force=True)
+            except Exception as restore_exc:  # noqa: BLE001
+                report["mcp_restore"] = {"ok": False, "error": str(restore_exc)}
             return report
     except Exception as exc:  # noqa: BLE001
         report["ok"] = False
@@ -96,6 +108,12 @@ def quiesce_for_upgrade(*, project: Path | None = None) -> dict[str, Any]:
         from pipeline.lifecycle_runtime import abort_upgrade_transition
 
         report["upgrade_abort"] = abort_upgrade_transition(reason="quiesce_exception")
+        try:
+            from pipeline.mcp_restore import restore_live_mcp_pins
+
+            report["mcp_restore"] = restore_live_mcp_pins(force=True)
+        except Exception as restore_exc:  # noqa: BLE001
+            report["mcp_restore"] = {"ok": False, "error": str(restore_exc)}
         return report
 
     host, port = engine_host_port()
@@ -134,6 +152,13 @@ def quiesce_for_upgrade(*, project: Path | None = None) -> dict[str, Any]:
         from pipeline.lifecycle_runtime import abort_upgrade_transition
 
         report["upgrade_abort"] = abort_upgrade_transition(reason="quiesce_failed")
+        # Stub may already be written — restore so hosts are not left on no-op MCP.
+        try:
+            from pipeline.mcp_restore import restore_live_mcp_pins
+
+            report["mcp_restore"] = restore_live_mcp_pins(force=True)
+        except Exception as exc:  # noqa: BLE001
+            report["mcp_restore"] = {"ok": False, "error": str(exc)}
     return report
 
 

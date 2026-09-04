@@ -358,7 +358,11 @@ def cmd_unlock_tool(args: argparse.Namespace) -> int:
                 "Reinstall: uv tool install --force scubiee --index-url https://pypi.org/simple",
                 stream=sys.stderr,
             )
-            info("Then: scubiee setup && scubiee connect --cursor", stream=sys.stderr)
+            info(
+                "Then: scubiee setup && scubiee connect  "
+                "(rewrites live MCP for Cursor and every connected AI coding host)",
+                stream=sys.stderr,
+            )
             hint = (result.get("force_remove") or {}).get("hint") or result.get("hint")
             if hint:
                 info(str(hint), stream=sys.stderr)

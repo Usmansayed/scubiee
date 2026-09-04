@@ -63,8 +63,7 @@ def test_truncation_meta_includes_next_start_line() -> None:
     assert meta["truncated"] is True
     assert meta["truncated_by"] == "chars"
     assert meta.get("next_start_line")
-    assert "max_chars=20" in meta.get("next", "")
-    assert "budget='cap'" in meta.get("next", "")
+    assert "next" not in meta  # structured pagination only
 
 
 def test_truncation_meta_line_budget_pagination() -> None:
@@ -82,7 +81,7 @@ def test_truncation_meta_line_budget_pagination() -> None:
     assert meta["truncated"] is True
     assert meta["truncated_by"] == "lines"
     assert meta["next_start_line"] == 301
-    assert "start_line=301" in meta.get("next", "")
+    assert "next" not in meta
 
 
 def test_auto_span_uses_cap_line_budget(tmp_path: Path) -> None:
@@ -138,10 +137,12 @@ def test_resolve_symbol_lines_class_method(tmp_path: Path) -> None:
     assert start <= 2 <= end
 
 
-def test_enrich_map_cards_large_span_hint() -> None:
+def test_enrich_map_cards_large_span_display_end() -> None:
     cards = [{"file": "a.py", "start_line": 1, "end_line": 500, "why": "big"}]
     out = _enrich_map_cards(cards)
-    assert out[0].get("span_hint")
+    assert out[0].get("display_end_line")
+    assert "span_hint" not in out[0]
+    assert "needs_outline" not in out[0]
     assert out[0].get("display_end_line") == 121
 
 

@@ -97,7 +97,24 @@ def _disable_mcp_json(path: Path, key: str) -> bool:
             continue
         entry = servers[name]
         if isinstance(entry, dict):
-            entry["disabled"] = True
+            # Prefer noop command over disabled:true — Cursor's Settings toggle
+            # sticks OFF in state.vscdb after disabled:true and survives restore.
+            # Inline noop (avoid import cycle with process_control).
+            import os as _os
+
+            if _os.name == "nt":
+                cmd, args = "cmd", ["/c", "exit", "0"]
+            else:
+                cmd, args = "true", []
+            if entry.get("command") != cmd or list(entry.get("args") or []) != list(args):
+                entry["command"] = cmd
+                entry["args"] = list(args)
+                changed = True
+            if entry.pop("disabled", None) is not None:
+                changed = True
+            if entry.get("enabled") is False:
+                entry.pop("enabled", None)
+                changed = True
             servers[name] = entry
             changed = True
     if not changed:

@@ -178,14 +178,23 @@ def enrich_server_entry_permissions(
     tools = locate_tool_names(profile=profile)
 
     if plan.mechanism == "embedded_mcp" or tool_slug in _EMBEDDED_MCP_SLUGS:
-        out.setdefault("disabled", False)
+        # Force-clear sticky disabled:true left by unlock/halt — setdefault
+        # would leave True and hosts (Cursor UI + Claude/Cline/etc.) stay "off".
+        # Cursor often ignores mcp.json "disabled", but True still confuses toggles.
+        if tool_slug == "cursor":
+            out.pop("disabled", None)
+        else:
+            out["disabled"] = False
+        if out.get("enabled") is False:
+            out["enabled"] = True
         out["autoApprove"] = list(tools) if profile == "locate" else ["*"]
         out["alwaysAllow"] = list(out["autoApprove"])
         return out
 
     if tool_slug == "opencode":
         out["autoApprove"] = list(tools) if profile == "locate" else ["*"]
-        out.setdefault("enabled", True)
+        out["enabled"] = True
+        out.pop("disabled", None)
         return out
 
     return out

@@ -593,7 +593,12 @@ def mcp_noop_command() -> tuple[str, list[str]]:
 
 
 def _stub_server_entry(entry: dict[str, Any]) -> bool:
-    """Rewrite one MCP server dict so a host respawn cannot lock Scubiee files."""
+    """Rewrite one MCP server dict so a host respawn cannot lock Scubiee files.
+
+    Only rewrite command/args to a no-op. Do **not** set ``enabled: false`` or
+    ``disabled: true`` — Cursor stores that in UI state (``disabledMcpServers``)
+    and leaves the toggle off after unlock/upgrade even when pins are restored.
+    """
     cmd, args = mcp_noop_command()
     changed = False
     existing_cmd = entry.get("command")
@@ -609,9 +614,7 @@ def _stub_server_entry(entry: dict[str, Any]) -> bool:
         if list(entry.get("args") or []) != args:
             entry["args"] = args
             changed = True
-    if entry.get("enabled") is True:
-        entry["enabled"] = False
-        changed = True
+    # Keep enabled/disabled flags alone — restore_live_mcp_pins / connect clear them.
     return changed
 
 

@@ -30,12 +30,9 @@ def _record_search_query(repo: Path, query: str) -> str | None:
     thrash.setdefault("soft", []).append(qn)
     thrash.setdefault("seen", []).append(qn)
     save_store(repo, store)
-    if not duplicate:
-        return None
-    return (
-        "Advisory: this search query already ran. Use get_code_snippet / graph tools on "
-        "prior hits — only search again if the topic changed or prior results were empty."
-    )
+    # Track duplicates for recall; never inject coaching into the response.
+    _ = duplicate
+    return None
 
 
 def soft_search(
@@ -74,14 +71,6 @@ def soft_search(
             item["code"] = ex.get("excerpt") or ex.get("text") or ""
         results.append(item)
 
-    if results:
-        nxt = (
-            "If structure needed: search_graph / trace_path; else "
-            "get_code_snippet once, then EDIT."
-        )
-    else:
-        nxt = "No hits — sharpen the query once, then try graph/snippet paths."
-
     out: dict[str, Any] = {
         "ok": True,
         "backend": "ce",
@@ -89,10 +78,8 @@ def soft_search(
         "query": query,
         "count": len(results),
         "results": results,
-        "next": nxt,
     }
-    if usage_hint:
-        out["usage_hint"] = usage_hint
+    _ = usage_hint  # tracked for recall; never echoed as coaching
     return out
 
 

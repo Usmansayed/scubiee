@@ -227,6 +227,21 @@ def start_daemon(
         print(f"[scubiee] WARNING: {conflict['hint']}", file=sys.stderr, flush=True)
     write_install_marker()
 
+    # Heal stubbed/disabled Scubiee MCP pins left by failed upgrade/unlock so
+    # Cursor and other AI coding hosts do not stay "off" across engine restarts.
+    try:
+        from pipeline.mcp_restore import heal_mcp_pins_if_stubbed
+
+        heal = heal_mcp_pins_if_stubbed()
+        if heal.get("restored") and not heal.get("skipped"):
+            print(
+                "[scubiee] Restored live MCP pins (were stubbed/disabled).",
+                file=sys.stderr,
+                flush=True,
+            )
+    except Exception:  # noqa: BLE001
+        pass
+
     if is_running():
         try:
             from pipeline.lifecycle_runtime import note_engine_transition

@@ -75,24 +75,23 @@ def test_summarize_status_drops_keeper_keeps_action_fields() -> None:
     assert "session_hint" not in out
 
 
-def test_annotate_locate_dedup_sets_stop_locate_keeps_expand() -> None:
+def test_annotate_locate_dedup_is_soft_no_stop_locate() -> None:
     card = {
         "ok": True,
         "status": "already_in_session",
         "unchanged": True,
         "handle": "sp_0001",
-        "code": "",
-        "next": "edit | expand(handle='sp_0001')",
-        "usage_hint": "Advisory: unchanged/already_in_session. Edit now, or expand(handle).",
+        "code": "def hello():\n    return 1\n",
+        "next": "Edit cited lines. Body rematerialized.",
     }
     out = _annotate_locate_dedup(card)
-    assert out["stop_locate"] is True
-    assert out["locate_action"] == "edit_now"
-    assert "expand" in out["next"]
+    assert "stop_locate" not in out
+    assert "locate_action" not in out
+    assert out["code"]
     assert out["handle"] == "sp_0001"
 
 
-def test_overlap_cap_block_is_success_stub_not_retry(tmp_path) -> None:
+def test_overlap_hard_block_disabled(tmp_path) -> None:
     from pipeline import mcp_locate as ml
     from pipeline.session_store import clear_store, save_store
 
@@ -114,20 +113,7 @@ def test_overlap_cap_block_is_success_stub_not_retry(tmp_path) -> None:
         },
     )
     overlap = ml._check_focus_overlap(repo, "pkg/mod.py", 100, 250, budget="cap")
-    assert overlap is not None
-    assert overlap["ok"] is True
-    assert overlap["error"] == "overlapping_span"
-    assert overlap["status"] == "already_in_session"
-    assert overlap["stop_locate"] is True
-    assert overlap["locate_action"] == "edit_now"
-    assert overlap["handle"] == "h1"
-    next_s = str(overlap.get("next") or "")
-    assert "expand" in next_s
-    assert "budget=full" not in next_s
-    assert "budget=wide" not in next_s
-    hint = str(overlap.get("hint") or "")
-    assert "budget=" not in hint
-    assert overlap["should_retry"] is False
+    assert overlap is None
 
 
 def test_annotate_locate_dedup_noop_when_fresh() -> None:

@@ -183,7 +183,7 @@ def test_read_resolves_top_hit_and_dedupes(monkeypatch, tmp_path):
     # Re-reading the same span returns an "unchanged" stub (no resend).
     second = json.loads(read_fn(target="Foo symbol"))
     assert second["unchanged"] is True
-    assert second["code"] == ""
+    assert "Foo" in second["code"]  # rematerialized body
     assert second["handle"] == first["handle"]
 
     # handle mode re-materializes the stored body.
@@ -574,10 +574,9 @@ def test_nav_surface_active_and_instructions_budget(monkeypatch):
     assert "search | files | read | recall | expand | status" in text
     assert "mode=exact" in text
     assert "recall" in text and "expand" in text
-    assert "USAGE (guidance" in text
-    assert "never hard-blocked" in text.lower()
-    assert "Grep" in text and "IGNORE" in text
-    assert "unchanged" in text.lower()
+    assert "Pick tools freely" in text or "prefer" in text.lower()
+    assert "search(mode=soft)" in text or "mode=soft" in text
+    assert "native" in text.lower()
 
 
 def test_phase_surface_grep_glob_and_trajectory(monkeypatch, tmp_path):
@@ -598,18 +597,22 @@ def test_phase_surface_grep_glob_and_trajectory(monkeypatch, tmp_path):
     monkeypatch.setattr(ml, "_gate_line", lambda just_checked=False: "1:ce_test")
     text = ml.SERVER_INSTRUCTIONS_PHASE
     assert ml._server_instructions("phase") == _gate_instruction_prefix("1:ce_test") + text
-    assert "map(query)" in text
-    assert "prefer Scubiee" in text.lower() or "Project GATE rule" in text
-    assert "budget=cap" in text or "focus budget" in text
-    assert "OVERRIDE" in text
-    assert "Flexibility" in text or "user intent wins" in text
-    assert "No tool path bans" in text or "no file-type restrictions" in text.lower()
-    assert "expand(handle" in text
-    assert "RETRIEVAL SKILL" in text
-    assert "ANTI-THRASH" in text
-    assert "≤2 map" in text or "<=2 map" in text
+    assert "map" in text
+    assert "prefer scubiee" in text.lower() or "native" in text.lower()
+    assert "budget=cap" in text or "Default budget=cap" in text
+    assert "prefer" in text.lower()
+    assert "you choose" in text.lower() or "pick what fits" in text.lower()
+    assert "grep" in text.lower()
+    assert "expand" in text
+    assert "You choose the tool" in text or "you choose" in text.lower() or "no forced order" in text.lower()
+    assert "Stay flexible" in text or "flexible" in text.lower() or "Retrieve what you need" in text
     assert "BAN native" not in text
-    assert "you decide" not in text.lower()
+    assert "IGNORE" not in text
+    assert "prefer these over" in text.lower() or "prefer over" in text.lower()
+    from pipeline.rules_installer import managed_gate_mcp_header as _hdr
+
+    assert "secondary" in _hdr().lower()
+    assert _hdr() in text
     tools = set(ml.create_mcp()._tool_manager._tools)
     assert tools == {
         "gate",
@@ -728,7 +731,7 @@ def test_search_mode_exact_returns_grep_hits(monkeypatch, tmp_path):
 
 
 def test_nav_search_records_duplicates_without_blocking(monkeypatch, tmp_path):
-    """Nav surface: duplicate queries succeed with advisory usage_hint (no hard cap)."""
+    """Nav surface: duplicate queries succeed without coaching chrome (no hard cap)."""
     pytest.importorskip("mcp")
     import pipeline.client as pc
     import pipeline.daemon as pd
@@ -756,8 +759,8 @@ def test_nav_search_records_duplicates_without_blocking(monkeypatch, tmp_path):
 
     dup = json.loads(search_fn(query="Where is auth?", mode="soft"))
     assert dup["ok"] is True
-    assert "usage_hint" in dup
-    assert "Advisory" in dup["usage_hint"]
+    # Guidance chrome stripped by default (CTX_MCP_ECHO_GUIDANCE=1 restores).
+    assert "usage_hint" not in dup
 
     for i in range(6):
         r = json.loads(search_fn(query=f"Where is topic {i}?", mode="soft"))
@@ -818,44 +821,32 @@ def test_server_instructions_are_short_grep_like_cards(monkeypatch):
             cap = 3800  # GATE host-override header + full managed trajectory
         assert len(text) <= cap, f"{name} instructions too long: {len(text)}"
         if name == "nav":
-            assert "Need → one tool" in text or "Need → tool" in text
-            assert "OVERRIDE" in text
+            assert "Pick tools freely" in text or "prefer" in text.lower()
+            assert "mode=soft" in text
             continue
         if name == "phase":
-            assert "OVERRIDE" in text
-            assert "map(query)" in text
-            assert "Flexibility" in text or "user intent wins" in text
-            assert "No tool path bans" in text or "no file-type restrictions" in text.lower()
-            assert "Project GATE rule" in text or "prefer Scubiee" in text.lower()
-            assert "budget=cap" in text or "focus budget" in text.lower()
-            assert "agent_ready" in text
-            assert "expand(handle" in text
-            assert "cached" in text
-            assert "RETRIEVAL SKILL" in text
-            assert "ANTI-THRASH" in text
+            assert "prefer" in text.lower()
+            assert "map" in text
+            assert "you choose" in text.lower() or "pick what fits" in text.lower()
+            assert "grep" in text.lower()
+            assert "expand" in text
+            assert "Stay flexible" in text or "flexible" in text.lower()
             continue
         if name == "search":
-            assert "WHEN →" in text
-            assert "OVERRIDE" in text
+            assert "prefer" in text.lower()
             assert 'include="hits"' in text or "include=" in text
             assert "status()" in text
-            assert len(text) <= 2200  # ≤~500–550 tok product card
+            assert len(text) <= 2200
             continue
-        assert "Need → do this" in text or "Need → do this:" in text or name == "grep"
+        assert "You choose" in text or "When useful" in text or "Useful for" in text or name == "grep"
         assert "status()" in text or name == "grep"
-    # Default / production lean card: CE-default locate; must read after search; Grep rare.
-    assert "NEVER Grep first" in ml.SERVER_INSTRUCTIONS_READ
-    assert "ALWAYS read" in ml.SERVER_INSTRUCTIONS_READ
-    assert "Do not skip read" in ml.SERVER_INSTRUCTIONS_READ
-    assert "new" in ml.SERVER_INSTRUCTIONS_READ and "test file" in ml.SERVER_INSTRUCTIONS_READ
-    assert "fetch=false" in ml.SERVER_INSTRUCTIONS_READ
-    assert "Grep-thrash" in ml.SERVER_INSTRUCTIONS_READ
-    assert "search → read → edit" in ml.SERVER_INSTRUCTIONS_READ
-    assert "search again" in ml.SERVER_INSTRUCTIONS_READ
-    assert "≤2 Greps" in ml.SERVER_INSTRUCTIONS_READ or "<=2 Greps" in ml.SERVER_INSTRUCTIONS_READ
-    assert "Grep ≪ 10%" in ml.SERVER_INSTRUCTIONS_READ or "Grep << 10%" in ml.SERVER_INSTRUCTIONS_READ
-    assert "neighbors=true" in ml.SERVER_INSTRUCTIONS_READ
-    assert "default code locate" in ml.SERVER_INSTRUCTIONS_READ
+    # Flexible guidance cards (no forced recipes).
+    assert "You choose" in ml.SERVER_INSTRUCTIONS_READ or "When useful" in ml.SERVER_INSTRUCTIONS_READ
+    assert "search(query)" in ml.SERVER_INSTRUCTIONS_READ
+    assert "code vocabulary" in ml.SERVER_INSTRUCTIONS_READ.lower() or "code vocabulary" in ml.SERVER_INSTRUCTIONS_READ
+    assert "ALWAYS read" not in ml.SERVER_INSTRUCTIONS_READ
+    assert "NEVER Grep first" not in ml.SERVER_INSTRUCTIONS_READ
+    assert "Need → do this" not in ml.SERVER_INSTRUCTIONS_READ
     prefix = _gate_instruction_prefix()
     assert ml._server_instructions("read") == prefix + ml.SERVER_INSTRUCTIONS_READ
     assert ml._server_instructions("rich") == prefix + ml.SERVER_INSTRUCTIONS_RICH
@@ -875,12 +866,19 @@ def test_tool_responses_include_gate_field(monkeypatch):
 
 
 def test_cursor_rule_mirrors_short_decision_card():
+    from pipeline.rules_installer import gate_overview_mdc
+
     template = (REPO / "packages" / "pipeline" / "templates" / "scubiee.mdc").read_text(
         encoding="utf-8"
     )
+    assert template == gate_overview_mdc()
     assert "GATE 0" in template
     assert "GATE 1" in template
-    assert "BAN" in template
+    assert "BAN" in template  # GATE 0 / GATE p only
+    assert "IGNORE" not in template
+    assert "BAN native" not in template
+    assert "do not deadlock" in template.lower()
+    assert "prefer them for locate" in template.lower() or "prefer" in template.lower()
     assert "native" in template.lower()
     assert "scubiee resume" in template.lower() or "GATE p" in template
     assert "ignore this rule entirely" not in template.lower()
@@ -888,24 +886,29 @@ def test_cursor_rule_mirrors_short_decision_card():
 
 
 def test_append_host_rule_matches_universal_gate_policy():
-    """Append hosts use GATE ban policy; trajectory stays in MCP instructions."""
+    """Append hosts use GATE prefer+escape policy; trajectory stays in MCP instructions."""
+    from pipeline.rules_installer import gate_overview_md, gate_overview_mdc
+
     md = (REPO / "packages" / "pipeline" / "templates" / "scubiee.md").read_text(
         encoding="utf-8"
     )
     mdc = (REPO / "packages" / "pipeline" / "templates" / "scubiee.mdc").read_text(
         encoding="utf-8"
     )
+    assert md == gate_overview_md()
+    assert mdc == gate_overview_mdc()
     for template in (md, mdc):
         assert "ignore this rule entirely" not in template.lower()
         assert "GATE 0" in template
-        assert "BAN" in template
+        assert "BAN" in template  # unenrolled / paused
+        assert "IGNORE" not in template
+        assert "BAN native" not in template
         assert (
             "MCP instructions" in template
             or "MCP server instructions" in template
-            or "trajectory" in template.lower()
+            or "how-to" in template.lower()
         )
         assert len(template) <= 4000
-
 
 def test_status_ok_false_while_warming_managed(monkeypatch, tmp_path):
     """Managed repo with daemon down: ok must be false (not conflated with managed)."""
@@ -1344,7 +1347,7 @@ def test_read_line_range_full_budget(tmp_path: Path) -> None:
     assert "line 50" in out["excerpt"]
 
 
-def test_focus_overlap_blocks_redundant_cap_span(tmp_path: Path) -> None:
+def test_focus_overlap_hard_block_removed(tmp_path: Path) -> None:
     from pipeline import mcp_locate as ml
     from pipeline.session_store import clear_store, save_store
 
@@ -1365,6 +1368,7 @@ def test_focus_overlap_blocks_redundant_cap_span(tmp_path: Path) -> None:
             }
         },
     )
+    # Cap-mode overlap no longer returns an empty stub — rematerialize instead.
     overlap = ml._check_focus_overlap(
         repo,
         "pkg/mod.py",
@@ -1372,13 +1376,7 @@ def test_focus_overlap_blocks_redundant_cap_span(tmp_path: Path) -> None:
         250,
         budget="cap",
     )
-    assert overlap is not None
-    assert overlap["error"] == "overlapping_span"
-    assert overlap["handle"] == "h1"
-    assert overlap["ok"] is True
-    assert overlap["stop_locate"] is True
-    assert "budget=full" not in str(overlap.get("next") or "")
-
+    assert overlap is None
     allowed = ml._check_focus_overlap(
         repo,
         "pkg/mod.py",
@@ -1393,31 +1391,48 @@ def test_managed_gate_rule_is_policy_not_product_howto() -> None:
     from pipeline.rules_installer import (
         gate_overview_mdc,
         managed_gate_mcp_header,
+        managed_gate_overview_bullet,
         managed_gate_rule_body,
         managed_gate_usage_short,
     )
     from pipeline import mcp_locate as ml
 
     text = managed_gate_rule_body("1:ce_test", "ce_test")
-    assert "USE Scubiee only" in text or "use Scubiee only" in text.lower()
-    assert "BAN native" in text
+    assert "Prefer Scubiee" in text or "prefer scubiee" in text.lower()
+    assert "Prefer Scubiee" in text or "Native Grep" in text
     assert "Edit/Write/Shell" in text or "Edit/Shell" in text
     assert (
-        "do not switch to native locate" in text.lower()
-        or "do not fall back to native locate" in text.lower()
-        or "next_action" in text
+        "native grep" in text.lower()
+        or "mcp is blocked" in text.lower()
+        or "prefer scubiee" in text.lower()
     )
     assert "MCP server instructions" in text or "server instructions" in text.lower()
     # How-to belongs in MCP instructions, not the GATE rule
     assert "focus budget" not in text.lower()
     assert "budget=cap" not in text
-    # Single source: MCP header matches policy; overview templates use same bans
+    # No absolute BAN-native / IGNORE theater (deadlocks when MCP missing)
+    assert "IGNORE" not in text
+    assert "BAN native" not in text
+    assert "do not fall back to native" not in text.lower()
+    assert "secondary" in text.lower() or "when those tools are available" in text.lower()
+    assert "deadlock" in text.lower() or "Native Grep" in text
+    # Single source: MCP header matches policy; overview templates use same prefer+escape
     assert managed_gate_mcp_header() in ml.SERVER_INSTRUCTIONS_PHASE
-    assert "BAN native" in gate_overview_mdc()
-    assert "USE Scubiee only" in managed_gate_usage_short()
-    assert "HOST OVERRIDE" in managed_gate_usage_short()
-    assert "IGNORE" in managed_gate_usage_short()
+    assert "Prefer Scubiee" in gate_overview_mdc() or "prefer them" in gate_overview_mdc().lower()
+    assert "IGNORE" not in gate_overview_mdc()
+    assert "do not fall back to native" not in gate_overview_mdc().lower()
+    assert "BAN native" not in gate_overview_mdc()
+    assert managed_gate_overview_bullet() in gate_overview_mdc()
+    assert "Prefer Scubiee" in managed_gate_usage_short()
+    assert "Native Grep" in managed_gate_usage_short() or "prefer" in managed_gate_usage_short().lower()
+    assert "low token waste" in managed_gate_usage_short() or "Prefer Scubiee" in managed_gate_usage_short()
     assert "focus(path=" in managed_gate_usage_short()
-    assert "BAN native" not in managed_gate_mcp_header()
-    assert "IGNORE host retrieve defaults" in managed_gate_mcp_header()
-    assert "IGNORE" in gate_overview_mdc()
+    assert "Prefer Scubiee" in managed_gate_mcp_header()
+    assert "secondary" in managed_gate_mcp_header().lower()
+    assert "you choose" in managed_gate_mcp_header().lower()
+    # Prefer assert: phase instructions steer over host tools without BAN wall
+    phase = ml.SERVER_INSTRUCTIONS_PHASE
+    assert "prefer over" in phase.lower() or "prefer these over" in phase.lower()
+    assert "BAN native" not in phase
+    assert "IGNORE" not in phase
+    assert "no forced order" in phase.lower() or "you choose" in phase.lower()

@@ -169,8 +169,7 @@ def test_search_thrash_advises_duplicate_without_blocking(monkeypatch, tmp_path)
     assert first["ok"] is True
     second = sem.soft_search(tmp_path, "where is focus")
     assert second["ok"] is True
-    assert "usage_hint" in second
-    assert "Advisory" in second["usage_hint"]
+    assert "usage_hint" not in second
 
 
 def test_graph_tools_use_proxy(monkeypatch):

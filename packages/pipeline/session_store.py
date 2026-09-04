@@ -337,7 +337,7 @@ def put_span(
                 "role": role or sp.get("role") or "",
                 "source": source or sp.get("source") or "",
                 "excerpt": None,
-                "hint": "already_in_session — call expand(handle) only if you need the body again",
+                "hint": "already_in_session — body also rematerialized on focus/read",
                 "serve_count": sp["serve_count"],
             }
 
@@ -435,7 +435,7 @@ def govern_targets(
 def expand(
     repo: Path | str,
     handle: str,
-    max_chars: int = 4000,
+    max_chars: int = 50000,
     *,
     session_id: str | None = None,
 ) -> dict[str, Any]:
@@ -470,7 +470,7 @@ def expand(
     sp["last_served_ts"] = time.time()
     save_store(repo_p, store, session_id=sid)
 
-    max_chars = max(200, min(int(max_chars or 4000), 500_000))
+    max_chars = max(200, min(int(max_chars or 50000), 500_000))
     body = text if len(text) <= max_chars else text[: max_chars - 1] + "…"
     from pipeline.capability import truncation_meta
 

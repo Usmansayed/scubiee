@@ -93,16 +93,21 @@ def test_resume_is_idempotent(ce_home: Path) -> None:
     assert is_paused() is False
 
 
-def test_disable_mcp_json_sets_disabled_field(ce_home: Path, mock_tools: dict[str, Path]) -> None:
-    from pipeline.pause_resume import _disable_mcp_json, _enable_mcp_json
+def test_disable_mcp_json_stubs_without_disabled_flag(
+    ce_home: Path, mock_tools: dict[str, Path]
+) -> None:
+    """Pause/unlock must not set disabled:true — that sticks Cursor's UI toggle off."""
+    from pipeline.pause_resume import _disable_mcp_json
+    from pipeline.process_control import mcp_noop_command
 
     path = mock_tools["cursor_mcp"]
     assert _disable_mcp_json(path, "mcpServers") is True
     data = json.loads(path.read_text(encoding="utf-8"))
-    assert data["mcpServers"]["scubiee"]["disabled"] is True
-    assert _enable_mcp_json(path, "mcpServers") is True
-    data = json.loads(path.read_text(encoding="utf-8"))
-    assert "disabled" not in data["mcpServers"]["scubiee"]
+    entry = data["mcpServers"]["scubiee"]
+    assert "disabled" not in entry
+    cmd, args = mcp_noop_command()
+    assert entry["command"] == cmd
+    assert list(entry.get("args") or []) == list(args)
 
 
 def test_paused_blocks_action_commands(ce_home: Path) -> None:

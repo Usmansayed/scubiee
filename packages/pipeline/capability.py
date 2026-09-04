@@ -684,14 +684,8 @@ def truncation_meta(
         "lines_returned": f"{start_line}-{lines_returned_end} of {lines_total}",
     }
     if truncated and next_start_line is not None:
+        # Structured pagination only — no prose "call focus(...)" recipes.
         meta["next_start_line"] = next_start_line
-        if path:
-            meta["next"] = (
-                f"focus(path={path!r}, start_line={next_start_line}, "
-                f"budget={budget!r}, max_chars={max_chars})"
-            )
-        elif handle:
-            meta["next"] = f"expand(handle={handle!r}, max_chars={max_chars})"
     return meta
 
 
