@@ -1,6 +1,6 @@
 [project]
 name = "scubiee"
-version = "0.3.15"
+version = "0.3.16"
 description = "Scubiee — local AI code context engine: setup once, connect tools, CUDA/DirectML/MLX/CPU."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -47,6 +47,7 @@ dependencies = [
   "loguru>=0.7.2",
   "mmh3>=4.1.0",
   "tomli>=2.0.0",
+  "jedi>=0.19",
   "py-rust-stemmers>=0.1.0",
   "tokenizers>=0.15",
   "onnx>=1.16",
@@ -95,7 +96,8 @@ include = [
   "metadata*",
   "repo_ir*",
   "parse_harness*",
-  "graphify*",
+    "graphify*",
+    "trace_lab*",
 ]
 
 [tool.setuptools.package-data]
