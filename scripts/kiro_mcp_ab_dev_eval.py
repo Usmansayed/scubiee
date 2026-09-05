@@ -173,16 +173,22 @@ When session isolation is enabled:
 
 Implement end-to-end: explore → edit → test.
 """,
+        # Keep narrow — bare "session"/"persist" match half the suite and blow the scorer timeout.
         "test_keywords": (
-            "session",
-            "session_id",
-            "isolate",
-            "isolation",
-            "packed_ids",
-            "persist",
-            "fail closed",
+            "test_session_isolation",
+            "session_isolation",
             "session_store",
             "_resolve_session",
+            "fail closed",
+            "fail_closed",
+            "packed_ids",
+            "mcp_session_isolate",
+            "CTX_MCP_SESSION_ISOLATE",
+        ),
+        "test_files": (
+            "tests/test_session_isolation.py",
+            "tests/test_session_store.py",
+            "tests/test_auto_sessions_observability.py",
         ),
     },
 }
@@ -191,6 +197,7 @@ Implement end-to-end: explore → edit → test.
 DEV_PROMPT = TASKS["weak_start"]["prompt"]
 ACTIVE_TASK_ID = "weak_start"
 ACTIVE_TEST_KEYWORDS = TASKS["weak_start"]["test_keywords"]
+ACTIVE_TEST_FILES: tuple[str, ...] = tuple(TASKS["weak_start"].get("test_files") or ())
 
 SHARED_SYSTEM = """You are a coding agent doing a real development task.
 
@@ -651,40 +658,56 @@ def _git_diff_stat(ws: Path) -> dict[str, Any]:
 
 def _run_tests(ws: Path) -> dict[str, Any]:
     """Run focused tests related to soft-locate / seed helpers + any new tests agent added."""
-    candidates = [
-        "tests/test_incremental_context_ladder.py",
-    ]
+    keywords = tuple(
+        k.lower()
+        for k in (
+            "suggested_seed",
+            "next_actions",
+            "pick_suggested",
+            "bad seed",
+            "weak seed",
+            "weak_start",
+            "remake",
+            "start_reliability",
+            "assess_start",
+            "pack_context",
+            *ACTIVE_TEST_KEYWORDS,
+        )
+        if k
+    )
+    candidates: list[str] = []
+    # Task allowlist first (narrow scoring)
+    for rel in ACTIVE_TEST_FILES:
+        candidates.append(str(rel).replace("\\", "/"))
+    # Always include ladder smoke if present
+    candidates.append("tests/test_incremental_context_ladder.py")
     # Tracked + untracked test files the agent may have added
     proc_status = _run(["git", "status", "--porcelain", "--", "tests"], cwd=ws)
     for ln in (proc_status.stdout or "").splitlines():
         path = ln[3:].strip().replace("\\", "/")
         if path.startswith("tests/test_") and path.endswith(".py"):
             candidates.append(path)
+
+    content_hits: list[str] = []
     for p in (ws / "tests").glob("test_*.py"):
         rel = str(p.relative_to(ws)).replace("\\", "/")
         if rel in candidates:
             continue
+        name_l = rel.lower()
+        # Filename keyword match is high-precision
+        if any(k in name_l for k in keywords if len(k) >= 6):
+            content_hits.append(rel)
+            continue
         try:
-            text = p.read_text(encoding="utf-8", errors="replace")[:4000].lower()
+            text = p.read_text(encoding="utf-8", errors="replace")[:6000].lower()
         except OSError:
             continue
-        if any(
-            k in text
-            for k in (
-                "suggested_seed",
-                "next_actions",
-                "pick_suggested",
-                "bad seed",
-                "weak seed",
-                "weak_start",
-                "remake",
-                "start_reliability",
-                "assess_start",
-                "pack_context",
-                *ACTIVE_TEST_KEYWORDS,
-            )
-        ):
-            candidates.append(rel)
+        hits = sum(1 for k in keywords if k in text)
+        # Require ≥2 keyword hits so bare substrings do not pull half the suite
+        if hits >= 2:
+            content_hits.append(rel)
+    # Cap content-discovered files to keep scoring bounded
+    candidates.extend(content_hits[:8])
 
     # de-dupe preserve order
     seen: set[str] = set()
@@ -711,16 +734,28 @@ def _run_tests(ws: Path) -> dict[str, Any]:
         *existing,
     ]
     t0 = time.perf_counter()
-    proc = subprocess.run(
-        cmd,
-        cwd=str(ws),
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        timeout=180,
-        env=env,
-    )
+    try:
+        proc = subprocess.run(
+            cmd,
+            cwd=str(ws),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=240,
+            env=env,
+        )
+    except subprocess.TimeoutExpired as exc:
+        return {
+            "ok": False,
+            "reason": "pytest timeout",
+            "exit_code": None,
+            "seconds": round(time.perf_counter() - t0, 2),
+            "cmd": cmd,
+            "files": existing,
+            "stdout_tail": ((exc.stdout or "") if isinstance(exc.stdout, str) else "")[-2000:],
+            "stderr_tail": ((exc.stderr or "") if isinstance(exc.stderr, str) else "")[-1500:],
+        }
     return {
         "ok": proc.returncode == 0,
         "exit_code": proc.returncode,
@@ -1031,7 +1066,7 @@ def write_md(report: dict[str, Any]) -> None:
 
 
 def main() -> int:
-    global DEV_PROMPT, ACTIVE_TASK_ID, ACTIVE_TEST_KEYWORDS, OUT_JSON, OUT_MD
+    global DEV_PROMPT, ACTIVE_TASK_ID, ACTIVE_TEST_KEYWORDS, ACTIVE_TEST_FILES, OUT_JSON, OUT_MD
 
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--model", default="auto")
@@ -1055,6 +1090,7 @@ def main() -> int:
     ACTIVE_TASK_ID = args.task
     DEV_PROMPT = task["prompt"]
     ACTIVE_TEST_KEYWORDS = task["test_keywords"]
+    ACTIVE_TEST_FILES = tuple(task.get("test_files") or ())
     OUT_JSON = ROOT / "docs" / "superpowers" / "plans" / f"{task['out_stem']}.json"
     OUT_MD = ROOT / "docs" / "superpowers" / "plans" / f"{task['out_stem']}.md"
 
