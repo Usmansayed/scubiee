@@ -1,4 +1,3 @@
-<!-- scubiee:start -->
 **GATE 1:ce_d9cb766c3820091ed9ffbc64ef33063c** - Managed repo. `project_id='ce_d9cb766c3820091ed9ffbc64ef33063c'`.
 
 **MUST Use Scubiee for locate** when tools are available — follow this routing strictly.
@@ -22,5 +21,3 @@
 
 **Native Grep/Glob/Read OK** after a heatmap/pack (guided by cards), or when Scubiee MCP is down, blocked, paused, or a tool errors — continue; do not deadlock.
 Edit/Write/Shell stay native. How-to → Scubiee MCP server instructions.
-
-<!-- scubiee:end -->

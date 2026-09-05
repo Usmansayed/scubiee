@@ -17,6 +17,7 @@ Reload MCP after connect or init.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -51,38 +52,70 @@ def _templates_dir() -> Path:
 
 def managed_gate_usage_short() -> str:
     """Policy-only GATE body for managed repos — how-to lives in MCP instructions."""
+    # Hard ladder + when/forbidden matrix. Agents otherwise stop after one map and thrash native.
     return (
-        "**Prefer Scubiee** for code locate/retrieval "
-        "(`map`|`focus`|`grep`|`glob`|`workspace`|`expand`|`gate`|`status`) "
-        "when those tools are available - full context, low token waste.\n"
-        "Host Grep/Glob/Read/explore are secondary for locate in this repo.\n"
-        "Named path -> `focus(path=)` first when Scubiee is available.\n"
-        "**Native Grep/Glob/Read OK** when Scubiee MCP is down, blocked, paused, "
-        "or a tool errors - continue with native; do not deadlock or thrash expand loops.\n"
-        "Avoid parallel explore thrash; one good locate beat, then edit.\n"
-        "Edit/Write/Shell stay native. How-to -> Scubiee MCP server instructions."
+        "**MUST Use Scubiee for locate** when tools are available — follow this routing strictly.\n"
+        "\n"
+        "### When to call which tool\n"
+        "- **Unknown where to start / soft “how does X work?”** → `map`(descriptive code-vocab query, k=10) "
+        "→ **required next** `pack_context`(same query, `suggested_seed`, mode=lean). "
+        "Do **not** stop after map-only. Heatmap + hot bodies come from pack.\n"
+        "- **Have a seed (file/symbol/line) needing bodies** → `pack_context`(mode=lean) first "
+        "(or `map_context` GUIDE-only cards then pack/collect). mode=full only if lean is too thin.\n"
+        "- **Pack/map was thin / missing a hop** → `expand_context`(direction=callees|callers|effects|broad, "
+        "with_bodies as needed) or `collect_hot_context(ids=…)`. "
+        "`pack_context(policy=broad)` once if the slice was too strict.\n"
+        "- **Edit-ready soft hit** → `pinpoint`. **How-it-works overview without bodies** → `plate`.\n"
+        "- **Exact literal / import / error string (no seed hunt)** → host Grep. "
+        "**Filename only** → host Glob. **Already-known path** → host Read.\n"
+        "- **Session / rematerialize** → `workspace` / `expand`.\n"
+        "\n"
+        "### Hard requirements (managed)\n"
+        "- Before the **first** broad native search (repo-wide Grep/findstr/dir dump) on an unfamiliar area: "
+        "complete at least **`map` + `pack_context(lean)`** (or `pack_context(lean)` alone if seed known).\n"
+        "- Before editing code you have not already packed: read **pack bodies / expand delta** first "
+        "(Native-Read only the cold card.locs from the heatmap).\n"
+        "- Budget: ≤3 Scubiee locate calls for the first beat (map→pack→expand); then edit. "
+        "Avoid token dumps and parallel explore thrash.\n"
+        "\n"
+        "### Forbidden until ladder ran (or Scubiee errored)\n"
+        "- Do **not** open with recursive directory listings or shotgun `findstr`/`rg` across the whole repo "
+        "to “discover” architecture.\n"
+        "- Do **not** treat a single `map` call as enough context — **pack is mandatory** for bodies.\n"
+        "\n"
+        "**Native Grep/Glob/Read OK** after a heatmap/pack (guided by cards), or when Scubiee MCP "
+        "is down, blocked, paused, or a tool errors — continue; do not deadlock.\n"
+        "Edit/Write/Shell stay native. How-to → Scubiee MCP server instructions."
     )
 
 
 def managed_gate_mcp_header() -> str:
     """Short reinforce of GATE policy inside MCP instructions (every turn — keep tiny)."""
+    exp = (os.environ.get("CTX_MCP_EXPERIMENT") or "hybrid").strip().lower()
+    if exp in {"classic", "phase_classic", "off", "0", "false", "grep_glob", "legacy"}:
+        return (
+            "MUST: task+seed → pack_context (heatmap+hot bodies) before native thrash; "
+            "or map_context guide then pack. Descriptive code-heavy query; expand_context if thin. "
+            "No-seed browse → map then pack. Exact/name/path → focus/grep/glob. Native OK if MCP down/errors."
+        )
     return (
-        "Prefer Scubiee for locate when tools are available "
-        "(host Grep/explore secondary). "
-        "Native Grep/Glob/Read OK if MCP is down or a tool errors. You choose tools."
+        "MUST ladder: map(k=10)→pack(lean)→expand(delta) ≤3 calls — pack is required after map "
+        "(heatmap+bodies); or pack(lean) if seed known. "
+        "No-seed → map/pinpoint/plate then pack when bodies needed. "
+        "Exact/name/path → host Grep/Glob/Read. Native thrash only AFTER pack or if MCP errors."
     )
 
 
 def managed_gate_overview_bullet() -> str:
     """GATE 1 line for overview templates (no project_id yet)."""
     return (
-        "**GATE 1:ce_*** (managed): "
-        "When Scubiee tools are available, prefer them for locate/retrieval "
-        "(host Grep/Glob/Read/explore secondary). "
-        "Named path -> Scubiee `focus`, not native Read. "
-        "Native Grep/Glob/Read OK if Scubiee MCP is down, blocked, paused, or errors - "
-        "continue working; do not deadlock. "
-        "Edit/Write/Shell stay native. How-to -> MCP server instructions."
+        "**GATE 1:ce_*** (managed): Use Scubiee strictly — "
+        "MUST map(k=10)→pack(lean)→expand ≤3 calls (pack required after map; heatmap+bodies); "
+        "or pack(lean)/map_context if seed/guide known; descriptive code-heavy query. "
+        "No-seed → map/pinpoint/plate then pack for bodies. "
+        "Exact/name/path → host Grep/Glob/Read. "
+        "Native OK after pack or if MCP down/blocked/paused/errors. "
+        "Edit/Write/Shell stay native. How-to → MCP server instructions."
     )
 
 
@@ -103,7 +136,7 @@ def unmanaged_gate_rule_body(gate_line: str = "0") -> str:
 
 
 PAUSED_AGENT_BAN = (
-    "BAN all Scubiee MCP tools (map, focus, grep, glob, workspace, expand, search, read, "
+    "BAN all Scubiee MCP tools (map, focus, pinpoint, plate, grep, glob, workspace, expand, search, read, "
     "files, recall, neighbors, graph, outline, status loops). "
     "USE native Read/Grep/Glob/codebase-search only."
 )
