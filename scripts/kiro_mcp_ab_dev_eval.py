@@ -1019,7 +1019,10 @@ def write_md(report: dict[str, Any]) -> None:
         "|-----|---------|--------:|--------:|-----:|---------:|--------:|--------------:|-------|-----------|",
     ]
     for arm in ("with", "without"):
-        r = report["runs"][arm]
+        r = report["runs"].get(arm)
+        if not r:
+            lines.append(f"| {arm} | — | — | — | — | — | — | — | — | — |")
+            continue
         lines.append(
             f"| {arm} | {'YES' if r.get('success') or r.get('success_corrected') else 'NO'} | {r.get('credits')} | {r.get('wall_ms')} | "
             f"{r.get('out_tokens_est')} | {(r.get('tools') or {}).get('scubiee_count')} | "
@@ -1051,7 +1054,12 @@ def write_md(report: dict[str, Any]) -> None:
         "",
     ]
     for arm in ("with", "without"):
-        r = report["runs"][arm]
+        r = report["runs"].get(arm)
+        if not r:
+            lines.append(f"### {arm}")
+            lines.append("_not run_")
+            lines.append("")
+            continue
         lines.append(f"### {arm}")
         lines.append("```")
         lines.append((r.get("diff") or {}).get("stat") or "(no diff)")
