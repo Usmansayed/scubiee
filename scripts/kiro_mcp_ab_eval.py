@@ -248,9 +248,9 @@ Hard rules:
 SCUBIEE_PROMPT_EXTRA = """
 You HAVE the scubiee MCP server. GATE locate rules are MANDATORY (also AGENTS.md + .kiro/steering/scubiee.md):
 1) map(descriptive query, k=10)
-2) pack_context(same query, mode=lean) using suggested_seed — map alone is NOT enough
+2) pack_context(same query, mode=lean) using suggested_seed — THIS IS THE TRACER/HEATMAP STEP; map alone is NOT enough
 3) expand_context only if thin
-Before shotgun native search: finish map+pack. Then answer. Still end with the JSON block.
+Before shotgun native search: finish map+pack. Never stop at map/status. Then answer. Still end with the JSON block.
 """
 
 NATIVE_PROMPT_EXTRA = """

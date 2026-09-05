@@ -5,7 +5,7 @@ These docs are for **operators and end users**: install, daily use, troubleshoot
 **Need more detail (why things break, every error code, every file path)?**  
 See **[`web-info/` — detailed documentation hub](../../web-info/README.md)** (`how-everything-works`, `complete-fix-guide`, `error-codes-reference`, `data-and-files-reference`).
 
-**Current release:** [`scubiee 0.3.16`](https://pypi.org/project/scubiee/0.3.16/) — build `0.3.16` ready (local wheel install); publish to PyPI when `UV_PUBLISH_TOKEN` is set.  
+**Current release:** [`scubiee 0.3.16`](https://pypi.org/project/scubiee/0.3.16/) — **published on PyPI**.  
 Pin this version in install commands until you intentionally upgrade.
 
 **Upgrading from 0.2.x?** Read **[What's changed since 0.2.88](../whats-changed-since-0.2.88.md)** first.

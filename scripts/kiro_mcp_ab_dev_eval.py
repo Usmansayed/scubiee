@@ -35,6 +35,11 @@ _EXCLUDE_DIRS = {
     ".scubiee",
     "out",
     "models",
+    "research",
+    "dist",
+    "build",
+    "fixtures",
+    "docs",
     ".worktrees",
     "node_modules",
     "__pycache__",
@@ -46,6 +51,9 @@ _EXCLUDE_DIRS = {
     ".cursor",
     ".kiro",  # rebuilt per arm
     "agent-transcripts",
+    "vendor",
+    "npm",
+    "tools",
 }
 
 TASKS: dict[str, dict[str, Any]] = {
@@ -91,6 +99,10 @@ Implement this end-to-end. Explore first, then edit, then run the relevant tests
             "start_reliability",
             "assess_start",
         ),
+        "test_files": (
+            "tests/test_incremental_context_ladder.py",
+            "tests/test_soft_locate_weak_start.py",
+        ),
     },
     "engine_visibility": {
         "title": "pack tracer-engine visibility + broad-escape honesty",
@@ -126,16 +138,20 @@ Every successful pack-style context response must expose a clear structured fiel
 
 Implement end-to-end: explore → edit → test.
 """,
+        # Avoid bare "engine"/"polytrace" — those pull half the suite and blow scoring.
         "test_keywords": (
             "trace_engine",
             "ctx_trace_engine",
             "composite_v1",
-            "polytrace",
-            "policy",
-            "broad",
-            "escape",
-            "engine",
+            "pack_engine",
+            "engine_visibility",
+            "broad_escape",
+            "escape_engine",
             "run_pack_context",
+        ),
+        "test_files": (
+            "tests/test_pack_engine_visibility.py",
+            "tests/test_incremental_context_ladder.py",
         ),
     },
     "session_isolation": {
@@ -209,7 +225,7 @@ Rules:
 - When done, summarize what changed and which tests you ran.
 """
 
-# Explicit ladder tools (also allow @scubiee wildcard). Keep in sync with hybrid phase surface.
+# Explicit ladder tools (also allow @scubiee wildcard). Keep in sync with PHASE_LOCATE_TOOLS.
 SCUBIEE_LOCATE_TOOLS = [
     "@scubiee",
     "@scubiee/gate",
@@ -220,6 +236,9 @@ SCUBIEE_LOCATE_TOOLS = [
     "@scubiee/collect_hot_context",
     "@scubiee/pinpoint",
     "@scubiee/plate",
+    "@scubiee/focus",
+    "@scubiee/grep",
+    "@scubiee/glob",
     "@scubiee/workspace",
     "@scubiee/expand",
     "@scubiee/status",
@@ -227,13 +246,16 @@ SCUBIEE_LOCATE_TOOLS = [
 
 SCUBIEE_AUTO_APPROVE = [
     "gate",
-    "map",
     "pack_context",
     "map_context",
     "expand_context",
     "collect_hot_context",
+    "map",
     "pinpoint",
     "plate",
+    "focus",
+    "grep",
+    "glob",
     "workspace",
     "expand",
     "status",
@@ -241,10 +263,16 @@ SCUBIEE_AUTO_APPROVE = [
 ]
 
 WITH_EXTRA = """
-You HAVE the scubiee MCP server. GATE locate rules are MANDATORY (also in AGENTS.md + .kiro/steering/scubiee.md):
+You HAVE the scubiee MCP server. GATE locate rules are MANDATORY (also in AGENTS.md + .kiro/steering/scubiee.md).
+
+TRACE / PACK FIRST
+- pack_context is the tracer/heatmap step (call/data slice + hot bodies). map alone is NOT enough.
+- On every non-trivial task you MUST call pack_context(mode=lean) — after map or with a known seed.
+- If pack is thin → expand_context before native Grep thrash.
+- Do NOT use status/gate/dir listing as a substitute for pack.
 
 WHEN / WHICH TOOL
-- Unknown area / soft question → map(descriptive code-vocab, k=10) THEN pack_context(same query, suggested_seed, mode=lean). Map alone is NOT enough.
+- Unknown area / soft question → map(descriptive code-vocab, k=10) THEN pack_context(same query, suggested_seed, mode=lean).
 - Known seed needing bodies → pack_context(mode=lean) first.
 - Thin after pack → expand_context(callees|callers|effects|broad) or collect_hot_context(ids=…).
 - Edit-ready soft hit → pinpoint. Overview without bodies → plate.
@@ -253,7 +281,7 @@ WHEN / WHICH TOOL
 HARD REQUIREMENTS
 - Before the first repo-wide native search or directory thrash: finish map+pack (or pack if seed known).
 - Before editing unfamiliar code: use pack/expand bodies (or card.loc Read from the heatmap).
-- Target ≥2 Scubiee locate calls on non-trivial tasks (typically map + pack); add expand if thin.
+- Target ≥2 Scubiee locate calls with pack included (map+pack or pack+expand). Map-only / gate-only is a FAIL.
 - Forbidden opener: recursive dir listing / shotgun findstr across the repo before pack.
 
 Native Grep/Read/Write/Shell after the ladder (or if Scubiee errors). Do not deadlock.
@@ -330,11 +358,12 @@ def _scubiee_env(repo: Path) -> dict[str, str]:
         "CTX_PROJECT_ID": PROJECT_ID,
         "CTX_TOKEN_MODE": "savings",
         "PYTHONUTF8": "1",
-        "CTX_SCUBIEE_BUILD": "0.3.15-kiro-ab-dev",
+        "CTX_SCUBIEE_BUILD": "0.3.16-kiro-ab-dev",
     }
     if PROJECT_MCP.is_file():
         try:
-            data = json.loads(PROJECT_MCP.read_text(encoding="utf-8"))
+            raw = PROJECT_MCP.read_text(encoding="utf-8-sig")
+            data = json.loads(raw)
             src = ((data.get("mcpServers") or {}).get("scubiee") or {}).get("env") or {}
             for k, v in src.items():
                 if k.startswith("CTX_") and k not in {
@@ -350,6 +379,17 @@ def _scubiee_env(repo: Path) -> dict[str, str]:
     env["CTX_REPO"] = str(repo).replace("\\", "/")
     env["CTX_MCP_CLIENT"] = "kiro"
     env["CTX_TRACE_ENGINE"] = "composite_v1"
+    # Prefer live package build stamp from project mcp when present
+    try:
+        raw = PROJECT_MCP.read_text(encoding="utf-8-sig") if PROJECT_MCP.is_file() else ""
+        if raw:
+            bid = (
+                ((json.loads(raw).get("mcpServers") or {}).get("scubiee") or {}).get("env") or {}
+            ).get("CTX_SCUBIEE_BUILD")
+            if bid:
+                env["CTX_SCUBIEE_BUILD"] = str(bid)
+    except (OSError, json.JSONDecodeError):
+        pass
     return env
 
 
@@ -456,9 +496,13 @@ def assert_agent_surface(ws: Path, agent_path: Path, *, with_mcp: bool) -> list[
                 errs.append(f"{label} missing Use Scubiee GATE wording")
             if "pack_context" not in txt:
                 errs.append(f"{label} missing pack_context instruction")
+            if "tracer" not in txt.lower() and "heatmap" not in txt.lower():
+                errs.append(f"{label} missing tracer/heatmap pack emphasis")
         prompt = cfg.get("prompt") or ""
         if "pack_context" not in prompt or "map(" not in prompt:
             errs.append("agent prompt missing map/pack ladder")
+        if "tracer" not in prompt.lower() and "heatmap" not in prompt.lower():
+            errs.append("agent prompt missing tracer/heatmap pack emphasis")
     else:
         if any(str(t).startswith("@scubiee") for t in tools):
             errs.append("without-arm must not allow @scubiee tools")
@@ -1166,7 +1210,7 @@ def main() -> int:
     )
     for arm in arms:
         ws = run_dir / arm
-        print(f"SNAPSHOT {arm} → {ws}", flush=True)
+        print(f"SNAPSHOT {arm} -> {ws}", flush=True)
         snapshot_workspace(ws)
         workspaces[arm] = ws
     print(json.dumps({"event": "snapshot_done"}), flush=True)
