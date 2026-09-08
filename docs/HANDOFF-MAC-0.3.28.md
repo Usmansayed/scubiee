@@ -3,7 +3,10 @@
 **Date:** Sep 8, 2026
 **Windows state:** `0.3.28` **built but NOT published** — `dist/scubiee-0.3.28-py3-none-any.whl` exists locally
 **Last published to PyPI:** `0.3.27` (contains the idle bug described below)
-**Base commit:** `88f6624` — everything below is **uncommitted** working-tree state
+**Git:** `19e89fa` on `upstream/main` (`https://github.com/Usmansayed/new-context-engine.git`)
+**Mac verification:** Sep 8, 2026 — Apple Silicon, fresh `.venv`, MLX ~101.8 t/s (see section 8)
+
+---
 
 ---
 
@@ -63,26 +66,20 @@ Both are fixed, plus two new regression tests in `tests/test_idle_shutdown_relia
 
 ## 1. Sync to the Mac
 
-Working tree is large and uncommitted (53 tracked files changed, ~5.6k insertions, plus new
-untracked packages). Sync the **whole working tree**, not a patch of `lifecycle_runtime.py`.
+**Done on Mac (Sep 8).** `git pull --ff-only upstream main` landed at `19e89fa`. Local tool-config files (`.claude/CLAUDE.md`, `.codex/AGENTS.md`, Copilot/Pi GATE files) blocked the pull and were moved aside first.
+
+Do **not** `uv tool install` from PyPI — **0.3.28 is not on PyPI yet**. Install from the tree:
 
 ```bash
 cd /path/to/context-engine
-uv tool install --force . --refresh
+git pull upstream main
+uv venv .venv
+uv pip install -e ".[mcp]" pytest
+export PATH="$PWD/.venv/bin:$PATH"
 scubiee --version        # expect 0.3.28
 ```
 
-New untracked packages/modules that must be present:
-
-```
-packages/pipeline/heal_runtime.py
-packages/pipeline/mcp_ship_check.py
-packages/pipeline/locate_cli.py
-packages/pipeline/mcp_plate.py
-packages/pipeline/context_trace.py
-packages/trace_lab/                 (whole package — eval harness)
-fixtures/trace-lab/                 (eval corpus)
-```
+Mac used this path after wiping the previous `uv tool` install (`scubiee 0.3.6` at `~/.local/bin`).
 
 ---
 
@@ -229,8 +226,9 @@ scubiee status --json | grep -E 'warm_state|index_usable|chunks'
 ```
 
 **Pass:** `warm_state: ready`, `index_usable: true`, chunks > 0, and `map` ranks
-`packages/pipeline/memory_governor.py` first. The MLX path is **untested for this release** —
-all verification so far was DirectML on Windows.
+`packages/pipeline/memory_governor.py` first.
+
+**Mac result (Sep 8):** PASS — MLX 101.8 t/s, `warm_state: ready`, `index_usable: true`, 5679 chunks, `map` rank 1 = `packages/pipeline/memory_governor.py`.
 
 ---
 
@@ -256,29 +254,38 @@ macOS — the prefilters match on process *name*, which differs across platforms
 1. **Watchdog spawn leak** — 8 watchdog processes observed alive across 4 spawn pairs
    (`22:16:50`, `22:16:52` ×2, `22:35:47`). Not investigated. Check on Mac:
    `pgrep -fl "pipeline watchdog" | wc -l` should be small.
+   **Mac (Sep 8):** watchdog count was **0** after setup/init. Supervisor (`engine supervisor --logon`) stayed at 1 process. No leak seen in this run.
 2. **Setup prints `✓ Runtime installed` twice** — cosmetic, caught by `test_setup_progress`.
 3. **`test_t3` hardcodes a project id** — will fail on any machine whose repo id differs.
 4. **FastEmbed cache in `$TMPDIR`** — see section 2.
 5. **Embed cache has no model fingerprint** — hash-fallback vectors persist silently.
+6. **Mac: idle policy is correct, automatic reclaim is not.** After 15–25s with zero clients, `should_idle_stop(require_run_mode=False)` is True and `apply_idle_policy()` kills the engine. The supervisor/watchdog **did not** stop `pipeline engine run` on its own within 25s. This is the remaining Mac gate vs Windows.
+7. **Full `pytest -q` on Mac does not finish.** First crash: `NotImplementedError: cannot instantiate 'WindowsPath' on your system` (a test/pathlib monkeypatch). Retry with `-k "not windows"` segfaulted in FAISS around 85% (`faiss/class_wrappers.py` recursion).
+8. **`scripts/e2e_mcp_idle_reconnect.py` is not in this tree** — cannot run Phase 3 as written.
+9. **`dense_index.py` RuntimeWarning** on `map` (divide/overflow in matmul) — noisy, did not block ranking.
+
+---
 
 ---
 
 ## 6. Go / no-go
 
-| Gate | Windows | Mac |
+| Gate | Windows | Mac (Sep 8) |
 |------|---------|-----|
-| Unit suite (1318 passed / 7 known fails) | ✅ | ⬜ |
-| Idle suites (47 passed) | ✅ | ⬜ |
-| Live idle reclaim verified | ✅ | ⬜ |
-| MCP connect/disconnect/reconnect e2e | ⚠️ see note | ⬜ |
-| Production test | ✅ | ⬜ |
-| CLI combination suite | ✅ | ⬜ |
-| MLX/CoreML setup + query | N/A | ⬜ |
-| Publish 0.3.28 | ⬜ | ⬜ |
+| Unit suite (1318 passed / 7 known fails) | ✅ | ❌ crashed (WindowsPath, then FAISS segfault) |
+| Idle suites (47 passed) | ✅ | ⚠️ 46 passed; 1 Windows-only fail (`test_windows_hidden_spawn_does_not_use_detached_process`) |
+| Live idle reclaim verified | ✅ | ⚠️ policy + `apply_idle_policy()` PASS; automatic supervisor reclaim FAIL within 25s |
+| MCP connect/disconnect/reconnect e2e | ⚠️ see note | ⬜ script missing from tree |
+| Production test | ✅ | ⬜ not run (`connect --all` / `disconnect --all`) |
+| CLI combination suite | ✅ | ✅ **39/39 PASS** |
+| MLX/CoreML setup + query | N/A | ✅ MLX 101.8 t/s, map rank 1 `memory_governor.py` |
+| Publish 0.3.28 | ⬜ | ⬜ **do not publish yet** — auto idle reclaim still open |
 
 **⚠️ e2e note:** the MCP e2e still reports `engine stops within 180s of disconnect - FAIL`,
 but that run predates the fix and its measurement was contaminated by orphaned `.venv`
-watchdogs plus `/health` polling. **Re-run it clean on Mac** — this is the main gate left.
+watchdogs plus `/health` polling. Script was **not present** on Mac at `19e89fa`.
+
+---
 
 ---
 
@@ -307,3 +314,60 @@ Then on each machine: `uv tool install --force scubiee --refresh`.
 
 `npm/package.json` was bumped to 0.3.28 in lockstep — confirm whether npm also needs a
 publish or is only kept in sync.
+
+---
+
+## 8. Mac session log (Sep 8, 2026)
+
+**Machine:** Apple Silicon MacBook  
+**Repo:** `/Users/usmansayed/Downloads/hidden-context-engine-`  
+**Remote:** `upstream` = `https://github.com/Usmansayed/new-context-engine.git`  
+**HEAD after pull:** `19e89fa` — Release 0.3.28: fix idle shutdown never reclaiming the engine
+
+### What we did
+
+1. **Pulled latest** from `new-context-engine` (`398b9ba` → `19e89fa`). Fast-forward after moving aside local MCP GATE files that would have been overwritten.
+2. **Read** `docs/HANDOFF-MAC-0.3.28.md` and followed the destructive-test warnings.
+3. **Deleted the old setup:**
+   - `pkill` stray `pipeline engine` / watchdog
+   - `scubiee wipe --all --confirm --keep-package` (removed `~/.scubiee`; leftover Codex `~/.codex/config.toml` only)
+   - `uv tool uninstall scubiee` (removed PATH binary **0.3.6**)
+   - removed old venvs: `.venv`, `/tmp/scubiee-bughunt-venv`, `/tmp/scubiee-fresh-venv`
+4. **Fresh install from source (not PyPI):**
+   ```bash
+   uv venv .venv
+   uv pip install -e ".[mcp]" pytest
+   .venv/bin/scubiee --version   # 0.3.28
+   ```
+   Confirmed `DEFAULT_IDLE_S = 15.0` and `should_idle_stop(..., require_run_mode=...)` in the installed package.
+5. **`scubiee setup`** — MLX profile, CodeRank FP16 convert + warmup, **~101.8 t/s**.
+6. **`scubiee init .`** — enrolled this repo, indexed.
+7. **Tests run (user-facing CLI + targeted pytest):**
+
+| Step | Command / suite | Result |
+|------|-----------------|--------|
+| Idle unit | `pytest tests/test_idle_shutdown_reliability.py tests/test_watchdog.py tests/test_engine_idle_debounce.py tests/test_memory_governor.py` | **46 passed**, 1 fail: `test_windows_hidden_spawn_does_not_use_detached_process` (CREATE_NO_WINDOW on Darwin) |
+| Live idle t=0 after init | `desired_mode=run`, clients `[]`, `is_running=True`, `should_idle_stop(require_run_mode=False)=False` (idle window not elapsed) | expected |
+| Live idle t=22s | `mode=standby`, `should_stop=True`, engine still running until **`apply_idle_policy()`** | killed pid 32340, `is_running=False` |
+| Auto idle t=25s with supervisor | `engine ensure .` then wait, **no `/health`** | `should_stop=True`, **engine still running** (pid 32448) |
+| CLI combo | `python scripts/run_cli_combination_tests.py --json /tmp/mac-cli-0.3.28.json` | **39/39 PASS** (~233s). `unlock-tool` last as designed. |
+| MLX map | `scubiee map "memory governor idle demote embedder warm tier"` | rank 1 `packages/pipeline/memory_governor.py` |
+| Status | `scubiee status --json` | `warm_state: ready`, `index_usable: true`, **5679 chunks**, enrolled/active |
+| Watchdogs | `pgrep -fl "pipeline watchdog"` | **0** |
+| Full pytest | `pytest -q --tb=line` | INTERNALERROR `WindowsPath` on Darwin ~21% |
+| Full pytest retry | `pytest -q -k "not windows"` | segfault in FAISS ~85% |
+| MCP e2e script | `scripts/e2e_mcp_idle_reconnect.py` | **missing** |
+| `mac_production_test.py` | connect/disconnect `--all` | **not run** (destructive) |
+
+8. **Restored Cursor MCP:** `scubiee connect --cursor` after wipe. Restart Cursor to pick up the pin.
+
+### Binary to use
+
+```bash
+export PATH="/Users/usmansayed/Downloads/hidden-context-engine-/.venv/bin:$PATH"
+scubiee --version   # 0.3.28
+```
+
+### Publish decision
+
+**Do not publish 0.3.28 yet.** MLX + CLI combo + idle *policy* are good. Automatic idle reclaim via supervisor/watchdog on Mac is still the open gate. Fix that, then rebuild the wheel, verify `require_run_mode` is in the wheel, and `twine`/`uv publish` from `.env` (`pipy_username` / `pipy_password`).
