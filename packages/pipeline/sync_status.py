@@ -138,7 +138,7 @@ def derive_agent_ready_note(
     if agent_ready == "warming":
         return "Engine or index still warming — map may work; wait before trusting edits on indexed files."
     if agent_ready == "yes":
-        return "Locate and index are ready; map/focus reflect current repo state."
+        return "Locate and index are ready; map/pack_context reflect current repo state."
     if syncing or overlay_ready or publish_pending:
         return "Background sync active — recent file edits may be stale in map until sync finishes."
     if sync_state in {"needs_full", "error"}:

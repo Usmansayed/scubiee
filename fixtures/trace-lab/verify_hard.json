@@ -1,0 +1,2487 @@
+{
+  "description": "HARD verify board: 50 diverse tough cases. Large must sets = lots of related code to collect. must_not includes on-path siblings, shared hubs, and adversarial wording. correct <=> must\u2286hot AND hot\u2229must_not=\u2205. Gold from fixture source, not tracer output.",
+  "hot_threshold": 0.45,
+  "cases": [
+    {
+      "id": "h01",
+      "family": "auth-full-path",
+      "prompt": "from authenticate, collect every hop that checks credentials and loads the user",
+      "seed": {
+        "file": "app/middleware/auth.py",
+        "symbol": "authenticate"
+      },
+      "must": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "extract_bearer"
+        },
+        {
+          "file": "app/services/jwt_service.py",
+          "symbol": "JwtService.verify"
+        },
+        {
+          "file": "app/utils/token.py",
+          "symbol": "decode"
+        },
+        {
+          "file": "app/repositories/user_repo.py",
+          "symbol": "UserRepository.resolve"
+        },
+        {
+          "file": "app/models/user.py",
+          "symbol": "User.lookup"
+        },
+        {
+          "file": "app/config/database.py",
+          "symbol": "connect"
+        }
+      ],
+      "should": [
+        {
+          "file": "app/config/security.py",
+          "symbol": "TOKEN_TTL"
+        }
+      ],
+      "must_not": [
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        },
+        {
+          "file": "app/analytics/tracker.py",
+          "symbol": "track"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h02",
+      "family": "auth-no-side-effects",
+      "prompt": "credential checking path only \u2014 skip ok logs and login analytics",
+      "seed": {
+        "file": "app/middleware/auth.py",
+        "symbol": "authenticate"
+      },
+      "must": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "extract_bearer"
+        },
+        {
+          "file": "app/services/jwt_service.py",
+          "symbol": "JwtService.verify"
+        },
+        {
+          "file": "app/utils/token.py",
+          "symbol": "decode"
+        },
+        {
+          "file": "app/repositories/user_repo.py",
+          "symbol": "UserRepository.resolve"
+        },
+        {
+          "file": "app/models/user.py",
+          "symbol": "User.lookup"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        },
+        {
+          "file": "app/analytics/tracker.py",
+          "symbol": "track"
+        },
+        {
+          "file": "app/config/security.py",
+          "symbol": "TOKEN_TTL"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h03",
+      "family": "login-entry-deep",
+      "prompt": "from the login route, follow auth until the user row is loaded from db",
+      "seed": {
+        "file": "app/routes/login.py",
+        "symbol": "login"
+      },
+      "must": [
+        {
+          "file": "app/routes/login.py",
+          "symbol": "login"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "extract_bearer"
+        },
+        {
+          "file": "app/services/jwt_service.py",
+          "symbol": "JwtService.verify"
+        },
+        {
+          "file": "app/utils/token.py",
+          "symbol": "decode"
+        },
+        {
+          "file": "app/repositories/user_repo.py",
+          "symbol": "UserRepository.resolve"
+        },
+        {
+          "file": "app/models/user.py",
+          "symbol": "User.lookup"
+        },
+        {
+          "file": "app/config/database.py",
+          "symbol": "connect"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        },
+        {
+          "file": "app/analytics/tracker.py",
+          "symbol": "track"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/routes/health.py",
+          "symbol": "health"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h04",
+      "family": "oauth-refresh-deep",
+      "prompt": "refresh a session token: rotate, stamp nonce, verify claims, load user",
+      "seed": {
+        "file": "app/oauth/refresh.py",
+        "symbol": "refresh"
+      },
+      "must": [
+        {
+          "file": "app/oauth/refresh.py",
+          "symbol": "refresh"
+        },
+        {
+          "file": "app/oauth/rotate.py",
+          "symbol": "rotate"
+        },
+        {
+          "file": "app/oauth/nonce.py",
+          "symbol": "stamp"
+        },
+        {
+          "file": "app/services/jwt_service.py",
+          "symbol": "JwtService.verify"
+        },
+        {
+          "file": "app/utils/token.py",
+          "symbol": "decode"
+        },
+        {
+          "file": "app/repositories/user_repo.py",
+          "symbol": "UserRepository.resolve"
+        },
+        {
+          "file": "app/models/user.py",
+          "symbol": "User.lookup"
+        },
+        {
+          "file": "app/config/database.py",
+          "symbol": "connect"
+        }
+      ],
+      "should": [
+        {
+          "file": "app/config/security.py",
+          "symbol": "TOKEN_TTL"
+        }
+      ],
+      "must_not": [
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        },
+        {
+          "file": "app/analytics/tracker.py",
+          "symbol": "track"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h05",
+      "family": "jwt-verify-deep",
+      "prompt": "from JwtService.verify collect decode, ttl check, and user resolve path",
+      "seed": {
+        "file": "app/services/jwt_service.py",
+        "symbol": "JwtService.verify"
+      },
+      "must": [
+        {
+          "file": "app/services/jwt_service.py",
+          "symbol": "JwtService.verify"
+        },
+        {
+          "file": "app/utils/token.py",
+          "symbol": "decode"
+        },
+        {
+          "file": "app/config/security.py",
+          "symbol": "TOKEN_TTL"
+        },
+        {
+          "file": "app/repositories/user_repo.py",
+          "symbol": "UserRepository.resolve"
+        },
+        {
+          "file": "app/models/user.py",
+          "symbol": "User.lookup"
+        },
+        {
+          "file": "app/config/database.py",
+          "symbol": "connect"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        },
+        {
+          "file": "app/oauth/refresh.py",
+          "symbol": "refresh"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h06",
+      "family": "resolve-deep",
+      "prompt": "how UserRepository.resolve loads the user row including db connect",
+      "seed": {
+        "file": "app/repositories/user_repo.py",
+        "symbol": "UserRepository.resolve"
+      },
+      "must": [
+        {
+          "file": "app/repositories/user_repo.py",
+          "symbol": "UserRepository.resolve"
+        },
+        {
+          "file": "app/models/user.py",
+          "symbol": "User.lookup"
+        },
+        {
+          "file": "app/config/database.py",
+          "symbol": "connect"
+        },
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/utils/token.py",
+          "symbol": "decode"
+        },
+        {
+          "file": "app/services/jwt_service.py",
+          "symbol": "JwtService.verify"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h07",
+      "family": "oauth-no-telemetry",
+      "prompt": "oauth refresh credential chain without logging or analytics noise",
+      "seed": {
+        "file": "app/oauth/refresh.py",
+        "symbol": "refresh"
+      },
+      "must": [
+        {
+          "file": "app/oauth/refresh.py",
+          "symbol": "refresh"
+        },
+        {
+          "file": "app/oauth/rotate.py",
+          "symbol": "rotate"
+        },
+        {
+          "file": "app/oauth/nonce.py",
+          "symbol": "stamp"
+        },
+        {
+          "file": "app/services/jwt_service.py",
+          "symbol": "JwtService.verify"
+        },
+        {
+          "file": "app/utils/token.py",
+          "symbol": "decode"
+        },
+        {
+          "file": "app/repositories/user_repo.py",
+          "symbol": "UserRepository.resolve"
+        },
+        {
+          "file": "app/models/user.py",
+          "symbol": "User.lookup"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        },
+        {
+          "file": "app/analytics/tracker.py",
+          "symbol": "track"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h08",
+      "family": "mid-decode-up",
+      "prompt": "starting at decode, what related verify/ttl/user-load code belongs with claims checking?",
+      "seed": {
+        "file": "app/utils/token.py",
+        "symbol": "decode"
+      },
+      "must": [
+        {
+          "file": "app/utils/token.py",
+          "symbol": "decode"
+        },
+        {
+          "file": "app/services/jwt_service.py",
+          "symbol": "JwtService.verify"
+        },
+        {
+          "file": "app/config/security.py",
+          "symbol": "TOKEN_TTL"
+        },
+        {
+          "file": "app/repositories/user_repo.py",
+          "symbol": "UserRepository.resolve"
+        },
+        {
+          "file": "app/models/user.py",
+          "symbol": "User.lookup"
+        },
+        {
+          "file": "app/config/database.py",
+          "symbol": "connect"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        }
+      ],
+      "notes": "mid-graph seed needing upward + sibling collection"
+    },
+    {
+      "id": "h09",
+      "family": "checkout-full",
+      "prompt": "collect the full checkout begin path: validate cart, quote, reserve, charge, ship",
+      "seed": {
+        "file": "app/checkout/begin.py",
+        "symbol": "begin"
+      },
+      "must": [
+        {
+          "file": "app/checkout/begin.py",
+          "symbol": "begin"
+        },
+        {
+          "file": "app/cart/validate.py",
+          "symbol": "validate"
+        },
+        {
+          "file": "app/pricing/quote.py",
+          "symbol": "quote"
+        },
+        {
+          "file": "app/pricing/catalog.py",
+          "symbol": "unit_price"
+        },
+        {
+          "file": "app/tax/compute.py",
+          "symbol": "compute"
+        },
+        {
+          "file": "app/tax/rates.py",
+          "symbol": "rate_for"
+        },
+        {
+          "file": "app/inventory/reserve.py",
+          "symbol": "reserve"
+        },
+        {
+          "file": "app/inventory/stock.py",
+          "symbol": "available"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/http/client.py",
+          "symbol": "get"
+        },
+        {
+          "file": "app/shipping/schedule.py",
+          "symbol": "schedule"
+        }
+      ],
+      "should": [
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        },
+        {
+          "file": "app/audit/record.py",
+          "symbol": "record"
+        }
+      ],
+      "must_not": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/services/jwt_service.py",
+          "symbol": "JwtService.verify"
+        },
+        {
+          "file": "app/events/bus.py",
+          "symbol": "emit"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h10",
+      "family": "checkout-pricing-only",
+      "prompt": "from checkout begin, only quoting and tax \u2014 not payment or shipping",
+      "seed": {
+        "file": "app/checkout/begin.py",
+        "symbol": "begin"
+      },
+      "must": [
+        {
+          "file": "app/checkout/begin.py",
+          "symbol": "begin"
+        },
+        {
+          "file": "app/pricing/quote.py",
+          "symbol": "quote"
+        },
+        {
+          "file": "app/pricing/catalog.py",
+          "symbol": "unit_price"
+        },
+        {
+          "file": "app/tax/compute.py",
+          "symbol": "compute"
+        },
+        {
+          "file": "app/tax/rates.py",
+          "symbol": "rate_for"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/shipping/schedule.py",
+          "symbol": "schedule"
+        },
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h11",
+      "family": "checkout-inventory",
+      "prompt": "checkout stock reservation path including warehouse db levels",
+      "seed": {
+        "file": "app/checkout/begin.py",
+        "symbol": "begin"
+      },
+      "must": [
+        {
+          "file": "app/checkout/begin.py",
+          "symbol": "begin"
+        },
+        {
+          "file": "app/cart/validate.py",
+          "symbol": "validate"
+        },
+        {
+          "file": "app/inventory/reserve.py",
+          "symbol": "reserve"
+        },
+        {
+          "file": "app/inventory/stock.py",
+          "symbol": "available"
+        },
+        {
+          "file": "app/inventory/warehouse.py",
+          "symbol": "levels"
+        },
+        {
+          "file": "app/config/database.py",
+          "symbol": "connect"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/shipping/schedule.py",
+          "symbol": "schedule"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h12",
+      "family": "checkout-pay-ship",
+      "prompt": "how checkout charges the card and schedules shipping notification",
+      "seed": {
+        "file": "app/checkout/begin.py",
+        "symbol": "begin"
+      },
+      "must": [
+        {
+          "file": "app/checkout/begin.py",
+          "symbol": "begin"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/http/client.py",
+          "symbol": "get"
+        },
+        {
+          "file": "app/audit/record.py",
+          "symbol": "record"
+        },
+        {
+          "file": "app/shipping/schedule.py",
+          "symbol": "schedule"
+        },
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/services/jwt_service.py",
+          "symbol": "JwtService.verify"
+        },
+        {
+          "file": "app/events/bus.py",
+          "symbol": "emit"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h13",
+      "family": "pricing-deep",
+      "prompt": "from quote, collect catalog unit price and tax rate helpers",
+      "seed": {
+        "file": "app/pricing/quote.py",
+        "symbol": "quote"
+      },
+      "must": [
+        {
+          "file": "app/pricing/quote.py",
+          "symbol": "quote"
+        },
+        {
+          "file": "app/pricing/catalog.py",
+          "symbol": "unit_price"
+        },
+        {
+          "file": "app/tax/compute.py",
+          "symbol": "compute"
+        },
+        {
+          "file": "app/tax/rates.py",
+          "symbol": "rate_for"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/checkout/begin.py",
+          "symbol": "begin"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/cart/validate.py",
+          "symbol": "validate"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h14",
+      "family": "inventory-deep",
+      "prompt": "from reserve, collect availability checks and warehouse levels",
+      "seed": {
+        "file": "app/inventory/reserve.py",
+        "symbol": "reserve"
+      },
+      "must": [
+        {
+          "file": "app/inventory/reserve.py",
+          "symbol": "reserve"
+        },
+        {
+          "file": "app/inventory/stock.py",
+          "symbol": "available"
+        },
+        {
+          "file": "app/inventory/warehouse.py",
+          "symbol": "levels"
+        },
+        {
+          "file": "app/config/database.py",
+          "symbol": "connect"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/checkout/begin.py",
+          "symbol": "begin"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h15",
+      "family": "shipping-notify",
+      "prompt": "schedule shipping: fetch eta over http and notify the buyer",
+      "seed": {
+        "file": "app/shipping/schedule.py",
+        "symbol": "schedule"
+      },
+      "must": [
+        {
+          "file": "app/shipping/schedule.py",
+          "symbol": "schedule"
+        },
+        {
+          "file": "app/http/client.py",
+          "symbol": "get"
+        },
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/checkout/begin.py",
+          "symbol": "begin"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/services/jwt_service.py",
+          "symbol": "JwtService.verify"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h16",
+      "family": "charge-audit",
+      "prompt": "charging cents: http pay call and audit record trail",
+      "seed": {
+        "file": "app/billing/invoices.py",
+        "symbol": "charge"
+      },
+      "must": [
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/http/client.py",
+          "symbol": "get"
+        },
+        {
+          "file": "app/audit/record.py",
+          "symbol": "record"
+        },
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        },
+        {
+          "file": "app/analytics/tracker.py",
+          "symbol": "track"
+        },
+        {
+          "file": "app/config/database.py",
+          "symbol": "connect"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/services/jwt_service.py",
+          "symbol": "JwtService.verify"
+        },
+        {
+          "file": "app/utils/token.py",
+          "symbol": "decode"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h17",
+      "family": "adversarial-pay",
+      "prompt": "customer authentication tokens for payment \u2014 how do we charge and audit?",
+      "seed": {
+        "file": "app/billing/invoices.py",
+        "symbol": "charge"
+      },
+      "must": [
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/http/client.py",
+          "symbol": "get"
+        },
+        {
+          "file": "app/audit/record.py",
+          "symbol": "record"
+        },
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        },
+        {
+          "file": "app/analytics/tracker.py",
+          "symbol": "track"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/services/jwt_service.py",
+          "symbol": "JwtService.verify"
+        },
+        {
+          "file": "app/utils/token.py",
+          "symbol": "decode"
+        },
+        {
+          "file": "app/repositories/user_repo.py",
+          "symbol": "UserRepository.resolve"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h18",
+      "family": "cart-validate",
+      "prompt": "validate cart items against inventory availability and warehouse",
+      "seed": {
+        "file": "app/cart/validate.py",
+        "symbol": "validate"
+      },
+      "must": [
+        {
+          "file": "app/cart/validate.py",
+          "symbol": "validate"
+        },
+        {
+          "file": "app/inventory/stock.py",
+          "symbol": "available"
+        },
+        {
+          "file": "app/inventory/warehouse.py",
+          "symbol": "levels"
+        },
+        {
+          "file": "app/config/database.py",
+          "symbol": "connect"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/checkout/begin.py",
+          "symbol": "begin"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h19",
+      "family": "jobs-full",
+      "prompt": "trace worker run through dequeue, execute, and digest side effects",
+      "seed": {
+        "file": "app/jobs/worker.py",
+        "symbol": "run"
+      },
+      "must": [
+        {
+          "file": "app/jobs/worker.py",
+          "symbol": "run"
+        },
+        {
+          "file": "app/jobs/queue.py",
+          "symbol": "dequeue"
+        },
+        {
+          "file": "app/jobs/runner.py",
+          "symbol": "execute"
+        },
+        {
+          "file": "app/jobs/digest.py",
+          "symbol": "send_digest"
+        },
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        },
+        {
+          "file": "app/analytics/tracker.py",
+          "symbol": "track"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/events/bus.py",
+          "symbol": "emit"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h20",
+      "family": "jobs-no-telemetry",
+      "prompt": "job run until digest is produced \u2014 without log/track side effects",
+      "seed": {
+        "file": "app/jobs/worker.py",
+        "symbol": "run"
+      },
+      "must": [
+        {
+          "file": "app/jobs/worker.py",
+          "symbol": "run"
+        },
+        {
+          "file": "app/jobs/queue.py",
+          "symbol": "dequeue"
+        },
+        {
+          "file": "app/jobs/runner.py",
+          "symbol": "execute"
+        },
+        {
+          "file": "app/jobs/digest.py",
+          "symbol": "send_digest"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        },
+        {
+          "file": "app/analytics/tracker.py",
+          "symbol": "track"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h21",
+      "family": "job-deliver-notify",
+      "prompt": "deliver a digest job and notify the user over http",
+      "seed": {
+        "file": "app/jobs/deliver.py",
+        "symbol": "deliver"
+      },
+      "must": [
+        {
+          "file": "app/jobs/deliver.py",
+          "symbol": "deliver"
+        },
+        {
+          "file": "app/jobs/digest.py",
+          "symbol": "send_digest"
+        },
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        },
+        {
+          "file": "app/http/client.py",
+          "symbol": "get"
+        },
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        },
+        {
+          "file": "app/analytics/tracker.py",
+          "symbol": "track"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/events/bus.py",
+          "symbol": "emit"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h22",
+      "family": "mid-execute",
+      "prompt": "what does execute pull in for a dequeued digest job including telemetry?",
+      "seed": {
+        "file": "app/jobs/runner.py",
+        "symbol": "execute"
+      },
+      "must": [
+        {
+          "file": "app/jobs/runner.py",
+          "symbol": "execute"
+        },
+        {
+          "file": "app/jobs/digest.py",
+          "symbol": "send_digest"
+        },
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        },
+        {
+          "file": "app/analytics/tracker.py",
+          "symbol": "track"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/jobs/worker.py",
+          "symbol": "run"
+        },
+        {
+          "file": "app/http/client.py",
+          "symbol": "get"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h23",
+      "family": "digest-only-effects",
+      "prompt": "send_digest logging and tracking only \u2014 not the worker loop",
+      "seed": {
+        "file": "app/jobs/digest.py",
+        "symbol": "send_digest"
+      },
+      "must": [
+        {
+          "file": "app/jobs/digest.py",
+          "symbol": "send_digest"
+        },
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        },
+        {
+          "file": "app/analytics/tracker.py",
+          "symbol": "track"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/jobs/worker.py",
+          "symbol": "run"
+        },
+        {
+          "file": "app/jobs/queue.py",
+          "symbol": "dequeue"
+        },
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h24",
+      "family": "events-welcome-deep",
+      "prompt": "from emit, what runs for welcome including session start and side effects?",
+      "seed": {
+        "file": "app/events/bus.py",
+        "symbol": "emit"
+      },
+      "must": [
+        {
+          "file": "app/events/bus.py",
+          "symbol": "emit"
+        },
+        {
+          "file": "app/events/registry.py",
+          "symbol": "lookup"
+        },
+        {
+          "file": "app/handlers/welcome.py",
+          "symbol": "handle"
+        },
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        },
+        {
+          "file": "app/analytics/tracker.py",
+          "symbol": "track"
+        },
+        {
+          "file": "app/services/session.py",
+          "symbol": "start"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/jobs/worker.py",
+          "symbol": "run"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h25",
+      "family": "events-no-session",
+      "prompt": "welcome handle dispatch from emit \u2014 without starting a session",
+      "seed": {
+        "file": "app/events/bus.py",
+        "symbol": "emit"
+      },
+      "must": [
+        {
+          "file": "app/events/bus.py",
+          "symbol": "emit"
+        },
+        {
+          "file": "app/events/registry.py",
+          "symbol": "lookup"
+        },
+        {
+          "file": "app/handlers/welcome.py",
+          "symbol": "handle"
+        },
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        },
+        {
+          "file": "app/analytics/tracker.py",
+          "symbol": "track"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/services/session.py",
+          "symbol": "start"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h26",
+      "family": "bootstrap-bind",
+      "prompt": "bootstrap start wiring welcome handler into the registry",
+      "seed": {
+        "file": "app/bootstrap.py",
+        "symbol": "start"
+      },
+      "must": [
+        {
+          "file": "app/bootstrap.py",
+          "symbol": "start"
+        },
+        {
+          "file": "app/events/registry.py",
+          "symbol": "bind"
+        },
+        {
+          "file": "app/handlers/welcome.py",
+          "symbol": "handle"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/events/bus.py",
+          "symbol": "emit"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        }
+      ],
+      "notes": "bind graph; handle may be via registry edge"
+    },
+    {
+      "id": "h27",
+      "family": "welcome-handler",
+      "prompt": "welcome handle side effects: log, track, and session start",
+      "seed": {
+        "file": "app/handlers/welcome.py",
+        "symbol": "handle"
+      },
+      "must": [
+        {
+          "file": "app/handlers/welcome.py",
+          "symbol": "handle"
+        },
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        },
+        {
+          "file": "app/analytics/tracker.py",
+          "symbol": "track"
+        },
+        {
+          "file": "app/services/session.py",
+          "symbol": "start"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/events/bus.py",
+          "symbol": "emit"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h28",
+      "family": "webhook-ingest-full",
+      "prompt": "ingest webhook: verify signature, parse, route to payment handler and charge",
+      "seed": {
+        "file": "app/webhooks/ingest.py",
+        "symbol": "ingest"
+      },
+      "must": [
+        {
+          "file": "app/webhooks/ingest.py",
+          "symbol": "ingest"
+        },
+        {
+          "file": "app/webhooks/verify_sig.py",
+          "symbol": "verify_sig"
+        },
+        {
+          "file": "app/webhooks/parse.py",
+          "symbol": "parse"
+        },
+        {
+          "file": "app/webhooks/route.py",
+          "symbol": "route"
+        },
+        {
+          "file": "app/webhooks/handlers.py",
+          "symbol": "on_payment"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/http/client.py",
+          "symbol": "get"
+        },
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/services/jwt_service.py",
+          "symbol": "JwtService.verify"
+        },
+        {
+          "file": "app/events/bus.py",
+          "symbol": "emit"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h29",
+      "family": "webhook-sig-only",
+      "prompt": "webhook signature verification only \u2014 including the ttl constant it reads",
+      "seed": {
+        "file": "app/webhooks/ingest.py",
+        "symbol": "ingest"
+      },
+      "must": [
+        {
+          "file": "app/webhooks/ingest.py",
+          "symbol": "ingest"
+        },
+        {
+          "file": "app/webhooks/verify_sig.py",
+          "symbol": "verify_sig"
+        },
+        {
+          "file": "app/config/security.py",
+          "symbol": "TOKEN_TTL"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/webhooks/handlers.py",
+          "symbol": "on_payment"
+        },
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h30",
+      "family": "webhook-refund",
+      "prompt": "route a refund webhook event through on_refund and notify",
+      "seed": {
+        "file": "app/webhooks/route.py",
+        "symbol": "route"
+      },
+      "must": [
+        {
+          "file": "app/webhooks/route.py",
+          "symbol": "route"
+        },
+        {
+          "file": "app/webhooks/handlers.py",
+          "symbol": "on_refund"
+        },
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        },
+        {
+          "file": "app/http/client.py",
+          "symbol": "get"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/webhooks/handlers.py",
+          "symbol": "on_payment"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h31",
+      "family": "webhook-payment-handler",
+      "prompt": "on_payment webhook: charge, audit trail, and email receipt",
+      "seed": {
+        "file": "app/webhooks/handlers.py",
+        "symbol": "on_payment"
+      },
+      "must": [
+        {
+          "file": "app/webhooks/handlers.py",
+          "symbol": "on_payment"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/http/client.py",
+          "symbol": "get"
+        },
+        {
+          "file": "app/audit/record.py",
+          "symbol": "record"
+        },
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        },
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        },
+        {
+          "file": "app/analytics/tracker.py",
+          "symbol": "track"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/webhooks/handlers.py",
+          "symbol": "on_refund"
+        },
+        {
+          "file": "app/services/jwt_service.py",
+          "symbol": "JwtService.verify"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h32",
+      "family": "webhook-ttl-trap",
+      "prompt": "webhook verify_sig and TOKEN_TTL \u2014 do not climb into jwt verify user path",
+      "seed": {
+        "file": "app/webhooks/verify_sig.py",
+        "symbol": "verify_sig"
+      },
+      "must": [
+        {
+          "file": "app/webhooks/verify_sig.py",
+          "symbol": "verify_sig"
+        },
+        {
+          "file": "app/config/security.py",
+          "symbol": "TOKEN_TTL"
+        },
+        {
+          "file": "app/webhooks/ingest.py",
+          "symbol": "ingest"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/services/jwt_service.py",
+          "symbol": "JwtService.verify"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/utils/token.py",
+          "symbol": "decode"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        }
+      ],
+      "notes": "upward to ingest optional; TOKEN_TTL shared with auth"
+    },
+    {
+      "id": "h33",
+      "family": "search-full",
+      "prompt": "search query path: tokenize, rank with cache, score, fetch docs via db and http",
+      "seed": {
+        "file": "app/search/query.py",
+        "symbol": "query"
+      },
+      "must": [
+        {
+          "file": "app/search/query.py",
+          "symbol": "query"
+        },
+        {
+          "file": "app/search/tokenize.py",
+          "symbol": "tokenize_q"
+        },
+        {
+          "file": "app/search/rank.py",
+          "symbol": "rank"
+        },
+        {
+          "file": "app/search/score.py",
+          "symbol": "score_hit"
+        },
+        {
+          "file": "app/cache/memo.py",
+          "symbol": "get"
+        },
+        {
+          "file": "app/search/fetch_docs.py",
+          "symbol": "fetch_docs"
+        },
+        {
+          "file": "app/config/database.py",
+          "symbol": "connect"
+        },
+        {
+          "file": "app/http/client.py",
+          "symbol": "get"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h34",
+      "family": "search-rank-cache",
+      "prompt": "ranking only: score hits and memo cache get \u2014 not remote doc fetch",
+      "seed": {
+        "file": "app/search/rank.py",
+        "symbol": "rank"
+      },
+      "must": [
+        {
+          "file": "app/search/rank.py",
+          "symbol": "rank"
+        },
+        {
+          "file": "app/search/score.py",
+          "symbol": "score_hit"
+        },
+        {
+          "file": "app/cache/memo.py",
+          "symbol": "get"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/search/fetch_docs.py",
+          "symbol": "fetch_docs"
+        },
+        {
+          "file": "app/http/client.py",
+          "symbol": "get"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h35",
+      "family": "search-fetch",
+      "prompt": "fetch_docs for ranked hits: database connect and http doc get",
+      "seed": {
+        "file": "app/search/fetch_docs.py",
+        "symbol": "fetch_docs"
+      },
+      "must": [
+        {
+          "file": "app/search/fetch_docs.py",
+          "symbol": "fetch_docs"
+        },
+        {
+          "file": "app/config/database.py",
+          "symbol": "connect"
+        },
+        {
+          "file": "app/http/client.py",
+          "symbol": "get"
+        },
+        {
+          "file": "app/search/query.py",
+          "symbol": "query"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/cache/memo.py",
+          "symbol": "get"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        }
+      ],
+      "notes": "query is caller \u2014 upward"
+    },
+    {
+      "id": "h36",
+      "family": "search-no-pay",
+      "prompt": "full search query \u2014 keep pay and auth out even if http is shared",
+      "seed": {
+        "file": "app/search/query.py",
+        "symbol": "query"
+      },
+      "must": [
+        {
+          "file": "app/search/query.py",
+          "symbol": "query"
+        },
+        {
+          "file": "app/search/tokenize.py",
+          "symbol": "tokenize_q"
+        },
+        {
+          "file": "app/search/rank.py",
+          "symbol": "rank"
+        },
+        {
+          "file": "app/search/fetch_docs.py",
+          "symbol": "fetch_docs"
+        },
+        {
+          "file": "app/http/client.py",
+          "symbol": "get"
+        },
+        {
+          "file": "app/config/database.py",
+          "symbol": "connect"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/audit/record.py",
+          "symbol": "record"
+        },
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h37",
+      "family": "upload-full",
+      "prompt": "receive upload: scan, store in memo, index tokens, notify user",
+      "seed": {
+        "file": "app/uploads/receive.py",
+        "symbol": "receive"
+      },
+      "must": [
+        {
+          "file": "app/uploads/receive.py",
+          "symbol": "receive"
+        },
+        {
+          "file": "app/uploads/scan.py",
+          "symbol": "scan"
+        },
+        {
+          "file": "app/uploads/store.py",
+          "symbol": "store"
+        },
+        {
+          "file": "app/cache/memo.py",
+          "symbol": "put"
+        },
+        {
+          "file": "app/uploads/index_file.py",
+          "symbol": "index_file"
+        },
+        {
+          "file": "app/search/tokenize.py",
+          "symbol": "tokenize_q"
+        },
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        },
+        {
+          "file": "app/http/client.py",
+          "symbol": "get"
+        },
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/search/query.py",
+          "symbol": "query"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h38",
+      "family": "upload-scan-store",
+      "prompt": "upload scan and store only \u2014 no notify email",
+      "seed": {
+        "file": "app/uploads/receive.py",
+        "symbol": "receive"
+      },
+      "must": [
+        {
+          "file": "app/uploads/receive.py",
+          "symbol": "receive"
+        },
+        {
+          "file": "app/uploads/scan.py",
+          "symbol": "scan"
+        },
+        {
+          "file": "app/uploads/store.py",
+          "symbol": "store"
+        },
+        {
+          "file": "app/cache/memo.py",
+          "symbol": "put"
+        },
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        },
+        {
+          "file": "app/http/client.py",
+          "symbol": "get"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h39",
+      "family": "upload-index",
+      "prompt": "index uploaded file path tokens \u2014 receive pipeline neighbors optional",
+      "seed": {
+        "file": "app/uploads/index_file.py",
+        "symbol": "index_file"
+      },
+      "must": [
+        {
+          "file": "app/uploads/index_file.py",
+          "symbol": "index_file"
+        },
+        {
+          "file": "app/search/tokenize.py",
+          "symbol": "tokenize_q"
+        },
+        {
+          "file": "app/uploads/store.py",
+          "symbol": "store"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/search/query.py",
+          "symbol": "query"
+        },
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        }
+      ],
+      "notes": "store not called from index_file \u2014 hard upward"
+    },
+    {
+      "id": "h40",
+      "family": "flags-full",
+      "prompt": "evaluate a feature flag: remote fetch over http and local rule match",
+      "seed": {
+        "file": "app/flags/evaluate.py",
+        "symbol": "evaluate"
+      },
+      "must": [
+        {
+          "file": "app/flags/evaluate.py",
+          "symbol": "evaluate"
+        },
+        {
+          "file": "app/flags/remote.py",
+          "symbol": "fetch"
+        },
+        {
+          "file": "app/http/client.py",
+          "symbol": "get"
+        },
+        {
+          "file": "app/flags/rules.py",
+          "symbol": "match"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h41",
+      "family": "flags-remote-only",
+      "prompt": "flag remote fetch via http \u2014 not the local matcher",
+      "seed": {
+        "file": "app/flags/evaluate.py",
+        "symbol": "evaluate"
+      },
+      "must": [
+        {
+          "file": "app/flags/evaluate.py",
+          "symbol": "evaluate"
+        },
+        {
+          "file": "app/flags/remote.py",
+          "symbol": "fetch"
+        },
+        {
+          "file": "app/http/client.py",
+          "symbol": "get"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/flags/rules.py",
+          "symbol": "match"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h42",
+      "family": "audit-deep",
+      "prompt": "audit record writes log, track, and opens db",
+      "seed": {
+        "file": "app/audit/record.py",
+        "symbol": "record"
+      },
+      "must": [
+        {
+          "file": "app/audit/record.py",
+          "symbol": "record"
+        },
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        },
+        {
+          "file": "app/analytics/tracker.py",
+          "symbol": "track"
+        },
+        {
+          "file": "app/config/database.py",
+          "symbol": "connect"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h43",
+      "family": "cache-memo",
+      "prompt": "memo cache put used by upload store \u2014 collect store and put, not http get",
+      "seed": {
+        "file": "app/uploads/store.py",
+        "symbol": "store"
+      },
+      "must": [
+        {
+          "file": "app/uploads/store.py",
+          "symbol": "store"
+        },
+        {
+          "file": "app/cache/memo.py",
+          "symbol": "put"
+        },
+        {
+          "file": "app/uploads/receive.py",
+          "symbol": "receive"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/http/client.py",
+          "symbol": "get"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        }
+      ],
+      "notes": "receive upward; get sibling in same module not required"
+    },
+    {
+      "id": "h44",
+      "family": "notify-http",
+      "prompt": "mailer send notification including http client \u2014 not billing charge",
+      "seed": {
+        "file": "app/notify/mailer.py",
+        "symbol": "send"
+      },
+      "must": [
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        },
+        {
+          "file": "app/http/client.py",
+          "symbol": "get"
+        },
+        {
+          "file": "app/shipping/schedule.py",
+          "symbol": "schedule"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/audit/record.py",
+          "symbol": "record"
+        },
+        {
+          "file": "app/jobs/digest.py",
+          "symbol": "send_digest"
+        }
+      ],
+      "notes": "schedule is caller of send \u2014 upward tough"
+    },
+    {
+      "id": "h45",
+      "family": "shared-http-trap",
+      "prompt": "http client get used by pay \u2014 collect charge and audit, not mailer",
+      "seed": {
+        "file": "app/http/client.py",
+        "symbol": "get"
+      },
+      "must": [
+        {
+          "file": "app/http/client.py",
+          "symbol": "get"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/audit/record.py",
+          "symbol": "record"
+        },
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        },
+        {
+          "file": "app/analytics/tracker.py",
+          "symbol": "track"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/search/fetch_docs.py",
+          "symbol": "fetch_docs"
+        }
+      ],
+      "notes": "shared hub seed \u2014 upward fan-in is hard"
+    },
+    {
+      "id": "h46",
+      "family": "site-auth-log-track",
+      "prompt": "authenticate ok log AND login track \u2014 both site effects, not jwt path",
+      "seed": {
+        "file": "app/middleware/auth.py",
+        "symbol": "authenticate"
+      },
+      "must": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        },
+        {
+          "file": "app/analytics/tracker.py",
+          "symbol": "track"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/services/jwt_service.py",
+          "symbol": "JwtService.verify"
+        },
+        {
+          "file": "app/utils/token.py",
+          "symbol": "decode"
+        },
+        {
+          "file": "app/repositories/user_repo.py",
+          "symbol": "UserRepository.resolve"
+        },
+        {
+          "file": "app/models/user.py",
+          "symbol": "User.lookup"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h47",
+      "family": "ttl-readers",
+      "prompt": "who reads TOKEN_TTL along with verify and the webhook sig check?",
+      "seed": {
+        "file": "app/config/security.py",
+        "symbol": "TOKEN_TTL"
+      },
+      "must": [
+        {
+          "file": "app/config/security.py",
+          "symbol": "TOKEN_TTL"
+        },
+        {
+          "file": "app/services/jwt_service.py",
+          "symbol": "JwtService.verify"
+        },
+        {
+          "file": "app/webhooks/verify_sig.py",
+          "symbol": "verify_sig"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/models/user.py",
+          "symbol": "User.lookup"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        }
+      ],
+      "notes": "multi-reader refs across factions"
+    },
+    {
+      "id": "h48",
+      "family": "checkout-no-auth-words",
+      "prompt": "authentication tokens in checkout payment \u2014 still collect checkout charge path not login",
+      "seed": {
+        "file": "app/checkout/begin.py",
+        "symbol": "begin"
+      },
+      "must": [
+        {
+          "file": "app/checkout/begin.py",
+          "symbol": "begin"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/http/client.py",
+          "symbol": "get"
+        },
+        {
+          "file": "app/audit/record.py",
+          "symbol": "record"
+        },
+        {
+          "file": "app/shipping/schedule.py",
+          "symbol": "schedule"
+        },
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/services/jwt_service.py",
+          "symbol": "JwtService.verify"
+        },
+        {
+          "file": "app/utils/token.py",
+          "symbol": "decode"
+        },
+        {
+          "file": "app/repositories/user_repo.py",
+          "symbol": "UserRepository.resolve"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h49",
+      "family": "deliver-no-auth",
+      "prompt": "job deliver + notify with authentication wording \u2014 stay in jobs/notify",
+      "seed": {
+        "file": "app/jobs/deliver.py",
+        "symbol": "deliver"
+      },
+      "must": [
+        {
+          "file": "app/jobs/deliver.py",
+          "symbol": "deliver"
+        },
+        {
+          "file": "app/jobs/digest.py",
+          "symbol": "send_digest"
+        },
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        },
+        {
+          "file": "app/http/client.py",
+          "symbol": "get"
+        },
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        },
+        {
+          "file": "app/analytics/tracker.py",
+          "symbol": "track"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/services/jwt_service.py",
+          "symbol": "JwtService.verify"
+        },
+        {
+          "file": "app/utils/token.py",
+          "symbol": "decode"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        }
+      ],
+      "notes": ""
+    },
+    {
+      "id": "h50",
+      "family": "cross-checkout-webhook",
+      "prompt": "payment charge shared by checkout and webhooks \u2014 from charge collect audit http log track",
+      "seed": {
+        "file": "app/billing/invoices.py",
+        "symbol": "charge"
+      },
+      "must": [
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/http/client.py",
+          "symbol": "get"
+        },
+        {
+          "file": "app/audit/record.py",
+          "symbol": "record"
+        },
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        },
+        {
+          "file": "app/analytics/tracker.py",
+          "symbol": "track"
+        },
+        {
+          "file": "app/config/database.py",
+          "symbol": "connect"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/checkout/begin.py",
+          "symbol": "begin"
+        },
+        {
+          "file": "app/webhooks/ingest.py",
+          "symbol": "ingest"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/search/query.py",
+          "symbol": "query"
+        }
+      ],
+      "notes": ""
+    }
+  ]
+}

@@ -247,6 +247,7 @@ def test_ctx_mcp_client_overrides_detection(monkeypatch: pytest.MonkeyPatch) -> 
 def test_attach_gate_includes_session_context(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CTX_MCP_SESSION_ISOLATE", "1")
     monkeypatch.setenv("CTX_MCP_CLIENT", "copilot")
+    monkeypatch.setenv("CTX_MCP_ECHO_SESSION", "1")
     from pipeline.mcp_locate import _attach_gate
     from pipeline.session_isolation import bind_resolved_session, reset_resolved_session, resolve_session
 

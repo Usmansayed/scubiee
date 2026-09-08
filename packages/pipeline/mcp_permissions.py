@@ -25,16 +25,34 @@ from pipeline.branding import MCP_SERVER_NAME
 
 PermissionProfile = Literal["locate", "all"]
 
-# Phase surface (default product MCP tools) — read-only locate/navigation.
+# Phase surface (default product MCP tools) — ship locate ladder.
 PHASE_LOCATE_TOOLS: tuple[str, ...] = (
     "gate",
     "map",
-    "focus",
-    "grep",
-    "glob",
+    "pack_context",
+    "expand_context",
+    "collect_hot_context",
     "workspace",
     "expand",
     "status",
+)
+
+# Lab/classic extras (still read-only) — approved when those experiments are enabled.
+PHASE_LAB_LOCATE_TOOLS: tuple[str, ...] = (
+    "pack_poly_embed",
+    "pack_semantic",
+    "map_context",
+    "pinpoint",
+    "plate",
+)
+
+PHASE_CLASSIC_LOCATE_TOOLS: tuple[str, ...] = (
+    "pack_poly_embed",
+    "pack_semantic",
+    "map_context",
+    "focus",
+    "grep",
+    "glob",
 )
 
 # Legacy / rich surfaces — still read-only for typical use.
@@ -142,6 +160,11 @@ for _slug in _EMBEDDED_MCP_SLUGS:
 
 
 def locate_tool_names(*, profile: PermissionProfile = "locate") -> list[str]:
+    """Tools to pre-approve for the default ship MCP surface.
+
+    Lab/classic extras are not auto-approved here — enable via
+    ``CTX_MCP_EXPERIMENT=lab|classic`` and extend host allowlists if needed.
+    """
     if profile == "all":
         return list(PHASE_LOCATE_TOOLS) + list(LEGACY_LOCATE_TOOLS)
     return list(PHASE_LOCATE_TOOLS)
@@ -242,6 +265,36 @@ def _write_json_object(path: Path, document: dict[str, Any]) -> None:
     )
 
 
+def _prune_stale_scubiee_allowlist_entries(
+    entries: list[str],
+    *,
+    profile: PermissionProfile,
+) -> list[str]:
+    """Drop classic/lab tool grants when profile is ship locate (sticky merge fix)."""
+    if profile != "locate":
+        return entries
+    stale_tools = {
+        *PHASE_LAB_LOCATE_TOOLS,
+        *PHASE_CLASSIC_LOCATE_TOOLS,
+    } - set(PHASE_LOCATE_TOOLS)
+    stale_suffixes = {f":{t}" for t in stale_tools}
+    stale_claude = {f"mcp__scubiee__{t}" for t in stale_tools} | {
+        f"mcp__{MCP_SERVER_NAME.replace('-', '_')}__{t}" for t in stale_tools
+    }
+    out: list[str] = []
+    for raw in entries:
+        item = str(raw).strip()
+        if not item:
+            continue
+        low = item.lower()
+        if any(low.endswith(suf) for suf in stale_suffixes):
+            continue
+        if low in {s.lower() for s in stale_claude}:
+            continue
+        out.append(item)
+    return out
+
+
 def merge_cursor_permissions(
     path: Path,
     *,
@@ -252,20 +305,28 @@ def merge_cursor_permissions(
     additions = _cursor_mcp_allowlist(profile=profile)
     existing = document.get("mcpAllowlist")
     existing_list = existing if isinstance(existing, list) else []
-    document["mcpAllowlist"] = _merge_unique_strings(
+    pruned = _prune_stale_scubiee_allowlist_entries(
         [str(x) for x in existing_list],
-        additions,
+        profile=profile,
     )
+    document["mcpAllowlist"] = _merge_unique_strings(pruned, additions)
     auto_run = document.get("autoRun")
     if not isinstance(auto_run, dict):
         auto_run = {}
     allow_instructions = auto_run.get("allow_instructions")
     instr_list = allow_instructions if isinstance(allow_instructions, list) else []
+    # Drop sticky classic/lab coaching lines from older connects.
+    instr_list = [
+        str(x)
+        for x in instr_list
+        if "focus, grep, glob" not in str(x).lower()
+        and "focus/grep" not in str(x).lower()
+    ]
     instr_list = _merge_unique_strings(
-        [str(x) for x in instr_list],
+        instr_list,
         [
-            "Allow Scubiee MCP locate tools (gate, map, focus, grep, glob, "
-            "workspace, expand, status) for read-only codebase navigation."
+            "Allow Scubiee MCP locate tools (gate, map, pack_context, expand_context, "
+            "collect_hot_context, workspace, expand, status) for read-only codebase navigation."
         ],
     )
     auto_run["allow_instructions"] = instr_list
@@ -295,8 +356,12 @@ def merge_claude_settings_permissions(
         permissions = {}
     allow = permissions.get("allow")
     allow_list = allow if isinstance(allow, list) else []
-    permissions["allow"] = _merge_unique_strings(
+    pruned = _prune_stale_scubiee_allowlist_entries(
         [str(x) for x in allow_list],
+        profile=profile,
+    )
+    permissions["allow"] = _merge_unique_strings(
+        pruned,
         _claude_allow_rules(profile=profile),
     )
     document["permissions"] = permissions
@@ -337,8 +402,8 @@ def _continue_permissions_yaml(*, profile: PermissionProfile) -> str:
 def _permissions_readme(tool_name: str, *, extra: str = "") -> str:
     body = (
         f"# Scubiee MCP permissions ({tool_name})\n\n"
-        "Scubiee locate tools are read-only (gate, map, focus, grep, glob, "
-        "workspace, expand, status). Pre-approve them in your host so agents "
+        "Scubiee locate tools are read-only (gate, map, pack_context, expand_context, "
+        "collect_hot_context, workspace, expand, status). Pre-approve them in your host so agents "
         "are not blocked with **permissions configuration** errors.\n\n"
     )
     if extra:

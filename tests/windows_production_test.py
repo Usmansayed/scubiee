@@ -43,6 +43,8 @@ from pathlib import Path
 
 TEST_REPO = os.environ.get("TEST_REPO", os.getcwd())
 TIMEOUT = 120  # Windows can be slower on cold start
+# Cold index of a large repo on DirectML runs well past the per-command budget.
+INDEX_TIMEOUT = int(os.environ.get("INDEX_TIMEOUT", "2400"))
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -68,12 +70,35 @@ def parse(stdout):
         return {"_raw": stdout}
 
 
+def connected_slugs():
+    """Tools the operator had connected before this suite ran."""
+    state = Path.home() / ".scubiee" / "connected_tools.json"
+    try:
+        data = json.loads(state.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    slugs = data.get("slugs") if isinstance(data, dict) else None
+    return [str(s) for s in slugs if str(s).strip()] if isinstance(slugs, list) else []
+
+
+def _version_at_least(text, minimum):
+    """Compare the first dotted version found in `text` against `minimum`."""
+    import re
+
+    m = re.search(r"(\d+)\.(\d+)\.(\d+)", text or "")
+    if not m:
+        return False
+    return tuple(int(p) for p in m.groups()) >= minimum
+
+
 class McpSession:
     """Drives scubiee-mcp over stdio JSON-RPC."""
 
     def __init__(self, repo=TEST_REPO):
         env = os.environ.copy()
         env["CTX_REPO"] = repo
+        env["CTX_MCP_SURFACE"] = "phase"
+        env["CTX_MCP_EXPERIMENT"] = "ship"
         env["PYTHONUTF8"] = "1"
         # Windows: use CREATE_NO_WINDOW to avoid console flash
         kwargs = {}
@@ -172,7 +197,7 @@ def test_install():
     check("scubiee on PATH and runnable", code == 0, out.strip().split("\n")[0])
 
     version_line = out.strip().split("\n")[0] if out else ""
-    check("version >= 0.2.56", "0.2.5" in version_line or "0.2.6" in version_line,
+    check("version >= 0.2.56", _version_at_least(version_line, (0, 2, 56)),
           version_line)
 
     # Verify no path-separator issues (Windows backslash)
@@ -186,22 +211,23 @@ def test_install():
 def test_setup():
     section("2. Setup (hardware detection)")
     code, out, err = run("setup", "--status", timeout=30)
-    combined = out + err
     result = parse(out)
-    has_profile = result.get("profile") or any(
-        x in combined.lower() for x in ["dml", "cuda", "cpu", "ready"]
+    profile = (
+        result.get("preferred_profile")
+        or (result.get("accel") or {})
+        or result.get("profile")
     )
-    check("setup --status returns profile", has_profile,
-          f"profile={result.get('profile')}")
+    if isinstance(profile, dict):
+        profile = profile.get("profile")
+    check("setup --status returns profile", bool(profile), f"profile={profile}")
 
-    # Check accel.json
-    accel = Path.home() / ".context-engine" / "accel.json"
-    check("accel.json exists", accel.is_file())
+    # accel.json lives under the active CTX home, which setup --status reports.
+    accel = Path(result.get("accel_path") or (Path.home() / ".scubiee" / "accel.json"))
+    check("accel.json exists", accel.is_file(), str(accel))
 
-    # Verify DML or CUDA or CPU was selected (not an error)
-    if result.get("profile"):
-        check("Profile is valid", result["profile"] in ("dml", "cuda", "cpu", "mlx", "coreml"),
-              result["profile"])
+    if profile:
+        check("Profile is valid", profile in ("dml", "cuda", "cpu", "mlx", "coreml"),
+              profile)
 
 
 def test_init_and_index():
@@ -218,20 +244,25 @@ def test_init_and_index():
     if needs_confirm:
         check("Safety cap fires (needs --confirm)", True,
               f"n_files={result.get('n_files')}")
-        code, out, _ = run("init", "--confirm", timeout=600)
+        code, out, _ = run("init", "--confirm", timeout=INDEX_TIMEOUT)
         result = parse(out)
 
-    # Verify index exists
-    code2, out2, _ = run("status", "--json", timeout=30)
-    status = parse(out2)
-    chunks = status.get("chunks") or status.get("meta", {}).get("chunks", 0)
+    # A cold index on a large repo keeps writing after init returns.
+    chunks = 0
+    deadline = time.time() + INDEX_TIMEOUT
+    while time.time() < deadline:
+        status = parse(run("status", "--json", timeout=60)[1])
+        chunks = status.get("chunks") or status.get("meta", {}).get("chunks", 0)
+        if chunks > 0:
+            break
+        time.sleep(10)
     check("Index exists with chunks > 0", chunks > 0, f"chunks={chunks}")
 
-    # Wait for engine warm-up (Windows DML can take 10-15s)
+    # The engine starts on demand and idles out again, so ask for it explicitly.
+    run("engine", "ensure", timeout=120)
     warm = False
     for _ in range(10):
-        code3, out3, _ = run("status", "--json", timeout=10)
-        s = parse(out3)
+        s = parse(run("status", "--json", timeout=30)[1])
         if s.get("server", {}).get("warm") or s.get("server", {}).get("ok"):
             warm = True
             break
@@ -240,31 +271,56 @@ def test_init_and_index():
 
 
 def test_mcp_tools():
-    section("4. MCP tools (all 7)")
+    section("4. MCP tools (ship surface)")
     session = McpSession()
+    query = "main entry point initialization setup pack_context heatmap"
 
     tests = [
         ("status", {}),
-        ("map", {"query": "main entry point initialization setup config"}),
-        ("grep", {"pattern": "def ", "glob": "*.py", "max_hits": 5}),
-        ("glob", {"pattern": "*.py", "limit": 5}),
+        ("map", {"query": query, "k": 8}),
         ("workspace", {"action": "show"}),
-        ("focus", {"path": "", "mode": "outline"}),
         ("gate", {}),
     ]
 
+    seed_file = "packages/pipeline/context_trace.py"
+    seed_symbol = "run_pack_context"
     for name, args in tests:
         r = session.call(name, args, timeout=45)
         ok = not r.get("__timeout__") and not r.get("__error__")
-        if name == "focus" and not ok:
-            ok = True  # graceful error = pass
+        if name == "map":
+            seed = r.get("suggested_seed") or {}
+            if seed.get("file"):
+                seed_file = str(seed["file"])
+            if seed.get("symbol"):
+                seed_symbol = str(seed["symbol"])
+            ok = ok and (bool(r.get("cards") or r.get("hits") or r.get("ok")))
         check(f"{name}", ok, f"{r.get('__dt__', 0):.1f}s")
+
+    pack = session.call(
+        "pack_context",
+        {
+            "query": query,
+            "seed_file": seed_file,
+            "seed_symbol": seed_symbol,
+            "mode": "lean",
+        },
+        timeout=90,
+    )
+    check(
+        "pack_context",
+        not pack.get("__timeout__")
+        and not pack.get("__error__")
+        and bool(pack.get("ok") or pack.get("heatmap") or pack.get("chain")),
+        f"{pack.get('__dt__', 0):.1f}s",
+    )
 
     session.close()
 
 
 def test_connect_disconnect():
     section("5. Connect/disconnect (Windows paths)")
+
+    original = connected_slugs()
 
     code, out, _ = run("connect", "--all", "--dry-run")
     results = parse(out) if isinstance(parse(out), list) else []
@@ -290,6 +346,18 @@ def test_connect_disconnect():
     ok_count = sum(1 for r in results if isinstance(r, dict) and r.get("ok"))
     check(f"disconnect --all: {ok_count}/{len(results)} ok", ok_count >= 10)
 
+    # Put the operator's own connections back — this suite runs against a live
+    # machine, so a bare disconnect would leave their IDE without Scubiee.
+    if original:
+        code, out, _ = run("connect", *(f"--{slug}" for slug in original))
+        results = parse(out) if isinstance(parse(out), list) else []
+        ok_count = sum(1 for r in results if isinstance(r, dict) and r.get("ok"))
+        check(
+            f"restored {ok_count}/{len(original)} pre-test connections",
+            ok_count == len(original),
+            ",".join(original),
+        )
+
 
 def test_concurrent():
     section("6. Concurrent requests")
@@ -297,13 +365,13 @@ def test_concurrent():
 
     calls = [
         ("map", {"query": "database connection pool query builder"}),
-        ("grep", {"pattern": "import", "glob": "*.py", "max_hits": 3}),
-        ("glob", {"pattern": "**/*.py", "limit": 3}),
         ("status", {}),
         ("workspace", {"action": "show"}),
         ("map", {"query": "error handling exception retry mechanism"}),
-        ("grep", {"pattern": "class ", "glob": "*.py", "max_hits": 3}),
-        ("glob", {"pattern": ".", "limit": 10}),
+        ("gate", {}),
+        ("status", {}),
+        ("map", {"query": "pack_context expand_context heatmap seed"}),
+        ("workspace", {"action": "show"}),
     ]
 
     results = []
@@ -325,14 +393,12 @@ def test_adversarial():
     session = McpSession()
 
     cases = [
-        ("grep", {}, "missing pattern"),
-        ("grep", {"pattern": "a" * 5000, "glob": "*.py"}, "huge pattern"),
-        ("focus", {"path": "..\\..\\..\\Windows\\System32\\config\\SAM", "mode": "span"}, "path traversal"),
+        ("map", {"query": ""}, "empty map"),
+        ("pack_context", {"query": "x", "seed_file": "", "seed_symbol": ""}, "missing seed"),
+        ("expand_context", {"node": "..\\..\\..\\Windows\\System32\\config\\SAM"}, "path traversal"),
         ("map", {"query": "emoji"}, "emoji query"),
-        ("grep", {"pattern": "$(cmd /c del *)", "glob": "*.py"}, "shell injection"),
         ("gate", {"root": "C:\\NonExistent\\Path"}, "nonexistent path"),
-        ("glob", {"pattern": "**\\*" * 50}, "absurd glob"),
-        ("focus", {"path": "x.py", "mode": "invalid"}, "invalid mode"),
+        ("map", {"query": "a" * 5000}, "huge query"),
     ]
 
     crashed = False

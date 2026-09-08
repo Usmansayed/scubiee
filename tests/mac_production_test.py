@@ -77,6 +77,8 @@ class McpSession:
     def __init__(self, repo=TEST_REPO):
         env = os.environ.copy()
         env["CTX_REPO"] = repo
+        env["CTX_MCP_SURFACE"] = "phase"
+        env["CTX_MCP_EXPERIMENT"] = "ship"
         env["PYTHONUTF8"] = "1"
         self.proc = subprocess.Popen(
             ["scubiee-mcp"],
@@ -212,26 +214,48 @@ def test_init_and_index():
 
 
 def test_mcp_tools():
-    section("4. MCP tools (all 7)")
+    section("4. MCP tools (ship surface)")
     session = McpSession()
+    query = "main entry point initialization setup pack_context heatmap"
 
     tests = [
         ("status", {}),
-        ("map", {"query": "main entry point initialization setup config"}),
-        ("grep", {"pattern": "def ", "glob": "*.py", "max_hits": 5}),
-        ("glob", {"pattern": "*.py", "limit": 5}),
+        ("map", {"query": query, "k": 8}),
         ("workspace", {"action": "show"}),
-        ("focus", {"path": "", "mode": "outline"}),  # empty path = best-effort
         ("gate", {}),
     ]
 
+    seed_file = "packages/pipeline/context_trace.py"
+    seed_symbol = "run_pack_context"
     for name, args in tests:
         r = session.call(name, args, timeout=30)
         ok = not r.get("__timeout__") and not r.get("__error__")
-        # focus with empty path may return an error (that's ok, not a crash)
-        if name == "focus" and not ok:
-            ok = True  # graceful error = pass
+        if name == "map":
+            seed = r.get("suggested_seed") or {}
+            if seed.get("file"):
+                seed_file = str(seed["file"])
+            if seed.get("symbol"):
+                seed_symbol = str(seed["symbol"])
+            ok = ok and (bool(r.get("cards") or r.get("hits") or r.get("ok")))
         check(f"{name}", ok, f"{r.get('__dt__', 0):.1f}s")
+
+    pack = session.call(
+        "pack_context",
+        {
+            "query": query,
+            "seed_file": seed_file,
+            "seed_symbol": seed_symbol,
+            "mode": "lean",
+        },
+        timeout=90,
+    )
+    check(
+        "pack_context",
+        not pack.get("__timeout__")
+        and not pack.get("__error__")
+        and bool(pack.get("ok") or pack.get("heatmap") or pack.get("chain")),
+        f"{pack.get('__dt__', 0):.1f}s",
+    )
 
     session.close()
 
@@ -270,13 +294,13 @@ def test_concurrent():
 
     calls = [
         ("map", {"query": "database connection pool query builder"}),
-        ("grep", {"pattern": "import", "glob": "*.py", "max_hits": 3}),
-        ("glob", {"pattern": "**/*.py", "limit": 3}),
         ("status", {}),
         ("workspace", {"action": "show"}),
         ("map", {"query": "error handling exception retry mechanism"}),
-        ("grep", {"pattern": "class ", "glob": "*.py", "max_hits": 3}),
-        ("glob", {"pattern": ".", "limit": 10}),
+        ("gate", {}),
+        ("status", {}),
+        ("map", {"query": "pack_context expand_context heatmap seed"}),
+        ("workspace", {"action": "show"}),
     ]
 
     results = []
@@ -298,14 +322,12 @@ def test_adversarial():
     session = McpSession()
 
     cases = [
-        ("grep", {}, "missing pattern"),
-        ("grep", {"pattern": "a" * 5000, "glob": "*.py"}, "huge pattern"),
-        ("focus", {"path": "../../../etc/passwd", "mode": "span"}, "path traversal"),
-        ("map", {"query": "🚀💻🔥 emoji"}, "emoji query"),
-        ("grep", {"pattern": "$(rm -rf /)", "glob": "*.py"}, "shell injection"),
+        ("map", {"query": ""}, "empty map"),
+        ("pack_context", {"query": "x", "seed_file": "", "seed_symbol": ""}, "missing seed"),
+        ("expand_context", {"node": "../../../etc/passwd"}, "path traversal node"),
+        ("map", {"query": "emoji"}, "emoji query"),
         ("gate", {"root": "/nonexistent/path/foo"}, "nonexistent path"),
-        ("glob", {"pattern": "**/*" * 50}, "absurd glob"),
-        ("focus", {"path": "x.py", "mode": "invalid"}, "invalid mode"),
+        ("map", {"query": "a" * 5000}, "huge query"),
     ]
 
     crashed = False

@@ -272,6 +272,13 @@ def test_wipe_all_confirm_alias_via_dispatch(tmp_path: Path, monkeypatch) -> Non
     home = tmp_path / "ce-home"
     home.mkdir()
     monkeypatch.setenv("CTX_HOME", str(home))
+    # A full wipe also sweeps the ``Path.home()`` defaults (_context_engine_homes,
+    # user MCP, user rules) and, with no --repo, the current directory. CTX_HOME
+    # alone does not sandbox either, so fake both.
+    monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path / "fake-user"))
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    monkeypatch.chdir(repo)
     from pipeline.wipe import wipe
 
     out = wipe(all=True, yes=True, models=False, package=False)

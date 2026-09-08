@@ -82,7 +82,7 @@ When paused/stopped, follow **`scubiee resume`** (not `wake`).
 
 ---
 
-## MCP tools (default `phase` surface)
+## MCP tools (default `phase` / ship surface)
 
 **Full reference:** [MCP tools reference](./mcp-tools-reference.md)
 
@@ -91,14 +91,13 @@ When paused/stopped, follow **`scubiee resume`** (not `wake`).
 | `gate` | Tiny managed check at session start (~5 tokens) |
 | `status` | Health + managed flag (`detail=gate` for tiny check) |
 | `map` | Ranked overview of relevant chunks/symbols |
-| `focus` | Deepen context — outline, span, neighbors, call_sites |
-| `grep` | Exact literal search (`glob=` supported; may set `truncated`) |
-| `glob` | Find files by path pattern |
+| `pack_context` | Lean heatmap around a seed (ladder step 2) |
+| `expand_context` | Grow callees/callers from a heatmap node |
+| `collect_hot_context` | Optional batched bodies for hot ids |
 | `workspace` | Session pins / heatmap — `show`, `pin`, `clear` |
 | `expand` | Re-open a stored span by handle |
-| `register_project` | Enroll repo from MCP with consent |
 
-`grep`/`glob` search **indexed** content. Empty + `truncated: false` means no match in that scope — not “file missing on disk.”
+Exact/name → **host** Grep/Glob/Read. Classic MCP `focus`/`grep`/`glob` are opt-in (`CTX_MCP_EXPERIMENT=classic`).
 
 ---
 

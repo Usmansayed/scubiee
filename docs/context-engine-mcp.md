@@ -69,29 +69,30 @@ retrieval environment for A/B trials:
 | `graph` | `search`, `neighbors`, `graph`, `status` | Graph-tool A/B |
 | `grep` | `grep`, `status` | Exact-only (paired w/ external graph) |
 
-### Phase surface (`CTX_MCP_SURFACE=phase`)
+### Phase surface (`CTX_MCP_SURFACE=phase`, ship default)
 
 Production default for managed repos after `scubiee init`. Agents should use:
 
 | Tool | When |
 |---|---|
 | `map(query)` | Cold / new topic — ranked cards, no bodies |
-| `focus(target, mode=outline\|span\|neighbors)` | Deepen a map hit — symbols, code span, import neighbors |
-| `grep(pattern, glob=…)` | Exact literals only |
-| `glob(pattern=…)` | File paths by name (`glob=` alias accepted; prefer `pattern=`) |
+| `pack_context(query, seed_file=…)` | Lean heatmap around a seed (composite_v1) |
+| `expand_context(node=…)` | Grow callees/callers when the pack is thin |
+| `collect_hot_context(ids=…)` | Optional bodies; prefer native Read on heatmap locs |
 | `expand(handle)` | Re-materialize a stored span after dedup |
 | `workspace(show)` | Mid-session heatmap / reorientation |
 | `status()` | Health; check top-level `agent_ready`: `yes` \| `warming` \| `stale` |
 
-**Phase behaviors (2026-08):**
+Exact/name → host Grep/Glob/Read. Classic MCP `focus`/`grep`/`glob` require `CTX_MCP_EXPERIMENT=classic`.
+
+**Phase behaviors:**
 
 - Duplicate `map(query)` returns **cached** cards (`cached: true`) without re-querying the daemon.
 - Nonsense/vague maps may return `confidence: low` with at most 3 cards and `weak_match: true`.
-- `glob(pattern="packages/*")` lists immediate child directories under `packages/`.
 - Transient daemon drops auto-retry once; errors include `should_retry: true`.
 - Managed `gate()` echoes `sid:…` when session isolation is shared across chats.
 
-Recommended flow: `map` → `focus(outline)` → `focus(span)` → edit → `grep` for literals.
+Recommended flow: `map` → `pack_context` → `expand_context` (if thin) → native Read on heatmap locs.
 
 ---
 

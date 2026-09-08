@@ -1,0 +1,30 @@
+{
+  "id": "event-emit",
+  "title": "How does emit run a handler?",
+  "query": "How does emit run a handler?",
+  "seed": {
+    "file": "app/events/bus.py",
+    "symbol": "emit"
+  },
+  "must": [
+    {"file": "app/events/bus.py", "symbol": "emit", "why": "seed"},
+    {"file": "app/events/registry.py", "symbol": "lookup", "why": "dynamic dispatch table"},
+    {"file": "app/handlers/welcome.py", "symbol": "handle", "why": "registered callback; generic name"}
+  ],
+  "should": [
+    {"file": "app/events/registry.py", "symbol": "bind", "why": "registration API"},
+    {"file": "app/bootstrap.py", "symbol": "start", "why": "wires handle into bind"}
+  ],
+  "must_not": [
+    {"file": "app/middleware/auth.py", "symbol": "authenticate", "why": "other domain"},
+    {"file": "app/billing/invoices.py", "symbol": "charge", "why": "other domain"},
+    {"file": "app/jobs/digest.py", "symbol": "send_digest", "why": "other domain"}
+  ],
+  "gold_rank": [
+    "app/events/bus.py::emit",
+    "app/events/registry.py::lookup",
+    "app/handlers/welcome.py::handle",
+    "app/bootstrap.py::start"
+  ],
+  "notes": "Dynamic dispatch. AST calls lookup() then fn(payload); the concrete handle is only visible via bind() registration."
+}

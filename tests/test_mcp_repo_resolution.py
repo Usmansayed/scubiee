@@ -12,9 +12,9 @@ from pipeline import mcp_locate
 PHASE_MANAGED_TOOLS = {
     "gate",
     "map",
-    "focus",
-    "grep",
-    "glob",
+    "pack_context",
+    "expand_context",
+    "collect_hot_context",
     "workspace",
     "expand",
     "status",

@@ -1,0 +1,34 @@
+{
+  "id": "login-entry",
+  "title": "How does login authenticate the user?",
+  "query": "How does login authenticate the user?",
+  "seed": {
+    "file": "app/routes/login.py",
+    "symbol": "login"
+  },
+  "must": [
+    {"file": "app/routes/login.py", "symbol": "login", "why": "seed route"},
+    {"file": "app/middleware/auth.py", "symbol": "authenticate", "why": "called by login"},
+    {"file": "app/middleware/auth.py", "symbol": "extract_bearer", "why": "credential parse"},
+    {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify", "why": "generic-named next hop"}
+  ],
+  "should": [
+    {"file": "app/utils/token.py", "symbol": "decode", "why": "claim decode"},
+    {"file": "app/repositories/user_repo.py", "symbol": "UserRepository.resolve", "why": "account load"}
+  ],
+  "must_not": [
+    {"file": "app/billing/invoices.py", "symbol": "charge", "why": "lexical trap"},
+    {"file": "app/routes/health.py", "symbol": "health", "why": "unrelated route"},
+    {"file": "app/http/client.py", "symbol": "get", "why": "infra"},
+    {"file": "app/services/session.py", "symbol": "start", "why": "unrelated"}
+  ],
+  "gold_rank": [
+    "app/routes/login.py::login",
+    "app/middleware/auth.py::authenticate",
+    "app/middleware/auth.py::extract_bearer",
+    "app/services/jwt_service.py::JwtService.verify",
+    "app/utils/token.py::decode",
+    "app/repositories/user_repo.py::UserRepository.resolve"
+  ],
+  "notes": "Seed is the caller, not the middleware. Tracing must walk callees, not just lexical neighbors of 'login'."
+}

@@ -33,8 +33,8 @@ class DirtyLedger:
     def __init__(
         self,
         *,
-        debounce_ms: int = 1500,
-        rewrite_debounce_ms: int = 2500,
+        debounce_ms: int = 1000,
+        rewrite_debounce_ms: int = 2000,
     ) -> None:
         self.debounce_ms = debounce_ms
         self.rewrite_debounce_ms = rewrite_debounce_ms

@@ -51,16 +51,16 @@ def _env_float(name: str, default: float) -> float:
 
 
 def embed_idle_demote_s() -> float:
-    """Align serve demotion with lifecycle idle window (default 25s)."""
+    """Align serve demotion with lifecycle idle window (default 15s)."""
     raw = os.environ.get("CTX_EMBED_IDLE_DEMOTE_S", "").strip()
     if raw:
-        return _env_float("CTX_EMBED_IDLE_DEMOTE_S", 25.0)
+        return _env_float("CTX_EMBED_IDLE_DEMOTE_S", 15.0)
     try:
         from pipeline.lifecycle_runtime import idle_seconds
 
         return idle_seconds()
     except Exception:  # noqa: BLE001
-        return 25.0
+        return 15.0
 
 
 EMBED_IDLE_DEMOTE_S = embed_idle_demote_s()  # import-time default for docs/tests
@@ -239,18 +239,27 @@ class MemoryGovernor:
         """Newest serve signal: semantic query or MCP/HTTP front-end use.
 
         When no MCP clients are registered, ignore passive hub touches from
-        status polls — only semantic queries count for serve demotion.
+        status polls and use the newer of ``last_client_left_at`` and the last
+        semantic query. The former keeps the embedder warm through the
+        disconnect grace window (IDE close → reopen reconnect); the latter keeps
+        CLI-driven work warm once that window has already elapsed.
         """
         try:
             from pipeline.lifecycle_runtime import active_client_count, load_policy
 
             if active_client_count() == 0:
-                candidates: list[float] = []
+                left = load_policy().get("last_client_left_at")
+                idle_candidates: list[float] = []
+                if left is not None:
+                    try:
+                        idle_candidates.append(float(left))
+                    except (TypeError, ValueError):
+                        pass
                 if self.last_semantic_at is not None:
-                    candidates.append(float(self.last_semantic_at))
-                if not candidates:
-                    return None
-                return max(candidates)
+                    idle_candidates.append(float(self.last_semantic_at))
+                if idle_candidates:
+                    return max(idle_candidates)
+                return None
         except Exception:  # noqa: BLE001
             pass
 

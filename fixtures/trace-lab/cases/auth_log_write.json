@@ -1,0 +1,26 @@
+{
+  "id": "auth-log-write",
+  "title": "Where does authenticate write log output?",
+  "query": "Where does authenticate write log output?",
+  "seed": {
+    "file": "app/middleware/auth.py",
+    "symbol": "authenticate"
+  },
+  "must": [
+    {"file": "app/middleware/auth.py", "symbol": "authenticate", "why": "seed call site"},
+    {"file": "app/utils/logger.py", "symbol": "log", "why": "query names the hub explicitly"}
+  ],
+  "should": [],
+  "must_not": [
+    {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify", "why": "not needed for a log-write question"},
+    {"file": "app/utils/token.py", "symbol": "decode", "why": "over-expansion"},
+    {"file": "app/billing/invoices.py", "symbol": "charge", "why": "unrelated"},
+    {"file": "app/repositories/user_repo.py", "symbol": "UserRepository.resolve", "why": "over-expansion"},
+    {"file": "app/models/user.py", "symbol": "User.lookup", "why": "over-expansion"}
+  ],
+  "gold_rank": [
+    "app/middleware/auth.py::authenticate",
+    "app/utils/logger.py::log"
+  ],
+  "notes": "Query-conditioned infra: logger is usually a must_not hub, but this query names it. A good tracer suppresses the rest of the auth path."
+}

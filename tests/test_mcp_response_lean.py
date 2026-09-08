@@ -221,6 +221,7 @@ def test_apply_lean_strips_card_coaching(monkeypatch: pytest.MonkeyPatch) -> Non
     monkeypatch.delenv("CTX_MCP_ECHO_GUIDANCE", raising=False)
     raw = {
         "ok": True,
+        "tool": "focus",
         "cards": [
             {
                 "file": "a.py",
@@ -236,3 +237,114 @@ def test_apply_lean_strips_card_coaching(monkeypatch: pytest.MonkeyPatch) -> Non
     assert "needs_outline" not in out["cards"][0]
     assert "span_hint" not in out["cards"][0]
     assert "follow_up" not in out["cards"][0]
+
+
+def test_pack_context_slim_heatmap_only_no_bodies(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("CTX_MCP_ECHO_GUIDANCE", raising=False)
+    monkeypatch.delenv("CTX_MCP_FULL_LOCATE", raising=False)
+    monkeypatch.delenv("CTX_MCP_PACK_BODIES", raising=False)
+    raw = {
+        "ok": True,
+        "tool": "pack_context",
+        "guide": "LEAN PACK — ignore",
+        "howto": "howto",
+        "ladder": "map → pack",
+        "next_actions": [{"tool": "expand_context"}],
+        "heatmap": [
+            {
+                "id": "a.py::f",
+                "symbol": "f",
+                "why": "CALLS:long",
+                "score": 1.0,
+                "loc": "a.py:1-2",
+            },
+            {
+                "id": "a.py::g",
+                "symbol": "g",
+                "score": 0.8,
+                "loc": "a.py:3-4",
+            },
+        ],
+        "engine": "composite_v1",
+        "n_nodes": 100,
+        "budget_chars": 6000,
+        "query": "q",
+        "mode": "lean",
+        "policy": "strict",
+        "include_bodies": False,
+        "seed": {"id": "a.py::f", "file": "a.py", "symbol": "f"},
+        "chain": [
+            {"id": "a.py::f", "loc": "a.py:1-2", "edge": "seed", "why": "seed", "score": 1.0}
+        ],
+        "pack": [],
+        "cold": [
+            {
+                "id": "a.py::g",
+                "loc": "a.py:3-4",
+                "score": 0.8,
+                "why": "CALLS:…",
+                "file": "a.py",
+                "symbol": "g",
+            }
+        ],
+        "session_id": "cursor@conn-1",
+        "g": "1:ce_x",
+    }
+    out = apply_lean_fields(raw)
+    assert out["tool"] == "pack_context"
+    assert "pack" not in out
+    assert "cold" not in out
+    assert "chain" not in out
+    assert "guide" not in out
+    assert "next_actions" not in out
+    assert "engine" not in out
+    assert out["read"]["top"] == 5
+    assert out["heatmap"][0]["heat"] == "hot"
+    assert out["heatmap"][0]["loc"] == "a.py:1-2"
+    assert out["heatmap"][0]["s"] == "f"
+    g = next(h for h in out["heatmap"] if h.get("id") == "a.py::g")
+    assert g["heat"] == "cold"
+    assert not any("def f" in str(v) for v in out.get("heatmap", []))
+    assert out["g"] == "1:ce_x"
+    assert out["session_id"] == "cursor@conn-1"
+
+
+def test_pack_context_bodies_opt_in(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("CTX_MCP_FULL_LOCATE", raising=False)
+    monkeypatch.setenv("CTX_MCP_PACK_BODIES", "1")
+    raw = {
+        "ok": True,
+        "tool": "pack_context",
+        "include_bodies": True,
+        "seed": {"id": "a.py::f", "file": "a.py", "symbol": "f"},
+        "chain": [],
+        "pack": [
+            {
+                "id": "a.py::f",
+                "loc": "a.py:1-2",
+                "text": "def f():\n    return 1\n",
+            }
+        ],
+        "cold": [],
+    }
+    out = apply_lean_fields(raw)
+    assert out["pack"] == [
+        {"id": "a.py::f", "loc": "a.py:1-2", "text": "def f():\n    return 1\n"}
+    ]
+
+
+def test_pack_context_full_locate_opt_in(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CTX_MCP_FULL_LOCATE", "1")
+    raw = {
+        "ok": True,
+        "tool": "pack_context",
+        "guide": "keep",
+        "heatmap": [{"id": "a.py::f"}],
+        "pack": [],
+        "chain": [],
+        "cold": [],
+        "seed": {},
+    }
+    out = apply_lean_fields(raw)
+    assert out["guide"] == "keep"
+    assert "heatmap" in out

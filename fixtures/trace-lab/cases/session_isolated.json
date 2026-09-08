@@ -1,0 +1,20 @@
+{
+  "id": "session-isolated",
+  "title": "How does start create a session?",
+  "query": "How does start create a session?",
+  "seed": {
+    "file": "app/services/session.py",
+    "symbol": "start"
+  },
+  "must": [
+    {"file": "app/services/session.py", "symbol": "start", "why": "seed"}
+  ],
+  "should": [],
+  "must_not": [
+    {"file": "app/middleware/auth.py", "symbol": "authenticate", "why": "sessions are not the jwt path"},
+    {"file": "app/utils/token.py", "symbol": "decode", "why": "unrelated"},
+    {"file": "app/routes/login.py", "symbol": "login", "why": "unrelated"}
+  ],
+  "gold_rank": ["app/services/session.py::start"],
+  "notes": "Name overlap with 'user' must not drag in auth."
+}

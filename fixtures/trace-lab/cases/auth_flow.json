@@ -1,0 +1,42 @@
+{
+  "id": "auth-flow",
+  "title": "How does authentication work?",
+  "query": "How does authentication work?",
+  "seed": {
+    "file": "app/middleware/auth.py",
+    "symbol": "authenticate"
+  },
+  "must": [
+    {"file": "app/middleware/auth.py", "symbol": "authenticate", "why": "seed entry"},
+    {"file": "app/middleware/auth.py", "symbol": "extract_bearer", "why": "parses the credential"},
+    {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify", "why": "called by authenticate; generic name"},
+    {"file": "app/utils/token.py", "symbol": "decode", "why": "called by verify; generic name, no auth vocabulary"},
+    {"file": "app/repositories/user_repo.py", "symbol": "UserRepository.resolve", "why": "called by verify; generic name"},
+    {"file": "app/models/user.py", "symbol": "User.lookup", "why": "schema/record access on the auth path"}
+  ],
+  "should": [
+    {"file": "app/config/security.py", "symbol": "TOKEN_TTL", "why": "expiry policy used by verify"},
+    {"file": "app/config/database.py", "symbol": "connect", "why": "storage handle for resolve"},
+    {"file": "app/routes/login.py", "symbol": "login", "why": "HTTP caller of authenticate"}
+  ],
+  "must_not": [
+    {"file": "app/billing/invoices.py", "symbol": "charge", "why": "lexical trap: comments mention authentication tokens"},
+    {"file": "app/utils/logger.py", "symbol": "log", "why": "hub imported everywhere; not required to understand auth"},
+    {"file": "app/analytics/tracker.py", "symbol": "track", "why": "side effect from authenticate, not on the credential path"},
+    {"file": "app/http/client.py", "symbol": "get", "why": "shared infrastructure for analytics/billing"},
+    {"file": "app/routes/health.py", "symbol": "health", "why": "unrelated route"},
+    {"file": "app/services/session.py", "symbol": "start", "why": "unrelated session helper"}
+  ],
+  "gold_rank": [
+    "app/middleware/auth.py::authenticate",
+    "app/middleware/auth.py::extract_bearer",
+    "app/services/jwt_service.py::JwtService.verify",
+    "app/utils/token.py::decode",
+    "app/repositories/user_repo.py::UserRepository.resolve",
+    "app/models/user.py::User.lookup",
+    "app/config/security.py::TOKEN_TTL",
+    "app/routes/login.py::login",
+    "app/config/database.py::connect"
+  ],
+  "notes": "Generic-named verify/decode/resolve are on the execution path but share almost no tokens with the query. billing/invoices.py is the lexical false-positive trap. logger is the graph-explosion hub."
+}

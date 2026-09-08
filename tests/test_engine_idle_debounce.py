@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 
-def test_default_idle_is_25(monkeypatch, tmp_path):
+def test_default_idle_is_15(monkeypatch, tmp_path):
     monkeypatch.setenv("CTX_HOME", str(tmp_path))
     monkeypatch.delenv("CTX_ENGINE_IDLE_S", raising=False)
     monkeypatch.delenv("CTX_ENGINE_TRANSITION_DEBOUNCE_S", raising=False)
@@ -14,10 +14,10 @@ def test_default_idle_is_25(monkeypatch, tmp_path):
         transition_debounce_seconds,
     )
 
-    assert DEFAULT_IDLE_S == 25.0
-    assert DEFAULT_TRANSITION_DEBOUNCE_S == 25.0
-    assert idle_seconds() == 25.0
-    assert transition_debounce_seconds() == 25.0
+    assert DEFAULT_IDLE_S == 15.0
+    assert DEFAULT_TRANSITION_DEBOUNCE_S == 15.0
+    assert idle_seconds() == 15.0
+    assert transition_debounce_seconds() == 15.0
 
 
 def test_idle_env_override(monkeypatch, tmp_path):

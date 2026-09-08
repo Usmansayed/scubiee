@@ -1,0 +1,24 @@
+{
+  "id": "ttl-refs",
+  "title": "Who uses TOKEN_TTL?",
+  "query": "Who uses TOKEN_TTL?",
+  "seed": {
+    "file": "app/config/security.py",
+    "symbol": "TOKEN_TTL"
+  },
+  "must": [
+    {"file": "app/config/security.py", "symbol": "TOKEN_TTL", "why": "seed constant"},
+    {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify", "why": "only reader"}
+  ],
+  "should": [],
+  "must_not": [
+    {"file": "app/models/user.py", "symbol": "User.lookup", "why": "downstream of verify, not a user of TOKEN_TTL"},
+    {"file": "app/billing/invoices.py", "symbol": "charge", "why": "unrelated"},
+    {"file": "app/middleware/auth.py", "symbol": "authenticate", "why": "does not read TOKEN_TTL"}
+  ],
+  "gold_rank": [
+    "app/config/security.py::TOKEN_TTL",
+    "app/services/jwt_service.py::JwtService.verify"
+  ],
+  "notes": "LSP references / used-by. Must not forward-slice from the reader."
+}

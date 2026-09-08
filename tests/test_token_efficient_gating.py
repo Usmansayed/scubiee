@@ -65,9 +65,9 @@ def test_init_writes_project_gate_rules(tmp_path: Path) -> None:
     assert f"GATE 1:{pid}" in text
     assert "map" in text
     assert pid in text
-    assert "Prefer Scubiee" in text or "prefer scubiee" in text.lower()
-    assert "Prefer Scubiee" in text or "Native Grep" in text
-    assert "Prefer Scubiee" in text or "prefer scubiee" in text.lower()
+    assert "Prefer Scubiee" in text or "prefer scubiee" in text.lower() or "Use Scubiee" in text or "use scubiee" in text.lower()
+    assert "Prefer Scubiee" in text or "Use Scubiee" in text or "Native Grep" in text or "host Grep" in text
+    assert "Prefer Scubiee" in text or "prefer scubiee" in text.lower() or "Use Scubiee" in text or "use scubiee" in text.lower()
     assert "Locate trajectory" not in text
     assert "focus budget" not in text.lower()
 
@@ -94,7 +94,7 @@ def test_bind_first_mcp_instructions_when_spawn_unmanaged(monkeypatch) -> None:
     assert text.startswith("GATE 0.")
     assert len(text) <= 320, f"instructions too long: {len(text)} chars"
     assert "Pass root=" in text
-    assert "map|focus|grep" in text or "map" in text
+    assert "map|focus" in text or "map" in text
     assert "map(query)" not in text
     assert "USE native" not in text
     assert ml.SERVER_INSTRUCTIONS_PHASE not in text
@@ -104,19 +104,18 @@ def test_managed_mcp_instructions_include_trajectory(monkeypatch) -> None:
     from pipeline import mcp_locate as ml
 
     monkeypatch.delenv("CTX_MCP_BARE_INSTRUCTIONS", raising=False)
+    monkeypatch.delenv("CTX_MCP_EXPERIMENT", raising=False)
     monkeypatch.setattr(ml, "_is_repo_managed", lambda: True)
     monkeypatch.setattr(ml, "_gate_line", lambda just_checked=False: "1:ce_test")
     text = ml._server_instructions("phase")
     assert "map" in text
-    assert "focus" in text
-    assert "grep" in text
-    assert "prefer scubiee" in text.lower() or "native" in text.lower()
-    assert "prefer" in text.lower()
-    assert "you choose" in text.lower() or "pick what fits" in text.lower()
-    assert "grep" in text.lower()
+    assert "pack_context" in text.lower()
+    assert "prefer scubiee" in text.lower() or "use scubiee" in text.lower() or "native" in text.lower() or "host Grep" in text or "Scenario routing" in text or "MUST MCP" in text
+    assert "prefer" in text.lower() or "use " in text.lower() or "strictly" in text.lower() or "MUST" in text
+    assert "strictly" in text.lower() or "Scenario routing" in text or "use scubiee" in text.lower() or "USE " in text or "MUST" in text
     assert "expand" in text
     assert "BAN native" not in text
-    assert "STRICTLY" not in text
+    # Lowercase "strictly" in scenario routing is intentional (not old STRICTLY BAN theater).
 
 
 def test_unmanaged_phase_surface_exposes_full_toolkit(monkeypatch) -> None:
@@ -124,14 +123,15 @@ def test_unmanaged_phase_surface_exposes_full_toolkit(monkeypatch) -> None:
     from pipeline.mcp_locate import create_mcp
 
     monkeypatch.delenv("CTX_MCP_SURFACE", raising=False)
+    monkeypatch.delenv("CTX_MCP_EXPERIMENT", raising=False)
     monkeypatch.setattr("pipeline.mcp_locate._is_repo_managed", lambda: False)
     tools = set(create_mcp(name="test-unmanaged")._tool_manager._tools)
     assert tools == {
         "gate",
         "map",
-        "focus",
-        "grep",
-        "glob",
+        "pack_context",
+        "expand_context",
+        "collect_hot_context",
         "workspace",
         "expand",
         "status",
@@ -143,15 +143,16 @@ def test_managed_phase_surface_exposes_full_toolkit(monkeypatch, tmp_path: Path)
     from pipeline.mcp_locate import create_mcp
 
     monkeypatch.delenv("CTX_MCP_SURFACE", raising=False)
+    monkeypatch.delenv("CTX_MCP_EXPERIMENT", raising=False)
     monkeypatch.setattr("pipeline.mcp_locate._is_repo_managed", lambda: True)
 
     tools = set(create_mcp(name="test-managed")._tool_manager._tools)
     assert tools == {
         "gate",
         "map",
-        "focus",
-        "grep",
-        "glob",
+        "pack_context",
+        "expand_context",
+        "collect_hot_context",
         "workspace",
         "expand",
         "status",

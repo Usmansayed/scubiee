@@ -1,4 +1,4 @@
-﻿"""Autonomous desktop policy: standby vs run, idle stop, logon autostart.
+"""Autonomous desktop policy: standby vs run, idle stop, logon autostart.
 
 The user-facing contract is setup-once then `scubiee init`. This module is the
 machine-side policy that keeps the engine off until work, and off again when
@@ -21,8 +21,9 @@ POLICY_NAME = "lifecycle_policy.json"
 CLIENTS_NAME = "active_clients.json"
 # After the last MCP/app client leaves, wait this long before stopping the engine.
 # Also used as the start/stop transition debounce so accidental spam cannot thrash.
-DEFAULT_IDLE_S = 25.0
-DEFAULT_TRANSITION_DEBOUNCE_S = 25.0
+# Short enough to free RAM after IDE close; long enough for reopen reconnect.
+DEFAULT_IDLE_S = 15.0
+DEFAULT_TRANSITION_DEBOUNCE_S = 15.0
 DESIRED_RUN = "run"
 DESIRED_STANDBY = "standby"
 TRANSITION_NAME = "engine_transition.json"
@@ -584,9 +585,9 @@ def active_client_count() -> int:
     return len(reconcile_clients())
 
 
-def should_idle_stop(*, now: float | None = None) -> bool:
+def should_idle_stop(*, now: float | None = None, require_run_mode: bool = True) -> bool:
     policy = load_policy()
-    if policy.get("desired_mode") != DESIRED_RUN:
+    if require_run_mode and policy.get("desired_mode") != DESIRED_RUN:
         return False
     idle_s = idle_seconds()
     if idle_s <= 0:
@@ -612,16 +613,20 @@ def apply_idle_policy(*, now: float | None = None) -> dict[str, Any]:
 
     if upgrade_in_progress(now=now):
         return {"ok": True, "action": "upgrade_in_progress"}
-    if load_policy().get("desired_mode") == DESIRED_STANDBY:
+    running = is_running()
+    # Standby means "no warm engine wanted", not "no engine exists": an MCP
+    # client start (register_client) never flips the mode to run, so an IDE
+    # session leaves a resident engine behind under standby. Keep sweeping
+    # until it is actually gone, or it outlives every idle window.
+    if not running and load_policy().get("desired_mode") == DESIRED_STANDBY:
         return {"ok": True, "action": "already_standby"}
-    if not should_idle_stop(now=now):
+    if not should_idle_stop(now=now, require_run_mode=False):
         return {"ok": True, "action": "none"}
     blocked = idle_stop_debounced(now=now)
     if blocked is not None:
         return {**blocked, "action": "debounced"}
     if reconcile_clients(now=now):
         return {"ok": True, "action": "clients_reconnected"}
-    running = is_running()
     result = enter_standby(stop_engine=running)
     return {**result, "action": "standby" if running else "policy_only"}
 

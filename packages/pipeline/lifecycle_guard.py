@@ -23,6 +23,7 @@ _RECOVERY_COMMANDS = frozenset({
     "stop",
     "halt",
     "unlock-tool",
+    "heal",
     "wipe",
     "connect",
     "disconnect",

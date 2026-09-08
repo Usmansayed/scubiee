@@ -73,3 +73,21 @@ tests/_*.log
 # Scratch / unused media
 visuals/image2.png
 visuals/*.mp4
+
+.ab_workspaces/
+
+# ---- Local model weights / vendored binaries (huge; never commit) -----------
+models/
+tools/llama-cpp/
+
+# ---- Derived embedding + trace caches (regenerated; hundreds of MB) ---------
+# Vectors here carry no model fingerprint, so a cache built while the embedder
+# was degraded silently poisons later runs. Always regenerate, never share.
+.embed_cache/
+**/.embed_cache/
+**/.embed_cache.poisoned-*/
+.scubiee/cache/
+**/.scubiee/cache/
+**/.scubiee/cache.stale-*/
+.scubiee/sessions/
+

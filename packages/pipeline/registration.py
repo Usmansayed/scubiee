@@ -1,4 +1,4 @@
-﻿"""Shared project registration pipeline.
+"""Shared project registration pipeline.
 
 All triggers (automatic IDE open, MCP consent, CLI) call ``register_project``.
 Only the *trigger* differs by ``registration_mode`` in prefs.
@@ -150,6 +150,7 @@ def register_project(
     always_allow: bool = False,
     index: bool | None = None,
     fast: bool = False,
+    fast_roots: list[str] | None = None,
     force_reindex: bool = False,
     confirm: bool = False,
 ) -> RegistrationResult:
@@ -159,8 +160,7 @@ def register_project(
     2. mark registered (+ optional always_allow)
     3. index if missing / force
 
-    ``fast`` defaults False so small/root-level repos are not skipped by
-    fast-root filters (src/, packages/, …).
+    ``fast`` means directory-scoped (``--roots``); all languages are indexed.
     """
     root = root.resolve()
     mode = get_registration_mode()
@@ -183,6 +183,7 @@ def register_project(
             preflight_index_scope(
                 root,
                 fast=fast,
+                fast_roots=fast_roots,
                 confirm=confirm or force_reindex,
                 force=force_reindex,
             )
@@ -192,6 +193,7 @@ def register_project(
                 root,
                 force=force_reindex,
                 fast=fast,
+                fast_roots=fast_roots,
                 confirm=confirm or force_reindex,
             )
             indexed = True

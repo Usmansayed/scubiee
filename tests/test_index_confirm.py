@@ -15,6 +15,22 @@ from pipeline.incremental import (
 from pipeline.indexer import count_indexable_files
 
 
+def test_require_chunk_force_blocks_over_20k() -> None:
+    from pipeline.incremental import DEFAULT_MAX_CHUNKS, require_chunk_force
+
+    require_chunk_force(DEFAULT_MAX_CHUNKS, force=False)
+    with pytest.raises(IndexConfirmRequired) as exc:
+        require_chunk_force(DEFAULT_MAX_CHUNKS + 1, force=False)
+    assert exc.value.kind == "too_many_chunks"
+    assert "too many tokens" in str(exc.value).lower()
+    assert "--force" in str(exc.value)
+    # --confirm must NOT bypass; only --force
+    require_chunk_force(DEFAULT_MAX_CHUNKS + 1, force=True)
+    payload = exc.value.to_payload(Path("."))
+    assert payload["needs_force"] is True
+    assert payload["warning"] == "too_many_chunks"
+
+
 def test_require_index_confirm_allows_normal_codebases() -> None:
     require_index_confirm(401, confirm=False, force=False)
     require_index_confirm(1000, confirm=False, force=False)

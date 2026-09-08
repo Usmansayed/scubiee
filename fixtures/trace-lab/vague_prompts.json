@@ -1,0 +1,499 @@
+{
+  "description": "20 human-like vague prompts against fixtures/trace-lab. No symbol names in the prompt when avoidable. Gold context is the true slice an agent needs. Same `family` means paraphrases that should yield the same hot heatmap.",
+  "hot_threshold": 0.45,
+  "prompts": [
+    {
+      "id": "v01",
+      "family": "auth-flow",
+      "prompt": "im stuck figuring out how users actually get logged in around here",
+      "seed": {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+      "must": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/middleware/auth.py", "symbol": "extract_bearer"},
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"},
+        {"file": "app/utils/token.py", "symbol": "decode"},
+        {"file": "app/repositories/user_repo.py", "symbol": "UserRepository.resolve"},
+        {"file": "app/models/user.py", "symbol": "User.lookup"}
+      ],
+      "should": [
+        {"file": "app/config/security.py", "symbol": "TOKEN_TTL"},
+        {"file": "app/routes/login.py", "symbol": "login"},
+        {"file": "app/config/database.py", "symbol": "connect"}
+      ],
+      "must_not": [
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/utils/logger.py", "symbol": "log"},
+        {"file": "app/http/client.py", "symbol": "get"}
+      ],
+      "notes": "Vague login/auth. Seed should land on authenticate or login, then full credential path."
+    },
+    {
+      "id": "v02",
+      "family": "auth-flow",
+      "prompt": "walk me through the credential check path please, i keep missing pieces",
+      "seed": {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+      "must": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/middleware/auth.py", "symbol": "extract_bearer"},
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"},
+        {"file": "app/utils/token.py", "symbol": "decode"},
+        {"file": "app/repositories/user_repo.py", "symbol": "UserRepository.resolve"},
+        {"file": "app/models/user.py", "symbol": "User.lookup"}
+      ],
+      "should": [
+        {"file": "app/config/security.py", "symbol": "TOKEN_TTL"},
+        {"file": "app/config/database.py", "symbol": "connect"}
+      ],
+      "must_not": [
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/utils/logger.py", "symbol": "log"}
+      ],
+      "notes": "Paraphrase of auth-flow; heatmap should match v01 hot set closely."
+    },
+    {
+      "id": "v03",
+      "family": "auth-flow",
+      "prompt": "theres something with bearer headers and loading the account after claims, where is that?",
+      "seed": {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+      "must": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/middleware/auth.py", "symbol": "extract_bearer"},
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"},
+        {"file": "app/utils/token.py", "symbol": "decode"},
+        {"file": "app/repositories/user_repo.py", "symbol": "UserRepository.resolve"},
+        {"file": "app/models/user.py", "symbol": "User.lookup"}
+      ],
+      "should": [
+        {"file": "app/config/database.py", "symbol": "connect"}
+      ],
+      "must_not": [
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/analytics/tracker.py", "symbol": "track"}
+      ],
+      "notes": "Mentions bearer/claims/account without naming authenticate."
+    },
+    {
+      "id": "v04",
+      "family": "token-expiry",
+      "prompt": "people get kicked out after a while, where is that timeout even set?",
+      "seed": {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"},
+      "must": [
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"},
+        {"file": "app/config/security.py", "symbol": "TOKEN_TTL"}
+      ],
+      "should": [
+        {"file": "app/utils/token.py", "symbol": "decode"}
+      ],
+      "must_not": [
+        {"file": "app/models/user.py", "symbol": "User.lookup"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/utils/logger.py", "symbol": "log"}
+      ],
+      "notes": "Config/expiry question in human words."
+    },
+    {
+      "id": "v05",
+      "family": "token-expiry",
+      "prompt": "why do tokens stop working after roughly an hour?",
+      "seed": {"file": "app/config/security.py", "symbol": "TOKEN_TTL"},
+      "must": [
+        {"file": "app/config/security.py", "symbol": "TOKEN_TTL"},
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"}
+      ],
+      "should": [
+        {"file": "app/utils/token.py", "symbol": "decode"}
+      ],
+      "must_not": [
+        {"file": "app/models/user.py", "symbol": "User.lookup"},
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"}
+      ],
+      "notes": "Same family as v04; seed may be TOKEN_TTL or verify."
+    },
+    {
+      "id": "v06",
+      "family": "token-expiry",
+      "prompt": "wheres the expiry knob for the signed claims?",
+      "seed": {"file": "app/config/security.py", "symbol": "TOKEN_TTL"},
+      "must": [
+        {"file": "app/config/security.py", "symbol": "TOKEN_TTL"},
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/repositories/user_repo.py", "symbol": "UserRepository.resolve"},
+        {"file": "app/http/client.py", "symbol": "get"}
+      ],
+      "notes": "Expiry/config paraphrase."
+    },
+    {
+      "id": "v07",
+      "family": "auth-log",
+      "prompt": "auth middleware is printing something somewhere, can you find that?",
+      "seed": {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+      "must": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/utils/logger.py", "symbol": "log"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/utils/token.py", "symbol": "decode"},
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"}
+      ],
+      "notes": "Site/side-effect: logger only, not full JWT path."
+    },
+    {
+      "id": "v08",
+      "family": "auth-log",
+      "prompt": "where does the login check write log output?",
+      "seed": {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+      "must": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/utils/logger.py", "symbol": "log"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/utils/token.py", "symbol": "decode"},
+        {"file": "app/models/user.py", "symbol": "User.lookup"}
+      ],
+      "notes": "Paraphrase of auth-log."
+    },
+    {
+      "id": "v09",
+      "family": "charge",
+      "prompt": "how do we bill someone a few cents against the pay api?",
+      "seed": {"file": "app/billing/invoices.py", "symbol": "charge"},
+      "must": [
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/http/client.py", "symbol": "get"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/utils/token.py", "symbol": "decode"},
+        {"file": "app/analytics/tracker.py", "symbol": "track"}
+      ],
+      "notes": "Payments; file mentions authentication as lexical trap."
+    },
+    {
+      "id": "v10",
+      "family": "charge",
+      "prompt": "i need the outbound payment request path, not login",
+      "seed": {"file": "app/billing/invoices.py", "symbol": "charge"},
+      "must": [
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/http/client.py", "symbol": "get"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/events/bus.py", "symbol": "emit"}
+      ],
+      "notes": "Explicit not-login; same charge heatmap."
+    },
+    {
+      "id": "v11",
+      "family": "event-emit",
+      "prompt": "when we fire welcome what actually runs? feels like magic",
+      "seed": {"file": "app/events/bus.py", "symbol": "emit"},
+      "must": [
+        {"file": "app/events/bus.py", "symbol": "emit"},
+        {"file": "app/events/registry.py", "symbol": "lookup"},
+        {"file": "app/handlers/welcome.py", "symbol": "handle"}
+      ],
+      "should": [
+        {"file": "app/bootstrap.py", "symbol": "start"},
+        {"file": "app/events/registry.py", "symbol": "bind"}
+      ],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"}
+      ],
+      "notes": "Dynamic dispatch; vector alone cannot invent handle — need registry channel."
+    },
+    {
+      "id": "v12",
+      "family": "event-emit",
+      "prompt": "emit looks empty but something must handle the welcome event",
+      "seed": {"file": "app/events/bus.py", "symbol": "emit"},
+      "must": [
+        {"file": "app/events/bus.py", "symbol": "emit"},
+        {"file": "app/events/registry.py", "symbol": "lookup"},
+        {"file": "app/handlers/welcome.py", "symbol": "handle"}
+      ],
+      "should": [
+        {"file": "app/bootstrap.py", "symbol": "start"}
+      ],
+      "must_not": [
+        {"file": "app/jobs/digest.py", "symbol": "send_digest"}
+      ],
+      "notes": "Paraphrase; still needs bind/dispatch."
+    },
+    {
+      "id": "v13",
+      "family": "job-run",
+      "prompt": "the worker loop that pulls jobs off a queue, how does that go?",
+      "seed": {"file": "app/jobs/worker.py", "symbol": "run"},
+      "must": [
+        {"file": "app/jobs/worker.py", "symbol": "run"},
+        {"file": "app/jobs/queue.py", "symbol": "dequeue"},
+        {"file": "app/jobs/runner.py", "symbol": "execute"},
+        {"file": "app/jobs/digest.py", "symbol": "send_digest"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/http/client.py", "symbol": "get"}
+      ],
+      "notes": "Generic run/execute names."
+    },
+    {
+      "id": "v14",
+      "family": "job-run",
+      "prompt": "how does a digest email job actually get sent from the queue?",
+      "seed": {"file": "app/jobs/worker.py", "symbol": "run"},
+      "must": [
+        {"file": "app/jobs/worker.py", "symbol": "run"},
+        {"file": "app/jobs/queue.py", "symbol": "dequeue"},
+        {"file": "app/jobs/runner.py", "symbol": "execute"},
+        {"file": "app/jobs/digest.py", "symbol": "send_digest"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/events/bus.py", "symbol": "emit"}
+      ],
+      "notes": "Same job family."
+    },
+    {
+      "id": "v15",
+      "family": "health",
+      "prompt": "just the health probe thing, nothing fancy",
+      "seed": {"file": "app/routes/health.py", "symbol": "health"},
+      "must": [
+        {"file": "app/routes/health.py", "symbol": "health"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/http/client.py", "symbol": "get"}
+      ],
+      "notes": "Isolation leaf."
+    },
+    {
+      "id": "v16",
+      "family": "cors",
+      "prompt": "cors headers middleware, leave auth alone",
+      "seed": {"file": "app/middleware/cors.py", "symbol": "process"},
+      "must": [
+        {"file": "app/middleware/cors.py", "symbol": "process"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/middleware/auth.py", "symbol": "extract_bearer"}
+      ],
+      "notes": "Same folder as auth; must not leak."
+    },
+    {
+      "id": "v17",
+      "family": "session",
+      "prompt": "that little helper that starts a user session object",
+      "seed": {"file": "app/services/session.py", "symbol": "start"},
+      "must": [
+        {"file": "app/services/session.py", "symbol": "start"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/routes/login.py", "symbol": "login"}
+      ],
+      "notes": "Name overlap with user must not pull auth."
+    },
+    {
+      "id": "v18",
+      "family": "ttl-refs",
+      "prompt": "who even reads that TOKEN_TTL constant?",
+      "seed": {"file": "app/config/security.py", "symbol": "TOKEN_TTL"},
+      "must": [
+        {"file": "app/config/security.py", "symbol": "TOKEN_TTL"},
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/models/user.py", "symbol": "User.lookup"},
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"}
+      ],
+      "notes": "References only; no forward slice past verify."
+    },
+    {
+      "id": "v19",
+      "family": "store-fetch",
+      "prompt": "memory store fetch, i think it overrides something in base?",
+      "seed": {"file": "app/stores/memory.py", "symbol": "MemoryStore.fetch"},
+      "must": [
+        {"file": "app/stores/memory.py", "symbol": "MemoryStore.fetch"}
+      ],
+      "should": [
+        {"file": "app/stores/base.py", "symbol": "Store.fetch"}
+      ],
+      "must_not": [
+        {"file": "app/models/user.py", "symbol": "User.lookup"},
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"}
+      ],
+      "notes": "Inheritance channel."
+    },
+    {
+      "id": "v20",
+      "family": "user-resolve",
+      "prompt": "how does resolve pull the user row out of the database?",
+      "seed": {"file": "app/repositories/user_repo.py", "symbol": "UserRepository.resolve"},
+      "must": [
+        {"file": "app/repositories/user_repo.py", "symbol": "UserRepository.resolve"},
+        {"file": "app/models/user.py", "symbol": "User.lookup"},
+        {"file": "app/config/database.py", "symbol": "connect"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/utils/token.py", "symbol": "decode"}
+      ],
+      "notes": "Downward slice from repo, not full auth."
+    },
+    {
+      "id": "v21",
+      "family": "adversarial-pay-auth-words",
+      "prompt": "customer authentication tokens for the payment API — how do we charge?",
+      "seed": {"file": "app/billing/invoices.py", "symbol": "charge"},
+      "must": [
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/http/client.py", "symbol": "get"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/utils/token.py", "symbol": "decode"},
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"}
+      ],
+      "notes": "Adversarial: auth vocabulary in billing docstring; answer is charge not JWT."
+    },
+    {
+      "id": "v22",
+      "family": "negation-not-login",
+      "prompt": "not the login stuff — i need the outbound payment request path",
+      "seed": {"file": "app/billing/invoices.py", "symbol": "charge"},
+      "must": [
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/http/client.py", "symbol": "get"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/routes/login.py", "symbol": "login"}
+      ],
+      "notes": "Explicit negation of login."
+    },
+    {
+      "id": "v23",
+      "family": "underspec-timeout",
+      "prompt": "the timeout thing",
+      "seed": {"file": "app/config/security.py", "symbol": "TOKEN_TTL"},
+      "must": [
+        {"file": "app/config/security.py", "symbol": "TOKEN_TTL"}
+      ],
+      "should": [
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"}
+      ],
+      "must_not": [
+        {"file": "app/models/user.py", "symbol": "User.lookup"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"}
+      ],
+      "notes": "Maximally underspecified config cue."
+    },
+    {
+      "id": "v24",
+      "family": "wrong-folder-cors",
+      "prompt": "middleware that only sets access-control headers",
+      "seed": {"file": "app/middleware/cors.py", "symbol": "process"},
+      "must": [
+        {"file": "app/middleware/cors.py", "symbol": "process"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/middleware/auth.py", "symbol": "extract_bearer"}
+      ],
+      "notes": "Same folder as auth; describe behavior not filename."
+    },
+    {
+      "id": "v25",
+      "family": "dynamic-welcome",
+      "prompt": "something registers welcome and later emit runs it somehow",
+      "seed": {"file": "app/events/bus.py", "symbol": "emit"},
+      "must": [
+        {"file": "app/events/bus.py", "symbol": "emit"},
+        {"file": "app/events/registry.py", "symbol": "lookup"},
+        {"file": "app/handlers/welcome.py", "symbol": "handle"}
+      ],
+      "should": [
+        {"file": "app/bootstrap.py", "symbol": "start"}
+      ],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/jobs/worker.py", "symbol": "run"}
+      ],
+      "notes": "Dynamic dispatch paraphrase."
+    },
+    {
+      "id": "v26",
+      "family": "generic-execute",
+      "prompt": "whatever executes a dequeued job body",
+      "seed": {"file": "app/jobs/runner.py", "symbol": "execute"},
+      "must": [
+        {"file": "app/jobs/runner.py", "symbol": "execute"},
+        {"file": "app/jobs/digest.py", "symbol": "send_digest"}
+      ],
+      "should": [
+        {"file": "app/jobs/worker.py", "symbol": "run"}
+      ],
+      "must_not": [
+        {"file": "app/http/client.py", "symbol": "get"},
+        {"file": "app/events/bus.py", "symbol": "emit"}
+      ],
+      "notes": "Start mid-chain on generic execute."
+    },
+    {
+      "id": "v27",
+      "family": "side-effect-print",
+      "prompt": "i see ok printed when auth succeeds — where?",
+      "seed": {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+      "must": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/utils/logger.py", "symbol": "log"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/utils/token.py", "symbol": "decode"},
+        {"file": "app/repositories/user_repo.py", "symbol": "UserRepository.resolve"}
+      ],
+      "notes": "Side-effect / site without saying logger."
+    },
+    {
+      "id": "v28",
+      "family": "inherit-fetch",
+      "prompt": "in-memory row fetch that overrides the abstract store",
+      "seed": {"file": "app/stores/memory.py", "symbol": "MemoryStore.fetch"},
+      "must": [
+        {"file": "app/stores/memory.py", "symbol": "MemoryStore.fetch"}
+      ],
+      "should": [
+        {"file": "app/stores/base.py", "symbol": "Store.fetch"}
+      ],
+      "must_not": [
+        {"file": "app/models/user.py", "symbol": "User.lookup"},
+        {"file": "app/repositories/user_repo.py", "symbol": "UserRepository.resolve"}
+      ],
+      "notes": "Inheritance without class names in the prompt."
+    }
+  ]
+}

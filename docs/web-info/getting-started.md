@@ -117,17 +117,17 @@ scubiee preflight . --lexical-only
 ```bash
 cd /path/to/your/project
 scubiee init .
-# optional first pass on large repos:
-scubiee init . --fast
+# large monorepo — optional directory scope (still all languages):
+# scubiee init . --roots packages,src
 ```
 
 | Flag | Meaning |
 |------|---------|
 | `.` | Index **this directory** as the project root |
-| `--fast` | Index `.py` under common code roots (`packages`, `src`, `lib`, …) |
+| `--roots packages,src` | Limit indexing to those directory prefixes (all languages) |
+| `--force` | Allow indexing when the repo would exceed **20,000 chunks** (too many tokens for a default index) |
 | `--no-index` | Register without building an index yet |
-| `--confirm` | Required when more than **400** indexable files would be touched |
-| `--roots packages,src` | Limit fast indexing to specific subfolders |
+| `--confirm` | Required when more than **25,000** indexable files would be touched, or for home/drive roots |
 
 If you see `"error": "machine_not_setup"`, run `scubiee setup --repair` first.
 

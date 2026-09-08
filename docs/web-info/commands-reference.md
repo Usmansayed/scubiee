@@ -31,8 +31,8 @@ Run `scubiee <subcommand> --help` for flags on your installed version.
 | Command | Purpose |
 |---------|---------|
 | `scubiee init [path]` | Register repo + index (default path: `.`) |
-| `scubiee init . --fast` | Fast index: `.py` under standard code roots |
-| `scubiee init . --fast --roots packages,src` | Fast index limited to listed folders |
+| `scubiee init .` | Full index: all supported languages (`.py`, `.ts`, `.go`, …) |
+| `scubiee init . --roots packages,src` | Same languages, limited to those directory prefixes |
 | `scubiee init . --no-index` | Register only |
 | `scubiee init . --confirm` | Allow indexing when >400 files (see indexing doc) |
 | `scubiee register [path]` | Same consent flow as MCP registration |
@@ -53,7 +53,7 @@ Run `scubiee <subcommand> --help` for flags on your installed version.
 | Command | Purpose |
 |---------|---------|
 | `scubiee index [path]` | Full index pipeline |
-| `scubiee index . --fast --roots packages` | Scoped fast index |
+| `scubiee index . --roots packages` | Scoped index (all languages under those dirs) |
 | `scubiee index . --confirm` | Bypass >400 file safety gate |
 | `scubiee index . --force` | Force full re-index |
 | `scubiee sync [path]` | Incremental sync (changed files) |
@@ -159,19 +159,20 @@ After `--all --confirm`, JSON includes an **`audit`** block listing any **`remai
 
 Not CLI commands — exposed to the agent after MCP reload. **Full guide:** [MCP tools reference](./mcp-tools-reference.md).
 
-Default **`phase`** surface:
+Default **`phase` / ship** surface:
 
 | Tool | Role |
 |------|------|
 | `gate` | Tiny managed check (~5 tokens) — prefer at session start |
 | `status` | Engine health + managed/warming flags (`detail=gate` for tiny check) |
 | `map` | Ranked overview of relevant chunks/symbols (no bodies) |
-| `focus` | Deep context — outline, span, neighbors, call_sites |
-| `grep` | Exact literal/regex search in indexed files (`glob=`; reports truncation) |
-| `glob` | Find files by path pattern in the index |
+| `pack_context` | Lean composite heatmap around a seed |
+| `expand_context` | Grow callees/callers when the pack is thin |
+| `collect_hot_context` | Optional bodies for hot ids |
 | `workspace` | Session pins / heatmap / `clear` for new topic |
 | `expand` | Re-materialize a stored span by handle |
-| `register_project` | Register repo with user consent (MCP or CLI) |
+
+Exact/name → host Grep/Glob/Read. Classic MCP `focus`/`grep`/`glob` require `CTX_MCP_EXPERIMENT=classic`.
 
 If `status` shows `warming: true`, retry the **tool** once after a short wait — do not poll `status()` every turn. After pause/stop use **`scubiee resume`**.
 

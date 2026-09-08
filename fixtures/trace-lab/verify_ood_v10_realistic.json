@@ -1,0 +1,207 @@
+{
+  "description": "OOD v10 REALISTIC agent inputs: enriched flow paragraph + 1–3 seed code chunks (like paste from editor). Multi-file must, strict must_not. Not verify_prod.",
+  "hot_threshold": 0.45,
+  "cases": [
+    {
+      "id": "real01",
+      "family": "auth-paste-two",
+      "prompt": "Debugging HTTP login auth: from authenticate through JwtService.verify I need bearer extract, JWT claim decode, UserRepository.resolve, User.lookup, and database connect. Credential path only — do not heat logger, analytics tracker, billing charge, or mailer.",
+      "seed": {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+      "seed_chunks": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"}
+      ],
+      "must": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/middleware/auth.py", "symbol": "extract_bearer"},
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"},
+        {"file": "app/utils/token.py", "symbol": "decode"},
+        {"file": "app/repositories/user_repo.py", "symbol": "UserRepository.resolve"},
+        {"file": "app/models/user.py", "symbol": "User.lookup"},
+        {"file": "app/config/database.py", "symbol": "connect"}
+      ],
+      "should": [{"file": "app/config/security.py", "symbol": "TOKEN_TTL"}],
+      "must_not": [
+        {"file": "app/utils/logger.py", "symbol": "log"},
+        {"file": "app/analytics/tracker.py", "symbol": "track"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/notify/mailer.py", "symbol": "send"}
+      ]
+    },
+    {
+      "id": "real02",
+      "family": "checkout-paste-begin-quote",
+      "prompt": "Trace full checkout orchestration begin → cart validate → pricing quote/catalog/tax → inventory reserve/stock/warehouse → billing charge via HTTP → shipping schedule + mailer. Ignore checkout-ok logger and any auth middleware.",
+      "seed": {"file": "app/checkout/begin.py", "symbol": "begin"},
+      "seed_chunks": [
+        {"file": "app/checkout/begin.py", "symbol": "begin"},
+        {"file": "app/pricing/quote.py", "symbol": "quote"}
+      ],
+      "must": [
+        {"file": "app/checkout/begin.py", "symbol": "begin"},
+        {"file": "app/cart/validate.py", "symbol": "validate"},
+        {"file": "app/pricing/quote.py", "symbol": "quote"},
+        {"file": "app/pricing/catalog.py", "symbol": "unit_price"},
+        {"file": "app/tax/compute.py", "symbol": "compute"},
+        {"file": "app/inventory/reserve.py", "symbol": "reserve"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/shipping/schedule.py", "symbol": "schedule"},
+        {"file": "app/notify/mailer.py", "symbol": "send"}
+      ],
+      "should": [
+        {"file": "app/tax/rates.py", "symbol": "rate_for"},
+        {"file": "app/http/client.py", "symbol": "get"}
+      ],
+      "must_not": [
+        {"file": "app/utils/logger.py", "symbol": "log"},
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/webhooks/ingest.py", "symbol": "ingest"}
+      ]
+    },
+    {
+      "id": "real03",
+      "family": "webhook-three-chunks",
+      "prompt": "Partner webhook: ingest verifies signature, parses payload, routes to on_payment which charges invoice over HTTP and emails receipt. Stay out of login routes and job workers.",
+      "seed": {"file": "app/webhooks/ingest.py", "symbol": "ingest"},
+      "seed_chunks": [
+        {"file": "app/webhooks/ingest.py", "symbol": "ingest"},
+        {"file": "app/webhooks/route.py", "symbol": "route"},
+        {"file": "app/webhooks/handlers.py", "symbol": "on_payment"}
+      ],
+      "must": [
+        {"file": "app/webhooks/ingest.py", "symbol": "ingest"},
+        {"file": "app/webhooks/verify_sig.py", "symbol": "verify_sig"},
+        {"file": "app/webhooks/parse.py", "symbol": "parse"},
+        {"file": "app/webhooks/route.py", "symbol": "route"},
+        {"file": "app/webhooks/handlers.py", "symbol": "on_payment"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/notify/mailer.py", "symbol": "send"},
+        {"file": "app/http/client.py", "symbol": "get"}
+      ],
+      "should": [{"file": "app/audit/record.py", "symbol": "record"}],
+      "must_not": [
+        {"file": "app/routes/login.py", "symbol": "login"},
+        {"file": "app/jobs/worker.py", "symbol": "run"},
+        {"file": "app/checkout/begin.py", "symbol": "begin"}
+      ]
+    },
+    {
+      "id": "real04",
+      "family": "upload-search-bridge",
+      "prompt": "User upload pipeline: receive blob, virus scan, durable store with memo put, index_file into search tokenize_q, then mailer notify. Do not pull site search query entry or auth.",
+      "seed": {"file": "app/uploads/receive.py", "symbol": "receive"},
+      "seed_chunks": [
+        {"file": "app/uploads/receive.py", "symbol": "receive"},
+        {"file": "app/uploads/index_file.py", "symbol": "index_file"}
+      ],
+      "must": [
+        {"file": "app/uploads/receive.py", "symbol": "receive"},
+        {"file": "app/uploads/scan.py", "symbol": "scan"},
+        {"file": "app/uploads/store.py", "symbol": "store"},
+        {"file": "app/cache/memo.py", "symbol": "put"},
+        {"file": "app/uploads/index_file.py", "symbol": "index_file"},
+        {"file": "app/search/tokenize.py", "symbol": "tokenize_q"},
+        {"file": "app/notify/mailer.py", "symbol": "send"}
+      ],
+      "should": [{"file": "app/http/client.py", "symbol": "get"}],
+      "must_not": [
+        {"file": "app/search/query.py", "symbol": "query"},
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"}
+      ]
+    },
+    {
+      "id": "real05",
+      "family": "oauth-refresh-paste",
+      "prompt": "Stale OAuth session: refresh rotates token with nonce stamp then JwtService.verify decodes claims and resolves user via repo. Ignore refreshed log line and login route.",
+      "seed": {"file": "app/oauth/refresh.py", "symbol": "refresh"},
+      "seed_chunks": [
+        {"file": "app/oauth/refresh.py", "symbol": "refresh"},
+        {"file": "app/oauth/rotate.py", "symbol": "rotate"}
+      ],
+      "must": [
+        {"file": "app/oauth/refresh.py", "symbol": "refresh"},
+        {"file": "app/oauth/rotate.py", "symbol": "rotate"},
+        {"file": "app/oauth/nonce.py", "symbol": "stamp"},
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"},
+        {"file": "app/utils/token.py", "symbol": "decode"},
+        {"file": "app/repositories/user_repo.py", "symbol": "UserRepository.resolve"}
+      ],
+      "should": [{"file": "app/config/database.py", "symbol": "connect"}],
+      "must_not": [
+        {"file": "app/utils/logger.py", "symbol": "log"},
+        {"file": "app/routes/login.py", "symbol": "login"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"}
+      ]
+    },
+    {
+      "id": "real06",
+      "family": "search-deep-paste",
+      "prompt": "Site search: query tokenizes, ranks with score_hit + memo cache get, fetch_docs hits DB connect and HTTP get. Ignore upload receive and webhooks.",
+      "seed": {"file": "app/search/query.py", "symbol": "query"},
+      "seed_chunks": [
+        {"file": "app/search/query.py", "symbol": "query"},
+        {"file": "app/search/rank.py", "symbol": "rank"},
+        {"file": "app/search/fetch_docs.py", "symbol": "fetch_docs"}
+      ],
+      "must": [
+        {"file": "app/search/query.py", "symbol": "query"},
+        {"file": "app/search/tokenize.py", "symbol": "tokenize_q"},
+        {"file": "app/search/rank.py", "symbol": "rank"},
+        {"file": "app/search/score.py", "symbol": "score_hit"},
+        {"file": "app/cache/memo.py", "symbol": "get"},
+        {"file": "app/search/fetch_docs.py", "symbol": "fetch_docs"},
+        {"file": "app/config/database.py", "symbol": "connect"},
+        {"file": "app/http/client.py", "symbol": "get"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/uploads/receive.py", "symbol": "receive"},
+        {"file": "app/webhooks/ingest.py", "symbol": "ingest"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"}
+      ]
+    },
+    {
+      "id": "real07",
+      "family": "job-worker-paste",
+      "prompt": "Background worker run dequeues a job, runner execute dispatches send_digest. Do not heat mailer from deliver path or webhook ingest.",
+      "seed": {"file": "app/jobs/worker.py", "symbol": "run"},
+      "seed_chunks": [
+        {"file": "app/jobs/worker.py", "symbol": "run"},
+        {"file": "app/jobs/runner.py", "symbol": "execute"}
+      ],
+      "must": [
+        {"file": "app/jobs/worker.py", "symbol": "run"},
+        {"file": "app/jobs/queue.py", "symbol": "dequeue"},
+        {"file": "app/jobs/runner.py", "symbol": "execute"},
+        {"file": "app/jobs/digest.py", "symbol": "send_digest"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/notify/mailer.py", "symbol": "send"},
+        {"file": "app/webhooks/ingest.py", "symbol": "ingest"},
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"}
+      ]
+    },
+    {
+      "id": "real08",
+      "family": "welcome-session-slice",
+      "prompt": "When welcome handler runs I need session start only — ignore log and track side effects even though they sit next to the calls.",
+      "seed": {"file": "app/handlers/welcome.py", "symbol": "handle"},
+      "seed_chunks": [
+        {"file": "app/handlers/welcome.py", "symbol": "handle"},
+        {"file": "app/services/session.py", "symbol": "start"}
+      ],
+      "must": [
+        {"file": "app/handlers/welcome.py", "symbol": "handle"},
+        {"file": "app/services/session.py", "symbol": "start"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/utils/logger.py", "symbol": "log"},
+        {"file": "app/analytics/tracker.py", "symbol": "track"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"}
+      ]
+    }
+  ]
+}

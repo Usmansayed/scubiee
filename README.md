@@ -92,12 +92,12 @@ Other tools: `--claude-code`, `--copilot`, `--kiro`, `--all`, and more - see [ge
 
 | Tool | Role |
 |------|------|
-| **`map`** | Ranked files & symbols - overview without dumping bodies |
-| **`focus`** | Deep context for one target (span, outline, neighbors) |
-| **`grep`** | Exact search inside the index |
-| **`gate` / `status`** | Tiny managed check at session start |
+| **`map`** | Ranked files & symbols — overview without dumping bodies |
+| **`pack_context`** | Lean heatmap around a seed (default ladder step 2) |
+| **`expand_context` / `collect_hot_context`** | Grow the graph / pull bodies when needed |
+| **`gate` / `status`** | Tiny managed check + engine health at session start |
 
-Also: `glob`, `workspace`, `expand` - [MCP tools reference](docs/web-info/mcp-tools-reference.md).
+Also: `workspace`, `expand`. Exact/name lookup stays on **host** Grep/Glob/Read. Classic `focus`/`grep`/`glob` MCP tools are opt-in (`CTX_MCP_EXPERIMENT=classic`) — see [MCP tools reference](docs/web-info/mcp-tools-reference.md).
 
 ---
 

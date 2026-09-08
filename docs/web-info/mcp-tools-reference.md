@@ -23,23 +23,26 @@ If Scubiee is globally stopped (`scubiee stop`), MCP tools are blocked until the
 
 ---
 
-## Default tool surface: `phase`
+## Default tool surface: `phase` (ship)
 
-Cursor and most installs use the **`phase`** surface (default). Tools exposed:
+Cursor and most installs use the **`phase`** surface with **`CTX_MCP_EXPERIMENT=ship`** (default). Tools exposed:
 
 | Tool | One-line purpose |
 |------|------------------|
 | `gate` | Tiny managed check (~5 tokens) — call once at session start |
 | `status` | Full engine health + session (or `detail=gate` for tiny check) |
 | `map` | New topic — ranked file/symbol **cards** (no bodies) |
-| `focus` | Deepen a hit — outline, span, neighbors, call sites |
-| `grep` | Exact literal / regex search in **indexed** files |
-| `glob` | Find files by path pattern in the index |
-| `workspace` | Session memory — pins, heatmap, focus history |
+| `pack_context` | Lean composite heatmap around a seed (ladder step 2) |
+| `expand_context` | Grow callees/callers from a heatmap node |
+| `collect_hot_context` | Optional batched bodies for hot ids |
+| `workspace` | Session memory — pins, heatmap |
 | `expand` | Re-open a stored span by handle |
-| `register_project` | Consent-based enroll + index from MCP |
 
-Advanced installs may set `CTX_MCP_SURFACE` to `nav`, `search`, `grep`, etc. — different tool names apply. This doc covers **`phase`** (product default).
+Exact literals / filenames → **host** Grep/Glob/Read (not Scubiee MCP on ship).
+
+Opt-in: `CTX_MCP_EXPERIMENT=classic` restores MCP `focus`/`grep`/`glob`; `lab` adds pinpoint/plate/poly packs. Advanced installs may set `CTX_MCP_SURFACE` to `nav`, `search`, etc.
+
+This doc covers **`phase` / ship** (product default).
 
 ---
 

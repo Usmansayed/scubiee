@@ -37,6 +37,7 @@ def _requires_faiss_guard(argv: list[str] | None) -> bool:
         "stop",
         "halt",
         "unlock-tool",
+        "heal",
         "wipe",
         "doctor",
         "preflight",
@@ -144,14 +145,15 @@ def cmd_index(args: argparse.Namespace) -> int:
     if getattr(args, "roots", None):
         roots = [r.strip() for r in str(args.roots).split(",") if r.strip()]
 
-    fast = bool(getattr(args, "fast", False))
-    if roots and not fast:
+    # Legacy Namespace may still carry fast=; --fast CLI flag is removed.
+    # Scoped mode = directory filter only (all languages).
+    if getattr(args, "fast", False) and not roots:
         print(
-            "[index] --roots implies --fast; indexing .py under "
-            f"{', '.join(roots)} only",
+            "[index] --fast is removed; indexing all languages. "
+            "Use --roots packages,src to limit directories.",
             file=sys.stderr,
         )
-        fast = True
+    fast = bool(roots)  # scoped iff --roots given
     args.fast = fast
 
     from pipeline.incremental import IndexConfirmRequired, preflight_index_scope
@@ -377,6 +379,32 @@ def cmd_unlock_tool(args: argparse.Namespace) -> int:
     return 0 if result.get("ok") else 1
 
 
+def cmd_heal(args: argparse.Namespace) -> int:
+    """Recover after upgrade / Access denied / dead engine bind on Windows."""
+    from pipeline.heal_runtime import heal_runtime
+
+    repo = Path(getattr(args, "path", None) or ".").resolve()
+    result = heal_runtime(
+        repo,
+        connect=not bool(getattr(args, "no_connect", False)),
+        unlock_tool_dir=bool(getattr(args, "unlock", False)),
+    )
+    if sys.stdout.isatty():
+        from pipeline.cli_ui import info, success, warn
+
+        print("", file=sys.stderr)
+        if result.get("ok") and result.get("healthy"):
+            success("Scubiee healed — engine rebound and MCP pins restored", stream=sys.stderr)
+            info("Reload Scubiee MCP in Cursor (or start a new agent chat).", stream=sys.stderr)
+        else:
+            warn("Heal incomplete", detail=result.get("hint"), stream=sys.stderr)
+            if result.get("hint"):
+                info(str(result.get("hint")), stream=sys.stderr)
+        print("", file=sys.stderr)
+    print(json.dumps(result, indent=2, default=str))
+    return 0 if result.get("ok") else 1
+
+
 def cmd_halt(args: argparse.Namespace) -> int:
     """Disable MCP and kill all Scubiee processes (safe pre-wipe / pre-upgrade step)."""
     from pipeline.process_control import release_scubiee_process_locks
@@ -552,12 +580,16 @@ def cmd_register(args: argparse.Namespace) -> int:
     from pipeline.registration import register_project
 
     root = Path(args.path).resolve()
+    roots = None
+    if getattr(args, "roots", None):
+        roots = [r.strip() for r in str(args.roots).split(",") if r.strip()]
     try:
         result = register_project(
             root,
             always_allow=bool(args.always_allow),
             index=not bool(args.no_index),
-            fast=bool(args.fast),
+            fast=bool(roots),
+            fast_roots=roots,
             force_reindex=bool(args.force),
             confirm=bool(getattr(args, "confirm", False)),
         )
@@ -1215,9 +1247,13 @@ def cmd_init(args: argparse.Namespace) -> int:
     roots = None
     if getattr(args, "roots", None):
         roots = [r.strip() for r in str(args.roots).split(",") if r.strip()]
-    fast = bool(getattr(args, "fast", False))
-    if roots and not fast:
-        fast = True
+    if getattr(args, "fast", False) and not roots:
+        print(
+            "[init] --fast is removed; indexing all languages. "
+            "Use --roots packages,src to limit directories.",
+            file=sys.stderr,
+        )
+    fast = bool(roots)
 
     from pipeline.repo_lifecycle import describe_init_state
 
@@ -1254,7 +1290,7 @@ def cmd_init(args: argparse.Namespace) -> int:
                     )
                     details = [
                         "This looks unintentionally large. Prefer a project folder, "
-                        "or `scubiee init . --fast --roots packages`.",
+                        "or `scubiee init . --roots packages`.",
                     ]
                     default = False
                 confirmed = confirm_action(
@@ -1333,14 +1369,21 @@ def cmd_init(args: argparse.Namespace) -> int:
             fast=fast,
             fast_roots=roots,
             confirm=bool(getattr(args, "confirm", False)),
+            force=bool(getattr(args, "force", False)),
         )
     except IndexConfirmRequired as exc:
         if is_tty:
-            bar.fail("Safety pause", hint="Re-run with --confirm or use a narrower path")
+            if getattr(exc, "kind", "") == "too_many_chunks":
+                bar.fail(
+                    "Too many tokens",
+                    hint="Re-run with --force if you still want to index, or use --roots",
+                )
+            else:
+                bar.fail("Safety pause", hint="Re-run with --confirm or use a narrower path")
         else:
             bar.fail("Safety pause (not an error)")
             return _fail_confirm(root, exc)
-        return 2
+        return _fail_confirm(root, exc) if not is_tty else 2
     except Exception as exc:  # noqa: BLE001
         if is_tty:
             bar.fail(f"Init failed: {str(exc)[:80]}", hint="Run: scubiee init .")
@@ -1626,6 +1669,81 @@ def cmd_gate(args: argparse.Namespace) -> int:
     root = getattr(args, "path", None) or "."
     print(gate_line_for_root(root))
     return 0
+
+
+def cmd_map(args: argparse.Namespace) -> int:
+    """Soft locate via CLI (JSON). Expand the query first; then pack with same wording."""
+    from pipeline.locate_cli import cli_map, emit_cli_json
+
+    # Keep progress noise off stdout so agents can parse JSON reliably.
+    import contextlib
+    import io
+
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        out = cli_map(
+            args.query,
+            path=getattr(args, "path", ".") or ".",
+            k=int(getattr(args, "k", 10) or 10),
+            local=bool(getattr(args, "local", False)),
+        )
+    noise = buf.getvalue().strip()
+    if noise:
+        print(noise, file=sys.stderr)
+    # Default: slim cards + suggested_seed only (not pretty full dump).
+    emit_cli_json(out, full=bool(getattr(args, "full", False)))
+    return 0 if out.get("ok") else 1
+
+
+def cmd_pack(args: argparse.Namespace) -> int:
+    """Tracer/heatmap pack via CLI (JSON). Same expanded query as map; seed from map."""
+    from pipeline.locate_cli import cli_pack, emit_cli_json
+
+    import contextlib
+    import io
+
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        out = cli_pack(
+            args.query,
+            seed_file=args.seed_file,
+            path=getattr(args, "path", ".") or ".",
+            seed_symbol=getattr(args, "seed_symbol", "") or "",
+            seed_line=int(getattr(args, "seed_line", 0) or 0),
+            mode=getattr(args, "mode", "lean") or "lean",
+            policy=getattr(args, "policy", "strict") or "strict",
+            k=int(getattr(args, "k", 16) or 16),
+        )
+    noise = buf.getvalue().strip()
+    if noise:
+        print(noise, file=sys.stderr)
+    # Default: pack[].text + chain + cold locs only (token-saving agent view).
+    emit_cli_json(out, full=bool(getattr(args, "full", False)))
+    return 0 if out.get("ok") else 1
+
+
+def cmd_expand(args: argparse.Namespace) -> int:
+    """Expand heatmap delta via CLI (JSON). Use after lean pack if a hop is missing."""
+    from pipeline.locate_cli import cli_expand, emit_cli_json
+
+    import contextlib
+    import io
+
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        out = cli_expand(
+            node=args.node,
+            path=getattr(args, "path", ".") or ".",
+            query=getattr(args, "query", "") or "",
+            direction=getattr(args, "direction", "callees") or "callees",
+            with_bodies=bool(getattr(args, "with_bodies", False)),
+            k=int(getattr(args, "k", 12) or 12),
+        )
+    noise = buf.getvalue().strip()
+    if noise:
+        print(noise, file=sys.stderr)
+    emit_cli_json(out, full=bool(getattr(args, "full", False)))
+    return 0 if out.get("ok") else 1
 
 
 def cmd_connect(args: argparse.Namespace) -> int:
@@ -1973,7 +2091,11 @@ def main(argv: list[str] | None = None) -> int:
 
     p_index = sub.add_parser("index", help="Index a repository")
     p_index.add_argument("path", nargs="?", default=".", help="Repo path")
-    p_index.add_argument("--force", action="store_true")
+    p_index.add_argument(
+        "--force",
+        action="store_true",
+        help="Force reindex; also allows indexing above the 20k-chunk token cap",
+    )
     p_index.add_argument(
         "--bits",
         type=int,
@@ -1986,14 +2108,12 @@ def main(argv: list[str] | None = None) -> int:
         help="Embedding model (default CodeRankEmbed)",
     )
     p_index.add_argument(
-        "--fast",
-        action="store_true",
-        help="Fast config: .py under CTX_FAST_ROOTS / --roots only",
-    )
-    p_index.add_argument(
         "--roots",
         default=None,
-        help="Comma-separated fast roots (default: src,lib,app,packages,testdata,...)",
+        help=(
+            "Comma-separated directory prefixes to index (all languages). "
+            "Default: whole repo minus skip dirs"
+        ),
     )
     p_index.add_argument(
         "--confirm",
@@ -2073,7 +2193,14 @@ def main(argv: list[str] | None = None) -> int:
         help="Skip future MCP registration prompts for this project",
     )
     p_reg.add_argument("--no-index", action="store_true", help="Only write id/registry")
-    p_reg.add_argument("--fast", action="store_true", help="Fast index roots only")
+    p_reg.add_argument(
+        "--roots",
+        default=None,
+        help=(
+            "Comma-separated directory prefixes to index (all languages). "
+            "Default: whole repo"
+        ),
+    )
     p_reg.add_argument("--force", action="store_true", help="Force reindex")
     p_reg.add_argument(
         "--confirm",
@@ -2192,6 +2319,69 @@ def main(argv: list[str] | None = None) -> int:
     p_gate.add_argument("path", nargs="?", default=".", help="Repo path (default: cwd)")
     p_gate.set_defaults(func=cmd_gate)
 
+    p_map = sub.add_parser(
+        "map",
+        help="Soft locate (CLI): cards + suggested_seed JSON — expand query first, then pack",
+    )
+    p_map.add_argument("query", help="Expanded denser code-vocab query (symbols/paths/verbs; ~30–80 tokens)")
+    p_map.add_argument("path", nargs="?", default=".", help="Repo path (default: cwd)")
+    p_map.add_argument("--k", type=int, default=10, help="Max cards (default 10)")
+    p_map.add_argument(
+        "--local",
+        action="store_true",
+        help="Skip HTTP engine; in-process index only",
+    )
+    p_map.add_argument(
+        "--full",
+        action="store_true",
+        help="Emit full debug JSON (default: slim cards + suggested_seed only)",
+    )
+    p_map.set_defaults(func=cmd_map)
+
+    p_pack = sub.add_parser(
+        "pack",
+        help="Tracer/heatmap pack (CLI): lean bodies JSON — same query as map + seed_file",
+    )
+    p_pack.add_argument("query", help="Expanded/refined code-vocab query (from map; add card/seed names OK)")
+    p_pack.add_argument(
+        "--seed-file",
+        required=True,
+        help="Seed file from map suggested_seed.file (or known path)",
+    )
+    p_pack.add_argument("--seed-symbol", default="", help="Optional seed symbol")
+    p_pack.add_argument("--seed-line", type=int, default=0, help="Optional seed line")
+    p_pack.add_argument("path", nargs="?", default=".", help="Repo path (default: cwd)")
+    p_pack.add_argument("--mode", choices=("lean", "full"), default="lean")
+    p_pack.add_argument("--policy", choices=("strict", "broad"), default="strict")
+    p_pack.add_argument("--k", type=int, default=16, help="Max heatmap cards")
+    p_pack.add_argument(
+        "--full",
+        action="store_true",
+        help="Emit full debug JSON (default: pack[].text + chain + cold locs only)",
+    )
+    p_pack.set_defaults(func=cmd_pack)
+
+    p_expand = sub.add_parser(
+        "expand",
+        help="Expand heatmap delta (CLI) after pack — direction=callees|callers|effects|broad",
+    )
+    p_expand.add_argument("--node", required=True, help="Heatmap node id from pack/map")
+    p_expand.add_argument("--query", default="", help="Optional; keep expanded map/pack query")
+    p_expand.add_argument(
+        "--direction",
+        default="callees",
+        help="callees|callers|effects|broad|all (default callees)",
+    )
+    p_expand.add_argument("--with-bodies", action="store_true", help="Include lean bodies for delta")
+    p_expand.add_argument("--k", type=int, default=10)
+    p_expand.add_argument("path", nargs="?", default=".", help="Repo path (default: cwd)")
+    p_expand.add_argument(
+        "--full",
+        action="store_true",
+        help="Emit full debug JSON (default: delta + pack bodies only)",
+    )
+    p_expand.set_defaults(func=cmd_expand)
+
     p_sync = sub.add_parser("sync", help="Incremental re-embed files changed since last index")
     p_sync.add_argument("path", nargs="?", default=".")
     p_sync.add_argument(
@@ -2272,14 +2462,17 @@ def main(argv: list[str] | None = None) -> int:
         help="Do not persist always-allow registration consent",
     )
     p_init.add_argument(
-        "--fast",
-        action="store_true",
-        help="Fast index: .py under CTX_FAST_ROOTS / --roots only",
-    )
-    p_init.add_argument(
         "--roots",
         default=None,
-        help="Comma-separated fast roots (implies --fast)",
+        help=(
+            "Comma-separated directory prefixes to index (all languages). "
+            "Default: whole repo minus skip dirs"
+        ),
+    )
+    p_init.add_argument(
+        "--force",
+        action="store_true",
+        help="Allow indexing above the 20k-chunk token safety cap",
     )
     p_init.add_argument(
         "--confirm",
@@ -2389,6 +2582,31 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     p_unlock.set_defaults(func=cmd_unlock_tool)
+
+    p_heal = sub.add_parser(
+        "heal",
+        help=(
+            "Recover after upgrade/Access-denied/orphan engine: "
+            "kill lockers, restore MCP pins, rebind daemon to this repo."
+        ),
+    )
+    p_heal.add_argument(
+        "path",
+        nargs="?",
+        default=".",
+        help="Repo path to rebind (default: cwd)",
+    )
+    p_heal.add_argument(
+        "--unlock",
+        action="store_true",
+        help="Also force-free %%APPDATA%%\\uv\\tools\\scubiee (Windows Access denied)",
+    )
+    p_heal.add_argument(
+        "--no-connect",
+        action="store_true",
+        help="Skip rewriting Cursor MCP/GATE pins",
+    )
+    p_heal.set_defaults(func=cmd_heal)
 
     p_migrate = sub.add_parser(
         "migrate",

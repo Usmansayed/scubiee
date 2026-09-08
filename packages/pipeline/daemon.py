@@ -1,4 +1,4 @@
-﻿"""Daemon lifecycle: start/stop/pid/lock for the Context Engine HTTP service."""
+"""Daemon lifecycle: start/stop/pid/lock for the Context Engine HTTP service."""
 
 from __future__ import annotations
 
@@ -217,8 +217,13 @@ def start_daemon(
     host: str | None = None,
     port: int | None = None,
     wait_s: float = 90.0,
+    force: bool = False,
 ) -> dict[str, Any]:
-    """Spawn Context Engine in background if not already healthy."""
+    """Spawn Context Engine in background if not already healthy.
+
+    ``force=True`` (used by ``force_restart_daemon``) skips the hung-lock refuse
+    path so a fresh worker can bind after a kill sweep.
+    """
     # Guard: detect conflicting scubiee installations sharing ~/.scubiee
     from pipeline.install_guard import check_install_conflict, write_install_marker
 
@@ -242,7 +247,7 @@ def start_daemon(
     except Exception:  # noqa: BLE001
         pass
 
-    if is_running():
+    if is_running() and not force:
         try:
             from pipeline.lifecycle_runtime import note_engine_transition
 
@@ -259,13 +264,26 @@ def start_daemon(
             existing = int(pid_path().read_text(encoding="utf-8").strip())
         except (OSError, ValueError):
             existing = None
-    if existing is not None and _pid_alive(existing) and not is_running():
+    if existing is not None and _pid_alive(existing) and not is_running() and not force:
         return {
             "ok": False,
             "error": f"engine.lock held by pid {existing} but /health is down",
             "hint": "scubiee engine stop  or check engine.log",
             "log": str(log_path()),
         }
+    if force and existing is not None and _pid_alive(existing) and not is_running():
+        try:
+            if os.name == "nt":
+                subprocess.run(
+                    ["taskkill", "/PID", str(existing), "/T", "/F"],
+                    capture_output=True,
+                    check=False,
+                )
+            else:
+                os.kill(existing, 9)
+        except Exception:  # noqa: BLE001
+            pass
+        release_lock()
 
     h, p = default_host_port()
     host = host or h
@@ -361,7 +379,9 @@ def stop_daemon(*, reason: str | None = None) -> dict[str, Any]:
     )
 
     stop_reason = str(reason or TRANSITION_REASON_USER)
-    client = EngineClient()
+    host, port = default_host_port()
+    # Short timeout — shutdown is best-effort; pid/sweep handle hard stop.
+    client = EngineClient(timeout=3.0)
     try:
         client.post("/v1/shutdown", {})
     except Exception:  # noqa: BLE001
@@ -377,7 +397,7 @@ def stop_daemon(*, reason: str | None = None) -> dict[str, Any]:
     lock_pid = _read_lock_pid()
     if lock_pid:
         pids.add(lock_pid)
-    from pipeline.process_control import safe_terminate_pid
+    from pipeline.process_control import kill_all_engine_daemons, safe_terminate_pid
 
     killed: list[int] = []
     skipped: list[dict[str, Any]] = []
@@ -387,6 +407,10 @@ def stop_daemon(*, reason: str | None = None) -> dict[str, Any]:
             killed.append(pid)
         elif result.get("skipped") == "not_context_engine":
             skipped.append(result)
+    # Always sweep orphans — prior stop only cleared lock pid and missed
+    # ``python -m pipeline engine run`` workers still holding :8765.
+    sweep = kill_all_engine_daemons(port=port, wait_s=5.0)
+    killed.extend(sweep.get("killed") or [])
     release_lock()
     deadline = time.time() + 5.0
     while time.time() < deadline and is_running():
@@ -398,10 +422,11 @@ def stop_daemon(*, reason: str | None = None) -> dict[str, Any]:
         except Exception:  # noqa: BLE001
             pass
     return {
-        "ok": True,
+        "ok": not still_running,
         "running": still_running,
-        "killed": killed,
+        "killed": sorted(set(killed)),
         "skipped_pids": skipped,
+        "sweep": sweep,
         "stop_reason": stop_reason,
     }
 
@@ -450,6 +475,9 @@ def force_restart_daemon(repo: Path | str | None = None, *, upgrade: bool = Fals
         stop_daemon_for_upgrade()
     else:
         stop_daemon()
+    from pipeline.process_control import kill_all_engine_daemons
+
+    sweep = kill_all_engine_daemons(port=port, wait_s=5.0)
     # Extra: clear refuse path for hung lock
     existing = _read_lock_pid()
     if existing is not None and _pid_alive(existing):
@@ -465,10 +493,11 @@ def force_restart_daemon(repo: Path | str | None = None, *, upgrade: bool = Fals
         except Exception:  # noqa: BLE001
             pass
     release_lock()
-    time.sleep(2.0)
+    time.sleep(1.0)
 
-    result = start_daemon(repo_s, host=host, port=port, wait_s=120.0)
+    result = start_daemon(repo_s, host=host, port=port, wait_s=120.0, force=True)
     result["forced"] = True
+    result["sweep"] = sweep
     return result
 
 
@@ -497,14 +526,15 @@ def ensure_daemon(
             ensure_supervisor()
     except Exception:  # noqa: BLE001
         pass
+    version_adopt: dict[str, Any] | None = None
     if is_running():
         # Version mismatch check: restart if daemon is running old code
         try:
             from pipeline.upgrade import daemon_version_matches, restart_daemon_if_stale
 
             if not daemon_version_matches():
-                restarted = restart_daemon_if_stale()
-                if restarted.get("ok") and restarted.get("action") == "restarted":
+                version_adopt = restart_daemon_if_stale()
+                if version_adopt.get("ok") and version_adopt.get("action") == "restarted":
                     # Daemon was restarted with new version; re-check
                     import time as _t
                     _t.sleep(1.0)
@@ -513,7 +543,10 @@ def ensure_daemon(
 
         target = Path(repo).resolve() if repo is not None else None
         if target is None:
-            return {"ok": True, "already_running": True, "url": engine_url()}
+            out = {"ok": True, "already_running": True, "url": engine_url()}
+            if version_adopt is not None:
+                out["version_adopt"] = version_adopt
+            return out
         from pipeline.client import EngineClient
 
         client = EngineClient()
@@ -525,7 +558,7 @@ def ensure_daemon(
         except OSError:
             bound = None
         matched = bool(opened.get("ok", True) and bound == target)
-        return {
+        out = {
             "ok": matched,
             "already_running": True,
             "url": engine_url(),
@@ -534,6 +567,12 @@ def ensure_daemon(
             "opened": opened,
             "error": None if matched else "running daemon did not bind requested repository",
         }
+        if version_adopt is not None:
+            out["version_adopt"] = version_adopt
+            if version_adopt.get("action") == "restarted":
+                out["already_running"] = False
+                out["action"] = "version_restarted"
+        return out
     # If hung (lock alive, health down), optionally force restart.
     # MCP request paths should pass force_if_hung=False — force_restart can
     # block for minutes and looked like agent "hangs" in A/B runs.

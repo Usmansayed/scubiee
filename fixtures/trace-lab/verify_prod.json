@@ -1,0 +1,696 @@
+{
+  "description": "Production-like verify: detailed agent paragraph + 2 seed code chunks (primary + secondary). Same gold must/must_not as hard subset. correct <=> must subset hot AND hot intersect must_not empty.",
+  "hot_threshold": 0.45,
+  "cases": [
+    {
+      "id": "p01",
+      "family": "auth-full-path",
+      "source_hard": "h01",
+      "prompt": "I am debugging login auth. Starting from authenticate and JwtService.verify, I need every hop that validates the bearer token / JWT claims and loads the user from the repository into the model \u2014 credential checking and user resolution only. Do not pull billing, mail, or analytics side effects into the heatmap.",
+      "seed": {
+        "file": "app/middleware/auth.py",
+        "symbol": "authenticate"
+      },
+      "seed_chunks": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate",
+          "text": "def authenticate(request: dict) -> dict:\n    token = extract_bearer(request)\n    payload = JwtService().verify(token)\n    log(\"ok\")\n    track(\"login\")\n    return payload"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "extract_bearer",
+          "text": "def extract_bearer(request: dict) -> str:\n    header = request.get(\"authorization\") or \"\"\n    if header.lower().startswith(\"bearer \"):\n        return header.split(\" \", 1)[1]\n    raise ValueError(\"missing token\")"
+        }
+      ],
+      "must": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "extract_bearer"
+        },
+        {
+          "file": "app/services/jwt_service.py",
+          "symbol": "JwtService.verify"
+        },
+        {
+          "file": "app/utils/token.py",
+          "symbol": "decode"
+        },
+        {
+          "file": "app/repositories/user_repo.py",
+          "symbol": "UserRepository.resolve"
+        },
+        {
+          "file": "app/models/user.py",
+          "symbol": "User.lookup"
+        },
+        {
+          "file": "app/config/database.py",
+          "symbol": "connect"
+        }
+      ],
+      "should": [
+        {
+          "file": "app/config/security.py",
+          "symbol": "TOKEN_TTL"
+        }
+      ],
+      "must_not": [
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        },
+        {
+          "file": "app/analytics/tracker.py",
+          "symbol": "track"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        }
+      ],
+      "notes": "production-like: detailed paragraph + 2 seed code chunks"
+    },
+    {
+      "id": "p02",
+      "family": "auth-no-side-effects",
+      "source_hard": "h02",
+      "prompt": "Same auth stack, but I only care about the credential-checking path (bearer extract \u2192 JWT verify \u2192 decode \u2192 user resolve). Explicitly exclude ok-logging and login analytics tracking even if authenticate calls them.",
+      "seed": {
+        "file": "app/middleware/auth.py",
+        "symbol": "authenticate"
+      },
+      "seed_chunks": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate",
+          "text": "def authenticate(request: dict) -> dict:\n    token = extract_bearer(request)\n    payload = JwtService().verify(token)\n    log(\"ok\")\n    track(\"login\")\n    return payload"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "extract_bearer",
+          "text": "def extract_bearer(request: dict) -> str:\n    header = request.get(\"authorization\") or \"\"\n    if header.lower().startswith(\"bearer \"):\n        return header.split(\" \", 1)[1]\n    raise ValueError(\"missing token\")"
+        }
+      ],
+      "must": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "extract_bearer"
+        },
+        {
+          "file": "app/services/jwt_service.py",
+          "symbol": "JwtService.verify"
+        },
+        {
+          "file": "app/utils/token.py",
+          "symbol": "decode"
+        },
+        {
+          "file": "app/repositories/user_repo.py",
+          "symbol": "UserRepository.resolve"
+        },
+        {
+          "file": "app/models/user.py",
+          "symbol": "User.lookup"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        },
+        {
+          "file": "app/analytics/tracker.py",
+          "symbol": "track"
+        },
+        {
+          "file": "app/config/security.py",
+          "symbol": "TOKEN_TTL"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        }
+      ],
+      "notes": "production-like: detailed paragraph + 2 seed code chunks"
+    },
+    {
+      "id": "p09",
+      "family": "checkout-full",
+      "source_hard": "h09",
+      "prompt": "I am implementing checkout. From checkout begin and cart validate, collect the full begin path the agent must read to understand how a checkout starts: validation, pricing quote, inventory reserve, and payment charge wiring. Include the structural callees on that path.",
+      "seed": {
+        "file": "app/checkout/begin.py",
+        "symbol": "begin"
+      },
+      "seed_chunks": [
+        {
+          "file": "app/checkout/begin.py",
+          "symbol": "begin",
+          "text": "def begin(cart: dict, user_id: str) -> dict:\n    validate(cart)\n    priced = quote(cart)\n    for item in cart.get(\"items\") or []:\n        reserve(item[\"sku\"], int(item.get(\"qty\") or 1))\n    ok = charge(user_id, int(priced[\"total\"]))\n    if not ok:\n        raise ValueError(\"pay\")\n    ship = schedule(cart.get(\"id\") or \"o1\", cart.get(\"email\") or \"a@b.c\")\n    log(\"checkout-ok\")\n    return {\"priced\": priced, \"ship\": ship}"
+        },
+        {
+          "file": "app/cart/validate.py",
+          "symbol": "validate",
+          "text": "def validate(cart: dict) -> dict:\n    for item in cart.get(\"items\") or []:\n        if not available(item[\"sku\"], int(item.get(\"qty\") or 1)):\n            raise ValueError(\"oos\")\n    return cart"
+        }
+      ],
+      "must": [
+        {
+          "file": "app/checkout/begin.py",
+          "symbol": "begin"
+        },
+        {
+          "file": "app/cart/validate.py",
+          "symbol": "validate"
+        },
+        {
+          "file": "app/pricing/quote.py",
+          "symbol": "quote"
+        },
+        {
+          "file": "app/pricing/catalog.py",
+          "symbol": "unit_price"
+        },
+        {
+          "file": "app/tax/compute.py",
+          "symbol": "compute"
+        },
+        {
+          "file": "app/tax/rates.py",
+          "symbol": "rate_for"
+        },
+        {
+          "file": "app/inventory/reserve.py",
+          "symbol": "reserve"
+        },
+        {
+          "file": "app/inventory/stock.py",
+          "symbol": "available"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/http/client.py",
+          "symbol": "get"
+        },
+        {
+          "file": "app/shipping/schedule.py",
+          "symbol": "schedule"
+        }
+      ],
+      "should": [
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        },
+        {
+          "file": "app/audit/record.py",
+          "symbol": "record"
+        }
+      ],
+      "must_not": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/services/jwt_service.py",
+          "symbol": "JwtService.verify"
+        },
+        {
+          "file": "app/events/bus.py",
+          "symbol": "emit"
+        }
+      ],
+      "notes": "production-like: detailed paragraph + 2 seed code chunks"
+    },
+    {
+      "id": "p10",
+      "family": "checkout-pricing-only",
+      "source_hard": "h10",
+      "prompt": "Focus a pricing-only slice of checkout: from begin and quote, collect quoting and catalog unit pricing needed to price the cart. Skip inventory reservation and payment charge even if begin eventually reaches them.",
+      "seed": {
+        "file": "app/checkout/begin.py",
+        "symbol": "begin"
+      },
+      "seed_chunks": [
+        {
+          "file": "app/checkout/begin.py",
+          "symbol": "begin",
+          "text": "def begin(cart: dict, user_id: str) -> dict:\n    validate(cart)\n    priced = quote(cart)\n    for item in cart.get(\"items\") or []:\n        reserve(item[\"sku\"], int(item.get(\"qty\") or 1))\n    ok = charge(user_id, int(priced[\"total\"]))\n    if not ok:\n        raise ValueError(\"pay\")\n    ship = schedule(cart.get(\"id\") or \"o1\", cart.get(\"email\") or \"a@b.c\")\n    log(\"checkout-ok\")\n    return {\"priced\": priced, \"ship\": ship}"
+        },
+        {
+          "file": "app/pricing/quote.py",
+          "symbol": "quote",
+          "text": "def quote(cart: dict) -> dict:\n    sub = 0\n    for item in cart.get(\"items\") or []:\n        sub += unit_price(item[\"sku\"]) * int(item.get(\"qty\") or 1)\n    tax = compute(sub, cart.get(\"region\") or \"US\")\n    return {\"sub\": sub, \"tax\": tax, \"total\": sub + tax}"
+        }
+      ],
+      "must": [
+        {
+          "file": "app/checkout/begin.py",
+          "symbol": "begin"
+        },
+        {
+          "file": "app/pricing/quote.py",
+          "symbol": "quote"
+        },
+        {
+          "file": "app/pricing/catalog.py",
+          "symbol": "unit_price"
+        },
+        {
+          "file": "app/tax/compute.py",
+          "symbol": "compute"
+        },
+        {
+          "file": "app/tax/rates.py",
+          "symbol": "rate_for"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/shipping/schedule.py",
+          "symbol": "schedule"
+        },
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        }
+      ],
+      "notes": "production-like: detailed paragraph + 2 seed code chunks"
+    },
+    {
+      "id": "p12",
+      "family": "checkout-pay-ship",
+      "source_hard": "h12",
+      "prompt": "Payment slice of checkout: from begin and invoices.charge, follow how checkout charges the card (http pay) and records audit. Skip pure inventory-only branches that are not on the charge path.",
+      "seed": {
+        "file": "app/checkout/begin.py",
+        "symbol": "begin"
+      },
+      "seed_chunks": [
+        {
+          "file": "app/checkout/begin.py",
+          "symbol": "begin",
+          "text": "def begin(cart: dict, user_id: str) -> dict:\n    validate(cart)\n    priced = quote(cart)\n    for item in cart.get(\"items\") or []:\n        reserve(item[\"sku\"], int(item.get(\"qty\") or 1))\n    ok = charge(user_id, int(priced[\"total\"]))\n    if not ok:\n        raise ValueError(\"pay\")\n    ship = schedule(cart.get(\"id\") or \"o1\", cart.get(\"email\") or \"a@b.c\")\n    log(\"checkout-ok\")\n    return {\"priced\": priced, \"ship\": ship}"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge",
+          "text": "def charge(user_id: str, cents: int) -> bool:\n    payload = get(\"/pay\", {\"user\": user_id, \"cents\": cents})\n    record(\"charge\", user_id)\n    return bool(payload)"
+        }
+      ],
+      "must": [
+        {
+          "file": "app/checkout/begin.py",
+          "symbol": "begin"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/http/client.py",
+          "symbol": "get"
+        },
+        {
+          "file": "app/audit/record.py",
+          "symbol": "record"
+        },
+        {
+          "file": "app/shipping/schedule.py",
+          "symbol": "schedule"
+        },
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/services/jwt_service.py",
+          "symbol": "JwtService.verify"
+        },
+        {
+          "file": "app/events/bus.py",
+          "symbol": "emit"
+        }
+      ],
+      "notes": "production-like: detailed paragraph + 2 seed code chunks"
+    },
+    {
+      "id": "p13",
+      "family": "pricing-deep",
+      "source_hard": "h13",
+      "prompt": "Pricing deep dive: from quote and catalog.unit_price, collect catalog unit pricing and anything quote needs to compute a price. Keep pay/checkout orchestration out unless required for quote itself.",
+      "seed": {
+        "file": "app/pricing/quote.py",
+        "symbol": "quote"
+      },
+      "seed_chunks": [
+        {
+          "file": "app/pricing/quote.py",
+          "symbol": "quote",
+          "text": "def quote(cart: dict) -> dict:\n    sub = 0\n    for item in cart.get(\"items\") or []:\n        sub += unit_price(item[\"sku\"]) * int(item.get(\"qty\") or 1)\n    tax = compute(sub, cart.get(\"region\") or \"US\")\n    return {\"sub\": sub, \"tax\": tax, \"total\": sub + tax}"
+        },
+        {
+          "file": "app/pricing/catalog.py",
+          "symbol": "unit_price",
+          "text": "def unit_price(sku: str) -> int:\n    return 100"
+        }
+      ],
+      "must": [
+        {
+          "file": "app/pricing/quote.py",
+          "symbol": "quote"
+        },
+        {
+          "file": "app/pricing/catalog.py",
+          "symbol": "unit_price"
+        },
+        {
+          "file": "app/tax/compute.py",
+          "symbol": "compute"
+        },
+        {
+          "file": "app/tax/rates.py",
+          "symbol": "rate_for"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/checkout/begin.py",
+          "symbol": "begin"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/cart/validate.py",
+          "symbol": "validate"
+        }
+      ],
+      "notes": "production-like: detailed paragraph + 2 seed code chunks"
+    },
+    {
+      "id": "p19",
+      "family": "jobs-full",
+      "source_hard": "h19",
+      "prompt": "Background jobs: from worker.run and jobs.runner execute path, trace dequeue \u2192 execute \u2192 digest delivery so I can see how a job is processed end-to-end.",
+      "seed": {
+        "file": "app/jobs/worker.py",
+        "symbol": "run"
+      },
+      "seed_chunks": [
+        {
+          "file": "app/jobs/worker.py",
+          "symbol": "run",
+          "text": "def run() -> dict:\n    job = dequeue()\n    return execute(job)"
+        },
+        {
+          "file": "app/jobs/queue.py",
+          "symbol": "dequeue",
+          "text": "def dequeue() -> dict:\n    return _PENDING.pop(0) if _PENDING else {}"
+        }
+      ],
+      "must": [
+        {
+          "file": "app/jobs/worker.py",
+          "symbol": "run"
+        },
+        {
+          "file": "app/jobs/queue.py",
+          "symbol": "dequeue"
+        },
+        {
+          "file": "app/jobs/runner.py",
+          "symbol": "execute"
+        },
+        {
+          "file": "app/jobs/digest.py",
+          "symbol": "send_digest"
+        },
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        },
+        {
+          "file": "app/analytics/tracker.py",
+          "symbol": "track"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/events/bus.py",
+          "symbol": "emit"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        }
+      ],
+      "notes": "production-like: detailed paragraph + 2 seed code chunks"
+    },
+    {
+      "id": "p20",
+      "family": "jobs-no-telemetry",
+      "source_hard": "h20",
+      "prompt": "Job run until digest is produced, without telemetry noise: follow run/execute into digest generation; drop unrelated log/track-only leaves that are not required for digest.",
+      "seed": {
+        "file": "app/jobs/worker.py",
+        "symbol": "run"
+      },
+      "seed_chunks": [
+        {
+          "file": "app/jobs/worker.py",
+          "symbol": "run",
+          "text": "def run() -> dict:\n    job = dequeue()\n    return execute(job)"
+        },
+        {
+          "file": "app/jobs/queue.py",
+          "symbol": "dequeue",
+          "text": "def dequeue() -> dict:\n    return _PENDING.pop(0) if _PENDING else {}"
+        }
+      ],
+      "must": [
+        {
+          "file": "app/jobs/worker.py",
+          "symbol": "run"
+        },
+        {
+          "file": "app/jobs/queue.py",
+          "symbol": "dequeue"
+        },
+        {
+          "file": "app/jobs/runner.py",
+          "symbol": "execute"
+        },
+        {
+          "file": "app/jobs/digest.py",
+          "symbol": "send_digest"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/utils/logger.py",
+          "symbol": "log"
+        },
+        {
+          "file": "app/analytics/tracker.py",
+          "symbol": "track"
+        },
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        }
+      ],
+      "notes": "production-like: detailed paragraph + 2 seed code chunks"
+    },
+    {
+      "id": "p28",
+      "family": "webhook-ingest-full",
+      "source_hard": "h28",
+      "prompt": "Webhook ingress: from ingest and verify_sig, collect signature verification, parse, and routing for an inbound webhook so I can harden verification.",
+      "seed": {
+        "file": "app/webhooks/ingest.py",
+        "symbol": "ingest"
+      },
+      "seed_chunks": [
+        {
+          "file": "app/webhooks/ingest.py",
+          "symbol": "ingest",
+          "text": "def ingest(raw: bytes, headers: dict) -> dict:\n    verify_sig(raw, headers.get(\"x-sig\") or \"\")\n    event = parse(raw)\n    return route(event)"
+        },
+        {
+          "file": "app/webhooks/verify_sig.py",
+          "symbol": "verify_sig",
+          "text": "def verify_sig(raw: bytes, sig: str) -> None:\n    if not sig or len(sig) < 4:\n        raise ValueError(\"bad sig\")\n    _ = TOKEN_TTL"
+        }
+      ],
+      "must": [
+        {
+          "file": "app/webhooks/ingest.py",
+          "symbol": "ingest"
+        },
+        {
+          "file": "app/webhooks/verify_sig.py",
+          "symbol": "verify_sig"
+        },
+        {
+          "file": "app/webhooks/parse.py",
+          "symbol": "parse"
+        },
+        {
+          "file": "app/webhooks/route.py",
+          "symbol": "route"
+        },
+        {
+          "file": "app/webhooks/handlers.py",
+          "symbol": "on_payment"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/http/client.py",
+          "symbol": "get"
+        },
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/services/jwt_service.py",
+          "symbol": "JwtService.verify"
+        },
+        {
+          "file": "app/events/bus.py",
+          "symbol": "emit"
+        }
+      ],
+      "notes": "production-like: detailed paragraph + 2 seed code chunks"
+    },
+    {
+      "id": "p33",
+      "family": "search-full",
+      "source_hard": "h33",
+      "prompt": "Search path: from search.query and rank, collect tokenize \u2192 rank/score \u2192 fetch_docs for answering a search request.",
+      "seed": {
+        "file": "app/search/query.py",
+        "symbol": "query"
+      },
+      "seed_chunks": [
+        {
+          "file": "app/search/query.py",
+          "symbol": "query",
+          "text": "def query(text: str) -> list:\n    toks = tokenize_q(text)\n    ranked = rank(toks)\n    return fetch_docs(ranked)"
+        },
+        {
+          "file": "app/search/tokenize.py",
+          "symbol": "tokenize_q",
+          "text": "def tokenize_q(text: str) -> list:\n    return [t for t in text.lower().split() if t]"
+        }
+      ],
+      "must": [
+        {
+          "file": "app/search/query.py",
+          "symbol": "query"
+        },
+        {
+          "file": "app/search/tokenize.py",
+          "symbol": "tokenize_q"
+        },
+        {
+          "file": "app/search/rank.py",
+          "symbol": "rank"
+        },
+        {
+          "file": "app/search/score.py",
+          "symbol": "score_hit"
+        },
+        {
+          "file": "app/cache/memo.py",
+          "symbol": "get"
+        },
+        {
+          "file": "app/search/fetch_docs.py",
+          "symbol": "fetch_docs"
+        },
+        {
+          "file": "app/config/database.py",
+          "symbol": "connect"
+        },
+        {
+          "file": "app/http/client.py",
+          "symbol": "get"
+        }
+      ],
+      "should": [],
+      "must_not": [
+        {
+          "file": "app/middleware/auth.py",
+          "symbol": "authenticate"
+        },
+        {
+          "file": "app/billing/invoices.py",
+          "symbol": "charge"
+        },
+        {
+          "file": "app/notify/mailer.py",
+          "symbol": "send"
+        }
+      ],
+      "notes": "production-like: detailed paragraph + 2 seed code chunks"
+    }
+  ]
+}

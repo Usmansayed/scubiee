@@ -1,4 +1,4 @@
-﻿"""Incremental re-index: only re-embed files that Merkle/git say changed."""
+"""Incremental re-index: only re-embed files that Merkle/git say changed."""
 
 from __future__ import annotations
 
@@ -29,6 +29,7 @@ from pipeline.vectordb import VectorDatabase
 # Auto-touch without asking. Normal repos are 500–thousands of files; this
 # cap is only for "that looks like a mistake" (home/drive is a separate gate).
 DEFAULT_MAX_TOUCH = 25_000
+DEFAULT_MAX_CHUNKS = 20_000
 
 _BG_SYNC_LOCK = threading.Lock()
 _BG_SYNC_RUNNING = False
@@ -81,6 +82,25 @@ class IndexConfirmRequired(Exception):
 
     def to_payload(self, root: Path) -> dict:
         broad = is_broad_index_root(root)
+        if self.kind == "too_many_chunks":
+            return {
+                "ok": False,
+                "status": "warning",
+                "warning": "too_many_chunks",
+                "needs_force": True,
+                "needs_confirm": False,
+                "root": str(root.resolve()),
+                "n_chunks": self.n_files,
+                "max_chunks": self.max_touch,
+                "message": str(self),
+                "action": (
+                    "This codebase has too many tokens for a default index. "
+                    "If you still want to index it, re-run with --force "
+                    "(e.g. `scubiee init . --force` or `scubiee index . --force`), "
+                    "or narrow scope with `--roots packages`."
+                ),
+                "hint": str(self),
+            }
         if self.kind == "broad_root" or (self.n_files == 0 and broad):
             return {
                 "ok": False,
@@ -110,7 +130,7 @@ class IndexConfirmRequired(Exception):
             ),
             "action": (
                 "Re-run with --confirm, or narrow scope: "
-                "`scubiee init . --fast --roots packages`"
+                "`scubiee init . --roots packages`"
             ),
             "hint": str(self),
         }
@@ -174,6 +194,10 @@ def max_index_touch() -> int:
     return int(os.environ.get("CTX_INCREMENTAL_MAX_TOUCH", str(DEFAULT_MAX_TOUCH)))
 
 
+def max_index_chunks() -> int:
+    return int(os.environ.get("CTX_MAX_INDEX_CHUNKS", str(DEFAULT_MAX_CHUNKS)))
+
+
 def require_index_confirm(
     n_files: int,
     *,
@@ -187,13 +211,44 @@ def require_index_confirm(
         raise IndexConfirmRequired(n_files, max_touch=cap)
 
 
+def require_chunk_force(
+    n_chunks: int,
+    *,
+    force: bool = False,
+) -> None:
+    """Block indexes above the chunk/token cap unless ``--force`` is set.
+
+    ``--confirm`` alone is not enough — large chunk counts mean high embed cost.
+    """
+    if force:
+        return
+    cap = max_index_chunks()
+    if n_chunks > cap:
+        raise IndexConfirmRequired(
+            n_chunks,
+            max_touch=cap,
+            kind="too_many_chunks",
+            message=_chunk_force_hint(n_chunks, max_chunks=cap),
+        )
+
+
+def _chunk_force_hint(n_chunks: int, *, max_chunks: int) -> str:
+    return (
+        f"This codebase has {n_chunks:,} chunks (cap {max_chunks:,}) — "
+        "too many tokens for a default index. "
+        "If you still want to index it, add --force, e.g. "
+        "`scubiee init . --force` or `scubiee index . --force`. "
+        "Or narrow scope: `scubiee init . --roots packages`."
+    )
+
+
 def _confirm_hint(n_files: int, *, max_touch: int) -> str:
     return (
         f"Safety pause: {n_files} files would be indexed (cap {max_touch}). "
         "Re-run with --confirm when ready, e.g. "
         "`scubiee init . --confirm`, `scubiee index . --confirm`, "
         "or `scubiee sync . --confirm`. "
-        "For large repos prefer: `scubiee init . --fast --roots packages`."
+        "For large repos prefer: `scubiee init . --roots packages`."
     )
 
 

@@ -1,0 +1,202 @@
+{
+  "description": "OOD hard board v7 — PRE-SWITCH consistency set C. Vague prompts, foreign noise, narrow intents. Distinct from v5/v6.",
+  "hot_threshold": 0.45,
+  "cases": [
+    {
+      "id": "c01",
+      "family": "vague-partner-cb",
+      "prompt": "incoming partner callback security then routing",
+      "seed": {"file": "app/webhooks/ingest.py", "symbol": "ingest"},
+      "must": [
+        {"file": "app/webhooks/ingest.py", "symbol": "ingest"},
+        {"file": "app/webhooks/verify_sig.py", "symbol": "verify_sig"},
+        {"file": "app/webhooks/route.py", "symbol": "route"}
+      ],
+      "should": [{"file": "app/webhooks/parse.py", "symbol": "parse"}],
+      "must_not": [
+        {"file": "app/http/client.py", "symbol": "get"},
+        {"file": "app/routes/login.py", "symbol": "login"}
+      ]
+    },
+    {
+      "id": "c02",
+      "family": "vague-stale-session",
+      "prompt": "stale session token walk until claims re-verified",
+      "seed": {"file": "app/oauth/refresh.py", "symbol": "refresh"},
+      "must": [
+        {"file": "app/oauth/refresh.py", "symbol": "refresh"},
+        {"file": "app/oauth/rotate.py", "symbol": "rotate"},
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"}
+      ],
+      "should": [{"file": "app/oauth/nonce.py", "symbol": "stamp"}],
+      "must_not": [
+        {"file": "app/routes/login.py", "symbol": "login"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"}
+      ]
+    },
+    {
+      "id": "c03",
+      "family": "pay-only-slice",
+      "prompt": "from begin I only care about the payment hop talking to card API",
+      "seed": {"file": "app/checkout/begin.py", "symbol": "begin"},
+      "must": [
+        {"file": "app/checkout/begin.py", "symbol": "begin"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/http/client.py", "symbol": "get"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/utils/logger.py", "symbol": "log"},
+        {"file": "app/notify/mailer.py", "symbol": "send"},
+        {"file": "app/analytics/tracker.py", "symbol": "track"}
+      ]
+    },
+    {
+      "id": "c04",
+      "family": "stock-only-slice",
+      "prompt": "begin checkout but only stock reservation subgraph",
+      "seed": {"file": "app/checkout/begin.py", "symbol": "begin"},
+      "must": [
+        {"file": "app/checkout/begin.py", "symbol": "begin"},
+        {"file": "app/inventory/reserve.py", "symbol": "reserve"},
+        {"file": "app/inventory/stock.py", "symbol": "available"}
+      ],
+      "should": [{"file": "app/inventory/warehouse.py", "symbol": "levels"}],
+      "must_not": [
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/shipping/schedule.py", "symbol": "schedule"},
+        {"file": "app/utils/logger.py", "symbol": "log"}
+      ]
+    },
+    {
+      "id": "c05",
+      "family": "bus-lookup",
+      "prompt": "dynamic handler lookup when the bus fires",
+      "seed": {"file": "app/events/bus.py", "symbol": "emit"},
+      "must": [
+        {"file": "app/events/bus.py", "symbol": "emit"},
+        {"file": "app/events/registry.py", "symbol": "lookup"},
+        {"file": "app/handlers/welcome.py", "symbol": "handle"}
+      ],
+      "should": [{"file": "app/events/registry.py", "symbol": "bind"}],
+      "must_not": [
+        {"file": "app/jobs/worker.py", "symbol": "run"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"}
+      ]
+    },
+    {
+      "id": "c06",
+      "family": "emit-no-session",
+      "prompt": "bus emit looks up handler — do not expand into session start",
+      "seed": {"file": "app/events/bus.py", "symbol": "emit"},
+      "must": [
+        {"file": "app/events/bus.py", "symbol": "emit"},
+        {"file": "app/events/registry.py", "symbol": "lookup"}
+      ],
+      "should": [{"file": "app/handlers/welcome.py", "symbol": "handle"}],
+      "must_not": [
+        {"file": "app/services/session.py", "symbol": "start"},
+        {"file": "app/jobs/queue.py", "symbol": "enqueue"}
+      ]
+    },
+    {
+      "id": "c07",
+      "family": "cors-isolated",
+      "prompt": "CORS middleware processes request — stay away from auth",
+      "seed": {"file": "app/middleware/cors.py", "symbol": "process"},
+      "must": [{"file": "app/middleware/cors.py", "symbol": "process"}],
+      "should": [],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/routes/login.py", "symbol": "login"}
+      ]
+    },
+    {
+      "id": "c08",
+      "family": "health-isolated",
+      "prompt": "health check endpoint — stay away from auth",
+      "seed": {"file": "app/routes/health.py", "symbol": "health"},
+      "must": [{"file": "app/routes/health.py", "symbol": "health"}],
+      "should": [],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/routes/login.py", "symbol": "login"}
+      ]
+    },
+    {
+      "id": "c09",
+      "family": "throttle-isolated",
+      "prompt": "rate limit allow check for a key",
+      "seed": {"file": "app/limits/throttle.py", "symbol": "allow"},
+      "must": [{"file": "app/limits/throttle.py", "symbol": "allow"}],
+      "should": [{"file": "app/limits/throttle.py", "symbol": "_BUCKET"}],
+      "must_not": [
+        {"file": "app/cache/memo.py", "symbol": "get"},
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"}
+      ]
+    },
+    {
+      "id": "c10",
+      "family": "audit-isolated",
+      "prompt": "write audit trail row — not analytics track",
+      "seed": {"file": "app/audit/record.py", "symbol": "record"},
+      "must": [{"file": "app/audit/record.py", "symbol": "record"}],
+      "should": [],
+      "must_not": [
+        {"file": "app/analytics/tracker.py", "symbol": "track"},
+        {"file": "app/utils/logger.py", "symbol": "log"}
+      ]
+    },
+    {
+      "id": "c11",
+      "family": "enqueue-only",
+      "prompt": "push job onto pending queue — not dequeue/worker",
+      "seed": {"file": "app/jobs/queue.py", "symbol": "enqueue"},
+      "must": [{"file": "app/jobs/queue.py", "symbol": "enqueue"}],
+      "should": [{"file": "app/jobs/queue.py", "symbol": "_PENDING"}],
+      "must_not": [
+        {"file": "app/jobs/queue.py", "symbol": "dequeue"},
+        {"file": "app/jobs/worker.py", "symbol": "run"}
+      ]
+    },
+    {
+      "id": "c12",
+      "family": "refund-handler",
+      "prompt": "on_refund emails the user — no charge",
+      "seed": {"file": "app/webhooks/handlers.py", "symbol": "on_refund"},
+      "must": [
+        {"file": "app/webhooks/handlers.py", "symbol": "on_refund"},
+        {"file": "app/notify/mailer.py", "symbol": "send"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/webhooks/handlers.py", "symbol": "on_payment"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"}
+      ]
+    },
+    {
+      "id": "c13",
+      "family": "index-no-mail",
+      "prompt": "index_file after store — not mailer",
+      "seed": {"file": "app/uploads/index_file.py", "symbol": "index_file"},
+      "must": [{"file": "app/uploads/index_file.py", "symbol": "index_file"}],
+      "should": [{"file": "app/uploads/store.py", "symbol": "store"}],
+      "must_not": [
+        {"file": "app/notify/mailer.py", "symbol": "send"},
+        {"file": "app/search/query.py", "symbol": "query"}
+      ]
+    },
+    {
+      "id": "c14",
+      "family": "memory-fetch",
+      "prompt": "MemoryStore.fetch reads in-memory row",
+      "seed": {"file": "app/stores/memory.py", "symbol": "MemoryStore.fetch"},
+      "must": [{"file": "app/stores/memory.py", "symbol": "MemoryStore.fetch"}],
+      "should": [],
+      "must_not": [
+        {"file": "app/cache/memo.py", "symbol": "get"},
+        {"file": "app/repositories/user_repo.py", "symbol": "UserRepository.resolve"}
+      ]
+    }
+  ]
+}

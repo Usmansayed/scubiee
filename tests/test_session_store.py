@@ -178,9 +178,9 @@ def test_mcp_phase_surface_exposes_locate_toolkit(monkeypatch, tmp_path: Path):
     assert names == {
         "gate",
         "map",
-        "focus",
-        "grep",
-        "glob",
+        "pack_context",
+        "expand_context",
+        "collect_hot_context",
         "workspace",
         "expand",
         "status",

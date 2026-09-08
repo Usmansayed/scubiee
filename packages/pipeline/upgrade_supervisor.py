@@ -525,11 +525,33 @@ def run_upgrade(
     if not health.get("ok"):
         report["ok"] = False
         report["error"] = health.get("error") or "health_failed"
-        report["hint"] = (
-            "Upgrade applied but health check failed. "
-            "Try `scubiee engine start` and reload IDE MCP."
-        )
-        return report
+        # Auto-heal: orphan engine-on-8765 / stubbed MCP is the usual post-upgrade failure.
+        try:
+            from pipeline.heal_runtime import heal_runtime
+
+            healed = heal_runtime(Path.cwd(), connect=connect, unlock_tool_dir=False)
+            report["auto_heal"] = healed
+            if healed.get("ok") and healed.get("healthy"):
+                report["ok"] = True
+                report.pop("error", None)
+                report["hint"] = (
+                    "Upgrade health failed initially; auto-heal rebound the daemon. "
+                    "Reload Scubiee MCP in your IDE."
+                )
+                # fall through to commit
+            else:
+                report["hint"] = (
+                    "Upgrade applied but health check failed. "
+                    "Run `scubiee heal` then reload IDE MCP."
+                )
+                return report
+        except Exception as exc:  # noqa: BLE001
+            report["auto_heal"] = {"ok": False, "error": str(exc)}
+            report["hint"] = (
+                "Upgrade applied but health check failed. "
+                "Run `scubiee heal` then reload IDE MCP."
+            )
+            return report
 
     # COMMIT
     _save_update_check(
@@ -543,7 +565,7 @@ def run_upgrade(
     report["phases"].append("commit")
     report["next_steps"] = [
         "Upgrade complete — daemon restarted on the new package.",
-        "Quit and reopen your IDE once (or toggle MCP off/on) so the bridge reloads.",
+        "Reload Scubiee MCP in your IDE (or run `scubiee heal` if tools look stale).",
     ]
     if report.get("rebind", {}).get("skipped"):
         report["next_steps"].append(

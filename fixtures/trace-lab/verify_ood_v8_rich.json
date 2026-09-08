@@ -1,0 +1,320 @@
+{
+  "description": "OOD rich-context board v8 — queries that NEED more context: long E2E must chains, vague prompts, deep cross-module hops, mid-seeds that must expand far. Not a precision-slice board.",
+  "hot_threshold": 0.45,
+  "cases": [
+    {
+      "id": "r01",
+      "family": "checkout-full-e2e",
+      "prompt": "walk the whole checkout: validate cart, price with tax, reserve stock, charge card, schedule ship",
+      "seed": {"file": "app/checkout/begin.py", "symbol": "begin"},
+      "must": [
+        {"file": "app/checkout/begin.py", "symbol": "begin"},
+        {"file": "app/cart/validate.py", "symbol": "validate"},
+        {"file": "app/pricing/quote.py", "symbol": "quote"},
+        {"file": "app/pricing/catalog.py", "symbol": "unit_price"},
+        {"file": "app/tax/compute.py", "symbol": "compute"},
+        {"file": "app/inventory/reserve.py", "symbol": "reserve"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/shipping/schedule.py", "symbol": "schedule"}
+      ],
+      "should": [
+        {"file": "app/tax/rates.py", "symbol": "rate_for"},
+        {"file": "app/inventory/stock.py", "symbol": "available"},
+        {"file": "app/http/client.py", "symbol": "get"}
+      ],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/oauth/refresh.py", "symbol": "refresh"}
+      ]
+    },
+    {
+      "id": "r02",
+      "family": "login-full-jwt-user",
+      "prompt": "HTTP login through bearer extract, JWT verify, token decode, and user repo resolve",
+      "seed": {"file": "app/routes/login.py", "symbol": "login"},
+      "must": [
+        {"file": "app/routes/login.py", "symbol": "login"},
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/middleware/auth.py", "symbol": "extract_bearer"},
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"},
+        {"file": "app/utils/token.py", "symbol": "decode"},
+        {"file": "app/repositories/user_repo.py", "symbol": "UserRepository.resolve"},
+        {"file": "app/config/database.py", "symbol": "connect"}
+      ],
+      "should": [
+        {"file": "app/models/user.py", "symbol": "User.lookup"},
+        {"file": "app/config/security.py", "symbol": "TOKEN_TTL"}
+      ],
+      "must_not": [
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/oauth/refresh.py", "symbol": "refresh"}
+      ]
+    },
+    {
+      "id": "r03",
+      "family": "webhook-payment-e2e",
+      "prompt": "signed webhook bytes in — verify, parse, route, charge payment, email receipt",
+      "seed": {"file": "app/webhooks/ingest.py", "symbol": "ingest"},
+      "must": [
+        {"file": "app/webhooks/ingest.py", "symbol": "ingest"},
+        {"file": "app/webhooks/verify_sig.py", "symbol": "verify_sig"},
+        {"file": "app/webhooks/parse.py", "symbol": "parse"},
+        {"file": "app/webhooks/route.py", "symbol": "route"},
+        {"file": "app/webhooks/handlers.py", "symbol": "on_payment"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/notify/mailer.py", "symbol": "send"}
+      ],
+      "should": [
+        {"file": "app/http/client.py", "symbol": "get"},
+        {"file": "app/audit/record.py", "symbol": "record"}
+      ],
+      "must_not": [
+        {"file": "app/routes/login.py", "symbol": "login"},
+        {"file": "app/jobs/worker.py", "symbol": "run"}
+      ]
+    },
+    {
+      "id": "r04",
+      "family": "upload-search-bridge",
+      "prompt": "user uploaded a blob — scan, store, index into search tokens, then notify",
+      "seed": {"file": "app/uploads/receive.py", "symbol": "receive"},
+      "must": [
+        {"file": "app/uploads/receive.py", "symbol": "receive"},
+        {"file": "app/uploads/scan.py", "symbol": "scan"},
+        {"file": "app/uploads/store.py", "symbol": "store"},
+        {"file": "app/uploads/index_file.py", "symbol": "index_file"},
+        {"file": "app/search/tokenize.py", "symbol": "tokenize_q"},
+        {"file": "app/notify/mailer.py", "symbol": "send"}
+      ],
+      "should": [
+        {"file": "app/cache/memo.py", "symbol": "put"}
+      ],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"}
+      ]
+    },
+    {
+      "id": "r05",
+      "family": "search-deep-fetch",
+      "prompt": "how does search turn a string into ranked docs including DB connect and remote HTTP fetch?",
+      "seed": {"file": "app/search/query.py", "symbol": "query"},
+      "must": [
+        {"file": "app/search/query.py", "symbol": "query"},
+        {"file": "app/search/tokenize.py", "symbol": "tokenize_q"},
+        {"file": "app/search/rank.py", "symbol": "rank"},
+        {"file": "app/search/score.py", "symbol": "score_hit"},
+        {"file": "app/search/fetch_docs.py", "symbol": "fetch_docs"},
+        {"file": "app/config/database.py", "symbol": "connect"},
+        {"file": "app/http/client.py", "symbol": "get"}
+      ],
+      "should": [
+        {"file": "app/cache/memo.py", "symbol": "get"}
+      ],
+      "must_not": [
+        {"file": "app/uploads/receive.py", "symbol": "receive"},
+        {"file": "app/webhooks/ingest.py", "symbol": "ingest"}
+      ]
+    },
+    {
+      "id": "r06",
+      "family": "job-worker-full",
+      "prompt": "background worker: dequeue a job, execute runner, send digest body",
+      "seed": {"file": "app/jobs/worker.py", "symbol": "run"},
+      "must": [
+        {"file": "app/jobs/worker.py", "symbol": "run"},
+        {"file": "app/jobs/queue.py", "symbol": "dequeue"},
+        {"file": "app/jobs/runner.py", "symbol": "execute"},
+        {"file": "app/jobs/digest.py", "symbol": "send_digest"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/webhooks/ingest.py", "symbol": "ingest"},
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"}
+      ]
+    },
+    {
+      "id": "r07",
+      "family": "deliver-full-notify",
+      "prompt": "deliver path: digest then mailer HTTP send to the user",
+      "seed": {"file": "app/jobs/deliver.py", "symbol": "deliver"},
+      "must": [
+        {"file": "app/jobs/deliver.py", "symbol": "deliver"},
+        {"file": "app/jobs/digest.py", "symbol": "send_digest"},
+        {"file": "app/notify/mailer.py", "symbol": "send"},
+        {"file": "app/http/client.py", "symbol": "get"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/jobs/worker.py", "symbol": "run"},
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"}
+      ]
+    },
+    {
+      "id": "r08",
+      "family": "oauth-refresh-deep",
+      "prompt": "refresh stale token: rotate with nonce, verify JWT claims, decode body, resolve user from repo",
+      "seed": {"file": "app/oauth/refresh.py", "symbol": "refresh"},
+      "must": [
+        {"file": "app/oauth/refresh.py", "symbol": "refresh"},
+        {"file": "app/oauth/rotate.py", "symbol": "rotate"},
+        {"file": "app/oauth/nonce.py", "symbol": "stamp"},
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"},
+        {"file": "app/utils/token.py", "symbol": "decode"},
+        {"file": "app/repositories/user_repo.py", "symbol": "UserRepository.resolve"}
+      ],
+      "should": [
+        {"file": "app/config/database.py", "symbol": "connect"}
+      ],
+      "must_not": [
+        {"file": "app/routes/login.py", "symbol": "login"},
+        {"file": "app/checkout/begin.py", "symbol": "begin"}
+      ]
+    },
+    {
+      "id": "r09",
+      "family": "charge-audit-http",
+      "prompt": "invoice charge talks to payment HTTP and writes an audit record with DB connect",
+      "seed": {"file": "app/billing/invoices.py", "symbol": "charge"},
+      "must": [
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/http/client.py", "symbol": "get"},
+        {"file": "app/audit/record.py", "symbol": "record"},
+        {"file": "app/config/database.py", "symbol": "connect"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/oauth/refresh.py", "symbol": "refresh"}
+      ]
+    },
+    {
+      "id": "r10",
+      "family": "vague-checkout",
+      "prompt": "place an order end to end from cart through payment and delivery scheduling",
+      "seed": {"file": "app/checkout/begin.py", "symbol": "begin"},
+      "must": [
+        {"file": "app/checkout/begin.py", "symbol": "begin"},
+        {"file": "app/cart/validate.py", "symbol": "validate"},
+        {"file": "app/pricing/quote.py", "symbol": "quote"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/shipping/schedule.py", "symbol": "schedule"}
+      ],
+      "should": [
+        {"file": "app/inventory/reserve.py", "symbol": "reserve"},
+        {"file": "app/notify/mailer.py", "symbol": "send"}
+      ],
+      "must_not": [
+        {"file": "app/webhooks/ingest.py", "symbol": "ingest"},
+        {"file": "app/jobs/worker.py", "symbol": "run"}
+      ]
+    },
+    {
+      "id": "r11",
+      "family": "vague-auth-stack",
+      "prompt": "how does the app prove who someone is when they hit a protected route?",
+      "seed": {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+      "must": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/middleware/auth.py", "symbol": "extract_bearer"},
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"},
+        {"file": "app/utils/token.py", "symbol": "decode"}
+      ],
+      "should": [
+        {"file": "app/repositories/user_repo.py", "symbol": "UserRepository.resolve"},
+        {"file": "app/routes/login.py", "symbol": "login"}
+      ],
+      "must_not": [
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/checkout/begin.py", "symbol": "begin"}
+      ]
+    },
+    {
+      "id": "r12",
+      "family": "event-welcome-session",
+      "prompt": "when welcome is emitted: registry lookup, handler, start session",
+      "seed": {"file": "app/events/bus.py", "symbol": "emit"},
+      "must": [
+        {"file": "app/events/bus.py", "symbol": "emit"},
+        {"file": "app/events/registry.py", "symbol": "lookup"},
+        {"file": "app/handlers/welcome.py", "symbol": "handle"},
+        {"file": "app/services/session.py", "symbol": "start"}
+      ],
+      "should": [
+        {"file": "app/events/registry.py", "symbol": "bind"},
+        {"file": "app/bootstrap.py", "symbol": "start"}
+      ],
+      "must_not": [
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/jobs/queue.py", "symbol": "enqueue"}
+      ]
+    },
+    {
+      "id": "r13",
+      "family": "flags-http-deep",
+      "prompt": "feature flag evaluation fetches remote rules over HTTP then matches the user",
+      "seed": {"file": "app/flags/evaluate.py", "symbol": "evaluate"},
+      "must": [
+        {"file": "app/flags/evaluate.py", "symbol": "evaluate"},
+        {"file": "app/flags/remote.py", "symbol": "fetch"},
+        {"file": "app/http/client.py", "symbol": "get"},
+        {"file": "app/flags/rules.py", "symbol": "match"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/search/query.py", "symbol": "query"}
+      ]
+    },
+    {
+      "id": "r14",
+      "family": "inventory-db-deep",
+      "prompt": "reserving stock checks availability and warehouse levels backed by DB connect",
+      "seed": {"file": "app/inventory/reserve.py", "symbol": "reserve"},
+      "must": [
+        {"file": "app/inventory/reserve.py", "symbol": "reserve"},
+        {"file": "app/inventory/stock.py", "symbol": "available"},
+        {"file": "app/inventory/warehouse.py", "symbol": "levels"},
+        {"file": "app/config/database.py", "symbol": "connect"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/shipping/schedule.py", "symbol": "schedule"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"}
+      ]
+    },
+    {
+      "id": "r15",
+      "family": "ship-http-mail",
+      "prompt": "after pay, schedule delivery ETA via HTTP client and notify the buyer by mail",
+      "seed": {"file": "app/shipping/schedule.py", "symbol": "schedule"},
+      "must": [
+        {"file": "app/shipping/schedule.py", "symbol": "schedule"},
+        {"file": "app/http/client.py", "symbol": "get"},
+        {"file": "app/notify/mailer.py", "symbol": "send"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/jobs/deliver.py", "symbol": "deliver"},
+        {"file": "app/webhooks/verify_sig.py", "symbol": "verify_sig"}
+      ]
+    },
+    {
+      "id": "r16",
+      "family": "midseed-quote-full",
+      "prompt": "quote is known — expand catalog unit prices and full tax compute with rates",
+      "seed": {"file": "app/pricing/quote.py", "symbol": "quote"},
+      "must": [
+        {"file": "app/pricing/quote.py", "symbol": "quote"},
+        {"file": "app/pricing/catalog.py", "symbol": "unit_price"},
+        {"file": "app/tax/compute.py", "symbol": "compute"},
+        {"file": "app/tax/rates.py", "symbol": "rate_for"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/checkout/begin.py", "symbol": "begin"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "id": "job-run",
+  "title": "How does run process a queued job?",
+  "query": "How does run process a queued job?",
+  "seed": {
+    "file": "app/jobs/worker.py",
+    "symbol": "run"
+  },
+  "must": [
+    {"file": "app/jobs/worker.py", "symbol": "run", "why": "seed"},
+    {"file": "app/jobs/queue.py", "symbol": "dequeue", "why": "pulls work"},
+    {"file": "app/jobs/runner.py", "symbol": "execute", "why": "generic dispatcher"},
+    {"file": "app/jobs/digest.py", "symbol": "send_digest", "why": "concrete task"}
+  ],
+  "should": [
+    {"file": "app/jobs/queue.py", "symbol": "enqueue", "why": "producer side"}
+  ],
+  "must_not": [
+    {"file": "app/middleware/auth.py", "symbol": "authenticate", "why": "other domain"},
+    {"file": "app/events/bus.py", "symbol": "emit", "why": "other domain"},
+    {"file": "app/http/client.py", "symbol": "get", "why": "jobs do not use http"}
+  ],
+  "gold_rank": [
+    "app/jobs/worker.py::run",
+    "app/jobs/queue.py::dequeue",
+    "app/jobs/runner.py::execute",
+    "app/jobs/digest.py::send_digest"
+  ],
+  "notes": "Static call chain with generic run/execute names."
+}

@@ -140,7 +140,7 @@ def next_actions(
             "why": "Repo has no .scubiee/id.json — enrollment required once per checkout.",
         })
         steps.append({
-            "action": "gate(root=<workspace>) then map/focus — same chat, no host restart",
+            "action": "gate(root=<workspace>) then map→pack_context — same chat, no host restart",
             "why": "Locate tools stay registered; bind the new project_id per call after init.",
         })
         if not mcp_connected:
@@ -177,14 +177,14 @@ def next_actions(
         })
         if for_agent:
             steps.append({
-                "action": "Or call map/focus once (auto-starts daemon)",
+                "action": "Or call map/pack_context once (auto-starts daemon)",
                 "why": "ensure_daemon runs on first MCP locate call.",
             })
         return {"state": state, "steps": steps, **snap}
 
     steps.append({
         "action": "none",
-        "why": "Ready — use map/focus/grep/glob; pass project_id from gate.",
+        "why": "Ready — use map→pack_context→expand_context; exact/name → host Grep/Glob; pass project_id from gate.",
     })
     return {"state": state, "steps": steps, **snap}
 

@@ -16,6 +16,7 @@ import pytest
 
 from pipeline.mcp_bridge import McpBridge
 from pipeline.mcp_hot_reload import (
+    adopt_installed_package_on_connect,
     current_build_id,
     nudge_mcp_hot_reload,
     read_active_build_stamp,
@@ -331,7 +332,9 @@ def test_upgrade_supervisor_includes_hot_reload_on_connect(tmp_path, monkeypatch
     assert nudge_calls == ["0.3.6"]
     assert rebind_calls == ["yes"]
     assert "mcp_hot_reload" in report
-    assert "bridge reloads" in report["next_steps"][1].lower()
+    next_hint = report["next_steps"][1].lower()
+    assert "reload scubiee mcp" in next_hint
+    assert "heal" in next_hint or "ide" in next_hint
 
 
 def test_kill_workers_leaves_bridge_running(monkeypatch):
@@ -391,3 +394,56 @@ def test_bridge_child_death_triggers_respawn(tmp_path, monkeypatch):
     )
     assert any("tools" in chunk for chunk in captured)
     bridge.kill_child()
+
+
+def test_adopt_installed_package_updates_stamp_and_restarts_stale_daemon(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("CTX_HOME", str(tmp_path))
+    write_active_build_stamp("0.1.0", epoch=1.0)
+
+    restart_calls: list[str] = []
+
+    monkeypatch.setattr(
+        "pipeline.upgrade.installed_version",
+        lambda: "0.2.0",
+    )
+    monkeypatch.setattr(
+        "pipeline.upgrade.daemon_version_matches",
+        lambda: False,
+    )
+
+    def _restart() -> dict:
+        restart_calls.append("restart")
+        return {
+            "ok": True,
+            "action": "restarted",
+            "old_version": "0.1.0",
+            "new_version": "0.2.0",
+        }
+
+    monkeypatch.setattr("pipeline.upgrade.restart_daemon_if_stale", _restart)
+
+    report = adopt_installed_package_on_connect()
+    assert report["ok"] is True
+    assert report["stamp_updated"] is True
+    assert read_active_build_stamp()["version"] == "0.2.0"
+    assert restart_calls == ["restart"]
+    assert report["daemon"]["action"] == "restarted"
+
+
+def test_adopt_installed_package_noop_when_current(tmp_path, monkeypatch):
+    monkeypatch.setenv("CTX_HOME", str(tmp_path))
+    write_active_build_stamp("0.3.0", epoch=2.0)
+    monkeypatch.setattr("pipeline.upgrade.installed_version", lambda: "0.3.0")
+    monkeypatch.setattr("pipeline.upgrade.daemon_version_matches", lambda: True)
+
+    def _boom() -> dict:
+        raise AssertionError("should not restart")
+
+    monkeypatch.setattr("pipeline.upgrade.restart_daemon_if_stale", _boom)
+
+    report = adopt_installed_package_on_connect()
+    assert report["ok"] is True
+    assert report["stamp_updated"] is False
+    assert report["daemon"]["action"] == "version_match"

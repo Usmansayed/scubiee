@@ -1,0 +1,324 @@
+{
+  "description": "OOD hard board v2 (2026-09-06): NEW cases only — not from verify_hard/verify_prod. Focus: under-tested domains (webhooks, oauth, checkout, uploads, search, flags, tax, inventory, shipping), vague prompts, mid-chain seeds. correct <=> must subset of hot AND hot intersect must_not empty.",
+  "hot_threshold": 0.45,
+  "cases": [
+    {
+      "id": "o01",
+      "family": "webhook-ingest",
+      "prompt": "signed webhook bytes arrive — what verifies the signature then dispatches payment vs refund?",
+      "seed": {"file": "app/webhooks/ingest.py", "symbol": "ingest"},
+      "must": [
+        {"file": "app/webhooks/ingest.py", "symbol": "ingest"},
+        {"file": "app/webhooks/verify_sig.py", "symbol": "verify_sig"},
+        {"file": "app/webhooks/parse.py", "symbol": "parse"},
+        {"file": "app/webhooks/route.py", "symbol": "route"}
+      ],
+      "should": [
+        {"file": "app/webhooks/handlers.py", "symbol": "on_payment"},
+        {"file": "app/webhooks/handlers.py", "symbol": "on_refund"}
+      ],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/jobs/worker.py", "symbol": "run"},
+        {"file": "app/utils/logger.py", "symbol": "log"}
+      ]
+    },
+    {
+      "id": "o02",
+      "family": "oauth-refresh",
+      "prompt": "user session token is stale — walk refresh until claims are re-verified",
+      "seed": {"file": "app/oauth/refresh.py", "symbol": "refresh"},
+      "must": [
+        {"file": "app/oauth/refresh.py", "symbol": "refresh"},
+        {"file": "app/oauth/rotate.py", "symbol": "rotate"},
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"}
+      ],
+      "should": [
+        {"file": "app/oauth/nonce.py", "symbol": "stamp"}
+      ],
+      "must_not": [
+        {"file": "app/routes/login.py", "symbol": "login"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/analytics/tracker.py", "symbol": "track"}
+      ]
+    },
+    {
+      "id": "o03",
+      "family": "checkout-full",
+      "prompt": "start checkout: validate cart, price it, hold inventory, take payment, schedule ship — ignore ok logs",
+      "seed": {"file": "app/checkout/begin.py", "symbol": "begin"},
+      "must": [
+        {"file": "app/checkout/begin.py", "symbol": "begin"},
+        {"file": "app/cart/validate.py", "symbol": "validate"},
+        {"file": "app/pricing/quote.py", "symbol": "quote"},
+        {"file": "app/inventory/reserve.py", "symbol": "reserve"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/shipping/schedule.py", "symbol": "schedule"}
+      ],
+      "should": [
+        {"file": "app/http/client.py", "symbol": "get"}
+      ],
+      "must_not": [
+        {"file": "app/utils/logger.py", "symbol": "log"},
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/events/bus.py", "symbol": "emit"}
+      ]
+    },
+    {
+      "id": "o04",
+      "family": "upload-pipeline",
+      "prompt": "user dropped a file blob — scan, persist, index, email them",
+      "seed": {"file": "app/uploads/receive.py", "symbol": "receive"},
+      "must": [
+        {"file": "app/uploads/receive.py", "symbol": "receive"},
+        {"file": "app/uploads/scan.py", "symbol": "scan"},
+        {"file": "app/uploads/store.py", "symbol": "store"},
+        {"file": "app/uploads/index_file.py", "symbol": "index_file"},
+        {"file": "app/notify/mailer.py", "symbol": "send"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/search/query.py", "symbol": "query"},
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/jobs/digest.py", "symbol": "send_digest"}
+      ]
+    },
+    {
+      "id": "o05",
+      "family": "search-rank",
+      "prompt": "how does site search turn a string into ranked documents?",
+      "seed": {"file": "app/search/query.py", "symbol": "query"},
+      "must": [
+        {"file": "app/search/query.py", "symbol": "query"},
+        {"file": "app/search/tokenize.py", "symbol": "tokenize_q"},
+        {"file": "app/search/rank.py", "symbol": "rank"},
+        {"file": "app/search/fetch_docs.py", "symbol": "fetch_docs"}
+      ],
+      "should": [
+        {"file": "app/search/score.py", "symbol": "score"}
+      ],
+      "must_not": [
+        {"file": "app/uploads/index_file.py", "symbol": "index_file"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"}
+      ]
+    },
+    {
+      "id": "o06",
+      "family": "flags-remote",
+      "prompt": "is feature flag X on for this user — fetch remote rules then match",
+      "seed": {"file": "app/flags/evaluate.py", "symbol": "evaluate"},
+      "must": [
+        {"file": "app/flags/evaluate.py", "symbol": "evaluate"},
+        {"file": "app/flags/remote.py", "symbol": "fetch"},
+        {"file": "app/flags/rules.py", "symbol": "match"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/config/security.py", "symbol": "TOKEN_TTL"},
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"}
+      ]
+    },
+    {
+      "id": "o07",
+      "family": "tax-midseed",
+      "prompt": "region tax multiplier applied to cart cents",
+      "seed": {"file": "app/tax/compute.py", "symbol": "compute"},
+      "must": [
+        {"file": "app/tax/compute.py", "symbol": "compute"},
+        {"file": "app/tax/rates.py", "symbol": "rate_for"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/pricing/quote.py", "symbol": "quote"}
+      ]
+    },
+    {
+      "id": "o08",
+      "family": "inventory-reserve",
+      "prompt": "holding stock for an SKU during checkout — availability then warehouse levels",
+      "seed": {"file": "app/inventory/reserve.py", "symbol": "reserve"},
+      "must": [
+        {"file": "app/inventory/reserve.py", "symbol": "reserve"},
+        {"file": "app/inventory/stock.py", "symbol": "available"},
+        {"file": "app/inventory/warehouse.py", "symbol": "levels"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/checkout/begin.py", "symbol": "begin"},
+        {"file": "app/shipping/schedule.py", "symbol": "schedule"}
+      ]
+    },
+    {
+      "id": "o09",
+      "family": "ship-http",
+      "prompt": "after pay, schedule delivery ETA via HTTP and notify the buyer",
+      "seed": {"file": "app/shipping/schedule.py", "symbol": "schedule"},
+      "must": [
+        {"file": "app/shipping/schedule.py", "symbol": "schedule"},
+        {"file": "app/http/client.py", "symbol": "get"},
+        {"file": "app/notify/mailer.py", "symbol": "send"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/jobs/deliver.py", "symbol": "deliver"}
+      ]
+    },
+    {
+      "id": "o10",
+      "family": "jwt-midseed",
+      "prompt": "JwtService.verify is the entry — what does it call to decode the token body?",
+      "seed": {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"},
+      "must": [
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"},
+        {"file": "app/utils/token.py", "symbol": "decode"}
+      ],
+      "should": [
+        {"file": "app/config/security.py", "symbol": "TOKEN_TTL"}
+      ],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/oauth/refresh.py", "symbol": "refresh"}
+      ]
+    },
+    {
+      "id": "o11",
+      "family": "webhook-vague",
+      "prompt": "incoming partner callback pipeline security then routing",
+      "seed": {"file": "app/webhooks/ingest.py", "symbol": "ingest"},
+      "must": [
+        {"file": "app/webhooks/ingest.py", "symbol": "ingest"},
+        {"file": "app/webhooks/verify_sig.py", "symbol": "verify_sig"},
+        {"file": "app/webhooks/route.py", "symbol": "route"}
+      ],
+      "should": [
+        {"file": "app/webhooks/parse.py", "symbol": "parse"}
+      ],
+      "must_not": [
+        {"file": "app/http/client.py", "symbol": "get"},
+        {"file": "app/routes/login.py", "symbol": "login"}
+      ]
+    },
+    {
+      "id": "o12",
+      "family": "checkout-pay-only",
+      "prompt": "from begin, I only care about the payment hop that talks to the card API",
+      "seed": {"file": "app/checkout/begin.py", "symbol": "begin"},
+      "must": [
+        {"file": "app/checkout/begin.py", "symbol": "begin"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/http/client.py", "symbol": "get"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/utils/logger.py", "symbol": "log"},
+        {"file": "app/notify/mailer.py", "symbol": "send"},
+        {"file": "app/analytics/tracker.py", "symbol": "track"}
+      ]
+    },
+    {
+      "id": "o13",
+      "family": "event-dispatch",
+      "prompt": "dynamic handler lookup when the bus fires an event",
+      "seed": {"file": "app/events/bus.py", "symbol": "emit"},
+      "must": [
+        {"file": "app/events/bus.py", "symbol": "emit"},
+        {"file": "app/events/registry.py", "symbol": "lookup"},
+        {"file": "app/handlers/welcome.py", "symbol": "handle"}
+      ],
+      "should": [
+        {"file": "app/events/registry.py", "symbol": "bind"}
+      ],
+      "must_not": [
+        {"file": "app/jobs/worker.py", "symbol": "run"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"}
+      ]
+    },
+    {
+      "id": "o14",
+      "family": "job-queue",
+      "prompt": "worker pulls a job off the queue and runs the digest task",
+      "seed": {"file": "app/jobs/worker.py", "symbol": "run"},
+      "must": [
+        {"file": "app/jobs/worker.py", "symbol": "run"},
+        {"file": "app/jobs/queue.py", "symbol": "dequeue"},
+        {"file": "app/jobs/runner.py", "symbol": "execute"},
+        {"file": "app/jobs/digest.py", "symbol": "send_digest"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/notify/mailer.py", "symbol": "send"},
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"}
+      ]
+    },
+    {
+      "id": "o15",
+      "family": "upload-no-mail",
+      "prompt": "receive upload but I only care about virus scan and durable store — not email",
+      "seed": {"file": "app/uploads/receive.py", "symbol": "receive"},
+      "must": [
+        {"file": "app/uploads/receive.py", "symbol": "receive"},
+        {"file": "app/uploads/scan.py", "symbol": "scan"},
+        {"file": "app/uploads/store.py", "symbol": "store"}
+      ],
+      "should": [
+        {"file": "app/uploads/index_file.py", "symbol": "index_file"}
+      ],
+      "must_not": [
+        {"file": "app/notify/mailer.py", "symbol": "send"},
+        {"file": "app/search/query.py", "symbol": "query"}
+      ]
+    },
+    {
+      "id": "o16",
+      "family": "oauth-rotate-only",
+      "prompt": "what does rotate do before JwtService sees the token?",
+      "seed": {"file": "app/oauth/rotate.py", "symbol": "rotate"},
+      "must": [
+        {"file": "app/oauth/rotate.py", "symbol": "rotate"},
+        {"file": "app/oauth/nonce.py", "symbol": "stamp"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"},
+        {"file": "app/utils/logger.py", "symbol": "log"}
+      ]
+    },
+    {
+      "id": "o17",
+      "family": "search-tokenize-mid",
+      "prompt": "tokenize_q is known relevant — who ranks and fetches docs after tokens?",
+      "seed": {"file": "app/search/tokenize.py", "symbol": "tokenize_q"},
+      "must": [
+        {"file": "app/search/tokenize.py", "symbol": "tokenize_q"},
+        {"file": "app/search/query.py", "symbol": "query"},
+        {"file": "app/search/rank.py", "symbol": "rank"},
+        {"file": "app/search/fetch_docs.py", "symbol": "fetch_docs"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/uploads/receive.py", "symbol": "receive"}
+      ]
+    },
+    {
+      "id": "o18",
+      "family": "checkout-inventory-slice",
+      "prompt": "begin checkout but only the stock reservation subgraph",
+      "seed": {"file": "app/checkout/begin.py", "symbol": "begin"},
+      "must": [
+        {"file": "app/checkout/begin.py", "symbol": "begin"},
+        {"file": "app/inventory/reserve.py", "symbol": "reserve"},
+        {"file": "app/inventory/stock.py", "symbol": "available"}
+      ],
+      "should": [
+        {"file": "app/inventory/warehouse.py", "symbol": "levels"}
+      ],
+      "must_not": [
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/shipping/schedule.py", "symbol": "schedule"},
+        {"file": "app/utils/logger.py", "symbol": "log"}
+      ]
+    }
+  ]
+}

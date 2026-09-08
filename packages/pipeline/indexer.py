@@ -278,6 +278,9 @@ def index_repo(
 
     t_chunk = time.perf_counter()
     code_chunks = chunk_repo_from_ir(ir, root)
+    from pipeline.incremental import require_chunk_force
+
+    require_chunk_force(len(code_chunks), force=force)
     # Fast without compress: truncate bodies. With compress (default mix): enrich
     # fully then compress to cmax so metadata isn't mid-cut.
     max_chars = (128 * 4) if fast and not cmode else 50_000

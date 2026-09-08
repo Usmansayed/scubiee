@@ -6,6 +6,9 @@ Usage:
   python scripts/run_cli_combination_tests.py --json results.json
 
 Exit 0 if all scenarios match expectation.
+
+The final scenario runs ``unlock-tool``, which removes the uv tool dir. Reinstall
+(``uv tool install --force scubiee``) before using the CLI again.
 """
 
 from __future__ import annotations
@@ -296,13 +299,6 @@ def scenarios() -> list[Scenario]:
             "sync-now on repo",
         ),
         Scenario(
-            "X2",
-            "recovery",
-            [["unlock-tool"]],
-            "any",
-            "unlock uv tool dir",
-        ),
-        Scenario(
             "X4",
             "recovery",
             [["upgrade", "--check"]],
@@ -375,6 +371,14 @@ def scenarios() -> list[Scenario]:
             [["engine", "stop"], ["init", "."]],
             "any",
             "init after engine-only stop",
+        ),
+        # Last: removes the uv tool dir, so the CLI needs a reinstall afterwards.
+        Scenario(
+            "X2",
+            "recovery",
+            [["unlock-tool"]],
+            "any",
+            "unlock uv tool dir (destructive: reinstall after)",
         ),
     ]
 

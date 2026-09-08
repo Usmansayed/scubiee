@@ -1,0 +1,27 @@
+{
+  "id": "store-fetch",
+  "title": "How does MemoryStore fetch a row?",
+  "query": "How does MemoryStore fetch a row?",
+  "seed": {
+    "file": "app/stores/memory.py",
+    "symbol": "MemoryStore.fetch"
+  },
+  "must": [
+    {"file": "app/stores/memory.py", "symbol": "MemoryStore.fetch", "why": "seed override"}
+  ],
+  "should": [
+    {"file": "app/stores/base.py", "symbol": "Store.fetch", "why": "inherited contract"},
+    {"file": "app/stores/base.py", "symbol": "Store", "why": "base type"},
+    {"file": "app/stores/memory.py", "symbol": "MemoryStore", "why": "class"}
+  ],
+  "must_not": [
+    {"file": "app/models/user.py", "symbol": "User.lookup", "why": "different store"},
+    {"file": "app/middleware/auth.py", "symbol": "authenticate", "why": "other domain"},
+    {"file": "app/jobs/worker.py", "symbol": "run", "why": "other domain"}
+  ],
+  "gold_rank": [
+    "app/stores/memory.py::MemoryStore.fetch",
+    "app/stores/base.py::Store.fetch"
+  ],
+  "notes": "Inheritance. fetch is a generic method name on two classes."
+}

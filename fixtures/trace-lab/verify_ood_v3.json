@@ -1,0 +1,264 @@
+{
+  "description": "OOD hard board v3 (2026-09-06): NEW holdout — different prompts/seeds/slices than v2. Domains: login-auth, bootstrap-bind, quote-tax, deliver, throttle, cache, cors, session, mid-seed bearer, digest-only. Anti-overfit vs verify_ood_v2.",
+  "hot_threshold": 0.45,
+  "cases": [
+    {
+      "id": "n01",
+      "family": "login-jwt",
+      "prompt": "HTTP login route hands request to auth — verify JWT payload, skip analytics noise",
+      "seed": {"file": "app/routes/login.py", "symbol": "login"},
+      "must": [
+        {"file": "app/routes/login.py", "symbol": "login"},
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"}
+      ],
+      "should": [
+        {"file": "app/middleware/auth.py", "symbol": "extract_bearer"},
+        {"file": "app/utils/token.py", "symbol": "decode"}
+      ],
+      "must_not": [
+        {"file": "app/analytics/tracker.py", "symbol": "track"},
+        {"file": "app/utils/logger.py", "symbol": "log"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"}
+      ]
+    },
+    {
+      "id": "n02",
+      "family": "auth-verify-slice",
+      "prompt": "authenticate already has the bearer string — verify JWT claims only",
+      "seed": {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+      "must": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"},
+        {"file": "app/utils/token.py", "symbol": "decode"}
+      ],
+      "should": [
+        {"file": "app/middleware/auth.py", "symbol": "extract_bearer"}
+      ],
+      "must_not": [
+        {"file": "app/routes/login.py", "symbol": "login"},
+        {"file": "app/oauth/refresh.py", "symbol": "refresh"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"}
+      ]
+    },
+    {
+      "id": "n03",
+      "family": "bootstrap-bind",
+      "prompt": "app boot wires welcome handler into the event registry",
+      "seed": {"file": "app/bootstrap.py", "symbol": "start"},
+      "must": [
+        {"file": "app/bootstrap.py", "symbol": "start"},
+        {"file": "app/events/registry.py", "symbol": "bind"},
+        {"file": "app/handlers/welcome.py", "symbol": "handle"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/events/bus.py", "symbol": "emit"},
+        {"file": "app/jobs/worker.py", "symbol": "run"}
+      ]
+    },
+    {
+      "id": "n04",
+      "family": "welcome-session",
+      "prompt": "welcome handler starts a user session — ignore ok logs and analytics",
+      "seed": {"file": "app/handlers/welcome.py", "symbol": "handle"},
+      "must": [
+        {"file": "app/handlers/welcome.py", "symbol": "handle"},
+        {"file": "app/services/session.py", "symbol": "start"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/utils/logger.py", "symbol": "log"},
+        {"file": "app/analytics/tracker.py", "symbol": "track"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/events/bus.py", "symbol": "emit"}
+      ]
+    },
+    {
+      "id": "n05",
+      "family": "quote-catalog-tax",
+      "prompt": "price a cart: catalog unit prices then region tax on the subtotal",
+      "seed": {"file": "app/pricing/quote.py", "symbol": "quote"},
+      "must": [
+        {"file": "app/pricing/quote.py", "symbol": "quote"},
+        {"file": "app/pricing/catalog.py", "symbol": "unit_price"},
+        {"file": "app/tax/compute.py", "symbol": "compute"}
+      ],
+      "should": [
+        {"file": "app/tax/rates.py", "symbol": "rate_for"}
+      ],
+      "must_not": [
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/checkout/begin.py", "symbol": "begin"}
+      ]
+    },
+    {
+      "id": "n06",
+      "family": "job-deliver",
+      "prompt": "deliver job path after runner — what does deliver do?",
+      "seed": {"file": "app/jobs/deliver.py", "symbol": "deliver"},
+      "must": [
+        {"file": "app/jobs/deliver.py", "symbol": "deliver"},
+        {"file": "app/jobs/digest.py", "symbol": "send_digest"},
+        {"file": "app/notify/mailer.py", "symbol": "send"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/jobs/worker.py", "symbol": "run"},
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"}
+      ]
+    },
+    {
+      "id": "n07",
+      "family": "digest-only",
+      "prompt": "execute dispatches to digest email — not deliver",
+      "seed": {"file": "app/jobs/runner.py", "symbol": "execute"},
+      "must": [
+        {"file": "app/jobs/runner.py", "symbol": "execute"},
+        {"file": "app/jobs/digest.py", "symbol": "send_digest"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/jobs/deliver.py", "symbol": "deliver"},
+        {"file": "app/jobs/worker.py", "symbol": "run"}
+      ]
+    },
+    {
+      "id": "n08",
+      "family": "throttle-allow",
+      "prompt": "rate limit check before serving a key",
+      "seed": {"file": "app/limits/throttle.py", "symbol": "allow"},
+      "must": [
+        {"file": "app/limits/throttle.py", "symbol": "allow"}
+      ],
+      "should": [
+        {"file": "app/limits/throttle.py", "symbol": "_BUCKET"}
+      ],
+      "must_not": [
+        {"file": "app/cache/memo.py", "symbol": "get"},
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"}
+      ]
+    },
+    {
+      "id": "n09",
+      "family": "cache-memo",
+      "prompt": "memoized get/put for a cache key",
+      "seed": {"file": "app/cache/memo.py", "symbol": "get"},
+      "must": [
+        {"file": "app/cache/memo.py", "symbol": "get"}
+      ],
+      "should": [
+        {"file": "app/cache/memo.py", "symbol": "put"},
+        {"file": "app/cache/memo.py", "symbol": "_STORE"}
+      ],
+      "must_not": [
+        {"file": "app/limits/throttle.py", "symbol": "allow"},
+        {"file": "app/stores/memory.py", "symbol": "MemoryStore.fetch"}
+      ]
+    },
+    {
+      "id": "n10",
+      "family": "cors-mw",
+      "prompt": "CORS middleware processes the inbound request dict",
+      "seed": {"file": "app/middleware/cors.py", "symbol": "process"},
+      "must": [
+        {"file": "app/middleware/cors.py", "symbol": "process"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/routes/login.py", "symbol": "login"}
+      ]
+    },
+    {
+      "id": "n11",
+      "family": "audit-record",
+      "prompt": "write an audit trail row for a user action",
+      "seed": {"file": "app/audit/record.py", "symbol": "record"},
+      "must": [
+        {"file": "app/audit/record.py", "symbol": "record"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/analytics/tracker.py", "symbol": "track"},
+        {"file": "app/utils/logger.py", "symbol": "log"}
+      ]
+    },
+    {
+      "id": "n12",
+      "family": "webhook-handler-pay",
+      "prompt": "payment webhook handler after route — what side effects?",
+      "seed": {"file": "app/webhooks/handlers.py", "symbol": "on_payment"},
+      "must": [
+        {"file": "app/webhooks/handlers.py", "symbol": "on_payment"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/webhooks/handlers.py", "symbol": "on_refund"},
+        {"file": "app/webhooks/ingest.py", "symbol": "ingest"}
+      ]
+    },
+    {
+      "id": "n13",
+      "family": "db-connect",
+      "prompt": "open database connection from config",
+      "seed": {"file": "app/config/database.py", "symbol": "connect"},
+      "must": [
+        {"file": "app/config/database.py", "symbol": "connect"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/config/security.py", "symbol": "TOKEN_TTL"},
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"}
+      ]
+    },
+    {
+      "id": "n14",
+      "family": "enqueue-job",
+      "prompt": "push a job onto the pending queue",
+      "seed": {"file": "app/jobs/queue.py", "symbol": "enqueue"},
+      "must": [
+        {"file": "app/jobs/queue.py", "symbol": "enqueue"}
+      ],
+      "should": [
+        {"file": "app/jobs/queue.py", "symbol": "_PENDING"}
+      ],
+      "must_not": [
+        {"file": "app/jobs/queue.py", "symbol": "dequeue"},
+        {"file": "app/jobs/worker.py", "symbol": "run"}
+      ]
+    },
+    {
+      "id": "n15",
+      "family": "search-rank-cache",
+      "prompt": "rank tokens with score_hit and memo cache — ignore uploads",
+      "seed": {"file": "app/search/rank.py", "symbol": "rank"},
+      "must": [
+        {"file": "app/search/rank.py", "symbol": "rank"},
+        {"file": "app/search/score.py", "symbol": "score_hit"},
+        {"file": "app/cache/memo.py", "symbol": "get"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/uploads/scan.py", "symbol": "scan"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"}
+      ]
+    },
+    {
+      "id": "n16",
+      "family": "flags-match-only",
+      "prompt": "remote rules already fetched — match them to the user",
+      "seed": {"file": "app/flags/rules.py", "symbol": "match"},
+      "must": [
+        {"file": "app/flags/rules.py", "symbol": "match"}
+      ],
+      "should": [
+        {"file": "app/flags/evaluate.py", "symbol": "evaluate"}
+      ],
+      "must_not": [
+        {"file": "app/flags/remote.py", "symbol": "fetch"},
+        {"file": "app/oauth/refresh.py", "symbol": "refresh"}
+      ]
+    }
+  ]
+}

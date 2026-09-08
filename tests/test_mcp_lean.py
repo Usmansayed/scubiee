@@ -7,9 +7,9 @@ import pytest
 PHASE_EXPECTED = {
     "gate",
     "map",
-    "focus",
-    "grep",
-    "glob",
+    "pack_context",
+    "expand_context",
+    "collect_hot_context",
     "workspace",
     "expand",
     "status",

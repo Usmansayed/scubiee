@@ -101,4 +101,4 @@ if (Test-Path $UvToolRoot) {
 }
 
 Write-Host "[uninstall] OK. scubiee is removed from this machine." -ForegroundColor Green
-Write-Host "Reinstall: uv tool install scubiee --index-url https://pypi.org/simple"
+Write-Host 'Reinstall: uv tool install scubiee --index-url https://pypi.org/simple'

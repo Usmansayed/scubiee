@@ -51,6 +51,39 @@ def test_cursor_permissions_merge_preserves_existing(tmp_path: Path) -> None:
     assert any(str(x).startswith("*:") for x in data["mcpAllowlist"])
 
 
+def test_cursor_permissions_prune_classic_lab_sticky(tmp_path: Path) -> None:
+    """Ship connect must drop leftover *:focus/grep/glob from older installs."""
+    path = tmp_path / ".cursor" / "permissions.json"
+    path.parent.mkdir(parents=True)
+    path.write_text(
+        json.dumps(
+            {
+                "mcpAllowlist": [
+                    f"{MCP_SERVER_NAME}:*",
+                    "*:focus",
+                    "*:grep",
+                    "*:glob",
+                    "*:pinpoint",
+                    "*:plate",
+                    "*:pack_context",
+                    "other-server:keep",
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    merge_cursor_permissions(path)
+    data = json.loads(path.read_text(encoding="utf-8"))
+    allow = set(data["mcpAllowlist"])
+    assert "other-server:keep" in allow
+    assert "*:pack_context" in allow
+    assert "*:focus" not in allow
+    assert "*:grep" not in allow
+    assert "*:glob" not in allow
+    assert "*:pinpoint" not in allow
+    assert "*:plate" not in allow
+
+
 def test_claude_settings_merge(tmp_path: Path) -> None:
     path = tmp_path / ".claude" / "settings.json"
     path.parent.mkdir(parents=True)

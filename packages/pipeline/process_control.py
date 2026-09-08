@@ -253,9 +253,11 @@ def is_context_engine_process(pid: int) -> bool:
     markers = (
         "pipeline.server",
         "pipeline.engine",
+        "pipeline engine",  # CLI: python -m pipeline engine run
         "pipeline.mcp_locate",
         "pipeline.mcp_server",
         "pipeline.watchdog",
+        "pipeline watchdog",
         "pipeline.__main__",
         "scubiee",
     )
@@ -296,7 +298,9 @@ def _cmdline_matches_ce(cmdline: list[str] | None) -> bool:
         "mcp-bridge",
         "pipeline.__main__",
         "pipeline.engine",
+        "pipeline engine",  # subcommand form (not import path)
         "pipeline.watchdog",
+        "pipeline watchdog",
         "pipeline.server",
         "pipeline.daemon",
         "pipeline.sync_loop",
@@ -317,7 +321,11 @@ def _exe_matches_scubiee(exe: str | None) -> bool:
 
 
 def enumerate_scubiee_processes(*, exclude_self: bool = True) -> list[dict[str, Any]]:
-    """Return PIDs that look like Scubiee daemon/MCP/engine (not arbitrary python)."""
+    """Return PIDs that look like Scubiee daemon/MCP/engine (not arbitrary python).
+
+    Name-prefilter before cmdline — full cmdline scan of every process is too
+    slow on Windows and hangs wipe/heal for minutes.
+    """
     my_pid = os.getpid()
     found: list[dict[str, Any]] = []
     try:
@@ -325,14 +333,21 @@ def enumerate_scubiee_processes(*, exclude_self: bool = True) -> list[dict[str, 
     except ImportError:
         return found
 
-    for proc in psutil.process_iter(["pid", "exe", "cmdline", "name"]):
+    for proc in psutil.process_iter(["pid", "exe", "name"]):
         try:
             info = proc.info
             pid = int(info["pid"])
+            name = str(info.get("name") or "").lower()
+            exe = info.get("exe") or ""
+            if not (
+                any(tok in name for tok in ("python", "scubiee", "uv"))
+                or _exe_matches_scubiee(exe)
+            ):
+                continue
+            # Protection check is a full process-tree walk — only for survivors.
             if exclude_self and _pid_is_protected(pid, my_pid):
                 continue
-            cmdline = info.get("cmdline") or []
-            exe = info.get("exe") or ""
+            cmdline = proc.cmdline() or []
             if (
                 is_context_engine_process(pid)
                 or _exe_matches_scubiee(exe)
@@ -455,8 +470,238 @@ def kill_all_scubiee_processes(
     return actions
 
 
+def _cmdline_is_engine_run(
+    cmdline: list[str] | None,
+    *,
+    port: int | None = None,
+) -> bool:
+    """True for ``python -m pipeline engine run …`` (not watchdog / other subcommands)."""
+    if not cmdline:
+        return False
+    parts = [str(x).lower() for x in cmdline]
+    joined = " ".join(parts)
+    if "pipeline engine run" not in joined and "pipeline.engine" not in joined:
+        return False
+    if "pipeline engine watchdog" in joined or "pipeline.watchdog" in joined:
+        return False
+    if port is None:
+        return True
+    # Match explicit --port N when present; bare runs default to 8765.
+    port_s = str(int(port))
+    for i, tok in enumerate(parts):
+        if tok in {"--port", "-p"} and i + 1 < len(parts):
+            return parts[i + 1] == port_s
+    return int(port) == 8765
+
+
+def enumerate_engine_run_pids(*, port: int | None = None) -> list[int]:
+    """PIDs whose cmdline is an engine ``run`` worker (optionally filtered by port).
+
+    On Windows, prefer lock/pid files + ``netstat`` only — full process cmdline
+    scans take tens of seconds and made heal/stop look hung.
+    """
+    found: list[int] = []
+    try:
+        from pipeline.daemon import _read_lock_pid, pid_path
+
+        lock_pid = _read_lock_pid()
+        if lock_pid:
+            found.append(int(lock_pid))
+        path = pid_path()
+        if path.is_file():
+            try:
+                found.append(int(path.read_text(encoding="utf-8").strip()))
+            except (OSError, ValueError):
+                pass
+    except Exception:  # noqa: BLE001
+        pass
+
+    if port is not None:
+        found.extend(pids_listening_on_port(int(port)))
+
+    if os.name == "nt" and not (os.environ.get("CTX_ENGINE_ENUM_FULL") or "").strip():
+        # Skip psutil cmdline walk on Windows (too slow under load).
+        # Tests can set CTX_ENGINE_ENUM_FULL=1 to exercise the full scan.
+        return sorted(set(p for p in found if p > 0))
+
+    try:
+        import psutil
+    except ImportError:
+        return sorted(set(p for p in found if p > 0))
+
+    my_pid = os.getpid()
+    for proc in psutil.process_iter(["pid", "name"]):
+        try:
+            info = proc.info
+            pid = int(info["pid"])
+            name = str(info.get("name") or "").lower()
+            if not any(tok in name for tok in ("python", "scubiee")):
+                continue
+            if pid == my_pid or _pid_is_protected(pid):
+                continue
+            cmdline = proc.cmdline() or []
+            if _cmdline_is_engine_run(cmdline, port=port):
+                found.append(pid)
+        except (psutil.NoSuchProcess, psutil.AccessDenied, TypeError, ValueError):
+            continue
+    return sorted(set(p for p in found if p > 0))
+
+
+def pids_listening_on_port(port: int) -> list[int]:
+    """Best-effort: PIDs with a LISTEN socket on *port* (Windows orphan catch).
+
+    Prefer ``netstat`` on Windows — ``psutil.net_connections()`` can stall for
+    minutes under heavy connection tables / AccessDenied scans.
+    """
+    found: list[int] = []
+    port_s = str(int(port))
+    if os.name == "nt":
+        try:
+            proc = subprocess.run(
+                ["netstat", "-ano", "-p", "tcp"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=False,
+            )
+            for line in (proc.stdout or "").splitlines():
+                # TCP    0.0.0.0:8765    0.0.0.0:0    LISTENING    1234
+                if "LISTENING" not in line.upper():
+                    continue
+                parts = line.split()
+                if len(parts) < 5:
+                    continue
+                local = parts[1]
+                if not (local.endswith(":" + port_s) or local.endswith("]." + port_s)):
+                    # IPv6 forms like [::]:8765
+                    if ":" + port_s not in local and local.rstrip().endswith(port_s) is False:
+                        continue
+                    if not local.endswith(":" + port_s):
+                        continue
+                try:
+                    found.append(int(parts[-1]))
+                except ValueError:
+                    continue
+            return sorted(set(found))
+        except (OSError, subprocess.TimeoutExpired):
+            return []
+
+    try:
+        import psutil
+    except ImportError:
+        return found
+    try:
+        for conn in psutil.net_connections(kind="inet"):
+            try:
+                if conn.status != psutil.CONN_LISTEN:
+                    continue
+                laddr = conn.laddr
+                if not laddr or int(getattr(laddr, "port", 0) or 0) != int(port):
+                    continue
+                if conn.pid:
+                    found.append(int(conn.pid))
+            except (AttributeError, TypeError, ValueError, psutil.AccessDenied):
+                continue
+    except (psutil.AccessDenied, OSError):
+        return sorted(set(found))
+    return sorted(set(found))
+
+
+def kill_all_engine_daemons(*, port: int = 8765, wait_s: float = 5.0) -> dict[str, Any]:
+    """Hard-stop every engine ``run`` on *port* — PID + port sweep (no soft HTTP).
+
+    Soft ``/v1/shutdown`` is intentionally omitted: a half-dead listener on Windows
+    can accept the TCP connect and stall until the client timeout (minutes), which
+    made ``scubiee heal`` / stop look hung. Hard kill + port sweep is enough.
+    """
+    from pipeline.daemon import is_running, release_lock
+
+    killed: list[int] = []
+
+    for pid in enumerate_engine_run_pids(port=port):
+        result = safe_terminate_pid(pid, grace_s=1.0)
+        if result.get("terminated"):
+            killed.append(pid)
+        elif result.get("skipped") == "not_context_engine":
+            # Force if cmdline matched engine run but marker check lagged.
+            try:
+                if os.name == "nt":
+                    subprocess.run(
+                        ["taskkill", "/PID", str(pid), "/T", "/F"],
+                        capture_output=True,
+                        check=False,
+                        timeout=5,
+                    )
+                else:
+                    os.kill(pid, 9)
+                killed.append(pid)
+            except OSError:
+                pass
+            except subprocess.TimeoutExpired:
+                pass
+
+    for pid in pids_listening_on_port(port):
+        if pid in killed or _pid_is_protected(pid):
+            continue
+        if is_context_engine_process(pid) or pid in enumerate_engine_run_pids(port=None):
+            result = safe_terminate_pid(pid, grace_s=0.5)
+            if result.get("terminated"):
+                killed.append(pid)
+            else:
+                try:
+                    if os.name == "nt":
+                        subprocess.run(
+                            ["taskkill", "/PID", str(pid), "/T", "/F"],
+                            capture_output=True,
+                            check=False,
+                            timeout=5,
+                        )
+                    else:
+                        os.kill(pid, 9)
+                    killed.append(pid)
+                except OSError:
+                    pass
+                except subprocess.TimeoutExpired:
+                    pass
+
+    try:
+        release_lock()
+    except Exception:  # noqa: BLE001
+        pass
+
+    deadline = time.time() + max(0.5, float(wait_s))
+    while time.time() < deadline:
+        still = enumerate_engine_run_pids(port=port)
+        healthy = False
+        try:
+            healthy = is_running()
+        except Exception:  # noqa: BLE001
+            healthy = False
+        if not still and not healthy:
+            break
+        for pid in still:
+            if pid not in killed:
+                safe_terminate_pid(pid, grace_s=0.3)
+                killed.append(pid)
+        time.sleep(0.25)
+
+    still_pids = enumerate_engine_run_pids(port=port)
+    still_healthy = False
+    try:
+        still_healthy = is_running()
+    except Exception:  # noqa: BLE001
+        still_healthy = False
+    return {
+        "ok": not still_pids and not still_healthy,
+        "killed": sorted(set(killed)),
+        "remaining_pids": still_pids,
+        "still_healthy": still_healthy,
+        "port": int(port),
+    }
+
+
 def stop_engine_worker_processes() -> dict[str, Any]:
-    """Terminate orphan ``python -m pipeline.engine`` workers (not this CLI)."""
+    """Terminate orphan engine ``run`` / ``pipeline.engine`` workers (not this CLI)."""
     killed: list[int] = []
     skipped: list[int] = []
     my_pid = os.getpid()
@@ -473,7 +718,13 @@ def stop_engine_worker_processes() -> dict[str, Any]:
                 continue
             cmdline = info.get("cmdline") or []
             joined = " ".join(str(x) for x in cmdline).lower()
-            if "pipeline.engine" not in joined:
+            if not (
+                "pipeline.engine" in joined
+                or "pipeline engine run" in joined
+                or ("pipeline engine" in joined and "watchdog" not in joined)
+            ):
+                continue
+            if "watchdog" in joined:
                 continue
             result = safe_terminate_pid(pid, grace_s=1.5)
             if result.get("terminated"):
@@ -482,7 +733,11 @@ def stop_engine_worker_processes() -> dict[str, Any]:
                 skipped.append(pid)
         except (psutil.NoSuchProcess, psutil.AccessDenied, TypeError, ValueError):
             continue
-    return {"ok": True, "killed": sorted(set(killed)), "skipped": sorted(set(skipped))}
+    return {
+        "ok": True,
+        "killed": sorted(set(killed)),
+        "skipped": sorted(set(skipped)),
+    }
 
 
 def stop_all_context_engine_processes(*, ctx_home: Path | None = None) -> dict[str, Any]:
@@ -515,15 +770,22 @@ def stop_all_context_engine_processes(*, ctx_home: Path | None = None) -> dict[s
         psutil = None  # type: ignore[assignment]
 
     if psutil is not None:
-        for proc in psutil.process_iter(["pid", "exe", "cmdline"]):
+        for proc in psutil.process_iter(["pid", "exe", "name"]):
             try:
                 info = proc.info
                 pid = int(info["pid"])
                 if pid == my_pid:
                     continue  # Never kill ourselves (wipe, stop, etc.)
-                cmdline = info.get("cmdline") or []
-                joined = " ".join(str(x) for x in cmdline).lower()
+                name = str(info.get("name") or "").lower()
                 exe = info.get("exe") or ""
+                # Reading cmdline for every process costs ~10s on Windows.
+                if not (
+                    any(tok in name for tok in ("python", "scubiee", "uv"))
+                    or _exe_matches_scubiee(exe)
+                ):
+                    continue
+                cmdline = proc.cmdline() or []
+                joined = " ".join(str(x) for x in cmdline).lower()
                 matches = (
                     _cmdline_matches_ce(cmdline)
                     or _exe_matches_scubiee(exe)
@@ -583,6 +845,23 @@ _PROCESS_STILL_RUNNING_HINT = (
 )
 
 _MCP_STUB_SETTLE_S = 1.5
+_MCP_STUB_POLL_MAX_S = 12.0
+
+
+def _wait_for_lockers_gone(*, max_s: float) -> dict[str, Any]:
+    """Poll until Scubiee worker PIDs clear (Cursor may respawn briefly after stub)."""
+    t0 = time.time()
+    last: list[int] = []
+    while time.time() - t0 < max_s:
+        last = [p["pid"] for p in enumerate_scubiee_processes(exclude_self=True)]
+        if not last:
+            return {"ok": True, "waited_s": round(time.time() - t0, 3), "remaining_pids": []}
+        time.sleep(0.4)
+    return {
+        "ok": False,
+        "waited_s": round(time.time() - t0, 3),
+        "remaining_pids": last,
+    }
 
 
 def mcp_noop_command() -> tuple[str, list[str]]:
@@ -903,11 +1182,19 @@ def release_scubiee_process_locks(
         report["lifecycle_mode"] = {"ok": False, "error": str(exc)}
 
     report["kill"] = kill_all_scubiee_processes(exclude_self=True, rounds=rounds)
+    # Second pass after settle — Cursor often respawns once from in-memory config.
+    report["locker_poll"] = _wait_for_lockers_gone(max_s=_MCP_STUB_POLL_MAX_S)
+    if not report["locker_poll"].get("ok"):
+        report["kill_retry"] = kill_all_scubiee_processes(exclude_self=True, rounds=2)
 
     if strip_mcp:
         report["mcp"] = disable_mcp_to_prevent_respawn(project=project)
 
-    remaining = list(report["kill"].get("remaining_pids") or [])
+    remaining = list(
+        (report.get("kill_retry") or report["kill"]).get("remaining_pids")
+        or report["kill"].get("remaining_pids")
+        or []
+    )
     if remaining:
         report["ok"] = False
         report["remaining_pids"] = remaining

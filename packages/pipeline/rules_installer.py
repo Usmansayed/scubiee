@@ -51,84 +51,140 @@ def _templates_dir() -> Path:
 
 
 def managed_gate_usage_short() -> str:
-    """Policy-only GATE body for managed repos — how-to lives in MCP instructions."""
-    # Hard ladder + when/forbidden matrix. Agents otherwise stop after one map and thrash native.
+    """Policy GATE — richer than a one-liner (rules beat MCP how-to for compliance).
+
+    Always-applied system-prompt style: Prefer/Forbid + MUST-use + STRICT soft duty.
+    Full ladder mechanics / long examples stay in MCP server instructions — cite them,
+    do not paste the whole how-to essay here.
+    """
     return (
-        "**MUST Use Scubiee for locate** when tools are available — follow this routing strictly.\n"
+        "**LOCATE PRIORITY (managed):** Soft/structural → Prefer Scubiee over host explore-first "
+        "(Task / codebase_search). Needles/names/paths → Prefer host Grep/Glob/Read "
+        "(Forbid-first map/pack).\n"
         "\n"
-        "### Trace / pack is the point (do not skip)\n"
-        "- `pack_context` is the **tracer/heatmap step** (builds the call/data slice + hot bodies). "
-        "`map` alone is only a seed/card list — **not** enough context to edit.\n"
-        "- On non-trivial work you **must** run **`pack_context(mode=lean)`** (after `map` or with a known seed). "
-        "Prefer lean pack over native file thrash.\n"
-        "- If pack is thin → **`expand_context`** (callees|callers|effects|broad) before guessing with Grep.\n"
-        "- Do **not** substitute `status` / directory listing / shotgun Grep for pack+expand.\n"
+        "**MUST Use Scubiee** when CLI or MCP locate tools are callable. "
+        "Prefer CLI `scubiee map`→`pack --mode lean`→`expand` if thin; else MCP "
+        "`map`→`pack_context`(lean)→`expand_context`/`collect_hot_context`. "
+        "Tool how-to → MCP server instructions / `scubiee map|pack|expand --help` "
+        "(follow those steps; this GATE is the duty to enter the ladder).\n"
         "\n"
-        "### When to call which tool\n"
-        "- **Unknown where to start / soft “how does X work?”** → `map`(descriptive code-vocab query, k=10) "
-        "→ **required next** `pack_context`(same query, `suggested_seed`, mode=lean). "
-        "Do **not** stop after map-only. Heatmap + hot bodies come from pack (the tracer).\n"
-        "- **Have a seed (file/symbol/line) needing bodies** → `pack_context`(mode=lean) first "
-        "(or `map_context` GUIDE-only cards then pack/collect). mode=full only if lean is too thin.\n"
-        "- **Pack/map was thin / missing a hop** → `expand_context`(direction=callees|callers|effects|broad, "
-        "with_bodies as needed) or `collect_hot_context(ids=…)`. "
-        "`pack_context(policy=broad)` once if the slice was too strict.\n"
-        "- **Edit-ready soft hit** → `pinpoint`. **How-it-works overview without bodies** → `plate`.\n"
-        "- **Exact literal / import / error string (no seed hunt)** → host Grep. "
-        "**Filename only** → host Glob. **Already-known path** → host Read.\n"
-        "- **Session / rematerialize** → `workspace` / `expand`.\n"
+        "**Prefer host first (Forbid-first map/pack):**\n"
+        "- Literals / imports / error strings / JWT-like / named-symbol under a known path → Grep.\n"
+        "- Filenames → Glob; known path:lines → Read.\n"
+        "- Health / readiness / `warm_state` / provider-dep errors → `gate`/`status` + Grep — "
+        "**not** soft map→pack.\n"
+        "- After a Scubiee heatmap → guided Grep/Read on `loc` spans only.\n"
         "\n"
-        "### Hard requirements (managed)\n"
-        "- Before the **first** broad native search (repo-wide Grep/findstr/dir dump) on an unfamiliar area: "
-        "complete at least **`map` + `pack_context(lean)`** (or `pack_context(lean)` alone if seed known).\n"
-        "- Before editing code you have not already packed: read **pack bodies / expand delta** first "
-        "(Native-Read only the cold card.locs from the heatmap).\n"
-        "- Budget: ≤3 Scubiee locate calls for the first beat (map→pack→expand); then edit. "
-        "On non-trivial tasks target **≥2 calls with pack included** (map+pack or pack+expand).\n"
-        "- Avoid token dumps and parallel explore thrash.\n"
+        "**WHEN SCUBIEE IS AVAILABLE — STRICT, NO ESCAPE (soft/structural):**\n"
+        "- **Query quality (high ROI — few map/pack calls):** Before map, write ~30–80 denser "
+        "code-vocab tokens: concrete **symbols**, **module paths**, and **outcome verbs** from "
+        "the ask — not a synonym/keyword dump. One tight sentence; **BAN** multi-paragraph "
+        "queries. Vague one-liner **or** keyword-salad = **FAIL**.\n"
+        "- Soft/unknown → map (k=10) → **required next** pack lean "
+        "(public `packages/` suggested_seed; **Forbid** empty / `_` / test / docs seeds).\n"
+        "- **Refine after evidence:** After map (and after expand if used), fold "
+        "`suggested_seed` / hot card `file`+`symbol` into the next pack/expand query. "
+        "Same problem thread; **BAN** unrelated rewrite thrash. Prefer **1× map + 1× pack**; "
+        "expand only if thin — do not burn the ≤3 budget remapping.\n"
+        "- Skipping pack / map-only = **FAIL**. Warming/error ≠ skip — retry pack and/or `status`.\n"
+        "- Thin after pack → expand; need bodies → collect_hot / `--with-bodies` as the surface provides.\n"
+        "- Native-first while Scubiee is up = **FAIL** on soft/structural.\n"
+        "- Native Grep/span-Read only after pack heatmap locs, **or** if Scubiee is fully uncallable "
+        "(no deadlock).\n"
+        "- Empty/useless heatmap **or** needle/health ask → **stop the ladder**; Grep/Read — "
+        "do not stack map/status + shotgun thrash.\n"
+        "- Budget ≤3 locate calls/beat. **BAN whole-file Read** of heatmap paths until expand/collect.\n"
+        "- Edit/Write stay native.\n"
+    )
+
+
+def managed_gate_mcp_only_usage_short() -> str:
+    """MCP-surface GATE (Kiro steering / A/B with-arm) — same policy, MCP names.
+
+    Slightly richer bullets (rules have better ROI than MCP how-to alone).
+    Full ladder mechanics remain in MCP server instructions every turn.
+    """
+    return (
+        "**MUST Use Scubiee MCP for locate** when `@scubiee/*` tools are callable. "
+        "Prefer `map` / `pack_context` / `expand_context` / `collect_hot_context`. "
+        "BAN shell `scubiee map|pack|expand` on this MCP-only surface. "
+        "How-to steps → Scubiee MCP server instructions every turn.\n"
         "\n"
-        "### Forbidden until ladder ran (or Scubiee errored)\n"
-        "- Do **not** open with recursive directory listings or shotgun `findstr`/`rg` across the whole repo "
-        "to “discover” architecture.\n"
-        "- Do **not** treat a single `map` (or `gate`/`status`) call as enough context — "
-        "**`pack_context` is mandatory** for tracer/heatmap bodies.\n"
-        "- Do **not** skip pack because map “looked relevant” — still pack the seed.\n"
+        "**Prefer host first (Forbid-first map/pack):**\n"
+        "- Literals / imports / error strings / named-symbol under known path → Grep.\n"
+        "- Filenames → Glob; known path → Read.\n"
+        "- Health / `warm_state` / provider-dep → `gate`/`status` + Grep — **not** soft map→pack.\n"
+        "- After heatmap → Read `loc` spans only (guided).\n"
         "\n"
-        "**Native Grep/Glob/Read OK** after a heatmap/pack (guided by cards), or when Scubiee MCP "
-        "is down, blocked, paused, or a tool errors — continue; do not deadlock.\n"
-        "Edit/Write/Shell stay native. How-to → Scubiee MCP server instructions."
+        "**WHEN SCUBIEE MCP IS AVAILABLE — STRICT, NO ESCAPE:**\n"
+        "- Soft/unknown: **enrich** ~30–80 denser tokens (symbols/paths/outcome verbs — "
+        "**not** keyword-salad; one sentence; BAN essays) → `map`(k=10) → **required next** "
+        "`pack_context`(lean, packages/ `suggested_seed`; **Forbid** empty / `_` / test seeds). "
+        "Vague one-liner **or** synonym dump = **FAIL**.\n"
+        "- **Refine after map/expand:** fold `suggested_seed` / hot card names into the next "
+        "pack/expand query (same thread; no unrelated thrash). Prefer 1× map + 1× pack; "
+        "expand only if thin.\n"
+        "- Skipping `pack_context` / map-only = **FAIL**. Warming/error ≠ skip — retry "
+        "`pack_context` / `status`.\n"
+        "- Thin → `expand_context`; bodies → `collect_hot_context`.\n"
+        "- Native-first while MCP is up = **FAIL**.\n"
+        "- Native Grep/span-Read only after pack heatmap locs, **or** if MCP fully uncallable "
+        "(no deadlock).\n"
+        "- Empty heatmap **or** needle/health ask → stop ladder; Grep/Read — no map/status thrash.\n"
+        "- Budget ≤3 MCP locate calls/beat. **BAN whole-file Read** of heatmap paths until "
+        "expand/collect. Edit/Write stay native.\n"
     )
 
 
 def managed_gate_mcp_header() -> str:
     """Short reinforce of GATE policy inside MCP instructions (every turn — keep tiny)."""
-    exp = (os.environ.get("CTX_MCP_EXPERIMENT") or "hybrid").strip().lower()
+    exp = (os.environ.get("CTX_MCP_EXPERIMENT") or "ship").strip().lower()
     if exp in {"classic", "phase_classic", "off", "0", "false", "grep_glob", "legacy"}:
         return (
-            "MUST: task+seed → pack_context (tracer heatmap+hot bodies) before native thrash; "
-            "or map_context guide then pack. Descriptive code-heavy query; expand_context if thin. "
-            "No-seed browse → map then pack. Exact/name/path → focus/grep/glob. Native OK if MCP down/errors."
+            "LOCATE PRIORITY: soft/structural → Prefer pack_context (or map→pack); "
+            "literals/names/paths → Prefer host Grep/Glob/Read first (Forbid-first map). "
+            "WHEN SCUBIEE AVAILABLE — STRICT, NO ESCAPE: MUST pack; warming/error ≠ skip. "
+            "Enrich first (~30–80 denser tokens: symbols/paths/verbs — not keyword-salad); "
+            "refine with suggested_seed/hot cards on pack→expand; vague/salad = FAIL. "
+            "Health/warm_state → status+Grep not soft map. "
+            "After pack: heatmap locs — BAN whole-file Read. "
+            "Native OK only if Scubiee fully uncallable — no deadlock."
+        )
+    if exp in {"lab", "full", "hybrid_lab", "hybrid_full", "pinpoint", "plate"}:
+        return (
+            "LOCATE PRIORITY: soft → Prefer map→pack_context(lean)→expand if thin; "
+            "literals/names → Prefer host Grep/Glob first (Forbid-first map/pack). "
+            "WHEN SCUBIEE AVAILABLE — STRICT, NO ESCAPE: MUST pack — warming ≠ skip. "
+            "Enrich first (~30–80 denser tokens — not keyword-salad); refine with seed/hot cards "
+            "on pack→expand. Health/warm_state → status+Grep not soft map. "
+            "After pack: Native-Read locs — BAN whole-file Read. "
+            "Lab extras optional. Native OK only if Scubiee fully uncallable."
         )
     return (
-        "MUST ladder: map(k=10)→pack(lean)→expand(delta) ≤3 calls — "
-        "pack_context IS the tracer/heatmap (required after map; bodies); "
-        "or pack(lean) if seed known. Never stop at map/status. "
-        "No-seed → map/pinpoint/plate then pack when bodies needed. "
-        "Exact/name/path → host Grep/Glob/Read. Native thrash only AFTER pack or if MCP errors."
+        "LOCATE PRIORITY: soft/structural → Prefer map→pack_context(mode=lean)→expand if thin; "
+        "exact literals/imports/error strings/filenames → Prefer host Grep/Glob/Read first "
+        "(Forbid-first map/pack on those). Forbid empty/_/test seeds. "
+        "WHEN SCUBIEE MCP AVAILABLE — STRICT, NO ESCAPE: MUST finish pack — map-only / warming escape = FAIL. "
+        "Enrich first (~30–80 denser tokens: symbols/paths/verbs — not keyword-salad); "
+        "refine with suggested_seed/hot cards on pack→expand; vague/salad = FAIL. "
+        "Health/readiness/warm_state → gate/status+Grep not soft map. "
+        "After pack: Native-Read heatmap locs — BAN whole-file Read; empty heatmap → stop ladder. "
+        "Native OK only if Scubiee fully uncallable — no deadlock."
     )
 
 
 def managed_gate_overview_bullet() -> str:
     """GATE 1 line for overview templates (no project_id yet)."""
     return (
-        "**GATE 1:ce_*** (managed): Use Scubiee strictly — "
-        "MUST map(k=10)→pack(lean)→expand ≤3 calls "
-        "(pack_context = tracer/heatmap+bodies; required after map); "
-        "or pack(lean)/map_context if seed/guide known; descriptive code-heavy query. "
-        "No-seed → map/pinpoint/plate then pack for bodies. "
-        "Exact/name/path → host Grep/Glob/Read. "
-        "Native OK after pack or if MCP down/blocked/paused/errors. "
-        "Edit/Write/Shell stay native. How-to → MCP server instructions."
+        "**GATE 1:ce_*** (managed): **MUST Use Scubiee** when available — STRICT, NO ESCAPE "
+        "(~30–80 denser code-vocab query — not keyword-salad; map→pack lean→expand if thin; "
+        "refine with suggested_seed/hot cards after map; warming ≠ skip pack). "
+        "CLI Prefer `scubiee map`/`pack`; else MCP `map`/`pack_context`. "
+        "literals/names/paths Prefer host Grep/Glob/Read first (Forbid-first map/pack). "
+        "Health/warm_state → status+Grep not soft map. "
+        "After pack: locs only — BAN whole-file Read of heatmap paths. "
+        "Native OK only if Scubiee fully uncallable — do not deadlock. Edit/Write stay native. "
+        "How-to → `scubiee map|pack|expand --help` / MCP instructions."
     )
 
 
@@ -139,18 +195,28 @@ def managed_gate_rule_body(gate_line: str, project_id: str) -> str:
     )
 
 
+def managed_gate_mcp_only_rule_body(gate_line: str, project_id: str) -> str:
+    """Managed GATE for MCP-only surfaces (product MCP hosts + A/B with-arm)."""
+    return (
+        f"**GATE {gate_line}** - Managed repo. `project_id={project_id!r}`.\n\n"
+        f"{managed_gate_mcp_only_usage_short()}"
+    )
+
+
 def unmanaged_gate_rule_body(gate_line: str = "0") -> str:
     return (
         f"**GATE {gate_line or '0'}** - Not managed (no `scubiee init`). "
-        "BAN Scubiee MCP locate tools (`map`, `focus`, `grep`, `glob`, `workspace`). "
+        "BAN Scubiee MCP locate tools (`map`, `pack_context`, `expand_context`, "
+        "`collect_hot_context`, `workspace`, and classic/lab extras). "
         "USE native Grep/Glob/Read/codebase-search only. "
         "Run `scubiee init .` to enroll."
     )
 
 
 PAUSED_AGENT_BAN = (
-    "BAN all Scubiee MCP tools (map, focus, pinpoint, plate, grep, glob, workspace, expand, search, read, "
-    "files, recall, neighbors, graph, outline, status loops). "
+    "BAN all Scubiee MCP tools (map, pack_context, expand_context, collect_hot_context, "
+    "workspace, expand, status loops, and classic/lab extras: focus, grep, glob, pinpoint, plate, "
+    "search, read, files, recall, neighbors, graph, outline). "
     "USE native Read/Grep/Glob/codebase-search only."
 )
 
@@ -1084,7 +1150,21 @@ def _write_rule_mdc(path: Path, *, gate_line: str | None = None) -> None:
 
 def _write_rule_md(path: Path, *, gate_line: str | None = None) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    content = _rule_content_md(gate_line=gate_line)
+    # Kiro steering (.kiro/steering/scubiee.md): MCP-surface STRICT body + always-include
+    parts_l = {p.lower() for p in path.parts}
+    is_kiro_steering = "steering" in parts_l and path.name.lower().startswith("scubiee")
+    if (
+        is_kiro_steering
+        and gate_line
+        and str(gate_line).startswith("1:")
+    ):
+        pid = str(gate_line).split(":", 1)[1]
+        content = managed_gate_mcp_only_rule_body(str(gate_line), pid) + "\n"
+        content = "---\ninclusion: always\n---\n\n" + content
+    else:
+        content = _rule_content_md(gate_line=gate_line)
+        if is_kiro_steering:
+            content = "---\ninclusion: always\n---\n\n" + content
     if path.is_file() and path.read_text(encoding="utf-8") == content:
         return
     path.write_text(content, encoding="utf-8")
@@ -1126,11 +1206,11 @@ def write_project_gate_rules(
     dry_run: bool = False,
     slugs: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Write compact GATE prefer+escape rules under the repo after ``scubiee init``.
+    """Write compact GATE Prefer/Forbid rules under the repo after ``scubiee init``.
 
-    Managed repos: Prefer Scubiee for retrieval when tools are available;
-    native Grep/Glob/Read OK if MCP fails (no BAN-native deadlock).
-    How-to (tool purpose, query tip) lives in MCP server instructions - not duplicated here.
+    Managed repos: Prefer Scubiee for soft/structural locate; Prefer host Grep/Glob
+    for literals/names (Forbid-first map/pack). Native OK if MCP fails (no BAN-native deadlock).
+    How-to lives in MCP server instructions - not duplicated here.
     """
     root = Path(repo).resolve()
     gate = gate_line_for_repo(root)

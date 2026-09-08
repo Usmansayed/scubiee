@@ -20,12 +20,12 @@ from pipeline.rules_installer import (
 )
 from pipeline.tool_registry import TOOL_MAP
 
-PHASE_MANAGED_TOOLS = {
+SHIP_PHASE_TOOLS = {
     "gate",
     "map",
-    "focus",
-    "grep",
-    "glob",
+    "pack_context",
+    "expand_context",
+    "collect_hot_context",
     "workspace",
     "expand",
     "status",
@@ -127,7 +127,7 @@ def test_s3_spawn_unmanaged_full_tools_and_bind_first_instructions(
     monkeypatch.chdir(repo)
 
     tools = _mcp_tools(monkeypatch)
-    assert tools == PHASE_MANAGED_TOOLS
+    assert tools == SHIP_PHASE_TOOLS
 
     text = _instructions(monkeypatch)
     assert text.startswith("GATE 0.") or text.startswith("GATE 0:r")
@@ -148,12 +148,12 @@ def test_s4_managed_repo_full_tools_and_trajectory(
     pid = "ce_scenario_managed1234567890ab"
     _enroll(repo, pid, monkeypatch, tmp_path)
 
-    assert _mcp_tools(monkeypatch) == PHASE_MANAGED_TOOLS
+    assert _mcp_tools(monkeypatch) == SHIP_PHASE_TOOLS
 
     text = _instructions(monkeypatch)
     assert "map" in text
-    assert "grep" in text
-    assert "prefer scubiee" in text.lower() or "native" in text.lower()
+    assert "pack_context" in text.lower()
+    assert "prefer scubiee" in text.lower() or "use scubiee" in text.lower() or "native" in text.lower() or "host Grep" in text or "Scenario routing" in text or "MUST MCP" in text
     assert "BAN native" not in text
 
 
@@ -174,7 +174,7 @@ def test_s5_init_a_open_b_b_stays_unmanaged(tmp_path: Path, monkeypatch) -> None
     from pipeline.mcp_locate import _is_repo_managed
 
     assert _is_repo_managed() is False
-    assert _mcp_tools(monkeypatch) == PHASE_MANAGED_TOOLS
+    assert _mcp_tools(monkeypatch) == SHIP_PHASE_TOOLS
 
 
 # ---------------------------------------------------------------------------
@@ -193,7 +193,7 @@ def test_s6_init_writes_project_rules_not_global(
     assert (repo / ".cursor" / "rules" / "scubiee.mdc").is_file()
     rule = (repo / ".cursor" / "rules" / "scubiee.mdc").read_text(encoding="utf-8")
     assert pid in rule
-    assert "Prefer Scubiee" in rule or "prefer scubiee" in rule.lower()
+    assert "Prefer Scubiee" in rule or "prefer scubiee" in rule.lower() or "Use Scubiee" in rule or "use scubiee" in rule.lower()
     assert "map(query)" not in rule
     assert not (fake_home / ".cursor" / "rules" / "scubiee.mdc").exists()
 
@@ -293,7 +293,13 @@ def test_s12_bare_instructions_override_managed_trajectory(
 
     text = _instructions(monkeypatch)
     assert "map(query)" not in text
-    assert "Recommended: map for meaning" in text or "use as you prefer" in text
+    assert (
+        "Recommended: map for meaning" in text
+        or "Recommended: pinpoint" in text
+        or "Use by scenario" in text
+        or "Ladder: map" in text
+        or "use as you prefer" in text
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -311,14 +317,14 @@ def test_s13_rules_and_instructions_do_not_duplicate_bans(
     rule = (repo / ".cursor" / "rules" / "scubiee.mdc").read_text(encoding="utf-8")
     instr = _instructions(monkeypatch)
 
-    assert "Prefer Scubiee" in rule or "prefer scubiee" in rule.lower()
-    assert "Prefer Scubiee" in rule or "Native Grep" in rule
+    assert "Prefer Scubiee" in rule or "prefer scubiee" in rule.lower() or "Use Scubiee" in rule or "use scubiee" in rule.lower()
+    assert "Prefer Scubiee" in rule or "Use Scubiee" in rule or "Native Grep" in rule or "host Grep" in rule
     assert "map" in rule
     assert "map(query)" not in rule
     assert "focus budget" not in rule.lower()
-    assert "Locate trajectory" in instr or "map(query)" in instr
+    assert "Locate trajectory" in instr or "map(query)" in instr or "Scenario routing" in instr
     assert "BAN native" not in instr
-    assert "budget=cap" in instr or "focus budget" in instr
+    assert "pack_context" in instr.lower() or "composite" in instr.lower()
 
 
 # ---------------------------------------------------------------------------
@@ -362,7 +368,7 @@ def test_s15_init_writes_agents_md_ban_section(tmp_path: Path, monkeypatch) -> N
     write_project_gate_rules(repo)
     agents = (repo / "AGENTS.md").read_text(encoding="utf-8")
     assert pid in agents
-    assert "Prefer Scubiee" in agents or "prefer scubiee" in agents.lower()
+    assert "Prefer Scubiee" in agents or "prefer scubiee" in agents.lower() or "Use Scubiee" in agents or "use scubiee" in agents.lower()
     assert "map(query)" not in agents
 
 
@@ -395,7 +401,7 @@ def test_s17_reinit_refreshes_gate_rule(tmp_path: Path, monkeypatch) -> None:
     write_project_gate_rules(repo)
     text = rule_path.read_text(encoding="utf-8")
     assert pid in text
-    assert "Prefer Scubiee" in text or "prefer scubiee" in text.lower()
+    assert "Prefer Scubiee" in text or "prefer scubiee" in text.lower() or "Use Scubiee" in text or "use scubiee" in text.lower()
     assert "stale content" not in text
 
 
@@ -455,7 +461,7 @@ def test_s20_mid_session_init_then_mcp_reload(
     monkeypatch.delenv("CTX_REPO", raising=False)
 
     tools_before = _mcp_tools(monkeypatch)
-    assert tools_before == PHASE_MANAGED_TOOLS
+    assert tools_before == SHIP_PHASE_TOOLS
 
     pid = "ce_scenario_mid1234567890abcdef"
     _enroll(repo, pid, monkeypatch, tmp_path)
@@ -464,7 +470,7 @@ def test_s20_mid_session_init_then_mcp_reload(
 
     # Simulates MCP reload / new chat — create_mcp re-evaluates managed state
     tools_after = _mcp_tools(monkeypatch)
-    assert tools_after == PHASE_MANAGED_TOOLS
+    assert tools_after == SHIP_PHASE_TOOLS
 
 
 # ---------------------------------------------------------------------------

@@ -112,6 +112,52 @@ def nudge_mcp_hot_reload(version: str | None = None) -> dict[str, Any]:
     return report
 
 
+def adopt_installed_package_on_connect() -> dict[str, Any]:
+    """IDE reopen after package update: stamp build + replace a stale engine.
+
+    When the user installs a new Scubiee build then closes/reopens the coding
+    tool, the new MCP process must not keep talking to an old daemon still
+    bound on the engine port.
+    """
+    from pipeline.upgrade import (
+        daemon_version_matches,
+        installed_version,
+        restart_daemon_if_stale,
+    )
+
+    report: dict[str, Any] = {"ok": True}
+    iv = (installed_version() or "").strip() or "unknown"
+    report["installed_version"] = iv
+
+    stamp = read_active_build_stamp()
+    stamp_ver = str((stamp or {}).get("version") or "").strip()
+    if stamp_ver != iv:
+        try:
+            report["stamp"] = write_active_build_stamp(iv)
+            report["stamp_updated"] = True
+        except Exception as exc:  # noqa: BLE001
+            report["ok"] = False
+            report["stamp_updated"] = False
+            report["stamp_error"] = str(exc)
+            return report
+    else:
+        report["stamp_updated"] = False
+        report["build_id"] = current_build_id()
+
+    try:
+        if not daemon_version_matches():
+            report["daemon"] = restart_daemon_if_stale()
+            if not report["daemon"].get("ok", False):
+                report["ok"] = False
+        else:
+            report["daemon"] = {"ok": True, "action": "version_match", "version": iv}
+    except Exception as exc:  # noqa: BLE001
+        report["ok"] = False
+        report["daemon"] = {"ok": False, "action": "restart_failed", "error": str(exc)}
+
+    return report
+
+
 def _patch_build_env_in_json(path: Path, build_id: str) -> bool:
     """Update ``CTX_SCUBIEE_BUILD`` in a JSON MCP config if scubiee is present."""
     from pipeline.branding import MCP_SERVER_NAME, strip_legacy_mcp_keys

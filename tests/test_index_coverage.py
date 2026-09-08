@@ -19,6 +19,29 @@ def _write(root: Path, rel: str) -> Path:
     return p
 
 
+def test_scoped_roots_index_all_languages(tmp_path):
+    """Scoped mode must keep TS/JS/Go — never Python-only (production polyglot)."""
+    for rel, body in (
+        ("packages/pkg/mod.py", "def f():\n    return 1\n"),
+        ("packages/pkg/ui.ts", "export const x = 1;\n"),
+        ("packages/pkg/svc.go", "package pkg\n"),
+        ("other/skip.py", "def g():\n    pass\n"),
+    ):
+        p = tmp_path / rel
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(body, encoding="utf-8")
+
+    found = {
+        p.relative_to(tmp_path).as_posix()
+        for p in collect_index_paths(tmp_path, fast=True, fast_roots=["packages"])
+    }
+    assert found == {
+        "packages/pkg/mod.py",
+        "packages/pkg/ui.ts",
+        "packages/pkg/svc.go",
+    }
+
+
 def test_fast_mode_indexes_scripts_and_tests(tmp_path):
     for rel in (
         "packages/pkg/mod.py",

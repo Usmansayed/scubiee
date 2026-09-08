@@ -1,0 +1,25 @@
+{
+  "id": "charge-flow",
+  "title": "How does charge talk to the payment API?",
+  "query": "How does charge talk to the payment API?",
+  "seed": {
+    "file": "app/billing/invoices.py",
+    "symbol": "charge"
+  },
+  "must": [
+    {"file": "app/billing/invoices.py", "symbol": "charge", "why": "seed"},
+    {"file": "app/http/client.py", "symbol": "get", "why": "outbound HTTP used by charge"}
+  ],
+  "should": [],
+  "must_not": [
+    {"file": "app/middleware/auth.py", "symbol": "authenticate", "why": "auth vocabulary trap in this file must not pull login"},
+    {"file": "app/utils/token.py", "symbol": "decode", "why": "jwt decoder"},
+    {"file": "app/events/bus.py", "symbol": "emit", "why": "other domain"},
+    {"file": "app/analytics/tracker.py", "symbol": "track", "why": "shares http client but not this slice"}
+  ],
+  "gold_rank": [
+    "app/billing/invoices.py::charge",
+    "app/http/client.py::get"
+  ],
+  "notes": "Reverse of the auth lexical trap: this file mentions authentication but the task is payments."
+}

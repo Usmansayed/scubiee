@@ -48,8 +48,8 @@ PROJECT_ID = "ce_d9cb766c3820091ed9ffbc64ef33063c"
 AGENTS_DIR = ROOT / ".kiro" / "agents"
 PROJECT_MCP = ROOT / ".kiro" / "settings" / "mcp.json"
 USER_MCP = Path.home() / ".kiro" / "settings" / "mcp.json"
-OUT_JSON = ROOT / "docs" / "superpowers" / "plans" / "2026-09-05-kiro-mcp-ab-complex.json"
-OUT_MD = ROOT / "docs" / "superpowers" / "plans" / "2026-09-05-kiro-mcp-ab-complex.md"
+OUT_JSON = ROOT / "docs" / "superpowers" / "plans" / "2026-09-06-kiro-mcp-ab-collect.json"
+OUT_MD = ROOT / "docs" / "superpowers" / "plans" / "2026-09-06-kiro-mcp-ab-collect.md"
 LOG_ROOT = ROOT / "out" / "kiro_ab"
 
 _JSON_TAIL = (
@@ -234,6 +234,40 @@ TASKS: list[dict[str, Any]] = [
         ],
         "gold_symbols": ["soft_search_ready", "WarmSearchEngine"],
     },
+    {
+        "id": "C11_pack_bodies_optin_collect",
+        "complexity": "collect",
+        "prompt": (
+            "COLLECT CONTEXT ONLY — do not edit, implement, or run tests.\n"
+            "Work prompt (find the real call sites and sketch a fix; do not code it):\n"
+            "Wire MCP pack body opt-in properly: when an env flag and/or explicit tool flag "
+            "turns bodies on, pack_context / pack_poly_embed / pack_semantic must actually "
+            "collect bodies. Today MCP hardcodes bodies off and the env only reshapes if "
+            "pack[] is already non-empty. Find the MCP pack factory call site, the pack "
+            "runner include_bodies path, the lean slim/want_bodies reshape, field docs, "
+            "and which tests to extend.\n"
+            "WITH Scubiee: expand a descriptive code-vocab query → map(k=10) → "
+            "pack_context(mode=lean) with the SAME query → Native-Read top heatmap locs only "
+            "(BAN whole-file of heatmap paths) → at most one expand_context if thin.\n"
+            "WITHOUT Scubiee: Grep/Read only.\n"
+            "Return an ordered context pack (file:lines + what it proves) in notes, plus "
+            "a short implementation sketch.\n" + _JSON_TAIL
+        ),
+        "gold_files": [
+            "packages/pipeline/mcp_locate.py",
+            "packages/pipeline/context_trace.py",
+            "packages/pipeline/mcp_response_lean.py",
+            "tests/test_mcp_response_lean.py",
+        ],
+        "gold_symbols": [
+            "_make_pack_impl",
+            "run_pack_context",
+            "include_bodies",
+            "slim_locate_payload",
+            "CTX_MCP_PACK_BODIES",
+            "want_bodies",
+        ],
+    },
 ]
 
 SHARED_PROMPT = """You are a locate-only coding assistant for a fair A/B evaluation.
@@ -246,15 +280,20 @@ Hard rules:
 """
 
 SCUBIEE_PROMPT_EXTRA = """
-You HAVE the scubiee MCP server. GATE locate rules are MANDATORY (also AGENTS.md + .kiro/steering/scubiee.md):
-1) map(descriptive query, k=10)
-2) pack_context(same query, mode=lean) using suggested_seed — THIS IS THE TRACER/HEATMAP STEP; map alone is NOT enough
-3) expand_context only if thin
-Before shotgun native search: finish map+pack. Never stop at map/status. Then answer. Still end with the JSON block.
+You HAVE the scubiee MCP server. There is NO Scubiee CLI locate — BAN shell `scubiee map|pack|expand`.
+LOCATE PRIORITY (managed Prefer/Forbid):
+- Soft/structural → Prefer map → pack_context(mode=lean, same query) → Native-Read top heatmap locs. expand_context if thin.
+- When Scubiee MCP is available: MUST finish pack — map-only / warming-or-error escape = FAIL. Retry pack/status first.
+- Exact literals / imports / error strings / JWT-like needles → Prefer host Grep/rg FIRST (Forbid-first map/pack).
+- Filename/path → Prefer Glob/fileSearch first. Known path:lines → Prefer span Read.
+- Forbid packing empty/_/test seeds. After heatmap, guided native Grep/Read on card locs is OK.
+- Native OK only if Scubiee is fully uncallable — no deadlock. Do not parallel-thrash explore with Scubiee.
+Then answer with the JSON block.
 """
 
 NATIVE_PROMPT_EXTRA = """
 You do NOT have scubiee MCP. BAN inventing MCP locate tools.
+BAN running `scubiee map`, `scubiee pack`, or `scubiee expand`.
 Use only built-in fs_read / fileSearch / listDirectory / shell (rg/findstr/dir).
 """
 
@@ -310,8 +349,8 @@ def _scubiee_mcp_entry() -> dict[str, Any]:
             "CTX_BACKGROUND_SYNC": "1",
             "CTX_TRACE_ENGINE": "composite_v1",
             "CTX_ALLOW_BG_FULL": "0",
-            "CTX_ENGINE_IDLE_S": "25",
-            "CTX_ENGINE_TRANSITION_DEBOUNCE_S": "25",
+            "CTX_ENGINE_IDLE_S": "15",
+            "CTX_ENGINE_TRANSITION_DEBOUNCE_S": "15",
             "CTX_ENGINE_URL": "http://127.0.0.1:8765",
             "CTX_AUTO_INDEX": "1",
             "CTX_MCP_SESSION_ISOLATE": "1",
@@ -321,7 +360,7 @@ def _scubiee_mcp_entry() -> dict[str, Any]:
             "CTX_MCP_SURFACE": "phase",
             "CTX_SYNC_INTERVAL_MS": "300000",
             "CTX_REGISTRATION_MODE": "automatic",
-            "CTX_MCP_EXPERIMENT": "hybrid",
+            "CTX_MCP_EXPERIMENT": "ship",
             "CTX_TRACE_GRAPHIFY": "1",
             "CTX_PROJECT_ID": PROJECT_ID,
             "CTX_TOKEN_MODE": "savings",

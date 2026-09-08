@@ -125,9 +125,17 @@ def test_apply_idle_policy_enters_standby_once(wd_home: Path, monkeypatch: pytes
 
     monkeypatch.setenv("CTX_ENGINE_IDLE_S", "1")
     note_activity(now=1.0)
-    with patch("pipeline.daemon.is_running", return_value=True), patch(
+    # A successful stop must leave is_running() False, otherwise the sweep is
+    # right to try again — a resident engine under standby is the wedge state.
+    alive = {"running": True}
+
+    def fake_stop(*args, **kwargs):
+        alive["running"] = False
+        return {"ok": True, "running": False}
+
+    with patch("pipeline.daemon.is_running", side_effect=lambda: alive["running"]), patch(
         "pipeline.daemon.stop_daemon",
-        return_value={"ok": True, "running": False},
+        side_effect=fake_stop,
     ):
         first = apply_idle_policy(now=10.0)
         second = apply_idle_policy(now=10.0)

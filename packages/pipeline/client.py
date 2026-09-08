@@ -1,14 +1,21 @@
-﻿"""HTTP client for the Context Engine daemon."""
+"""HTTP client for the Context Engine daemon."""
 
 from __future__ import annotations
 
 import json
 import os
+import socket
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
+
+# Refusing a connect to a closed local port costs ~2s on Windows; healthy()
+# runs inside stop/ensure polling loops, so probe the socket first.
+_LOOPBACK_CONNECT_TIMEOUT_S = 0.35
+_LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
 
 _TRANSIENT_ENGINE_MARKERS = (
     "unreachable",
@@ -30,11 +37,20 @@ DEFAULT_URL = "http://127.0.0.1:8765"
 
 
 def engine_url() -> str:
-    return (
-        os.environ.get("CTX_ENGINE_URL")
-        or os.environ.get("CTX_SEARCH_URL")
-        or DEFAULT_URL
-    ).rstrip("/")
+    """Resolve the engine HTTP URL.
+
+    Explicit ``CTX_ENGINE_URL`` / ``CTX_SEARCH_URL`` win. Under pytest
+    (``CTX_ALLOW_TEST_HOME=1``) default to port **18765** so unit tests cannot
+    steal the production daemon on **8765** — that was the post-update bind
+    failure mode (orphans left on 8765 pointing at a deleted pytest temp repo).
+    """
+    explicit = (os.environ.get("CTX_ENGINE_URL") or os.environ.get("CTX_SEARCH_URL") or "").strip()
+    if explicit:
+        return explicit.rstrip("/")
+    if (os.environ.get("CTX_ALLOW_TEST_HOME") or "").strip() in {"1", "true", "yes"}:
+        port = (os.environ.get("CTX_ENGINE_PORT") or "18765").strip() or "18765"
+        return f"http://127.0.0.1:{port}"
+    return DEFAULT_URL
 
 
 class EngineClient:
@@ -72,8 +88,26 @@ class EngineClient:
             return str(self.workspace_path)
         raise ValueError("workspace path is required for Scubiee requests")
 
+    def _loopback_listener_absent(self) -> bool:
+        """True only when a local port is provably closed (fast negative)."""
+        try:
+            parts = urllib.parse.urlsplit(self.base)
+            host = (parts.hostname or "").lower()
+            port = parts.port
+        except ValueError:
+            return False
+        if port is None or host not in _LOOPBACK_HOSTS:
+            return False
+        try:
+            with socket.create_connection((host, port), timeout=_LOOPBACK_CONNECT_TIMEOUT_S):
+                return False
+        except OSError:
+            return True
+
     def healthy(self) -> bool:
         """True if /health returns ok. Always uses a short timeout."""
+        if self._loopback_listener_absent():
+            return False
         try:
             url = f"{self.base}/health"
             req = urllib.request.Request(url, headers={"Accept": "application/json"}, method="GET")

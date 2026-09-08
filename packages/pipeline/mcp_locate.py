@@ -2,33 +2,24 @@
 
 Surface is chosen by env ``CTX_MCP_SURFACE``:
 
-  phase: map | focus | grep | glob | workspace | status
-    Guidance only: map/focus/grep/glob by need; agent chooses. Responses return data, not recipes.
+  phase (default): ship OR lab OR classic
+    ship (CTX_MCP_EXPERIMENT=ship, default; legacy hybrid→ship):
+      map | pack_context | expand_context | collect_hot_context |
+      workspace | expand | gate | status
+      Ladder: map → pack(composite heatmap) → expand. Exact/name → host Grep/Glob.
+      Lab extras: CTX_MCP_EXPERIMENT=lab. Classic: CTX_MCP_EXPERIMENT=classic.
+    lab:
+      ship + pack_poly_embed | pack_semantic | map_context | pinpoint | plate
+    classic:
+      map | focus | grep | glob | pack_* | map_context | workspace | expand | gate | status
 
-  read  (default): search | read | status
-    read folds focus/expand/recall — budgeted, session-deduped span fetch with
-    optional 1-hop graph neighbors.
-
+  read: search | read | status
   nav: search | files | read | recall | expand | status
-    sealed retrieval environment — soft+exact search, name/orient files,
-    span read (outline/neighbors as detail modes), session recall/expand.
-    For sealed trials: agent locate stays inside these six tools.
-
   graph: search | neighbors | graph | status
-    two tiny graphify-style tools: neighbors (1-hop callers/callees) and graph
-    (NL structural/relationship query).
-
   rich: search | read | outline | status
-    value-add only — the things native tools can't do: meaning (search), the
-    right span + call graph (read/neighbors), and structure (outline). grep/files
-    were dropped on rich: they only reroute native grep/glob with no capability
-    gain under soft-insert. Native Grep/Glob handle those when not sealed.
-
   search: search | status
-    just the one semantic tool, leaned on hard via docs + encouragement.
 
-Data-backed from TraceLab + SWE-chat sessions. Soft surfaces keep what beats
-native; ``phase`` / ``nav`` cover sealed alternate trajectories.
+Data-backed from TraceLab + SWE-chat sessions.
 """
 
 from __future__ import annotations
@@ -67,7 +58,8 @@ _SURFACES = {"read", "nav", "graph", "rich", "search", "grep", "phase"}
 
 
 def _active_surface() -> str:
-    # Product default is phase (map/focus/workspace/status). Legacy surfaces
+    # Product default is phase/ship (map→pack_context→expand_context). Legacy surfaces
+    # stay available via CTX_MCP_SURFACE for experiments.
     # remain available via CTX_MCP_SURFACE=read|nav|...
     val = (os.environ.get("CTX_MCP_SURFACE") or "phase").strip().lower()
     if val in {"graphify"}:
@@ -75,6 +67,88 @@ def _active_surface() -> str:
     if val in {"trajectory", "map_focus"}:
         return "phase"
     return val if val in _SURFACES else "phase"
+
+
+def _phase_experiment() -> str:
+    """Phase tool pack.
+
+    ``ship`` (default) — map → pack_context(composite heatmap) → expand_context;
+    native Read/Grep/Glob for path/exact/name. No focus/pinpoint/plate/poly packs.
+    ``lab`` — restore poly_embed/semantic + pinpoint/plate for experiments.
+    ``classic`` — map/focus/grep/glob (pre-hybrid). Set
+    ``CTX_MCP_EXPERIMENT=classic`` to back off without reverting git.
+    """
+    raw = (os.environ.get("CTX_MCP_EXPERIMENT") or "ship").strip().lower()
+    if raw in {"classic", "phase_classic", "off", "0", "false", "grep_glob", "legacy"}:
+        return "classic"
+    if raw in {"lab", "full", "hybrid_lab", "hybrid_full", "pinpoint", "plate"}:
+        return "lab"
+    # ship is default; accept legacy "hybrid" as ship
+    return "ship"
+
+
+def _resolve_pack_bodies(include_bodies_flag: int | bool | None) -> bool:
+    """Resolve MCP pack-body opt-in (flag OR CTX_MCP_PACK_BODIES). Default off = heatmap-only."""
+    try:
+        if int(include_bodies_flag or 0):
+            return True
+    except (TypeError, ValueError):
+        if bool(include_bodies_flag):
+            return True
+    from pipeline.mcp_response_lean import pack_bodies_enabled
+
+    return pack_bodies_enabled()
+
+
+# Default shipped locate tools (permissions + docs). Lab/classic add extras at register time.
+_SHIP_PHASE_CORE: list[str] = [
+    "gate",
+    "map",
+    "pack_context",
+    "expand_context",
+    "collect_hot_context",
+    "workspace",
+    "expand",
+    "status",
+]
+
+
+def _phase_tool_names() -> list[str]:
+    exp = _phase_experiment()
+    if exp == "classic":
+        return [
+            "gate",
+            "pack_context",
+            "pack_poly_embed",
+            "pack_semantic",
+            "map_context",
+            "expand_context",
+            "collect_hot_context",
+            "map",
+            "focus",
+            "grep",
+            "glob",
+            "workspace",
+            "expand",
+            "status",
+        ]
+    if exp == "lab":
+        return [
+            "gate",
+            "pack_context",
+            "pack_poly_embed",
+            "pack_semantic",
+            "map_context",
+            "expand_context",
+            "collect_hot_context",
+            "map",
+            "pinpoint",
+            "plate",
+            "workspace",
+            "expand",
+            "status",
+        ]
+    return list(_SHIP_PHASE_CORE)
 
 
 # ---- server instructions (per surface) -------------------------------------
@@ -124,7 +198,7 @@ Scubiee search = soft/meaning code locate. Tool: search(query, include="hits", k
 Prefer over Grep/Task-explore for unfamiliar where/how/who; exact literals -> Grep; known path -> Read; filename -> Glob.
 Native OK if MCP fails. You choose; avoid parallel explore thrash.
 
-Query tip: one question + code vocabulary (~20-60 tokens: symbols, modules, synonyms). Prefer one sharp query over many rephrasings.
+Query tip: one question + denser code vocabulary (~30-80 tokens: symbols, modules, synonyms). Prefer one sharp query over many rephrasings.
 include: hits (default, thin) | span (short body peek) | graph (callers/callees on top hit).
 Shell = tests/build/git.
 """
@@ -135,31 +209,117 @@ Useful for imports, config keys, error strings, env names. Meaning questions -> 
 Prefer Scubiee grep over shell grep when available. Native OK if MCP fails. Shell = tests/build/git.
 """
 
-SERVER_INSTRUCTIONS_PHASE = (
-    "Scubiee = code locate for managed repos. "
-    "Tools: map | focus | grep | glob | workspace | expand | gate | status.\n"
-    + managed_gate_mcp_header()
-    + "\n\n"
-    + """\
-You choose by need (no forced order). Prefer these over host Grep/Glob/Read/explore when available.
+SERVER_INSTRUCTIONS_PHASE_SHIP_BODY = """\
+Scenario routing (Prefer/Forbid — header above is policy; this is the how-to):
 
-Tools (purpose only):
-- map(query): soft/where/how meaning - prefer over Grep or Task-explore. Code vocab (~20-60 tokens: symbols, modules, error terms). Cards only (no bodies).
-- focus(path|target, mode=span|outline|neighbors|call_sites): open bounded code to edit - prefer over full-file Read. Default budget=cap.
-- grep(pattern, glob): exact literals / imports / error strings - prefer over shell grep when available.
-- glob(pattern): find paths by name - prefer over host Glob when available.
-- workspace(show): session pins / what you already opened.
-- expand(handle): rematerialize a stored span (optional - focus rematerializes bodies).
-- gate / status: managed check / health (not for finding code).
+WHEN SCUBIEE MCP IS AVAILABLE (tools callable) — STRICT, NO ESCAPE:
+  Soft/structural → MUST map→pack_context(lean) before broad native Grep/dir thrash or edit.
+  Map-only = FAIL. Map/status warming/error ≠ skip pack — retry pack_context/status first.
+  Native-first while MCP tools are callable = FAIL on soft/structural.
+  Native OK only if MCP tools are fully uncallable (server down) — no deadlock.
+  After pack: if ask is still needle/health OR heatmap empty/useless → stop ladder; Grep/Read —
+  do not stack map/status loops + shotgun thrash.
 
-Retrieve what you need, then edit. Avoid parallel explore for the same topic.
-Shell = tests/build/git. Pass root=/project_id= when bind is needed; session_id only if you isolate parallel chats.
+INCREMENTAL LADDER (soft/structural — Prefer, ≤2–3 calls; query quality > extra remaps):
+  0) ENRICH first (~30–80 tokens): concrete symbols, module paths, outcome verbs from the ask.
+     One tight sentence. BAN essays. Vague one-liner OR keyword/synonym dump = FAIL.
+  1) No seed → map(enriched_query, k=10).
+     Use suggested_seed (packages/ public function/method) — skip tests/docs/empty/_helpers.
+  2) pack_context(refined query + seed_*, mode=lean) → heatmap (locs+heat, no bodies).
+     Refine = fold suggested_seed / hot card file+symbol into the query (same thread).
+     Engine: composite_v1. Escape once with policy=broad only if lean slice too tight.
+  3) Native-Read top ~read.top heat=hot|warm locs. BAN whole-file Read of heatmap paths.
+  4) If thin → expand_context(…, query=further refined). Bodies → collect_hot_context(ids=).
+  Trusted seed known → skip map; pack_context(mode=lean, enriched query) then Read locs.
+  Prefer 1× map + 1× pack; expand only if thin — do not burn budget remapping.
+
+QUERY QUALITY (few locate calls → invest in the query):
+  Weak / FAIL: "how does connect work?" / bare "session" / synonym dump with no real symbols
+    (e.g. "pack engine tracer broad escape heatmap guide" — keywords only).
+  After map (refine): append suggested_seed file::symbol + 1–2 hot card names into pack query.
+  Strong: "scubiee connect writes Cursor mcp.json autoApprove and permissions.json mcpAllowlist
+  via install_tool → write_project_tool_surface → apply_permissions_to_repo_tool_surface;
+  also write_project_gate_rules for AGENTS.md GATE text."
+
+EXCEPTIONS (Forbid-first map/pack — native first):
+- exact literal / import / error string / JWT-like needle → host Grep.
+- named-symbol chain under a known path root (multi-hop still Grep-first) → host Grep/rg.
+- filename / path pattern only → host Glob.
+- already know exact path → host Read.
+- health / readiness / warm_state / provider-dep errors → gate/status + host Grep (not soft map).
+- session / rematerialize → workspace(show) / expand(handle).
+- gate / status: managed / health (not locate).
+
+One soft ladder beat, then edit. No parallel explore thrash with Scubiee.
+Shell = tests/build/git. Lab: CTX_MCP_EXPERIMENT=lab. Classic: CTX_MCP_EXPERIMENT=classic.
 """
-)
+
+SERVER_INSTRUCTIONS_PHASE_CLASSIC_BODY = """\
+Scenario routing (follow when tools are available):
+
+INCREMENTAL LADDER: map(k=10) → pack_context (mode=lean, composite_v1) → expand_context(delta) — ≤3 calls.
+- Prefer pack_context after a seed → compressed heatmap (no bodies). Native-Read top ~read.top locs.
+  collect_hot_context for bodies. policy=broad once if lean slice too tight.
+- QUERY QUALITY: Enrich first (~30–80 denser tokens: symbols/paths/verbs — not keyword-salad).
+  Vague one-liner OR synonym dump = FAIL. Refine with suggested_seed/hot cards on pack→expand.
+- After pack: Native-Read heatmap locs — BAN whole-file Read. expand_context if hop missing.
+- Soft browse extras: focus / grep / glob (classic surface).
+
+EXCEPTIONS: exact → grep; filename → glob; known path → host Read; gate/status = health.
+Shell = tests/build/git.
+"""
+
+SERVER_INSTRUCTIONS_PHASE_LAB_BODY = """\
+Lab surface (CTX_MCP_EXPERIMENT=lab): ship ladder PLUS pack_poly_embed / pack_semantic / map_context / pinpoint / plate.
+Default locate still map → pack_context(composite lean) → expand_context.
+Use poly/semantic packs only when comparing engines; prefer composite for production.
+pinpoint/plate are soft-locate extras — do not replace pack heatmap for edit slices.
+"""
+
+# Back-compat alias for imports/tests that still reference HYBRID_BODY
+SERVER_INSTRUCTIONS_PHASE_HYBRID_BODY = SERVER_INSTRUCTIONS_PHASE_SHIP_BODY
+
+
+def _phase_server_instructions() -> str:
+    header = managed_gate_mcp_header()
+    exp = _phase_experiment()
+    if exp == "classic":
+        tools = (
+            "pack_context | map_context | expand_context | collect_hot_context | "
+            "map | focus | grep | glob | workspace | expand | gate | status"
+        )
+        body = SERVER_INSTRUCTIONS_PHASE_CLASSIC_BODY
+        label = "classic"
+    elif exp == "lab":
+        tools = (
+            "pack_context | pack_poly_embed | pack_semantic | map_context | expand_context | "
+            "collect_hot_context | map | pinpoint | plate | workspace | expand | gate | status"
+        )
+        body = SERVER_INSTRUCTIONS_PHASE_LAB_BODY + "\n\n" + SERVER_INSTRUCTIONS_PHASE_SHIP_BODY
+        label = "lab"
+    else:
+        tools = (
+            "map | pack_context | expand_context | collect_hot_context | "
+            "workspace | expand | gate | status"
+        )
+        body = SERVER_INSTRUCTIONS_PHASE_SHIP_BODY
+        label = "ship"
+    return (
+        f"Scubiee MCP locate ({label}; CTX_MCP_EXPERIMENT={exp}). "
+        f"Tools: {tools}.\n"
+        + header
+        + "\n\n"
+        + body
+    )
+
+
+# Default binding for imports/tests that reference SERVER_INSTRUCTIONS_PHASE
+SERVER_INSTRUCTIONS_PHASE = _phase_server_instructions()
+
 
 SERVER_INSTRUCTIONS_PAUSED = """\
 Scubiee is STOPPED (user ran scubiee stop). Do NOT call any Scubiee MCP tool.
-BAN: map, focus, grep, glob, workspace, expand, search, read, files, recall, neighbors, graph, outline.
+BAN: pack_context, pack_poly_embed, pack_semantic, map_context, expand_context, collect_hot_context, map, focus, pinpoint, plate, grep, glob, workspace, expand, search, read, files, recall, neighbors, graph, outline.
 USE native Read/Grep/Glob/codebase-search only. Shell for tests/build/git is fine.
 gate() returns p. Other Scubiee tools return paused:true — do not retry or poll status().
 Tell user: scubiee resume (NOT init), then reload MCP in the IDE.
@@ -183,7 +343,7 @@ Edit when you have enough context. Shell = tests/build/git.
 # Spawn-unmanaged recovery (~40 tok) — NOT a truncated SERVER_INSTRUCTIONS_PHASE.
 SERVER_INSTRUCTIONS_BIND_FIRST = (
     "Pass root=<workspace> or project_id=ce_… on every call. "
-    "Tools: map|focus|grep|glob|workspace|gate|status. "
+    "Tools: map|pack_context|expand_context|workspace|gate|status. "
     "gate(root=…) first; then locate with the same root/project_id. "
     "After scubiee init in this chat, call gate(root=) again — do not restart the host session."
 )
@@ -242,7 +402,7 @@ def _locate_bind_hint() -> str:
     if _registry_has_enrollments():
         return (
             "Spawn did not bind a repo. Pass root=<workspace path> or project_id=ce_… "
-            "on gate/map/grep/focus and every locate call."
+            "on gate/map/pack_context and every locate call."
         )
     return "Run `scubiee init .` in the project, then pass root=<workspace> on locate calls."
 
@@ -348,7 +508,7 @@ def _server_instructions(surface: str) -> str:
 
     - Managed workspace: GATE prefix + full locate trajectory (never truncated).
     - Spawn-unmanaged: compact bind-first note (~40 tok); tools still registered.
-    - Init writes tool-ban rules; trajectory lives here — no duplication.
+    - Init writes prefer+escape rules; trajectory lives here — no duplication.
     """
     gate = _gate_line(just_checked=False)
 
@@ -358,11 +518,17 @@ def _server_instructions(surface: str) -> str:
     if _bare_instructions_enabled():
         prefix = _gate_instruction_prefix(gate)
         if surface == "phase":
-            return (
-                prefix
-                + "Tools: map, focus, grep, glob, workspace, gate, status. "
-                "Recommended: map for meaning, grep/glob for literals."
+            tools = ",".join(_phase_tool_names())
+            tip = (
+                "Ladder: map→pack_context(composite lean)→expand_context; path→host Read; exact/name→host Grep/Glob."
+                if _phase_experiment() == "ship"
+                else (
+                    "Use by scenario: soft->pinpoint; how-X-works->plate; cards->map; path->host Read; exact/name->host Grep/Glob."
+                    if _phase_experiment() == "lab"
+                    else "Use by scenario: map for meaning; grep/glob for literals; focus to edit."
+                )
             )
+            return prefix + f"Tools: {tools}. {tip}"
         return prefix + "Scubiee MCP tools available — use as you prefer."
 
     if not _is_repo_managed():
@@ -375,7 +541,7 @@ def _server_instructions(surface: str) -> str:
         "search": SERVER_INSTRUCTIONS_SEARCH,
         "grep": SERVER_INSTRUCTIONS_GREP,
         "nav": SERVER_INSTRUCTIONS_NAV,
-        "phase": SERVER_INSTRUCTIONS_PHASE,
+        "phase": _phase_server_instructions(),
     }.get(surface, SERVER_INSTRUCTIONS_READ)
     return prefix + body
 
@@ -1783,22 +1949,24 @@ def _facade_hint_for_card(card: dict[str, Any]) -> dict[str, Any] | None:
     if "extract.py" in fl or fl.endswith("/extract.py"):
         return {
             "facade_hint": True,
-            "follow_up": "grep def _extract_generic or map extractors/engine implementation",
+            "follow_up": "host Grep for def _extract_generic, or map extractors/engine implementation",
         }
     why = str(card.get("why") or "").lower()
     if span <= 15 and ("wrapper" in why or "facade" in why or "re-export" in why):
         return {
             "facade_hint": True,
-            "follow_up": "grep the symbol or map for implementation under extractors/",
+            "follow_up": "host Grep the symbol or map for implementation under extractors/",
         }
     return None
 
 
 def _enrich_map_cards(cards: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Slim cards: file/lines/score/why (+ weak_match). No per-card coaching."""
+    """Slim cards: file/lines/score/why/role (+ weak_match). No per-card coaching."""
+    from pipeline.context_trace import card_role, fill_map_card_symbol, rank_soft_map_cards
+
     out: list[dict[str, Any]] = []
     for c in cards or []:
-        item = dict(c)
+        item = fill_map_card_symbol(dict(c))
         if item.get("why"):
             item["why"] = _strip_bom_text(str(item["why"]))
         # Drop legacy coaching keys if a cached card still carries them.
@@ -1811,8 +1979,10 @@ def _enrich_map_cards(cards: list[dict[str, Any]]) -> list[dict[str, Any]]:
         score = float(item.get("score") or 0.0)
         if score and score < _MAP_SCORE_LOW:
             item["weak_match"] = True
+        if not item.get("role"):
+            item["role"] = card_role(str(item.get("file") or ""), str(item.get("kind") or ""))
         out.append(item)
-    return out
+    return rank_soft_map_cards(out)
 
 
 def _client_for(repo: Path):
@@ -1974,7 +2144,41 @@ class FilesArgs(BaseModel):
 class MapArgs(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
     query: str = Field(..., min_length=1, max_length=2000, description="Cold/new-topic locate query.")
-    k: int = Field(8, ge=1, le=25, description="How many cards.")
+    k: int = Field(10, ge=1, le=25, description="How many cards (default 10 for seed coverage).")
+    response_format: Literal["json", "markdown"] = Field("json", description="json|markdown")
+
+
+class PinpointArgs(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    query: str = Field(
+        ...,
+        min_length=1,
+        max_length=2000,
+        description="Soft where/how/who question — code vocabulary preferred.",
+    )
+    k: int = Field(5, ge=1, le=12, description="Alt card count (primary is always top-1).")
+    max_chars: int = Field(
+        8_000,
+        ge=400,
+        le=50_000,
+        description="Primary body budget (lean default).",
+    )
+    max_neighbors: int = Field(4, ge=0, le=8, description="Graph neighbor spans on primary.")
+    response_format: Literal["json", "markdown"] = Field("json", description="json|markdown")
+
+
+class PlateArgs(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    query: str = Field(
+        ...,
+        min_length=1,
+        max_length=2000,
+        description="How-X-works / relatedness — code vocabulary (e.g. auth login session jwt).",
+    )
+    k_hubs: int = Field(4, ge=1, le=8, description="Hybrid hubs (BM25+dense).")
+    k_connections: int = Field(6, ge=0, le=12, description="Graph connections around hubs.")
+    max_chars: int = Field(600, ge=200, le=4_000, description="Chars per hub/connection peek.")
+    sketch: bool = Field(True, description="Include Graphify BFS sketch text when available.")
     response_format: Literal["json", "markdown"] = Field("json", description="json|markdown")
 
 
@@ -2252,6 +2456,12 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                         "score": round(float(h.get("score") or 0.0), 4),
                         "why": h.get("why") or "",
                     }
+                    from pipeline.context_trace import symbol_from_preview
+
+                    sym, kind = symbol_from_preview(str(item.get("why") or ""))
+                    if sym:
+                        item["symbol"] = sym
+                        item["kind"] = kind or "function"
                     if span_n and rank <= span_n and f:
                         ex = _read_excerpt(
                             repo, str(f), int(h.get("start_line") or 0),
@@ -3009,18 +3219,369 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         }
         return _format(out, response_format)
 
-    # ---- phase surface: map / focus / workspace ---------------------------
-    def map_impl(
-        query: Annotated[str, Field(description="Cold/new-topic query — CODE VOCABULARY 20–60 tokens.")],
-        k: Annotated[int, Field(description="How many cards (default 8).")] = 8,
+    # ---- phase surface: map / focus / pinpoint / workspace ---------------------------
+    def pinpoint_impl(
+        query: Annotated[
+            str,
+            Field(description="Soft where/how/who — denser CODE VOCABULARY ~30-80 tokens."),
+        ],
+        k: Annotated[int, Field(description="How many alt cards (default 5).")] = 5,
+        max_chars: Annotated[int, Field(description="Primary body budget (default 8000).")] = 8_000,
+        max_neighbors: Annotated[int, Field(description="Graph neighbors on primary (0..8).")] = 4,
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
         root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
         project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
         session_id: Annotated[str, Field(description=_BIND_SESSION_DESC)] = "",
     ) -> str:
-        """Prefer for soft/where/how meaning over host Grep or Task explore.
-        Ranked cards only (no bodies). Query with code vocabulary.
+        """Prefer for soft where/how/who: Conductor BM25+dense+graph -> body + neighbors.
+        Collapses map+outline+span+neighbors into one call. Exact literals -> host Grep.
         """
+        try:
+            args = PinpointArgs(
+                query=query,
+                k=k,
+                max_chars=max_chars,
+                max_neighbors=max_neighbors,
+                response_format=response_format,  # type: ignore[arg-type]
+            )
+        except ValidationError as exc:
+            return _err("pinpoint", str(exc), hint="Pass query= with code vocabulary.")
+        sid = _resolve_session(session_id)
+        with _bind_request_repo(root=root, project_id=project_id, session_id=session_id):
+            repo = _default_repo()
+
+        if not _is_repo_managed():
+            return _managed_locate_err("pinpoint", repo)
+
+        try:
+            from pipeline.locate import _read_excerpt, _search_hits
+
+            hits = _search_hits(repo, args.query, top_k=max(args.k, 3))
+        except Exception as exc:  # noqa: BLE001
+            backend_error = _backend_error(
+                "pinpoint",
+                repo,
+                getattr(exc, "response", None),
+                hint="Check status(); ensure index is warm.",
+            )
+            if backend_error:
+                return backend_error
+            return _err(
+                "pinpoint",
+                str(exc),
+                repo=str(repo),
+                hint="Check status(); ensure index is warm.",
+            )
+
+        if not hits:
+            return _format(
+                {
+                    "ok": True,
+                    "tool": "pinpoint",
+                    "query": args.query,
+                    "primary": None,
+                    "neighbors": [],
+                    "alts": [],
+                    "count": 0,
+                    "weak_match": True,
+                    "session_id": sid,
+                    "hint": "No hits — sharpen code vocab or use host Grep for a literal.",
+                },
+                args.response_format,
+            )
+
+        top = hits[0]
+        file_s = str(top.get("file") or "").replace("\\", "/")
+        start_l = int(top.get("start_line") or 0)
+        end_l = int(top.get("end_line") or 0)
+        score = round(float(top.get("score") or 0.0), 4)
+        why = str(top.get("why") or "")[:160]
+
+        code = ""
+        handle_s = None
+        status_s = "stored"
+        if file_s:
+            try:
+                ex = _read_excerpt(
+                    repo, file_s, start_l, end_l, max_chars=int(args.max_chars),
+                )
+                code = _strip_bom_text(ex.get("excerpt") or ex.get("text") or "")
+                start_l = int(ex.get("start_line") or start_l or 0)
+                end_l = int(ex.get("end_line") or end_l or 0)
+            except Exception:  # noqa: BLE001
+                code = ""
+            if code.strip():
+                try:
+                    from pipeline.session_store import put_span
+
+                    span = put_span(
+                        repo,
+                        path=file_s,
+                        start_line=start_l,
+                        end_line=end_l,
+                        text=code,
+                        why=args.query,
+                        source="pinpoint",
+                        topic=args.query,
+                        excerpt_chars=100,
+                        session_id=sid,
+                    )
+                    handle_s = span.get("handle")
+                    status_s = span.get("status") or "stored"
+                except Exception:  # noqa: BLE001
+                    handle_s, status_s = None, "stored"
+
+        neighbors: list[dict[str, Any]] = []
+        neighbors_error: str | None = None
+        if file_s and int(args.max_neighbors) > 0:
+            try:
+                gn = _client_for(repo).graph_neighbors(
+                    [file_s],
+                    query=args.query,
+                    keep=int(args.max_neighbors),
+                    max_chars=min(400, int(args.max_chars)),
+                    repo=str(repo),
+                )
+                backend_error = _backend_error(
+                    "pinpoint",
+                    repo,
+                    gn,
+                    hint="Graph neighbors need a warm engine; check status().",
+                )
+                if backend_error:
+                    neighbors_error = "graph_neighbors unavailable"
+                else:
+                    neighbors = _slim_spans(
+                        gn.get("spans") or [],
+                        keep=int(args.max_neighbors),
+                        body_chars=400,
+                    )
+            except Exception as exc:  # noqa: BLE001
+                neighbors_error = str(exc)
+
+        alts: list[dict[str, Any]] = []
+        for rank, h in enumerate(hits[1 : args.k], 2):
+            alts.append(
+                {
+                    "rank": rank,
+                    "file": h.get("file"),
+                    "start_line": h.get("start_line"),
+                    "end_line": h.get("end_line"),
+                    "score": round(float(h.get("score") or 0.0), 4),
+                    "why": (h.get("why") or "")[:120],
+                }
+            )
+
+        weak = score < 5.0
+        primary = {
+            "file": file_s,
+            "start_line": start_l,
+            "end_line": end_l,
+            "score": score,
+            "why": why,
+            "code": code,
+            "handle": handle_s,
+            "status": status_s,
+        }
+        out: dict[str, Any] = {
+            "ok": True,
+            "tool": "pinpoint",
+            "query": args.query,
+            "channels": "bm25+dense+graph",
+            "primary": primary,
+            "neighbors": neighbors,
+            "neighbors_count": len(neighbors),
+            "alts": alts,
+            "count": 1 + len(alts),
+            "session_id": sid,
+            "weak_match": weak,
+        }
+        if neighbors_error and not neighbors:
+            out["neighbors_error"] = neighbors_error[:200]
+        try:
+            from pipeline.work_session import touch
+
+            touch(
+                repo,
+                [{"file": file_s, "role": "pinpoint"}] if file_s else [],
+                query=args.query,
+                session_id=sid,
+            )
+        except Exception:  # noqa: BLE001
+            pass
+        return _format(out, args.response_format)
+
+    def plate_impl(
+        query: Annotated[
+            str,
+            Field(description="How X works / relatedness — denser CODE VOCABULARY ~30-80 tokens."),
+        ],
+        k_hubs: Annotated[int, Field(description="Hybrid hubs (default 4).")] = 4,
+        k_connections: Annotated[int, Field(description="Graph connections (default 6).")] = 6,
+        max_chars: Annotated[int, Field(description="Chars per peek (default 600).")] = 600,
+        sketch: Annotated[bool, Field(description="Include Graphify BFS sketch.")] = True,
+        response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
+        root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
+        project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
+        session_id: Annotated[str, Field(description=_BIND_SESSION_DESC)] = "",
+    ) -> str:
+        """How-X-works plate: BM25+dense hubs + Graphify connections + flow (no LLM).
+        For subsystem wiring / relatedness. Soft edit-ready span -> pinpoint instead.
+        """
+        try:
+            args = PlateArgs(
+                query=query,
+                k_hubs=k_hubs,
+                k_connections=k_connections,
+                max_chars=max_chars,
+                sketch=sketch,
+                response_format=response_format,  # type: ignore[arg-type]
+            )
+        except ValidationError as exc:
+            return _err("plate", str(exc), hint="Pass query= with code vocabulary.")
+        sid = _resolve_session(session_id)
+        with _bind_request_repo(root=root, project_id=project_id, session_id=session_id):
+            repo = _default_repo()
+
+        if not _is_repo_managed():
+            return _managed_locate_err("plate", repo)
+
+        try:
+            from pipeline.locate import _read_excerpt, _search_hits
+            from pipeline.mcp_plate import assemble_plate
+
+            client = _client_for(repo)
+
+            def _gn(
+                paths: list[str],
+                *,
+                query: str = "",
+                keep: int = 4,
+                max_chars: int = 400,
+                repo: str = "",
+            ) -> dict[str, Any]:
+                return client.graph_neighbors(
+                    paths,
+                    query=query,
+                    keep=keep,
+                    max_chars=max_chars,
+                    repo=repo,
+                )
+
+            def _qg(
+                question: str,
+                *,
+                keep: int = 4,
+                neighbor_keep: int = 4,
+                max_chars: int = 400,
+                repo: str = "",
+            ) -> dict[str, Any]:
+                return client.query_graph(
+                    question,
+                    keep=keep,
+                    neighbor_keep=neighbor_keep,
+                    max_chars=max_chars,
+                    repo=repo,
+                )
+
+            def _sketch(r: Path, q: str) -> str:
+                if not args.sketch:
+                    return ""
+                try:
+                    from pipeline.graphify_mcp_tools import query_graph_text
+
+                    return query_graph_text(r, q, depth=3, token_budget=1800)
+                except Exception:  # noqa: BLE001
+                    return ""
+
+            out = assemble_plate(
+                repo,
+                args.query,
+                search_hits=_search_hits,
+                read_excerpt=_read_excerpt,
+                graph_neighbors=_gn,
+                query_graph=_qg,
+                graph_sketch=_sketch if args.sketch else None,
+                k_hubs=int(args.k_hubs),
+                k_connections=int(args.k_connections),
+                max_chars=int(args.max_chars),
+            )
+        except Exception as exc:  # noqa: BLE001
+            backend_error = _backend_error(
+                "plate",
+                repo,
+                getattr(exc, "response", None),
+                hint="Check status(); ensure index is warm.",
+            )
+            if backend_error:
+                return backend_error
+            return _err(
+                "plate",
+                str(exc),
+                repo=str(repo),
+                hint="Check status(); ensure index is warm.",
+            )
+
+        if not out.get("ok"):
+            return _err("plate", str(out.get("error") or "plate failed"))
+
+        out["session_id"] = sid
+        # Persist first hub for expand() / workspace heat
+        hubs = out.get("hubs") or []
+        if hubs:
+            h0 = hubs[0]
+            code0 = str(h0.get("code") or "")
+            file0 = str(h0.get("file") or "")
+            if file0 and code0.strip():
+                try:
+                    from pipeline.session_store import put_span
+
+                    span = put_span(
+                        repo,
+                        path=file0,
+                        start_line=int(h0.get("start_line") or 0),
+                        end_line=int(h0.get("end_line") or 0),
+                        text=code0,
+                        why=args.query,
+                        source="plate",
+                        topic=args.query,
+                        excerpt_chars=100,
+                        session_id=sid,
+                    )
+                    h0["handle"] = span.get("handle")
+                    h0["status"] = span.get("status") or "stored"
+                except Exception:  # noqa: BLE001
+                    pass
+            try:
+                from pipeline.work_session import touch
+
+                touch(
+                    repo,
+                    [{"file": file0, "role": "plate"}] if file0 else [],
+                    query=args.query,
+                    session_id=sid,
+                )
+            except Exception:  # noqa: BLE001
+                pass
+        return _format(out, args.response_format)
+
+    def map_impl(
+        query: Annotated[
+            str,
+            Field(
+                description=(
+                    "Cold/new-topic flow query — denser CODE VOCABULARY ~30–80 tokens "
+                    "(symbols/paths/verbs). Call 1 of incremental ladder."
+                )
+            ),
+        ],
+        k: Annotated[int, Field(description="How many cards (default 10).")] = 10,
+        response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
+        root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
+        project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
+        session_id: Annotated[str, Field(description=_BIND_SESSION_DESC)] = "",
+    ) -> str:
+        """Soft locate (call 1): ranked cards + suggested_seed. No bodies. Then pack_context(mode=lean)."""
         try:
             args = MapArgs(query=query, k=k, response_format=response_format)  # type: ignore[arg-type]
         except ValidationError as exc:
@@ -3046,6 +3607,9 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 cards = cards[:3]
                 for c in cards:
                     c["weak_match"] = True
+            from pipeline.context_trace import pick_suggested_seed
+
+            suggested = pick_suggested_seed(cards)
             out = {
                 "ok": True,
                 "tool": "map",
@@ -3057,6 +3621,15 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 "ranked_only": True,
                 "cached": True,
                 "session_id": sid,
+                "suggested_seed": suggested,
+                "ladder": "map → pack(lean) → expand(delta) — ≤3 calls",
+                "next": (
+                    "Refine query with suggested_seed file+symbol, then "
+                    "pack_context(same/refined query, mode=lean, seed_*)."
+                    if suggested
+                    else "Pick a packages/ function card, refine query with its names, "
+                    "then pack_context(mode=lean)."
+                ),
                 **conf,
             }
             return _format(out, args.response_format)
@@ -3097,6 +3670,20 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         card["scope"] = "indexed_chunks"
         card["ranked_only"] = True
         card["session_id"] = sid
+        try:
+            from pipeline.context_trace import pick_suggested_seed
+
+            card["suggested_seed"] = pick_suggested_seed(list(card.get("cards") or []))
+            card["ladder"] = "map → pack(lean) → expand(delta) — ≤3 calls"
+            card["next"] = (
+                "Refine query with suggested_seed file+symbol, then "
+                "pack_context(same/refined query, mode=lean, seed_*)."
+                if card.get("suggested_seed")
+                else "Pick a packages/ function card, refine query with its names, "
+                "then pack_context(mode=lean)."
+            )
+        except Exception:  # noqa: BLE001
+            card["suggested_seed"] = None
         try:
             _map_cache_put(repo, qn, args.k, list(card["cards"]), session_id=sid)
         except Exception:  # noqa: BLE001
@@ -3365,7 +3952,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     "ok": True,
                     "tool": "workspace",
                     "action": "clear",
-                    "next": "New topic — map(query) once, then focus.",
+                    "next": "New topic — map(query) once, then pack_context(mode=lean).",
                 },
                 args.response_format,
             )
@@ -3384,7 +3971,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     "action": "pin",
                     "path": p,
                     "pins": list(sess.get("pins") or []),
-                    "next": "workspace(show) to reorient; focus(path) to deepen.",
+                    "next": "workspace(show) to reorient; pack_context or host Read on pinned path.",
                 },
                 args.response_format,
             )
@@ -3509,7 +4096,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 "rich": ["gate", "search", "read", "outline", "status"],
                 "search": ["gate", "search", "status"],
                 "grep": ["gate", "grep", "status"],
-                "phase": ["gate", "map", "focus", "grep", "glob", "workspace", "expand", "status"],
+                "phase": _phase_tool_names(),
             }
             try:
                 repo = _default_repo()
@@ -3699,13 +4286,466 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 return _format(payload, response_format)
             return _err("register_project", str(exc))
 
+    def map_context_impl(
+        query: Annotated[
+            str,
+            Field(
+                description=(
+                    "Descriptive task paragraph — prefer concrete symbols, APIs, file/module "
+                    "paths, error tokens, and action verbs (write/apply/verify/decode/install). "
+                    "Richer wording sharpens the trace after you pick a seed."
+                )
+            ),
+        ],
+        seed_file: Annotated[str, Field(description="Seed file path relative to repo (e.g. app/middleware/auth.py).")],
+        seed_symbol: Annotated[str, Field(description="Seed symbol/function (optional if seed_line set).")] = "",
+        seed_line: Annotated[int, Field(description="Line inside seed function (optional if seed_symbol set).")] = 0,
+        seed2_file: Annotated[str, Field(description="Optional second seed file.")] = "",
+        seed2_symbol: Annotated[str, Field(description="Optional second seed symbol.")] = "",
+        seed2_line: Annotated[int, Field(description="Optional second seed line.")] = 0,
+        k: Annotated[int, Field(description="Max heatmap cards (default 24).")] = 24,
+        response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
+        root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
+        project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
+        session_id: Annotated[str, Field(description=_BIND_SESSION_DESC)] = "",
+    ) -> str:
+        """Context TRACE guide: descriptive query+seed → ranked loc+score heatmap. Prefer rich code words; native Read/Grep top-down."""
+        sid = _resolve_session(session_id)
+        with _bind_request_repo(root=root, project_id=project_id, session_id=session_id):
+            repo = _default_repo()
+        if not _is_repo_managed():
+            return _managed_locate_err("map_context", repo)
+        try:
+            from pipeline.context_trace import persist_trace, run_map_context
+
+            out = run_map_context(
+                repo,
+                query,
+                seed_file=seed_file,
+                seed_symbol=seed_symbol,
+                seed_line=int(seed_line or 0),
+                seed2_file=seed2_file,
+                seed2_symbol=seed2_symbol,
+                seed2_line=int(seed2_line or 0),
+                k=max(4, min(int(k or 24), 48)),
+            )
+            out["session_id"] = sid
+            if out.get("ok"):
+                persist_trace(repo, sid, out.pop("_persist", {}))
+                try:
+                    from pipeline.work_session import touch
+
+                    touch(
+                        repo,
+                        [{"file": c.get("file"), "role": "map_context"} for c in (out.get("heatmap") or [])[:12]],
+                        query=query,
+                        session_id=sid,
+                    )
+                except Exception:  # noqa: BLE001
+                    pass
+            else:
+                out["tool"] = "map_context"
+            return _format(out, response_format)
+        except Exception as exc:  # noqa: BLE001
+            return _err("map_context", str(exc))
+
+    def expand_context_impl(
+        node: Annotated[
+            str,
+            Field(description="Heatmap node id (file::symbol) or file path to grow from."),
+        ],
+        direction: Annotated[
+            str,
+            Field(
+                description=(
+                    "callees|callers|effects|config|broad|all (default all). "
+                    "Use callers when upward refs missing; effects for log/track/send; "
+                    "broad for structural 1-hop escape from a strict pack."
+                )
+            ),
+        ] = "all",
+        intent: Annotated[
+            str,
+            Field(description="Alias of direction (callers|effects|…). Empty = use direction."),
+        ] = "",
+        query: Annotated[
+            str,
+            Field(
+                description=(
+                    "Keep a descriptive code-heavy reminder (symbols/paths/verbs); "
+                    "defaults to last map query if empty."
+                )
+            ),
+        ] = "",
+        k: Annotated[int, Field(description="Max DELTA cards (default 10).")] = 10,
+        with_bodies: Annotated[
+            bool,
+            Field(description="If true, also pack ≤max_bodies lean bodies for new delta cards."),
+        ] = False,
+        budget_chars: Annotated[
+            int, Field(description="Body budget when with_bodies=true (default 4000).")
+        ] = 4000,
+        max_bodies: Annotated[
+            int, Field(description="Max delta bodies when with_bodies=true (default 3).")
+        ] = 3,
+        response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
+        root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
+        project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
+        session_id: Annotated[str, Field(description=_BIND_SESSION_DESC)] = "",
+    ) -> str:
+        """Call 3 ladder: delta cards (+ optional bodies). direction=callers|effects|broad for flexibility."""
+        sid = _resolve_session(session_id)
+        with _bind_request_repo(root=root, project_id=project_id, session_id=session_id):
+            repo = _default_repo()
+        if not _is_repo_managed():
+            return _managed_locate_err("expand_context", repo)
+        try:
+            from pipeline.context_trace import load_trace, persist_trace, run_expand_context
+
+            prior = load_trace(repo, sid)
+            prior_ids = {c.get("id") for c in (prior.get("cards") or []) if c.get("id")}
+            prior_ids |= {str(x) for x in (prior.get("packed_ids") or []) if x}
+            prior_packed = {str(x) for x in (prior.get("packed_ids") or []) if x}
+            q = (query or "").strip() or str(prior.get("query") or "")
+            out = run_expand_context(
+                repo,
+                node,
+                query=q,
+                direction=direction or "all",
+                intent=intent or "",
+                k=max(4, min(int(k or 12), 24)),
+                prior_ids=prior_ids,  # type: ignore[arg-type]
+                with_bodies=bool(with_bodies),
+                budget_chars=max(400, int(budget_chars or 4000)),
+                max_bodies=max(1, min(int(max_bodies or 3), 8)),
+                prior_packed_ids=prior_packed,
+            )
+            out["session_id"] = sid
+            if out.get("ok"):
+                # merge delta into persisted cards
+                cards = list(prior.get("cards") or [])
+                seen = {c.get("id") for c in cards}
+                for c in out.get("delta") or []:
+                    if c.get("id") not in seen:
+                        cards.append(c)
+                        seen.add(c.get("id"))
+                packed = set(prior_packed) | {str(x) for x in (out.get("_persist_packed") or []) if x}
+                persist_trace(
+                    repo,
+                    sid,
+                    {
+                        "query": q,
+                        "seed_id": prior.get("seed_id"),
+                        "cards": cards,
+                        "scores": {c["id"]: c.get("score") for c in cards if c.get("id")},
+                        "packed_ids": sorted(packed),
+                    },
+                )
+                out.pop("_persist_packed", None)
+            return _format(out, response_format)
+        except Exception as exc:  # noqa: BLE001
+            return _err("expand_context", str(exc))
+
+    def _make_pack_impl(*, tool_name: str, engine: str, doc: str):
+        def pack_impl(
+            query: Annotated[
+                str,
+                Field(
+                    description=(
+                        "Descriptive task paragraph — prefer concrete symbols, APIs, paths, "
+                        "error tokens, verbs. Richer wording sharpens the pack."
+                    )
+                ),
+            ],
+            seed_file: Annotated[str, Field(description="Seed file path relative to repo.")],
+            seed_symbol: Annotated[
+                str, Field(description="Seed symbol (optional if seed_line set).")
+            ] = "",
+            seed_line: Annotated[int, Field(description="Line inside seed function.")] = 0,
+            seed2_file: Annotated[str, Field(description="Optional second seed file.")] = "",
+            seed2_symbol: Annotated[str, Field(description="Optional second seed symbol.")] = "",
+            seed2_line: Annotated[int, Field(description="Optional second seed line.")] = 0,
+            mode: Annotated[
+                str,
+                Field(
+                    description=(
+                        "lean (default): compressed heatmap locs only (no bodies). "
+                        "full: larger heatmap card set. Native-Read top heats; "
+                        "collect_hot_context only if you need bodies batched."
+                    )
+                ),
+            ] = "lean",
+            policy: Annotated[
+                str,
+                Field(
+                    description=(
+                        "strict (default). On pack_context only: broad = one-shot polytrace escape. "
+                        "Ignored for pack_poly_embed / pack_semantic (engine is fixed)."
+                    )
+                ),
+            ] = "strict",
+            k: Annotated[int, Field(description="Max heatmap cards (default 16).")] = 16,
+            hot_threshold: Annotated[
+                float,
+                Field(
+                    description=(
+                        "Min score for hot labeling on the heatmap (default 0.65). "
+                        "Default pack is heatmap-only; use collect_hot_context or "
+                        "include_bodies=1 / CTX_MCP_PACK_BODIES=1 for bodies."
+                    )
+                ),
+            ] = 0.65,
+            budget_chars: Annotated[
+                int,
+                Field(
+                    description=(
+                        "Total char budget for collected bodies. Applies only when "
+                        "bodies are collected (include_bodies=1 or "
+                        "CTX_MCP_PACK_BODIES=1); otherwise heatmap-only and this is inert."
+                    )
+                ),
+            ] = 0,
+            max_bodies: Annotated[
+                int,
+                Field(
+                    description=(
+                        "Max hot bodies to collect. Applies only when bodies are "
+                        "collected (include_bodies=1 or CTX_MCP_PACK_BODIES=1); "
+                        "otherwise heatmap-only and this is inert."
+                    )
+                ),
+            ] = 0,
+            include_bodies: Annotated[
+                int,
+                Field(
+                    description=(
+                        "Opt-in: 1 = collect and return hot code bodies in the pack "
+                        "payload (subject to budget_chars / max_bodies). "
+                        "0/unset = env CTX_MCP_PACK_BODIES decides; default is "
+                        "heatmap/locs only (no bodies)."
+                    )
+                ),
+            ] = 0,
+            response_format: Annotated[
+                str, Field(description="json (default) or markdown.")
+            ] = "json",
+            root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
+            project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
+            session_id: Annotated[str, Field(description=_BIND_SESSION_DESC)] = "",
+        ) -> str:
+            sid = _resolve_session(session_id)
+            with _bind_request_repo(root=root, project_id=project_id, session_id=session_id):
+                repo = _default_repo()
+            if not _is_repo_managed():
+                return _managed_locate_err(tool_name, repo)
+            try:
+                from pipeline.context_trace import load_trace, persist_trace, run_pack_context
+
+                prior = load_trace(repo, sid)
+                # Per-tool packed ledger: pack_poly_embed / pack_semantic must not
+                # inherit pack_context bodies (that made alternate packs look "thin").
+                by_tool = dict(prior.get("packed_ids_by_tool") or {})
+                prior_packed = {str(x) for x in (by_tool.get(tool_name) or []) if x}
+                if not prior_packed and tool_name == "pack_context":
+                    prior_packed = {str(x) for x in (prior.get("packed_ids") or []) if x}
+                mode_n = (mode or "lean").strip().lower() or "lean"
+                policy_n = (policy or "strict").strip().lower() or "strict"
+                budget = int(budget_chars or 0)
+                bodies_cap = int(max_bodies or 0)
+                # Body opt-in: explicit tool flag OR env CTX_MCP_PACK_BODIES=1.
+                want_bodies = _resolve_pack_bodies(include_bodies)
+                out = run_pack_context(
+                    repo,
+                    query,
+                    seed_file=seed_file,
+                    seed_symbol=seed_symbol,
+                    seed_line=int(seed_line or 0),
+                    seed2_file=seed2_file,
+                    seed2_symbol=seed2_symbol,
+                    seed2_line=int(seed2_line or 0),
+                    k=max(4, min(int(k or 16), 48)),
+                    hot_threshold=float(hot_threshold if hot_threshold is not None else 0.65),
+                    budget_chars=budget if budget > 0 else None,
+                    max_bodies=bodies_cap if bodies_cap > 0 else None,
+                    mode=mode_n,
+                    policy=policy_n,
+                    prior_packed_ids=prior_packed,
+                    engine=engine,
+                    tool_name=tool_name,
+                    include_bodies=want_bodies,
+                )
+                out["session_id"] = sid
+                if out.get("ok"):
+                    persist = out.pop("_persist", {}) or {}
+                    new_ids = {str(x) for x in (persist.get("packed_ids") or []) if x}
+                    by_tool[tool_name] = sorted(
+                        {str(x) for x in (by_tool.get(tool_name) or []) if x} | new_ids
+                    )
+                    persist["packed_ids_by_tool"] = by_tool
+                    # Global union still feeds expand/collect_hot continuum
+                    persist["packed_ids"] = sorted(
+                        {str(x) for ids in by_tool.values() for x in (ids or []) if x}
+                    )
+                    persist_trace(repo, sid, persist)
+                    try:
+                        from pipeline.work_session import touch
+
+                        touch(
+                            repo,
+                            [
+                                {"file": c.get("file"), "role": tool_name}
+                                for c in (out.get("heatmap") or [])[:12]
+                            ],
+                            query=query,
+                            session_id=sid,
+                        )
+                    except Exception:  # noqa: BLE001
+                        pass
+                else:
+                    out["tool"] = tool_name
+                return _format(out, response_format)
+            except Exception as exc:  # noqa: BLE001
+                return _err(tool_name, str(exc))
+
+        pack_impl.__doc__ = doc
+        return pack_impl
+
+    pack_context_impl = _make_pack_impl(
+        tool_name="pack_context",
+        engine="composite_v1",
+        doc=(
+            "Call 2 ladder (composite_v1): lean heatmap locs by default. "
+            "Native-Read top heats; include_bodies=1 or CTX_MCP_PACK_BODIES=1 for bodies."
+        ),
+    )
+    pack_poly_embed_impl = _make_pack_impl(
+        tool_name="pack_poly_embed",
+        engine="poly_embed",
+        doc="Pack with poly_embed (structural poly + real CodeRank embeds).",
+    )
+    pack_semantic_impl = _make_pack_impl(
+        tool_name="pack_semantic",
+        engine="semantic_tracer_fuse",
+        doc="Pack with semantic_tracer_fuse (best safe semantic heat; real CodeRank embeds).",
+    )
+
+    def collect_hot_context_impl(
+        threshold: Annotated[float, Field(description="Min score to include (default 0.82).")] = 0.82,
+        max_chars: Annotated[int, Field(description="Total body budget.")] = 8000,
+        ids: Annotated[
+            str,
+            Field(
+                description=(
+                    "Optional comma-separated node ids (file::symbol) to fill — "
+                    "use after expand_context delta. Empty = score threshold over session cards."
+                )
+            ),
+        ] = "",
+        response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
+        root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
+        project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
+        session_id: Annotated[str, Field(description=_BIND_SESSION_DESC)] = "",
+    ) -> str:
+        """Optional: return code bodies for last heatmap / explicit ids. Prefer native Read."""
+        sid = _resolve_session(session_id)
+        with _bind_request_repo(root=root, project_id=project_id, session_id=session_id):
+            repo = _default_repo()
+        if not _is_repo_managed():
+            return _managed_locate_err("collect_hot_context", repo)
+        try:
+            from pipeline.context_trace import load_trace, persist_trace, run_collect_hot
+
+            prior = load_trace(repo, sid)
+            cards = list(prior.get("cards") or [])
+            only = {x.strip() for x in (ids or "").split(",") if x.strip()}
+            if not cards and not only:
+                return _err(
+                    "collect_hot_context",
+                    "no session heatmap — call map/pack_context first (or pass ids=)",
+                )
+            prior_packed = {str(x) for x in (prior.get("packed_ids") or []) if x}
+            out = run_collect_hot(
+                repo,
+                cards,
+                threshold=float(threshold or 0.82) if not only else 0.0,
+                max_chars=max(500, min(int(max_chars or 8000), 50_000)),
+                skip_ids=prior_packed,
+                only_ids=only or None,
+            )
+            out["session_id"] = sid
+            if out.get("ok") and out.get("bodies"):
+                packed = prior_packed | {str(b.get("id")) for b in out["bodies"] if b.get("id")}
+                persist_trace(
+                    repo,
+                    sid,
+                    {
+                        "query": prior.get("query"),
+                        "seed_id": prior.get("seed_id"),
+                        "cards": cards,
+                        "scores": prior.get("scores") or {},
+                        "packed_ids": sorted(packed),
+                    },
+                )
+            return _format(out, response_format)
+        except Exception as exc:  # noqa: BLE001
+            return _err("collect_hot_context", str(exc))
+
     # ---- register per surface ---------------------------------------------
     if surface == "phase":
+        exp = _phase_experiment()
         _tool("gate", "Session gate - managed check (~5 tokens)", gate_impl)
-        _tool("map", "Prefer for soft/where meaning - ranked cards (not Grep/explore)", map_impl)
-        _tool("focus", "Prefer for opening code to edit - span|outline|neighbors|call_sites", focus_impl)
-        _tool("grep", "Prefer for exact literals - imports, keys, error strings", grep_impl)
-        _tool("glob", "Prefer for finding paths by name/pattern", glob_impl)
+        _tool(
+            "pack_context",
+            "Call 2 ladder (composite_v1): lean heatmap locs by default. "
+            "Native-Read top heats; include_bodies=1 / CTX_MCP_PACK_BODIES=1 for bodies.",
+            pack_context_impl,
+        )
+        if exp in {"lab", "classic"}:
+            _tool(
+                "pack_poly_embed",
+                "poly_embed pack: compressed heatmap locs (no bodies). Native-Read top heats.",
+                pack_poly_embed_impl,
+            )
+            _tool(
+                "pack_semantic",
+                "semantic_fuse pack: compressed heatmap locs (no bodies). Native-Read top heats.",
+                pack_semantic_impl,
+            )
+            _tool(
+                "map_context",
+                "Context TRACE: descriptive query+seed → loc+score heatmap (prefer rich code words; Read/Grep cards)",
+                map_context_impl,
+            )
+        _tool(
+            "expand_context",
+            "Call 3: delta cards; direction=callers|effects|broad; with_bodies optional",
+            expand_context_impl,
+        )
+        _tool(
+            "collect_hot_context",
+            "Fill bodies for session cards or ids= after expand (prefer native Read)",
+            collect_hot_context_impl,
+        )
+        _tool(
+            "map",
+            "Call 1 ladder: soft cards k=10 + suggested_seed (code vocab query)",
+            map_impl,
+        )
+        if exp == "lab":
+            _tool(
+                "pinpoint",
+                "Prefer for soft where/how to edit - BM25+dense+graph body+neighbors",
+                pinpoint_impl,
+            )
+            _tool(
+                "plate",
+                "How-X-works plate - BM25+dense hubs + Graphify connections (no LLM)",
+                plate_impl,
+            )
+        elif exp == "classic":
+            _tool("focus", "Prefer for opening code to edit - span|outline|neighbors|call_sites", focus_impl)
+            _tool("grep", "Prefer for exact literals - imports, keys, error strings", grep_impl)
+            _tool("glob", "Prefer for finding paths by name/pattern", glob_impl)
         _tool("workspace", "Mid reorient: show|pin|clear", workspace_impl)
         _tool("expand", "Re-materialize a stored span by handle", expand_impl)
         _tool("status", "Engine + session status (default summary; detail=full|gate)", status_impl)
@@ -3770,8 +4810,20 @@ def main() -> None:
     os.environ.setdefault("CTX_REPO", str(repo))
     os.environ.setdefault("CTX_TOKEN_MODE", "savings")
     os.environ.setdefault("CTX_SESSION_GOVERNOR", "1")
-    os.environ.setdefault("CTX_ENGINE_IDLE_S", "25")
-    os.environ.setdefault("CTX_ENGINE_TRANSITION_DEBOUNCE_S", "25")
+    os.environ.setdefault("CTX_ENGINE_IDLE_S", "15")
+    os.environ.setdefault("CTX_ENGINE_TRANSITION_DEBOUNCE_S", "15")
+    try:
+        from pipeline.mcp_hot_reload import adopt_installed_package_on_connect
+
+        adopted = adopt_installed_package_on_connect()
+        if adopted.get("stamp_updated") or adopted.get("daemon", {}).get("action") == "restarted":
+            _stderr(
+                "[scubiee] adopted package "
+                f"stamp_updated={adopted.get('stamp_updated')} "
+                f"daemon={adopted.get('daemon', {}).get('action')}"
+            )
+    except Exception as exc:  # noqa: BLE001
+        _stderr(f"[scubiee] adopt_installed_package: {exc}")
     try:
         from pipeline.daemon import ensure_daemon
 
@@ -3800,7 +4852,7 @@ def main() -> None:
         "rich": "search,read,outline,status",
         "search": "search,status",
         "grep": "grep,status",
-        "phase": "gate,map,focus,grep,glob,workspace,status",
+        "phase": ",".join(_phase_tool_names()),
     }
     _stderr(
         f"[scubiee] surface={surface} tools={tool_lists.get(surface)} "

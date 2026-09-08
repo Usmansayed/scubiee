@@ -1,0 +1,26 @@
+{
+  "id": "user-resolve-chain",
+  "title": "How does resolve load a user record?",
+  "query": "How does resolve load a user record?",
+  "seed": {
+    "file": "app/repositories/user_repo.py",
+    "symbol": "UserRepository.resolve"
+  },
+  "must": [
+    {"file": "app/repositories/user_repo.py", "symbol": "UserRepository.resolve", "why": "seed"},
+    {"file": "app/models/user.py", "symbol": "User.lookup", "why": "record access"},
+    {"file": "app/config/database.py", "symbol": "connect", "why": "storage handle"}
+  ],
+  "should": [],
+  "must_not": [
+    {"file": "app/middleware/auth.py", "symbol": "authenticate", "why": "caller, not needed to understand resolve"},
+    {"file": "app/billing/invoices.py", "symbol": "charge", "why": "other domain"},
+    {"file": "app/utils/token.py", "symbol": "decode", "why": "upstream jwt, not this slice"}
+  ],
+  "gold_rank": [
+    "app/repositories/user_repo.py::UserRepository.resolve",
+    "app/models/user.py::User.lookup",
+    "app/config/database.py::connect"
+  ],
+  "notes": "Downward slice from the repository, not the full auth path."
+}

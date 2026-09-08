@@ -1,0 +1,331 @@
+{
+  "description": "Diverse verification board. Gold context collected from fixture source, not tracer output. Each case: seed+prompt → heatmap must include all must, exclude all must_not. correct=true only if both hold.",
+  "hot_threshold": 0.45,
+  "cases": [
+    {
+      "id": "d01",
+      "family": "auth-flow",
+      "prompt": "from authenticate, collect the credential checking path",
+      "seed": {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+      "must": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/middleware/auth.py", "symbol": "extract_bearer"},
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"},
+        {"file": "app/utils/token.py", "symbol": "decode"},
+        {"file": "app/repositories/user_repo.py", "symbol": "UserRepository.resolve"},
+        {"file": "app/models/user.py", "symbol": "User.lookup"}
+      ],
+      "should": [
+        {"file": "app/config/security.py", "symbol": "TOKEN_TTL"},
+        {"file": "app/config/database.py", "symbol": "connect"}
+      ],
+      "must_not": [
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/utils/logger.py", "symbol": "log"},
+        {"file": "app/analytics/tracker.py", "symbol": "track"},
+        {"file": "app/notify/mailer.py", "symbol": "send"}
+      ]
+    },
+    {
+      "id": "d02",
+      "family": "config-ttl",
+      "prompt": "i only care how long tokens live",
+      "seed": {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"},
+      "must": [
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"},
+        {"file": "app/config/security.py", "symbol": "TOKEN_TTL"}
+      ],
+      "should": [
+        {"file": "app/utils/token.py", "symbol": "decode"}
+      ],
+      "must_not": [
+        {"file": "app/models/user.py", "symbol": "User.lookup"},
+        {"file": "app/repositories/user_repo.py", "symbol": "UserRepository.resolve"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"}
+      ]
+    },
+    {
+      "id": "d03",
+      "family": "site-log",
+      "prompt": "where does authenticate write the ok log?",
+      "seed": {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+      "must": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/utils/logger.py", "symbol": "log"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/utils/token.py", "symbol": "decode"},
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"},
+        {"file": "app/models/user.py", "symbol": "User.lookup"}
+      ]
+    },
+    {
+      "id": "d04",
+      "family": "pay",
+      "prompt": "collect context for charging cents on the pay api",
+      "seed": {"file": "app/billing/invoices.py", "symbol": "charge"},
+      "must": [
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/http/client.py", "symbol": "get"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/utils/token.py", "symbol": "decode"},
+        {"file": "app/analytics/tracker.py", "symbol": "track"}
+      ]
+    },
+    {
+      "id": "d05",
+      "family": "events",
+      "prompt": "from emit, what runs for welcome?",
+      "seed": {"file": "app/events/bus.py", "symbol": "emit"},
+      "must": [
+        {"file": "app/events/bus.py", "symbol": "emit"},
+        {"file": "app/events/registry.py", "symbol": "lookup"},
+        {"file": "app/handlers/welcome.py", "symbol": "handle"}
+      ],
+      "should": [
+        {"file": "app/bootstrap.py", "symbol": "start"}
+      ],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/jobs/worker.py", "symbol": "run"}
+      ]
+    },
+    {
+      "id": "d06",
+      "family": "jobs",
+      "prompt": "trace run until digest is sent",
+      "seed": {"file": "app/jobs/worker.py", "symbol": "run"},
+      "must": [
+        {"file": "app/jobs/worker.py", "symbol": "run"},
+        {"file": "app/jobs/queue.py", "symbol": "dequeue"},
+        {"file": "app/jobs/runner.py", "symbol": "execute"},
+        {"file": "app/jobs/digest.py", "symbol": "send_digest"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/events/bus.py", "symbol": "emit"}
+      ]
+    },
+    {
+      "id": "d07",
+      "family": "ttl-refs",
+      "prompt": "who reads TOKEN_TTL?",
+      "seed": {"file": "app/config/security.py", "symbol": "TOKEN_TTL"},
+      "must": [
+        {"file": "app/config/security.py", "symbol": "TOKEN_TTL"},
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/models/user.py", "symbol": "User.lookup"},
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"}
+      ]
+    },
+    {
+      "id": "d08",
+      "family": "inherit",
+      "prompt": "how does MemoryStore fetch override the base?",
+      "seed": {"file": "app/stores/memory.py", "symbol": "MemoryStore.fetch"},
+      "must": [
+        {"file": "app/stores/memory.py", "symbol": "MemoryStore.fetch"}
+      ],
+      "should": [
+        {"file": "app/stores/base.py", "symbol": "Store.fetch"}
+      ],
+      "must_not": [
+        {"file": "app/models/user.py", "symbol": "User.lookup"},
+        {"file": "app/cache/memo.py", "symbol": "get"}
+      ]
+    },
+    {
+      "id": "d09",
+      "family": "cors",
+      "prompt": "cors header middleware only",
+      "seed": {"file": "app/middleware/cors.py", "symbol": "process"},
+      "must": [
+        {"file": "app/middleware/cors.py", "symbol": "process"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/middleware/auth.py", "symbol": "extract_bearer"}
+      ]
+    },
+    {
+      "id": "d10",
+      "family": "health",
+      "prompt": "just the health probe",
+      "seed": {"file": "app/routes/health.py", "symbol": "health"},
+      "must": [
+        {"file": "app/routes/health.py", "symbol": "health"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/http/client.py", "symbol": "get"}
+      ]
+    },
+    {
+      "id": "d11",
+      "family": "session",
+      "prompt": "session start helper, not login",
+      "seed": {"file": "app/services/session.py", "symbol": "start"},
+      "must": [
+        {"file": "app/services/session.py", "symbol": "start"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/routes/login.py", "symbol": "login"}
+      ]
+    },
+    {
+      "id": "d12",
+      "family": "resolve",
+      "prompt": "how resolve loads the user row",
+      "seed": {"file": "app/repositories/user_repo.py", "symbol": "UserRepository.resolve"},
+      "must": [
+        {"file": "app/repositories/user_repo.py", "symbol": "UserRepository.resolve"},
+        {"file": "app/models/user.py", "symbol": "User.lookup"},
+        {"file": "app/config/database.py", "symbol": "connect"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/utils/token.py", "symbol": "decode"}
+      ]
+    },
+    {
+      "id": "d13",
+      "family": "cache",
+      "prompt": "how does the memo cache put a value?",
+      "seed": {"file": "app/cache/memo.py", "symbol": "put"},
+      "must": [
+        {"file": "app/cache/memo.py", "symbol": "put"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/http/client.py", "symbol": "get"},
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"}
+      ]
+    },
+    {
+      "id": "d14",
+      "family": "notify",
+      "prompt": "how does mailer send a notification?",
+      "seed": {"file": "app/notify/mailer.py", "symbol": "send"},
+      "must": [
+        {"file": "app/notify/mailer.py", "symbol": "send"},
+        {"file": "app/http/client.py", "symbol": "get"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"}
+      ]
+    },
+    {
+      "id": "d15",
+      "family": "limits",
+      "prompt": "how does throttle decide allow?",
+      "seed": {"file": "app/limits/throttle.py", "symbol": "allow"},
+      "must": [
+        {"file": "app/limits/throttle.py", "symbol": "allow"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/http/client.py", "symbol": "get"},
+        {"file": "app/jobs/worker.py", "symbol": "run"}
+      ]
+    },
+    {
+      "id": "d16",
+      "family": "job-notify",
+      "prompt": "deliver a digest job and notify the user",
+      "seed": {"file": "app/jobs/deliver.py", "symbol": "deliver"},
+      "must": [
+        {"file": "app/jobs/deliver.py", "symbol": "deliver"},
+        {"file": "app/jobs/digest.py", "symbol": "send_digest"},
+        {"file": "app/notify/mailer.py", "symbol": "send"}
+      ],
+      "should": [
+        {"file": "app/http/client.py", "symbol": "get"}
+      ],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/events/bus.py", "symbol": "emit"}
+      ]
+    },
+    {
+      "id": "d17",
+      "family": "adversarial-pay",
+      "prompt": "customer authentication tokens for payment — how do we charge?",
+      "seed": {"file": "app/billing/invoices.py", "symbol": "charge"},
+      "must": [
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/http/client.py", "symbol": "get"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"},
+        {"file": "app/utils/token.py", "symbol": "decode"}
+      ]
+    },
+    {
+      "id": "d18",
+      "family": "login-entry",
+      "prompt": "from the login route, how does auth happen?",
+      "seed": {"file": "app/routes/login.py", "symbol": "login"},
+      "must": [
+        {"file": "app/routes/login.py", "symbol": "login"},
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+        {"file": "app/middleware/auth.py", "symbol": "extract_bearer"},
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"}
+      ],
+      "should": [
+        {"file": "app/utils/token.py", "symbol": "decode"}
+      ],
+      "must_not": [
+        {"file": "app/billing/invoices.py", "symbol": "charge"},
+        {"file": "app/routes/health.py", "symbol": "health"}
+      ]
+    },
+    {
+      "id": "d19",
+      "family": "mid-execute",
+      "prompt": "what does execute do with a dequeued job?",
+      "seed": {"file": "app/jobs/runner.py", "symbol": "execute"},
+      "must": [
+        {"file": "app/jobs/runner.py", "symbol": "execute"},
+        {"file": "app/jobs/digest.py", "symbol": "send_digest"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/http/client.py", "symbol": "get"},
+        {"file": "app/middleware/auth.py", "symbol": "authenticate"}
+      ]
+    },
+    {
+      "id": "d20",
+      "family": "cache-get",
+      "prompt": "read a value from the memo cache",
+      "seed": {"file": "app/cache/memo.py", "symbol": "get"},
+      "must": [
+        {"file": "app/cache/memo.py", "symbol": "get"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/http/client.py", "symbol": "get"},
+        {"file": "app/notify/mailer.py", "symbol": "send"},
+        {"file": "app/billing/invoices.py", "symbol": "charge"}
+      ]
+    }
+  ]
+}

@@ -34,6 +34,55 @@ _LEAKY_CTX_KEYS = (
 
 
 @pytest.fixture(autouse=True)
+def _restore_repo_local_state():
+    """Keep the checkout's own enrollment/MCP files pristine across tests.
+
+    Several suites hand the real repo root to product code while ``CTX_HOME`` is
+    isolated. The repo is unknown to that empty registry, so it gets re-enrolled
+    and ``.scubiee/id.json`` is rewritten with a fresh project id (and MCP pins
+    follow). Left in place that leaks into later tests — and into the developer's
+    IDE — so snapshot these two files and put them back.
+    """
+    root = Path(__file__).resolve().parents[1]
+    watched = (root / ".scubiee" / "id.json", root / ".cursor" / "mcp.json")
+    before = {path: (path.read_bytes() if path.is_file() else None) for path in watched}
+    yield
+    for path, original in before.items():
+        try:
+            current = path.read_bytes() if path.is_file() else None
+            if current == original:
+                continue
+            if original is None:
+                path.unlink()
+            else:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(original)
+        except OSError:
+            pass
+
+
+@pytest.fixture(autouse=True)
+def _guard_real_scubiee_home(request):
+    """Fail loudly if a test destroys the operator's real ``~/.scubiee``.
+
+    ``wipe_all`` sweeps the ``Path.home()`` defaults on top of ``CTX_HOME``
+    (see ``_context_engine_homes``), so the autouse ``CTX_HOME`` isolation alone
+    does not sandbox destructive paths — those tests must fake ``Path.home()``
+    too. Without this guard a plain ``pytest`` run silently wipes the machine's
+    accel profile, index, and IDE MCP config while still reporting green.
+    """
+    real = Path.home() / ".scubiee"
+    existed = real.is_dir()
+    yield
+    if existed and not real.is_dir():
+        pytest.fail(
+            f"{request.node.nodeid} deleted the real Scubiee home {real}. "
+            "Destructive tests must monkeypatch Path.home() as well as CTX_HOME.",
+            pytrace=False,
+        )
+
+
+@pytest.fixture(autouse=True)
 def _neutral_mcp_surface(monkeypatch):
     monkeypatch.delenv("CTX_MCP_SURFACE", raising=False)
     yield

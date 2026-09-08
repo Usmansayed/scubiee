@@ -1,34 +1,27 @@
 <!-- scubiee:start -->
-**GATE 1:ce_d9cb766c3820091ed9ffbc64ef33063c** - Managed repo. `project_id='ce_d9cb766c3820091ed9ffbc64ef33063c'`.
+**GATE 1:ce_541950414d46b26e6054921d4cd1eb86** - Managed repo. `project_id='ce_541950414d46b26e6054921d4cd1eb86'`.
 
-**MUST Use Scubiee for locate** when tools are available — follow this routing strictly.
+**LOCATE PRIORITY (managed):** Soft/structural → Prefer Scubiee over host explore-first (Task / codebase_search). Needles/names/paths → Prefer host Grep/Glob/Read (Forbid-first map/pack).
 
-### Trace / pack is the point (do not skip)
-- `pack_context` is the **tracer/heatmap step** (builds the call/data slice + hot bodies). `map` alone is only a seed/card list — **not** enough context to edit.
-- On non-trivial work you **must** run **`pack_context(mode=lean)`** (after `map` or with a known seed). Prefer lean pack over native file thrash.
-- If pack is thin → **`expand_context`** (callees|callers|effects|broad) before guessing with Grep.
-- Do **not** substitute `status` / directory listing / shotgun Grep for pack+expand.
+**MUST Use Scubiee** when CLI or MCP locate tools are callable. Prefer CLI `scubiee map`→`pack --mode lean`→`expand` if thin; else MCP `map`→`pack_context`(lean)→`expand_context`/`collect_hot_context`. Tool how-to → MCP server instructions / `scubiee map|pack|expand --help` (follow those steps; this GATE is the duty to enter the ladder).
 
-### When to call which tool
-- **Unknown where to start / soft “how does X work?”** → `map`(descriptive code-vocab query, k=10) → **required next** `pack_context`(same query, `suggested_seed`, mode=lean). Do **not** stop after map-only. Heatmap + hot bodies come from pack (the tracer).
-- **Have a seed (file/symbol/line) needing bodies** → `pack_context`(mode=lean) first (or `map_context` GUIDE-only cards then pack/collect). mode=full only if lean is too thin.
-- **Pack/map was thin / missing a hop** → `expand_context`(direction=callees|callers|effects|broad, with_bodies as needed) or `collect_hot_context(ids=…)`. `pack_context(policy=broad)` once if the slice was too strict.
-- **Edit-ready soft hit** → `pinpoint`. **How-it-works overview without bodies** → `plate`.
-- **Exact literal / import / error string (no seed hunt)** → host Grep. **Filename only** → host Glob. **Already-known path** → host Read.
-- **Session / rematerialize** → `workspace` / `expand`.
+**Prefer host first (Forbid-first map/pack):**
+- Literals / imports / error strings / JWT-like / named-symbol under a known path → Grep.
+- Filenames → Glob; known path:lines → Read.
+- Health / readiness / `warm_state` / provider-dep errors → `gate`/`status` + Grep — **not** soft map→pack.
+- After a Scubiee heatmap → guided Grep/Read on `loc` spans only.
 
-### Hard requirements (managed)
-- Before the **first** broad native search (repo-wide Grep/findstr/dir dump) on an unfamiliar area: complete at least **`map` + `pack_context(lean)`** (or `pack_context(lean)` alone if seed known).
-- Before editing code you have not already packed: read **pack bodies / expand delta** first (Native-Read only the cold card.locs from the heatmap).
-- Budget: ≤3 Scubiee locate calls for the first beat (map→pack→expand); then edit. On non-trivial tasks target **≥2 calls with pack included** (map+pack or pack+expand).
-- Avoid token dumps and parallel explore thrash.
+**WHEN SCUBIEE IS AVAILABLE — STRICT, NO ESCAPE (soft/structural):**
+- **Query quality (high ROI — few map/pack calls):** Before map, write ~30–80 denser code-vocab tokens: concrete **symbols**, **module paths**, and **outcome verbs** from the ask — not a synonym/keyword dump. One tight sentence; **BAN** multi-paragraph queries. Vague one-liner **or** keyword-salad = **FAIL**.
+- Soft/unknown → map (k=10) → **required next** pack lean (public `packages/` suggested_seed; **Forbid** empty / `_` / test / docs seeds).
+- **Refine after evidence:** After map (and after expand if used), fold `suggested_seed` / hot card `file`+`symbol` into the next pack/expand query. Same problem thread; **BAN** unrelated rewrite thrash. Prefer **1× map + 1× pack**; expand only if thin — do not burn the ≤3 budget remapping.
+- Skipping pack / map-only = **FAIL**. Warming/error ≠ skip — retry pack and/or `status`.
+- Thin after pack → expand; need bodies → collect_hot / `--with-bodies` as the surface provides.
+- Native-first while Scubiee is up = **FAIL** on soft/structural.
+- Native Grep/span-Read only after pack heatmap locs, **or** if Scubiee is fully uncallable (no deadlock).
+- Empty/useless heatmap **or** needle/health ask → **stop the ladder**; Grep/Read — do not stack map/status + shotgun thrash.
+- Budget ≤3 locate calls/beat. **BAN whole-file Read** of heatmap paths until expand/collect.
+- Edit/Write stay native.
 
-### Forbidden until ladder ran (or Scubiee errored)
-- Do **not** open with recursive directory listings or shotgun `findstr`/`rg` across the whole repo to “discover” architecture.
-- Do **not** treat a single `map` (or `gate`/`status`) call as enough context — **`pack_context` is mandatory** for tracer/heatmap bodies.
-- Do **not** skip pack because map “looked relevant” — still pack the seed.
-
-**Native Grep/Glob/Read OK** after a heatmap/pack (guided by cards), or when Scubiee MCP is down, blocked, paused, or a tool errors — continue; do not deadlock.
-Edit/Write/Shell stay native. How-to → Scubiee MCP server instructions.
 
 <!-- scubiee:end -->

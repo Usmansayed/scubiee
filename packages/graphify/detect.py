@@ -790,6 +790,7 @@ _SKIP_DIRS = {
     "venv", ".venv", ".venv-proof",  # "env"/".env"/"*_env" are gated on venv markers below (#2058)
     "node_modules", "__pycache__", ".git",
     "dist", "build", "target", "out",
+    ".ab_workspaces",
     "site-packages", "lib64",
     ".pytest_cache", ".mypy_cache", ".ruff_cache",
     ".tox", ".nox", ".eggs", "*.egg-info",  # nox is tox's successor, same .nox/ venv shape (#1804)

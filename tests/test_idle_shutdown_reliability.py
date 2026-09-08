@@ -85,6 +85,49 @@ def test_apply_idle_policy_enters_standby_after_disconnect(
     assert stopped["called"] is True
 
 
+def test_apply_idle_policy_retries_stop_when_engine_survives_standby(
+    tmp_path, monkeypatch
+) -> None:
+    """A failed stop must not wedge the engine on forever.
+
+    ``enter_standby`` flips the mode to standby *before* stopping, and the
+    engine's own idle sweeper cannot kill itself (``safe_terminate_pid`` skips
+    ``self_or_ancestor``). That leaves mode=standby with a live engine; if the
+    sweep treats standby as "nothing to do" it never retries and the engine
+    outlives the IDE indefinitely.
+    """
+    monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
+    monkeypatch.setenv("CTX_ENGINE_IDLE_S", "25")
+    monkeypatch.setattr(life, "_client_pid_trustworthy", lambda _meta: True)
+
+    stopped = {"called": False}
+
+    def fake_standby(**kwargs):
+        stopped["called"] = kwargs.get("stop_engine", False)
+        return {"ok": True, "policy": life.load_policy(), "engine": {"ok": True}}
+
+    monkeypatch.setattr("pipeline.daemon.is_running", lambda: True)
+    monkeypatch.setattr(life, "enter_standby", fake_standby)
+
+    life.register_client("mcp:1", pid=1, now=1000.0)
+    life.unregister_client("mcp:1", now=1000.0)
+    # Simulate the earlier sweep that flipped the mode but failed to kill it.
+    life.set_desired_mode(life.DESIRED_STANDBY)
+
+    result = life.apply_idle_policy(now=1025.0)
+    assert result.get("action") == "standby", result
+    assert stopped["called"] is True
+
+
+def test_apply_idle_policy_noop_when_standby_and_no_engine(tmp_path, monkeypatch) -> None:
+    """Standby with nothing running stays a cheap no-op."""
+    monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
+    monkeypatch.setenv("CTX_ENGINE_IDLE_S", "25")
+    monkeypatch.setattr("pipeline.daemon.is_running", lambda: False)
+
+    assert life.apply_idle_policy(now=1025.0).get("action") == "already_standby"
+
+
 def test_note_activity_after_unregister_resets_leave_anchor(
     tmp_path, monkeypatch
 ) -> None:
@@ -112,6 +155,11 @@ def test_governor_ignores_hub_activity_when_no_mcp_clients(
         "pipeline.lifecycle_runtime.idle_stop_debounced",
         lambda **_: None,
     )
+    # No disconnect grace stamp — fall back to last_semantic_at.
+    monkeypatch.setattr(
+        "pipeline.lifecycle_runtime.load_policy",
+        lambda: {"last_client_left_at": None},
+    )
 
     fixed_now = 1000.0
     gov = MemoryGovernor()
@@ -129,6 +177,42 @@ def test_governor_ignores_hub_activity_when_no_mcp_clients(
     result = gov.maybe_demote_idle(hub, now=fixed_now)
     assert result is not None
     assert result["action"] == "demote_serve"
+    assert gov.active_tier == "locate_only"
+
+
+def test_governor_holds_warm_through_disconnect_grace(
+    tmp_path, monkeypatch
+) -> None:
+    """After MCP leaves, keep embedder warm until the idle grace elapses."""
+    reset_governor_for_tests()
+    monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
+    monkeypatch.setenv("CTX_EMBED_IDLE_DEMOTE_S", "15")
+    monkeypatch.setattr(life, "active_client_count", lambda: 0)
+    monkeypatch.setattr(
+        "pipeline.lifecycle_runtime.idle_stop_debounced",
+        lambda **_: None,
+    )
+    left_at = 1000.0
+    monkeypatch.setattr(
+        "pipeline.lifecycle_runtime.load_policy",
+        lambda: {"last_client_left_at": left_at},
+    )
+
+    gov = MemoryGovernor()
+    gov.desired_tier = "serve_1repo"
+    gov.apply_tier("serve_1repo")
+    # Semantic was long ago — without leave anchoring this would demote immediately.
+    gov.last_semantic_at = left_at - 60
+
+    monkeypatch.setattr("pipeline.engine.release_embedders", lambda: 0)
+
+    still_warm = gov.maybe_demote_idle(now=left_at + 10)
+    assert still_warm is None
+    assert gov.active_tier == "serve_1repo"
+
+    demoted = gov.maybe_demote_idle(now=left_at + 16)
+    assert demoted is not None
+    assert demoted["action"] == "demote_serve"
     assert gov.active_tier == "locate_only"
 
 

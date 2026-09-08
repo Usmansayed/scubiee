@@ -579,8 +579,8 @@ def test_nav_surface_active_and_instructions_budget(monkeypatch):
     assert "native" in text.lower()
 
 
-def test_phase_surface_grep_glob_and_trajectory(monkeypatch, tmp_path):
-    """Phase surface: trajectory in MCP instructions; bans in project rule."""
+def test_phase_surface_ship_ladder(monkeypatch, tmp_path):
+    """Phase ship (default): map/pack/expand only — no pinpoint/plate/poly packs."""
     from pipeline import mcp_locate as ml
 
     pytest.importorskip("mcp")
@@ -593,30 +593,93 @@ def test_phase_surface_grep_glob_and_trajectory(monkeypatch, tmp_path):
     monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
     (tmp_path / "ce-home").mkdir()
     monkeypatch.setenv("CTX_MCP_SURFACE", "phase")
+    monkeypatch.delenv("CTX_MCP_EXPERIMENT", raising=False)
     monkeypatch.setattr(ml, "_is_repo_managed", lambda: True)
     monkeypatch.setattr(ml, "_gate_line", lambda just_checked=False: "1:ce_test")
-    text = ml.SERVER_INSTRUCTIONS_PHASE
+    assert ml._phase_experiment() == "ship"
+    text = ml._phase_server_instructions()
     assert ml._server_instructions("phase") == _gate_instruction_prefix("1:ce_test") + text
+    assert "pack_context" in text.lower()
     assert "map" in text
-    assert "prefer scubiee" in text.lower() or "native" in text.lower()
-    assert "budget=cap" in text or "Default budget=cap" in text
-    assert "prefer" in text.lower()
-    assert "you choose" in text.lower() or "pick what fits" in text.lower()
-    assert "grep" in text.lower()
-    assert "expand" in text
-    assert "You choose the tool" in text or "you choose" in text.lower() or "no forced order" in text.lower()
-    assert "Stay flexible" in text or "flexible" in text.lower() or "Retrieve what you need" in text
-    assert "BAN native" not in text
-    assert "IGNORE" not in text
-    assert "prefer these over" in text.lower() or "prefer over" in text.lower()
+    assert "expand_context" in text.lower()
+    assert "composite" in text.lower()
+    assert "pinpoint" not in text.lower()
+    assert "prefer" in text.lower() or "use " in text.lower() or "strictly" in text.lower()
+    assert "Grep" in text or "grep" in text.lower()
+    assert "BAN whole-file" in text or "BAN whole-file Read" in text
     from pipeline.rules_installer import managed_gate_mcp_header as _hdr
 
-    assert "secondary" in _hdr().lower()
     assert _hdr() in text
     tools = set(ml.create_mcp()._tool_manager._tools)
     assert tools == {
         "gate",
         "map",
+        "pack_context",
+        "expand_context",
+        "collect_hot_context",
+        "workspace",
+        "expand",
+        "status",
+    }
+    assert "grep" not in tools and "glob" not in tools
+    assert "focus" not in tools
+    assert "pinpoint" not in tools and "plate" not in tools
+    assert "pack_poly_embed" not in tools and "map_context" not in tools
+
+
+def test_phase_lab_experiment_restores_pinpoint_plate(monkeypatch):
+    """Lab: CTX_MCP_EXPERIMENT=lab restores poly packs + pinpoint/plate."""
+    from pipeline import mcp_locate as ml
+
+    pytest.importorskip("mcp")
+    monkeypatch.setenv("CTX_MCP_SURFACE", "phase")
+    monkeypatch.setenv("CTX_MCP_EXPERIMENT", "lab")
+    monkeypatch.setattr(ml, "_is_repo_managed", lambda: True)
+    monkeypatch.setattr(ml, "_gate_line", lambda just_checked=False: "1:ce_test")
+    assert ml._phase_experiment() == "lab"
+    text = ml._phase_server_instructions()
+    assert "pinpoint" in text.lower()
+    tools = set(ml.create_mcp()._tool_manager._tools)
+    assert tools == {
+        "gate",
+        "map",
+        "map_context",
+        "pack_context",
+        "pack_poly_embed",
+        "pack_semantic",
+        "expand_context",
+        "collect_hot_context",
+        "pinpoint",
+        "plate",
+        "workspace",
+        "expand",
+        "status",
+    }
+
+
+def test_phase_classic_experiment_restores_grep_glob(monkeypatch):
+    """Backoff: CTX_MCP_EXPERIMENT=classic restores pre-hybrid tool set."""
+    from pipeline import mcp_locate as ml
+
+    pytest.importorskip("mcp")
+    monkeypatch.setenv("CTX_MCP_SURFACE", "phase")
+    monkeypatch.setenv("CTX_MCP_EXPERIMENT", "classic")
+    monkeypatch.setattr(ml, "_is_repo_managed", lambda: True)
+    monkeypatch.setattr(ml, "_gate_line", lambda just_checked=False: "1:ce_test")
+    assert ml._phase_experiment() == "classic"
+    text = ml._phase_server_instructions()
+    assert "grep" in text.lower() and "glob" in text.lower()
+    assert "pinpoint" not in text.lower()
+    tools = set(ml.create_mcp()._tool_manager._tools)
+    assert tools == {
+        "gate",
+        "map",
+        "map_context",
+        "pack_context",
+        "pack_poly_embed",
+        "pack_semantic",
+        "expand_context",
+        "collect_hot_context",
         "focus",
         "grep",
         "glob",
@@ -825,12 +888,11 @@ def test_server_instructions_are_short_grep_like_cards(monkeypatch):
             assert "mode=soft" in text
             continue
         if name == "phase":
-            assert "prefer" in text.lower()
+            assert "prefer" in text.lower() or "use " in text.lower() or "strictly" in text.lower()
             assert "map" in text
-            assert "you choose" in text.lower() or "pick what fits" in text.lower()
-            assert "grep" in text.lower()
+            assert "pack_context" in text.lower()
+            assert "strictly" in text.lower() or "Scenario routing" in text or "USE " in text or "MUST" in text
             assert "expand" in text
-            assert "Stay flexible" in text or "flexible" in text.lower()
             continue
         if name == "search":
             assert "prefer" in text.lower()
@@ -851,7 +913,7 @@ def test_server_instructions_are_short_grep_like_cards(monkeypatch):
     assert ml._server_instructions("read") == prefix + ml.SERVER_INSTRUCTIONS_READ
     assert ml._server_instructions("rich") == prefix + ml.SERVER_INSTRUCTIONS_RICH
     assert ml._server_instructions("nav") == prefix + ml.SERVER_INSTRUCTIONS_NAV
-    assert ml._server_instructions("phase") == prefix + ml.SERVER_INSTRUCTIONS_PHASE
+    assert ml._server_instructions("phase") == prefix + ml._phase_server_instructions()
 
 
 def test_tool_responses_include_gate_field(monkeypatch):
@@ -878,7 +940,7 @@ def test_cursor_rule_mirrors_short_decision_card():
     assert "IGNORE" not in template
     assert "BAN native" not in template
     assert "do not deadlock" in template.lower()
-    assert "prefer them for locate" in template.lower() or "prefer" in template.lower()
+    assert "prefer them for locate" in template.lower() or "prefer" in template.lower() or "use them strictly" in template.lower() or "use scubiee" in template.lower()
     assert "native" in template.lower()
     assert "scubiee resume" in template.lower() or "GATE p" in template
     assert "ignore this rule entirely" not in template.lower()
@@ -1064,6 +1126,7 @@ def test_mcp_reports_routing_errors_instead_of_successful_zero_hits(
     from pipeline.mcp_locate import create_mcp
 
     monkeypatch.setenv("CTX_MCP_SURFACE", "phase")
+    monkeypatch.setenv("CTX_MCP_EXPERIMENT", "lab")
     monkeypatch.setenv("CTX_REPO", str(tmp_path))
     monkeypatch.setattr(pd, "ensure_daemon", lambda *a, **k: None)
 
@@ -1087,16 +1150,13 @@ def test_mcp_reports_routing_errors_instead_of_successful_zero_hits(
     assert "count" not in mapped
     assert "scubiee init" in mapped["hint"]
 
-    class _RoutingErrorEngine:
-        def grep(self, *_a, **_k):
-            return response
-
-    monkeypatch.setattr(pc, "EngineClient", lambda *a, **k: _RoutingErrorEngine())
-    grep_result = json.loads(_tool_fn(mcp, "grep")(pattern="incremental_sync"))
-    assert grep_result["ok"] is False
-    assert grep_result["status"] == "requires_initialize"
-    assert "count" not in grep_result
-    assert "scubiee init" in grep_result["hint"]
+    pinpoint_result = json.loads(
+        _tool_fn(mcp, "pinpoint")(query="incremental_sync routing")
+    )
+    assert pinpoint_result["ok"] is False
+    assert pinpoint_result["status"] == "requires_initialize"
+    assert "count" not in pinpoint_result
+    assert "scubiee init" in pinpoint_result["hint"]
 
 
 def test_mcp_rejects_implicit_backend_readiness_failures(monkeypatch, tmp_path):
@@ -1152,6 +1212,7 @@ def test_mcp_rejects_implicit_backend_readiness_failures(monkeypatch, tmp_path):
     )
 
     monkeypatch.setenv("CTX_MCP_SURFACE", "phase")
+    monkeypatch.setenv("CTX_MCP_EXPERIMENT", "lab")
     monkeypatch.setattr(
         loc,
         "_search_hits",
@@ -1161,7 +1222,7 @@ def test_mcp_rejects_implicit_backend_readiness_failures(monkeypatch, tmp_path):
     results.extend(
         [
             json.loads(_tool_fn(phase, "map")(query="warming map")),
-            json.loads(_tool_fn(phase, "grep")(pattern="warming")),
+            json.loads(_tool_fn(phase, "pinpoint")(query="warming pinpoint")),
         ]
     )
 
@@ -1250,12 +1311,13 @@ def test_mcp_rejects_missing_success_envelopes(monkeypatch, tmp_path):
     )
 
     monkeypatch.setenv("CTX_MCP_SURFACE", "phase")
+    monkeypatch.setenv("CTX_MCP_EXPERIMENT", "lab")
     phase = create_mcp()
     results.extend(
         [
             json.loads(_tool_fn(phase, "map")(query="missing map")),
-            json.loads(_tool_fn(phase, "grep")(pattern="missing")),
-            json.loads(_tool_fn(phase, "focus")(target="pkg/mod.py", mode="outline")),
+            json.loads(_tool_fn(phase, "pinpoint")(query="missing pinpoint")),
+            json.loads(_tool_fn(phase, "plate")(query="missing plate")),
         ]
     )
 
@@ -1398,13 +1460,14 @@ def test_managed_gate_rule_is_policy_not_product_howto() -> None:
     from pipeline import mcp_locate as ml
 
     text = managed_gate_rule_body("1:ce_test", "ce_test")
-    assert "Prefer Scubiee" in text or "prefer scubiee" in text.lower()
-    assert "Prefer Scubiee" in text or "Native Grep" in text
-    assert "Edit/Write/Shell" in text or "Edit/Shell" in text
+    assert "Prefer Scubiee" in text or "prefer scubiee" in text.lower() or "Use Scubiee" in text or "use scubiee" in text.lower()
+    assert "Prefer Scubiee" in text or "Use Scubiee" in text or "Native Grep" in text or "host Grep" in text
+    assert "Edit/Write" in text  # Shell runs scubiee CLI; Edit/Write stay native
     assert (
         "native grep" in text.lower()
         or "mcp is blocked" in text.lower()
         or "prefer scubiee" in text.lower()
+        or "use scubiee cli" in text.lower()
     )
     assert "MCP server instructions" in text or "server instructions" in text.lower()
     # How-to belongs in MCP instructions, not the GATE rule
@@ -1414,25 +1477,219 @@ def test_managed_gate_rule_is_policy_not_product_howto() -> None:
     assert "IGNORE" not in text
     assert "BAN native" not in text
     assert "do not fall back to native" not in text.lower()
-    assert "secondary" in text.lower() or "when those tools are available" in text.lower()
-    assert "deadlock" in text.lower() or "Native Grep" in text
+    assert "pack" in text.lower() and "map" in text.lower()
+    assert "deadlock" in text.lower() or "Native Grep" in text or "host Grep" in text
     # Single source: MCP header matches policy; overview templates use same prefer+escape
-    assert managed_gate_mcp_header() in ml.SERVER_INSTRUCTIONS_PHASE
-    assert "Prefer Scubiee" in gate_overview_mdc() or "prefer them" in gate_overview_mdc().lower()
+    assert managed_gate_mcp_header() in ml._phase_server_instructions()
+    assert "Prefer Scubiee" in gate_overview_mdc() or "Use Scubiee" in gate_overview_mdc() or "prefer" in gate_overview_mdc().lower() or "use them strictly" in gate_overview_mdc().lower()
     assert "IGNORE" not in gate_overview_mdc()
     assert "do not fall back to native" not in gate_overview_mdc().lower()
     assert "BAN native" not in gate_overview_mdc()
     assert managed_gate_overview_bullet() in gate_overview_mdc()
-    assert "Prefer Scubiee" in managed_gate_usage_short()
-    assert "Native Grep" in managed_gate_usage_short() or "prefer" in managed_gate_usage_short().lower()
-    assert "low token waste" in managed_gate_usage_short() or "Prefer Scubiee" in managed_gate_usage_short()
-    assert "focus(path=" in managed_gate_usage_short()
-    assert "Prefer Scubiee" in managed_gate_mcp_header()
-    assert "secondary" in managed_gate_mcp_header().lower()
-    assert "you choose" in managed_gate_mcp_header().lower()
-    # Prefer assert: phase instructions steer over host tools without BAN wall
-    phase = ml.SERVER_INSTRUCTIONS_PHASE
-    assert "prefer over" in phase.lower() or "prefer these over" in phase.lower()
+    assert "scubiee pack" in managed_gate_usage_short().lower() or "pack" in managed_gate_usage_short().lower()
+    assert "heatmap" in managed_gate_usage_short().lower() or "loc" in managed_gate_usage_short().lower()
+    assert "Prefer" in managed_gate_usage_short() or "LOCATE PRIORITY" in managed_gate_usage_short()
+    assert "host Grep" in managed_gate_usage_short() or "Native Grep" in managed_gate_usage_short()
+    assert "Forbid-first" in managed_gate_usage_short() or "Forbid-first" in managed_gate_mcp_header()
+    assert "host Read" in managed_gate_usage_short() or "path" in managed_gate_usage_short().lower() or "loc" in managed_gate_usage_short().lower()
+    assert "deadlock" in managed_gate_usage_short().lower()
+    # Soft Prefer + needle Forbid — not Require-map-always
+    assert "literal" in managed_gate_usage_short().lower() or "Grep first" in managed_gate_usage_short()
+    assert "BAN native" not in managed_gate_usage_short()
+    # When available: must pack; warming is not an escape hatch
+    assert "warming" in managed_gate_usage_short().lower() or "MUST" in managed_gate_usage_short()
+    assert "skip pack" in managed_gate_usage_short().lower() or "skips pack" in managed_gate_usage_short().lower() or "map alone" in managed_gate_usage_short().lower() or "Skipping pack" in managed_gate_usage_short()
+    assert "uncallable" in managed_gate_usage_short().lower() or "unavailable" in managed_gate_usage_short().lower() or "NOT CALLABLE" in managed_gate_usage_short()
+    assert "STRICT" in managed_gate_usage_short() and "NO ESCAPE" in managed_gate_usage_short()
+    assert "warm_state" in managed_gate_usage_short().lower() or "Health" in managed_gate_usage_short()
+    assert "MUST Use Scubiee" in managed_gate_usage_short() or "MUST Use Scubiee" in managed_gate_overview_bullet()
+    from pipeline.rules_installer import managed_gate_mcp_only_usage_short, managed_gate_mcp_only_rule_body
+
+    assert "WHEN SCUBIEE MCP IS AVAILABLE" in managed_gate_mcp_only_usage_short()
+    assert "STRICT" in managed_gate_mcp_only_usage_short() and "pack_context" in managed_gate_mcp_only_usage_short()
+    assert "MUST Use Scubiee MCP" in managed_gate_mcp_only_rule_body("1:ce_test", "ce_test")
+    assert managed_gate_overview_bullet() in gate_overview_mdc()
+    assert "Forbid-first" in managed_gate_overview_bullet() or "Prefer host Grep" in managed_gate_overview_bullet() or "literals" in managed_gate_overview_bullet().lower()
+    assert "STRICT" in managed_gate_overview_bullet() or "MUST Use Scubiee" in managed_gate_overview_bullet()
+    # Header embedded in MCP instructions
+    assert managed_gate_mcp_header() in ml._phase_server_instructions()
+    assert "Forbid-first" in ml._phase_server_instructions() or "Prefer host Grep" in ml._phase_server_instructions()
+    assert "LOCATE PRIORITY" in ml._phase_server_instructions()
+    assert "MUST" in ml._phase_server_instructions() or "warming" in ml._phase_server_instructions().lower()
+    assert "STRICT" in ml._phase_server_instructions() or "NO ESCAPE" in ml._phase_server_instructions()
+    assert "warm_state" in ml._phase_server_instructions().lower() or "Health" in ml._phase_server_instructions()
+    assert "pack" in managed_gate_mcp_header().lower() or "heatmap" in managed_gate_mcp_header().lower()
+    # Enrich/expand query is mandatory for soft map/pack
+    assert "enrich" in managed_gate_usage_short().lower() or "expand query" in managed_gate_usage_short().lower()
+    assert "enrich" in managed_gate_mcp_header().lower() or "code-vocab" in managed_gate_mcp_header().lower()
+    assert "ENRICH" in ml._phase_server_instructions() or "enrich" in ml._phase_server_instructions().lower()
+    assert "vague" in ml._phase_server_instructions().lower() or "QUERY QUALITY" in ml._phase_server_instructions()
+    assert "pack" in managed_gate_overview_bullet().lower() or "cli" in managed_gate_overview_bullet().lower()
+    assert (
+        "Prefer Scubiee" in managed_gate_mcp_header()
+        or "Use Scubiee" in managed_gate_mcp_header()
+        or "MUST" in managed_gate_mcp_header()
+        or "pack" in managed_gate_mcp_header().lower()
+    )
+    assert "scubiee" in managed_gate_mcp_header().lower() or "pack" in managed_gate_mcp_header().lower()
+    # Prefer assert: phase instructions steer soft locate without BAN wall
+    phase = ml._phase_server_instructions()
+    assert "pack" in phase.lower() or "pinpoint" in phase.lower()
     assert "BAN native" not in phase
     assert "IGNORE" not in phase
-    assert "no forced order" in phase.lower() or "you choose" in phase.lower()
+    assert "strictly" in phase.lower() or "USE pinpoint" in phase or "Scenario routing" in phase or "use scubiee" in phase.lower() or "pack" in phase.lower() or "STRICT" in phase
+
+
+def test_pinpoint_returns_primary_neighbors_alts(monkeypatch, tmp_path):
+    """pinpoint fuses search + body + graph neighbors into one lean payload."""
+    pytest.importorskip("mcp")
+    import pipeline.client as pc
+    import pipeline.daemon as pd
+    from pipeline import locate as loc
+    from pipeline.mcp_locate import create_mcp
+
+    repo = tmp_path / "proj"
+    repo.mkdir()
+    (repo / "pkg").mkdir()
+    (repo / "pkg" / "mod.py").write_text("def run():\n    return 1\n", encoding="utf-8")
+    ce = repo / ".scubiee"
+    ce.mkdir()
+    (ce / "id.json").write_text('{"project_id": "ce_pin"}', encoding="utf-8")
+    monkeypatch.setenv("CTX_REPO", str(repo))
+    monkeypatch.setenv("CTX_MCP_SURFACE", "phase")
+    monkeypatch.setenv("CTX_MCP_EXPERIMENT", "lab")
+    monkeypatch.setattr(pd, "ensure_daemon", lambda *a, **k: None)
+    monkeypatch.setattr("pipeline.mcp_locate._is_repo_managed", lambda: True)
+
+    monkeypatch.setattr(
+        loc,
+        "_search_hits",
+        lambda *_a, **_k: [
+            {"file": "pkg/mod.py", "start_line": 1, "end_line": 2, "score": 12.0, "why": "run"},
+            {"file": "pkg/other.py", "start_line": 1, "end_line": 1, "score": 4.0, "why": "alt"},
+        ],
+    )
+    monkeypatch.setattr(
+        loc,
+        "_read_excerpt",
+        lambda *_a, **_k: {
+            "excerpt": "def run():\n    return 1\n",
+            "start_line": 1,
+            "end_line": 2,
+        },
+    )
+
+    class _Eng:
+        def graph_neighbors(self, *_a, **_k):
+            return {
+                "ok": True,
+                "spans": [
+                    {
+                        "path": "pkg/caller.py",
+                        "start_line": 1,
+                        "end_line": 3,
+                        "text": "run()\n",
+                        "why": "calls",
+                    }
+                ],
+            }
+
+    monkeypatch.setattr(pc, "EngineClient", lambda *a, **k: _Eng())
+    out = json.loads(_tool_fn(create_mcp(), "pinpoint")(query="run dispatch"))
+    assert out["ok"] is True
+    assert out["tool"] == "pinpoint"
+    assert out["primary"]["file"] == "pkg/mod.py"
+    assert "def run" in (out["primary"].get("code") or "")
+    assert out["neighbors_count"] >= 1
+    assert out["alts"]
+    assert out["channels"] == "bm25+dense+graph"
+
+
+def test_plate_assembles_hubs_connections_flow(monkeypatch, tmp_path):
+    """plate = BM25+dense hubs + graph connections + flow (no LLM)."""
+    pytest.importorskip("mcp")
+    import pipeline.client as pc
+    import pipeline.daemon as pd
+    from pipeline import locate as loc
+    from pipeline.mcp_locate import create_mcp
+
+    repo = tmp_path / "proj"
+    repo.mkdir()
+    (repo / "pkg").mkdir()
+    (repo / "pkg" / "auth.py").write_text("def login():\n    return True\n", encoding="utf-8")
+    ce = repo / ".scubiee"
+    ce.mkdir()
+    (ce / "id.json").write_text('{"project_id": "ce_plate"}', encoding="utf-8")
+    monkeypatch.setenv("CTX_REPO", str(repo))
+    monkeypatch.setenv("CTX_MCP_SURFACE", "phase")
+    monkeypatch.setenv("CTX_MCP_EXPERIMENT", "lab")
+    monkeypatch.setattr(pd, "ensure_daemon", lambda *a, **k: None)
+    monkeypatch.setattr("pipeline.mcp_locate._is_repo_managed", lambda: True)
+
+    monkeypatch.setattr(
+        loc,
+        "_search_hits",
+        lambda *_a, **_k: [
+            {
+                "file": "pkg/auth.py",
+                "start_line": 1,
+                "end_line": 2,
+                "score": 14.0,
+                "why": "login",
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        loc,
+        "_read_excerpt",
+        lambda *_a, **_k: {
+            "excerpt": "def login():\n    return True\n",
+            "start_line": 1,
+            "end_line": 2,
+        },
+    )
+
+    class _Eng:
+        def graph_neighbors(self, *_a, **_k):
+            return {
+                "ok": True,
+                "spans": [
+                    {
+                        "path": "pkg/session.py",
+                        "start_line": 1,
+                        "end_line": 2,
+                        "text": "class Session:\n    pass\n",
+                        "label": "neighbor",
+                    }
+                ],
+            }
+
+        def query_graph(self, *_a, **_k):
+            return {
+                "ok": True,
+                "spans": [
+                    {
+                        "path": "pkg/middleware.py",
+                        "start_line": 1,
+                        "end_line": 1,
+                        "text": "def require_auth():\n",
+                        "label": "graph_seed",
+                    }
+                ],
+            }
+
+    monkeypatch.setattr(pc, "EngineClient", lambda *a, **k: _Eng())
+    monkeypatch.setattr(
+        "pipeline.graphify_mcp_tools.query_graph_text",
+        lambda *_a, **_k: "[graph=graph.json]\nauth -> session -> middleware",
+    )
+    out = json.loads(_tool_fn(create_mcp(), "plate")(query="auth login session"))
+    assert out["ok"] is True
+    assert out["tool"] == "plate"
+    assert out["channels"] == "bm25+dense+graph"
+    assert out["hubs"] and out["hubs"][0]["file"] == "pkg/auth.py"
+    assert "login" in (out["hubs"][0].get("code") or "")
+    assert out["connections"]
+    assert "pkg/auth.py" in out["flow"]
+    assert out.get("graph_sketch")
+    assert out.get("legend")

@@ -1,0 +1,20 @@
+{
+  "id": "cors-isolated",
+  "title": "How does cors process a request?",
+  "query": "How does cors process a request?",
+  "seed": {
+    "file": "app/middleware/cors.py",
+    "symbol": "process"
+  },
+  "must": [
+    {"file": "app/middleware/cors.py", "symbol": "process", "why": "seed"}
+  ],
+  "should": [],
+  "must_not": [
+    {"file": "app/middleware/auth.py", "symbol": "authenticate", "why": "same folder, different concern"},
+    {"file": "app/middleware/auth.py", "symbol": "extract_bearer", "why": "same folder leak"},
+    {"file": "app/billing/invoices.py", "symbol": "charge", "why": "unrelated"}
+  ],
+  "gold_rank": ["app/middleware/cors.py::process"],
+  "notes": "Same directory as auth. Folder proximity must not equal relevance."
+}

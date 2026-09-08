@@ -1,6 +1,6 @@
 """Persistent working-set session: heatmap of files the agent is camping on.
 
-Agents often spend hours in one subgraph. Touch counts from map/focus/workspace
+Agents often spend hours in one subgraph. Touch counts from map/pack/workspace
 drive a live heatmap + induced graph neighborhood without an LLM.
 """
 
@@ -85,7 +85,7 @@ def touch(
     weight: int = 1,
     session_id: str | None = None,
 ) -> dict[str, Any]:
-    """Record file touches (from map/focus results)."""
+    """Record file touches (from map/pack/workspace results)."""
     repo_p = Path(repo).resolve()
     sess = load_session(repo_p, session_id=session_id)
     if query:

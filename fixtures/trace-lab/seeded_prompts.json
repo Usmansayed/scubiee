@@ -1,0 +1,157 @@
+{
+  "description": "Seeded head-to-head: same prompt + same gold seed given to PolyTrace (no embed) vs EmbedPower (CodeRank). Gold context was collected by reading the fixture call graph, not by looking at tracer output.",
+  "hot_threshold": 0.45,
+  "prompts": [
+    {
+      "id": "s01",
+      "title": "login credential path from middleware",
+      "prompt": "from here, what else do i need to read to understand how the credential is checked?",
+      "seed": {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+      "must": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate", "why": "seed"},
+        {"file": "app/middleware/auth.py", "symbol": "extract_bearer", "why": "parses Authorization"},
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify", "why": "claim check"},
+        {"file": "app/utils/token.py", "symbol": "decode", "why": "generic decoder"},
+        {"file": "app/repositories/user_repo.py", "symbol": "UserRepository.resolve", "why": "load account"},
+        {"file": "app/models/user.py", "symbol": "User.lookup", "why": "record access"}
+      ],
+      "should": [
+        {"file": "app/config/security.py", "symbol": "TOKEN_TTL", "why": "expiry compare"},
+        {"file": "app/config/database.py", "symbol": "connect", "why": "db handle"}
+      ],
+      "must_not": [
+        {"file": "app/billing/invoices.py", "symbol": "charge", "why": "other domain"},
+        {"file": "app/utils/logger.py", "symbol": "log", "why": "hub side effect"},
+        {"file": "app/analytics/tracker.py", "symbol": "track", "why": "side effect"},
+        {"file": "app/http/client.py", "symbol": "get", "why": "infra"}
+      ],
+      "context_notes": "Collected from auth.py -> extract_bearer, JwtService.verify -> decode, TOKEN_TTL, UserRepository.resolve -> connect, User.lookup. log/track are callees but not needed to understand credential checking."
+    },
+    {
+      "id": "s02",
+      "title": "token lifetime from verify",
+      "prompt": "i only care about how long a token lives — collect that context",
+      "seed": {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify"},
+      "must": [
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify", "why": "seed compares age"},
+        {"file": "app/config/security.py", "symbol": "TOKEN_TTL", "why": "lifetime constant"}
+      ],
+      "should": [
+        {"file": "app/utils/token.py", "symbol": "decode", "why": "produces age claim"}
+      ],
+      "must_not": [
+        {"file": "app/models/user.py", "symbol": "User.lookup", "why": "not about lifetime"},
+        {"file": "app/repositories/user_repo.py", "symbol": "UserRepository.resolve", "why": "account load"},
+        {"file": "app/billing/invoices.py", "symbol": "charge", "why": "unrelated"},
+        {"file": "app/utils/logger.py", "symbol": "log", "why": "hub"}
+      ],
+      "context_notes": "verify reads TOKEN_TTL and decode(age). resolve/lookup are on the broader path but not required for lifetime."
+    },
+    {
+      "id": "s03",
+      "title": "payment charge slice",
+      "prompt": "collect everything for sending cents to the pay endpoint",
+      "seed": {"file": "app/billing/invoices.py", "symbol": "charge"},
+      "must": [
+        {"file": "app/billing/invoices.py", "symbol": "charge", "why": "seed"},
+        {"file": "app/http/client.py", "symbol": "get", "why": "HTTP to /pay"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate", "why": "file mentions auth tokens as distractor"},
+        {"file": "app/utils/token.py", "symbol": "decode", "why": "jwt"},
+        {"file": "app/analytics/tracker.py", "symbol": "track", "why": "shares http client"}
+      ],
+      "context_notes": "charge -> get('/pay', ...). Docstring mentions authentication tokens; must stay on payment."
+    },
+    {
+      "id": "s04",
+      "title": "welcome event dispatch",
+      "prompt": "from emit, what actually runs for welcome?",
+      "seed": {"file": "app/events/bus.py", "symbol": "emit"},
+      "must": [
+        {"file": "app/events/bus.py", "symbol": "emit", "why": "seed"},
+        {"file": "app/events/registry.py", "symbol": "lookup", "why": "table read"},
+        {"file": "app/handlers/welcome.py", "symbol": "handle", "why": "bound callback"}
+      ],
+      "should": [
+        {"file": "app/events/registry.py", "symbol": "bind", "why": "registration API"},
+        {"file": "app/bootstrap.py", "symbol": "start", "why": "bind(welcome, handle)"}
+      ],
+      "must_not": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate", "why": "other domain"},
+        {"file": "app/jobs/digest.py", "symbol": "send_digest", "why": "other domain"}
+      ],
+      "context_notes": "emit -> lookup(name); fn(payload). handle only via bind in bootstrap.start. AST alone cannot see handle."
+    },
+    {
+      "id": "s05",
+      "title": "job worker chain",
+      "prompt": "trace the worker until the digest is sent",
+      "seed": {"file": "app/jobs/worker.py", "symbol": "run"},
+      "must": [
+        {"file": "app/jobs/worker.py", "symbol": "run", "why": "seed"},
+        {"file": "app/jobs/queue.py", "symbol": "dequeue", "why": "pull job"},
+        {"file": "app/jobs/runner.py", "symbol": "execute", "why": "dispatch"},
+        {"file": "app/jobs/digest.py", "symbol": "send_digest", "why": "concrete body"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/http/client.py", "symbol": "get", "why": "jobs unused"},
+        {"file": "app/events/bus.py", "symbol": "emit", "why": "other domain"},
+        {"file": "app/middleware/auth.py", "symbol": "authenticate", "why": "other domain"}
+      ],
+      "context_notes": "run -> dequeue -> execute -> send_digest. Generic names throughout."
+    },
+    {
+      "id": "s06",
+      "title": "auth log side effect only",
+      "prompt": "where does this write the ok log line?",
+      "seed": {"file": "app/middleware/auth.py", "symbol": "authenticate"},
+      "must": [
+        {"file": "app/middleware/auth.py", "symbol": "authenticate", "why": "call site"},
+        {"file": "app/utils/logger.py", "symbol": "log", "why": "log('ok')"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify", "why": "not needed for log site"},
+        {"file": "app/utils/token.py", "symbol": "decode", "why": "over-expand"},
+        {"file": "app/repositories/user_repo.py", "symbol": "UserRepository.resolve", "why": "over-expand"}
+      ],
+      "context_notes": "authenticate calls log('ok'). Query is a site/side-effect question; JWT path should stay cold."
+    },
+    {
+      "id": "s07",
+      "title": "who reads TOKEN_TTL",
+      "prompt": "who reads this constant?",
+      "seed": {"file": "app/config/security.py", "symbol": "TOKEN_TTL"},
+      "must": [
+        {"file": "app/config/security.py", "symbol": "TOKEN_TTL", "why": "seed"},
+        {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify", "why": "only reader"}
+      ],
+      "should": [],
+      "must_not": [
+        {"file": "app/models/user.py", "symbol": "User.lookup", "why": "downstream of verify"},
+        {"file": "app/middleware/auth.py", "symbol": "authenticate", "why": "does not read TTL"}
+      ],
+      "context_notes": "LSP used-by: only JwtService.verify imports/uses TOKEN_TTL. Must not forward-slice."
+    },
+    {
+      "id": "s08",
+      "title": "memory store override",
+      "prompt": "how does this fetch override the base store?",
+      "seed": {"file": "app/stores/memory.py", "symbol": "MemoryStore.fetch"},
+      "must": [
+        {"file": "app/stores/memory.py", "symbol": "MemoryStore.fetch", "why": "seed override"}
+      ],
+      "should": [
+        {"file": "app/stores/base.py", "symbol": "Store.fetch", "why": "inherited contract"}
+      ],
+      "must_not": [
+        {"file": "app/models/user.py", "symbol": "User.lookup", "why": "different store"},
+        {"file": "app/middleware/auth.py", "symbol": "authenticate", "why": "other domain"}
+      ],
+      "context_notes": "MemoryStore(Store) overrides fetch. Inheritance/override channel."
+    }
+  ]
+}

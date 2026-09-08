@@ -252,6 +252,7 @@ def initialize_repo(
     fast: bool = False,
     fast_roots: list[str] | None = None,
     confirm: bool = False,
+    force: bool = False,
 ) -> dict[str, Any]:
     """Admit a repository and reconcile an existing usable index."""
     root = _root(root)
@@ -412,12 +413,13 @@ def initialize_repo(
                     fast=fast,
                     fast_roots=fast_roots,
                     confirm=confirm,
+                    force=force,
                 )
                 from pipeline.indexer import index_repo
 
                 stats = index_repo(
                     root,
-                    force=False,
+                    force=force,
                     fast=fast,
                     fast_roots=fast_roots,
                     progress=progress,

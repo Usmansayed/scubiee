@@ -1,0 +1,21 @@
+{
+  "id": "health-isolated",
+  "title": "How does the health probe work?",
+  "query": "How does the health probe work?",
+  "seed": {
+    "file": "app/routes/health.py",
+    "symbol": "health"
+  },
+  "must": [
+    {"file": "app/routes/health.py", "symbol": "health", "why": "seed; no callees"}
+  ],
+  "should": [],
+  "must_not": [
+    {"file": "app/middleware/auth.py", "symbol": "authenticate", "why": "unrelated"},
+    {"file": "app/billing/invoices.py", "symbol": "charge", "why": "unrelated"},
+    {"file": "app/jobs/worker.py", "symbol": "run", "why": "unrelated"},
+    {"file": "app/http/client.py", "symbol": "get", "why": "unrelated"}
+  ],
+  "gold_rank": ["app/routes/health.py::health"],
+  "notes": "Leaf isolation. Over-expansion is a precision failure."
+}

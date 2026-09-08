@@ -39,9 +39,9 @@ from conftest import write_machine_setup
 PHASE_MANAGED_TOOLS = {
     "gate",
     "map",
-    "focus",
-    "grep",
-    "glob",
+    "pack_context",
+    "expand_context",
+    "collect_hot_context",
     "workspace",
     "expand",
     "status",
@@ -263,11 +263,20 @@ def test_scenario_path_outcome(
 
     elif path.outcome == Outcome.FULL_MANAGED:
         assert state["tools"] == PHASE_MANAGED_TOOLS
-        assert "map(query)" in state["instructions"]
+        assert (
+            "map(query)" in state["instructions"]
+            or "map →" in state["instructions"]
+            or "map(" in state["instructions"].lower()
+            or "pack_context" in state["instructions"].lower()
+        )
         assert (
             "Project GATE rule" in state["instructions"]
             or "prefer Scubiee" in state["instructions"].lower()
-            or "focus budget" in state["instructions"].lower()
+            or "use scubiee" in state["instructions"].lower()
+            or "pinpoint" in state["instructions"].lower()
+            or "plate" in state["instructions"].lower()
+            or "pack_context" in state["instructions"].lower()
+            or "composite" in state["instructions"].lower()
         )
         assert state.get("managed") is True
 
@@ -303,7 +312,7 @@ def test_bound_disconnect_branch(fake_home: Path, tmp_path: Path, monkeypatch) -
 
 
 def test_bound_unmanaged_pause_is_noop(tmp_path: Path, monkeypatch) -> None:
-    """Branch-and-bound: pause on never-enrolled repo still gate 0."""
+    """Global pause still surfaces GATE p; tools remain registered for resume."""
     repo = _git_repo(tmp_path / "unpaused")
     monkeypatch.setenv("CTX_REPO", str(repo.resolve()))
     monkeypatch.chdir(repo)
@@ -312,8 +321,8 @@ def test_bound_unmanaged_pause_is_noop(tmp_path: Path, monkeypatch) -> None:
     tools = _mcp_tools(monkeypatch)
     text = _instructions(monkeypatch)
     assert tools == PHASE_MANAGED_TOOLS
-    assert text.startswith("GATE 0.") or text.startswith("GATE 0:r")
-    assert "Pass root=" in text
+    assert text.startswith("GATE p.") or text.startswith("GATE 0.")
+    assert "Pass root=" in text or "scubiee resume" in text.lower() or "STOPPED" in text
 
 
 def test_backtrack_managed_then_wipe_returns_unmanaged(tmp_path: Path, monkeypatch) -> None:

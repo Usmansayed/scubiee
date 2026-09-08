@@ -1,0 +1,32 @@
+{
+  "id": "token-expiry",
+  "title": "Where is token expiry configured?",
+  "query": "Where is token expiry configured?",
+  "seed": {
+    "file": "app/services/jwt_service.py",
+    "symbol": "JwtService.verify"
+  },
+  "must": [
+    {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify", "why": "seed; compares age to TOKEN_TTL"},
+    {"file": "app/config/security.py", "symbol": "TOKEN_TTL", "why": "the actual expiry constant"}
+  ],
+  "should": [
+    {"file": "app/utils/token.py", "symbol": "decode", "why": "produces the age claim that verify compares"}
+  ],
+  "must_not": [
+    {"file": "app/billing/invoices.py", "symbol": "charge", "why": "unrelated"},
+    {"file": "app/analytics/tracker.py", "symbol": "track", "why": "unrelated to expiry"},
+    {"file": "app/routes/health.py", "symbol": "health", "why": "unrelated"},
+    {"file": "app/http/client.py", "symbol": "get", "why": "unrelated"},
+    {"file": "app/services/session.py", "symbol": "start", "why": "unrelated"},
+    {"file": "app/utils/logger.py", "symbol": "log", "why": "hub noise"},
+    {"file": "app/repositories/user_repo.py", "symbol": "UserRepository.resolve", "why": "on the broader auth path but not needed for expiry config"},
+    {"file": "app/models/user.py", "symbol": "User.lookup", "why": "over-expansion"}
+  ],
+  "gold_rank": [
+    "app/config/security.py::TOKEN_TTL",
+    "app/services/jwt_service.py::JwtService.verify",
+    "app/utils/token.py::decode"
+  ],
+  "notes": "Narrow config question. Over-expansion into user_repo / models is a false-positive risk even though those nodes are on the broader auth path."
+}

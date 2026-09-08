@@ -350,19 +350,20 @@ Use these as **feature cards** or expandable sections.
 
 ## MCP tools — what the AI actually uses
 
-Default **`phase`** surface (Cursor and most installs). Full reference: [`../docs/web-info/mcp-tools-reference.md`](../docs/web-info/mcp-tools-reference.md).
+Default **`phase` / ship** surface (Cursor and most installs). Full reference: [`../docs/web-info/mcp-tools-reference.md`](../docs/web-info/mcp-tools-reference.md).
 
 | Tool | User-visible benefit | Example agent question |
 |------|---------------------|------------------------|
 | **`gate`** | Tiny “is this repo ready?” check | (automatic at chat start) |
 | **`status`** | Full health: managed, warming, paused | “Can I use Scubiee in this workspace?” |
 | **`map`** | Ranked map of where to look | “Where is OAuth handled?” |
-| **`focus`** | Actual code outline/span/neighbors | “Show the login handler and its callers” |
-| **`grep`** | Exact string/regex in indexed files | “Find every `API_KEY` reference” |
-| **`glob`** | Files by path pattern | “List all `*test*.py` under packages/” |
+| **`pack_context`** | Lean heatmap around a seed | “Pack context for this function” |
+| **`expand_context`** | Grow callees/callers | “Who calls this?” |
+| **`collect_hot_context`** | Optional batched bodies | “Pull bodies for these hot ids” |
 | **`workspace`** | Session memory — pins, heatmap | “What did we already look at?” |
 | **`expand`** | Re-open a previous code span | (follow-up without re-searching) |
-| **`register_project`** | Enroll repo from chat with consent | “Index this folder for me” |
+
+Exact/name lookup stays on the host (Grep/Glob/Read). Classic MCP `focus`/`grep`/`glob` are opt-in only.
 
 **Recommended agent flow (for docs page):**
 

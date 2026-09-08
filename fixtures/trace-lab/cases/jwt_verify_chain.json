@@ -1,0 +1,33 @@
+{
+  "id": "jwt-verify-chain",
+  "title": "What does verify do with the token?",
+  "query": "What does verify do with the token?",
+  "seed": {
+    "file": "app/services/jwt_service.py",
+    "symbol": "JwtService.verify"
+  },
+  "must": [
+    {"file": "app/services/jwt_service.py", "symbol": "JwtService.verify", "why": "seed"},
+    {"file": "app/utils/token.py", "symbol": "decode", "why": "generic decoder on the path"},
+    {"file": "app/config/security.py", "symbol": "TOKEN_TTL", "why": "expiry compare"},
+    {"file": "app/repositories/user_repo.py", "symbol": "UserRepository.resolve", "why": "account load"}
+  ],
+  "should": [
+    {"file": "app/models/user.py", "symbol": "User.lookup", "why": "schema"},
+    {"file": "app/config/database.py", "symbol": "connect", "why": "used by resolve"}
+  ],
+  "must_not": [
+    {"file": "app/billing/invoices.py", "symbol": "charge", "why": "other domain"},
+    {"file": "app/events/bus.py", "symbol": "emit", "why": "other domain"},
+    {"file": "app/jobs/worker.py", "symbol": "run", "why": "other domain"},
+    {"file": "app/middleware/cors.py", "symbol": "process", "why": "other domain"}
+  ],
+  "gold_rank": [
+    "app/services/jwt_service.py::JwtService.verify",
+    "app/utils/token.py::decode",
+    "app/config/security.py::TOKEN_TTL",
+    "app/repositories/user_repo.py::UserRepository.resolve",
+    "app/models/user.py::User.lookup"
+  ],
+  "notes": "FLOW from mid-chain, not from middleware."
+}
