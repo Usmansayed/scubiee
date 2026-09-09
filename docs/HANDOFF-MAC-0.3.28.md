@@ -259,7 +259,7 @@ macOS — the prefilters match on process *name*, which differs across platforms
 3. **`test_t3` hardcodes a project id** — will fail on any machine whose repo id differs.
 4. **FastEmbed cache in `$TMPDIR`** — see section 2.
 5. **Embed cache has no model fingerprint** — hash-fallback vectors persist silently.
-6. **Mac: idle policy is correct, automatic reclaim is not.** After 15–25s with zero clients, `should_idle_stop(require_run_mode=False)` is True and `apply_idle_policy()` kills the engine. The supervisor/watchdog **did not** stop `pipeline engine run` on its own within 25s. This is the remaining Mac gate vs Windows.
+6. ~~**Mac: idle policy is correct, automatic reclaim is not.**~~ **FIXED — `9bae058`, see section 9.** The Mac diagnosis was right and the cause was not platform-specific: nothing could kill the engine because `stop_daemon`'s sweep skips `self_or_ancestor`, i.e. the engine's own pid. Manual `apply_idle_policy()` worked only because it ran from an *external* process.
 7. **Full `pytest -q` on Mac does not finish.** First crash: `NotImplementedError: cannot instantiate 'WindowsPath' on your system` (a test/pathlib monkeypatch). Retry with `-k "not windows"` segfaulted in FAISS around 85% (`faiss/class_wrappers.py` recursion).
 8. **`scripts/e2e_mcp_idle_reconnect.py` is not in this tree** — cannot run Phase 3 as written.
 9. **`dense_index.py` RuntimeWarning** on `map` (divide/overflow in matmul) — noisy, did not block ranking.
@@ -270,16 +270,16 @@ macOS — the prefilters match on process *name*, which differs across platforms
 
 ## 6. Go / no-go
 
-| Gate | Windows | Mac (Sep 8) |
+| Gate | Windows (Sep 9, `9bae058`) | Mac (Sep 8, `19e89fa`) |
 |------|---------|-----|
 | Unit suite (1318 passed / 7 known fails) | ✅ | ❌ crashed (WindowsPath, then FAISS segfault) |
-| Idle suites (47 passed) | ✅ | ⚠️ 46 passed; 1 Windows-only fail (`test_windows_hidden_spawn_does_not_use_detached_process`) |
-| Live idle reclaim verified | ✅ | ⚠️ policy + `apply_idle_policy()` PASS; automatic supervisor reclaim FAIL within 25s |
+| Idle suites | ✅ **50 passed** (47 + 3 new self-retire tests) | ⚠️ 46 passed; 1 Windows-only fail (`test_windows_hidden_spawn_does_not_use_detached_process`) |
+| Live **automatic** idle reclaim | ✅ **engine gone ~9s after idle, unattended** | ⚠️ was FAIL — re-run on `9bae058` |
 | MCP connect/disconnect/reconnect e2e | ⚠️ see note | ⬜ script missing from tree |
 | Production test | ✅ | ⬜ not run (`connect --all` / `disconnect --all`) |
 | CLI combination suite | ✅ | ✅ **39/39 PASS** |
 | MLX/CoreML setup + query | N/A | ✅ MLX 101.8 t/s, map rank 1 `memory_governor.py` |
-| Publish 0.3.28 | ⬜ | ⬜ **do not publish yet** — auto idle reclaim still open |
+| Publish 0.3.28 | ⬜ wheel rebuilt + verified, awaiting creds | ⬜ **re-verify section 9 on Mac first** |
 
 **⚠️ e2e note:** the MCP e2e still reports `engine stops within 180s of disconnect - FAIL`,
 but that run predates the fix and its measurement was contaminated by orphaned `.venv`
@@ -360,6 +360,68 @@ publish or is only kept in sync.
 | `mac_production_test.py` | connect/disconnect `--all` | **not run** (destructive) |
 
 8. **Restored Cursor MCP:** `scubiee connect --cursor` after wipe. Restart Cursor to pick up the pin.
+
+---
+
+## 9. Windows follow-up — auto-reclaim gate closed (Sep 9, `9bae058`)
+
+The Mac's open issue #6 was the last real blocker, and it was **not** a Mac problem.
+
+### Why `apply_idle_policy()` worked by hand but never on its own
+
+The idle sweeper runs *inside* the engine. It called `apply_idle_policy()` → `enter_standby()`
+→ `stop_daemon()`, which sweeps engine pids through `safe_terminate_pid` — and that function
+skips `self_or_ancestor`. The one pid that mattered was always skipped, so every sweep
+reported `running: True` and the sweeper looped forever against a stop that could not succeed.
+The Mac's manual check passed because a `python -` one-liner is a *different process*, so
+nothing was skipped.
+
+The old sweeper also swallowed the result in a bare `except: pass`, so this was invisible in
+`engine.log` for as long as it has existed.
+
+### Fix (`packages/pipeline/server.py`)
+
+`run_server` registers its `ThreadingHTTPServer` in a module global. When a sweep returns
+`action=standby` but still reports `running`, the sweeper calls `_retire_self()`, which runs
+`server.shutdown()` on a side thread — `serve_forever()` returns, `run_server` returns, and
+the existing `atexit` hook does `ce.shutdown()` + `release_lock()`. The sweep result is now
+logged either way.
+
+### Live evidence (Windows, unattended — process table polled, never `/health`)
+
+```
+[engine] idle sweep: action=standby engine={'ok': False, 'running': True, 'killed': [9976],
+                     'remaining_pids': [9976], 'still_healthy': True, 'stop_reason': 'user'}
+[engine] idle sweep: retiring self (external stop cannot kill the engine's own pid)
+
+t=0s  engine pids: 29544,9976
+t=9s  ENGINE GONE     → engine.lock released, port 8765 free, index intact (6115 chunks)
+```
+
+Note `ok: False` / `remaining_pids: [9976]` — that is the external stop failing to kill
+itself, captured live.
+
+### Tests
+
+`tests/test_idle_shutdown_reliability.py` +3 (**50 passed** in the four idle suites):
+
+- `test_retire_self_reports_false_without_a_server`
+- `test_idle_sweeper_retires_self_when_stop_cannot_kill_own_pid`
+- `test_idle_sweeper_keeps_sweeping_when_engine_actually_stopped`
+
+`_start_idle_sweeper` now takes a `stop_event` and returns its thread so these run
+deterministically instead of on wall-clock sleeps.
+
+### For the Mac
+
+1. `git pull` to `9bae058` and re-run the section 2 / Phase 2 live idle check. Expect the
+   engine to disappear on its own within ~15–20s, with `retiring self` in `engine.log`.
+2. **The 0.3.28 wheel was rebuilt** — the earlier one predates this fix. Verified to contain
+   `_retire_self`, `_register_httpd`, `require_run_mode`, `DEFAULT_IDLE_S = 15.0`.
+3. `scripts/e2e_mcp_idle_reconnect.py` (open issue #8) was a scratch script and never
+   committed — that is why it is missing. Phase 3 still needs a committed harness.
+4. **Watchdog leak (open issue #1) reproduces on Windows:** 8 orphans found at session start,
+   and each `engine ensure` leaves a pair behind. Untouched by this release.
 
 ### Binary to use
 
