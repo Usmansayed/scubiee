@@ -318,3 +318,71 @@ is the `np.errstate(divide="ignore", over="ignore", invalid="ignore")` wrap alre
   on macOS.
 - The `conftest.py` guards did their job — `~/.scubiee`, the enrollment, and the weights all
   survived three full-suite runs.
+
+---
+
+## 10. Clean-slate CLI pass on Mac — deleted the venv and rebuilt
+
+Deleted the 576 MB venv outright, built a fresh 3.10 one, installed 79 packages from source,
+and drove the real commands with `.venv/bin` on `PATH` so the MCP shims resolve. End state is
+healthy: `enrolled: true`, `warm_state: ready`, `index_usable: true`, `0.3.29`, and `map`
+returning real vectors (rank 1 `install_health.py::faiss_import_ok`, score 29.63).
+
+Passing: `gate`, `map`, `pack --mode lean`, `expand --node`, `search`, `status`, `list`,
+`init` (32.7s, 5710 chunks), `connect --cursor` (pre-existing `figma` preserved),
+`pause`→`activate`, `engine ensure`, idle self-retire, both `wipe` confirm gates (exit 2 with
+a `--confirm` hint), and the MCP bridge handshake with all 8 tools.
+
+### 10a. The MCP bridge reports the `mcp` SDK version as its own
+
+`initialize` returns `serverInfo` = **`scubiee 1.30.0`**. 1.30.0 is the installed `mcp`
+package; scubiee is 0.3.29. So the IDE's MCP panel shows a version that does not exist.
+
+Worth fixing above its cosmetic weight: this project keeps losing time to "which version is
+actually live" — 0.3.28 reached PyPI with an inert fix, and §8 says both of that day's fixes
+looked verified. The one surface a user checks in the IDE currently cannot answer it. The
+`Server(...)` construction needs an explicit `version`.
+
+```
+$ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize",...}' | scubiee-mcp-bridge
+initialize ->  scubiee 1.30.0        # expected 0.3.29
+```
+
+### 10b. `setup` says "Downloading model…" while downloading nothing
+
+First `setup` in the fresh venv took **3m42s**, sitting on `Preparing MLX FP16 CodeRank
+weights` → `Downloading model…` (58–63%) for over two minutes. Nothing was downloaded:
+`~/.cache/fastembed` grew 795 MB → 796 MB, and `~/.scubiee/mlx/CodeRankEmbed` kept its
+Sep 8 timestamps. It is re-verifying ~800 MB of existing weights. The 100% line then says
+`Ready (reused mlx runtime + model cache)`, contradicting the label the user just watched.
+
+A second `setup` is **0.97s** and jumps to `Using saved hardware profile`, so the cost is
+one-time per venv — but on a fresh machine it is indistinguishable from the real 900 MB
+download, which is exactly the state §2b makes people paranoid about.
+
+### 10c. The logon supervisor is not live in-session on macOS
+
+`setup` prints `Registering logon supervisor` at 94% and writes
+`~/Library/LaunchAgents/com.contextengine.supervisor.plist`, but never `launchctl bootstrap`s
+it. After a `launchctl bootout` it stays unloaded despite `setup` reporting success:
+
+```bash
+ls -la ~/Library/LaunchAgents/com.contextengine.supervisor.plist   # present, freshly written
+launchctl list | grep contextengine                                # nothing
+```
+
+So the supervisor would not return until next login. Had to bootstrap it by hand. Note this
+agent's `KeepAlive` also respawns the supervisor within seconds, which is what fakes the
+"restart" §4 warns about — `pkill` alone is not enough on macOS, you need the bootout.
+
+### 10d. Minor
+
+- `scubiee --version` prints `[scubiee] Engine stopped …` to **stderr**. stdout is clean
+  (`scubiee 0.3.29`), so piping and scripting are unaffected. `--help` does not print it.
+- `doctor` exits 1 on a first-run repo where no engine has ever bound (`binding.ok: false`,
+  `lock_pid: null`) and prints the exact repair, `scubiee engine ensure <repo>`. It passes
+  afterwards, including once the engine idle-retires again, so it self-heals.
+- Only **one** `pipeline engine watchdog` process here, not the 8-way accumulation §7.1 saw
+  on Windows. The watchdog leak does not reproduce on Mac.
+- `timeout(1)` does not exist on macOS — worth remembering for any harness copied from the
+  Windows side.
