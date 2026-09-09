@@ -551,3 +551,47 @@ in the MLX/CoreML cache path, it needs a 0.3.29.
 
 `npm/package.json` is at 0.3.28 in lockstep but **was not published** — still unclear whether
 the npm package needs its own release or is only kept in sync.
+
+---
+
+## 12. 0.3.29 — do NOT verify 0.3.28, its cache fix is inert (Sep 9)
+
+**Skip 0.3.28. Install `scubiee==0.3.29`.**
+
+Section 10's fix set `FASTEMBED_CACHE_PATH` *inside* `fastembed_cache_root()`, so the pin only
+applied if something called that function first. The engine's warmup path never does. Caught
+on the live engine right after publishing 0.3.28:
+
+```
+fastembed...retrieve_model_gcs - Could not find the model tar.gz file at
+C:\Users\usman\AppData\Local\Temp\fastembed_cache\CodeRankEmbed and local_files_only=True
+```
+
+Still `$TMPDIR`, and `status` reported `warm_state: error`. `TextEmbedding` resolves its own
+cache dir, and four `accel.py` sites plus the `preflight.py` warmup never passed `cache_dir` —
+only the two in `embedder.py` were fixed.
+
+**0.3.29** moves the root into a dependency-free `pipeline/model_cache.py` and pins it from
+`pipeline/__init__`, before anything can import fastembed. `preflight` also passes `cache_dir`
+explicitly. The regression test shells out to a **fresh interpreter**, because the test process
+is already pinned and would have passed against the broken build.
+
+### Full clean-slate validation on Windows (0.3.29)
+
+Wiped everything — `~/.scubiee`, repo `.scubiee`, both model caches, the uv tool — then:
+
+| Step | Result |
+|------|--------|
+| `uv tool install scubiee==0.3.29` | 0.3.29, `FASTEMBED_CACHE_PATH=~/.cache/fastembed` at import |
+| `scubiee setup` | **916.7 MB in `~/.cache/fastembed`; `%TEMP%/fastembed_cache` never created** |
+| `scubiee init .` | enrolled, 6132 chunks, `warm_state: ready`, `index_usable: true` |
+| `scubiee connect --cursor` | scubiee added, **existing `figma` server preserved**, build pin `0.3.29-…` |
+| GATE files | `AGENTS.md` + `.cursor/rules/scubiee.mdc` regenerated with the new project id |
+| `scubiee map` | rank 1 `packages/pipeline/memory_governor.py`, score 8.17 (real vectors) |
+| Idle reclaim | self-retired unattended, `retiring self` in `engine.log` |
+| Cache after full run | still 916.7 MB, temp still absent |
+
+Note `wipe --all` cannot delete its own running shims — it exits non-zero and asks you to
+re-run. Follow it with `uv tool uninstall scubiee`.
+
+Watchdog leak (open issue #1) still reproduces: 2 per session on Windows.
