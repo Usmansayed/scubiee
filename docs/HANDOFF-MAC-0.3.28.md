@@ -1,5 +1,12 @@
 # MacBook Handoff — 0.3.28 (idle-shutdown release)
 
+> **SUPERSEDED — read `docs/HANDOFF-MAC-0.3.29.md` instead.**
+>
+> The header and sections 1–8 below are stale: 0.3.28 *was* published, the last PyPI release
+> before it was 0.3.26 (not 0.3.27), and the remote is now `scubiee.git`. **Do not install
+> 0.3.28** — its model-cache fix is inert. Sections 9–12 remain accurate and record how each
+> fix was found; section 8 is the Mac's own session log.
+
 **Date:** Sep 8, 2026
 **Windows state:** `0.3.28` **built but NOT published** — `dist/scubiee-0.3.28-py3-none-any.whl` exists locally
 **Last published to PyPI:** `0.3.27` (contains the idle bug described below)
