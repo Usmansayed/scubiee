@@ -205,3 +205,116 @@ nothing. Both were caught by exercising the real runtime, not by unit tests — 
 passed in both cases.
 
 So weight your runtime checks over the suite, and treat §3 as the real gate.
+
+---
+
+## 9. Mac results for 0.3.29 — §3 and §4 both pass
+
+Run from source at `ccbc72a` in a venv (`uv pip install -e .`), not the PyPI shim. Killed the
+engines and booted out the `com.contextengine.supervisor` launchd agent first — its `KeepAlive`
+respawns the supervisor within seconds and fakes exactly the "restart" §4 warns about.
+`scubiee setup` re-registers it at the end.
+
+| Check | Result |
+|-------|--------|
+| §3 pin at import | `FASTEMBED_CACHE_PATH=~/.cache/fastembed`, **not** `$TMPDIR` |
+| §3 `coreml_mac._fastembed_cache_root()` | delegates to `accel`, same root — the Apple Silicon path is clean |
+| `scubiee setup` | **795 MB into `~/.cache/fastembed`; `$TMPDIR/fastembed_cache` never created** |
+| MLX warm | `backend=mlx device=gpu metal=true`, ready in 83ms, **109.8 t/s** |
+| `scubiee init .` | enrolled, 5710 chunks, `warm_state: ready`, `index_usable: true` |
+| `scubiee connect --cursor` | scubiee added, pre-existing `figma` preserved |
+| `scubiee map` | rank 1 `lifecycle_runtime.py::apply_idle_policy`, score 25.05 (real vectors) |
+| Idle reclaim, live | **self-retired unattended at ~40s**, `retiring self` in `engine.log` |
+| `e2e_mcp_idle_reconnect.py` | **all checks passed**, engine stopped 19.5s after disconnect |
+| Targeted idle suites | 49 passed + the predicted Darwin `test_windows_hidden_spawn` failure |
+| `test_coderank_fp16.py` | 20 passed |
+| CLI combination | 39/39 |
+| Full `pytest` | **completes for the first time on macOS** — 1277 passed, 59 failed, 183s |
+
+§2b reproduced here before the fix landed: yesterday's `setup` put the weights in `$TMPDIR`,
+and less than a day later that directory was already gone. So there was nothing for 0.3.29 to
+migrate — it did a clean ~900 MB download into `~/.cache/fastembed`.
+
+The e2e is worth one warning. With the model missing it reports `engine stopped after
+disconnect - 0.0s` as a **PASS**, because an engine that never started is trivially stopped.
+Three checks failed and none of them named the real cause. Run it only after `setup`.
+
+### 9a. The FAISS segfault is a real bug, now fixed
+
+`faiss_import_ok()` in `install_health.py` popped `faiss` out of `sys.modules` and re-imported
+it as a health probe. The `_swigfaiss` C extension stays cached, so `faiss/__init__` re-applied
+`class_wrappers` to the *same* class objects, and `handle_IDSelectorSubset` — which stores
+`original_init` as a class attribute and calls it via `self.original_init` — ended up pointing
+it at its own `replacement_init`. Every later `IDSelector` construction then recursed until the
+C stack died.
+
+That is §7.4's unexplained "FAISS segfault around 85%". It is product code, not a test artifact:
+any long-lived engine or MCP worker that runs a health probe and later does a vector delete or
+compaction is exposed. `faiss_import_ok` now returns `True` when the module is already imported.
+
+Twelve-line reproducer, if it ever regresses:
+
+```python
+import sys, numpy as np, pipeline, faiss
+from pipeline.install_health import faiss_import_ok
+ids = np.array([1, 2, 3], dtype="int64")
+faiss.IDSelectorBatch(ids)              # fine
+faiss_import_ok()                       # poisons the wrappers
+sys.setrecursionlimit(120)
+faiss.IDSelectorBatch(ids)              # RecursionError; SIGSEGV at the real limit
+```
+
+### 9b. The `WindowsPath` abort was one test, not the platform
+
+`test_merkle_canonical_folds_case_on_windows` patched only `os.name`. But `canonical_relpath`
+calls `os.path.normcase`, and `os.path` is bound to `posixpath` off Windows, where `normcase`
+is identity — so the folding never happened and the assertion failed. The failure was raised
+*while* `os.name == "nt"`, so pytest's own reporter hit `Path(os.getcwd())`, built a
+`WindowsPath`, and took down the whole session with an `INTERNALERROR` before it could report
+anything. The test now patches `normcase` to `ntpath.normcase`, so it exercises the real intent
+on any platform. §7.4 can be closed.
+
+### 9c. Do not spend time on the other 58 failures
+
+Spot-checked and traced; none look release-blocking.
+
+- **~24 connect/MCP tests** fail with `mcp post-write verify failed` / `bad_command` purely
+  because `scubiee-mcp-bridge` is not on `PATH` in an editable venv. Traced one end to end and
+  the signature matches across the group. Your Windows run used `uv tool install`, which puts
+  the shims on `PATH`. *(Not confirmed by a full re-run with `.venv/bin` on `PATH`.)*
+- **2 `test_accel_cpu_fallback`** assert the profile drops to `cpu`, but Apple Silicon
+  deliberately keeps MLX — `[accel] probe timed out — Apple Silicon keeps MLX Metal GPU`. The
+  0.3.29 `accel.py` diff only touches the cache-root functions, so this is not a regression.
+- **1 `test_accel_pip_drain`** needs `pip`, which a uv-created venv does not ship.
+- **1 `test_watchdog`** is the Windows-only spawn-flags test §4 predicts for Darwin.
+- **`venture_stack` t3/t4, `trace_lab`, `setup_progress`** are the stale project id, the
+  untracked eval harness, and the duplicate `✓ Runtime installed` already listed in §7.3.
+
+### 9d. Cosmetic: spurious `matmul` warnings on every Mac search
+
+`scubiee map` prints three warnings from `conductor/dense_index.py:50`:
+
+```
+RuntimeWarning: divide by zero encountered in matmul
+RuntimeWarning: overflow encountered in matmul
+RuntimeWarning: invalid value encountered in matmul
+```
+
+Not data corruption. The stored matrix is clean — 0 NaN and 0 inf across all 5710 rows, max
+abs 0.27 — and numpy 2.2.6 on Apple's `accelerate` BLAS emits all three on freshly generated,
+finite, normalized data while returning a finite result. Accelerate sets FP exception flags on
+masked SIMD lanes.
+
+Left alone deliberately, since it is a hot retrieval path. The fix, if you want the CLI quiet,
+is the `np.errstate(divide="ignore", over="ignore", invalid="ignore")` wrap already used in
+`turbo_quant.dequantize`.
+
+### 9e. Suite hygiene notes for Mac
+
+- The CLI combination suite is **destructive**: it de-enrolls the repo and its `disconnect`
+  scenario strips the `scubiee` entry from `.cursor/mcp.json`. Follow it with `scubiee init .`
+  and `scubiee connect --cursor`. The model cache survives.
+- §6's contamination warning holds, plus the launchd agent above. `pkill` alone is not enough
+  on macOS.
+- The `conftest.py` guards did their job — `~/.scubiee`, the enrollment, and the weights all
+  survived three full-suite runs.

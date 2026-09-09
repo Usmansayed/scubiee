@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ntpath
 import os
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -34,6 +35,11 @@ def test_broad_root_payload_kind(tmp_path: Path, monkeypatch) -> None:
 
 
 def test_merkle_canonical_folds_case_on_windows(monkeypatch) -> None:
+    # os.path is bound to posixpath off Windows, where normcase is identity, so
+    # os.name alone does not reproduce the folding. A failure raised while
+    # os.name is "nt" also makes pytest's own reporter build a WindowsPath and
+    # abort the whole session.
+    monkeypatch.setattr(os.path, "normcase", ntpath.normcase)
     monkeypatch.setattr(os, "name", "nt")
     a = canonical_relpath("Src/Foo.py")
     b = canonical_relpath("src/foo.py")

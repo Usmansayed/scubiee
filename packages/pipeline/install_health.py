@@ -21,8 +21,13 @@ def faiss_class_wrappers_present() -> bool:
 
 
 def faiss_import_ok() -> bool:
+    # Never re-import faiss to probe it. The _swigfaiss C extension stays cached,
+    # so a second run of faiss/__init__ re-applies class_wrappers to the same
+    # class objects; handle_IDSelectorSubset then points original_init at its own
+    # replacement_init and every later IDSelector construction recurses until the
+    # C stack dies. An already-imported module is proof enough that it imports.
     if "faiss" in sys.modules:
-        sys.modules.pop("faiss", None)
+        return True
     try:
         importlib.import_module("faiss")
     except Exception:
