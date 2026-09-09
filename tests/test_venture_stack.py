@@ -12,6 +12,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+# Every test here points CTX_HOME at the real ~/.scubiee and searches the live
+# product index, so a default run both depends on this machine's enrollment and
+# can spend minutes re-syncing it. Opt in with `pytest -m integration`.
+pytestmark = pytest.mark.integration
+
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "fixtures" / "trace-lab"
 REAL_HOME = Path.home() / ".scubiee"
