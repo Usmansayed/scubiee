@@ -233,3 +233,84 @@ def test_touch_mcp_client_reregisters_after_stale_eviction(
     mcp_locate._touch_mcp_client()
     assert life.reconcile_clients(now=131.0)
     assert life.load_policy()["last_client_left_at"] is None
+
+
+def _quiet_governor(monkeypatch) -> None:
+    """Keep the sweeper's memory-governor beat out of the way of lifecycle asserts."""
+    from pipeline import ce_service
+
+    monkeypatch.setattr(
+        ce_service, "get_context_engine", MagicMock(side_effect=RuntimeError("no engine"))
+    )
+
+
+def test_retire_self_reports_false_without_a_server(monkeypatch) -> None:
+    from pipeline import server
+
+    monkeypatch.setattr(server, "_HTTPD", None)
+    assert server._retire_self() is False
+
+
+def test_idle_sweeper_retires_self_when_stop_cannot_kill_own_pid(monkeypatch) -> None:
+    """stop_daemon skips the engine's own pid, so a standby sweep that leaves the
+    engine running has to retire in-process or the engine never goes away."""
+    import threading
+
+    from pipeline import server
+
+    _quiet_governor(monkeypatch)
+    monkeypatch.setattr(
+        life,
+        "apply_idle_policy",
+        lambda: {"action": "standby", "engine": {"ok": True, "running": True, "killed": []}},
+    )
+
+    retired = threading.Event()
+
+    def _mark_retired() -> bool:
+        retired.set()
+        return True
+
+    monkeypatch.setattr(server, "_retire_self", _mark_retired)
+
+    stop = threading.Event()
+    thread = server._start_idle_sweeper(interval_s=0.0, stop_event=stop)
+    thread.join(timeout=5.0)
+    stop.set()
+
+    assert retired.is_set()
+    assert not thread.is_alive(), "sweeper must exit once it has retired the server"
+
+
+def test_idle_sweeper_keeps_sweeping_when_engine_actually_stopped(monkeypatch) -> None:
+    """An external stop that worked reports running=False — no self-retire then."""
+    import threading
+
+    from pipeline import server
+
+    _quiet_governor(monkeypatch)
+    stop = threading.Event()
+    sweeps: list[int] = []
+
+    def _policy() -> dict:
+        sweeps.append(1)
+        if len(sweeps) >= 3:
+            stop.set()
+        return {"action": "standby", "engine": {"ok": True, "running": False, "killed": [4242]}}
+
+    monkeypatch.setattr(life, "apply_idle_policy", _policy)
+
+    retired = threading.Event()
+
+    def _mark_retired() -> bool:
+        retired.set()
+        return True
+
+    monkeypatch.setattr(server, "_retire_self", _mark_retired)
+
+    thread = server._start_idle_sweeper(interval_s=0.0, stop_event=stop)
+    thread.join(timeout=5.0)
+
+    assert not thread.is_alive()
+    assert len(sweeps) >= 3
+    assert not retired.is_set(), "engine already gone — must not retire the live server"

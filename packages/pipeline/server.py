@@ -566,12 +566,46 @@ class Handler(BaseHTTPRequestHandler):
         _json(self, 404, {"error": "not found"})
 
 
-def _start_idle_sweeper(*, interval_s: float | None = None) -> None:
+# Set once the HTTP server exists so the idle sweeper can stop it. ``stop_daemon``
+# cannot kill the engine's own pid — ``safe_terminate_pid`` skips ``self_or_ancestor``
+# — so an idle engine has to retire itself through the server it owns.
+_HTTPD: ThreadingHTTPServer | None = None
+
+
+def _register_httpd(server: ThreadingHTTPServer) -> None:
+    global _HTTPD
+    _HTTPD = server
+
+
+def _retire_self() -> bool:
+    """Stop serving from inside the engine. Returns False if there is no server."""
+    import threading
+
+    server = _HTTPD
+    if server is None:
+        return False
+    # shutdown() blocks until serve_forever() returns, so never call it on the
+    # serving thread. The sweeper is its own thread, but keep this off it too so
+    # the sweeper can exit immediately.
+    threading.Thread(target=server.shutdown, name="ce-self-retire", daemon=True).start()
+    return True
+
+
+def _start_idle_sweeper(
+    *,
+    interval_s: float | None = None,
+    stop_event: threading.Event | None = None,
+) -> threading.Thread:
+    """Start the background idle sweeper. Returns the thread so tests can join it.
+
+    ``stop_event`` lets a caller retire the sweeper deterministically; production
+    leaves it None and the daemon thread lives for the life of the process.
+    """
     import gc
     import threading
 
     def _loop() -> None:
-        while True:
+        while not (stop_event is not None and stop_event.is_set()):
             try:
                 from pipeline.lifecycle_runtime import idle_seconds
 
@@ -582,7 +616,11 @@ def _start_idle_sweeper(*, interval_s: float | None = None) -> None:
                 )
             except Exception:  # noqa: BLE001
                 sleep_s = 5.0
-            time.sleep(max(5.0, float(sleep_s)))
+            if stop_event is not None:
+                if stop_event.wait(max(0.0, float(sleep_s))):
+                    return
+            else:
+                time.sleep(max(5.0, float(sleep_s)))
             try:
                 from pipeline.memory_governor import get_governor
                 from pipeline.ce_service import get_context_engine
@@ -601,14 +639,41 @@ def _start_idle_sweeper(*, interval_s: float | None = None) -> None:
             try:
                 from pipeline.lifecycle_runtime import apply_idle_policy
 
-                apply_idle_policy()
-            except Exception:  # noqa: BLE001
-                pass
+                idle_result = apply_idle_policy()
+                action = str((idle_result or {}).get("action") or "none")
+                # "none"/"already_standby" are the quiet steady states; anything
+                # else is a lifecycle transition worth seeing in engine.log. A
+                # silent sweeper is how the engine shipped unable to stop itself.
+                if action not in {"none", "already_standby"}:
+                    print(
+                        f"[engine] idle sweep: action={action} "
+                        f"engine={(idle_result or {}).get('engine')}",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+                if action == "standby":
+                    stop = (idle_result or {}).get("engine") or {}
+                    # The external kill in stop_daemon always skips our own pid,
+                    # so it reports running=True for the one process that matters.
+                    # Retire in-process instead of spinning on a stop that can
+                    # never succeed.
+                    if stop.get("running") and _retire_self():
+                        print(
+                            "[engine] idle sweep: retiring self (external stop "
+                            "cannot kill the engine's own pid)",
+                            file=sys.stderr,
+                            flush=True,
+                        )
+                        return
+            except Exception as exc:  # noqa: BLE001
+                print(f"[engine] idle sweep failed: {type(exc).__name__}: {exc}",
+                      file=sys.stderr, flush=True)
             # Safe GC collection point — daemon is idle, no embedding in progress.
             gc.collect()
 
     thread = threading.Thread(target=_loop, name="ce-idle-sweeper", daemon=True)
     thread.start()
+    return thread
 
 
 def run_server(
@@ -680,6 +745,7 @@ def run_server(
         ce.open_repo(repo, background=True)
 
     httpd = ThreadingHTTPServer((host, port), Handler)
+    _register_httpd(httpd)
 
     # Single-instance lock for foreground / daemon child
     try:
