@@ -218,15 +218,20 @@ def test_coderank_fp16_ready_without_fastembed_import(monkeypatch, tmp_path: Pat
 
 
 def _isolate_cache(monkeypatch, tmp_path: Path) -> tuple[Path, Path]:
-    """Point the durable root and fastembed's temp default at tmp_path."""
-    from pipeline import accel
+    """Point the durable root and fastembed's temp default at tmp_path.
+
+    Patches ``model_cache``, not ``accel`` — accel delegates there, and the import-time
+    pin means the environment is already set by the time any test runs.
+    """
+    from pipeline import accel, model_cache
 
     durable = tmp_path / "durable"
     legacy = tmp_path / "tmp" / "fastembed_cache"
-    monkeypatch.setattr(accel, "default_fastembed_cache_root", lambda: durable)
+    monkeypatch.delenv("FASTEMBED_CACHE", raising=False)
+    monkeypatch.delenv("FASTEMBED_CACHE_PATH", raising=False)
+    monkeypatch.setattr(model_cache, "default_fastembed_cache_root", lambda: durable)
     monkeypatch.setattr(accel, "legacy_fastembed_cache_root", lambda: legacy)
     monkeypatch.setattr(accel, "_TMP_CACHE_MIGRATED", False)
-    monkeypatch.delenv("FASTEMBED_CACHE_PATH", raising=False)
     return durable, legacy
 
 
@@ -252,6 +257,43 @@ def test_cache_root_is_published_to_the_environment(monkeypatch, tmp_path: Path)
     durable, _ = _isolate_cache(monkeypatch, tmp_path)
     assert fastembed_cache_root() == durable
     assert os.environ["FASTEMBED_CACHE_PATH"] == str(durable)
+
+
+def test_importing_pipeline_pins_the_cache_before_fastembed_loads() -> None:
+    """0.3.28 pinned the cache lazily, so warmup paths that never called
+    fastembed_cache_root() still resolved \\$TMPDIR and failed to find the model.
+    A fresh interpreter is the only honest check -- this process is already pinned."""
+    import subprocess
+    import sys
+    import tempfile
+
+    out = subprocess.run(
+        [sys.executable, "-c", "import pipeline, os; print(os.environ['FASTEMBED_CACHE_PATH'])"],
+        capture_output=True,
+        text=True,
+        timeout=120,
+    )
+    assert out.returncode == 0, out.stderr
+    pinned = Path(out.stdout.strip())
+    assert pinned == Path.home() / ".cache" / "fastembed"
+    assert pinned != Path(tempfile.gettempdir()) / "fastembed_cache"
+
+
+def test_import_pin_does_not_override_an_operator_choice(tmp_path: Path) -> None:
+    import os
+    import subprocess
+    import sys
+
+    env = {**os.environ, "FASTEMBED_CACHE_PATH": str(tmp_path / "chosen")}
+    out = subprocess.run(
+        [sys.executable, "-c", "import pipeline, os; print(os.environ['FASTEMBED_CACHE_PATH'])"],
+        capture_output=True,
+        text=True,
+        timeout=120,
+        env=env,
+    )
+    assert out.returncode == 0, out.stderr
+    assert Path(out.stdout.strip()) == tmp_path / "chosen"
 
 
 def test_cache_root_honors_an_explicit_override(monkeypatch, tmp_path: Path) -> None:

@@ -8,6 +8,12 @@ from __future__ import annotations
 
 from typing import Any
 
+from pipeline.model_cache import pin_fastembed_cache_env
+
+# Before anything can import fastembed: TextEmbedding resolves its cache directory
+# itself, and the call sites that don't pass cache_dir must not land in $TMPDIR.
+pin_fastembed_cache_env()
+
 __all__ = [
     "IndexStats",
     "PipelineStore",

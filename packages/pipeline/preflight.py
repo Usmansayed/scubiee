@@ -64,12 +64,15 @@ def _warm_saved_model(profile: AccelProfile) -> bool:
         model_name = coreml_model_name(profile.model)
         warm_bs = static_embed_batch_size(profile, max(1, int(profile.batch_size or 1)))
         warm = pad_embed_batch(warm, warm_bs)
+    from pipeline.model_cache import pin_fastembed_cache_env
+
     model = TextEmbedding(
         model_name=model_name,
         threads=1,
         providers=profile.providers(),
         lazy_load=True,
         local_files_only=True,
+        cache_dir=str(pin_fastembed_cache_env()),
     )
     if profile.profile == "coreml":
         bind_coreml_tokenizer(model)

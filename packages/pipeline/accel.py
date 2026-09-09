@@ -2161,11 +2161,9 @@ def configure(
 
 def default_fastembed_cache_root() -> Path:
     """FastEmbed model cache without importing fastembed (safe during first ``setup``)."""
-    for key in ("FASTEMBED_CACHE", "FASTEMBED_CACHE_PATH"):
-        raw = os.environ.get(key)
-        if raw:
-            return Path(raw)
-    return Path.home() / ".cache" / "fastembed"
+    from pipeline.model_cache import default_fastembed_cache_root as _default
+
+    return _default()
 
 
 def legacy_fastembed_cache_root() -> Path:
@@ -2207,8 +2205,9 @@ def fastembed_cache_root() -> Path:
     twice on Windows inside a day. ``TextEmbedding`` resolves the directory itself
     at load time, so the environment has to carry the choice too.
     """
-    root = default_fastembed_cache_root()
-    os.environ.setdefault("FASTEMBED_CACHE_PATH", str(root))
+    from pipeline.model_cache import pin_fastembed_cache_env
+
+    root = pin_fastembed_cache_env()
     _migrate_legacy_tmp_cache(root)
     try:
         root.mkdir(parents=True, exist_ok=True)
