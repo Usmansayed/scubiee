@@ -864,6 +864,40 @@ def _strip_ansi(text: str) -> str:
     return _ANSI.sub("", text)
 
 
+def _live_project_id(root: Path) -> str:
+    """Prefer on-disk .scubiee/id.json so MCP map binds the real index."""
+    try:
+        data = json.loads((root / ".scubiee" / "id.json").read_text(encoding="utf-8"))
+        pid = str(data.get("project_id") or "").strip()
+        if pid.startswith("ce_"):
+            return pid
+    except (OSError, json.JSONDecodeError, TypeError):
+        pass
+    return PROJECT_ID
+
+
+def assert_project_id_binding(ws: Path) -> dict[str, Any]:
+    """Gate 1: CTX_PROJECT_ID must match the on-disk index id at the locate root."""
+    env = _scubiee_env(ws)
+    locate_root = Path(env["CTX_REPO"])
+    on_disk = None
+    try:
+        on_disk = json.loads(
+            (locate_root / ".scubiee" / "id.json").read_text(encoding="utf-8")
+        ).get("project_id")
+    except (OSError, json.JSONDecodeError, TypeError):
+        pass
+    ctx_pid = str(env.get("CTX_PROJECT_ID") or "")
+    ok = bool(ctx_pid.startswith("ce_") and on_disk and ctx_pid == on_disk)
+    return {
+        "ok": ok,
+        "ctx_project_id": env.get("CTX_PROJECT_ID"),
+        "on_disk_project_id": on_disk,
+        "ctx_repo": env.get("CTX_REPO"),
+        "note": "ok" if ok else "CTX_PROJECT_ID does not match locate-root index id.json",
+    }
+
+
 def _scubiee_env(repo: Path) -> dict[str, str]:
     # A/B snapshots fork a new project_id without a warm index. Point locate at the
     # parent managed repo index so map/pack work; agent still edits/writes in `repo` cwd.
@@ -875,6 +909,10 @@ def _scubiee_env(repo: Path) -> dict[str, str]:
             locate_root = repo
     except OSError:
         locate_root = repo
+    # CRITICAL: CTX_PROJECT_ID must match the index at CTX_REPO. Hardcoding the A/B
+    # PROJECT_ID against the live ROOT index made map return warm_state=error and
+    # burned Sonnet on a false "uncallable" escape.
+    locate_pid = _live_project_id(locate_root)
     env = {
         "CTX_BACKGROUND_SYNC": "0",
         "CTX_TRACE_ENGINE": "composite_v1",
@@ -888,7 +926,7 @@ def _scubiee_env(repo: Path) -> dict[str, str]:
         "CTX_MCP_SURFACE": "phase",
         "CTX_MCP_EXPERIMENT": "ship",
         "CTX_TRACE_GRAPHIFY": "1",
-        "CTX_PROJECT_ID": PROJECT_ID,
+        "CTX_PROJECT_ID": locate_pid,
         "CTX_TOKEN_MODE": "savings",
         "PYTHONUTF8": "1",
         "CTX_SCUBIEE_BUILD": "0.3.16-kiro-ab-dev",
@@ -911,7 +949,7 @@ def _scubiee_env(repo: Path) -> dict[str, str]:
         except json.JSONDecodeError:
             pass
     env["CTX_REPO"] = str(locate_root).replace("\\", "/")
-    env["CTX_PROJECT_ID"] = PROJECT_ID
+    env["CTX_PROJECT_ID"] = locate_pid
     env["CTX_MCP_CLIENT"] = "kiro"
     env["CTX_TRACE_ENGINE"] = "composite_v1"
     # Prefer live package build stamp from project mcp when present
@@ -1040,8 +1078,19 @@ def assert_agent_surface(ws: Path, agent_path: Path, *, with_mcp: bool) -> list[
     """
     errs: list[str] = []
     cfg = json.loads(agent_path.read_text(encoding="utf-8"))
-    if cfg.get("includeMcpJson") is not False:
-        errs.append("includeMcpJson must be false")
+    if with_mcp:
+        # Prefer workspace mcp.json + includeMcpJson so Kiro non-interactive loads Scubiee.
+        if cfg.get("includeMcpJson") is not True:
+            errs.append("with-arm includeMcpJson must be true (workspace mcp.json load)")
+        ws_mcp = ws / ".kiro" / "settings" / "mcp.json"
+        try:
+            ws_servers = (json.loads(ws_mcp.read_text(encoding="utf-8")).get("mcpServers") or {})
+        except (OSError, json.JSONDecodeError):
+            ws_servers = {}
+        if not ws_servers.get("scubiee"):
+            errs.append("with-arm workspace .kiro/settings/mcp.json must define scubiee")
+    elif cfg.get("includeMcpJson") is not False:
+        errs.append("without-arm includeMcpJson must be false")
     tools = cfg.get("tools") or []
     if "read" not in tools or "shell" not in tools:
         errs.append("missing native read/shell tools")
@@ -1154,19 +1203,30 @@ def write_agents(ws: Path, *, model: str, with_mcp: bool) -> Path:
     ]
     mcp_servers: dict[str, Any] = {}
     auto_approve: list[str] = []
+    include_mcp_json = False
     if with_mcp:
         tools = tools + list(SCUBIEE_LOCATE_TOOLS)
         auto_approve = list(SCUBIEE_AUTO_APPROVE)
-        mcp_servers = {
-            "scubiee": {
-                "command": str(BRIDGE).replace("\\", "/"),
-                "args": [],
-                "env": _scubiee_env(ws),
-                "disabled": False,
-                "autoApprove": auto_approve,
-                "alwaysAllow": auto_approve,
-            }
+        scubiee_cfg = {
+            "command": str(BRIDGE).replace("\\", "/"),
+            "args": [],
+            "env": _scubiee_env(ws),
+            "disabled": False,
+            "autoApprove": auto_approve,
+            "alwaysAllow": auto_approve,
         }
+        mcp_servers = {"scubiee": scubiee_cfg}
+        # Also write workspace mcp.json — Kiro non-interactive often fails to load
+        # agent-embedded mcpServers alone ("Not all mcp servers loaded").
+        (ws / ".kiro" / "settings").mkdir(parents=True, exist_ok=True)
+        _write_json(
+            ws / ".kiro" / "settings" / "mcp.json",
+            {"mcpServers": {"scubiee": scubiee_cfg}},
+        )
+        include_mcp_json = True
+    else:
+        (ws / ".kiro" / "settings").mkdir(parents=True, exist_ok=True)
+        _write_json(ws / ".kiro" / "settings" / "mcp.json", {"mcpServers": {}})
     shared = (
         SHARED_SYSTEM_RETRIEVAL
         if (ACTIVE_TASK.get("mode") == "retrieval")
@@ -1177,7 +1237,7 @@ def write_agents(ws: Path, *, model: str, with_mcp: bool) -> Path:
         "description": (
             f"Dev A/B arm {'WITH Scubiee MCP only (no CLI locate)' if with_mcp else 'WITHOUT Scubiee'}"
         ),
-        "includeMcpJson": False,
+        "includeMcpJson": include_mcp_json,
         "includePowers": False,
         "model": model,
         "prompt": shared + (WITH_EXTRA if with_mcp else WITHOUT_EXTRA),
@@ -1268,6 +1328,90 @@ def snapshot_workspace(dst: Path) -> None:
         cwd=dst,
         check=True,
     )
+
+
+def snapshot_without_from_with_baseline(with_ws: Path, without_ws: Path) -> dict[str, Any]:
+    """Fair pair arm: seed `without` from `with`'s *baseline* commit only.
+
+    Ensures:
+    - Same tree the with-arm started from (not today's drifted ROOT)
+    - No with-arm retrieval artifact / agent outputs to steal
+    - Sibling layout so `_cross_arm_peek` can catch peeks at `../with`
+    """
+    import io
+    import tarfile
+
+    if not with_ws.is_dir():
+        return {"ok": False, "error": f"with workspace missing: {with_ws}"}
+    log = _run(["git", "log", "--reverse", "--format=%H%x09%s", "HEAD"], cwd=with_ws)
+    baseline: str | None = None
+    first: str | None = None
+    for ln in (log.stdout or "").splitlines():
+        if "\t" not in ln:
+            continue
+        sha, subj = ln.split("\t", 1)
+        if first is None:
+            first = sha.strip()
+        if "ab-dev baseline" in subj:
+            baseline = sha.strip()
+            break
+    baseline = baseline or first
+    if not baseline:
+        return {"ok": False, "error": "no git baseline commit in with workspace"}
+
+    if without_ws.exists():
+        shutil.rmtree(without_ws, ignore_errors=True)
+    without_ws.mkdir(parents=True, exist_ok=True)
+
+    arch = subprocess.run(
+        ["git", "archive", baseline],
+        cwd=str(with_ws),
+        capture_output=True,
+        check=False,
+    )
+    if arch.returncode != 0 or not arch.stdout:
+        return {
+            "ok": False,
+            "error": "git archive failed: "
+            + ((arch.stderr or b"")[:400].decode("utf-8", "replace")),
+        }
+    with tarfile.open(fileobj=io.BytesIO(arch.stdout), mode="r:") as tf:
+        # Python 3.12+ data filter; ignore on older runtimes
+        try:
+            tf.extractall(without_ws, filter="data")
+        except TypeError:
+            tf.extractall(without_ws)
+
+    # Scrub anything that could be stolen / confuse the without-arm
+    for rel in (
+        "out/ab_retrieval_context.md",
+        "out/ab_rules_seen.md",
+        ".kiro/agents/ab_dev_with.json",
+        ".kiro/ab_surface/ab_dev_with.json",
+    ):
+        p = without_ws / rel.replace("/", os.sep)
+        if p.is_file():
+            p.unlink()
+    # Neutral mcp.json (without-arm has no Scubiee MCP)
+    (without_ws / ".kiro" / "settings").mkdir(parents=True, exist_ok=True)
+    _write_json(without_ws / ".kiro" / "settings" / "mcp.json", {"mcpServers": {}})
+
+    _run(["git", "init"], cwd=without_ws, check=True)
+    _run(["git", "config", "user.email", "ab-dev@local"], cwd=without_ws, check=True)
+    _run(["git", "config", "user.name", "ab-dev"], cwd=without_ws, check=True)
+    _run(["git", "add", "-A"], cwd=without_ws, check=True)
+    _run(
+        ["git", "commit", "-m", "ab-dev baseline (paired from with)", "--no-verify"],
+        cwd=without_ws,
+        check=True,
+    )
+    return {
+        "ok": True,
+        "baseline_sha": baseline,
+        "with_ws": str(with_ws),
+        "without_ws": str(without_ws),
+        "note": "without seeded from with ab-dev baseline; retrieval artifacts scrubbed",
+    }
 
 
 MCP_PREFLIGHT_PROMPT = """# Preflight — prove Scubiee MCP tools + rules + permissions work in THIS workspace
@@ -1367,42 +1511,80 @@ def _extract_json_obj(text: str) -> dict[str, Any] | None:
     return best
 
 
+def _is_ab_snapshot(ws: Path) -> bool:
+    try:
+        return ".ab_workspaces" in {p.lower() for p in ws.resolve().parts}
+    except OSError:
+        return False
+
+
 def ensure_snapshot_index(ws: Path, *, timeout_s: int = 600) -> dict[str, Any]:
-    """Make CLI pack work inside a harness snapshot (index was excluded from copy)."""
-    env = _kiro_env(ws)
-    # Prefer register/initialize so project_id + index bind to this cwd
-    cmds: list[tuple[str, list[str]]] = [
-        ("register", ["scubiee", "register", str(ws), "--force"]),
-        ("index", ["scubiee", "index", str(ws)]),
-    ]
+    """Prove locate/pack works for this arm without poisoning the engine.
+
+    A/B snapshots under `.ab_workspaces/` intentionally share the live ROOT index
+    via `_scubiee_env` (CTX_REPO + CTX_PROJECT_ID). Do **not** `register --force`
+    the snapshot cwd — that creates a cold sibling project_id, burns 600s, and
+    leaves map at warm_state=error (exactly the preflight abort we hit).
+    """
     steps: list[dict[str, Any]] = []
-    for name, cmd in cmds:
-        try:
-            proc = subprocess.run(
-                cmd,
-                cwd=str(ws),
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=timeout_s,
-                env=env,
-            )
-            steps.append(
-                {
-                    "step": name,
-                    "exit": proc.returncode,
-                    "stdout_tail": (proc.stdout or "")[-800:],
-                    "stderr_tail": (proc.stderr or "")[-400:],
-                }
-            )
-        except FileNotFoundError:
-            steps.append({"step": name, "exit": 127, "error": "scubiee not on PATH"})
-            break
-        except subprocess.TimeoutExpired:
-            steps.append({"step": name, "exit": 124, "error": f"timeout {timeout_s}s"})
-            break
-    # Deterministic pack smoke in the snapshot (no Kiro yet)
+    # Locate env always — pack smoke must hit the same index MCP agents use.
+    locate_env = os.environ.copy()
+    locate_env.update(_scubiee_env(ws))
+    locate_root = Path(locate_env.get("CTX_REPO") or ROOT)
+
+    if _is_ab_snapshot(ws):
+        steps.append(
+            {
+                "step": "skip_snapshot_register",
+                "exit": 0,
+                "note": (
+                    "A/B snapshot uses live locate root; "
+                    f"CTX_REPO={locate_env.get('CTX_REPO')} "
+                    f"CTX_PROJECT_ID={locate_env.get('CTX_PROJECT_ID')}"
+                ),
+            }
+        )
+        # Drop any accidental snapshot id.json so agents don't treat it as truth.
+        snap_id = ws / ".scubiee" / "id.json"
+        if snap_id.is_file():
+            try:
+                snap_id.unlink()
+                steps.append({"step": "unlink_snapshot_id", "exit": 0})
+            except OSError as exc:
+                steps.append({"step": "unlink_snapshot_id", "exit": 1, "error": str(exc)})
+    else:
+        env = _kiro_env(ws)
+        cmds: list[tuple[str, list[str]]] = [
+            ("register", ["scubiee", "register", str(ws), "--force"]),
+            ("index", ["scubiee", "index", str(ws)]),
+        ]
+        for name, cmd in cmds:
+            try:
+                proc = subprocess.run(
+                    cmd,
+                    cwd=str(ws),
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    timeout=timeout_s,
+                    env=env,
+                )
+                steps.append(
+                    {
+                        "step": name,
+                        "exit": proc.returncode,
+                        "stdout_tail": (proc.stdout or "")[-800:],
+                        "stderr_tail": (proc.stderr or "")[-400:],
+                    }
+                )
+            except FileNotFoundError:
+                steps.append({"step": name, "exit": 127, "error": "scubiee not on PATH"})
+                break
+            except subprocess.TimeoutExpired:
+                steps.append({"step": name, "exit": 124, "error": f"timeout {timeout_s}s"})
+                break
+
     q = (
         "session isolation require_session_id fail closed pack persistence "
         "session_store put_span"
@@ -1419,13 +1601,13 @@ def ensure_snapshot_index(ws: Path, *, timeout_s: int = 600) -> dict[str, Any]:
     try:
         pack = subprocess.run(
             pack_cmd,
-            cwd=str(ws),
+            cwd=str(locate_root),
             capture_output=True,
             text=True,
             encoding="utf-8",
             errors="replace",
-            timeout=timeout_s,
-            env=env,
+            timeout=min(120, timeout_s),
+            env=locate_env,
         )
         pack_txt = (pack.stdout or "") + "\n" + (pack.stderr or "")
         pack_ok = '"ok": true' in pack_txt or '"ok":true' in pack_txt
@@ -1442,13 +1624,13 @@ def ensure_snapshot_index(ws: Path, *, timeout_s: int = 600) -> dict[str, Any]:
                     "--mode",
                     "lean",
                 ],
-                cwd=str(ws),
+                cwd=str(locate_root),
                 capture_output=True,
                 text=True,
                 encoding="utf-8",
                 errors="replace",
-                timeout=timeout_s,
-                env=env,
+                timeout=min(120, timeout_s),
+                env=locate_env,
             )
             pack_txt = (pack2.stdout or "") + "\n" + (pack2.stderr or "")
             pack_ok = '"ok": true' in pack_txt or '"ok":true' in pack_txt
@@ -1458,6 +1640,7 @@ def ensure_snapshot_index(ws: Path, *, timeout_s: int = 600) -> dict[str, Any]:
             "ok": False,
             "steps": steps,
             "pack_ok": False,
+            "locate_root": str(locate_root),
             "error": str(exc),
         }
     return {
@@ -1466,7 +1649,308 @@ def ensure_snapshot_index(ws: Path, *, timeout_s: int = 600) -> dict[str, Any]:
         "pack_ok": bool(pack_ok),
         "pack_exit": pack.returncode,
         "pack_tail": pack_txt[-1200:],
+        "locate_root": str(locate_root),
+        "ctx_project_id": locate_env.get("CTX_PROJECT_ID"),
     }
+
+
+WARM_PROOF_QUERY = (
+    "scubiee connect cmd_connect write_project_gate_rules mcp_permissions "
+    "autoApprove mcpAllowlist AGENTS.md GATE"
+)
+WARM_PROOF_REQUIRED_TOOLS = {
+    "gate",
+    "map",
+    "pack_context",
+    "expand_context",
+    "collect_hot_context",
+    "status",
+    "workspace",
+    "expand",
+}
+
+
+class _McpStdioClient:
+    """Minimal stdio JSON-RPC client for Gate 2 warm proof (no Kiro)."""
+
+    def __init__(self, proc: subprocess.Popen[str]):
+        self.proc = proc
+        self._id = 0
+
+    def _next(self) -> int:
+        self._id += 1
+        return self._id
+
+    def request(
+        self, method: str, params: dict[str, Any] | None = None, *, timeout: float = 90.0
+    ) -> dict[str, Any]:
+        assert self.proc.stdin and self.proc.stdout
+        msg_id = self._next()
+        payload: dict[str, Any] = {"jsonrpc": "2.0", "id": msg_id, "method": method}
+        if params is not None:
+            payload["params"] = params
+        self.proc.stdin.write(json.dumps(payload, ensure_ascii=False) + "\n")
+        self.proc.stdin.flush()
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            raw = self.proc.stdout.readline()
+            if not raw:
+                if self.proc.poll() is not None:
+                    raise RuntimeError(f"bridge exited early code={self.proc.returncode}")
+                continue
+            raw = raw.strip()
+            if not raw:
+                continue
+            try:
+                msg = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+            if msg.get("id") != msg_id:
+                continue
+            if "error" in msg:
+                raise RuntimeError(f"{method} error: {msg['error']}")
+            return msg.get("result") or {}
+        raise TimeoutError(f"{method} timed out after {timeout}s")
+
+    def notify(self, method: str, params: dict[str, Any] | None = None) -> None:
+        assert self.proc.stdin
+        payload: dict[str, Any] = {"jsonrpc": "2.0", "method": method}
+        if params is not None:
+            payload["params"] = params
+        self.proc.stdin.write(json.dumps(payload) + "\n")
+        self.proc.stdin.flush()
+
+
+def _mcp_tool_payload(result: dict[str, Any]) -> dict[str, Any]:
+    """Unwrap FastMCP content envelope to the Scubiee JSON tool body."""
+    parts = result.get("content") or []
+    for p in parts:
+        text = ""
+        if isinstance(p, dict):
+            text = str(p.get("text") or "")
+        elif isinstance(p, str):
+            text = p
+        if not text.strip():
+            continue
+        try:
+            obj = json.loads(text)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(obj, dict):
+            return obj
+    return {}
+
+
+def deterministic_warm_proof(ws: Path, *, timeout_s: float = 120.0) -> dict[str, Any]:
+    """Gate 2: prove map→pack returns usable payloads on the arm's MCP env (no agent).
+
+    Hard-abort input for the expensive Sonnet job. Inspects payloads, not mere RPC success.
+    Uses the same `_scubiee_env(ws)` the with-arm agent will get.
+    """
+    report: dict[str, Any] = {
+        "ok": False,
+        "gate": "warm_proof",
+        "ws": str(ws),
+        "checks": {},
+        "errors": [],
+    }
+    if not BRIDGE.is_file():
+        report["errors"].append(f"bridge missing: {BRIDGE}")
+        return report
+
+    env = os.environ.copy()
+    env.update(_scubiee_env(ws))
+    env["CTX_MCP_SESSION_ID"] = f"warm-proof-{int(time.time())}"
+    report["env"] = {
+        "CTX_REPO": env.get("CTX_REPO"),
+        "CTX_PROJECT_ID": env.get("CTX_PROJECT_ID"),
+        "CTX_MCP_CLIENT": env.get("CTX_MCP_CLIENT"),
+    }
+
+    t0 = time.perf_counter()
+    proc = subprocess.Popen(
+        [str(BRIDGE)],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        env=env,
+        cwd=str(ws),
+    )
+    client = _McpStdioClient(proc)
+    try:
+        client.request(
+            "initialize",
+            {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {},
+                "clientInfo": {"name": "kiro-warm-proof", "version": "0.1"},
+            },
+            timeout=30,
+        )
+        client.notify("notifications/initialized")
+        report["checks"]["initialize"] = {"ok": True}
+
+        listed = client.request("tools/list", {}, timeout=30)
+        names = {t.get("name") for t in (listed.get("tools") or []) if t.get("name")}
+        missing = sorted(WARM_PROOF_REQUIRED_TOOLS - names)
+        report["checks"]["tools_list"] = {
+            "ok": not missing,
+            "missing": missing,
+            "count": len(names),
+        }
+        if missing:
+            report["errors"].append("tools missing: " + ",".join(missing))
+            return report
+
+        # status: prefer ready; allow idle if map still returns cards (engine up)
+        status_payload: dict[str, Any] = {}
+        status_ok = False
+        last_warm = None
+        for attempt in range(3):
+            st = client.request(
+                "tools/call", {"name": "status", "arguments": {}}, timeout=45
+            )
+            status_payload = _mcp_tool_payload(st)
+            last_warm = (
+                status_payload.get("warm_state")
+                or (status_payload.get("engine") or {}).get("warm_state")
+                or status_payload.get("status")
+            )
+            if status_payload.get("ok") is False and status_payload.get("error"):
+                # keep trying — NoneType compare bug should not block if map works
+                time.sleep(1.0 + attempt)
+                continue
+            if str(last_warm or "").lower() in {"ready", "idle", "warm", "ok"}:
+                status_ok = True
+                break
+            if str(last_warm or "").lower() in {"warming"}:
+                time.sleep(2.0 + attempt)
+                continue
+            break
+        report["checks"]["status"] = {
+            "ok": bool(status_ok),
+            "warm_state": last_warm,
+            "error": status_payload.get("error"),
+            "note": "informational; map/pack payloads are the hard Gate-2 predicates",
+        }
+
+        gate_raw = client.request(
+            "tools/call", {"name": "gate", "arguments": {}}, timeout=30
+        )
+        gate_payload = _mcp_tool_payload(gate_raw)
+        gate_text = ""
+        if not gate_payload:
+            # gate often returns plain text
+            for p in gate_raw.get("content") or []:
+                if isinstance(p, dict):
+                    gate_text += str(p.get("text") or "")
+        report["checks"]["gate"] = {
+            "ok": True,
+            "payload_keys": sorted(gate_payload.keys()) if gate_payload else [],
+            "text_head": (gate_text or str(gate_payload))[:120],
+        }
+
+        map_raw = client.request(
+            "tools/call",
+            {
+                "name": "map",
+                "arguments": {"query": WARM_PROOF_QUERY, "k": 8},
+            },
+            timeout=90,
+        )
+        map_payload = _mcp_tool_payload(map_raw)
+        cards = map_payload.get("cards") or map_payload.get("results") or []
+        map_ok = bool(
+            map_payload.get("ok") is True
+            and isinstance(cards, list)
+            and len(cards) > 0
+            and not map_payload.get("error")
+            and str(map_payload.get("warm_state") or "").lower() not in {"warming", "error"}
+        )
+        seed = map_payload.get("suggested_seed") or {}
+        if not isinstance(seed, dict):
+            seed = {}
+        if not seed.get("file") and cards:
+            c0 = cards[0] if isinstance(cards[0], dict) else {}
+            seed = {
+                "file": c0.get("file"),
+                "symbol": c0.get("symbol") or "",
+            }
+        report["checks"]["map"] = {
+            "ok": map_ok,
+            "card_n": len(cards) if isinstance(cards, list) else 0,
+            "seed": seed,
+            "error": map_payload.get("error"),
+            "warm_state": map_payload.get("warm_state"),
+            "top_file": (cards[0].get("file") if cards and isinstance(cards[0], dict) else None),
+        }
+        if not map_ok:
+            report["errors"].append(
+                f"map failed: error={map_payload.get('error')!r} warm={map_payload.get('warm_state')!r} cards={len(cards) if isinstance(cards, list) else 0}"
+            )
+            return report
+
+        seed_file = str(seed.get("file") or "").replace("\\", "/")
+        seed_symbol = str(seed.get("symbol") or "")
+        if not seed_file:
+            report["errors"].append("map ok but no seed file for pack")
+            return report
+
+        pack_args: dict[str, Any] = {
+            "query": WARM_PROOF_QUERY,
+            "mode": "lean",
+            "seed_file": seed_file,
+        }
+        if seed_symbol:
+            pack_args["seed_symbol"] = seed_symbol
+        pack_raw = client.request(
+            "tools/call",
+            {"name": "pack_context", "arguments": pack_args},
+            timeout=90,
+        )
+        pack_payload = _mcp_tool_payload(pack_raw)
+        heatmap = pack_payload.get("heatmap") or pack_payload.get("pack") or []
+        pack_ok = bool(
+            pack_payload.get("ok") is True
+            and isinstance(heatmap, list)
+            and len(heatmap) > 0
+            and not pack_payload.get("error")
+            and "seed not found" not in str(pack_payload.get("error") or "").lower()
+        )
+        report["checks"]["pack_context"] = {
+            "ok": pack_ok,
+            "heatmap_n": len(heatmap) if isinstance(heatmap, list) else 0,
+            "seed_file": seed_file,
+            "seed_symbol": seed_symbol,
+            "error": pack_payload.get("error"),
+        }
+        if not pack_ok:
+            report["errors"].append(
+                f"pack_context failed: error={pack_payload.get('error')!r} heatmap_n={len(heatmap) if isinstance(heatmap, list) else 0}"
+            )
+            return report
+
+        report["ok"] = True
+        return report
+    except Exception as exc:  # noqa: BLE001
+        report["errors"].append(f"{type(exc).__name__}: {exc}")
+        return report
+    finally:
+        report["wall_ms"] = round((time.perf_counter() - t0) * 1000, 1)
+        try:
+            proc.terminate()
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            proc.wait(timeout=5)
+        except Exception:  # noqa: BLE001
+            try:
+                proc.kill()
+            except Exception:  # noqa: BLE001
+                pass
 
 
 # Last successful MCP preflight in this process (skip flaky second readiness chat).
@@ -1598,7 +2082,20 @@ def run_kiro_mcp_preflight(
         or "mcp tools aren't" in clean.lower()
         or "mcp tools are not" in clean.lower()
     )
-    # Accept if Kiro claims success AND core MCP tools ran, no CLI locate
+    # Accept only if Kiro used core MCP tools AND reported map+pack payload success.
+    # Mere invocation with ok:false (warming / seed not found) is a FAIL — that was the
+    # false-pass that burned Sonnet on a cold snapshot.
+    map_ans = tool_report.get("map") if isinstance(tool_report.get("map"), dict) else {}
+    pack_ans = (
+        tool_report.get("pack_context")
+        if isinstance(tool_report.get("pack_context"), dict)
+        else {}
+    )
+    map_payload_ok = bool(map_ans.get("ok") is True)
+    pack_payload_ok = bool(pack_ans.get("ok") is True)
+    pack_heat = pack_ans.get("heatmap_n")
+    pack_heat_ok = pack_heat is None or (isinstance(pack_heat, int) and pack_heat > 0)
+
     ok = bool(
         can_use
         and tools_visible
@@ -1608,17 +2105,23 @@ def run_kiro_mcp_preflight(
         and "pack_context" in mcp_seen
         and "map" in mcp_seen
         and not missing_required
+        and map_payload_ok
+        and pack_payload_ok
+        and pack_heat_ok
+        and "map" not in failed_required
+        and "pack_context" not in failed_required
     )
-    # Soften: if answer tools all ok and core in log, allow missing optional workspace in log
-    if not ok and can_use and not core_missing and not used_cli:
+    # Soften ONLY for optional tools (workspace/collect/status) — never for map/pack.
+    if not ok and can_use and not core_missing and not used_cli and map_payload_ok and pack_payload_ok:
         soft_missing = [n for n in missing_required if n not in core]
         if not soft_missing or set(soft_missing) <= {"workspace", "collect_hot_context", "status"}:
             claimed_ok = all(
                 (isinstance(tool_report.get(n), dict) and tool_report[n].get("ok"))
                 or n in mcp_seen
                 for n in MCP_PREFLIGHT_REQUIRED
+                if n not in {"map", "pack_context"}
             )
-            ok = bool(claimed_ok)
+            ok = bool(claimed_ok and map_payload_ok and pack_payload_ok)
 
     err = None
     if not ok:
@@ -1633,6 +2136,12 @@ def run_kiro_mcp_preflight(
             bits.append("required tools missing/failed: " + ",".join(missing_required))
         if failed_required:
             bits.append("tools reported ok=false: " + ",".join(failed_required))
+        if not map_payload_ok:
+            bits.append("map payload not ok (warming/error counts as FAIL)")
+        if not pack_payload_ok:
+            bits.append("pack_context payload not ok (seed-not-found counts as FAIL)")
+        if not pack_heat_ok:
+            bits.append("pack_context heatmap_n empty")
         if not index_info.get("pack_ok"):
             bits.append("snapshot deterministic pack smoke failed")
         if answer:
@@ -1956,7 +2465,11 @@ def _parse_tools(text: str) -> dict[str, Any]:
 
 
 def _heatmap_discipline(text: str, tools: dict[str, Any]) -> dict[str, Any]:
-    """Detect pack skip or pack→whole-file Read bypass (heatmap unused as edit surface)."""
+    """Ladder taxonomy: uncallable_fallback vs skip_pack vs ladder_ok.
+
+    Precedence matches out/harness_never_fail_design.md §4 — check uncallable first
+    so a cold-engine native fallback is never scored as map-without-pack.
+    """
     mcp = [str(t).lower() for t in (tools.get("mcp_scubiee_tools") or tools.get("scubiee_tools") or [])]
     cli_n = int(tools.get("cli_locate_count") or 0)
     had_pack = "pack_context" in mcp
@@ -1967,36 +2480,63 @@ def _heatmap_discipline(text: str, tools: dict[str, Any]) -> dict[str, Any]:
     pack_bypass = bool(
         had_pack and not had_expand and (full_reads >= 2 or (batch_reads >= 1 and full_reads >= 1))
     )
-    map_only_thrash = bool(had_map and not had_pack and (full_reads >= 2 or batch_reads >= 1))
+
+    low = text.lower()
+    engine_broken = bool(
+        re.search(r"warm_state[\"'\s:=]+[\"']?error", low)
+        or "should_retry_status: false" in low
+        or "should_retry_status\": false" in low
+        or "should_retry_status': false" in low
+        or ("fully uncallable" in low and had_map and not had_pack)
+        or re.search(r"\berror[\"']?\s*[:=]\s*[\"']warming[\"']", low)
+        or ('"error": "warming"' in text)
+        or ("'error': 'warming'" in text)
+    )
+    native_after = bool(
+        re.search(r"proceed with native|fall back to native|via native grep", low)
+    )
+
+    ladder_label = "ladder_indeterminate"
     ok = True
     note = "ok"
+
     if cli_n:
         ok = False
+        ladder_label = "ladder_indeterminate"
         note = "FAIL: shell scubiee CLI locate used (MCP-only arm)"
+    elif engine_broken and had_map and not had_pack and (native_after or batch_reads or full_reads):
+        # Not a discipline violation — isolation may still be OK; ladder_ok is separate.
+        ok = True
+        ladder_label = "uncallable_fallback"
+        note = "uncallable_fallback: engine warm/error then native (not skip-pack)"
     elif not had_pack and not had_map:
         ok = False
+        ladder_label = "ladder_indeterminate"
         note = "FAIL: no Scubiee MCP locate/pack calls"
-    elif not had_pack:
+    elif had_map and not had_pack:
         ok = False
-        note = "FAIL: map without pack_context"
+        ladder_label = "skip_pack_violation"
+        note = "FAIL: skip_pack_violation — map returned path, pack never called"
     elif pack_bypass:
         ok = False
+        ladder_label = "skip_pack_violation"
         note = "FAIL: pack then whole-file Read without expand/collect (heatmap bypass)"
-    elif map_only_thrash:
-        ok = False
-        note = "FAIL: map-only then whole-file thrash"
     elif had_pack and had_expand:
-        note = "pack + expand/collect used"
+        ladder_label = "ladder_ok"
+        note = "ladder_ok: pack + expand/collect used"
     elif had_pack:
-        note = "pack used; no whole-file bypass detected"
+        ladder_label = "ladder_ok"
+        note = "ladder_ok: pack used; no whole-file bypass detected"
     return {
         "ok": ok,
+        "ladder_label": ladder_label,
         "had_pack": had_pack,
         "had_map": had_map,
         "had_expand": had_expand,
         "cli_locate_count": cli_n,
         "full_file_reads": full_reads,
         "batch_fs_reads": batch_reads,
+        "engine_broken_signal": engine_broken,
         "note": note,
     }
 
@@ -2380,8 +2920,10 @@ def run_arm(
         return {
             "arm": arm,
             "ok": False,
+            "success": False,
             "error": "agent surface checks failed:\n- " + "\n- ".join(surface_errs),
             "surface_errors": surface_errs,
+            "arm_status": "surface_invalid",
         }
     # validate
     val = _run([str(KIRO), "agent", "validate", "--path", str(agent_path)], cwd=ws)
@@ -2389,8 +2931,34 @@ def run_arm(
         return {
             "arm": arm,
             "ok": False,
+            "success": False,
             "error": f"agent validate failed: {val.stdout}\n{val.stderr}",
+            "arm_status": "validate_failed",
         }
+
+    # Gate 1: project_id binding (with-arm only) — label config bugs before warm proof.
+    binding: dict[str, Any] | None = None
+    if with_mcp:
+        binding = assert_project_id_binding(ws)
+        if not binding.get("ok"):
+            return {
+                "arm": arm,
+                "ok": False,
+                "success": False,
+                "error": "aborted: project_id_mismatch — " + str(binding.get("note")),
+                "project_id_binding": binding,
+                "arm_status": "project_id_mismatch",
+                "workspace": str(ws),
+                "agent": agent_name,
+                "model": model,
+                "credits": 0,
+                "out_tokens_est": 0,
+                "tools": {},
+                "isolation": {"ok": False, "note": "ABORT: Gate 1 project_id mismatch"},
+                "heatmap": {"ok": False, "note": "ABORT: project_id_mismatch", "ladder_label": "n/a"},
+                "taxonomy": {"ladder_label": "n/a", "retrieval_label": "n/a"},
+                "exit_code": 3,
+            }
 
     cmd = [
         str(KIRO),
@@ -2417,73 +2985,63 @@ def run_arm(
         ]
     )
 
-    # Final readiness ask: abort with-arm before burning the expensive job if MCP missing.
-    # If preflight in this process already proved MCP tools on the same workspace, skip the
-    # second chat (Kiro sometimes drops MCP tools on a follow-up chat).
+    # Gate 2 hard abort: deterministic warm proof BEFORE Sonnet spend.
+    # Ban "preflight already proved MCP" shortcut — state is time-dependent and
+    # preflight used to pass on mere tool invocation.
     readiness: dict[str, Any] | None = None
     if with_mcp:
-        pf = _LAST_MCP_PREFLIGHT or {}
-        same_ws = str(Path(str(pf.get("ws") or "")).resolve()) == str(ws.resolve()) if pf.get("ws") else False
-        proved = bool(
-            pf.get("ok")
-            and same_ws
-            and "gate" in set(pf.get("mcp_seen") or [])
-            and "pack_context" in set(pf.get("mcp_seen") or [])
-        )
-        if proved:
-            readiness = {
-                "ok": True,
-                "skipped": True,
-                "reason": "preflight already proved MCP tools on this workspace",
-                "mcp_seen": pf.get("mcp_seen"),
-                "preflight_wall_ms": pf.get("wall_ms"),
-            }
-            print(
-                json.dumps({"event": "readiness", **readiness}, indent=2, default=str),
-                flush=True,
-            )
-        else:
-            print(json.dumps({"event": "readiness_start", "arm": arm}), flush=True)
-            readiness = run_kiro_mcp_readiness(
-                ws=ws,
-                model=model,
-                effort=effort,
-                timeout_s=min(timeout_s, 300),
-                log_dir=log_dir,
-            )
-            _write_json(log_dir / "kiro_mcp_readiness.meta.json", readiness)
-            print(
-                json.dumps(
-                    {
-                        "event": "readiness",
-                        **{
-                            k: readiness.get(k)
-                            for k in ("ok", "exit_code", "wall_ms", "mcp_seen", "error", "kiro_answer")
-                        },
+        print(json.dumps({"event": "warm_proof_start", "arm": arm, "ws": str(ws)}), flush=True)
+        warm = deterministic_warm_proof(ws, timeout_s=min(120.0, float(timeout_s)))
+        _write_json(log_dir / "warm_proof.json", warm)
+        print(
+            json.dumps(
+                {
+                    "event": "warm_proof",
+                    "ok": warm.get("ok"),
+                    "wall_ms": warm.get("wall_ms"),
+                    "errors": warm.get("errors"),
+                    "checks": {
+                        k: (v.get("ok") if isinstance(v, dict) else v)
+                        for k, v in (warm.get("checks") or {}).items()
                     },
-                    indent=2,
-                    default=str,
-                ),
-                flush=True,
-            )
-            if not readiness.get("ok"):
-                return {
-                    "arm": arm,
-                    "ok": False,
-                    "success": False,
-                    "error": "aborted: MCP readiness failed before job — " + str(readiness.get("error")),
-                    "readiness": readiness,
-                    "workspace": str(ws),
-                    "agent": agent_name,
-                    "model": model,
-                    "credits": None,
-                    "wall_ms": readiness.get("wall_ms"),
-                    "out_tokens_est": 0,
-                    "tools": readiness.get("tools") or {},
-                    "isolation": {"ok": False, "note": "WARNING: with-arm never called scubiee MCP"},
-                    "heatmap": {"ok": False, "note": "FAIL: readiness aborted"},
-                    "exit_code": readiness.get("exit_code"),
-                }
+                },
+                indent=2,
+                default=str,
+            ),
+            flush=True,
+        )
+        if not warm.get("ok"):
+            return {
+                "arm": arm,
+                "ok": False,
+                "success": False,
+                "error": "aborted: warm_proof_failed — " + "; ".join(warm.get("errors") or ["unknown"]),
+                "warm_proof": warm,
+                "arm_status": "warm_proof_failed",
+                "workspace": str(ws),
+                "agent": agent_name,
+                "model": model,
+                "credits": 0,
+                "wall_ms": warm.get("wall_ms"),
+                "out_tokens_est": 0,
+                "tools": {},
+                "isolation": {"ok": False, "note": "ABORT: Gate 2 warm proof failed before Sonnet job"},
+                "heatmap": {"ok": False, "note": "ABORT: warm_proof_failed", "ladder_label": "n/a"},
+                "taxonomy": {"ladder_label": "n/a", "retrieval_label": "n/a"},
+                "exit_code": 3,
+            }
+        readiness = {
+            "ok": True,
+            "skipped": False,
+            "reason": "deterministic_warm_proof passed (map+pack payloads usable)",
+            "warm_proof": {
+                "ok": True,
+                "wall_ms": warm.get("wall_ms"),
+                "map": (warm.get("checks") or {}).get("map"),
+                "pack_context": (warm.get("checks") or {}).get("pack_context"),
+            },
+        }
+        print(json.dumps({"event": "readiness", **readiness}, indent=2, default=str), flush=True)
 
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / f"{arm}.log"
@@ -2537,18 +3095,26 @@ def run_arm(
     cli_leak = int(tools.get("cli_locate_count") or 0)
     mcp_names = {str(t).lower() for t in (tools.get("mcp_scubiee_tools") or tools.get("scubiee_tools") or [])}
     used_pack = "pack_context" in mcp_names
-    # With-arm: MCP must be used AND include pack_context (map-only is a policy FAIL)
+    ladder_label = str((heatmap or {}).get("ladder_label") or "")
+    # With-arm: require pack unless classified as uncallable_fallback (engine broken).
     if with_mcp:
-        isolation_ok = bool(tools["scubiee_count"] > 0 and cli_leak == 0 and used_pack and peek.get("ok"))
-        if not peek.get("ok"):
+        if ladder_label == "uncallable_fallback":
+            isolation_ok = bool(cli_leak == 0 and peek.get("ok"))
+            iso_note = "uncallable_fallback: engine broken → native allowed (not skip-pack)"
+        elif not peek.get("ok"):
+            isolation_ok = False
             iso_note = "FAIL: cross-arm workspace peek"
         elif tools["scubiee_count"] == 0:
+            isolation_ok = False
             iso_note = "WARNING: with-arm never called scubiee MCP"
         elif cli_leak:
+            isolation_ok = False
             iso_note = "LEAK: shell scubiee CLI locate on MCP-only arm"
         elif not used_pack:
-            iso_note = "FAIL: Scubiee MCP used but pack_context missing (map-only / skip-pack)"
+            isolation_ok = False
+            iso_note = "FAIL: skip_pack_violation — Scubiee MCP used but pack_context missing"
         else:
+            isolation_ok = True
             iso_note = "scubiee MCP used with pack_context; no CLI locate; no cross-arm peek"
     else:
         isolation_ok = bool(tools["scubiee_count"] == 0 and cli_leak == 0 and peek.get("ok"))
@@ -2559,11 +3125,18 @@ def run_arm(
         else:
             iso_note = "LEAK: scubiee tools appeared"
 
+    retrieval_label = (
+        "retrieval_ok"
+        if retrieval_mode and (rubric or {}).get("ok")
+        else ("retrieval_fail" if retrieval_mode else "n/a")
+    )
+
     if retrieval_mode:
+        ladder_ok = (not with_mcp and isolation_ok) or (ladder_label == "ladder_ok")
         success = bool(
             (rubric or {}).get("ok")
             and isolation_ok
-            and (heatmap.get("ok", True) if with_mcp else True)
+            and ladder_ok
             and not timed_out
             and exit_code == 0
         )
@@ -2593,6 +3166,10 @@ def run_arm(
         "reported_time_s": reported_time_s,
         "tools": tools,
         "heatmap_discipline": heatmap,
+        "taxonomy": {
+            "ladder_label": ladder_label or ("n/a" if not with_mcp else "ladder_indeterminate"),
+            "retrieval_label": retrieval_label,
+        },
         "readiness": readiness,
         "cross_arm_peek": peek,
         "isolation": {
@@ -2604,7 +3181,17 @@ def run_arm(
         "rubric": rubric,
         "retrieval": rubric if retrieval_mode else None,
         "success": success,
-        "log": str(log_path.relative_to(ROOT)).replace("\\", "/"),
+        "project_id_binding": binding,
+        "arm_status": (
+            "timed_out"
+            if timed_out
+            else ("ok" if success else "job_failed")
+        ),
+        "log": (
+            str(log_path.resolve().relative_to(ROOT.resolve())).replace("\\", "/")
+            if str(log_path.resolve()).lower().startswith(str(ROOT.resolve()).lower())
+            else str(log_path.resolve()).replace("\\", "/")
+        ),
     }
     _write_json(log_dir / f"{arm}.meta.json", result)
     return result
@@ -2640,16 +3227,17 @@ def write_md(report: dict[str, Any]) -> None:
         "",
         "## Results",
         "",
-        "| arm | success | credits | wall_ms | ~tok | scubiee# | native# | files changed | tests/retrieval | isolation | heatmap |",
-        "|-----|---------|--------:|--------:|-----:|---------:|--------:|--------------:|-----------------|-----------|---------|",
+        "| arm | status | success | credits | wall_ms | ~tok | scubiee# | native# | files changed | tests/retrieval | isolation | heatmap |",
+        "|-----|--------|---------|--------:|--------:|-----:|---------:|--------:|--------------:|-----------------|-----------|---------|",
     ]
     for arm in ("with", "without"):
         r = report["runs"].get(arm)
         if not r:
-            lines.append(f"| {arm} | — | — | — | — | — | — | — | — | — | — |")
+            lines.append(f"| {arm} | — | — | — | — | — | — | — | — | — | — | — |")
             continue
         hm = (r.get("heatmap_discipline") or {}).get("ok")
         hm_cell = "n/a" if arm == "without" else ("OK" if hm else "BYPASS")
+        status = r.get("arm_status") or ("ok" if r.get("success") else "job_failed")
         ret = r.get("retrieval") or r.get("rubric") or {}
         if (report.get("protocol") or {}).get("task_mode") == "retrieval" or ret.get("output_file"):
             test_cell = (
@@ -2659,7 +3247,7 @@ def write_md(report: dict[str, Any]) -> None:
         else:
             test_cell = "PASS" if (r.get("tests") or {}).get("ok") else "FAIL"
         lines.append(
-            f"| {arm} | {'YES' if r.get('success') or r.get('success_corrected') else 'NO'} | {r.get('credits')} | {r.get('wall_ms')} | "
+            f"| {arm} | `{status}` | {'YES' if r.get('success') or r.get('success_corrected') else 'NO'} | {r.get('credits')} | {r.get('wall_ms')} | "
             f"{r.get('out_tokens_est')} | {(r.get('tools') or {}).get('scubiee_count')} | "
             f"{(r.get('tools') or {}).get('native_count')} | {len((r.get('diff') or {}).get('files') or [])} | "
             f"{test_cell} | "
@@ -2737,7 +3325,74 @@ def main() -> int:
         action="store_true",
         help="Skip mandatory Kiro CLI capability probe (not recommended).",
     )
+    ap.add_argument(
+        "--warm-proof-only",
+        action="store_true",
+        help="Run Gate 2 deterministic MCP map→pack proof on cwd/ROOT and exit (no chat).",
+    )
+    ap.add_argument(
+        "--gate-smoke",
+        action="store_true",
+        help="Run Gates 0-4 (static + project_id + warm proof + surface + validate) "
+        "against ROOT and exit. No Kiro chat spend.",
+    )
+    ap.add_argument(
+        "--pair-run",
+        type=str,
+        default=None,
+        help=(
+            "Reuse an existing A/B run directory (e.g. .ab_workspaces/kiro_ab_dev/"
+            "20260909T170339Z_complex_retrieval). Missing arms are seeded fairly: "
+            "without is archived from with's ab-dev baseline (same tree, no with "
+            "artifacts). Merges into the existing OUT_JSON so a prior with-arm is kept."
+        ),
+    )
     args = ap.parse_args()
+
+    if args.warm_proof_only:
+        proof = deterministic_warm_proof(ROOT, timeout_s=120.0)
+        print(json.dumps(proof, indent=2, default=str))
+        return 0 if proof.get("ok") else 3
+
+    if args.gate_smoke:
+        _load_dotenv_key()
+        binding = assert_project_id_binding(ROOT)
+        warm = deterministic_warm_proof(ROOT, timeout_s=120.0)
+        agent_path = write_agents(ROOT, model=args.model, with_mcp=True)
+        surface_errs = assert_agent_surface(ROOT, agent_path, with_mcp=True)
+        val = _run([str(KIRO), "agent", "validate", "--path", str(agent_path)], cwd=ROOT)
+        ok = (
+            binding.get("ok")
+            and warm.get("ok")
+            and not surface_errs
+            and val.returncode == 0
+            and BRIDGE.is_file()
+            and KIRO.is_file()
+        )
+        print(
+            json.dumps(
+                {
+                    "ok": ok,
+                    "project_id_binding": binding,
+                    "warm_proof": {
+                        "ok": warm.get("ok"),
+                        "errors": warm.get("errors"),
+                        "wall_ms": warm.get("wall_ms"),
+                        "checks": {
+                            k: (v.get("ok") if isinstance(v, dict) else v)
+                            for k, v in (warm.get("checks") or {}).items()
+                        },
+                    },
+                    "surface_errors": surface_errs,
+                    "validate_exit": val.returncode,
+                    "bridge_ok": BRIDGE.is_file(),
+                    "kiro_ok": KIRO.is_file(),
+                },
+                indent=2,
+                default=str,
+            )
+        )
+        return 0 if ok else 3
 
     task = TASKS[args.task]
     ACTIVE_TASK_ID = args.task
@@ -2822,10 +3477,28 @@ def main() -> int:
         return 0 if pf.get("ok") else 3
 
     started = datetime.now(timezone.utc).isoformat()
-    run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + f"_{args.task}"
-    run_dir = BASE / run_id
-    log_dir = run_dir / "logs"
+    prior_report: dict[str, Any] = {}
+    if args.pair_run:
+        run_dir = Path(args.pair_run).resolve()
+        if not run_dir.is_dir():
+            print(f"ERROR: --pair-run not a directory: {run_dir}", file=sys.stderr)
+            return 2
+        run_id = run_dir.name
+        if OUT_JSON.is_file():
+            try:
+                prior_report = json.loads(OUT_JSON.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                print(f"ERROR: cannot read prior report {OUT_JSON}: {exc}", file=sys.stderr)
+                return 2
+        # Prefer prior protocol started_at for continuity
+        if isinstance(prior_report.get("started_at"), str):
+            started = prior_report["started_at"]
+    else:
+        run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + f"_{args.task}"
+        run_dir = (BASE / run_id).resolve()
+    log_dir = (run_dir / "logs").resolve()
     run_dir.mkdir(parents=True, exist_ok=True)
+    log_dir.mkdir(parents=True, exist_ok=True)
 
     arms = ["with", "without"] if args.arm == "both" else [args.arm]
     workspaces: dict[str, Path] = {}
@@ -2838,16 +3511,68 @@ def main() -> int:
                 "task": args.task,
                 "title": task["title"],
                 "arms": arms,
+                "pair_run": str(run_dir) if args.pair_run else None,
             }
         ),
         flush=True,
     )
     for arm in arms:
         ws = run_dir / arm
-        print(f"SNAPSHOT {arm} -> {ws}", flush=True)
-        snapshot_workspace(ws)
+        if args.pair_run and arm == "without":
+            with_ws = run_dir / "with"
+            print(f"PAIR without from with baseline -> {ws}", flush=True)
+            pair_info = snapshot_without_from_with_baseline(with_ws, ws)
+            print(json.dumps({"event": "pair_snapshot", **pair_info}, indent=2), flush=True)
+            if not pair_info.get("ok"):
+                print("ERROR: fair pair snapshot failed", file=sys.stderr)
+                return 3
+        elif args.pair_run and arm == "with" and ws.is_dir():
+            print(f"REUSE existing with snapshot -> {ws}", flush=True)
+        else:
+            print(f"SNAPSHOT {arm} -> {ws}", flush=True)
+            snapshot_workspace(ws)
         workspaces[arm] = ws
+    # When pairing without-only, still record sibling with path for peek detection
+    if args.pair_run and "without" in arms and "with" not in arms:
+        with_ws = run_dir / "with"
+        if with_ws.is_dir():
+            workspaces["with_sibling"] = with_ws  # not run; layout only
     print(json.dumps({"event": "snapshot_done"}), flush=True)
+
+    # Gate 2 (free) before any Sonnet spend — prove map→pack on the with-arm MCP env.
+    if "with" in arms:
+        print(json.dumps({"event": "warm_proof_pre_preflight_start"}), flush=True)
+        warm0 = deterministic_warm_proof(workspaces["with"], timeout_s=120.0)
+        _write_json(run_dir / "warm_proof_pre_preflight.json", warm0)
+        print(
+            json.dumps(
+                {
+                    "event": "warm_proof_pre_preflight",
+                    "ok": warm0.get("ok"),
+                    "errors": warm0.get("errors"),
+                    "wall_ms": warm0.get("wall_ms"),
+                    "env": warm0.get("env"),
+                },
+                indent=2,
+                default=str,
+            ),
+            flush=True,
+        )
+        if not warm0.get("ok"):
+            print(
+                "ERROR: Gate 2 warm proof failed before AI preflight — aborting "
+                "(no Sonnet spend). Fix engine/index, then retry.",
+                file=sys.stderr,
+            )
+            protocol = {
+                "model": args.model,
+                "task_id": args.task,
+                "aborted": "warm_proof_failed",
+                "warm_proof": warm0,
+                "run_id": run_id,
+            }
+            _write_json(OUT_JSON, {"started_at": started, "protocol": protocol, "runs": {}})
+            return 3
 
     preflight_result: dict[str, Any] | None = None
     if not args.skip_preflight and "with" in arms:
@@ -2966,10 +3691,45 @@ def main() -> int:
         "out_json": str(OUT_JSON),
         "out_md": str(OUT_MD),
         "scubiee_cli": scubiee_cli,
+        "pair_run": str(run_dir) if args.pair_run else None,
+        "paired_without_from_with_baseline": bool(args.pair_run and "without" in arms),
     }
+    # Preserve prior with-arm protocol fields when pairing without-only
+    if args.pair_run and isinstance(prior_report.get("protocol"), dict):
+        prior_p = prior_report["protocol"]
+        for k in ("preflight", "rules_probe", "warm_proof"):
+            if k in prior_p and k not in protocol:
+                protocol[k] = prior_p[k]
+            elif k in prior_p and protocol.get(k) is None:
+                protocol[k] = prior_p[k]
+        if prior_p.get("snapshots"):
+            protocol["snapshots"] = {**(prior_p.get("snapshots") or {}), **protocol["snapshots"]}
     print(json.dumps({"event": "protocol", **protocol}, indent=2), flush=True)
 
     runs: dict[str, Any] = {}
+    # Keep prior with-arm when only running without (fair compare without re-spend)
+    if args.pair_run and "without" in arms and "with" not in arms:
+        prior_with = (prior_report.get("runs") or {}).get("with")
+        if isinstance(prior_with, dict) and prior_with.get("success") is not None:
+            runs["with"] = prior_with
+            print(
+                json.dumps(
+                    {
+                        "event": "merge_prior_with",
+                        "success": prior_with.get("success"),
+                        "credits": prior_with.get("credits"),
+                        "workspace": prior_with.get("workspace"),
+                    }
+                ),
+                flush=True,
+            )
+        else:
+            print(
+                "WARNING: --pair-run without-only but prior OUT_JSON has no with run; "
+                "report will be without-only until with is merged manually.",
+                file=sys.stderr,
+            )
+
     with McpNeutralizer():
         for arm in arms:
             print(f"RUN arm={arm} task={args.task} ...", flush=True)
@@ -3015,14 +3775,22 @@ def main() -> int:
                 ),
                 flush=True,
             )
-            # Do not burn the without-arm if with-arm never got live MCP tools
-            if arm == "with" and row.get("error") and "readiness failed" in str(row.get("error")):
+            # Do not burn the without-arm if with-arm never got a warm ladder
+            abort_statuses = {
+                "warm_proof_failed",
+                "project_id_mismatch",
+                "surface_invalid",
+                "validate_failed",
+            }
+            if arm == "with" and row.get("arm_status") in abort_statuses:
                 print(
-                    "ERROR: aborting A/B — with-arm MCP readiness failed "
-                    "(rules/tools/permissions not live). Not running without arm.",
+                    "ERROR: aborting A/B — with-arm Gate failed before Sonnet job "
+                    f"(arm_status={row.get('arm_status')}). Not running without arm.",
                     file=sys.stderr,
                 )
-                protocol["aborted"] = "readiness_failed"
+                protocol["aborted"] = row.get("arm_status")
+                protocol["warm_proof"] = row.get("warm_proof")
+                protocol["project_id_binding"] = row.get("project_id_binding")
                 protocol["readiness"] = row.get("readiness")
                 break
 

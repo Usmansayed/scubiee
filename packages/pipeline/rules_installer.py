@@ -73,7 +73,8 @@ def managed_gate_usage_short() -> str:
         "- Filenames → Glob; known path:lines → Read.\n"
         "- Health / readiness / `warm_state` / provider-dep errors → `gate`/`status` + Grep — "
         "**not** soft map→pack.\n"
-        "- After a Scubiee heatmap → guided Grep/Read on `loc` spans only.\n"
+        "- After a Scubiee heatmap → guided Grep/Read on `loc` spans only; "
+        "**re-Grep of packed ground = FAIL**.\n"
         "\n"
         "**WHEN SCUBIEE IS AVAILABLE — STRICT, NO ESCAPE (soft/structural):**\n"
         "- **Query quality (high ROI — few map/pack calls):** Before map, write ~30–80 denser "
@@ -114,7 +115,8 @@ def managed_gate_mcp_only_usage_short() -> str:
         "- Literals / imports / error strings / named-symbol under known path → Grep.\n"
         "- Filenames → Glob; known path → Read.\n"
         "- Health / `warm_state` / provider-dep → `gate`/`status` + Grep — **not** soft map→pack.\n"
-        "- After heatmap → Read `loc` spans only (guided).\n"
+        "- After heatmap → Read `loc` spans only (guided); "
+        "**re-Grep of packed ground = FAIL**.\n"
         "\n"
         "**WHEN SCUBIEE MCP IS AVAILABLE — STRICT, NO ESCAPE:**\n"
         "- Soft/unknown: **enrich** ~30–80 denser tokens (symbols/paths/outcome verbs — "
@@ -147,7 +149,7 @@ def managed_gate_mcp_header() -> str:
             "Enrich first (~30–80 denser tokens: symbols/paths/verbs — not keyword-salad); "
             "refine with suggested_seed/hot cards on pack→expand; vague/salad = FAIL. "
             "Health/warm_state → status+Grep not soft map. "
-            "After pack: heatmap locs — BAN whole-file Read. "
+            "After pack: heatmap locs — BAN whole-file Read; re-Grep of packed ground = FAIL. "
             "Native OK only if Scubiee fully uncallable — no deadlock."
         )
     if exp in {"lab", "full", "hybrid_lab", "hybrid_full", "pinpoint", "plate"}:
@@ -157,7 +159,7 @@ def managed_gate_mcp_header() -> str:
             "WHEN SCUBIEE AVAILABLE — STRICT, NO ESCAPE: MUST pack — warming ≠ skip. "
             "Enrich first (~30–80 denser tokens — not keyword-salad); refine with seed/hot cards "
             "on pack→expand. Health/warm_state → status+Grep not soft map. "
-            "After pack: Native-Read locs — BAN whole-file Read. "
+            "After pack: Native-Read locs — BAN whole-file Read; re-Grep of packed ground = FAIL. "
             "Lab extras optional. Native OK only if Scubiee fully uncallable."
         )
     return (
@@ -168,7 +170,8 @@ def managed_gate_mcp_header() -> str:
         "Enrich first (~30–80 denser tokens: symbols/paths/verbs — not keyword-salad); "
         "refine with suggested_seed/hot cards on pack→expand; vague/salad = FAIL. "
         "Health/readiness/warm_state → gate/status+Grep not soft map. "
-        "After pack: Native-Read heatmap locs — BAN whole-file Read; empty heatmap → stop ladder. "
+        "After pack: Native-Read heatmap locs — BAN whole-file Read; "
+        "re-Grep of packed ground = FAIL; empty heatmap → stop ladder. "
         "Native OK only if Scubiee fully uncallable — no deadlock."
     )
 
@@ -182,7 +185,8 @@ def managed_gate_overview_bullet() -> str:
         "CLI Prefer `scubiee map`/`pack`; else MCP `map`/`pack_context`. "
         "literals/names/paths Prefer host Grep/Glob/Read first (Forbid-first map/pack). "
         "Health/warm_state → status+Grep not soft map. "
-        "After pack: locs only — BAN whole-file Read of heatmap paths. "
+        "After pack: locs only — BAN whole-file Read of heatmap paths; "
+        "re-Grep of packed ground = FAIL. "
         "Native OK only if Scubiee fully uncallable — do not deadlock. Edit/Write stay native. "
         "How-to → `scubiee map|pack|expand --help` / MCP instructions."
     )

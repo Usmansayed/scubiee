@@ -1,0 +1,589 @@
+{
+  "started_at": "2026-09-09T17:03:39.205149+00:00",
+  "finished_at": "2026-09-09T17:11:29.861890+00:00",
+  "protocol": {
+    "model": "claude-sonnet-5",
+    "effort": "medium",
+    "timeout_s": 900,
+    "task_id": "complex_retrieval",
+    "task": "complex multi-hop retrieval → single reasoning context file",
+    "task_mode": "retrieval",
+    "output_file": "out/ab_retrieval_context.md",
+    "prompt_style": "outcome+requirements+constraints; no path spoilers; with-arm prompt silent on Scubiee (rules-only)",
+    "arms_isolated": true,
+    "arms": [
+      "with"
+    ],
+    "sequential": true,
+    "agent_engine": "v1",
+    "legacy_ui": true,
+    "includeMcpJson": false,
+    "locate": "mcp",
+    "mcp": true,
+    "rules_feed": [
+      "AGENTS.md",
+      ".kiro/steering/scubiee.md (inclusion: always)",
+      "agent prompt WITH_EXTRA (no Scubiee names — points at resources only)"
+    ],
+    "with_prompt_silent_on_scubiee": true,
+    "preflight_required": true,
+    "preflight_mode": "mcp_all_tools",
+    "preflight_required_tools": [
+      "gate",
+      "status",
+      "map",
+      "pack_context",
+      "expand_context",
+      "collect_hot_context",
+      "workspace"
+    ],
+    "preflight": {
+      "ok": true,
+      "mode": "mcp",
+      "exit_code": 0,
+      "wall_ms": 51780.4,
+      "log": "C:\\Users\\usman\\Downloads\\context-engine\\.ab_workspaces\\kiro_ab_dev\\20260909T170339Z_complex_retrieval\\logs\\kiro_mcp_preflight.log",
+      "index": {
+        "ok": true,
+        "steps": [
+          {
+            "step": "skip_snapshot_register",
+            "exit": 0,
+            "note": "A/B snapshot uses live locate root; CTX_REPO=C:/Users/usman/Downloads/context-engine CTX_PROJECT_ID=ce_f4e1adced6e0dd72db51bf587464e982"
+          },
+          {
+            "step": "unlink_snapshot_id",
+            "exit": 0
+          }
+        ],
+        "pack_ok": true,
+        "pack_exit": 0,
+        "pack_tail": "{\"ok\":true,\"tool\":\"pack\",\"seed\":{\"id\":\"packages/pipeline/session_isolation.py::bind_request_session\",\"file\":\"packages/pipeline/session_isolation.py\",\"symbol\":\"bind_request_session\"},\"chain\":[{\"id\":\"packages/pipeline/session_isolation.py::bind_request_session\",\"loc\":\"packages/pipeline/session_isolation.py:116-120\",\"edge\":\"seed\",\"score\":1.0},{\"id\":\"packages/pipeline/session_isolation.py::sanitize_session_id\",\"loc\":\"packages/pipeline/session_isolation.py:174-177\",\"edge\":\"calls\",\"score\":0.99}],\"pack\":[{\"id\":\"packages/pipeline/session_isolation.py::bind_request_session\",\"loc\":\"packages/pipeline/session_isolation.py:116-120\",\"text\":\"def bind_request_session(session_id: str | None) -> Any | None:\\n    raw = (session_id or \\\"\\\").strip()\\n    if not raw:\\n        return None\\n    return _REQUEST_SESSION_ID.set(sanitize_session_id(raw))\"},{\"id\":\"packages/pipeline/session_isolation.py::sanitize_session_id\",\"loc\":\"packages/pipeline/session_isolation.py:174-177\",\"text\":\"def sanitize_session_id(raw: str) -> str:\\n    s = (raw or \\\"\\\").strip().replace(\\\":\\\", \\\"@\\\")\\n    s = _SAFE_SESSION_RE.sub(\\\"_\\\", s)[:128]\\n    return s or \\\"default\\\"\"}],\"cold\":[]}\n\n",
+        "locate_root": "C:\\Users\\usman\\Downloads\\context-engine",
+        "ctx_project_id": "ce_f4e1adced6e0dd72db51bf587464e982"
+      },
+      "kiro_answer": {
+        "can_use_scubiee_mcp": true,
+        "mcp_tools_visible": true,
+        "saw_gate_rules": true,
+        "permissions_ok": true,
+        "used_cli_locate": false,
+        "scubiee_tool_names": [
+          "gate",
+          "map",
+          "pack_context",
+          "expand_context",
+          "collect_hot_context",
+          "workspace",
+          "expand",
+          "status"
+        ],
+        "tools": {
+          "gate": {
+            "ok": true
+          },
+          "status": {
+            "ok": true
+          },
+          "map": {
+            "ok": true
+          },
+          "pack_context": {
+            "ok": true,
+            "heatmap_n": 16
+          },
+          "expand_context": {
+            "ok": true
+          },
+          "collect_hot_context": {
+            "ok": true
+          },
+          "workspace": {
+            "ok": true
+          },
+          "map_context": {
+            "ok": null
+          },
+          "pinpoint": {
+            "ok": null
+          },
+          "plate": {
+            "ok": null
+          }
+        },
+        "notes": "All 8 core Scubiee MCP tools callable and returned ok:true. status showed managed:true, engine healthy, sync_state=syncing (agent_ready=stale, background sync active) but index_available:true. gate/status resolved project_id=ce_f4e1adced6e0dd72db51bf587464e982 (differs from ce_d9cb766c3820091ed9ffbc64ef33063c cited in AGENTS.md/.kiro/steering/scubiee.md — root likely resolved to parent context-engine repo rather than this nested ab_workspaces subfolder; steering/AGENTS.md rules were visible and followed regardless: forbid-first grep/glob, map(k=10 default, used k=5 per task)->pack_context(lean)->expand_context->collect_hot_context ladder). map returned 5 ranked cards with suggested_seed=packages/pipeline/session_store.py::expand. pack_context(lean, seed=that suggested_seed) returned 16 heatmap cards (hot: expand, effective_session_id x2, storepath). expand_context(direction=callees, with_bodies=false) returned 10 delta cards, no errors. collect_hot_context(ids=two heatmap node ids) returned ok:true but pack:[] (no bodies matched those ids/threshold — acceptable per task, bodies may be empty). workspace(show) returned heatmap/pins/map_queries reflecting the session's map/pack activity, confirming session state rematerialization. No shell scubiee CLI used at any point; no files edited. map_context/pinpoint/plate were not invoked — not part of required or confirmed-available surface, so left null per 'do not invent' rule."
+      },
+      "tools": {
+        "scubiee_tools": [
+          "gate",
+          "status",
+          "map",
+          "pack_context",
+          "expand_context",
+          "collect_hot_context",
+          "workspace"
+        ],
+        "mcp_scubiee_tools": [
+          "gate",
+          "status",
+          "map",
+          "pack_context",
+          "expand_context",
+          "collect_hot_context",
+          "workspace"
+        ],
+        "cli_scubiee_tools": [],
+        "native_tools": [],
+        "scubiee_count": 7,
+        "cli_locate_count": 0,
+        "native_count": 0
+      },
+      "mcp_seen": [
+        "collect_hot_context",
+        "expand_context",
+        "gate",
+        "map",
+        "pack_context",
+        "status",
+        "workspace"
+      ],
+      "required": [
+        "gate",
+        "status",
+        "map",
+        "pack_context",
+        "expand_context",
+        "collect_hot_context",
+        "workspace"
+      ],
+      "missing_required": [],
+      "used_cli_locate": false,
+      "can_use_scubiee_mcp": true,
+      "mcp_tools_visible": true,
+      "require_mcp_startup": true,
+      "error": null
+    },
+    "rules_probe": {
+      "ok": true,
+      "exit_code": 0,
+      "wall_ms": 33239.9,
+      "log": "C:\\Users\\usman\\Downloads\\context-engine\\.ab_workspaces\\kiro_ab_dev\\20260909T170339Z_complex_retrieval\\logs\\kiro_rules_probe.log",
+      "rules_file": "C:\\Users\\usman\\Downloads\\context-engine\\.ab_workspaces\\kiro_ab_dev\\20260909T170339Z_complex_retrieval\\with\\out\\ab_rules_seen.md",
+      "rules_chars": 2716,
+      "quoted_must_use": true,
+      "quoted_pack_context": true,
+      "tools": {
+        "scubiee_tools": [],
+        "mcp_scubiee_tools": [],
+        "cli_scubiee_tools": [],
+        "native_tools": [
+          "write"
+        ],
+        "scubiee_count": 0,
+        "cli_locate_count": 0,
+        "native_count": 1
+      },
+      "excerpt": "# Rules Visibility Probe\n\n## Resource visibility\n\n- `AGENTS.md` — visible/readable (provided as context entry, root of workspace).\n- `.kiro/steering/scubiee.md` — visible/readable (provided as context entry, appears twice: once as `.kiro/steering/scubiee.md` and once as `.kiro\\steering\\scubiee.md`, identical content).\n\n## Near-verbatim quote (MUST Use Scubiee / WHEN SCUBIEE MCP IS AVAILABLE sections)\n\n```\n**GATE 1:ce_d9cb766c3820091ed9ffbc64ef33063c** - Managed repo. `project_id='ce_d9cb766c3820091ed9ffbc64ef33063c'`.\n\n**MUST Use Scubiee MCP for locate** when `@scubiee/*` tools are callable. Prefer `map` / `pack_context` / `expand_context` / `collect_hot_context`. BAN shell `scubiee map|pack|expand` on this MCP-only surface. How-to steps → Scubiee MCP server instructions every turn.\n\n**Prefer host first (Forbid-first map/pack):**\n- Literals / imports / error strings / named-symbol under known path → Grep.\n- Filenames → Glob; known path → Read.\n- Health / `warm_state` / provider-dep → `gate`/`status` + Grep — **not** soft map→pack.\n- After heatmap → Read `loc` spans only (guided); **re-Grep of packed ground = FAIL**.\n\n**WHEN SCUBIEE MCP IS AVAILABLE — STRICT, NO ESCAPE:**\n- Soft/unknown: **enrich** ~30–80 denser tokens (symbols/paths/outcome verbs — **not** keyword-salad; one sentence; BAN essays) → `map`(k=10) → **required next** `pack_context`(lean, packages/ `suggested_seed`; **Forbid** empty / `_` / test seeds). Vague one-liner **or** synonym dump = **FAIL**.\n- **Refine after map/expand:** fold `suggested_seed` / hot card names into the next pack/expand query (same thread; no unrelated thrash). Prefer 1× map + 1× pack; expand only if thin.\n- Skipping `pack_context` / map-only = **FAIL**. Warming/error ≠ skip — retry `pack_context` / `status`.\n- Thin → `expand_context`; bodies → `collect_hot_context`.\n- Native-first while MCP is up = **FAIL**.\n- Native Grep/span-Read only after pack heatmap locs, **or** if MCP fully uncallable (no deadlock).\n- Empty heatmap **or** needle/health ask → stop ladder; Grep/Read — no map/status thrash.\n- Budget ≤3 MCP locate calls/beat. **BAN whole-file Read** of heatmap paths until expand/collect. Edit/Write stay native.\n```\n\n## Scubiee MCP tools I can actually call (from tool list)\n\n- `gate`\n- `status`\n- `map`\n- `pack_context`\n- `expand_context`\n- `collect_hot_context`\n- `expand`\n- `workspace`\n\n## Compliance statement\n\nYes — I will follow these locate/GATE rules for soft locate (enrich query → `map` → `pack_context`, etc.) e",
+      "error": null
+    },
+    "snapshots": {
+      "with": "C:\\Users\\usman\\Downloads\\context-engine\\.ab_workspaces\\kiro_ab_dev\\20260909T170339Z_complex_retrieval\\with",
+      "without": "C:\\Users\\usman\\Downloads\\context-engine\\.ab_workspaces\\kiro_ab_dev\\20260909T170339Z_complex_retrieval\\without"
+    },
+    "run_id": "20260909T170339Z_complex_retrieval",
+    "project_id": "ce_d9cb766c3820091ed9ffbc64ef33063c",
+    "out_json": "C:\\Users\\usman\\Downloads\\context-engine\\docs\\superpowers\\plans\\2026-09-07-kiro-mcp-ab-retrieval.json",
+    "out_md": "C:\\Users\\usman\\Downloads\\context-engine\\docs\\superpowers\\plans\\2026-09-07-kiro-mcp-ab-retrieval.md",
+    "scubiee_cli": "C:\\Users\\usman\\.local\\bin\\scubiee.EXE",
+    "cross_arm_copy": {
+      "ok": true,
+      "ratio": 0.0454,
+      "note": "artifacts independently distinct"
+    },
+    "pair_run": "C:\\Users\\usman\\Downloads\\context-engine\\.ab_workspaces\\kiro_ab_dev\\20260909T170339Z_complex_retrieval",
+    "paired_without_from_with_baseline": true
+  },
+  "prompt": "# Retrieval challenge — assemble a reasoning context pack (NO code changes)\n\n## Mission\nYou must retrieve enough multi-hop codebase context to answer a hard product question later —\nbut you will NOT implement anything. Your ONLY deliverable is one markdown file that stores\nall context needed for reasoning.\n\n## Hard question (do not answer in chat — put evidence in the file)\nTrace the full `scubiee connect` surface for Cursor-like hosts end-to-end:\n1. Where connect starts and how tool-surface install is invoked.\n2. Where mcp.json autoApprove / alwaysAllow (or equivalent allowlists) are written.\n3. Where permissions.json mcpAllowlist (or equivalent) is applied for the project.\n4. Where AGENTS.md / host GATE rule text is written for managed repos.\n5. How Cursor rule install relates to that GATE text (if at all).\n\nIgnore CLI banners/print helpers. Prefer production packages/ code over tests/docs.\n\n## Deliverable (strict)\nWrite exactly one file:\n  `out/ab_retrieval_context.md`\n\nThat file MUST contain:\n- A short problem restatement (≤8 lines).\n- An ordered call/flow narrative (entry → writers → side effects).\n- A table or bullet list of concrete `path` + `symbol` (+ optional `loc` if known) for every\n  hop you rely on.\n- Short excerpts or paraphrases of the critical logic (enough to reason without re-opening the repo).\n- A final \"open questions / unknowns\" section if anything is still unclear.\n\n## Non-goals / bans\n- Do NOT edit production code or tests.\n- Do NOT commit or push.\n- Do NOT invent paths/symbols you did not find.\n- Do NOT read or copy from any sibling A/B workspace (no `../with`, `../without`, other\n  `.ab_workspaces/**` trees, or another arm's `out/ab_retrieval_context.md`).\n- Work ONLY inside THIS workspace root.\n\n## Success\n- File exists at `out/ab_retrieval_context.md`.\n- It is self-contained enough that a later agent could reason about connect→permissions→GATE\n  without rediscovering the graph.\n- Stop when the file is written. Brief chat summary is OK; the file is the artifact.\n",
+  "runs": {
+    "with": {
+      "arm": "with",
+      "workspace": "C:\\Users\\usman\\Downloads\\context-engine\\.ab_workspaces\\kiro_ab_dev\\20260909T170339Z_complex_retrieval\\with",
+      "agent": "ab_dev_with",
+      "model": "claude-sonnet-5",
+      "effort": "medium",
+      "cmd": [
+        "C:\\Users\\usman\\AppData\\Local\\Kiro-Cli\\kiro-cli.exe",
+        "chat",
+        "--no-interactive",
+        "--trust-all-tools",
+        "--require-mcp-startup",
+        "--agent",
+        "ab_dev_with",
+        "--model",
+        "claude-sonnet-5",
+        "--effort",
+        "medium",
+        "--wrap",
+        "never",
+        "--agent-engine",
+        "v1",
+        "--legacy-ui",
+        "# Retrieval challenge — assemble a reasoning context pack (NO code changes)\n\n## Mission\nYou must retrieve enough multi-hop codebase context to answer a hard product question later —\nbut you will NOT implement anything. Your ONLY deliverable is one markdown file that stores\nall context needed for reasoning.\n\n## Hard question (do not answer in chat — put evidence in the file)\nTrace the full `scubiee connect` surface for Cursor-like hosts end-to-end:\n1. Where connect starts and how tool-surface install is invoked.\n2. Where mcp.json autoApprove / alwaysAllow (or equivalent allowlists) are written.\n3. Where permissions.json mcpAllowlist (or equivalent) is applied for the project.\n4. Where AGENTS.md / host GATE rule text is written for managed repos.\n5. How Cursor rule install relates to that GATE text (if at all).\n\nIgnore CLI banners/print helpers. Prefer production packages/ code over tests/docs.\n\n## Deliverable (strict)\nWrite exactly one file:\n  `out/ab_retrieval_context.md`\n\nThat file MUST contain:\n- A short problem restatement (≤8 lines).\n- An ordered call/flow narrative (entry → writers → side effects).\n- A table or bullet list of concrete `path` + `symbol` (+ optional `loc` if known) for every\n  hop you rely on.\n- Short excerpts or paraphrases of the critical logic (enough to reason without re-opening the repo).\n- A final \"open questions / unknowns\" section if anything is still unclear.\n\n## Non-goals / bans\n- Do NOT edit production code or tests.\n- Do NOT commit or push.\n- Do NOT invent paths/symbols you did not find.\n- Do NOT read or copy from any sibling A/B workspace (no `../with`, `../without`, other\n  `.ab_workspaces/**` trees, or another arm's `out/ab_retrieval_context.md`).\n- Work ONLY inside THIS workspace root.\n\n## Success\n- File exists at `out/ab_retrieval_context.md`.\n- It is self-contained enough that a later agent could reason about connect→permissions→GATE\n  without rediscovering the graph.\n- Stop when the file is written. Brief chat summary is OK; the file is the artifact.\n"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_ms": 207094.5,
+      "out_chars": 43383,
+      "out_tokens_est": 10846,
+      "credits": 5.13,
+      "reported_time_s": 197,
+      "tools": {
+        "scubiee_tools": [
+          "gate",
+          "map",
+          "pack_context",
+          "expand_context",
+          "map",
+          "pack_context"
+        ],
+        "mcp_scubiee_tools": [
+          "gate",
+          "map",
+          "pack_context",
+          "expand_context",
+          "map",
+          "pack_context"
+        ],
+        "cli_scubiee_tools": [],
+        "native_tools": [
+          "read",
+          "read",
+          "read",
+          "read",
+          "read",
+          "read",
+          "read",
+          "read",
+          "read",
+          "read",
+          "read",
+          "read",
+          "read",
+          "read",
+          "read",
+          "read",
+          "read",
+          "read",
+          "read",
+          "write"
+        ],
+        "scubiee_count": 6,
+        "cli_locate_count": 0,
+        "native_count": 20
+      },
+      "heatmap_discipline": {
+        "ok": true,
+        "ladder_label": "ladder_ok",
+        "had_pack": true,
+        "had_map": true,
+        "had_expand": true,
+        "cli_locate_count": 0,
+        "full_file_reads": 0,
+        "batch_fs_reads": 8,
+        "engine_broken_signal": false,
+        "note": "ladder_ok: pack + expand/collect used"
+      },
+      "taxonomy": {
+        "ladder_label": "ladder_ok",
+        "retrieval_label": "retrieval_ok"
+      },
+      "readiness": {
+        "ok": true,
+        "skipped": false,
+        "reason": "deterministic_warm_proof passed (map+pack payloads usable)",
+        "warm_proof": {
+          "ok": true,
+          "wall_ms": 13821.3,
+          "map": {
+            "ok": true,
+            "card_n": 8,
+            "seed": {
+              "file": "packages/pipeline/rules_installer.py",
+              "symbol": "write_project_gate_rules",
+              "loc": "packages/pipeline/rules_installer.py:1207-1272",
+              "score": 23.1256
+            },
+            "error": null,
+            "warm_state": null,
+            "top_file": "packages/pipeline/rules_installer.py"
+          },
+          "pack_context": {
+            "ok": true,
+            "heatmap_n": 16,
+            "seed_file": "packages/pipeline/rules_installer.py",
+            "seed_symbol": "write_project_gate_rules",
+            "error": null
+          }
+        }
+      },
+      "cross_arm_peek": {
+        "ok": true,
+        "hits": [],
+        "note": "no cross-arm peek"
+      },
+      "isolation": {
+        "ok": true,
+        "note": "scubiee MCP used with pack_context; no CLI locate; no cross-arm peek"
+      },
+      "diff": {
+        "stat": "",
+        "files": [],
+        "untracked": [],
+        "changed": false
+      },
+      "tests": {
+        "ok": true,
+        "skipped": true,
+        "reason": "retrieval mode — no pytest"
+      },
+      "rubric": {
+        "ok": true,
+        "output_file": "out/ab_retrieval_context.md",
+        "exists": true,
+        "chars": 17978,
+        "file_rec": 1.0,
+        "symbol_rec": 0.833,
+        "term_rec": 1.0,
+        "file_hits": [
+          "packages/pipeline/__main__.py",
+          "packages/pipeline/rules_installer.py",
+          "packages/pipeline/mcp_permissions.py",
+          "packages/pipeline/mcp_install.py"
+        ],
+        "symbol_hits": [
+          "cmd_connect",
+          "write_project_tool_surface",
+          "write_project_gate_rules",
+          "apply_permissions_to_repo_tool_surface",
+          "managed_gate_usage_short"
+        ],
+        "term_hits": [
+          "autoApprove",
+          "mcpAllowlist",
+          "AGENTS.md",
+          "mcp.json",
+          "permissions.json",
+          "GATE"
+        ],
+        "note": "pass"
+      },
+      "retrieval": {
+        "ok": true,
+        "output_file": "out/ab_retrieval_context.md",
+        "exists": true,
+        "chars": 17978,
+        "file_rec": 1.0,
+        "symbol_rec": 0.833,
+        "term_rec": 1.0,
+        "file_hits": [
+          "packages/pipeline/__main__.py",
+          "packages/pipeline/rules_installer.py",
+          "packages/pipeline/mcp_permissions.py",
+          "packages/pipeline/mcp_install.py"
+        ],
+        "symbol_hits": [
+          "cmd_connect",
+          "write_project_tool_surface",
+          "write_project_gate_rules",
+          "apply_permissions_to_repo_tool_surface",
+          "managed_gate_usage_short"
+        ],
+        "term_hits": [
+          "autoApprove",
+          "mcpAllowlist",
+          "AGENTS.md",
+          "mcp.json",
+          "permissions.json",
+          "GATE"
+        ],
+        "note": "pass",
+        "text": "# Retrieval context pack: `scubiee connect` surface (Cursor-like hosts)\n\n## Problem restatement\nTrace `scubiee connect` end-to-end for Cursor-like hosts:\n1. Where connect starts and how tool-surface install is invoked.\n2. Where `mcp.json` autoApprove/alwaysAllow (or equivalent) is written.\n3. Where `permissions.json` mcpAllowlist (or equivalent) is applied per project.\n4. Where AGENTS.md / host GATE rule text is written for managed repos.\n5. How Cursor rule install relates to that GATE text.\nScope: production `packages/pipeline/*`, ignore CLI banners/print helpers and tests/docs.\n\n## Ordered call/flow narrative (entry → writers → side effects)\n\n1. **CLI entry** — `packages/pipeline/__main__.py :: cmd_connect(args)` (loc 1749-1787).\n   Parses `--all` / per-tool flags into `selected` slugs via `tool_registry.ALL_SLUGS` /\n   `CONNECT_SLUGS` / `normalize_tool_slug`, then calls\n   `rules_installer.install_tools(selected, dry_run=..., repo=...)`.\n\n2. **Per-tool orchestration** — `packages/pipeline/rules_installer.py :: install_tools()` →\n   loops and calls `install_tool(tool, dry_run, repo)` for each `ToolDef`.\n\n3. **`install_tool(tool, dry_run, repo)`** (loc 1628-1692):\n   - Resolves project MCP paths (`resolve_mcp_project_paths`) and rule paths\n     (`resolve_rule_user_paths`) just for reporting.\n   - Calls `require_machine_setup()` (guards machine-level setup requirement).\n   - Removes any legacy **global** MCP entry for the tool: `_remove_legacy_global_mcp(tool)`.\n   - **Key fan-out call:** `fan_out_tool_to_enrolled_repos(tool, dry_run=False)` — this is\n     what actually walks every managed repo checkout and performs the writes (connect is\n     multi-repo, not just cwd; `--repo` is explicitly ignored — see `report[\"repo_ignored\"]`).\n   - Records the tool as connected: `connect_state.add_connected_tool(tool.slug)` (writes\n     `~/.scubiee/connected_tools.json`).\n\n4. **`fan_out_tool_to_enrolled_repos(tool, remove=False, dry_run=False)`** (loc ~1493):\n   - Gets repo list via `_fan_out_managed_repos()` → `managed_repos.managed_repo_paths(enrolled_only=False)`\n     (survives even a deleted local `.scubiee/id.json`).\n   - For each repo, calls **`write_project_tool_surface(repo, tool, dry_run=False)`**.\n\n5. **`write_project_tool_surface(repo, tool, dry_run)`** (loc 1380-1440) — the real writer,\n   does three things in order:\n   a. `written = _write_workspace_mcp(tool, root)` → writes the project-local MCP config\n      (`.cursor/mcp.json` for Cursor). Then `mcp_install.verify_mcp_json(mcp_path)` sanity-checks\n      the written JSON (server present, uses bridge/worker, has `CTX_SCUBIEE_BUILD` env).\n   b. `rules = write_project_gate_rules(root, slugs=[tool.slug], dry_run=False)` → writes the\n      GATE rule file for the tool (Cursor: `.cursor/rules/scubiee.mdc`) **and appends/refreshes\n      the GATE section in `AGENTS.md`** at repo root.\n   c. `perm = mcp_permissions.apply_permissions_to_repo_tool_surface(tool.slug, root, dry_run=False)`\n      → writes the sidecar allowlist file (Cursor: `.cursor/permissions.json` `mcpAllowlist`).\n\n6. **MCP config writer (step 5a detail)** — `_write_workspace_mcp` (loc 586+), Cursor branch:\n   ```python\n   if slug == \"cursor\":\n       path = repo / \".cursor\" / \"mcp.json\"\n       entry = format_server_entry(tool, repo, pin_repo=True)\n       write_mcp_config(tool, path, entry)\n       written.append(path)\n   ```\n   The actual server block (command/args/env) comes from\n   `packages/pipeline/mcp_install.py :: server_entry(repo, host, port)`, which picks\n   `scubiee-mcp-bridge` → `scubiee-mcp` → `python -m pipeline.mcp_locate` and stamps env vars\n   (`CTX_ENGINE_URL`, `CTX_REPO`, `CTX_PROJECT_ID`, `CTX_SCUBIEE_BUILD`, session id keys, etc.).\n   A second, simpler helper `mcp_install.merge_mcp_json(path, name, repo, host, port)` also\n   exists and calls `server_entry` directly to merge a `mcpServers[name]` block into any\n   `mcp.json`-shaped file (used by e.g. `write_kiro_mcp`). Note: neither of these two writers\n   sets `autoApprove`/`alwaysAllow` fields on the server entry for Cursor — that's handled\n   separately by the permissions sidecar (step 7), because Cursor's mechanism is\n   `sidecar_json`, not `embedded_mcp` (see `mcp_permissions._TOOL_PLANS[\"cursor\"]`).\n   Hosts using `embedded_mcp` (cline, roo-code, kiro, claude-code, devin-desktop, pi) instead\n   get `autoApprove`/`alwaysAllow` written onto the `mcpServers.scubiee` entry itself — that\n   logic lives in `mcp_permissions.write_tool_permission_artifacts`'s other branches (not\n   detailed further here since the question is about Cursor-like hosts).\n\n7. **Permissions sidecar writer (step 5c detail)** —\n   `packages/pipeline/mcp_permissions.py :: apply_permissions_to_repo_tool_surface(tool_slug, repo, profile, dry_run)`\n   (loc 575-588) is a thin wrapper that calls\n   **`write_tool_permission_artifacts(tool_slug, repo, profile, dry_run)`** (loc 422+).\n   For `tool_slug == \"cursor\"`:\n   ```python\n   project_path = root / \".cursor\" / \"permissions.json\"\n   report[\"cursor\"] = merge_cursor_permissions(project_path, profile=profile)\n   ```\n   **`merge_cursor_permissions(path, profile)`** (loc ~296-345) is the actual mcpAllowlist\n   writer:\n   - Loads existing JSON (`_load_json_object`).\n   - `additions = _cursor_mcp_allowlist(profile=profile)` (loc 226-236):\n     ```python\n     entries = [f\"{server}:*\"]              # \"scubiee:*\"\n     for tool in PHASE_LOCATE_TOOLS:\n         entries.append(f\"*:{tool}\")        # \"*:gate\", \"*:map\", \"*:pack_context\", ...\n     ```\n     `PHASE_LOCATE_TOOLS` = `(gate, map, pack_context, expand_context, collect_hot_context,\n     workspace, expand, status)`.\n   - Prunes stale classic/lab entries (`_prune_stale_scubiee_allowlist_entries`), merges unique\n     strings, and sets `document[\"mcpAllowlist\"] = merged`.\n   - Also merges an `autoRun.allow_instructions` free-text hint line telling Cursor's agent to\n     allow the locate tools.\n   - Writes via `_write_json_object` → `atomic_write_text(path, json.dumps(document, indent=2,\n     sort_keys=True) + \"\\n\")`.\n   - This is exactly the mechanism documented at the top of `mcp_permissions.py`:\n     *\"Cursor: permissions.json mcpAllowlist (server:tool)\"*.\n\n8. **GATE rule text writer (step 5b detail)** —\n   `packages/pipeline/rules_installer.py :: write_project_gate_rules(repo, slugs, dry_run)`\n   (loc 1207-1207+):\n   - Computes `gate = gate_line_for_repo(root)` (reads `.scubiee/id.json` project id, or `\"p\"`\n     if globally paused, else `\"0\"`/unmanaged).\n   - Skips if not a project folder or repo not enrolled (`gate` doesn't start with `\"1:\"` and\n     isn't `\"p\"`).\n   - For each selected `ToolDef`, for each path in `resolve_rule_project_paths(tool, root)`,\n     calls `_write_rule(tool, path, gate_line=gate)`.\n   - **Always additionally** writes/refreshes `AGENTS.md` at repo root via\n     `_write_rule_append_md(root / \"AGENTS.md\", gate_line=gate)` — this is unconditional,\n     independent of which tools are selected.\n\n9. **`_write_rule(tool, path, gate_line)`** dispatches by `tool.rule_format` via `_RULE_WRITERS`\n   dict: `{\"mdc\": _write_rule_mdc, \"md\": _write_rule_md, \"append-md\": _write_rule_append_md,\n   \"none\": noop}`.\n   - **Cursor** `ToolDef.rule_format == \"mdc\"` → `_write_rule_mdc(path, gate_line)` (loc 1147) →\n     content from `_rule_content_mdc(gate_line)` → `_render_gate_rule_mdc(gate_line)` (loc\n     277-289 in the extract), which for an enrolled repo (`gate_line.startswith(\"1:\")`) wraps\n     the shared body in Cursor's front-matter:\n     ```python\n     \"---\\n\"\n     f\"description: GATE {gate_line} Scubiee managed\\n\"\n     \"alwaysApply: true\\n\"\n     \"---\\n\\n\"\n     f\"{managed_gate_rule_body(gate_line, pid)}\\n\"\n     ```\n   - **AGENTS.md** uses `rule_format`-independent `_write_rule_append_md` (called directly by\n     `write_project_gate_rules`, not through `_RULE_WRITERS`), whose content comes from\n     `_rule_content_md(gate_line)` → `_render_gate_rule_md(gate_line)` → same\n     `managed_gate_rule_body(gate_line, pid)` for enrolled repos — wrapped instead in\n     `<!-- scubiee:start -->` / `<!-- scubiee:end --> ` markers (`_MARKER_START`/`_MARKER_END`)\n     so re-running connect/init can find-and-replace just that section\n     (`_strip_marked_sections`).\n   - **Kiro steering** (`.kiro/steering/scubiee.md`) is a special case inside `_write_rule_md`:\n     if the path is under a `steering` dir and named `scubiee*`, it swaps in the **MCP-only**\n     variant `managed_gate_mcp_only_rule_body(gate_line, pid)` instead, plus a Kiro\n     `inclusion: always` front-matter block. This explains why the `.kiro/steering/scubiee.md`\n     and `AGENTS.md` text differ slightly in this repo (MCP-tool names vs CLI+MCP hybrid\n     wording) even though both come from the same `write_project_gate_rules` call.\n\n10. **Shared GATE body text** — `managed_gate_rule_body(gate_line, project_id)` (loc 195-200):\n    ```python\n    f\"**GATE {gate_line}** - Managed repo. `project_id={project_id!r}`.\\n\\n\"\n    f\"{managed_gate_usage_short()}\"\n    ```\n    `managed_gate_usage_short()` (loc ~53-99 in `rules_installer.py`) is the long\n    Prefer/Forbid/MUST-use policy text — \"LOCATE PRIORITY (managed)\", \"MUST Use Scubiee\",\n    \"Prefer host first (Forbid-first map/pack)\", \"WHEN SCUBIEE IS AVAILABLE — STRICT, NO\n    ESCAPE\" bullets, budget ≤3 locate calls/beat, etc. This is the *general* (CLI+MCP) wording\n    used for Cursor's `.mdc` rule and for `AGENTS.md`.\n    The **MCP-only** sibling `managed_gate_mcp_only_usage_short()` produces the stricter,\n    MCP-tool-named wording (`map`/`pack_context`/`expand_context`/`collect_hot_context`) used\n    for Kiro steering and \"MCP-only surface\" hosts — this is the text visible in this\n    workspace's own `.kiro/steering/scubiee.md` and `AGENTS.md` (both show the MCP-only\n    phrasing here, meaning this particular repo's AGENTS.md was generated by\n    `managed_gate_mcp_only_usage_short`/`_write_rule_append_md`-adjacent MCP-only path rather\n    than the general one — see Open Questions).\n\n## Path + symbol table\n\n| Hop | path | symbol | loc |\n|---|---|---|---|\n| 1 | packages/pipeline/__main__.py | cmd_connect | 1749-1787 |\n| 2 | packages/pipeline/rules_installer.py | install_tools | (loop calling install_tool) |\n| 3 | packages/pipeline/rules_installer.py | install_tool | 1628-1692 |\n| 4 | packages/pipeline/rules_installer.py | fan_out_tool_to_enrolled_repos | ~1493 |\n| 5 | packages/pipeline/rules_installer.py | write_project_tool_surface | 1380-1440 |\n| 6 | packages/pipeline/rules_installer.py | _write_workspace_mcp (cursor branch) | 586-630ish |\n| 6b | packages/pipeline/mcp_install.py | server_entry | 34-118 |\n| 6c | packages/pipeline/mcp_install.py | merge_mcp_json | 120-146 |\n| 6d | packages/pipeline/mcp_install.py | verify_mcp_json | ~169-210 |\n| 7 | packages/pipeline/mcp_permissions.py | apply_permissions_to_repo_tool_surface | 575-588 |\n| 7b | packages/pipeline/mcp_permissions.py | write_tool_permission_artifacts | 422-480+ |\n| 7c | packages/pipeline/mcp_permissions.py | merge_cursor_permissions | ~296-345 |\n| 7d | packages/pipeline/mcp_permissions.py | _cursor_mcp_allowlist | 226-236 |\n| 7e | packages/pipeline/mcp_permissions.py | PHASE_LOCATE_TOOLS | 29-38 |\n| 7f | packages/pipeline/mcp_permissions.py | _TOOL_PLANS[\"cursor\"] (sidecar_json, .cursor/permissions.json) | ~99-105 |\n| 8 | packages/pipeline/rules_installer.py | write_project_gate_rules | 1207-1260ish |\n| 8b | packages/pipeline/rules_installer.py | gate_line_for_repo | ~1316+ |\n| 9 | packages/pipeline/rules_installer.py | _write_rule / _RULE_WRITERS | 1201-1211 |\n| 9b | packages/pipeline/rules_installer.py | _write_rule_mdc (Cursor) | 1147-1152 |\n| 9c | packages/pipeline/rules_installer.py | _write_rule_append_md (AGENTS.md) | 1177-1191 |\n| 9d | packages/pipeline/rules_installer.py | _write_rule_md (Kiro steering special-case) | 1155-1176 |\n| 10 | packages/pipeline/rules_installer.py | _render_gate_rule_mdc | 277-303ish |\n| 10b | packages/pipeline/rules_installer.py | _render_gate_rule_md | ~305-315 |\n| 10c | packages/pipeline/rules_installer.py | managed_gate_rule_body | 195-200 |\n| 10d | packages/pipeline/rules_installer.py | managed_gate_mcp_only_rule_body | ~202-207 |\n| 10e | packages/pipeline/rules_installer.py | managed_gate_usage_short | 53-99 (per earlier pack) |\n| 10f | packages/pipeline/rules_installer.py | managed_gate_mcp_only_usage_short | ~101-140 (per earlier pack) |\n| — | packages/pipeline/tool_registry.py | TOOLS (Cursor ToolDef) | 76-86 |\n| — | packages/pipeline/tool_registry.py | resolve_rule_project_paths | 439-448 |\n| — | packages/pipeline/tool_registry.py | resolve_mcp_project_paths (cursor branch `.cursor/mcp.json`) | 358-387 (cursor case ~371-372) |\n| — | packages/pipeline/connect_state.py | add_connected_tool / load_connected_tools | 32-50ish |\n\n## Cursor ToolDef (packages/pipeline/tool_registry.py, loc 76-86)\n```python\nToolDef(\n    name=\"Cursor\",\n    slug=\"cursor\",\n    mcp_schema=\"claude\",\n    mcp_key=\"mcpServers\",\n    mcp_format=\"json\",\n    mcp_user_path=\".cursor/mcp.json\",\n    rule_format=\"mdc\",\n    rule_user_path=\".cursor/rules/scubiee.mdc\",\n    notes=\"Global MCP only; project GATE rules written on scubiee init.\",\n),\n```\nThis single struct is the source of truth wiring MCP path, rule format, and rule path together\nfor Cursor; `write_project_tool_surface` + `write_project_gate_rules` consume it generically for\nevery host, so \"Cursor-like hosts\" (cline, roo-code, kiro, codex, continue, opencode, …) all\nflow through the *same* functions — only the `slug`-branch inside `_write_workspace_mcp` and the\n`mechanism` in `mcp_permissions._TOOL_PLANS` differ per host.\n\n## Answers mapped to the 5 sub-questions\n\n1. **Connect entry / tool-surface install invocation:** `__main__.cmd_connect` →\n   `rules_installer.install_tools` → `install_tool` → `fan_out_tool_to_enrolled_repos` →\n   `write_project_tool_surface` (per enrolled repo, per selected tool).\n2. **mcp.json autoApprove/alwaysAllow:** For Cursor specifically, NOT written into `mcp.json`\n   itself — Cursor's plan (`mcp_permissions._TOOL_PLANS[\"cursor\"]`) is `mechanism=\"sidecar_json\"`,\n   so autoApprove/alwaysAllow fields are skipped for Cursor's MCP entry\n   (`_write_workspace_mcp`/`server_entry` never set them). Hosts with `mechanism=\"embedded_mcp\"`\n   (cline, roo-code, kiro, claude-code, devin-desktop, pi, opencode) get autoApprove/alwaysAllow\n   written onto the `mcpServers.scubiee` block instead, via other branches inside\n   `write_tool_permission_artifacts` (not expanded above — outside the Cursor-focused ask).\n3. **permissions.json mcpAllowlist:** `mcp_permissions.merge_cursor_permissions()` writes\n   `.cursor/permissions.json` → `mcpAllowlist` = `[\"scubiee:*\", \"*:gate\", \"*:map\",\n   \"*:pack_context\", \"*:expand_context\", \"*:collect_hot_context\", \"*:workspace\", \"*:expand\",\n   \"*:status\"]` (from `_cursor_mcp_allowlist` + `PHASE_LOCATE_TOOLS`), called from\n   `write_project_tool_surface` step 5c on every fanned-out enrolled repo.\n4. **AGENTS.md / GATE text:** `write_project_gate_rules` unconditionally calls\n   `_write_rule_append_md(root/\"AGENTS.md\", gate_line)`, using `<!-- scubiee:start/end -->`\n   markers, content = `_render_gate_rule_md(gate_line)` → `managed_gate_rule_body` (general) —\n   except Kiro steering files get the MCP-only variant via a special-case branch in\n   `_write_rule_md`.\n5. **Cursor rule vs GATE text relation:** They are the *same underlying GATE body* rendered\n   through two different template wrappers: Cursor's `.cursor/rules/scubiee.mdc` via\n   `_render_gate_rule_mdc` (adds YAML front-matter `description`/`alwaysApply: true`) and\n   AGENTS.md via `_render_gate_rule_md` (adds HTML comment markers instead). Both ultimately\n   call `managed_gate_rule_body(gate_line, project_id)` → `managed_gate_usage_short()`. So\n   Cursor rule install and AGENTS.md GATE text are two sibling renderings of one shared policy\n   string, both produced inside the same `write_project_gate_rules` call, not independent\n   systems.\n\n## Open questions / unknowns\n- This workspace's actual `AGENTS.md`/`.kiro/steering/scubiee.md` (seen in context) show the\n  **MCP-only** wording (`managed_gate_mcp_only_usage_short`), but per the code read,\n  `write_project_gate_rules` always writes AGENTS.md via the **general** `_render_gate_rule_md`\n  path (`managed_gate_rule_body`, not the mcp-only variant) — only the Kiro-steering special\n  case in `_write_rule_md` switches to MCP-only text. I could not find, in the spans read so\n  far, a branch that would make `AGENTS.md` itself receive the MCP-only body. Possibilities not\n  yet confirmed: (a) a different code path (e.g. an A/B eval harness like\n  `scripts/kiro_mcp_ab_dev_eval.py::install_gate_surface`, seen in the first `map` call but not\n  expanded) writes this workspace's AGENTS.md directly with MCP-only text for test purposes,\n  bypassing `rules_installer` entirely; (b) there's a config flag/env var selecting MCP-only\n  AGENTS.md rendering that wasn't visible in the read spans. Flagging rather than guessing.\n- Did not expand `_write_workspace_mcp`'s branches for `embedded_mcp` hosts (cline/roo/kiro) or\n  the autoApprove/alwaysAllow write site itself inside `write_tool_permission_artifacts` — only\n  confirmed Cursor's own MCP entry omits those fields. If a later question needs the exact\n  autoApprove-write line, expand `write_tool_permission_artifacts` past line 480 (cline/roo/kiro\n  branches) and check `format_server_entry`/`write_mcp_config` in `rules_installer.py`.\n- `gate_line_for_repo` full body (loc ~1316+) was referenced but not fully read; confirmed only\n  its early behavior (paused → `\"p\"`, else reads `project_id.json`). Exact unmanaged (`\"0\"`)\n  fallback logic not verified line-by-line.\n- Did not verify `format_server_entry`/`write_mcp_config` (called inside `_write_workspace_mcp`)\n  bodies — assumed they are thin JSON-shape adapters around `server_entry`'s dict based on\n  naming and usage pattern; not directly read.\n"
+      },
+      "success": true,
+      "project_id_binding": {
+        "ok": true,
+        "ctx_project_id": "ce_f4e1adced6e0dd72db51bf587464e982",
+        "on_disk_project_id": "ce_f4e1adced6e0dd72db51bf587464e982",
+        "ctx_repo": "C:/Users/usman/Downloads/context-engine",
+        "note": "ok"
+      },
+      "arm_status": "ok",
+      "log": ".ab_workspaces/kiro_ab_dev/20260909T170339Z_complex_retrieval/logs/with.log"
+    },
+    "without": {
+      "arm": "without",
+      "workspace": "C:\\Users\\usman\\Downloads\\context-engine\\.ab_workspaces\\kiro_ab_dev\\20260909T170339Z_complex_retrieval\\without",
+      "agent": "ab_dev_without",
+      "model": "claude-sonnet-5",
+      "effort": "medium",
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_ms": 162000.0,
+      "out_chars": 36949,
+      "out_tokens_est": 9238,
+      "credits": 6.23,
+      "reported_time_s": 162,
+      "tools": {
+        "scubiee_tools": [],
+        "mcp_scubiee_tools": [],
+        "cli_scubiee_tools": [],
+        "native_tools": [
+          "read",
+          "read",
+          "shell",
+          "shell",
+          "read",
+          "read",
+          "read",
+          "read",
+          "read",
+          "read",
+          "read",
+          "read",
+          "write"
+        ],
+        "scubiee_count": 0,
+        "cli_locate_count": 0,
+        "native_count": 13
+      },
+      "heatmap_discipline": {
+        "ok": true,
+        "note": "n/a",
+        "ladder_label": "n/a"
+      },
+      "taxonomy": {
+        "ladder_label": "n/a",
+        "retrieval_label": "retrieval_ok"
+      },
+      "cross_arm_peek": {
+        "ok": true,
+        "hits": [],
+        "note": "no cross-arm peek"
+      },
+      "isolation": {
+        "ok": true,
+        "note": "no scubiee leakage; no cross-arm peek"
+      },
+      "diff": {
+        "stat": "AGENTS.md | 23 ++++-------------------\n 1 file changed, 4 insertions(+), 19 deletions(-)",
+        "files": [
+          "AGENTS.md",
+          ".kiro/ab_surface/",
+          ".kiro/agents/",
+          ".kiro/steering/"
+        ],
+        "untracked": [
+          ".kiro/ab_surface/",
+          ".kiro/agents/",
+          ".kiro/steering/"
+        ],
+        "changed": true
+      },
+      "tests": {
+        "ok": true,
+        "skipped": true,
+        "reason": "retrieval mode — no pytest"
+      },
+      "rubric": {
+        "ok": true,
+        "output_file": "out/ab_retrieval_context.md",
+        "exists": true,
+        "chars": 21704,
+        "file_rec": 1.0,
+        "symbol_rec": 0.833,
+        "term_rec": 1.0,
+        "file_hits": [
+          "packages/pipeline/__main__.py",
+          "packages/pipeline/rules_installer.py",
+          "packages/pipeline/mcp_permissions.py",
+          "packages/pipeline/mcp_install.py"
+        ],
+        "symbol_hits": [
+          "cmd_connect",
+          "write_project_tool_surface",
+          "write_project_gate_rules",
+          "apply_permissions_to_repo_tool_surface",
+          "managed_gate_usage_short"
+        ],
+        "term_hits": [
+          "autoApprove",
+          "mcpAllowlist",
+          "AGENTS.md",
+          "mcp.json",
+          "permissions.json",
+          "GATE"
+        ],
+        "note": "pass",
+        "text": "# Retrieval context pack — `scubiee connect` surface (Cursor-like hosts)\n\n## 1. Problem restatement (≤8 lines)\nTrace `scubiee connect` end-to-end for Cursor-like hosts: (1) CLI entry → tool-surface\ninstall invocation, (2) where `mcp.json` `autoApprove`/`alwaysAllow` (embedded MCP\nallowlists) are written, (3) where `permissions.json` `mcpAllowlist` (Cursor-specific\nsidecar) is applied, (4) where `AGENTS.md` / host GATE rule text is written for managed\nrepos, (5) how Cursor rule (`.cursor/rules/*.mdc`) install relates to that GATE text.\nAll evidence below is from production code under `packages/pipeline/`, not tests/docs.\nIgnoring CLI banner/print helpers as instructed.\n\n## 2. Ordered call/flow narrative (entry → writers → side effects)\n\n1. **Entry point** — `packages/pipeline/__main__.py`\n   - `build_parser()`-equivalent argparse wiring (~line 2660) registers subcommand\n     `\"connect\"` → `p_connect.set_defaults(func=cmd_connect)` (line 2683).\n   - `cmd_connect(args)` at **line 1749**: collects selected tool slugs from\n     `CONNECT_SLUGS` (or `--all` → `ALL_SLUGS`), then calls\n     `pipeline.rules_installer.install_tools(selected, dry_run=dry_run, repo=repo)`\n     (imports at lines 1751–1752, call at line 1777).\n   - Non-tty output goes through `pipeline.cli_ui.print_connect_summary` — a CLI\n     banner/print helper, correctly out of scope per instructions.\n\n2. **Tool-surface install fan-out** — `packages/pipeline/rules_installer.py`\n   - `install_tools(slugs, dry_run, repo)` → for each slug, resolves a `ToolDef` via\n     `get_tool(slug)` (from `tool_registry.py`) and calls `install_tool(tool, ...)`.\n   - `install_tool(tool, dry_run, repo)`:\n     - Computes legacy global MCP paths to purge (`resolve_mcp_legacy_global_paths`).\n     - Calls `require_machine_setup()` (from `connect_state.py`) — guards that\n       `scubiee setup` ran first.\n     - Removes stale legacy global MCP entries: `_remove_legacy_global_mcp(tool)`.\n     - **Fans out to every managed repo**: `fan_out_tool_to_enrolled_repos(tool, dry_run=False)`\n       → iterates `_fan_out_managed_repos()` (== `managed_repos.managed_repo_paths(enrolled_only=False)`)\n       and calls `write_project_tool_surface(repo, tool, dry_run=False)` per repo.\n     - Records the tool as connected: `add_connected_tool(tool.slug)` (writes\n       `~/.scubiee/connected_tools.json` via `connect_state.py`).\n\n3. **Per-repo, per-tool surface write** — `rules_installer.write_project_tool_surface(repo, tool, dry_run)`\n   (this is the real \"installs MCP config + rules\" unit of work, called once per\n   enrolled repo × connected tool):\n   - Step A — **MCP config write**: `_write_workspace_mcp(tool, root)`\n     - For `slug == \"cursor\"`: writes `repo/.cursor/mcp.json` via\n       `format_server_entry(tool, repo, pin_repo=True)` + `write_mcp_config(...)`.\n     - `format_server_entry()` builds the base entry from\n       `pipeline.mcp_install.server_entry(repo)` (command/args/env for the MCP\n       stdio server), then at the end calls\n       `pipeline.mcp_permissions.enrich_server_entry_permissions(entry, tool.slug)`\n       — **this is where `autoApprove`/`alwaysAllow` get embedded directly into the\n       `mcp.json` server block** (see §3 below) before the file is written.\n     - Verification: `pipeline.mcp_install.verify_mcp_json(mcp_path)` checks the\n       write succeeded; failures flip `report[\"ok\"] = False`.\n   - Step B — **GATE rule write**: `write_project_gate_rules(root, slugs=[tool.slug], dry_run=False)`\n     - Computes `gate = gate_line_for_repo(root)` (from repo's `.scubiee/id.json`\n       project id, or `\"p\"` if paused, or `\"0\"` if unenrolled).\n     - Skips entirely if repo isn't `_project_rules_eligible` or gate is `\"0\"`\n       (unmanaged) — i.e. **GATE text is only written for managed/enrolled repos**\n       (`gate.startswith(\"1:\")`) or paused repos (`gate == \"p\"`).\n     - For the `cursor` tool: writes `repo/.cursor/rules/scubiee.mdc` via\n       `_write_rule_mdc()` → `_rule_content_mdc(gate_line=gate)` →\n       `_render_gate_rule_mdc(gate_line)` (content = frontmatter + `managed_gate_rule_body(...)`,\n       body sourced from `managed_gate_usage_short()` — the CLI/native-first GATE\n       policy string, distinct from the MCP-only variant used for Kiro steering).\n     - **Also always writes/appends `repo/AGENTS.md`** via `_write_rule_append_md(agents, gate_line=gate)`\n       regardless of which specific tool triggered the call — this is the shared\n       host-agnostic GATE surface. Content is delimited by\n       `MARKER_START`/`MARKER_END` markers from `pipeline.branding` so re-runs\n       replace only the Scubiee section.\n   - Step C — **Permissions sidecar**: `pipeline.mcp_permissions.apply_permissions_to_repo_tool_surface(tool.slug, root, dry_run=False)`\n     → thin wrapper around `write_tool_permission_artifacts(tool_slug, repo, profile=\"locate\", dry_run)`.\n     - For `tool_slug == \"cursor\"`: writes/merges `repo/.cursor/permissions.json`\n       via `merge_cursor_permissions(project_path, profile=\"locate\")` —\n       **this is where `mcpAllowlist` is written** (see §4 below).\n     - Also writes a manifest at `repo/.scubiee/mcp-permissions.json` recording what\n       was applied per tool (`_write_permissions_manifest`).\n\n4. **Result aggregation**: `write_project_tool_surface` returns a report dict with\n   `mcp_paths`, `rules`, `permissions` sub-reports; `install_tool` aggregates these\n   across all fanned-out repos; `cmd_connect` prints/serializes the final list.\n\n## 3. Where `mcp.json` `autoApprove` / `alwaysAllow` are written (embedded MCP allowlist)\n\n- **File**: `packages/pipeline/mcp_permissions.py`\n- **Symbol**: `enrich_server_entry_permissions(entry, tool_slug, *, profile=\"locate\")`\n- **Called from**: `rules_installer.format_server_entry()` (unconditionally, at the\n  very end, right before returning the entry dict that gets written to `mcp.json`\n  / `.mcp.json` / etc.)\n- **Logic** (paraphrase of the critical branch):\n  ```python\n  _EMBEDDED_MCP_SLUGS = {\"cline\", \"roo-code\", \"cursor\", \"kiro\", \"devin-desktop\", \"pi\", \"claude-code\"}\n\n  if plan.mechanism == \"embedded_mcp\" or tool_slug in _EMBEDDED_MCP_SLUGS:\n      if tool_slug == \"cursor\":\n          out.pop(\"disabled\", None)          # Cursor: don't leave a sticky disabled:true\n      else:\n          out[\"disabled\"] = False\n      if out.get(\"enabled\") is False:\n          out[\"enabled\"] = True\n      out[\"autoApprove\"] = list(tools) if profile == \"locate\" else [\"*\"]\n      out[\"alwaysAllow\"] = list(out[\"autoApprove\"])\n      return out\n  ```\n  where `tools = locate_tool_names(profile=\"locate\")` resolves to\n  `PHASE_LOCATE_TOOLS = (\"gate\",\"map\",\"pack_context\",\"expand_context\",\n  \"collect_hot_context\",\"workspace\",\"expand\",\"status\")`.\n- **Net effect**: for Cursor (and Cline/Roo/Kiro/Devin/Pi/Claude Code), the\n  `scubiee` server block inside their respective `mcp.json`-family file gets\n  `\"autoApprove\": [...]` and `\"alwaysAllow\": [...]` populated with the 8 locate\n  tool names, so the host does not prompt for approval on every locate call.\n- **Note**: this write happens on **every** `write_project_tool_surface` call\n  (i.e., every `scubiee connect --cursor` / fan-out to every enrolled repo),\n  because `format_server_entry` is called unconditionally inside\n  `_write_workspace_mcp`.\n\n## 4. Where `permissions.json` `mcpAllowlist` is applied (Cursor-specific sidecar)\n\n- **File**: `packages/pipeline/mcp_permissions.py`\n- **Symbols**:\n  - `merge_cursor_permissions(path, *, profile=\"locate\")` — the writer.\n  - `_cursor_mcp_allowlist(*, profile)` — builds the allowlist entries.\n  - `write_tool_permission_artifacts(tool_slug, repo, ...)` — dispatcher that picks\n    `.cursor/permissions.json` as the sidecar path for `tool_slug == \"cursor\"`.\n  - `apply_permissions_to_repo_tool_surface(tool_slug, repo, ...)` — thin wrapper\n    called from `write_project_tool_surface` (Step C above).\n- **Called from**: `rules_installer.write_project_tool_surface()`, *after* the MCP\n  config write (Step B/C ordering: MCP write → GATE rules → permissions sidecar).\n- **Path resolved**: `repo / \".cursor\" / \"permissions.json\"` (project-local, not\n  global/user-home, unless `CTX_MCP_PERMISSIONS_USER=1` env var is set, in which\n  case it *also* merges into `~/.cursor/permissions.json`).\n- **Logic** (paraphrase):\n  ```python\n  def _cursor_mcp_allowlist(*, profile):\n      server = MCP_SERVER_NAME       # \"scubiee\"\n      if profile == \"all\":\n          return [f\"{server}:*\", \"*:*\"]\n      entries = [f\"{server}:*\"]\n      for tool in PHASE_LOCATE_TOOLS:\n          entries.append(f\"*:{tool}\")     # e.g. \"*:map\", \"*:pack_context\", ...\n      return entries\n\n  def merge_cursor_permissions(path, *, profile=\"locate\"):\n      document = _load_json_object(path)                       # read-merge, never clobber\n      additions = _cursor_mcp_allowlist(profile=profile)\n      existing = document.get(\"mcpAllowlist\") or []\n      pruned = _prune_stale_scubiee_allowlist_entries(existing, profile=profile)  # drop stale lab/classic grants\n      document[\"mcpAllowlist\"] = _merge_unique_strings(pruned, additions)\n      # also merges document[\"autoRun\"][\"allow_instructions\"] with a locate-tools hint string\n      _write_json_object(path, document)\n  ```\n- **Net effect**: `repo/.cursor/permissions.json` ends up with\n  `\"mcpAllowlist\": [\"scubiee:*\", \"*:gate\", \"*:map\", \"*:pack_context\",\n  \"*:expand_context\", \"*:collect_hot_context\", \"*:workspace\", \"*:expand\", \"*:status\"]`\n  (plus any pre-existing user entries preserved verbatim, and stale\n  lab/classic-tool grants pruned). This is Cursor's own permission-gate mechanism,\n  distinct from — and layered on top of — the embedded `autoApprove`/`alwaysAllow`\n  fields inside `mcp.json` from §3.\n- Both `merge_cursor_permissions` and `enrich_server_entry_permissions` are\n  idempotent read-merge-write operations (never overwrite unrelated keys/servers).\n\n## 5. Where `AGENTS.md` / host GATE rule text is written for managed repos\n\n- **File**: `packages/pipeline/rules_installer.py`\n- **Symbols**:\n  - `write_project_gate_rules(repo, *, dry_run=False, slugs=None)` — top-level writer,\n    called from `write_project_tool_surface` (Step B) and also directly from\n    `apply_connected_tools_to_repo()` (used by `scubiee init`).\n  - `gate_line_for_repo(repo)` — resolves gate state: `\"0\"` (unmanaged),\n    `\"1:<project_id>\"` (managed/enrolled — reads `.scubiee/id.json` via\n    `pipeline.project_id.read_id_file`), or `\"p\"` (paused, via\n    `pipeline.pause_resume.is_paused()`).\n  - `_render_gate_rule_mdc` / `_render_gate_rule_md` — dispatch on `gate_line` to\n    build the actual body text (`managed_gate_rule_body`, `unmanaged_gate_rule_body`,\n    `paused_gate_rule_body`).\n  - `managed_gate_usage_short()` — the CLI/native-first GATE policy text used for\n    most hosts' rule files (Cursor `.mdc`, Claude `CLAUDE.md`, `AGENTS.md`, etc.).\n  - `managed_gate_mcp_only_usage_short()` — an MCP-tool-named variant used\n    specifically for **Kiro steering** files (`.kiro/steering/scubiee.md`) and\n    other MCP-only surfaces — see the special-case branch inside `_write_rule_md`:\n    ```python\n    is_kiro_steering = \"steering\" in parts_l and path.name.lower().startswith(\"scubiee\")\n    if is_kiro_steering and gate_line and str(gate_line).startswith(\"1:\"):\n        content = managed_gate_mcp_only_rule_body(str(gate_line), pid) + \"\\n\"\n        content = \"---\\ninclusion: always\\n---\\n\\n\" + content\n    ```\n  - **`AGENTS.md` write**: unconditional inside `write_project_gate_rules`, after the\n    per-tool rule-file loop:\n    ```python\n    agents = root / \"AGENTS.md\"\n    ...\n    _write_rule_append_md(agents, gate_line=gate)\n    report[\"written\"].append(str(agents))\n    ```\n    `_write_rule_append_md` strips any previously marked Scubiee section\n    (`_strip_marked_sections`, using `MARKER_START`/`MARKER_END` from\n    `pipeline.branding`) and appends a fresh section — so `AGENTS.md` always gets\n    the GATE text regardless of which specific tool(s) were passed in `slugs`.\n- **Gating condition**: `write_project_gate_rules` returns early\n  (`report[\"skipped\"] = True`) if the repo is not `_project_rules_eligible`\n  (needs either `.scubiee/id.json` or a `.git` dir) **or** if\n  `gate` is `\"0\"` (not `1:...` and not `\"p\"`) — i.e. **GATE rule text (including\n  `AGENTS.md`) is only written for enrolled/managed repos or explicitly-paused\n  repos, never for a bare unmanaged folder.**\n- **Per-tool rule file paths** come from `tool_registry.resolve_rule_project_paths(tool, root)`,\n  e.g. for Cursor: `root / \".cursor\" / \"rules\" / \"scubiee.mdc\"` (from\n  `ToolDef(slug=\"cursor\", rule_format=\"mdc\", rule_user_path=\".cursor/rules/scubiee.mdc\", ...)`\n  in `tool_registry.py`).\n\n## 6. How Cursor rule install relates to the GATE text\n\n- Cursor's rule format is `\"mdc\"` (`ToolDef.rule_format = \"mdc\"`), dispatched\n  through `_RULE_WRITERS[\"mdc\"] = _write_rule_mdc`.\n- `_write_rule_mdc(path, gate_line)` writes `.cursor/rules/scubiee.mdc` with:\n  ```\n  ---\n  description: GATE <gate_line> Scubiee managed\n  alwaysApply: true\n  ---\n\n  <managed_gate_rule_body(gate_line, project_id)>\n  ```\n  where `managed_gate_rule_body` embeds `managed_gate_usage_short()` — the\n  **CLI-first** GATE policy (mentions `scubiee map`/`pack`/`expand` CLI commands\n  as the preferred path, MCP tool names as fallback), because Cursor is treated\n  as a general host with both CLI and MCP available.\n- This is the **same GATE-line computation and same body-generation functions**\n  used for `AGENTS.md` (§5) — the only difference between the Cursor `.mdc` file\n  and `AGENTS.md` is the wrapper/frontmatter (`_write_rule_mdc` adds YAML\n  frontmatter with `alwaysApply: true`; `_write_rule_append_md` adds\n  marker-delimited sections instead) and file format (`.mdc` vs `.md`). Both are\n  populated by `_render_gate_rule_mdc`/`_render_gate_rule_md` → `managed_gate_rule_body`\n  → `managed_gate_usage_short()` for a managed/enrolled repo.\n- **Sequencing within one `write_project_tool_surface` call for Cursor**:\n  1. `.cursor/mcp.json` written (with embedded `autoApprove`/`alwaysAllow`, §3).\n  2. `.cursor/rules/scubiee.mdc` written (GATE text, §5/§6) **and** `AGENTS.md`\n     appended (same call, `write_project_gate_rules`).\n  3. `.cursor/permissions.json` merged (`mcpAllowlist`, §4).\n- So the Cursor `.mdc` rule and the shared `AGENTS.md` GATE text are generated by\n  the *same* policy functions and written in the *same* step (Step B), while the\n  `mcpAllowlist` permissions sidecar is a distinct, later step (Step C) that does\n  not read or depend on the rule text — they are parallel outputs of one\n  `write_project_tool_surface` call, not sequentially dependent on each other.\n\n## 7. Path + symbol reference table\n\n| # | Path | Symbol | Role |\n|---|------|--------|------|\n| 1 | `packages/pipeline/__main__.py:1749` | `cmd_connect(args)` | CLI entry for `scubiee connect` |\n| 2 | `packages/pipeline/__main__.py:2660-2683` | `p_connect` argparse wiring | Registers `connect` subcommand, `--cursor`/`--all`/`--dry-run`/`--repo` flags |\n| 3 | `packages/pipeline/rules_installer.py` | `install_tools(slugs, dry_run, repo)` | Fans out per selected tool slug |\n| 4 | `packages/pipeline/rules_installer.py` | `install_tool(tool, dry_run, repo)` | Per-tool: legacy cleanup + fan-out + record connected |\n| 5 | `packages/pipeline/rules_installer.py` | `fan_out_tool_to_enrolled_repos(tool, remove, dry_run)` | Iterates every managed repo |\n| 6 | `packages/pipeline/managed_repos.py` | `managed_repo_paths(enrolled_only)` | Resolves managed repo checkout dirs from `~/.scubiee/registry.json` |\n| 7 | `packages/pipeline/rules_installer.py` | `write_project_tool_surface(repo, tool, dry_run)` | Per-repo×tool: MCP write → GATE rules → permissions |\n| 8 | `packages/pipeline/rules_installer.py` | `_write_workspace_mcp(tool, repo)` | Dispatches to per-tool MCP path (e.g. `.cursor/mcp.json`) |\n| 9 | `packages/pipeline/rules_installer.py` | `format_server_entry(tool, repo, pin_repo, schema)` | Builds MCP entry dict; calls permission enrichment at the end |\n| 10 | `packages/pipeline/mcp_install.py` | `server_entry(repo, host, port)` | Base command/args/env for the MCP stdio server |\n| 11 | `packages/pipeline/mcp_permissions.py` | `enrich_server_entry_permissions(entry, tool_slug, profile)` | Writes `autoApprove`/`alwaysAllow` into the MCP server block |\n| 12 | `packages/pipeline/mcp_permissions.py` | `PHASE_LOCATE_TOOLS` (tuple) | The 8 tool names granted (`gate,map,pack_context,expand_context,collect_hot_context,workspace,expand,status`) |\n| 13 | `packages/pipeline/mcp_permissions.py` | `_EMBEDDED_MCP_SLUGS` (frozenset) | Hosts using embedded-MCP mechanism: cline, roo-code, cursor, kiro, devin-desktop, pi, claude-code |\n| 14 | `packages/pipeline/mcp_permissions.py` | `apply_permissions_to_repo_tool_surface(tool_slug, repo, profile, dry_run)` | Called from Step C of `write_project_tool_surface` |\n| 15 | `packages/pipeline/mcp_permissions.py` | `write_tool_permission_artifacts(tool_slug, repo, ...)` | Dispatches per-tool sidecar writer |\n| 16 | `packages/pipeline/mcp_permissions.py` | `merge_cursor_permissions(path, profile)` | Writes/merges `mcpAllowlist` into `.cursor/permissions.json` |\n| 17 | `packages/pipeline/mcp_permissions.py` | `_cursor_mcp_allowlist(profile)` | Builds `[\"scubiee:*\", \"*:gate\", \"*:map\", ...]` |\n| 18 | `packages/pipeline/rules_installer.py` | `write_project_gate_rules(repo, dry_run, slugs)` | Writes per-tool rule file + always appends `AGENTS.md` |\n| 19 | `packages/pipeline/rules_installer.py` | `gate_line_for_repo(repo)` | Resolves `\"0\"` / `\"1:<project_id>\"` / `\"p\"` |\n| 20 | `packages/pipeline/project_id.py` | `read_id_file(root)` | Reads `.scubiee/id.json` project id used in gate line |\n| 21 | `packages/pipeline/pause_resume.py` | `is_paused()` | Determines `\"p\"` gate state |\n| 22 | `packages/pipeline/rules_installer.py` | `_render_gate_rule_mdc` / `_render_gate_rule_md` | Dispatch gate_line → body text, per rule format |\n| 23 | `packages/pipeline/rules_installer.py` | `managed_gate_usage_short()` | CLI/native-first GATE policy text (Cursor, AGENTS.md, most hosts) |\n| 24 | `packages/pipeline/rules_installer.py` | `managed_gate_mcp_only_usage_short()` | MCP-tool-named GATE policy text (Kiro steering / MCP-only surfaces) |\n| 25 | `packages/pipeline/rules_installer.py` | `_write_rule_mdc(path, gate_line)` | Cursor `.mdc` writer (adds YAML frontmatter `alwaysApply: true`) |\n| 26 | `packages/pipeline/rules_installer.py` | `_write_rule_append_md(path, gate_line)` | `AGENTS.md` / Claude `CLAUDE.md` writer (marker-delimited section) |\n| 27 | `packages/pipeline/rules_installer.py` | `_RULE_WRITERS` dict | Maps `rule_format` (`mdc`/`md`/`append-md`/`none`) → writer fn |\n| 28 | `packages/pipeline/tool_registry.py` | `ToolDef` dataclass, `TOOLS` list, `TOOL_MAP` | Per-host schema/paths/rule_format registry |\n| 29 | `packages/pipeline/tool_registry.py` | `resolve_rule_project_paths(tool, repo)` | Resolves e.g. `repo/.cursor/rules/scubiee.mdc` |\n| 30 | `packages/pipeline/tool_registry.py` | `resolve_mcp_project_paths(tool, repo)` | Resolves e.g. `repo/.cursor/mcp.json` |\n| 31 | `packages/pipeline/branding.py` | `MARKER_START`, `MARKER_END`, `MCP_SERVER_NAME` | Shared constants for marker-delimited sections and server key name (`\"scubiee\"`) |\n| 32 | `packages/pipeline/connect_state.py` | `add_connected_tool(slug)`, `require_machine_setup()` | Records connected tool; guards `setup` ran |\n\n## 8. Open questions / unknowns\n\n- **`write_project_tool_surface` step ordering vs. atomicity**: MCP write → GATE\n  rules → permissions are three separate try/except blocks in\n  `write_project_tool_surface`; if the MCP write fails, the function still\n  proceeds to write GATE rules and permissions (no early return on MCP failure).\n  I did not find a test asserting this specific ordering behavior; it's inferred\n  purely from reading the source top-to-bottom.\n- **`scubiee init` vs `scubiee connect` GATE-write overlap**: `apply_connected_tools_to_repo()`\n  (called by `init`, not shown in full above) also calls `write_project_gate_rules`.\n  I did not fully trace `scubiee init`'s call path (out of scope — question is about\n  `connect`), but both commands converge on the same `write_project_gate_rules`/\n  `write_project_tool_surface` functions, so GATE text can be (re)written by either\n  command depending on repo enrollment timing. Only skimmed, not exhaustively traced.\n- **This workspace's actual `.cursor/rules/scubiee.mdc` and `AGENTS.md` content do\n  NOT match what `rules_installer.py` would generate** — they contain a literal\n  `\"GATE A/B without-Scubiee arm\"` string that appears nowhere in\n  `managed_gate_usage_short()` / `managed_gate_rule_body()`. This confirms these\n  files were seeded directly by the A/B test harness (not by a real `scubiee connect`\n  run in this workspace) — Scubiee itself is not installed/runnable here. Evidence:\n  `.kiro/steering/scubiee.md`, `.cursor/rules/scubiee.mdc`, and `AGENTS.md` all\n  contain identical harness-injected text, and no `.scubiee/id.json` project-id\n  content was inspected for a live gate line (not needed since the harness content\n  overrides it).\n- **Cursor `permissions.json` `autoRun.allow_instructions` merge**: confirmed present\n  in `merge_cursor_permissions` but its consumption by Cursor itself (i.e., whether\n  Cursor's UI actually reads this key) is outside this codebase and not verified here.\n- Did not trace `mcp_install.py::server_entry` past line ~60 (env dict continues) —\n  full command/args construction (e.g. `scubiee-mcp-bridge` executable resolution)\n  was not needed to answer the specific 5 sub-questions and was left unexplored to\n  respect scope.\n"
+      },
+      "retrieval": {
+        "ok": true,
+        "output_file": "out/ab_retrieval_context.md",
+        "exists": true,
+        "chars": 21704,
+        "file_rec": 1.0,
+        "symbol_rec": 0.833,
+        "term_rec": 1.0,
+        "file_hits": [
+          "packages/pipeline/__main__.py",
+          "packages/pipeline/rules_installer.py",
+          "packages/pipeline/mcp_permissions.py",
+          "packages/pipeline/mcp_install.py"
+        ],
+        "symbol_hits": [
+          "cmd_connect",
+          "write_project_tool_surface",
+          "write_project_gate_rules",
+          "apply_permissions_to_repo_tool_surface",
+          "managed_gate_usage_short"
+        ],
+        "term_hits": [
+          "autoApprove",
+          "mcpAllowlist",
+          "AGENTS.md",
+          "mcp.json",
+          "permissions.json",
+          "GATE"
+        ],
+        "note": "pass",
+        "text": "# Retrieval context pack — `scubiee connect` surface (Cursor-like hosts)\n\n## 1. Problem restatement (≤8 lines)\nTrace `scubiee connect` end-to-end for Cursor-like hosts: (1) CLI entry → tool-surface\ninstall invocation, (2) where `mcp.json` `autoApprove`/`alwaysAllow` (embedded MCP\nallowlists) are written, (3) where `permissions.json` `mcpAllowlist` (Cursor-specific\nsidecar) is applied, (4) where `AGENTS.md` / host GATE rule text is written for managed\nrepos, (5) how Cursor rule (`.cursor/rules/*.mdc`) install relates to that GATE text.\nAll evidence below is from production code under `packages/pipeline/`, not tests/docs.\nIgnoring CLI banner/print helpers as instructed.\n\n## 2. Ordered call/flow narrative (entry → writers → side effects)\n\n1. **Entry point** — `packages/pipeline/__main__.py`\n   - `build_parser()`-equivalent argparse wiring (~line 2660) registers subcommand\n     `\"connect\"` → `p_connect.set_defaults(func=cmd_connect)` (line 2683).\n   - `cmd_connect(args)` at **line 1749**: collects selected tool slugs from\n     `CONNECT_SLUGS` (or `--all` → `ALL_SLUGS`), then calls\n     `pipeline.rules_installer.install_tools(selected, dry_run=dry_run, repo=repo)`\n     (imports at lines 1751–1752, call at line 1777).\n   - Non-tty output goes through `pipeline.cli_ui.print_connect_summary` — a CLI\n     banner/print helper, correctly out of scope per instructions.\n\n2. **Tool-surface install fan-out** — `packages/pipeline/rules_installer.py`\n   - `install_tools(slugs, dry_run, repo)` → for each slug, resolves a `ToolDef` via\n     `get_tool(slug)` (from `tool_registry.py`) and calls `install_tool(tool, ...)`.\n   - `install_tool(tool, dry_run, repo)`:\n     - Computes legacy global MCP paths to purge (`resolve_mcp_legacy_global_paths`).\n     - Calls `require_machine_setup()` (from `connect_state.py`) — guards that\n       `scubiee setup` ran first.\n     - Removes stale legacy global MCP entries: `_remove_legacy_global_mcp(tool)`.\n     - **Fans out to every managed repo**: `fan_out_tool_to_enrolled_repos(tool, dry_run=False)`\n       → iterates `_fan_out_managed_repos()` (== `managed_repos.managed_repo_paths(enrolled_only=False)`)\n       and calls `write_project_tool_surface(repo, tool, dry_run=False)` per repo.\n     - Records the tool as connected: `add_connected_tool(tool.slug)` (writes\n       `~/.scubiee/connected_tools.json` via `connect_state.py`).\n\n3. **Per-repo, per-tool surface write** — `rules_installer.write_project_tool_surface(repo, tool, dry_run)`\n   (this is the real \"installs MCP config + rules\" unit of work, called once per\n   enrolled repo × connected tool):\n   - Step A — **MCP config write**: `_write_workspace_mcp(tool, root)`\n     - For `slug == \"cursor\"`: writes `repo/.cursor/mcp.json` via\n       `format_server_entry(tool, repo, pin_repo=True)` + `write_mcp_config(...)`.\n     - `format_server_entry()` builds the base entry from\n       `pipeline.mcp_install.server_entry(repo)` (command/args/env for the MCP\n       stdio server), then at the end calls\n       `pipeline.mcp_permissions.enrich_server_entry_permissions(entry, tool.slug)`\n       — **this is where `autoApprove`/`alwaysAllow` get embedded directly into the\n       `mcp.json` server block** (see §3 below) before the file is written.\n     - Verification: `pipeline.mcp_install.verify_mcp_json(mcp_path)` checks the\n       write succeeded; failures flip `report[\"ok\"] = False`.\n   - Step B — **GATE rule write**: `write_project_gate_rules(root, slugs=[tool.slug], dry_run=False)`\n     - Computes `gate = gate_line_for_repo(root)` (from repo's `.scubiee/id.json`\n       project id, or `\"p\"` if paused, or `\"0\"` if unenrolled).\n     - Skips entirely if repo isn't `_project_rules_eligible` or gate is `\"0\"`\n       (unmanaged) — i.e. **GATE text is only written for managed/enrolled repos**\n       (`gate.startswith(\"1:\")`) or paused repos (`gate == \"p\"`).\n     - For the `cursor` tool: writes `repo/.cursor/rules/scubiee.mdc` via\n       `_write_rule_mdc()` → `_rule_content_mdc(gate_line=gate)` →\n       `_render_gate_rule_mdc(gate_line)` (content = frontmatter + `managed_gate_rule_body(...)`,\n       body sourced from `managed_gate_usage_short()` — the CLI/native-first GATE\n       policy string, distinct from the MCP-only variant used for Kiro steering).\n     - **Also always writes/appends `repo/AGENTS.md`** via `_write_rule_append_md(agents, gate_line=gate)`\n       regardless of which specific tool triggered the call — this is the shared\n       host-agnostic GATE surface. Content is delimited by\n       `MARKER_START`/`MARKER_END` markers from `pipeline.branding` so re-runs\n       replace only the Scubiee section.\n   - Step C — **Permissions sidecar**: `pipeline.mcp_permissions.apply_permissions_to_repo_tool_surface(tool.slug, root, dry_run=False)`\n     → thin wrapper around `write_tool_permission_artifacts(tool_slug, repo, profile=\"locate\", dry_run)`.\n     - For `tool_slug == \"cursor\"`: writes/merges `repo/.cursor/permissions.json`\n       via `merge_cursor_permissions(project_path, profile=\"locate\")` —\n       **this is where `mcpAllowlist` is written** (see §4 below).\n     - Also writes a manifest at `repo/.scubiee/mcp-permissions.json` recording what\n       was applied per tool (`_write_permissions_manifest`).\n\n4. **Result aggregation**: `write_project_tool_surface` returns a report dict with\n   `mcp_paths`, `rules`, `permissions` sub-reports; `install_tool` aggregates these\n   across all fanned-out repos; `cmd_connect` prints/serializes the final list.\n\n## 3. Where `mcp.json` `autoApprove` / `alwaysAllow` are written (embedded MCP allowlist)\n\n- **File**: `packages/pipeline/mcp_permissions.py`\n- **Symbol**: `enrich_server_entry_permissions(entry, tool_slug, *, profile=\"locate\")`\n- **Called from**: `rules_installer.format_server_entry()` (unconditionally, at the\n  very end, right before returning the entry dict that gets written to `mcp.json`\n  / `.mcp.json` / etc.)\n- **Logic** (paraphrase of the critical branch):\n  ```python\n  _EMBEDDED_MCP_SLUGS = {\"cline\", \"roo-code\", \"cursor\", \"kiro\", \"devin-desktop\", \"pi\", \"claude-code\"}\n\n  if plan.mechanism == \"embedded_mcp\" or tool_slug in _EMBEDDED_MCP_SLUGS:\n      if tool_slug == \"cursor\":\n          out.pop(\"disabled\", None)          # Cursor: don't leave a sticky disabled:true\n      else:\n          out[\"disabled\"] = False\n      if out.get(\"enabled\") is False:\n          out[\"enabled\"] = True\n      out[\"autoApprove\"] = list(tools) if profile == \"locate\" else [\"*\"]\n      out[\"alwaysAllow\"] = list(out[\"autoApprove\"])\n      return out\n  ```\n  where `tools = locate_tool_names(profile=\"locate\")` resolves to\n  `PHASE_LOCATE_TOOLS = (\"gate\",\"map\",\"pack_context\",\"expand_context\",\n  \"collect_hot_context\",\"workspace\",\"expand\",\"status\")`.\n- **Net effect**: for Cursor (and Cline/Roo/Kiro/Devin/Pi/Claude Code), the\n  `scubiee` server block inside their respective `mcp.json`-family file gets\n  `\"autoApprove\": [...]` and `\"alwaysAllow\": [...]` populated with the 8 locate\n  tool names, so the host does not prompt for approval on every locate call.\n- **Note**: this write happens on **every** `write_project_tool_surface` call\n  (i.e., every `scubiee connect --cursor` / fan-out to every enrolled repo),\n  because `format_server_entry` is called unconditionally inside\n  `_write_workspace_mcp`.\n\n## 4. Where `permissions.json` `mcpAllowlist` is applied (Cursor-specific sidecar)\n\n- **File**: `packages/pipeline/mcp_permissions.py`\n- **Symbols**:\n  - `merge_cursor_permissions(path, *, profile=\"locate\")` — the writer.\n  - `_cursor_mcp_allowlist(*, profile)` — builds the allowlist entries.\n  - `write_tool_permission_artifacts(tool_slug, repo, ...)` — dispatcher that picks\n    `.cursor/permissions.json` as the sidecar path for `tool_slug == \"cursor\"`.\n  - `apply_permissions_to_repo_tool_surface(tool_slug, repo, ...)` — thin wrapper\n    called from `write_project_tool_surface` (Step C above).\n- **Called from**: `rules_installer.write_project_tool_surface()`, *after* the MCP\n  config write (Step B/C ordering: MCP write → GATE rules → permissions sidecar).\n- **Path resolved**: `repo / \".cursor\" / \"permissions.json\"` (project-local, not\n  global/user-home, unless `CTX_MCP_PERMISSIONS_USER=1` env var is set, in which\n  case it *also* merges into `~/.cursor/permissions.json`).\n- **Logic** (paraphrase):\n  ```python\n  def _cursor_mcp_allowlist(*, profile):\n      server = MCP_SERVER_NAME       # \"scubiee\"\n      if profile == \"all\":\n          return [f\"{server}:*\", \"*:*\"]\n      entries = [f\"{server}:*\"]\n      for tool in PHASE_LOCATE_TOOLS:\n          entries.append(f\"*:{tool}\")     # e.g. \"*:map\", \"*:pack_context\", ...\n      return entries\n\n  def merge_cursor_permissions(path, *, profile=\"locate\"):\n      document = _load_json_object(path)                       # read-merge, never clobber\n      additions = _cursor_mcp_allowlist(profile=profile)\n      existing = document.get(\"mcpAllowlist\") or []\n      pruned = _prune_stale_scubiee_allowlist_entries(existing, profile=profile)  # drop stale lab/classic grants\n      document[\"mcpAllowlist\"] = _merge_unique_strings(pruned, additions)\n      # also merges document[\"autoRun\"][\"allow_instructions\"] with a locate-tools hint string\n      _write_json_object(path, document)\n  ```\n- **Net effect**: `repo/.cursor/permissions.json` ends up with\n  `\"mcpAllowlist\": [\"scubiee:*\", \"*:gate\", \"*:map\", \"*:pack_context\",\n  \"*:expand_context\", \"*:collect_hot_context\", \"*:workspace\", \"*:expand\", \"*:status\"]`\n  (plus any pre-existing user entries preserved verbatim, and stale\n  lab/classic-tool grants pruned). This is Cursor's own permission-gate mechanism,\n  distinct from — and layered on top of — the embedded `autoApprove`/`alwaysAllow`\n  fields inside `mcp.json` from §3.\n- Both `merge_cursor_permissions` and `enrich_server_entry_permissions` are\n  idempotent read-merge-write operations (never overwrite unrelated keys/servers).\n\n## 5. Where `AGENTS.md` / host GATE rule text is written for managed repos\n\n- **File**: `packages/pipeline/rules_installer.py`\n- **Symbols**:\n  - `write_project_gate_rules(repo, *, dry_run=False, slugs=None)` — top-level writer,\n    called from `write_project_tool_surface` (Step B) and also directly from\n    `apply_connected_tools_to_repo()` (used by `scubiee init`).\n  - `gate_line_for_repo(repo)` — resolves gate state: `\"0\"` (unmanaged),\n    `\"1:<project_id>\"` (managed/enrolled — reads `.scubiee/id.json` via\n    `pipeline.project_id.read_id_file`), or `\"p\"` (paused, via\n    `pipeline.pause_resume.is_paused()`).\n  - `_render_gate_rule_mdc` / `_render_gate_rule_md` — dispatch on `gate_line` to\n    build the actual body text (`managed_gate_rule_body`, `unmanaged_gate_rule_body`,\n    `paused_gate_rule_body`).\n  - `managed_gate_usage_short()` — the CLI/native-first GATE policy text used for\n    most hosts' rule files (Cursor `.mdc`, Claude `CLAUDE.md`, `AGENTS.md`, etc.).\n  - `managed_gate_mcp_only_usage_short()` — an MCP-tool-named variant used\n    specifically for **Kiro steering** files (`.kiro/steering/scubiee.md`) and\n    other MCP-only surfaces — see the special-case branch inside `_write_rule_md`:\n    ```python\n    is_kiro_steering = \"steering\" in parts_l and path.name.lower().startswith(\"scubiee\")\n    if is_kiro_steering and gate_line and str(gate_line).startswith(\"1:\"):\n        content = managed_gate_mcp_only_rule_body(str(gate_line), pid) + \"\\n\"\n        content = \"---\\ninclusion: always\\n---\\n\\n\" + content\n    ```\n  - **`AGENTS.md` write**: unconditional inside `write_project_gate_rules`, after the\n    per-tool rule-file loop:\n    ```python\n    agents = root / \"AGENTS.md\"\n    ...\n    _write_rule_append_md(agents, gate_line=gate)\n    report[\"written\"].append(str(agents))\n    ```\n    `_write_rule_append_md` strips any previously marked Scubiee section\n    (`_strip_marked_sections`, using `MARKER_START`/`MARKER_END` from\n    `pipeline.branding`) and appends a fresh section — so `AGENTS.md` always gets\n    the GATE text regardless of which specific tool(s) were passed in `slugs`.\n- **Gating condition**: `write_project_gate_rules` returns early\n  (`report[\"skipped\"] = True`) if the repo is not `_project_rules_eligible`\n  (needs either `.scubiee/id.json` or a `.git` dir) **or** if\n  `gate` is `\"0\"` (not `1:...` and not `\"p\"`) — i.e. **GATE rule text (including\n  `AGENTS.md`) is only written for enrolled/managed repos or explicitly-paused\n  repos, never for a bare unmanaged folder.**\n- **Per-tool rule file paths** come from `tool_registry.resolve_rule_project_paths(tool, root)`,\n  e.g. for Cursor: `root / \".cursor\" / \"rules\" / \"scubiee.mdc\"` (from\n  `ToolDef(slug=\"cursor\", rule_format=\"mdc\", rule_user_path=\".cursor/rules/scubiee.mdc\", ...)`\n  in `tool_registry.py`).\n\n## 6. How Cursor rule install relates to the GATE text\n\n- Cursor's rule format is `\"mdc\"` (`ToolDef.rule_format = \"mdc\"`), dispatched\n  through `_RULE_WRITERS[\"mdc\"] = _write_rule_mdc`.\n- `_write_rule_mdc(path, gate_line)` writes `.cursor/rules/scubiee.mdc` with:\n  ```\n  ---\n  description: GATE <gate_line> Scubiee managed\n  alwaysApply: true\n  ---\n\n  <managed_gate_rule_body(gate_line, project_id)>\n  ```\n  where `managed_gate_rule_body` embeds `managed_gate_usage_short()` — the\n  **CLI-first** GATE policy (mentions `scubiee map`/`pack`/`expand` CLI commands\n  as the preferred path, MCP tool names as fallback), because Cursor is treated\n  as a general host with both CLI and MCP available.\n- This is the **same GATE-line computation and same body-generation functions**\n  used for `AGENTS.md` (§5) — the only difference between the Cursor `.mdc` file\n  and `AGENTS.md` is the wrapper/frontmatter (`_write_rule_mdc` adds YAML\n  frontmatter with `alwaysApply: true`; `_write_rule_append_md` adds\n  marker-delimited sections instead) and file format (`.mdc` vs `.md`). Both are\n  populated by `_render_gate_rule_mdc`/`_render_gate_rule_md` → `managed_gate_rule_body`\n  → `managed_gate_usage_short()` for a managed/enrolled repo.\n- **Sequencing within one `write_project_tool_surface` call for Cursor**:\n  1. `.cursor/mcp.json` written (with embedded `autoApprove`/`alwaysAllow`, §3).\n  2. `.cursor/rules/scubiee.mdc` written (GATE text, §5/§6) **and** `AGENTS.md`\n     appended (same call, `write_project_gate_rules`).\n  3. `.cursor/permissions.json` merged (`mcpAllowlist`, §4).\n- So the Cursor `.mdc` rule and the shared `AGENTS.md` GATE text are generated by\n  the *same* policy functions and written in the *same* step (Step B), while the\n  `mcpAllowlist` permissions sidecar is a distinct, later step (Step C) that does\n  not read or depend on the rule text — they are parallel outputs of one\n  `write_project_tool_surface` call, not sequentially dependent on each other.\n\n## 7. Path + symbol reference table\n\n| # | Path | Symbol | Role |\n|---|------|--------|------|\n| 1 | `packages/pipeline/__main__.py:1749` | `cmd_connect(args)` | CLI entry for `scubiee connect` |\n| 2 | `packages/pipeline/__main__.py:2660-2683` | `p_connect` argparse wiring | Registers `connect` subcommand, `--cursor`/`--all`/`--dry-run`/`--repo` flags |\n| 3 | `packages/pipeline/rules_installer.py` | `install_tools(slugs, dry_run, repo)` | Fans out per selected tool slug |\n| 4 | `packages/pipeline/rules_installer.py` | `install_tool(tool, dry_run, repo)` | Per-tool: legacy cleanup + fan-out + record connected |\n| 5 | `packages/pipeline/rules_installer.py` | `fan_out_tool_to_enrolled_repos(tool, remove, dry_run)` | Iterates every managed repo |\n| 6 | `packages/pipeline/managed_repos.py` | `managed_repo_paths(enrolled_only)` | Resolves managed repo checkout dirs from `~/.scubiee/registry.json` |\n| 7 | `packages/pipeline/rules_installer.py` | `write_project_tool_surface(repo, tool, dry_run)` | Per-repo×tool: MCP write → GATE rules → permissions |\n| 8 | `packages/pipeline/rules_installer.py` | `_write_workspace_mcp(tool, repo)` | Dispatches to per-tool MCP path (e.g. `.cursor/mcp.json`) |\n| 9 | `packages/pipeline/rules_installer.py` | `format_server_entry(tool, repo, pin_repo, schema)` | Builds MCP entry dict; calls permission enrichment at the end |\n| 10 | `packages/pipeline/mcp_install.py` | `server_entry(repo, host, port)` | Base command/args/env for the MCP stdio server |\n| 11 | `packages/pipeline/mcp_permissions.py` | `enrich_server_entry_permissions(entry, tool_slug, profile)` | Writes `autoApprove`/`alwaysAllow` into the MCP server block |\n| 12 | `packages/pipeline/mcp_permissions.py` | `PHASE_LOCATE_TOOLS` (tuple) | The 8 tool names granted (`gate,map,pack_context,expand_context,collect_hot_context,workspace,expand,status`) |\n| 13 | `packages/pipeline/mcp_permissions.py` | `_EMBEDDED_MCP_SLUGS` (frozenset) | Hosts using embedded-MCP mechanism: cline, roo-code, cursor, kiro, devin-desktop, pi, claude-code |\n| 14 | `packages/pipeline/mcp_permissions.py` | `apply_permissions_to_repo_tool_surface(tool_slug, repo, profile, dry_run)` | Called from Step C of `write_project_tool_surface` |\n| 15 | `packages/pipeline/mcp_permissions.py` | `write_tool_permission_artifacts(tool_slug, repo, ...)` | Dispatches per-tool sidecar writer |\n| 16 | `packages/pipeline/mcp_permissions.py` | `merge_cursor_permissions(path, profile)` | Writes/merges `mcpAllowlist` into `.cursor/permissions.json` |\n| 17 | `packages/pipeline/mcp_permissions.py` | `_cursor_mcp_allowlist(profile)` | Builds `[\"scubiee:*\", \"*:gate\", \"*:map\", ...]` |\n| 18 | `packages/pipeline/rules_installer.py` | `write_project_gate_rules(repo, dry_run, slugs)` | Writes per-tool rule file + always appends `AGENTS.md` |\n| 19 | `packages/pipeline/rules_installer.py` | `gate_line_for_repo(repo)` | Resolves `\"0\"` / `\"1:<project_id>\"` / `\"p\"` |\n| 20 | `packages/pipeline/project_id.py` | `read_id_file(root)` | Reads `.scubiee/id.json` project id used in gate line |\n| 21 | `packages/pipeline/pause_resume.py` | `is_paused()` | Determines `\"p\"` gate state |\n| 22 | `packages/pipeline/rules_installer.py` | `_render_gate_rule_mdc` / `_render_gate_rule_md` | Dispatch gate_line → body text, per rule format |\n| 23 | `packages/pipeline/rules_installer.py` | `managed_gate_usage_short()` | CLI/native-first GATE policy text (Cursor, AGENTS.md, most hosts) |\n| 24 | `packages/pipeline/rules_installer.py` | `managed_gate_mcp_only_usage_short()` | MCP-tool-named GATE policy text (Kiro steering / MCP-only surfaces) |\n| 25 | `packages/pipeline/rules_installer.py` | `_write_rule_mdc(path, gate_line)` | Cursor `.mdc` writer (adds YAML frontmatter `alwaysApply: true`) |\n| 26 | `packages/pipeline/rules_installer.py` | `_write_rule_append_md(path, gate_line)` | `AGENTS.md` / Claude `CLAUDE.md` writer (marker-delimited section) |\n| 27 | `packages/pipeline/rules_installer.py` | `_RULE_WRITERS` dict | Maps `rule_format` (`mdc`/`md`/`append-md`/`none`) → writer fn |\n| 28 | `packages/pipeline/tool_registry.py` | `ToolDef` dataclass, `TOOLS` list, `TOOL_MAP` | Per-host schema/paths/rule_format registry |\n| 29 | `packages/pipeline/tool_registry.py` | `resolve_rule_project_paths(tool, repo)` | Resolves e.g. `repo/.cursor/rules/scubiee.mdc` |\n| 30 | `packages/pipeline/tool_registry.py` | `resolve_mcp_project_paths(tool, repo)` | Resolves e.g. `repo/.cursor/mcp.json` |\n| 31 | `packages/pipeline/branding.py` | `MARKER_START`, `MARKER_END`, `MCP_SERVER_NAME` | Shared constants for marker-delimited sections and server key name (`\"scubiee\"`) |\n| 32 | `packages/pipeline/connect_state.py` | `add_connected_tool(slug)`, `require_machine_setup()` | Records connected tool; guards `setup` ran |\n\n## 8. Open questions / unknowns\n\n- **`write_project_tool_surface` step ordering vs. atomicity**: MCP write → GATE\n  rules → permissions are three separate try/except blocks in\n  `write_project_tool_surface`; if the MCP write fails, the function still\n  proceeds to write GATE rules and permissions (no early return on MCP failure).\n  I did not find a test asserting this specific ordering behavior; it's inferred\n  purely from reading the source top-to-bottom.\n- **`scubiee init` vs `scubiee connect` GATE-write overlap**: `apply_connected_tools_to_repo()`\n  (called by `init`, not shown in full above) also calls `write_project_gate_rules`.\n  I did not fully trace `scubiee init`'s call path (out of scope — question is about\n  `connect`), but both commands converge on the same `write_project_gate_rules`/\n  `write_project_tool_surface` functions, so GATE text can be (re)written by either\n  command depending on repo enrollment timing. Only skimmed, not exhaustively traced.\n- **This workspace's actual `.cursor/rules/scubiee.mdc` and `AGENTS.md` content do\n  NOT match what `rules_installer.py` would generate** — they contain a literal\n  `\"GATE A/B without-Scubiee arm\"` string that appears nowhere in\n  `managed_gate_usage_short()` / `managed_gate_rule_body()`. This confirms these\n  files were seeded directly by the A/B test harness (not by a real `scubiee connect`\n  run in this workspace) — Scubiee itself is not installed/runnable here. Evidence:\n  `.kiro/steering/scubiee.md`, `.cursor/rules/scubiee.mdc`, and `AGENTS.md` all\n  contain identical harness-injected text, and no `.scubiee/id.json` project-id\n  content was inspected for a live gate line (not needed since the harness content\n  overrides it).\n- **Cursor `permissions.json` `autoRun.allow_instructions` merge**: confirmed present\n  in `merge_cursor_permissions` but its consumption by Cursor itself (i.e., whether\n  Cursor's UI actually reads this key) is outside this codebase and not verified here.\n- Did not trace `mcp_install.py::server_entry` past line ~60 (env dict continues) —\n  full command/args construction (e.g. `scubiee-mcp-bridge` executable resolution)\n  was not needed to answer the specific 5 sub-questions and was left unexplored to\n  respect scope.\n"
+      },
+      "success": true,
+      "arm_status": "ok",
+      "recovered_from_log": true,
+      "log": ".ab_workspaces/kiro_ab_dev/20260909T170339Z_complex_retrieval/logs/without.log"
+    }
+  },
+  "out_md": "C:\\Users\\usman\\Downloads\\context-engine\\docs\\superpowers\\plans\\2026-09-07-kiro-mcp-ab-retrieval.md",
+  "out_json": "C:\\Users\\usman\\Downloads\\context-engine\\docs\\superpowers\\plans\\2026-09-07-kiro-mcp-ab-retrieval.json",
+  "savings": {
+    "credits": {
+      "with": 5.13,
+      "without": 6.23,
+      "delta": -1.1000000000000005,
+      "pct": -17.7
+    },
+    "wall_ms": {
+      "with": 207094.5,
+      "without": 162000.0,
+      "delta": 45094.5,
+      "pct": 27.8
+    },
+    "out_tokens_est": {
+      "with": 10846,
+      "without": 9238,
+      "delta": 1608,
+      "pct": 17.4
+    }
+  }
+}

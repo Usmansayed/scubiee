@@ -1,0 +1,41 @@
+{
+  "name": "harness_design",
+  "description": "Design never-fail eval harness",
+  "includeMcpJson": false,
+  "includePowers": false,
+  "model": "claude-sonnet-5",
+  "prompt": "You are designing an eval harness. Be ruthless about false passes. Write only the requested markdown deliverable.",
+  "tools": [
+    "read",
+    "write",
+    "shell"
+  ],
+  "allowedTools": [
+    "read",
+    "write",
+    "shell"
+  ],
+  "resources": [],
+  "permissions": {
+    "rules": [
+      {
+        "capability": "fs_write",
+        "match": [
+          "*"
+        ],
+        "effect": "allow"
+      },
+      {
+        "capability": "shell",
+        "match": [
+          "mkdir *",
+          "New-Item *",
+          "dir *",
+          "ls *"
+        ],
+        "effect": "allow"
+      }
+    ]
+  },
+  "mcpServers": {}
+}

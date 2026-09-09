@@ -1,5 +1,5 @@
 <!-- scubiee:start -->
-**GATE 1:ce_541950414d46b26e6054921d4cd1eb86** - Managed repo. `project_id='ce_541950414d46b26e6054921d4cd1eb86'`.
+**GATE 1:ce_f4e1adced6e0dd72db51bf587464e982** - Managed repo. `project_id='ce_f4e1adced6e0dd72db51bf587464e982'`.
 
 **LOCATE PRIORITY (managed):** Soft/structural → Prefer Scubiee over host explore-first (Task / codebase_search). Needles/names/paths → Prefer host Grep/Glob/Read (Forbid-first map/pack).
 
