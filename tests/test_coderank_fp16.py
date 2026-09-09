@@ -215,3 +215,77 @@ def test_coderank_fp16_ready_without_fastembed_import(monkeypatch, tmp_path: Pat
     fp16.write_bytes(b"x" * CODERANK_FP16_MIN_BYTES)
     assert coderank_fp16_onnx_ready(cache_root=cache) is True
     assert default_fastembed_cache_root().name == "fastembed"
+
+
+def _isolate_cache(monkeypatch, tmp_path: Path) -> tuple[Path, Path]:
+    """Point the durable root and fastembed's temp default at tmp_path."""
+    from pipeline import accel
+
+    durable = tmp_path / "durable"
+    legacy = tmp_path / "tmp" / "fastembed_cache"
+    monkeypatch.setattr(accel, "default_fastembed_cache_root", lambda: durable)
+    monkeypatch.setattr(accel, "legacy_fastembed_cache_root", lambda: legacy)
+    monkeypatch.setattr(accel, "_TMP_CACHE_MIGRATED", False)
+    monkeypatch.delenv("FASTEMBED_CACHE_PATH", raising=False)
+    return durable, legacy
+
+
+def test_cache_root_is_not_the_os_temp_dir(monkeypatch) -> None:
+    """A temp sweep takes the blobs but leaves the snapshot metadata, so nothing
+    re-downloads and the embedder silently falls back to hash vectors."""
+    from pipeline.accel import default_fastembed_cache_root, legacy_fastembed_cache_root
+
+    monkeypatch.delenv("FASTEMBED_CACHE", raising=False)
+    monkeypatch.delenv("FASTEMBED_CACHE_PATH", raising=False)
+    root = default_fastembed_cache_root()
+    assert root != legacy_fastembed_cache_root()
+    assert Path.home() in root.parents
+
+
+def test_cache_root_is_published_to_the_environment(monkeypatch, tmp_path: Path) -> None:
+    """TextEmbedding resolves the directory itself at load time, so the choice
+    has to be visible to fastembed, not just to us."""
+    import os
+
+    from pipeline.accel import fastembed_cache_root
+
+    durable, _ = _isolate_cache(monkeypatch, tmp_path)
+    assert fastembed_cache_root() == durable
+    assert os.environ["FASTEMBED_CACHE_PATH"] == str(durable)
+
+
+def test_cache_root_honors_an_explicit_override(monkeypatch, tmp_path: Path) -> None:
+    from pipeline import accel
+
+    monkeypatch.setattr(accel, "_TMP_CACHE_MIGRATED", True)
+    monkeypatch.setenv("FASTEMBED_CACHE_PATH", str(tmp_path / "chosen"))
+    assert accel.fastembed_cache_root() == tmp_path / "chosen"
+
+
+def test_existing_tmp_cache_is_adopted_not_redownloaded(monkeypatch, tmp_path: Path) -> None:
+    from pipeline.accel import fastembed_cache_root
+
+    durable, legacy = _isolate_cache(monkeypatch, tmp_path)
+    blob = legacy / "models--jamie8johnson--CodeRankEmbed-onnx" / "snapshots" / "abc"
+    blob.mkdir(parents=True)
+    (blob / "model_fp16.onnx").write_bytes(b"weights")
+
+    root = fastembed_cache_root()
+
+    moved = root / "models--jamie8johnson--CodeRankEmbed-onnx" / "snapshots" / "abc"
+    assert (moved / "model_fp16.onnx").read_bytes() == b"weights"
+    assert not blob.exists()
+
+
+def test_migration_never_clobbers_the_durable_copy(monkeypatch, tmp_path: Path) -> None:
+    from pipeline.accel import fastembed_cache_root
+
+    durable, legacy = _isolate_cache(monkeypatch, tmp_path)
+    (durable / "models--x").mkdir(parents=True)
+    (durable / "models--x" / "keep.onnx").write_bytes(b"durable")
+    (legacy / "models--x").mkdir(parents=True)
+    (legacy / "models--x" / "keep.onnx").write_bytes(b"stale")
+
+    root = fastembed_cache_root()
+
+    assert (root / "models--x" / "keep.onnx").read_bytes() == b"durable"

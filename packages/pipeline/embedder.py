@@ -380,11 +380,14 @@ class Embedder:
             )
         else:
             ort_threads = 1
+        from pipeline.accel import fastembed_cache_root
+
         self._fe_model = TextEmbedding(
             model_name=model_name,
             threads=ort_threads,
             providers=providers,
             lazy_load=True,
+            cache_dir=str(fastembed_cache_root()),
         )
         from pipeline.coreml_mac import bind_coreml_tokenizer, pad_embed_batch, static_embed_batch_size
 
@@ -475,11 +478,14 @@ class Embedder:
         if self._cpu_backup_model is None:
             from fastembed import TextEmbedding
 
+            from pipeline.accel import fastembed_cache_root
+
             self._cpu_backup_model = TextEmbedding(
                 model_name=self.model if self.model else CODERANK_MODEL,
                 threads=1,
                 providers=["CPUExecutionProvider"],
                 lazy_load=True,
+                cache_dir=str(fastembed_cache_root()),
             )
         vecs = list(
             self._cpu_backup_model.embed(

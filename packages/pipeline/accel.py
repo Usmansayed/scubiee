@@ -2168,13 +2168,53 @@ def default_fastembed_cache_root() -> Path:
     return Path.home() / ".cache" / "fastembed"
 
 
-def fastembed_cache_root() -> Path:
-    try:
-        from fastembed.common.utils import define_cache_dir
+def legacy_fastembed_cache_root() -> Path:
+    """fastembed's own default — inside the OS temp directory."""
+    import tempfile
 
-        return Path(define_cache_dir())
-    except ImportError:
-        return default_fastembed_cache_root()
+    return Path(tempfile.gettempdir()) / "fastembed_cache"
+
+
+_TMP_CACHE_MIGRATED = False
+
+
+def _migrate_legacy_tmp_cache(root: Path) -> None:
+    """Adopt a temp-dir cache into ``root`` so upgrades don't re-download."""
+    global _TMP_CACHE_MIGRATED
+    if _TMP_CACHE_MIGRATED:
+        return
+    _TMP_CACHE_MIGRATED = True
+    legacy = legacy_fastembed_cache_root()
+    if legacy == root or not legacy.is_dir():
+        return
+    for src in legacy.iterdir():
+        dest = root / src.name
+        if dest.exists():
+            continue
+        try:
+            root.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(src), str(dest))
+        except OSError:
+            continue
+
+
+def fastembed_cache_root() -> Path:
+    """Model cache location, pinned out of the OS temp directory.
+
+    fastembed's ``define_cache_dir`` defaults to ``$TMPDIR/fastembed_cache``. When a
+    temp sweep takes the blobs the HF snapshot metadata survives, so nothing
+    re-downloads and the embedder silently degrades to hash vectors — observed
+    twice on Windows inside a day. ``TextEmbedding`` resolves the directory itself
+    at load time, so the environment has to carry the choice too.
+    """
+    root = default_fastembed_cache_root()
+    os.environ.setdefault("FASTEMBED_CACHE_PATH", str(root))
+    _migrate_legacy_tmp_cache(root)
+    try:
+        root.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        pass
+    return root
 
 
 def _coderank_hf_cache_name() -> str:

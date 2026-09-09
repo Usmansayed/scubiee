@@ -257,8 +257,11 @@ macOS — the prefilters match on process *name*, which differs across platforms
    **Mac (Sep 8):** watchdog count was **0** after setup/init. Supervisor (`engine supervisor --logon`) stayed at 1 process. No leak seen in this run.
 2. **Setup prints `✓ Runtime installed` twice** — cosmetic, caught by `test_setup_progress`.
 3. **`test_t3` hardcodes a project id** — will fail on any machine whose repo id differs.
-4. **FastEmbed cache in `$TMPDIR`** — see section 2.
+4. ~~**FastEmbed cache in `$TMPDIR`**~~ **FIXED — see section 10.** Stopped being theoretical:
+   the weights were wiped from `%TEMP%` twice inside 24h on Windows.
 5. **Embed cache has no model fingerprint** — hash-fallback vectors persist silently.
+   Still open, and it is what makes #4 so costly: once the model is gone, the poisoned
+   vectors survive in `.embed_cache` with nothing to invalidate them.
 6. ~~**Mac: idle policy is correct, automatic reclaim is not.**~~ **FIXED — `9bae058`, see section 9.** The Mac diagnosis was right and the cause was not platform-specific: nothing could kill the engine because `stop_daemon`'s sweep skips `self_or_ancestor`, i.e. the engine's own pid. Manual `apply_idle_policy()` worked only because it ran from an *external* process.
 7. **Full `pytest -q` on Mac does not finish.** First crash: `NotImplementedError: cannot instantiate 'WindowsPath' on your system` (a test/pathlib monkeypatch). Retry with `-k "not windows"` segfaulted in FAISS around 85% (`faiss/class_wrappers.py` recursion).
 8. **`scripts/e2e_mcp_idle_reconnect.py` is not in this tree** — cannot run Phase 3 as written.
@@ -442,3 +445,74 @@ scubiee --version   # 0.3.28
 ### Publish decision
 
 **Do not publish 0.3.28 yet.** MLX + CLI combo + idle *policy* are good. Automatic idle reclaim via supervisor/watchdog on Mac is still the open gate. Fix that, then rebuild the wheel, verify `require_run_mode` is in the wheel, and `twine`/`uv publish` from `.env` (`pipy_username` / `pipy_password`).
+
+---
+
+## 10. Model cache pinned out of the OS temp dir (Sep 9)
+
+Open issue #4 stopped being a design risk and became the top cost of this release: the
+CodeRank weights were wiped from `%TEMP%` **twice inside 24 hours** on Windows. Each time it
+cost a full `setup --repair` plus a confusing round of "failing" embed tests.
+
+### Why it is worse than a plain cache miss
+
+`fastembed.common.utils.define_cache_dir()` defaults to `$TMPDIR/fastembed_cache`. A temp
+sweep removes the blobs but leaves the Hugging Face snapshot metadata, so **nothing
+re-downloads** — the embedder just falls back to hash vectors and keeps answering. Retrieval
+quality collapses with no error anywhere. Worse, those hash vectors get written into
+`.embed_cache`, which has no model fingerprint, so they outlive the repair (open issue #5).
+
+Our own `default_fastembed_cache_root()` already returned a safe `~/.cache/fastembed`, but
+`fastembed_cache_root()` preferred `define_cache_dir()` — so the safe path only applied when
+fastembed was *not installed*, i.e. never in production.
+
+### Fix
+
+- `fastembed_cache_root()` now returns the durable root and publishes it as
+  `FASTEMBED_CACHE_PATH`. That matters because `TextEmbedding` resolves the directory itself
+  at load time — six construction sites, none of which passed `cache_dir`.
+- The two in `embedder.py` now pass `cache_dir=` explicitly as well.
+- `coreml_mac._fastembed_cache_root()` delegates to accel instead of resolving its own.
+- One-time migration adopts an existing temp cache instead of re-downloading, and never
+  overwrites a durable copy.
+- An explicit `FASTEMBED_CACHE` / `FASTEMBED_CACHE_PATH` still wins.
+
+Anchored to `~/.cache/fastembed`, **not** `~/.scubiee/models`: tests point `CTX_HOME` at temp
+dirs, so a `CTX_HOME`-relative cache would re-download the model on every run. `wipe.py`
+already sweeps both locations, so `wipe --all` is unchanged.
+
+### Verified live on Windows
+
+```
+BEFORE   temp: 785.1 MB   durable: absent
+AFTER    temp:     0 MB   durable: 785.1 MB      # migrated, not re-downloaded
+coderank_fp16_onnx_ready() -> True
+```
+
+62 passed across `test_embed_power`, `test_seeded_compare`, `test_venture_stack`,
+`test_coderank_fp16`, `test_coreml_mac`, `test_mlx_mac`, `test_wipe` — only the two known
+hardcoded-project-id failures remain. Tests added in `tests/test_coderank_fp16.py`:
+
+- `test_cache_root_is_not_the_os_temp_dir`
+- `test_cache_root_is_published_to_the_environment`
+- `test_cache_root_honors_an_explicit_override`
+- `test_existing_tmp_cache_is_adopted_not_redownloaded`
+- `test_migration_never_clobbers_the_durable_copy`
+
+### For the Mac — this one needs your verification most
+
+macOS is where `$TMPDIR` is most aggressively swept, and the MLX/CoreML paths resolve the
+cache through `coreml_mac._fastembed_cache_root()`, which this change rewires.
+
+```bash
+python - <<'PY'
+from pipeline.accel import fastembed_cache_root, coderank_fp16_onnx_ready
+print('root :', fastembed_cache_root())      # expect ~/.cache/fastembed, NOT $TMPDIR
+print('ready:', coderank_fp16_onnx_ready())  # expect True, migrated not re-downloaded
+PY
+du -sh "$TMPDIR/fastembed_cache" ~/.cache/fastembed 2>/dev/null
+scubiee map "memory governor idle demote embedder warm tier"   # still rank 1 memory_governor.py
+```
+
+Confirm MLX still warms at ~100 t/s and that `scubiee setup --repair` writes to the durable
+root rather than recreating the temp one.

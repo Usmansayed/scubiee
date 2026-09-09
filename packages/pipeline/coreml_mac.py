@@ -525,9 +525,10 @@ def prepare_coderank_onnx_for_coreml(
 
 
 def _fastembed_cache_root() -> Path:
-    from fastembed.common.utils import define_cache_dir
+    # Single source of truth: accel pins this out of the OS temp directory.
+    from pipeline.accel import fastembed_cache_root
 
-    return Path(define_cache_dir())
+    return fastembed_cache_root()
 
 
 def install_patched_onnx_into_fastembed_cache(patched: Path) -> Path:
