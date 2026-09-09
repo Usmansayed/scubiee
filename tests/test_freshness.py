@@ -97,3 +97,54 @@ def test_hot_patch_reads_disk(tmp_path: Path):
     assert "alpha" in patched[0]
     assert "beta" in patched[0]
     assert read_lines(f, 2, 3) == "beta\ngamma"
+
+
+def test_git_dirty_keeps_the_first_filename_intact(tmp_path: Path):
+    """`git status --porcelain` pads unstaged rows with a leading space.
+
+    Stripping the whole stdout blob eats that space on the first row only, so a
+    fixed `line[3:]` slice then removes a real character: `AGENTS.md` was
+    reported as `GENTS.md`, and a mangled path silently matches no file when
+    freshness folds git_dirty into its candidate set.
+    """
+    import subprocess
+
+    from pipeline.freshness import git_dirty_files
+
+    def git(*args: str) -> None:
+        subprocess.run(
+            ["git", *args],
+            cwd=tmp_path,
+            check=True,
+            capture_output=True,
+            stdin=subprocess.DEVNULL,
+        )
+
+    git("init", "-q")
+    git("config", "user.email", "t@t.t")
+    git("config", "user.name", "t")
+    for name in ("AGENTS.md", "beta.py", "gamma.py"):
+        (tmp_path / name).write_text("one\n", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-qm", "init")
+
+    for name in ("AGENTS.md", "beta.py", "gamma.py"):
+        (tmp_path / name).write_text("two\n", encoding="utf-8")
+
+    assert sorted(git_dirty_files(tmp_path)) == ["AGENTS.md", "beta.py", "gamma.py"]
+
+
+def test_git_dirty_tolerates_a_pre_stripped_status_row(monkeypatch, tmp_path: Path):
+    """Parsing must not depend on the leading pad surviving upstream."""
+    from pipeline import freshness
+
+    monkeypatch.setattr(
+        freshness,
+        "_git",
+        lambda *_a, **_k: "M AGENTS.md\n M npm/package.json\n?? new.py",
+    )
+    assert freshness.git_dirty_files(tmp_path) == [
+        "AGENTS.md",
+        "npm/package.json",
+        "new.py",
+    ]

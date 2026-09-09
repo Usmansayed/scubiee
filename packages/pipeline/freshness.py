@@ -87,7 +87,9 @@ def _git(root: Path, *args: str) -> str | None:
         )
         if r.returncode != 0:
             return None
-        return r.stdout.strip()
+        # rstrip only: `git status --porcelain` pads unstaged rows with a leading
+        # space, and stripping both ends drops it from the first row alone.
+        return r.stdout.rstrip()
     except (OSError, subprocess.TimeoutExpired):
         return None
 
@@ -111,7 +113,9 @@ def git_dirty_files(root: Path) -> list[str]:
     for line in out.splitlines():
         if not line.strip():
             continue
-        path = line[3:].strip()
+        # porcelain v1 is "XY<space>path"; fall back to the first space when the
+        # status columns arrive already trimmed rather than slicing into a name.
+        path = (line[3:] if line[2:3] == " " else line.split(" ", 1)[-1]).strip()
         if " -> " in path:
             path = path.split(" -> ", 1)[1]
         path = path.replace("\\", "/").strip('"')
