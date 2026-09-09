@@ -216,3 +216,25 @@ def test_bridge_lazy_respawn_with_fake_child(tmp_path, monkeypatch):
     assert "tools/list_changed" in joined or _NOTICE_PREFIX in joined
     assert "pong" in joined
     bridge.kill_child()
+
+
+def test_handshake_reports_the_scubiee_version_not_the_sdk() -> None:
+    """`serverInfo` is the one surface a user can check for which build is live.
+
+    FastMCP accepts no version, so its low-level Server fell back to the
+    installed `mcp` package version and the IDE panel advertised
+    "scubiee 1.30.0" - a release that does not exist.
+    """
+    import pytest
+
+    pytest.importorskip("mcp")
+    from pipeline.mcp_locate import create_mcp
+    from pipeline.upgrade import installed_version
+
+    opts = create_mcp()._mcp_server.create_initialization_options()
+
+    assert opts.server_name == "scubiee"
+    assert opts.server_version == installed_version()
+    assert not opts.server_version.startswith("1."), (
+        f"{opts.server_version} looks like the mcp SDK version, not scubiee's"
+    )

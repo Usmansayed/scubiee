@@ -2307,6 +2307,16 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
     surface = _active_surface()
     mcp = FastMCP(name, instructions=_server_instructions(surface))
 
+    # FastMCP exposes no version parameter, so the low-level Server underneath it
+    # falls back to the installed `mcp` package version and the IDE's MCP panel
+    # advertises a scubiee release that does not exist.
+    try:
+        from pipeline.upgrade import installed_version
+
+        mcp._mcp_server.version = installed_version()
+    except Exception:  # noqa: BLE001 - a wrong version must not block startup
+        pass
+
     def _tool(tool_name: str, title: str, fn) -> None:
         from functools import wraps
 
