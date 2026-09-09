@@ -275,15 +275,24 @@ macOS — the prefilters match on process *name*, which differs across platforms
 | Unit suite (1318 passed / 7 known fails) | ✅ | ❌ crashed (WindowsPath, then FAISS segfault) |
 | Idle suites | ✅ **50 passed** (47 + 3 new self-retire tests) | ⚠️ 46 passed; 1 Windows-only fail (`test_windows_hidden_spawn_does_not_use_detached_process`) |
 | Live **automatic** idle reclaim | ✅ **engine gone ~9s after idle, unattended** | ⚠️ was FAIL — re-run on `9bae058` |
-| MCP connect/disconnect/reconnect e2e | ⚠️ see note | ⬜ script missing from tree |
+| MCP connect/disconnect/reconnect e2e | ✅ **ALL PASS** — engine stopped 22.3s after disconnect, reconnect served | ⬜ harness now committed, re-run |
 | Production test | ✅ | ⬜ not run (`connect --all` / `disconnect --all`) |
 | CLI combination suite | ✅ | ✅ **39/39 PASS** |
 | MLX/CoreML setup + query | N/A | ✅ MLX 101.8 t/s, map rank 1 `memory_governor.py` |
 | Publish 0.3.28 | ⬜ wheel rebuilt + verified, awaiting creds | ⬜ **re-verify section 9 on Mac first** |
 
-**⚠️ e2e note:** the MCP e2e still reports `engine stops within 180s of disconnect - FAIL`,
-but that run predates the fix and its measurement was contaminated by orphaned `.venv`
-watchdogs plus `/health` polling. Script was **not present** on Mac at `19e89fa`.
+**e2e note (resolved Sep 9):** the earlier `engine stops within 180s of disconnect - FAIL`
+predated the self-retire fix. Re-run clean on `9bae058` with orphans cleared, it passes:
+
+```
+[PASS] engine stopped after disconnect - 22.3s
+[PASS] shutdown not premature (>= idle window) - 22.3s vs 15.0s
+[PASS] session 2 (reconnect): status tool responds
+```
+
+The harness is now committed at `scripts/e2e_mcp_idle_reconnect.py` (it is cross-platform —
+`psutil` for the passive liveness check, `shutil.which` for the bridge). Clear stray engines
+and watchdogs first, and put the venv on `PATH` so `scubiee-mcp-bridge` resolves.
 
 ---
 
@@ -419,7 +428,7 @@ deterministically instead of on wall-clock sleeps.
 2. **The 0.3.28 wheel was rebuilt** — the earlier one predates this fix. Verified to contain
    `_retire_self`, `_register_httpd`, `require_run_mode`, `DEFAULT_IDLE_S = 15.0`.
 3. `scripts/e2e_mcp_idle_reconnect.py` (open issue #8) was a scratch script and never
-   committed — that is why it is missing. Phase 3 still needs a committed harness.
+   committed — that is why it was missing. **Now committed**, and passing on Windows.
 4. **Watchdog leak (open issue #1) reproduces on Windows:** 8 orphans found at session start,
    and each `engine ensure` leaves a pair behind. Untouched by this release.
 
