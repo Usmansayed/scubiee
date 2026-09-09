@@ -282,7 +282,7 @@ macOS — the prefilters match on process *name*, which differs across platforms
 | Production test | ✅ | ⬜ not run (`connect --all` / `disconnect --all`) |
 | CLI combination suite | ✅ | ✅ **39/39 PASS** |
 | MLX/CoreML setup + query | N/A | ✅ MLX 101.8 t/s, map rank 1 `memory_governor.py` |
-| Publish 0.3.28 | ⬜ wheel rebuilt + verified, awaiting creds | ⬜ **re-verify section 9 on Mac first** |
+| Publish 0.3.28 | ✅ **LIVE on PyPI (Sep 9)** — `23e6ebe` | ⬜ **re-verify sections 9 + 10 on Mac** |
 
 **e2e note (resolved Sep 9):** the earlier `engine stops within 180s of disconnect - FAIL`
 predated the self-retire fix. Re-run clean on `9bae058` with orphans cleared, it passes:
@@ -516,3 +516,38 @@ scubiee map "memory governor idle demote embedder warm tier"   # still rank 1 me
 
 Confirm MLX still warms at ~100 t/s and that `scubiee setup --repair` writes to the durable
 root rather than recreating the temp one.
+
+---
+
+## 11. Published (Sep 9, 2026)
+
+`scubiee 0.3.28` is **live on PyPI**, built from `23e6ebe`. Contents verified by downloading
+the published wheel back from PyPI, not by trusting the local build:
+
+```
+_retire_self (engine self-stop) : True
+require_run_mode (idle policy)  : True
+DEFAULT_IDLE_S = 15.0
+FASTEMBED_CACHE_PATH pinned     : True
+_migrate_legacy_tmp_cache       : True
+```
+
+Note: the previous latest on PyPI was **0.3.26**, not 0.3.27 as section 0 assumed — 0.3.27
+was only ever a local build. So 0.3.28 carries the 0.3.27 changes too.
+
+Upgrade any machine with:
+
+```bash
+uv tool install --force scubiee --refresh
+scubiee --version    # 0.3.28
+```
+
+On first run after upgrading, `fastembed_cache_root()` migrates an existing
+`$TMPDIR/fastembed_cache` into `~/.cache/fastembed` — a move, not a re-download.
+
+**Still to do on Mac:** sections 9 and 10 remain unverified on Apple Silicon. Publishing was
+a deliberate call to stop blocking on cross-machine verification; if the Mac finds a problem
+in the MLX/CoreML cache path, it needs a 0.3.29.
+
+`npm/package.json` is at 0.3.28 in lockstep but **was not published** — still unclear whether
+the npm package needs its own release or is only kept in sync.
