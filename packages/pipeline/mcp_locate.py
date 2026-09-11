@@ -27,6 +27,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import threading
 import time
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -212,43 +213,35 @@ Prefer Scubiee grep over shell grep when available. Native OK if MCP fails. Shel
 SERVER_INSTRUCTIONS_PHASE_SHIP_BODY = """\
 Scenario routing (Prefer/Forbid — header above is policy; this is the how-to):
 
-WHEN SCUBIEE MCP IS AVAILABLE (tools callable) — STRICT, NO ESCAPE:
-  Soft/structural → MUST map→pack_context(lean) before broad native Grep/dir thrash or edit.
-  Map-only = FAIL. Map/status warming/error ≠ skip pack — retry pack_context/status first.
-  Native-first while MCP tools are callable = FAIL on soft/structural.
-  Native OK only if MCP tools are fully uncallable (server down) — no deadlock.
-  After pack: if ask is still needle/health OR heatmap empty/useless → stop ladder; Grep/Read —
-  do not stack map/status loops + shotgun thrash.
+WHEN SCUBIEE MCP IS AVAILABLE (tools callable) — STRICT:
+ Soft/structural edit/debug → MUST map→pack_context(lean) before broad native Grep/dir thrash or edit.
+ Map-only for edit/debug = FAIL. Warming/error ≠ skip pack — retry pack_context/status first.
+ Explain escape: map clusters one packages/ module + narrative ask → Native-Read map locs (skip pack OK).
+ Edit/debug still MUST pack. Pack thin=true → expand_context or Read seed; do not re-pack thrash.
+ Native-first while MCP up = FAIL on soft/structural. Native OK only if MCP fully uncallable — no deadlock.
+ After pack: needle/health OR empty heatmap → stop ladder; Grep/Read — no map/status thrash.
 
-INCREMENTAL LADDER (soft/structural — Prefer, ≤2–3 calls; query quality > extra remaps):
-  0) ENRICH first (~30–80 tokens): concrete symbols, module paths, outcome verbs from the ask.
-     One tight sentence. BAN essays. Vague one-liner OR keyword/synonym dump = FAIL.
-  1) No seed → map(enriched_query, k=10).
-     Use suggested_seed (packages/ public function/method) — skip tests/docs/empty/_helpers.
-  2) pack_context(refined query + seed_*, mode=lean) → heatmap (locs+heat, no bodies).
-     Refine = fold suggested_seed / hot card file+symbol into the query (same thread).
-     Engine: composite_v1. Escape once with policy=broad only if lean slice too tight.
-  3) Native-Read top ~read.top heat=hot|warm locs. BAN whole-file Read of heatmap paths.
-  4) If thin → expand_context(…, query=further refined). Bodies → collect_hot_context(ids=).
-  Trusted seed known → skip map; pack_context(mode=lean, enriched query) then Read locs.
-  Prefer 1× map + 1× pack; expand only if thin — do not burn budget remapping.
+INCREMENTAL LADDER (soft/structural — Prefer, ≤2–3 calls; query quality > remaps):
+ 0) ENRICH (~25–120 tokens, target ≥40): symbols, module paths, APIs, errors, tech, outcome verbs.
+    Think the full problem surface first. One tight dense sentence. BAN essays/salad/<25-token vibes.
+ 1) No seed → map(enriched_query, k=12). Use suggested_seeds (1–3 packages/ public class/entrypoint).
+ 2) BEFORE pack: re-enrich query with ALL suggested_seeds file::symbol + 2–4 hot cards (usually longer).
+    pack_context(refined query + seed_* + seed2_* [+ seed3_*], mode=lean) → multi_seed_v1 when ≥2 seeds
+    (agreement+corridor). Engine: composite_v1 single-seed. Escape once policy=broad only if lean too tight.
+    thin=true → expand or Read seed — do not re-pack.
+ 3) Native-Read top ~read.top heat=hot|warm locs. BAN whole-file Read of heatmap paths.
+ 4) If thin → expand_context(…, query=further refined). Bodies → collect_hot_context(ids=).
+ Trusted seed → skip map; still enrich query; pack_context(lean) then Read locs. Prefer 1× map + 1× pack.
 
-QUERY QUALITY (few locate calls → invest in the query):
-  Weak / FAIL: "how does connect work?" / bare "session" / synonym dump with no real symbols
-    (e.g. "pack engine tracer broad escape heatmap guide" — keywords only).
-  After map (refine): append suggested_seed file::symbol + 1–2 hot card names into pack query.
-  Strong: "scubiee connect writes Cursor mcp.json autoApprove and permissions.json mcpAllowlist
-  via install_tool → write_project_tool_surface → apply_permissions_to_repo_tool_surface;
-  also write_project_gate_rules for AGENTS.md GATE text."
+QUERY QUALITY: invest in the query. Weak = bare prose / synonym dump / <25 tokens.
+ After map: pack query MUST be more specific (and usually longer) than map query.
+ Strong = concrete symbols + module paths + APIs/errors + outcome verbs (≥40 tokens recommended).
+ When suggested_seeds has 2+, pass seed2/seed3 — do not discard direction.
 
 EXCEPTIONS (Forbid-first map/pack — native first):
-- exact literal / import / error string / JWT-like needle → host Grep.
-- named-symbol chain under a known path root (multi-hop still Grep-first) → host Grep/rg.
-- filename / path pattern only → host Glob.
-- already know exact path → host Read.
-- health / readiness / warm_state / provider-dep errors → gate/status + host Grep (not soft map).
-- session / rematerialize → workspace(show) / expand(handle).
-- gate / status: managed / health (not locate).
+- exact literal / import / error / JWT-like → Grep; named-symbol under known path → Grep/rg.
+- filename → Glob; known path → Read; health/warm_state → gate/status + Grep.
+- session/rematerialize → workspace(show)/expand(handle); gate/status = health not locate.
 
 One soft ladder beat, then edit. No parallel explore thrash with Scubiee.
 Shell = tests/build/git. Lab: CTX_MCP_EXPERIMENT=lab. Classic: CTX_MCP_EXPERIMENT=classic.
@@ -257,11 +250,13 @@ Shell = tests/build/git. Lab: CTX_MCP_EXPERIMENT=lab. Classic: CTX_MCP_EXPERIMEN
 SERVER_INSTRUCTIONS_PHASE_CLASSIC_BODY = """\
 Scenario routing (follow when tools are available):
 
-INCREMENTAL LADDER: map(k=10) → pack_context (mode=lean, composite_v1) → expand_context(delta) — ≤3 calls.
-- Prefer pack_context after a seed → compressed heatmap (no bodies). Native-Read top ~read.top locs.
-  collect_hot_context for bodies. policy=broad once if lean slice too tight.
-- QUERY QUALITY: Enrich first (~30–80 denser tokens: symbols/paths/verbs — not keyword-salad).
-  Vague one-liner OR synonym dump = FAIL. Refine with suggested_seed/hot cards on pack→expand.
+INCREMENTAL LADDER: map(k=12) → pack_context (mode=lean, composite_v1 / multi_seed_v1) → expand_context(delta) — ≤3 calls.
+- Prefer pack_context after seed(s) → compressed heatmap (no bodies). Native-Read top ~read.top locs.
+  collect_hot_context for bodies. policy=broad once if lean slice too tight
+  (optional leaf→class densify; check escape_helped — not a density guarantee).
+  ≥2 seeds → agreement+corridor merge (pass seed2/seed3 from suggested_seeds).
+- QUERY QUALITY: Enrich first (~25–120 denser tokens, target ≥40: symbols/paths/APIs/errors/verbs).
+  Vague one-liner OR synonym dump = FAIL. After map re-enrich with suggested_seeds/hot cards before pack.
 - After pack: Native-Read heatmap locs — BAN whole-file Read. expand_context if hop missing.
 - Soft browse extras: focus / grep / glob (classic surface).
 
@@ -560,68 +555,40 @@ _MCP_CLIENT_ID: str | None = None
 
 
 def _register_mcp_client(repo: Path) -> str:
-    """Tell the daemon an MCP front-end is connected; unload after it exits."""
-    import atexit
-
-    from pipeline.session_isolation import default_process_session_id, mcp_client_name
+    """Universal attach: any MCP host/OS — warm embedder before tools, leave on exit."""
+    from pipeline.mcp_lifecycle import attach_mcp_session, current_client_id
 
     global _MCP_CLIENT_ID
-    client_id = f"mcp:{default_process_session_id()}"
-    _MCP_CLIENT_ID = client_id
-    host = mcp_client_name()
-    try:
-        from pipeline.client import EngineClient
-        from pipeline.session_isolation import effective_session_id
-
-        sid = effective_session_id(None)
-        EngineClient(
-            workspace_path=str(repo),
-            timeout=3.0,
-            client=host,
-            session_id=sid,
-        ).post(
-            "/v1/client/register",
-            {
-                "client_id": client_id,
-                "pid": os.getpid(),
-                "kind": "mcp",
-                "client": host,
-                "session_id": sid,
-            },
-        )
-    except Exception:  # noqa: BLE001
-        pass
-
-    def _leave() -> None:
-        try:
-            from pipeline.client import EngineClient
-
-            EngineClient(workspace_path=str(repo), timeout=2.0).post(
-                "/v1/client/unregister",
-                {"client_id": client_id},
-            )
-        except Exception:  # noqa: BLE001
-            pass
-
-    atexit.register(_leave)
-    return client_id
+    out = attach_mcp_session(repo)
+    _MCP_CLIENT_ID = str(out.get("client_id") or current_client_id() or "")
+    return _MCP_CLIENT_ID
 
 
 def _touch_mcp_client() -> None:
     """Refresh daemon client liveness on each MCP tool call."""
-    client_id = _MCP_CLIENT_ID
+    from pipeline.mcp_lifecycle import current_client_id
+
+    client_id = current_client_id() or _MCP_CLIENT_ID
     if not client_id:
         return
     try:
+        from pipeline.client import EngineClient
         from pipeline.lifecycle_runtime import note_activity, register_client, touch_client
 
         if touch_client(client_id):
             note_activity()
         else:
-            # Stale eviction removed the registry entry while this worker lived on.
             register_client(client_id, pid=os.getpid(), kind="mcp")
+        try:
+            EngineClient(workspace_path=os.environ.get("CTX_REPO") or None, timeout=1.5).post(
+                "/v1/client/touch",
+                {"client_id": client_id, "pid": os.getpid(), "kind": "mcp"},
+            )
+        except Exception:  # noqa: BLE001
+            pass
     except Exception:  # noqa: BLE001
         pass
+
 
 
 from pipeline.host_workspace import ide_workspace_env_keys
@@ -1015,6 +982,12 @@ def _status_ttl_s() -> int:
 _LAST_STATUS_MONO: float | None = None
 
 
+def _invalidate_status_ttl() -> None:
+    """Forget cached status freshness so agents re-check after transport flaps."""
+    global _LAST_STATUS_MONO
+    _LAST_STATUS_MONO = None
+
+
 def _managed_signal_fields(*, just_checked: bool = False) -> dict[str, Any]:
     """Fields agents use to decide whether to keep / retry Scubiee MCP.
 
@@ -1279,13 +1252,30 @@ def _backend_error(
         hint = "Run: scubiee activate . (per-repo pause — not the same as scubiee stop)."
     elif status == "needs_registration":
         hint = f"Register this workspace first: scubiee register {repo}."
+    elif str(response.get("warm_state") or "").lower() == "error" or status == "error":
+        hint = "Scubiee warm_state=error — run: scubiee setup (or scubiee doctor), not status polling."
+        error = str(response.get("warm_error") or error or "warm_state_error")
+        status = "error"
     elif status in {"warming", "starting", "loading", "syncing", "initializing", "not_ready"}:
-        hint = f"Scubiee is still {status}; retry after status() reports ready."
+        hint = f"Scubiee is still {status}; retry after status() reports locate.state=ready."
+
+    if _is_transient_engine_error(error) or "unreachable" in error.lower() or "10061" in error:
+        _invalidate_status_ttl()
 
     extra: dict[str, Any] = {"repo": str(repo)}
     if _is_transient_engine_error(error):
         extra["should_retry"] = True
         hint = hint or "Transient engine drop — retry the same call once immediately."
+    if status == "error" or str(response.get("warm_state") or "").lower() == "error":
+        extra["should_retry"] = False
+        extra["non_retryable"] = True
+        extra["locate"] = {
+            "state": "error",
+            "reason": error,
+            "repair": ["scubiee setup", "scubiee doctor"],
+            "should_use": False,
+            "should_retry": False,
+        }
     for key in (
         "status",
         "state",
@@ -1300,6 +1290,8 @@ def _backend_error(
     ):
         if response.get(key) is not None:
             extra[key] = response[key]
+    if status:
+        extra["status"] = status
     return _err(tool, error, hint=hint, **extra)
 
 
@@ -1960,13 +1952,13 @@ def _facade_hint_for_card(card: dict[str, Any]) -> dict[str, Any] | None:
     return None
 
 
-def _enrich_map_cards(cards: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _enrich_map_cards(cards: list[dict[str, Any]], *, query: str = "") -> list[dict[str, Any]]:
     """Slim cards: file/lines/score/why/role (+ weak_match). No per-card coaching."""
     from pipeline.context_trace import card_role, fill_map_card_symbol, rank_soft_map_cards
 
     out: list[dict[str, Any]] = []
     for c in cards or []:
-        item = fill_map_card_symbol(dict(c))
+        item = fill_map_card_symbol(dict(c), query=query)
         if item.get("why"):
             item["why"] = _strip_bom_text(str(item["why"]))
         # Drop legacy coaching keys if a cached card still carries them.
@@ -1985,10 +1977,60 @@ def _enrich_map_cards(cards: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return rank_soft_map_cards(out)
 
 
+def _card_node_id(card: Any) -> str:
+    if not isinstance(card, dict):
+        return ""
+    cid = str(card.get("id") or "").strip()
+    if cid:
+        return cid
+    file = str(card.get("file") or "").strip().replace("\\", "/")
+    if not file:
+        return ""
+    symbol = str(card.get("symbol") or "").strip()
+    return f"{file}::{symbol}" if symbol else file
+
+
+def _resolve_expand_node(
+    node: str,
+    seed_file: str = "",
+    seed_symbol: str = "",
+    prior: dict[str, Any] | None = None,
+) -> str:
+    """Pick the node to grow from, accepting pack_context's seed vocabulary.
+
+    ``node`` used to be required, so an agent that had just called
+    pack_context(seed_file=…, seed_symbol=…) and reused those names got a
+    schema validation error instead of an expand — mid-ladder, with no way to
+    tell the two spellings apart. Accept either, and fall back to the hottest
+    card already in the trace so a bare expand_context() still advances.
+    """
+    direct = (node or "").strip()
+    if direct:
+        return direct
+    file = (seed_file or "").strip().replace("\\", "/")
+    if file:
+        symbol = (seed_symbol or "").strip()
+        return f"{file}::{symbol}" if symbol else file
+    cards = [c for c in ((prior or {}).get("cards") or []) if isinstance(c, dict)]
+    hot = [c for c in cards if str(c.get("heat") or "").lower() == "hot"]
+    for card in [*hot, *cards]:
+        resolved = _card_node_id(card)
+        if resolved:
+            return resolved
+    return ""
+
+
 def _client_for(repo: Path):
     from pipeline.client import EngineClient
     from pipeline.daemon import ensure_daemon
+    from pipeline.mcp_lifecycle import current_client_id, warm_engine_for_mcp
     from pipeline.session_isolation import effective_session_id, mcp_client_name
+
+    # Universal: any host may call tools after an engine restart under a live MCP.
+    # Block until FastEmbed is ready so the first map never pays cold ORT.
+    warm = warm_engine_for_mcp(repo, client_id=current_client_id() or _MCP_CLIENT_ID)
+    if not warm.get("ok"):
+        _stderr(f"[scubiee] warm gate incomplete: {warm}")
 
     ensure_daemon(repo, force_if_hung=True)
     sid = effective_session_id(None)
@@ -1996,8 +2038,9 @@ def _client_for(repo: Path):
         workspace_path=str(repo),
         client=mcp_client_name(),
         session_id=sid,
+        timeout=180.0,
     )
-    admission: dict[str, Any] = {"ok": True}
+    admission: dict[str, Any] = {"ok": True, "warm": warm}
     # Admission must succeed before operational endpoints (/v1/grep, /v1/search).
     # ensure_daemon open_repo is best-effort; retry explicitly so MCP reload races
     # do not surface requires_initialize to agents.
@@ -2018,8 +2061,10 @@ def _client_for(repo: Path):
                     workspace_path=str(repo),
                     client=mcp_client_name(),
                     session_id=sid,
+                    timeout=180.0,
                 )
                 opened = client.open_repo(str(repo), wait=True)
+                warm_engine_for_mcp(repo, client_id=current_client_id() or _MCP_CLIENT_ID)
             else:
                 opened = client.open_repo(str(repo), wait=True)
         if str(opened.get("status") or "") != "activated":
@@ -2028,6 +2073,7 @@ def _client_for(repo: Path):
                 "error": "repo_not_activated",
                 "status": opened.get("status"),
                 "hint": "Run scubiee init in this repo or check scubiee status()",
+                "warm": warm,
             }
     except Exception as exc:  # noqa: BLE001
         admission = {
@@ -2035,6 +2081,7 @@ def _client_for(repo: Path):
             "error": "open_repo_failed",
             "detail": str(exc),
             "hint": "Run scubiee engine start or scubiee doctor",
+            "warm": warm,
         }
     if not admission.get("ok"):
         _stderr(
@@ -2144,7 +2191,7 @@ class FilesArgs(BaseModel):
 class MapArgs(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
     query: str = Field(..., min_length=1, max_length=2000, description="Cold/new-topic locate query.")
-    k: int = Field(10, ge=1, le=25, description="How many cards (default 10 for seed coverage).")
+    k: int = Field(12, ge=1, le=25, description="How many cards (default 12 for seed coverage).")
     response_format: Literal["json", "markdown"] = Field("json", description="json|markdown")
 
 
@@ -2305,8 +2352,14 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
     if FastMCP is None:
         raise RuntimeError("pip install mcp")
     surface = _active_surface()
-    mcp = FastMCP(name, instructions=_server_instructions(surface))
+    from pipeline.mcp_lifecycle import mcp_lifespan_factory
 
+    repo = _default_repo()
+    mcp = FastMCP(
+        name,
+        instructions=_server_instructions(surface),
+        lifespan=mcp_lifespan_factory(repo),
+    )
     # FastMCP exposes no version parameter, so the low-level Server underneath it
     # falls back to the installed `mcp` package version and the IDE's MCP panel
     # advertises a scubiee release that does not exist.
@@ -3580,18 +3633,22 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             str,
             Field(
                 description=(
-                    "Cold/new-topic flow query — denser CODE VOCABULARY ~30–80 tokens "
-                    "(symbols/paths/verbs). Call 1 of incremental ladder."
+                    "Cold/new-topic flow query — denser CODE VOCABULARY 25–120 tokens "
+                    "(target ≥40: symbols/paths/APIs/errors/tech/verbs across the problem surface). "
+                    "Call 1 of incremental ladder."
                 )
             ),
         ],
-        k: Annotated[int, Field(description="How many cards (default 10).")] = 10,
+        k: Annotated[int, Field(description="How many cards (default 12).")] = 12,
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
         root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
         project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
         session_id: Annotated[str, Field(description=_BIND_SESSION_DESC)] = "",
     ) -> str:
         """Soft locate (call 1): ranked cards + suggested_seed. No bodies. Then pack_context(mode=lean)."""
+        import time as _time
+
+        _map_t0 = _time.perf_counter()
         try:
             args = MapArgs(query=query, k=k, response_format=response_format)  # type: ignore[arg-type]
         except ValidationError as exc:
@@ -3611,15 +3668,37 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         duplicate = qn in (thrash.get("seen") or [])
         cached_cards = _map_cache_get(store, qn, args.k) if duplicate else None
         if duplicate and cached_cards:
-            cards = _enrich_map_cards(cached_cards)
+            cards = _enrich_map_cards(cached_cards, query=args.query)
             conf = _assess_map_confidence(args.query, cards)
             if conf.get("confidence") == "low":
                 cards = cards[:3]
                 for c in cards:
                     c["weak_match"] = True
-            from pipeline.context_trace import pick_suggested_seed
+            from pipeline.context_trace import (
+                finalize_suggested_seed,
+                map_ladder_next,
+                pick_suggested_seed,
+                pick_suggested_seeds,
+            )
 
-            suggested = pick_suggested_seed(cards)
+            suggested = pick_suggested_seed(cards, query=args.query)
+            suggested = finalize_suggested_seed(
+                Path(repo), suggested, query=args.query, load_repo=False
+            )
+            seeds_raw = pick_suggested_seeds(cards, query=args.query, limit=3)
+            suggested_seeds = [
+                finalize_suggested_seed(Path(repo), s, query=args.query, load_repo=False)
+                or s
+                for s in seeds_raw
+            ]
+            suggested_seeds = [s for s in suggested_seeds if s and s.get("file")]
+            if suggested and not any(
+                str(s.get("file")) == str(suggested.get("file"))
+                and str(s.get("symbol") or "") == str(suggested.get("symbol") or "")
+                for s in suggested_seeds
+            ):
+                suggested_seeds = [suggested] + suggested_seeds
+            suggested_seeds = suggested_seeds[:3]
             out = {
                 "ok": True,
                 "tool": "map",
@@ -3632,14 +3711,15 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 "cached": True,
                 "session_id": sid,
                 "suggested_seed": suggested,
+                "suggested_seeds": suggested_seeds,
                 "ladder": "map → pack(lean) → expand(delta) — ≤3 calls",
-                "next": (
-                    "Refine query with suggested_seed file+symbol, then "
-                    "pack_context(same/refined query, mode=lean, seed_*)."
-                    if suggested
-                    else "Pick a packages/ function card, refine query with its names, "
-                    "then pack_context(mode=lean)."
+                "next": map_ladder_next(
+                    cards,
+                    suggested,
+                    query=args.query,
+                    suggested_seeds=suggested_seeds,
                 ),
+                "elapsed_ms": round((_time.perf_counter() - _map_t0) * 1000, 1),
                 **conf,
             }
             return _format(out, args.response_format)
@@ -3669,7 +3749,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         card["tool"] = "map"
         card.pop("include", None)
         raw_cards = card.pop("results", [])
-        card["cards"] = _enrich_map_cards(raw_cards)
+        card["cards"] = _enrich_map_cards(raw_cards, query=args.query)
         conf = _assess_map_confidence(args.query, card["cards"])
         card.update(conf)
         if conf.get("confidence") == "low":
@@ -3681,16 +3761,44 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         card["ranked_only"] = True
         card["session_id"] = sid
         try:
-            from pipeline.context_trace import pick_suggested_seed
+            from pipeline.context_trace import (
+                finalize_suggested_seed,
+                map_ladder_next,
+                pick_suggested_seed,
+                pick_suggested_seeds,
+            )
 
-            card["suggested_seed"] = pick_suggested_seed(list(card.get("cards") or []))
+            card["suggested_seed"] = finalize_suggested_seed(
+                Path(repo),
+                pick_suggested_seed(list(card.get("cards") or []), query=args.query),
+                query=args.query,
+                load_repo=False,
+            )
+            seeds_raw = pick_suggested_seeds(
+                list(card.get("cards") or []), query=args.query, limit=3
+            )
+            suggested_seeds = [
+                finalize_suggested_seed(
+                    Path(repo), s, query=args.query, load_repo=False
+                )
+                or s
+                for s in seeds_raw
+            ]
+            suggested_seeds = [s for s in suggested_seeds if s and s.get("file")]
+            sug = card.get("suggested_seed")
+            if sug and not any(
+                str(s.get("file")) == str(sug.get("file"))
+                and str(s.get("symbol") or "") == str(sug.get("symbol") or "")
+                for s in suggested_seeds
+            ):
+                suggested_seeds = [sug] + suggested_seeds
+            card["suggested_seeds"] = suggested_seeds[:3]
             card["ladder"] = "map → pack(lean) → expand(delta) — ≤3 calls"
-            card["next"] = (
-                "Refine query with suggested_seed file+symbol, then "
-                "pack_context(same/refined query, mode=lean, seed_*)."
-                if card.get("suggested_seed")
-                else "Pick a packages/ function card, refine query with its names, "
-                "then pack_context(mode=lean)."
+            card["next"] = map_ladder_next(
+                list(card.get("cards") or []),
+                card.get("suggested_seed"),
+                query=args.query,
+                suggested_seeds=card.get("suggested_seeds"),
             )
         except Exception:  # noqa: BLE001
             card["suggested_seed"] = None
@@ -3709,6 +3817,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             )
         except Exception:  # noqa: BLE001
             pass
+        card["elapsed_ms"] = round((_time.perf_counter() - _map_t0) * 1000, 1)
         return _format(card, args.response_format)
 
     def focus_impl(
@@ -4116,47 +4225,116 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     ensure_daemon(repo, force_if_hung=False)
                 except Exception:  # noqa: BLE001
                     pass
-                eng = EngineClient(timeout=8.0, workspace_path=str(repo))
+                from pipeline.session_isolation import mcp_client_name
+
+                eng = EngineClient(
+                    timeout=8.0 if (detail or "summary").strip().lower() != "full" else 20.0,
+                    workspace_path=str(repo),
+                    client=mcp_client_name(),
+                    session_id=sid,
+                )
                 store = load_store(repo, session_id=sid)
                 healthy = eng.healthy()
-                daemon_status: dict[str, Any] = {}
+                opened: dict[str, Any] = {}
+                detail_s = (detail or "summary").strip().lower()
                 if healthy:
+                    # Bind the workspace the same way map/pack do — otherwise
+                    # soft_search_ready stays false and agents see eternal "warming".
+                    try:
+                        opened = eng.open_repo(str(repo), wait=True)
+                    except Exception as exc:  # noqa: BLE001
+                        opened = {"ok": False, "error": str(exc)}
+                    # Host-agnostic: block until FastEmbed is ready before advertising ready.
+                    try:
+                        from pipeline.mcp_lifecycle import current_client_id, warm_engine_for_mcp
+
+                        warm_engine_for_mcp(
+                            repo,
+                            client_id=current_client_id() or _MCP_CLIENT_ID,
+                        )
+                    except Exception:  # noqa: BLE001
+                        pass
+                daemon_status: dict[str, Any] = {}
+                # summary: avoid full /v1/status keeper dump — health + open_repo + local probe.
+                if healthy and detail_s == "full":
                     try:
                         daemon_status = eng.status(str(repo))
-                    except Exception:  # noqa: BLE001
-                        daemon_status = {}
-                    if daemon_status.get("ok") is False and "unreachable" in str(
-                        daemon_status.get("error") or ""
-                    ):
-                        # /health was fine; a slow /v1/status must not flip the card to down.
+                    except Exception as exc:  # noqa: BLE001
+                        # Honest starting/unbound — never fake warm_state=ready.
                         daemon_status = {
-                            "ok": True,
-                            "warm_state": "ready",
-                            "error": None,
+                            "ok": False,
+                            "error": f"status_unreachable: {exc}",
+                            "warm_state": "warming",
+                            "hint": "Run: scubiee engine ensure .",
                         }
+                elif healthy:
+                    warm_from_open = (
+                        opened.get("warm_state")
+                        if isinstance(opened, dict)
+                        else None
+                    )
+                    daemon_status = {
+                        "ok": bool(opened.get("ok", True)) if isinstance(opened, dict) else True,
+                        "warm_state": warm_from_open or "ready",
+                        "warm_error": (opened.get("error") if isinstance(opened, dict) and opened.get("ok") is False else None),
+                        "project_id": (opened.get("project_id") if isinstance(opened, dict) else None),
+                        "soft_search_ready": bool(
+                            isinstance(opened, dict)
+                            and opened.get("ok") is not False
+                            and opened.get("project_id")
+                        ),
+                        "engine": opened.get("engine") if isinstance(opened, dict) else True,
+                    }
+                    try:
+                        from pipeline.project_id import index_is_usable, peek_project
+
+                        ref = peek_project(repo)
+                        if ref is not None:
+                            daemon_status["project_id"] = daemon_status.get("project_id") or ref.project_id
+                            usable = index_is_usable(ref.store_dir)
+                            daemon_status["meta"] = {"chunks": 1 if usable else 0}
+                            if not usable:
+                                daemon_status["soft_search_ready"] = False
+                                daemon_status["warm_state"] = "warming"
+                    except Exception:  # noqa: BLE001
+                        pass
                 else:
                     daemon_status = {
                         "ok": False,
                         "error": f"Scubiee unreachable at {eng.base}",
                         "hint": "Run: scubiee engine ensure .",
                     }
+                bound_pid = (
+                    daemon_status.get("project_id")
+                    or (opened.get("project_id") if isinstance(opened, dict) else None)
+                )
+                meta = daemon_status.get("meta") if isinstance(daemon_status.get("meta"), dict) else None
+                warm_state = daemon_status.get("warm_state") if healthy else None
+                warm_error = (
+                    daemon_status.get("warm_error")
+                    if healthy
+                    else daemon_status.get("error")
+                )
+                index_usable = None
+                if isinstance(meta, dict) and "chunks" in meta:
+                    index_usable = int(meta.get("chunks") or 0) > 0
                 soft_search_ready = bool(
                     healthy
+                    and not warm_error
+                    and str(warm_state or "").lower() in {"ready", "idle", ""}
+                    and bound_pid
+                    and (index_usable is not False)
                     and (
                         daemon_status.get("soft_search_ready")
                         if "soft_search_ready" in daemon_status
-                        else (
-                            daemon_status.get("warm_state") == "ready"
-                            and daemon_status.get("engine") is not None
-                            and not daemon_status.get("warm_error")
-                        )
+                        else (daemon_status.get("engine") is not None or bound_pid)
                     )
                 )
-                from pipeline.sync_status import build_sync_contract
+                from pipeline.sync_status import build_sync_contract, derive_locate_state
 
                 contract = build_sync_contract(
-                    warm_state=daemon_status.get("warm_state") if healthy else None,
-                    warm_error=daemon_status.get("warm_error"),
+                    warm_state=warm_state,
+                    warm_error=warm_error,
                     keeper=daemon_status.get("keeper") if healthy else None,
                     soft_search_ready=soft_search_ready,
                     last_error=None if healthy else daemon_status.get("error"),
@@ -4179,6 +4357,18 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     contract["error"] = daemon_status.get("error") if daemon_status.get("ok") is False else None
                 managed = _is_repo_managed()
                 warming = bool(managed and not healthy)
+                locate = derive_locate_state(
+                    healthy=healthy,
+                    soft_search_ready=soft_search_ready,
+                    warm_state=warm_state,
+                    warm_error=str(warm_error or "") or None,
+                    project_bound=bool(bound_pid),
+                    index_usable=index_usable,
+                    sync_state=str(contract.get("sync_state") or "ready"),
+                    syncing=bool(contract.get("syncing")),
+                )
+                # Prefer explicit locate over sync-contract default when unbound.
+                contract["locate"] = locate
                 payload: dict[str, Any] = {
                     # ok = daemon reachable only. Do not conflate with managed (agents misread
                     # readiness when ok=true while warming=true). Use warming branch in rules.
@@ -4189,10 +4379,10 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     "engine": {
                         "healthy": healthy,
                         "soft_search_ready": soft_search_ready,
-                        "warm_state": daemon_status.get("warm_state") if healthy else None,
-                        "warm_error": daemon_status.get("warm_error") if healthy else daemon_status.get("error"),
-                        "project_id": daemon_status.get("project_id") if healthy else None,
-                        "meta": daemon_status.get("meta") if healthy else None,
+                        "warm_state": warm_state,
+                        "warm_error": warm_error,
+                        "project_id": bound_pid,
+                        "meta": meta,
                     },
                     "repo": str(repo),
                     "token_mode": token_mode(),
@@ -4200,15 +4390,12 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     # to re-test after scubiee init / connect.
                     **_managed_signal_fields(just_checked=True),
                     "warming": warming,
-                    "index_available": bool(
-                        healthy
-                        and daemon_status.get("meta")
-                        and (daemon_status.get("meta") or {}).get("chunks", 0) > 0
-                    ),
+                    "index_available": bool(index_usable),
                     "tools": tool_lists.get(surface, tool_lists["read"]),
                     "keeper": _slim_status_keeper(daemon_status.get("keeper") if healthy else None),
                     "soft_search_ready": soft_search_ready,
                     **contract,
+                    "locate": locate,
                     "session": {
                         "session_id": sid,
                         "source": sess.get("source"),
@@ -4227,7 +4414,11 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                         "Engine is starting. Use Scubiee tools — if a tool returns warming, "
                         "wait 5s and retry once. Do not poll status() in a loop."
                     )
-                from pipeline.sync_status import derive_agent_ready
+                elif locate.get("state") == "unbound":
+                    payload["hint"] = (
+                        "Repo not bound — map/pack auto-bind; or run: scubiee engine ensure ."
+                    )
+                from pipeline.sync_status import derive_agent_ready, derive_agent_ready_note
 
                 payload["agent_ready"] = derive_agent_ready(
                     healthy=healthy,
@@ -4238,7 +4429,29 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     overlay_ready=bool(contract.get("overlay_ready")),
                     publish_pending=bool(contract.get("publish_pending")),
                     warming=warming,
+                    warm_state=warm_state,
+                    warm_error=str(warm_error or "") or None,
+                    project_bound=bool(bound_pid),
+                    locate=locate,
                 )
+                payload["agent_ready_note"] = derive_agent_ready_note(
+                    agent_ready=payload["agent_ready"],
+                    sync_state=str(contract.get("sync_state") or "ready"),
+                    syncing=bool(contract.get("syncing")),
+                    overlay_ready=bool(contract.get("overlay_ready")),
+                    publish_pending=bool(contract.get("publish_pending")),
+                    ready=bool(contract.get("ready")),
+                    locate=locate,
+                )
+                # Honest should_use from locate.state (managed alone is not enough).
+                signals = _managed_signal_fields(just_checked=True)
+                signals["should_use_mcp"] = bool(
+                    managed and locate.get("should_use") is not False
+                )
+                if locate.get("state") == "error":
+                    signals["should_use_mcp"] = False
+                    signals["should_retry_status"] = False
+                payload.update(signals)
                 try:
                     from pipeline.lifecycle_guidance import next_actions, primary_recovery_action
 
@@ -4313,6 +4526,9 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         seed2_file: Annotated[str, Field(description="Optional second seed file.")] = "",
         seed2_symbol: Annotated[str, Field(description="Optional second seed symbol.")] = "",
         seed2_line: Annotated[int, Field(description="Optional second seed line.")] = 0,
+        seed3_file: Annotated[str, Field(description="Optional third seed file.")] = "",
+        seed3_symbol: Annotated[str, Field(description="Optional third seed symbol.")] = "",
+        seed3_line: Annotated[int, Field(description="Optional third seed line.")] = 0,
         k: Annotated[int, Field(description="Max heatmap cards (default 24).")] = 24,
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
         root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
@@ -4337,6 +4553,9 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 seed2_file=seed2_file,
                 seed2_symbol=seed2_symbol,
                 seed2_line=int(seed2_line or 0),
+                seed3_file=seed3_file,
+                seed3_symbol=seed3_symbol,
+                seed3_line=int(seed3_line or 0),
                 k=max(4, min(int(k or 24), 48)),
             )
             out["session_id"] = sid
@@ -4362,8 +4581,22 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
     def expand_context_impl(
         node: Annotated[
             str,
-            Field(description="Heatmap node id (file::symbol) or file path to grow from."),
-        ],
+            Field(
+                description=(
+                    "Heatmap node id (file::symbol) or file path to grow from. "
+                    "Optional: falls back to seed_file/seed_symbol, then to the "
+                    "hottest card of the current trace."
+                )
+            ),
+        ] = "",
+        seed_file: Annotated[
+            str,
+            Field(description="Alias of node by path — same vocabulary as pack_context."),
+        ] = "",
+        seed_symbol: Annotated[
+            str,
+            Field(description="Symbol within seed_file — same vocabulary as pack_context."),
+        ] = "",
         direction: Annotated[
             str,
             Field(
@@ -4413,18 +4646,31 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             from pipeline.context_trace import load_trace, persist_trace, run_expand_context
 
             prior = load_trace(repo, sid)
-            prior_ids = {c.get("id") for c in (prior.get("cards") or []) if c.get("id")}
-            prior_ids |= {str(x) for x in (prior.get("packed_ids") or []) if x}
+            # Only skip already-expanded hops — NOT the whole pack heatmap
+            # (that made callers/effects empty after dense packs).
+            prior_ids = {str(x) for x in (prior.get("expanded_ids") or []) if x}
+            pack_seen_ids = {c.get("id") for c in (prior.get("cards") or []) if c.get("id")}
             prior_packed = {str(x) for x in (prior.get("packed_ids") or []) if x}
             q = (query or "").strip() or str(prior.get("query") or "")
+            target = _resolve_expand_node(node, seed_file, seed_symbol, prior)
+            if not target:
+                return _err(
+                    "expand_context",
+                    "no node to expand from",
+                    hint=(
+                        "Pass node=file::symbol (or seed_file=/seed_symbol=), "
+                        "or run map/pack_context first so a trace exists."
+                    ),
+                )
             out = run_expand_context(
                 repo,
-                node,
+                target,
                 query=q,
                 direction=direction or "all",
                 intent=intent or "",
                 k=max(4, min(int(k or 12), 24)),
                 prior_ids=prior_ids,  # type: ignore[arg-type]
+                pack_seen_ids=pack_seen_ids,  # type: ignore[arg-type]
                 with_bodies=bool(with_bodies),
                 budget_chars=max(400, int(budget_chars or 4000)),
                 max_bodies=max(1, min(int(max_bodies or 3), 8)),
@@ -4440,6 +4686,9 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                         cards.append(c)
                         seen.add(c.get("id"))
                 packed = set(prior_packed) | {str(x) for x in (out.get("_persist_packed") or []) if x}
+                expanded = set(prior_ids) | {
+                    str(x) for x in (out.get("_persist_ids") or []) if x
+                }
                 persist_trace(
                     repo,
                     sid,
@@ -4449,9 +4698,11 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                         "cards": cards,
                         "scores": {c["id"]: c.get("score") for c in cards if c.get("id")},
                         "packed_ids": sorted(packed),
+                        "expanded_ids": sorted(expanded),
                     },
                 )
                 out.pop("_persist_packed", None)
+                out.pop("_persist_ids", None)
             return _format(out, response_format)
         except Exception as exc:  # noqa: BLE001
             return _err("expand_context", str(exc))
@@ -4462,8 +4713,9 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 str,
                 Field(
                     description=(
-                        "Descriptive task paragraph — prefer concrete symbols, APIs, paths, "
-                        "error tokens, verbs. Richer wording sharpens the pack."
+                        "ENRICHED pack query after map (25–120 tokens, target ≥40). "
+                        "Fold suggested_seeds file::symbol + hot cards + APIs/errors/paths "
+                        "from the problem surface — denser and more specific than the map query."
                     )
                 ),
             ],
@@ -4472,9 +4724,23 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 str, Field(description="Seed symbol (optional if seed_line set).")
             ] = "",
             seed_line: Annotated[int, Field(description="Line inside seed function.")] = 0,
-            seed2_file: Annotated[str, Field(description="Optional second seed file.")] = "",
+            seed2_file: Annotated[
+                str,
+                Field(
+                    description=(
+                        "Optional second seed (from suggested_seeds[1]) — enables "
+                        "multi_seed_v1 agreement+corridor merge."
+                    )
+                ),
+            ] = "",
             seed2_symbol: Annotated[str, Field(description="Optional second seed symbol.")] = "",
             seed2_line: Annotated[int, Field(description="Optional second seed line.")] = 0,
+            seed3_file: Annotated[
+                str,
+                Field(description="Optional third seed (from suggested_seeds[2])."),
+            ] = "",
+            seed3_symbol: Annotated[str, Field(description="Optional third seed symbol.")] = "",
+            seed3_line: Annotated[int, Field(description="Optional third seed line.")] = 0,
             mode: Annotated[
                 str,
                 Field(
@@ -4573,6 +4839,9 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     seed2_file=seed2_file,
                     seed2_symbol=seed2_symbol,
                     seed2_line=int(seed2_line or 0),
+                    seed3_file=seed3_file,
+                    seed3_symbol=seed3_symbol,
+                    seed3_line=int(seed3_line or 0),
                     k=max(4, min(int(k or 16), 48)),
                     hot_threshold=float(hot_threshold if hot_threshold is not None else 0.65),
                     budget_chars=budget if budget > 0 else None,
@@ -4674,13 +4943,20 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     "no session heatmap — call map/pack_context first (or pass ids=)",
                 )
             prior_packed = {str(x) for x in (prior.get("packed_ids") or []) if x}
+            # Explicit ids always win — never skip them (lean pack used to poison packed_ids).
+            skip = prior_packed - only if only else prior_packed
+            # Session collect after lean: use pack hot_threshold-ish floor, not 0.82 default.
+            thr = float(threshold or 0.82)
+            if not only and thr >= 0.82:
+                thr = 0.45
             out = run_collect_hot(
                 repo,
                 cards,
-                threshold=float(threshold or 0.82) if not only else 0.0,
+                threshold=0.0 if only else thr,
                 max_chars=max(500, min(int(max_chars or 8000), 50_000)),
-                skip_ids=prior_packed,
+                skip_ids=skip,
                 only_ids=only or None,
+                prefer_ids=only or None,
             )
             out["session_id"] = sid
             if out.get("ok") and out.get("bodies"):
@@ -4738,7 +5014,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         )
         _tool(
             "map",
-            "Call 1 ladder: soft cards k=10 + suggested_seed (code vocab query)",
+            "Call 1 ladder: soft cards k=12 + suggested_seeds (25–120 tok query, target ≥40)",
             map_impl,
         )
         if exp == "lab":
@@ -4820,8 +5096,11 @@ def main() -> None:
     os.environ.setdefault("CTX_REPO", str(repo))
     os.environ.setdefault("CTX_TOKEN_MODE", "savings")
     os.environ.setdefault("CTX_SESSION_GOVERNOR", "1")
-    os.environ.setdefault("CTX_ENGINE_IDLE_S", "15")
-    os.environ.setdefault("CTX_ENGINE_TRANSITION_DEBOUNCE_S", "15")
+    os.environ.setdefault("CTX_ENGINE_IDLE_S", "10")
+    os.environ.setdefault("CTX_DISCONNECT_DEBOUNCE_S", "10")
+    os.environ.setdefault("CTX_ENGINE_TRANSITION_DEBOUNCE_S", "5")
+    os.environ.setdefault("CTX_EMBED_IDLE_DEMOTE_S", "10")
+    os.environ.setdefault("CTX_EMBED_PREWARM", "1")
     try:
         from pipeline.mcp_hot_reload import adopt_installed_package_on_connect
 
