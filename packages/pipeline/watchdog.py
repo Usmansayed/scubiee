@@ -1,14 +1,11 @@
-"""Lightweight sidecar watchdog — revive Context Engine if it dies or hangs.
+"""Lightweight sidecar watchdog.
 
-Not a manager: polls /health and calls daemon.force_restart_daemon when the
-policy says the engine should be running. Idle unload is handled by the daemon
-lifecycle (client registry + apply_idle_policy), not here.
+Polls /health. Automatic engine *load* is agent-owned (first gate/status/map).
+Watchdog does not start or force-restart a stopped engine unless
+CTX_WATCHDOG_AUTO_START=1. Idle unload is handled by the daemon lifecycle
+(client registry + apply_idle_policy), not here.
 
-Disable with CTX_WATCHDOG=0.
-
-Cold-start of a stopped engine is **agent-owned** (first gate/status/map →
-``start_daemon``). Watchdog auto-start is off unless CTX_WATCHDOG_AUTO_START=1.
-Disconnect unload is unchanged.
+Disable the sidecar with CTX_WATCHDOG=0.
 """
 
 from __future__ import annotations
@@ -422,6 +419,18 @@ def watchdog_loop(*, stop_after: float | None = None) -> None:
                 f"pid_alive={pid_alive} src={alive_src}"
             )
             if fails < fail_limit:
+                time.sleep(interval)
+                continue
+
+            # Automatic engine load is agent-owned (first gate/status/map).
+            # Watchdog must not revive a stopped engine just because MCP is
+            # still connected. Disconnect unload stays on the idle sweeper.
+            if not watchdog_auto_start_enabled():
+                _log(
+                    "skip auto load (agent warm) "
+                    f"pid_alive={pid_alive} src={alive_src}"
+                )
+                fails = 0
                 time.sleep(interval)
                 continue
 

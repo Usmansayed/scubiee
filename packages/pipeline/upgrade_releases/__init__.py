@@ -26,6 +26,7 @@ from pipeline.upgrade_releases import (  # noqa: F401
     v0_3_68,
     v0_3_69,
     v0_3_70,
+    v0_3_71,
 )
 
 

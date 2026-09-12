@@ -72,6 +72,7 @@ def test_loop_restarts_after_two_fails(wd_home: Path, monkeypatch: pytest.Monkey
     from pipeline.lifecycle_runtime import note_activity
 
     monkeypatch.setenv("CTX_ENGINE_IDLE_S", "99999")
+    monkeypatch.setenv("CTX_WATCHDOG_AUTO_START", "1")
     note_activity()
     calls: list[str] = []
     health_left = [False, False, True, True]
@@ -120,14 +121,41 @@ def test_loop_skips_restart_when_mcp_clients_and_pid_alive(
     assert calls == []
 
 
-def test_loop_restarts_when_mcp_clients_but_pid_dead(
+def test_loop_does_not_autoload_when_mcp_clients_but_pid_dead(
     wd_home: Path, monkeypatch: pytest.MonkeyPatch
 ):
-    """Ghost MCP registrations must not block revive after the engine process dies."""
+    """MCP still connected must not make the watchdog cold-start the engine."""
     from pipeline import watchdog as wd
     from pipeline.lifecycle_runtime import note_activity
 
     monkeypatch.setenv("CTX_ENGINE_IDLE_S", "99999")
+    monkeypatch.delenv("CTX_WATCHDOG_AUTO_START", raising=False)
+    note_activity()
+    calls: list[str] = []
+
+    monkeypatch.setattr(wd, "_health_ok", lambda: False)
+    monkeypatch.setattr(wd, "_pid_alive", lambda pid: False)
+    monkeypatch.setattr("pipeline.daemon._read_lock_pid", lambda: 4242)
+    monkeypatch.setattr("pipeline.lifecycle_runtime.active_client_count", lambda: 2)
+    monkeypatch.setattr(wd, "BACKOFF_S", (0.01, 0.01, 0.01))
+    monkeypatch.setattr(wd, "FAILS_BEFORE_RESTART", 2)
+    with patch(
+        "pipeline.daemon.force_restart_daemon",
+        side_effect=lambda repo=None: calls.append("restart") or {"ok": True},
+    ):
+        wd.watchdog_loop(stop_after=3.0)
+    assert calls == []
+
+
+def test_loop_restarts_when_mcp_clients_but_pid_dead(
+    wd_home: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Opt-in auto-start may revive after the engine process dies."""
+    from pipeline import watchdog as wd
+    from pipeline.lifecycle_runtime import note_activity
+
+    monkeypatch.setenv("CTX_ENGINE_IDLE_S", "99999")
+    monkeypatch.setenv("CTX_WATCHDOG_AUTO_START", "1")
     note_activity()
     calls: list[str] = []
 

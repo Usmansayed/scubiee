@@ -31,6 +31,7 @@ def test_releases_registered():
     assert "0.3.60" in versions
     assert "0.3.63" in versions
     assert "0.3.70" in versions
+    assert "0.3.71" in versions
 
 
 def test_releases_between_range():
