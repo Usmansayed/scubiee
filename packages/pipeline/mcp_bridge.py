@@ -60,16 +60,23 @@ def resolve_child_command() -> tuple[str, list[str]]:
 
 def spawn_child_process(env: dict[str, str]) -> subprocess.Popen[str]:
     cmd, args = resolve_child_command()
-    try:
-        return subprocess.Popen(
-            [cmd, *args],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            bufsize=1,
-            env=env,
+    kwargs: dict[str, Any] = {
+        "stdin": subprocess.PIPE,
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.PIPE,
+        "text": True,
+        "bufsize": 1,
+        "env": env,
+    }
+    # Windows console shims (scubiee-mcp.exe) flash a terminal on every
+    # respawn unless CREATE_NO_WINDOW is set — MCP crash loops looked like
+    # "new terminal every few ms".
+    if os.name == "nt":
+        kwargs["creationflags"] = int(
+            getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
         )
+    try:
+        return subprocess.Popen([cmd, *args], **kwargs)  # noqa: S603
     except OSError as exc:
         raise RuntimeError(f"spawn failed: {cmd}: {exc}") from exc
 
@@ -198,7 +205,10 @@ class McpBridge:
                     {
                         "jsonrpc": "2.0",
                         "id": req_id,
-                        "error": {"code": -32603, "message": str(exc)},
+                        "error": {
+                            "code": -32603,
+                            "message": f"{type(exc).__name__}: {str(exc) or repr(exc)}",
+                        },
                     }
                 )
 
@@ -218,8 +228,18 @@ class McpBridge:
                     continue
                 self._executor.submit(self._dispatch_client_message, parsed)
         finally:
+            _stderr("[scubiee-bridge] stdin EOF / host disconnected — shutting down workers")
             self._executor.shutdown(wait=True)
             self._registry.shutdown()
+            # Child atexit/lifespan may not run if the host killed us hard.
+            # Reconcile drops dead MCP PIDs and arms disconnect debounce.
+            try:
+                from pipeline.client import EngineClient
+
+                EngineClient(timeout=2.0).post("/v1/client/reconcile", {})
+                _stderr("[scubiee-bridge] posted /v1/client/reconcile after stdin EOF")
+            except Exception as exc:  # noqa: BLE001
+                _stderr(f"[scubiee-bridge] reconcile after EOF failed: {exc}")
 
 
 def warn_ctx_home_pollution() -> None:
@@ -233,6 +253,20 @@ def main() -> None:
 
     os.environ.setdefault("CTX_MCP_BRIDGE", "1")
     enforce_ctx_home_or_exit()
+    try:
+        from pipeline.process_job import attach_mcp_kill_job
+
+        attach_mcp_kill_job()
+    except Exception as exc:  # noqa: BLE001
+        _stderr(f"[scubiee-bridge] mcp kill-job skipped: {exc}")
+    try:
+        from pipeline.process_control import reap_orphaned_mcp_processes
+
+        reap = reap_orphaned_mcp_processes()
+        if reap.get("killed"):
+            _stderr(f"[scubiee-bridge] reaped leftover MCP pids={reap.get('killed')}")
+    except Exception as exc:  # noqa: BLE001
+        _stderr(f"[scubiee-bridge] orphan reap skipped: {exc}")
     McpBridge().run()
 
 

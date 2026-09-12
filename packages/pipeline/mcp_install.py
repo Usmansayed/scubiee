@@ -62,8 +62,14 @@ def server_entry(
         "CTX_TRACE_GRAPHIFY": "1",
         "CTX_MCP_SESSION_ISOLATE": "1",
         "CTX_MCP_BRIDGE_MODE": "auto",
-        "CTX_ENGINE_IDLE_S": "15",
-        "CTX_ENGINE_TRANSITION_DEBOUNCE_S": "15",
+        "CTX_ENGINE_IDLE_S": "120",
+        "CTX_DISCONNECT_DEBOUNCE_S": "120",
+        "CTX_ENGINE_TRANSITION_DEBOUNCE_S": "5",
+        "CTX_EMBED_IDLE_DEMOTE_S": "10",
+        "CTX_EMBED_PREWARM": "1",
+        "CTX_TRACE_PARALLEL": "1",
+        "CTX_ENGINE_SPAWN_OWNER": "supervisor",
+        "CTX_LOCATE_STREAK_MS": "60000",
         "PYTHONUTF8": "1",
     }
     build_id = current_build_id()
@@ -94,6 +100,32 @@ def server_entry(
             pass
 
     # Prefer the bridge — stable entry for hot reload after upgrade.
+    # Windows: NEVER point Cursor at the uv *.EXE console shims — those are
+    # subsystem=CONSOLE and every MCP reconnect allocates conhost (visible blink /
+    # DWM window trails). Launch via pythonw -m instead; stdio still works when
+    # the IDE owns the pipes.
+    if os.name == "nt":
+        try:
+            from pipeline.process_job import background_python
+
+            pyw = background_python()
+        except Exception:  # noqa: BLE001
+            pyw = interpreter()
+        pyw_s = str(Path(pyw).resolve()).replace("\\", "/")
+        # Worker children also use pythonw (bridge CREATE_NO_WINDOW alone is not enough
+        # if the shim itself is a console EXE).
+        env["CTX_MCP_BRIDGE_SPAWN_JSON"] = json.dumps(
+            [pyw_s, "-u", "-m", "pipeline.mcp_locate"]
+        )
+        return {
+            "command": pyw_s,
+            "args": ["-u", "-m", "pipeline.mcp_bridge"],
+            "env": env,
+            # Claude Code (and other Node hosts) honor this → CREATE_NO_WINDOW.
+            # Cursor may ignore unknown keys; crash-loop prevention still matters more.
+            "windowsHide": True,
+        }
+
     bridge_exe = shutil.which("scubiee-mcp-bridge")
     if bridge_exe:
         return {
@@ -115,6 +147,28 @@ def server_entry(
         "args": ["-u", "-m", "pipeline.mcp_locate"],
         "env": env,
     }
+
+
+def _merge_idle_env_max(dst_env: dict[str, str], prior_env: dict[str, Any] | None) -> None:
+    """Keep a higher *transition* debounce on reconnect; disconnect unload stays at install defaults.
+
+    ``CTX_DISCONNECT_DEBOUNCE_S`` / ``CTX_ENGINE_IDLE_S`` are disconnect-unload
+    knobs (default 120s) and must not be sticky-raised from old 300s installs.
+    ``CTX_EMBED_IDLE_DEMOTE_S`` stays a short GPU demote (default 10s).
+    """
+    if not isinstance(prior_env, dict):
+        return
+    key = "CTX_ENGINE_TRANSITION_DEBOUNCE_S"
+    try:
+        old = float(str(prior_env.get(key) or "").strip() or "0")
+    except ValueError:
+        old = 0.0
+    try:
+        new = float(str(dst_env.get(key) or "").strip() or "0")
+    except ValueError:
+        new = 0.0
+    if old > new:
+        dst_env[key] = str(int(old) if old == int(old) else old)
 
 
 def merge_mcp_json(
@@ -142,7 +196,13 @@ def merge_mcp_json(
         servers = {}
         data["mcpServers"] = servers
     strip_legacy_mcp_keys(servers)
-    servers[server_name] = server_entry(repo, host=host, port=port)
+    prior = servers.get(server_name) if isinstance(servers.get(server_name), dict) else {}
+    prior_env = prior.get("env") if isinstance(prior, dict) else None
+    entry = server_entry(repo, host=host, port=port)
+    env = entry.get("env")
+    if isinstance(env, dict):
+        _merge_idle_env_max(env, prior_env if isinstance(prior_env, dict) else None)
+    servers[server_name] = entry
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
 
@@ -205,9 +265,14 @@ def verify_mcp_json(path: Path, *, server_name: str | None = None) -> dict[str, 
     if entry is None:
         report["error"] = "server_missing"
         return report
+    from pipeline.mcp_restore import is_live_scubiee_mcp_launcher
+
     cmd = _entry_command_text(entry)
-    uses_bridge = "scubiee-mcp-bridge" in cmd
-    uses_worker = "scubiee-mcp" in cmd and not uses_bridge
+    live = is_live_scubiee_mcp_launcher(entry)
+    uses_bridge = "mcp_bridge" in cmd.lower() or "scubiee-mcp-bridge" in cmd.lower()
+    uses_worker = ("scubiee-mcp" in cmd.lower() and "bridge" not in cmd.lower()) or (
+        "pipeline.mcp_locate" in cmd.lower()
+    )
     env_raw = entry.get("env")
     if not isinstance(env_raw, dict):
         env_raw = entry.get("environment")
@@ -217,10 +282,11 @@ def verify_mcp_json(path: Path, *, server_name: str | None = None) -> dict[str, 
         {
             "uses_bridge": uses_bridge,
             "uses_worker": uses_worker,
+            "live_launcher": live,
             "has_build_env": has_build,
         }
     )
-    if not (uses_bridge or uses_worker):
+    if not live:
         report["error"] = "bad_command"
         return report
     if not has_build:

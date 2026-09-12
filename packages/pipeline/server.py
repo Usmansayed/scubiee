@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -189,6 +190,7 @@ class Handler(BaseHTTPRequestHandler):
                     client_id,
                     pid=pid,
                     kind=str(data.get("kind") or "mcp"),
+                    host=str(data.get("client") or data.get("host") or "") or None,
                 ),
             )
             return
@@ -203,6 +205,69 @@ class Handler(BaseHTTPRequestHandler):
             result = unregister_client(client_id)
             idle = apply_idle_policy()
             _json(self, 200, {**result, "idle": idle})
+            return
+
+        if path == "/v1/client/reconcile":
+            from pipeline.lifecycle_runtime import apply_idle_policy, reconcile_clients
+
+            remaining = reconcile_clients()
+            idle = apply_idle_policy()
+            _json(
+                self,
+                200,
+                {
+                    "ok": True,
+                    "active_clients": len(remaining),
+                    "idle": idle,
+                },
+            )
+            return
+
+        if path == "/v1/client/touch":
+            from pipeline.lifecycle_runtime import note_activity, register_client, touch_client
+
+            client_id = str(data.get("client_id") or "").strip()
+            if not client_id:
+                _json(self, 400, {"ok": False, "error": "client_id required"})
+                return
+            if touch_client(client_id):
+                note_activity()
+                _json(self, 200, {"ok": True, "client_id": client_id, "touched": True})
+                return
+            pid_raw = data.get("pid")
+            try:
+                pid = int(pid_raw) if pid_raw is not None else None
+            except (TypeError, ValueError):
+                pid = None
+            _json(
+                self,
+                200,
+                {
+                    **register_client(
+                        client_id,
+                        pid=pid,
+                        kind=str(data.get("kind") or "mcp"),
+                    ),
+                    "touched": False,
+                    "reregistered": True,
+                },
+            )
+            return
+
+        if path in {"/v1/embed/prewarm", "/v1/prewarm"}:
+            from pipeline.engine import prewarm_embedder_async, prewarm_status
+
+            root = data.get("path") or data.get("root") or None
+            sync = bool(data.get("sync") or data.get("wait"))
+            if sync:
+                from pipeline.engine import ensure_embedder_ready
+
+                # Prefer join-in-flight over a second cold load when MCP connects.
+                _json(self, 200, ensure_embedder_ready(root))
+                return
+            out = prewarm_embedder_async(root)
+            out["status"] = prewarm_status()
+            _json(self, 200, out)
             return
 
         if path == "/v1/lifecycle":
@@ -547,10 +612,12 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/v1/shutdown":
             ce.shutdown()
             _json(self, 200, {"ok": True, "shutdown": True})
-            # stop server from another thread
+            # stop server from another thread, then hard-exit (ORT RSS).
             def _stop() -> None:
                 time.sleep(0.2)
                 getattr(self.server, "shutdown", lambda: None)()
+                print("[engine] shutdown os._exit", file=sys.stderr, flush=True)
+                os._exit(0)
 
             import threading
 
@@ -578,16 +645,24 @@ def _register_httpd(server: ThreadingHTTPServer) -> None:
 
 
 def _retire_self() -> bool:
-    """Stop serving from inside the engine. Returns False if there is no server."""
-    import threading
+    """Stop serving from inside the engine and exit the process.
 
+    ``stop_daemon`` cannot kill the engine's own pid. HTTP ``shutdown()`` alone
+    can leave a zombie interpreter (non-daemon keeper threads) with ORT RSS still
+    held. ``os._exit`` is the RAM contract.
+    """
     server = _HTTPD
-    if server is None:
-        return False
-    # shutdown() blocks until serve_forever() returns, so never call it on the
-    # serving thread. The sweeper is its own thread, but keep this off it too so
-    # the sweeper can exit immediately.
-    threading.Thread(target=server.shutdown, name="ce-self-retire", daemon=True).start()
+
+    def _die() -> None:
+        try:
+            if server is not None:
+                server.shutdown()
+        except Exception:  # noqa: BLE001
+            pass
+        print("[engine] retire_self running=false", file=sys.stderr, flush=True)
+        os._exit(0)
+
+    threading.Thread(target=_die, name="ce-self-retire", daemon=True).start()
     return True
 
 
@@ -607,20 +682,33 @@ def _start_idle_sweeper(
     def _loop() -> None:
         while not (stop_event is not None and stop_event.is_set()):
             try:
-                from pipeline.lifecycle_runtime import idle_seconds
+                from pipeline.lifecycle_runtime import (
+                    idle_seconds,
+                    load_policy,
+                    reconcile_clients,
+                )
 
                 # Poll often enough to honor a 25s idle window (was fixed 30s).
                 idle = idle_seconds()
-                sleep_s = interval_s if interval_s is not None else (
-                    5.0 if idle <= 0 else max(5.0, min(10.0, idle / 5.0))
-                )
+                if interval_s is not None:
+                    sleep_s = interval_s
+                elif idle <= 0:
+                    sleep_s = 5.0
+                else:
+                    # After last MCP leave, poll every 1s so process exit hits ~10s not ~15–20s.
+                    try:
+                        left = load_policy().get("last_client_left_at")
+                        armed = left is not None and not reconcile_clients()
+                    except Exception:  # noqa: BLE001
+                        armed = False
+                    sleep_s = 1.0 if armed else max(5.0, min(10.0, idle / 5.0))
             except Exception:  # noqa: BLE001
                 sleep_s = 5.0
             if stop_event is not None:
                 if stop_event.wait(max(0.0, float(sleep_s))):
                     return
             else:
-                time.sleep(max(5.0, float(sleep_s)))
+                time.sleep(max(0.0, float(sleep_s)))
             try:
                 from pipeline.memory_governor import get_governor
                 from pipeline.ce_service import get_context_engine
@@ -652,19 +740,31 @@ def _start_idle_sweeper(
                         flush=True,
                     )
                 if action == "standby":
-                    stop = (idle_result or {}).get("engine") or {}
-                    # The external kill in stop_daemon always skips our own pid,
-                    # so it reports running=True for the one process that matters.
-                    # Retire in-process instead of spinning on a stop that can
-                    # never succeed.
-                    if stop.get("running") and _retire_self():
+                    # Never retire mid-index even if policy raced past the busy check.
+                    try:
+                        from pipeline.lifecycle_runtime import _idle_busy_reason
+
+                        busy = _idle_busy_reason()
+                    except Exception:  # noqa: BLE001
+                        busy = None
+                    if busy is not None:
                         print(
-                            "[engine] idle sweep: retiring self (external stop "
-                            "cannot kill the engine's own pid)",
+                            f"[engine] idle sweep: skip retire ({busy})",
                             file=sys.stderr,
                             flush=True,
                         )
+                        continue
+                    # stop_daemon cannot kill this process (self pid is protected).
+                    # Always retire in-process on disconnect standby — success is
+                    # process absence, not a soft demote that leaves ~1GB RSS.
+                    print(
+                        "[engine] retire_self",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+                    if _retire_self():
                         return
+                    raise SystemExit(0)
             except Exception as exc:  # noqa: BLE001
                 print(f"[engine] idle sweep failed: {type(exc).__name__}: {exc}",
                       file=sys.stderr, flush=True)
@@ -702,24 +802,10 @@ def run_server(
     enable_session_keeper_defaults()
     from pipeline.git_family import reconcile_git_families
 
-    try:
-        from pipeline.memory_governor import get_governor
-
-        get_governor().apply_tier("locate_only")
-    except Exception:  # noqa: BLE001
-        pass
-
-    family = reconcile_git_families(prefer_root=repo)
-    if family.superseded_project_ids:
-        print(
-            f"[engine] git-family reconcile: canonical={family.canonical_project_ids} "
-            f"superseded={family.superseded_project_ids}",
-            file=sys.stderr,
-            flush=True,
-        )
     _start_idle_sweeper()
     ce = get_context_engine()
     repo = repo.resolve()
+    t0 = time.perf_counter()
     print(
         f"[engine] Scubiee starting on http://{host}:{port}",
         file=sys.stderr,
@@ -731,18 +817,6 @@ def run_server(
         flush=True,
     )
     print(f"[engine] dashboard http://{host}:{port}/dashboard", file=sys.stderr, flush=True)
-    try:
-        from pipeline.process_job import attach_engine_on_start
-
-        attach_engine_on_start()
-    except Exception as exc:  # noqa: BLE001
-        print(f"[engine] job join note: {exc}", file=sys.stderr, flush=True)
-
-    if open_on_start:
-        print(f"[engine] opening {repo} …", file=sys.stderr, flush=True)
-        # Explicit callers may opt in; ordinary IDE/daemon startup stays idle
-        # until a path-bearing CE request is admitted.
-        ce.open_repo(repo, background=True)
 
     httpd = ThreadingHTTPServer((host, port), Handler)
     _register_httpd(httpd)
@@ -758,9 +832,9 @@ def run_server(
     def _on_exit() -> None:
         ce.shutdown()
         try:
-            from pipeline.daemon import release_lock
+            from pipeline.daemon import release_lock_if_owner
 
-            release_lock()
+            release_lock_if_owner()
         except Exception:  # noqa: BLE001
             pass
 
@@ -768,11 +842,51 @@ def run_server(
 
     atexit.register(_on_exit)
 
+    # Keep pid file in sync with the listening process (parent spawn may have
+    # written a different pid before detach).
+    try:
+        from pipeline.daemon import pid_path
+
+        pid_path().write_text(str(os.getpid()), encoding="utf-8")
+    except Exception:  # noqa: BLE001
+        pass
+
     print(
-        f"[engine] listening — MCP/CLI should use CTX_ENGINE_URL=http://{host}:{port}",
+        f"[engine] listening +{time.perf_counter() - t0:.2f}s — "
+        f"MCP/CLI should use CTX_ENGINE_URL=http://{host}:{port}",
         file=sys.stderr,
         flush=True,
     )
+
+    def _after_listen() -> None:
+        try:
+            from pipeline.process_job import attach_engine_on_start
+
+            attach_engine_on_start()
+        except Exception as exc:  # noqa: BLE001
+            print(f"[engine] job join note: {exc}", file=sys.stderr, flush=True)
+        try:
+            family = reconcile_git_families(prefer_root=repo)
+            if family.superseded_project_ids:
+                print(
+                    f"[engine] git-family reconcile: canonical={family.canonical_project_ids} "
+                    f"superseded={family.superseded_project_ids}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+        except Exception as exc:  # noqa: BLE001
+            print(f"[engine] git-family reconcile note: {exc}", file=sys.stderr, flush=True)
+        try:
+            from pipeline.memory_governor import get_governor
+
+            get_governor().apply_tier("locate_only")
+        except Exception:  # noqa: BLE001
+            pass
+        if open_on_start:
+            print(f"[engine] opening {repo} …", file=sys.stderr, flush=True)
+            ce.open_repo(repo, background=True)
+
+    threading.Thread(target=_after_listen, name="ce-after-listen", daemon=True).start()
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

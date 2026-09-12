@@ -3,21 +3,25 @@
 from __future__ import annotations
 
 
-def test_default_idle_is_15(monkeypatch, tmp_path):
+def test_default_disconnect_debounce_is_120(monkeypatch, tmp_path):
     monkeypatch.setenv("CTX_HOME", str(tmp_path))
+    monkeypatch.delenv("CTX_DISCONNECT_DEBOUNCE_S", raising=False)
     monkeypatch.delenv("CTX_ENGINE_IDLE_S", raising=False)
+    monkeypatch.delenv("CTX_EMBED_IDLE_DEMOTE_S", raising=False)
     monkeypatch.delenv("CTX_ENGINE_TRANSITION_DEBOUNCE_S", raising=False)
     from pipeline.lifecycle_runtime import (
+        DEFAULT_DISCONNECT_DEBOUNCE_S,
         DEFAULT_IDLE_S,
         DEFAULT_TRANSITION_DEBOUNCE_S,
         idle_seconds,
         transition_debounce_seconds,
     )
 
-    assert DEFAULT_IDLE_S == 15.0
-    assert DEFAULT_TRANSITION_DEBOUNCE_S == 15.0
-    assert idle_seconds() == 15.0
-    assert transition_debounce_seconds() == 15.0
+    assert DEFAULT_DISCONNECT_DEBOUNCE_S == 120.0
+    assert DEFAULT_IDLE_S == 120.0
+    assert DEFAULT_TRANSITION_DEBOUNCE_S == 5.0
+    assert idle_seconds() == 120.0
+    assert transition_debounce_seconds() == 5.0
 
 
 def test_idle_env_override(monkeypatch, tmp_path):
@@ -62,7 +66,8 @@ def test_idle_stop_debounced_after_start(monkeypatch, tmp_path):
 
 def test_apply_idle_policy_respects_debounce(monkeypatch, tmp_path):
     monkeypatch.setenv("CTX_HOME", str(tmp_path))
-    monkeypatch.setenv("CTX_ENGINE_IDLE_S", "25")
+    monkeypatch.setenv("CTX_ENGINE_IDLE_S", "10")
+    monkeypatch.setenv("CTX_DISCONNECT_DEBOUNCE_S", "10")
     monkeypatch.setenv("CTX_ENGINE_TRANSITION_DEBOUNCE_S", "25")
     from pipeline.lifecycle_runtime import (
         apply_idle_policy,
@@ -78,12 +83,12 @@ def test_apply_idle_policy_respects_debounce(monkeypatch, tmp_path):
         lambda: True,
     )
     set_desired_mode(DESIRED_RUN)
-    register_client("c1", pid=1, now=1990.0)
-    unregister_client("c1", now=1990.0)
     note_engine_transition("start", now=2000.0)
+    register_client("c1", pid=1, now=2000.0)
+    unregister_client("c1", now=2000.0)
 
-    # Idle elapsed (34s) but start debounce still active (24s < 25s).
-    result = apply_idle_policy(now=2024.0)
+    # Idle elapsed (15s) but start debounce still active (15s < 25s).
+    result = apply_idle_policy(now=2015.0)
     assert result.get("action") == "debounced"
     assert result.get("blocked") is True
 

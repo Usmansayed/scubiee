@@ -8,6 +8,7 @@ import sys
 import time
 import urllib.request
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT / "packages") not in sys.path:
@@ -1161,6 +1162,8 @@ def _configure_machine(
     progress: object | None = None,
 ) -> int:
     """Once-per-machine accel: detect profile, install, model, calibrate batch."""
+    import os
+
     from pipeline.accel import accel_path, configure, load_accel
 
     if getattr(args, "status", False):
@@ -1180,36 +1183,52 @@ def _configure_machine(
 
     existing = load_accel()
     if existing is not None and not bool(getattr(args, "repair", False)):
-        from pipeline.accel import saved_accel_needs_reconfigure
+        from pipeline.accel import (
+            profile_packages_satisfied,
+            saved_accel_needs_reconfigure,
+        )
 
-        if not saved_accel_needs_reconfigure(existing):
+        # Only skip when the saved profile is healthy AND packages actually import.
+        # Post-wipe / fresh `uv tool install` often leaves accel.json while deps are broken.
+        if (
+            not saved_accel_needs_reconfigure(existing)
+            and profile_packages_satisfied(existing)
+        ):
             if progress is not None:
                 progress.set(92, "Using saved hardware profile")
             if report:
                 print(json.dumps(existing.__dict__, indent=2, default=str))
             return 0
 
-    # First attempt: normal configure
+    already_repair = bool(getattr(args, "repair", False))
+    # First attempt: normal configure (or explicit --repair force-install).
     try:
         prof = configure(
             force_profile=getattr(args, "profile", None),
             install_pkgs=not bool(getattr(args, "skip_install", False)),
             download_model=not bool(getattr(args, "skip_model", False)),
             bench=not bool(getattr(args, "skip_bench", False)),
-            force_install=bool(getattr(args, "repair", False)),
+            force_install=already_repair,
             progress=progress,
         )
     except Exception as first_err:
-        # Auto-repair: if ORT-related failure, retry with force_install=True
-        err_msg = str(first_err).lower()
-        ort_keywords = ("onnxruntime", "sessionoptions", "providers", "dml", "cuda",
-                        "model_warmup", "capabilityerror", "no module named 'onnxruntime'")
-        is_ort_issue = any(kw in err_msg for kw in ort_keywords)
-        if is_ort_issue and not bool(getattr(args, "repair", False)):
-            if progress is not None:
-                progress.set(20, "Runtime issue detected — auto-repairing")
-            else:
-                print("[setup] ORT issue detected, auto-repairing...", file=sys.stderr, flush=True)
+        # Self-heal once: anything --repair would fix should not require a second user command.
+        if already_repair or bool(getattr(args, "skip_install", False)):
+            raise
+        err_text = str(first_err).lower()
+        # WinError 1314: hub tried symlinks — force copy mode before retry.
+        if "1314" in err_text or "required privilege is not held" in err_text:
+            os.environ["HF_HUB_DISABLE_SYMLINKS"] = "1"
+            os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+        if progress is not None:
+            progress.set(20, "Setup issue detected — auto-repairing")
+        else:
+            print(
+                f"[setup] issue detected ({type(first_err).__name__}); auto-repairing…",
+                file=sys.stderr,
+                flush=True,
+            )
+        try:
             prof = configure(
                 force_profile=getattr(args, "profile", None),
                 install_pkgs=True,
@@ -1218,8 +1237,8 @@ def _configure_machine(
                 force_install=True,
                 progress=progress,
             )
-        else:
-            raise
+        except Exception:
+            raise first_err from None
     if report:
         print(json.dumps(prof.__dict__, indent=2, default=str))
     return 0
@@ -1471,6 +1490,8 @@ def cmd_setup(args: argparse.Namespace) -> int:
         return _configure_machine(args)
 
     os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+    # Prevent WinError 1314 during model download on Windows without Developer Mode.
+    os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS", "1")
     os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
     os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
     os.environ.setdefault("TQDM_DISABLE", "1")
@@ -1526,7 +1547,20 @@ def cmd_setup(args: argparse.Namespace) -> int:
             from pipeline.accel import load_accel, profile_packages_satisfied
 
             prior = load_accel()
-            rc = _configure_machine(args, report=False, progress=bar)
+            try:
+                rc = _configure_machine(args, report=False, progress=bar)
+            except Exception:
+                # _configure_machine already auto-retries once with force_install.
+                # If that still failed and user did not pass --repair, flip repair and
+                # retry the full configure path once more (skips stale accel short-circuit).
+                if bool(getattr(args, "repair", False)):
+                    raise
+                setattr(args, "repair", True)
+                if is_tty:
+                    bar.step_active("Auto-repairing…")
+                else:
+                    bar.set(18, "Auto-repairing after setup failure")
+                rc = _configure_machine(args, report=False, progress=bar)
             if rc != 0:
                 bar.fail("Hardware setup failed")
                 return rc
@@ -1576,7 +1610,11 @@ def cmd_setup(args: argparse.Namespace) -> int:
     except Exception as exc:  # noqa: BLE001
         bar.fail(format_setup_error(exc))
         if not is_tty:
-            sys.stderr.write(f"  Run: scubiee setup --repair\n")
+            # Last-resort hint only after setup already self-healed and still failed.
+            sys.stderr.write(
+                "  Still failing after auto-repair. "
+                "Try: uv tool install --force scubiee && scubiee setup --repair\n"
+            )
         return 1
     finally:
         if noise_ctx:
@@ -1686,6 +1724,7 @@ def cmd_map(args: argparse.Namespace) -> int:
             path=getattr(args, "path", ".") or ".",
             k=int(getattr(args, "k", 10) or 10),
             local=bool(getattr(args, "local", False)),
+            wait_ready=float(getattr(args, "wait_ready", 0) or 0),
         )
     noise = buf.getvalue().strip()
     if noise:
@@ -1776,14 +1815,33 @@ def cmd_connect(args: argparse.Namespace) -> int:
     repo = getattr(args, "repo", None)
     results = install_tools(selected, dry_run=dry_run, repo=repo)
 
+    runtime: dict[str, Any] | None = None
+    if not dry_run:
+        try:
+            from pipeline.lifecycle_runtime import install_session_runtime
+
+            runtime = install_session_runtime()
+        except Exception as exc:  # noqa: BLE001
+            runtime = {"ok": False, "error": str(exc)}
+
     if sys.stdout.isatty():
         from pipeline.cli_ui import print_connect_summary
 
         print_connect_summary(results, action="Connected", dry_run=dry_run)
+        if runtime is not None and not runtime.get("ok"):
+            from pipeline.cli_ui import info
+
+            info(
+                f"Supervisor note: {runtime.get('error') or runtime.get('warning') or runtime}",
+                stream=sys.stderr,
+            )
     else:
-        print(json.dumps(results, indent=2, default=str))
+        payload = {"tools": results, "supervisor": runtime}
+        print(json.dumps(payload if runtime is not None else results, indent=2, default=str))
 
     fail_count = sum(1 for r in results if not r.get("ok"))
+    if runtime is not None and runtime.get("ok") is False:
+        fail_count += 1
     return 0 if fail_count == 0 else 1
 
 
@@ -2036,7 +2094,51 @@ def _argv_skips_ctx_home_guard(argv: list[str] | None) -> bool:
     return False
 
 
+def _engine_run_fast(argv: list[str]) -> int:
+    """Skip the full CLI argparse/faiss-repair path so /health can bind quickly.
+
+    Command line stays ``python -m pipeline engine run …`` for process matching.
+    """
+    from pipeline.lifecycle_guard import guard_engine_action
+
+    blocked = guard_engine_action("run")
+    if blocked is not None:
+        if sys.stdout.isatty():
+            from pipeline.cli_ui import info, warn
+
+            print("", file=sys.stderr)
+            hint = str(blocked.get("hint") or "")
+            if blocked.get("ok"):
+                info(hint, stream=sys.stderr)
+            else:
+                warn(hint, stream=sys.stderr)
+            print("", file=sys.stderr)
+        else:
+            print(json.dumps(blocked, indent=2, default=str))
+        return 0 if blocked.get("ok") else 1
+
+    parser = argparse.ArgumentParser(prog="scubiee engine run")
+    parser.add_argument("path", nargs="?", default=".")
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--no-open", action="store_true")
+    args = parser.parse_args(argv)
+    from pipeline.server import run_server
+
+    run_server(
+        Path(args.path).resolve(),
+        host=args.host,
+        port=args.port,
+        open_on_start=not args.no_open,
+    )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
+    raw = list(argv) if argv is not None else sys.argv[1:]
+    if len(raw) >= 2 and raw[0] == "engine" and raw[1] == "run":
+        return _engine_run_fast(raw[2:])
+
     if sys.stdout.isatty() or sys.stderr.isatty():
         from pipeline.cli_ui import init_terminal, install_graphify_brand_scrubbers
 
@@ -2336,6 +2438,13 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Emit full debug JSON (default: slim cards + suggested_seed only)",
     )
+    p_map.add_argument(
+        "--wait-ready",
+        type=float,
+        default=45.0,
+        metavar="SEC",
+        help="Wait up to SEC for engine health before map (0=no wait; default 45)",
+    )
     p_map.set_defaults(func=cmd_map)
 
     p_pack = sub.add_parser(
@@ -2498,7 +2607,10 @@ def main(argv: list[str] | None = None) -> int:
     p_setup.add_argument(
         "--repair",
         action="store_true",
-        help="Re-run hardware detection, package/provider setup, and batch calibration",
+        help=(
+            "Force reinstall of hardware packages / providers / batch calibration. "
+            "Usually unnecessary: plain `scubiee setup` auto-repairs once on failure."
+        ),
     )
     p_setup.add_argument(
         "--index",

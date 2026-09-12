@@ -19,11 +19,13 @@ TASK_NAME = "ContextEngineSupervisor"
 LAUNCH_AGENT_LABEL = "com.contextengine.supervisor"
 POLICY_NAME = "lifecycle_policy.json"
 CLIENTS_NAME = "active_clients.json"
-# After the last MCP/app client leaves, wait this long before stopping the engine.
-# Also used as the start/stop transition debounce so accidental spam cannot thrash.
-# Short enough to free RAM after IDE close; long enough for reopen reconnect.
-DEFAULT_IDLE_S = 15.0
-DEFAULT_TRANSITION_DEBOUNCE_S = 15.0
+# After the last MCP/IDE client disconnects, wait this long then unload RAM + stop
+# the engine. While any client is connected (Cursor/Codex/…), keep everything warm —
+# do not unload on "idle time" between tool calls.
+DEFAULT_DISCONNECT_DEBOUNCE_S = 120.0
+# Back-compat aliases (same knob).
+DEFAULT_IDLE_S = DEFAULT_DISCONNECT_DEBOUNCE_S
+DEFAULT_TRANSITION_DEBOUNCE_S = 5.0
 DESIRED_RUN = "run"
 DESIRED_STANDBY = "standby"
 TRANSITION_NAME = "engine_transition.json"
@@ -68,25 +70,36 @@ def clients_path() -> Path:
     return _home() / CLIENTS_NAME
 
 
-def idle_seconds() -> float:
-    raw = os.environ.get("CTX_ENGINE_IDLE_S")
-    if raw is None or raw.strip() == "":
-        return DEFAULT_IDLE_S
-    try:
-        return max(0.0, float(raw))
-    except ValueError:
-        return DEFAULT_IDLE_S
+def disconnect_debounce_seconds() -> float:
+    """Grace after MCP/IDE disconnect before unloading embedder + stopping engine."""
+    for key in ("CTX_DISCONNECT_DEBOUNCE_S", "CTX_ENGINE_IDLE_S", "CTX_EMBED_IDLE_DEMOTE_S"):
+        raw = os.environ.get(key)
+        if raw is None or str(raw).strip() == "":
+            continue
+        try:
+            return max(0.0, float(raw))
+        except ValueError:
+            continue
+    return DEFAULT_DISCONNECT_DEBOUNCE_S
 
+
+# Short alias used by should_idle_stop / governor.
+disconnect_debounce_s = disconnect_debounce_seconds
+
+
+def idle_seconds() -> float:
+    """Alias of disconnect debounce (legacy name used across idle-stop paths)."""
+    return disconnect_debounce_seconds()
 
 def transition_debounce_seconds() -> float:
     """Min gap after a *normal* start before an automatic idle stop may fire (spam/hysteresis)."""
     raw = os.environ.get("CTX_ENGINE_TRANSITION_DEBOUNCE_S")
     if raw is None or raw.strip() == "":
-        return idle_seconds() if idle_seconds() > 0 else DEFAULT_TRANSITION_DEBOUNCE_S
+        return DEFAULT_TRANSITION_DEBOUNCE_S
     try:
         return max(0.0, float(raw))
     except ValueError:
-        return idle_seconds() if idle_seconds() > 0 else DEFAULT_TRANSITION_DEBOUNCE_S
+        return DEFAULT_TRANSITION_DEBOUNCE_S
 
 
 def upgrade_stale_seconds() -> float:
@@ -377,16 +390,14 @@ def set_desired_mode(mode: str) -> dict[str, Any]:
 def note_activity(*, now: float | None = None) -> dict[str, Any]:
     """Mark interactive engine use (MCP tools, locate, CLI work).
 
-    Passive polls (/status, /health, keeper) must not call this — they would
-    prevent idle stop after MCP disconnect.
+    Does **not** clear ``last_client_left_at``: unload is disconnect-driven.
+    Re-registering an MCP/IDE client clears the leave stamp. Passive polls
+    (/status, /health, keeper) must not call this.
     """
     policy = load_policy()
     current = time.time() if now is None else now
     policy["desired_mode"] = DESIRED_RUN
     policy["last_activity"] = current
-    # Activity after the last client left means the engine is in use again —
-    # do not idle-stop off a stale last_client_left_at.
-    policy["last_client_left_at"] = None
     return save_policy(policy)
 
 
@@ -469,10 +480,75 @@ def save_clients(data: dict[str, Any]) -> dict[str, Any]:
     return document
 
 
+def _lifecycle_log(event: str, **fields: Any) -> None:
+    """Structured stderr so engine.log shows leave → debounce → stop → gone."""
+    bits = " ".join(f"{key}={value}" for key, value in fields.items() if value is not None)
+    line = f"[lifecycle] {event} {bits}".rstrip()
+    print(line, file=sys.stderr, flush=True)
+
+
 def _mark_clients_gone(*, now: float | None = None) -> None:
+    """Stamp disconnect time. Unload happens after ``disconnect_debounce_s`` (default 120s)."""
+    stamp = time.time() if now is None else now
     policy = load_policy()
-    policy["last_client_left_at"] = time.time() if now is None else now
+    policy["last_client_left_at"] = stamp
     save_policy(policy)
+    _lifecycle_log(
+        "debounce_arm",
+        last_client_left_at=round(float(stamp), 3),
+        wait_s=disconnect_debounce_seconds(),
+    )
+
+
+def _postpone_disconnect_stamp(*, now: float | None = None) -> None:
+    """Keep an armed disconnect from firing the instant indexing/warming ends."""
+    policy = load_policy()
+    if policy.get("last_client_left_at") is None:
+        return
+    stamp = time.time() if now is None else now
+    policy["last_client_left_at"] = float(stamp)
+    save_policy(policy)
+
+
+def mcp_host_from_client_id(client_id: str, *, kind: str = "mcp") -> str | None:
+    """Extract host key from ids like ``mcp:cursor@proc-123`` or ``cursor@conn-…``."""
+    if str(kind or "mcp").strip().lower() != "mcp":
+        return None
+    cid = str(client_id or "").strip()
+    if not cid:
+        return None
+    if cid.startswith("mcp:"):
+        cid = cid[4:]
+    if "@" not in cid:
+        return None
+    host = cid.split("@", 1)[0].strip().lower()
+    return host or None
+
+
+def coalesce_mcp_clients(
+    clients: dict[str, Any],
+    *,
+    keep_id: str,
+    host: str | None,
+) -> list[str]:
+    """Drop older same-host MCP clients so idle policy tracks one primary per IDE."""
+    if not host:
+        return []
+    dropped: list[str] = []
+    for cid, meta in list(clients.items()):
+        if str(cid) == str(keep_id):
+            continue
+        if not isinstance(meta, dict):
+            clients.pop(cid, None)
+            dropped.append(str(cid))
+            continue
+        other_host = mcp_host_from_client_id(
+            str(cid), kind=str(meta.get("kind") or "mcp")
+        )
+        if other_host == host:
+            clients.pop(cid, None)
+            dropped.append(str(cid))
+    return dropped
 
 
 def register_client(
@@ -480,6 +556,7 @@ def register_client(
     *,
     pid: int | None = None,
     kind: str = "mcp",
+    host: str | None = None,
     now: float | None = None,
 ) -> dict[str, Any]:
     """Track an IDE/MCP/CLI front-end so idle unload waits for disconnect."""
@@ -488,10 +565,15 @@ def register_client(
     owner = int(pid if pid is not None else os.getpid())
     data = load_clients()
     clients = data.setdefault("clients", {})
+    host_key = (host or "").strip().lower() or mcp_host_from_client_id(
+        str(client_id), kind=kind
+    )
+    dropped = coalesce_mcp_clients(clients, keep_id=str(client_id), host=host_key)
     clients[str(client_id)] = {
         "client_id": str(client_id),
         "pid": owner,
         "kind": str(kind or "mcp"),
+        "host": host_key,
         "registered_at": current,
         "last_seen_at": current,
     }
@@ -501,10 +583,27 @@ def register_client(
     policy["last_activity"] = current
     policy["last_client_left_at"] = None
     save_policy(policy)
+    # MCP/IDE attached → load FastEmbed NOW (block until ready), not on first map.
+    try:
+        from pipeline.memory_governor import get_governor
+
+        get_governor().ensure_semantic_tier()
+    except Exception:  # noqa: BLE001
+        pass
+    prewarm: dict[str, Any] | None = None
+    try:
+        from pipeline.engine import ensure_embedder_ready
+
+        prewarm = ensure_embedder_ready(os.environ.get("CTX_REPO") or None)
+    except Exception as exc:  # noqa: BLE001
+        prewarm = {"ok": False, "error": str(exc)}
     return {
         "ok": True,
         "client_id": str(client_id),
         "active_clients": len(clients),
+        "coalesced": dropped,
+        "host": host_key,
+        "prewarm": prewarm,
     }
 
 
@@ -535,12 +634,16 @@ def _client_last_seen_at(meta: dict[str, Any]) -> float | None:
 
 
 def _client_is_stale(meta: dict[str, Any], *, now: float | None = None) -> bool:
-    """True when a live PID has not invoked MCP tools recently (zombie bridge)."""
-    seen = _client_last_seen_at(meta)
-    if seen is None:
+    """Evict only dead / untrusted PIDs — not quiet IDEs.
+
+    While Cursor/Codex/etc. keep an MCP worker alive we hold the warm engine.
+    Heartbeat refreshes ``last_seen_at`` for observability; unload is driven by
+    disconnect (PID gone / unregister), not by tool-call silence.
+    """
+    if _client_pid_trustworthy(meta):
         return False
-    current = time.time() if now is None else now
-    return (current - seen) >= idle_seconds()
+    # Dead or untrusted PID — drop immediately from the registry.
+    return True
 
 
 def unregister_client(client_id: str, *, now: float | None = None) -> dict[str, Any]:
@@ -551,6 +654,11 @@ def unregister_client(client_id: str, *, now: float | None = None) -> dict[str, 
     remaining = reconcile_clients(now=now)
     if not remaining:
         _mark_clients_gone(now=now)
+    _lifecycle_log(
+        "client_left",
+        client_id=str(client_id),
+        remaining=len(remaining),
+    )
     return {
         "ok": True,
         "client_id": str(client_id),
@@ -585,50 +693,134 @@ def active_client_count() -> int:
     return len(reconcile_clients())
 
 
+def _idle_busy_reason() -> str | None:
+    """Why idle stop must not fire (indexing / warming). None = idle OK."""
+    try:
+        from pipeline.memory_governor import get_governor
+
+        if get_governor().indexing:
+            return "indexing"
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from pipeline.ce_service import get_context_engine
+
+        ce = get_context_engine()
+        warm = str(getattr(ce, "warm_state", "") or "").strip().lower()
+        if warm in {"warming", "indexing"}:
+            return f"warm_state:{warm}"
+    except Exception:  # noqa: BLE001
+        pass
+    return None
+
+
 def should_idle_stop(*, now: float | None = None, require_run_mode: bool = True) -> bool:
+    """True after disconnect debounce (default 120s) with no active MCP/IDE clients.
+
+    While any client is registered the engine stays up for fast map/sync —
+    we do **not** unload on quiet tool-call idle.
+
+    Also covers sticky ``desired_mode=run`` with **zero clients and no leave
+    stamp** (CLI ``engine ensure`` / wipe leftovers): idle clock uses
+    ``last_activity`` or last engine start so the watchdog cannot keep a
+    ghost engine forever.
+    """
     policy = load_policy()
     if require_run_mode and policy.get("desired_mode") != DESIRED_RUN:
         return False
-    idle_s = idle_seconds()
-    if idle_s <= 0:
+    debounce = disconnect_debounce_s()
+    # <=0 keeps legacy "never auto-stop" (disable unload).
+    if debounce <= 0:
+        return False
+    if _idle_busy_reason() is not None:
         return False
     current = time.time() if now is None else now
     if reconcile_clients(now=current):
         return False
     policy = load_policy()
-    last_left = policy.get("last_client_left_at")
-    last_activity = policy.get("last_activity")
-    # After MCP/IDE disconnect, anchor strictly on client-leave time so unrelated
-    # stale last_activity cannot delay or accelerate shutdown incorrectly.
-    if last_left is not None:
-        return (current - float(last_left)) >= idle_s
-    if last_activity is None:
+    if active_client_count() > 0:
         return False
-    return (current - float(last_activity)) >= idle_s
+
+    last_left = policy.get("last_client_left_at")
+    if last_left is not None:
+        # Reconnect: a start after the leave stamp is a new engine, not leftover idle.
+        try:
+            last_start = load_transition().get("last_start_at")
+            if last_start is not None and float(last_start) > float(last_left):
+                return False
+        except (TypeError, ValueError):
+            pass
+        return (current - float(last_left)) >= debounce
+
+    # No leave stamp + no clients: sticky run without MCP (CLI ensure).
+    anchor = policy.get("last_activity")
+    if anchor is None:
+        try:
+            anchor = load_transition().get("last_start_at")
+        except Exception:  # noqa: BLE001
+            anchor = None
+    if anchor is None:
+        return False
+    try:
+        return (current - float(anchor)) >= debounce
+    except (TypeError, ValueError):
+        return False
 
 
-def apply_idle_policy(*, now: float | None = None) -> dict[str, Any]:
-    """Stop the engine after the idle window once clients are gone."""
+
+def apply_idle_policy(*, now: float | None = None, force: bool = False) -> dict[str, Any]:
+    """After disconnect debounce: demote embedder + stop engine."""
     from pipeline.daemon import is_running
 
     if upgrade_in_progress(now=now):
         return {"ok": True, "action": "upgrade_in_progress"}
+    busy = _idle_busy_reason()
+    if busy is not None:
+        _postpone_disconnect_stamp(now=now)
+        return {"ok": True, "action": "busy", "reason": busy}
     running = is_running()
-    # Standby means "no warm engine wanted", not "no engine exists": an MCP
-    # client start (register_client) never flips the mode to run, so an IDE
-    # session leaves a resident engine behind under standby. Keep sweeping
-    # until it is actually gone, or it outlives every idle window.
     if not running and load_policy().get("desired_mode") == DESIRED_STANDBY:
-        return {"ok": True, "action": "already_standby"}
+        sweep: dict[str, Any] | None = None
+        try:
+            from pipeline.process_control import sweep_orphan_scubiee_frontends
+
+            sweep = sweep_orphan_scubiee_frontends()
+        except Exception:  # noqa: BLE001
+            sweep = None
+        return {"ok": True, "action": "already_standby", "orphan_sweep": sweep}
     if not should_idle_stop(now=now, require_run_mode=False):
         return {"ok": True, "action": "none"}
-    blocked = idle_stop_debounced(now=now)
-    if blocked is not None:
-        return {**blocked, "action": "debounced"}
+    if not force:
+        blocked = idle_stop_debounced(now=now)
+        if blocked is not None:
+            return {**blocked, "action": "debounced"}
     if reconcile_clients(now=now):
         return {"ok": True, "action": "clients_reconnected"}
-    result = enter_standby(stop_engine=running)
-    return {**result, "action": "standby" if running else "policy_only"}
+    busy = _idle_busy_reason()
+    if busy is not None:
+        _postpone_disconnect_stamp(now=now)
+        return {"ok": True, "action": "busy", "reason": busy}
+    # Success metric is process exit (ORT RSS is not returned in-process).
+    # Soft demote inside enter_standby is pre-exit cleanup only.
+    _lifecycle_log(
+        "standby_stop",
+        running=running,
+        debounce_s=disconnect_debounce_s(),
+    )
+    result = enter_standby(stop_engine=True)
+    try:
+        from pipeline.process_control import sweep_orphan_scubiee_frontends
+
+        result["orphan_sweep"] = sweep_orphan_scubiee_frontends()
+    except Exception as exc:  # noqa: BLE001
+        result["orphan_sweep_error"] = str(exc)
+    still = False
+    try:
+        still = is_running()
+    except Exception:  # noqa: BLE001
+        still = False
+    _lifecycle_log("running", running=still)
+    return {**result, "action": "standby"}
 
 
 def engine_should_be_running() -> bool:
@@ -636,15 +828,68 @@ def engine_should_be_running() -> bool:
 
     if is_paused():
         return False
-    return load_policy().get("desired_mode") == DESIRED_RUN
+    if load_policy().get("desired_mode") == DESIRED_RUN:
+        return True
+    try:
+        from pipeline.daemon import start_request_path
+
+        return start_request_path().is_file()
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def supervisor_command(*, python: str | None = None, logon: bool = True) -> list[str]:
-    exe = python or sys.executable
+    # Prefer pythonw on Windows so Run-key / schtasks never open a console.
+    if python:
+        exe = python
+    else:
+        try:
+            from pipeline.process_job import background_python
+
+            exe = background_python()
+        except Exception:  # noqa: BLE001
+            exe = sys.executable
     cmd = [os.path.abspath(str(exe)), "-u", "-m", "pipeline", "engine", "supervisor"]
     if logon:
         cmd.append("--logon")
     return cmd
+
+
+def windows_supervisor_boot_path() -> Path:
+    from pipeline.project_id import context_engine_home
+
+    return context_engine_home() / "_boot_supervisor.pyw"
+
+
+def write_windows_supervisor_boot_script() -> Path:
+    """Hidden logon boot (pythonw + .pyw) — never python.exe console."""
+    from pipeline.project_id import context_engine_home
+
+    home = context_engine_home()
+    home.mkdir(parents=True, exist_ok=True)
+    path = windows_supervisor_boot_path()
+    path.write_text(
+        "\n".join(
+            [
+                "import os",
+                "os.environ.setdefault('CTX_ENGINE_SOFT_SPAWN', '1')",
+                "os.environ.setdefault('PYTHONUTF8', '1')",
+                "from pipeline.lifecycle_runtime import run_supervisor",
+                "run_supervisor(logon=True)",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
+def windows_hidden_supervisor_command() -> list[str]:
+    """Command line for HKCU Run / schtasks that cannot flash a console."""
+    from pipeline.process_job import background_python
+
+    boot = write_windows_supervisor_boot_script()
+    return [background_python(), str(boot)]
 
 
 def launch_agent_plist_path() -> Path:
@@ -742,8 +987,28 @@ def _delete_windows_run_key() -> None:
 
 
 def _register_windows(cmd: list[str], *, runner: Any) -> dict[str, Any]:
-    quoted = subprocess.list2cmdline(cmd)
-    completed = runner(
+    # Always register a no-console pythonw boot on Windows — even if the caller
+    # passed a console python.exe command (old installs flashed every logon).
+    try:
+        quiet = windows_hidden_supervisor_command()
+        quoted = subprocess.list2cmdline(quiet)
+        cmd = quiet
+    except Exception:  # noqa: BLE001
+        quoted = subprocess.list2cmdline(cmd)
+
+    def _run(argv: list[str]) -> Any:
+        kwargs: dict[str, Any] = {
+            "capture_output": True,
+            "text": True,
+            "check": False,
+        }
+        if os.name == "nt":
+            kwargs["creationflags"] = int(
+                getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+            )
+        return runner(argv, **kwargs)
+
+    completed = _run(
         [
             "schtasks",
             "/Create",
@@ -756,10 +1021,7 @@ def _register_windows(cmd: list[str], *, runner: Any) -> dict[str, Any]:
             "/RL",
             "LIMITED",
             "/F",
-        ],
-        capture_output=True,
-        text=True,
-        check=False,
+        ]
     )
     ok = getattr(completed, "returncode", 1) == 0
     detail = getattr(completed, "stdout", "") or getattr(completed, "stderr", "")
@@ -779,7 +1041,7 @@ def _register_windows(cmd: list[str], *, runner: Any) -> dict[str, Any]:
             "platform": "windows",
             "task": TASK_NAME,
             "command": cmd,
-            "detail": "schtasks denied; registered HKCU Run instead",
+            "detail": "schtasks denied; registered HKCU Run (pythonw, no console)",
         }
     return {
         "ok": False,
@@ -917,9 +1179,19 @@ def register_logon_autostart(
 
 
 def unregister_logon_autostart(*, runner: Any | None = None) -> dict[str, Any]:
-    run = runner or subprocess.run
     desktop = current_desktop()
     if desktop == "windows":
+        def _run_default(argv: list[str], **kwargs: Any) -> Any:
+            kwargs.setdefault("capture_output", True)
+            kwargs.setdefault("text", True)
+            kwargs.setdefault("check", False)
+            kwargs.setdefault(
+                "creationflags",
+                int(getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)),
+            )
+            return subprocess.run(argv, **kwargs)  # noqa: S603
+
+        run = runner or _run_default
         completed = run(
             ["schtasks", "/Delete", "/TN", TASK_NAME, "/F"],
             capture_output=True,
@@ -928,10 +1200,12 @@ def unregister_logon_autostart(*, runner: Any | None = None) -> dict[str, Any]:
         )
         _delete_windows_run_key()
         return {
-            "ok": getattr(completed, "returncode", 1) == 0,
+            "ok": True,  # run key deleted even if schtasks missing
             "platform": "windows",
             "task": TASK_NAME,
+            "schtasks_rc": getattr(completed, "returncode", 1),
         }
+    run = runner or subprocess.run
     if desktop == "darwin":
         run(
             ["launchctl", "bootout", _gui_target()],
@@ -986,14 +1260,21 @@ def install_supervisor_signals() -> None:
 
 
 def enter_standby(*, stop_engine: bool = True) -> dict[str, Any]:
-    """Logon / idle: keep supervisor, do not keep a warm engine."""
+    """Disconnect/idle: stop the fat engine process (ORT RSS only drops on exit)."""
     policy = set_desired_mode(DESIRED_STANDBY)
+    try:
+        from pipeline.memory_governor import get_governor
+
+        # Pre-exit cleanup only — does not free ORT arena RSS.
+        get_governor().force_demote_disconnect()
+    except Exception:  # noqa: BLE001
+        pass
     stopped = None
     if stop_engine:
-        from pipeline.daemon import is_running, stop_daemon
+        from pipeline.daemon import stop_daemon
 
-        if is_running():
-            stopped = stop_daemon()
+        _lifecycle_log("standby_stop", reason="idle_standby")
+        stopped = stop_daemon(reason="idle_standby")
     return {"ok": True, "policy": policy, "engine": stopped}
 
 
@@ -1008,9 +1289,11 @@ def request_run(*, repo: Path | str | None = None) -> dict[str, Any]:
 def ensure_supervisor() -> dict[str, Any]:
     """Keep a supervisor in this session. Never uses the --logon path.
 
-    Windows/Linux fall back to an in-session watchdog. Darwin prefers the
-    LaunchAgent so logout can SIGTERM the supervisor and stop the engine.
+    On Windows, prefer the detached/orphan spawn path so CLI ``connect`` and
+    MCP share the same non-Cursor parent. Darwin prefers LaunchAgent.
     """
+    if current_desktop() == "windows":
+        return ensure_supervisor_detached()
     from pipeline.watchdog import is_watchdog_running, start_watchdog, watchdog_status
 
     if is_watchdog_running():
@@ -1020,8 +1303,130 @@ def ensure_supervisor() -> dict[str, Any]:
         time.sleep(0.4)
         if is_watchdog_running():
             return {"ok": True, "started": "launch_agent", **kicked, **watchdog_status()}
-    return start_watchdog()
+    return start_watchdog(orphan=False)
 
+
+def _windows_supervisor_task_exists() -> bool:
+    try:
+        completed = subprocess.run(
+            ["schtasks", "/Query", "/TN", TASK_NAME],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=8,
+            creationflags=int(getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)),
+        )
+    except Exception:  # noqa: BLE001
+        return False
+    return getattr(completed, "returncode", 1) == 0
+
+
+def _run_windows_supervisor_task() -> dict[str, Any]:
+    """Kick the logon Scheduled Task so Task Scheduler parents the supervisor.
+
+    Never call this when the task is missing — ``schtasks`` itself flashes a
+    console and MCP was hammering /Run in a tight loop.
+    """
+    if not _windows_supervisor_task_exists():
+        return {
+            "ok": False,
+            "method": "schtasks_run",
+            "skipped": "task_missing",
+            "task": TASK_NAME,
+        }
+    try:
+        completed = subprocess.run(
+            ["schtasks", "/Run", "/TN", TASK_NAME],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=15,
+            creationflags=int(getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)),
+        )
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "method": "schtasks_run", "error": str(exc)}
+    return {
+        "ok": getattr(completed, "returncode", 1) == 0,
+        "method": "schtasks_run",
+        "task": TASK_NAME,
+        "stdout": (completed.stdout or "")[:200],
+        "stderr": (completed.stderr or "")[:200],
+    }
+
+
+_ENSURE_SUPERVISOR_COOLDOWN_S = 20.0
+_last_ensure_supervisor_at = 0.0
+_last_ensure_supervisor_result: dict[str, Any] | None = None
+
+
+def ensure_supervisor_detached() -> dict[str, Any]:
+    """Ensure supervisor without leaving MCP as the parent of the watchdog tree.
+
+    Prefer OS-managed parents (schtasks / LaunchAgent / WMI orphan). Never use a
+    plain in-tree Popen from MCP — that makes Cursor close kill the engine job.
+
+    Rate-limited: MCP reconnect storms must not spawn schtasks/WMI every few ms.
+    """
+    global _last_ensure_supervisor_at, _last_ensure_supervisor_result
+    from pipeline.watchdog import is_watchdog_running, start_watchdog, watchdog_status
+
+    if is_watchdog_running():
+        return {"ok": True, "already_running": True, **watchdog_status()}
+
+    now = time.time()
+    if (
+        _last_ensure_supervisor_result is not None
+        and (now - _last_ensure_supervisor_at) < _ENSURE_SUPERVISOR_COOLDOWN_S
+    ):
+        # Still not running, but do not flash-spawn again.
+        return {
+            "ok": False,
+            "error": "spawn_cooldown",
+            "spawn_cooldown": True,
+            "cooldown_s": _ENSURE_SUPERVISOR_COOLDOWN_S,
+            "last": _last_ensure_supervisor_result,
+        }
+
+    desktop = current_desktop()
+    result: dict[str, Any]
+    if desktop == "windows":
+        kicked = _run_windows_supervisor_task()
+        if kicked.get("ok"):
+            time.sleep(0.6)
+        if is_watchdog_running():
+            result = {
+                "ok": True,
+                "started": "schtasks",
+                **kicked,
+                **watchdog_status(),
+            }
+        else:
+            orphaned = start_watchdog(orphan=True)
+            time.sleep(0.4)
+            if is_watchdog_running() or orphaned.get("ok"):
+                result = {
+                    "ok": True,
+                    **orphaned,
+                    **watchdog_status(),
+                    "started": "wmi_orphan",
+                }
+            else:
+                result = orphaned
+        _last_ensure_supervisor_at = time.time()
+        _last_ensure_supervisor_result = dict(result)
+        return result
+    if desktop == "darwin" and launch_agent_plist_path().is_file():
+        kicked = kickstart_launch_agent()
+        time.sleep(0.4)
+        if is_watchdog_running():
+            result = {"ok": True, "started": "launch_agent", **kicked, **watchdog_status()}
+            _last_ensure_supervisor_at = time.time()
+            _last_ensure_supervisor_result = dict(result)
+            return result
+    result = start_watchdog(orphan=False)
+    _last_ensure_supervisor_at = time.time()
+    _last_ensure_supervisor_result = dict(result)
+    return result
 
 def run_supervisor(*, logon: bool = False) -> None:
     """Blocking supervisor used by the logon task and `scubiee engine supervisor`."""

@@ -19,23 +19,22 @@ def test_passive_http_paths_exclude_status_and_health() -> None:
     assert not _is_passive_http_path("/v1/client/register", method="POST")
 
 
-def test_touch_client_extends_stale_deadline(tmp_path, monkeypatch) -> None:
+def test_alive_mcp_client_not_stale_without_touch(tmp_path, monkeypatch) -> None:
+    """Quiet IDE must stay registered — unload is disconnect-driven only."""
     monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
-    monkeypatch.setenv("CTX_ENGINE_IDLE_S", "25")
+    monkeypatch.setenv("CTX_ENGINE_IDLE_S", "10")
     monkeypatch.setattr(life, "_client_pid_trustworthy", lambda _meta: True)
 
     life.register_client("mcp:1", pid=1, now=100.0)
     assert life.touch_client("mcp:1", now=120.0) is True
-    # 24s after touch — still alive; 25s — evicted.
-    assert len(life.reconcile_clients(now=144.0)) == 1
-    assert len(life.reconcile_clients(now=145.0)) == 0
-    assert life.load_policy()["last_client_left_at"] == 145.0
+    assert len(life.reconcile_clients(now=10_000.0)) == 1
+    assert life.load_policy()["last_client_left_at"] is None
 
 
 def test_idle_stop_timeline_after_mcp_disconnect(tmp_path, monkeypatch) -> None:
-    """Stale eviction (~25s) + leave anchor (~25s) → stop (~50s total)."""
+    """Unregister → wait disconnect debounce (10s) → stop."""
     monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
-    monkeypatch.setenv("CTX_ENGINE_IDLE_S", "25")
+    monkeypatch.setenv("CTX_DISCONNECT_DEBOUNCE_S", "10")
     monkeypatch.setattr(life, "_client_pid_trustworthy", lambda _meta: True)
     life.set_desired_mode(life.DESIRED_RUN)
 
@@ -43,29 +42,36 @@ def test_idle_stop_timeline_after_mcp_disconnect(tmp_path, monkeypatch) -> None:
     life.unregister_client("mcp:1", now=0.0)
     assert life.load_policy()["last_client_left_at"] == 0.0
 
-    assert life.should_idle_stop(now=24.0) is False
-    assert life.should_idle_stop(now=25.0) is True
+    assert life.should_idle_stop(now=9.0) is False
+    assert life.should_idle_stop(now=10.0) is True
 
 
-def test_stale_zombie_client_timeline(tmp_path, monkeypatch) -> None:
+def test_dead_pid_evicts_then_disconnect_debounce(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
-    monkeypatch.setenv("CTX_ENGINE_IDLE_S", "25")
-    monkeypatch.setattr(life, "_client_pid_trustworthy", lambda _meta: True)
+    monkeypatch.setenv("CTX_DISCONNECT_DEBOUNCE_S", "10")
+    # First register with trustworthy, then die.
+    state = {"alive": True}
+
+    def _trust(meta):
+        return bool(state["alive"])
+
+    monkeypatch.setattr(life, "_client_pid_trustworthy", _trust)
     life.set_desired_mode(life.DESIRED_RUN)
 
     life.register_client("mcp:1", pid=1, now=100.0)
-    assert life.reconcile_clients(now=124.0)
-    assert not life.reconcile_clients(now=125.0)
-    assert life.load_policy()["last_client_left_at"] == 125.0
-    assert life.should_idle_stop(now=149.0) is False
-    assert life.should_idle_stop(now=150.0) is True
+    assert life.reconcile_clients(now=100.0)
+    state["alive"] = False
+    assert not life.reconcile_clients(now=101.0)
+    assert life.load_policy()["last_client_left_at"] == 101.0
+    assert life.should_idle_stop(now=110.0) is False
+    assert life.should_idle_stop(now=111.0) is True
 
 
 def test_apply_idle_policy_enters_standby_after_disconnect(
     tmp_path, monkeypatch
 ) -> None:
     monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
-    monkeypatch.setenv("CTX_ENGINE_IDLE_S", "25")
+    monkeypatch.setenv("CTX_DISCONNECT_DEBOUNCE_S", "10")
     monkeypatch.setattr(life, "_client_pid_trustworthy", lambda _meta: True)
     life.set_desired_mode(life.DESIRED_RUN)
 
@@ -80,7 +86,7 @@ def test_apply_idle_policy_enters_standby_after_disconnect(
 
     life.register_client("mcp:1", pid=1, now=1000.0)
     life.unregister_client("mcp:1", now=1000.0)
-    result = life.apply_idle_policy(now=1025.0)
+    result = life.apply_idle_policy(now=1010.0)
     assert result.get("action") == "standby"
     assert stopped["called"] is True
 
@@ -97,7 +103,7 @@ def test_apply_idle_policy_retries_stop_when_engine_survives_standby(
     outlives the IDE indefinitely.
     """
     monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
-    monkeypatch.setenv("CTX_ENGINE_IDLE_S", "25")
+    monkeypatch.setenv("CTX_DISCONNECT_DEBOUNCE_S", "10")
     monkeypatch.setattr(life, "_client_pid_trustworthy", lambda _meta: True)
 
     stopped = {"called": False}
@@ -114,7 +120,7 @@ def test_apply_idle_policy_retries_stop_when_engine_survives_standby(
     # Simulate the earlier sweep that flipped the mode but failed to kill it.
     life.set_desired_mode(life.DESIRED_STANDBY)
 
-    result = life.apply_idle_policy(now=1025.0)
+    result = life.apply_idle_policy(now=1010.0)
     assert result.get("action") == "standby", result
     assert stopped["called"] is True
 
@@ -128,34 +134,29 @@ def test_apply_idle_policy_noop_when_standby_and_no_engine(tmp_path, monkeypatch
     assert life.apply_idle_policy(now=1025.0).get("action") == "already_standby"
 
 
-def test_note_activity_after_unregister_resets_leave_anchor(
+def test_note_activity_preserves_disconnect_stamp(
     tmp_path, monkeypatch
 ) -> None:
-    """Interactive use after disconnect clears leave anchor and restarts idle clock."""
+    """Interactive touches must not cancel disconnect unload after MCP leave."""
     monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
-    monkeypatch.setenv("CTX_ENGINE_IDLE_S", "30")
+    monkeypatch.setenv("CTX_DISCONNECT_DEBOUNCE_S", "10")
 
     life.register_client("mcp:1", pid=1, now=100.0)
     life.unregister_client("mcp:1", now=100.0)
+    assert life.should_idle_stop(now=110.0) is True
     life.note_activity(now=120.0)
-    assert life.load_policy()["last_client_left_at"] is None
-    assert life.should_idle_stop(now=149.0) is False
-    assert life.should_idle_stop(now=151.0) is True
+    assert life.load_policy()["last_client_left_at"] == 100.0
+    assert life.should_idle_stop(now=999.0) is True
 
 
 def test_governor_ignores_hub_activity_when_no_mcp_clients(
     tmp_path, monkeypatch
 ) -> None:
-    """Status/keeper hub touches must not block demotion after MCP gone."""
+    """Without a disconnect stamp, hub activity must not demote (hold until leave)."""
     reset_governor_for_tests()
     monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
-    monkeypatch.setenv("CTX_EMBED_IDLE_DEMOTE_S", "10")
+    monkeypatch.setenv("CTX_DISCONNECT_DEBOUNCE_S", "10")
     monkeypatch.setattr(life, "active_client_count", lambda: 0)
-    monkeypatch.setattr(
-        "pipeline.lifecycle_runtime.idle_stop_debounced",
-        lambda **_: None,
-    )
-    # No disconnect grace stamp — fall back to last_semantic_at.
     monkeypatch.setattr(
         "pipeline.lifecycle_runtime.load_policy",
         lambda: {"last_client_left_at": None},
@@ -170,28 +171,22 @@ def test_governor_ignores_hub_activity_when_no_mcp_clients(
     hub = MagicMock()
     hub.list_status.return_value = [{"project_id": "p1"}]
     runtime = MagicMock()
-    runtime.last_activity_at = fixed_now  # would block if used
+    runtime.last_activity_at = fixed_now
     hub.get.return_value = runtime
 
-    monkeypatch.setattr("pipeline.engine.release_embedders", lambda: 0)
-    result = gov.maybe_demote_idle(hub, now=fixed_now)
-    assert result is not None
-    assert result["action"] == "demote_serve"
-    assert gov.active_tier == "locate_only"
+    monkeypatch.setattr("pipeline.engine.release_embedders", lambda: (_ for _ in ()).throw(AssertionError("unload")))
+    assert gov.maybe_demote_idle(hub, now=fixed_now) is None
+    assert gov.active_tier == "serve_1repo"
 
 
 def test_governor_holds_warm_through_disconnect_grace(
     tmp_path, monkeypatch
 ) -> None:
-    """After MCP leaves, keep embedder warm until the idle grace elapses."""
+    """After MCP leaves, keep embedder warm until the 10s disconnect debounce."""
     reset_governor_for_tests()
     monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
-    monkeypatch.setenv("CTX_EMBED_IDLE_DEMOTE_S", "15")
+    monkeypatch.setenv("CTX_DISCONNECT_DEBOUNCE_S", "10")
     monkeypatch.setattr(life, "active_client_count", lambda: 0)
-    monkeypatch.setattr(
-        "pipeline.lifecycle_runtime.idle_stop_debounced",
-        lambda **_: None,
-    )
     left_at = 1000.0
     monkeypatch.setattr(
         "pipeline.lifecycle_runtime.load_policy",
@@ -201,37 +196,40 @@ def test_governor_holds_warm_through_disconnect_grace(
     gov = MemoryGovernor()
     gov.desired_tier = "serve_1repo"
     gov.apply_tier("serve_1repo")
-    # Semantic was long ago — without leave anchoring this would demote immediately.
     gov.last_semantic_at = left_at - 60
 
     monkeypatch.setattr("pipeline.engine.release_embedders", lambda: 0)
+    monkeypatch.setattr("pipeline.engine.clear_engines", lambda: None)
 
-    still_warm = gov.maybe_demote_idle(now=left_at + 10)
+    still_warm = gov.maybe_demote_idle(now=left_at + 9)
     assert still_warm is None
     assert gov.active_tier == "serve_1repo"
 
-    demoted = gov.maybe_demote_idle(now=left_at + 16)
+    demoted = gov.maybe_demote_idle(now=left_at + 10)
     assert demoted is not None
     assert demoted["action"] == "demote_serve"
     assert gov.active_tier == "locate_only"
 
 
-def test_touch_mcp_client_reregisters_after_stale_eviction(
+def test_touch_mcp_client_reregisters_after_dead_pid_eviction(
     tmp_path, monkeypatch
 ) -> None:
     monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
-    monkeypatch.setenv("CTX_ENGINE_IDLE_S", "25")
-    monkeypatch.setattr(life, "_client_pid_trustworthy", lambda _meta: True)
+    monkeypatch.setenv("CTX_DISCONNECT_DEBOUNCE_S", "10")
+    state = {"alive": True}
+    monkeypatch.setattr(life, "_client_pid_trustworthy", lambda _m: bool(state["alive"]))
 
     from pipeline import mcp_locate
 
     client_id = "mcp:test-session"
     mcp_locate._MCP_CLIENT_ID = client_id
     life.register_client(client_id, pid=9999, now=100.0)
-    assert not life.reconcile_clients(now=130.0)
+    state["alive"] = False
+    assert not life.reconcile_clients(now=101.0)
 
+    state["alive"] = True
     mcp_locate._touch_mcp_client()
-    assert life.reconcile_clients(now=131.0)
+    assert life.reconcile_clients(now=102.0)
     assert life.load_policy()["last_client_left_at"] is None
 
 
@@ -244,16 +242,27 @@ def _quiet_governor(monkeypatch) -> None:
     )
 
 
-def test_retire_self_reports_false_without_a_server(monkeypatch) -> None:
+def test_retire_self_schedules_hard_exit(monkeypatch) -> None:
     from pipeline import server
 
     monkeypatch.setattr(server, "_HTTPD", None)
-    assert server._retire_self() is False
+    started: list[str] = []
+
+    class _Thread:
+        def __init__(self, target=None, name=None, daemon=None):
+            started.append(str(name or ""))
+
+        def start(self) -> None:
+            started.append("started")
+
+    monkeypatch.setattr(server.threading, "Thread", _Thread)
+    assert server._retire_self() is True
+    assert "ce-self-retire" in started
+    assert "started" in started
 
 
 def test_idle_sweeper_retires_self_when_stop_cannot_kill_own_pid(monkeypatch) -> None:
-    """stop_daemon skips the engine's own pid, so a standby sweep that leaves the
-    engine running has to retire in-process or the engine never goes away."""
+    """stop_daemon skips the engine's own pid; disconnect standby always retires."""
     import threading
 
     from pipeline import server
@@ -282,23 +291,19 @@ def test_idle_sweeper_retires_self_when_stop_cannot_kill_own_pid(monkeypatch) ->
     assert not thread.is_alive(), "sweeper must exit once it has retired the server"
 
 
-def test_idle_sweeper_keeps_sweeping_when_engine_actually_stopped(monkeypatch) -> None:
-    """An external stop that worked reports running=False — no self-retire then."""
+def test_idle_sweeper_retires_self_on_any_standby(monkeypatch) -> None:
+    """Disconnect standby must exit this process even if stop_daemon reports
+    running=False (it cannot kill our own pid). Soft demote is not enough."""
     import threading
 
     from pipeline import server
 
     _quiet_governor(monkeypatch)
-    stop = threading.Event()
-    sweeps: list[int] = []
-
-    def _policy() -> dict:
-        sweeps.append(1)
-        if len(sweeps) >= 3:
-            stop.set()
-        return {"action": "standby", "engine": {"ok": True, "running": False, "killed": [4242]}}
-
-    monkeypatch.setattr(life, "apply_idle_policy", _policy)
+    monkeypatch.setattr(
+        life,
+        "apply_idle_policy",
+        lambda: {"action": "standby", "engine": {"ok": True, "running": False, "killed": [4242]}},
+    )
 
     retired = threading.Event()
 
@@ -308,9 +313,10 @@ def test_idle_sweeper_keeps_sweeping_when_engine_actually_stopped(monkeypatch) -
 
     monkeypatch.setattr(server, "_retire_self", _mark_retired)
 
+    stop = threading.Event()
     thread = server._start_idle_sweeper(interval_s=0.0, stop_event=stop)
     thread.join(timeout=5.0)
+    stop.set()
 
-    assert not thread.is_alive()
-    assert len(sweeps) >= 3
-    assert not retired.is_set(), "engine already gone — must not retire the live server"
+    assert retired.is_set()
+    assert not thread.is_alive(), "sweeper must exit once it has retired the server"

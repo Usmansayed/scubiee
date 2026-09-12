@@ -555,13 +555,36 @@ _MCP_CLIENT_ID: str | None = None
 
 
 def _register_mcp_client(repo: Path) -> str:
-    """Universal attach: any MCP host/OS — warm embedder before tools, leave on exit."""
+    """Universal attach: leave hooks on any host. Engine warm is agent-first-call."""
     from pipeline.mcp_lifecycle import attach_mcp_session, current_client_id
 
     global _MCP_CLIENT_ID
     out = attach_mcp_session(repo)
     _MCP_CLIENT_ID = str(out.get("client_id") or current_client_id() or "")
     return _MCP_CLIENT_ID
+
+
+def boot_mcp_worker(repo: Path) -> dict[str, Any]:
+    """Stdio worker boot. Default: no engine/watchdog spawn (agent warms later)."""
+    from pipeline.mcp_hot_reload import adopt_installed_package_on_connect
+    from pipeline.mcp_lifecycle import mcp_auto_warm_on_connect
+
+    auto = mcp_auto_warm_on_connect()
+    report: dict[str, Any] = {"auto_warm": auto}
+    try:
+        report["adopt"] = adopt_installed_package_on_connect(restart_stale=auto)
+    except Exception as exc:  # noqa: BLE001
+        report["adopt_error"] = str(exc)
+    if auto:
+        try:
+            from pipeline.daemon import ensure_daemon
+
+            report["ensure"] = ensure_daemon(repo, force_if_hung=False)
+        except Exception as exc:  # noqa: BLE001
+            report["ensure_error"] = str(exc)
+            _stderr(f"[scubiee] ensure_daemon: {exc}")
+    report["client_id"] = _register_mcp_client(repo)
+    return report
 
 
 def _touch_mcp_client() -> None:
@@ -586,6 +609,17 @@ def _touch_mcp_client() -> None:
             )
         except Exception:  # noqa: BLE001
             pass
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _note_locate_streak(repo: Path | str | None = None) -> None:
+    """Tell the keeper an agent locate is in flight — defer sync during the streak."""
+    try:
+        from pipeline.client import EngineClient
+
+        root = str(Path(repo).resolve() if repo else _default_repo())
+        EngineClient(workspace_path=root, timeout=1.5).note_locate(path=root)
     except Exception:  # noqa: BLE001
         pass
 
@@ -2022,17 +2056,16 @@ def _resolve_expand_node(
 
 def _client_for(repo: Path):
     from pipeline.client import EngineClient
-    from pipeline.daemon import ensure_daemon
-    from pipeline.mcp_lifecycle import current_client_id, warm_engine_for_mcp
+    from pipeline.mcp_lifecycle import current_client_id, ensure_mcp_runtime
     from pipeline.session_isolation import effective_session_id, mcp_client_name
 
     # Universal: any host may call tools after an engine restart under a live MCP.
     # Block until FastEmbed is ready so the first map never pays cold ORT.
-    warm = warm_engine_for_mcp(repo, client_id=current_client_id() or _MCP_CLIENT_ID)
+    # Agent-warm: this is the first spawn of engine/watchdog if MCP connect was lazy.
+    warm = ensure_mcp_runtime(repo, client_id=current_client_id() or _MCP_CLIENT_ID)
     if not warm.get("ok"):
         _stderr(f"[scubiee] warm gate incomplete: {warm}")
 
-    ensure_daemon(repo, force_if_hung=True)
     sid = effective_session_id(None)
     client = EngineClient(
         workspace_path=str(repo),
@@ -2064,7 +2097,7 @@ def _client_for(repo: Path):
                     timeout=180.0,
                 )
                 opened = client.open_repo(str(repo), wait=True)
-                warm_engine_for_mcp(repo, client_id=current_client_id() or _MCP_CLIENT_ID)
+                ensure_mcp_runtime(repo, client_id=current_client_id() or _MCP_CLIENT_ID)
             else:
                 opened = client.open_repo(str(repo), wait=True)
         if str(opened.get("status") or "") != "activated":
@@ -3660,6 +3693,8 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         if not _is_repo_managed():
             return _managed_locate_err("map", repo)
 
+        _note_locate_streak(repo)
+
         from pipeline.session_store import load_store
 
         qn = _norm_query(args.query)
@@ -4139,6 +4174,12 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
 
             if is_paused():
                 return _paused_gate_response()
+            try:
+                from pipeline.mcp_lifecycle import ensure_mcp_runtime
+
+                ensure_mcp_runtime(_default_repo())
+            except Exception:  # noqa: BLE001
+                pass
             line = _gate_line(just_checked=True)
             if line.startswith("1:"):
                 sess = _session_fields(session_id)
@@ -4205,7 +4246,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 return _dumps(fields)
 
             from pipeline.client import EngineClient
-            from pipeline.daemon import ensure_daemon
+            from pipeline.mcp_lifecycle import current_client_id, ensure_mcp_runtime
             from pipeline.session_store import load_store, token_mode
 
             tool_lists = {
@@ -4222,7 +4263,10 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 sid = _resolve_session(session_id)
                 sess = _session_fields(session_id)
                 try:
-                    ensure_daemon(repo, force_if_hung=False)
+                    ensure_mcp_runtime(
+                        repo,
+                        client_id=current_client_id() or _MCP_CLIENT_ID,
+                    )
                 except Exception:  # noqa: BLE001
                     pass
                 from pipeline.session_isolation import mcp_client_name
@@ -4244,16 +4288,6 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                         opened = eng.open_repo(str(repo), wait=True)
                     except Exception as exc:  # noqa: BLE001
                         opened = {"ok": False, "error": str(exc)}
-                    # Host-agnostic: block until FastEmbed is ready before advertising ready.
-                    try:
-                        from pipeline.mcp_lifecycle import current_client_id, warm_engine_for_mcp
-
-                        warm_engine_for_mcp(
-                            repo,
-                            client_id=current_client_id() or _MCP_CLIENT_ID,
-                        )
-                    except Exception:  # noqa: BLE001
-                        pass
                 daemon_status: dict[str, Any] = {}
                 # summary: avoid full /v1/status keeper dump — health + open_repo + local probe.
                 if healthy and detail_s == "full":
@@ -4814,6 +4848,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 repo = _default_repo()
             if not _is_repo_managed():
                 return _managed_locate_err(tool_name, repo)
+            _note_locate_streak(repo)
             try:
                 from pipeline.context_trace import load_trace, persist_trace, run_pack_context
 
@@ -5096,43 +5131,18 @@ def main() -> None:
     os.environ.setdefault("CTX_REPO", str(repo))
     os.environ.setdefault("CTX_TOKEN_MODE", "savings")
     os.environ.setdefault("CTX_SESSION_GOVERNOR", "1")
-    os.environ.setdefault("CTX_ENGINE_IDLE_S", "10")
-    os.environ.setdefault("CTX_DISCONNECT_DEBOUNCE_S", "10")
+    os.environ.setdefault("CTX_ENGINE_IDLE_S", "120")
+    os.environ.setdefault("CTX_DISCONNECT_DEBOUNCE_S", "120")
     os.environ.setdefault("CTX_ENGINE_TRANSITION_DEBOUNCE_S", "5")
     os.environ.setdefault("CTX_EMBED_IDLE_DEMOTE_S", "10")
     os.environ.setdefault("CTX_EMBED_PREWARM", "1")
-    try:
-        from pipeline.mcp_hot_reload import adopt_installed_package_on_connect
-
-        adopted = adopt_installed_package_on_connect()
-        if adopted.get("stamp_updated") or adopted.get("daemon", {}).get("action") == "restarted":
-            _stderr(
-                "[scubiee] adopted package "
-                f"stamp_updated={adopted.get('stamp_updated')} "
-                f"daemon={adopted.get('daemon', {}).get('action')}"
-            )
-    except Exception as exc:  # noqa: BLE001
-        _stderr(f"[scubiee] adopt_installed_package: {exc}")
-    try:
-        from pipeline.daemon import ensure_daemon
-
-        ensure_daemon(repo, force_if_hung=True)
-    except Exception as exc:  # noqa: BLE001
-        _stderr(f"[scubiee] ensure_daemon: {exc}")
-
-    # Load faiss (native extension, own OpenMP/loader-lock behavior) on the
-    # main thread before the stdio event loop starts handing tool calls to
-    # worker threads. register_project is the only tool that reaches
-    # pipeline.vectordb; importing faiss there for the first time from a
-    # FastMCP worker thread deadlocked on Windows — the tool call never
-    # returned even though the identical import completes in well under a
-    # second on the main thread (#3182).
+    # faiss on the main thread before FastMCP worker threads (#3182 Windows deadlock).
     try:
         import pipeline.vectordb  # noqa: F401
     except Exception as exc:  # noqa: BLE001
         _stderr(f"[scubiee] faiss preload: {exc}")
 
-    _register_mcp_client(repo)
+    boot_mcp_worker(repo)
     surface = _active_surface()
     tool_lists = {
         "read": "search,read,status",

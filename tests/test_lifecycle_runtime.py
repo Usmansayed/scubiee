@@ -17,10 +17,12 @@ def test_standby_does_not_idle_stop(tmp_path: Path, monkeypatch) -> None:
     assert life.should_idle_stop(now=10_000.0) is False
 
 
-def test_run_mode_idles_after_quiet_period(tmp_path: Path, monkeypatch) -> None:
+def test_run_mode_stops_after_disconnect_debounce(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
-    monkeypatch.setenv("CTX_ENGINE_IDLE_S", "30")
-    life.note_activity(now=100.0)
+    monkeypatch.setenv("CTX_DISCONNECT_DEBOUNCE_S", "30")
+    life.set_desired_mode(life.DESIRED_RUN)
+    life.register_client("mcp:1", pid=1, now=100.0)
+    life.unregister_client("mcp:1", now=100.0)
     assert life.engine_should_be_running() is True
     assert life.should_idle_stop(now=129.0) is False
     assert life.should_idle_stop(now=131.0) is True
@@ -53,37 +55,38 @@ def test_reconcile_dead_client_marks_disconnect(tmp_path: Path, monkeypatch) -> 
     assert policy["last_client_left_at"] == 60.0
 
 
-def test_reconcile_stale_client_marks_disconnect(tmp_path: Path, monkeypatch) -> None:
-    """Zombie MCP PID with no tool calls must not block idle stop forever."""
+def test_reconcile_keeps_quiet_alive_mcp_client(tmp_path: Path, monkeypatch) -> None:
+    """Alive MCP PID stays registered even with no tool calls (no touch-stale eviction)."""
     monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
-    monkeypatch.setenv("CTX_ENGINE_IDLE_S", "25")
+    monkeypatch.setenv("CTX_DISCONNECT_DEBOUNCE_S", "10")
     monkeypatch.setattr(life, "_client_pid_trustworthy", lambda _meta: True)
+    life.set_desired_mode(life.DESIRED_RUN)
     life.register_client("mcp:1", pid=4242, now=100.0)
-    assert life.reconcile_clients(now=130.0) == []
-    policy = life.load_policy()
-    assert policy["last_client_left_at"] == 130.0
-    assert life.should_idle_stop(now=155.0) is True
+    assert len(life.reconcile_clients(now=10_000.0)) == 1
+    assert life.load_policy()["last_client_left_at"] is None
+    assert life.should_idle_stop(now=10_000.0) is False
 
 
 def test_zero_idle_never_stops(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
     monkeypatch.setenv("CTX_ENGINE_IDLE_S", "0")
-    life.note_activity(now=1.0)
+    life.set_desired_mode(life.DESIRED_RUN)
+    life.register_client("mcp:1", pid=1, now=1.0)
+    life.unregister_client("mcp:1", now=1.0)
     assert life.should_idle_stop(now=1_000_000.0) is False
 
 
-def test_note_activity_clears_stale_client_left_anchor(tmp_path: Path, monkeypatch) -> None:
-    """HTTP/CLI activity after disconnect must reset idle — not use stale leave time."""
+def test_note_activity_does_not_clear_disconnect_stamp(tmp_path: Path, monkeypatch) -> None:
+    """Activity after MCP leave must not cancel the disconnect unload clock."""
     monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
-    monkeypatch.setenv("CTX_ENGINE_IDLE_S", "30")
+    monkeypatch.setenv("CTX_DISCONNECT_DEBOUNCE_S", "30")
     life.register_client("mcp:1", pid=1, now=100.0)
     life.unregister_client("mcp:1", now=100.0)
     assert life.load_policy()["last_client_left_at"] == 100.0
-    # Without the fix, should_idle_stop(131) would be True off last_left=100.
     life.note_activity(now=120.0)
-    assert life.load_policy()["last_client_left_at"] is None
-    assert life.should_idle_stop(now=140.0) is False
-    assert life.should_idle_stop(now=151.0) is True
+    assert life.load_policy()["last_client_left_at"] == 100.0
+    assert life.should_idle_stop(now=129.0) is False
+    assert life.should_idle_stop(now=131.0) is True
 
 
 def test_should_idle_stop_anchors_on_client_disconnect(
@@ -102,6 +105,23 @@ def test_should_idle_stop_anchors_on_client_disconnect(
     )
     assert life.should_idle_stop(now=129.0) is False
     assert life.should_idle_stop(now=131.0) is True
+
+
+def test_should_idle_stop_false_when_engine_started_after_leave(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """MCP reconnect starts a new engine before register; stale leave must not kill it."""
+    monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
+    monkeypatch.setenv("CTX_DISCONNECT_DEBOUNCE_S", "10")
+    life.set_desired_mode(life.DESIRED_RUN)
+    life.save_policy(
+        {
+            **life.load_policy(),
+            "last_client_left_at": 100.0,
+        }
+    )
+    life.note_engine_transition("start", now=105.0)
+    assert life.should_idle_stop(now=200.0) is False
 
 
 def test_register_logon_autostart_uses_onlogon_task(
@@ -124,7 +144,7 @@ def test_register_logon_autostart_uses_onlogon_task(
     assert "ONLOGON" in create
     assert life.TASK_NAME in create
     assert "supervisor" in " ".join(create).lower()
-    assert "--logon" in " ".join(create)
+    assert "_boot_supervisor.pyw" in " ".join(create).lower()
 
 
 def test_install_session_runtime_does_not_start_engine(tmp_path: Path, monkeypatch) -> None:
@@ -204,20 +224,23 @@ def test_windows_autostart_falls_back_to_run_key_on_access_denied(
 def test_ensure_supervisor_uses_watchdog_not_logon_task(monkeypatch) -> None:
     monkeypatch.setattr(life, "current_desktop", lambda: "windows")
     monkeypatch.setattr("pipeline.watchdog.is_watchdog_running", lambda: False)
+    started: list[dict] = []
     monkeypatch.setattr(
         "pipeline.watchdog.start_watchdog",
-        lambda: {"ok": True, "started": True, "pid": 1},
+        lambda **kwargs: started.append(kwargs)
+        or {"ok": True, "started": True, "pid": 1},
     )
-    seen: list[list[str]] = []
+    life._last_ensure_supervisor_at = 0.0
+    life._last_ensure_supervisor_result = None
 
     def fake_run(cmd, **_kwargs):
-        seen.append(list(cmd))
-        return SimpleNamespace(returncode=0, stdout="", stderr="")
+        # Task missing → do not /Run a console task; fall through to orphan spawn.
+        return SimpleNamespace(returncode=1, stdout="", stderr="cannot find the file")
 
     monkeypatch.setattr(life.subprocess, "run", fake_run)
     out = life.ensure_supervisor()
     assert out["ok"] is True
-    assert seen == []
+    assert started and started[0].get("orphan") is True
 
 
 def test_unregister_logon_autostart_deletes_task(monkeypatch) -> None:

@@ -66,11 +66,14 @@ def processes_under(root: Path) -> list[int]:
 
     if os.name != "nt":
         return pids
-    out = subprocess.run(
+    from pipeline.process_job import hidden_run
+
+    out = hidden_run(
         ["wmic", "process", "get", "ProcessId,ExecutablePath", "/FORMAT:CSV"],
         capture_output=True,
         text=True,
         check=False,
+        timeout=30,
     )
     for line in (out.stdout or "").splitlines():
         if not line.strip() or line.startswith("Node"):
@@ -154,11 +157,9 @@ def _terminate_pid_no_tree(pid: int) -> None:
         pass
     if os.name == "nt":
         # No /T — tree kill can take down the unlock process via a parent python.
-        subprocess.run(
-            ["taskkill", "/PID", str(pid), "/F"],
-            capture_output=True,
-            check=False,
-        )
+        from pipeline.process_job import taskkill_silent
+
+        taskkill_silent(int(pid), tree=False)
     else:
         try:
             os.kill(pid, 9)
@@ -264,13 +265,27 @@ def is_context_engine_process(pid: int) -> bool:
     return any(m in cmdline for m in markers)
 
 
-def safe_terminate_pid(pid: int, *, grace_s: float = 1.0) -> dict[str, Any]:
-    """Terminate *pid* only when it matches CE; never kill ourselves or ancestors."""
+def safe_terminate_pid(
+    pid: int,
+    *,
+    grace_s: float = 1.0,
+    allow_child: bool = False,
+) -> dict[str, Any]:
+    """Terminate *pid* only when it matches CE; never kill ourselves or ancestors.
+
+    ``allow_child=True`` lets ``stop_daemon`` kill a spawned ``engine run`` child
+    (protected-tree otherwise skips descendants, leaving ~1GB zombies).
+    """
     from pipeline.daemon import _pid_alive
 
     if not _pid_alive(pid):
         return {"pid": pid, "ok": True, "skipped": "not_alive"}
-    if _pid_is_protected(pid):
+    me = os.getpid()
+    if pid == me:
+        return {"pid": pid, "ok": True, "skipped": "self_or_ancestor"}
+    if _pid_in_our_ancestry(pid, me):
+        return {"pid": pid, "ok": True, "skipped": "self_or_ancestor"}
+    if not allow_child and _pid_is_protected(pid):
         return {"pid": pid, "ok": True, "skipped": "self_or_ancestor"}
     if not is_context_engine_process(pid):
         return {"pid": pid, "ok": False, "skipped": "not_context_engine"}
@@ -353,9 +368,15 @@ def enumerate_scubiee_processes(*, exclude_self: bool = True) -> list[dict[str, 
                 or _exe_matches_scubiee(exe)
                 or _cmdline_matches_ce(cmdline)
             ):
+                ppid = 0
+                try:
+                    ppid = int(proc.ppid() or 0)
+                except (psutil.NoSuchProcess, psutil.AccessDenied, TypeError, ValueError):
+                    ppid = 0
                 found.append(
                     {
                         "pid": pid,
+                        "ppid": ppid,
                         "exe": exe,
                         "cmdline": " ".join(str(x) for x in cmdline)[:240],
                     }
@@ -363,6 +384,78 @@ def enumerate_scubiee_processes(*, exclude_self: bool = True) -> list[dict[str, 
         except (psutil.NoSuchProcess, psutil.AccessDenied, TypeError, ValueError):
             continue
     return found
+
+
+def pid_working_set_mb(pid: int) -> float | None:
+    """Working set / RSS for *pid* in MiB (Windows Task Manager Memory column)."""
+    if pid <= 0:
+        return None
+    try:
+        import psutil
+
+        return float(psutil.Process(int(pid)).memory_info().rss) / (1024 * 1024)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _frontend_parent_gone(pid: int) -> bool:
+    """True when the MCP/bridge parent IDE process is dead (orphan worker)."""
+    try:
+        import psutil
+    except ImportError:
+        return False
+    try:
+        proc = psutil.Process(int(pid))
+        ppid = int(proc.ppid() or 0)
+    except Exception:  # noqa: BLE001
+        return False
+    if ppid <= 0:
+        return True
+    if os.name == "nt" and ppid in {0, 4}:
+        return True
+    try:
+        parent = psutil.Process(ppid)
+        if not parent.is_running():
+            return True
+        status = str(parent.status() or "").lower()
+        return "zombi" in status
+    except Exception:  # noqa: BLE001
+        return True
+
+
+def sweep_orphan_scubiee_frontends(
+    *,
+    keep_pids: set[int] | None = None,
+) -> dict[str, Any]:
+    """Kill MCP/bridge workers whose parent process is gone.
+
+    Does not touch ``pipeline engine run`` or watchdog — those have detached
+    parents by design. Closed IDEs must not leave ~1GB mcp python zombies.
+    """
+    keep = {int(p) for p in (keep_pids or set()) if int(p) > 0}
+    keep.add(os.getpid())
+    killed: list[int] = []
+    skipped: list[dict[str, Any]] = []
+    for proc in enumerate_scubiee_processes(exclude_self=True):
+        pid = int(proc["pid"])
+        if pid in keep:
+            skipped.append({"pid": pid, "reason": "keep"})
+            continue
+        if not (_is_mcp_worker_process(proc) or _is_mcp_bridge_process(proc)):
+            continue
+        if not _frontend_parent_gone(pid):
+            skipped.append({"pid": pid, "reason": "parent_alive"})
+            continue
+        result = safe_terminate_pid(pid, grace_s=0.8)
+        if result.get("terminated"):
+            killed.append(pid)
+        else:
+            skipped.append({"pid": pid, "reason": result.get("skipped") or result.get("error")})
+    return {
+        "ok": True,
+        "killed": killed,
+        "skipped": skipped,
+    }
 
 
 def _is_mcp_bridge_process(proc: dict[str, Any]) -> bool:
@@ -409,6 +502,75 @@ def kill_mcp_worker_processes(*, exclude_bridge: bool = True) -> dict[str, Any]:
         "killed": killed,
         "skipped_bridge_pids": skipped,
         "remaining_pids": [int(p["pid"]) for p in remaining_workers],
+    }
+
+
+def _pid_alive(pid: int) -> bool:
+    from pipeline.daemon import _pid_alive as _alive
+
+    try:
+        return bool(_alive(int(pid)))
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _is_durable_engine_process(proc: dict[str, Any]) -> bool:
+    """Engine daemon / logon supervisor / watchdog — must survive IDE close."""
+    cmdline = str(proc.get("cmdline") or "").lower().replace("/", "\\")
+    return (
+        "pipeline engine run" in cmdline
+        or "pipeline engine supervisor" in cmdline
+        or "pipeline engine watchdog" in cmdline
+        or "-m pipeline engine run" in cmdline
+        or "-m pipeline engine supervisor" in cmdline
+        or "pipeline.watchdog" in cmdline
+        or "-m pipeline watchdog" in cmdline
+        or "_boot_watchdog.pyw" in cmdline
+        or "_boot_supervisor.pyw" in cmdline
+    )
+
+
+def reap_orphaned_mcp_processes(*, keep_pids: set[int] | None = None) -> dict[str, Any]:
+    """Kill MCP bridge/worker trees whose parent is gone (Cursor close leftover).
+
+    Never touches engine run / supervisor / watchdog.
+    """
+    keep = {int(p) for p in (keep_pids or set())}
+    keep.add(int(os.getpid()))
+    killed: list[int] = []
+    skipped: list[int] = []
+    for proc in enumerate_scubiee_processes(exclude_self=True):
+        pid = int(proc["pid"])
+        if pid in keep:
+            skipped.append(pid)
+            continue
+        if _is_durable_engine_process(proc):
+            skipped.append(pid)
+            continue
+        if not (_is_mcp_bridge_process(proc) or _is_mcp_worker_process(proc)):
+            continue
+        ppid = int(proc.get("ppid") or 0)
+        if ppid > 0 and _pid_alive(ppid):
+            skipped.append(pid)
+            continue
+        result = safe_terminate_pid(pid, grace_s=0.5, allow_child=True)
+        if result.get("terminated"):
+            killed.append(pid)
+        else:
+            skipped.append(pid)
+    remaining = [
+        p
+        for p in enumerate_scubiee_processes(exclude_self=True)
+        if (_is_mcp_bridge_process(p) or _is_mcp_worker_process(p))
+        and not _is_durable_engine_process(p)
+        and not _pid_alive(int(p.get("ppid") or 0))
+        and int(p["pid"]) not in keep
+    ]
+    return {
+        "ok": not remaining,
+        "killed": killed,
+        "skipped": skipped,
+        "remaining_pids": [int(p["pid"]) for p in remaining],
     }
 
 
@@ -619,19 +781,16 @@ def kill_all_engine_daemons(*, port: int = 8765, wait_s: float = 5.0) -> dict[st
     killed: list[int] = []
 
     for pid in enumerate_engine_run_pids(port=port):
-        result = safe_terminate_pid(pid, grace_s=1.0)
+        result = safe_terminate_pid(pid, grace_s=1.0, allow_child=True)
         if result.get("terminated"):
             killed.append(pid)
         elif result.get("skipped") == "not_context_engine":
             # Force if cmdline matched engine run but marker check lagged.
             try:
                 if os.name == "nt":
-                    subprocess.run(
-                        ["taskkill", "/PID", str(pid), "/T", "/F"],
-                        capture_output=True,
-                        check=False,
-                        timeout=5,
-                    )
+                    from pipeline.process_job import taskkill_silent
+
+                    taskkill_silent(int(pid), tree=True)
                 else:
                     os.kill(pid, 9)
                 killed.append(pid)
@@ -641,21 +800,18 @@ def kill_all_engine_daemons(*, port: int = 8765, wait_s: float = 5.0) -> dict[st
                 pass
 
     for pid in pids_listening_on_port(port):
-        if pid in killed or _pid_is_protected(pid):
+        if pid in killed or pid == os.getpid() or _pid_in_our_ancestry(pid):
             continue
         if is_context_engine_process(pid) or pid in enumerate_engine_run_pids(port=None):
-            result = safe_terminate_pid(pid, grace_s=0.5)
+            result = safe_terminate_pid(pid, grace_s=0.5, allow_child=True)
             if result.get("terminated"):
                 killed.append(pid)
             else:
                 try:
                     if os.name == "nt":
-                        subprocess.run(
-                            ["taskkill", "/PID", str(pid), "/T", "/F"],
-                            capture_output=True,
-                            check=False,
-                            timeout=5,
-                        )
+                        from pipeline.process_job import taskkill_silent
+
+                        taskkill_silent(int(pid), tree=True)
                     else:
                         os.kill(pid, 9)
                     killed.append(pid)

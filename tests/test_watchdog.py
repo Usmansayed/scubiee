@@ -42,6 +42,7 @@ def test_windows_hidden_spawn_does_not_use_detached_process():
 
     flags = windows_hidden_creationflags()
     assert flags & CREATE_NO_WINDOW
+    # Hidden helpers (watchdog) stay non-DETACHED; engine uses DETACHED separately.
     assert not flags & int(getattr(subprocess, "DETACHED_PROCESS", 0x8))
     kwargs = hidden_popen_kwargs()
     if os.name == "nt":
@@ -85,9 +86,89 @@ def test_loop_restarts_after_two_fails(wd_home: Path, monkeypatch: pytest.Monkey
     monkeypatch.setattr(wd, "_health_ok", health)
     monkeypatch.setattr(wd, "BACKOFF_S", (0.01, 0.01, 0.01))
     monkeypatch.setattr(wd, "FAILS_BEFORE_RESTART", 2)
+    # Demand present → restart allowed (ghost engines without clients must not).
+    monkeypatch.setattr(
+        "pipeline.lifecycle_runtime.active_client_count",
+        lambda: 1,
+    )
     with patch("pipeline.daemon.force_restart_daemon", side_effect=fake_restart):
         wd.watchdog_loop(stop_after=3.0)
     assert "restart" in calls
+
+
+def test_loop_skips_restart_when_mcp_clients_and_pid_alive(
+    wd_home: Path, monkeypatch: pytest.MonkeyPatch
+):
+    from pipeline import watchdog as wd
+    from pipeline.lifecycle_runtime import note_activity
+
+    monkeypatch.setenv("CTX_ENGINE_IDLE_S", "99999")
+    note_activity()
+    calls: list[str] = []
+
+    monkeypatch.setattr(wd, "_health_ok", lambda: False)
+    monkeypatch.setattr(wd, "_pid_alive", lambda pid: True)
+    monkeypatch.setattr("pipeline.daemon._read_lock_pid", lambda: 4242)
+    monkeypatch.setattr("pipeline.lifecycle_runtime.active_client_count", lambda: 1)
+    monkeypatch.setattr(wd, "BACKOFF_S", (0.01, 0.01, 0.01))
+    monkeypatch.setattr(wd, "FAILS_BEFORE_RESTART", 2)
+    with patch(
+        "pipeline.daemon.force_restart_daemon",
+        side_effect=lambda repo=None: calls.append("restart") or {"ok": True},
+    ):
+        wd.watchdog_loop(stop_after=0.4)
+    assert calls == []
+
+
+def test_loop_restarts_when_mcp_clients_but_pid_dead(
+    wd_home: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Ghost MCP registrations must not block revive after the engine process dies."""
+    from pipeline import watchdog as wd
+    from pipeline.lifecycle_runtime import note_activity
+
+    monkeypatch.setenv("CTX_ENGINE_IDLE_S", "99999")
+    note_activity()
+    calls: list[str] = []
+
+    monkeypatch.setattr(wd, "_health_ok", lambda: False)
+    monkeypatch.setattr(wd, "_pid_alive", lambda pid: False)
+    monkeypatch.setattr("pipeline.daemon._read_lock_pid", lambda: 4242)
+    monkeypatch.setattr("pipeline.lifecycle_runtime.active_client_count", lambda: 2)
+    monkeypatch.setattr(wd, "BACKOFF_S", (0.01, 0.01, 0.01))
+    monkeypatch.setattr(wd, "FAILS_BEFORE_RESTART", 2)
+    with patch(
+        "pipeline.daemon.force_restart_daemon",
+        side_effect=lambda repo=None: calls.append("restart") or {"ok": True},
+    ):
+        wd.watchdog_loop(stop_after=3.0)
+    assert "restart" in calls
+
+
+def test_loop_does_not_kill_alive_engine_on_brief_health_lag(
+    wd_home: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Indexing/boot health timeouts are not crashes while the engine PID is alive."""
+    from pipeline import watchdog as wd
+    from pipeline.lifecycle_runtime import note_activity
+
+    monkeypatch.setenv("CTX_ENGINE_IDLE_S", "99999")
+    note_activity()
+    calls: list[str] = []
+
+    monkeypatch.setattr(wd, "_health_ok", lambda: False)
+    monkeypatch.setattr(wd, "_pid_alive", lambda pid: True)
+    monkeypatch.setattr("pipeline.daemon._read_lock_pid", lambda: 4242)
+    monkeypatch.setattr("pipeline.lifecycle_runtime.active_client_count", lambda: 0)
+    monkeypatch.setattr(wd, "BACKOFF_S", (0.01, 0.01, 0.01))
+    monkeypatch.setattr(wd, "FAILS_BEFORE_RESTART", 2)
+    monkeypatch.setattr(wd, "ALIVE_PID_FAILS_BEFORE_RESTART", 8)
+    with patch(
+        "pipeline.daemon.force_restart_daemon",
+        side_effect=lambda repo=None: calls.append("restart") or {"ok": True},
+    ):
+        wd.watchdog_loop(stop_after=3.0)
+    assert calls == []
 
 
 def test_loop_standby_does_not_restart(wd_home: Path, monkeypatch: pytest.MonkeyPatch):
@@ -121,10 +202,20 @@ def test_loop_idle_stop_is_not_watchdogs_job(wd_home: Path, monkeypatch: pytest.
 
 
 def test_apply_idle_policy_enters_standby_once(wd_home: Path, monkeypatch: pytest.MonkeyPatch):
-    from pipeline.lifecycle_runtime import apply_idle_policy, engine_should_be_running, note_activity
+    from pipeline.lifecycle_runtime import (
+        apply_idle_policy,
+        engine_should_be_running,
+        note_activity,
+        register_client,
+        unregister_client,
+    )
 
     monkeypatch.setenv("CTX_ENGINE_IDLE_S", "1")
+    monkeypatch.setenv("CTX_DISCONNECT_DEBOUNCE_S", "1")
+    monkeypatch.setenv("CTX_ENGINE_TRANSITION_DEBOUNCE_S", "0")
     note_activity(now=1.0)
+    register_client("t", pid=1, now=1.0)
+    unregister_client("t", now=1.0)
     # A successful stop must leave is_running() False, otherwise the sweep is
     # right to try again — a resident engine under standby is the wedge state.
     alive = {"running": True}

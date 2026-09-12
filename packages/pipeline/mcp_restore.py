@@ -39,6 +39,34 @@ def is_stubbed_mcp_entry(entry: dict[str, Any]) -> bool:
     return False
 
 
+_LIVE_MCP_LAUNCH_MARKERS = (
+    "scubiee-mcp",
+    "pipeline.mcp_bridge",
+    "pipeline.mcp_locate",
+    "pipeline.mcp_server",
+)
+
+
+def mcp_launcher_blob(entry: dict[str, Any]) -> str:
+    """command + args text used to recognize a live Scubiee MCP launcher."""
+    cmd = entry.get("command")
+    text = (
+        " ".join(str(x) for x in cmd)
+        if isinstance(cmd, list)
+        else str(cmd or "")
+    ).lower()
+    args = " ".join(str(a) for a in (entry.get("args") or [])).lower()
+    return f"{text} {args}"
+
+
+def is_live_scubiee_mcp_launcher(entry: dict[str, Any]) -> bool:
+    """True for bridge, locate, or scubiee-mcp* pins (including pythonw -m)."""
+    if not isinstance(entry, dict):
+        return False
+    blob = mcp_launcher_blob(entry)
+    return any(marker in blob for marker in _LIVE_MCP_LAUNCH_MARKERS)
+
+
 def mcp_entry_needs_restore(entry: dict[str, Any]) -> bool:
     """Stubbed, explicitly disabled, or missing a real Scubiee launcher."""
     if not isinstance(entry, dict):
@@ -49,19 +77,7 @@ def mcp_entry_needs_restore(entry: dict[str, Any]) -> bool:
         return True
     if is_stubbed_mcp_entry(entry):
         return True
-    cmd = entry.get("command")
-    text = (
-        " ".join(str(x) for x in cmd)
-        if isinstance(cmd, list)
-        else str(cmd or "")
-    ).lower()
-    args = " ".join(str(a) for a in (entry.get("args") or [])).lower()
-    blob = f"{text} {args}"
-    return not (
-        "scubiee-mcp" in blob
-        or "pipeline.mcp_locate" in blob
-        or "pipeline.mcp_server" in blob
-    )
+    return not is_live_scubiee_mcp_launcher(entry)
 
 
 def _iter_scubiee_json_entries() -> list[tuple[Path, str, dict[str, Any]]]:
@@ -163,10 +179,11 @@ def restore_live_mcp_pins(
     report["scan"] = scan
     report["paths_before"] = list(scan.get("paths") or [])
     if not force and not scan.get("needs_restore"):
-        # Pins look live, but Cursor may still have toggled Scubiee off in UI state.
+        # Pins look live. Do **not** walk Cursor state.vscdb on this path —
+        # engine/watchdog used to call heal on every start, and a no-op SQLite
+        # sweep across workspaceStorage races the IDE.
         report["skipped"] = True
         report["skip_reason"] = "mcp_pins_already_live"
-        report["cursor_ui"] = clear_cursor_disabled_scubiee()
         return report
 
     # Prefer full rebind (all enrolled repos + connected tools).
@@ -410,7 +427,7 @@ def clear_cursor_disabled_scubiee() -> dict[str, Any]:
 
 
 def heal_mcp_pins_if_stubbed(*, force: bool = False) -> dict[str, Any]:
-    """Daemon/engine start hook: restore only when stubs/disabled are detected."""
+    """Restore stubbed/disabled pins. Call from connect/upgrade/setup — not engine start."""
     try:
         from pipeline.lifecycle_runtime import upgrade_in_progress
 

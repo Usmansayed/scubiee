@@ -74,8 +74,9 @@ def test_attach_installs_leave_hooks(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(
         ml,
         "warm_engine_for_mcp",
-        lambda *_a, **_k: {"ok": True, "prewarm_wait": {"ms": 1}},
+        lambda *_a, **_k: {"ok": True, "deferred": True, "prewarm_wait": {"ms": 1}},
     )
+    monkeypatch.setattr(ml, "_spawn_background_warm", lambda *_a, **_k: None)
     spawned: list[object] = []
     monkeypatch.setattr(ml, "_start_heartbeat", lambda *_a, **_k: None)
     monkeypatch.setattr(ml, "_install_process_signals", lambda *_a, **_k: None)
@@ -93,7 +94,11 @@ def test_attach_installs_leave_hooks(monkeypatch, tmp_path: Path) -> None:
         lambda fn: registered.append(fn),
     )
 
+    monkeypatch.delenv("CTX_MCP_AUTO_WARM", raising=False)
     out = ml.attach_mcp_session(tmp_path)
     assert out["client_id"] == "mcp:proc-xyz"
+    assert out.get("warm_started") is False
+    assert out.get("auto_warm") is False
     assert registered  # leave hooked for any host process exit
-    assert spawned  # AST graph warms in the background, not on first map
+    # Do not preload the AST graph in every MCP worker (~400MB each, survives Cursor close).
+    assert spawned == []

@@ -217,6 +217,19 @@ class ChildWorker:
             self._join_io_threads()
             rc = child.poll()
             if rc is None:
+                # Universal graceful close: stdin EOF first (MCP spec), then SIGTERM.
+                # Give the child time to POST /v1/client/unregister from lifespan.
+                try:
+                    if child.stdin is not None:
+                        child.stdin.close()
+                except OSError:
+                    pass
+                try:
+                    child.wait(timeout=3.0)
+                except subprocess.TimeoutExpired:
+                    pass
+                rc = child.poll()
+            if rc is None:
                 try:
                     child.terminate()
                     child.wait(timeout=2.0)

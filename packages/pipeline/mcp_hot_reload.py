@@ -112,12 +112,13 @@ def nudge_mcp_hot_reload(version: str | None = None) -> dict[str, Any]:
     return report
 
 
-def adopt_installed_package_on_connect() -> dict[str, Any]:
-    """IDE reopen after package update: stamp build + replace a stale engine.
+def adopt_installed_package_on_connect(
+    *, restart_stale: bool = True
+) -> dict[str, Any]:
+    """IDE reopen after package update: stamp build + optionally replace a stale engine.
 
-    When the user installs a new Scubiee build then closes/reopens the coding
-    tool, the new MCP process must not keep talking to an old daemon still
-    bound on the engine port.
+    ``restart_stale=False`` (agent-warm / lazy MCP): update the stamp only.
+    Restarting here from every stdio reconnect is a spawn/blink storm.
     """
     from pipeline.upgrade import (
         daemon_version_matches,
@@ -145,12 +146,14 @@ def adopt_installed_package_on_connect() -> dict[str, Any]:
         report["build_id"] = current_build_id()
 
     try:
-        if not daemon_version_matches():
+        if restart_stale and not daemon_version_matches():
             report["daemon"] = restart_daemon_if_stale()
             if not report["daemon"].get("ok", False):
                 report["ok"] = False
-        else:
+        elif restart_stale:
             report["daemon"] = {"ok": True, "action": "version_match", "version": iv}
+        else:
+            report["daemon"] = {"ok": True, "action": "deferred_agent_warm", "version": iv}
     except Exception as exc:  # noqa: BLE001
         report["ok"] = False
         report["daemon"] = {"ok": False, "action": "restart_failed", "error": str(exc)}

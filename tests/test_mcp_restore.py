@@ -23,6 +23,23 @@ def test_is_stubbed_mcp_entry_detects_noop() -> None:
     assert is_stubbed_mcp_entry(live) is False
     assert mcp_entry_needs_restore(live) is False
 
+    # 0.3.67+ Windows pin: pythonw -m pipeline.mcp_bridge (NOT scubiee-mcp*.exe).
+    # Misclassifying this as a stub rewrites mcp.json on every engine start and
+    # Cursor restarts MCP in a loop (watchdog spawn storm + terminal blink).
+    win_bridge = {
+        "command": r"C:/Users/usman/AppData/Roaming/uv/tools/scubiee/Scripts/pythonw.exe",
+        "args": ["-u", "-m", "pipeline.mcp_bridge"],
+        "env": {"CTX_MCP_BRIDGE_SPAWN_JSON": '["pythonw.exe","-u","-m","pipeline.mcp_locate"]'},
+    }
+    assert is_stubbed_mcp_entry(win_bridge) is False
+    assert mcp_entry_needs_restore(win_bridge) is False
+
+    locate = {
+        "command": "/usr/bin/python3",
+        "args": ["-u", "-m", "pipeline.mcp_locate"],
+    }
+    assert mcp_entry_needs_restore(locate) is False
+
     disabled = {"command": "scubiee-mcp-bridge", "disabled": True}
     assert mcp_entry_needs_restore(disabled) is True
 
