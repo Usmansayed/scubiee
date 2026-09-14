@@ -133,6 +133,7 @@ def test_extract_session_key_from_tools_call():
 def test_bridge_routing_from_host_env(monkeypatch):
     from pipeline.session_isolation import bridge_routing_session_key
 
+    monkeypatch.delenv("CTX_MCP_SESSION_ID", raising=False)
     monkeypatch.setenv("CTX_MCP_CLIENT", "claude-code")
     monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "thread-99")
     key, source = bridge_routing_session_key({"method": "tools/list", "params": {}})
@@ -224,9 +225,51 @@ def test_bridge_parallel_tools_call(tmp_path, monkeypatch):
     bridge.kill_child()
 
 
-def test_auto_mode_isolates_sessions(tmp_path, monkeypatch):
+def test_auto_mode_tool_session_shares_worker(tmp_path, monkeypatch):
+    """Tool-arg session_id must NOT spawn a cold worker per id (Cursor tax)."""
     monkeypatch.setenv("CTX_HOME", str(tmp_path))
     monkeypatch.setenv("CTX_MCP_BRIDGE_MODE", "auto")
+    monkeypatch.delenv("CLAUDE_CODE_SESSION_ID", raising=False)
+    monkeypatch.delenv("CTX_MCP_SESSION_ID", raising=False)
+    monkeypatch.delenv("MCP_SESSION_ID", raising=False)
+    monkeypatch.setattr(
+        "pipeline.session_isolation.detect_host_chat_session_from_env",
+        lambda: None,
+    )
+    _install_fake(monkeypatch, tmp_path, SESSION_FAKE)
+    write_active_build_stamp("0.0.1", epoch=1.0)
+
+    bridge = McpBridge()
+    captured: list[str] = []
+    monkeypatch.setattr(sys.stdout, "write", lambda data: captured.append(data) or len(data))
+    monkeypatch.setattr(sys.stdout, "flush", lambda: None)
+
+    _handshake(bridge)
+
+    for sid, rid in (("cursor@chat-alpha", 30), ("cursor@chat-beta", 31)):
+        bridge.handle_client_message(
+            {
+                "jsonrpc": "2.0",
+                "id": rid,
+                "method": "tools/call",
+                "params": {
+                    "name": "gate",
+                    "arguments": {"session_id": sid},
+                },
+            }
+        )
+
+    joined = "".join(captured)
+    # Shared child does not set CTX_MCP_SESSION_ID → fake echoes __none__.
+    assert joined.count("__none__") >= 2
+    assert len(bridge._registry._workers) == 1  # noqa: SLF001
+    assert "__shared__" in bridge._registry._workers  # noqa: SLF001
+    bridge.kill_child()
+
+
+def test_isolated_mode_isolates_tool_sessions(tmp_path, monkeypatch):
+    monkeypatch.setenv("CTX_HOME", str(tmp_path))
+    monkeypatch.setenv("CTX_MCP_BRIDGE_MODE", "isolated")
     _install_fake(monkeypatch, tmp_path, SESSION_FAKE)
     write_active_build_stamp("0.0.1", epoch=1.0)
 
@@ -261,6 +304,7 @@ def test_auto_mode_isolates_host_env_session(tmp_path, monkeypatch):
     monkeypatch.setenv("CTX_MCP_BRIDGE_MODE", "auto")
     monkeypatch.setenv("CTX_MCP_CLIENT", "claude-code")
     monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "env-thread-1")
+    monkeypatch.delenv("CTX_MCP_SESSION_ID", raising=False)
     _install_fake(monkeypatch, tmp_path, SESSION_FAKE)
     write_active_build_stamp("0.0.1", epoch=1.0)
 

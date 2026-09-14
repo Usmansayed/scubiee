@@ -2,11 +2,14 @@
 
 CPU and RAM budgets are always coupled — heavy work gets both, light work gets neither.
 
-Bootstrap (first complete index / init): 800 MB RAM + 35% CPU.
+Bootstrap (first complete index / init): 800 MB RAM + 30% CPU.
 
 Background reindex (incremental sync): 500 MB RAM + 15% CPU. Invisible during coding.
-
-Large reindex (>6000 chunks already on disk): 1 GB RAM + 35% CPU.
+Serve / live MCP: soft advisory tree budget **800 MB**; **full-warm while Cursor connected**
+(engine + locate AST + bridge, embedder held) commonly lands near **0.9–1.2 GB** and is
+accepted for &lt;1s first-tool availability — do not auto-demote on soft overage.
+Large reindex / bulk index / bulk sync: total ≤ **1 GB** OK.
+Engine soft RSS cap remains tiered (520–800 MB); FastEmbed loads only in the engine.
 """
 
 from __future__ import annotations
@@ -14,7 +17,7 @@ from __future__ import annotations
 import os
 import sys
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 from pipeline.store import PipelineStore
 
@@ -36,10 +39,9 @@ class IndexMemoryBudget:
     aggressive_unload: bool
     # CPU thread budget as percentage of os.cpu_count(). On CPU-only profiles
     # (no GPU), this controls how much CPU the embedding phase uses.
-    # Synced with RSS cap: heavy work (800MB+) gets 35%, light sync (500MB) gets 15%.
-    # Bootstrap/large_reindex: 800MB RAM + 35% CPU (faster initial index)
-    # Background: 500MB RAM + 15% CPU (invisible during coding)
-    cpu_thread_pct: float = 0.35
+    # Heavy work (800MB–1GB) is capped at 30% CPU; light sync (500MB) at 15%.
+    # The Windows engine job also hard-caps at CTX_ENGINE_CPU_CAP_PCT (default 30).
+    cpu_thread_pct: float = 0.30
 
 
 def bootstrap_budget() -> IndexMemoryBudget:
@@ -50,7 +52,7 @@ def bootstrap_budget() -> IndexMemoryBudget:
         mlx_batch=48,
         embed_batch_ceiling=48,
         aggressive_unload=False,
-        cpu_thread_pct=0.35,
+        cpu_thread_pct=0.30,
     )
 
 
@@ -74,7 +76,7 @@ def large_reindex_budget() -> IndexMemoryBudget:
         mlx_batch=64,
         embed_batch_ceiling=64,
         aggressive_unload=False,
-        cpu_thread_pct=0.35,
+        cpu_thread_pct=0.30,
     )
 
 
@@ -117,7 +119,7 @@ def resolve_index_memory_budget(
         if background:
             return background_budget()
         # Force/full reindex of an existing modest corpus: same weight as bootstrap
-        # (800MB RAM + 35% CPU) since it processes all chunks, not just a few.
+        # (800MB RAM + 30% CPU) since it processes all chunks, not just a few.
         return bootstrap_budget()
     if background:
         return background_budget()
@@ -219,6 +221,60 @@ def process_rss_mb() -> float | None:
     except Exception:  # noqa: BLE001
         pass
     return _rusage_rss_mb()
+
+
+def scubiee_tree_rss_mb() -> dict[str, Any]:
+    """Sum RSS for engine / bridge / locate / watchdog processes (best-effort)."""
+    rows: list[dict[str, Any]] = []
+    total = 0.0
+    try:
+        import psutil  # type: ignore
+
+        markers = (
+            "pipeline engine",
+            "pipeline.mcp_bridge",
+            "pipeline.mcp_locate",
+            "mcp_bridge",
+            "mcp_locate",
+            "engine watchdog",
+            "engine run",
+        )
+        for proc in psutil.process_iter(["pid", "name", "memory_info", "cmdline"]):
+            try:
+                cmd = " ".join(str(x) for x in (proc.info.get("cmdline") or []))
+                blob = cmd.lower()
+                if not any(m in blob for m in markers):
+                    continue
+                rss = float(proc.info["memory_info"].rss) / (1024 * 1024)
+                role = "other"
+                if "mcp_bridge" in blob or "pipeline.mcp_bridge" in blob:
+                    role = "bridge"
+                elif "mcp_locate" in blob or "pipeline.mcp_locate" in blob:
+                    role = "locate"
+                elif "watchdog" in blob:
+                    role = "watchdog"
+                elif "engine run" in blob or "pipeline engine" in blob:
+                    role = "engine"
+                rows.append(
+                    {
+                        "pid": int(proc.info["pid"]),
+                        "role": role,
+                        "rss_mb": round(rss, 1),
+                        "cmd": cmd[:160],
+                    }
+                )
+                total += rss
+            except (psutil.Error, TypeError, ValueError, KeyError):
+                continue
+    except Exception:  # noqa: BLE001
+        return {"ok": False, "total_rss_mb": None, "processes": []}
+    rows.sort(key=lambda r: float(r.get("rss_mb") or 0.0), reverse=True)
+    return {
+        "ok": True,
+        "total_rss_mb": round(total, 1),
+        "process_count": len(rows),
+        "processes": rows[:12],
+    }
 
 
 def process_rss_peak_mb() -> float | None:

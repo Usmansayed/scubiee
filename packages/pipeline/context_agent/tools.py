@@ -67,6 +67,11 @@ def _copy_backend_metadata(out: dict[str, Any], result: dict[str, Any]) -> dict[
         "project_id",
         "pause_reason",
         "hint",
+        "engine_restarted",
+        "warming",
+        "should_retry",
+        "retry_after_s",
+        "agent_ready",
     ):
         if key in out and out[key] is not None:
             result[key] = out[key]
@@ -75,15 +80,120 @@ def _copy_backend_metadata(out: dict[str, Any], result: dict[str, Any]) -> dict[
 
 def _client(repo: Path | None = None):
     from pipeline.client import EngineClient
-    from pipeline.daemon import ensure_daemon
 
-    ensure_daemon(repo, force_if_hung=True) if repo else ensure_daemon(force_if_hung=True)
-    return EngineClient(workspace_path=str(repo) if repo else None)
+    if repo:
+        try:
+            from pipeline.mcp_lifecycle import (
+                current_client_id,
+                ensure_mcp_runtime,
+                mark_soft_ready,
+                soft_ready_cached,
+            )
+
+            if soft_ready_cached():
+                return EngineClient(
+                    workspace_path=str(repo),
+                    timeout=8.0,
+                )
+            # Fast path: engine already soft — mark TTL and skip ensure/attach.
+            try:
+                probe = EngineClient(workspace_path=str(repo), timeout=0.5).health() or {}
+                if probe.get("soft_search_ready") and (probe.get("ok") or probe.get("service")):
+                    mark_soft_ready()
+                    return EngineClient(
+                        workspace_path=str(repo),
+                        timeout=8.0,
+                    )
+            except Exception:  # noqa: BLE001
+                pass
+            ensure_mcp_runtime(repo, client_id=current_client_id(), blocking=False)
+        except Exception:  # noqa: BLE001
+            from pipeline.daemon import ensure_daemon
+
+            ensure_daemon(repo, force_if_hung=False, wait_s=0.0, open_wait=False)
+    else:
+        from pipeline.daemon import ensure_daemon
+
+        ensure_daemon(force_if_hung=False, wait_s=0.0, open_wait=False)
+    return EngineClient(
+        workspace_path=str(repo) if repo else None,
+        timeout=8.0,
+    )
+
+
+def _engine_call(
+    repo: Path | None,
+    call: Callable[[Any], dict[str, Any]],
+    *,
+    attempts: int = 2,
+) -> dict[str, Any]:
+    """Run an engine call without blocking the MCP request on spawn/index/embed.
+
+    Hung engines are not force-restarted here — that double-spawned daemons
+    and made the first map hang past Cursor's ~60s timeout.
+    """
+    from pipeline.client import is_transient_engine_error
+    from pipeline.engine import warming_response
+
+    out: dict[str, Any] = {}
+    recovered = False
+    for attempt in range(max(1, attempts)):
+        client = _client(repo)
+        # Do NOT gate on healthy() alone — a brief /health timeout during ORT
+        # prewarm used to return engine_warming while /v1/search still answered
+        # soft (BM25) in ~1s. Prefer the real call; treat transport failure as warming.
+        try:
+            out = call(client)
+        except Exception as exc:  # noqa: BLE001
+            err = str(exc)
+            if is_transient_engine_error(err):
+                out = warming_response()
+                out["detail"] = err
+            else:
+                out = {"ok": False, "error": err, "should_retry": False}
+        if not isinstance(out, dict):
+            return out
+        if out.get("warming") or str(out.get("status") or "").strip().lower() in {
+            "warming",
+            "starting",
+            "loading",
+            "indexing",
+        }:
+            return out
+        unreachable = out.get("ok") is False and (
+            bool(out.get("should_retry")) or is_transient_engine_error(str(out.get("error") or ""))
+        )
+        if not unreachable:
+            if recovered:
+                out["engine_restarted"] = True
+            return out
+        recovered = True
+        try:
+            import time
+
+            time.sleep(min(0.4 * (attempt + 1), 1.0))
+        except Exception:  # noqa: BLE001
+            pass
+    if isinstance(out, dict) and out.get("ok") is False:
+        out.setdefault(
+            "locate",
+            {
+                "state": "starting",
+                "reason": "unreachable",
+                "repair": ["scubiee engine ensure ."],
+                "should_use": True,
+                "should_retry": True,
+                "retry_after_s": 3,
+            },
+        )
+        out.setdefault("warming", True)
+        out.setdefault("should_retry", True)
+    return out
 
 
 def tool_search_code(repo: Path, query: str, top_k: int = 6) -> dict[str, Any]:
     top_k = max(1, min(int(top_k or 6), 8))
-    out = _client(repo).search(query, top_k=top_k, path=str(repo))
+    out = _engine_call(repo, lambda c: c.search(query, top_k=top_k, path=str(repo)))
     hits = []
     for h in (out.get("hits") or [])[:top_k]:
         hits.append(
@@ -104,7 +214,10 @@ def tool_grep_code(
     repo: Path, pattern: str, glob: str = "**/*", max_hits: int = 200
 ) -> dict[str, Any]:
     max_hits = max(1, min(int(max_hits or 200), 500))
-    out = _client(repo).grep(pattern, glob=glob or "**/*", max_hits=max_hits, path=str(repo))
+    out = _engine_call(
+        repo,
+        lambda c: c.grep(pattern, glob=glob or "**/*", max_hits=max_hits, path=str(repo)),
+    )
     hits = out.get("hits") or out.get("matches") or []
     slim = []
     for h in (hits if isinstance(hits, list) else [])[:max_hits]:

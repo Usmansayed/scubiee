@@ -79,9 +79,26 @@ def current_build_id() -> str | None:
     return bid or None
 
 
+def ensure_active_build_stamp(version: str | None = None) -> dict[str, Any]:
+    """Return active stamp; rewrite when missing or version ≠ installed package.
+
+    Prevents mcp.json / connect from advertising a stale CTX_SCUBIEE_BUILD after
+    `uv tool install` while hot-reload already runs new code (R9).
+    """
+    from pipeline.upgrade import installed_version
+
+    wanted = (version or installed_version() or "").strip() or "unknown"
+    stamp = read_active_build_stamp()
+    if stamp and str(stamp.get("version") or "").strip() == wanted:
+        bid = str(stamp.get("build_id") or "").strip()
+        if bid:
+            return stamp
+    return write_active_build_stamp(wanted)
+
+
 def env_build_id(version: str | None = None) -> str:
-    """Value for CTX_SCUBIEE_BUILD in mcp.json env (matches active stamp)."""
-    stamp = write_active_build_stamp(version)
+    """Value for CTX_SCUBIEE_BUILD in mcp.json env (matches installed version)."""
+    stamp = ensure_active_build_stamp(version)
     return str(stamp["build_id"])
 
 

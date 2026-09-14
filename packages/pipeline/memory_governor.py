@@ -4,12 +4,17 @@ Unlike ``memory_budget`` (index/sync caps), this module governs **idle and serve
 footprint: tier selection, lazy embedder load, demotion after index or semantic idle,
 and an RSS breakdown for ``status()``.
 
-Tiers (targets, not hard limits):
-  locate_only         ~380 MB — BM25 + FAISS + graph; embedder unloaded (grep/glob fast)
+**Total Scubiee process-tree budget (engine + bridge + locate + watchdog):**
+  serve / live MCP     ≤ **800 MB** combined
+  index / init / bulk  ≤ **1000 MB** combined (high-compute OK)
+
+Per-engine soft targets (ORT cannot shrink in-place; demote on disconnect):
+  locate_only         ~380 MB — BM25 + FAISS + graph; embedder unloaded
   serve_1repo         ~520 MB — one warm embedder for map/search
   serve_multi_session ~620 MB — same repo, multiple MCP sessions
-  serve_2repo         ~820 MB — two active repository engines
-  indexing            ~800 MB — temporary during index/sync; demote after publish
+  serve_2repo         ~800 MB — two active repository engines (hard serve ceiling)
+  indexing            ~1000 MB — bulk index / init / bulk sync only
+FastEmbed must load only in the engine process — never in mcp_bridge / mcp_locate.
 """
 
 from __future__ import annotations
@@ -20,7 +25,7 @@ import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
 
-from pipeline.memory_budget import process_rss_mb
+from pipeline.memory_budget import process_rss_mb, scubiee_tree_rss_mb
 
 if TYPE_CHECKING:
     from pipeline.repo_runtime import RepoHub
@@ -36,11 +41,28 @@ ServeTier = Literal[
 LOCATE_ONLY_TARGET_MB = 380
 SERVE_1REPO_TARGET_MB = 520
 SERVE_MULTI_SESSION_TARGET_MB = 620
-SERVE_2REPO_TARGET_MB = 820
-INDEXING_TARGET_MB = 800
+SERVE_2REPO_TARGET_MB = 800
+INDEXING_TARGET_MB = 1000
+
+# Combined RSS for every Scubiee-related process (engine+bridge+locate+watchdog).
+TOTAL_SERVE_BUDGET_MB = 800
+# Soft alert only — full-warm (embedder + AST resident while MCP clients connected)
+# is allowed up to this without demote. Matches measured Cursor-open tree.
+FULL_WARM_SOFT_CAP_MB = 1200
+TOTAL_INDEX_BUDGET_MB = 1000
 
 SESSION_OVERHEAD_MB = 50
 REPO_OVERHEAD_MB = 300
+
+
+def total_rss_budget_mb(*, indexing: bool = False) -> int:
+    raw = os.environ.get("CTX_SCUBIEE_TOTAL_RSS_MB")
+    if raw is not None and str(raw).strip() != "":
+        try:
+            return max(256, int(float(raw)))
+        except ValueError:
+            pass
+    return TOTAL_INDEX_BUDGET_MB if indexing else TOTAL_SERVE_BUDGET_MB
 
 
 def _env_float(name: str, default: float) -> float:
@@ -51,16 +73,26 @@ def _env_float(name: str, default: float) -> float:
 
 
 def embed_idle_demote_s() -> float:
-    """Align serve demotion with lifecycle idle window (default 15s)."""
-    raw = os.environ.get("CTX_EMBED_IDLE_DEMOTE_S", "").strip()
-    if raw:
-        return _env_float("CTX_EMBED_IDLE_DEMOTE_S", 15.0)
-    try:
-        from pipeline.lifecycle_runtime import idle_seconds
+    """Seconds after MCP disconnect before unloading the embedder (default 10s).
 
-        return idle_seconds()
-    except Exception:  # noqa: BLE001
-        return 15.0
+    While any MCP/IDE client is registered, demote never fires. Unload is
+    disconnect-driven (same knob as ``CTX_DISCONNECT_DEBOUNCE_S``).
+    """
+    raw = os.environ.get("CTX_EMBED_IDLE_DEMOTE_S")
+    if raw is not None and str(raw).strip() != "":
+        try:
+            return max(0.0, float(raw))
+        except ValueError:
+            pass
+    for key in ("CTX_DISCONNECT_DEBOUNCE_S", "CTX_ENGINE_IDLE_S"):
+        raw = os.environ.get(key)
+        if raw is None or str(raw).strip() == "":
+            continue
+        try:
+            return max(0.0, float(raw))
+        except ValueError:
+            continue
+    return 10.0
 
 
 EMBED_IDLE_DEMOTE_S = embed_idle_demote_s()  # import-time default for docs/tests
@@ -112,7 +144,7 @@ TIER_CONFIGS: dict[ServeTier, TierConfig] = {
         warmup_embedder=True,
         prefer_bm25=False,
         dense_enabled=True,
-        hint="Two repo engines; LRU embedder cache if over cap",
+        hint="Two repo engines; stay at the 800 MB serve cap",
     ),
     "indexing": TierConfig(
         tier="indexing",
@@ -121,7 +153,7 @@ TIER_CONFIGS: dict[ServeTier, TierConfig] = {
         warmup_embedder=True,
         prefer_bm25=False,
         dense_enabled=True,
-        hint="Temporary indexing budget; demote after publish",
+        hint="Bulk index/init/sync budget (1 GB); demote to ≤800 MB after publish",
     ),
 }
 
@@ -188,6 +220,19 @@ class MemoryGovernor:
     def note_embedder_unloaded(self) -> None:
         with self._lock:
             self.embedder_loaded = False
+
+    def force_demote_disconnect(self) -> dict[str, Any]:
+        """Immediate unload used by ``enter_standby`` after disconnect debounce fires."""
+        with self._lock:
+            self.demotions += 1
+            self._demote_embedder_locked()
+            self._apply_locked("locate_only")
+            return {
+                "ok": True,
+                "action": "demote_disconnect",
+                "tier": self.active_tier,
+                "embedder_loaded": self.embedder_loaded,
+            }
 
     def refresh_from_hub(self, hub: "RepoHub") -> ServeTier:
         with self._lock:
@@ -284,7 +329,13 @@ class MemoryGovernor:
         *,
         now: float | None = None,
     ) -> dict[str, Any] | None:
-        """Drop warm engine after idle window while MCP clients stay connected."""
+        """Unload embedder after MCP disconnect debounce — keep warm while tools open.
+
+        Policy:
+        - Any registered MCP/IDE client → hold forever (fast map/pack/sync).
+        - Zero clients → demote ``CTX_EMBED_IDLE_DEMOTE_S`` (default 10s) after
+          ``last_client_left_at`` (engine process stays until the 120s disconnect).
+        """
         current = time.time() if now is None else now
         with self._lock:
             if self.indexing:
@@ -293,24 +344,39 @@ class MemoryGovernor:
                 return None
 
             try:
-                from pipeline.lifecycle_runtime import idle_stop_debounced
+                from pipeline.lifecycle_runtime import active_client_count, load_policy
 
-                blocked = idle_stop_debounced(now=current)
-                if blocked is not None:
-                    return {
-                        "ok": True,
-                        "action": "demote_debounced",
-                        "blocked": True,
-                        "wait_s": blocked.get("wait_s"),
-                        "reason": blocked.get("reason"),
-                    }
+                n_clients = int(active_client_count())
             except Exception:  # noqa: BLE001
-                blocked = None
+                n_clients = 0
+            if n_clients > 0:
+                return {
+                    "ok": True,
+                    "action": "hold_mcp_clients",
+                    "clients": n_clients,
+                    "reason": "mcp_connected_keep_model",
+                }
 
-            last_active = self._last_activity_at_locked(hub)
-            if last_active is None:
+            # Disconnect-driven only: require leave stamp (IDE/tool closed).
+            try:
+                left = load_policy().get("last_client_left_at")
+            except Exception:  # noqa: BLE001
+                left = None
+            if left is None:
                 return None
-            idle_s = current - last_active
+            try:
+                left_at = float(left)
+            except (TypeError, ValueError):
+                return None
+            try:
+                from pipeline.lifecycle_runtime import load_transition
+
+                last_start = load_transition().get("last_start_at")
+                if last_start is not None and float(last_start) > left_at:
+                    return None
+            except (TypeError, ValueError):
+                pass
+            idle_s = current - left_at
             demote_after = embed_idle_demote_s()
             if idle_s < demote_after:
                 return None
@@ -324,13 +390,30 @@ class MemoryGovernor:
                 "demote_after_s": demote_after,
                 "tier": self.active_tier,
                 "engines_dropped": True,
+                "reason": "mcp_disconnected_grace",
             }
 
     def demote_after_index(self) -> ServeTier:
-        """Restore serve tier after bulk index / publish."""
+        """Restore serve tier after bulk index / publish.
+
+        MCP clients stay warm: ``maybe_demote_idle`` already holds the model
+        while tools are connected. Publish/index must not dump ORT underneath
+        a live MCP (that made the first map pay a cold ~20s reload).
+        """
         with self._lock:
             self.indexing = False
             self._recompute_desired_locked()
+            n_clients = 0
+            try:
+                from pipeline.lifecycle_runtime import active_client_count
+
+                n_clients = int(active_client_count())
+            except Exception:  # noqa: BLE001
+                n_clients = 0
+            # Live MCP/IDE → keep FastEmbed. Disconnect idle path unloads later.
+            if n_clients > 0:
+                self._apply_locked(self.desired_tier)
+                return self.active_tier
             # After index, stay at desired serve tier but skip re-warm if recently semantic
             if (
                 self.last_semantic_at is not None
@@ -353,6 +436,16 @@ class MemoryGovernor:
         with self._lock:
             cfg = self.config()
             breakdown = self._breakdown_locked()
+            tree = scubiee_tree_rss_mb()
+            tree_total = None
+            if isinstance(tree, dict):
+                raw = tree.get("total_rss_mb")
+                try:
+                    tree_total = float(raw) if raw is not None else None
+                except (TypeError, ValueError):
+                    tree_total = None
+            soft_budget = float(total_rss_budget_mb(indexing=self.indexing))
+            unattributed = float(breakdown.get("unattributed") or 0.0)
             return {
                 "desired_tier": self.desired_tier,
                 "active_tier": self.active_tier,
@@ -365,6 +458,20 @@ class MemoryGovernor:
                 "embedder_loaded": self.embedder_loaded,
                 "rss_target_mb": cfg.rss_target_mb,
                 "rss_cap_mb": int(os.environ.get("CTX_CE_RSS_CAP_MB") or cfg.rss_target_mb),
+                "total_budget_mb": int(soft_budget),
+                "full_warm_soft_cap_mb": FULL_WARM_SOFT_CAP_MB,
+                "full_warm_policy": "keep_while_clients",
+                "tree_rss": tree,
+                "tree_total_mb": tree_total,
+                "unattributed_mb": unattributed,
+                "over_soft_budget": bool(
+                    tree_total is not None and tree_total > soft_budget
+                ),
+                "over_full_warm_soft_cap": bool(
+                    tree_total is not None and tree_total > float(FULL_WARM_SOFT_CAP_MB)
+                ),
+                # Alerts only — never auto-demote while MCP clients hold availability.
+                "availability_hold": True,
                 "allocation_hint": cfg.hint,
                 "prefer_bm25": cfg.prefer_bm25,
                 "dense_enabled": cfg.dense_enabled,
@@ -411,27 +518,19 @@ class MemoryGovernor:
             os.environ["CTX_CE_LAZY_EMBEDDER"] = "0"
 
     def _demote_embedder_locked(self) -> None:
-        """Unload embedder weights and drop in-process engine caches."""
+        """Unload FastEmbed/ORT weights only.
+
+        Must **not** ``clear_engines()`` or null ``ce.engine`` — locate_only still
+        needs BM25/FAISS/graph bound for soft_search_ready. Dropping the binder
+        right after publish left ``chunks=0`` / map timeouts on cold attach.
+        Full engine teardown belongs to disconnect ``enter_standby``, not demote.
+        """
         try:
-            from pipeline.engine import clear_engines, release_embedders
+            from pipeline.engine import release_embedders
 
             release_embedders()
-            clear_engines()
         except Exception:  # noqa: BLE001
             pass
-        try:
-            from pipeline.ce_service import get_context_engine
-
-            ce = get_context_engine()
-            for item in ce.hub.list_status():
-                runtime = ce.hub.get(str(item.get("project_id")))
-                if runtime is not None:
-                    runtime.engine = None
-            if ce.engine is not None:
-                ce.engine = None
-        except Exception:  # noqa: BLE001
-            pass
-        self.engine_count = 0
         self.embedder_loaded = False
 
     def _breakdown_locked(self) -> dict[str, float]:

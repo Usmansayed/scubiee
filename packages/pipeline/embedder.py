@@ -1,4 +1,4 @@
-﻿"""Embedding backends: CodeRankEmbed via FastEmbed (primary) or SentenceTransformers.
+"""Embedding backends: CodeRankEmbed via FastEmbed (primary) or SentenceTransformers.
 
 CodeRankEmbed (nomic-ai/CodeRankEmbed) is the production code retriever.
 Hardware profile from ``pipeline.accel`` (cuda / dml / cpu).
@@ -31,6 +31,85 @@ def text_key(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+_ORT_ARENA_PATCHED = False
+
+
+def disable_ort_cpu_mem_arena() -> dict[str, object]:
+    """Secondary RSS mitigation while the engine process is alive.
+
+    ONNX Runtime arenas are not returned to the OS after session destroy
+    (disconnect still **exits the process**). Disabling the CPU mem arena
+    reduces sticky RSS for FastEmbed constructs. Safe to call repeatedly.
+
+    Also disables session spinning (CPU busy-wait) so idle warm sessions
+    do not burn cores while staying loaded for <1s first map.
+    """
+    global _ORT_ARENA_PATCHED
+    os.environ["ORT_ENABLE_CPU_MEM_ARENA"] = "0"
+    os.environ.setdefault("ONNXRUNTIME_DISABLE_CPU_ARENA", "1")
+    patched = False
+    kwargs_ok = False
+    if not _ORT_ARENA_PATCHED:
+        try:
+            import onnxruntime as ort
+
+            orig = ort.SessionOptions
+
+            class _LeanSessionOptions(orig):  # type: ignore[valid-type,misc]
+                def __init__(self, *args: object, **kwargs: object) -> None:
+                    super().__init__(*args, **kwargs)
+                    try:
+                        self.enable_cpu_mem_arena = False
+                    except Exception:  # noqa: BLE001
+                        pass
+                    try:
+                        # DirectML requires sequential + no mem pattern.
+                        self.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
+                    except Exception:  # noqa: BLE001
+                        pass
+                    try:
+                        self.enable_mem_pattern = False
+                    except Exception:  # noqa: BLE001
+                        pass
+                    try:
+                        self.add_session_config_entry(
+                            "session.intra_op.allow_spinning", "0"
+                        )
+                    except Exception:  # noqa: BLE001
+                        pass
+
+            ort.SessionOptions = _LeanSessionOptions  # type: ignore[misc]
+            ort._scubiee_arena_patched = True  # type: ignore[attr-defined]
+            _ORT_ARENA_PATCHED = True
+            patched = True
+        except Exception:  # noqa: BLE001
+            patched = False
+    else:
+        patched = True
+    try:
+        import inspect
+
+        from fastembed import TextEmbedding
+
+        kwargs_ok = "enable_cpu_mem_arena" in inspect.signature(TextEmbedding.__init__).parameters
+    except Exception:  # noqa: BLE001
+        kwargs_ok = False
+    return {
+        "ok": True,
+        "env": "ORT_ENABLE_CPU_MEM_ARENA=0",
+        "session_options_patched": patched,
+        "textembedding_kwarg": kwargs_ok,
+    }
+
+
+def fastembed_session_kwargs() -> dict[str, object]:
+    """Extra TextEmbedding kwargs when the installed FastEmbed accepts them."""
+    info = disable_ort_cpu_mem_arena()
+    if info.get("textembedding_kwarg"):
+        return {"enable_cpu_mem_arena": False}
+    return {}
+
+
 def pick_device(explicit: str | None = None) -> str:
     """Legacy ST device picker: auto → cuda > mps > cpu. Respect CTX_EMBED_DEVICE."""
     if explicit:
@@ -54,7 +133,7 @@ def _tune_cpu_threads() -> None:
     """Set CPU thread limits respecting the memory budget's cpu_thread_pct.
 
     CTX_CPU_EMBED_THREADS is set by apply_index_memory_budget():
-    - bootstrap/large_reindex: 35% of cpu_count (faster initial index)
+    - bootstrap/large_reindex: 30% of cpu_count (capped; GPU profiles use 1 ORT thread)
     - background sync: 15% of cpu_count (barely noticeable during coding)
     """
     try:
@@ -62,7 +141,7 @@ def _tune_cpu_threads() -> None:
 
         n = int(os.environ.get("CTX_CPU_EMBED_THREADS", "0")) or int(
             os.environ.get("CTX_TORCH_THREADS", "0")
-        ) or max(1, int((os.cpu_count() or 4) * 0.35))
+        ) or max(1, int((os.cpu_count() or 4) * 0.30))
         torch.set_num_threads(max(1, n))
         torch.set_num_interop_threads(max(1, min(4, n // 2 or 1)))
     except Exception:  # noqa: BLE001
@@ -371,23 +450,25 @@ class Embedder:
             flush=True,
         )
         t0 = time.perf_counter()
-        # CPU-only profiles use the thread budget from memory_budget (35% for
-        # bootstrap, 15% for background sync). GPU profiles keep threads=1
-        # since the GPU handles compute and CPU threads are just for tokenization.
+        # CPU-only profiles use the thread budget from memory_budget (30% for
+        # bootstrap, 15% for background sync). GPU/DML profiles keep threads=1
+        # since the GPU handles matmul; CPU still does tokenize + ORT fallback ops.
         if prof.profile == "cpu":
             ort_threads = int(os.environ.get("CTX_CPU_EMBED_THREADS", "0")) or max(
-                1, int((os.cpu_count() or 4) * 0.35)
+                1, int((os.cpu_count() or 4) * 0.30)
             )
         else:
             ort_threads = 1
         from pipeline.accel import fastembed_cache_root
 
+        extra = fastembed_session_kwargs()
         self._fe_model = TextEmbedding(
             model_name=model_name,
             threads=ort_threads,
             providers=providers,
             lazy_load=True,
             cache_dir=str(fastembed_cache_root()),
+            **extra,
         )
         from pipeline.coreml_mac import bind_coreml_tokenizer, pad_embed_batch, static_embed_batch_size
 
@@ -480,12 +561,14 @@ class Embedder:
 
             from pipeline.accel import fastembed_cache_root
 
+            extra = fastembed_session_kwargs()
             self._cpu_backup_model = TextEmbedding(
                 model_name=self.model if self.model else CODERANK_MODEL,
                 threads=1,
                 providers=["CPUExecutionProvider"],
                 lazy_load=True,
                 cache_dir=str(fastembed_cache_root()),
+                **extra,
             )
         vecs = list(
             self._cpu_backup_model.embed(

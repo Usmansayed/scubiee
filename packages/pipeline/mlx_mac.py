@@ -595,6 +595,12 @@ class CodeRankMLX:
                     t_norm = t_infer
                     out = np.asarray(normed, dtype=np.float32)
                     del normed, ids, mask
+                # Release transient Metal activation buffers; keep weights loaded.
+                try:
+                    mx.synchronize()
+                    mx.clear_cache()
+                except Exception:  # noqa: BLE001
+                    pass
         if timings is not None:
             timings["batch_prep"] = timings.get("batch_prep", 0.0) + (t_prep - t0)
             timings["mlx_inference"] = timings.get("mlx_inference", 0.0) + (t_infer - t_prep)
@@ -638,7 +644,14 @@ class CodeRankMLX:
                 mask = mx.array(np.asarray(attention_mask, dtype=np.float32))
                 out = self._compiled(ids, mask)
                 mx.eval(out)
-                return np.asarray(out, dtype=np.float32)
+                arr = np.asarray(out, dtype=np.float32)
+                # Release transient Metal activation buffers; keep weights loaded.
+                try:
+                    mx.synchronize()
+                    mx.clear_cache()
+                except Exception:  # noqa: BLE001
+                    pass
+                return arr
 
 
 def load_coderank_tokenizer(onnx_dir: Path | None = None):

@@ -552,6 +552,36 @@ def _stderr(*args, **kwargs) -> None:
 
 
 _MCP_CLIENT_ID: str | None = None
+_PRELOAD_STARTED = False
+
+
+def _preload_locate_hot_path() -> None:
+    """Import map/search deps off the first tools/call (parallel with engine open)."""
+    global _PRELOAD_STARTED
+    if _PRELOAD_STARTED:
+        return
+    _PRELOAD_STARTED = True
+
+    def _run() -> None:
+        try:
+            import pipeline.context_agent.tools  # noqa: F401
+            import pipeline.locate  # noqa: F401
+            from pipeline.context_trace import (  # noqa: F401
+                finalize_suggested_seed,
+                pick_suggested_seed,
+                pick_suggested_seeds,
+            )
+            from pipeline.map_result_cache import get_map_cached  # noqa: F401
+
+            # Do not hydrate AST here — GIL-starves first map. Map kicks bundle
+            # hydrate after success so pack finds a warm cache.
+        except Exception as exc:  # noqa: BLE001
+            _stderr(f"[scubiee] locate preload skipped: {exc}")
+
+    try:
+        threading.Thread(target=_run, name="scubiee-locate-preload", daemon=True).start()
+    except Exception:  # noqa: BLE001
+        _run()
 
 
 def _register_mcp_client(repo: Path) -> str:
@@ -559,6 +589,7 @@ def _register_mcp_client(repo: Path) -> str:
     from pipeline.mcp_lifecycle import attach_mcp_session, current_client_id
 
     global _MCP_CLIENT_ID
+    _preload_locate_hot_path()
     out = attach_mcp_session(repo)
     _MCP_CLIENT_ID = str(out.get("client_id") or current_client_id() or "")
     return _MCP_CLIENT_ID
@@ -567,7 +598,10 @@ def _register_mcp_client(repo: Path) -> str:
 def boot_mcp_worker(repo: Path) -> dict[str, Any]:
     """Stdio worker boot. Default: no engine/watchdog spawn (agent warms later)."""
     from pipeline.mcp_hot_reload import adopt_installed_package_on_connect
-    from pipeline.mcp_lifecycle import mcp_auto_warm_on_connect
+    from pipeline.mcp_lifecycle import (
+        mcp_auto_warm_on_connect,
+        start_locate_worker_prewarm,
+    )
 
     auto = mcp_auto_warm_on_connect()
     report: dict[str, Any] = {"auto_warm": auto}
@@ -584,6 +618,13 @@ def boot_mcp_worker(repo: Path) -> dict[str, Any]:
             report["ensure_error"] = str(exc)
             _stderr(f"[scubiee] ensure_daemon: {exc}")
     report["client_id"] = _register_mcp_client(repo)
+    # Critical: prewarm THIS process (imports + soft probe) so first map ≤1s
+    # after attach settle — bridge attach alone does not warm the locate worker.
+    try:
+        report["locate_prewarm"] = start_locate_worker_prewarm(repo)
+    except Exception as exc:  # noqa: BLE001
+        report["locate_prewarm_error"] = str(exc)
+        _stderr(f"[scubiee] locate prewarm kick: {exc}")
     return report
 
 
@@ -613,16 +654,30 @@ def _touch_mcp_client() -> None:
         pass
 
 
+_NOTE_LOCATE_LAST_AT = 0.0
+_NOTE_LOCATE_LOCK = threading.Lock()
+_CLIENT_ADMIT_LOCK = threading.Lock()
+
+
 def _note_locate_streak(repo: Path | str | None = None) -> None:
-    """Tell the keeper an agent locate is in flight — defer sync during the streak."""
+    """Tell the keeper an agent locate is in flight — defer sync during the streak.
+
+    Rate-limited: parallel map storms used to stampede /v1/note_locate and
+    starve /v1/search on ThreadingHTTPServer.
+    """
+    global _NOTE_LOCATE_LAST_AT
+    with _NOTE_LOCATE_LOCK:
+        now = time.time()
+        if (now - float(_NOTE_LOCATE_LAST_AT or 0.0)) < 2.0:
+            return
+        _NOTE_LOCATE_LAST_AT = now
     try:
         from pipeline.client import EngineClient
 
         root = str(Path(repo).resolve() if repo else _default_repo())
-        EngineClient(workspace_path=root, timeout=1.5).note_locate(path=root)
+        EngineClient(workspace_path=root, timeout=1.0).note_locate(path=root)
     except Exception:  # noqa: BLE001
         pass
-
 
 
 from pipeline.host_workspace import ide_workspace_env_keys
@@ -1148,6 +1203,12 @@ _STATUS_SUMMARY_KEYS = (
     "warming",
     "agent_ready",
     "agent_ready_note",
+    "warm_ready",
+    "warm_ready_map",
+    "warm_phase",
+    "warm_elapsed_ms",
+    "embedder_loaded",
+    "semantic_ready",
     "sync_state",
     "ready",
     "syncing",
@@ -1177,7 +1238,14 @@ def _summarize_status_payload(payload: dict[str, Any]) -> dict[str, Any]:
     if isinstance(eng, dict):
         slim_eng = {
             k: eng.get(k)
-            for k in ("healthy", "soft_search_ready", "warm_state", "warm_error", "project_id")
+            for k in (
+                "healthy",
+                "soft_search_ready",
+                "warm_state",
+                "warm_error",
+                "project_id",
+                "embedder_loaded",
+            )
             if k in eng
         }
         if slim_eng:
@@ -1222,6 +1290,123 @@ def _err(tool: str, error: str, *, hint: str = "", **extra: Any) -> str:
     if hint:
         payload["hint"] = hint
     return _dumps(_attach_gate(payload))
+
+
+def _parse_card_loc_span(card: dict[str, Any]) -> tuple[str, int, int] | None:
+    """file, start_line, end_line from a heatmap card (no AST)."""
+    file_s = str(card.get("file") or "").replace("\\", "/").strip()
+    start = int(card.get("start_line") or 0)
+    end = int(card.get("end_line") or 0)
+    if file_s and start > 0:
+        return file_s, start, end if end >= start else start
+    loc = str(card.get("loc") or "").replace("\\", "/").strip()
+    if not loc:
+        return None
+    # file:12-34 or file:12
+    if ":" not in loc:
+        return (loc, 1, 80) if loc else None
+    path_part, _, rest = loc.rpartition(":")
+    if not path_part:
+        return None
+    if "-" in rest:
+        a, _, b = rest.partition("-")
+        try:
+            return path_part, int(a), int(b)
+        except ValueError:
+            return None
+    if rest.isdigit():
+        ln = int(rest)
+        return path_part, ln, ln + 40
+    return None
+
+
+def _collect_hot_from_card_locs(
+    repo: Path,
+    cards: list[dict[str, Any]],
+    *,
+    threshold: float,
+    max_chars: int,
+    skip_ids: set[str],
+    only_ids: set[str] | None,
+    prefer_ids: set[str] | None,
+    max_bodies: int = 8,
+) -> dict[str, Any]:
+    """Fill bodies from card loc spans via file read — no AST pickle load."""
+    prefer = {str(x) for x in (prefer_ids or set()) if x}
+    if only_ids:
+        by_id = {str(c.get("id") or ""): c for c in cards if c.get("id")}
+        picked = [by_id[oid] for oid in only_ids if oid in by_id]
+        # Synthesize minimal cards for only_ids that look like file::symbol with loc missing
+        for oid in only_ids:
+            if oid in by_id:
+                continue
+            if "::" in oid:
+                f, _, _sym = oid.partition("::")
+                picked.append({"id": oid, "file": f, "loc": f, "score": 0.9})
+    else:
+        picked = [c for c in cards if float(c.get("score") or 0) >= threshold]
+    picked.sort(
+        key=lambda c: (
+            0 if str(c.get("id") or "") in prefer else 1,
+            -float(c.get("score") or 0),
+        )
+    )
+    bodies: list[dict[str, Any]] = []
+    used = 0
+    root = Path(repo)
+    for c in picked:
+        if len(bodies) >= max_bodies:
+            break
+        cid = str(c.get("id") or "")
+        if cid and cid in skip_ids and cid not in prefer:
+            continue
+        span = _parse_card_loc_span(c)
+        if not span:
+            continue
+        file_s, start, end = span
+        path = root / file_s
+        if not path.is_file():
+            continue
+        try:
+            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        except Exception:  # noqa: BLE001
+            continue
+        if start < 1:
+            start = 1
+        if end < start:
+            end = min(len(lines), start + 80)
+        end = min(len(lines), max(end, start))
+        text = "\n".join(lines[start - 1 : end])
+        if not text:
+            continue
+        if used + len(text) > max_chars:
+            remain = max_chars - used
+            if remain < 200:
+                break
+            text = text[: remain - 1] + "…"
+        bodies.append(
+            {
+                "id": cid or f"{file_s}::{start}",
+                "file": file_s,
+                "symbol": c.get("symbol") or "",
+                "start_line": start,
+                "end_line": end,
+                "loc": c.get("loc") or f"{file_s}:{start}-{end}",
+                "score": c.get("score"),
+                "heat": c.get("heat"),
+                "why": c.get("why") or "card_loc_span",
+                "text": text,
+            }
+        )
+        used += len(text)
+    return {
+        "ok": True,
+        "tool": "collect_hot_context",
+        "bodies": bodies,
+        "count": len(bodies),
+        "engine": "card_loc_span",
+        "next": "Native-Read if more body needed; expand_context for graph neighbors.",
+    }
 
 
 _SUCCESS_BACKEND_STATUSES = {
@@ -1290,13 +1475,31 @@ def _backend_error(
         hint = "Scubiee warm_state=error — run: scubiee setup (or scubiee doctor), not status polling."
         error = str(response.get("warm_error") or error or "warm_state_error")
         status = "error"
-    elif status in {"warming", "starting", "loading", "syncing", "initializing", "not_ready"}:
-        hint = f"Scubiee is still {status}; retry after status() reports locate.state=ready."
+    elif status in {"warming", "starting", "loading", "syncing", "initializing", "not_ready"} or error == "engine_warming":
+        hint = (
+            "Engine is warming. Wait ~3s and retry this same tool once. "
+            "Do not poll status() in a loop."
+        )
 
     if _is_transient_engine_error(error) or "unreachable" in error.lower() or "10061" in error:
         _invalidate_status_ttl()
 
     extra: dict[str, Any] = {"repo": str(repo)}
+    if _is_transient_engine_error(error) or error == "engine_warming" or status in {
+        "warming",
+        "starting",
+        "loading",
+        "indexing",
+        "not_ready",
+    }:
+        extra["should_retry"] = True
+        extra["warming"] = True
+        extra["retry_after_s"] = int(response.get("retry_after_s") or 3)
+        extra["agent_ready"] = "no"
+        hint = hint or (
+            "Engine is warming. Wait ~3s and retry this same tool once. "
+            "Do not poll status() in a loop."
+        )
     if _is_transient_engine_error(error):
         extra["should_retry"] = True
         hint = hint or "Transient engine drop — retry the same call once immediately."
@@ -1321,6 +1524,10 @@ def _backend_error(
         "root",
         "project_id",
         "pause_reason",
+        "warming",
+        "should_retry",
+        "retry_after_s",
+        "agent_ready",
     ):
         if response.get(key) is not None:
             extra[key] = response[key]
@@ -1349,6 +1556,9 @@ def _strip_bom_text(text: str) -> str:
 def _is_transient_engine_error(error: str) -> bool:
     from pipeline.client import is_transient_engine_error
 
+    low = (error or "").lower()
+    if "engine_warming" in low or low == "warming":
+        return True
     return is_transient_engine_error(error)
 
 
@@ -1376,7 +1586,9 @@ def _map_cache_get(store: dict[str, Any], qn: str, k: int) -> list[dict[str, Any
     entry = (store.get("map_cache") or {}).get(qn)
     if not isinstance(entry, dict):
         return None
-    if int(entry.get("k") or 0) != int(k):
+    # Accept cache when prior map had ≥k cards (or any non-empty set).
+    cached_k = int(entry.get("k") or 0)
+    if cached_k and cached_k < int(k):
         return None
     cards = entry.get("cards")
     return cards if isinstance(cards, list) and cards else None
@@ -2054,85 +2266,164 @@ def _resolve_expand_node(
     return ""
 
 
+class _WarmingClient:
+    """Stand-in while /health is down — locate tools return immediately, never hang."""
+
+    def __init__(self, admission: dict[str, Any]) -> None:
+        self._scubiee_admission = admission
+        self.base = str(admission.get("url") or "")
+
+    def _payload(self, *_a: Any, **_k: Any) -> dict[str, Any]:
+        from pipeline.engine import warming_response
+
+        return warming_response(warm_state=str(self._scubiee_admission.get("warm_state") or "warming"))
+
+    def healthy(self) -> bool:
+        return False
+
+    def health(self) -> dict[str, Any]:
+        return {**self._payload(), "ok": False, "embedder_loaded": False}
+
+    def open_repo(self, *_a: Any, **_k: Any) -> dict[str, Any]:
+        return self._payload()
+
+    def note_locate(self, **_k: Any) -> dict[str, Any]:
+        return self._payload()
+
+    def __getattr__(self, name: str):
+        if name.startswith("_"):
+            raise AttributeError(name)
+        return self._payload
+
+
 def _client_for(repo: Path):
     from pipeline.client import EngineClient
-    from pipeline.mcp_lifecycle import current_client_id, ensure_mcp_runtime
+    from pipeline.engine import warming_response
+    from pipeline.mcp_lifecycle import (
+        current_client_id,
+        ensure_mcp_runtime,
+        mark_soft_ready,
+        soft_ready_cached,
+    )
     from pipeline.session_isolation import effective_session_id, mcp_client_name
 
-    # Universal: any host may call tools after an engine restart under a live MCP.
-    # Block until FastEmbed is ready so the first map never pays cold ORT.
-    # Agent-warm: this is the first spawn of engine/watchdog if MCP connect was lazy.
-    warm = ensure_mcp_runtime(repo, client_id=current_client_id() or _MCP_CLIENT_ID)
+    # Never block the MCP stdio request on index/FastEmbed. Kick spawn, return
+    # warming if /health is down. force_restart_daemon here caused a second
+    # engine start ~40s later and hung the first map past Cursor's timeout.
+    warm = ensure_mcp_runtime(
+        repo,
+        client_id=current_client_id() or _MCP_CLIENT_ID,
+        blocking=False,
+    )
     if not warm.get("ok"):
         _stderr(f"[scubiee] warm gate incomplete: {warm}")
 
     sid = effective_session_id(None)
-    client = EngineClient(
-        workspace_path=str(repo),
-        client=mcp_client_name(),
-        session_id=sid,
-        timeout=180.0,
-    )
-    admission: dict[str, Any] = {"ok": True, "warm": warm}
-    # Admission must succeed before operational endpoints (/v1/grep, /v1/search).
-    # ensure_daemon open_repo is best-effort; retry explicitly so MCP reload races
-    # do not surface requires_initialize to agents.
-    try:
-        opened = client.open_repo(str(repo), wait=True)
-        if str(opened.get("status") or "") != "activated":
-            from pipeline.repo_lifecycle import _entry_managed, _project
 
-            pid, entry = _project(repo)
-            if pid and _entry_managed(entry):
-                from pipeline.daemon import force_restart_daemon
-
-                force_restart_daemon(repo)
-                import time
-
-                time.sleep(1.0)
-                client = EngineClient(
-                    workspace_path=str(repo),
-                    client=mcp_client_name(),
-                    session_id=sid,
-                    timeout=180.0,
-                )
-                opened = client.open_repo(str(repo), wait=True)
-                ensure_mcp_runtime(repo, client_id=current_client_id() or _MCP_CLIENT_ID)
-            else:
-                opened = client.open_repo(str(repo), wait=True)
-        if str(opened.get("status") or "") != "activated":
-            admission = {
-                "ok": False,
-                "error": "repo_not_activated",
-                "status": opened.get("status"),
-                "hint": "Run scubiee init in this repo or check scubiee status()",
-                "warm": warm,
-            }
-    except Exception as exc:  # noqa: BLE001
-        admission = {
-            "ok": False,
-            "error": "open_repo_failed",
-            "detail": str(exc),
-            "hint": "Run scubiee engine start or scubiee doctor",
-            "warm": warm,
-        }
-    if not admission.get("ok"):
-        _stderr(
-            f"[scubiee] admission warning for {repo}: "
-            f"{admission.get('error')} ({admission.get('detail') or admission.get('status')})"
+    def _soft_client(*, skipped: str) -> EngineClient:
+        client = EngineClient(
+            workspace_path=str(repo),
+            client=mcp_client_name(),
+            session_id=sid,
+            timeout=8.0,
         )
-    setattr(client, "_scubiee_admission", admission)
-    # Locate availability must not depend on the optional live reindex daemon.
-    # This is deliberately best-effort: the next query still gets the normal
-    # unreachable response if the daemon could not be started.
-    try:
-        client.note_locate(path=str(repo))
-    except Exception as exc:  # noqa: BLE001
-        note_err = str(exc)
-        _stderr(f"[scubiee] note_locate failed for {repo}: {note_err}")
-        admission.setdefault("note_locate_error", note_err)
+        admission: dict[str, Any] = {
+            "ok": True,
+            "warm": warm,
+            "soft_ready": True,
+            "soft_ttl_skip": True,
+            "open_status": skipped,
+        }
         setattr(client, "_scubiee_admission", admission)
-    return client
+        return client
+
+    # Hot path: process-local soft TTL. Parallel map storms must not all probe
+    # /health+/v1/open — one admit, everyone else rides the TTL.
+    if soft_ready_cached():
+        return _soft_client(skipped="soft_ttl")
+
+    with _CLIENT_ADMIT_LOCK:
+        if soft_ready_cached():
+            return _soft_client(skipped="soft_ttl_after_wait")
+
+        soft_ready = False
+        try:
+            soft_probe = EngineClient(
+                workspace_path=str(repo),
+                timeout=0.75,
+            ).health()
+            soft_ready = bool(
+                soft_probe.get("soft_search_ready") and soft_probe.get("service")
+            )
+        except Exception:  # noqa: BLE001
+            soft_ready = False
+        if soft_ready:
+            mark_soft_ready()
+            return _soft_client(skipped="soft_ready_skip")
+
+        # Never join_attach_warm on the tool path (burned 15–37s into first map).
+        try:
+            from pipeline.mcp_lifecycle import start_locate_worker_prewarm
+
+            start_locate_worker_prewarm(repo)
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            soft_probe2 = EngineClient(
+                workspace_path=str(repo),
+                timeout=0.5,
+            ).health()
+            soft_ready = bool(
+                soft_probe2.get("soft_search_ready") and soft_probe2.get("service")
+            )
+            if soft_ready:
+                mark_soft_ready()
+                return _soft_client(skipped="soft_ready_skip")
+        except Exception:  # noqa: BLE001
+            soft_ready = False
+
+        if not soft_ready:
+            try:
+                healthy = bool(
+                    EngineClient(
+                        workspace_path=str(repo),
+                        timeout=0.75,
+                    ).healthy()
+                )
+            except Exception:  # noqa: BLE001
+                healthy = False
+            if not healthy:
+                admission = {**warming_response(), "warm": warm, "deferred_prewarm": True}
+                client = _WarmingClient(admission)
+                setattr(client, "_scubiee_admission", admission)
+                return client
+
+        client = EngineClient(
+            workspace_path=str(repo),
+            client=mcp_client_name(),
+            session_id=sid,
+            timeout=8.0,
+        )
+        admission = {"ok": True, "warm": warm, "soft_ready": False}
+        try:
+            opened = client.open_repo(str(repo), wait=False)
+            admission["open_status"] = opened.get("status") or opened.get("warm_state")
+            if (
+                isinstance(opened, dict)
+                and opened.get("ok") is not False
+                and opened.get("project_id")
+            ):
+                mark_soft_ready()
+                admission["soft_ready"] = True
+        except Exception as exc:  # noqa: BLE001
+            admission = {**warming_response(), "detail": str(exc), "warm": warm}
+            stub = _WarmingClient(admission)
+            setattr(stub, "_scubiee_admission", admission)
+            return stub
+        setattr(client, "_scubiee_admission", admission)
+        # Rate-limited (shared with map streak) — do not stampede note_locate.
+        _note_locate_streak(repo)
+        return client
 
 
 # ---- arg models ------------------------------------------------------------
@@ -2540,8 +2831,30 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
 
             try:
                 from pipeline.locate import _read_excerpt, _search_hits
+                from pipeline.mcp_lifecycle import (
+                    join_locate_worker_prewarm,
+                    locate_worker_prewarm_done,
+                    mark_soft_ready,
+                    soft_ready_cached,
+                    start_locate_worker_prewarm,
+                )
+
+                # Only brief join on true cold worker. A 2s join every map while
+                # prewarm stalled (soft TTL never set in-process) made warm Cursor
+                # maps stick at ~3.5–5s forever.
+                if not locate_worker_prewarm_done() and not soft_ready_cached():
+                    start_locate_worker_prewarm(repo)
+                    join_locate_worker_prewarm(timeout_s=0.35)
 
                 hits = _search_hits(repo, args.query, top_k=args.k)
+                try:
+                    from pipeline.mcp_lifecycle import note_search_probe_ok
+
+                    if hits:
+                        note_search_probe_ok()
+                        mark_soft_ready()
+                except Exception:  # noqa: BLE001
+                    pass
                 results: list[dict[str, Any]] = []
                 span_n = 3 if include_mode == "span" else 0
                 for rank, h in enumerate(hits[: args.k], 1):
@@ -3698,6 +4011,18 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         from pipeline.session_store import load_store
 
         qn = _norm_query(args.query)
+        # Process-local cache first (identical query remaps after warmup).
+        try:
+            from pipeline.map_result_cache import get_map_cached
+
+            hit = get_map_cached(repo=str(repo), query=args.query, fingerprint="soft_v1")
+            if hit is not None:
+                hit["elapsed_ms"] = round((_time.perf_counter() - _map_t0) * 1000, 1)
+                hit["session_id"] = sid
+                return _format(hit, args.response_format)
+        except Exception:  # noqa: BLE001
+            pass
+
         store = load_store(repo, session_id=sid)
         thrash = store.get("locate_thrash") or {}
         duplicate = qn in (thrash.get("seen") or [])
@@ -3842,6 +4167,17 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         except Exception:  # noqa: BLE001
             pass
         try:
+            from pipeline.map_result_cache import put_map_cached
+
+            put_map_cached(
+                repo=str(repo),
+                query=args.query,
+                fingerprint="soft_v1",
+                payload=card,
+            )
+        except Exception:  # noqa: BLE001
+            pass
+        try:
             from pipeline.work_session import touch
 
             touch(
@@ -3853,6 +4189,8 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         except Exception:  # noqa: BLE001
             pass
         card["elapsed_ms"] = round((_time.perf_counter() - _map_t0) * 1000, 1)
+        # Do not kick AST after map — 50MB pickle GIL-starves the following pack.
+        # Pack (singleflight) / expand hydrate when those tools need the graph.
         return _format(card, args.response_format)
 
     def focus_impl(
@@ -4177,11 +4515,18 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             try:
                 from pipeline.mcp_lifecycle import ensure_mcp_runtime
 
-                ensure_mcp_runtime(_default_repo())
+                ensure_mcp_runtime(_default_repo(), blocking=False)
             except Exception:  # noqa: BLE001
                 pass
             line = _gate_line(just_checked=True)
             if line.startswith("1:"):
+                try:
+                    from pipeline.client import EngineClient
+
+                    if not EngineClient(timeout=1.5).healthy():
+                        line = f"{line} warming retry:3"
+                except Exception:  # noqa: BLE001
+                    line = f"{line} warming retry:3"
                 sess = _session_fields(session_id)
                 sid = sess.get("session_id") or _resolve_session(session_id)
                 if sid:
@@ -4266,6 +4611,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     ensure_mcp_runtime(
                         repo,
                         client_id=current_client_id() or _MCP_CLIENT_ID,
+                        blocking=False,
                     )
                 except Exception:  # noqa: BLE001
                     pass
@@ -4280,12 +4626,47 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 store = load_store(repo, session_id=sid)
                 healthy = eng.healthy()
                 opened: dict[str, Any] = {}
+                health_payload: dict[str, Any] = {}
                 detail_s = (detail or "summary").strip().lower()
                 if healthy:
-                    # Bind the workspace the same way map/pack do — otherwise
-                    # soft_search_ready stays false and agents see eternal "warming".
                     try:
-                        opened = eng.open_repo(str(repo), wait=True)
+                        health_payload = eng.health() if hasattr(eng, "health") else {}
+                    except Exception:  # noqa: BLE001
+                        health_payload = {}
+                    soft_from_health = bool(
+                        isinstance(health_payload, dict)
+                        and health_payload.get("soft_search_ready")
+                    )
+                    try:
+                        from pipeline.mcp_lifecycle import mark_soft_ready, soft_ready_cached
+
+                        # Soft already confirmed — skip open_repo HTTP (was multi-second).
+                        if soft_ready_cached() or soft_from_health:
+                            mark_soft_ready()
+                            opened = {
+                                "ok": True,
+                                "project_id": (
+                                    (health_payload.get("project_id") if isinstance(health_payload, dict) else None)
+                                    or getattr(eng, "project_id", None)
+                                ),
+                                "soft_search_ready": True,
+                                "warm_state": (
+                                    (health_payload.get("warm_state") if isinstance(health_payload, dict) else None)
+                                    or "ready"
+                                ),
+                                "skipped": "soft_cached",
+                                "engine": True,
+                            }
+                        else:
+                            # Bind the workspace the same way map/pack do — otherwise
+                            # soft_search_ready stays false and agents see eternal "warming".
+                            opened = eng.open_repo(str(repo), wait=False)
+                            soft_ok = bool(
+                                (isinstance(opened, dict) and opened.get("ok") is not False and opened.get("project_id"))
+                                or soft_from_health
+                            )
+                            if soft_ok:
+                                mark_soft_ready()
                     except Exception as exc:  # noqa: BLE001
                         opened = {"ok": False, "error": str(exc)}
                 daemon_status: dict[str, Any] = {}
@@ -4307,31 +4688,61 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                         if isinstance(opened, dict)
                         else None
                     )
+                    soft_skipped = bool(
+                        isinstance(opened, dict) and opened.get("skipped") == "soft_cached"
+                    )
                     daemon_status = {
                         "ok": bool(opened.get("ok", True)) if isinstance(opened, dict) else True,
                         "warm_state": warm_from_open or "ready",
                         "warm_error": (opened.get("error") if isinstance(opened, dict) and opened.get("ok") is False else None),
                         "project_id": (opened.get("project_id") if isinstance(opened, dict) else None),
                         "soft_search_ready": bool(
-                            isinstance(opened, dict)
-                            and opened.get("ok") is not False
-                            and opened.get("project_id")
+                            soft_skipped
+                            or (
+                                isinstance(opened, dict)
+                                and opened.get("ok") is not False
+                                and opened.get("project_id")
+                            )
+                            or (
+                                isinstance(health_payload, dict)
+                                and health_payload.get("soft_search_ready")
+                            )
                         ),
                         "engine": opened.get("engine") if isinstance(opened, dict) else True,
                     }
-                    try:
-                        from pipeline.project_id import index_is_usable, peek_project
+                    # Soft path: trust health chunks — skip open_repo; peek only
+                    # if project_id still missing (local disk, not HTTP).
+                    if soft_skipped and isinstance(health_payload, dict):
+                        chunks = int(health_payload.get("chunks") or 0)
+                        if chunks > 0:
+                            daemon_status["meta"] = {"chunks": chunks}
+                        if health_payload.get("project_id"):
+                            daemon_status["project_id"] = (
+                                daemon_status.get("project_id") or health_payload.get("project_id")
+                            )
+                        if not daemon_status.get("project_id"):
+                            try:
+                                from pipeline.project_id import peek_project
 
-                        ref = peek_project(repo)
-                        if ref is not None:
-                            daemon_status["project_id"] = daemon_status.get("project_id") or ref.project_id
-                            usable = index_is_usable(ref.store_dir)
-                            daemon_status["meta"] = {"chunks": 1 if usable else 0}
-                            if not usable:
-                                daemon_status["soft_search_ready"] = False
-                                daemon_status["warm_state"] = "warming"
-                    except Exception:  # noqa: BLE001
-                        pass
+                                ref = peek_project(repo)
+                                if ref is not None:
+                                    daemon_status["project_id"] = ref.project_id
+                            except Exception:  # noqa: BLE001
+                                pass
+                    else:
+                        try:
+                            from pipeline.project_id import index_is_usable, peek_project
+
+                            ref = peek_project(repo)
+                            if ref is not None:
+                                daemon_status["project_id"] = daemon_status.get("project_id") or ref.project_id
+                                usable = index_is_usable(ref.store_dir)
+                                daemon_status["meta"] = {"chunks": 1 if usable else 0}
+                                if not usable:
+                                    daemon_status["soft_search_ready"] = False
+                                    daemon_status["warm_state"] = "warming"
+                        except Exception:  # noqa: BLE001
+                            pass
                 else:
                     daemon_status = {
                         "ok": False,
@@ -4364,6 +4775,16 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                         else (daemon_status.get("engine") is not None or bound_pid)
                     )
                 )
+                embedder_loaded: bool | None = None
+                if healthy:
+                    if "embedder_loaded" in daemon_status:
+                        embedder_loaded = bool(daemon_status.get("embedder_loaded"))
+                    elif isinstance(health_payload, dict) and "embedder_loaded" in health_payload:
+                        embedder_loaded = bool(health_payload.get("embedder_loaded"))
+                    else:
+                        mem = daemon_status.get("memory") if isinstance(daemon_status.get("memory"), dict) else {}
+                        if "embedder_loaded" in mem:
+                            embedder_loaded = bool(mem.get("embedder_loaded"))
                 from pipeline.sync_status import build_sync_contract, derive_locate_state
 
                 contract = build_sync_contract(
@@ -4416,6 +4837,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                         "warm_state": warm_state,
                         "warm_error": warm_error,
                         "project_id": bound_pid,
+                        "embedder_loaded": embedder_loaded,
                         "meta": meta,
                     },
                     "repo": str(repo),
@@ -4425,6 +4847,8 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     **_managed_signal_fields(just_checked=True),
                     "warming": warming,
                     "index_available": bool(index_usable),
+                    "embedder_loaded": embedder_loaded,
+                    "semantic_ready": bool(embedder_loaded) if embedder_loaded is not None else None,
                     "tools": tool_lists.get(surface, tool_lists["read"]),
                     "keeper": _slim_status_keeper(daemon_status.get("keeper") if healthy else None),
                     "soft_search_ready": soft_search_ready,
@@ -4445,8 +4869,14 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 }
                 if warming:
                     payload["hint"] = (
-                        "Engine is starting. Use Scubiee tools — if a tool returns warming, "
-                        "wait 5s and retry once. Do not poll status() in a loop."
+                        "Engine is warming. Wait ~3s and retry the same locate tool once. "
+                        "Do not poll status() in a loop. Process tree: Cursor→mcp_bridge→mcp_locate "
+                        "(+ separate engine pythonw)."
+                    )
+                elif embedder_loaded is False:
+                    payload["hint"] = (
+                        "Index up; FastEmbed still loading. Wait ~3s and retry map once — "
+                        "do not claim fully ready until embedder_loaded=true."
                     )
                 elif locate.get("state") == "unbound":
                     payload["hint"] = (
@@ -4467,6 +4897,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     warm_error=str(warm_error or "") or None,
                     project_bound=bool(bound_pid),
                     locate=locate,
+                    embedder_loaded=embedder_loaded,
                 )
                 payload["agent_ready_note"] = derive_agent_ready_note(
                     agent_ready=payload["agent_ready"],
@@ -4476,7 +4907,32 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     publish_pending=bool(contract.get("publish_pending")),
                     ready=bool(contract.get("ready")),
                     locate=locate,
+                    embedder_loaded=embedder_loaded,
                 )
+                try:
+                    from pipeline.runtime_controller import RuntimeController
+
+                    snap = RuntimeController.get().snapshot(repo=repo)
+                    payload.update(snap.as_status_fields())
+                    # Honesty: never claim warm_ready without embedder.
+                    if payload.get("embedder_loaded") is False:
+                        payload["warm_ready"] = False
+                        payload["warm_ready_map"] = False
+                    elif snap.embedder_loaded and payload.get("embedder_loaded") is None:
+                        payload["embedder_loaded"] = True
+                except Exception:  # noqa: BLE001
+                    try:
+                        from pipeline.warm_contract import warm_status_fields
+
+                        payload.update(
+                            warm_status_fields(
+                                engine_healthy=bool(healthy),
+                                embedder_loaded=embedder_loaded,
+                                need_ast=False,
+                            )
+                        )
+                    except Exception:  # noqa: BLE001
+                        pass
                 # Honest should_use from locate.state (managed alone is not enough).
                 signals = _managed_signal_fields(just_checked=True)
                 signals["should_use_mcp"] = bool(
@@ -4677,7 +5133,52 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         if not _is_repo_managed():
             return _managed_locate_err("expand_context", repo)
         try:
-            from pipeline.context_trace import load_trace, persist_trace, run_expand_context
+            from pipeline.context_trace import (
+                ast_cache_ready,
+                hydrate_ast_bundle,
+                load_trace,
+                persist_trace,
+                run_expand_context,
+            )
+
+            # Prefer disk-bundle hydrate. Never cold-bake AST on the MCP request
+            # thread — that GIL-starves the locate worker for 20s+ and Cursor
+            # often opens a second bridge while the first is wedged.
+            t_hyd = time.perf_counter()
+            hyd = hydrate_ast_bundle(repo, bake_on_miss=False)
+            hyd_ms = round((time.perf_counter() - t_hyd) * 1000, 1)
+            if not ast_cache_ready(repo):
+                try:
+                    from pipeline.mcp_lifecycle import start_ast_hydrate_bg
+
+                    start_ast_hydrate_bg(repo)
+                except Exception:  # noqa: BLE001
+                    pass
+                try:
+                    import threading
+
+                    def _bg_bake() -> None:
+                        try:
+                            hydrate_ast_bundle(repo, bake_on_miss=True)
+                        except Exception:  # noqa: BLE001
+                            pass
+
+                    threading.Thread(
+                        target=_bg_bake, name="scubiee-expand-ast-bake", daemon=True
+                    ).start()
+                except Exception:  # noqa: BLE001
+                    pass
+                return _err(
+                    "expand_context",
+                    "ast_warming",
+                    hint=(
+                        f"AST bundle not ready (hydrate={hyd.get('source') or hyd.get('error')}, "
+                        f"{hyd_ms}ms). Background bake started — retry expand_context in a few "
+                        "seconds; map/pack stay available."
+                    ),
+                    status="warming",
+                    hydrate_ms=hyd_ms,
+                )
 
             prior = load_trace(repo, sid)
             # Only skip already-expanded hops — NOT the whole pack heatmap
@@ -4711,6 +5212,8 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 prior_packed_ids=prior_packed,
             )
             out["session_id"] = sid
+            out["hydrate_ms"] = hyd_ms
+            out["hydrate_source"] = hyd.get("source")
             if out.get("ok"):
                 # merge delta into persisted cards
                 cards = list(prior.get("cards") or [])
@@ -4850,7 +5353,212 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 return _managed_locate_err(tool_name, repo)
             _note_locate_streak(repo)
             try:
-                from pipeline.context_trace import load_trace, persist_trace, run_pack_context
+                from pipeline.context_trace import (
+                    ast_cache_ready,
+                    hydrate_ast_bundle,
+                    load_trace,
+                    persist_trace,
+                    run_pack_context,
+                )
+                from pipeline.mcp_lifecycle import join_attach_warm_if_needed
+
+                # Lean heatmap: never cold-bake or load a 50MB AST pickle on the
+                # request thread (GIL + disk → multi-second). Prefer in-process
+                # AST cache; otherwise build a search-seed heatmap (sub-second).
+                mode_n = (mode or "lean").strip().lower() or "lean"
+                want_bodies = _resolve_pack_bodies(include_bodies)
+                policy_n = (policy or "strict").strip().lower() or "strict"
+                # Search/map-reuse lean path: heatmap only. Broad/escape packs and
+                # body packs still go through run_pack_context.
+                lean_fast = (
+                    mode_n in {"lean", "heatmap"}
+                    and not want_bodies
+                    and policy_n in {"strict", "lean"}
+                )
+                if not lean_fast:
+                    # Full/AST packs may join attach; lean never waits on serve-join
+                    # (observed ~3–4s LOCATE_SLA when warm_ready briefly flapped).
+                    join_attach_warm_if_needed(repo, need_ast=False)
+                if lean_fast:
+                    # Lean heatmap only — do not kick AST hydrate here.
+                    # Parallel 50MB pickle IO GIL-starves map-reuse/search on
+                    # the same worker. expand/collect hydrate when they need it.
+                    from pipeline.session_store import load_store
+
+                    t_pack = time.perf_counter()
+                    heatmap: list[dict[str, Any]] = []
+                    seed_file_n = (seed_file or "").replace("\\", "/")
+                    seed_card = {
+                        "id": f"{seed_file_n}::{seed_symbol}" if seed_symbol else seed_file_n,
+                        "file": seed_file_n,
+                        "symbol": seed_symbol or "",
+                        "start_line": int(seed_line or 0) or None,
+                        "end_line": None,
+                        "score": 1.0,
+                        "heat": "hot",
+                        "rank": 1,
+                        "why": "seed",
+                        "loc": (
+                            f"{seed_file_n}:{int(seed_line or 0)}"
+                            if seed_file_n and int(seed_line or 0)
+                            else seed_file_n
+                        ),
+                    }
+                    if seed_card.get("file"):
+                        heatmap.append(seed_card)
+
+                    # Prefer recent map cards (process cache, then session) —
+                    # avoids a second engine search that GIL-contended to ~3–4s.
+                    engine_tag = "map_reuse"
+                    cards: list[dict[str, Any]] = []
+                    try:
+                        from pipeline.map_result_cache import get_recent_map_cards
+
+                        cards = get_recent_map_cards(repo=str(repo), limit=max(4, min(int(k or 16), 48)))
+                    except Exception:  # noqa: BLE001
+                        cards = []
+                    if not cards:
+                        try:
+                            store = load_store(repo, session_id=sid)
+                            qn = _norm_query(query)
+                            cache = store.get("map_cache") or {}
+                            row = cache.get(qn)
+                            cards = list((row or {}).get("cards") or [])
+                            if not cards:
+                                for _qk, crow in sorted(
+                                    cache.items(),
+                                    key=lambda kv: float((kv[1] or {}).get("ts") or 0),
+                                    reverse=True,
+                                ):
+                                    cards = list((crow or {}).get("cards") or [])
+                                    if cards:
+                                        break
+                        except Exception:  # noqa: BLE001
+                            cards = []
+                    for i, c in enumerate(cards, start=2):
+                        f = str(c.get("file") or "").replace("\\", "/")
+                        if not f or f == seed_card.get("file"):
+                            continue
+                        s = int(c.get("start_line") or 0)
+                        e = int(c.get("end_line") or 0)
+                        heatmap.append(
+                            {
+                                "id": str(c.get("id") or (f"{f}:{s}-{e}" if s and e else f)),
+                                "file": f,
+                                "symbol": str(c.get("symbol") or ""),
+                                "start_line": s or None,
+                                "end_line": e or None,
+                                "score": float(c.get("score") or 0.0),
+                                "heat": (
+                                    "hot"
+                                    if float(c.get("score") or 0) >= float(hot_threshold or 0.65)
+                                    else "warm"
+                                ),
+                                "rank": i,
+                                "why": (c.get("why") or "")[:160],
+                                "loc": c.get("loc")
+                                or (f"{f}:{s}-{e}" if s and e else f),
+                            }
+                        )
+
+                    # Search only if map reuse left us thin (standalone pack).
+                    if len(heatmap) < 3:
+                        engine_tag = "search_lean"
+                        hits_raw: list[dict[str, Any]] = []
+                        try:
+                            from pipeline.client import EngineClient
+                            from pipeline.mcp_lifecycle import soft_ready_cached
+                            from pipeline.session_isolation import mcp_client_name
+
+                            if soft_ready_cached():
+                                res = EngineClient(
+                                    workspace_path=str(repo),
+                                    client=mcp_client_name(),
+                                    timeout=3.0,
+                                ).search(
+                                    query,
+                                    top_k=max(4, min(int(k or 16), 48)),
+                                    path=str(repo),
+                                )
+                                if isinstance(res, dict) and res.get("ok") is not False:
+                                    hits_raw = list(res.get("hits") or [])
+                        except Exception:  # noqa: BLE001
+                            hits_raw = []
+                        seen = {str(h.get("file") or "").replace("\\", "/") for h in heatmap}
+                        for i, h in enumerate(hits_raw, start=len(heatmap) + 1):
+                            f = str(h.get("file") or h.get("path") or "").replace("\\", "/")
+                            if not f or f in seen:
+                                continue
+                            seen.add(f)
+                            s = int(h.get("start_line") or 0)
+                            e = int(h.get("end_line") or 0)
+                            heatmap.append(
+                                {
+                                    "id": f"{f}:{s}-{e}" if s and e else f,
+                                    "file": f,
+                                    "symbol": "",
+                                    "start_line": s or None,
+                                    "end_line": e or None,
+                                    "score": float(h.get("score") or 0.0),
+                                    "heat": (
+                                        "hot"
+                                        if float(h.get("score") or 0) >= float(hot_threshold or 0.65)
+                                        else "warm"
+                                    ),
+                                    "rank": i,
+                                    "why": (h.get("why") or "")[:160],
+                                    "loc": f"{f}:{s}-{e}" if s and e else f,
+                                }
+                            )
+
+                    out = {
+                        "ok": True,
+                        "tool": tool_name,
+                        "query": query,
+                        "mode": mode_n,
+                        "policy": policy_n,
+                        "include_bodies": False,
+                        "heatmap": heatmap[: max(4, min(int(k or 16), 48))],
+                        "count": len(heatmap),
+                        "seed": seed_card if seed_card.get("file") else None,
+                        "thin": len(heatmap) < 3,
+                        "engine": engine_tag,
+                        "elapsed_ms": round((time.perf_counter() - t_pack) * 1000, 1),
+                        "next": "Native-Read top heatmap locs → EDIT; expand_context if thin.",
+                    }
+                    return _format(out, response_format)
+                if not ast_cache_ready(repo):
+                    # Never cold-bake AST on the pack request thread (20s+ GIL).
+                    try:
+                        from pipeline.mcp_lifecycle import start_ast_hydrate_bg
+
+                        start_ast_hydrate_bg(repo)
+                    except Exception:  # noqa: BLE001
+                        pass
+                    try:
+                        import threading
+
+                        def _bg_bake_pack() -> None:
+                            try:
+                                hydrate_ast_bundle(repo, bake_on_miss=True)
+                            except Exception:  # noqa: BLE001
+                                pass
+
+                        threading.Thread(
+                            target=_bg_bake_pack, name="scubiee-pack-ast-bake", daemon=True
+                        ).start()
+                    except Exception:  # noqa: BLE001
+                        pass
+                    return _err(
+                        tool_name,
+                        "ast_warming",
+                        hint=(
+                            "AST bundle not ready for broad/body pack. "
+                            "Use mode=lean (heatmap only) now, or retry after expand "
+                            "warms the graph; Native-Read top locs."
+                        ),
+                        status="warming",
+                    )
 
                 prior = load_trace(repo, sid)
                 # Per-tool packed ledger: pack_poly_embed / pack_semantic must not
@@ -4859,12 +5567,9 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 prior_packed = {str(x) for x in (by_tool.get(tool_name) or []) if x}
                 if not prior_packed and tool_name == "pack_context":
                     prior_packed = {str(x) for x in (prior.get("packed_ids") or []) if x}
-                mode_n = (mode or "lean").strip().lower() or "lean"
                 policy_n = (policy or "strict").strip().lower() or "strict"
                 budget = int(budget_chars or 0)
                 bodies_cap = int(max_bodies or 0)
-                # Body opt-in: explicit tool flag OR env CTX_MCP_PACK_BODIES=1.
-                want_bodies = _resolve_pack_bodies(include_bodies)
                 out = run_pack_context(
                     repo,
                     query,
@@ -4967,7 +5672,12 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         if not _is_repo_managed():
             return _managed_locate_err("collect_hot_context", repo)
         try:
-            from pipeline.context_trace import load_trace, persist_trace, run_collect_hot
+            from pipeline.context_trace import (
+                ast_cache_ready,
+                load_trace,
+                persist_trace,
+                run_collect_hot,
+            )
 
             prior = load_trace(repo, sid)
             cards = list(prior.get("cards") or [])
@@ -4984,15 +5694,44 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             thr = float(threshold or 0.82)
             if not only and thr >= 0.82:
                 thr = 0.45
-            out = run_collect_hot(
-                repo,
-                cards,
-                threshold=0.0 if only else thr,
-                max_chars=max(500, min(int(max_chars or 8000), 50_000)),
-                skip_ids=skip,
-                only_ids=only or None,
-                prefer_ids=only or None,
-            )
+            budget = max(500, min(int(max_chars or 8000), 50_000))
+            # Prefer span-read when AST cold — never sync-load 50MB pickle here.
+            if not ast_cache_ready(repo):
+                try:
+                    from pipeline.mcp_lifecycle import start_ast_hydrate_bg
+
+                    start_ast_hydrate_bg(repo)
+                except Exception:  # noqa: BLE001
+                    pass
+                out = _collect_hot_from_card_locs(
+                    Path(repo),
+                    cards,
+                    threshold=0.0 if only else thr,
+                    max_chars=budget,
+                    skip_ids=skip,
+                    only_ids=only or None,
+                    prefer_ids=only or None,
+                )
+                if not out.get("bodies"):
+                    return _err(
+                        "collect_hot_context",
+                        "ast_warming",
+                        hint=(
+                            "No card loc spans to read yet and AST not warm. "
+                            "Native-Read heatmap locs, or retry after expand hydrates."
+                        ),
+                        status="warming",
+                    )
+            else:
+                out = run_collect_hot(
+                    repo,
+                    cards,
+                    threshold=0.0 if only else thr,
+                    max_chars=budget,
+                    skip_ids=skip,
+                    only_ids=only or None,
+                    prefer_ids=only or None,
+                )
             out["session_id"] = sid
             if out.get("ok") and out.get("bodies"):
                 packed = prior_packed | {str(b.get("id")) for b in out["bodies"] if b.get("id")}
@@ -5132,7 +5871,7 @@ def main() -> None:
     os.environ.setdefault("CTX_TOKEN_MODE", "savings")
     os.environ.setdefault("CTX_SESSION_GOVERNOR", "1")
     os.environ.setdefault("CTX_ENGINE_IDLE_S", "120")
-    os.environ.setdefault("CTX_DISCONNECT_DEBOUNCE_S", "120")
+    os.environ.setdefault("CTX_DISCONNECT_DEBOUNCE_S", "10")
     os.environ.setdefault("CTX_ENGINE_TRANSITION_DEBOUNCE_S", "5")
     os.environ.setdefault("CTX_EMBED_IDLE_DEMOTE_S", "10")
     os.environ.setdefault("CTX_EMBED_PREWARM", "1")

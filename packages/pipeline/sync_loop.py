@@ -26,7 +26,7 @@ DEFAULT_INITIAL_DELAY_MS = int(os.environ.get("CTX_SYNC_INITIAL_DELAY_MS", "5000
 # Mild speedup vs old 1500/2500 — still waits out typical editor save bursts.
 DEFAULT_DEBOUNCE_MS = int(os.environ.get("CTX_DEBOUNCE_MS", "1000"))
 DEFAULT_REWRITE_DEBOUNCE_MS = int(os.environ.get("CTX_REWRITE_DEBOUNCE_MS", "2000"))
-DEFAULT_LOCATE_STREAK_MS = int(os.environ.get("CTX_LOCATE_STREAK_MS", "8000"))
+DEFAULT_LOCATE_STREAK_MS = int(os.environ.get("CTX_LOCATE_STREAK_MS", "60000"))
 DEFAULT_LIVE_MAX_FILES = int(os.environ.get("CTX_LIVE_MAX_FILES", "200"))
 DEFAULT_LIVE_MAX_CHUNKS = int(os.environ.get("CTX_LIVE_MAX_CHUNKS", "300"))
 DEFAULT_AUTO_FULL_INDEX_CHUNKS = int(os.environ.get("CTX_AUTO_FULL_INDEX_CHUNKS", "10000"))
@@ -258,6 +258,13 @@ class BackgroundSyncLoop:
         from pipeline.root_probe import root_probe
 
         current_time = time.monotonic() if now is None else now
+        # Do not fight mid-locate map/pack with probe→dirty→sync (R6).
+        if self._locate_streak_active(now=current_time):
+            return []
+        # Change-poll root_probe was ~7–9s on this repo and GIL-starved search
+        # while Cursor MCP was active. Interval ticks already defer; poll must too.
+        if self._defer_interval_while_clients() and self._clients_active():
+            return []
         t_probe_start = time.perf_counter()
         try:
             probe = root_probe(self.repo)
@@ -562,24 +569,36 @@ class BackgroundSyncLoop:
         except Exception:  # noqa: BLE001
             return False
 
+    def _defer_interval_while_clients(self) -> bool:
+        """Skip periodic keeper ticks while any IDE/MCP client is connected.
+
+        Default on (``CTX_KEEPER_DEFER_WHILE_CLIENTS=1``). Trigger / final / write
+        reasons still run so disk edits can sync; only interval/test ticks yield.
+        """
+        raw = (os.environ.get("CTX_KEEPER_DEFER_WHILE_CLIENTS") or "1").strip().lower()
+        return raw not in {"0", "false", "no", "off"}
+
     def _defer_for_active_session(
         self, paths: list[str], *, now: float, estimated_total: int
     ) -> dict | None:
-        """Hold bulk/heavy sync while agents are locating or MCP clients are attached.
+        """Hold sync while agents are mid-locate; defer bulk while MCP clients are up.
 
-        Tier-1 live batches (≤ bulk threshold) always proceed after debounce so
-        edits show up in the vector DB within seconds. Bulk reindex replaces the
-        live vector set — defer that mid-session and re-check shortly.
+        Locate streak defers *all* sync (including live 1-file) so map/pack does not
+        fight embedder/index work. Disk edits clear the streak via ``mark_dirty``.
+        Bulk reindex still defers while any client is attached even without locate.
         """
         clients = self._clients_active()
         locate = self._locate_streak_active(now=now)
         bulk = estimated_total > self.bulk_reindex_threshold
-        # Live path: never defer. Bulk path: defer if clients or locate-streak.
-        if not bulk or not (clients or locate):
+        if locate:
+            pass  # defer everything while locating
+        elif bulk and clients:
+            pass  # defer bulk while clients attached
+        else:
             return None
         # Re-queue soon; do not drop dirty state.
         self.dirty_ledger.defer(paths, now=now + 15.0)
-        reason = "clients_active" if clients else "locate_streak_bulk"
+        reason = "locate_streak" if locate else "clients_active"
         print(
             f"[keeper] defer sync ({reason}): {len(paths)} paths "
             f"~{estimated_total} chunks",
@@ -630,6 +649,44 @@ class BackgroundSyncLoop:
     def keeper_tick(self, *, reason: str = "interval") -> dict:
         """Root probe first; incremental sync only when dirty. No embed on clean."""
         from pipeline.root_probe import root_probe
+
+        # Yield entirely while agents are mid-locate (warm map p95 — R6).
+        if reason in {"interval", "test"} and self._locate_streak_active():
+            out = {
+                "refreshed": False,
+                "strategy": "deferred_locate_streak",
+                "reason": "locate_streak",
+                "locate_streak_active": True,
+            }
+            self.last_result = out
+            print(
+                "[keeper] skip tick — locate_streak active",
+                file=sys.stderr,
+                flush=True,
+            )
+            return out
+
+        # Yield interval ticks while any IDE/MCP client is connected so map/pack
+        # after minutes idle does not collide with root_probe/sync (R13).
+        if (
+            reason in {"interval", "test"}
+            and self._defer_interval_while_clients()
+            and self._clients_active()
+        ):
+            out = {
+                "refreshed": False,
+                "strategy": "deferred_clients_active",
+                "reason": "clients_active",
+                "clients_active": True,
+                "locate_streak_active": False,
+            }
+            self.last_result = out
+            print(
+                "[keeper] skip tick — clients_active",
+                file=sys.stderr,
+                flush=True,
+            )
+            return out
 
         # Background ticks yield under resource pressure; final/trigger still try.
         if reason == "interval":
@@ -689,11 +746,14 @@ class BackgroundSyncLoop:
                 self._syncing = False
             # Safe point: collect garbage after sync completes. GC is disabled
             # globally in the daemon to prevent SIGSEGV during native extension
-            # work (tokenizers/MLX/numpy). We collect manually here when no
-            # embedding is in progress.
-            import gc
+            # work (tokenizers/MLX/numpy). Skip GC while locate_streak is active
+            # so map/pack do not pay a stop-the-world pause (R6/R13).
+            if not self._locate_streak_active() and not (
+                self._defer_interval_while_clients() and self._clients_active()
+            ):
+                import gc
 
-            gc.collect()
+                gc.collect()
 
     def final_check(self, *, reason: str = "shutdown") -> dict:
         """One last cheap probe (+ sync if dirty). Best-effort; once per stop."""
@@ -701,11 +761,21 @@ class BackgroundSyncLoop:
             return {"skipped": True, "reason": "final_already_done"}
         self._final_done = True
         try:
+            # Stop/shutdown must flush held overlay even mid-locate streak —
+            # otherwise dirty edits stay unpublished after MCP disconnect.
+            self._last_locate_at = None
             result = self.keeper_tick(reason=reason)
             forced_paths = self.dirty_ledger.force_due()
+            synced: list[dict] = []
             if forced_paths:
-                self.drain_due()
-            result["publish_delivered"] = self.drain_publish(force=True)
+                synced = list(self.drain_due() or [])
+            delivered = self.drain_publish(force=True)
+            if not delivered and synced and self._pending_publish is None:
+                # drain_due published inline (no hold) after streak clear.
+                delivered = any(
+                    isinstance(p, dict) and p.get("refreshed") for p in synced
+                )
+            result["publish_delivered"] = bool(delivered)
             return result
         except Exception as exc:  # noqa: BLE001
             print(f"[keeper] final_check failed: {exc}", file=sys.stderr, flush=True)

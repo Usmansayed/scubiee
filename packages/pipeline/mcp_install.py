@@ -9,19 +9,66 @@ from pathlib import Path
 from typing import Any
 
 
+def _pipeline_site_installed() -> bool:
+    """True when ``pipeline`` comes from site/dist-packages (not source sys.path)."""
+    try:
+        import pipeline
+
+        parts = {p.lower() for p in Path(pipeline.__file__).resolve().parts}
+        return "site-packages" in parts or "dist-packages" in parts
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _uv_tool_scubiee_python(*, prefer_pythonw: bool = False) -> str | None:
+    """Locate the ``uv tool install scubiee`` interpreter when present."""
+    home = Path.home()
+    appdata = os.environ.get("APPDATA") or ""
+    candidates: list[Path] = []
+    if os.name == "nt":
+        if appdata:
+            base = Path(appdata) / "uv" / "tools" / "scubiee" / "Scripts"
+            if prefer_pythonw:
+                candidates.append(base / "pythonw.exe")
+            candidates.append(base / "python.exe")
+            if not prefer_pythonw:
+                candidates.append(base / "pythonw.exe")
+        local = home / ".local" / "bin"
+        # uv shims are not usable as -m parents; skip.
+        _ = local
+    else:
+        base = home / ".local" / "share" / "uv" / "tools" / "scubiee" / "bin"
+        candidates.append(base / "python")
+    for c in candidates:
+        if c.is_file():
+            return str(c).replace("\\", "/")
+    return None
+
+
 def interpreter() -> str:
     """Python that can ``import pipeline`` for Cursor MCP.
 
     Do **not** ``Path.resolve()`` the executable: on macOS a venv's
     ``bin/python`` is a symlink into Homebrew's Cellar, and resolving it
     drops the venv ``site-packages`` → ``ModuleNotFoundError: pipeline``.
-    Prefer ``CTX_PYTHON``, then ``sys.prefix``'s python, then ``sys.executable``
-    as written (symlink preserved).
+    Prefer ``CTX_PYTHON``, then an installed scubiee tool env when the host
+    only imports ``pipeline`` via source-tree ``sys.path`` (host-sim / pytest),
+    then ``sys.prefix``'s python, then ``sys.executable`` as written.
     """
     override = (os.environ.get("CTX_PYTHON") or "").strip()
     if override:
         return override.replace("\\", "/")
+    # Dev host (miniconda + packages/ on sys.path) must not spawn its own
+    # pythonw for MCP — children do not inherit that path and crash with
+    # ModuleNotFoundError: pipeline.
+    if not _pipeline_site_installed():
+        tool_py = _uv_tool_scubiee_python(prefer_pythonw=(os.name == "nt"))
+        if tool_py:
+            return tool_py
     if os.name == "nt":
+        pyw = Path(sys.prefix) / "Scripts" / "pythonw.exe"
+        if pyw.is_file():
+            return str(pyw).replace("\\", "/")
         candidate = Path(sys.prefix) / "Scripts" / "python.exe"
     else:
         candidate = Path(sys.prefix) / "bin" / "python"
@@ -43,7 +90,7 @@ def server_entry(
     """
     import shutil
 
-    from pipeline.mcp_hot_reload import current_build_id, write_active_build_stamp
+    from pipeline.mcp_hot_reload import ensure_active_build_stamp
 
     engine_url = os.environ.get("CTX_ENGINE_URL") or f"http://{host}:{port}"
     from pipeline.settings import get_registration_mode
@@ -61,21 +108,23 @@ def server_entry(
         "CTX_MCP_EXPERIMENT": "ship",
         "CTX_TRACE_GRAPHIFY": "1",
         "CTX_MCP_SESSION_ISOLATE": "1",
-        "CTX_MCP_BRIDGE_MODE": "auto",
-        "CTX_ENGINE_IDLE_S": "120",
-        "CTX_DISCONNECT_DEBOUNCE_S": "120",
+        "CTX_MCP_BRIDGE_MODE": "shared",
+        "CTX_ENGINE_IDLE_S": "10",
+        "CTX_DISCONNECT_DEBOUNCE_S": "10",
         "CTX_ENGINE_TRANSITION_DEBOUNCE_S": "5",
         "CTX_EMBED_IDLE_DEMOTE_S": "10",
         "CTX_EMBED_PREWARM": "1",
         "CTX_TRACE_PARALLEL": "1",
         "CTX_ENGINE_SPAWN_OWNER": "supervisor",
         "CTX_LOCATE_STREAK_MS": "60000",
+        "CTX_EMBED_KEEPALIVE": "1",
+        "CTX_EMBED_KEEPALIVE_S": "20",
+        "CTX_KEEPER_DEFER_WHILE_CLIENTS": "1",
+        "CTX_WARM_DEADLINE_MS": "30000",
         "PYTHONUTF8": "1",
     }
-    build_id = current_build_id()
-    if not build_id:
-        build_id = write_active_build_stamp()["build_id"]
-    env["CTX_SCUBIEE_BUILD"] = build_id
+    # Always refresh stamp to installed version so connect/mcp.json don't lag (R9).
+    env["CTX_SCUBIEE_BUILD"] = str(ensure_active_build_stamp()["build_id"])
     # Per-chat isolation: host-native keys (CLAUDE_CODE_SESSION_ID, MCP_SESSION_ID, …)
     # or explicit CTX_MCP_SESSION_ID — see session_isolation.detect_host_chat_session_from_env
     for session_key in (
@@ -108,10 +157,15 @@ def server_entry(
         try:
             from pipeline.process_job import background_python
 
-            pyw = background_python()
+            # Prefer MCP interpreter() when host is source-tree (dev sim) so we
+            # do not spawn miniconda pythonw without site-packages pipeline.
+            if not _pipeline_site_installed():
+                pyw = interpreter()
+            else:
+                pyw = background_python()
         except Exception:  # noqa: BLE001
             pyw = interpreter()
-        pyw_s = str(Path(pyw).resolve()).replace("\\", "/")
+        pyw_s = str(Path(pyw)).replace("\\", "/")
         # Worker children also use pythonw (bridge CREATE_NO_WINDOW alone is not enough
         # if the shim itself is a console EXE).
         env["CTX_MCP_BRIDGE_SPAWN_JSON"] = json.dumps(
@@ -153,7 +207,7 @@ def _merge_idle_env_max(dst_env: dict[str, str], prior_env: dict[str, Any] | Non
     """Keep a higher *transition* debounce on reconnect; disconnect unload stays at install defaults.
 
     ``CTX_DISCONNECT_DEBOUNCE_S`` / ``CTX_ENGINE_IDLE_S`` are disconnect-unload
-    knobs (default 120s) and must not be sticky-raised from old 300s installs.
+    knobs (default 10s) and must not be sticky-raised from old 300s installs.
     ``CTX_EMBED_IDLE_DEMOTE_S`` stays a short GPU demote (default 10s).
     """
     if not isinstance(prior_env, dict):

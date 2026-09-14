@@ -83,6 +83,9 @@ class ChildWorker:
             return True
         if self._child.poll() is not None:
             return True
+        raw = (os.environ.get("CTX_MCP_HOT_RELOAD") or "1").strip().lower()
+        if raw in {"0", "false", "no", "off"}:
+            return False
         from pipeline.mcp_hot_reload import current_build_id
 
         active = current_build_id()
@@ -378,7 +381,10 @@ class SessionRegistry:
         return self._get_or_create("__shared__")
 
     def worker_for_message(self, msg: dict[str, Any]) -> ChildWorker:
-        from pipeline.session_isolation import bridge_routing_session_key
+        from pipeline.session_isolation import (
+            bridge_routing_session_key,
+            detect_host_chat_session_from_env,
+        )
 
         mode = bridge_mode()
         session_key, source = bridge_routing_session_key(msg)
@@ -387,12 +393,16 @@ class SessionRegistry:
         if mode == "isolated":
             key = session_key or "__shared__"
             return self._get_or_create(key)
-        # auto: host env session (Claude Code, Codex, …) or explicit tool session_id
-        if session_key:
-            if source == "host_env":
-                return self._get_or_create(session_key)
-            if msg.get("method") in ("tools/call", "tools/list"):
-                return self._get_or_create(session_key)
+        # auto: pin to the host chat env id when present so initialize + tools/call
+        # share one warm mcp_locate. Never spawn a cold worker per tool session_id
+        # (Cursor agents invent those every turn — 8–12s first-map tax).
+        env_info = detect_host_chat_session_from_env()
+        if env_info:
+            env_sid = str(env_info.get("session_id") or "").strip()
+            if env_sid:
+                return self._get_or_create(env_sid)
+        if session_key and source == "host_env":
+            return self._get_or_create(session_key)
         return self._get_or_create("__shared__")
 
     def shutdown(self) -> None:

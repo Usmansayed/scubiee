@@ -1,4 +1,4 @@
-﻿"""Hardware acceleration probe + install profile for CodeRank FastEmbed.
+"""Hardware acceleration probe + install profile for CodeRank FastEmbed.
 
 Profiles (mutually exclusive ORT wheels, plus Mac MLX):
   - cuda    → onnxruntime-gpu
@@ -116,17 +116,33 @@ class AccelProfile:
         )
 
     def providers(self) -> list:
+        """ORT provider list. Prefer lean CPU fallback alloc strategy when present."""
+        # kSameAsRequested avoids power-of-two arena over-alloc on CPU EP while
+        # the FastEmbed session stays loaded for full-warm availability.
+        cpu_opts = {"arena_extend_strategy": "kSameAsRequested"}
         if self.profile == "mlx" or self.backend == "mlx":
             raise RuntimeError("MLX backend does not use ONNX Runtime providers")
         if self.profile == "cuda":
-            return [("CUDAExecutionProvider", {"device_id": self.device_id}), "CPUExecutionProvider"]
+            return [
+                (
+                    "CUDAExecutionProvider",
+                    {
+                        "device_id": self.device_id,
+                        "arena_extend_strategy": "kSameAsRequested",
+                    },
+                ),
+                ("CPUExecutionProvider", cpu_opts),
+            ]
         if self.profile == "dml":
-            return [("DmlExecutionProvider", {"device_id": self.device_id}), "CPUExecutionProvider"]
+            return [
+                ("DmlExecutionProvider", {"device_id": self.device_id}),
+                ("CPUExecutionProvider", cpu_opts),
+            ]
         if self.profile == "coreml":
             from pipeline.coreml_mac import coreml_providers
 
             return coreml_providers(self)
-        return ["CPUExecutionProvider"]
+        return [("CPUExecutionProvider", cpu_opts)]
 
 
 def load_accel(path: Path | None = None) -> AccelProfile | None:
@@ -162,7 +178,9 @@ def _has_nvidia() -> bool:
     # Method 1: nvidia-smi (most reliable on both Windows and Linux)
     if shutil.which("nvidia-smi"):
         try:
-            r = subprocess.run(
+            from pipeline.process_job import hidden_run
+
+            r = hidden_run(
                 ["nvidia-smi", "-L"],
                 capture_output=True,
                 text=True,
@@ -201,10 +219,21 @@ def _has_nvidia() -> bool:
     # Method 5: Windows — check WMI for NVIDIA adapters (nvidia-smi not in PATH)
     if platform.system() == "Windows":
         try:
-            r = subprocess.run(
-                ["powershell", "-NoProfile", "-Command",
-                 "Get-CimInstance Win32_VideoController | Select-Object -ExpandProperty Name"],
-                capture_output=True, text=True, timeout=10, check=False,
+            from pipeline.process_job import hidden_run
+
+            r = hidden_run(
+                [
+                    "powershell",
+                    "-NoProfile",
+                    "-WindowStyle",
+                    "Hidden",
+                    "-Command",
+                    "Get-CimInstance Win32_VideoController | Select-Object -ExpandProperty Name",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
             )
             if r.returncode == 0 and "nvidia" in (r.stdout or "").lower():
                 return True
@@ -686,8 +715,17 @@ def _windows_d3d12_gpus() -> list[dict[str, Any]]:
         "ConvertTo-Json -Compress"
     )
     try:
-        r = subprocess.run(
-            ["powershell", "-NoProfile", "-Command", ps],
+        from pipeline.process_job import hidden_run
+
+        r = hidden_run(
+            [
+                "powershell",
+                "-NoProfile",
+                "-WindowStyle",
+                "Hidden",
+                "-Command",
+                ps,
+            ],
             capture_output=True,
             text=True,
             timeout=15,
@@ -928,16 +966,20 @@ def _run_pip_captured(
     Windows deadlocks if we PIPE stdout and only ``poll()``: the OS pipe
     fills, pip blocks on write, we wait forever. Read in a thread.
     """
-    proc = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        env=env,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        bufsize=1,
-    )
+    popen_kwargs: dict[str, Any] = {
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.STDOUT,
+        "env": env,
+        "text": True,
+        "encoding": "utf-8",
+        "errors": "replace",
+        "bufsize": 1,
+    }
+    if os.name == "nt":
+        from pipeline.process_job import hidden_popen_kwargs
+
+        popen_kwargs.update(hidden_popen_kwargs())
+    proc = subprocess.Popen(cmd, **popen_kwargs)  # noqa: S603
     chunks: list[str] = []
 
     def drain() -> None:
@@ -1783,12 +1825,14 @@ def _probe_gpu_embed(profile: AccelProfile, *, timeout_s: float) -> None:
     def _once() -> None:
         register_coderank()
         from fastembed import TextEmbedding
+        from pipeline.embedder import fastembed_session_kwargs
 
         model = TextEmbedding(
             model_name=profile.model,
             threads=1,
             providers=profile.providers(),
             lazy_load=True,
+            **fastembed_session_kwargs(),
         )
         list(model.embed(["scubiee gpu probe"], batch_size=1, parallel=None))
 
@@ -2241,14 +2285,26 @@ def coderank_fp16_onnx_ready(cache_root: Path | None = None) -> bool:
 
 
 def _setup_download_env() -> dict[str, str | None]:
+    """Quiet HF/fastembed noise and avoid Windows symlink privilege failures.
+
+    WinError 1314 ("A required privilege is not held by the client") happens when
+    huggingface_hub tries to symlink blobs→snapshots without Developer Mode /
+    admin. ``HF_HUB_DISABLE_SYMLINKS=1`` forces copy/move instead so plain
+    ``scubiee setup`` works without asking the user to enable Developer Mode
+    or re-run ``setup --repair``.
+    """
     names = (
         "HF_HUB_DISABLE_PROGRESS_BARS",
+        "HF_HUB_DISABLE_SYMLINKS",
         "HF_HUB_DISABLE_SYMLINKS_WARNING",
         "HF_HUB_DISABLE_TELEMETRY",
         "TQDM_DISABLE",
     )
     prev = {name: os.environ.get(name) for name in names}
     os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+    # Always disable hub symlinks during Scubiee model ensure — safe on all OSes,
+    # required on locked-down Windows (no SeCreateSymbolicLinkPrivilege).
+    os.environ["HF_HUB_DISABLE_SYMLINKS"] = "1"
     os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
     os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
     os.environ["TQDM_DISABLE"] = "1"
@@ -2270,9 +2326,7 @@ def _download_coderank_source_onnx(cache_root: Path) -> Path:
     from huggingface_hub import snapshot_download
     from huggingface_hub.utils import disable_progress_bars, enable_progress_bars
 
-    prev = _setup_download_env()
-    disable_progress_bars()
-    try:
+    def _once() -> None:
         snapshot_download(
             repo_id=CODERANK_HF_ONNX,
             cache_dir=str(cache_root),
@@ -2285,6 +2339,21 @@ def _download_coderank_source_onnx(cache_root: Path) -> Path:
                 CODERANK_FP32_ONNX_FILE,
             ],
         )
+
+    prev = _setup_download_env()
+    disable_progress_bars()
+    try:
+        try:
+            _once()
+        except OSError as exc:
+            # Older hub / race: retry after forcing no-symlink mode.
+            msg = str(exc).lower()
+            if "1314" in msg or "required privilege is not held" in msg:
+                os.environ["HF_HUB_DISABLE_SYMLINKS"] = "1"
+                os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+                _once()
+            else:
+                raise
     finally:
         enable_progress_bars()
         _restore_env(prev)
@@ -2294,7 +2363,7 @@ def _download_coderank_source_onnx(cache_root: Path) -> Path:
             return fp32
     raise RuntimeError(
         "CodeRank weights (onnx/model.onnx) did not download completely. "
-        "Check disk space and network, then run: scubiee setup --repair"
+        "Check disk space and network, then re-run: scubiee setup"
     )
 
 
@@ -2446,27 +2515,44 @@ def coderank_int8_onnx_path() -> Path | None:
 
 def format_setup_error(exc: BaseException) -> str:
     msg = str(exc).strip()
+    low = msg.lower()
+    if "1314" in msg or "required privilege is not held" in low:
+        return (
+            "Windows blocked model-cache symlinks (WinError 1314). "
+            "Setup should copy files instead — re-run: scubiee setup "
+            "(or enable Windows Developer Mode if it persists)."
+        )
+    if "trampoline" in low and "canonicalize" in low:
+        return (
+            "uv tool shim is broken (trampoline canonicalize failed) — usually a half-wiped install. "
+            "Fix: scubiee unlock-tool  then  "
+            "uv tool install --force scubiee --index-url https://pypi.org/simple --refresh  "
+            "then  scubiee setup"
+        )
     if "model_fp16.onnx" in msg and ("NO_SUCHFILE" in msg or "does not exist" in msg.lower()):
         return (
             "CodeRank FP16 weights are missing from the model cache. "
-            "Run: scubiee wipe --all --yes  then  scubiee setup --repair"
+            "Setup auto-repairs once; if this persists: scubiee wipe --all --yes && "
+            "uv tool install --force scubiee && scubiee setup"
         )
     if "did not download completely" in msg or "FP16 conversion" in msg:
         return msg
     if "No module named 'fastembed'" in msg or "No module named \"fastembed\"" in msg:
         return (
             "FastEmbed is not installed yet (normal on Windows after `uv tool install`). "
-            "Setup will install it automatically — if this persists, run: scubiee setup --repair"
+            "Setup installs it automatically (including one auto-repair pass)."
         )
     if "No module named 'PIL'" in msg or "Pillow" in msg:
         return (
             "Missing FastEmbed dependency (Pillow). "
-            "Run: uv tool install --force scubiee  then  scubiee setup --repair"
+            "Setup auto-repairs with a force reinstall; if this persists: "
+            "uv tool install --force scubiee && scubiee setup"
         )
     if "loguru" in msg or "mmh3" in msg or "py_rust_stemmers" in msg:
         return (
             "Missing FastEmbed dependencies. "
-            "Run: uv tool install --force scubiee  then  scubiee setup --repair"
+            "Setup auto-repairs with a force reinstall; if this persists: "
+            "uv tool install --force scubiee && scubiee setup"
         )
     if len(msg) > 240:
         return msg[:237] + "..."
@@ -2519,6 +2605,13 @@ def register_coderank() -> None:
     """Register CodeRank as FP16 ONNX; upgrade any stale FP32 in-process entry."""
     from fastembed import TextEmbedding
     from fastembed.common.model_description import ModelSource, PoolingType
+
+    try:
+        from pipeline.embedder import disable_ort_cpu_mem_arena
+
+        disable_ort_cpu_mem_arena()
+    except Exception:  # noqa: BLE001
+        os.environ.setdefault("ORT_ENABLE_CPU_MEM_ARENA", "0")
 
     if _patch_registered_coderank_to_fp16():
         return

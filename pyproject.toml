@@ -1,6 +1,6 @@
 [project]
 name = "scubiee"
-version = "0.3.71"
+version = "0.3.88"
 description = "Scubiee — local AI code context engine: setup once, connect tools, CUDA/DirectML/MLX/CPU."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -25,6 +25,8 @@ dependencies = [
   "numpy>=1.26",
   "faiss-cpu>=1.8",
   "requests>=2.31",
+  "httpx>=0.27",
+  "tenacity>=8.2",
   "networkx>=3.2",
   "rapidfuzz>=3.0",
   "psutil>=5.9",
