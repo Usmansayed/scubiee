@@ -250,17 +250,21 @@ def derive_agent_ready_note(
         return f"Engine {state} — retry locate shortly (not a RAM warm-up stall)."
     if embedder_loaded is False and state == "ready":
         return (
-            "BM25/index ready; FastEmbed still loading — wait ~3s and retry map once "
-            "(do not treat as fully semantic-ready)."
+            "Soft locate ready (BM25/index); FastEmbed still loading in background — "
+            "map/pack lean OK now; dense semantic improves once embedder_loaded=true."
         )
     if agent_ready == "yes" or state == "ready":
         if loc.get("stale") or syncing or overlay_ready or publish_pending:
             return "Locate ready; background sync may lag recent edits."
+        if embedder_loaded is False:
+            return (
+                "Soft locate ready; semantic embedder still loading — proceed with map/pack."
+            )
         return "Locate and index are ready; map/pack_context reflect current repo state."
     if agent_ready == "warming":
         if embedder_loaded is False:
             return (
-                "Semantic embedder not loaded yet — wait ~3s and retry the same locate tool once."
+                "Engine still starting (index not soft-ready yet) — wait ~3s and retry once."
             )
         return "Engine or index still starting — map may work; prefer locate.state over this label."
     if syncing or overlay_ready or publish_pending:
@@ -290,8 +294,9 @@ def derive_agent_ready(
 ) -> str:
     """Legacy agent_ready derived from locate.state: yes | warming | stale.
 
-    When ``embedder_loaded`` is explicitly False, never claim ``yes`` — BM25 may
-    work but agents must not treat the surface as fully semantic-ready (R8).
+    Soft BM25/index ready is enough for ``yes`` — map/pack lean work without
+    FastEmbed. ``semantic_ready`` / ``embedder_loaded`` remain the signal that
+    dense semantic is still loading (do not block locate on ORT/DML cold start).
     """
     loc = locate or derive_locate_state(
         healthy=healthy and not warming,
@@ -306,8 +311,6 @@ def derive_agent_ready(
     if state == "error":
         return "warming"  # legacy; prefer locate.state=error
     if state in {"starting", "indexing", "unbound"}:
-        return "warming"
-    if embedder_loaded is False:
         return "warming"
     if state == "ready" and loc.get("stale"):
         return "stale"

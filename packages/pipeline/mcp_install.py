@@ -132,9 +132,11 @@ def server_entry(
         "CTX_EMBED_KEEPALIVE": "1",
         # Longer interval = fewer periodic embed CPU spikes while staying warm.
         "CTX_EMBED_KEEPALIVE_S": "45",
-        "CTX_ENGINE_CPU_CAP_PCT": "20",
+        # 25% default; process_job boosts effective share on ≤6-core machines.
+        "CTX_ENGINE_CPU_CAP_PCT": "25",
         "CTX_KEEPER_DEFER_WHILE_CLIENTS": "1",
-        "CTX_WARM_DEADLINE_MS": "30000",
+        # Low-end DirectML/ORT cold load often exceeds 30s under the CPU cap.
+        "CTX_WARM_DEADLINE_MS": "90000",
         "PYTHONUTF8": "1",
     }
     # Always refresh stamp to installed version so connect/mcp.json don't lag (R9).

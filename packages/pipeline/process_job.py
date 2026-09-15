@@ -21,7 +21,7 @@ CREATE_NO_WINDOW = 0x08000000
 CREATE_BREAKAWAY_FROM_JOB = 0x01000000
 CREATE_NEW_PROCESS_GROUP = 0x00000200
 DETACHED_PROCESS = 0x00000008
-DEFAULT_ENGINE_CPU_CAP_PCT = 20.0
+DEFAULT_ENGINE_CPU_CAP_PCT = 25.0
 DEFAULT_ENGINE_JOB_MEMORY_MB = 800
 # Named job objects with KILL_ON_JOB_CLOSE die when the last handle closes.
 # ctypes HANDLEs are not auto-closed, but keep them anyway so a future wrapper
@@ -30,9 +30,9 @@ _OPEN_JOB_HANDLES: list[Any] = []
 
 
 def engine_cpu_cap_pct() -> float:
-    """Hard CPU cap for the engine job (percent of the machine). Default 20.
+    """Hard CPU cap for the engine job (percent of the machine). Default 25.
 
-    Keeps Task Manager spikes under ~20% while full-warm stays resident for speed.
+    Keeps Task Manager spikes polite while full-warm stays resident for speed.
     Override with ``CTX_ENGINE_CPU_CAP_PCT`` (1–100).
     """
     raw = (os.environ.get("CTX_ENGINE_CPU_CAP_PCT") or "").strip()
@@ -44,11 +44,39 @@ def engine_cpu_cap_pct() -> float:
         return DEFAULT_ENGINE_CPU_CAP_PCT
 
 
+def effective_engine_cpu_cap_pct(pct: float | None = None) -> float:
+    """Apply a low-end floor so cold DirectML/ORT warm cannot starve ``/health``.
+
+    On 2–4 core machines a raw 25% cap collapses to 1 core and health/MCP time out
+    during FastEmbed load. Boost the *effective* rate on small CPUs while keeping
+    the advertised default at 25% on typical 8+ core laptops/desktops.
+    """
+    base = float(engine_cpu_cap_pct() if pct is None else pct)
+    n = int(os.cpu_count() or 4)
+    if n <= 2:
+        return max(base, 75.0)
+    if n <= 4:
+        return max(base, 50.0)
+    if n <= 6:
+        return max(base, 33.0)
+    return base
+
+
+def affinity_keep_cpus(pct: float | None = None) -> int:
+    """How many logical CPUs affinity fallback should keep (never starve to 1)."""
+    n = max(1, int(os.cpu_count() or 4))
+    eff = effective_engine_cpu_cap_pct(pct)
+    keep = int(round(n * eff / 100.0))
+    # Always leave ≥2 cores on multi-core boxes so HTTP + embed can overlap.
+    floor = 1 if n == 1 else 2
+    return max(floor, min(n, keep))
+
+
 def soften_background_priority() -> dict[str, Any]:
     """Drop MCP/locate worker scheduling priority so short spikes yield to the IDE.
 
     Does not change the hard job CPU rate; pairs with ``engine_cpu_cap_pct`` so
-    hydrate/embed bursts stay polite under ~20% machine CPU.
+    hydrate/embed bursts stay polite under the configured machine CPU share.
     """
     if os.name != "nt":
         try:
@@ -365,7 +393,7 @@ def _set_job_cpu_rate(
 
         rate = JOBOBJECT_CPU_RATE_CONTROL_INFORMATION()
         rate.ControlFlags = int(control_flags)
-        rate.CpuRate = cpu_rate_for_percent(engine_cpu_cap_pct())
+        rate.CpuRate = cpu_rate_for_percent(effective_engine_cpu_cap_pct())
         kernel32.SetInformationJobObject(
             handle,
             info_class,
@@ -383,11 +411,16 @@ def apply_cpu_affinity_pct(pct: float | None = None) -> dict[str, Any]:
     except Exception as exc:  # noqa: BLE001
         return {"ok": False, "error": str(exc)}
     n = int(os.cpu_count() or 4)
-    keep = max(1, int(round(n * (engine_cpu_cap_pct() if pct is None else pct) / 100.0)))
-    keep = min(keep, n)
+    keep = affinity_keep_cpus(pct)
     try:
         psutil.Process().cpu_affinity(list(range(keep)))
-        return {"ok": True, "cpus": keep, "of": n}
+        return {
+            "ok": True,
+            "cpus": keep,
+            "of": n,
+            "cap_pct": engine_cpu_cap_pct() if pct is None else pct,
+            "effective_pct": effective_engine_cpu_cap_pct(pct),
+        }
     except Exception as exc:  # noqa: BLE001
         return {"ok": False, "error": str(exc)}
 

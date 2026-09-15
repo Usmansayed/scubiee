@@ -4898,8 +4898,8 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     )
                 elif embedder_loaded is False:
                     payload["hint"] = (
-                        "Index up; FastEmbed still loading. Wait ~3s and retry map once — "
-                        "do not claim fully ready until embedder_loaded=true."
+                        "Index soft-ready; FastEmbed still loading in background. "
+                        "map/pack lean OK now — semantic densifies when embedder_loaded=true."
                     )
                 elif locate.get("state") == "unbound":
                     payload["hint"] = (
@@ -4937,10 +4937,13 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
 
                     snap = RuntimeController.get().snapshot(repo=repo)
                     payload.update(snap.as_status_fields())
-                    # Honesty: never claim warm_ready without embedder.
+                    # Soft BM25 map is ready without FastEmbed; full semantic is not.
                     if payload.get("embedder_loaded") is False:
                         payload["warm_ready"] = False
-                        payload["warm_ready_map"] = False
+                        if soft_search_ready or str(locate.get("state") or "") == "ready":
+                            payload["warm_ready_map"] = True
+                        else:
+                            payload["warm_ready_map"] = False
                     elif snap.embedder_loaded and payload.get("embedder_loaded") is None:
                         payload["embedder_loaded"] = True
                 except Exception:  # noqa: BLE001

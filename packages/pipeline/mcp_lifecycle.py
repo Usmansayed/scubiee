@@ -490,7 +490,7 @@ def warm_engine_for_mcp(
         # Soft TTL can outlive a settle soft flap — cheap revalidate before skip.
         if soft_ready_needs_revalidate(interval_s=2.0):
             try:
-                h = EngineClient(workspace_path=str(root), timeout=0.35).health() or {}
+                h = EngineClient(workspace_path=str(root), timeout=1.5).health() or {}
                 soft = bool(h.get("soft_search_ready") and (h.get("ok") or h.get("service")))
             except Exception:  # noqa: BLE001
                 soft = False

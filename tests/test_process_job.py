@@ -39,6 +39,19 @@ def test_engine_spawn_breaks_away_from_cursor_job(monkeypatch) -> None:
 
 def test_engine_cpu_cap_pct_default(monkeypatch) -> None:
     monkeypatch.delenv("CTX_ENGINE_CPU_CAP_PCT", raising=False)
-    assert engine_cpu_cap_pct() == 20.0
-    monkeypatch.setenv("CTX_ENGINE_CPU_CAP_PCT", "25")
     assert engine_cpu_cap_pct() == 25.0
+    monkeypatch.setenv("CTX_ENGINE_CPU_CAP_PCT", "30")
+    assert engine_cpu_cap_pct() == 30.0
+
+
+def test_affinity_keep_cpus_low_end_floor(monkeypatch) -> None:
+    from pipeline.process_job import affinity_keep_cpus, effective_engine_cpu_cap_pct
+
+    monkeypatch.delenv("CTX_ENGINE_CPU_CAP_PCT", raising=False)
+    monkeypatch.setattr("pipeline.process_job.os.cpu_count", lambda: 4)
+    # Raw 25% of 4 → 1 core; floor must keep ≥2 and boost effective %.
+    assert effective_engine_cpu_cap_pct() >= 50.0
+    assert affinity_keep_cpus() >= 2
+    monkeypatch.setattr("pipeline.process_job.os.cpu_count", lambda: 16)
+    assert effective_engine_cpu_cap_pct() == 25.0
+    assert affinity_keep_cpus() == 4

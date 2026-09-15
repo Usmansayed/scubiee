@@ -109,7 +109,10 @@ class EngineClient:
         if self._loopback_listener_absent():
             return {"ok": False, "error": "listener_absent"}
         # Honor client timeout (locate probes use <1s); never exceed 3s.
-        health_timeout = max(0.2, min(float(getattr(self, "timeout", 3.0) or 3.0), 3.0))
+        # Cap health probes: short enough for snappy UX, long enough that a
+        # brief ORT/DML GIL hitch under the CPU affinity floor does not flap
+        # "unreachable" (cold FastEmbed load can hold the interpreter ~1–8s).
+        health_timeout = max(0.2, min(float(getattr(self, "timeout", 3.0) or 3.0), 8.0))
         transport = (os.environ.get("CTX_ENGINE_HTTP_TRANSPORT") or "httpx").strip().lower()
         if transport in {"urllib", "legacy"}:
             return self._health_urllib(timeout=health_timeout)
