@@ -1,0 +1,83 @@
+{
+  "ok": true,
+  "require_semantic": true,
+  "capabilities": {
+    "faiss": {
+      "module": "faiss",
+      "available": true,
+      "required": true,
+      "hint": "Install the CE vector dependencies, then rerun `scubiee preflight`."
+    },
+    "rapidfuzz": {
+      "module": "rapidfuzz",
+      "available": true,
+      "required": true,
+      "hint": "Install `rapidfuzz`; graph deduplication cannot run without it."
+    },
+    "typescript_parser": {
+      "module": "tree_sitter_typescript",
+      "available": true,
+      "required": true,
+      "hint": "Install the TypeScript tree-sitter parser; CE refuses partial TS/TSX indexing."
+    },
+    "json_parser": {
+      "module": "tree_sitter_json",
+      "available": true,
+      "required": true,
+      "hint": "Install the JSON tree-sitter parser; CE refuses partial JSON indexing."
+    },
+    "embed_accel": {
+      "module": "fastembed+onnxruntime",
+      "available": true,
+      "required": true,
+      "hint": "Install MLX (`pip install mlx`) on Apple Silicon, then set CTX_EMBED_BACKEND=mlx. GPU initialization is required; CPU fallback is refused.",
+      "detail": {
+        "profile": "mlx",
+        "provider": "MLX",
+        "batch_size": 48,
+        "backend": "mlx",
+        "texts_per_sec": 109.107,
+        "providers": [
+          "MLX"
+        ]
+      }
+    },
+    "semantic_search_st": {
+      "module": "sentence_transformers",
+      "available": false,
+      "required": false,
+      "hint": "Optional PyTorch fallback only \u2014 production path is FastEmbed+ORT."
+    }
+  },
+  "missing_required": [],
+  "accel": {
+    "ok": true,
+    "profile": "mlx",
+    "provider": "MLX",
+    "batch_size": 48,
+    "backend": "mlx",
+    "texts_per_sec": 109.107,
+    "reason": "MLX FP16 overlay (saved accel.json unchanged)",
+    "fastembed": true,
+    "onnxruntime": true,
+    "providers": [
+      "MLX"
+    ],
+    "provider_ok": true,
+    "model_warm": true,
+    "provider_validation": {
+      "ok": true,
+      "profile": "mlx",
+      "provider": "MLX",
+      "available_providers": [
+        "MLX"
+      ],
+      "provider_available": true,
+      "model_warm": true,
+      "detail": "MLX package available"
+    },
+    "sentence_transformers": false,
+    "missing": [],
+    "hint": "Install MLX (`pip install mlx`) on Apple Silicon, then set CTX_EMBED_BACKEND=mlx. GPU initialization is required; CPU fallback is refused."
+  }
+}

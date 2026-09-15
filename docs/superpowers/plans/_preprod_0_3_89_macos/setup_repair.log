@@ -1,0 +1,16 @@
+This may take a few minutes. Downloading and installing the Scubiee engine.
+[░░░░░░░░░░░░░░░░░░░░░░░░░░░░]   0%  Starting
+note: another scubiee install found at /Users/usmansayed/.local/share/uv/tools/scubiee/bin/scubiee (run `scubiee doctor` for details)
+[█░░░░░░░░░░░░░░░░░░░░░░░░░░░]   4%  Checking engine modules
+[███░░░░░░░░░░░░░░░░░░░░░░░░░]  10%  Detecting hardware
+[████░░░░░░░░░░░░░░░░░░░░░░░░]  16%  Using mlx profile
+[█████████░░░░░░░░░░░░░░░░░░░]  32%  Embedding runtime already installed
+[████████████████░░░░░░░░░░░░]  56%  Downloading embedding model
+[████████████████░░░░░░░░░░░░]  57%  Preparing MLX FP16 CodeRank weights
+[████████████████████░░░░░░░░]  70%  Embedding model ready (cached)
+[████████████████████░░░░░░░░]  72%  Warming up embedding model on accelerator
+[████████████████████████░░░░]  85%  Embedding model ready
+[████████████████████████░░░░]  86%  Calibrating speed
+[██████████████████████████░░]  92%  Saving machine profile
+[██████████████████████████░░]  94%  Registering logon supervisor
+[████████████████████████████] 100%  Ready (reused mlx runtime + model cache). Next: scubiee init .

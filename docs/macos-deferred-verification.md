@@ -76,4 +76,5 @@ python -m pytest tests/test_mcp_locate.py::test_live_search_read_flow -q
 
 | Date | Machine | scubiee version | Setup profile | Init/connect | Pytest summary | Notes |
 |------|---------|-----------------|---------------|--------------|----------------|-------|
+| 2026-09-15 | Apple M5 / macOS 26.5.2 | 0.3.89 (`uv tool install --force '.[macos]'`) | mlx (~110 t/s) | PASS (enrolled, connect --cursor) | Gate M: 66 passed; lifecycle 27; CLI combo 30/30; host-sim Lane A PASS (soft 0.67s, map/pack ~3ms, expand 141ms) | See `_preprod_0_3_89_macos/REPORT.md`. Stale `.venv` 0.3.29 caused first WARM_TIMEOUT. CLI `pack` fails: missing `trace_lab.multi_seed`. Gate B runner missing `test_runtime_controller.py`. |
 | 2026-08-26 | Mac17,3 / Apple M5 | 0.2.82 (from repo via uv) | mlx | PASS (tiny repo + connect --cursor) | 38 passed, 4 failed | See `docs/mac-cursor-session-handoff-2026-08-26.md` §4 for failure names. Setup never stayed on cpu. |

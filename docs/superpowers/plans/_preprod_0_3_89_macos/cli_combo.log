@@ -1,0 +1,35 @@
+
+Scubiee CLI combination tests: 30/30 passed
+
+ID     GROUP          EXPECT     OBSERVED         OK   NOTE
+------------------------------------------------------------------------
+R1     readonly       ok         exit=0           PASS version always works
+R2     readonly       any        exit=0           PASS gate local only
+R3     readonly       any        exit=1           PASS doctor may fail if not enrolled
+R4     readonly       any        exit=1           PASS preflight deps check
+G1     global_stop    blocked    blocked          PASS init after global stop blocked
+G2     global_stop    blocked    blocked          PASS setup after stop blocked (no --repair)
+G3     global_stop    any        exit=0           PASS setup --repair allowed when stopped
+G4     global_stop    blocked    blocked          PASS engine start after global stop blocked
+G5     global_stop    allowed    allowed          PASS engine status allowed when stopped
+G6     global_stop    allowed    allowed          PASS halt allowed when stopped
+G7     global_stop    any        exit=2           PASS wipe --all without confirm returns confi
+G8     global_stop    ok         exit=0           PASS resume after stop
+G9     global_stop    any        exit=0           PASS connect auto-resumes when stopped
+E1     engine_stop    any        exit=1           PASS engine stop then status
+E2     engine_stop    any        exit=-9          PASS init after engine-only stop (needs setup
+G10    global_stop    blocked    blocked          PASS search after global stop blocked
+G11    global_stop    blocked    blocked          PASS index after global stop blocked
+G13    global_stop    any        exit=0           PASS gate read-only while stopped (prints p)
+E3     engine_stop    any        exit=1           PASS engine start after engine-only stop
+E5     engine_stop    any        exit=0           PASS connect dry-run after engine-only stop
+E7     engine_stop    any        exit=0           PASS engine ensure after engine-only stop
+C1     connect        ok         exit=0           PASS connect cursor dry-run
+C2     connect        ok         exit=0           PASS connect all tools dry-run
+C3     connect        any        exit=0           PASS disconnect cursor noop or ok
+L4     lifecycle      any        exit=0           PASS pause then activate repo
+L6     lifecycle      any        exit=1           PASS sync-now on repo
+L1     lifecycle      any        exit=0           PASS list managed repos
+L2     lifecycle      any        exit=0           PASS migration check all
+L3     lifecycle      any        exit=0           PASS list while globally stopped
+D1     disconnect     any        exit=0           PASS disconnect cursor (may noop if not conne

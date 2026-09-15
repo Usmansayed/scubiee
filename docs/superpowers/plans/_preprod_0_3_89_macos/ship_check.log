@@ -1,0 +1,110 @@
+[scubiee] mcp attached host-agnostic client_id=mcp:copilot@proc-27329 warm_started=1 deferred=True auto_warm=0 open=None
+[scubiee] WARNING: Another scubiee install is active at /Users/usmansayed/Downloads/hidden-context-engine-/.venv. Two installs sharing ~/.scubiee will fight over the daemon. Uninstall one: pip uninstall scubiee OR uv tool uninstall scubiee
+[scubiee] WARNING: Another scubiee install is active at /Users/usmansayed/Downloads/hidden-context-engine-/.venv. Two installs sharing ~/.scubiee will fight over the daemon. Uninstall one: pip uninstall scubiee OR uv tool uninstall scubiee
+Loading faiss.
+Successfully loaded faiss.
+HTTP Request: GET http://127.0.0.1:8765/health "HTTP/1.0 200 OK"
+HTTP Request: GET http://127.0.0.1:8765/health "HTTP/1.0 200 OK"
+HTTP Request: GET http://127.0.0.1:8765/health "HTTP/1.0 200 OK"
+HTTP Request: GET http://127.0.0.1:8765/health "HTTP/1.0 200 OK"
+HTTP Request: POST http://127.0.0.1:8765/v1/client/register "HTTP/1.0 200 OK"
+HTTP Request: GET http://127.0.0.1:8765/health "HTTP/1.0 200 OK"
+HTTP Request: POST http://127.0.0.1:8765/v1/open "HTTP/1.0 200 OK"
+HTTP Request: GET http://127.0.0.1:8765/health "HTTP/1.0 200 OK"
+HTTP Request: GET http://127.0.0.1:8765/health "HTTP/1.0 200 OK"
+HTTP Request: POST http://127.0.0.1:8765/v1/search "HTTP/1.0 200 OK"
+HTTP Request: POST http://127.0.0.1:8765/v1/search "HTTP/1.0 200 OK"
+HTTP Request: POST http://127.0.0.1:8765/v1/client/touch "HTTP/1.0 200 OK"
+HTTP Request: POST http://127.0.0.1:8765/v1/client/touch "HTTP/1.0 200 OK"
+HTTP Request: POST http://127.0.0.1:8765/v1/search "HTTP/1.0 200 OK"
+HTTP Request: POST http://127.0.0.1:8765/v1/embed/prewarm "HTTP/1.0 200 OK"
+[scubiee] locate-worker prewarm ok=1 soft=1 imports_ms=79.6 probe_ok=1 ast_ok=0 total_ms=1224.4
+HTTP Request: POST http://127.0.0.1:8765/v1/client/touch "HTTP/1.0 200 OK"
+HTTP Request: GET http://127.0.0.1:8765/health "HTTP/1.0 200 OK"
+HTTP Request: POST http://127.0.0.1:8765/v1/client/touch "HTTP/1.0 200 OK"
+HTTP Request: POST http://127.0.0.1:8765/v1/client/touch "HTTP/1.0 200 OK"
+HTTP Request: GET http://127.0.0.1:8765/health "HTTP/1.0 200 OK"
+HTTP Request: POST http://127.0.0.1:8765/v1/client/touch "HTTP/1.0 200 OK"
+HTTP Request: POST http://127.0.0.1:8765/v1/client/touch "HTTP/1.0 200 OK"
+HTTP Request: GET http://127.0.0.1:8765/health "HTTP/1.0 200 OK"
+HTTP Request: GET http://127.0.0.1:8765/health "HTTP/1.0 200 OK"
+HTTP Request: GET http://127.0.0.1:8765/health "HTTP/1.0 200 OK"
+HTTP Request: GET http://127.0.0.1:8765/health "HTTP/1.0 200 OK"
+HTTP Request: POST http://127.0.0.1:8765/v1/client/touch "HTTP/1.0 200 OK"
+HTTP Request: POST http://127.0.0.1:8765/v1/client/touch "HTTP/1.0 200 OK"
+{
+  "ok": true,
+  "checks": {
+    "phase_tools": {
+      "ok": true,
+      "tools": [
+        "collect_hot_context",
+        "expand",
+        "expand_context",
+        "gate",
+        "map",
+        "pack_context",
+        "status",
+        "workspace"
+      ],
+      "missing": [],
+      "leaked": []
+    },
+    "registered": {
+      "ok": true,
+      "count": 8,
+      "missing": [],
+      "leaked": [],
+      "tools": [
+        "collect_hot_context",
+        "expand",
+        "expand_context",
+        "gate",
+        "map",
+        "pack_context",
+        "status",
+        "workspace"
+      ]
+    },
+    "gate": {
+      "ok": true,
+      "preview": "1:ce_b3d502adb82ebfccece53f626cc69ca2 warming retry:3 sid:copilot@chat-07e2864a-d023-4639-bd16-f00761fd53ff"
+    },
+    "map": {
+      "ok": true,
+      "count": null,
+      "seed_file": "packages/pipeline/context_trace.py",
+      "seed_symbol": ""
+    },
+    "pack_context": {
+      "ok": true,
+      "engine": null,
+      "heatmap_n": 8,
+      "seed": "packages/pipeline/context_trace.py::run_pack_context",
+      "bodies_present": false
+    },
+    "expand_context": {
+      "ok": true,
+      "count": 10,
+      "direction": "callees"
+    },
+    "status": {
+      "ok": true,
+      "preview": "{\"ok\":true,\"tool\":\"status\",\"server\":\"scubiee\",\"surface\":\"phase\",\"managed\":true,\"should_use_mcp\":true,\"should_retry_statu",
+      "engine_healthy": true
+    },
+    "workspace": {
+      "ok": true,
+      "preview": "{\"ok\":true,\"tool\":\"workspace\",\"action\":\"show\",\"session_id\":\"copilot@chat-07e2864a-d023-4639-bd16-f00761fd53ff\",\"topic\":\""
+    },
+    "collect_hot_context": {
+      "ok": true,
+      "preview": "{\"ok\":true,\"tool\":\"collect_hot_context\",\"pack\":[{\"id\":\"packages/pipeline/context_trace.py::run_pack_context\",\"loc\":\"pack"
+    }
+  },
+  "errors": [],
+  "elapsed_ms": 13943.5
+}
+wrote /Users/usmansayed/Downloads/hidden-context-engine-/docs/superpowers/plans/2026-09-06-mcp-ship-check.json
+[scubiee] mcp leave client_id=mcp:copilot@proc-27329 remaining=None idle=None
+HTTP Request: GET http://127.0.0.1:8765/health "HTTP/1.0 200 OK"

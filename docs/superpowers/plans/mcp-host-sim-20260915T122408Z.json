@@ -1,0 +1,249 @@
+{
+  "ok": true,
+  "scenario": "kiro_cold_attach_steady_leave",
+  "lane": "a",
+  "live": true,
+  "repo": "/Users/usmansayed/Downloads/hidden-context-engine-",
+  "project_id": "ce_b3d502adb82ebfccece53f626cc69ca2",
+  "engine_url": "http://127.0.0.1:8765",
+  "phases": [
+    {
+      "name": "clean_slate",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 1459.1,
+      "budget_ms": null,
+      "evidence": {
+        "ok": true,
+        "tick": {
+          "engine": {
+            "running": false,
+            "pid": 27936,
+            "rss_mb": null,
+            "health_ok": false,
+            "warm_ready": false,
+            "embedder_loaded": false,
+            "soft_search_ready": false,
+            "at": 1789475043.885174
+          },
+          "clients": {
+            "active_clients": 0,
+            "client_ids": [],
+            "desired_mode": "run",
+            "last_client_left_at": null,
+            "last_activity": 1789475035.763793,
+            "raw_clients": {}
+          },
+          "ctx_home": "/Users/usmansayed/.scubiee"
+        },
+        "engine_still_up": false,
+        "kill": {
+          "exclude_bridge": false,
+          "stop_engine_workers": {
+            "ok": true,
+            "killed": [
+              27936
+            ],
+            "skipped": []
+          },
+          "stop_all": {
+            "stop_watchdog": {
+              "ok": true,
+              "stopped_pid": 27944,
+              "running": false
+            },
+            "stop_daemon": {
+              "ok": true,
+              "running": false,
+              "killed": [],
+              "skipped_pids": [],
+              "sweep": {
+                "ok": true,
+                "killed": [],
+                "remaining_pids": [],
+                "still_healthy": false,
+                "port": 8765
+              },
+              "stop_reason": "user"
+            },
+            "stop_uv_tool_processes": {
+              "ok": true,
+              "skipped": "not_uv_tool"
+            },
+            "extra_killed": [],
+            "extra_failed": [
+              300
+            ],
+            "remaining": [],
+            "remaining_pids": [],
+            "ok": true,
+            "self_pid": 27995
+          },
+          "killed_rounds": [
+            []
+          ],
+          "skipped_bridge_pids": [],
+          "remaining": [],
+          "remaining_pids": [],
+          "ok": true,
+          "self_pid": 27995
+        }
+      }
+    },
+    {
+      "name": "host_start",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 579.0,
+      "budget_ms": null,
+      "evidence": {
+        "ok": true,
+        "pid": 28012,
+        "server": {
+          "name": "scubiee",
+          "version": "0.3.89"
+        }
+      }
+    },
+    {
+      "name": "auto_warm",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 3242.7,
+      "budget_ms": 30000.0,
+      "evidence": {
+        "ok": true,
+        "warm": true,
+        "clients": 1,
+        "tick": {
+          "engine": {
+            "running": true,
+            "pid": 28014,
+            "rss_mb": 443.0,
+            "health_ok": true,
+            "warm_ready": true,
+            "embedder_loaded": false,
+            "soft_search_ready": true,
+            "at": 1789475047.698776,
+            "embed_prewarm_running": false,
+            "chunks": 5710
+          },
+          "clients": {
+            "active_clients": 1,
+            "client_ids": [
+              "mcp:kiro@bridge-28012"
+            ],
+            "desired_mode": "run",
+            "last_client_left_at": null,
+            "last_activity": 1789475044.532955,
+            "raw_clients": {
+              "mcp:kiro@bridge-28012": {
+                "client_id": "mcp:kiro@bridge-28012",
+                "host": "kiro",
+                "kind": "bridge",
+                "last_seen_at": 1789475043.986332,
+                "pid": 28012,
+                "registered_at": 1789475043.986332
+              }
+            }
+          },
+          "ctx_home": "/Users/usmansayed/.scubiee"
+        },
+        "elapsed_from_host_s": 3.24,
+        "soft_first_from_host_s": 0.67,
+        "soft_settle_s": 2.57,
+        "maps_before_soft": 0
+      }
+    },
+    {
+      "name": "map_first",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 3.3,
+      "budget_ms": 1000.0,
+      "evidence": {
+        "ok": true,
+        "code": null,
+        "elapsed_ms": 3.3,
+        "steady_sla_ok": true,
+        "true_first_map": false,
+        "settle_s": 0.0,
+        "soft_first_from_host_s": 0.67,
+        "top": {
+          "file": "packages/pipeline/lifecycle_runtime.py",
+          "symbol": "",
+          "loc": "packages/pipeline/lifecycle_runtime.py:829-902",
+          "score": 12.1094,
+          "kind": "other",
+          "seed_incomplete": true
+        },
+        "data_ok": true,
+        "error": null,
+        "raw_keys": [
+          "_elapsed_ms",
+          "cards",
+          "elapsed_ms",
+          "g",
+          "next",
+          "ok",
+          "session_id",
+          "suggested_seed",
+          "suggested_seeds",
+          "tool"
+        ]
+      }
+    },
+    {
+      "name": "pack_first",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 3.4,
+      "budget_ms": 1000.0,
+      "evidence": {
+        "ok": true,
+        "code": null,
+        "elapsed_ms": 3.4,
+        "heatmap_n": 8,
+        "data_ok": true
+      }
+    },
+    {
+      "name": "expand_first",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 141.1,
+      "budget_ms": 20000,
+      "evidence": {
+        "ok": true,
+        "code": null,
+        "elapsed_ms": 131.5,
+        "hydrate_ms": 126.5,
+        "hydrate_source": "bundle",
+        "timings": {
+          "struct_ms": 0.0,
+          "tracer_ms": 0.0,
+          "tracer_used": false
+        },
+        "bridges_before": 1,
+        "bridges_after": 1,
+        "delta_n": 8,
+        "error": null,
+        "data_ok": true
+      }
+    },
+    {
+      "name": "idle_hold",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 0.0,
+      "budget_ms": null,
+      "evidence": {
+        "ok": true,
+        "skipped": true
+      }
+    }
+  ],
+  "errors": [],
+  "idle_s": 0,
+  "elapsed_ms": 6105.1
+}

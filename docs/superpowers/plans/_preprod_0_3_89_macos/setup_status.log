@@ -1,0 +1,63 @@
+{
+  "accel_path": "/Users/usmansayed/.scubiee/accel.json",
+  "preferred_profile": {
+    "profile": "mlx",
+    "provider": "MLX",
+    "device_id": 0,
+    "batch_size": 48,
+    "backend": "mlx",
+    "model": "nomic-ai/CodeRankEmbed",
+    "model_source": "jamie8johnson/CodeRankEmbed-onnx",
+    "onnx_file": "onnx/model_fp16.onnx",
+    "texts_per_sec": 98.796,
+    "meets_target": true,
+    "reason": "Apple Silicon GPU via MLX FP16 \u2014 Metal, no CoreML/ORT for embed",
+    "detected": {
+      "os": "Darwin",
+      "machine": "arm64",
+      "python": "3.10.21",
+      "nvidia": false,
+      "gpus": [
+        {
+          "name": "Apple Silicon GPU",
+          "adapter_ram": 0,
+          "backend": "metal"
+        }
+      ],
+      "cpu_count": 10,
+      "suggested_dml_device_id": 0,
+      "apple_silicon": true,
+      "coreml_compute_units": "CPUAndGPU",
+      "windows_discrete_amd_nvidia": false
+    },
+    "installed_at": "2026-09-15T12:16:38.678462+00:00",
+    "batch_calibration": {
+      "ok": true,
+      "winner": 48,
+      "texts_per_sec": 98.796,
+      "candidates": {
+        "48": 98.796
+      },
+      "reason": "MLX FP16 production batch (bootstrap memory budget)",
+      "dtype": "float16"
+    },
+    "envelope": {
+      "tier": "standard",
+      "batch_ceiling": 48,
+      "embed_workers": 1,
+      "index_workers": 2,
+      "aggressive_unload": false,
+      "queue_limit": 2
+    },
+    "hardware_fingerprint": "46d91aa120c5b7a4638097406074366b099312d1a71f644a40270a14621ae910",
+    "cuda_fallback_hint": ""
+  },
+  "envelope": {
+    "tier": "standard",
+    "batch_ceiling": 48,
+    "embed_workers": 1,
+    "index_workers": 2,
+    "aggressive_unload": false,
+    "queue_limit": 2
+  }
+}
