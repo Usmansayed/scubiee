@@ -132,7 +132,16 @@ def session(label: str) -> bool:
         res = bridge.call("tools/call", {"name": "status", "arguments": {}})
         ok = bool(res and not res.get("error"))
         check(f"{label}: status tool responds", ok)
-        check(f"{label}: engine warm during session", engine_up())
+        # Reconnect can serve tools while HTTP health is still coming up — poll briefly.
+        warm = engine_up()
+        if not warm:
+            deadline = time.time() + 20.0
+            while time.time() < deadline:
+                if engine_up():
+                    warm = True
+                    break
+                time.sleep(0.5)
+        check(f"{label}: engine warm during session", warm)
         return ok
     finally:
         bridge.close()

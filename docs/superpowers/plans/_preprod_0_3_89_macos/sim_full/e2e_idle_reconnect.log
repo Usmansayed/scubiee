@@ -1,0 +1,22 @@
+============================================================
+  MCP idle shutdown + reconnect  (idle window 15.0s)
+============================================================
+
+  -- session 1 --
+  [PASS] session 1: handshake
+  [PASS] session 1: tools listed - 8 tools
+  [PASS] session 1: status tool responds
+  [PASS] session 1: engine warm during session
+
+  -- client closed: waiting for idle shutdown --
+  [PASS] engine stopped after disconnect - 19.7s
+  [PASS] shutdown not premature (>= idle window) - 19.7s vs 15.0s
+
+  -- session 2 (reconnect) --
+  [PASS] session 2 (reconnect): handshake
+  [PASS] session 2 (reconnect): tools listed - 8 tools
+  [PASS] session 2 (reconnect): status tool responds
+  [PASS] session 2 (reconnect): engine warm during session
+
+============================================================
+  ALL CHECKS PASSED

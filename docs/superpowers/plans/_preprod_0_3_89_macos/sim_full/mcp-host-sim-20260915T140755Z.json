@@ -1,0 +1,375 @@
+{
+  "ok": false,
+  "scenario": "kiro_cold_attach_steady_leave",
+  "lane": "both",
+  "live": true,
+  "repo": "/Users/usmansayed/Downloads/hidden-context-engine-",
+  "project_id": "ce_b3d502adb82ebfccece53f626cc69ca2",
+  "engine_url": "http://127.0.0.1:8765",
+  "phases": [
+    {
+      "name": "clean_slate",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 1473.7,
+      "budget_ms": null,
+      "evidence": {
+        "ok": true,
+        "tick": {
+          "engine": {
+            "running": false,
+            "pid": 31898,
+            "rss_mb": null,
+            "health_ok": false,
+            "warm_ready": false,
+            "embedder_loaded": false,
+            "soft_search_ready": false,
+            "at": 1789481139.5762858
+          },
+          "clients": {
+            "active_clients": 0,
+            "client_ids": [],
+            "desired_mode": "run",
+            "last_client_left_at": null,
+            "last_activity": 1789481135.012387,
+            "raw_clients": {}
+          },
+          "ctx_home": "/Users/usmansayed/.scubiee"
+        },
+        "engine_still_up": false,
+        "kill": {
+          "exclude_bridge": false,
+          "stop_engine_workers": {
+            "ok": true,
+            "killed": [
+              31775,
+              31898
+            ],
+            "skipped": []
+          },
+          "stop_all": {
+            "stop_watchdog": {
+              "ok": true,
+              "stopped_pid": 31775,
+              "running": false
+            },
+            "stop_daemon": {
+              "ok": true,
+              "running": false,
+              "killed": [],
+              "skipped_pids": [],
+              "sweep": {
+                "ok": true,
+                "killed": [],
+                "remaining_pids": [],
+                "still_healthy": false,
+                "port": 8765
+              },
+              "stop_reason": "user"
+            },
+            "stop_uv_tool_processes": {
+              "ok": true,
+              "skipped": "not_uv_tool"
+            },
+            "extra_killed": [
+              31909
+            ],
+            "extra_failed": [
+              300
+            ],
+            "remaining": [],
+            "remaining_pids": [],
+            "ok": true,
+            "self_pid": 31906
+          },
+          "killed_rounds": [
+            []
+          ],
+          "skipped_bridge_pids": [],
+          "remaining": [],
+          "remaining_pids": [],
+          "ok": true,
+          "self_pid": 31906
+        }
+      }
+    },
+    {
+      "name": "host_start",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 505.5,
+      "budget_ms": null,
+      "evidence": {
+        "ok": true,
+        "pid": 31920,
+        "server": {
+          "name": "scubiee",
+          "version": "0.3.89"
+        }
+      }
+    },
+    {
+      "name": "auto_warm",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 2601.3,
+      "budget_ms": 30000.0,
+      "evidence": {
+        "ok": true,
+        "warm": true,
+        "clients": 1,
+        "tick": {
+          "engine": {
+            "running": true,
+            "pid": 31922,
+            "rss_mb": 498.3,
+            "health_ok": true,
+            "warm_ready": true,
+            "embedder_loaded": false,
+            "soft_search_ready": true,
+            "at": 1789481142.675319,
+            "embed_prewarm_running": false,
+            "chunks": 6277
+          },
+          "clients": {
+            "active_clients": 1,
+            "client_ids": [
+              "mcp:kiro@bridge-31920"
+            ],
+            "desired_mode": "run",
+            "last_client_left_at": null,
+            "last_activity": 1789481140.156301,
+            "raw_clients": {
+              "mcp:kiro@bridge-31920": {
+                "client_id": "mcp:kiro@bridge-31920",
+                "host": "kiro",
+                "kind": "bridge",
+                "last_seen_at": 1789481139.6704068,
+                "pid": 31920,
+                "registered_at": 1789481139.6704068
+              }
+            }
+          },
+          "ctx_home": "/Users/usmansayed/.scubiee"
+        },
+        "elapsed_from_host_s": 2.6,
+        "soft_first_from_host_s": 0.05,
+        "soft_settle_s": 2.55,
+        "maps_before_soft": 0
+      }
+    },
+    {
+      "name": "map_first",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 5.0,
+      "budget_ms": 1000.0,
+      "evidence": {
+        "ok": true,
+        "code": null,
+        "elapsed_ms": 5.0,
+        "steady_sla_ok": true,
+        "true_first_map": false,
+        "settle_s": 0.0,
+        "soft_first_from_host_s": 0.05,
+        "top": {
+          "file": "packages/pipeline/lifecycle_runtime.py",
+          "symbol": "enforce_mcp_warm_contract",
+          "loc": "packages/pipeline/lifecycle_runtime.py:850-886",
+          "score": 24.5184,
+          "kind": "function"
+        },
+        "data_ok": true,
+        "error": null,
+        "raw_keys": [
+          "_elapsed_ms",
+          "cards",
+          "elapsed_ms",
+          "g",
+          "next",
+          "ok",
+          "session_id",
+          "suggested_seed",
+          "suggested_seeds",
+          "tool"
+        ]
+      }
+    },
+    {
+      "name": "pack_first",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 3.9,
+      "budget_ms": 1000.0,
+      "evidence": {
+        "ok": true,
+        "code": null,
+        "elapsed_ms": 3.9,
+        "heatmap_n": 8,
+        "data_ok": true
+      }
+    },
+    {
+      "name": "expand_first",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 130.6,
+      "budget_ms": 20000,
+      "evidence": {
+        "ok": true,
+        "code": null,
+        "elapsed_ms": 121.2,
+        "hydrate_ms": 116.3,
+        "hydrate_source": "bundle",
+        "timings": {
+          "struct_ms": 0.0,
+          "tracer_ms": 0.0,
+          "tracer_used": false
+        },
+        "bridges_before": 1,
+        "bridges_after": 1,
+        "delta_n": 0,
+        "error": null,
+        "data_ok": true
+      }
+    },
+    {
+      "name": "idle_hold",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 120390.3,
+      "budget_ms": null,
+      "evidence": {
+        "ok": true,
+        "samples_n": 24,
+        "last": {
+          "t": 1789481258.354288,
+          "running": true,
+          "clients": 2
+        }
+      }
+    },
+    {
+      "name": "post_idle_map",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 5.5,
+      "budget_ms": 1000.0,
+      "evidence": {
+        "ok": true,
+        "code": null,
+        "elapsed_ms": 5.5
+      }
+    },
+    {
+      "name": "post_idle_pack",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 4.3,
+      "budget_ms": 1000.0,
+      "evidence": {
+        "ok": true,
+        "code": null,
+        "elapsed_ms": 4.3
+      }
+    },
+    {
+      "name": "host_stop",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 1.4,
+      "budget_ms": null,
+      "evidence": {
+        "ok": true,
+        "returncode": -15
+      }
+    },
+    {
+      "name": "unload",
+      "ok": false,
+      "code": "UNLOAD_TIMEOUT",
+      "elapsed_ms": 12412.3,
+      "budget_ms": 12000.0,
+      "evidence": {
+        "ok": false,
+        "code": "UNLOAD_TIMEOUT",
+        "last": {
+          "engine": {
+            "running": true,
+            "pid": 31922,
+            "rss_mb": 295.6,
+            "health_ok": true,
+            "warm_ready": true,
+            "embedder_loaded": false,
+            "soft_search_ready": true,
+            "at": 1789481275.3342779,
+            "embed_prewarm_running": false,
+            "chunks": 6277
+          },
+          "clients": {
+            "active_clients": 0,
+            "client_ids": [],
+            "desired_mode": "run",
+            "last_client_left_at": 1789481263.437412,
+            "last_activity": 1789481263.4362829,
+            "raw_clients": {}
+          },
+          "ctx_home": "/Users/usmansayed/.scubiee"
+        },
+        "log_tail": [
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"POST /v1/client/touch HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"POST /v1/client/touch HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"POST /v1/client/touch HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"POST /v1/client/touch HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"POST /v1/note_locate HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"POST /v1/client/touch HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"POST /v1/client/touch HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "[lifecycle] debounce_arm last_client_left_at=1789481263.437 wait_s=10.0",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -"
+        ],
+        "waited_s": 12.41
+      }
+    }
+  ],
+  "errors": [
+    "unload: UNLOAD_TIMEOUT \u2014 {'ok': False, 'code': 'UNLOAD_TIMEOUT', 'last': {'engine': {'running': True, 'pid': 31922, 'rss_mb': 295.6, 'health_ok': True, 'warm_ready': True, 'embedder_loaded': False, 'soft_search_ready': True, 'at': 1789481275.3342779, 'embed_prewarm_running': False, 'chunks': 6277}, 'clients': {'active_clients': 0, 'client_ids': [], 'desired_mode': 'run', 'last_client_left_at': 1789481263.437412, 'last_activity': 1789481263.4362829, 'raw_clients': {}}, 'ctx_home': '/Users/usmansayed/.scubiee'}, 'log_tail': ['127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"POST /v1/client/touch HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"POST /v1/client/touch HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"POST /v1/client/touch HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"POST /v1/client/touch HTTP/1.1\" 200 -', '127.0.0.1 - \"POST /v1/note_locate HTTP/1.1\" 200 -', '127.0.0.1 - \"POST /v1/client/touch HTTP/1.1\" 200 -', '127.0.0.1 - \"POST /v1/client/touch HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '[lifecycle] debounce_arm last_client_left_at=1789481263.437 wait_s=10.0', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -'], 'waited_s': 12.41}"
+  ],
+  "idle_s": 120.0,
+  "kiro": {
+    "ok": true,
+    "deferred": true,
+    "hint": "Kiro MCP pins written. Lane B full auto-session is best-effort in v1; run BridgeHost (--lane a) for SLA gates, then open Kiro against this repo."
+  },
+  "elapsed_ms": 137732.8
+}

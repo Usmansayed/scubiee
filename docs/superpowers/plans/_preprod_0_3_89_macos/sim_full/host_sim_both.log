@@ -1,0 +1,44 @@
+[mcp_host_sim] using real CTX_HOME (~/.scubiee)
+[mcp_host_sim] clean_slate: killing leftover MCP procs…
+[mcp_host_sim] clean_slate: stopping engine…
+[mcp_host_sim] clean_slate: running=False
+[mcp_host_sim] host_start: spawning bridge…
+[mcp_host_sim] bridge cmd='/Users/usmansayed/.local/bin/scubiee-mcp-bridge' args=[] pid=31920
+[mcp_host_sim] host_start: ok=True pid=31920
+[mcp_host_sim] warm poll running=True embedder=False soft=True health=True clients=1
+[mcp_host_sim] soft_ready FIRST at +0.05s from host_start (before any MCP map)
+[mcp_host_sim] warm poll running=True embedder=False soft=True health=True clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=True health=True clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=True health=True clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=True health=True clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=True health=True clients=1
+[mcp_host_sim] locate_warmup map (untimed)…
+[mcp_host_sim] map_first…
+[mcp_host_sim] map_first done ok=True ms=5.0 err=None soft_was_ready_at=+0.05s
+[mcp_host_sim] expand_first ms=121.2 hydrate_ms=116.3 hydrate_source=bundle timings={'struct_ms': 0.0, 'tracer_ms': 0.0, 'tracer_used': False} delta_n=0 err=None
+[mcp_host_sim] post_idle warmup map (untimed)…
+[mcp_host_sim] post_idle_map…
+[lifecycle] debounce_arm last_client_left_at=1789481263.437 wait_s=10.0
+{
+  "ok": false,
+  "lane": "both",
+  "elapsed_ms": 137732.8,
+  "errors": [
+    "unload: UNLOAD_TIMEOUT \u2014 {'ok': False, 'code': 'UNLOAD_TIMEOUT', 'last': {'engine': {'running': True, 'pid': 31922, 'rss_mb': 295.6, 'health_ok': True, 'warm_ready': True, 'embedder_loaded': False, 'soft_search_ready': True, 'at': 1789481275.3342779, 'embed_prewarm_running': False, 'chunks': 6277}, 'clients': {'active_clients': 0, 'client_ids': [], 'desired_mode': 'run', 'last_client_left_at': 1789481263.437412, 'last_activity': 1789481263.4362829, 'raw_clients': {}}, 'ctx_home': '/Users/usmansayed/.scubiee'}, 'log_tail': ['127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"POST /v1/client/touch HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"POST /v1/client/touch HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"POST /v1/client/touch HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"POST /v1/client/touch HTTP/1.1\" 200 -', '127.0.0.1 - \"POST /v1/note_locate HTTP/1.1\" 200 -', '127.0.0.1 - \"POST /v1/client/touch HTTP/1.1\" 200 -', '127.0.0.1 - \"POST /v1/client/touch HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '[lifecycle] debounce_arm last_client_left_at=1789481263.437 wait_s=10.0', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -'], 'waited_s': 12.41}"
+  ],
+  "report_paths": {
+    "json": "docs/superpowers/plans/_preprod_0_3_89_macos/sim_full/mcp-host-sim-20260915T140755Z.json",
+    "md": "docs/superpowers/plans/_preprod_0_3_89_macos/sim_full/mcp-host-sim-20260915T140755Z.md"
+  }
+}
+  phase clean_slate: ok=True ms=1473.7 code=None
+  phase host_start: ok=True ms=505.5 code=None
+  phase auto_warm: ok=True ms=2601.3 code=None
+  phase map_first: ok=True ms=5.0 code=None
+  phase pack_first: ok=True ms=3.9 code=None
+  phase expand_first: ok=True ms=130.6 code=None
+  phase idle_hold: ok=True ms=120390.3 code=None
+  phase post_idle_map: ok=True ms=5.5 code=None
+  phase post_idle_pack: ok=True ms=4.3 code=None
+  phase host_stop: ok=True ms=1.4 code=None
+  phase unload: ok=False ms=12412.3 code=UNLOAD_TIMEOUT

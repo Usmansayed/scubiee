@@ -1,0 +1,11 @@
+[mcp_host_sim] using real CTX_HOME (~/.scubiee)
+{
+  "ok": true,
+  "lane": "b",
+  "elapsed_ms": 9.3,
+  "errors": [],
+  "report_paths": {
+    "json": "docs/superpowers/plans/_preprod_0_3_89_macos/sim_full/mcp-host-sim-20260915T141022Z.json",
+    "md": "docs/superpowers/plans/_preprod_0_3_89_macos/sim_full/mcp-host-sim-20260915T141022Z.md"
+  }
+}

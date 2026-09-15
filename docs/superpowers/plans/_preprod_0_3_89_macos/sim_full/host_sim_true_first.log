@@ -1,0 +1,81 @@
+[mcp_host_sim] using real CTX_HOME (~/.scubiee)
+[mcp_host_sim] clean_slate: killing leftover MCP procs…
+[mcp_host_sim] clean_slate: stopping engine…
+[mcp_host_sim] clean_slate: running=False
+[mcp_host_sim] host_start: spawning bridge…
+[mcp_host_sim] bridge cmd='/Users/usmansayed/.local/bin/scubiee-mcp-bridge' args=[] pid=32232
+[mcp_host_sim] host_start: ok=True pid=32232
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=True clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=False clients=1
+{
+  "ok": false,
+  "lane": "a",
+  "elapsed_ms": 32305.3,
+  "errors": [
+    "auto_warm: WARM_TIMEOUT \u2014 {'ok': False, 'code': 'WARM_TIMEOUT', 'last': {'tick': {'engine': {'running': True, 'pid': 32234, 'rss_mb': None, 'health_ok': False, 'warm_ready': False, 'embedder_loaded': False, 'soft_search_ready': False, 'at': 1789481454.761806}, 'clients': {'active_clients': 1, 'client_ids': ['mcp:kiro@bridge-32232'], 'desired_mode': 'run', 'last_client_left_at': None, 'last_activity': 1789481425.128564, 'raw_clients': {'mcp:kiro@bridge-32232': {'client_id': 'mcp:kiro@bridge-32232', 'host': 'kiro', 'kind': 'bridge', 'last_seen_at': 1789481424.5731452, 'pid': 32232, 'registered_at': 1789481424.5731452}}}, 'ctx_home': '/Users/usmansayed/.scubiee'}}, 'soft_first_from_host_s': None, 'log_tail': ['[engine] opening /Users/usmansayed/Downloads/hidden-context-engine- \u2026', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '', '--- start 2026-09-15 19:38:50 ---', '[engine] Scubiee starting on http://127.0.0.1:8765', '[engine] CTX_HOME=(default)', '[engine] dashboard http://127.0.0.1:8765/dashboard', '[engine] listening +0.00s \u2014 MCP/CLI should use CTX_ENGINE_URL=http://127.0.0.1:8765', \"[engine] job join note: {'ok': True, 'skipped': True, 'platform': 'posix'}\", '[engine] cpu affinity fallback: {\\'ok\\': False, \\'error\\': \"\\'Process\\' object has no attribute \\'cpu_affinity\\'\"}', '[engine] opening /Users/usmansayed/Downloads/hidden-context-engine- \u2026', '', '--- start 2026-09-15 19:40:24 ---', '[engine] Scubiee starting on http://127.0.0.1:8765', '[engine] CTX_HOME=(default)', '[engine] dashboard http://127.0.0.1:8765/dashboard', '[engine] listening +0.00s \u2014 MCP/CLI should use CTX_ENGINE_URL=http://127.0.0.1:8765', \"[engine] job join note: {'ok': True, 'skipped': True, 'platform': 'posix'}\", '[engine] cpu affinity fallback: {\\'ok\\': False, \\'error\\': \"\\'Process\\' object has no attribute \\'cpu_affinity\\'\"}', '[engine] opening /Users/usmansayed/Downloads/hidden-context-engine- \u2026', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '[keeper] WARNING: root-probe every 300000ms for /Users/usmansayed/Downloads/hidden-context-engine-', '127.0.0.1 - \"POST /v1/open HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '/Users/usmansayed/.local/share/uv/tools/scubiee/lib/python3.10/site-packages/conductor/dense_index.py:50: RuntimeWarning: divide by zero encountered in matmul', '  return self.matrix @ q', '/Users/usmansayed/.local/share/uv/tools/scubiee/lib/python3.10/site-packages/conductor/dense_index.py:50: RuntimeWarning: overflow encountered in matmul', '  return self.matrix @ q', '/Users/usmansayed/.local/share/uv/tools/scubiee/lib/python3.10/site-packages/conductor/dense_index.py:50: RuntimeWarning: invalid value encountered in matmul', '  return self.matrix @ q', '127.0.0.1 - \"POST /v1/search HTTP/1.1\" 200 -']}"
+  ],
+  "report_paths": {
+    "json": "docs/superpowers/plans/_preprod_0_3_89_macos/sim_full/mcp-host-sim-20260915T141055Z.json",
+    "md": "docs/superpowers/plans/_preprod_0_3_89_macos/sim_full/mcp-host-sim-20260915T141055Z.md"
+  }
+}
+  phase clean_slate: ok=True ms=1496.3 code=None
+  phase host_start: ok=True ms=560.1 code=None
+  phase auto_warm: ok=False ms=30244.1 code=WARM_TIMEOUT

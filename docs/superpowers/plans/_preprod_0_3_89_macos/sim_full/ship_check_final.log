@@ -1,0 +1,103 @@
+HTTP Request: GET http://127.0.0.1:8765/health "HTTP/1.0 200 OK"
+[scubiee] mcp attached host-agnostic client_id=mcp:copilot@proc-32956 warm_started=1 deferred=False auto_warm=0 open=None
+HTTP Request: GET http://127.0.0.1:8765/health "HTTP/1.0 200 OK"
+HTTP Request: GET http://127.0.0.1:8765/health "HTTP/1.0 200 OK"
+HTTP Request: GET http://127.0.0.1:8765/health "HTTP/1.0 200 OK"
+HTTP Request: GET http://127.0.0.1:8765/health "HTTP/1.0 200 OK"
+HTTP Request: POST http://127.0.0.1:8765/v1/open "HTTP/1.0 200 OK"
+HTTP Request: POST http://127.0.0.1:8765/v1/open "HTTP/1.0 200 OK"
+HTTP Request: GET http://127.0.0.1:8765/health "HTTP/1.0 200 OK"
+HTTP Request: GET http://127.0.0.1:8765/health "HTTP/1.0 200 OK"
+HTTP Request: GET http://127.0.0.1:8765/health "HTTP/1.0 200 OK"
+HTTP Request: GET http://127.0.0.1:8765/health "HTTP/1.0 200 OK"
+HTTP Request: GET http://127.0.0.1:8765/health "HTTP/1.0 200 OK"
+HTTP Request: POST http://127.0.0.1:8765/v1/client/register "HTTP/1.0 200 OK"
+HTTP Request: GET http://127.0.0.1:8765/health "HTTP/1.0 200 OK"
+HTTP Request: POST http://127.0.0.1:8765/v1/client/touch "HTTP/1.0 200 OK"
+HTTP Request: POST http://127.0.0.1:8765/v1/search "HTTP/1.0 200 OK"
+HTTP Request: POST http://127.0.0.1:8765/v1/note_locate "HTTP/1.0 200 OK"
+HTTP Request: POST http://127.0.0.1:8765/v1/client/touch "HTTP/1.0 200 OK"
+HTTP Request: POST http://127.0.0.1:8765/v1/client/touch "HTTP/1.0 200 OK"
+HTTP Request: POST http://127.0.0.1:8765/v1/client/touch "HTTP/1.0 200 OK"
+HTTP Request: GET http://127.0.0.1:8765/health "HTTP/1.0 200 OK"
+HTTP Request: GET http://127.0.0.1:8765/health "HTTP/1.0 200 OK"
+HTTP Request: GET http://127.0.0.1:8765/health "HTTP/1.0 200 OK"
+HTTP Request: POST http://127.0.0.1:8765/v1/client/touch "HTTP/1.0 200 OK"
+HTTP Request: POST http://127.0.0.1:8765/v1/client/touch "HTTP/1.0 200 OK"
+{
+  "ok": true,
+  "checks": {
+    "phase_tools": {
+      "ok": true,
+      "tools": [
+        "collect_hot_context",
+        "expand",
+        "expand_context",
+        "gate",
+        "map",
+        "pack_context",
+        "status",
+        "workspace"
+      ],
+      "missing": [],
+      "leaked": []
+    },
+    "registered": {
+      "ok": true,
+      "count": 8,
+      "missing": [],
+      "leaked": [],
+      "tools": [
+        "collect_hot_context",
+        "expand",
+        "expand_context",
+        "gate",
+        "map",
+        "pack_context",
+        "status",
+        "workspace"
+      ]
+    },
+    "gate": {
+      "ok": true,
+      "preview": "1:ce_b3d502adb82ebfccece53f626cc69ca2 sid:copilot@chat-07e2864a-d023-4639-bd16-f00761fd53ff"
+    },
+    "map": {
+      "ok": true,
+      "count": null,
+      "seed_file": "packages/pipeline/context_trace.py",
+      "seed_symbol": "run_pack_context"
+    },
+    "pack_context": {
+      "ok": true,
+      "engine": null,
+      "heatmap_n": 8,
+      "seed": "packages/pipeline/context_trace.py::run_pack_context",
+      "bodies_present": false
+    },
+    "expand_context": {
+      "ok": true,
+      "count": 10,
+      "direction": "callees"
+    },
+    "status": {
+      "ok": true,
+      "preview": "{\"ok\":true,\"tool\":\"status\",\"server\":\"scubiee\",\"surface\":\"phase\",\"managed\":true,\"should_use_mcp\":true,\"should_retry_statu",
+      "engine_healthy": true
+    },
+    "workspace": {
+      "ok": true,
+      "preview": "{\"ok\":true,\"tool\":\"workspace\",\"action\":\"show\",\"session_id\":\"copilot@chat-07e2864a-d023-4639-bd16-f00761fd53ff\",\"topic\":\""
+    },
+    "collect_hot_context": {
+      "ok": true,
+      "preview": "{\"ok\":true,\"tool\":\"collect_hot_context\",\"pack\":[{\"id\":\"packages/pipeline/context_trace.py::run_pack_context\",\"loc\":\"pack"
+    }
+  },
+  "errors": [],
+  "elapsed_ms": 2789.0
+}
+wrote /Users/usmansayed/Downloads/hidden-context-engine-/docs/superpowers/plans/2026-09-06-mcp-ship-check.json
+HTTP Request: POST http://127.0.0.1:8765/v1/client/unregister "HTTP/1.0 200 OK"
+[scubiee] mcp leave client_id=mcp:copilot@proc-32956 remaining=0 idle={'ok': True, 'action': 'none'}
+HTTP Request: GET http://127.0.0.1:8765/health "HTTP/1.0 200 OK"

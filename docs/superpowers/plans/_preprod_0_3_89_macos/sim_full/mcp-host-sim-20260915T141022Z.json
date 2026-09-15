@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "scenario": "kiro_cold_attach_steady_leave",
+  "lane": "b",
+  "live": true,
+  "repo": "/Users/usmansayed/Downloads/hidden-context-engine-",
+  "project_id": "ce_b3d502adb82ebfccece53f626cc69ca2",
+  "engine_url": "http://127.0.0.1:8765",
+  "phases": [],
+  "errors": [],
+  "idle_s": 60.0,
+  "kiro": {
+    "ok": true,
+    "deferred": true,
+    "hint": "Kiro MCP pins written. Lane B full auto-session is best-effort in v1; run BridgeHost (--lane a) for SLA gates, then open Kiro against this repo."
+  },
+  "note": "Kiro MCP pins written. Lane B full auto-session is best-effort in v1; run BridgeHost (--lane a) for SLA gates, then open Kiro against this repo.",
+  "elapsed_ms": 9.3
+}

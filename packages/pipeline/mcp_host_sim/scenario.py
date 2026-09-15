@@ -17,7 +17,9 @@ from pipeline.mcp_host_sim.report import write_report
 
 WARM_BUDGET_S = 30.0
 LOCATE_BUDGET_MS = 1000.0
-UNLOAD_BUDGET_S = 12.0  # 10s debounce + 2s slack
+# Leave → debounce (10s) → idle window (default 15s) → stop. Health-polling during
+# this wait would itself reset activity and prevent unload (seen as UNLOAD_TIMEOUT).
+UNLOAD_BUDGET_S = 35.0
 DEFAULT_IDLE_S = 120.0
 
 MAP_QUERY = (
@@ -673,25 +675,46 @@ def run_scenario(
 
     phase("host_stop", _stop)
 
-    # Phase 7 — unload within 10s±2s
+    # Phase 7 — unload after leave (debounce + idle). Do NOT probe /health here:
+    # EngineClient.health() is front-end activity and holds the daemon open.
     def _unload() -> dict[str, Any]:
+        import psutil
+
+        from pipeline.lifecycle_runtime import load_clients, reconcile_clients
+
         deadline = left_at + UNLOAD_BUDGET_S
-        last = {}
+        last: dict[str, Any] = {}
         while time.time() < deadline:
-            tick = observatory_tick(url)
-            last = tick
-            clients = int((tick.get("clients") or {}).get("active_clients") or 0)
+            try:
+                reconcile_clients()
+                data = load_clients()
+                raw = data.get("clients") or {}
+                clients = len(raw) if isinstance(raw, dict) else 0
+            except Exception as exc:  # noqa: BLE001
+                clients = 0
+                raw = {"_error": str(exc)}
+            last = {"clients": clients, "raw_clients": raw, "at": time.time()}
             if clients > 0:
                 return {
                     "ok": True,
                     "skipped": "foreign_clients_hold_warm",
                     "clients": clients,
-                    "tick": tick,
+                    "tick": last,
                     "waited_s": round(time.time() - left_at, 2),
                 }
-            if not (tick.get("engine") or {}).get("running"):
+            alive = False
+            for proc in psutil.process_iter(["cmdline"]):
+                try:
+                    cmdline = " ".join(proc.info.get("cmdline") or [])
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    continue
+                if "pipeline engine run" in cmdline:
+                    alive = True
+                    last["pid"] = proc.pid
+                    break
+            if not alive:
                 waited = round(time.time() - left_at, 2)
-                return {"ok": True, "waited_s": waited, "tick": tick}
+                return {"ok": True, "waited_s": waited, "tick": last}
             time.sleep(0.5)
         return {
             "ok": False,

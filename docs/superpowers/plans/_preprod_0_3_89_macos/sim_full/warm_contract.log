@@ -1,0 +1,40 @@
+[lifecycle] debounce_arm last_client_left_at=1789481659.925 wait_s=10.0
+== stop engine ==
+== attach warm kick ==
+[PASS] attach_kick — {"ok": true, "started": true, "deadline_ms": 30000, "runtime_state": "STARTING", "warm_ready": false}
+[PASS] warm_ready_within_deadline — elapsed_ms=1137.3 probe={'healthy': True, 'embedder_loaded': False, 'soft_search_ready': True}
+status fields: {"warm_ready": false, "warm_ready_map": false, "warm_phase": "starting", "warm_elapsed_ms": 1136.8, "warm_deadline_ms": 30000, "warm_remaining_s": 28.863159894943237, "ast_hydrated": false, "ast_hydrate_source": null, "warm_error": null, "attach_warm": true}
+[PASS] warm_started_recorded
+[PASS] first_map_after_ready — wall_ms=94.6
+== idle 60.0s with attach stamp held ==
+[PASS] map_after_idle_ms — wall_ms=126.3 (soft gate 5s for HTTP search; MCP map target 300ms)
+{
+  "results": [
+    {
+      "check": "attach_kick",
+      "ok": true,
+      "detail": "{\"ok\": true, \"started\": true, \"deadline_ms\": 30000, \"runtime_state\": \"STARTING\", \"warm_ready\": false}"
+    },
+    {
+      "check": "warm_ready_within_deadline",
+      "ok": true,
+      "detail": "elapsed_ms=1137.3 probe={'healthy': True, 'embedder_loaded': False, 'soft_search_ready': True}"
+    },
+    {
+      "check": "warm_started_recorded",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "first_map_after_ready",
+      "ok": true,
+      "detail": "wall_ms=94.6"
+    },
+    {
+      "check": "map_after_idle_ms",
+      "ok": true,
+      "detail": "wall_ms=126.3 (soft gate 5s for HTTP search; MCP map target 300ms)"
+    }
+  ],
+  "failed": 0
+}

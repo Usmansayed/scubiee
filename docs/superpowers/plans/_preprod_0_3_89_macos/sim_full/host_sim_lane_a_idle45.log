@@ -1,0 +1,42 @@
+[mcp_host_sim] using real CTX_HOME (~/.scubiee)
+[mcp_host_sim] clean_slate: killing leftover MCP procs…
+[mcp_host_sim] clean_slate: stopping engine…
+[mcp_host_sim] clean_slate: running=False
+[mcp_host_sim] host_start: spawning bridge…
+[mcp_host_sim] bridge cmd='/Users/usmansayed/.local/share/uv/tools/scubiee/bin/scubiee-mcp-bridge' args=[] pid=32705
+[mcp_host_sim] host_start: ok=True pid=32705
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=True clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=True health=True clients=1
+[mcp_host_sim] soft_ready FIRST at +0.59s from host_start (before any MCP map)
+[mcp_host_sim] warm poll running=True embedder=False soft=True health=True clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=True health=True clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=True health=True clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=True health=True clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=True health=True clients=1
+[mcp_host_sim] locate_warmup map (untimed)…
+[mcp_host_sim] map_first…
+[mcp_host_sim] map_first done ok=True ms=5.4 err=None soft_was_ready_at=+0.59s
+[mcp_host_sim] expand_first ms=121.4 hydrate_ms=116.4 hydrate_source=bundle_stale timings={'struct_ms': 0.0, 'tracer_ms': 0.0, 'tracer_used': False} delta_n=0 err=None
+[mcp_host_sim] post_idle warmup map (untimed)…
+[mcp_host_sim] post_idle_map…
+{
+  "ok": true,
+  "lane": "a",
+  "elapsed_ms": 50731.3,
+  "errors": [],
+  "report_paths": {
+    "json": "docs/superpowers/plans/_preprod_0_3_89_macos/sim_full/mcp-host-sim-20260915T141350Z.json",
+    "md": "docs/superpowers/plans/_preprod_0_3_89_macos/sim_full/mcp-host-sim-20260915T141350Z.md"
+  }
+}
+  phase clean_slate: ok=True ms=1459.4 code=None
+  phase host_start: ok=True ms=494.7 code=None
+  phase auto_warm: ok=True ms=3171.8 code=None
+  phase map_first: ok=True ms=5.5 code=None
+  phase pack_first: ok=True ms=3.8 code=None
+  phase expand_first: ok=True ms=130.7 code=None
+  phase idle_hold: ok=True ms=45281.8 code=None
+  phase post_idle_map: ok=True ms=5.3 code=None
+  phase post_idle_pack: ok=True ms=4.1 code=None
+  phase host_stop: ok=True ms=1.3 code=None
+  phase unload: ok=True ms=0.5 code=None
