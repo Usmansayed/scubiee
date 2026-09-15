@@ -1,0 +1,81 @@
+{
+  "label": "full_curated",
+  "started_at": 1789476091.121087,
+  "targets": [
+    "tests/test_lifecycle_runtime.py",
+    "tests/test_lifecycle_disconnect_unload.py",
+    "tests/test_lifecycle_just_works.py",
+    "tests/test_mcp_bridge.py",
+    "tests/test_mcp_lazy_warm.py",
+    "tests/test_memory_governor.py",
+    "tests/test_memory_budget.py",
+    "tests/test_runtime_publish.py",
+    "tests/test_live_reindexing.py",
+    "tests/test_watcher_recovery.py",
+    "tests/test_freshness.py",
+    "tests/test_sync_status_canaries.py",
+    "tests/test_incremental_context_ladder.py",
+    "tests/test_pack_seed_heat_thin.py",
+    "tests/test_warm_path_speedups.py",
+    "tests/test_mcp_ensure_coalesce.py",
+    "tests/test_idle_no_clients_standby.py"
+  ],
+  "requested": [
+    "tests/test_lifecycle_runtime.py",
+    "tests/test_lifecycle_disconnect_unload.py",
+    "tests/test_lifecycle_just_works.py",
+    "tests/test_mcp_bridge.py",
+    "tests/test_mcp_lazy_warm.py",
+    "tests/test_memory_governor.py",
+    "tests/test_memory_budget.py",
+    "tests/test_runtime_publish.py",
+    "tests/test_live_reindexing.py",
+    "tests/test_watcher_recovery.py",
+    "tests/test_freshness.py",
+    "tests/test_sync_status_canaries.py",
+    "tests/test_incremental_context_ladder.py",
+    "tests/test_pack_seed_heat_thin.py",
+    "tests/test_warm_path_speedups.py",
+    "tests/test_mcp_ensure_coalesce.py",
+    "tests/test_idle_no_clients_standby.py"
+  ],
+  "skipped_missing": [],
+  "suites": {
+    "wrapper_lifecycle": [
+      "tests/test_lifecycle_runtime.py",
+      "tests/test_lifecycle_disconnect_unload.py",
+      "tests/test_lifecycle_just_works.py",
+      "tests/test_mcp_bridge.py",
+      "tests/test_mcp_lazy_warm.py"
+    ],
+    "resources": [
+      "tests/test_memory_governor.py",
+      "tests/test_memory_budget.py",
+      "tests/test_runtime_publish.py"
+    ],
+    "sync": [
+      "tests/test_live_reindexing.py",
+      "tests/test_watcher_recovery.py",
+      "tests/test_freshness.py",
+      "tests/test_sync_status_canaries.py"
+    ],
+    "tools_locate": [
+      "tests/test_incremental_context_ladder.py",
+      "tests/test_pack_seed_heat_thin.py",
+      "tests/test_warm_path_speedups.py",
+      "tests/test_mcp_ensure_coalesce.py",
+      "tests/test_idle_no_clients_standby.py"
+    ]
+  },
+  "runs": [
+    {
+      "ok": true,
+      "returncode": 0,
+      "elapsed_ms": 21376.3,
+      "tail": "........................................................................ [ 43%]\n........................................................................ [ 86%]\n.......................                                                  [100%]\n167 passed in 21.10s\n\n"
+    }
+  ],
+  "ok": true,
+  "elapsed_ms": 21376.3,
+  "finished_at": 1789476112.497403
+}

@@ -94,7 +94,10 @@ def load_bm25_cache(store_dir: Path, *, fingerprint: str | None = None) -> BM25I
         bm25._tf = list(raw["_tf"])
         if bm25.N != len(bm25.docs) or bm25.N != len(bm25._tf):
             return None
-        bm25._rebuild_accel()
+        # Optional accelerator hook — older BM25Index builds have no accel table.
+        rebuild = getattr(bm25, "_rebuild_accel", None)
+        if callable(rebuild):
+            rebuild()
         return bm25
     except Exception:  # noqa: BLE001
         return None

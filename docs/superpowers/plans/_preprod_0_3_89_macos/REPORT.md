@@ -68,9 +68,18 @@ Optional: `test_lifecycle_runtime.py` + `test_hw_track.py` → **27 passed**.
 > Block claiming full CLI locate parity until `trace_lab.multi_seed` (CLI pack) is fixed or the import is removed.  
 > Operators: wipe any repo-local `.venv` before uv-tool Gate C runs.
 
-## Logs
+## Follow-up fixes (same Mac session, after Gate M report)
 
-Under `docs/superpowers/plans/_preprod_0_3_89_macos/`:
+| Bug | Root cause | Fix | Retest |
+|-----|------------|-----|--------|
+| CLI `pack` `ModuleNotFoundError: trace_lab.multi_seed` | `run_map_context` imported a module described in 0.3.76 notes but **never committed**. MCP lean pack skips that path (map-reuse), so host-sim hid it. | Added `packages/trace_lab/multi_seed.py` + `tests/test_multi_seed.py` | CLI pack `ok=True`; host-sim still PASS |
+| Gate B runner hard-fail | Curated list pointed at 6 non-existent test files | Skip missing + replace with in-tree warm/lifecycle tests | **`[e2e] ok=True` 167 passed** |
+| `test_pack_seed_heat_thin` collection error | Test imported `apply_query_aware_heat` which was never implemented | Implemented in `composite_v1.py` | 16/16 thin+multi_seed passed |
+| BM25 cache always rebuilds | `load_bm25_cache` called `_rebuild_accel()` which **does not exist** on `BM25Index`; exception swallowed → perpetual miss | Call only if present | `test_bm25_cache_roundtrip` PASS; Gate B 167/167 |
+
+**Doctor `ok=False`:** not a code defect here — `repair_plan` is `replay_dirty_journal` while docs/AGENTS dirties are pending. Soft search remains ready.
+
+Host-sim after fixes: soft ~0.02–2.6s, map 4.2ms, pack 3.4ms, expand 128ms.
 
 - `mac_pytest.log`, `mac_lifecycle.log`
 - `host_sim.log`, `mcp-host-sim-20260915T122408Z.{json,md}`

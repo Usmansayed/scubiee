@@ -43,6 +43,61 @@ _FORWARD = frozenset(
 )
 _DATA_PLANE_LEAVES = frozenset({"connect", "get", "fetch", "fetch_docs", "read", "write"})
 _BLOCK_FOREIGN_FAC = frozenset({"plat", "tele", "pay", "notify", "hook"})
+_ACCESSOR_LEAVES = frozenset(
+    {
+        "get",
+        "set",
+        "name",
+        "path",
+        "id",
+        "meta",
+        "info",
+        "cwd",
+        "root",
+        "default",
+        "value",
+        "data",
+        "items",
+        "keys",
+        "values",
+    }
+)
+
+
+def _leaf_symbol(symbol: str) -> str:
+    return (symbol or "").strip().rsplit(".", 1)[-1].lower()
+
+
+def apply_query_aware_heat(
+    scores: dict[str, float],
+    why: dict[str, str],
+    nodes: dict[str, TraceNode],
+    query: str,
+) -> tuple[dict[str, float], dict[str, str]]:
+    """Boost query verbs on symbols; demote tiny accessors the query does not name.
+
+    Used by pack/map ranking so explain-style queries prefer ``add``/``save`` over
+    ``get``/``name`` islands. Returns updated ``(scores, why)``.
+    """
+    scores = dict(scores)
+    why = dict(why)
+    qtoks = {t.lower() for t in tokenize((query or "").lower()) if len(t) > 1}
+    for nid, sc in list(scores.items()):
+        n = nodes.get(nid)
+        leaf = _leaf_symbol(n.symbol if n is not None else nid)
+        if not leaf:
+            continue
+        if leaf in qtoks and leaf not in _ACCESSOR_LEAVES:
+            scores[nid] = min(1.0, float(sc) * 1.50)
+            why[nid] = f"{why.get(nid, '')}|verb_boost".strip("|")
+            continue
+        span = 0
+        if n is not None:
+            span = max(0, int(n.end_line) - int(n.start_line) + 1)
+        if leaf in _ACCESSOR_LEAVES and leaf not in qtoks and (span == 0 or span <= 8):
+            scores[nid] = float(sc) * 0.55
+            why[nid] = f"{why.get(nid, '')}|accessor_demote".strip("|")
+    return scores, why
 
 
 def _membership_edges(

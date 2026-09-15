@@ -1,0 +1,35 @@
+[mcp_host_sim] using real CTX_HOME (~/.scubiee)
+[mcp_host_sim] clean_slate: killing leftover MCP procs…
+[mcp_host_sim] clean_slate: stopping engine…
+[mcp_host_sim] clean_slate: running=False
+[mcp_host_sim] host_start: spawning bridge…
+[mcp_host_sim] bridge cmd='/Users/usmansayed/.local/bin/scubiee-mcp-bridge' args=[] pid=30697
+[mcp_host_sim] host_start: ok=True pid=30697
+[mcp_host_sim] warm poll running=True embedder=False soft=True health=True clients=1
+[mcp_host_sim] soft_ready FIRST at +0.02s from host_start (before any MCP map)
+[mcp_host_sim] warm poll running=True embedder=False soft=True health=True clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=True health=True clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=True health=True clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=True health=True clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=True health=True clients=1
+[mcp_host_sim] locate_warmup map (untimed)…
+[mcp_host_sim] map_first…
+[mcp_host_sim] map_first done ok=True ms=4.2 err=None soft_was_ready_at=+0.02s
+[mcp_host_sim] expand_first ms=118.8 hydrate_ms=113.0 hydrate_source=bundle timings={'struct_ms': 0.1, 'tracer_ms': 0.0, 'tracer_used': False} delta_n=8 err=None
+{
+  "ok": true,
+  "lane": "a",
+  "elapsed_ms": 5874.4,
+  "errors": [],
+  "report_paths": {
+    "json": "/Users/usmansayed/Downloads/hidden-context-engine-/docs/superpowers/plans/mcp-host-sim-20260915T124518Z.json",
+    "md": "/Users/usmansayed/Downloads/hidden-context-engine-/docs/superpowers/plans/mcp-host-sim-20260915T124518Z.md"
+  }
+}
+  phase clean_slate: ok=True ms=1462.2 code=None
+  phase host_start: ok=True ms=1460.1 code=None
+  phase auto_warm: ok=True ms=2577.2 code=None
+  phase map_first: ok=True ms=4.2 code=None
+  phase pack_first: ok=True ms=3.4 code=None
+  phase expand_first: ok=True ms=128.2 code=None
+  phase idle_hold: ok=True ms=0.0 code=None

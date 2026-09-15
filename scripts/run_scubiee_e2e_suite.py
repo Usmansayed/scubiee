@@ -18,13 +18,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 # Curated batteries — expand coverage without re-running the entire 194-file suite.
+# Only list files that exist in-tree; ``main`` also skips missing paths so a
+# stale entry cannot hard-fail the whole Gate B runner (seen on macOS 0.3.89).
 SUITES: dict[str, list[str]] = {
     "wrapper_lifecycle": [
         "tests/test_lifecycle_runtime.py",
         "tests/test_lifecycle_disconnect_unload.py",
-        "tests/test_runtime_controller.py",
+        "tests/test_lifecycle_just_works.py",
         "tests/test_mcp_bridge.py",
-        "tests/test_e2e_system_matrix.py",
+        "tests/test_mcp_lazy_warm.py",
     ],
     "resources": [
         "tests/test_memory_governor.py",
@@ -39,19 +41,19 @@ SUITES: dict[str, list[str]] = {
     ],
     "tools_locate": [
         "tests/test_incremental_context_ladder.py",
-        "tests/test_expand_after_pack.py",
-        "tests/test_attach_warm_pipeline.py",
-        "tests/test_locate_worker_prewarm.py",
-        "tests/test_reliability_master_plan.py",
+        "tests/test_pack_seed_heat_thin.py",
+        "tests/test_warm_path_speedups.py",
+        "tests/test_mcp_ensure_coalesce.py",
+        "tests/test_idle_no_clients_standby.py",
     ],
 }
 
 QUICK = [
-    "tests/test_e2e_system_matrix.py",
     "tests/test_mcp_bridge.py",
-    "tests/test_attach_warm_pipeline.py",
+    "tests/test_mcp_lazy_warm.py",
     "tests/test_runtime_publish.py",
-    "tests/test_reliability_master_plan.py",
+    "tests/test_warm_path_speedups.py",
+    "tests/test_lifecycle_just_works.py",
 ]
 
 
@@ -66,21 +68,27 @@ def main() -> int:
     args = ap.parse_args()
 
     if args.quick:
-        targets = QUICK
+        requested = list(QUICK)
         label = "quick"
     else:
-        targets = []
+        requested = []
         for files in SUITES.values():
-            targets.extend(files)
+            requested.extend(files)
         # de-dupe preserve order
         seen: set[str] = set()
         uniq: list[str] = []
-        for t in targets:
+        for t in requested:
             if t not in seen:
                 seen.add(t)
                 uniq.append(t)
-        targets = uniq
+        requested = uniq
         label = "full_curated"
+
+    missing = [t for t in requested if not (ROOT / t).is_file()]
+    targets = [t for t in requested if (ROOT / t).is_file()]
+    if not targets:
+        print("[e2e] no existing test files in curated list — refuse empty run", flush=True)
+        return 2
 
     # Prefer the interpreter that invoked this script (uv-tool Python has ORT/FastEmbed).
     # Override with CTX_E2E_PYTHON; set CTX_E2E_USE_VENV=1 to force repo .venv.
@@ -100,9 +108,13 @@ def main() -> int:
         "label": label,
         "started_at": time.time(),
         "targets": targets,
+        "requested": requested,
+        "skipped_missing": missing,
         "suites": {k: v for k, v in SUITES.items()} if label != "quick" else {"quick": QUICK},
         "runs": [],
     }
+    if missing:
+        print(f"[e2e] skip missing ({len(missing)}): {', '.join(missing)}", flush=True)
     overall_ok = True
     t0 = time.perf_counter()
     cmd = [
