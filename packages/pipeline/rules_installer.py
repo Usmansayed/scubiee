@@ -341,11 +341,13 @@ def _render_gate_rule_md(gate_line: str) -> str:
 
 def gate_line_for_repo(repo: Path | str) -> str:
     """Gate line from repo ``.scubiee/id.json`` (for project rules, no daemon)."""
-    from pipeline.pause_resume import is_paused
+    from pipeline.pause_resume import is_paused, is_resuming
     from pipeline.project_id import read_id_file
 
     root = Path(repo).resolve()
-    if is_paused():
+    # During resume, write managed GATE 1:* (not p) even though pause_state is
+    # still locked until MCP restore finishes.
+    if is_paused() and not is_resuming():
         return "p"
     try:
         pid = read_id_file(root) or ""
@@ -1043,16 +1045,35 @@ def verify_mcp_configs(slugs: list[str]) -> list[dict[str, Any]]:
     return results
 
 
+def _toml_escape(value: str) -> str:
+    """Escape a string for TOML basic double-quoted form (Windows paths safe)."""
+    return (
+        str(value)
+        .replace("\\", "\\\\")
+        .replace('"', '\\"')
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+        .replace("\t", "\\t")
+    )
+
+
+def _toml_quoted(value: str) -> str:
+    return f'"{_toml_escape(value)}"'
+
+
 def _write_mcp_toml(path: Path, entry: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     lines: list[str] = []
     skip_headers = {f"[mcp_servers.{n}]" for n in MCP_SERVER_NAMES}
+    skip_env_headers = {f"[mcp_servers.{n}.env]" for n in MCP_SERVER_NAMES}
+    skip_all = skip_headers | skip_env_headers
     if path.is_file():
         existing = path.read_text(encoding="utf-8")
         new_lines: list[str] = []
         skip = False
         for line in existing.splitlines():
-            if line.strip() in skip_headers:
+            stripped = line.strip()
+            if stripped in skip_all:
                 skip = True
                 continue
             if skip and line.startswith("["):
@@ -1062,15 +1083,19 @@ def _write_mcp_toml(path: Path, entry: dict[str, Any]) -> None:
         lines = new_lines
     lines.append("")
     lines.append(f"[mcp_servers.{_SERVER_NAME}]")
-    lines.append(f'command = "{entry["command"]}"')
-    args_str = ", ".join(f'"{a}"' for a in entry.get("args", []))
+    lines.append(f"command = {_toml_quoted(str(entry['command']))}")
+    args_str = ", ".join(_toml_quoted(str(a)) for a in entry.get("args", []))
     lines.append(f"args = [{args_str}]")
     cwd = entry.get("cwd")
     if cwd:
-        lines.append(f'cwd = "{cwd}"')
-    if entry.get("env"):
-        env_parts = [f'{k} = "{v}"' for k, v in entry["env"].items()]
-        lines.append(f"env = {{ {', '.join(env_parts)} }}")
+        lines.append(f"cwd = {_toml_quoted(str(cwd))}")
+    # Nested env table — avoids fragile inline ``env = { ... }`` for Windows paths.
+    env = entry.get("env") or {}
+    if env:
+        lines.append("")
+        lines.append(f"[mcp_servers.{_SERVER_NAME}.env]")
+        for k, v in env.items():
+            lines.append(f"{k} = {_toml_quoted(str(v))}")
     lines.append("")
     path.write_text("\n".join(lines), encoding="utf-8")
     _validate_toml_file(path)
@@ -1838,12 +1863,14 @@ def _remove_mcp_toml(
         return False
     existing = path.read_text(encoding="utf-8")
     skip_headers = {f"[mcp_servers.{n}]" for n in MCP_SERVER_NAMES}
+    skip_env_headers = {f"[mcp_servers.{n}.env]" for n in MCP_SERVER_NAMES}
+    skip_all = skip_headers | skip_env_headers
     if not any(h in existing for h in skip_headers):
         return False
     new_lines: list[str] = []
     skip = False
     for line in existing.splitlines():
-        if line.strip() in skip_headers:
+        if line.strip() in skip_all:
             skip = True
             continue
         if skip and line.startswith("["):

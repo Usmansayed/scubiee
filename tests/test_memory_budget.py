@@ -34,6 +34,7 @@ def test_bootstrap_budget_defaults() -> None:
     assert b.mlx_batch == 48
     assert b.mlx_cache_mb == 256
     assert b.aggressive_unload is False
+    assert b.cpu_thread_pct == 0.20
 
 
 def test_background_budget_defaults() -> None:
@@ -43,6 +44,7 @@ def test_background_budget_defaults() -> None:
     assert b.mlx_batch == 24
     assert b.mlx_cache_mb == 128
     assert b.aggressive_unload is True
+    assert b.cpu_thread_pct == 0.15
 
 
 def test_large_reindex_budget_defaults() -> None:
@@ -50,6 +52,7 @@ def test_large_reindex_budget_defaults() -> None:
     assert b.mode == "large_reindex"
     assert b.rss_cap_mb == LARGE_REINDEX_RSS_CAP_MB == 1000
     assert b.aggressive_unload is False
+    assert b.cpu_thread_pct == 0.20
 
 
 def test_is_bootstrap_index_empty_store(tmp_path: Path) -> None:

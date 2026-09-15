@@ -719,7 +719,9 @@ def pids_listening_on_port(port: int) -> list[int]:
     port_s = str(int(port))
     if os.name == "nt":
         try:
-            proc = subprocess.run(
+            from pipeline.process_job import hidden_run
+
+            proc = hidden_run(
                 ["netstat", "-ano", "-p", "tcp"],
                 capture_output=True,
                 text=True,
@@ -969,11 +971,32 @@ def stop_all_context_engine_processes(*, ctx_home: Path | None = None) -> dict[s
 
 
 def remove_tool_shims() -> dict[str, Any]:
-    """Remove uv tool shims that break when the env is half-deleted."""
+    """Remove uv tool bin links that break when the env is half-deleted.
+
+    ``uv tool install scubiee`` registers three entry points. Leaving any of
+    ``scubiee-mcp`` / ``scubiee-mcp-bridge`` behind makes later
+    ``uv tool uninstall`` say the tool is missing while ``uv tool install``
+    refuses with "executables are already present" (needs ``--force``).
+    """
     local_bin = Path.home() / ".local" / "bin"
+    names = (
+        "scubiee.exe",
+        "scubiee",
+        "scubiee-mcp.exe",
+        "scubiee-mcp",
+        "scubiee-mcp-bridge.exe",
+        "scubiee-mcp-bridge",
+        # Legacy ctx branding
+        "ctx.exe",
+        "ctx",
+        "ctx-mcp.exe",
+        "ctx-mcp",
+        "ctx-mcp-bridge.exe",
+        "ctx-mcp-bridge",
+    )
     removed: list[str] = []
     failed: list[str] = []
-    for name in ("scubiee.exe", "scubiee", "ctx.exe", "ctx", "ctx-mcp.exe", "ctx-mcp"):
+    for name in names:
         shim = local_bin / name
         if not shim.exists():
             continue
@@ -1444,24 +1467,22 @@ def _schedule_delete_after_exit(path: Path, wait_pid: int) -> dict[str, Any]:
             "Start-Sleep -Seconds 1; "
             "Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue"
         )
-        flags = 0
-        if hasattr(subprocess, "DETACHED_PROCESS"):
-            flags |= subprocess.DETACHED_PROCESS  # type: ignore[attr-defined]
-        if hasattr(subprocess, "CREATE_NEW_PROCESS_GROUP"):
-            flags |= subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]
-        # CREATE_NO_WINDOW
-        flags |= 0x08000000
-        subprocess.Popen(
+        # Never DETACHED_PROCESS — it flashes a console even with CREATE_NO_WINDOW.
+        # Soft hidden spawn only (CREATE_NO_WINDOW + SW_HIDE).
+        from pipeline.process_job import hidden_popen
+
+        hidden_popen(
             [
                 "powershell",
                 "-NoProfile",
+                "-WindowStyle",
+                "Hidden",
                 "-ExecutionPolicy",
                 "Bypass",
                 "-Command",
                 ps,
             ],
             close_fds=True,
-            creationflags=flags,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             stdin=subprocess.DEVNULL,
@@ -1615,12 +1636,23 @@ def uv_tool_uninstall(*, python: Path | None = None) -> dict[str, Any]:
     uv = shutil.which("uv")
     if not uv:
         return {"ok": False, "error": "uv_not_found", "prep": prep, "stop": stop}
-    proc = subprocess.run(
-        [uv, "tool", "uninstall", "scubiee"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    proc = None
+    try:
+        from pipeline.process_job import hidden_run
+
+        proc = hidden_run(
+            [uv, "tool", "uninstall", "scubiee"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except Exception:  # noqa: BLE001
+        proc = subprocess.run(
+            [uv, "tool", "uninstall", "scubiee"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
     out = (proc.stdout or "") + (proc.stderr or "")
     ok = proc.returncode == 0
     if root and root.exists():

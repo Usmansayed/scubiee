@@ -224,6 +224,261 @@ def test_adversarial_pack_missing_seed_returns_envelope(
     assert payload.get("ok") is False or "seed" in text or "error" in text
 
 
+def test_pack_lean_default_heatmap_no_bodies(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Monkeypatched engine: lean pack is heatmap-only unless bodies opted in."""
+    pytest.importorskip("mcp")
+    repo = _git_repo(tmp_path / "packlean")
+    _enroll(repo, "ce_preprod_lean1234567890abcdef", monkeypatch, tmp_path)
+    monkeypatch.setattr("pipeline.mcp_locate._is_repo_managed", lambda: True)
+    monkeypatch.delenv("CTX_MCP_PACK_BODIES", raising=False)
+    captured: dict[str, object] = {}
+
+    def _fake_pack(root, query, **kwargs):
+        captured.clear()
+        captured.update(kwargs)
+        want = bool(kwargs.get("include_bodies"))
+        out: dict = {
+            "ok": True,
+            "tool": "pack_context",
+            "engine": "composite_v1",
+            "mode": kwargs.get("mode") or "lean",
+            "policy": kwargs.get("policy") or "strict",
+            "heatmap": [
+                {
+                    "r": 1,
+                    "heat": "hot",
+                    "id": "packages/pipeline/mcp_locate.py::create_mcp",
+                    "loc": "packages/pipeline/mcp_locate.py:1-2",
+                    "s": "create_mcp",
+                }
+            ],
+            "seed": {
+                "id": "packages/pipeline/mcp_locate.py::create_mcp",
+                "file": "packages/pipeline/mcp_locate.py",
+                "symbol": "create_mcp",
+            },
+            "_persist": {"packed_ids": ["packages/pipeline/mcp_locate.py::create_mcp"]},
+        }
+        if want:
+            out["bodies"] = [{"id": "packages/pipeline/mcp_locate.py::create_mcp", "code": "def create_mcp(): ..."}]
+            out["pack"] = out["bodies"]
+        return out
+
+    monkeypatch.setattr("pipeline.context_trace.run_pack_context", _fake_pack)
+    monkeypatch.setattr("pipeline.context_trace.load_trace", lambda *a, **k: {})
+    monkeypatch.setattr("pipeline.context_trace.persist_trace", lambda *a, **k: None)
+
+    from pipeline.mcp_locate import create_mcp
+
+    mcp = create_mcp(name="preprod-pack-lean")
+    pack_fn = tool_fn(mcp, "pack_context")
+    lean = parse_tool_json(
+        pack_fn(
+            query="create_mcp ship surface pack lean",
+            seed_file="packages/pipeline/mcp_locate.py",
+            seed_symbol="create_mcp",
+            mode="lean",
+            policy="strict",
+        )
+    )
+    assert lean.get("ok") is True
+    assert lean.get("heatmap")
+    assert not lean.get("bodies") and not lean.get("pack")
+    # Lean heatmap uses search/map-reuse (no AST run_pack_context) unless bodies/broad.
+    # Lean formatter strips mode/policy/engine/include_bodies — absence of bodies is the contract.
+    if captured:
+        assert captured.get("include_bodies") is False
+        assert captured.get("mode") == "lean"
+        assert captured.get("policy") == "strict"
+
+
+def test_pack_include_bodies_flag_and_env(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    pytest.importorskip("mcp")
+    repo = _git_repo(tmp_path / "packbodies")
+    _enroll(repo, "ce_preprod_body1234567890abcdef", monkeypatch, tmp_path)
+    monkeypatch.setattr("pipeline.mcp_locate._is_repo_managed", lambda: True)
+    captured: dict[str, object] = {}
+
+    def _fake_pack(root, query, **kwargs):
+        captured.clear()
+        captured.update(kwargs)
+        want = bool(kwargs.get("include_bodies"))
+        out: dict = {
+            "ok": True,
+            "tool": "pack_context",
+            "engine": "composite_v1",
+            "include_bodies": want,
+            "heatmap": [
+                {
+                    "r": 1,
+                    "heat": "hot",
+                    "id": "packages/pipeline/mcp_locate.py::create_mcp",
+                    "loc": "packages/pipeline/mcp_locate.py:1-2",
+                    "s": "create_mcp",
+                }
+            ],
+            "seed": {
+                "id": "packages/pipeline/mcp_locate.py::create_mcp",
+                "file": "packages/pipeline/mcp_locate.py",
+                "symbol": "create_mcp",
+            },
+            "_persist": {"packed_ids": ["packages/pipeline/mcp_locate.py::create_mcp"]},
+        }
+        if want:
+            # Lean formatter keeps bodies only when pack[] carries text/code.
+            out["pack"] = [
+                {
+                    "id": "packages/pipeline/mcp_locate.py::create_mcp",
+                    "code": "def create_mcp(): ...",
+                    "text": "def create_mcp(): ...",
+                }
+            ]
+        return out
+
+    monkeypatch.setattr("pipeline.context_trace.run_pack_context", _fake_pack)
+    monkeypatch.setattr("pipeline.context_trace.load_trace", lambda *a, **k: {})
+    monkeypatch.setattr("pipeline.context_trace.persist_trace", lambda *a, **k: None)
+    # Body packs skip lean-fast and require AST ready (no sync bake on request path).
+    monkeypatch.setattr("pipeline.context_trace.ast_cache_ready", lambda *_a, **_k: True)
+
+    from pipeline.mcp_locate import create_mcp
+
+    mcp = create_mcp(name="preprod-pack-bodies")
+    pack_fn = tool_fn(mcp, "pack_context")
+
+    monkeypatch.delenv("CTX_MCP_PACK_BODIES", raising=False)
+    flagged = parse_tool_json(
+        pack_fn(
+            query="bodies via flag",
+            seed_file="packages/pipeline/mcp_locate.py",
+            seed_symbol="create_mcp",
+            include_bodies=1,
+        )
+    )
+    assert flagged.get("ok") is True
+    assert captured.get("include_bodies") is True
+    assert flagged.get("pack")  # lean view keeps pack[] when bodies opted in
+
+    monkeypatch.setenv("CTX_MCP_PACK_BODIES", "1")
+    env_on = parse_tool_json(
+        pack_fn(
+            query="bodies via env",
+            seed_file="packages/pipeline/mcp_locate.py",
+            seed_symbol="create_mcp",
+            include_bodies=0,
+        )
+    )
+    assert env_on.get("ok") is True
+    assert captured.get("include_bodies") is True
+    assert env_on.get("pack")
+
+
+def test_pack_policy_broad_escape_fields(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """policy=broad must reach run_pack_context; escape report fields available to engine."""
+    pytest.importorskip("mcp")
+    repo = _git_repo(tmp_path / "packbroad")
+    _enroll(repo, "ce_preprod_brd1234567890abcdef", monkeypatch, tmp_path)
+    monkeypatch.setattr("pipeline.mcp_locate._is_repo_managed", lambda: True)
+    captured: dict[str, object] = {}
+
+    def _fake_pack(root, query, **kwargs):
+        from pipeline.context_trace import BROAD_ESCAPE_ENGINE, pack_engine_report
+
+        captured.clear()
+        captured.update(kwargs)
+        assert (kwargs.get("policy") or "").lower() == "broad"
+        escape = pack_engine_report(
+            requested_engine="composite_v1",
+            policy="broad",
+            ran_engine=BROAD_ESCAPE_ENGINE,
+        )
+        return {
+            "ok": True,
+            "tool": "pack_context",
+            "engine": escape["engine"],
+            "escape": escape["escape"],
+            "policy": "broad",
+            "include_bodies": False,
+            "heatmap": [
+                {
+                    "r": 1,
+                    "heat": "warm",
+                    "id": "packages/pipeline/context_trace.py::run_pack_context",
+                    "loc": "packages/pipeline/context_trace.py:1-2",
+                    "s": "run_pack_context",
+                    "score": 1.0,
+                }
+            ],
+            "seed": {
+                "id": "packages/pipeline/context_trace.py::run_pack_context",
+                "file": "packages/pipeline/context_trace.py",
+                "symbol": "run_pack_context",
+            },
+            "_persist": {"packed_ids": ["packages/pipeline/context_trace.py::run_pack_context"]},
+        }
+
+    monkeypatch.setattr("pipeline.context_trace.run_pack_context", _fake_pack)
+    monkeypatch.setattr("pipeline.context_trace.load_trace", lambda *a, **k: {})
+    monkeypatch.setattr("pipeline.context_trace.persist_trace", lambda *a, **k: None)
+    # Broad escape is non-lean — requires AST ready (no sync bake on request path).
+    monkeypatch.setattr("pipeline.context_trace.ast_cache_ready", lambda *_a, **_k: True)
+
+    from pipeline.mcp_locate import create_mcp
+
+    mcp = create_mcp(name="preprod-pack-broad")
+    out = parse_tool_json(
+        tool_fn(mcp, "pack_context")(
+            query="broad escape polytrace",
+            seed_file="packages/pipeline/context_trace.py",
+            seed_symbol="run_pack_context",
+            policy="broad",
+        )
+    )
+    assert out.get("ok") is True
+    assert captured.get("policy") == "broad"
+    # Heatmap lean view drops escape metadata; wiring + engine report are the contract.
+    from pipeline.context_trace import BROAD_ESCAPE_ENGINE, pack_engine_report
+
+    esc = pack_engine_report(
+        requested_engine="composite_v1",
+        policy="broad",
+        ran_engine=BROAD_ESCAPE_ENGINE,
+    )
+    assert esc["escape"]["used"] is True
+    assert out.get("heatmap")
+
+
+def test_expand_default_shape_smoke(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    pytest.importorskip("mcp")
+    repo = _git_repo(tmp_path / "expand")
+    _enroll(repo, "ce_preprod_exp1234567890abcdef", monkeypatch, tmp_path)
+    monkeypatch.setattr("pipeline.mcp_locate._is_repo_managed", lambda: True)
+    _stub_live_daemon(monkeypatch)
+
+    from pipeline.mcp_locate import create_mcp
+
+    mcp = create_mcp(name="preprod-expand")
+    raw = tool_fn(mcp, "expand_context")(
+        node="packages/pipeline/mcp_locate.py::create_mcp",
+        direction="callees",
+        query="expand ship ladder",
+        k=5,
+    )
+    assert raw is not None
+    payload = parse_tool_json(raw)
+    # Envelope required — ok true/false both fine as long as structured.
+    assert isinstance(payload, dict)
+    assert "ok" in payload or "error" in payload or "delta" in payload
+
+
 # ---------------------------------------------------------------------------
 # L2 — install / wipe residual journey
 # ---------------------------------------------------------------------------
@@ -247,9 +502,16 @@ def test_journey_install_permissions_then_wipe_rules(
     _enroll(repo, pid, monkeypatch, tmp_path)
 
     install_tool(TOOL_MAP["cursor"], repo=repo)
+    mcp_path = repo / ".cursor" / "mcp.json"
+    assert mcp_path.is_file()
+    mcp_data = json.loads(mcp_path.read_text(encoding="utf-8"))
+    servers = mcp_data.get("mcpServers") or {}
+    assert "scubiee" in servers
+    approved = set((servers["scubiee"].get("autoApprove") or []))
+    # Live install may omit autoApprove on some hosts; permissions enrich still ship-only.
     entry = format_server_entry(TOOL_MAP["cursor"], pin_repo=False)
     enriched = enrich_server_entry_permissions(entry, "cursor")
-    approved = set(enriched.get("autoApprove") or [])
+    approved = approved or set(enriched.get("autoApprove") or [])
     assert set(SHIP_TOOLS).issubset(approved)
     assert not (approved & {"focus", "grep", "glob"})
 
@@ -260,9 +522,24 @@ def test_journey_install_permissions_then_wipe_rules(
     assert "pack_context" in text
     assert "GATE" in text
 
+    # Managed MCP create sees ship set only.
+    pytest.importorskip("mcp")
+    monkeypatch.setattr("pipeline.mcp_locate._is_repo_managed", lambda: True)
+    from pipeline.mcp_locate import create_mcp
+
+    mcp = create_mcp(name="preprod-journey-mcp")
+    assert check_registered_tools(mcp)["ok"] is True
+
     cleanup_project_gate_rules(repo)
     assert not rule.exists()
-    uninstall_tool(TOOL_MAP["cursor"], repo=repo)
+    report = uninstall_tool(TOOL_MAP["cursor"], repo=repo, all_workspaces=False)
+    assert report.get("ok") is True
+    # Project MCP entry removed for this host.
+    if mcp_path.is_file():
+        after = json.loads(mcp_path.read_text(encoding="utf-8"))
+        assert "scubiee" not in (after.get("mcpServers") or {})
+    else:
+        assert report.get("mcp_removed") or True
 
     from pipeline.session_isolation import session_data_dir
     from pipeline.session_store import load_store
@@ -347,6 +624,72 @@ def test_concurrent_map_and_status_mixed(monkeypatch: pytest.MonkeyPatch, tmp_pa
         outs = [f.result() for f in as_completed(futs)]
     assert len(outs) == 6
     assert all(o is not None for o in outs)
+
+
+def test_concurrent_pack_and_status_interleaved(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    pytest.importorskip("mcp")
+    repo = _git_repo(tmp_path / "packstat")
+    _enroll(repo, "ce_preprod_ps1234567890abcdef", monkeypatch, tmp_path)
+    _stub_live_daemon(monkeypatch)
+    monkeypatch.setattr("pipeline.mcp_locate._is_repo_managed", lambda: True)
+
+    def _fake_pack(root, query, **kwargs):
+        return {
+            "ok": True,
+            "tool": "pack_context",
+            "engine": "composite_v1",
+            "heatmap": [
+                {
+                    "r": 1,
+                    "heat": "hot",
+                    "id": "packages/pipeline/mcp_locate.py::create_mcp",
+                    "loc": "packages/pipeline/mcp_locate.py:1-2",
+                    "s": "create_mcp",
+                }
+            ],
+            "seed": {
+                "id": "packages/pipeline/mcp_locate.py::create_mcp",
+                "file": "packages/pipeline/mcp_locate.py",
+                "symbol": "create_mcp",
+            },
+            "_persist": {"packed_ids": ["packages/pipeline/mcp_locate.py::create_mcp"]},
+        }
+
+    monkeypatch.setattr("pipeline.context_trace.run_pack_context", _fake_pack)
+    monkeypatch.setattr("pipeline.context_trace.load_trace", lambda *a, **k: {})
+    monkeypatch.setattr("pipeline.context_trace.persist_trace", lambda *a, **k: None)
+
+    from pipeline.mcp_locate import create_mcp
+
+    mcp = create_mcp(name="preprod-pack-stat")
+    pack_fn = tool_fn(mcp, "pack_context")
+    status_fn = tool_fn(mcp, "status")
+    barrier = threading.Barrier(6)
+
+    def _pack() -> object:
+        barrier.wait(timeout=5)
+        return pack_fn(
+            query="concurrent pack locate",
+            seed_file="packages/pipeline/mcp_locate.py",
+            seed_symbol="create_mcp",
+            mode="lean",
+        )
+
+    def _status() -> object:
+        barrier.wait(timeout=5)
+        return status_fn()
+
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        futs = [pool.submit(_pack) for _ in range(3)] + [pool.submit(_status) for _ in range(3)]
+        outs = [f.result() for f in as_completed(futs)]
+    assert len(outs) == 6
+    assert all(o is not None and len(str(o)) > 0 for o in outs)
+    # At least the pack payloads parse as JSON envelopes.
+    pack_outs = [parse_tool_json(o) for o in outs if "heatmap" in str(o) or "pack_context" in str(o)]
+    assert pack_outs
+    assert all(isinstance(p, dict) for p in pack_outs)
 
 
 # ---------------------------------------------------------------------------

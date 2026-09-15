@@ -105,6 +105,8 @@ def _handshake(bridge: McpBridge) -> None:
 
 
 def test_server_entry_prefers_bridge_when_on_path(tmp_path, monkeypatch):
+    import os
+
     monkeypatch.setenv("CTX_HOME", str(tmp_path))
     fake_bridge = str(tmp_path / "scubiee-mcp-bridge.exe")
 
@@ -116,13 +118,27 @@ def test_server_entry_prefers_bridge_when_on_path(tmp_path, monkeypatch):
         return None
 
     monkeypatch.setattr("shutil.which", fake_which)
+    monkeypatch.setattr(
+        "pipeline.process_job.background_python",
+        lambda: r"C:\fake\pythonw.exe",
+    )
     entry = server_entry(tmp_path)
-    assert entry["command"].replace("\\", "/") == fake_bridge.replace("\\", "/")
-    assert entry["args"] == []
+    if os.name == "nt":
+        assert "pythonw" in entry["command"].replace("\\", "/").lower()
+        assert entry["args"] == ["-u", "-m", "pipeline.mcp_bridge"]
+        assert entry.get("windowsHide") is True
+        spawn = json.loads(entry["env"]["CTX_MCP_BRIDGE_SPAWN_JSON"])
+        assert spawn[-1] == "pipeline.mcp_locate"
+        assert "scubiee-mcp" not in Path(spawn[0]).name.lower()
+    else:
+        assert entry["command"].replace("\\", "/") == fake_bridge.replace("\\", "/")
+        assert entry["args"] == []
     assert "CTX_SCUBIEE_BUILD" in entry["env"]
 
 
 def test_server_entry_falls_back_to_mcp_when_no_bridge(tmp_path, monkeypatch):
+    import os
+
     monkeypatch.setenv("CTX_HOME", str(tmp_path))
     fake_mcp = str(tmp_path / "scubiee-mcp.exe")
 
@@ -134,8 +150,17 @@ def test_server_entry_falls_back_to_mcp_when_no_bridge(tmp_path, monkeypatch):
         return None
 
     monkeypatch.setattr("shutil.which", fake_which)
+    monkeypatch.setattr(
+        "pipeline.process_job.background_python",
+        lambda: r"C:\fake\pythonw.exe",
+    )
     entry = server_entry(None)
-    assert entry["command"].replace("\\", "/") == fake_mcp.replace("\\", "/")
+    if os.name == "nt":
+        assert "pythonw" in entry["command"].replace("\\", "/").lower()
+        assert "pipeline.mcp_bridge" in " ".join(str(a) for a in entry["args"])
+        assert "scubiee-mcp.exe" not in entry["command"].lower()
+    else:
+        assert entry["command"].replace("\\", "/") == fake_mcp.replace("\\", "/")
 
 
 def test_bridge_stderr_drain_prevents_block(tmp_path, monkeypatch, capsys):
@@ -243,6 +268,7 @@ def test_nudge_then_rebind_build_id_updates(tmp_path, monkeypatch):
     )
 
     before = current_build_id()
+    monkeypatch.setattr("pipeline.upgrade.installed_version", lambda: "9.9.9")
     nudge = nudge_mcp_hot_reload("9.9.9")
     assert nudge["ok"] is True
     after = current_build_id()

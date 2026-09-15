@@ -1,7 +1,8 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import argparse
 import json
+import os
 
 import pytest
 
@@ -188,6 +189,7 @@ def test_existing_init_profile_is_reused_unless_repair_requested(
     saved = _profile()
     monkeypatch.setattr(accel, "load_accel", lambda: saved)
     monkeypatch.setattr(accel, "saved_accel_needs_reconfigure", lambda _existing: False)
+    monkeypatch.setattr(accel, "profile_packages_satisfied", lambda _existing: True)
     monkeypatch.setattr(
         accel,
         "configure",
@@ -196,6 +198,99 @@ def test_existing_init_profile_is_reused_unless_repair_requested(
 
     assert cli._configure_machine(_setup_args()) == 0
     assert json.loads(capsys.readouterr().out)["profile"] == "dml"
+
+
+def test_existing_init_reconfigures_when_packages_unsatisfied(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Stale accel.json after wipe/uv reinstall must not skip package repair."""
+    saved = _profile()
+    seen: dict[str, object] = {}
+
+    monkeypatch.setattr(accel, "load_accel", lambda: saved)
+    monkeypatch.setattr(accel, "saved_accel_needs_reconfigure", lambda _existing: False)
+    monkeypatch.setattr(accel, "profile_packages_satisfied", lambda _existing: False)
+
+    def fake_configure(**kwargs: object) -> AccelProfile:
+        seen.update(kwargs)
+        return saved
+
+    monkeypatch.setattr(accel, "configure", fake_configure)
+    assert cli._configure_machine(_setup_args()) == 0
+    assert seen.get("force_install") is False
+
+
+def test_configure_machine_auto_repairs_any_first_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Plain `scubiee setup` should self-heal once — user should not need `--repair`."""
+    calls: list[dict[str, object]] = []
+    repaired = _profile(batch_size=24)
+
+    monkeypatch.setattr(accel, "load_accel", lambda: None)
+
+    def fake_configure(**kwargs: object) -> AccelProfile:
+        calls.append(dict(kwargs))
+        if len(calls) == 1:
+            raise RuntimeError("No module named 'PIL'")
+        return repaired
+
+    monkeypatch.setattr(accel, "configure", fake_configure)
+    assert cli._configure_machine(_setup_args(skip_install=False)) == 0
+    assert len(calls) == 2
+    assert calls[0].get("force_install") is False
+    assert calls[1].get("force_install") is True
+    assert calls[1].get("install_pkgs") is True
+
+
+def test_configure_machine_auto_repairs_winerror_1314(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Symlink privilege failure must set HF_HUB_DISABLE_SYMLINKS and retry."""
+    import os
+
+    calls: list[dict[str, object]] = []
+    repaired = _profile()
+    monkeypatch.setattr(accel, "load_accel", lambda: None)
+    monkeypatch.delenv("HF_HUB_DISABLE_SYMLINKS", raising=False)
+
+    def fake_configure(**kwargs: object) -> AccelProfile:
+        calls.append(dict(kwargs))
+        if len(calls) == 1:
+            raise OSError(
+                1314,
+                "A required privilege is not held by the client: "
+                "'..\\..\\blobs\\abc' -> 'C:\\Users\\ADMIN\\.cache\\fastembed\\snapshots\\x'",
+            )
+        assert os.environ.get("HF_HUB_DISABLE_SYMLINKS") == "1"
+        return repaired
+
+    monkeypatch.setattr(accel, "configure", fake_configure)
+    assert cli._configure_machine(_setup_args(skip_install=False)) == 0
+    assert len(calls) == 2
+    assert calls[1].get("force_install") is True
+
+
+def test_setup_download_env_disables_hub_symlinks(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("HF_HUB_DISABLE_SYMLINKS", raising=False)
+    prev = accel._setup_download_env()
+    try:
+        assert os.environ.get("HF_HUB_DISABLE_SYMLINKS") == "1"
+        assert os.environ.get("HF_HUB_DISABLE_SYMLINKS_WARNING") == "1"
+    finally:
+        accel._restore_env(prev)
+
+
+def test_format_setup_error_covers_win1314_and_trampoline() -> None:
+    msg1314 = accel.format_setup_error(
+        OSError(1314, "A required privilege is not held by the client")
+    )
+    assert "1314" in msg1314 or "symlink" in msg1314.lower()
+    tramp = accel.format_setup_error(
+        RuntimeError("uv trampoline failed to canonicalize script path")
+    )
+    assert "force" in tramp.lower()
+    assert "unlock-tool" in tramp.lower()
 
 
 def test_init_repair_explicitly_reconfigures(

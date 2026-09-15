@@ -33,6 +33,24 @@ def _trace_parallel_enabled() -> bool:
     return raw not in {"0", "false", "no", "off"}
 
 
+def _engine_busy_for_multi_seed() -> bool:
+    """True when indexing/warming — cap multi-seed work to avoid pack pile-ups."""
+    try:
+        from pipeline.client import EngineClient
+
+        health = EngineClient(timeout=1.0).get("/health")
+        if not isinstance(health, dict):
+            return False
+        warm = str(health.get("warm_state") or "").strip().lower()
+        if warm in {"indexing", "warming"}:
+            return True
+        if health.get("syncing") or str(health.get("sync_state") or "").lower() == "syncing":
+            return True
+    except Exception:  # noqa: BLE001
+        return False
+    return False
+
+
 @dataclass
 class _RepoTrace:
     root: Path
@@ -265,23 +283,57 @@ def _graph_from_edges(nodes: dict[str, TraceNode], edges_raw: list[Any]) -> AstT
     return AstTraceGraph(nodes, edges)
 
 
-def _try_load_repo_bundle(
-    root: Path, *, fingerprint: str, with_graphify: bool, engine: str
-) -> tuple[dict[str, TraceNode], AstTraceGraph, LspIndex, LexicalIndex, AstTraceGraph | None] | None:
+# path -> (mtime_ns, size, raw_dict). Avoids double-unpickle when hydrate
+# tries fresh fingerprint then allow_stale on the same 50MB bundle.
+_BUNDLE_RAW_CACHE: dict[str, tuple[int, int, dict[str, Any]]] = {}
+
+
+def _read_repo_bundle_raw(path: Path) -> dict[str, Any] | None:
+    """Unpickle the repo AST bundle once per path+mtime (process-local)."""
     import pickle
 
-    path = _repo_bundle_path(root)
-    if not path.is_file():
+    try:
+        st = path.stat()
+    except OSError:
         return None
+    key = str(path)
+    cached = _BUNDLE_RAW_CACHE.get(key)
+    if cached is not None and cached[0] == st.st_mtime_ns and cached[1] == st.st_size:
+        return cached[2]
     try:
         raw = pickle.loads(path.read_bytes())
     except Exception:  # noqa: BLE001
         return None
     if not isinstance(raw, dict):
         return None
+    _BUNDLE_RAW_CACHE[key] = (st.st_mtime_ns, st.st_size, raw)
+    return raw
+
+
+def _try_load_repo_bundle(
+    root: Path,
+    *,
+    fingerprint: str,
+    with_graphify: bool,
+    engine: str,
+    allow_stale: bool = False,
+) -> tuple[dict[str, TraceNode], AstTraceGraph, LspIndex, LexicalIndex, AstTraceGraph | None, bool] | None:
+    """Load disk AST bundle once.
+
+    Returns ``(nodes, graph, lsp, lex, gfy, stale)`` or ``None``.
+    ``stale`` is True when the on-disk fingerprint does not match the corpus
+    (only returned when ``allow_stale=True``).
+    """
+    path = _repo_bundle_path(root)
+    if not path.is_file():
+        return None
+    raw = _read_repo_bundle_raw(path)
+    if raw is None:
+        return None
     if raw.get("version") != _REPO_BUNDLE_VERSION:
         return None
-    if raw.get("fingerprint") != fingerprint:
+    stale = raw.get("fingerprint") != fingerprint
+    if stale and not allow_stale:
         return None
     if bool(raw.get("with_graphify")) != bool(with_graphify):
         return None
@@ -301,7 +353,7 @@ def _try_load_repo_bundle(
         gfy = None
         if with_graphify and raw.get("gfy_edges") is not None:
             gfy = _graph_from_edges(nodes, list(raw.get("gfy_edges") or []))
-        return nodes, graph, lsp, lex, gfy
+        return nodes, graph, lsp, lex, gfy, bool(stale)
     except Exception:  # noqa: BLE001
         return None
 
@@ -341,6 +393,7 @@ def _save_repo_bundle(
         tmp = path.with_suffix(".pkl.tmp")
         tmp.write_bytes(pickle.dumps(payload, protocol=pickle.HIGHEST_PROTOCOL))
         tmp.replace(path)
+        _BUNDLE_RAW_CACHE.pop(str(path), None)
     except Exception:  # noqa: BLE001
         pass
 
@@ -357,12 +410,32 @@ def _load_repo(root: Path, *, with_graphify: bool | None = None) -> _RepoTrace:
         return cached
 
     fingerprint = corpus_fingerprint(root)
+    # One disk unpickle: prefer fresh fingerprint, else accept stale (beats bake).
     bundled = _try_load_repo_bundle(
-        root, fingerprint=fingerprint, with_graphify=with_graphify, engine=engine
+        root,
+        fingerprint=fingerprint,
+        with_graphify=with_graphify,
+        engine=engine,
+        allow_stale=True,
     )
     if bundled is not None:
-        nodes, graph, lsp, lex, gfy = bundled
+        if len(bundled) >= 6:
+            nodes, graph, lsp, lex, gfy, _stale = bundled[:6]
+        else:
+            nodes, graph, lsp, lex, gfy = bundled[:5]
     else:
+        # MCP locate worker must never cold-bake AST on the request path —
+        # multi-second GIL starves stdio and Cursor opens a duplicate bridge.
+        no_bake = (
+            (os.environ.get("CTX_TRACE_NO_BAKE") or "").strip().lower()
+            in {"1", "true", "yes", "on"}
+            or (os.environ.get("CTX_MCP_BRIDGE_CHILD") or "").strip()
+            in {"1", "true", "yes", "on"}
+        )
+        if no_bake:
+            raise RuntimeError(
+                "ast_bundle_missing; call hydrate_ast_bundle or unset CTX_TRACE_NO_BAKE"
+            )
         nodes = extract_nodes(root)
         # Prefer application packages when the monorepo is huge
         if len(nodes) > 8000:
@@ -425,6 +498,116 @@ def _load_repo(root: Path, *, with_graphify: bool | None = None) -> _RepoTrace:
     )
     _CACHE[key] = rt
     return rt
+
+
+def _repo_cache_key(root: Path, *, with_graphify: bool | None = None) -> str:
+    root = root.resolve()
+    return f"{root}|gfy={int(bool(_want_graphify(with_graphify)))}|eng={_trace_engine()}"
+
+
+def ast_cache_ready(root: Path | str, *, with_graphify: bool | None = None) -> bool:
+    """True when this process already holds a fresh in-memory AST/trace repo."""
+    key = _repo_cache_key(Path(root), with_graphify=with_graphify)
+    cached = _CACHE.get(key)
+    return bool(cached and (time.time() - cached.built_at) < 600)
+
+
+def hydrate_ast_bundle(
+    root: Path | str,
+    *,
+    bake_on_miss: bool = False,
+    with_graphify: bool | None = None,
+) -> dict[str, Any]:
+    """Populate ``_CACHE`` from disk bundle (fast) or optional full bake.
+
+    Attach-warm uses ``bake_on_miss=False`` so the 10s budget is not blown by a
+    cold AST rebuild. Pack can call with ``bake_on_miss=True`` once embed is hot.
+    """
+    t0 = time.perf_counter()
+    root_p = Path(root).resolve()
+    if ast_cache_ready(root_p, with_graphify=with_graphify):
+        try:
+            from pipeline.warm_contract import set_ast_hydrated
+
+            set_ast_hydrated(True, source="cache")
+        except Exception:  # noqa: BLE001
+            pass
+        return {
+            "ok": True,
+            "source": "cache",
+            "ms": round((time.perf_counter() - t0) * 1000, 1),
+        }
+
+    gfy = _want_graphify(with_graphify)
+    engine = _trace_engine()
+    fingerprint = corpus_fingerprint(root_p)
+    # One unpickle. When bake_on_miss=False, accept a slightly stale bundle
+    # rather than missing (and never double-read the 50MB pickle).
+    bundled = _try_load_repo_bundle(
+        root_p,
+        fingerprint=fingerprint,
+        with_graphify=gfy,
+        engine=engine,
+        allow_stale=not bake_on_miss,
+    )
+    if bundled is not None:
+        # Defensive: older mocks may still return a 5-tuple.
+        if len(bundled) >= 6:
+            nodes, graph, lsp, lex, gfy_g, stale = bundled[:6]
+        else:
+            nodes, graph, lsp, lex, gfy_g = bundled[:5]
+            stale = False
+        poly = _bind_pack_tracer(
+            root_p, engine=engine, nodes=nodes, lsp=lsp, gfy=gfy_g
+        )
+        key = _repo_cache_key(root_p, with_graphify=gfy)
+        _CACHE[key] = _RepoTrace(
+            root=root_p,
+            nodes=nodes,
+            graph=graph,
+            lsp=lsp,
+            lex=lex,
+            gfy=gfy_g,
+            poly=poly,
+            built_at=time.time(),
+        )
+        try:
+            from pipeline.warm_contract import set_ast_hydrated
+
+            set_ast_hydrated(True, source="bundle_stale" if stale else "bundle")
+        except Exception:  # noqa: BLE001
+            pass
+        return {
+            "ok": True,
+            "source": "bundle_stale" if stale else "bundle",
+            "ms": round((time.perf_counter() - t0) * 1000, 1),
+        }
+
+    if not bake_on_miss:
+        try:
+            from pipeline.warm_contract import set_ast_hydrated
+
+            set_ast_hydrated(False, source="miss")
+        except Exception:  # noqa: BLE001
+            pass
+        return {
+            "ok": False,
+            "source": "miss",
+            "ms": round((time.perf_counter() - t0) * 1000, 1),
+        }
+
+    _load_repo(root_p, with_graphify=gfy)
+    try:
+        from pipeline.warm_contract import set_ast_hydrated
+
+        set_ast_hydrated(True, source="baked")
+    except Exception:  # noqa: BLE001
+        pass
+    return {
+        "ok": True,
+        "source": "baked",
+        "ms": round((time.perf_counter() - t0) * 1000, 1),
+    }
 
 
 _SKIP_SEED_SYMBOLS = frozenset({"ROOT", "root", "", "_"})
@@ -2078,10 +2261,25 @@ def run_map_context(
     seed3_line: int = 0,
     k: int = 24,
 ) -> dict[str, Any]:
-    from trace_lab.multi_seed import merge_seed_heatmaps, seed_specs_from_args
+    from trace_lab.multi_seed import (
+        light_seed_heatmap,
+        merge_seed_heatmaps,
+        multi_seed_adaptive_enabled,
+        seed_covered_by_heatmap,
+        seed_specs_from_args,
+    )
 
     t0 = time.perf_counter()
+    timing: dict[str, Any] = {
+        "load_repo_ms": 0.0,
+        "poly_ms": [],
+        "merge_ms": 0.0,
+        "cards_ms": 0.0,
+        "adaptive_skips": [],
+    }
+    t_load = time.perf_counter()
     rt = _load_repo(root)
+    timing["load_repo_ms"] = round((time.perf_counter() - t_load) * 1000, 1)
     specs = seed_specs_from_args(
         seed_file=seed_file,
         seed_symbol=seed_symbol,
@@ -2098,6 +2296,7 @@ def run_map_context(
             "ok": False,
             "error": f"seed not found: file={seed_file!r} symbol={seed_symbol!r} line={seed_line}",
             "hint": "Pass seed_file + seed_symbol or seed_line covering a function.",
+            "timing": timing,
         }
 
     resolved: list[TraceNode] = []
@@ -2116,6 +2315,7 @@ def run_map_context(
                     f"symbol={spec.get('symbol')!r} line={spec.get('line')}"
                 ),
                 "hint": "Pass seed_file + seed_symbol or seed_line covering a function.",
+                "timing": timing,
             }
         if node is None:
             continue
@@ -2128,7 +2328,12 @@ def run_map_context(
             "ok": False,
             "error": f"seed not found: file={seed_file!r} symbol={seed_symbol!r} line={seed_line}",
             "hint": "Pass seed_file + seed_symbol or seed_line covering a function.",
+            "timing": timing,
         }
+
+    busy = _engine_busy_for_multi_seed()
+    if busy and len(resolved) > 2:
+        resolved = resolved[:2]
 
     seed = resolved[0]
     seed2 = resolved[1] if len(resolved) > 1 else None
@@ -2137,22 +2342,53 @@ def run_map_context(
     def _poly(seed_node: TraceNode, case_id: str) -> Heatmap:
         return rt.poly(_case(query, seed_node, case_id=case_id), rt.nodes, rt.graph, rt.lex)
 
-    maps: list[Heatmap] = []
+    maps_slot: list[Heatmap | None] = [None] * len(resolved)
     case_ids = ["mcp", "mcp2", "mcp3"]
-    if len(resolved) >= 2 and _trace_parallel_enabled():
-        with ThreadPoolExecutor(max_workers=min(3, len(resolved))) as pool:
-            futs = [pool.submit(_poly, node, case_ids[i]) for i, node in enumerate(resolved)]
-            maps = [f.result() for f in futs]
-    else:
-        for i, node in enumerate(resolved):
-            maps.append(_poly(node, case_ids[i]))
+    adaptive = multi_seed_adaptive_enabled() and len(resolved) >= 2 and not busy
 
+    # Always full poly for seed1 (quality anchor).
+    t_p0 = time.perf_counter()
+    maps_slot[0] = _poly(resolved[0], case_ids[0])
+    timing["poly_ms"].append(round((time.perf_counter() - t_p0) * 1000, 1))
+
+    # Secondary seeds: light hop island when already covered by seed1, else full poly.
+    need_full: list[tuple[int, TraceNode]] = []
+    for i, node in enumerate(resolved[1:], start=1):
+        if adaptive and seed_covered_by_heatmap(maps_slot[0], node.id):
+            t_l = time.perf_counter()
+            maps_slot[i] = light_seed_heatmap(node.id, rt.graph)
+            timing["poly_ms"].append(round((time.perf_counter() - t_l) * 1000, 1))
+            timing["adaptive_skips"].append(node.id)
+        else:
+            need_full.append((i, node))
+
+    if need_full:
+        if len(need_full) >= 2 and _trace_parallel_enabled() and not busy:
+            t_par = time.perf_counter()
+            with ThreadPoolExecutor(max_workers=min(2, len(need_full))) as pool:
+                futs = {
+                    pool.submit(_poly, node, case_ids[i]): i for i, node in need_full
+                }
+                for fut, i in futs.items():
+                    maps_slot[i] = fut.result()
+            timing["poly_ms"].append(round((time.perf_counter() - t_par) * 1000, 1))
+        else:
+            for i, node in need_full:
+                t_p = time.perf_counter()
+                maps_slot[i] = _poly(node, case_ids[i])
+                timing["poly_ms"].append(round((time.perf_counter() - t_p) * 1000, 1))
+
+    maps = [m for m in maps_slot if m is not None]
+    t_merge = time.perf_counter()
     if len(resolved) >= 2:
         merged = merge_seed_heatmaps(maps, [n.id for n in resolved], rt.graph)
     else:
         merged = maps[0] if maps else Heatmap(strategy="map_context", cells=[])
+    timing["merge_ms"] = round((time.perf_counter() - t_merge) * 1000, 1)
 
+    t_cards = time.perf_counter()
     cards = heatmap_to_cards(merged, rt.nodes, k=k)
+    timing["cards_ms"] = round((time.perf_counter() - t_cards) * 1000, 1)
 
     def _seed_blob(n: TraceNode | None) -> dict[str, Any] | None:
         if n is None:
@@ -2165,6 +2401,17 @@ def run_map_context(
             "start_line": n.start_line,
         }
 
+    multi_meta: dict[str, Any] | None = None
+    if len(resolved) >= 2:
+        extra = dict(getattr(merged, "extra", {}) or {})
+        if timing["adaptive_skips"]:
+            extra["adaptive_skips"] = list(timing["adaptive_skips"])
+            extra["adaptive"] = True
+        multi_meta = {
+            "engine": getattr(merged, "strategy", "multi_seed_v1"),
+            "extra": extra,
+        }
+
     return {
         "ok": True,
         "tool": "map_context",
@@ -2173,14 +2420,7 @@ def run_map_context(
         "seed2": _seed_blob(seed2),
         "seed3": _seed_blob(seed3),
         "seeds": [_seed_blob(n) for n in resolved],
-        "multi_seed": (
-            {
-                "engine": getattr(merged, "strategy", "multi_seed_v1"),
-                "extra": getattr(merged, "extra", {}) or {},
-            }
-            if len(resolved) >= 2
-            else None
-        ),
+        "multi_seed": multi_meta,
         "heatmap": cards,
         "count": len(cards),
         "ranked_only": True,
@@ -2194,6 +2434,7 @@ def run_map_context(
         ),
         "howto": _HEATMAP_HOWTO,
         "elapsed_ms": round((time.perf_counter() - t0) * 1000, 1),
+        "timing": timing,
         "_persist": {
             "query": query,
             "seed_id": seed.id,
@@ -2620,9 +2861,8 @@ def run_expand_context(
     prior.discard(nid)
 
     # callers/effects need tracer — structural reverse edges alone are too sparse.
+    # broad/all are script-neighbor expands only (no poly / no semantic).
     want_tracer = d in {
-        "all",
-        "broad",
         "flow",
         "callees",
         "config",
@@ -2685,16 +2925,17 @@ def run_expand_context(
             ]
         return cards
 
-    # 1+2) Structural neighbors and tracer re-seed in parallel when both needed
-    if want_tracer and _trace_parallel_enabled():
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            f_struct = pool.submit(_struct)
-            f_tracer = pool.submit(_tracer)
-            struct = f_struct.result()
-            tracer_cards = f_tracer.result()
-    else:
-        struct = _struct()
-        tracer_cards = _tracer() if want_tracer else []
+    t_struct = time.perf_counter()
+    struct = _struct()
+    struct_ms = round((time.perf_counter() - t_struct) * 1000, 1)
+    tracer_cards: list[dict[str, Any]] = []
+    tracer_ms = 0.0
+    # broad/all = script-graph neighbors only. Never pay poly here — that was
+    # the multi-second expand tax when structure was thin/already-expanded.
+    if want_tracer:
+        t_tr = time.perf_counter()
+        tracer_cards = _tracer()
+        tracer_ms = round((time.perf_counter() - t_tr) * 1000, 1)
 
     lexical: list[dict[str, Any]] = []
     if d in {"callers", "refs", "dependents"}:
@@ -2803,6 +3044,11 @@ def run_expand_context(
         "howto": _HEATMAP_HOWTO,
         "ladder": "map → pack(lean) → expand(delta[,with_bodies]) — ≤3 calls",
         "elapsed_ms": round((time.perf_counter() - t0) * 1000, 1),
+        "timings": {
+            "struct_ms": struct_ms,
+            "tracer_ms": tracer_ms,
+            "tracer_used": bool(tracer_cards),
+        },
         "_persist_ids": [c["id"] for c in delta],
         "_persist_packed": sorted(packed_now),
     }
@@ -3737,13 +3983,36 @@ def run_pack_context(
         "ladder": "map → pack(lean) → expand(delta[,with_bodies]) — ≤3 calls",
         "_persist": persist,
     }
+    if isinstance(mapped.get("timing"), dict):
+        out["timing"] = mapped["timing"]
     if broad_escape:
         out["escape_helped"] = bool(escape_helped) if escape_helped is not None else (not thin)
     elif wanted_broad:
         out["escape_helped"] = False if escape_helped is None else bool(escape_helped)
         if out["escape_helped"] is False:
             out["prefer"] = "expand_context|Native-Read seed file"
-    out["elapsed_ms"] = round((time.perf_counter() - t0) * 1000, 1)
+    elapsed_ms = round((time.perf_counter() - t0) * 1000, 1)
+    out["elapsed_ms"] = elapsed_ms
+    # Pack is a heavy AST/trace path — surface SLA so agents don't treat
+    # 15–20s as a hang (R7). Target: lean single-seed warm < 5s.
+    lean_single_seed = (
+        str(out.get("mode") or "lean") == "lean"
+        and not bool(out.get("multi_seed") or out.get("seed2") or out.get("seed3"))
+    )
+    # Multi-seed target tightened after adaptive secondary skips (plan 2026-09-13).
+    target_ms = 5000 if lean_single_seed else 8000
+    out["sla"] = {
+        "target_ms": target_ms,
+        "elapsed_ms": elapsed_ms,
+        "lean_single_seed": lean_single_seed,
+        "profile": "lean_single_seed_warm" if lean_single_seed else "pack_multi_seed_warm",
+    }
+    if elapsed_ms > target_ms:
+        out["sla_hint"] = (
+            f"pack_context took {elapsed_ms}ms (target {target_ms}ms) — heavy path, "
+            "not a hang. Prefer lean + one public seed when warm; multi-seed cold "
+            "AST can still take several seconds."
+        )
     return out
 
 

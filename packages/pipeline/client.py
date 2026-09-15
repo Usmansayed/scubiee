@@ -104,19 +104,37 @@ class EngineClient:
         except OSError:
             return True
 
-    def healthy(self) -> bool:
-        """True if /health returns ok. Always uses a short timeout."""
+    def health(self) -> dict[str, Any]:
+        """Return /health JSON (includes embedder_loaded when engine is up)."""
         if self._loopback_listener_absent():
-            return False
+            return {"ok": False, "error": "listener_absent"}
+        # Honor client timeout (locate probes use <1s); never exceed 3s.
+        health_timeout = max(0.2, min(float(getattr(self, "timeout", 3.0) or 3.0), 3.0))
+        transport = (os.environ.get("CTX_ENGINE_HTTP_TRANSPORT") or "httpx").strip().lower()
+        if transport in {"urllib", "legacy"}:
+            return self._health_urllib(timeout=health_timeout)
+        try:
+            from pipeline.engine_http import shared_engine_http
+
+            http = shared_engine_http(self.base, timeout=health_timeout, retries=1)
+            return http.get_json_soft("/health")
+        except Exception as exc:  # noqa: BLE001
+            return {"ok": False, "error": str(exc)}
+
+    def _health_urllib(self, *, timeout: float = 3.0) -> dict[str, Any]:
         try:
             url = f"{self.base}/health"
             req = urllib.request.Request(url, headers={"Accept": "application/json"}, method="GET")
-            with urllib.request.urlopen(req, timeout=3.0) as resp:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
                 raw = resp.read().decode("utf-8")
                 data = json.loads(raw) if raw else {}
-                return bool(data.get("ok"))
-        except Exception:  # noqa: BLE001
-            return False
+                return data if isinstance(data, dict) else {"ok": False}
+        except Exception as exc:  # noqa: BLE001
+            return {"ok": False, "error": str(exc)}
+
+    def healthy(self) -> bool:
+        """True if /health returns ok. Always uses a short timeout."""
+        return bool(self.health().get("ok"))
 
     def get(self, path: str) -> dict[str, Any]:
         return self._request("GET", path)
@@ -132,18 +150,57 @@ class EngineClient:
         *,
         _allow_retry: bool = True,
     ) -> dict[str, Any]:
+        transport = (os.environ.get("CTX_ENGINE_HTTP_TRANSPORT") or "httpx").strip().lower()
+        if transport not in {"urllib", "legacy"}:
+            return self._request_httpx(method, path, body, allow_retry=_allow_retry)
+        return self._request_urllib(method, path, body, allow_retry=_allow_retry)
+
+    def _prepare_body(self, method: str, body: dict[str, Any] | None) -> dict[str, Any] | None:
+        if body is None or method == "GET":
+            return None
+        payload = dict(body)
+        supplied_path = payload.get("path") or payload.get("repo") or payload.get("root")
+        workspace = self._coerce_workspace(supplied_path)
+        payload["path"] = workspace
+        if self.client_name:
+            payload.setdefault("client", self.client_name)
+        if self.session_id:
+            payload.setdefault("session_id", self.session_id)
+        return payload
+
+    def _request_httpx(
+        self,
+        method: str,
+        path: str,
+        body: dict[str, Any] | None,
+        *,
+        allow_retry: bool,
+    ) -> dict[str, Any]:
+        from pipeline.engine_http import shared_engine_http
+
+        payload = self._prepare_body(method, body)
+        http = shared_engine_http(self.base, timeout=float(self.timeout))
+        if method.upper() == "GET":
+            return http.get_json_soft(path)
+        return http.post_json(
+            path,
+            payload or {},
+            retry=bool(allow_retry) and path in {"/v1/status", "/status"},
+        )
+
+    def _request_urllib(
+        self,
+        method: str,
+        path: str,
+        body: dict[str, Any] | None,
+        *,
+        allow_retry: bool,
+    ) -> dict[str, Any]:
         url = f"{self.base}{path}"
         data = None
         headers = {"Accept": "application/json"}
-        if body is not None and method != "GET":
-            payload = dict(body)
-            supplied_path = payload.get("path") or payload.get("repo") or payload.get("root")
-            workspace = self._coerce_workspace(supplied_path)
-            payload["path"] = workspace
-            if self.client_name:
-                payload.setdefault("client", self.client_name)
-            if self.session_id:
-                payload.setdefault("session_id", self.session_id)
+        payload = self._prepare_body(method, body)
+        if payload is not None:
             data = json.dumps(payload).encode("utf-8")
             headers["Content-Type"] = "application/json"
         req = urllib.request.Request(url, data=data, headers=headers, method=method)
@@ -154,26 +211,26 @@ class EngineClient:
         except urllib.error.HTTPError as exc:
             try:
                 err_body = exc.read().decode("utf-8")
-                payload = json.loads(err_body) if err_body else {}
+                payload_err = json.loads(err_body) if err_body else {}
             except Exception:  # noqa: BLE001
-                payload = {"error": str(exc)}
-            payload.setdefault("ok", False)
-            payload.setdefault("http_status", exc.code)
-            if _allow_retry and exc.code in {502, 503, 504}:
+                payload_err = {"error": str(exc)}
+            payload_err.setdefault("ok", False)
+            payload_err.setdefault("http_status", exc.code)
+            if allow_retry and exc.code in {502, 503, 504}:
                 time.sleep(0.35)
-                retried = self._request(method, path, body, _allow_retry=False)
+                retried = self._request_urllib(method, path, body, allow_retry=False)
                 if isinstance(retried, dict):
                     retried["retried"] = True
                     retried.setdefault("should_retry", False)
                 return retried
-            if is_transient_engine_error(str(payload.get("error") or exc)):
-                payload["should_retry"] = True
-            return payload
+            if is_transient_engine_error(str(payload_err.get("error") or exc)):
+                payload_err["should_retry"] = True
+            return payload_err
         except urllib.error.URLError as exc:
             err = f"Scubiee unreachable at {self.base}: {exc.reason}"
-            if _allow_retry and is_transient_engine_error(err):
+            if allow_retry and is_transient_engine_error(err):
                 time.sleep(0.35)
-                retried = self._request(method, path, body, _allow_retry=False)
+                retried = self._request_urllib(method, path, body, allow_retry=False)
                 if isinstance(retried, dict):
                     retried["retried"] = True
                     retried.setdefault("should_retry", False)
@@ -186,9 +243,9 @@ class EngineClient:
             }
         except (TimeoutError, OSError, ConnectionError) as exc:
             err = f"Scubiee unreachable at {self.base}: {exc}"
-            if _allow_retry and is_transient_engine_error(err):
+            if allow_retry and is_transient_engine_error(err):
                 time.sleep(0.35)
-                retried = self._request(method, path, body, _allow_retry=False)
+                retried = self._request_urllib(method, path, body, allow_retry=False)
                 if isinstance(retried, dict):
                     retried["retried"] = True
                     retried.setdefault("should_retry", False)

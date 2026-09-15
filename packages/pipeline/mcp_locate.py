@@ -2416,7 +2416,30 @@ def _client_for(repo: Path):
                 mark_soft_ready()
                 admission["soft_ready"] = True
         except Exception as exc:  # noqa: BLE001
-            admission = {**warming_response(), "detail": str(exc), "warm": warm}
+            detail = str(exc)
+            low = detail.lower()
+            hard_fail = any(
+                tok in low
+                for tok in (
+                    "unreachable",
+                    "connection refused",
+                    "actively refused",
+                    "failed to establish",
+                    "name or service not known",
+                    "nodename nor servname",
+                    "getaddrinfo failed",
+                )
+            )
+            if hard_fail:
+                admission = {
+                    "ok": False,
+                    "error": "open_repo_failed",
+                    "detail": detail,
+                    "warm": warm,
+                }
+                _stderr(f"[scubiee] admission warning: open_repo_failed {detail}")
+            else:
+                admission = {**warming_response(), "detail": detail, "warm": warm}
             stub = _WarmingClient(admission)
             setattr(stub, "_scubiee_admission", admission)
             return stub
@@ -5850,6 +5873,12 @@ def main() -> None:
     from pipeline.ctx_home_guard import enforce_ctx_home_or_exit
 
     enforce_ctx_home_or_exit()
+    try:
+        from pipeline.process_job import soften_background_priority
+
+        soften_background_priority()
+    except Exception:  # noqa: BLE001
+        pass
     # Disable automatic GC in the MCP process. Native extensions (tokenizers,
     # MLX, numpy) release the GIL; concurrent GC can traverse freed objects → SIGSEGV.
     # Same fix as the daemon (server.py). Manual gc.collect() at safe points.

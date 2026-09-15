@@ -183,14 +183,28 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 
 def _write_json(path: Path, data: dict[str, Any]) -> None:
-    """Atomically replace a JSON document in its destination directory."""
+    """Atomically replace a JSON document in its destination directory.
+
+    Retries ``os.replace`` on Windows ``PermissionError`` (AV / concurrent
+    readers holding ``registry.json`` during ``/v1/open`` — R11).
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(f".{path.name}.{secrets.token_hex(8)}.tmp")
-    try:
-        temporary.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-        os.replace(temporary, path)
-    finally:
-        temporary.unlink(missing_ok=True)
+    payload = json.dumps(data, indent=2) + "\n"
+    last_err: BaseException | None = None
+    for attempt in range(6):
+        temporary = path.with_name(f".{path.name}.{secrets.token_hex(8)}.tmp")
+        try:
+            temporary.write_text(payload, encoding="utf-8")
+            os.replace(temporary, path)
+            return
+        except PermissionError as exc:
+            last_err = exc
+            time.sleep(0.05 * (2**attempt))
+        finally:
+            temporary.unlink(missing_ok=True)
+    if last_err is not None:
+        raise last_err
+    raise OSError(f"failed to write {path}")
 
 
 def read_id_file(root: Path) -> str | None:
@@ -322,7 +336,11 @@ def git_common_dir(root: Path) -> Path | None:
     """Return the shared Git administration directory for a checkout."""
     root = root.resolve()
     try:
-        completed = subprocess.run(
+        # hidden_run: CREATE_NO_WINDOW on Windows — pythonw→git otherwise
+        # allocates a visible conhost flash on every identity/reconcile call.
+        from pipeline.process_job import hidden_run
+
+        completed = hidden_run(
             [
                 "git",
                 "-C",

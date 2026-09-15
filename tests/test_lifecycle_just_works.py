@@ -209,6 +209,7 @@ def test_ensure_supervisor_detached_uses_orphan_on_windows(
 
     calls: list[dict] = []
     monkeypatch.setattr(lr, "current_desktop", lambda: "windows")
+    monkeypatch.setattr(lr, "_windows_supervisor_task_exists", lambda force=False: False)
     monkeypatch.setattr(lr, "_run_windows_supervisor_task", lambda: {"ok": False})
     monkeypatch.setattr(
         "pipeline.watchdog.is_watchdog_running",

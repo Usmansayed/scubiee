@@ -73,7 +73,11 @@ class FreshnessReport:
 
 def _git(root: Path, *args: str) -> str | None:
     try:
-        r = subprocess.run(
+        # hidden_run: CREATE_NO_WINDOW on Windows — engine/MCP under pythonw
+        # must not flash conhost when probing HEAD/status/diff.
+        from pipeline.process_job import hidden_run
+
+        r = hidden_run(
             ["git", *args],
             cwd=str(root),
             capture_output=True,

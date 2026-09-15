@@ -271,7 +271,7 @@ def test_idle_sweeper_retires_self_when_stop_cannot_kill_own_pid(monkeypatch) ->
     monkeypatch.setattr(
         life,
         "apply_idle_policy",
-        lambda: {"action": "standby", "engine": {"ok": True, "running": True, "killed": []}},
+        lambda **_k: {"action": "standby", "engine": {"ok": True, "running": True, "killed": []}},
     )
 
     retired = threading.Event()
@@ -302,7 +302,10 @@ def test_idle_sweeper_retires_self_on_any_standby(monkeypatch) -> None:
     monkeypatch.setattr(
         life,
         "apply_idle_policy",
-        lambda: {"action": "standby", "engine": {"ok": True, "running": False, "killed": [4242]}},
+        lambda **_k: {
+            "action": "standby",
+            "engine": {"ok": True, "running": False, "killed": [4242]},
+        },
     )
 
     retired = threading.Event()

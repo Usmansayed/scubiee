@@ -814,7 +814,7 @@ def wipe_repo(
     }
     out["hint"] = (
         "Full clean: scubiee wipe --all --confirm\n"
-        "Then reinstall: uv tool install scubiee --index-url https://pypi.org/simple && scubiee setup"
+        "Then reinstall: uv tool install --force scubiee --index-url https://pypi.org/simple --refresh && scubiee setup"
     )
 
     if restart_engine:
@@ -876,7 +876,8 @@ def wipe_all(
                 ".scubiee + MCP/rules, all connect tool MCP entries "
                 "(Cursor, Claude Code, Codex, Windsurf, Copilot, Cline, Roo, …), "
                 "all home dirs (~/.scubiee), CodeRank/FastEmbed/"
-                "HuggingFace model caches, uv tool shims, and the scubiee package. "
+                "HuggingFace model caches, uv tool shims "
+                "(scubiee / scubiee-mcp / scubiee-mcp-bridge), and the scubiee package. "
                 "Re-run with: scubiee wipe --all --confirm. "
                 "One command — stubs MCP, kills processes, unlocks files, and wipes. "
                 "Cursor/Claude can stay open."
@@ -994,33 +995,34 @@ def wipe_all(
         if is_uv_tool_install() or (uv_tool_dir and uv_tool_dir.exists()):
             if from_self:
                 # Never uv-uninstall inside our own tool env — schedule dir removal.
+                # Shim cleanup must cover all three entry points; a post-exit
+                # ``uv tool uninstall`` is unreliable once the tool dir is renamed
+                # aside (uv reports "scubiee is not installed" while mcp/bridge
+                # shims can still block a clean reinstall).
                 forced = force_remove_uv_tool_dir(stop_first=False)
+                shims_again = remove_tool_shims()
                 pkg_out = {
-                    "ok": bool(forced.get("ok", True)),
+                    "ok": bool(forced.get("ok", True)) and bool(shims_again.get("ok", True)),
                     "scheduled": bool(forced.get("scheduled")),
                     "forced_tool_dir": forced,
+                    "tool_shims_final": shims_again,
                     "note": "Package removal finishes after this CLI exits",
                 }
-                if uv_bin:
-                    try:
-                        subprocess.Popen(  # noqa: S603
-                            [uv_bin, "tool", "uninstall", "scubiee"],
-                            stdout=subprocess.DEVNULL,
-                            stderr=subprocess.DEVNULL,
-                            stdin=subprocess.DEVNULL,
-                            close_fds=os.name != "nt",
-                        )
-                        pkg_out["spawned_uv_uninstall"] = True
-                    except OSError as exc:
-                        pkg_out["spawned_uv_uninstall"] = False
-                        pkg_out["spawn_error"] = str(exc)
             else:
                 pkg_out = uv_tool_uninstall()
+                # Ensure mcp/bridge shims are gone even if uv left them.
+                shims_again = remove_tool_shims()
+                if isinstance(pkg_out, dict):
+                    pkg_out["tool_shims_final"] = shims_again
+                    if shims_again.get("failed"):
+                        pkg_out["ok"] = False
         elif uv_bin:
             # uv available but not a tool install — try uv pip uninstall
             cmd = [uv_bin, "pip", "uninstall", "--python", sys.executable, "scubiee"]
             try:
-                proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                from pipeline.process_job import hidden_run
+
+                proc = hidden_run(cmd, capture_output=True, text=True, check=False)
                 pkg_out = {
                     "ok": proc.returncode == 0,
                     "cmd": cmd,
@@ -1033,7 +1035,9 @@ def wipe_all(
             # Fallback: plain pip
             cmd = [sys.executable, "-m", "pip", "uninstall", "-y", "scubiee"]
             try:
-                proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+                from pipeline.process_job import hidden_run
+
+                proc = hidden_run(cmd, capture_output=True, text=True, check=False)
                 pkg_out = {
                     "ok": proc.returncode == 0,
                     "cmd": cmd,
@@ -1049,6 +1053,13 @@ def wipe_all(
                 pkg_out["forced_tool_dir"] = forced
                 if not forced.get("ok"):
                     pkg_out["ok"] = False
+        # Final shim sweep — uv may leave mcp/bridge links after a partial uninstall.
+        final_shims = remove_tool_shims()
+        actions.append({"tool_shims_final": final_shims})
+        if isinstance(pkg_out, dict):
+            pkg_out.setdefault("tool_shims_final", final_shims)
+            if final_shims.get("failed"):
+                pkg_out["ok"] = False
         actions.append({"uninstall_scubiee": pkg_out})
         if progress is not None:
             progress.step_finish("scubiee package removed")
@@ -1096,7 +1107,7 @@ def wipe_all(
         "audit": audit,
         "next": (
             "Machine is clean. Reinstall: "
-            "uv tool install scubiee --index-url https://pypi.org/simple && scubiee setup"
+            "uv tool install scubiee --index-url https://pypi.org/simple --refresh && scubiee setup"
             if package and audit.get("clean") and final_kill.get("ok")
             else (
                 "Some files remain — run `scubiee wipe --all --confirm` again "
@@ -1108,7 +1119,11 @@ def wipe_all(
                     else (
                         "Re-run: scubiee setup && scubiee init ."
                         if not package
-                        else "Reinstall: uv tool install scubiee && scubiee setup"
+                        else (
+                            "Reinstall: uv tool install scubiee "
+                            "--index-url https://pypi.org/simple --refresh && scubiee setup"
+                            " (add --force only if uv reports leftover executables)"
+                        )
                     )
                 )
             )

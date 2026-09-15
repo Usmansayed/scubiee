@@ -326,6 +326,19 @@ def watchdog_loop(*, stop_after: float | None = None) -> None:
                     heal_engine_lock()
                 except Exception:  # noqa: BLE001
                     pass
+                # Orphan MCP after Cursor close → unregister → standby after debounce.
+                try:
+                    from pipeline.lifecycle_runtime import enforce_mcp_warm_contract
+
+                    contract = enforce_mcp_warm_contract()
+                    action = str((contract or {}).get("action") or "")
+                    if action not in {"", "none", "already_standby", "hold_clients"}:
+                        _log(
+                            f"warm contract action={action} "
+                            f"clients={(contract or {}).get('active_clients')}"
+                        )
+                except Exception as exc:  # noqa: BLE001
+                    _log(f"warm contract skipped: {exc}")
                 time.sleep(interval)
                 continue
 
@@ -506,9 +519,9 @@ def start_watchdog(*, orphan: bool = False) -> dict[str, Any]:
     watchdog is **not** a child of Cursor MCP. Otherwise closing Cursor kills the
     supervisor job (KILL_ON_JOB_CLOSE) and takes the engine with it.
     """
-    from pipeline.pause_resume import is_paused
+    from pipeline.pause_resume import is_paused, is_resuming
 
-    if is_paused():
+    if is_paused() and not is_resuming():
         return {"ok": True, "skipped": True, "reason": "globally_paused"}
     if not watchdog_enabled():
         return {"ok": True, "skipped": True, "reason": "CTX_WATCHDOG=0"}

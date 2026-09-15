@@ -161,3 +161,22 @@ def test_force_restart_uses_kill_sweep_and_force_start(tmp_path, monkeypatch: py
     assert out["forced"] is True
     assert "stop" in calls
     assert any(c.startswith("start:force=True") for c in calls)
+
+
+def test_kill_all_engine_allows_child_engine_run(monkeypatch: pytest.MonkeyPatch) -> None:
+    from pipeline.process_control import kill_all_engine_daemons
+
+    calls: list[tuple] = []
+
+    def _term(pid, **kwargs):
+        calls.append((pid, kwargs.get("allow_child")))
+        return {"pid": pid, "terminated": True}
+
+    monkeypatch.setattr("pipeline.process_control.enumerate_engine_run_pids", lambda **_: [4242])
+    monkeypatch.setattr("pipeline.process_control.pids_listening_on_port", lambda _p: [])
+    monkeypatch.setattr("pipeline.process_control.safe_terminate_pid", _term)
+    monkeypatch.setattr("pipeline.daemon.is_running", lambda: False)
+    monkeypatch.setattr("pipeline.daemon.release_lock", lambda: None)
+    out = kill_all_engine_daemons(port=8765, wait_s=0.2)
+    assert calls[0] == (4242, True)
+    assert out["killed"] == [4242]

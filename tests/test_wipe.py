@@ -684,3 +684,83 @@ def test_wipe_all_keep_package_preserves_tool_shims(tmp_path: Path, monkeypatch)
     audit = audit_scubiee_artifacts(include_package=False, include_models=False)
     shim_left = [r for r in audit["remaining"] if r.get("kind") == "tool_shim"]
     assert shim_left == [], shim_left
+
+
+def test_remove_tool_shims_clears_all_uv_entrypoints(tmp_path: Path, monkeypatch) -> None:
+    """wipe --all package path must clear all three uv entrypoints, not only scubiee."""
+    from pipeline.process_control import remove_tool_shims
+
+    fake_user = tmp_path / "user"
+    bin_dir = fake_user / ".local" / "bin"
+    bin_dir.mkdir(parents=True)
+    names = (
+        "scubiee.exe",
+        "scubiee-mcp.exe",
+        "scubiee-mcp-bridge.exe",
+        "scubiee",
+        "scubiee-mcp",
+        "scubiee-mcp-bridge",
+    )
+    for name in names:
+        (bin_dir / name).write_text("shim", encoding="utf-8")
+    monkeypatch.setattr(Path, "home", staticmethod(lambda: fake_user))
+
+    out = remove_tool_shims()
+    assert out["ok"] is True
+    assert len(out["removed"]) == len(names)
+    for name in names:
+        assert not (bin_dir / name).exists(), name
+
+
+def test_wipe_all_package_removes_mcp_bridge_shims(tmp_path: Path, monkeypatch) -> None:
+    """package=True must unlink scubiee-mcp* so uv install does not need --force."""
+    import shutil
+
+    home = tmp_path / "ce-home"
+    home.mkdir()
+    monkeypatch.setenv("CTX_HOME", str(home))
+
+    fake_user = tmp_path / "user"
+    bin_dir = fake_user / ".local" / "bin"
+    bin_dir.mkdir(parents=True)
+    for name in ("scubiee", "scubiee-mcp", "scubiee-mcp-bridge"):
+        (bin_dir / name).write_text("shim", encoding="utf-8")
+    monkeypatch.setattr(Path, "home", staticmethod(lambda: fake_user))
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    monkeypatch.chdir(repo)
+
+    # Not a real uv tool install — still must sweep shims when package=True.
+    monkeypatch.setattr("pipeline.wipe._uv_tool_dir", lambda: None)
+    monkeypatch.setattr(
+        "pipeline.process_control.is_uv_tool_install",
+        lambda python=None: False,
+    )
+    monkeypatch.setattr(
+        "pipeline.process_control.uv_tool_root",
+        lambda python=None: None,
+    )
+    real_which = shutil.which
+
+    def _which(cmd: str, *args, **kwargs):  # noqa: ANN001
+        if cmd == "uv":
+            return None
+        return real_which(cmd, *args, **kwargs)
+
+    monkeypatch.setattr(shutil, "which", _which)
+
+    class _Ok:
+        returncode = 0
+        stdout = "ok"
+        stderr = ""
+
+    monkeypatch.setattr(
+        "pipeline.process_job.hidden_run",
+        lambda *a, **k: _Ok(),
+    )
+
+    out = wipe_all(yes=True, models=False, package=True, repo=repo)
+    assert out["ok"] is True
+    for name in ("scubiee", "scubiee-mcp", "scubiee-mcp-bridge"):
+        assert not (bin_dir / name).exists(), name

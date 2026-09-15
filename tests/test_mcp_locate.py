@@ -1,4 +1,4 @@
-﻿"""Tests for the lean 3-tool MCP surface: search / read / status."""
+"""Tests for the lean 3-tool MCP surface: search / read / status."""
 
 from __future__ import annotations
 
@@ -508,6 +508,10 @@ def test_status_lists_three_tools(monkeypatch, tmp_path):
 
     monkeypatch.setenv("CTX_MCP_SURFACE", "read")
     monkeypatch.setattr("pipeline.pause_resume.is_paused", lambda: False)
+    monkeypatch.setattr(
+        "pipeline.daemon.ensure_daemon",
+        lambda *a, **k: {"ok": True, "already_running": True, "skipped": "test_stub"},
+    )
     home = tmp_path / "ce-home"
     monkeypatch.setenv("CTX_HOME", str(home))
     (tmp_path / ".git").mkdir()
@@ -1498,11 +1502,22 @@ def test_managed_gate_rule_is_policy_not_product_howto() -> None:
     assert "BAN native" not in managed_gate_usage_short()
     # When available: must pack; warming is not an escape hatch
     assert "warming" in managed_gate_usage_short().lower() or "MUST" in managed_gate_usage_short()
-    assert "skip pack" in managed_gate_usage_short().lower() or "skips pack" in managed_gate_usage_short().lower() or "map alone" in managed_gate_usage_short().lower() or "Skipping pack" in managed_gate_usage_short()
+    assert "skip pack" in managed_gate_usage_short().lower() or "skips pack" in managed_gate_usage_short().lower() or "map alone" in managed_gate_usage_short().lower() or "Skipping pack" in managed_gate_usage_short() or "skipping `pack_context`" in managed_gate_usage_short().lower() or "map-only" in managed_gate_usage_short().lower()
     assert "uncallable" in managed_gate_usage_short().lower() or "unavailable" in managed_gate_usage_short().lower() or "NOT CALLABLE" in managed_gate_usage_short()
-    assert "STRICT" in managed_gate_usage_short() and "NO ESCAPE" in managed_gate_usage_short()
+    assert "STRICT" in managed_gate_usage_short()
+    assert (
+        "explain escape" in managed_gate_usage_short().lower()
+        or "Explain escape" in managed_gate_usage_short()
+        or "NO ESCAPE" in managed_gate_usage_short()
+    )
     assert "warm_state" in managed_gate_usage_short().lower() or "Health" in managed_gate_usage_short()
-    assert "MUST Use Scubiee" in managed_gate_usage_short() or "MUST Use Scubiee" in managed_gate_overview_bullet()
+    assert "MUST Use Scubiee MCP" in managed_gate_usage_short() or "MUST Use Scubiee MCP" in managed_gate_overview_bullet()
+    assert "BAN shell" in managed_gate_usage_short()
+    assert "Prefer CLI" not in managed_gate_usage_short()
+    assert "CLI Prefer" not in managed_gate_overview_bullet()
+    assert "pack_context" in managed_gate_usage_short()
+    # Shell CLI is fallback-only, not the preferred path
+    assert "while MCP" in managed_gate_usage_short() or "uncallable" in managed_gate_usage_short().lower()
     from pipeline.rules_installer import managed_gate_mcp_only_usage_short, managed_gate_mcp_only_rule_body
 
     assert "WHEN SCUBIEE MCP IS AVAILABLE" in managed_gate_mcp_only_usage_short()
@@ -1511,6 +1526,7 @@ def test_managed_gate_rule_is_policy_not_product_howto() -> None:
     assert managed_gate_overview_bullet() in gate_overview_mdc()
     assert "Forbid-first" in managed_gate_overview_bullet() or "Prefer host Grep" in managed_gate_overview_bullet() or "literals" in managed_gate_overview_bullet().lower()
     assert "STRICT" in managed_gate_overview_bullet() or "MUST Use Scubiee" in managed_gate_overview_bullet()
+    assert "BAN shell" in managed_gate_overview_bullet() or "Prefer MCP" in managed_gate_overview_bullet()
     # Header embedded in MCP instructions
     assert managed_gate_mcp_header() in ml._phase_server_instructions()
     assert "Forbid-first" in ml._phase_server_instructions() or "Prefer host Grep" in ml._phase_server_instructions()
@@ -1519,12 +1535,13 @@ def test_managed_gate_rule_is_policy_not_product_howto() -> None:
     assert "STRICT" in ml._phase_server_instructions() or "NO ESCAPE" in ml._phase_server_instructions()
     assert "warm_state" in ml._phase_server_instructions().lower() or "Health" in ml._phase_server_instructions()
     assert "pack" in managed_gate_mcp_header().lower() or "heatmap" in managed_gate_mcp_header().lower()
+    assert "BAN shell" in managed_gate_mcp_header() or "BAN shell" in ml._phase_server_instructions()
     # Enrich/expand query is mandatory for soft map/pack
     assert "enrich" in managed_gate_usage_short().lower() or "expand query" in managed_gate_usage_short().lower()
     assert "enrich" in managed_gate_mcp_header().lower() or "code-vocab" in managed_gate_mcp_header().lower()
     assert "ENRICH" in ml._phase_server_instructions() or "enrich" in ml._phase_server_instructions().lower()
     assert "vague" in ml._phase_server_instructions().lower() or "QUERY QUALITY" in ml._phase_server_instructions()
-    assert "pack" in managed_gate_overview_bullet().lower() or "cli" in managed_gate_overview_bullet().lower()
+    assert "pack" in managed_gate_overview_bullet().lower() or "mcp" in managed_gate_overview_bullet().lower()
     assert (
         "Prefer Scubiee" in managed_gate_mcp_header()
         or "Use Scubiee" in managed_gate_mcp_header()
@@ -1595,6 +1612,10 @@ def test_pinpoint_returns_primary_neighbors_alts(monkeypatch, tmp_path):
             }
 
     monkeypatch.setattr(pc, "EngineClient", lambda *a, **k: _Eng())
+    monkeypatch.setattr(
+        "pipeline.mcp_locate._client_for",
+        lambda *_a, **_k: _Eng(),
+    )
     out = json.loads(_tool_fn(create_mcp(), "pinpoint")(query="run dispatch"))
     assert out["ok"] is True
     assert out["tool"] == "pinpoint"
@@ -1679,6 +1700,10 @@ def test_plate_assembles_hubs_connections_flow(monkeypatch, tmp_path):
             }
 
     monkeypatch.setattr(pc, "EngineClient", lambda *a, **k: _Eng())
+    monkeypatch.setattr(
+        "pipeline.mcp_locate._client_for",
+        lambda *_a, **_k: _Eng(),
+    )
     monkeypatch.setattr(
         "pipeline.graphify_mcp_tools.query_graph_text",
         lambda *_a, **_k: "[graph=graph.json]\nauth -> session -> middleware",

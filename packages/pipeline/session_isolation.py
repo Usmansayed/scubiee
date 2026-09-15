@@ -269,7 +269,22 @@ def bridge_routing_session_key(msg: dict[str, Any]) -> tuple[str | None, BridgeS
                 for key in ("session_id", "sessionId"):
                     raw = str(arguments.get(key) or "").strip()
                     if raw:
-                        return sanitize_session_id(raw), "tool_arg"
+                        raw_s = sanitize_session_id(raw)
+                        # Align with host_env form so tools/list (env) and
+                        # tools/call (arg) share one worker under bridge auto mode.
+                        # Mismatch caused cold first-map after settle (5–6s).
+                        env_info = detect_host_chat_session_from_env()
+                        if env_info:
+                            env_sid = str(env_info.get("session_id") or "").strip()
+                            env_raw = (
+                                os.environ.get(str(env_info.get("env_key") or "")) or ""
+                            ).strip()
+                            if env_sid and (
+                                raw_s == env_sid
+                                or (env_raw and raw_s == sanitize_session_id(env_raw))
+                            ):
+                                return env_sid, "tool_arg"
+                        return raw_s, "tool_arg"
             meta = params.get("_meta")
             if isinstance(meta, dict):
                 for key in ("sessionId", "session_id", "muxSessionId"):

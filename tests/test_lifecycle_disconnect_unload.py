@@ -1,4 +1,4 @@
-"""Disconnect-driven unload: warm while MCP open, 120s debounce after close."""
+"""Disconnect-driven unload: warm while MCP open, 10s debounce after close."""
 
 from __future__ import annotations
 
@@ -6,12 +6,12 @@ from pipeline import lifecycle_runtime as life
 from pipeline.memory_governor import MemoryGovernor, reset_governor_for_tests
 
 
-def test_disconnect_debounce_defaults_to_120(monkeypatch) -> None:
+def test_disconnect_debounce_defaults_to_10(monkeypatch) -> None:
     monkeypatch.delenv("CTX_DISCONNECT_DEBOUNCE_S", raising=False)
     monkeypatch.delenv("CTX_ENGINE_IDLE_S", raising=False)
     monkeypatch.delenv("CTX_EMBED_IDLE_DEMOTE_S", raising=False)
-    assert life.disconnect_debounce_seconds() == 120.0
-    assert life.idle_seconds() == 120.0
+    assert life.disconnect_debounce_seconds() == 10.0
+    assert life.idle_seconds() == 10.0
 
 
 def test_unregister_does_not_demote_immediately(tmp_path, monkeypatch) -> None:
@@ -78,3 +78,43 @@ def test_governor_demotes_only_after_disconnect_debounce(tmp_path, monkeypatch) 
     out = gov.maybe_demote_idle(now=1010.0)
     assert out is not None
     assert out["action"] == "demote_serve"
+
+
+def test_enforce_mcp_warm_contract_holds_then_standbys(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
+    monkeypatch.setenv("CTX_DISCONNECT_DEBOUNCE_S", "10")
+    monkeypatch.setenv("CTX_ENGINE_TRANSITION_DEBOUNCE_S", "0")
+    monkeypatch.setattr(life, "_client_pid_trustworthy", lambda _m: True)
+    monkeypatch.setattr(
+        "pipeline.process_control.reap_orphaned_mcp_processes",
+        lambda: {"reaped": 0},
+    )
+    monkeypatch.setattr(
+        "pipeline.process_control.sweep_orphan_scubiee_frontends",
+        lambda: {"swept": 0},
+    )
+    monkeypatch.setattr("pipeline.daemon.is_running", lambda: True)
+    standby_calls: list[dict] = []
+
+    monkeypatch.setattr(
+        life,
+        "enter_standby",
+        lambda **kwargs: standby_calls.append(kwargs) or {"ok": True, "action": "standby"},
+    )
+    monkeypatch.setattr(life, "_idle_busy_reason", lambda: None)
+
+    life.register_client("mcp:1", pid=1, now=100.0)
+    hold = life.enforce_mcp_warm_contract(now=105.0)
+    assert hold["action"] == "hold_clients"
+    assert hold["active_clients"] == 1
+    assert standby_calls == []
+
+    life.unregister_client("mcp:1", now=110.0)
+    early = life.enforce_mcp_warm_contract(now=115.0)
+    assert early["action"] == "none"
+    assert early["active_clients"] == 0
+    assert standby_calls == []
+
+    late = life.enforce_mcp_warm_contract(now=121.0)
+    assert late["action"] == "standby"
+    assert standby_calls

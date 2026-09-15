@@ -155,6 +155,45 @@ def test_pick_suggested_seed_prefers_public_over_private() -> None:
     assert seed["symbol"] == "create_mcp"
 
 
+def test_pick_suggested_seed_skips_scripts_and_tests() -> None:
+    cards = [
+        {
+            "file": "scripts/kiro_mcp_ab_dev_eval.py",
+            "symbol": "main",
+            "kind": "function",
+            "role": "function",
+            "score": 0.99,
+            "start_line": 1,
+            "end_line": 10,
+            "loc": "scripts/kiro_mcp_ab_dev_eval.py:1-10",
+        },
+        {
+            "file": "tests/test_mcp_locate.py",
+            "symbol": "test_x",
+            "kind": "function",
+            "role": "test",
+            "score": 0.95,
+            "start_line": 1,
+            "end_line": 5,
+            "loc": "tests/test_mcp_locate.py:1-5",
+        },
+        {
+            "file": "packages/pipeline/session_isolation.py",
+            "symbol": "resolve_session",
+            "kind": "function",
+            "role": "function",
+            "score": 0.70,
+            "start_line": 300,
+            "end_line": 360,
+            "loc": "packages/pipeline/session_isolation.py:300-360",
+        },
+    ]
+    seed = pick_suggested_seed(cards)
+    assert seed is not None
+    assert seed["file"] == "packages/pipeline/session_isolation.py"
+    assert seed["symbol"] == "resolve_session"
+
+
 def test_resolve_seed_prefers_public_in_file() -> None:
     nodes = {
         "pkg/a.py::_boot": _node("pkg/a.py", "_boot", kind="function", start=1, end=5),

@@ -113,16 +113,21 @@ def _run_cmd(cmd: list[str], *, timeout: float = 180.0) -> dict[str, Any]:
 
 
 def swap_package(*, pre_release: bool = False) -> dict[str, Any]:
-    """Install new package via channel-aware force path."""
-    from pipeline.process_control import unlock_uv_tool_env
+    """Install new package via channel-aware force path.
 
-    attempts: list[dict[str, Any]] = []
+    Always prepare the uv tool directory *before* the first install attempt so
+    Windows file locks do not fail the upgrade only on retry.
+    """
+    from pipeline.process_control import prepare_uv_tool_directory_for_swap, unlock_uv_tool_env
+
+    prep = prepare_uv_tool_directory_for_swap(strip_mcp=False, remove_dir=False)
+    attempts: list[dict[str, Any]] = [{"prepare": prep}]
     cmds = package_swap_commands(pre_release=pre_release)
     for cmd in cmds:
         result = _run_cmd(cmd)
         attempts.append(result)
         if result.get("ok"):
-            return {"ok": True, "attempts": attempts, "cmd": cmd}
+            return {"ok": True, "attempts": attempts, "cmd": cmd, "prepared": True}
         if result.get("access_denied"):
             unlock = unlock_uv_tool_env()
             attempts.append({"unlock": unlock})
@@ -130,11 +135,18 @@ def swap_package(*, pre_release: bool = False) -> dict[str, Any]:
             retry = _run_cmd(cmd)
             attempts.append(retry)
             if retry.get("ok"):
-                return {"ok": True, "attempts": attempts, "cmd": cmd, "unlocked": True}
+                return {
+                    "ok": True,
+                    "attempts": attempts,
+                    "cmd": cmd,
+                    "unlocked": True,
+                    "prepared": True,
+                }
     return {
         "ok": False,
         "error": "package_upgrade_failed",
         "attempts": attempts,
+        "prepared": True,
         "hint": (
             "Windows file lock on uv tool dir. Quit Cursor MCP, run "
             "`scubiee unlock-tool`, then retry. Admin will not help."

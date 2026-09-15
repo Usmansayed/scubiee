@@ -12,7 +12,7 @@ from unittest.mock import patch
 import pytest
 
 
-def test_lifecycle_sim_no_clients_eventually_idle(
+def test_lifecycle_sim_no_leave_stamp_does_not_idle(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("CTX_HOME", str(tmp_path))
@@ -29,14 +29,14 @@ def test_lifecycle_sim_no_clients_eventually_idle(
     set_desired_mode(DESIRED_RUN)
     note_activity(now=1000.0)
     assert should_idle_stop(now=1002.0) is False
-    assert should_idle_stop(now=1006.0) is True
+    assert should_idle_stop(now=1006.0) is False
     with patch("pipeline.daemon.is_running", return_value=True), patch(
         "pipeline.daemon.stop_daemon",
         return_value={"ok": True},
     ) as stop:
         out = apply_idle_policy(now=1006.0, force=True)
-    assert out.get("action") == "standby"
-    stop.assert_called()
+    assert out.get("action") == "none"
+    stop.assert_not_called()
 
 
 def test_lifecycle_sim_register_blocks_idle(

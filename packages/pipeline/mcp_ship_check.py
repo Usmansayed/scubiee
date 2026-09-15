@@ -179,11 +179,19 @@ def run_ship_ladder(
 
         node = report["checks"]["pack_context"].get("seed")
         if node:
-            exp_json = parse_tool_json(
-                tool_fn(mcp, "expand_context")(
-                    node=node, direction="callees", with_bodies=True, query=query
+            exp_json: dict[str, Any] = {}
+            for attempt in range(4):
+                exp_json = parse_tool_json(
+                    tool_fn(mcp, "expand_context")(
+                        node=node, direction="callees", with_bodies=True, query=query
+                    )
                 )
-            )
+                if exp_json.get("ok"):
+                    break
+                err = str(exp_json.get("error") or "")
+                if err != "ast_warming" and exp_json.get("status") != "warming":
+                    break
+                time.sleep(1.5 * (attempt + 1))
             report["checks"]["expand_context"] = {
                 "ok": bool(exp_json.get("ok")),
                 "count": exp_json.get("count"),

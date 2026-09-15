@@ -22,7 +22,7 @@ CLIENTS_NAME = "active_clients.json"
 # After the last MCP/IDE client disconnects, wait this long then unload RAM + stop
 # the engine. While any client is connected (Cursor/Codex/…), keep everything warm —
 # do not unload on "idle time" between tool calls.
-DEFAULT_DISCONNECT_DEBOUNCE_S = 120.0
+DEFAULT_DISCONNECT_DEBOUNCE_S = 10.0
 # Back-compat aliases (same knob).
 DEFAULT_IDLE_S = DEFAULT_DISCONNECT_DEBOUNCE_S
 DEFAULT_TRANSITION_DEBOUNCE_S = 5.0
@@ -531,7 +531,12 @@ def coalesce_mcp_clients(
     keep_id: str,
     host: str | None,
 ) -> list[str]:
-    """Drop older same-host MCP clients so idle policy tracks one primary per IDE."""
+    """Drop older same-host MCP workers; keep the IDE bridge anchor warm.
+
+    Cursor talks to ``mcp_bridge`` which respawns short-lived ``mcp_locate``
+    children. Coalescing those workers is fine; dropping ``kind=bridge`` would
+    arm disconnect demote while the IDE is still open.
+    """
     if not host:
         return []
     dropped: list[str] = []
@@ -542,13 +547,23 @@ def coalesce_mcp_clients(
             clients.pop(cid, None)
             dropped.append(str(cid))
             continue
-        other_host = mcp_host_from_client_id(
-            str(cid), kind=str(meta.get("kind") or "mcp")
+        kind = str(meta.get("kind") or "mcp").strip().lower()
+        if kind == "bridge":
+            continue
+        other_host = (
+            str(meta.get("host") or "").strip().lower()
+            or mcp_host_from_client_id(str(cid), kind=kind)
         )
         if other_host == host:
             clients.pop(cid, None)
             dropped.append(str(cid))
     return dropped
+
+
+def is_engine_process() -> bool:
+    """True only inside ``pipeline engine run`` — not MCP bridge/locate/CLI."""
+    role = (os.environ.get("CTX_SCUBIEE_ROLE") or "").strip().lower()
+    return role in {"engine", "daemon", "server"}
 
 
 def register_client(
@@ -583,20 +598,29 @@ def register_client(
     policy["last_activity"] = current
     policy["last_client_left_at"] = None
     save_policy(policy)
-    # MCP/IDE attached → load FastEmbed NOW (block until ready), not on first map.
-    try:
-        from pipeline.memory_governor import get_governor
-
-        get_governor().ensure_semantic_tier()
-    except Exception:  # noqa: BLE001
-        pass
+    # FastEmbed/ORT must live ONLY in the engine process. Bridge/locate calling
+    # register_client locally used to load a second (or third) model copy and
+    # blow the ≤800 MB total Scubiee RAM budget.
+    # Do not kick ORT prewarm on register — attach-time FastEmbed GIL-starves
+    # /health and made first map return engine_warming for 30–50s. Dense loads
+    # via explicit /v1/embed/prewarm or after soft locate succeeds.
     prewarm: dict[str, Any] | None = None
-    try:
-        from pipeline.engine import ensure_embedder_ready
+    if is_engine_process():
+        try:
+            from pipeline.engine import embedder_is_loaded, ensure_embed_keepalive_loop
 
-        prewarm = ensure_embedder_ready(os.environ.get("CTX_REPO") or None)
-    except Exception as exc:  # noqa: BLE001
-        prewarm = {"ok": False, "error": str(exc)}
+            if embedder_is_loaded():
+                prewarm = {"ok": True, "already_warm": True}
+                try:
+                    ensure_embed_keepalive_loop(os.environ.get("CTX_REPO") or None)
+                except Exception:  # noqa: BLE001
+                    pass
+            else:
+                prewarm = {"ok": True, "skipped": "defer_ort_until_after_soft_locate"}
+        except Exception as exc:  # noqa: BLE001
+            prewarm = {"ok": False, "error": str(exc)}
+    else:
+        prewarm = {"ok": True, "skipped": "non_engine_process"}
     return {
         "ok": True,
         "client_id": str(client_id),
@@ -654,6 +678,12 @@ def unregister_client(client_id: str, *, now: float | None = None) -> dict[str, 
     remaining = reconcile_clients(now=now)
     if not remaining:
         _mark_clients_gone(now=now)
+        try:
+            from pipeline.engine import stop_embed_keepalive_loop
+
+            stop_embed_keepalive_loop()
+        except Exception:  # noqa: BLE001
+            pass
     _lifecycle_log(
         "client_left",
         client_id=str(client_id),
@@ -686,6 +716,12 @@ def reconcile_clients(*, now: float | None = None) -> list[dict[str, Any]]:
     save_clients(data)
     if before > 0 and not alive:
         _mark_clients_gone(now=current)
+        try:
+            from pipeline.engine import stop_embed_keepalive_loop
+
+            stop_embed_keepalive_loop()
+        except Exception:  # noqa: BLE001
+            pass
     return [dict(item) for item in alive.values()]
 
 
@@ -715,15 +751,15 @@ def _idle_busy_reason() -> str | None:
 
 
 def should_idle_stop(*, now: float | None = None, require_run_mode: bool = True) -> bool:
-    """True after disconnect debounce (default 120s) with no active MCP/IDE clients.
+    """True after disconnect debounce with no active MCP/IDE clients.
 
     While any client is registered the engine stays up for fast map/sync —
     we do **not** unload on quiet tool-call idle.
 
-    Also covers sticky ``desired_mode=run`` with **zero clients and no leave
-    stamp** (CLI ``engine ensure`` / wipe leftovers): idle clock uses
-    ``last_activity`` or last engine start so the watchdog cannot keep a
-    ghost engine forever.
+    Unload arms only after a **real leave** (``last_client_left_at`` set).
+    Zero clients with no leave stamp (CLI init, deferred MCP attach before
+    register) must **not** trigger the 10s disconnect sweeper — that caused
+    mid-warm ``retire_self`` thrash after wipe/reboot.
     """
     policy = load_policy()
     if require_run_mode and policy.get("desired_mode") != DESIRED_RUN:
@@ -742,29 +778,17 @@ def should_idle_stop(*, now: float | None = None, require_run_mode: bool = True)
         return False
 
     last_left = policy.get("last_client_left_at")
-    if last_left is not None:
-        # Reconnect: a start after the leave stamp is a new engine, not leftover idle.
-        try:
-            last_start = load_transition().get("last_start_at")
-            if last_start is not None and float(last_start) > float(last_left):
-                return False
-        except (TypeError, ValueError):
-            pass
-        return (current - float(last_left)) >= debounce
-
-    # No leave stamp + no clients: sticky run without MCP (CLI ensure).
-    anchor = policy.get("last_activity")
-    if anchor is None:
-        try:
-            anchor = load_transition().get("last_start_at")
-        except Exception:  # noqa: BLE001
-            anchor = None
-    if anchor is None:
+    if last_left is None:
+        # No disconnect event — hold warm (CLI/ensure/deferred attach).
         return False
+    # Reconnect: a start after the leave stamp is a new engine, not leftover idle.
     try:
-        return (current - float(anchor)) >= debounce
+        last_start = load_transition().get("last_start_at")
+        if last_start is not None and float(last_start) > float(last_left):
+            return False
     except (TypeError, ValueError):
-        return False
+        pass
+    return (current - float(last_left)) >= debounce
 
 
 
@@ -821,6 +845,43 @@ def apply_idle_policy(*, now: float | None = None, force: bool = False) -> dict[
         still = False
     _lifecycle_log("running", running=still)
     return {**result, "action": "standby"}
+
+
+def enforce_mcp_warm_contract(*, now: float | None = None) -> dict[str, Any]:
+    """Product contract: warm while any MCP client lives; unload when none remain.
+
+    1. Reap orphan bridge/locate workers (Cursor closed, parent gone).
+    2. Drop dead PIDs from ``active_clients.json``.
+    3. If clients remain → hold RUN (keep warm).
+    4. If zero clients → ``apply_idle_policy`` (standby after debounce).
+    """
+    current = time.time() if now is None else now
+    out: dict[str, Any] = {"ok": True}
+    try:
+        from pipeline.process_control import (
+            reap_orphaned_mcp_processes,
+            sweep_orphan_scubiee_frontends,
+        )
+
+        out["reap"] = reap_orphaned_mcp_processes()
+        out["sweep"] = sweep_orphan_scubiee_frontends()
+    except Exception as exc:  # noqa: BLE001
+        out["reap_error"] = str(exc)
+
+    remaining = reconcile_clients(now=current)
+    out["active_clients"] = len(remaining)
+    if remaining:
+        try:
+            set_desired_mode(DESIRED_RUN)
+        except Exception:  # noqa: BLE001
+            pass
+        out["action"] = "hold_clients"
+        return out
+
+    idle = apply_idle_policy(now=current)
+    out["idle"] = idle
+    out["action"] = str((idle or {}).get("action") or "none")
+    return out
 
 
 def engine_should_be_running() -> bool:
@@ -997,6 +1058,8 @@ def _register_windows(cmd: list[str], *, runner: Any) -> dict[str, Any]:
         quoted = subprocess.list2cmdline(cmd)
 
     def _run(argv: list[str]) -> Any:
+        if runner is subprocess.run:
+            return _schtasks_hidden(argv, timeout=30)
         kwargs: dict[str, Any] = {
             "capture_output": True,
             "text": True,
@@ -1026,6 +1089,7 @@ def _register_windows(cmd: list[str], *, runner: Any) -> dict[str, Any]:
     ok = getattr(completed, "returncode", 1) == 0
     detail = getattr(completed, "stdout", "") or getattr(completed, "stderr", "")
     if ok:
+        _remember_task_exists(True)
         return {
             "ok": True,
             "method": "schtasks",
@@ -1182,14 +1246,8 @@ def unregister_logon_autostart(*, runner: Any | None = None) -> dict[str, Any]:
     desktop = current_desktop()
     if desktop == "windows":
         def _run_default(argv: list[str], **kwargs: Any) -> Any:
-            kwargs.setdefault("capture_output", True)
-            kwargs.setdefault("text", True)
-            kwargs.setdefault("check", False)
-            kwargs.setdefault(
-                "creationflags",
-                int(getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)),
-            )
-            return subprocess.run(argv, **kwargs)  # noqa: S603
+            del kwargs  # hidden_run owns Windows flags
+            return _schtasks_hidden(argv, timeout=15)
 
         run = runner or _run_default
         completed = run(
@@ -1199,6 +1257,7 @@ def unregister_logon_autostart(*, runner: Any | None = None) -> dict[str, Any]:
             check=False,
         )
         _delete_windows_run_key()
+        _remember_task_exists(False)
         return {
             "ok": True,  # run key deleted even if schtasks missing
             "platform": "windows",
@@ -1306,26 +1365,117 @@ def ensure_supervisor() -> dict[str, Any]:
     return start_watchdog(orphan=False)
 
 
-def _windows_supervisor_task_exists() -> bool:
+# Sticky cache: missing task → do not re-Query for a long time (schtasks flashes).
+# Memory cache alone is useless across MCP worker respawns — each new process
+# cold-started and re-ran ``schtasks /Query``, flashing a console every few
+# minutes when ensure_supervisor ran. Persist to CTX_HOME so new workers skip.
+_TASK_EXISTS_CACHE: tuple[float, bool] | None = None
+_TASK_EXISTS_TTL_S = 300.0
+_TASK_MISSING_TTL_S = 3600.0
+_TASK_DISK_NAME = "windows_supervisor_task.json"
+
+
+def _invalidate_windows_supervisor_task_cache() -> None:
+    global _TASK_EXISTS_CACHE
+    _TASK_EXISTS_CACHE = None
     try:
-        completed = subprocess.run(
+        _task_disk_cache_path().unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
+def _task_disk_cache_path() -> Path:
+    return _home() / _TASK_DISK_NAME
+
+
+def _read_task_disk_cache() -> tuple[float, bool] | None:
+    path = _task_disk_cache_path()
+    if not path.is_file():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        stamped = float(data.get("at") or 0.0)
+        exists = bool(data.get("exists"))
+        if stamped <= 0:
+            return None
+        return stamped, exists
+    except (OSError, UnicodeError, json.JSONDecodeError, TypeError, ValueError):
+        return None
+
+
+def _write_task_disk_cache(exists: bool, *, at: float | None = None) -> None:
+    stamped = float(at if at is not None else time.time())
+    try:
+        _home().mkdir(parents=True, exist_ok=True)
+        _task_disk_cache_path().write_text(
+            json.dumps({"at": stamped, "exists": bool(exists)}, separators=(",", ":"))
+            + "\n",
+            encoding="utf-8",
+        )
+    except OSError:
+        pass
+
+
+def _remember_task_exists(exists: bool) -> None:
+    global _TASK_EXISTS_CACHE
+    now = time.time()
+    _TASK_EXISTS_CACHE = (now, bool(exists))
+    _write_task_disk_cache(bool(exists), at=now)
+
+
+def _schtasks_hidden(argv: list[str], *, timeout: float = 15) -> Any:
+    """Run ``schtasks`` with CREATE_NO_WINDOW + SW_HIDE (CREATE_NO_WINDOW alone flashes)."""
+    from pipeline.process_job import hidden_run
+
+    return hidden_run(
+        argv,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=timeout,
+    )
+
+
+def _windows_supervisor_task_exists(*, force: bool = False) -> bool:
+    """Whether the logon Scheduled Task is registered.
+
+    Prefer memory + disk cache. ``force=True`` always re-Queries (setup/register).
+    A miss is sticky for an hour so MCP worker respawns do not flash ``schtasks``.
+    """
+    global _TASK_EXISTS_CACHE
+    now = time.time()
+    if not force:
+        if _TASK_EXISTS_CACHE is not None:
+            cached_at, exists = _TASK_EXISTS_CACHE
+            ttl = _TASK_EXISTS_TTL_S if exists else _TASK_MISSING_TTL_S
+            if (now - cached_at) < ttl:
+                return exists
+        disk = _read_task_disk_cache()
+        if disk is not None:
+            cached_at, exists = disk
+            ttl = _TASK_EXISTS_TTL_S if exists else _TASK_MISSING_TTL_S
+            if (now - cached_at) < ttl:
+                _TASK_EXISTS_CACHE = (cached_at, exists)
+                return exists
+    try:
+        completed = _schtasks_hidden(
             ["schtasks", "/Query", "/TN", TASK_NAME],
-            capture_output=True,
-            text=True,
-            check=False,
             timeout=8,
-            creationflags=int(getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)),
         )
     except Exception:  # noqa: BLE001
+        _remember_task_exists(False)
         return False
-    return getattr(completed, "returncode", 1) == 0
+    exists = getattr(completed, "returncode", 1) == 0
+    _remember_task_exists(exists)
+    return exists
 
 
 def _run_windows_supervisor_task() -> dict[str, Any]:
     """Kick the logon Scheduled Task so Task Scheduler parents the supervisor.
 
     Never call this when the task is missing — ``schtasks`` itself flashes a
-    console and MCP was hammering /Run in a tight loop.
+    console and MCP was hammering /Run in a tight loop. Missing-task results
+    are sticky-cached so ensure storms do not re-Query every cooldown.
     """
     if not _windows_supervisor_task_exists():
         return {
@@ -1335,13 +1485,9 @@ def _run_windows_supervisor_task() -> dict[str, Any]:
             "task": TASK_NAME,
         }
     try:
-        completed = subprocess.run(
+        completed = _schtasks_hidden(
             ["schtasks", "/Run", "/TN", TASK_NAME],
-            capture_output=True,
-            text=True,
-            check=False,
             timeout=15,
-            creationflags=int(getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)),
         )
     except Exception as exc:  # noqa: BLE001
         return {"ok": False, "method": "schtasks_run", "error": str(exc)}
@@ -1390,28 +1536,36 @@ def ensure_supervisor_detached() -> dict[str, Any]:
     desktop = current_desktop()
     result: dict[str, Any]
     if desktop == "windows":
-        kicked = _run_windows_supervisor_task()
-        if kicked.get("ok"):
-            time.sleep(0.6)
-        if is_watchdog_running():
-            result = {
-                "ok": True,
-                "started": "schtasks",
-                **kicked,
-                **watchdog_status(),
-            }
-        else:
-            orphaned = start_watchdog(orphan=True)
-            time.sleep(0.4)
-            if is_watchdog_running() or orphaned.get("ok"):
+        # Prefer WMI orphan when the logon task is missing — avoid schtasks
+        # /Query flash on every ensure after a denied/unregistered install.
+        # Disk-backed miss cache makes this safe across MCP worker respawns.
+        kicked: dict[str, Any] = {"ok": False, "skipped": "task_missing"}
+        if _windows_supervisor_task_exists():
+            kicked = _run_windows_supervisor_task()
+            if kicked.get("ok"):
+                time.sleep(0.6)
+            if is_watchdog_running():
                 result = {
                     "ok": True,
-                    **orphaned,
+                    "started": "schtasks",
+                    **kicked,
                     **watchdog_status(),
-                    "started": "wmi_orphan",
                 }
-            else:
-                result = orphaned
+                _last_ensure_supervisor_at = time.time()
+                _last_ensure_supervisor_result = dict(result)
+                return result
+        orphaned = start_watchdog(orphan=True)
+        time.sleep(0.4)
+        if is_watchdog_running() or orphaned.get("ok"):
+            result = {
+                "ok": True,
+                **orphaned,
+                **watchdog_status(),
+                "started": "wmi_orphan",
+                "schtasks": kicked,
+            }
+        else:
+            result = {**orphaned, "schtasks": kicked}
         _last_ensure_supervisor_at = time.time()
         _last_ensure_supervisor_result = dict(result)
         return result

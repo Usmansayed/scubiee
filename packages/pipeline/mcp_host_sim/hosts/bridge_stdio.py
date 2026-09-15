@@ -141,6 +141,20 @@ class BridgeHost:
         env["CTX_MCP_BRIDGE_MODE"] = "shared"
         env["CTX_MAP_RESULT_CACHE_TTL_S"] = env.get("CTX_MAP_RESULT_CACHE_TTL_S") or "300"
         env["CTX_DISCONNECT_DEBOUNCE_S"] = env.get("CTX_DISCONNECT_DEBOUNCE_S") or "10"
+        # Pin engine spawn to the same uv-tool interpreter as the bridge — avoid
+        # conda/.venv dual-Python fights that leave soft_search_ready false.
+        if not (env.get("CTX_DAEMON_PYTHON") or "").strip():
+            try:
+                from pathlib import Path as _Path
+
+                bridge_cmd = _Path(str(entry["command"]))
+                cand = bridge_cmd.with_name("python.exe")
+                if not cand.is_file():
+                    cand = bridge_cmd.with_name("python")
+                if cand.is_file():
+                    env["CTX_DAEMON_PYTHON"] = str(cand)
+            except Exception:  # noqa: BLE001
+                pass
         env.update(self.env_extra)
         # env_extra must not accidentally flip bridge back to auto mid-sim.
         if (env.get("CTX_MCP_BRIDGE_MODE") or "").strip().lower() == "auto":

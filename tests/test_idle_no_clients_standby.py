@@ -1,4 +1,4 @@
-"""Demand-driven idle: no sticky engine without MCP clients."""
+"""Demand-driven idle: unload only after a real MCP leave stamp."""
 
 from __future__ import annotations
 
@@ -16,9 +16,10 @@ def test_start_request_is_actionable_ttl() -> None:
     assert start_request_is_actionable({}, now=10_000.0, clients=0) is False
 
 
-def test_should_idle_stop_sticky_run_without_leave_stamp(
+def test_should_idle_stop_holds_without_leave_stamp(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """CLI init / deferred attach: no leave stamp ⇒ never arm 10s unload."""
     monkeypatch.setenv("CTX_HOME", str(tmp_path))
     monkeypatch.setenv("CTX_DISCONNECT_DEBOUNCE_S", "10")
     from pipeline.lifecycle_runtime import (
@@ -30,9 +31,9 @@ def test_should_idle_stop_sticky_run_without_leave_stamp(
 
     set_desired_mode(DESIRED_RUN)
     note_activity(now=100.0)
-    # No clients, no last_client_left_at — previously never idled.
     assert should_idle_stop(now=105.0) is False
-    assert should_idle_stop(now=111.0) is True
+    assert should_idle_stop(now=111.0) is False
+    assert should_idle_stop(now=10_000.0) is False
 
 
 def test_watchdog_skips_force_restart_without_demand(

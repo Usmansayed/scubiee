@@ -148,6 +148,12 @@ def test_client_for_records_admission_error(monkeypatch, tmp_path: Path):
         def __init__(self, *args, **kwargs):
             pass
 
+        def health(self):
+            return {"ok": True, "service": True, "soft_search_ready": False}
+
+        def healthy(self):
+            return True
+
         def open_repo(self, *args, **kwargs):
             raise RuntimeError("daemon unreachable")
 
@@ -155,6 +161,8 @@ def test_client_for_records_admission_error(monkeypatch, tmp_path: Path):
             return None
 
     monkeypatch.setattr("pipeline.daemon.ensure_daemon", lambda *a, **k: None)
+    monkeypatch.setattr("pipeline.mcp_lifecycle.ensure_mcp_runtime", lambda *a, **k: {"ok": True})
+    monkeypatch.setattr("pipeline.mcp_lifecycle.soft_ready_cached", lambda: False)
     monkeypatch.setattr("pipeline.client.EngineClient", FakeClient)
     monkeypatch.setattr(mcp_locate, "_stderr", lambda msg: captured.append(msg))
 

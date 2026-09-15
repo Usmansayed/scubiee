@@ -2008,22 +2008,16 @@ def cmd_global_resume(args: argparse.Namespace) -> int:
 
     is_tty = sys.stdout.isatty()
 
-    if not is_paused():
-        if is_tty:
-            from pipeline.cli_ui import success
-            sys.stderr.write("\n")
-            success("Already active", stream=sys.stderr)
-            sys.stderr.write("\n")
-        else:
-            print(json.dumps({"ok": True, "already_active": True}, indent=2))
-        return 0
-
+    # Always call resume(): already-active still heals sticky GATE p rule files.
     result = resume()
+    already = bool(result.get("already_active")) and not is_paused()
 
     if is_tty:
         from pipeline.cli_ui import success, warn
         sys.stderr.write("\n")
-        if result.get("ok"):
+        if result.get("ok") and already:
+            success("Already active", stream=sys.stderr)
+        elif result.get("ok"):
             success("Resumed", stream=sys.stderr)
             connect_hint = result.get("connect_hint")
             if connect_hint:
@@ -2869,7 +2863,8 @@ def main(argv: list[str] | None = None) -> int:
             cmd == "setup" and "--repair" in cli_argv
         )
         if should_auto_resume:
-            result = resume()
+            dry = bool(getattr(args, "dry_run", False))
+            result = resume(ensure_engine=not dry)
             if not result.get("ok"):
                 hint = str(
                     result.get("hint")

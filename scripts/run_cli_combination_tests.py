@@ -390,7 +390,9 @@ def run_all(*, repo: Path, quick: bool, cli_bin: str | None = None) -> list[Resu
         home.mkdir()
         prev_group: str | None = None
         for sc in scenarios():
-            if quick and sc.group in {"wipe"}:
+            if quick and sc.group in {"wipe", "recovery", "init_combo"}:
+                # wipe = slow; recovery X2 unlock-tool deletes uv install;
+                # init_combo stop/init mutates the real cwd repo id.json.
                 continue
             if prev_group == "global_stop" and sc.group == "global_stop":
                 _run_cli(

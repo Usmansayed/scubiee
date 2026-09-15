@@ -17,6 +17,7 @@ import subprocess
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from typing import Any
 
 from pipeline.mcp_bridge_session import (
@@ -33,6 +34,46 @@ def _stderr(msg: str) -> None:
     print(msg, file=sys.stderr, flush=True)
 
 
+_UV_CONSOLE_SHIMS = {
+    "scubiee",
+    "scubiee.exe",
+    "scubiee-mcp",
+    "scubiee-mcp.exe",
+    "scubiee-mcp-bridge",
+    "scubiee-mcp-bridge.exe",
+}
+
+
+def _is_uv_console_shim(cmd: str) -> bool:
+    return Path(cmd).name.lower() in _UV_CONSOLE_SHIMS
+
+
+def _windows_mcp_worker_command() -> tuple[str, list[str]]:
+    """Always pythonw -m — never the uv console shim (visible conhost blink)."""
+    from pipeline.process_job import background_python
+
+    return background_python(), ["-u", "-m", "pipeline.mcp_locate"]
+
+
+def _prefer_pythonw(cmd: str) -> str:
+    if os.name != "nt":
+        return cmd
+    path = Path(cmd)
+    if path.name.lower() != "python.exe":
+        return cmd
+    pyw = path.with_name("pythonw.exe")
+    if pyw.is_file():
+        return str(pyw)
+    # Sibling missing (stale pin / half install) — never keep console python.exe;
+    # that is a common source of rare conhost blinks on worker respawn.
+    try:
+        from pipeline.process_job import background_python
+
+        return background_python()
+    except Exception:  # noqa: BLE001
+        return cmd
+
+
 def resolve_child_command() -> tuple[str, list[str]]:
     """Return executable + args for the real MCP worker (not the bridge)."""
     spawn_json = (os.environ.get("CTX_MCP_BRIDGE_SPAWN_JSON") or "").strip()
@@ -40,16 +81,37 @@ def resolve_child_command() -> tuple[str, list[str]]:
         try:
             parts = json.loads(spawn_json)
             if isinstance(parts, list) and parts:
-                return str(parts[0]), [str(x) for x in parts[1:]]
+                cmd = str(parts[0])
+                args = [str(x) for x in parts[1:]]
+                if os.name == "nt" and (
+                    _is_uv_console_shim(cmd)
+                    or Path(cmd).name.lower() in {"python.exe", "py.exe"}
+                ):
+                    # Avoid console-subsystem flash. Keep SPAWN_JSON args so tests
+                    # (and pins of python -u fake.py) still run the intended script.
+                    if args:
+                        return _prefer_pythonw(cmd), args
+                    return _windows_mcp_worker_command()
+                return _prefer_pythonw(cmd), args
         except (json.JSONDecodeError, TypeError, ValueError):
             pass
 
     override = (os.environ.get("CTX_MCP_BRIDGE_SPAWN") or "").strip()
     if override:
         space = override.find(" ")
-        if space == -1:
-            return override, []
-        return override[:space], [override[space + 1 :].strip()]
+        cmd = override if space == -1 else override[:space]
+        args = [] if space == -1 else [override[space + 1 :].strip()]
+        if os.name == "nt" and (
+            _is_uv_console_shim(cmd)
+            or Path(cmd).name.lower() in {"python.exe", "py.exe"}
+        ):
+            if args:
+                return _prefer_pythonw(cmd), args
+            return _windows_mcp_worker_command()
+        return _prefer_pythonw(cmd), args
+
+    if os.name == "nt":
+        return _windows_mcp_worker_command()
 
     mcp_exe = shutil.which("scubiee-mcp")
     if mcp_exe:
@@ -59,6 +121,11 @@ def resolve_child_command() -> tuple[str, list[str]]:
 
 
 def spawn_child_process(env: dict[str, str]) -> subprocess.Popen[str]:
+    """Spawn one mcp_locate worker under this bridge (expected tree: Cursor→bridge→locate).
+
+    Nested bridge→bridge / locate→locate rows in Windows process explorers are usually
+    parentage display quirks of ``pythonw -m``, not a second tool server (R5/R10).
+    """
     cmd, args = resolve_child_command()
     kwargs: dict[str, Any] = {
         "stdin": subprocess.PIPE,
@@ -69,12 +136,11 @@ def spawn_child_process(env: dict[str, str]) -> subprocess.Popen[str]:
         "env": env,
     }
     # Windows console shims (scubiee-mcp.exe) flash a terminal on every
-    # respawn unless CREATE_NO_WINDOW is set — MCP crash loops looked like
-    # "new terminal every few ms".
+    # respawn unless CREATE_NO_WINDOW + SW_HIDE. Never DETACHED_PROCESS.
     if os.name == "nt":
-        kwargs["creationflags"] = int(
-            getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
-        )
+        from pipeline.process_job import windows_stdio_hidden_kwargs
+
+        kwargs.update(windows_stdio_hidden_kwargs())
     try:
         return subprocess.Popen([cmd, *args], **kwargs)  # noqa: S603
     except OSError as exc:
@@ -155,9 +221,16 @@ class McpBridge:
         return response
 
     def _ensure_worker(self, worker: ChildWorker, *, for_method: str | None = None) -> None:
-        had_child = worker._child is not None or worker.loaded_build_id is not None  # noqa: SLF001
+        # Only notify list_changed when the worker actually respawned.
+        # Emitting on every tools/call made Cursor spawn a second MCP bridge
+        # (duplicate process groups) while the first was still alive — worst
+        # during long expand_context / AST work.
+        gen_before = worker.spawn_gen
         worker.ensure_ready(for_method=for_method)
-        if had_child and for_method in ("tools/call", "tools/list"):
+        if (
+            for_method in ("tools/call", "tools/list")
+            and worker.spawn_gen != gen_before
+        ):
             self._emit_tools_list_changed()
 
     def handle_client_message(self, msg: dict[str, Any]) -> None:
@@ -248,11 +321,76 @@ def warn_ctx_home_pollution() -> None:
     _warn(stream=sys.stderr)
 
 
+def _bridge_host() -> str:
+    return (os.environ.get("CTX_MCP_CLIENT") or "cursor").strip().lower() or "cursor"
+
+
+def _bridge_client_id() -> str:
+    return f"mcp:{_bridge_host()}@bridge-{os.getpid()}"
+
+
+def _register_bridge_anchor() -> None:
+    """Keep embedder/engine warm while Cursor holds the bridge process open.
+
+    Register via engine HTTP only — never call ``register_client`` in-process
+    here (that used to load FastEmbed into the bridge and waste hundreds of MB).
+    """
+    cid = _bridge_client_id()
+    host = _bridge_host()
+    try:
+        from pipeline.client import EngineClient
+
+        reg = EngineClient(timeout=3.0).post(
+            "/v1/client/register",
+            {
+                "client_id": cid,
+                "pid": os.getpid(),
+                "kind": "bridge",
+                "client": host,
+            },
+        )
+        _stderr(
+            f"[scubiee-bridge] warm-anchor client_id={cid} "
+            f"active={(reg or {}).get('active_clients')}"
+        )
+    except Exception as exc:  # noqa: BLE001
+        # Engine may still be down at bridge attach — local registry only (no embed).
+        _stderr(f"[scubiee-bridge] warm-anchor HTTP register deferred: {exc}")
+        try:
+            from pipeline.lifecycle_runtime import register_client
+
+            register_client(cid, pid=os.getpid(), kind="bridge", host=host)
+        except Exception as exc2:  # noqa: BLE001
+            _stderr(f"[scubiee-bridge] warm-anchor local register failed: {exc2}")
+
+
+def _unregister_bridge_anchor() -> None:
+    cid = _bridge_client_id()
+    try:
+        from pipeline.client import EngineClient
+
+        EngineClient(timeout=2.0).post("/v1/client/unregister", {"client_id": cid})
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from pipeline.lifecycle_runtime import unregister_client
+
+        unregister_client(cid)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def main() -> None:
     from pipeline.ctx_home_guard import enforce_ctx_home_or_exit
 
     os.environ.setdefault("CTX_MCP_BRIDGE", "1")
     enforce_ctx_home_or_exit()
+    try:
+        from pipeline.process_job import soften_background_priority
+
+        soften_background_priority()
+    except Exception:  # noqa: BLE001
+        pass
     try:
         from pipeline.process_job import attach_mcp_kill_job
 
@@ -267,7 +405,39 @@ def main() -> None:
             _stderr(f"[scubiee-bridge] reaped leftover MCP pids={reap.get('killed')}")
     except Exception as exc:  # noqa: BLE001
         _stderr(f"[scubiee-bridge] orphan reap skipped: {exc}")
-    McpBridge().run()
+    _register_bridge_anchor()
+    try:
+        from pipeline.runtime_controller import RuntimeController
+        from pipeline.session_isolation import detect_mcp_host
+
+        repo = Path(os.environ.get("CTX_REPO") or Path.cwd()).resolve()
+        os.environ.setdefault("CTX_REPO", str(repo))
+        os.environ.setdefault("CTX_MCP_CLIENT", detect_mcp_host())
+        snap = RuntimeController.get().ensure(repo, "attach")
+        _stderr(
+            f"[scubiee-bridge] runtime attach state={snap.state} "
+            f"warm_ready={snap.warm_ready} deadline_ms={snap.as_status_fields().get('warm_deadline_ms')}"
+        )
+    except Exception as exc:  # noqa: BLE001
+        _stderr(f"[scubiee-bridge] attach warm skipped: {exc}")
+    try:
+        McpBridge().run()
+    finally:
+        _unregister_bridge_anchor()
+        try:
+            from pipeline.runtime_controller import RuntimeController
+
+            RuntimeController.get().ensure(
+                Path(os.environ.get("CTX_REPO") or Path.cwd()), "leave"
+            )
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            from pipeline.client import EngineClient
+
+            EngineClient(timeout=2.0).post("/v1/client/reconcile", {})
+        except Exception:  # noqa: BLE001
+            pass
 
 
 if __name__ == "__main__":

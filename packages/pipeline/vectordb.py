@@ -64,6 +64,21 @@ def _safe_name(name: str) -> str:
     return s
 
 
+def _read_faiss_index(path: Path):
+    """Load FAISS with mmap when available; fall back to full RAM read."""
+    path = Path(path)
+    # Prefer IFC mmap (FlatCodes / HNSW-friendly); then classic MMAP; then RAM.
+    for attr in ("IO_FLAG_MMAP_IFC", "IO_FLAG_MMAP"):
+        flag = getattr(faiss, attr, None)
+        if flag is None:
+            continue
+        try:
+            return faiss.read_index(str(path), int(flag))
+        except Exception:  # noqa: BLE001
+            continue
+    return faiss.read_index(str(path))
+
+
 @dataclass
 class CollectionMeta:
     name: str
@@ -327,7 +342,7 @@ class FaissCollection:
                 col.payloads[int(row["id"])] = dict(row.get("payload") or {})
         index_path = path / "faiss.index"
         if index_path.exists() and col.ids:
-            col.index = faiss.read_index(str(index_path))
+            col.index = _read_faiss_index(index_path)
             # Integrity: the serialized index contains live rows only.
             if int(col.index.ntotal) != col.live_count:
                 col._rebuild_faiss_from_compressed()

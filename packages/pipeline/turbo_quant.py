@@ -197,40 +197,55 @@ class CompressedEmbeddingStore:
         self.dim = dim
         self.bits = bits
         self.seed = seed
-        self.codec = TurboQuantCodec(dim=dim, bits=bits, seed=seed)
-        self._norms: list[float] = []
-        self._codes: list[np.ndarray] = []
+        self._codec: TurboQuantCodec | None = None
+        # Contiguous matrices — avoid per-row Python lists (cold load was ~1s+ on 6k vecs).
+        self._norms = np.zeros((0,), dtype=np.float32)
+        self._codes = np.zeros((0, dim), dtype=np.uint8)
         self.backend = "numpy-turboquant"
         if _TQ is not None:
             self.backend = "turboquant-pkg"
 
     @property
+    def codec(self) -> TurboQuantCodec:
+        # Lazy: QR(dim×dim) is ~0.5s at dim=768 — skip on FAISS-only warm loads.
+        if self._codec is None:
+            self._codec = TurboQuantCodec(dim=self.dim, bits=self.bits, seed=self.seed)
+        return self._codec
+
+    @property
     def ntotal(self) -> int:
-        return len(self._codes)
+        return int(self._codes.shape[0])
 
     def add(self, vectors: np.ndarray) -> None:
         blob = self.codec.quantize(vectors)
-        for i in range(blob["n"]):
-            self._norms.append(float(blob["norms"][i]))
-            self._codes.append(np.asarray(blob["codes"][i], dtype=np.uint8).copy())
+        new_norms = np.asarray(blob["norms"], dtype=np.float32).reshape(-1)
+        new_codes = np.asarray(blob["codes"], dtype=np.uint8)
+        if new_codes.ndim == 1:
+            new_codes = new_codes.reshape(1, -1)
+        if self.ntotal == 0:
+            self._norms = new_norms.copy()
+            self._codes = new_codes.copy()
+        else:
+            self._norms = np.concatenate([self._norms, new_norms], axis=0)
+            self._codes = np.vstack([self._codes, new_codes])
 
     def remove_last(self, count: int) -> None:
         if count <= 0:
             return
-        self._norms = self._norms[:-count]
-        self._codes = self._codes[:-count]
+        keep = max(0, self.ntotal - int(count))
+        self._norms = self._norms[:keep].copy()
+        self._codes = self._codes[:keep].copy()
 
     def to_float32(self) -> np.ndarray:
-        if not self._codes:
+        if self.ntotal == 0:
             return np.zeros((0, self.dim), dtype=np.float32)
-        packed = np.stack(self._codes, axis=0)
         blob = {
             "dim": self.dim,
             "bits": self.bits,
             "seed": self.seed,
             "norms": np.asarray(self._norms, dtype=np.float32),
-            "codes": packed,
-            "n": len(self._codes),
+            "codes": np.asarray(self._codes, dtype=np.uint8),
+            "n": self.ntotal,
         }
         return self.codec.dequantize(blob)
 
@@ -249,19 +264,25 @@ class CompressedEmbeddingStore:
         np.savez_compressed(
             path,
             norms=np.asarray(self._norms, dtype=np.float32),
-            codes=np.stack(self._codes, axis=0) if self._codes else np.zeros((0, self.dim), dtype=np.uint8),
+            codes=(
+                np.asarray(self._codes, dtype=np.uint8)
+                if self.ntotal
+                else np.zeros((0, self.dim), dtype=np.uint8)
+            ),
             meta_json=np.asarray([json.dumps(meta)]),
         )
 
     @classmethod
     def load(cls, path: Path) -> "CompressedEmbeddingStore":
+        # One matrix read — no per-vector .copy() loop (dominant warm-path cost).
         data = np.load(path, allow_pickle=False)
         meta = json.loads(str(data["meta_json"][0]))
         store = cls(dim=int(meta["dim"]), bits=int(meta["bits"]), seed=int(meta["seed"]))
-        norms = data["norms"]
-        codes = data["codes"]
-        store._norms = [float(x) for x in norms.tolist()]
-        store._codes = [codes[i].astype(np.uint8).copy() for i in range(codes.shape[0])]
+        store._norms = np.asarray(data["norms"], dtype=np.float32).reshape(-1).copy()
+        codes = np.asarray(data["codes"], dtype=np.uint8)
+        if codes.ndim == 1:
+            codes = codes.reshape(-1, store.dim)
+        store._codes = codes.copy()
         return store
 
     def memory_stats(self) -> dict:

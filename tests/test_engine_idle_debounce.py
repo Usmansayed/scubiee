@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 
-def test_default_disconnect_debounce_is_120(monkeypatch, tmp_path):
+def test_default_disconnect_debounce_is_10(monkeypatch, tmp_path):
     monkeypatch.setenv("CTX_HOME", str(tmp_path))
     monkeypatch.delenv("CTX_DISCONNECT_DEBOUNCE_S", raising=False)
     monkeypatch.delenv("CTX_ENGINE_IDLE_S", raising=False)
@@ -17,10 +17,10 @@ def test_default_disconnect_debounce_is_120(monkeypatch, tmp_path):
         transition_debounce_seconds,
     )
 
-    assert DEFAULT_DISCONNECT_DEBOUNCE_S == 120.0
-    assert DEFAULT_IDLE_S == 120.0
+    assert DEFAULT_DISCONNECT_DEBOUNCE_S == 10.0
+    assert DEFAULT_IDLE_S == 10.0
     assert DEFAULT_TRANSITION_DEBOUNCE_S == 5.0
-    assert idle_seconds() == 120.0
+    assert idle_seconds() == 10.0
     assert transition_debounce_seconds() == 5.0
 
 

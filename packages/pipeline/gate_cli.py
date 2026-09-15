@@ -8,11 +8,11 @@ from pathlib import Path
 def gate_line_for_root(root: str | Path = "", *, project_id: str = "") -> str:
     """Return compact gate: ``0``, ``0:r``, ``1:ce_…``, or ``p``."""
     from pipeline.mcp_locate import _bind_request_repo, _gate_line
-    from pipeline.pause_resume import is_paused
+    from pipeline.pause_resume import is_paused, is_resuming
 
     root_s = str(root).strip()
     with _bind_request_repo(root=root_s, project_id=project_id):
-        if is_paused():
+        if is_paused() and not is_resuming():
             return "p"
         return _gate_line(just_checked=True)
 

@@ -109,6 +109,15 @@ def default_host_port() -> tuple[str, int]:
 
 
 def is_running() -> bool:
+    """True when the engine process is up.
+
+    Prefer a cheap PID/lock check first. Cold prewarm can make ``/health``
+    timeout even while the daemon is alive — treating that as "not running"
+    caused MCP warm thrash and false WARM_TIMEOUT in the host sim.
+    """
+    existing = _read_lock_pid()
+    if existing is not None and _pid_alive(existing):
+        return True
     return EngineClient().healthy()
 
 
@@ -247,7 +256,11 @@ def release_lock_if_owner() -> None:
 
 
 def _live_engine_identity() -> dict[str, Any] | None:
-    """Best-effort identity for a live engine when lock/pid files are missing."""
+    """Best-effort identity for a live engine when lock/pid files are missing.
+
+    Prefer lock / pid / meta before ``netstat``. Watchdog heal ticks every ~15s
+    and must not spawn a console helper on the steady healthy path (R4 blink).
+    """
     host, port = default_host_port()
     pid: int | None = None
     url = f"http://{host}:{port}"
@@ -260,6 +273,42 @@ def _live_engine_identity() -> dict[str, Any] | None:
             repo = str(Path(str(health["repo"])).resolve())
     except Exception:  # noqa: BLE001
         health = None
+
+    lock_pid = _read_lock_pid()
+    if lock_pid and _pid_alive(int(lock_pid)):
+        return {
+            "pid": int(lock_pid),
+            "url": url,
+            "repo": repo or str(Path.cwd().resolve()),
+        }
+    if pid_path().is_file():
+        try:
+            file_pid = int(pid_path().read_text(encoding="utf-8").strip())
+        except (OSError, ValueError):
+            file_pid = 0
+        if file_pid and _pid_alive(file_pid):
+            return {
+                "pid": int(file_pid),
+                "url": url,
+                "repo": repo or str(Path.cwd().resolve()),
+            }
+    try:
+        raw = meta_path().read_text(encoding="utf-8")
+        meta = json.loads(raw) if raw else {}
+        meta_pid = int(meta.get("pid") or 0)
+        if meta_pid and _pid_alive(meta_pid):
+            pid = meta_pid
+            url = str(meta.get("url") or url)
+            repo = repo or (str(meta.get("repo")) if meta.get("repo") else None)
+            return {
+                "pid": int(pid),
+                "url": url,
+                "repo": repo or str(Path.cwd().resolve()),
+            }
+    except Exception:  # noqa: BLE001
+        pass
+
+    # Last resort only — console-subsystem ``netstat`` (hidden_run, but still cost).
     try:
         from pipeline.process_control import pids_listening_on_port
 
@@ -268,17 +317,6 @@ def _live_engine_identity() -> dict[str, Any] | None:
             pid = int(listeners[0])
     except Exception:  # noqa: BLE001
         pass
-    if pid is None:
-        try:
-            raw = meta_path().read_text(encoding="utf-8")
-            meta = json.loads(raw) if raw else {}
-            meta_pid = int(meta.get("pid") or 0)
-            if meta_pid and _pid_alive(meta_pid):
-                pid = meta_pid
-                url = str(meta.get("url") or url)
-                repo = repo or (str(meta.get("repo")) if meta.get("repo") else None)
-        except Exception:  # noqa: BLE001
-            pass
     if pid is None and health is None:
         return None
     if pid is None:
@@ -350,9 +388,40 @@ def bind_engine_identity_to_listener(
 
 
 def heal_engine_lock() -> dict[str, Any]:
-    """Rewrite ``engine.lock`` / ``engine.pid`` to the live listener when missing or stale."""
+    """Rewrite ``engine.lock`` / ``engine.pid`` to the live listener when missing or stale.
+
+    Steady healthy path (watchdog ~15s): if lock already names a live PID and
+    ``engine.pid`` matches, return immediately — do **not** spawn ``netstat``.
+    """
     if not is_running():
         return {"ok": False, "healed": False, "reason": "not_healthy"}
+    existing = _read_lock_pid()
+    if existing is not None and _pid_alive(int(existing)):
+        pid_matches = False
+        try:
+            if pid_path().is_file():
+                pid_matches = int(pid_path().read_text(encoding="utf-8").strip()) == int(
+                    existing
+                )
+        except (OSError, ValueError):
+            pid_matches = False
+        if pid_matches:
+            return {
+                "ok": True,
+                "healed": False,
+                "reason": "lock_present",
+                "pid": int(existing),
+            }
+        try:
+            pid_path().write_text(str(int(existing)), encoding="utf-8")
+        except OSError:
+            pass
+        return {
+            "ok": True,
+            "healed": True,
+            "reason": "pid_file_repaired",
+            "pid": int(existing),
+        }
     bound = bind_engine_identity_to_listener()
     if bound.get("bound"):
         return {
@@ -432,7 +501,9 @@ def daemon_python() -> str:
 
     def _has_fastembed(exe: str) -> bool:
         try:
-            r = subprocess.run(
+            from pipeline.process_job import hidden_run
+
+            r = hidden_run(
                 [exe, "-c", "import importlib.util; import sys; "
                  "sys.exit(0 if importlib.util.find_spec('fastembed') else 1)"],
                 capture_output=True,
@@ -491,7 +562,29 @@ def start_daemon(
     conflict = check_install_conflict()
     if conflict:
         print(f"[scubiee] WARNING: {conflict['hint']}", file=sys.stderr, flush=True)
-    write_install_marker()
+        # Do NOT rewrite install_marker to this conflicting prefix — that makes
+        # the next uv-tool / Cursor MCP look like the "intruder" and prolongs
+        # the fight. Prefer the recorded install's interpreter for the spawn.
+        recorded_exe = str(conflict.get("recorded_executable") or "").strip()
+        if recorded_exe and Path(recorded_exe).is_file():
+            os.environ.setdefault("CTX_DAEMON_PYTHON", recorded_exe)
+        # If a healthy daemon is already up, never spawn a second one from
+        # conda/source while uv owns the pin.
+        if is_running() and not force:
+            try:
+                from pipeline.lifecycle_runtime import note_engine_transition
+
+                note_engine_transition("start")
+            except Exception:  # noqa: BLE001
+                pass
+            return {
+                "ok": True,
+                "already_running": True,
+                "url": engine_url(),
+                "install_conflict": conflict,
+            }
+    else:
+        write_install_marker()
 
     if is_running() and not force:
         try:
@@ -502,8 +595,8 @@ def start_daemon(
             pass
         return {"ok": True, "already_running": True, "url": engine_url()}
 
-    # Live engine process without health: wait/refuse. Never spawn a second
-    # python.exe — that flashes consoles and fights the first starter.
+    # Live engine process without health: wait for the in-flight starter.
+    # Never spawn a second python.exe — that flashes consoles and fights the first.
     existing = _read_lock_pid()
     if existing is None:
         try:
@@ -511,6 +604,23 @@ def start_daemon(
         except (OSError, ValueError):
             existing = None
     if existing is not None and _pid_alive(existing) and not is_running() and not force:
+        if wait_s > 0:
+            inflight_deadline = time.time() + wait_s
+            while time.time() < inflight_deadline:
+                if is_running():
+                    try:
+                        from pipeline.lifecycle_runtime import note_engine_transition
+
+                        note_engine_transition("start")
+                    except Exception:  # noqa: BLE001
+                        pass
+                    return {
+                        "ok": True,
+                        "already_running": True,
+                        "waited_inflight": True,
+                        "url": engine_url(),
+                    }
+                time.sleep(0.2)
         return {
             "ok": False,
             "error": f"engine.lock held by pid {existing} but /health is down",
@@ -538,6 +648,7 @@ def start_daemon(
     env = os.environ.copy()
     env["CTX_ENGINE_URL"] = f"http://{host}:{port}"
     env["PYTHONUTF8"] = "1"
+    env["CTX_SCUBIEE_ROLE"] = "engine"
     env.setdefault("CTX_REPO", repo_s)
     # Always propagate isolated home for sims / multi-instance
     if os.environ.get("CTX_HOME"):
@@ -559,19 +670,21 @@ def start_daemon(
         "--port",
         str(port),
     ]
-    # Agent warm (gate/status/map) calls open_repo. Opening on spawn
-    # contends the GIL and delays /health past 10s.
-    open_on_start = (os.environ.get("CTX_ENGINE_OPEN_ON_START") or "0").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
+    # Default: background open AFTER listen (server.open_on_start). That overlaps
+    # MCP initialize/worker spawn so soft_search_ready lands during connect, not
+    # ~20s later. Sync open-before-listen is still forbidden (GIL starves /health).
+    # Escape: CTX_ENGINE_OPEN_ON_START=0 restores --no-open (attach opens later).
+    open_on_start = (os.environ.get("CTX_ENGINE_OPEN_ON_START") or "1").strip().lower() not in {
+        "0",
+        "false",
+        "no",
+        "off",
     }
     if not open_on_start:
         cmd.append("--no-open")
     env.setdefault("CTX_PYTHON", daemon_python())
     env.setdefault("CTX_EMBED_IDLE_DEMOTE_S", os.environ.get("CTX_EMBED_IDLE_DEMOTE_S") or "10")
-    env.setdefault("CTX_DISCONNECT_DEBOUNCE_S", os.environ.get("CTX_DISCONNECT_DEBOUNCE_S") or "120")
+    env.setdefault("CTX_DISCONNECT_DEBOUNCE_S", os.environ.get("CTX_DISCONNECT_DEBOUNCE_S") or "10")
     env.setdefault("CTX_ENGINE_IDLE_S", os.environ.get("CTX_ENGINE_IDLE_S") or "120")
     env.setdefault("CTX_ENGINE_TRANSITION_DEBOUNCE_S", os.environ.get("CTX_ENGINE_TRANSITION_DEBOUNCE_S") or "5")
     env.setdefault("CTX_EMBED_PREWARM", os.environ.get("CTX_EMBED_PREWARM") or "1")
@@ -605,6 +718,38 @@ def start_daemon(
             proc = subprocess.Popen(cmd, **kwargs)  # noqa: S603
         else:
             raise
+    except OSError as exc:
+        # WinError 193: "%1 is not a valid Win32 application" — often a broken
+        # pythonw redirector / shim. Fall back to python.exe, then soft flags.
+        winerr = getattr(exc, "winerror", None)
+        if os.name == "nt" and winerr == 193:
+            from pipeline.process_job import engine_popen_kwargs
+
+            py_console = daemon_python()
+            if Path(cmd[0]).name.lower() != Path(py_console).name.lower():
+                cmd = [py_console, *cmd[1:]]
+                log_f.write(
+                    f"[daemon] WinError 193 on pythonw — retry with {py_console}: {exc}\n"
+                )
+                log_f.flush()
+                try:
+                    proc = subprocess.Popen(cmd, **kwargs)  # noqa: S603
+                except OSError as exc2:
+                    kwargs.update(engine_popen_kwargs(soft=True))
+                    kwargs["close_fds"] = False
+                    log_f.write(
+                        f"[daemon] soft spawn retry after WinError 193: {exc2}\n"
+                    )
+                    log_f.flush()
+                    proc = subprocess.Popen(cmd, **kwargs)  # noqa: S603
+            else:
+                kwargs.update(engine_popen_kwargs(soft=True))
+                kwargs["close_fds"] = False
+                log_f.write(f"[daemon] soft spawn retry after WinError 193: {exc}\n")
+                log_f.flush()
+                proc = subprocess.Popen(cmd, **kwargs)  # noqa: S603
+        else:
+            raise
     # Child owns the log fd; parent can close its copy after spawn
     try:
         log_f.close()
@@ -625,6 +770,17 @@ def start_daemon(
 
     meta_path().write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
     pid_path().write_text(str(proc.pid), encoding="utf-8")
+
+    # Stamp start immediately so idle sweeper does not kill a listen-first child
+    # before /health is up (HTTP bind is ~3s; embedder/index lag much longer).
+    try:
+        from pipeline.lifecycle_runtime import note_engine_transition
+
+        note_engine_transition("start")
+    except Exception:  # noqa: BLE001
+        pass
+    if wait_s <= 0:
+        return {"ok": True, "started": True, "health_pending": True, **meta}
 
     deadline = time.time() + wait_s
     client = EngineClient(f"http://{host}:{port}")
@@ -778,7 +934,17 @@ def force_restart_daemon(repo: Path | str | None = None, *, upgrade: bool = Fals
     release_lock()
     time.sleep(1.0)
 
-    result = start_daemon(repo_s, host=host, port=port, wait_s=120.0, force=True)
+    try:
+        result = start_daemon(repo_s, host=host, port=port, wait_s=120.0, force=True)
+    except OSError as exc:
+        return {
+            "ok": False,
+            "forced": True,
+            "sweep": sweep,
+            "error": f"start_daemon_oserror:{exc}",
+            "repo": repo_s,
+            "url": f"http://{host}:{port}",
+        }
     result["forced"] = True
     result["sweep"] = sweep
     return result
@@ -795,6 +961,7 @@ def _ensure_already_running(
     repo: Path | str | None,
     *,
     version_adopt: dict[str, Any] | None = None,
+    open_wait: bool = True,
 ) -> dict[str, Any]:
     try:
         bind_engine_identity_to_listener(
@@ -808,8 +975,8 @@ def _ensure_already_running(
         if version_adopt is not None:
             out["version_adopt"] = version_adopt
         return out
-    client = EngineClient()
-    opened = client.open_repo(str(target), wait=True)
+    client = EngineClient(timeout=8.0 if not open_wait else 120.0)
+    opened = client.open_repo(str(target), wait=open_wait)
     health = client.get("/health")
     bound_raw = health.get("repo")
     try:
@@ -876,10 +1043,12 @@ def ensure_daemon(
     *,
     force_if_hung: bool = True,
     spawn_owner: str | None = None,
+    wait_s: float | None = None,
+    open_wait: bool = True,
 ) -> dict[str, Any]:
-    from pipeline.pause_resume import is_paused
+    from pipeline.pause_resume import is_paused, is_resuming
 
-    if is_paused():
+    if is_paused() and not is_resuming():
         from pipeline.lifecycle_guard import globally_paused_hint
 
         return {
@@ -889,6 +1058,7 @@ def ensure_daemon(
             "hint": globally_paused_hint(),
         }
     owner = _spawn_owner(spawn_owner)
+    health_wait = 90.0 if wait_s is None else float(wait_s)
     try:
         from pipeline.watchdog import watchdog_enabled
 
@@ -913,7 +1083,9 @@ def ensure_daemon(
                     time.sleep(1.0)
         except Exception:  # noqa: BLE001
             pass
-        out = _ensure_already_running(repo, version_adopt=version_adopt)
+        out = _ensure_already_running(
+            repo, version_adopt=version_adopt, open_wait=open_wait
+        )
         out["spawn_owner"] = owner
         return out
     # If hung (lock alive, health down), optionally force restart.
@@ -923,6 +1095,15 @@ def ensure_daemon(
     if existing is not None and _pid_alive(existing) and not is_running():
         if force_if_hung and owner == "direct":
             return force_restart_daemon(repo)
+        if wait_s is not None and health_wait > 0:
+            poll_deadline = time.time() + health_wait
+            while time.time() < poll_deadline:
+                if is_running():
+                    out = _ensure_already_running(repo, open_wait=open_wait)
+                    out["spawn_owner"] = owner
+                    out["waited_for_inflight"] = True
+                    return out
+                time.sleep(0.2)
         return {
             "ok": False,
             "hung": True,
@@ -936,6 +1117,24 @@ def ensure_daemon(
     from pipeline.lifecycle_runtime import note_activity
 
     note_activity()
-    started = start_daemon(repo)
+    started = start_daemon(repo, wait_s=health_wait)
     started["spawn_owner"] = "direct"
+    # open_on_start is best-effort in the daemon; explicitly bind when ensure
+    # was asked to wait so soft_search_ready/chunks are usable after return.
+    if (
+        open_wait
+        and repo is not None
+        and started.get("ok")
+        and not started.get("skipped")
+    ):
+        try:
+            bound = _ensure_already_running(repo, open_wait=True)
+            started["opened"] = bound.get("opened")
+            if bound.get("ok") is False:
+                started["bind_error"] = bound.get("error")
+            else:
+                started["ok"] = True
+                started["repo"] = bound.get("repo") or started.get("repo")
+        except Exception as exc:  # noqa: BLE001
+            started["bind_error"] = str(exc)
     return started

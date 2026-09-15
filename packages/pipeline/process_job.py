@@ -21,7 +21,7 @@ CREATE_NO_WINDOW = 0x08000000
 CREATE_BREAKAWAY_FROM_JOB = 0x01000000
 CREATE_NEW_PROCESS_GROUP = 0x00000200
 DETACHED_PROCESS = 0x00000008
-DEFAULT_ENGINE_CPU_CAP_PCT = 30.0
+DEFAULT_ENGINE_CPU_CAP_PCT = 20.0
 DEFAULT_ENGINE_JOB_MEMORY_MB = 800
 # Named job objects with KILL_ON_JOB_CLOSE die when the last handle closes.
 # ctypes HANDLEs are not auto-closed, but keep them anyway so a future wrapper
@@ -30,7 +30,11 @@ _OPEN_JOB_HANDLES: list[Any] = []
 
 
 def engine_cpu_cap_pct() -> float:
-    """Hard CPU cap for the engine job (percent of the machine). Default 30."""
+    """Hard CPU cap for the engine job (percent of the machine). Default 20.
+
+    Keeps Task Manager spikes under ~20% while full-warm stays resident for speed.
+    Override with ``CTX_ENGINE_CPU_CAP_PCT`` (1–100).
+    """
     raw = (os.environ.get("CTX_ENGINE_CPU_CAP_PCT") or "").strip()
     if not raw:
         return DEFAULT_ENGINE_CPU_CAP_PCT
@@ -38,6 +42,30 @@ def engine_cpu_cap_pct() -> float:
         return max(1.0, min(100.0, float(raw)))
     except ValueError:
         return DEFAULT_ENGINE_CPU_CAP_PCT
+
+
+def soften_background_priority() -> dict[str, Any]:
+    """Drop MCP/locate worker scheduling priority so short spikes yield to the IDE.
+
+    Does not change the hard job CPU rate; pairs with ``engine_cpu_cap_pct`` so
+    hydrate/embed bursts stay polite under ~20% machine CPU.
+    """
+    if os.name != "nt":
+        try:
+            os.nice(5)
+            return {"ok": True, "nice": 5}
+        except Exception as exc:  # noqa: BLE001
+            return {"ok": False, "error": str(exc)}
+    try:
+        import ctypes
+
+        kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+        BELOW_NORMAL_PRIORITY_CLASS = 0x00004000
+        handle = kernel32.GetCurrentProcess()
+        ok = bool(kernel32.SetPriorityClass(handle, BELOW_NORMAL_PRIORITY_CLASS))
+        return {"ok": ok, "priority": "below_normal"}
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "error": str(exc)}
 
 
 def cpu_rate_for_percent(pct: float) -> int:
@@ -52,6 +80,29 @@ def windows_hidden_creationflags() -> int:
     no_window = int(getattr(subprocess, "CREATE_NO_WINDOW", CREATE_NO_WINDOW))
     new_group = int(getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
     return no_window | new_group
+
+
+def windows_hidden_startupinfo() -> Any | None:
+    """STARTF_USESHOWWINDOW + SW_HIDE — CREATE_NO_WINDOW alone still flashes some shims."""
+    if os.name != "nt":
+        return None
+    si = subprocess.STARTUPINFO()
+    si.dwFlags |= int(getattr(subprocess, "STARTF_USESHOWWINDOW", 0x00000001))
+    si.wShowWindow = 0
+    return si
+
+
+def windows_stdio_hidden_kwargs() -> dict[str, Any]:
+    """Hidden flags for stdio children (MCP workers). No DETACHED_PROCESS."""
+    if os.name != "nt":
+        return {}
+    out: dict[str, Any] = {
+        "creationflags": int(getattr(subprocess, "CREATE_NO_WINDOW", CREATE_NO_WINDOW)),
+    }
+    si = windows_hidden_startupinfo()
+    if si is not None:
+        out["startupinfo"] = si
+    return out
 
 
 def engine_creationflags() -> int:
@@ -94,15 +145,15 @@ def engine_popen_kwargs(*, soft: bool | None = None) -> dict[str, Any]:
         }
         soft = not hard
     if os.name == "nt":
-        if soft:
-            return {
-                "creationflags": windows_hidden_creationflags(),
-                "close_fds": True,
-            }
-        return {
-            "creationflags": engine_creationflags(),
+        flags = windows_hidden_creationflags() if soft else engine_creationflags()
+        out: dict[str, Any] = {
+            "creationflags": flags,
             "close_fds": True,
         }
+        si = windows_hidden_startupinfo()
+        if si is not None:
+            out["startupinfo"] = si
+        return out
     kwargs: dict[str, Any] = {"close_fds": True}
     if sys.platform != "darwin":
         kwargs["start_new_session"] = True
@@ -112,7 +163,11 @@ def engine_popen_kwargs(*, soft: bool | None = None) -> dict[str, Any]:
 def hidden_popen_kwargs() -> dict[str, Any]:
     """Flags for background python.exe children that must not blink a console."""
     if os.name == "nt":
-        return {"creationflags": windows_hidden_creationflags()}
+        out: dict[str, Any] = {"creationflags": windows_hidden_creationflags()}
+        si = windows_hidden_startupinfo()
+        if si is not None:
+            out["startupinfo"] = si
+        return out
     kwargs: dict[str, Any] = {}
     if sys.platform != "darwin":
         kwargs["start_new_session"] = True
@@ -138,7 +193,7 @@ def engine_job_memory_mb() -> int:
 
 
 def attach_supervisor_job() -> dict[str, Any]:
-    """Create (or open) the kill-on-close + 30% CPU job and assign this process."""
+    """Create (or open) the kill-on-close + CPU-capped job and assign this process."""
     if os.name != "nt":
         return {"ok": True, "skipped": True, "platform": "posix"}
     return _windows_assign(
@@ -368,13 +423,24 @@ def background_python() -> str:
 
 
 def hidden_run(cmd: list[str], **kwargs: Any) -> subprocess.CompletedProcess[Any]:
-    """``subprocess.run`` that never flashes a console on Windows."""
+    """``subprocess.run`` that never flashes a console on Windows.
+
+    Applies CREATE_NO_WINDOW + SW_HIDE. Use this for *every* Windows helper
+    spawn on hot paths (netstat, taskkill probes, ``python -c`` checks) —
+    console-subsystem EXEs flash a terminal if launched without these flags.
+    """
     if os.name == "nt":
-        kwargs.setdefault(
-            "creationflags",
-            int(getattr(subprocess, "CREATE_NO_WINDOW", CREATE_NO_WINDOW)),
-        )
+        for key, value in hidden_popen_kwargs().items():
+            kwargs.setdefault(key, value)
     return subprocess.run(cmd, **kwargs)  # noqa: S603
+
+
+def hidden_popen(cmd: list[str], **kwargs: Any) -> subprocess.Popen[Any]:
+    """``subprocess.Popen`` with the same no-flash Windows flags as ``hidden_run``."""
+    if os.name == "nt":
+        for key, value in hidden_popen_kwargs().items():
+            kwargs.setdefault(key, value)
+    return subprocess.Popen(cmd, **kwargs)  # noqa: S603
 
 
 def taskkill_silent(

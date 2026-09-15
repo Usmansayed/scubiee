@@ -93,6 +93,37 @@ def test_resume_is_idempotent(ce_home: Path) -> None:
     assert is_paused() is False
 
 
+def test_gate_line_managed_while_resuming(ce_home: Path, tmp_path: Path) -> None:
+    from pipeline.pause_resume import _save_state, is_resuming
+    from pipeline.rules_installer import gate_line_for_repo
+
+    repo = tmp_path / "proj"
+    repo.mkdir()
+    sc = repo / ".scubiee"
+    sc.mkdir()
+    (sc / "id.json").write_text(
+        '{"project_id": "ce_deadbeefdeadbeefdeadbeefdeadbeef"}',
+        encoding="utf-8",
+    )
+    _save_state({"paused": True, "resuming": True})
+    assert is_resuming() is True
+    assert gate_line_for_repo(repo) == "1:ce_deadbeefdeadbeefdeadbeefdeadbeef"
+    _save_state({"paused": True, "resuming": False})
+    assert gate_line_for_repo(repo) == "p"
+
+
+def test_ensure_daemon_allowed_while_resuming(ce_home: Path) -> None:
+    from pipeline.pause_resume import _save_state, is_paused, is_resuming
+
+    _save_state({"paused": True, "resuming": True})
+    assert is_paused() is True
+    assert is_resuming() is True
+    # Mirror ensure_daemon / start_watchdog gate (paused ∧ ¬resuming → block).
+    assert not (is_paused() and not is_resuming())
+    _save_state({"paused": True, "resuming": False})
+    assert is_paused() and not is_resuming()
+
+
 def test_disable_mcp_json_stubs_without_disabled_flag(
     ce_home: Path, mock_tools: dict[str, Path]
 ) -> None:

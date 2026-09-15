@@ -477,7 +477,7 @@ def index_repo(
             "note": "CodeRankLLM reranker is search-time only (not used during index)",
         }
     )
-    from pipeline.artifact_guard import publish_manifest
+    from pipeline.artifact_guard import invalidate_manifest, publish_manifest
 
     published = [
         p
@@ -491,7 +491,18 @@ def index_repo(
         if p.is_file()
     ]
     if published:
+        # Fail closed for readers while we seal the new generation.
+        try:
+            invalidate_manifest(store.base)
+        except Exception:  # noqa: BLE001
+            pass
         publish_manifest(store.base, published)
+        try:
+            from pipeline.bm25_cache import invalidate_bm25_cache
+
+            invalidate_bm25_cache(store.base)
+        except Exception:  # noqa: BLE001
+            pass
 
     wall_s = time.perf_counter() - wall_start
     compute = mlx_compute_summary(stats.get("timings_s"))

@@ -95,9 +95,11 @@ def test_attach_installs_leave_hooks(monkeypatch, tmp_path: Path) -> None:
     )
 
     monkeypatch.delenv("CTX_MCP_AUTO_WARM", raising=False)
+    monkeypatch.setenv("CTX_MCP_ATTACH_WARM", "1")
     out = ml.attach_mcp_session(tmp_path)
     assert out["client_id"] == "mcp:proc-xyz"
-    assert out.get("warm_started") is False
+    # Attach warm is product-default (soft ready before first map).
+    assert out.get("warm_started") is True
     assert out.get("auto_warm") is False
     assert registered  # leave hooked for any host process exit
     # Do not preload the AST graph in every MCP worker (~400MB each, survives Cursor close).

@@ -218,6 +218,77 @@ def test_bridge_lazy_respawn_with_fake_child(tmp_path, monkeypatch):
     bridge.kill_child()
 
 
+def test_bridge_does_not_emit_list_changed_on_steady_tools_call(tmp_path, monkeypatch):
+    """Steady map/pack/expand must not spam tools/list_changed (duplicate Cursor bridges)."""
+    monkeypatch.setenv("CTX_HOME", str(tmp_path))
+    monkeypatch.setenv("CTX_MCP_HOT_RELOAD", "1")
+    write_active_build_stamp("0.0.1", epoch=1.0)
+
+    fake = tmp_path / "fake_worker.py"
+    fake.write_text(
+        textwrap.dedent(
+            """\
+            import json, sys
+            for line in sys.stdin:
+                msg = json.loads(line)
+                mid = msg.get("id")
+                method = msg.get("method")
+                if method == "initialize":
+                    sys.stdout.write(json.dumps({"jsonrpc":"2.0","id":mid,"result":{"protocolVersion":"2024-11-05","capabilities":{},"serverInfo":{"name":"t","version":"1"}}}) + "\\n")
+                    sys.stdout.flush()
+                elif method == "notifications/initialized":
+                    pass
+                elif method == "tools/call":
+                    sys.stdout.write(json.dumps({"jsonrpc":"2.0","id":mid,"result":{"content":[{"type":"text","text":"pong"}]}}) + "\\n")
+                    sys.stdout.flush()
+            """
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(
+        "CTX_MCP_BRIDGE_SPAWN_JSON",
+        json.dumps([sys.executable, str(fake)]),
+    )
+
+    bridge = McpBridge()
+    bridge.handle_client_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {},
+                "clientInfo": {"name": "test", "version": "1"},
+            },
+        }
+    )
+    bridge.handle_client_message({"jsonrpc": "2.0", "method": "notifications/initialized"})
+
+    captured: list[str] = []
+
+    def capture_write(data: str) -> int:
+        captured.append(data)
+        return len(data)
+
+    monkeypatch.setattr(sys.stdout, "write", capture_write)
+    monkeypatch.setattr(sys.stdout, "flush", lambda: None)
+
+    # First tools/call after init — worker already spawned at initialize; gen unchanged.
+    bridge.handle_client_message(
+        {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "tools/call",
+            "params": {"name": "gate", "arguments": {}},
+        }
+    )
+    joined = "".join(captured)
+    assert "tools/list_changed" not in joined
+    assert "pong" in joined
+    bridge.kill_child()
+
+
 def test_handshake_reports_the_scubiee_version_not_the_sdk() -> None:
     """`serverInfo` is the one surface a user can check for which build is live.
 

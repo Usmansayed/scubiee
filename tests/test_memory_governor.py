@@ -66,21 +66,48 @@ def test_governor_promotes_on_semantic(monkeypatch) -> None:
     assert os.environ["CTX_CE_RSS_CAP_MB"] == str(SERVE_1REPO_TARGET_MB)
 
 
-def test_embed_idle_demote_defaults_to_lifecycle_idle(monkeypatch) -> None:
+def test_embed_idle_demote_defaults_to_ten_seconds(monkeypatch) -> None:
     monkeypatch.delenv("CTX_EMBED_IDLE_DEMOTE_S", raising=False)
     monkeypatch.delenv("CTX_ENGINE_IDLE_S", raising=False)
     from pipeline.memory_governor import embed_idle_demote_s
 
-    assert embed_idle_demote_s() == 15.0
+    assert embed_idle_demote_s() == 10.0
+
+
+def test_force_demote_disconnect_unloads_immediately(monkeypatch) -> None:
+    reset_governor_for_tests()
+    released = []
+
+    monkeypatch.setattr(
+        "pipeline.engine.release_embedders",
+        lambda: released.append(True) or 1,
+    )
+    monkeypatch.setattr("pipeline.engine.clear_engines", lambda: None)
+
+    gov = MemoryGovernor()
+    gov.desired_tier = "serve_1repo"
+    gov.apply_tier("serve_1repo")
+    gov.embedder_loaded = True
+    out = gov.force_demote_disconnect()
+    assert out["action"] == "demote_disconnect"
+    assert gov.embedder_loaded is False
+    assert gov.active_tier == "locate_only"
+    assert released == [True]
 
 
 def test_governor_demotes_after_semantic_idle(monkeypatch) -> None:
     reset_governor_for_tests()
     monkeypatch.setenv("CTX_EMBED_IDLE_DEMOTE_S", "10")
+    now = time.time()
+    monkeypatch.setattr("pipeline.lifecycle_runtime.active_client_count", lambda: 0)
+    monkeypatch.setattr(
+        "pipeline.lifecycle_runtime.load_policy",
+        lambda: {"last_client_left_at": now - 20},
+    )
     gov = MemoryGovernor()
     gov.desired_tier = "serve_1repo"
     gov.apply_tier("serve_1repo")
-    gov.last_semantic_at = time.time() - 20
+    gov.last_semantic_at = now - 20
 
     released = []
 
@@ -90,7 +117,7 @@ def test_governor_demotes_after_semantic_idle(monkeypatch) -> None:
 
     monkeypatch.setattr("pipeline.engine.release_embedders", _release)
 
-    result = gov.maybe_demote_idle(now=time.time())
+    result = gov.maybe_demote_idle(now=now)
     assert result is not None
     assert result["action"] == "demote_serve"
     assert result.get("engines_dropped") is True
@@ -98,14 +125,33 @@ def test_governor_demotes_after_semantic_idle(monkeypatch) -> None:
     assert released == [True]
 
 
-def test_governor_keeps_embedder_warm_for_cli_query_after_client_left(monkeypatch) -> None:
-    """IDE closed hours ago, but a CLI query just ran — stay warm.
-
-    The disconnect stamp must not outrank newer semantic activity, or every CLI
-    query after closing the IDE pays a full embedder reload.
-    """
+def test_governor_holds_model_while_mcp_clients_connected(monkeypatch) -> None:
+    """Idle IDE with live MCP must keep the embedder for instant map/pack."""
     reset_governor_for_tests()
     monkeypatch.setenv("CTX_EMBED_IDLE_DEMOTE_S", "10")
+    monkeypatch.setattr("pipeline.lifecycle_runtime.active_client_count", lambda: 2)
+    monkeypatch.setattr("pipeline.engine.release_embedders", lambda: (_ for _ in ()).throw(AssertionError("unload")))
+
+    gov = MemoryGovernor()
+    gov.desired_tier = "serve_1repo"
+    gov.apply_tier("serve_1repo")
+    gov.embedder_loaded = True
+    gov.last_semantic_at = time.time() - 3600
+
+    result = gov.maybe_demote_idle(now=time.time())
+    assert result is not None
+    assert result["action"] == "hold_mcp_clients"
+    assert gov.active_tier == "serve_1repo"
+
+
+def test_governor_demotes_after_disconnect_even_with_recent_semantic(monkeypatch) -> None:
+    """After MCP leave + debounce, unload even if a late semantic query ran.
+
+    Disconnect owns the clock — quiet tool idle while connected is held via
+    active clients; CLI after close should not keep RAM forever.
+    """
+    reset_governor_for_tests()
+    monkeypatch.setenv("CTX_DISCONNECT_DEBOUNCE_S", "10")
     now = time.time()
     monkeypatch.setattr("pipeline.lifecycle_runtime.active_client_count", lambda: 0)
     monkeypatch.setattr(
@@ -113,14 +159,17 @@ def test_governor_keeps_embedder_warm_for_cli_query_after_client_left(monkeypatc
         lambda: {"last_client_left_at": now - 3600},
     )
     monkeypatch.setattr("pipeline.engine.release_embedders", lambda: 0)
+    monkeypatch.setattr("pipeline.engine.clear_engines", lambda: None)
 
     gov = MemoryGovernor()
     gov.desired_tier = "serve_1repo"
     gov.apply_tier("serve_1repo")
     gov.last_semantic_at = now
 
-    assert gov.maybe_demote_idle(now=now) is None
-    assert gov.active_tier == "serve_1repo"
+    result = gov.maybe_demote_idle(now=now)
+    assert result is not None
+    assert result["action"] == "demote_serve"
+    assert gov.active_tier == "locate_only"
 
 
 def test_governor_demotes_when_client_left_and_no_recent_query(monkeypatch) -> None:
@@ -150,7 +199,7 @@ def test_governor_indexing_sets_cap(monkeypatch) -> None:
     gov = MemoryGovernor()
     gov.set_indexing(True)
     assert gov.active_tier == "indexing"
-    assert gov.config().rss_target_mb == 800
+    assert gov.config().rss_target_mb == 1000
 
 
 def test_governor_status_breakdown() -> None:
@@ -204,6 +253,7 @@ def test_refresh_two_repos_target() -> None:
 
 def test_demote_after_index_returns_to_locate_without_recent_semantic(monkeypatch) -> None:
     monkeypatch.setenv("CTX_EMBED_IDLE_DEMOTE_S", str(int(EMBED_IDLE_DEMOTE_S)))
+    monkeypatch.setattr("pipeline.lifecycle_runtime.active_client_count", lambda: 0)
     gov = MemoryGovernor()
     gov.set_indexing(True)
     gov.repo_count = 1
@@ -214,3 +264,26 @@ def test_demote_after_index_returns_to_locate_without_recent_semantic(monkeypatc
     tier = gov.demote_after_index()
     assert tier == "locate_only"
     assert gov.indexing is False
+
+
+def test_demote_after_index_holds_embedder_while_mcp_clients_connected(monkeypatch) -> None:
+    monkeypatch.setattr("pipeline.lifecycle_runtime.active_client_count", lambda: 2)
+    released = {"n": 0}
+
+    def _release() -> int:
+        released["n"] += 1
+        return 0
+
+    monkeypatch.setattr("pipeline.engine.release_embedders", _release)
+    gov = MemoryGovernor()
+    gov.set_indexing(True)
+    gov.repo_count = 1
+    gov.desired_tier = "serve_1repo"
+    gov.last_semantic_at = None
+    gov.embedder_loaded = True
+
+    tier = gov.demote_after_index()
+    assert released["n"] == 0
+    assert gov.embedder_loaded is True
+    assert gov.indexing is False
+    assert tier == gov.desired_tier

@@ -1099,7 +1099,9 @@ def pip_uninstall(pkgs: list[str], *, progress: Any | None = None) -> None:
         cmd = [sys.executable, "-m", "pip", "uninstall", "-y", *pkgs]
     if progress is None:
         print(f"[accel] {' '.join(cmd)}", file=sys.stderr, flush=True)
-    subprocess.run(
+    from pipeline.process_job import hidden_run
+
+    hidden_run(
         cmd,
         check=False,
         stdout=subprocess.DEVNULL,

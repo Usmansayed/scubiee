@@ -59,5 +59,14 @@ def hot_patch_texts(
     return patched, touched
 
 
-def rebuild_bm25(texts: list[str]) -> BM25Index:
-    return BM25Index(texts)
+def rebuild_bm25(texts: list[str], *, store_dir: Path | None = None) -> BM25Index:
+    bm25 = BM25Index(texts)
+    if store_dir is not None:
+        try:
+            from pipeline.bm25_cache import invalidate_bm25_cache, save_bm25_cache
+
+            invalidate_bm25_cache(store_dir)
+            save_bm25_cache(store_dir, bm25)
+        except Exception:  # noqa: BLE001
+            pass
+    return bm25

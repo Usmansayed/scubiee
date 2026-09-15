@@ -60,8 +60,10 @@ def interpreter() -> str:
         return override.replace("\\", "/")
     # Dev host (miniconda + packages/ on sys.path) must not spawn its own
     # pythonw for MCP — children do not inherit that path and crash with
-    # ModuleNotFoundError: pipeline.
-    if not _pipeline_site_installed():
+    # ModuleNotFoundError: pipeline. Do **not** steal the uv-tool interpreter
+    # when the caller already pointed sys.executable at a venv Scripts/bin shim
+    # (unit tests + intentional venvs).
+    if not _pipeline_site_installed() and _host_needs_uv_tool_python():
         tool_py = _uv_tool_scubiee_python(prefer_pythonw=(os.name == "nt"))
         if tool_py:
             return tool_py
@@ -75,6 +77,16 @@ def interpreter() -> str:
     if candidate.is_file():
         return str(candidate).replace("\\", "/")
     return str(Path(sys.executable)).replace("\\", "/")
+
+
+def _host_needs_uv_tool_python() -> bool:
+    """True for naked host interpreters (conda/system), false for venv shims."""
+    exe = Path(sys.executable)
+    prefix = Path(sys.prefix)
+    for sub in ("bin", "Scripts"):
+        if exe.parent == prefix / sub:
+            return False
+    return True
 
 
 def server_entry(
@@ -118,7 +130,9 @@ def server_entry(
         "CTX_ENGINE_SPAWN_OWNER": "supervisor",
         "CTX_LOCATE_STREAK_MS": "60000",
         "CTX_EMBED_KEEPALIVE": "1",
-        "CTX_EMBED_KEEPALIVE_S": "20",
+        # Longer interval = fewer periodic embed CPU spikes while staying warm.
+        "CTX_EMBED_KEEPALIVE_S": "45",
+        "CTX_ENGINE_CPU_CAP_PCT": "20",
         "CTX_KEEPER_DEFER_WHILE_CLIENTS": "1",
         "CTX_WARM_DEADLINE_MS": "30000",
         "PYTHONUTF8": "1",
@@ -292,10 +306,16 @@ def _find_mcp_server_entry(data: dict[str, Any], name: str) -> dict[str, Any] | 
 
 
 def _entry_command_text(entry: dict[str, Any]) -> str:
+    """Full launcher blob: command + args (Windows pins put the module in args)."""
     cmd = entry.get("command")
     if isinstance(cmd, list):
-        return " ".join(str(x) for x in cmd)
-    return str(cmd or "")
+        text = " ".join(str(x) for x in cmd)
+    else:
+        text = str(cmd or "")
+    args = entry.get("args") or []
+    if isinstance(args, list) and args:
+        text = f"{text} {' '.join(str(a) for a in args)}"
+    return text
 
 
 def verify_mcp_json(path: Path, *, server_name: str | None = None) -> dict[str, Any]:
@@ -323,9 +343,10 @@ def verify_mcp_json(path: Path, *, server_name: str | None = None) -> dict[str, 
 
     cmd = _entry_command_text(entry)
     live = is_live_scubiee_mcp_launcher(entry)
-    uses_bridge = "mcp_bridge" in cmd.lower() or "scubiee-mcp-bridge" in cmd.lower()
-    uses_worker = ("scubiee-mcp" in cmd.lower() and "bridge" not in cmd.lower()) or (
-        "pipeline.mcp_locate" in cmd.lower()
+    cmd_l = cmd.lower()
+    uses_bridge = "mcp_bridge" in cmd_l or "scubiee-mcp-bridge" in cmd_l
+    uses_worker = ("scubiee-mcp" in cmd_l and "bridge" not in cmd_l) or (
+        "pipeline.mcp_locate" in cmd_l
     )
     env_raw = entry.get("env")
     if not isinstance(env_raw, dict):

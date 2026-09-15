@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -40,11 +41,34 @@ def test_publish_engine_bumps_generation(runtime, tmp_path: Path):
         assert runtime.generation == g0 + 1
         assert runtime.engine is fake
         assert runtime.last_sync_at is not None
-        drop.assert_called_with(repo)
-        load.assert_called_with(repo, force_reload=True)
+        # Load-then-swap: keep previous binder until new load finishes — no drop-first.
+        drop.assert_not_called()
+        assert load.call_args is not None
+        assert load.call_args.args[0] == repo
+        assert load.call_args.kwargs.get("force_reload") is True
 
         out2 = runtime.publish_engine()
         assert runtime.generation == g0 + 2
+
+
+def test_warm_registered_skips_when_already_soft(runtime, tmp_path: Path, monkeypatch):
+    repo = tmp_path / "proj"
+    repo.mkdir()
+    home = tmp_path / "ce-home"
+    enroll_test_repo(repo, home=home, project_id="ce_already_soft1234567890ab")
+    monkeypatch.setenv("CTX_HOME", str(home))
+    fake = MagicMock()
+    fake.texts = ["a", "b"]
+    fake.loaded_at = time.time() + 10.0  # newer than any artifact mtime
+    runtime.repo = repo
+    runtime.engine = fake
+    runtime.warm_state = "ready"
+    runtime.generation = 3
+    runtime.project_id = "ce_already_soft1234567890ab"
+    out = runtime._warm_registered(repo)
+    assert out.get("skipped") == "already_soft"
+    assert out.get("ok") is True
+    assert out.get("chunks") == 2
 
 
 def test_keeper_on_refresh_wired(runtime, tmp_path: Path):

@@ -16,6 +16,7 @@ def test_warm_engine_skips_ensure_within_ttl(
     import pipeline.mcp_lifecycle as ml
 
     ml._ENSURE_READY_UNTIL = 0.0
+    ml._SOFT_READY_UNTIL = 0.0
     ml._ENSURE_TTL_S = 60.0
     calls: list[str] = []
 
@@ -24,6 +25,11 @@ def test_warm_engine_skips_ensure_within_ttl(
         "ok": True,
         "status": "activated",
         "warm_state": "ready",
+    }
+    fake.health.return_value = {
+        "ok": True,
+        "service": True,
+        "soft_search_ready": True,
     }
     fake.post.return_value = {"ok": True}
 
@@ -35,5 +41,7 @@ def test_warm_engine_skips_ensure_within_ttl(
         out2 = ml.warm_engine_for_mcp(tmp_path, client_id="mcp:test", blocking=False)
 
     assert calls.count("ensure") == 1
-    assert out2.get("ensure_skipped") == "ttl"
     assert out1.get("ok") is True
+    # Second call must not re-ensure: soft TTL early-out or ensure TTL skip.
+    assert out2.get("ok") is True
+    assert out2.get("skipped") == "soft_ttl" or out2.get("ensure_skipped") == "ttl"

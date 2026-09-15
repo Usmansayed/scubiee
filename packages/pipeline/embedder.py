@@ -133,7 +133,7 @@ def _tune_cpu_threads() -> None:
     """Set CPU thread limits respecting the memory budget's cpu_thread_pct.
 
     CTX_CPU_EMBED_THREADS is set by apply_index_memory_budget():
-    - bootstrap/large_reindex: 30% of cpu_count (capped; GPU profiles use 1 ORT thread)
+    - bootstrap/large_reindex: 20% of cpu_count (capped; GPU profiles use 1 ORT thread)
     - background sync: 15% of cpu_count (barely noticeable during coding)
     """
     try:
@@ -141,7 +141,7 @@ def _tune_cpu_threads() -> None:
 
         n = int(os.environ.get("CTX_CPU_EMBED_THREADS", "0")) or int(
             os.environ.get("CTX_TORCH_THREADS", "0")
-        ) or max(1, int((os.cpu_count() or 4) * 0.30))
+        ) or max(1, int((os.cpu_count() or 4) * 0.20))
         torch.set_num_threads(max(1, n))
         torch.set_num_interop_threads(max(1, min(4, n // 2 or 1)))
     except Exception:  # noqa: BLE001
@@ -450,12 +450,12 @@ class Embedder:
             flush=True,
         )
         t0 = time.perf_counter()
-        # CPU-only profiles use the thread budget from memory_budget (30% for
+        # CPU-only profiles use the thread budget from memory_budget (20% for
         # bootstrap, 15% for background sync). GPU/DML profiles keep threads=1
         # since the GPU handles matmul; CPU still does tokenize + ORT fallback ops.
         if prof.profile == "cpu":
             ort_threads = int(os.environ.get("CTX_CPU_EMBED_THREADS", "0")) or max(
-                1, int((os.cpu_count() or 4) * 0.30)
+                1, int((os.cpu_count() or 4) * 0.20)
             )
         else:
             ort_threads = 1

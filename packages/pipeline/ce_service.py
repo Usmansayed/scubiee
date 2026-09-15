@@ -1,4 +1,4 @@
-﻿"""Context Engine RuntimeManager — core backend (independent of MCP).
+"""Context Engine RuntimeManager — core backend (independent of MCP).
 
 Three managers inside one process:
   RuntimeManager  — lifecycle, publish search generation, serve queries
@@ -78,6 +78,7 @@ class RuntimeManager:
         self.last_sync_at: float | None = None
         self._admission_pauses: dict[str, dict[str, Any]] = {}
         self._lock = threading.RLock()
+        self._open_bg_thread: threading.Thread | None = None
         self.index = get_index_manager()
 
     def _save_active_runtime(self) -> None:
@@ -171,6 +172,7 @@ class RuntimeManager:
         session_id: str | None = None,
         metadata: dict[str, Any] | None = None,
         explicit: bool = False,
+        wait: bool = False,
     ) -> dict[str, Any]:
         """Admit a path-bearing CE request without creating managed state."""
         from pipeline import repo_lifecycle as lifecycle
@@ -251,23 +253,30 @@ class RuntimeManager:
         else:
             session = None
 
-        if runtime.engine is None and runtime.warm_state != "ready":
-            opened = self._warm_registered(repo)
+        if runtime.engine is None or not (getattr(runtime.engine, "texts", None) or []):
+            if wait:
+                opened = self._warm_registered(repo)
+            else:
+                opened = self.open_repo(repo, background=True)
+            self._save_active_runtime()
+            try:
+                from pipeline.memory_governor import get_governor
+
+                get_governor().refresh_from_hub(self.hub)
+            except Exception:  # noqa: BLE001
+                pass
         else:
+            # Hot path: binder already live — skip disk save + governor refresh
+            # so /v1/search for map stays sub-second.
             opened = {
                 "ok": True,
                 "repo": str(repo),
                 "project_id": runtime.project_id,
-                "warm_state": runtime.warm_state,
+                "warm_state": runtime.warm_state or "ready",
                 "reused": True,
+                "chunks": len(runtime.engine.texts),
+                "generation": runtime.generation,
             }
-        self._save_active_runtime()
-        try:
-            from pipeline.memory_governor import get_governor
-
-            get_governor().refresh_from_hub(self.hub)
-        except Exception:  # noqa: BLE001
-            pass
         return {
             **admission,
             "status": "activated",
@@ -317,15 +326,65 @@ class RuntimeManager:
         """Reload and publish the live search engine after index/sync commit.
 
         Keeper / sync must call this so HTTP search (skip_freshness) stays correct.
+        Heavy ``load_engine`` runs **outside** ``self._lock`` so map/search are not
+        blocked for the full open/publish window.
         """
         repo = self.repo
         if repo is None:
             return {"ok": False, "error": "no repo"}
         with self._lock:
+            prev_eng = self.engine
+            prev_chunks = len(getattr(prev_eng, "texts", None) or []) if prev_eng else 0
+        try:
+            from pipeline.project_id import peek_project
+
+            ref = peek_project(repo)
+            base = ref.store_dir if ref is not None else None
+            # Keep the previous binder until the new load finishes — drop-first
+            # left a multi-second hole where concurrent search timed out.
+            eng = load_engine(repo, base_dir=base, force_reload=True)
+        except Exception as exc:  # noqa: BLE001
+            with self._lock:
+                self.warm_error = str(exc)
+                if self.project_id:
+                    self.hub.isolate_failure(self.project_id, exc)
+                self._save_active_runtime()
+                return {"ok": False, "error": str(exc), "generation": self.generation}
+
+        with self._lock:
             try:
-                drop_engine(repo)
-                eng = load_engine(repo, force_reload=True)
+                n_chunks = len(getattr(eng, "texts", None) or [])
+                if n_chunks <= 0:
+                    # Never wipe a good binder with an empty publish (dual-client
+                    # open races were leaving soft_search_ready=false / chunks:0).
+                    if prev_eng is not None and prev_chunks > 0:
+                        self.engine = prev_eng
+                        if self._active_runtime is not None:
+                            self._active_runtime.engine = prev_eng
+                        self.warm_state = "ready"
+                        self.warm_error = "publish_empty_kept_previous"
+                        self._save_active_runtime()
+                        return {
+                            "ok": False,
+                            "error": "published engine has 0 chunks",
+                            "kept_previous": True,
+                            "chunks": prev_chunks,
+                            "generation": self.generation,
+                        }
+                    self.engine = None
+                    if self._active_runtime is not None:
+                        self._active_runtime.engine = None
+                    self.warm_state = "error"
+                    self.warm_error = "published engine has 0 chunks"
+                    self._save_active_runtime()
+                    return {
+                        "ok": False,
+                        "error": "published engine has 0 chunks",
+                        "generation": self.generation,
+                    }
                 self.engine = eng
+                if self._active_runtime is not None:
+                    self._active_runtime.engine = eng
                 self.generation += 1
                 self.last_sync_at = time.time()
                 self.warm_state = "ready"
@@ -343,7 +402,7 @@ class RuntimeManager:
                     "ok": True,
                     "generation": self.generation,
                     "last_sync_at": self.last_sync_at,
-                    "chunks": len(eng.texts),
+                    "chunks": n_chunks,
                     "payload": payload,
                 }
             except Exception as exc:  # noqa: BLE001
@@ -354,21 +413,53 @@ class RuntimeManager:
                 return {"ok": False, "error": str(exc), "generation": self.generation}
 
     def health(self) -> dict[str, Any]:
-        index_usable = False
-        if self.repo is not None:
+        # Soft readiness must stay in-memory and lock-free. Disk peek + ORT
+        # status under concurrent DML embed was starving /health for 3s+ and
+        # flipping soft_search_ready during Cursor settle (false flaps).
+        n_chunks = 0
+        try:
+            eng = self.engine
+            if eng is not None:
+                n_chunks = len(getattr(eng, "texts", None) or [])
+        except Exception:  # noqa: BLE001
+            n_chunks = 0
+        binder_live = self.engine is not None and n_chunks > 0
+        warm_bool = self.warm_state in {"ready", "stale"} and binder_live
+        # Soft = binder ready for locate. Dense embed may still be loading;
+        # map/search use BM25/hash until prewarm finishes.
+        soft_ok = bool(warm_bool)
+        index_usable = soft_ok
+        if not soft_ok and self.repo is not None:
+            # Cold path only: binder not live yet — cheap disk peek for agents.
             try:
                 from pipeline.project_id import index_is_usable, peek_project
 
                 ref = peek_project(self.repo)
                 index_usable = index_is_usable(ref.store_dir) if ref else False
             except Exception:  # noqa: BLE001
-                index_usable = self.engine is not None
+                index_usable = False
+        embedder_loaded = False
+        prewarm_busy = False
+        try:
+            from pipeline.engine import embedder_is_loaded, prewarm_status
+
+            # Prefer cached flags; never block soft health on ORT.
+            embedder_loaded = bool(embedder_is_loaded())
+            prewarm_busy = bool((prewarm_status() or {}).get("running"))
+        except Exception:  # noqa: BLE001
+            pass
         return {
             "ok": True,
             "service": "scubiee",
             "version": _daemon_version(),
-            "warm": self.engine is not None,
+            "warm": warm_bool,
             "warm_state": self.warm_state,
+            "warm_ready": soft_ok,
+            "soft_search_ready": soft_ok,
+            "embedder_loaded": embedder_loaded,
+            "embed_prewarm_running": prewarm_busy,
+            "dense_ready": bool(embedder_loaded and not prewarm_busy and n_chunks > 0),
+            "chunks": n_chunks,
             "generation": self.generation,
             "index_usable": index_usable,
             "last_sync_at": self.last_sync_at,
@@ -400,15 +491,31 @@ class RuntimeManager:
         """Register/warm policy for a repo. background=True starts a thread."""
         root = Path(root).resolve()
         if background:
-            t = threading.Thread(
-                target=self._open_repo_sync, args=(root,), name="ce-open", daemon=True
-            )
+            with self._lock:
+                t = self._open_bg_thread
+                if t is not None and t.is_alive():
+                    return {
+                        "ok": True,
+                        "repo": str(root),
+                        "warming": True,
+                        "async": True,
+                        "already": True,
+                    }
+                t = threading.Thread(
+                    target=self._open_repo_sync,
+                    args=(root,),
+                    name="ce-open",
+                    daemon=True,
+                )
+                self._open_bg_thread = t
             t.start()
             return {"ok": True, "repo": str(root), "warming": True, "async": True}
         return self._open_repo_sync(root)
 
     def _open_repo_sync(self, root: Path) -> dict[str, Any]:
         enable_session_keeper_defaults()
+        # Admission + runtime activation under lock; heavy warm/publish runs
+        # unlocked so /v1/search and map are not blocked for tens of seconds.
         with self._lock:
             from pipeline.repo_lifecycle import activate_repo
 
@@ -417,7 +524,7 @@ class RuntimeManager:
                 return admission
             self._activate_runtime(root)
             self.warm_error = None
-            return self._warm_registered(root)
+        return self._warm_registered(root)
 
     def _should_start_keeper(self) -> bool:
         prefs = load_prefs()
@@ -439,7 +546,8 @@ class RuntimeManager:
     def _publish_runtime(self, runtime: RepoRuntime, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         """Publish from a keeper without changing another repository's facade."""
         try:
-            drop_engine(runtime.repo)
+            # Load-then-swap: never drop the live binder before the new one is ready
+            # (dirty sync was wedging concurrent map/search for 15–60s).
             engine = load_engine(runtime.repo, force_reload=True)
             runtime.engine = engine
             runtime.generation += 1
@@ -497,6 +605,42 @@ class RuntimeManager:
     def _warm_registered(self, root: Path) -> dict[str, Any]:
         from pipeline.project_id import index_is_usable, peek_project
 
+        root = root.resolve()
+        # Fast path: binder already soft for this repo and artifacts unchanged.
+        # Attach + dual clients used to re-open and flap soft_search_ready for ~5–15s.
+        try:
+            eng0 = self.engine
+            n0 = len(getattr(eng0, "texts", None) or []) if eng0 is not None else 0
+            same_repo = self.repo is not None and Path(self.repo).resolve() == root
+            if (
+                same_repo
+                and self.warm_state == "ready"
+                and eng0 is not None
+                and n0 > 0
+            ):
+                from pipeline.engine import _store_generation_mtime
+
+                ref0 = peek_project(root)
+                if ref0 is not None:
+                    store0 = PipelineStore(
+                        root, base_dir=ref0.store_dir, project_id=ref0.project_id
+                    )
+                    art_mtime = _store_generation_mtime(store0)
+                    loaded_at = float(getattr(eng0, "loaded_at", 0.0) or 0.0)
+                    if art_mtime <= 0.0 or loaded_at <= 0.0 or art_mtime <= loaded_at + 1.0:
+                        return {
+                            "ok": True,
+                            "repo": str(root),
+                            "project_id": self.project_id,
+                            "warm_state": "ready",
+                            "warm_ms": 0.0,
+                            "generation": self.generation,
+                            "chunks": n0,
+                            "skipped": "already_soft",
+                        }
+        except Exception:  # noqa: BLE001
+            pass
+
         self.warming = True
         self.warm_error = None
         self.warm_state = "warming"
@@ -508,46 +652,65 @@ class RuntimeManager:
             self.project_id = ref.project_id
             self.repo = root
             store = PipelineStore(root, base_dir=ref.store_dir, project_id=ref.project_id)
-            if not index_is_usable(store.base) and auto_index_enabled():
-                from pipeline.incremental import IndexConfirmRequired, preflight_index_scope
-
+            if not index_is_usable(store.base):
+                # Prefer cheap manifest republish over a full reindex when the
+                # on-disk generation is still coherent (common after kill mid-sync).
                 try:
-                    preflight_index_scope(root, fast=False, confirm=False, force=False)
-                except IndexConfirmRequired as exc:
-                    self.warming = False
-                    self.warm_state = "needs_confirm"
-                    self.warm_error = str(exc)
-                    payload = exc.to_payload(root)
-                    payload.update(
-                        {
-                            "warm_state": "needs_confirm",
-                            "file_count": exc.n_files,
-                        }
-                    )
-                    return payload
-                self.indexing = True
-                self.warm_state = "indexing"
-                try:
-                    from pipeline.memory_governor import get_governor
+                    from pipeline.artifact_guard import republish_manifest_if_coherent
 
-                    get_governor().set_indexing(True)
-                except Exception:  # noqa: BLE001
-                    pass
-                idx = self.index.full_index(root, force=False, fast=False)
-                self.indexing = False
-                if idx.get("deferred"):
+                    soft = republish_manifest_if_coherent(store.base)
+                except Exception as exc:  # noqa: BLE001
+                    soft = {"ok": False, "error": str(exc)}
+                if soft.get("ok") and index_is_usable(store.base):
+                    pass  # healed; continue to publish
+                elif not auto_index_enabled():
                     raise RuntimeError(
-                        f"Index deferred under resource pressure: {idx.get('error')}"
+                        "No index found. Run: scubiee register .  or  scubiee index ."
                     )
-                if not idx.get("ok", True) and idx.get("error"):
-                    raise RuntimeError(str(idx["error"]))
-            elif not index_is_usable(store.base):
-                raise RuntimeError("No index found. Run: scubiee register .  or  scubiee index .")
+                else:
+                    from pipeline.incremental import IndexConfirmRequired, preflight_index_scope
 
+                    try:
+                        preflight_index_scope(root, fast=False, confirm=False, force=False)
+                    except IndexConfirmRequired as exc:
+                        self.warming = False
+                        self.warm_state = "needs_confirm"
+                        self.warm_error = str(exc)
+                        payload = exc.to_payload(root)
+                        payload.update(
+                            {
+                                "warm_state": "needs_confirm",
+                                "file_count": exc.n_files,
+                            }
+                        )
+                        return payload
+                    self.indexing = True
+                    self.warm_state = "indexing"
+                    try:
+                        from pipeline.memory_governor import get_governor
+
+                        get_governor().set_indexing(True)
+                    except Exception:  # noqa: BLE001
+                        pass
+                    idx = self.index.full_index(root, force=False, fast=False)
+                    self.indexing = False
+                    if idx.get("deferred"):
+                        raise RuntimeError(
+                            f"Index deferred under resource pressure: {idx.get('error')}"
+                        )
+                    if not idx.get("ok", True) and idx.get("error"):
+                        raise RuntimeError(str(idx["error"]))
+            # usable (or just healed/rebuilt) — publish into the live engine
             pub = self.publish_engine()
             if not pub.get("ok"):
                 raise RuntimeError(pub.get("error") or "publish failed")
             eng = self.engine
+            n_pub = int(pub.get("chunks") or 0)
+            if eng is None or n_pub <= 0 or not (getattr(eng, "texts", None) or []):
+                raise RuntimeError(
+                    f"publish returned ok but engine empty chunks={n_pub} "
+                    f"engine={'yes' if eng is not None else 'no'}"
+                )
             self.warm_ms = (time.perf_counter() - t0) * 1000
             self.warm_state = "ready"
             self._start_keeper(root)
@@ -560,6 +723,9 @@ class RuntimeManager:
                 gov.apply_tier("locate_only")
             except Exception:  # noqa: BLE001
                 pass
+            # Do not auto-prewarm ORT here. Attach-time FastEmbed load GIL-starves
+            # HTTP and makes the first map return engine_warming for 30–50s.
+            # Dense loads on the first post-map idle kick or explicit prewarm.
             return {
                 "ok": True,
                 "repo": str(root),
@@ -722,6 +888,13 @@ class RuntimeManager:
             payload["memory"] = get_governor().status()
         except Exception:  # noqa: BLE001
             payload["memory"] = None
+        try:
+            from pipeline.engine import embedder_is_loaded
+
+            payload["embedder_loaded"] = bool(embedder_is_loaded())
+        except Exception:  # noqa: BLE001
+            payload["embedder_loaded"] = False
+        payload["semantic_ready"] = bool(payload.get("embedder_loaded"))
         from pipeline.runtime_profile import get_runtime_profile_state
 
         profile_state = get_runtime_profile_state()
@@ -814,15 +987,48 @@ class RuntimeManager:
             q = q[:max_q]
         try:
             from pipeline.memory_governor import get_governor
+            from pipeline.engine import embedder_is_loaded
 
-            gov = get_governor()
-            gov.ensure_semantic_tier()
-            gov.refresh_from_hub(self.hub)
+            if embedder_is_loaded():
+                gov = get_governor()
+                gov.ensure_semantic_tier()
+                gov.refresh_from_hub(self.hub)
         except Exception:  # noqa: BLE001
             pass
         eng = self._ensure_engine(root)
         if eng is None:
-            return {"status": "warming", "ready": False, "warm_state": self.warm_state}
+            warm = str(self.warm_state or "").strip().lower()
+            err = str(getattr(self, "warm_error", None) or "").strip()
+            if warm == "error" or err:
+                return {
+                    "ok": False,
+                    "status": "error",
+                    "ready": False,
+                    "warm_state": self.warm_state,
+                    "warm_error": err or None,
+                    "error": err or "warm_state_error",
+                    "non_retryable": True,
+                    "hint": "Run: scubiee setup (dependency/accel missing) — do not poll as warming.",
+                    "locate": {
+                        "state": "error",
+                        "reason": err or "warm_state_error",
+                        "repair": ["scubiee setup"],
+                        "should_use": False,
+                        "should_retry": False,
+                    },
+                }
+            from pipeline.engine import warming_response
+
+            payload = warming_response(warm_state=str(self.warm_state or "warming"))
+            payload["locate"] = {
+                "state": "indexing" if warm == "indexing" else "starting",
+                "reason": warm or "engine_not_ready",
+                "repair": ["scubiee engine ensure ."],
+                "should_use": True,
+                "should_retry": True,
+                "retry_after_s": 3,
+            }
+            return payload
         try:
             hits = eng.search(q, top_k=top_k, skip_freshness=True)
         except Exception as exc:  # noqa: BLE001
@@ -1170,18 +1376,30 @@ class RuntimeManager:
                 return runtime.engine
             if runtime.warm_state == "awaiting_registration":
                 return None
-            try:
-                eng = load_engine(repo)
-                runtime.engine = eng
-                runtime.warm_state = "ready"
-                if runtime.generation == 0:
-                    runtime.generation = 1
-                self._load_runtime_facade(runtime)
-                return runtime.engine
-            except Exception as exc:  # noqa: BLE001
+        # Load outside the facade lock — concurrent health/search must not wait
+        # on a multi-second index bind.
+        try:
+            from pipeline.project_id import peek_project
+
+            ref = peek_project(repo)
+            base = ref.store_dir if ref is not None else None
+            eng = load_engine(repo, base_dir=base)
+        except Exception as exc:  # noqa: BLE001
+            with self._lock:
+                runtime = self._activate_runtime(repo)
                 if runtime.project_id:
                     self.hub.isolate_failure(runtime.project_id, exc)
-                return None
+            return None
+        with self._lock:
+            runtime = self._activate_runtime(repo)
+            if runtime.engine is not None:
+                return runtime.engine
+            runtime.engine = eng
+            runtime.warm_state = "ready"
+            if runtime.generation == 0:
+                runtime.generation = 1
+            self._load_runtime_facade(runtime)
+            return runtime.engine
 
 
 # Back-compat alias

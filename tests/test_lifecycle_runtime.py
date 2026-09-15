@@ -365,3 +365,91 @@ def test_ensure_supervisor_on_darwin_kickstarts_agent_not_orphan(
     assert spawned == []
     assert seen[0][:2] == ["launchctl", "kickstart"]
 
+
+def test_coalesce_keeps_bridge_anchor(tmp_path: Path, monkeypatch) -> None:
+    """Worker respawn must not drop the IDE bridge client (keep-warm)."""
+    monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
+    clients = {
+        "mcp:cursor@bridge-1": {
+            "client_id": "mcp:cursor@bridge-1",
+            "pid": 111,
+            "kind": "bridge",
+            "host": "cursor",
+        },
+        "mcp:cursor@conn-old": {
+            "client_id": "mcp:cursor@conn-old",
+            "pid": 222,
+            "kind": "mcp",
+            "host": "cursor",
+        },
+    }
+    dropped = life.coalesce_mcp_clients(
+        clients, keep_id="mcp:cursor@conn-new", host="cursor"
+    )
+    assert "mcp:cursor@conn-old" in dropped
+    assert "mcp:cursor@bridge-1" in clients
+    assert "mcp:cursor@conn-old" not in clients
+
+
+def test_register_client_skips_embedder_outside_engine(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
+    monkeypatch.delenv("CTX_SCUBIEE_ROLE", raising=False)
+    called: list[str] = []
+
+    def _boom(*_a, **_k):
+        called.append("embed")
+        raise AssertionError("embedder must not load in bridge/locate")
+
+    monkeypatch.setattr("pipeline.engine.ensure_embedder_ready", _boom)
+    monkeypatch.setattr(
+        "pipeline.memory_governor.get_governor",
+        lambda: type("G", (), {"ensure_semantic_tier": lambda self: called.append("tier")})(),
+    )
+    out = life.register_client("mcp:cursor@bridge-1", pid=1, kind="bridge", host="cursor")
+    assert out["ok"] is True
+    assert out.get("prewarm", {}).get("skipped") == "non_engine_process"
+    assert called == []
+
+
+def test_register_client_defers_ort_in_engine(tmp_path, monkeypatch) -> None:
+    """Engine register must not kick ORT; soft-first locate owns dense warm."""
+    monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
+    monkeypatch.setenv("CTX_SCUBIEE_ROLE", "engine")
+    called: list[str] = []
+
+    class _Gov:
+        def ensure_semantic_tier(self):
+            called.append("tier")
+
+    monkeypatch.setattr(
+        "pipeline.engine.ensure_embedder_ready",
+        lambda *_a, **_k: called.append("embed") or {"ok": True},
+    )
+    monkeypatch.setattr(
+        "pipeline.engine.embedder_is_loaded",
+        lambda: False,
+    )
+    monkeypatch.setattr("pipeline.memory_governor.get_governor", lambda: _Gov())
+    out = life.register_client("mcp:cursor@conn-1", pid=1, kind="mcp", host="cursor")
+    assert out["ok"] is True
+    assert out.get("prewarm", {}).get("skipped") == "defer_ort_until_after_soft_locate"
+    assert "embed" not in called
+    assert "tier" not in called
+
+
+def test_bridge_anchor_blocks_idle_demote_stamp(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
+    monkeypatch.setenv("CTX_DISCONNECT_DEBOUNCE_S", "30")
+    monkeypatch.setattr(life, "_client_pid_trustworthy", lambda meta: True)
+    life.set_desired_mode(life.DESIRED_RUN)
+    life.register_client(
+        "mcp:cursor@bridge-9", pid=999, kind="bridge", host="cursor", now=100.0
+    )
+    # Worker leaves — bridge still registered → no idle stop.
+    life.register_client(
+        "mcp:cursor@conn-w", pid=1000, kind="mcp", host="cursor", now=101.0
+    )
+    life.unregister_client("mcp:cursor@conn-w", now=102.0)
+    assert life.active_client_count() >= 1
+    assert life.should_idle_stop(now=200.0) is False
+

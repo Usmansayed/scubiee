@@ -769,6 +769,17 @@ class SetupProgress:
             self._last_key = phase_key
             return
 
+        # Collapse both "Embedding runtime already installed" and "Runtime
+        # already installed" before generic phase-key dedup — those strings
+        # have different keys but must print one "Runtime installed" line.
+        if "already installed" in phase_lower or "runtime already" in phase_lower:
+            if self._last_key == "runtime_installed":
+                return
+            self._last_key = "runtime_installed"
+            self._last_phase = phase
+            self.step_done("Runtime installed")
+            return
+
         # For non-model steps, dedup on phase text
         if phase == self._last_phase:
             return
@@ -785,9 +796,6 @@ class SetupProgress:
             return
         if "using" in phase_lower and "profile" in phase_lower:
             self.step_finish("Hardware detected", phase.replace("Using ", "").replace(" profile", ""))
-            return
-        if "already installed" in phase_lower or "runtime already" in phase_lower:
-            self.step_done("Runtime installed")
             return
         if "runtime issue" in phase_lower or "auto-repair" in phase_lower or "repairing" in phase_lower:
             self.step_active("Runtime issue \u2014 repairing")

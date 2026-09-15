@@ -105,6 +105,16 @@ def build_sync_contract(
         "catchup_chunked": bool(keeper.get("catchup_chunked")),
         "warm_state": warm_state,
     }
+    locate = derive_locate_state(
+        healthy=warm_state not in {None, "error"},
+        soft_search_ready=soft_search_ready,
+        warm_state=warm_state,
+        warm_error=warm_error,
+        project_bound=soft_search_ready,
+        sync_state=status,
+        syncing=bool(contract["syncing"]),
+    )
+    contract["locate"] = locate
     contract["agent_ready"] = derive_agent_ready(
         healthy=warm_state not in {None, "error"},
         soft_search_ready=soft_search_ready,
@@ -113,6 +123,10 @@ def build_sync_contract(
         syncing=bool(contract["syncing"]),
         overlay_ready=bool(contract["overlay_ready"]),
         publish_pending=bool(contract["publish_pending"]),
+        warm_state=warm_state,
+        warm_error=warm_error,
+        project_bound=soft_search_ready,
+        locate=locate,
     )
     contract["agent_ready_note"] = derive_agent_ready_note(
         agent_ready=contract["agent_ready"],
@@ -121,8 +135,96 @@ def build_sync_contract(
         overlay_ready=bool(contract["overlay_ready"]),
         publish_pending=bool(contract["publish_pending"]),
         ready=bool(contract["ready"]),
+        locate=locate,
     )
     return contract
+
+
+def derive_locate_state(
+    *,
+    healthy: bool,
+    soft_search_ready: bool,
+    warm_state: str | None = None,
+    warm_error: str | None = None,
+    project_bound: bool = False,
+    index_usable: bool | None = None,
+    sync_state: str = "ready",
+    syncing: bool = False,
+) -> dict[str, Any]:
+    """One agent-facing locate contract — source of truth for readiness.
+
+    States: ready | starting | indexing | unbound | error
+    """
+    warm = str(warm_state or "").strip().lower()
+    err = str(warm_error or "").strip()
+    repair: list[str] = []
+    if not healthy:
+        return {
+            "state": "starting",
+            "reason": "engine_unreachable",
+            "repair": ["scubiee engine ensure ."],
+            "should_use": True,
+            "should_retry": True,
+            "retry_after_s": 3,
+        }
+    if warm == "error" or err:
+        repair = ["scubiee setup"] if "provider" in err.lower() or "dml" in err.lower() else [
+            "scubiee doctor",
+            "scubiee engine ensure .",
+        ]
+        return {
+            "state": "error",
+            "reason": err or "warm_state_error",
+            "repair": repair,
+            "should_use": False,
+            "should_retry": False,
+            "retry_after_s": 0,
+        }
+    if warm in {"warming", "indexing"} or index_usable is False:
+        return {
+            "state": "indexing" if warm == "indexing" or index_usable is False else "starting",
+            "reason": warm or "index_not_usable",
+            "repair": ["scubiee status", "scubiee engine ensure ."],
+            "should_use": True,
+            "should_retry": True,
+            "retry_after_s": 5,
+        }
+    if not project_bound or not soft_search_ready:
+        return {
+            "state": "unbound",
+            "reason": "repo_not_bound" if not project_bound else "soft_search_not_ready",
+            "repair": ["scubiee engine ensure ."],
+            "should_use": True,
+            "should_retry": True,
+            "retry_after_s": 2,
+        }
+    if syncing or sync_state in {"syncing", "overlay_ready", "catching_up"}:
+        return {
+            "state": "ready",
+            "reason": "syncing_stale_ok",
+            "repair": [],
+            "should_use": True,
+            "should_retry": False,
+            "retry_after_s": 0,
+            "stale": True,
+        }
+    if soft_search_ready and warm in {"", "ready", "idle"}:
+        return {
+            "state": "ready",
+            "reason": "ok",
+            "repair": [],
+            "should_use": True,
+            "should_retry": False,
+            "retry_after_s": 0,
+        }
+    return {
+        "state": "starting",
+        "reason": f"warm_state={warm or 'unknown'}",
+        "repair": ["scubiee engine ensure ."],
+        "should_use": True,
+        "should_retry": True,
+        "retry_after_s": 3,
+    }
 
 
 def derive_agent_ready_note(
@@ -133,12 +235,34 @@ def derive_agent_ready_note(
     overlay_ready: bool,
     publish_pending: bool,
     ready: bool,
+    locate: dict[str, Any] | None = None,
+    embedder_loaded: bool | None = None,
 ) -> str:
     """One-line hint for agents reading status() without institutional knowledge."""
-    if agent_ready == "warming":
-        return "Engine or index still warming — map may work; wait before trusting edits on indexed files."
-    if agent_ready == "yes":
+    loc = locate or {}
+    state = str(loc.get("state") or "")
+    if state == "error":
+        repair = loc.get("repair") or []
+        return f"Locate blocked ({loc.get('reason')}) — repair: {', '.join(repair) or 'scubiee doctor'}"
+    if state == "unbound":
+        return "Repo not bound into the engine yet — call map/pack (auto-bind) or scubiee engine ensure ."
+    if state in {"starting", "indexing"}:
+        return f"Engine {state} — retry locate shortly (not a RAM warm-up stall)."
+    if embedder_loaded is False and state == "ready":
+        return (
+            "BM25/index ready; FastEmbed still loading — wait ~3s and retry map once "
+            "(do not treat as fully semantic-ready)."
+        )
+    if agent_ready == "yes" or state == "ready":
+        if loc.get("stale") or syncing or overlay_ready or publish_pending:
+            return "Locate ready; background sync may lag recent edits."
         return "Locate and index are ready; map/pack_context reflect current repo state."
+    if agent_ready == "warming":
+        if embedder_loaded is False:
+            return (
+                "Semantic embedder not loaded yet — wait ~3s and retry the same locate tool once."
+            )
+        return "Engine or index still starting — map may work; prefer locate.state over this label."
     if syncing or overlay_ready or publish_pending:
         return "Background sync active — recent file edits may be stale in map until sync finishes."
     if sync_state in {"needs_full", "error"}:
@@ -158,10 +282,37 @@ def derive_agent_ready(
     overlay_ready: bool,
     publish_pending: bool = False,
     warming: bool = False,
+    warm_state: str | None = None,
+    warm_error: str | None = None,
+    project_bound: bool | None = None,
+    locate: dict[str, Any] | None = None,
+    embedder_loaded: bool | None = None,
 ) -> str:
-    """Single field agents can trust: yes | warming | stale."""
-    if warming or not healthy or not soft_search_ready:
+    """Legacy agent_ready derived from locate.state: yes | warming | stale.
+
+    When ``embedder_loaded`` is explicitly False, never claim ``yes`` — BM25 may
+    work but agents must not treat the surface as fully semantic-ready (R8).
+    """
+    loc = locate or derive_locate_state(
+        healthy=healthy and not warming,
+        soft_search_ready=soft_search_ready,
+        warm_state=warm_state,
+        warm_error=warm_error,
+        project_bound=bool(project_bound) if project_bound is not None else soft_search_ready,
+        sync_state=sync_state,
+        syncing=syncing or overlay_ready or publish_pending,
+    )
+    state = str(loc.get("state") or "")
+    if state == "error":
+        return "warming"  # legacy; prefer locate.state=error
+    if state in {"starting", "indexing", "unbound"}:
         return "warming"
+    if embedder_loaded is False:
+        return "warming"
+    if state == "ready" and loc.get("stale"):
+        return "stale"
+    if state == "ready":
+        return "yes"
     if ready and not syncing:
         return "yes"
     if syncing or overlay_ready or publish_pending:

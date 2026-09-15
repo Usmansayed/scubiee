@@ -2,7 +2,7 @@
 
 CPU and RAM budgets are always coupled — heavy work gets both, light work gets neither.
 
-Bootstrap (first complete index / init): 800 MB RAM + 30% CPU.
+Bootstrap (first complete index / init): 800 MB RAM + 20% CPU.
 
 Background reindex (incremental sync): 500 MB RAM + 15% CPU. Invisible during coding.
 Serve / live MCP: soft advisory tree budget **800 MB**; **full-warm while Cursor connected**
@@ -10,6 +10,7 @@ Serve / live MCP: soft advisory tree budget **800 MB**; **full-warm while Cursor
 accepted for &lt;1s first-tool availability — do not auto-demote on soft overage.
 Large reindex / bulk index / bulk sync: total ≤ **1 GB** OK.
 Engine soft RSS cap remains tiered (520–800 MB); FastEmbed loads only in the engine.
+Windows engine JobObject hard-caps at CTX_ENGINE_CPU_CAP_PCT (default **20**).
 """
 
 from __future__ import annotations
@@ -39,9 +40,9 @@ class IndexMemoryBudget:
     aggressive_unload: bool
     # CPU thread budget as percentage of os.cpu_count(). On CPU-only profiles
     # (no GPU), this controls how much CPU the embedding phase uses.
-    # Heavy work (800MB–1GB) is capped at 30% CPU; light sync (500MB) at 15%.
-    # The Windows engine job also hard-caps at CTX_ENGINE_CPU_CAP_PCT (default 30).
-    cpu_thread_pct: float = 0.30
+    # Heavy work (800MB–1GB) is capped at 20% CPU; light sync (500MB) at 15%.
+    # The Windows engine job also hard-caps at CTX_ENGINE_CPU_CAP_PCT (default 20).
+    cpu_thread_pct: float = 0.20
 
 
 def bootstrap_budget() -> IndexMemoryBudget:
@@ -52,7 +53,7 @@ def bootstrap_budget() -> IndexMemoryBudget:
         mlx_batch=48,
         embed_batch_ceiling=48,
         aggressive_unload=False,
-        cpu_thread_pct=0.30,
+        cpu_thread_pct=0.20,
     )
 
 
@@ -76,7 +77,7 @@ def large_reindex_budget() -> IndexMemoryBudget:
         mlx_batch=64,
         embed_batch_ceiling=64,
         aggressive_unload=False,
-        cpu_thread_pct=0.30,
+        cpu_thread_pct=0.20,
     )
 
 

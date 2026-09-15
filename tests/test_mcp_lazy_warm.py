@@ -81,6 +81,8 @@ def test_attach_lazy_does_not_warm(
 
     monkeypatch.setenv("CTX_HOME", str(tmp_path))
     monkeypatch.delenv("CTX_MCP_AUTO_WARM", raising=False)
+    # Opt out of attach-warm so this test still covers pure agent-first connect.
+    monkeypatch.setenv("CTX_MCP_ATTACH_WARM", "0")
     calls: list[dict] = []
     monkeypatch.setattr(
         ml,
@@ -101,6 +103,42 @@ def test_attach_lazy_does_not_warm(
     assert out["warm"].get("skipped") == "agent_warm"
 
 
+def test_attach_warm_default_kicks_pipeline(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from pipeline import mcp_lifecycle as ml
+    from pipeline.runtime_controller import RuntimeController, ReadySnapshot
+
+    monkeypatch.setenv("CTX_HOME", str(tmp_path))
+    monkeypatch.delenv("CTX_MCP_AUTO_WARM", raising=False)
+    monkeypatch.setenv("CTX_MCP_ATTACH_WARM", "1")
+    RuntimeController.reset_for_tests()
+    kicks: list[str] = []
+
+    def fake_ensure(repo, reason, **kwargs):
+        kicks.append(reason)
+        return ReadySnapshot(
+            state="STARTING",
+            engine_ok=False,
+            embedder_loaded=False,
+            ast_ready=False,
+        )
+
+    monkeypatch.setattr(RuntimeController.get(), "ensure", fake_ensure)
+    monkeypatch.setattr(ml, "_start_heartbeat", lambda *_a, **_k: None)
+    monkeypatch.setattr(ml, "_heartbeat_alive", lambda: False)
+    monkeypatch.setattr(ml, "_install_process_signals", lambda *_a, **_k: None)
+    monkeypatch.setattr(ml.atexit, "register", lambda fn: None)
+    monkeypatch.setattr(
+        "pipeline.session_isolation.default_process_session_id",
+        lambda: "attach",
+    )
+    out = ml.attach_mcp_session(tmp_path)
+    assert kicks == ["attach"]
+    assert out.get("warm_started") is True
+    assert out["warm"].get("attach_warm", {}).get("started") is True
+
+
 def test_ensure_mcp_runtime_warms_blocking(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -117,15 +155,50 @@ def test_ensure_mcp_runtime_warms_blocking(
         lambda root, cid: hearts.append(cid),
     )
     monkeypatch.setattr(ml, "_heartbeat_alive", lambda: False)
+    spawned: list[str] = []
+    monkeypatch.setattr(
+        ml,
+        "_spawn_background_warm",
+        lambda *_a, **_k: spawned.append("bg"),
+    )
     calls: list[dict] = []
     monkeypatch.setattr(
         ml,
         "warm_engine_for_mcp",
         lambda *_a, **k: calls.append(dict(k)) or {"ok": True, "embedder_loaded": True},
     )
-    out = ml.ensure_mcp_runtime(tmp_path, client_id="mcp:lazy")
+    out = ml.ensure_mcp_runtime(tmp_path, client_id="mcp:lazy", blocking=True)
     assert calls and calls[0].get("blocking") is True
+    assert spawned == []
     assert hearts == ["mcp:lazy"]
+    assert out.get("ok") is True
+
+
+def test_ensure_mcp_runtime_defaults_nonblocking(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from pipeline import mcp_lifecycle as ml
+
+    monkeypatch.setenv("CTX_HOME", str(tmp_path))
+    monkeypatch.setattr(ml, "_CLIENT_ID", "mcp:lazy")
+    monkeypatch.setattr(ml, "_HEARTBEAT_THREAD", None)
+    monkeypatch.setattr(ml, "_start_heartbeat", lambda *_a, **_k: None)
+    monkeypatch.setattr(ml, "_heartbeat_alive", lambda: True)
+    spawned: list[str] = []
+    monkeypatch.setattr(
+        ml,
+        "_spawn_background_warm",
+        lambda *_a, **_k: spawned.append("bg"),
+    )
+    calls: list[dict] = []
+    monkeypatch.setattr(
+        ml,
+        "warm_engine_for_mcp",
+        lambda *_a, **k: calls.append(dict(k)) or {"ok": True, "deferred": True},
+    )
+    out = ml.ensure_mcp_runtime(tmp_path, client_id="mcp:lazy")
+    assert calls and calls[0].get("blocking") is False
+    assert spawned == ["bg"]
     assert out.get("ok") is True
 
 

@@ -768,7 +768,7 @@ def incremental_sync(
         # Incremental sync mutates the same published artifacts as a full
         # index. Refresh the manifest only after all of those writes complete,
         # otherwise readiness will reject every live update as corruption.
-        from pipeline.artifact_guard import publish_manifest
+        from pipeline.artifact_guard import invalidate_manifest, publish_manifest
 
         published = [
             path
@@ -782,7 +782,17 @@ def incremental_sync(
             if path.is_file()
         ]
         if published:
+            try:
+                invalidate_manifest(store.base)
+            except Exception:  # noqa: BLE001
+                pass
             publish_manifest(store.base, published)
+            try:
+                from pipeline.bm25_cache import invalidate_bm25_cache
+
+                invalidate_bm25_cache(store.base)
+            except Exception:  # noqa: BLE001
+                pass
         try:
             from pipeline.capability import ensure_cards
 

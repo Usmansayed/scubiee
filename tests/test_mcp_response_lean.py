@@ -179,7 +179,8 @@ def test_attach_gate_integration_unchanged_semantics(monkeypatch: pytest.MonkeyP
     assert "session_source" not in out
     assert out["unchanged"] is False
     assert "budget" not in out
-    assert "next" not in out
+    # Ladder ``next`` is preserved on map (MCP steer); not stripped as chrome.
+    assert out.get("next") == "x"
     dumped = _dumps(out)
     assert "\n" not in dumped
     assert json.loads(dumped)["unchanged"] is False
@@ -307,6 +308,151 @@ def test_pack_context_slim_heatmap_only_no_bodies(monkeypatch: pytest.MonkeyPatc
     assert not any("def f" in str(v) for v in out.get("heatmap", []))
     assert out["g"] == "1:ce_x"
     assert out["session_id"] == "cursor@conn-1"
+    assert "next" in out
+    assert "Native-Read" in out["next"]
+    assert "BAN whole-file" in out["next"]
+
+
+def test_mcp_map_keeps_ladder_next(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("CTX_MCP_ECHO_GUIDANCE", raising=False)
+    monkeypatch.delenv("CTX_MCP_FULL_LOCATE", raising=False)
+    raw = {
+        "ok": True,
+        "tool": "map",
+        "cards": [
+            {
+                "rank": 1,
+                "file": "packages/pipeline/foo.py",
+                "symbol": "bar",
+                "score": 1.0,
+                "start_line": 10,
+                "end_line": 20,
+            }
+        ],
+        "suggested_seed": {
+            "file": "packages/pipeline/foo.py",
+            "symbol": "bar",
+            "start_line": 10,
+            "end_line": 20,
+        },
+        "next": "Refine query with suggested_seed file+symbol, then pack_context(mode=lean).",
+    }
+    out = apply_lean_fields(raw)
+    assert out["tool"] == "map"
+    assert "pack_context" in out["next"]
+    assert out["cards"][0]["loc"] == "packages/pipeline/foo.py:10-20"
+    assert out["suggested_seed"]["loc"] == "packages/pipeline/foo.py:10-20"
+
+
+def test_map_lean_keeps_suggested_seeds(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("CTX_MCP_ECHO_GUIDANCE", raising=False)
+    monkeypatch.delenv("CTX_MCP_FULL_LOCATE", raising=False)
+    raw = {
+        "ok": True,
+        "tool": "map",
+        "cards": [
+            {
+                "rank": 1,
+                "file": "packages/pipeline/a.py",
+                "symbol": "A",
+                "score": 2.0,
+                "loc": "packages/pipeline/a.py:1-2",
+            }
+        ],
+        "suggested_seed": {
+            "file": "packages/pipeline/a.py",
+            "symbol": "A",
+            "loc": "packages/pipeline/a.py:1-2",
+        },
+        "suggested_seeds": [
+            {"file": "packages/pipeline/a.py", "symbol": "A", "loc": "packages/pipeline/a.py:1-2"},
+            {"file": "packages/pipeline/b.py", "symbol": "B", "loc": "packages/pipeline/b.py:3-4"},
+        ],
+        "next": "ENRICH pack query … seed2_file=packages/pipeline/b.py",
+    }
+    out = apply_lean_fields(raw)
+    assert len(out.get("suggested_seeds") or []) == 2
+    assert out["suggested_seeds"][1]["symbol"] == "B"
+
+
+def test_pack_lean_keeps_multi_seed_meta(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("CTX_MCP_ECHO_GUIDANCE", raising=False)
+    monkeypatch.delenv("CTX_MCP_FULL_LOCATE", raising=False)
+    monkeypatch.delenv("CTX_MCP_PACK_BODIES", raising=False)
+    raw = {
+        "ok": True,
+        "tool": "pack_context",
+        "include_bodies": False,
+        "seed": {"id": "packages/a.py::A", "file": "packages/a.py", "symbol": "A"},
+        "seed2": {"id": "packages/b.py::B", "file": "packages/b.py", "symbol": "B"},
+        "seeds": [
+            {"id": "packages/a.py::A", "file": "packages/a.py", "symbol": "A"},
+            {"id": "packages/b.py::B", "file": "packages/b.py", "symbol": "B"},
+        ],
+        "multi_seed": {"engine": "multi_seed_v1", "extra": {"mode": "agreement_corridor"}},
+        "heatmap": [
+            {
+                "id": "packages/a.py::A",
+                "file": "packages/a.py",
+                "symbol": "A",
+                "score": 1.1,
+                "loc": "packages/a.py:1-2",
+            }
+        ],
+        "thin": False,
+    }
+    out = apply_lean_fields(raw)
+    assert out["seed2"]["symbol"] == "B"
+    assert out["multi_seed"]["engine"] == "multi_seed_v1"
+    assert len(out.get("seeds") or []) == 2
+
+
+def test_collect_hot_empty_bodies_keeps_hint(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("CTX_MCP_ECHO_GUIDANCE", raising=False)
+    monkeypatch.delenv("CTX_MCP_FULL_LOCATE", raising=False)
+    raw = {
+        "ok": True,
+        "tool": "collect_hot_context",
+        "bodies": [],
+        "count": 0,
+        "empty_bodies": True,
+        "hint": "No bodies collected — pass ids=",
+        "next": "Native-Read heatmap loc spans",
+    }
+    out = apply_lean_fields(raw)
+    assert out["empty_bodies"] is True
+    assert out["pack"] == []
+    assert "hint" in out
+    assert "ids=" in out["hint"]
+    assert "next" in out
+
+
+def test_pack_heatmap_synthesizes_missing_loc(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("CTX_MCP_ECHO_GUIDANCE", raising=False)
+    monkeypatch.delenv("CTX_MCP_FULL_LOCATE", raising=False)
+    monkeypatch.delenv("CTX_MCP_PACK_BODIES", raising=False)
+    raw = {
+        "ok": True,
+        "tool": "pack_context",
+        "include_bodies": False,
+        "seed": {"id": "a.py::f", "file": "a.py", "symbol": "f"},
+        "chain": [
+            {
+                "id": "a.py::f",
+                "file": "a.py",
+                "symbol": "f",
+                "start_line": 1,
+                "end_line": 4,
+                "edge": "seed",
+                "score": 1.0,
+            }
+        ],
+        "pack": [],
+        "cold": [],
+    }
+    out = apply_lean_fields(raw)
+    assert out["heatmap"][0]["loc"] == "a.py:1-4"
+    assert "next" in out
 
 
 def test_pack_context_bodies_opt_in(monkeypatch: pytest.MonkeyPatch) -> None:

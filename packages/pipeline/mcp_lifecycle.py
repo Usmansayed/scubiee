@@ -702,7 +702,11 @@ def _kick_ast_bundle_hydrate(root: Path, *, bake_on_miss: bool = False) -> dict[
 
 
 def _probe_engine_ready(root: Path) -> dict[str, Any]:
-    out: dict[str, Any] = {"healthy": False, "embedder_loaded": False}
+    out: dict[str, Any] = {
+        "healthy": False,
+        "embedder_loaded": False,
+        "soft_search_ready": False,
+    }
     try:
         from pipeline.client import EngineClient
 
@@ -712,18 +716,24 @@ def _probe_engine_ready(root: Path) -> dict[str, Any]:
         except Exception:  # noqa: BLE001
             health = {}
         if isinstance(health, dict) and health:
-            out["healthy"] = bool(health.get("ok") or health.get("warm") or health.get("service"))
+            soft = bool(health.get("soft_search_ready"))
+            out["soft_search_ready"] = soft
+            out["healthy"] = bool(
+                health.get("ok") or health.get("warm") or health.get("service") or soft
+            )
             if "embedder_loaded" in health:
                 out["embedder_loaded"] = bool(health.get("embedder_loaded"))
         if not out["healthy"]:
             out["healthy"] = bool(client.healthy())
-        if out["embedder_loaded"]:
+        if out["embedder_loaded"] and out["soft_search_ready"]:
             return out
         try:
             st = client.get("/v1/status") or {}
         except Exception:  # noqa: BLE001
             st = {}
         if isinstance(st, dict):
+            if "soft_search_ready" in st:
+                out["soft_search_ready"] = bool(st.get("soft_search_ready"))
             if "embedder_loaded" in st:
                 out["embedder_loaded"] = bool(st.get("embedder_loaded"))
             mem = st.get("memory") if isinstance(st.get("memory"), dict) else {}
@@ -735,6 +745,8 @@ def _probe_engine_ready(root: Path) -> dict[str, Any]:
             eng = st.get("engine") if isinstance(st.get("engine"), dict) else {}
             if "embedder_loaded" in eng:
                 out["embedder_loaded"] = bool(eng.get("embedder_loaded"))
+            if "soft_search_ready" in eng:
+                out["soft_search_ready"] = bool(eng.get("soft_search_ready"))
     except Exception as exc:  # noqa: BLE001
         out["error"] = str(exc)
     return out

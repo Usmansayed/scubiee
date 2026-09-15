@@ -30,10 +30,14 @@ def _cpu_model() -> str | None:
     system = platform.system()
     try:
         if system == "Windows":
-            r = subprocess.run(
+            from pipeline.process_job import hidden_run
+
+            r = hidden_run(
                 [
                     "powershell",
                     "-NoProfile",
+                    "-WindowStyle",
+                    "Hidden",
                     "-Command",
                     "(Get-CimInstance Win32_Processor | Select-Object -First 1 -ExpandProperty Name)",
                 ],
@@ -75,10 +79,14 @@ def _ram_bytes() -> dict[str, int | None]:
         pass
     try:
         if platform.system() == "Windows":
-            r = subprocess.run(
+            from pipeline.process_job import hidden_run
+
+            r = hidden_run(
                 [
                     "powershell",
                     "-NoProfile",
+                    "-WindowStyle",
+                    "Hidden",
                     "-Command",
                     "$o=Get-CimInstance Win32_OperatingSystem; "
                     "@{total=[int64]$o.TotalVisibleMemorySize*1KB; "

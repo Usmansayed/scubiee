@@ -1,0 +1,61 @@
+{
+  "label": "full_curated",
+  "started_at": 1789471240.4330113,
+  "targets": [
+    "tests/test_lifecycle_runtime.py",
+    "tests/test_lifecycle_disconnect_unload.py",
+    "tests/test_runtime_controller.py",
+    "tests/test_mcp_bridge.py",
+    "tests/test_e2e_system_matrix.py",
+    "tests/test_memory_governor.py",
+    "tests/test_memory_budget.py",
+    "tests/test_runtime_publish.py",
+    "tests/test_live_reindexing.py",
+    "tests/test_watcher_recovery.py",
+    "tests/test_freshness.py",
+    "tests/test_sync_status_canaries.py",
+    "tests/test_incremental_context_ladder.py",
+    "tests/test_expand_after_pack.py",
+    "tests/test_attach_warm_pipeline.py",
+    "tests/test_locate_worker_prewarm.py",
+    "tests/test_reliability_master_plan.py"
+  ],
+  "suites": {
+    "wrapper_lifecycle": [
+      "tests/test_lifecycle_runtime.py",
+      "tests/test_lifecycle_disconnect_unload.py",
+      "tests/test_runtime_controller.py",
+      "tests/test_mcp_bridge.py",
+      "tests/test_e2e_system_matrix.py"
+    ],
+    "resources": [
+      "tests/test_memory_governor.py",
+      "tests/test_memory_budget.py",
+      "tests/test_runtime_publish.py"
+    ],
+    "sync": [
+      "tests/test_live_reindexing.py",
+      "tests/test_watcher_recovery.py",
+      "tests/test_freshness.py",
+      "tests/test_sync_status_canaries.py"
+    ],
+    "tools_locate": [
+      "tests/test_incremental_context_ladder.py",
+      "tests/test_expand_after_pack.py",
+      "tests/test_attach_warm_pipeline.py",
+      "tests/test_locate_worker_prewarm.py",
+      "tests/test_reliability_master_plan.py"
+    ]
+  },
+  "runs": [
+    {
+      "ok": true,
+      "returncode": 0,
+      "elapsed_ms": 25747.5,
+      "tail": "........................................................................ [ 44%]\n........................................................................ [ 88%]\n...................                                                      [100%]\n163 passed in 24.32s\n\n"
+    }
+  ],
+  "ok": true,
+  "elapsed_ms": 25747.5,
+  "finished_at": 1789471266.180511
+}

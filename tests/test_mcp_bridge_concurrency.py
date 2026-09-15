@@ -352,6 +352,32 @@ def test_verify_mcp_json_accepts_bridge(tmp_path, monkeypatch):
     assert report["uses_bridge"] is True
 
 
+def test_verify_mcp_json_accepts_windows_pythonw_bridge(tmp_path, monkeypatch):
+    """Windows pins put the module in args; bridge detect must include args."""
+    from pipeline.mcp_install import verify_mcp_json
+
+    monkeypatch.setenv("CTX_HOME", str(tmp_path))
+    path = tmp_path / "mcp.json"
+    path.write_text(
+        json.dumps(
+            {
+                "mcpServers": {
+                    "scubiee": {
+                        "command": "C:/Users/x/AppData/Roaming/uv/tools/scubiee/Scripts/pythonw.exe",
+                        "args": ["-u", "-m", "pipeline.mcp_bridge"],
+                        "env": {"CTX_SCUBIEE_BUILD": "0.3.89-1"},
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    report = verify_mcp_json(path)
+    assert report["ok"] is True
+    assert report["uses_bridge"] is True
+    assert report["live_launcher"] is True
+
+
 def test_refresh_mcp_build_env_updates_stamp(tmp_path, monkeypatch):
     from pipeline.mcp_hot_reload import _patch_build_env_in_mcp_file
 

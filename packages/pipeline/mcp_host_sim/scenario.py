@@ -143,11 +143,29 @@ def run_scenario(
             set_desired_mode,
         )
 
+        # Kill leftover IDE MCP bridges/locates first. Otherwise they re-register
+        # after we clear clients.json and spawn a half-alive engine (rss~5MB,
+        # soft_search_ready stuck false → WARM_TIMEOUT).
+        kill_report: dict[str, Any] = {}
+        print("[mcp_host_sim] clean_slate: killing leftover MCP procs…", flush=True)
+        try:
+            from pipeline.process_control import kill_all_scubiee_processes
+
+            kill_report = kill_all_scubiee_processes(
+                exclude_self=True, exclude_bridge=False, rounds=2
+            )
+        except Exception as exc:  # noqa: BLE001
+            kill_report = {"ok": False, "error": str(exc)}
         print("[mcp_host_sim] clean_slate: stopping engine…", flush=True)
         try:
             stop_daemon(reason="mcp_host_sim_clean")
         except Exception as exc:  # noqa: BLE001
-            return {"ok": False, "error": str(exc), "code": "HOST_SETUP"}
+            return {
+                "ok": False,
+                "error": str(exc),
+                "code": "HOST_SETUP",
+                "kill": kill_report,
+            }
         try:
             data = load_clients()
             data["clients"] = {}
@@ -175,7 +193,12 @@ def run_scenario(
         running = bool((tick.get("engine") or {}).get("running"))
         # If Cursor still holds the port, continue — host_start will attach.
         print(f"[mcp_host_sim] clean_slate: running={running}", flush=True)
-        return {"ok": True, "tick": tick, "engine_still_up": running}
+        return {
+            "ok": True,
+            "tick": tick,
+            "engine_still_up": running,
+            "kill": kill_report,
+        }
 
     if not phase("clean_slate", _clean)["ok"]:
         report["elapsed_ms"] = round((time.perf_counter() - t_run) * 1000, 1)

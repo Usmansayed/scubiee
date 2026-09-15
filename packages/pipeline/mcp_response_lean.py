@@ -77,7 +77,6 @@ _LOCATE_META_DROP = frozenset(
         "policy",
         "ranked_only",
         "bodies",  # boolean flag on expand/map_context — redundant with pack presence
-        "seed2",
     }
 )
 
@@ -144,7 +143,27 @@ def _slim_loc_item(item: dict[str, Any] | str) -> dict[str, Any] | str:
         return item
     if not isinstance(item, dict):
         return item
-    return _pick(item, ("id", "loc", "edge", "score"))
+    return _pick(item, ("id", "loc", "edge", "score", "symbol", "already_in_pack"))
+
+
+def _ensure_loc(item: dict[str, Any]) -> str:
+    """Prefer explicit loc; else synthesize file:start-end for span-Read."""
+    loc = str(item.get("loc") or "").strip()
+    if loc:
+        return loc
+    f = str(item.get("file") or "").replace("\\", "/").strip()
+    if not f and "::" in str(item.get("id") or ""):
+        f = str(item.get("id") or "").split("::", 1)[0]
+    sl = item.get("start_line")
+    el = item.get("end_line")
+    if f and sl not in (None, "", 0, "0"):
+        try:
+            start = int(sl)
+            end = int(el) if el not in (None, "") else start
+        except (TypeError, ValueError):
+            return f
+        return f"{f}:{start}-{end}"
+    return f
 
 
 def _heat_card(
@@ -156,7 +175,7 @@ def _heat_card(
 ) -> dict[str, Any]:
     """Compressed heatmap row — locs only, no code."""
     iid = str(item.get("id") or "")
-    loc = str(item.get("loc") or "")
+    loc = _ensure_loc(item)
     sym = str(item.get("symbol") or "")
     if not sym and "::" in iid:
         sym = iid.split("::", 1)[-1]
@@ -171,6 +190,19 @@ def _heat_card(
     if edge:
         out["e"] = edge
     return out
+
+
+_PACK_HEATMAP_NEXT = (
+    "Native-Read top heatmap loc spans (file:start-end only). "
+    "Thin → expand_context; bodies → collect_hot_context(ids=) or "
+    "pack_context(include_bodies=1). BAN whole-file Read of heatmap paths."
+)
+
+_MAP_LADDER_NEXT = (
+    "Refine query with suggested_seed file+symbol, then "
+    "pack_context(mode=lean, seed_*). Then Native-Read loc spans only "
+    "(BAN whole-file until expand/collect)."
+)
 
 
 def _pack_heatmap_only(payload: dict[str, Any], *, tool_name: str) -> dict[str, Any]:
@@ -247,7 +279,33 @@ def _pack_heatmap_only(payload: dict[str, Any], *, tool_name: str) -> dict[str, 
         heatmap.append(_heat_card(c, rank=i, heat=heat, edge=edge_by.get(iid)))
 
     seed = payload.get("seed")
-    return {
+    thin = bool(payload.get("thin"))
+    if not thin:
+        try:
+            from pipeline.context_trace import heatmap_is_thin
+
+            thin = heatmap_is_thin(
+                [
+                    {
+                        **c,
+                        "symbol": c.get("s") or c.get("symbol"),
+                        "score": c.get("sc") or c.get("score"),
+                    }
+                    for c in heatmap
+                ]
+            )
+        except Exception:  # noqa: BLE001
+            thin = len(heatmap) <= 3
+    prefer = payload.get("prefer") or (
+        "expand_context|Native-Read seed file" if thin else "Native-Read heatmap locs"
+    )
+    next_msg = (
+        "thin=true — expand_context or Native-Read seed file; do not re-pack. "
+        "BAN whole-file Read of heatmap paths."
+        if thin
+        else _PACK_HEATMAP_NEXT
+    )
+    out_hm: dict[str, Any] = {
         "ok": True,
         "tool": tool_name,
         "seed": (
@@ -256,6 +314,8 @@ def _pack_heatmap_only(payload: dict[str, Any], *, tool_name: str) -> dict[str, 
             else seed
         ),
         "heatmap": heatmap,
+        "thin": thin,
+        "prefer": prefer,
         "read": {
             "top": 5,
             "how": (
@@ -265,7 +325,27 @@ def _pack_heatmap_only(payload: dict[str, Any], *, tool_name: str) -> dict[str, 
                 "or pack_context(include_bodies=1) only when you need bodies batched."
             ),
         },
+        # Compact ladder steer — hosts strip verbose next_actions in lean mode.
+        "next": next_msg,
     }
+    for key in ("seed2", "seed3", "seeds", "multi_seed", "seed_coverage", "seed_injected", "elapsed_ms", "timing", "sla", "sla_hint"):
+        val = payload.get(key)
+        if val not in (None, "", [], {}):
+            if key in {"seed2", "seed3"} and isinstance(val, dict):
+                out_hm[key] = _pick(val, ("id", "file", "symbol"))
+            elif key == "seeds" and isinstance(val, list):
+                out_hm[key] = [
+                    _pick(s, ("id", "file", "symbol"))
+                    for s in val
+                    if isinstance(s, dict)
+                ]
+            else:
+                out_hm[key] = val
+    if "escape_helped" in payload:
+        out_hm["escape_helped"] = bool(payload.get("escape_helped"))
+    if payload.get("seed_promoted"):
+        out_hm["seed_promoted"] = payload.get("seed_promoted")
+    return out_hm
 
 
 def _tool_name(payload: dict[str, Any]) -> str:
@@ -295,32 +375,60 @@ def slim_locate_payload(payload: dict[str, Any]) -> dict[str, Any]:
 
     if tool in {"map"} or payload.get("cli") == "map":
         cards_in = payload.get("cards") or []
-        cards = [
-            _pick(c, ("rank", "file", "score", "why", "role", "loc", "symbol"))
-            for c in cards_in
-            if isinstance(c, dict)
-        ]
+        cards = []
+        for c in cards_in:
+            if not isinstance(c, dict):
+                continue
+            row = _pick(c, ("rank", "file", "score", "why", "role", "loc", "symbol"))
+            # Ensure span-Read loc when map cards only had file/lines.
+            loc = _ensure_loc(c)
+            if loc:
+                row["loc"] = loc
+            cards.append(row)
         seed = payload.get("suggested_seed")
         seed_slim = (
-            _pick(seed, ("file", "symbol", "loc", "score"))
+            _pick(seed, ("file", "symbol", "loc", "score", "kind", "seed_incomplete"))
             if isinstance(seed, dict)
             else seed
         )
+        if isinstance(seed_slim, dict) and seed and isinstance(seed, dict):
+            seed_loc = _ensure_loc(seed)
+            if seed_loc:
+                seed_slim["loc"] = seed_loc
+            if seed.get("seed_incomplete"):
+                seed_slim["seed_incomplete"] = True
+        seeds_out: list[dict[str, Any]] = []
+        for s in payload.get("suggested_seeds") or []:
+            if not isinstance(s, dict):
+                continue
+            row = _pick(s, ("file", "symbol", "loc", "score", "kind", "seed_incomplete"))
+            loc = _ensure_loc(s)
+            if loc:
+                row["loc"] = loc
+            if s.get("seed_incomplete"):
+                row["seed_incomplete"] = True
+            if row.get("file"):
+                seeds_out.append(row)
         out: dict[str, Any] = {
             "ok": True,
             "tool": tool_out if tool_out in {"map", "map_context"} else "map",
             "cards": cards,
             "suggested_seed": seed_slim,
         }
-        # CLI map: keep the one-line pack command. MCP map: no per-call coaching.
+        if seeds_out:
+            out["suggested_seeds"] = seeds_out
+        # Keep ladder steer for both CLI and MCP (was CLI-only / scubiee-pack prefix).
         nxt = payload.get("next")
-        if payload.get("cli") == "map" and nxt:
-            out["next"] = nxt
-        elif isinstance(nxt, str) and nxt.strip().startswith("scubiee pack"):
-            out["next"] = nxt
-        for sig in ("unchanged", "truncated", "has_more", "weak_match"):
+        if isinstance(nxt, str) and nxt.strip():
+            out["next"] = nxt.strip()
+        else:
+            out["next"] = _MAP_LADDER_NEXT
+        for sig in ("unchanged", "truncated", "has_more", "weak_match", "elapsed_ms", "latency_ms"):
             if sig in payload:
                 out[sig] = payload[sig]
+        # Normalize CLI latency_ms → elapsed_ms for agents.
+        if "elapsed_ms" not in out and "latency_ms" in payload:
+            out["elapsed_ms"] = payload["latency_ms"]
         return out
 
     if tool in {"map_context"}:
@@ -414,17 +522,43 @@ def slim_locate_payload(payload: dict[str, Any]) -> dict[str, Any]:
             out["pack"] = [
                 _slim_pack_item(p) for p in pack if isinstance(p, dict)
             ]
+        if "elapsed_ms" in payload:
+            out["elapsed_ms"] = payload["elapsed_ms"]
+        # Keep hydrate/struct timings so hosts can see the 50MB AST pickle tax
+        # vs the cheap script-neighbor walk (not semantic search).
+        for key in ("hydrate_ms", "hydrate_source", "timings", "count"):
+            if key in payload:
+                out[key] = payload[key]
         return out
 
     if tool == "collect_hot_context":
         bodies = payload.get("bodies") or payload.get("pack") or []
+        slim_bodies = [
+            _slim_pack_item(p) for p in bodies if isinstance(p, dict)
+        ]
         out = {
             "ok": True,
             "tool": "collect_hot_context",
-            "pack": [
-                _slim_pack_item(p) for p in bodies if isinstance(p, dict)
-            ],
+            "pack": slim_bodies,
+            "count": int(payload.get("count") or len(slim_bodies)),
         }
+        nxt = payload.get("next")
+        if isinstance(nxt, str) and nxt.strip():
+            out["next"] = nxt.strip()
+        if payload.get("empty_bodies") or not slim_bodies:
+            out["empty_bodies"] = True
+            out["hint"] = str(
+                payload.get("hint")
+                or (
+                    "No bodies collected — ids missing from index, already packed, "
+                    "or below threshold. Pass ids= from heatmap locs, or Native-Read "
+                    "file:start-end spans."
+                )
+            )
+            out.setdefault(
+                "next",
+                "Native-Read heatmap loc spans, or retry collect_hot_context(ids=file::symbol).",
+            )
         return out
 
     # Unknown locate-ish payload — strip common chrome only.
@@ -458,13 +592,21 @@ def apply_lean_fields(card: dict[str, Any]) -> dict[str, Any]:
     if not echo_guidance_enabled() and out.get("ok") is not False:
         for key in ("usage_hint", "locate_action"):
             out.pop(key, None)
-        # Soft map keeps a one-line pack command; other tools drop ``next``.
-        if tool not in {"map"} or "next" not in out:
+        # Keep compact ladder ``next`` on locate tools (MCP + CLI). Drop other noise.
+        _keep_next = {
+            "map",
+            "map_context",
+            "pack",
+            "pack_context",
+            "pack_poly_embed",
+            "pack_semantic",
+            "expand_context",
+            "collect_hot_context",
+        }
+        if tool not in _keep_next:
             out.pop("next", None)
-        elif not str(out.get("next") or "").strip().startswith("scubiee pack"):
-            out.pop("next", None)
-        # Success cards don't need a coaching hint; keep error hints.
-        if "error" not in out:
+        # Success cards don't need a coaching hint — except empty collect_hot.
+        if "error" not in out and not out.get("empty_bodies"):
             out.pop("hint", None)
         for list_key in ("cards", "results", "hits"):
             rows = out.get(list_key)

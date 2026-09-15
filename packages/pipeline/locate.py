@@ -227,7 +227,7 @@ def _read_excerpt(
         from pipeline.client import EngineClient
         from pipeline.daemon import ensure_daemon
 
-        ensure_daemon(repo, force_if_hung=False)
+        ensure_daemon(repo, force_if_hung=False, wait_s=0.0, open_wait=False)
         out = EngineClient().read_span(
             path,
             start_line=start_line or None,

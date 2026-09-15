@@ -61,6 +61,18 @@ def is_paused() -> bool:
         return True
 
 
+def is_resuming() -> bool:
+    """True while ``resume()`` is mid-flight (paused flag still set).
+
+    Used so gate rules / engine ensure can restore active surfaces without
+    writing GATE p or skipping ``ensure_daemon`` for the whole resume window.
+    """
+    try:
+        return bool(_load_state().get("resuming"))
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def _load_state() -> dict[str, Any]:
     path = _state_path()
     if not path.is_file():
@@ -75,6 +87,23 @@ def _save_state(data: dict[str, Any]) -> None:
     path = _state_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+
+def _heal_active_gate_rules() -> list[dict[str, Any]]:
+    """Rewrite tool rules/MCP when pause_state is active but GATE p files linger."""
+    connected = list(_load_state().get("connected_tools") or []) or _detect_connected_tools()
+    healed: list[dict[str, Any]] = []
+    for slug in connected:
+        tool = TOOL_MAP.get(slug)
+        if not tool:
+            continue
+        try:
+            from pipeline.rules_installer import install_tool
+
+            healed.append(install_tool(tool))
+        except Exception as exc:  # noqa: BLE001
+            healed.append({"ok": False, "slug": slug, "error": str(exc)})
+    return healed
 
 
 # paused_blocks_command lives in lifecycle_guard.py (re-exported below).
@@ -367,16 +396,28 @@ def pause() -> dict[str, Any]:
     return report
 
 
-def resume() -> dict[str, Any]:
-    """Restore MCP, rules, repo id files, and engine after ``scubiee stop``."""
+def resume(*, ensure_engine: bool = True) -> dict[str, Any]:
+    """Restore MCP, rules, repo id files, and engine after ``scubiee stop``.
+
+    ``ensure_engine=False`` skips daemon/watchdog bring-up (used for
+    ``connect --dry-run`` so auto-resume cannot sit on a 90s+ open_wait).
+    """
     if not is_paused():
-        return {"ok": True, "already_active": True}
+        report: dict[str, Any] = {"ok": True, "already_active": True}
+        # Older resumes wrote GATE p while still paused; heal sticky rule files.
+        try:
+            report["rules_heal"] = _heal_active_gate_rules()
+        except Exception as exc:  # noqa: BLE001
+            report["rules_heal_error"] = str(exc)
+        return report
 
     state = _load_state()
     connected = list(state.get("connected_tools") or _detect_connected_tools())
-    report: dict[str, Any] = {"ok": True, "resumed_at": time.time()}
+    report = {"ok": True, "resumed_at": time.time()}
 
     # Stay paused until MCP restore succeeds — never leave a half-resumed state.
+    # ``resuming=True`` lets gate_line / ensure_daemon restore active surfaces
+    # (otherwise install_tool rewrites GATE p and engine ensure is skipped).
     _save_state({
         "paused": True,
         "resuming": True,
@@ -425,52 +466,57 @@ def resume() -> dict[str, Any]:
     except Exception as exc:  # noqa: BLE001
         report["lifecycle_error"] = str(exc)
 
-    try:
-        from pipeline.daemon import ensure_daemon
-        from pipeline.project_id import load_registry
+    if ensure_engine:
+        try:
+            from pipeline.daemon import ensure_daemon
+            from pipeline.project_id import load_registry
 
-        repo = None
-        registry = load_registry()
-        for entry in (registry.get("projects") or {}).values():
-            if isinstance(entry, dict) and entry.get("managed"):
-                paths = entry.get("paths") or []
-                if paths:
-                    from pathlib import Path as _Path
+            repo = None
+            registry = load_registry()
+            for entry in (registry.get("projects") or {}).values():
+                if isinstance(entry, dict) and entry.get("managed"):
+                    paths = entry.get("paths") or []
+                    if paths:
+                        from pathlib import Path as _Path
 
-                    candidate = _Path(str(paths[0]))
-                    if candidate.exists():
-                        repo = candidate
-                        break
-        if repo is None:
-            report["engine"] = {
-                "ok": False,
-                "skipped": True,
-                "reason": "no_managed_repos",
-                "hint": "run `scubiee init .` in a project before resuming engine",
-            }
-        else:
-            report["engine"] = ensure_daemon(repo)
-    except Exception as exc:  # noqa: BLE001
-        report["engine_error"] = str(exc)
+                        candidate = _Path(str(paths[0]))
+                        if candidate.exists():
+                            repo = candidate
+                            break
+            if repo is None:
+                report["engine"] = {
+                    "ok": False,
+                    "skipped": True,
+                    "reason": "no_managed_repos",
+                    "hint": "run `scubiee init .` in a project before resuming engine",
+                }
+            else:
+                report["engine"] = ensure_daemon(repo)
+        except Exception as exc:  # noqa: BLE001
+            report["engine_error"] = str(exc)
 
-    try:
-        from pipeline.watchdog import start_watchdog
+        try:
+            from pipeline.watchdog import start_watchdog
 
-        report["watchdog"] = start_watchdog()
-    except Exception as exc:  # noqa: BLE001
-        report["watchdog_error"] = str(exc)
+            report["watchdog"] = start_watchdog()
+        except Exception as exc:  # noqa: BLE001
+            report["watchdog_error"] = str(exc)
 
-    reconciled = 0
-    try:
-        from pipeline.daemon import reconcile_managed_repositories
+        reconciled = 0
+        try:
+            from pipeline.daemon import reconcile_managed_repositories
 
-        recon = reconcile_managed_repositories(reason="resume_after_pause")
-        reconciled = recon.get("reconciled", 0)
-        report["reconciled"] = recon
-    except Exception as exc:  # noqa: BLE001
-        report["reconcile_error"] = str(exc)
+            recon = reconcile_managed_repositories(reason="resume_after_pause")
+            reconciled = recon.get("reconciled", 0)
+            report["reconciled"] = recon
+        except Exception as exc:  # noqa: BLE001
+            report["reconcile_error"] = str(exc)
 
-    report["files_reconciled"] = reconciled
+        report["files_reconciled"] = reconciled
+    else:
+        report["engine"] = {"ok": True, "skipped": True, "reason": "ensure_engine_false"}
+        report["files_reconciled"] = 0
+
     report["connected_tools"] = connected
 
     if not connected:

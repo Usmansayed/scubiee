@@ -1,4 +1,4 @@
-﻿"""Installed-package MCP entry must not depend on a git checkout."""
+"""Installed-package MCP entry must not depend on a git checkout."""
 
 from __future__ import annotations
 
@@ -13,11 +13,20 @@ from conftest import write_machine_setup
 def test_server_entry_uses_module_invocation_without_source_pythonpath(
     tmp_path: Path, monkeypatch
 ) -> None:
+    import os
+
     # Force module fallback so the assertion is stable whether or not scubiee-mcp
     # is on PATH in the developer environment.
     monkeypatch.setattr("shutil.which", lambda _name: None)
     entry = server_entry(tmp_path)
-    assert entry["args"] == ["-u", "-m", "pipeline.mcp_locate"]
+    # Windows always pins pythonw -m pipeline.mcp_bridge (no console shim blinks).
+    # Other platforms fall through to direct mcp_locate when no exe is on PATH.
+    if os.name == "nt":
+        assert entry["args"] == ["-u", "-m", "pipeline.mcp_bridge"]
+        spawn = json.loads(entry["env"]["CTX_MCP_BRIDGE_SPAWN_JSON"])
+        assert spawn[-3:] == ["-u", "-m", "pipeline.mcp_locate"]
+    else:
+        assert entry["args"] == ["-u", "-m", "pipeline.mcp_locate"]
     env = entry["env"]
     assert env["CTX_MCP_SURFACE"] == "phase"
     assert "PYTHONPATH" not in env

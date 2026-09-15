@@ -124,7 +124,14 @@ class Handler(BaseHTTPRequestHandler):
         data = _read_json(self)
         ce = get_context_engine()
 
-        def admit(root: str) -> dict:
+        def admit(root: str, *, intentional: bool = False) -> dict:
+            """Admit a workspace for an HTTP request.
+
+            ``intentional=True`` (map/search/sync and other agent ops) bypasses
+            passive ``large_repo`` auto-pause. Engine restarts clear the in-memory
+            hub; without this, enrolled repos falsely re-pause and force
+            ``scubiee activate`` + cold re-warm between MCP calls.
+            """
             admission = getattr(ce, "admit_request", None)
             if admission is None:
                 return {
@@ -142,7 +149,8 @@ class Handler(BaseHTTPRequestHandler):
                     if isinstance(data.get("metadata"), dict)
                     else None
                 ),
-                explicit=bool(data.get("explicit") or data.get("wait")),
+                explicit=bool(data.get("explicit") or data.get("wait") or intentional),
+                wait=bool(data.get("wait")),
             )
 
         if path in ("/api/settings", "/v1/settings"):
@@ -154,7 +162,9 @@ class Handler(BaseHTTPRequestHandler):
             if not root:
                 _json(self, 400, {"ok": False, "error": "workspace path required"})
                 return
-            admission = admit(root)
+            # Always intentional: enrolled MCP/IDE opens must not false-pause on
+            # large_repo after engine hub restart (soft_search_ready stuck false).
+            admission = admit(root, intentional=True)
             self._request_context = admission
             _json(self, 200 if admission.get("status") == "activated" else 409, admission)
             return
@@ -255,18 +265,106 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         if path in {"/v1/embed/prewarm", "/v1/prewarm"}:
-            from pipeline.engine import prewarm_embedder_async, prewarm_status
+            from pipeline.engine import (
+                embedder_is_loaded,
+                prewarm_embedder_async,
+                prewarm_status,
+            )
 
             root = data.get("path") or data.get("root") or None
             sync = bool(data.get("sync") or data.get("wait"))
             if sync:
-                from pipeline.engine import ensure_embedder_ready
-
-                # Prefer join-in-flight over a second cold load when MCP connects.
-                _json(self, 200, ensure_embedder_ready(root))
+                # Never run ORT on this HTTP worker, and never park the worker for
+                # the full prewarm (that queued /v1/search behind embed_one for 60s+).
+                kicked = prewarm_embedder_async(root)
+                st = prewarm_status()
+                if embedder_is_loaded() and not st.get("running"):
+                    _json(
+                        self,
+                        200,
+                        {
+                            "ok": True,
+                            "already_warm": True,
+                            "async_join": True,
+                            **st,
+                            "kick": kicked,
+                        },
+                    )
+                    return
+                # Brief poll only — attach/sim keep watching soft_search_ready.
+                wait_s = 8.0
+                try:
+                    wait_s = float(data.get("wait_s") or 8.0)
+                except (TypeError, ValueError):
+                    wait_s = 8.0
+                deadline = time.time() + max(0.5, min(30.0, wait_s))
+                while time.time() < deadline:
+                    st = prewarm_status()
+                    if embedder_is_loaded() and not st.get("running"):
+                        _json(
+                            self,
+                            200,
+                            {
+                                "ok": True,
+                                "async_join": True,
+                                **st,
+                                "kick": kicked,
+                            },
+                        )
+                        return
+                    if st.get("error"):
+                        _json(
+                            self,
+                            200,
+                            {
+                                "ok": False,
+                                "error": st.get("error"),
+                                "async_join": True,
+                                **st,
+                                "kick": kicked,
+                            },
+                        )
+                        return
+                    time.sleep(0.05)
+                st = prewarm_status()
+                _json(
+                    self,
+                    200,
+                    {
+                        "ok": True,
+                        "warming": True,
+                        "async_join": True,
+                        "should_retry": True,
+                        **st,
+                        "kick": kicked,
+                        "hint": "Embedder still loading; wait for soft_search_ready.",
+                    },
+                )
                 return
             out = prewarm_embedder_async(root)
             out["status"] = prewarm_status()
+            _json(self, 200, out)
+            return
+
+        if path in {"/v1/embed/keepalive", "/v1/keepalive"}:
+            from pipeline.engine import embed_keepalive, embed_keepalive_status, ensure_embed_keepalive_loop
+
+            root = data.get("path") or data.get("root") or None
+            raw_kick = data.get("ensure_loop", data.get("start_loop", True))
+            if isinstance(raw_kick, bool):
+                kick = raw_kick
+            else:
+                kick = str(raw_kick).strip().lower() not in {"0", "false", "no", "off", ""}
+            if kick:
+                ensure_embed_keepalive_loop(root)
+            # Default tick=0: HTTP must not block on DML encode (ThreadingHTTPServer).
+            # The background loop performs dummy encodes; pass tick=1 to force one now.
+            tick_raw = data.get("tick", 0)
+            if str(tick_raw).strip().lower() in {"0", "false", "no", "off", ""}:
+                _json(self, 200, {"ok": True, "tick": False, "status": embed_keepalive_status()})
+                return
+            out = embed_keepalive(root)
+            out["status"] = embed_keepalive_status()
             _json(self, 200, out)
             return
 
@@ -380,7 +478,7 @@ class Handler(BaseHTTPRequestHandler):
             if not root:
                 _json(self, 400, {"ok": False, "error": "workspace path required"})
                 return
-            admission = admit(root)
+            admission = admit(root, intentional=True)
             self._request_context = admission
             if admission.get("status") != "activated":
                 _json(self, 409, admission)
@@ -725,21 +823,23 @@ def _start_idle_sweeper(
             except Exception:  # noqa: BLE001
                 pass
             try:
-                from pipeline.lifecycle_runtime import apply_idle_policy
+                from pipeline.lifecycle_runtime import enforce_mcp_warm_contract
 
-                idle_result = apply_idle_policy()
+                idle_result = enforce_mcp_warm_contract()
                 action = str((idle_result or {}).get("action") or "none")
-                # "none"/"already_standby" are the quiet steady states; anything
-                # else is a lifecycle transition worth seeing in engine.log. A
-                # silent sweeper is how the engine shipped unable to stop itself.
-                if action not in {"none", "already_standby"}:
+                # "none"/"already_standby"/"hold_clients" are quiet steady states.
+                if action not in {"none", "already_standby", "hold_clients"}:
                     print(
-                        f"[engine] idle sweep: action={action} "
-                        f"engine={(idle_result or {}).get('engine')}",
+                        f"[engine] warm contract: action={action} "
+                        f"clients={(idle_result or {}).get('active_clients')} "
+                        f"idle={(idle_result or {}).get('idle')}",
                         file=sys.stderr,
                         flush=True,
                     )
-                if action == "standby":
+                if action == "standby" or (
+                    isinstance((idle_result or {}).get("idle"), dict)
+                    and (idle_result or {}).get("idle", {}).get("action") == "standby"
+                ):
                     # Never retire mid-index even if policy raced past the busy check.
                     try:
                         from pipeline.lifecycle_runtime import _idle_busy_reason
