@@ -130,10 +130,14 @@ def server_entry(
         "CTX_ENGINE_SPAWN_OWNER": "supervisor",
         "CTX_LOCATE_STREAK_MS": "60000",
         "CTX_EMBED_KEEPALIVE": "1",
-        # Longer interval = fewer periodic embed CPU spikes while staying warm.
-        "CTX_EMBED_KEEPALIVE_S": "45",
-        # 25% default; process_job boosts effective share on ≤6-core machines.
-        "CTX_ENGINE_CPU_CAP_PCT": "25",
+        # 15s keeps DirectML hot so map after idle stays <1s (was 45s).
+        "CTX_EMBED_KEEPALIVE_S": "15",
+        # Polite cap: 25% starved ORT; 0 was uncapped. 35% ≈ old wait-then-ms
+        # politeness without collapsing to one core on typical desktops.
+        "CTX_ENGINE_CPU_CAP_PCT": "35",
+        # 1.5 GB tree — 800 MB squeezed the embedder out; 4096 was uncapped.
+        "CTX_CE_RSS_CAP_MB": "1536",
+        "CTX_SCUBIEE_TOTAL_RSS_MB": "1536",
         "CTX_KEEPER_DEFER_WHILE_CLIENTS": "1",
         # Low-end DirectML/ORT cold load often exceeds 30s under the CPU cap.
         "CTX_WARM_DEADLINE_MS": "90000",

@@ -1,9 +1,11 @@
 """Lightweight sidecar watchdog.
 
-Polls /health. Automatic engine *load* is agent-owned (first gate/status/map).
-Watchdog does not start or force-restart a stopped engine unless
-CTX_WATCHDOG_AUTO_START=1. Idle unload is handled by the daemon lifecycle
-(client registry + apply_idle_policy), not here.
+Polls /health. Cold *start* of a stopped engine stays agent-owned unless
+CTX_WATCHDOG_AUTO_START=1. Hung-but-alive engines (PID holds the lock, health
+fails for ALIVE_PID_FAILS_BEFORE_RESTART ticks) are force-healed when MCP/IDE
+clients are still registered — otherwise Cursor attach can deadlock forever.
+Idle unload is handled by the daemon lifecycle (client registry + apply_idle_policy),
+not here.
 
 Disable the sidecar with CTX_WATCHDOG=0.
 """
@@ -224,7 +226,42 @@ def _engine_busy_indexing() -> bool:
     if not isinstance(health, dict):
         return False
     warm = str(health.get("warm_state") or "").strip().lower()
-    return warm in {"indexing", "warming"}
+    if warm in {"indexing", "warming"}:
+        return True
+    # Dense ORT/DML load also wedges /health — treat as busy.
+    if bool(health.get("embed_prewarm_running")):
+        return True
+    return False
+
+
+def _engine_busy_embed_prewarm() -> bool:
+    """ORT cold load stamps a file because /health often times out mid-init."""
+    try:
+        from pipeline.engine import prewarm_busy_stamp_active
+
+        return bool(prewarm_busy_stamp_active())
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def mcp_frontend_present() -> bool:
+    """True when an IDE mcp_bridge process is alive (stdio demand)."""
+    try:
+        from pipeline.warm_autoload import mcp_frontend_present as _present
+
+        return bool(_present())
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def mcp_or_client_demand() -> tuple[int, bool]:
+    """Return ``(active_clients, has_demand)`` including live MCP bridges."""
+    try:
+        from pipeline.warm_autoload import mcp_or_client_demand as _demand
+
+        return _demand()
+    except Exception:  # noqa: BLE001
+        return 0, False
 
 
 def engine_process_alive() -> tuple[bool, str]:
@@ -317,30 +354,40 @@ def watchdog_loop(*, stop_after: float | None = None) -> None:
             from pipeline.lifecycle_runtime import engine_should_be_running
 
             if _health_ok():
-                fails = 0
-                backoff_i = 0
+                hung = False
                 try:
-                    from pipeline.daemon import consume_engine_start_request, heal_engine_lock
+                    from pipeline.warm_autoload import hung_prewarm_should_abort
 
-                    consume_engine_start_request()
-                    heal_engine_lock()
+                    hung = bool(hung_prewarm_should_abort())
                 except Exception:  # noqa: BLE001
-                    pass
-                # Orphan MCP after Cursor close → unregister → standby after debounce.
-                try:
-                    from pipeline.lifecycle_runtime import enforce_mcp_warm_contract
+                    hung = False
+                if hung:
+                    _log("health ok but hung prewarm — abort")
+                else:
+                    fails = 0
+                    backoff_i = 0
+                    try:
+                        from pipeline.daemon import consume_engine_start_request, heal_engine_lock
 
-                    contract = enforce_mcp_warm_contract()
-                    action = str((contract or {}).get("action") or "")
-                    if action not in {"", "none", "already_standby", "hold_clients"}:
-                        _log(
-                            f"warm contract action={action} "
-                            f"clients={(contract or {}).get('active_clients')}"
-                        )
-                except Exception as exc:  # noqa: BLE001
-                    _log(f"warm contract skipped: {exc}")
-                time.sleep(interval)
-                continue
+                        consume_engine_start_request()
+                        heal_engine_lock()
+                    except Exception:  # noqa: BLE001
+                        pass
+                    # Orphan MCP after Cursor close → unregister → standby after debounce.
+                    try:
+                        from pipeline.lifecycle_runtime import enforce_mcp_warm_contract
+
+                        contract = enforce_mcp_warm_contract()
+                        action = str((contract or {}).get("action") or "")
+                        if action not in {"", "none", "already_standby", "hold_clients"}:
+                            _log(
+                                f"warm contract action={action} "
+                                f"clients={(contract or {}).get('active_clients')}"
+                            )
+                    except Exception as exc:  # noqa: BLE001
+                        _log(f"warm contract skipped: {exc}")
+                    time.sleep(interval)
+                    continue
 
             if not engine_should_be_running():
                 fails = 0
@@ -360,7 +407,6 @@ def watchdog_loop(*, stop_after: float | None = None) -> None:
                     )
                     from pipeline.lifecycle_runtime import (
                         DESIRED_STANDBY,
-                        active_client_count,
                         set_desired_mode,
                     )
 
@@ -369,10 +415,10 @@ def watchdog_loop(*, stop_after: float | None = None) -> None:
                     req = None
                 if req is not None:
                     try:
-                        clients = int(active_client_count())
+                        clients, has_mcp_demand = mcp_or_client_demand()
                     except Exception:  # noqa: BLE001
-                        clients = 0
-                    if not watchdog_auto_start_enabled():
+                        clients, has_mcp_demand = 0, False
+                    if not watchdog_auto_start_enabled() and not has_mcp_demand:
                         _log(
                             "skip auto start (agent warm) "
                             f"clients={clients} repo={req.get('repo') or ''}"
@@ -380,7 +426,7 @@ def watchdog_loop(*, stop_after: float | None = None) -> None:
                         fails = 0
                         time.sleep(interval)
                         continue
-                    if not start_request_is_actionable(req, clients=clients):
+                    if not start_request_is_actionable(req, clients=clients) and not has_mcp_demand:
                         _log(
                             "skip stale start_request "
                             f"clients={clients} at={req.get('at')}"
@@ -392,6 +438,11 @@ def watchdog_loop(*, stop_after: float | None = None) -> None:
                         fails = 0
                         time.sleep(interval)
                         continue
+                    if has_mcp_demand and clients <= 0:
+                        _log(
+                            "auto start for MCP frontend demand "
+                            f"(clients={clients} bridges_up=1)"
+                        )
                     meta = _load_engine_meta()
                     repo = (
                         str(req.get("repo") or "").strip()
@@ -414,19 +465,57 @@ def watchdog_loop(*, stop_after: float | None = None) -> None:
                     time.sleep(interval)
                     continue
 
-            if pid_alive and _engine_busy_indexing():
+            hung_prewarm = False
+            try:
+                from pipeline.warm_autoload import hung_prewarm_should_abort
+
+                hung_prewarm = bool(hung_prewarm_should_abort())
+            except Exception:  # noqa: BLE001
+                hung_prewarm = False
+            if (
+                pid_alive
+                and not hung_prewarm
+                and (_engine_busy_indexing() or _engine_busy_embed_prewarm())
+            ):
                 _log(
-                    f"skip restart indexing alive_src={alive_src} "
-                    "(index/boot health lag is not a crash)"
+                    f"skip restart indexing/prewarm alive_src={alive_src} "
+                    "(index/boot/ORT health lag is not a crash)"
                 )
                 fails = 0
                 time.sleep(interval)
                 continue
 
-            fails += 1
+            # ORT GIL: /health timeout is expected while warm_phase=prewarm.
+            stale_prewarm = hung_prewarm
+            try:
+                from pipeline.warm_autoload import should_ignore_health_fail, read_phase
+
+                if not stale_prewarm and should_ignore_health_fail():
+                    _log(
+                        f"skip health fail (warm_phase=prewarm) "
+                        f"alive_src={alive_src}"
+                    )
+                    fails = 0
+                    time.sleep(interval)
+                    continue
+                if not stale_prewarm:
+                    snap = read_phase()
+                    stale_prewarm = bool(
+                        snap.get("stale") or str(snap.get("error") or "") == "prewarm_stale"
+                    )
+            except Exception:  # noqa: BLE001
+                pass
+
             fail_limit = (
                 ALIVE_PID_FAILS_BEFORE_RESTART if pid_alive else FAILS_BEFORE_RESTART
             )
+            if stale_prewarm and pid_alive:
+                _log(
+                    f"stale prewarm — force heal now alive_src={alive_src}"
+                )
+                fails = fail_limit
+            else:
+                fails += 1
             _log(
                 f"health fail count={fails}/{fail_limit} "
                 f"pid_alive={pid_alive} src={alive_src}"
@@ -435,29 +524,46 @@ def watchdog_loop(*, stop_after: float | None = None) -> None:
                 time.sleep(interval)
                 continue
 
-            # Automatic engine load is agent-owned (first gate/status/map).
-            # Watchdog must not revive a stopped engine just because MCP is
-            # still connected. Disconnect unload stays on the idle sweeper.
+            # Cold start of a *stopped* engine stays agent-owned (first gate/map)
+            # unless CTX_WATCHDOG_AUTO_START=1 — OR a live mcp_bridge is present
+            # (Cursor still attached while active_clients.json is empty).
+            # Hung-but-alive (lock held, /health dead) with MCP demand MUST heal —
+            # otherwise Cursor attach deadlocks (skip auto load forever).
             if not watchdog_auto_start_enabled():
-                _log(
-                    "skip auto load (agent warm) "
-                    f"pid_alive={pid_alive} src={alive_src}"
-                )
-                fails = 0
-                time.sleep(interval)
-                continue
+                clients, has_demand = mcp_or_client_demand()
+                hung_with_demand = bool(pid_alive) and has_demand
+                dead_with_mcp = (not pid_alive) and has_demand
+                if not hung_with_demand and not dead_with_mcp:
+                    _log(
+                        "skip auto load (agent warm) "
+                        f"pid_alive={pid_alive} src={alive_src} clients={clients}"
+                    )
+                    fails = 0
+                    time.sleep(interval)
+                    continue
+                if hung_with_demand:
+                    _log(
+                        "force heal hung engine "
+                        f"clients={clients} src={alive_src} "
+                        "(health dead while PID holds lock)"
+                    )
+                else:
+                    _log(
+                        "force start for MCP frontend demand "
+                        f"clients={clients} src={alive_src}"
+                    )
 
             # Demand gate: never force-restart a ghost engine when nothing
-            # needs it (no MCP clients, no pending start_request).
+            # needs it (no MCP clients, no live bridges, no pending start_request).
             try:
                 from pipeline.lifecycle_runtime import (
                     DESIRED_STANDBY,
-                    active_client_count,
                     set_desired_mode,
                 )
                 from pipeline.daemon import start_request_path
 
-                has_demand = active_client_count() > 0 or start_request_path().is_file()
+                _clients, has_cli = mcp_or_client_demand()
+                has_demand = has_cli or start_request_path().is_file()
             except Exception:  # noqa: BLE001
                 has_demand = True
             if not has_demand and not pid_alive:
@@ -484,6 +590,12 @@ def watchdog_loop(*, stop_after: float | None = None) -> None:
 
             from pipeline.daemon import force_restart_daemon
 
+            try:
+                from pipeline.warm_autoload import mark_down
+
+                mark_down()
+            except Exception:  # noqa: BLE001
+                pass
             meta = _load_engine_meta()
             repo = meta.get("repo") or os.environ.get("CTX_REPO") or "."
             _log(f"force restart repo={repo}")
@@ -510,6 +622,15 @@ def watchdog_loop(*, stop_after: float | None = None) -> None:
         except Exception:  # noqa: BLE001
             pass
         _log("exited")
+
+
+def ensure_watchdog_sidecar() -> dict[str, Any]:
+    """Start the hung-prewarm abort sidecar if it is not already running."""
+    if not watchdog_enabled():
+        return {"ok": True, "skipped": True, "reason": "CTX_WATCHDOG=0"}
+    if is_watchdog_running():
+        return {"ok": True, "already_running": True, **watchdog_status()}
+    return start_watchdog(orphan=True)
 
 
 def start_watchdog(*, orphan: bool = False) -> dict[str, Any]:

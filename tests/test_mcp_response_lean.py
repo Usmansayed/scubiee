@@ -375,6 +375,38 @@ def test_map_lean_keeps_suggested_seeds(monkeypatch: pytest.MonkeyPatch) -> None
     assert out["suggested_seeds"][1]["symbol"] == "B"
 
 
+def test_map_lean_keeps_dense_d_channel_signals(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("CTX_MCP_ECHO_GUIDANCE", raising=False)
+    monkeypatch.delenv("CTX_MCP_FULL_LOCATE", raising=False)
+    raw = {
+        "ok": True,
+        "tool": "map",
+        "dense": True,
+        "retrieve_mode": "D_channel_best",
+        "timings": {"dense": True, "retrieve_mode": "D_channel_best", "embed_ms": 12.0},
+        "cards": [
+            {
+                "rank": 1,
+                "file": "packages/pipeline/a.py",
+                "symbol": "A",
+                "score": 2.0,
+                "source": "D_channel_best:bm25+dense",
+                "loc": "packages/pipeline/a.py:1-2",
+            }
+        ],
+        "suggested_seed": {
+            "file": "packages/pipeline/a.py",
+            "symbol": "A",
+            "loc": "packages/pipeline/a.py:1-2",
+        },
+    }
+    out = apply_lean_fields(raw)
+    assert out.get("dense") is True
+    assert out.get("retrieve_mode") == "D_channel_best"
+    assert (out.get("timings") or {}).get("dense") is True
+    assert out["cards"][0].get("source", "").startswith("D_channel_best")
+
+
 def test_pack_lean_keeps_multi_seed_meta(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("CTX_MCP_ECHO_GUIDANCE", raising=False)
     monkeypatch.delenv("CTX_MCP_FULL_LOCATE", raising=False)

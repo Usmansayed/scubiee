@@ -18,6 +18,41 @@ def _rss_mb(pid: int) -> float | None:
         return None
 
 
+def _heal_stub_engine_pid(pid: int | None, rss_mb: float | None) -> int | None:
+    """Windows spawn often leaves a ~5MB wrapper PID in engine.lock.
+
+    The TCP listener is a sibling/child with the real RSS. Prefer the listener
+    so settle does not treat a healthy engine as soft=false forever.
+    """
+    if pid is None:
+        return None
+    if rss_mb is None or float(rss_mb) >= 20.0:
+        return int(pid)
+    try:
+        from pipeline.daemon import default_host_port, write_engine_identity
+        from pipeline.process_control import pids_listening_on_port
+
+        _host, port = default_host_port()
+        listeners = [int(p) for p in (pids_listening_on_port(int(port)) or []) if p]
+        for cand in listeners:
+            if cand == int(pid):
+                continue
+            cand_rss = _rss_mb(cand)
+            if cand_rss is not None and float(cand_rss) >= 20.0:
+                try:
+                    write_engine_identity(
+                        cand,
+                        url=f"http://127.0.0.1:{port}",
+                        repo=str(__import__("pathlib").Path.cwd()),
+                    )
+                except Exception:  # noqa: BLE001
+                    pass
+                return cand
+    except Exception:  # noqa: BLE001
+        pass
+    return int(pid)
+
+
 def engine_snapshot(engine_url: str = "http://127.0.0.1:8765") -> dict[str, Any]:
     from pipeline.daemon import is_running, meta_path, pid_path, _pid_alive, _read_lock_pid
 
@@ -49,10 +84,15 @@ def engine_snapshot(engine_url: str = "http://127.0.0.1:8765") -> dict[str, Any]
                 pid = int(meta.get("pid") or 0) or None
         except Exception:  # noqa: BLE001
             pid = None
-    pid_alive = bool(pid and _pid_alive(int(pid)))
     if pid:
-        snap["pid"] = pid
-        snap["rss_mb"] = _rss_mb(pid)
+        rss0 = _rss_mb(int(pid))
+        healed = _heal_stub_engine_pid(int(pid), rss0)
+        if healed is not None and int(healed) != int(pid):
+            snap["pid_stub"] = int(pid)
+            pid = int(healed)
+        snap["pid"] = int(pid)
+        snap["rss_mb"] = _rss_mb(int(pid))
+    pid_alive = bool(pid and _pid_alive(int(pid)))
     # PID-alive counts as running even when /health is starved by cold ORT load.
     try:
         snap["running"] = bool(pid_alive or is_running())
@@ -88,12 +128,19 @@ def engine_snapshot(engine_url: str = "http://127.0.0.1:8765") -> dict[str, Any]
             if snap["soft_search_ready"]:
                 _LAST_SOFT_OK["at"] = time.time()
                 _LAST_SOFT_OK["chunks"] = snap.get("chunks")
+        elif isinstance(h, dict) and h.get("error"):
+            snap["health_error"] = str(h.get("error"))
     except Exception as exc:  # noqa: BLE001
         snap["health_error"] = str(exc)
-        # Sticky soft: engine process alive + recent soft binder — do not fail
-        # settle on ConnectionAborted / 3s health starve during embed batches.
+
+    # Sticky soft applies on timeout OR exception. EngineClient.health() returns
+    # {"ok": False, "error": ...} without raising — settle used to fail for 60s+
+    # while a fat engine (800MB+) was only GIL-starved by ORT.
+    if not snap.get("soft_search_ready"):
         age = time.time() - float(_LAST_SOFT_OK.get("at") or 0.0)
-        if pid_alive and age >= 0.0 and age < 8.0:
+        rss = snap.get("rss_mb")
+        stub = rss is not None and float(rss) < 20.0
+        if pid_alive and (not stub) and age >= 0.0 and age < 120.0:
             snap["soft_search_ready"] = True
             snap["warm_ready"] = True
             snap["health_ok"] = True

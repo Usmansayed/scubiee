@@ -241,63 +241,36 @@ def prewarm_locate_worker(repo: Path | str, *, deadline_s: float | None = None) 
             pass
         time.sleep(0.25)
 
-    # Soft search probe — warms HTTP + binder path used by map→search_impl.
-    # Prefer locate._search_hits (same path as map) — raw EngineClient.search
-    # alone left first map paying a multi-second cold tax inside _search_hits.
+    # Soft binder probe only. Do NOT call locate._search_hits / eng.search here:
+    # map is dense-required (0.3.93+), and a cold ORT join on attach GIL-starves
+    # /health for tens of seconds (Lane A settle → SETTLE_SOFT_NOT_READY, rss~5MB).
+    # Dense loads via async /v1/embed/prewarm below; first real map joins it.
     probe: dict[str, Any] = {"ok": False}
     if soft or soft_ready_cached():
         try:
-            from pipeline.locate import _search_hits
-
-            t_probe = time.perf_counter()
-            hits = _search_hits(root, "scubiee locate worker prewarm", top_k=3)
+            h = EngineClient(workspace_path=str(root), timeout=3.0).health() or {}
             probe = {
-                "ok": bool(hits),
-                "n": len(hits or []),
-                "elapsed_ms": round((time.perf_counter() - t_probe) * 1000, 1),
+                "ok": bool(h.get("soft_search_ready")),
+                "n": int(h.get("chunks") or 0),
+                "elapsed_ms": 0.0,
+                "soft_only": True,
             }
-            mark_soft_ready()
-        except Exception as exc:  # noqa: BLE001
-            try:
-                probe = (
-                    EngineClient(workspace_path=str(root), timeout=8.0).search(
-                        "scubiee locate worker prewarm",
-                        top_k=3,
-                        path=str(root),
-                    )
-                    or {"ok": False}
-                )
+            if probe["ok"]:
                 mark_soft_ready()
-            except Exception as exc2:  # noqa: BLE001
-                probe = {"ok": False, "error": f"{exc}; fallback:{exc2}"}
+        except Exception as exc:  # noqa: BLE001
+            probe = {"ok": False, "error": str(exc), "soft_only": True}
     out["probe"] = {
-        "ok": bool(probe.get("ok") or probe.get("results") or probe.get("hits") or probe.get("n")),
+        "ok": bool(probe.get("ok")),
         "error": probe.get("error"),
         "elapsed_ms": probe.get("elapsed_ms"),
+        "soft_only": bool(probe.get("soft_only")),
+        "chunks": probe.get("n"),
     }
     if out["probe"]["ok"]:
         note_search_probe_ok()
 
-    # Full-warm availability: hydrate AST once here so first expand is <1s and
-    # mid-session expand does not re-pay pickle + GIL. Keep resident while MCP up.
-    ast_out: dict[str, Any] = {"ok": False, "skipped": True}
-    if soft_ready_cached() or out["probe"]["ok"]:
-        try:
-            from pipeline.context_trace import hydrate_ast_bundle
-
-            t_ast = time.perf_counter()
-            hyd = hydrate_ast_bundle(root, bake_on_miss=False) or {}
-            ast_out = {
-                "ok": bool(hyd.get("ok")),
-                "source": hyd.get("source"),
-                "elapsed_ms": round((time.perf_counter() - t_ast) * 1000, 1),
-            }
-        except Exception as exc:  # noqa: BLE001
-            ast_out = {"ok": False, "error": str(exc)}
-    out["ast"] = ast_out
-
-    # Kick engine dense prewarm (non-blocking) so embedder stays ready without
-    # parking this locate worker on ORT load.
+    # Dense FIRST — AST pickle hydrate GIL-starves ORT and was the Cursor-open
+    # SETTLE_EMBED_NOT_READY failure mode (soft=true/embed=false for 30–160s).
     embed_kick: dict[str, Any] = {"ok": False, "skipped": True}
     try:
         embed_kick = (
@@ -309,10 +282,35 @@ def prewarm_locate_worker(repo: Path | str, *, deadline_s: float | None = None) 
         )
     except Exception as exc:  # noqa: BLE001
         embed_kick = {"ok": False, "error": str(exc)}
+    try:
+        EngineClient(workspace_path=str(root), timeout=2.0).post(
+            "/v1/embed/keepalive",
+            {"path": str(root), "ensure_loop": True, "tick": 0},
+        )
+    except Exception:  # noqa: BLE001
+        pass
     out["embed_prewarm"] = {
         "ok": bool(embed_kick.get("ok") or embed_kick.get("started") or embed_kick.get("async")),
         "error": embed_kick.get("error"),
     }
+
+    # AST hydrate after dense — never /health-poll during ORT GIL. Heartbeat
+    # also kicks start_ast_hydrate_bg once phase=dense so expand stays <1s.
+    ast_out: dict[str, Any] = {"ok": False, "skipped": True, "reason": "defer_until_dense"}
+    dense_ready = False
+    try:
+        from pipeline.warm_autoload import in_prewarm, read_phase
+
+        snap = read_phase() or {}
+        dense_ready = str(snap.get("phase") or "") == "dense" and not in_prewarm()
+    except Exception:  # noqa: BLE001
+        dense_ready = False
+    if dense_ready and (soft_ready_cached() or out["probe"]["ok"]):
+        try:
+            ast_out = dict(start_ast_hydrate_bg(root))
+        except Exception as exc:  # noqa: BLE001
+            ast_out = {"ok": False, "error": str(exc)}
+    out["ast"] = ast_out
 
     out["ok"] = bool(soft_ready_cached() and imports.get("ok"))
     out["soft_ready"] = soft_ready_cached()
@@ -325,6 +323,7 @@ def prewarm_locate_worker(repo: Path | str, *, deadline_s: float | None = None) 
         f"imports_ms={(imports or {}).get('elapsed_ms')} "
         f"probe_ok={int(bool((out.get('probe') or {}).get('ok')))} "
         f"ast_ok={int(bool((out.get('ast') or {}).get('ok')))} "
+        f"embed_ok={int(bool((out.get('embed_prewarm') or {}).get('ok')))} "
         f"total_ms={out['elapsed_ms']}"
     )
     return out
@@ -416,11 +415,32 @@ def _start_heartbeat(repo: Path, client_id: str) -> None:
     def _loop() -> None:
         while not stop.wait(_heartbeat_interval_s()):
             try:
+                # During ORT prewarm, /health and HTTP storms GIL-starve DML.
+                # Use warm_phase side-channel + local client stamp only.
+                try:
+                    from pipeline.warm_autoload import in_prewarm
+
+                    ort_busy = bool(in_prewarm())
+                except Exception:  # noqa: BLE001
+                    try:
+                        from pipeline.engine import prewarm_busy_stamp_active
+
+                        ort_busy = bool(prewarm_busy_stamp_active(max_age_s=180.0))
+                    except Exception:  # noqa: BLE001
+                        ort_busy = False
+                if ort_busy:
+                    try:
+                        from pipeline.lifecycle_runtime import note_activity, touch_client
+
+                        if touch_client(client_id):
+                            note_activity()
+                    except Exception:  # noqa: BLE001
+                        pass
+                    continue
+
                 from pipeline.client import EngineClient
 
                 client = EngineClient(workspace_path=str(repo), timeout=1.5)
-                # Soft flap detector: sticky soft TTL must not survive engine
-                # soft_search_ready=false (settle sim health flap → 3s first map).
                 try:
                     h = client.health() or {}
                     soft = bool(
@@ -439,12 +459,17 @@ def _start_heartbeat(repo: Path, client_id: str) -> None:
                     "/v1/client/touch",
                     {"client_id": client_id, "pid": os.getpid(), "kind": "mcp"},
                 )
-                # Ensure engine-side keepalive loop is running; do not encode here
-                # (avoids concurrent DML with map/pack on ThreadingHTTPServer).
                 client.post(
                     "/v1/embed/keepalive",
                     {"path": str(repo), "ensure_loop": True, "tick": 0},
                 )
+                try:
+                    from pipeline.engine import prime_dense_ready
+
+                    if prime_dense_ready():
+                        start_ast_hydrate_bg(repo)
+                except Exception:  # noqa: BLE001
+                    pass
             except Exception:  # noqa: BLE001
                 try:
                     from pipeline.lifecycle_runtime import note_activity, touch_client
@@ -601,6 +626,23 @@ def warm_engine_for_mcp(
                     out["register"] = reg
                 except Exception as exc:  # noqa: BLE001
                     out["register_error"] = str(exc)
+            # Soft-ready attach still must kick dense prewarm — otherwise Cursor
+            # can sit soft=true / embed=false for the whole open settle window
+            # and pay ~3s on first map. Non-blocking: sync prewarm parks attach.
+            try:
+                out["embed_prewarm"] = client.post(
+                    "/v1/embed/prewarm",
+                    {"path": str(root), "wait": False},
+                ) or {"ok": False}
+            except Exception as exc:  # noqa: BLE001
+                out["embed_prewarm"] = {"ok": False, "error": str(exc)}
+            try:
+                client.post(
+                    "/v1/embed/keepalive",
+                    {"path": str(root), "ensure_loop": True, "tick": 0},
+                )
+            except Exception:  # noqa: BLE001
+                pass
             out["ok"] = True
             out["deferred"] = False
             out["soft_search_ready"] = True
@@ -649,7 +691,7 @@ def warm_engine_for_mcp(
     try:
         prewarm = client.post(
             "/v1/embed/prewarm",
-            {"path": str(root), "wait": True, "sync": True},
+            {"path": str(root), "wait": False, "sync": False},
         )
         out["prewarm_wait"] = prewarm
         loaded = bool(
@@ -678,14 +720,14 @@ def engine_warming_payload(*, warm_state: str = "warming") -> dict[str, Any]:
 
 
 def _kick_embed_prewarm(root: Path) -> dict[str, Any]:
-    """Ask the engine process to load FastEmbed + run dummy encode."""
+    """Fire-and-forget FastEmbed load. Never wait=True — that parks HTTP+GIL."""
     try:
         from pipeline.client import EngineClient
 
-        client = EngineClient(workspace_path=str(root), timeout=30.0)
+        client = EngineClient(workspace_path=str(root), timeout=3.0)
         return client.post(
             "/v1/embed/prewarm",
-            {"path": str(root), "wait": True, "sync": True},
+            {"path": str(root), "wait": False, "sync": False},
         ) or {"ok": False, "error": "empty_prewarm"}
     except Exception as exc:  # noqa: BLE001
         return {"ok": False, "error": str(exc)}
@@ -767,12 +809,56 @@ def _attach_warm_coordinator(root: Path) -> None:
     set_warm_phase("waiting_health")
     deadline = (warm_started_at() or time.time()) + warm_deadline_ms() / 1000.0
     healthy = False
+    poll_fails = 0
     while time.time() < deadline:
+        # Quiet during ORT prewarm — poll warm_phase file, not /health.
+        try:
+            from pipeline.warm_autoload import in_prewarm, read_phase
+
+            if in_prewarm():
+                set_warm_phase("prewarm_busy")
+                snap = read_phase()
+                if snap.get("phase") == "dense":
+                    healthy = True
+                    break
+                time.sleep(2.0)
+                continue
+        except Exception:  # noqa: BLE001
+            try:
+                from pipeline.engine import prewarm_busy_stamp_active
+
+                if prewarm_busy_stamp_active():
+                    set_warm_phase("prewarm_busy")
+                    time.sleep(2.0)
+                    continue
+            except Exception:  # noqa: BLE001
+                pass
         probe = _probe_engine_ready(root)
         if probe.get("healthy"):
             healthy = True
             break
-        time.sleep(0.2)
+        poll_fails += 1
+        time.sleep(0.5 if poll_fails < 4 else 2.0)
+    if not healthy:
+        quiet_end = time.time() + 120.0
+        while time.time() < quiet_end:
+            try:
+                from pipeline.warm_autoload import in_prewarm, read_phase
+
+                if not in_prewarm():
+                    snap = read_phase()
+                    if snap.get("phase") == "dense":
+                        healthy = True
+                        break
+                    break
+                set_warm_phase("prewarm_busy")
+            except Exception:  # noqa: BLE001
+                break
+            time.sleep(2.0)
+        if not healthy:
+            probe = _probe_engine_ready(root)
+            if probe.get("healthy"):
+                healthy = True
     if not healthy:
         set_warm_phase("health_timeout", error="engine_health_timeout")
         _stderr("[scubiee] attach warm: engine /health not up before deadline")

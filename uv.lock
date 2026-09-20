@@ -3324,7 +3324,7 @@ wheels = [
 
 [[package]]
 name = "scubiee"
-version = "0.3.83"
+version = "0.3.100"
 source = { editable = "." }
 dependencies = [
     { name = "colorama" },

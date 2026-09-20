@@ -192,9 +192,9 @@ class RuntimeController:
         try:
             from pipeline.client import EngineClient
 
-            return EngineClient(workspace_path=str(root), timeout=45.0).post(
+            return EngineClient(workspace_path=str(root), timeout=3.0).post(
                 "/v1/embed/prewarm",
-                {"path": str(root), "wait": True, "sync": True},
+                {"path": str(root), "wait": False, "sync": False},
             ) or {"ok": False}
         except Exception as exc:  # noqa: BLE001
             return {"ok": False, "error": str(exc)}
@@ -249,12 +249,49 @@ class RuntimeController:
                 self._last_error = str(exc)
         deadline = time.time() + warm_deadline_ms() / 1000.0
         healthy = False
+        poll_fails = 0
         while time.time() < deadline:
+            try:
+                from pipeline.warm_autoload import in_prewarm, read_phase
+
+                if in_prewarm():
+                    if (read_phase() or {}).get("phase") == "dense":
+                        healthy = True
+                        break
+                    time.sleep(2.0)
+                    continue
+            except Exception:  # noqa: BLE001
+                try:
+                    from pipeline.engine import prewarm_busy_stamp_active
+
+                    if prewarm_busy_stamp_active():
+                        time.sleep(2.0)
+                        continue
+                except Exception:  # noqa: BLE001
+                    pass
             h = self._probe_health(root)
             if h.get("ok") and h.get("service"):
                 healthy = True
                 break
-            time.sleep(0.2)
+            poll_fails += 1
+            time.sleep(0.5 if poll_fails < 4 else 2.0)
+        if not healthy:
+            quiet_end = time.time() + 120.0
+            while time.time() < quiet_end:
+                try:
+                    from pipeline.warm_autoload import in_prewarm, read_phase
+
+                    if not in_prewarm():
+                        if (read_phase() or {}).get("phase") == "dense":
+                            healthy = True
+                        break
+                except Exception:  # noqa: BLE001
+                    break
+                time.sleep(2.0)
+            if not healthy:
+                h = self._probe_health(root)
+                if h.get("ok") and h.get("service"):
+                    healthy = True
         if not healthy:
             with self._lock:
                 self._state = _STATE_DOWN

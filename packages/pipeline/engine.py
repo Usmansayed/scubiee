@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 import threading
@@ -31,6 +32,7 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeou
 # ThreadingHTTPServer workers + keepalive wedged the engine (map hung forever).
 _EMBED_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="scubiee-embed")
 _EMBED_INFER_LOCK = threading.RLock()  # retained for tests / status; executor is authority
+_EMBED_WORKER_LOCAL = threading.local()
 
 
 def try_embed_infer_lock(*, blocking: bool = True, timeout: float = -1.0) -> bool:
@@ -47,8 +49,23 @@ def release_embed_infer_lock() -> None:
 
 
 def run_embed_infer(fn, *, timeout_s: float | None = 120.0):
-    """Run ``fn`` on the single embed worker. ``timeout_s=None`` waits forever."""
-    fut = _EMBED_EXECUTOR.submit(fn)
+    """Run ``fn`` on the single embed worker. ``timeout_s=None`` waits forever.
+
+    Re-entrant: if already on the embed worker (e.g. search submitted a job that
+    calls ``_LazyEmbedder.embed_one`` → another ``run_embed_infer``), run inline.
+    Nested submit on ``max_workers=1`` would otherwise deadlock forever.
+    """
+    if getattr(_EMBED_WORKER_LOCAL, "inside", False):
+        return fn()
+
+    def _wrap():
+        _EMBED_WORKER_LOCAL.inside = True
+        try:
+            return fn()
+        finally:
+            _EMBED_WORKER_LOCAL.inside = False
+
+    fut = _EMBED_EXECUTOR.submit(_wrap)
     return fut.result(timeout=timeout_s)
 
 
@@ -261,7 +278,42 @@ def prewarm_status() -> dict[str, Any]:
             "error": _PREWARM_STATE.get("error"),
             "ms": _PREWARM_STATE.get("ms"),
             "embedder_loaded": embedder_is_loaded(),
+            "prime_done": bool(_PREWARM_STATE.get("prime_done")) or prime_dense_ready(),
+            "priming": bool(_PREWARM_STATE.get("priming")),
+            "prime_dense": dict(_PREWARM_STATE.get("prime_dense") or {}),
         }
+
+
+def _prime_done_path() -> Path:
+    from pipeline.project_id import context_engine_home
+
+    return context_engine_home() / "embed_prime.done"
+
+
+def _mark_prime_done(ok: bool, payload: dict[str, Any] | None = None) -> None:
+    path = _prime_done_path()
+    try:
+        if not ok:
+            if path.is_file():
+                path.unlink()
+            return
+        path.parent.mkdir(parents=True, exist_ok=True)
+        blob = {"ok": True, "at": time.time(), **(payload or {})}
+        path.write_text(json.dumps(blob, default=str), encoding="utf-8")
+    except OSError:
+        pass
+
+
+def prime_dense_ready(*, max_age_s: float = 3600.0) -> bool:
+    """True after warmup paid the first D-channel encode (side-channel, not /health)."""
+    path = _prime_done_path()
+    try:
+        if not path.is_file():
+            return False
+        age = time.time() - path.stat().st_mtime
+        return 0.0 <= age < float(max_age_s)
+    except OSError:
+        return False
 
 
 def _prewarm_enabled() -> bool:
@@ -269,32 +321,159 @@ def _prewarm_enabled() -> bool:
     return raw not in {"0", "false", "no", "off"}
 
 
+def _prewarm_busy_path() -> Path:
+    from pipeline.project_id import context_engine_home
+
+    return context_engine_home() / "embed_prewarm.busy"
+
+
+def _mark_prewarm_busy(busy: bool) -> None:
+    """Side-channel for watchdog: /health can time out while ORT holds the GIL."""
+    path = _prewarm_busy_path()
+    try:
+        if busy:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(str(time.time()), encoding="utf-8")
+        elif path.is_file():
+            path.unlink()
+    except OSError:
+        pass
+
+
+def prewarm_busy_stamp_active(*, max_age_s: float | None = None) -> bool:
+    """True when a dense prewarm is in flight (file stamp; no HTTP)."""
+    path = _prewarm_busy_path()
+    try:
+        if not path.is_file():
+            return False
+        age = time.time() - float((path.read_text(encoding="utf-8") or "0").strip() or 0)
+        if max_age_s is None:
+            from pipeline.warm_autoload import DEFAULT_PREWARM_MAX_AGE_S
+
+            limit = float(DEFAULT_PREWARM_MAX_AGE_S)
+        else:
+            limit = max(1.0, float(max_age_s))
+        return 0.0 <= age < limit
+    except (OSError, ValueError):
+        return False
+
+
+# Representative map-shaped query so the first *real* DML encode + D-channel
+# retrieve is paid during the ~40s warmup, not on the user's first map.
+_PRIME_DENSE_QUERY = (
+    "retrieve_D_channel_best FastEmbed embed_one DmlExecutionProvider "
+    "pack_context expand_context map_result_cache mcp_locate map_impl "
+    "packages/pipeline/engine.py::search packages/pipeline/mcp_locate.py::map_impl "
+    "dense_embed_required keepalive CTX_EMBED_KEEPALIVE_S "
+    "enforce_mcp_warm_contract disconnect debounce lifecycle_runtime"
+)
+
+
+def prime_dense_search(eng: Any) -> dict[str, Any]:
+    """Run one D_channel_best search so later maps skip the ~2s first-encode tax."""
+    q = (os.environ.get("CTX_EMBED_PRIME_QUERY") or _PRIME_DENSE_QUERY).strip()
+    t0 = time.perf_counter()
+    hits = eng.search(q, top_k=8, skip_freshness=True)
+    ms = round((time.perf_counter() - t0) * 1000, 1)
+    n = len(hits) if hits is not None else 0
+    timings = dict(getattr(eng, "_last_timings", None) or {})
+    return {"ok": True, "ms": ms, "hits": n, "timings": timings}
+
+
+def _prime_with_timeout(eng: Any, *, timeout_s: float = 15.0) -> dict[str, Any]:
+    """Best-effort prime; never block warmup longer than ``timeout_s``."""
+    box: dict[str, Any] = {}
+
+    def _run() -> None:
+        try:
+            box["prime"] = prime_dense_search(eng)
+        except Exception as exc:  # noqa: BLE001
+            box["prime"] = {"ok": False, "error": str(exc)}
+
+    with _PREWARM_LOCK:
+        _PREWARM_STATE["priming"] = True
+    t = threading.Thread(target=_run, name="scubiee-prime-dense", daemon=True)
+    t.start()
+    t.join(max(3.0, float(timeout_s)))
+    with _PREWARM_LOCK:
+        _PREWARM_STATE["priming"] = False
+    if t.is_alive():
+        return {"ok": False, "error": "timeout", "timeout_s": timeout_s}
+    return box.get("prime") or {"ok": False, "error": "empty"}
+
+
 def prewarm_embedder(root: Path | str | None = None) -> dict[str, Any]:
     """Synchronously load FastEmbed weights (first ORT/DML session)."""
     t0 = time.perf_counter()
     try:
-        from pipeline.memory_governor import get_governor
+        from pipeline.warm_autoload import begin_prewarm
 
-        get_governor().ensure_semantic_tier()
+        begin_prewarm()
     except Exception:  # noqa: BLE001
-        pass
-    root_p = Path(root or os.environ.get("CTX_REPO") or ".").resolve()
-    eng = load_engine(root_p)
-    emb = eng.embedder
-    # Forces _LazyEmbedder → real FastEmbed/ORT session creation.
-    emb.embed_one("scubiee prewarm", is_query=True)
-    ms = round((time.perf_counter() - t0) * 1000, 1)
-    with _PREWARM_LOCK:
-        _PREWARM_STATE.update({"running": False, "done": True, "error": None, "ms": ms})
-    # Keep DML/GPU clocks up while IDE clients remain connected.
+        _mark_prewarm_busy(True)
     try:
-        ensure_embed_keepalive_loop(root_p)
-    except Exception:  # noqa: BLE001
-        pass
-    return {"ok": True, "ms": ms, "embedder_loaded": True}
+        try:
+            from pipeline.memory_governor import get_governor
+
+            get_governor().ensure_semantic_tier()
+        except Exception:  # noqa: BLE001
+            pass
+        root_p = Path(root or os.environ.get("CTX_REPO") or ".").resolve()
+        eng = load_engine(root_p)
+        emb = eng.embedder
+        # Forces _LazyEmbedder → real FastEmbed/ORT session creation.
+        # ORT session init holds the GIL — /health will time out until this returns.
+        emb.embed_one("scubiee prewarm", is_query=True)
+        ms = round((time.perf_counter() - t0) * 1000, 1)
+        with _PREWARM_LOCK:
+            _PREWARM_STATE.update({"running": False, "done": True, "error": None, "ms": ms})
+        try:
+            from pipeline.warm_autoload import end_prewarm
+
+            end_prewarm(ok=True)
+        except Exception:  # noqa: BLE001
+            _mark_prewarm_busy(False)
+        # Prime the first real D-channel search BEFORE keepalive. Cap at 15s so
+        # a stuck retrieve cannot hide behind settle_join forever.
+        prime: dict[str, Any] = {"ok": False, "skipped": True}
+        try:
+            prime = _prime_with_timeout(eng, timeout_s=15.0)
+        except Exception as exc:  # noqa: BLE001
+            prime = {"ok": False, "error": str(exc)}
+        with _PREWARM_LOCK:
+            _PREWARM_STATE["prime_dense"] = prime
+            _PREWARM_STATE["prime_done"] = True
+        # Stamp even on timeout — DML session exists; first map may still be ≤3s.
+        _mark_prime_done(True, prime)
+        try:
+            ensure_embed_keepalive_loop(root_p)
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            embed_keepalive(root_p)
+        except Exception:  # noqa: BLE001
+            pass
+        return {
+            "ok": True,
+            "ms": ms,
+            "embedder_loaded": True,
+            "prime_dense": prime,
+        }
+    except Exception as exc:
+        try:
+            from pipeline.warm_autoload import end_prewarm
+
+            end_prewarm(ok=False, error=str(exc))
+        except Exception:  # noqa: BLE001
+            _mark_prewarm_busy(False)
+        with _PREWARM_LOCK:
+            _PREWARM_STATE.update(
+                {"running": False, "done": False, "error": str(exc), "ms": None}
+            )
+        raise
 
 
-_KEEPALIVE_LOCK = threading.Lock()
+_KEEPALIVE_LOCK = threading.RLock()
 _KEEPALIVE_STOP: threading.Event | None = None
 _KEEPALIVE_THREAD: threading.Thread | None = None
 _KEEPALIVE_STATE: dict[str, Any] = {
@@ -313,12 +492,16 @@ def embed_keepalive_enabled() -> bool:
 
 
 def embed_keepalive_interval_s() -> float:
-    """Seconds between dummy encodes while clients are connected (default 45)."""
-    raw = (os.environ.get("CTX_EMBED_KEEPALIVE_S") or "45").strip()
+    """Seconds between dummy encodes while MCP clients are connected.
+
+    Default **15s** so DirectML/GPU clocks stay hot — map after idle stays
+    sub-second. Override with ``CTX_EMBED_KEEPALIVE_S`` (5–120).
+    """
+    raw = (os.environ.get("CTX_EMBED_KEEPALIVE_S") or "15").strip()
     try:
         return max(5.0, min(120.0, float(raw)))
     except ValueError:
-        return 20.0
+        return 15.0
 
 
 def embed_keepalive_timeout_s() -> float:
@@ -354,10 +537,21 @@ def embed_keepalive(root: Path | str | None = None) -> dict[str, Any]:
     if not embedder_is_loaded():
         return {"ok": True, "skipped": True, "reason": "embedder_not_loaded"}
     try:
-        if bool((prewarm_status() or {}).get("running")):
+        st = prewarm_status() or {}
+        if bool(st.get("running")) or bool(st.get("priming")):
             return {"ok": True, "skipped": True, "reason": "prewarm_running"}
     except Exception:  # noqa: BLE001
         pass
+    if not prime_dense_ready():
+        try:
+            root_p = Path(root or os.environ.get("CTX_REPO") or ".").resolve()
+            prime = _prime_with_timeout(load_engine(root_p), timeout_s=15.0)
+            with _PREWARM_LOCK:
+                _PREWARM_STATE["prime_dense"] = prime
+                _PREWARM_STATE["prime_done"] = True
+            _mark_prime_done(True, prime)
+        except Exception as exc:  # noqa: BLE001
+            _mark_prime_done(True, {"ok": False, "error": str(exc)})
     t0 = time.perf_counter()
     try:
         root_p = Path(root or os.environ.get("CTX_REPO") or ".").resolve()
@@ -368,7 +562,10 @@ def embed_keepalive(root: Path | str | None = None) -> dict[str, Any]:
             # Must call the real Embedder while already on the embed worker —
             # LazyEmbedder.embed_one would re-submit to the same executor and deadlock.
             real = emb._ensure() if hasattr(emb, "_ensure") else emb
-            real.embed_one("scubiee keepalive", is_query=True)
+            # Bypass embedder.cache — a fixed dummy string skips DML after the
+            # first tick and GPU clocks drop (post-idle map paid ~3s again).
+            payload = real.format_query(f"scubiee keepalive {time.time_ns()}")
+            real._encode_batch([payload])
 
         run_embed_infer(_tick, timeout_s=embed_keepalive_timeout_s())
         ms = round((time.perf_counter() - t0) * 1000, 1)
@@ -406,7 +603,7 @@ def ensure_embed_keepalive_loop(root: Path | str | None = None) -> dict[str, Any
     """Start engine-side dummy-encode loop while MCP/IDE clients are registered.
 
     Lives in the engine process (where DML is). MCP client/touch heartbeats are
-    a backup; this is the primary anti-idle path for map ms-after-minutes.
+    a backup; this is the primary anti-idle path for map <1s after minutes idle.
     """
     if not embed_keepalive_enabled():
         return {"ok": True, "skipped": True, "reason": "CTX_EMBED_KEEPALIVE=0"}
@@ -420,17 +617,26 @@ def ensure_embed_keepalive_loop(root: Path | str | None = None) -> dict[str, Any
         _KEEPALIVE_STATE["running"] = True
 
         def _loop() -> None:
-            while not stop.wait(embed_keepalive_interval_s()):
+            # Tiny yield so HTTP ``ensure_embed_keepalive_loop`` can return
+            # before the first DML tick (ORT GIL would otherwise starve /health).
+            if stop.wait(0.05):
+                return
+            while True:
                 try:
                     from pipeline.lifecycle_runtime import active_client_count
 
-                    if int(active_client_count()) <= 0:
-                        continue
+                    clients = int(active_client_count())
                 except Exception:  # noqa: BLE001
-                    continue
-                if not embedder_is_loaded():
-                    continue
-                embed_keepalive(root_s)
+                    clients = 0
+                wait_s = embed_keepalive_interval_s()
+                if clients > 0:
+                    if embedder_is_loaded():
+                        embed_keepalive(root_s)
+                    # Do not kick prewarm from keepalive. Attach kicks once;
+                    # a 2s retry loop re-entered ORT while the first load held
+                    # the GIL and refreshed the hung-prewarm clock.
+                if stop.wait(wait_s):
+                    break
 
         t = threading.Thread(target=_loop, name="scubiee-embed-keepalive", daemon=True)
         _KEEPALIVE_THREAD = t
@@ -449,11 +655,27 @@ def prewarm_embedder_async(root: Path | str | None = None) -> dict[str, Any]:
     if embedder_is_loaded():
         with _PREWARM_LOCK:
             _PREWARM_STATE["done"] = True
+        if not prime_dense_ready():
+            try:
+                root_p = Path(root or os.environ.get("CTX_REPO") or ".").resolve()
+                prime = _prime_with_timeout(load_engine(root_p), timeout_s=15.0)
+                with _PREWARM_LOCK:
+                    _PREWARM_STATE["prime_dense"] = prime
+                    _PREWARM_STATE["prime_done"] = True
+                _mark_prime_done(True, prime)
+            except Exception as exc:  # noqa: BLE001
+                _mark_prime_done(True, {"ok": False, "error": str(exc)})
         return {"ok": True, "already_warm": True, **prewarm_status()}
     with _PREWARM_LOCK:
         if _PREWARM_STATE.get("running"):
             return {"ok": True, "already_running": True, **prewarm_status()}
         _PREWARM_STATE.update({"running": True, "error": None})
+    try:
+        from pipeline.warm_autoload import begin_prewarm
+
+        begin_prewarm()
+    except Exception:  # noqa: BLE001
+        _mark_prewarm_busy(True)
 
     root_s = str(Path(root).resolve()) if root else None
 
@@ -470,6 +692,12 @@ def prewarm_embedder_async(root: Path | str | None = None) -> dict[str, Any]:
                         "ms": None,
                     }
                 )
+            try:
+                from pipeline.warm_autoload import end_prewarm
+
+                end_prewarm(ok=False, error=str(exc))
+            except Exception:  # noqa: BLE001
+                _mark_prewarm_busy(False)
 
     threading.Thread(target=_run, name="scubiee-embed-prewarm", daemon=True).start()
     return {"ok": True, "started": True, **prewarm_status()}
@@ -501,6 +729,38 @@ def warming_response(*, warm_state: str = "warming") -> dict[str, Any]:
             "Do not poll status() in a loop."
         ),
     }
+
+
+def is_dense_d_channel_result(
+    payload: dict[str, Any] | None = None,
+    *,
+    timings: dict[str, Any] | None = None,
+) -> bool:
+    """True when map/search used real FastEmbed → D_channel_best (not BM25/pseudo/cap-only)."""
+    blob = payload if isinstance(payload, dict) else {}
+    t = timings if isinstance(timings, dict) else (blob.get("timings") if isinstance(blob.get("timings"), dict) else {})
+    if blob.get("warming") or blob.get("ok") is False:
+        return False
+    err = str(blob.get("error") or "").lower()
+    if err in {"dense_embed_loading", "engine_warming", "dense_embed_required"}:
+        return False
+    mode = str(t.get("retrieve_mode") or blob.get("retrieve_mode") or "")
+    if "pseudo" in mode or mode == "capability":
+        return False
+    if t.get("dense") is True or blob.get("dense") is True:
+        return (not mode) or ("D_channel" in mode)
+    rows: list[Any] = []
+    for key in ("cards", "results", "hits"):
+        chunk = blob.get(key)
+        if isinstance(chunk, list):
+            rows.extend(chunk)
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        src = str(row.get("source") or "")
+        if "D_channel_best" in src and "pseudo" not in src:
+            return True
+    return False
 
 
 def ensure_embedder_ready(
@@ -679,33 +939,67 @@ class WarmSearchEngine:
         # single-flight the embed — DirectML/ORT is not safe under ThreadingHTTPServer.
         max_q = int(os.environ.get("CTX_QUERY_MAX_CHARS", "2000") or "2000")
         q_embed = (query or "")[: max(64, max_q)]
-        use_dense = True
-        # Soft HTTP locate (map/pack) must never queue behind ORT keepalive/prewarm —
-        # hold(..., timeout_s=8) was the ~3.5–8s LOCATE_SLA killer while engine
-        # retrieve itself stayed ~180ms.
-        if skip_freshness:
-            use_dense = False
-        else:
-            try:
-                if not embedder_is_loaded():
-                    use_dense = False
-                elif bool((prewarm_status() or {}).get("running")):
-                    # Attach prewarm owns the embed worker — never wait 90s behind it.
-                    use_dense = False
-            except Exception:  # noqa: BLE001
-                use_dense = True
+        # Map/search always use real FastEmbed → D_channel_best (BM25+dense+graph).
+        # Never skip dense for skip_freshness. Never park the HTTP worker on a
+        # full sync cold load (that GIL-starved /health and failed Lane A settle).
+        # Kick async + brief join; if still cold → dense_embed_required (retry).
+        allow_pseudo = (os.environ.get("CTX_ALLOW_PSEUDO_DENSE") or "").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        dense_ready = False
         try:
-            if not use_dense:
-                raise RuntimeError("skip_dense_during_prewarm")
-            from pipeline.fair_schedule import get_embed_scheduler
+            wait_raw = (os.environ.get("CTX_EMBED_SEARCH_WAIT_S") or "0").strip()
+            wait_s = max(0.0, min(30.0, float(wait_raw)))
+        except ValueError:
+            wait_s = 0.0
+        try:
+            if not embedder_is_loaded():
+                prewarm_embedder_async(self.root)
+                deadline = time.time() + wait_s
+                while time.time() < deadline and not embedder_is_loaded():
+                    st = prewarm_status() or {}
+                    if st.get("error"):
+                        raise RuntimeError(str(st.get("error")))
+                    time.sleep(0.05)
+                if not embedder_is_loaded():
+                    raise RuntimeError(
+                        "dense_embed_required: FastEmbed still loading for "
+                        "D_channel_best map/search — retry in ~3s"
+                    )
+            elif bool((prewarm_status() or {}).get("running")):
+                # Join brief; do not fall back to hash.
+                deadline = time.time() + min(wait_s, 5.0)
+                while time.time() < deadline and bool(
+                    (prewarm_status() or {}).get("running")
+                ):
+                    time.sleep(0.05)
+                if not embedder_is_loaded():
+                    raise RuntimeError(
+                        "dense_embed_required: FastEmbed prewarm in flight — retry"
+                    )
+            # All DML/ORT on the single embed worker (same as keepalive).
+            # Never encode on the HTTP thread — concurrent DirectML wedges map.
+            # Unwrap _LazyEmbedder so we do not nest run_embed_infer (deadlock).
+            def _embed_query() -> Any:
+                emb = self.embedder
+                real = emb._ensure() if hasattr(emb, "_ensure") else emb
+                return real.embed_one(q_embed, is_query=True)
 
-            with get_embed_scheduler().hold(
-                "query-embed", priority="active", timeout_s=8.0
-            ) as acquired:
-                if not acquired:
-                    raise TimeoutError("embed scheduler busy")
-                qvec = self.embedder.embed_one(q_embed, is_query=True)
+            qvec = run_embed_infer(
+                _embed_query,
+                timeout_s=max(5.0, min(25.0, embed_keepalive_timeout_s() + 5.0)),
+            )
+            dense_ready = True
         except Exception:
+            if not allow_pseudo:
+                raise RuntimeError(
+                    "dense_embed_required: FastEmbed not ready for map/search "
+                    "(D_channel_best). Retry after embedder loads, or run "
+                    "scubiee engine ensure . / POST /v1/embed/prewarm."
+                )
             import hashlib
 
             h = hashlib.sha256(q_embed.encode("utf-8")).digest()
@@ -719,7 +1013,7 @@ class WarmSearchEngine:
         # One production retrieve path. Research arches stay on MultiArchConductor
         # for bakeoffs; the engine does not select them.
         retrieve_fn = self.conductor.retrieve_D_channel_best
-        route = "D_channel_best"
+        route = "D_channel_best" if dense_ready else "D_channel_best:pseudo"
         hits = retrieve_fn(query, qvec, top_k=top_k)
         retrieve_ms = (time.perf_counter() - t1) * 1000
 
@@ -790,6 +1084,7 @@ class WarmSearchEngine:
             "detection": gate.get("freshness", {}).get("detection"),
             "hot_patched_chunks": gate.get("hot_patched_chunks", 0),
             "retrieve_mode": route,
+            "dense": bool(dense_ready),
             "query_state": qstate,
             "path_likeness": round(plike, 3) if plike is not None else None,
             "hit_source": out[0].source if out else None,

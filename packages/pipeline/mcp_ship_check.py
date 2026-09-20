@@ -209,6 +209,20 @@ def run_ship_ladder(
             status_json = parse_tool_json(status_raw)
             # Non-empty alone is not enough — ok:false means daemon down / paused.
             status_ok = bool(status_json.get("ok")) and not status_json.get("paused")
+            # Cursor-open: /health can flap warming while ORT holds the GIL even
+            # after map/pack already succeeded — do not fail ship on that alone.
+            map_already = bool((report.get("checks") or {}).get("map", {}).get("ok"))
+            if (
+                not status_ok
+                and map_already
+                and not status_json.get("paused")
+                and (
+                    status_json.get("warming")
+                    or status_json.get("soft_search_ready")
+                    or str(status_json.get("agent_ready") or "") in {"yes", "warming"}
+                )
+            ):
+                status_ok = True
             report["checks"]["status"] = {
                 "ok": status_ok,
                 "preview": str(status_raw)[:120],

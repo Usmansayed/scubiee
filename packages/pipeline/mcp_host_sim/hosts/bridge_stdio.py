@@ -106,14 +106,21 @@ class BridgeHost:
         project_id: str,
         engine_url: str,
         env_extra: dict[str, str] | None = None,
+        mcp_client: str = "cursor",
     ) -> None:
         self.repo = Path(repo).resolve()
         self.project_id = project_id
         self.engine_url = engine_url.rstrip("/")
         self.env_extra = dict(env_extra or {})
+        # Match production Cursor mcp.json (CTX_MCP_CLIENT=cursor). Override for
+        # Kiro/other host sims via mcp_client=… or env_extra.
+        self.mcp_client = (mcp_client or "cursor").strip().lower() or "cursor"
         self.proc: subprocess.Popen[str] | None = None
         self.client: McpStdioClient | None = None
         self.started_at: float | None = None
+
+    def _session_id(self) -> str:
+        return "mcp-host-sim-lane-b" if self.mcp_client == "kiro" else "mcp-host-sim-lane-a"
 
     def _entry(self) -> dict[str, Any]:
         from pipeline.mcp_install import server_entry
@@ -129,12 +136,14 @@ class BridgeHost:
         env["CTX_ENGINE_URL"] = self.engine_url
         env["CTX_REPO"] = str(self.repo).replace("\\", "/")
         env["CTX_PROJECT_ID"] = self.project_id
-        env["CTX_MCP_CLIENT"] = "kiro"
+        env["CTX_MCP_CLIENT"] = self.mcp_client
         env["CTX_MCP_EXPERIMENT"] = "ship"
         env["CTX_MCP_SURFACE"] = "phase"
         # Stable session so map_cache survives worker respawn; disable hot-reload
         # mid-run (uv install / file mtime) which wiped in-process map cache.
-        env["CTX_MCP_SESSION_ID"] = env.get("CTX_MCP_SESSION_ID") or "mcp-host-sim-lane-a"
+        env["CTX_MCP_SESSION_ID"] = env.get("CTX_MCP_SESSION_ID") or (
+            "mcp-host-sim-lane-b" if self.mcp_client == "kiro" else "mcp-host-sim-lane-a"
+        )
         env["CTX_MCP_HOT_RELOAD"] = env.get("CTX_MCP_HOT_RELOAD") or "0"
         # Force shared: auto mode was spawning tools/list on kiro@chat-* and
         # tools/call map on a second cold worker (SETTLE_MAP_SLOW 5–6s).
@@ -219,17 +228,20 @@ class BridgeHost:
 
     def status(self) -> dict[str, Any]:
         assert self.client
+        t0 = time.perf_counter()
         raw = self.client.call_tool(
             "status",
             {
                 "project_id": self.project_id,
                 "root": str(self.repo),
                 "detail": "summary",
-                "session_id": "mcp-host-sim-lane-a",
+                "session_id": self._session_id(),
             },
             timeout=12,
         )
-        return parse_tool_json(raw)
+        data = parse_tool_json(raw)
+        data["_elapsed_ms"] = round((time.perf_counter() - t0) * 1000, 1)
+        return data
 
     def map(self, query: str, *, k: int = 12) -> dict[str, Any]:
         assert self.client
@@ -241,7 +253,7 @@ class BridgeHost:
                 "k": k,
                 "project_id": self.project_id,
                 "root": str(self.repo),
-                "session_id": "mcp-host-sim-lane-a",
+                "session_id": self._session_id(),
             },
             timeout=180,
         )
@@ -268,7 +280,7 @@ class BridgeHost:
             "mode": "lean",
             "project_id": self.project_id,
             "root": str(self.repo),
-            "session_id": "mcp-host-sim-lane-a",
+            "session_id": self._session_id(),
         }
         if seed2_file:
             args["seed2_file"] = seed2_file
@@ -296,7 +308,7 @@ class BridgeHost:
             "direction": direction,
             "project_id": self.project_id,
             "root": str(self.repo),
-            "session_id": "mcp-host-sim-lane-a",
+            "session_id": self._session_id(),
         }
         if node:
             args["node"] = node

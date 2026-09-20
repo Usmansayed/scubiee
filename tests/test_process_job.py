@@ -37,17 +37,24 @@ def test_engine_spawn_breaks_away_from_cursor_job(monkeypatch) -> None:
     assert hard.get("close_fds") is True
 
 
-def test_engine_cpu_cap_pct_default(monkeypatch) -> None:
+def test_engine_cpu_cap_pct_default_uncapped(monkeypatch) -> None:
+    from pipeline.process_job import engine_cpu_cap_enabled, engine_cpu_cap_pct
+
     monkeypatch.delenv("CTX_ENGINE_CPU_CAP_PCT", raising=False)
-    assert engine_cpu_cap_pct() == 25.0
+    assert engine_cpu_cap_enabled() is False
+    assert engine_cpu_cap_pct() == 0.0
     monkeypatch.setenv("CTX_ENGINE_CPU_CAP_PCT", "30")
+    assert engine_cpu_cap_enabled() is True
     assert engine_cpu_cap_pct() == 30.0
+    monkeypatch.setenv("CTX_ENGINE_CPU_CAP_PCT", "0")
+    assert engine_cpu_cap_enabled() is False
+    assert engine_cpu_cap_pct() == 0.0
 
 
 def test_affinity_keep_cpus_low_end_floor(monkeypatch) -> None:
     from pipeline.process_job import affinity_keep_cpus, effective_engine_cpu_cap_pct
 
-    monkeypatch.delenv("CTX_ENGINE_CPU_CAP_PCT", raising=False)
+    monkeypatch.setenv("CTX_ENGINE_CPU_CAP_PCT", "25")
     monkeypatch.setattr("pipeline.process_job.os.cpu_count", lambda: 4)
     # Raw 25% of 4 → 1 core; floor must keep ≥2 and boost effective %.
     assert effective_engine_cpu_cap_pct() >= 50.0
@@ -55,3 +62,5 @@ def test_affinity_keep_cpus_low_end_floor(monkeypatch) -> None:
     monkeypatch.setattr("pipeline.process_job.os.cpu_count", lambda: 16)
     assert effective_engine_cpu_cap_pct() == 25.0
     assert affinity_keep_cpus() == 4
+    monkeypatch.setenv("CTX_ENGINE_CPU_CAP_PCT", "0")
+    assert affinity_keep_cpus() == 16

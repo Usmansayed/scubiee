@@ -603,14 +603,29 @@ class Embedder:
         # objects while tokenizers/numpy/MLX release the GIL.
         import gc
 
-        gc_was_enabled = gc.isenabled()
-        if gc_was_enabled:
-            gc.disable()
-        try:
-            return self._encode_batch_inner(batch)
-        finally:
+        def _run() -> np.ndarray:
+            gc_was_enabled = gc.isenabled()
             if gc_was_enabled:
-                gc.enable()
+                gc.disable()
+            try:
+                return self._encode_batch_inner(batch)
+            finally:
+                if gc_was_enabled:
+                    gc.enable()
+
+        # Engine process: all ORT/DML (map keepalive + incremental sync) must
+        # share the single embed worker. Concurrent DirectML from the keeper
+        # sync thread + keepalive wedged /health and hung map forever.
+        try:
+            from pipeline.lifecycle_runtime import is_engine_process
+
+            if is_engine_process():
+                from pipeline.engine import run_embed_infer
+
+                return run_embed_infer(_run, timeout_s=None)
+        except Exception:  # noqa: BLE001
+            pass
+        return _run()
 
     def _encode_batch_inner(self, batch: list[str]) -> np.ndarray:
         if self.backend == "mlx":

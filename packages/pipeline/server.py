@@ -242,6 +242,25 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if touch_client(client_id):
                 note_activity()
+                # Re-arm keepalive — but do NOT re-kick ORT or spam ensure_loop
+                # while dense prewarm holds the GIL (Cursor touch storms).
+                try:
+                    from pipeline.engine import (
+                        embedder_is_loaded,
+                        ensure_embed_keepalive_loop,
+                        prewarm_busy_stamp_active,
+                        prewarm_embedder_async,
+                    )
+
+                    root = data.get("path") or data.get("root") or None
+                    if prewarm_busy_stamp_active(max_age_s=180.0):
+                        pass  # quiet — stamp alone holds idle stop + watchdog
+                    else:
+                        ensure_embed_keepalive_loop(root)
+                        if not embedder_is_loaded():
+                            prewarm_embedder_async(root)
+                except Exception:  # noqa: BLE001
+                    pass
                 _json(self, 200, {"ok": True, "client_id": client_id, "touched": True})
                 return
             pid_raw = data.get("pid")
@@ -272,78 +291,30 @@ class Handler(BaseHTTPRequestHandler):
             )
 
             root = data.get("path") or data.get("root") or None
-            sync = bool(data.get("sync") or data.get("wait"))
-            if sync:
-                # Never run ORT on this HTTP worker, and never park the worker for
-                # the full prewarm (that queued /v1/search behind embed_one for 60s+).
-                kicked = prewarm_embedder_async(root)
-                st = prewarm_status()
-                if embedder_is_loaded() and not st.get("running"):
-                    _json(
-                        self,
-                        200,
-                        {
-                            "ok": True,
-                            "already_warm": True,
-                            "async_join": True,
-                            **st,
-                            "kick": kicked,
-                        },
-                    )
-                    return
-                # Brief poll only — attach/sim keep watching soft_search_ready.
-                wait_s = 8.0
-                try:
-                    wait_s = float(data.get("wait_s") or 8.0)
-                except (TypeError, ValueError):
-                    wait_s = 8.0
-                deadline = time.time() + max(0.5, min(30.0, wait_s))
-                while time.time() < deadline:
-                    st = prewarm_status()
-                    if embedder_is_loaded() and not st.get("running"):
-                        _json(
-                            self,
-                            200,
-                            {
-                                "ok": True,
-                                "async_join": True,
-                                **st,
-                                "kick": kicked,
-                            },
-                        )
-                        return
-                    if st.get("error"):
-                        _json(
-                            self,
-                            200,
-                            {
-                                "ok": False,
-                                "error": st.get("error"),
-                                "async_join": True,
-                                **st,
-                                "kick": kicked,
-                            },
-                        )
-                        return
-                    time.sleep(0.05)
+            if embedder_is_loaded():
                 st = prewarm_status()
                 _json(
                     self,
                     200,
-                    {
-                        "ok": True,
-                        "warming": True,
-                        "async_join": True,
-                        "should_retry": True,
-                        **st,
-                        "kick": kicked,
-                        "hint": "Embedder still loading; wait for soft_search_ready.",
-                    },
+                    {"ok": True, "already_warm": True, **st},
                 )
                 return
-            out = prewarm_embedder_async(root)
-            out["status"] = prewarm_status()
-            _json(self, 200, out)
+            # Never run ORT on this HTTP worker and never poll /health-adjacent
+            # status in a loop — that parked ThreadingHTTPServer behind GIL.
+            kicked = prewarm_embedder_async(root)
+            _json(
+                self,
+                200,
+                {
+                    "ok": True,
+                    "warming": True,
+                    "async": True,
+                    "should_retry": True,
+                    **prewarm_status(),
+                    "kick": kicked,
+                    "hint": "Embedder loading in background; retry map after dense.",
+                },
+            )
             return
 
         if path in {"/v1/embed/keepalive", "/v1/keepalive"}:
@@ -819,6 +790,19 @@ def _start_idle_sweeper(
                         file=sys.stderr,
                         flush=True,
                     )
+                elif demote and demote.get("action") == "hold_mcp_clients":
+                    # Hold FastEmbed hot while MCP is connected. Always arm the
+                    # keepalive loop — when soft is up but dense is still cold
+                    # the loop kicks async prewarm (2s poll) so Cursor-open
+                    # settle does not sit soft=true/embed=false until first map.
+                    try:
+                        from pipeline.engine import ensure_embed_keepalive_loop
+
+                        ensure_embed_keepalive_loop(
+                            os.environ.get("CTX_REPO") or None
+                        )
+                    except Exception:  # noqa: BLE001
+                        pass
                 get_governor().refresh_from_hub(get_context_engine().hub)
             except Exception:  # noqa: BLE001
                 pass

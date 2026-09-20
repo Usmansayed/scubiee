@@ -425,8 +425,9 @@ class RuntimeManager:
             n_chunks = 0
         binder_live = self.engine is not None and n_chunks > 0
         warm_bool = self.warm_state in {"ready", "stale"} and binder_live
-        # Soft = binder ready for locate. Dense embed may still be loading;
-        # map/search use BM25/hash until prewarm finishes.
+        # Soft = binder ready for locate. Dense embed loads in background via
+        # attach warm + idle sweeper (MCP clients>0); map/search wait for real
+        # FastEmbed → D_channel_best. Never kick ORT from /health (GIL-starves).
         soft_ok = bool(warm_bool)
         index_usable = soft_ok
         if not soft_ok and self.repo is not None:
@@ -448,6 +449,20 @@ class RuntimeManager:
             prewarm_busy = bool((prewarm_status() or {}).get("running"))
         except Exception:  # noqa: BLE001
             pass
+        warm_phase = None
+        try:
+            from pipeline.warm_autoload import read_phase
+
+            warm_phase = (read_phase() or {}).get("phase")
+        except Exception:  # noqa: BLE001
+            warm_phase = None
+        # Prefer stamp/status if phase missing
+        if warm_phase is None and prewarm_busy:
+            warm_phase = "prewarm"
+        elif warm_phase is None and embedder_loaded:
+            warm_phase = "dense"
+        elif warm_phase is None and soft_ok:
+            warm_phase = "soft"
         return {
             "ok": True,
             "service": "scubiee",
@@ -459,6 +474,7 @@ class RuntimeManager:
             "embedder_loaded": embedder_loaded,
             "embed_prewarm_running": prewarm_busy,
             "dense_ready": bool(embedder_loaded and not prewarm_busy and n_chunks > 0),
+            "warm_phase": warm_phase,
             "chunks": n_chunks,
             "generation": self.generation,
             "index_usable": index_usable,
@@ -986,13 +1002,46 @@ class RuntimeManager:
         if len(q) > max_q:
             q = q[:max_q]
         try:
-            from pipeline.memory_governor import get_governor
-            from pipeline.engine import embedder_is_loaded
+            from pipeline.engine import embedder_is_loaded, warming_response
+            from pipeline.warm_autoload import in_prewarm
 
-            if embedder_is_loaded():
-                gov = get_governor()
-                gov.ensure_semantic_tier()
-                gov.refresh_from_hub(self.hub)
+            if in_prewarm() and not embedder_is_loaded():
+                payload = warming_response(warm_state="embed_loading")
+                payload["error"] = "dense_embed_loading"
+                payload["hint"] = (
+                    "FastEmbed/ORT still loading. Retry this same map in ~3s — "
+                    "do not poll /health and do not fall back to BM25-only."
+                )
+                return payload
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            from pipeline.memory_governor import get_governor
+            from pipeline.engine import (
+                embedder_is_loaded,
+                ensure_embed_keepalive_loop,
+                prewarm_embedder_async,
+            )
+
+            gov = get_governor()
+            gov.ensure_semantic_tier()
+            gov.refresh_from_hub(self.hub)
+            if not embedder_is_loaded():
+                try:
+                    prewarm_embedder_async(root or self.repo)
+                except Exception:  # noqa: BLE001
+                    pass
+                payload = warming_response(warm_state="embed_loading")
+                payload["error"] = "dense_embed_loading"
+                payload["hint"] = (
+                    "FastEmbed loading for dense map. Retry this same map/search "
+                    "in ~3s — do not fall back to BM25-only and do not poll /health."
+                )
+                return payload
+            try:
+                ensure_embed_keepalive_loop(root or self.repo)
+            except Exception:  # noqa: BLE001
+                pass
         except Exception:  # noqa: BLE001
             pass
         eng = self._ensure_engine(root)
@@ -1032,6 +1081,21 @@ class RuntimeManager:
         try:
             hits = eng.search(q, top_k=top_k, skip_freshness=True)
         except Exception as exc:  # noqa: BLE001
+            err = str(exc)
+            if "dense_embed_required" in err or "FastEmbed not ready" in err:
+                from pipeline.engine import prewarm_embedder_async, warming_response
+
+                try:
+                    prewarm_embedder_async(root or self.repo)
+                except Exception:  # noqa: BLE001
+                    pass
+                payload = warming_response(warm_state="embed_loading")
+                payload["error"] = "dense_embed_loading"
+                payload["hint"] = (
+                    "FastEmbed loading for dense map (D_channel_best). "
+                    "Retry this same map/search in ~3s — do not fall back to BM25-only."
+                )
+                return payload
             return {
                 "ok": False,
                 "error": f"search failed: {exc}",
@@ -1039,12 +1103,26 @@ class RuntimeManager:
                 "hits": [],
                 "hint": "Retry once; if persistent run: scubiee engine ensure .",
             }
+        timings = getattr(eng, "_last_timings", {}) or {}
+        from pipeline.engine import is_dense_d_channel_result, warming_response
+
+        if not is_dense_d_channel_result(timings=timings if isinstance(timings, dict) else {}):
+            payload = warming_response(warm_state="embed_loading")
+            payload["error"] = "dense_embed_loading"
+            payload["timings"] = timings
+            payload["hint"] = (
+                "Map/search requires FastEmbed D_channel_best. "
+                "Retry this same map after the embedder is dense — do not use BM25-only."
+            )
+            return payload
         return {
             "ok": True,
             "query": q,
             "generation": self.generation,
             "keeper": self.sync_loop.status() if self.sync_loop else None,
-            "timings": getattr(eng, "_last_timings", {}),
+            "timings": timings,
+            "dense": True,
+            "retrieve_mode": timings.get("retrieve_mode") if isinstance(timings, dict) else None,
             "hits": [
                 {
                     "rank": h.rank,

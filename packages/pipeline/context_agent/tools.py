@@ -72,6 +72,9 @@ def _copy_backend_metadata(out: dict[str, Any], result: dict[str, Any]) -> dict[
         "should_retry",
         "retry_after_s",
         "agent_ready",
+        "timings",
+        "dense",
+        "retrieve_mode",
     ):
         if key in out and out[key] is not None:
             result[key] = out[key]
@@ -206,7 +209,14 @@ def tool_search_code(repo: Path, query: str, top_k: int = 6) -> dict[str, Any]:
                 "source": h.get("source"),
             }
         )
-    result = {"ok": not _backend_failed(out), "tool": "search_code", "hits": hits}
+    result = {
+        "ok": not _backend_failed(out),
+        "tool": "search_code",
+        "hits": hits,
+        "timings": out.get("timings") if isinstance(out.get("timings"), dict) else {},
+        "dense": bool(out.get("dense")),
+        "retrieve_mode": out.get("retrieve_mode"),
+    }
     return _copy_backend_metadata(out, result)
 
 

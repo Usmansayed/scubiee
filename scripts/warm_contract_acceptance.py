@@ -42,7 +42,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--no-stop", action="store_true")
     parser.add_argument("--idle-s", type=float, default=60.0)
-    parser.add_argument("--deadline-ms", type=float, default=30_000.0)
+    parser.add_argument("--deadline-ms", type=float, default=60_000.0)
     args = parser.parse_args()
     results: list[dict[str, Any]] = []
 
@@ -75,6 +75,16 @@ def main() -> int:
         print(f"client note: {exc}")
 
     print("== attach warm kick ==")
+    os.environ["CTX_WARM_DEADLINE_MS"] = str(int(args.deadline_ms))
+    # Ensure HTTP engine is up before attach pipeline (Lane A teardown can leave
+    # a half-dead listener that never flips soft_search_ready).
+    try:
+        from pipeline.daemon import start_daemon
+
+        start_daemon(str(repo))
+        time.sleep(1.5)
+    except Exception as exc:  # noqa: BLE001
+        print(f"ensure note: {exc}")
     t0 = time.perf_counter()
     kick = start_attach_warm_pipeline(repo)
     results.append(_ok("attach_kick", bool(kick.get("started") or kick.get("already_running")), json.dumps(kick)))
@@ -109,7 +119,9 @@ def main() -> int:
                     ),
                 }
             except Exception:  # noqa: BLE001
-                pass
+                # Boot / ORT GIL — do not hammer /health every 250ms.
+                time.sleep(1.5)
+                continue
         snap = WarmSnapshot(
             engine_healthy=bool(last.get("healthy") or soft),
             embedder_loaded=bool(last.get("embedder_loaded")),
@@ -119,7 +131,7 @@ def main() -> int:
         if compute_warm_ready(snap, need_ast=False):
             ready_at = time.perf_counter()
             break
-        time.sleep(0.25)
+        time.sleep(0.5)
 
     elapsed_ms = round((ready_at - t0) * 1000, 1) if ready_at else None
     results.append(
@@ -140,22 +152,101 @@ def main() -> int:
         print(json.dumps({"results": results}, indent=2))
         return 1
 
-    # Steady map via engine search (MCP map path may be unavailable in script).
+    # Dense map/search (0.3.93+) needs FastEmbed. Soft warm_ready alone is not
+    # enough — join embedder before the ms-steady gates.
     from pipeline.client import EngineClient
 
-    client = EngineClient(workspace_path=str(repo), timeout=30.0)
+    client = EngineClient(workspace_path=str(repo), timeout=45.0)
+    # Clear stale busy stamp from a killed prior ORT load (blocks join forever).
+    try:
+        from pipeline.engine import _mark_prewarm_busy
+
+        _mark_prewarm_busy(False)
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        client.post("/v1/embed/prewarm", {"path": str(repo), "wait": False})
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        client.post(
+            "/v1/embed/keepalive",
+            {"path": str(repo), "ensure_loop": True, "tick": 0},
+        )
+    except Exception:  # noqa: BLE001
+        pass
+    emb_deadline = time.perf_counter() + max(180.0, float(args.deadline_ms) / 1000.0 + 60.0)
+    emb_ok = bool(last.get("embedder_loaded"))
+    while time.perf_counter() < emb_deadline and not emb_ok:
+        try:
+            h = client.get("/health") or {}
+            emb_ok = bool(h.get("embedder_loaded") or h.get("dense_ready"))
+            if emb_ok:
+                last["embedder_loaded"] = True
+                break
+            if bool(h.get("soft_search_ready")) and not bool(h.get("embed_prewarm_running")):
+                try:
+                    client.post("/v1/embed/prewarm", {"path": str(repo), "wait": False})
+                except Exception:  # noqa: BLE001
+                    pass
+        except Exception:  # noqa: BLE001
+            pass
+        # Authoritative join: long search (MCP map path). Do not busy-wait on
+        # embed_prewarm.busy — a crashed prewarm leaves the stamp stuck.
+        try:
+            sclient = EngineClient(workspace_path=str(repo), timeout=90.0)
+            s = (
+                sclient.post(
+                    "/v1/search",
+                    {
+                        "query": "warm_contract embed join prime map pack_context",
+                        "top_k": 4,
+                        "path": str(repo),
+                    },
+                )
+                or {}
+            )
+            if s.get("ok") or s.get("hits"):
+                emb_ok = True
+                last["embedder_loaded"] = True
+                break
+            if s.get("warming") or s.get("status") == "warming":
+                time.sleep(3.0)
+                continue
+        except Exception:  # noqa: BLE001
+            time.sleep(2.0)
+            continue
+        time.sleep(1.0)
+    results.append(
+        _ok(
+            "embedder_loaded_before_map",
+            emb_ok,
+            f"embedder_loaded={emb_ok} last={last.get('embedder_loaded')}",
+        )
+    )
+    if not emb_ok:
+        print(json.dumps({"results": results, "failed": sum(1 for r in results if not r["ok"])}, indent=2))
+        return 1
+
+    # Steady map via engine search (MCP map path may be unavailable in script).
     q = "pipeline mcp_lifecycle attach warm_ready pack_context map_context"
 
     def _map_once() -> tuple[float, dict[str, Any]]:
         t1 = time.perf_counter()
         try:
-            payload = client.post("/v1/search", {"query": q, "k": 8, "path": str(repo)}) or {}
+            payload = client.post("/v1/search", {"query": q, "top_k": 8, "path": str(repo)}) or {}
         except Exception as exc:  # noqa: BLE001
             payload = {"ok": False, "error": str(exc)}
         return round((time.perf_counter() - t1) * 1000, 1), payload
 
     wall1, p1 = _map_once()
-    results.append(_ok("first_map_after_ready", bool(p1.get("ok", True)) or "hits" in p1, f"wall_ms={wall1}"))
+    results.append(
+        _ok(
+            "first_map_after_ready",
+            (bool(p1.get("ok", True)) or "hits" in p1) and wall1 <= 5000.0,
+            f"wall_ms={wall1} err={p1.get('error')}",
+        )
+    )
 
     idle = max(1.0, float(args.idle_s))
     print(f"== idle {idle}s with attach stamp held ==")

@@ -50,10 +50,6 @@ class DenseIndex:
         return self.matrix @ q
 
     def search(self, query_vec: np.ndarray, top_k: int = 50) -> list[tuple[int, float]]:
-        scores = self.score_all(query_vec)
-        if top_k >= len(scores):
-            idx = np.argsort(-scores)
-        else:
-            part = np.argpartition(-scores, top_k)[:top_k]
-            idx = part[np.argsort(-scores[part])]
-        return [(int(i), float(scores[i])) for i in idx[:top_k]]
+        from conductor.bm25_index import top_hits_from_scores
+
+        return top_hits_from_scores(self.score_all(query_vec), top_k, drop_nonpositive=False)

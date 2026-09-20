@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""MCP host simulator CLI — Lane A (bridge) / Lane B (Kiro pins).
+"""MCP host simulator CLI — Lane A (Cursor bridge) / Lane B (Kiro process-real).
 
 Examples:
-  python scripts/mcp_host_sim.py --lane a --skip-idle
-  python scripts/mcp_host_sim.py --lane a --idle-s 120
-  python scripts/mcp_host_sim.py --lane b
+  python scripts/mcp_host_sim.py --lane a --live --settle-s 35 --skip-idle
+  python scripts/mcp_host_sim.py --lane b --live --settle-s 35 --skip-idle
 """
 
 from __future__ import annotations
@@ -36,13 +35,23 @@ def main() -> int:
         type=float,
         default=0.0,
         help="After soft-ready, idle until host_start+N seconds with no map; "
-        "then first map must be ≤1s (implies --true-first-map)",
+        "then first map must be ≤3s and later maps/tools ≤1s (implies --true-first-map)",
     )
     ap.add_argument("--live", action="store_true", help="Use real ~/.scubiee (needed for indexed repos)")
     ap.add_argument(
         "--sandbox",
         action="store_true",
         help="Isolate CTX_HOME under .scubiee_sim_home (requires indexed fixture under that home)",
+    )
+    ap.add_argument(
+        "--mcp-client",
+        default="cursor",
+        help="CTX_MCP_CLIENT for Lane A bridge (default: cursor = production Cursor pin)",
+    )
+    ap.add_argument(
+        "--settle-health-poll",
+        action="store_true",
+        help="During settle, poll /health like live agent status (ORT GIL stress)",
     )
     ap.add_argument(
         "--out-dir",
@@ -80,6 +89,8 @@ def main() -> int:
         skip_idle=bool(args.skip_idle),
         true_first_map=bool(args.true_first_map),
         settle_s=float(args.settle_s),
+        mcp_client=str(args.mcp_client or "cursor"),
+        settle_health_poll=bool(args.settle_health_poll),
     )
     print(json.dumps({k: report[k] for k in ("ok", "lane", "elapsed_ms", "errors", "report_paths") if k in report}, indent=2))
     for p in report.get("phases") or []:

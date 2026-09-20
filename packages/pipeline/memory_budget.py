@@ -5,12 +5,12 @@ CPU and RAM budgets are always coupled — heavy work gets both, light work gets
 Bootstrap (first complete index / init): 800 MB RAM + 20% CPU.
 
 Background reindex (incremental sync): 500 MB RAM + 15% CPU. Invisible during coding.
-Serve / live MCP: soft advisory tree budget **800 MB**; **full-warm while Cursor connected**
+Serve / live MCP: soft advisory tree budget **1536 MB**; **full-warm while Cursor connected**
 (engine + locate AST + bridge, embedder held) commonly lands near **0.9–1.2 GB** and is
 accepted for &lt;1s first-tool availability — do not auto-demote on soft overage.
 Large reindex / bulk index / bulk sync: total ≤ **1 GB** OK.
 Engine soft RSS cap remains tiered (520–800 MB); FastEmbed loads only in the engine.
-Windows engine JobObject hard-caps at CTX_ENGINE_CPU_CAP_PCT (default **20**).
+Windows engine JobObject hard-caps at CTX_ENGINE_CPU_CAP_PCT (install default **35**).
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ class IndexMemoryBudget:
     # CPU thread budget as percentage of os.cpu_count(). On CPU-only profiles
     # (no GPU), this controls how much CPU the embedding phase uses.
     # Heavy work (800MB–1GB) is capped at 20% CPU; light sync (500MB) at 15%.
-    # The Windows engine job also hard-caps at CTX_ENGINE_CPU_CAP_PCT (default 20).
+    # The Windows engine job also hard-caps at CTX_ENGINE_CPU_CAP_PCT (install 35).
     cpu_thread_pct: float = 0.20
 
 

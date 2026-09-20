@@ -57,6 +57,7 @@ def test_governor_promotes_on_semantic(monkeypatch) -> None:
     import os
 
     monkeypatch.delenv("CTX_CE_RSS_CAP_MB", raising=False)
+    monkeypatch.delenv("CTX_SCUBIEE_TOTAL_RSS_MB", raising=False)
     gov = MemoryGovernor()
     gov.desired_tier = "serve_1repo"
     gov.apply_tier("locate_only")
@@ -64,6 +65,18 @@ def test_governor_promotes_on_semantic(monkeypatch) -> None:
     gov.ensure_semantic_tier()
     assert gov.active_tier == "serve_1repo"
     assert os.environ["CTX_CE_RSS_CAP_MB"] == str(SERVE_1REPO_TARGET_MB)
+
+
+def test_governor_does_not_smash_tree_rss_pin(monkeypatch) -> None:
+    import os
+
+    monkeypatch.setenv("CTX_SCUBIEE_TOTAL_RSS_MB", "1536")
+    monkeypatch.delenv("CTX_CE_RSS_CAP_MB", raising=False)
+    gov = MemoryGovernor()
+    gov.apply_tier("locate_only")
+    assert os.environ["CTX_CE_RSS_CAP_MB"] == "1536"
+    gov.apply_tier("serve_1repo")
+    assert os.environ["CTX_CE_RSS_CAP_MB"] == "1536"
 
 
 def test_embed_idle_demote_defaults_to_ten_seconds(monkeypatch) -> None:

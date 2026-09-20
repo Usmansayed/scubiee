@@ -779,6 +779,12 @@ def start_daemon(
         note_engine_transition("start")
     except Exception:  # noqa: BLE001
         pass
+    try:
+        from pipeline.watchdog import ensure_watchdog_sidecar
+
+        ensure_watchdog_sidecar()
+    except Exception:  # noqa: BLE001
+        pass
     if wait_s <= 0:
         return {"ok": True, "started": True, "health_pending": True, **meta}
 

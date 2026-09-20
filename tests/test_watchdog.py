@@ -97,28 +97,33 @@ def test_loop_restarts_after_two_fails(wd_home: Path, monkeypatch: pytest.Monkey
     assert "restart" in calls
 
 
-def test_loop_skips_restart_when_mcp_clients_and_pid_alive(
+def test_loop_heals_hung_alive_engine_when_mcp_clients(
     wd_home: Path, monkeypatch: pytest.MonkeyPatch
 ):
+    """PID holds lock + health dead + MCP clients → force heal (not skip forever)."""
     from pipeline import watchdog as wd
     from pipeline.lifecycle_runtime import note_activity
 
     monkeypatch.setenv("CTX_ENGINE_IDLE_S", "99999")
+    monkeypatch.delenv("CTX_WATCHDOG_AUTO_START", raising=False)
     note_activity()
     calls: list[str] = []
 
     monkeypatch.setattr(wd, "_health_ok", lambda: False)
     monkeypatch.setattr(wd, "_pid_alive", lambda pid: True)
+    monkeypatch.setattr(wd, "_engine_busy_indexing", lambda: False)
+    monkeypatch.setattr("pipeline.lifecycle_runtime.engine_should_be_running", lambda: True)
     monkeypatch.setattr("pipeline.daemon._read_lock_pid", lambda: 4242)
     monkeypatch.setattr("pipeline.lifecycle_runtime.active_client_count", lambda: 1)
     monkeypatch.setattr(wd, "BACKOFF_S", (0.01, 0.01, 0.01))
     monkeypatch.setattr(wd, "FAILS_BEFORE_RESTART", 2)
+    monkeypatch.setattr(wd, "ALIVE_PID_FAILS_BEFORE_RESTART", 2)
     with patch(
         "pipeline.daemon.force_restart_daemon",
         side_effect=lambda repo=None: calls.append("restart") or {"ok": True},
     ):
-        wd.watchdog_loop(stop_after=0.4)
-    assert calls == []
+        wd.watchdog_loop(stop_after=5.0)
+    assert "restart" in calls
 
 
 def test_loop_does_not_autoload_when_mcp_clients_but_pid_dead(

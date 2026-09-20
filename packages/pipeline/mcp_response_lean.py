@@ -379,7 +379,7 @@ def slim_locate_payload(payload: dict[str, Any]) -> dict[str, Any]:
         for c in cards_in:
             if not isinstance(c, dict):
                 continue
-            row = _pick(c, ("rank", "file", "score", "why", "role", "loc", "symbol"))
+            row = _pick(c, ("rank", "file", "score", "why", "role", "loc", "symbol", "source"))
             # Ensure span-Read loc when map cards only had file/lines.
             loc = _ensure_loc(c)
             if loc:
@@ -423,6 +423,23 @@ def slim_locate_payload(payload: dict[str, Any]) -> dict[str, Any]:
             out["next"] = nxt.strip()
         else:
             out["next"] = _MAP_LADDER_NEXT
+        timings = payload.get("timings") if isinstance(payload.get("timings"), dict) else {}
+        mode = payload.get("retrieve_mode") or timings.get("retrieve_mode")
+        dense_flag = payload.get("dense")
+        if dense_flag is None:
+            dense_flag = timings.get("dense")
+        if dense_flag is True:
+            out["dense"] = True
+        if mode:
+            out["retrieve_mode"] = mode
+        if timings:
+            slim_t = {
+                k: timings[k]
+                for k in ("dense", "retrieve_mode", "embed_ms", "retrieve_ms")
+                if k in timings
+            }
+            if slim_t:
+                out["timings"] = slim_t
         for sig in ("unchanged", "truncated", "has_more", "weak_match", "elapsed_ms", "latency_ms"):
             if sig in payload:
                 out[sig] = payload[sig]

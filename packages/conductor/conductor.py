@@ -99,17 +99,36 @@ class Conductor:
         return out
 
     def retrieve_conductor(self, query: str, query_vec: np.ndarray, top_k: int = 5) -> list[Hit]:
+        from conductor.bm25_index import top_hits_from_scores
+        from conductor.channel_pool import channel_pool
+
         cfg = self.config
         n = self._n
 
-        g_aff, seed_files, _ = self.graph.affinity_scores(query, n)
-        b_all = self.bm25.score_all(query)
-        d_all = self.dense.score_all(query_vec).astype(np.float64)
+        pool = channel_pool()
+        f_graph = pool.submit(self.graph.affinity_scores, query, n)
+        f_bm25 = pool.submit(self.bm25.score_all, query)
+        f_dense = pool.submit(self.dense.score_all, query_vec)
+        g_aff, seed_files, _ = f_graph.result()
+        b_all = f_bm25.result()
+        d_all = np.asarray(f_dense.result(), dtype=np.float64)
 
         hybrid_chunk = np.zeros(n, dtype=np.float64)
-        rb = {int(i): r for r, (i, _) in enumerate(self.bm25.search(query, top_k=cfg.candidate_pool), 1)}
-        rd = {int(i): r for r, (i, _) in enumerate(self.dense.search(query_vec, top_k=cfg.candidate_pool), 1)}
+        rb = {
+            int(i): r
+            for r, (i, _) in enumerate(
+                top_hits_from_scores(b_all, cfg.candidate_pool, drop_nonpositive=True), 1
+            )
+        }
+        rd = {
+            int(i): r
+            for r, (i, _) in enumerate(
+                top_hits_from_scores(d_all, cfg.candidate_pool, drop_nonpositive=False), 1
+            )
+        }
         for cid in set(rb) | set(rd):
+            if cid < 0 or cid >= n:
+                continue
             hybrid_chunk[cid] = cfg.bm25_weight / (cfg.rrf_k + rb.get(cid, 10_000)) + cfg.dense_weight / (
                 cfg.rrf_k + rd.get(cid, 10_000)
             )

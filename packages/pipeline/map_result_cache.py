@@ -50,6 +50,13 @@ def _last_key(repo: str, query: str) -> str:
     return f"{_norm_repo(repo)}|{_norm_query(query)}"
 
 
+def _cached_map_is_dense(payload: dict[str, Any]) -> bool:
+    if payload.get("dense") is True:
+        return "pseudo" not in str(payload.get("retrieve_mode") or "")
+    timings = payload.get("timings") if isinstance(payload.get("timings"), dict) else {}
+    return timings.get("dense") is True and "pseudo" not in str(timings.get("retrieve_mode") or "")
+
+
 def get_map_cached(
     *,
     repo: str,
@@ -66,11 +73,14 @@ def get_map_cached(
         last = _LAST.get(lk)
         if last and (now - last[0]) <= _ttl_s():
             out = dict(last[1])
-            timing = dict(out.get("timing") or {})
-            timing["cache"] = "last"
-            out["timing"] = timing
-            out["cache"] = "last"
-            return out
+            if not _cached_map_is_dense(out):
+                _LAST.pop(lk, None)
+            else:
+                timing = dict(out.get("timing") or {})
+                timing["cache"] = "last"
+                out["timing"] = timing
+                out["cache"] = "last"
+                return out
     key = _key(repo, query, fingerprint)
     with _LOCK:
         row = _CACHE.get(key)
@@ -81,6 +91,9 @@ def get_map_cached(
             _CACHE.pop(key, None)
             return None
         out = dict(payload)
+    if not _cached_map_is_dense(out):
+        _CACHE.pop(key, None)
+        return None
     timing = dict(out.get("timing") or {})
     timing["cache"] = "hit"
     out["timing"] = timing
@@ -99,7 +112,14 @@ def put_map_cached(
         return
     if not isinstance(payload, dict) or not payload.get("ok", True):
         return
-    if payload.get("warming") or payload.get("error") == "engine_warming":
+    if payload.get("warming") or payload.get("error") in {
+        "engine_warming",
+        "dense_embed_loading",
+        "dense_embed_required",
+    }:
+        return
+    timings = payload.get("timings") if isinstance(payload.get("timings"), dict) else {}
+    if payload.get("dense") is not True and timings.get("dense") is not True:
         return
     key = _key(repo, query, fingerprint)
     stored = dict(payload)

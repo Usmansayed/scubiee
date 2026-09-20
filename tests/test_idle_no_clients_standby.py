@@ -51,6 +51,11 @@ def test_watchdog_skips_force_restart_without_demand(
     monkeypatch.setattr(wd, "engine_process_alive", lambda: (False, "none"))
     monkeypatch.setattr(wd, "FAILS_BEFORE_RESTART", 2)
     monkeypatch.setattr(wd, "BACKOFF_S", (0.01, 0.01))
+    monkeypatch.setattr(wd, "mcp_frontend_present", lambda: False)
+    monkeypatch.setattr(
+        "pipeline.warm_autoload.mcp_frontend_present",
+        lambda: False,
+    )
     monkeypatch.setattr(
         "pipeline.lifecycle_runtime.engine_should_be_running",
         lambda: True,
@@ -94,6 +99,11 @@ def test_watchdog_skips_stale_start_request_without_clients(
     starts: list[str] = []
     monkeypatch.setattr(wd, "_health_ok", lambda: False)
     monkeypatch.setattr(wd, "engine_process_alive", lambda: (False, "none"))
+    monkeypatch.setattr(wd, "mcp_frontend_present", lambda: False)
+    monkeypatch.setattr(
+        "pipeline.warm_autoload.mcp_frontend_present",
+        lambda: False,
+    )
     monkeypatch.setattr(
         "pipeline.lifecycle_runtime.active_client_count",
         lambda: 0,

@@ -1557,7 +1557,7 @@ def _is_transient_engine_error(error: str) -> bool:
     from pipeline.client import is_transient_engine_error
 
     low = (error or "").lower()
-    if "engine_warming" in low or low == "warming":
+    if "engine_warming" in low or low == "warming" or "dense_embed_loading" in low or "dense_embed_required" in low:
         return True
     return is_transient_engine_error(error)
 
@@ -1586,6 +1586,8 @@ def _map_cache_get(store: dict[str, Any], qn: str, k: int) -> list[dict[str, Any
     entry = (store.get("map_cache") or {}).get(qn)
     if not isinstance(entry, dict):
         return None
+    if entry.get("dense") is not True:
+        return None
     # Accept cache when prior map had ≥k cards (or any non-empty set).
     cached_k = int(entry.get("k") or 0)
     if cached_k and cached_k < int(k):
@@ -1606,7 +1608,7 @@ def _map_cache_put(
 
     store = load_store(repo, session_id=session_id)
     cache = store.setdefault("map_cache", {})
-    cache[qn] = {"k": k, "cards": cards, "ts": time.time()}
+    cache[qn] = {"k": k, "cards": cards, "ts": time.time(), "dense": True, "retrieve_mode": "D_channel_best"}
     if len(cache) > 40:
         oldest = sorted(cache.items(), key=lambda kv: float((kv[1] or {}).get("ts") or 0))[: len(cache) - 40]
         for key, _ in oldest:
@@ -2320,6 +2322,21 @@ def _client_for(repo: Path):
 
     sid = effective_session_id(None)
 
+    try:
+        from pipeline.warm_autoload import in_prewarm
+
+        if in_prewarm():
+            admission = {
+                **warming_response(warm_state="embed_loading"),
+                "warm": warm,
+                "prewarm": True,
+            }
+            client = _WarmingClient(admission)
+            setattr(client, "_scubiee_admission", admission)
+            return client
+    except Exception:  # noqa: BLE001
+        pass
+
     def _soft_client(*, skipped: str) -> EngineClient:
         client = EngineClient(
             workspace_path=str(repo),
@@ -2878,6 +2895,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                         mark_soft_ready()
                 except Exception:  # noqa: BLE001
                     pass
+                from pipeline.locate import LAST_SEARCH_META
                 results: list[dict[str, Any]] = []
                 span_n = 3 if include_mode == "span" else 0
                 for rank, h in enumerate(hits[: args.k], 1):
@@ -2887,6 +2905,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                         "start_line": h.get("start_line"), "end_line": h.get("end_line"),
                         "score": round(float(h.get("score") or 0.0), 4),
                         "why": h.get("why") or "",
+                        "source": h.get("source"),
                     }
                     from pipeline.context_trace import symbol_from_preview
 
@@ -2953,6 +2972,9 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     "count": len(results),
                     "results": results,
                     "next": nxt,
+                    "timings": dict(LAST_SEARCH_META.get("timings") or {}),
+                    "dense": bool(LAST_SEARCH_META.get("dense")),
+                    "retrieve_mode": LAST_SEARCH_META.get("retrieve_mode"),
                 }
                 if include_mode == "graph":
                     out["neighbors"] = neighbors
@@ -4039,7 +4061,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             from pipeline.map_result_cache import get_map_cached
 
             hit = get_map_cached(repo=str(repo), query=args.query, fingerprint="soft_v1")
-            if hit is not None:
+            if hit is not None and hit.get("dense") is True:
                 hit["elapsed_ms"] = round((_time.perf_counter() - _map_t0) * 1000, 1)
                 hit["session_id"] = sid
                 return _format(hit, args.response_format)
@@ -4133,6 +4155,14 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         card.pop("include", None)
         raw_cards = card.pop("results", [])
         card["cards"] = _enrich_map_cards(raw_cards, query=args.query)
+        if card.get("dense") is not True:
+            from pipeline.engine import warming_response
+
+            warm = warming_response(warm_state="embed_loading")
+            warm["tool"] = "map"
+            warm["error"] = "dense_embed_loading"
+            warm["timings"] = card.get("timings") or {}
+            return _format(warm, args.response_format)
         conf = _assess_map_confidence(args.query, card["cards"])
         card.update(conf)
         if conf.get("confidence") == "low":
@@ -4212,8 +4242,16 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         except Exception:  # noqa: BLE001
             pass
         card["elapsed_ms"] = round((_time.perf_counter() - _map_t0) * 1000, 1)
-        # Do not kick AST after map — 50MB pickle GIL-starves the following pack.
-        # Pack (singleflight) / expand hydrate when those tools need the graph.
+        from pipeline.locate import LAST_SEARCH_META
+
+        card["dense"] = True
+        card["retrieve_mode"] = (
+            card.get("retrieve_mode")
+            or LAST_SEARCH_META.get("retrieve_mode")
+            or "D_channel_best"
+        )
+        if not card.get("timings"):
+            card["timings"] = dict(LAST_SEARCH_META.get("timings") or {"dense": True})
         return _format(card, args.response_format)
 
     def focus_impl(

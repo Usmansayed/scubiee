@@ -21,37 +21,51 @@ CREATE_NO_WINDOW = 0x08000000
 CREATE_BREAKAWAY_FROM_JOB = 0x01000000
 CREATE_NEW_PROCESS_GROUP = 0x00000200
 DETACHED_PROCESS = 0x00000008
-DEFAULT_ENGINE_CPU_CAP_PCT = 25.0
-DEFAULT_ENGINE_JOB_MEMORY_MB = 800
+DEFAULT_ENGINE_CPU_CAP_PCT = 0.0  # 0 = uncapped (JobObject CPU rate + affinity off)
+DEFAULT_ENGINE_JOB_MEMORY_MB = 4096
 # Named job objects with KILL_ON_JOB_CLOSE die when the last handle closes.
 # ctypes HANDLEs are not auto-closed, but keep them anyway so a future wrapper
 # cannot GC-close the supervisor job while the engine is still a member.
 _OPEN_JOB_HANDLES: list[Any] = []
 
 
-def engine_cpu_cap_pct() -> float:
-    """Hard CPU cap for the engine job (percent of the machine). Default 25.
-
-    Keeps Task Manager spikes polite while full-warm stays resident for speed.
-    Override with ``CTX_ENGINE_CPU_CAP_PCT`` (1–100).
-    """
-    raw = (os.environ.get("CTX_ENGINE_CPU_CAP_PCT") or "").strip()
+def engine_cpu_cap_enabled() -> bool:
+    """False when ``CTX_ENGINE_CPU_CAP_PCT`` is 0 / off / unset-as-uncapped default."""
+    raw = (os.environ.get("CTX_ENGINE_CPU_CAP_PCT") or "").strip().lower()
+    if raw in {"0", "off", "false", "no", "none", "uncapped"}:
+        return False
     if not raw:
-        return DEFAULT_ENGINE_CPU_CAP_PCT
+        return DEFAULT_ENGINE_CPU_CAP_PCT > 0
+    try:
+        return float(raw) > 0
+    except ValueError:
+        return DEFAULT_ENGINE_CPU_CAP_PCT > 0
+
+
+def engine_cpu_cap_pct() -> float:
+    """Hard CPU cap for the engine job (percent of the machine).
+
+    Default **0 = uncapped** when the env is unset. Install pins **35** —
+    25% starved DirectML/ORT cold load; 0 recovered wait-then-ms. 35% is
+    the politeness experiment that should still let ORT finish.
+    """
+    if not engine_cpu_cap_enabled():
+        return 0.0
+    raw = (os.environ.get("CTX_ENGINE_CPU_CAP_PCT") or "").strip()
     try:
         return max(1.0, min(100.0, float(raw)))
     except ValueError:
-        return DEFAULT_ENGINE_CPU_CAP_PCT
+        return 0.0
 
 
 def effective_engine_cpu_cap_pct(pct: float | None = None) -> float:
-    """Apply a low-end floor so cold DirectML/ORT warm cannot starve ``/health``.
+    """Apply a low-end floor so a *configured* cap cannot collapse to 1 core.
 
-    On 2–4 core machines a raw 25% cap collapses to 1 core and health/MCP time out
-    during FastEmbed load. Boost the *effective* rate on small CPUs while keeping
-    the advertised default at 25% on typical 8+ core laptops/desktops.
+    When uncapped (0), returns 0 — no JobObject CPU rate / affinity applied.
     """
     base = float(engine_cpu_cap_pct() if pct is None else pct)
+    if base <= 0:
+        return 0.0
     n = int(os.cpu_count() or 4)
     if n <= 2:
         return max(base, 75.0)
@@ -66,6 +80,8 @@ def affinity_keep_cpus(pct: float | None = None) -> int:
     """How many logical CPUs affinity fallback should keep (never starve to 1)."""
     n = max(1, int(os.cpu_count() or 4))
     eff = effective_engine_cpu_cap_pct(pct)
+    if eff <= 0:
+        return n
     keep = int(round(n * eff / 100.0))
     # Always leave ≥2 cores on multi-core boxes so HTTP + embed can overlap.
     floor = 1 if n == 1 else 2
@@ -214,21 +230,22 @@ def engine_job_memory_mb() -> int:
     raw = (os.environ.get("CTX_CE_RSS_CAP_MB") or "").strip()
     if raw:
         try:
-            return max(256, min(4096, int(raw)))
+            # 0 / negative → no soft advisory pin (caller treats as uncapped).
+            return max(0, min(16384, int(raw)))
         except ValueError:
             pass
     return DEFAULT_ENGINE_JOB_MEMORY_MB
 
 
 def attach_supervisor_job() -> dict[str, Any]:
-    """Create (or open) the kill-on-close + CPU-capped job and assign this process."""
+    """Create (or open) the kill-on-close job and assign this process."""
     if os.name != "nt":
         return {"ok": True, "skipped": True, "platform": "posix"}
     return _windows_assign(
         create=True,
         job_name=JOB_NAME,
         kill_on_close=True,
-        cpu_cap=True,
+        cpu_cap=engine_cpu_cap_enabled(),
         memory_mb=0,
     )
 
@@ -241,7 +258,7 @@ def join_supervisor_job() -> dict[str, Any]:
         create=False,
         job_name=JOB_NAME,
         kill_on_close=True,
-        cpu_cap=True,
+        cpu_cap=engine_cpu_cap_enabled(),
         memory_mb=0,
     )
     if opened.get("reason") == "job_absent":
@@ -381,6 +398,8 @@ def _set_job_cpu_rate(
     control_flags: int,
 ) -> None:
     """Best-effort hard CPU cap. Failure must not block engine start."""
+    if not engine_cpu_cap_enabled() or effective_engine_cpu_cap_pct() <= 0:
+        return
     try:
         import ctypes
         from ctypes import wintypes
@@ -406,6 +425,10 @@ def _set_job_cpu_rate(
 
 def apply_cpu_affinity_pct(pct: float | None = None) -> dict[str, Any]:
     """Limit this process to ~pct of logical CPUs when JobObject CPU rate cannot attach."""
+    if pct is None and not engine_cpu_cap_enabled():
+        return {"ok": True, "skipped": True, "reason": "CTX_ENGINE_CPU_CAP_PCT=0"}
+    if pct is not None and float(pct) <= 0:
+        return {"ok": True, "skipped": True, "reason": "cap_pct<=0"}
     try:
         import psutil
     except Exception as exc:  # noqa: BLE001
@@ -431,14 +454,23 @@ def attach_engine_on_start() -> None:
         result = join_supervisor_job()
         if not result.get("ok") or not result.get("joined"):
             print(f"[engine] job join note: {result}", file=sys.stderr, flush=True)
-            aff = apply_cpu_affinity_pct()
-            print(f"[engine] cpu affinity fallback: {aff}", file=sys.stderr, flush=True)
+            if engine_cpu_cap_enabled():
+                aff = apply_cpu_affinity_pct()
+                print(f"[engine] cpu affinity fallback: {aff}", file=sys.stderr, flush=True)
+            else:
+                print("[engine] cpu cap disabled (uncapped)", file=sys.stderr, flush=True)
         elif result.get("joined"):
-            print(f"[engine] job joined {result.get('job')}", file=sys.stderr, flush=True)
+            print(
+                f"[engine] job joined {result.get('job')} "
+                f"cpu_cap={int(engine_cpu_cap_enabled())}",
+                file=sys.stderr,
+                flush=True,
+            )
     except Exception as exc:  # noqa: BLE001
         print(f"[engine] job join note: {exc}", file=sys.stderr, flush=True)
         try:
-            apply_cpu_affinity_pct()
+            if engine_cpu_cap_enabled():
+                apply_cpu_affinity_pct()
         except Exception:
             pass
 

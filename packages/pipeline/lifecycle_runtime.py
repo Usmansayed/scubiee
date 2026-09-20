@@ -601,22 +601,33 @@ def register_client(
     # FastEmbed/ORT must live ONLY in the engine process. Bridge/locate calling
     # register_client locally used to load a second (or third) model copy and
     # blow the ≤800 MB total Scubiee RAM budget.
-    # Do not kick ORT prewarm on register — attach-time FastEmbed GIL-starves
-    # /health and made first map return engine_warming for 30–50s. Dense loads
-    # via explicit /v1/embed/prewarm or after soft locate succeeds.
+    #
+    # Always arm the keepalive loop on register: when soft binder is up it kicks
+    # async prewarm every 2s until embedder_loaded (Cursor-open settle). Do NOT
+    # sync-load ORT on this path — that GIL-starves /health during soft warm.
     prewarm: dict[str, Any] | None = None
     if is_engine_process():
         try:
             from pipeline.engine import embedder_is_loaded, ensure_embed_keepalive_loop
+            from pipeline.memory_governor import get_governor
 
+            try:
+                get_governor().ensure_semantic_tier()
+            except Exception:  # noqa: BLE001
+                pass
+            root = os.environ.get("CTX_REPO") or None
+            try:
+                ensure_embed_keepalive_loop(root)
+            except Exception:  # noqa: BLE001
+                pass
             if embedder_is_loaded():
                 prewarm = {"ok": True, "already_warm": True}
-                try:
-                    ensure_embed_keepalive_loop(os.environ.get("CTX_REPO") or None)
-                except Exception:  # noqa: BLE001
-                    pass
             else:
-                prewarm = {"ok": True, "skipped": "defer_ort_until_after_soft_locate"}
+                prewarm = {
+                    "ok": True,
+                    "keepalive_armed": True,
+                    "hint": "keepalive_loop kicks async prewarm once soft binder is live",
+                }
         except Exception as exc:  # noqa: BLE001
             prewarm = {"ok": False, "error": str(exc)}
     else:
@@ -730,7 +741,26 @@ def active_client_count() -> int:
 
 
 def _idle_busy_reason() -> str | None:
-    """Why idle stop must not fire (indexing / warming). None = idle OK."""
+    """Why idle stop must not fire (indexing / warming / ORT prewarm). None = idle OK.
+
+    Dense FastEmbed/ORT load holds the GIL; ``/health`` times out. Side-channel
+    phase / busy stamp must postpone the 10s disconnect sweeper.
+    """
+    try:
+        from pipeline.warm_autoload import idle_busy_reason
+
+        reason = idle_busy_reason()
+        if reason:
+            return reason
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        from pipeline.engine import prewarm_busy_stamp_active
+
+        if prewarm_busy_stamp_active(max_age_s=180.0):
+            return "embed_prewarm"
+    except Exception:  # noqa: BLE001
+        pass
     try:
         from pipeline.memory_governor import get_governor
 

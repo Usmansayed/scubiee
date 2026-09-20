@@ -5,7 +5,7 @@ footprint: tier selection, lazy embedder load, demotion after index or semantic 
 and an RSS breakdown for ``status()``.
 
 **Total Scubiee process-tree budget (engine + bridge + locate + watchdog):**
-  serve / live MCP     ≤ **800 MB** combined
+  serve / live MCP     ≤ **1536 MB** combined (MCP pin; keeps DirectML warm)
   index / init / bulk  ≤ **1000 MB** combined (high-compute OK)
 
 Per-engine soft targets (ORT cannot shrink in-place; demote on disconnect):
@@ -45,10 +45,9 @@ SERVE_2REPO_TARGET_MB = 800
 INDEXING_TARGET_MB = 1000
 
 # Combined RSS for every Scubiee-related process (engine+bridge+locate+watchdog).
-TOTAL_SERVE_BUDGET_MB = 800
-# Soft alert only — full-warm (embedder + AST resident while MCP clients connected)
-# is allowed up to this without demote. Matches measured Cursor-open tree.
-FULL_WARM_SOFT_CAP_MB = 1200
+TOTAL_SERVE_BUDGET_MB = 1536
+# Soft alert only — full-warm (embedder + AST resident while MCP clients connected).
+FULL_WARM_SOFT_CAP_MB = 1536
 TOTAL_INDEX_BUDGET_MB = 1000
 
 SESSION_OVERHEAD_MB = 50
@@ -510,7 +509,16 @@ class MemoryGovernor:
         cfg = TIER_CONFIGS[tier]
         self.active_tier = tier
         os.environ["CTX_CE_SERVE_TIER"] = tier
-        os.environ["CTX_CE_RSS_CAP_MB"] = str(cfg.rss_target_mb)
+        # MCP/tree pin (CTX_SCUBIEE_TOTAL_RSS_MB) is the real budget. Do not
+        # smash 1536 down to 380/520/800 — that unloaded DML while Cursor was open.
+        rss = int(cfg.rss_target_mb)
+        raw = (os.environ.get("CTX_SCUBIEE_TOTAL_RSS_MB") or "").strip()
+        if raw:
+            try:
+                rss = max(rss, int(float(raw)))
+            except ValueError:
+                pass
+        os.environ["CTX_CE_RSS_CAP_MB"] = str(rss)
         os.environ["CTX_CE_PREFER_BM25"] = "1" if cfg.prefer_bm25 else "0"
         if tier == "locate_only":
             os.environ.setdefault("CTX_CE_LAZY_EMBEDDER", "1")

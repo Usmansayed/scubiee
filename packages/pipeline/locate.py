@@ -164,12 +164,34 @@ def _extract_json(text: str) -> dict[str, Any] | None:
     return None
 
 
+LAST_SEARCH_META: dict[str, Any] = {}
+
+
 def _search_hits(repo: Path, query: str, top_k: int = 10) -> list[dict[str, Any]]:
     from pipeline.context_agent.tools import BackendResponseError, tool_search_code
+    from pipeline.engine import is_dense_d_channel_result, warming_response
 
     out = tool_search_code(repo, query, top_k=top_k)
+    timings = out.get("timings") if isinstance(out.get("timings"), dict) else {}
+    LAST_SEARCH_META.clear()
+    LAST_SEARCH_META.update(
+        {
+            "timings": timings,
+            "dense": bool(out.get("dense") or timings.get("dense")),
+            "retrieve_mode": out.get("retrieve_mode") or timings.get("retrieve_mode"),
+        }
+    )
     if out.get("ok") is False:
         raise BackendResponseError(out)
+    if not is_dense_d_channel_result(out, timings=timings):
+        payload = warming_response(warm_state="embed_loading")
+        payload["error"] = "dense_embed_loading"
+        payload["timings"] = timings
+        payload["hint"] = (
+            "Map requires FastEmbed D_channel_best. Retry after dense is ready — "
+            "do not fall back to BM25-only."
+        )
+        raise BackendResponseError(payload)
     tokens = _query_tokens(query)
     hits = []
     for h in out.get("hits") or []:
@@ -182,6 +204,7 @@ def _search_hits(repo: Path, query: str, top_k: int = 10) -> list[dict[str, Any]
                 "score": h.get("score"),
                 "why": (h.get("why") or "").lstrip("\ufeff")[:200],
                 "query_match": _path_query_score(str(f or ""), tokens),
+                "source": h.get("source"),
             }
         )
     hits.sort(
