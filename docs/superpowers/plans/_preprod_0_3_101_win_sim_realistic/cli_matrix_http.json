@@ -1,0 +1,82 @@
+{
+  "ok": false,
+  "n": 6,
+  "failed": [
+    "search_local"
+  ],
+  "rows": [
+    {
+      "name": "settings_show",
+      "cmd": [
+        "scubiee",
+        "settings",
+        "--show"
+      ],
+      "ok": true,
+      "code": 0,
+      "ms": 434.1,
+      "tail": "{\n  \"version\": 1,\n  \"registration_mode\": \"automatic\",\n  \"incremental_indexing\": true,\n  \"file_watching\": true,\n  \"auto_admission\": {\n    \"max_repositories\": 8,\n    \"large_repo_files\": 10000\n  },\n  \"resource_management\": {\n    \"enabled\": true,\n    \"max_cpu_busy\": 70,\n    \"max_cpu_critical\": 90,\n    \"min_free_ram_mb\": 512\n  },\n  \"prefs_path\": \"C:\\\\Users\\\\usman\\\\.scubiee\\\\prefs.json\"\n}\n\n"
+    },
+    {
+      "name": "upgrade_help",
+      "cmd": [
+        "scubiee",
+        "upgrade",
+        "-h"
+      ],
+      "ok": true,
+      "code": 0,
+      "ms": 188.7,
+      "tail": "usage: scubiee upgrade [-h] [--pre] [--check] [--no-connect] [--repair]\n                       [--reindex]\n\noptions:\n  -h, --help    show this help message and exit\n  --pre         Allow pre-release versions\n  --check       Show DiffPlan only (no package swap or migrations)\n  --no-connect  Skip MCP/GATE rewrite for enrolled repos\n  --repair      Also refresh accel/setup packages after upgrade\n  --reindex     Force embedding/index rebuild even if embed ABI unchanged\n\n"
+    },
+    {
+      "name": "search_local",
+      "cmd": [
+        "scubiee",
+        "search",
+        "--local",
+        "retrieve_D_channel_best embed_keepalive FastEmbed DirectML",
+        "C:\\Users\\usman\\Downloads\\context-engine"
+      ],
+      "ok": false,
+      "code": 1,
+      "ms": 3494.9,
+      "tail": "n\\.local\\bin\\scubiee.exe\\__main__.py\", line 10, in <module>\n    sys.exit(main())\n             ~~~~^^\n  File \"C:\\Users\\usman\\Downloads\\context-engine\\packages\\pipeline\\__main__.py\", line 2897, in main\n    return int(args.func(args))\n               ~~~~~~~~~^^^^^^\n  File \"C:\\Users\\usman\\Downloads\\context-engine\\packages\\pipeline\\__main__.py\", line 745, in cmd_search\n    hits = search_repo(\n        root,\n    ...<3 lines>...\n        server_url=args.url if not args.local else None,\n    )\n  File \"C:\\Users\\usman\\Downloads\\context-engine\\packages\\pipeline\\searcher.py\", line 145, in search_repo\n    return eng.search(query, top_k=top_k)\n           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\usman\\Downloads\\context-engine\\packages\\pipeline\\engine.py\", line 1088, in search\n    raise RuntimeError(\n    ...<3 lines>...\n    )\nRuntimeError: dense_embed_required: FastEmbed not ready for map/search (D_channel_best). Retry after embedder loads, or run scubiee engine ensure . / POST /v1/embed/prewarm.\n"
+    },
+    {
+      "name": "status_json",
+      "cmd": [
+        "scubiee",
+        "status",
+        "C:\\Users\\usman\\Downloads\\context-engine",
+        "--json"
+      ],
+      "ok": true,
+      "code": 0,
+      "ms": 1767.6,
+      "tail": "\"8c4c7f5f46368bfb4af30b1c99aaaee4e0414989\",\n    \"strategy\": \"none\",\n    \"reason\": \"index matches working tree\",\n    \"detection\": \"merkle\"\n  },\n  \"vectordb\": {\n    \"root\": \"C:\\\\Users\\\\usman\\\\.scubiee\\\\vectordb\",\n    \"collections\": [\n      {\n        \"name\": \"context-engine_57fe0a0bb68b776b\",\n        \"cwd\": \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\",\n        \"dim\": 768,\n        \"bits\": 8,\n        \"ntotal\": 7174,\n        \"updated_at\": 1790004516.5619557\n      }\n    ]\n  },\n  \"server\": {\n    \"ok\": true,\n    \"service\": \"scubiee\",\n    \"version\": \"0.3.101\",\n    \"warm\": true,\n    \"warm_state\": \"ready\",\n    \"warm_ready\": true,\n    \"soft_search_ready\": true,\n    \"embedder_loaded\": true,\n    \"embed_prewarm_running\": false,\n    \"dense_ready\": true,\n    \"warm_phase\": \"prewarm\",\n    \"chunks\": 7174,\n    \"generation\": 2,\n    \"index_usable\": true,\n    \"last_sync_at\": 1790004524.8306496,\n    \"repo\": \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\",\n    \"dashboard\": \"/dashboard\",\n    \"api\": \"/v1/*\"\n  }\n}\n\n"
+    },
+    {
+      "name": "http_health",
+      "cmd": [
+        "GET",
+        "http://127.0.0.1:8765/health"
+      ],
+      "ok": true,
+      "code": 200,
+      "ms": 320.2,
+      "tail": "{\"ok\": true, \"service\": \"scubiee\", \"version\": \"0.3.101\", \"warm\": true, \"warm_state\": \"ready\", \"warm_ready\": true, \"soft_search_ready\": true, \"embedder_loaded\": true, \"embed_prewarm_running\": false, \"dense_ready\": true, \"warm_phase\": \"prewarm\", \"chunks\": 7174, \"generation\": 2, \"index_usable\": true, \"last_sync_at\": 1790004524.8306496, \"repo\": \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\", \"dashboard\": \"/dashboard\", \"api\": \"/v1/*\"}"
+    },
+    {
+      "name": "http_keepalive",
+      "cmd": [
+        "POST",
+        "http://127.0.0.1:8765/v1/embed/keepalive"
+      ],
+      "ok": true,
+      "code": 200,
+      "ms": 30.0,
+      "tail": "{\"ok\": true, \"tick\": false, \"status\": {\"enabled\": true, \"interval_s\": 8.0, \"running\": true, \"last_ms\": 128.0, \"last_at\": 1790005439.6641803, \"last_error\": null, \"last_retrieve_ok\": true, \"ticks\": 49, \"embedder_loaded\": true}}"
+    }
+  ]
+}

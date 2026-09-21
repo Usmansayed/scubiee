@@ -412,7 +412,7 @@ def test_register_client_skips_embedder_outside_engine(tmp_path, monkeypatch) ->
 
 
 def test_register_client_defers_ort_in_engine(tmp_path, monkeypatch) -> None:
-    """Engine register must not kick ORT; soft-first locate owns dense warm."""
+    """Engine register must not sync-load ORT; keepalive loop is armed instead."""
     monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
     monkeypatch.setenv("CTX_SCUBIEE_ROLE", "engine")
     called: list[str] = []
@@ -426,15 +426,26 @@ def test_register_client_defers_ort_in_engine(tmp_path, monkeypatch) -> None:
         lambda *_a, **_k: called.append("embed") or {"ok": True},
     )
     monkeypatch.setattr(
+        "pipeline.engine.prewarm_embedder_async",
+        lambda *_a, **_k: called.append("prewarm") or {"ok": True},
+    )
+    monkeypatch.setattr(
+        "pipeline.engine.ensure_embed_keepalive_loop",
+        lambda *_a, **_k: called.append("keepalive") or {"ok": True, "started": True},
+    )
+    monkeypatch.setattr(
         "pipeline.engine.embedder_is_loaded",
         lambda: False,
     )
     monkeypatch.setattr("pipeline.memory_governor.get_governor", lambda: _Gov())
     out = life.register_client("mcp:cursor@conn-1", pid=1, kind="mcp", host="cursor")
     assert out["ok"] is True
-    assert out.get("prewarm", {}).get("skipped") == "defer_ort_until_after_soft_locate"
+    prewarm = out.get("prewarm") or {}
+    assert prewarm.get("keepalive_armed") is True
+    assert prewarm.get("skipped") is None
     assert "embed" not in called
-    assert "tier" not in called
+    assert "prewarm" not in called
+    assert "keepalive" in called
 
 
 def test_bridge_anchor_blocks_idle_demote_stamp(tmp_path: Path, monkeypatch) -> None:

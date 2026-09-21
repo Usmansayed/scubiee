@@ -140,14 +140,25 @@ def test_register_client_defers_prewarm_until_soft_ready(
         lambda *_a, **_k: kicked.append("prewarm") or {"ok": True, "started": True},
     )
     monkeypatch.setattr(
+        "pipeline.engine.ensure_embedder_ready",
+        lambda *_a, **_k: kicked.append("embed") or {"ok": True},
+    )
+    monkeypatch.setattr(
+        "pipeline.engine.ensure_embed_keepalive_loop",
+        lambda *_a, **_k: kicked.append("keepalive") or {"ok": True, "started": True},
+    )
+    monkeypatch.setattr(
         "pipeline.memory_governor.get_governor",
         lambda: MagicMock(ensure_semantic_tier=MagicMock()),
     )
 
     out = life.register_client("mcp:cursor@test-1", pid=1234, kind="mcp")
     assert out.get("ok") is True
-    assert kicked == []
-    assert (out.get("prewarm") or {}).get("skipped") == "defer_ort_until_soft_ready"
+    # Arm keepalive only — do not sync-load ORT / kick prewarm on register.
+    assert kicked == ["keepalive"]
+    prewarm = out.get("prewarm") or {}
+    assert prewarm.get("keepalive_armed") is True
+    assert prewarm.get("skipped") is None
 
 
 def test_register_client_starts_keepalive_when_already_warm(

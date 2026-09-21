@@ -92,7 +92,7 @@ def _check_mcp_pins() -> dict[str, Any]:
     checks = {
         "CTX_MCP_CLIENT": str(env.get("CTX_MCP_CLIENT") or "") == "cursor",
         "CTX_EMBED_KEEPALIVE": str(env.get("CTX_EMBED_KEEPALIVE") or "") in {"1", "true", "yes"},
-        "CTX_EMBED_KEEPALIVE_S": str(env.get("CTX_EMBED_KEEPALIVE_S") or "") == "15",
+        "CTX_EMBED_KEEPALIVE_S": str(env.get("CTX_EMBED_KEEPALIVE_S") or "") == "8",
         "CTX_EMBED_PREWARM": str(env.get("CTX_EMBED_PREWARM") or "") in {"1", "true", "yes"},
         "CTX_ENGINE_CPU_CAP_PCT": str(env.get("CTX_ENGINE_CPU_CAP_PCT") or "") in {"35", "35.0"},
         "build_0_3_97": str(env.get("CTX_SCUBIEE_BUILD") or "").startswith("0.3.97"),
@@ -245,7 +245,7 @@ def main() -> int:
             str(out_dir),
         ],
         log=out_dir / "host_sim_lane_a_cursor_settle.log",
-        env={"CTX_EMBED_KEEPALIVE_S": "15", "CTX_EMBED_KEEPALIVE": "1"},
+        env={"CTX_EMBED_KEEPALIVE_S": "8", "CTX_EMBED_KEEPALIVE": "1"},
         timeout=600,
     )
     hs = _parse_host_sim_json(out_dir)
@@ -290,7 +290,7 @@ def main() -> int:
         ],
         log=out_dir / "warm_contract.log",
         env={
-            "CTX_EMBED_KEEPALIVE_S": "15",
+            "CTX_EMBED_KEEPALIVE_S": "8",
             "CTX_EMBED_KEEPALIVE": "1",
             "CTX_WARM_DEADLINE_MS": "90000",
         },

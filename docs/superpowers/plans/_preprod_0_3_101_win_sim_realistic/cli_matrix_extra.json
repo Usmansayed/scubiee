@@ -1,0 +1,129 @@
+{
+  "ok": true,
+  "n": 9,
+  "failed": [],
+  "rows": [
+    {
+      "name": "migrate_check",
+      "cmd": [
+        "scubiee",
+        "migrate",
+        "C:\\Users\\usman\\Downloads\\context-engine"
+      ],
+      "ok": true,
+      "code": 0,
+      "ms": 460.1,
+      "tail": "{\n  \"ok\": true,\n  \"project_id\": \"ce_57fe0a0bb68b776b2d600964fabd8072\",\n  \"root\": \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\",\n  \"needs_migration\": false,\n  \"current_schema\": 2,\n  \"target_schema\": 2,\n  \"embed_model\": \"nomic-ai/CodeRankEmbed\",\n  \"embed_backend\": \"fastembed\",\n  \"reasons\": [],\n  \"actions\": [],\n  \"chunks\": 7174,\n  \"indexed_at\": 1790004458.2258162\n}\n\n"
+    },
+    {
+      "name": "migrate_check_all",
+      "cmd": [
+        "scubiee",
+        "migrate",
+        "--check-all"
+      ],
+      "ok": true,
+      "code": 0,
+      "ms": 461.0,
+      "tail": "{\n  \"ok\": true,\n  \"projects\": [\n    {\n      \"ok\": true,\n      \"project_id\": \"ce_57fe0a0bb68b776b2d600964fabd8072\",\n      \"root\": \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\",\n      \"needs_migration\": false,\n      \"current_schema\": 2,\n      \"target_schema\": 2,\n      \"embed_model\": \"nomic-ai/CodeRankEmbed\",\n      \"embed_backend\": \"fastembed\",\n      \"reasons\": [],\n      \"actions\": [],\n      \"chunks\": 7174,\n      \"indexed_at\": 1790004458.2258162\n    }\n  ]\n}\n\n"
+    },
+    {
+      "name": "engine_ensure",
+      "cmd": [
+        "scubiee",
+        "engine",
+        "ensure",
+        "C:\\Users\\usman\\Downloads\\context-engine"
+      ],
+      "ok": true,
+      "code": 0,
+      "ms": 1436.1,
+      "tail": "   \"c:\\\\users\\\\usman\\\\downloads\\\\context-engine\"\n    ],\n    \"store_dir\": \"C:\\\\Users\\\\usman\\\\.scubiee\\\\projects\\\\ce_57fe0a0bb68b776b2d600964fabd8072\",\n    \"state\": \"active\",\n    \"paused\": false,\n    \"pinned\": false,\n    \"git_common_dir\": \"c:\\\\users\\\\usman\\\\downloads\\\\context-engine\\\\.git\",\n    \"initialized_at\": 1789930073.849491,\n    \"last_activated_at\": 1790005358.7733319,\n    \"last_access_at\": 1790005358.7733319,\n    \"status\": \"activated\",\n    \"open\": {\n      \"ok\": true,\n      \"repo\": \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\",\n      \"project_id\": \"ce_57fe0a0bb68b776b2d600964fabd8072\",\n      \"warm_state\": \"ready\",\n      \"reused\": true,\n      \"chunks\": 7174,\n      \"generation\": 2\n    },\n    \"client\": null,\n    \"session_id\": null,\n    \"session\": null,\n    \"session_authored\": false,\n    \"runtime_shared\": true\n  },\n  \"error\": null,\n  \"spawn_owner\": \"direct\",\n  \"watchdog\": {\n    \"ok\": true,\n    \"already_running\": true,\n    \"enabled\": true,\n    \"running\": true,\n    \"pid\": 20796,\n    \"log\": \"C:\\\\Users\\\\usman\\\\.scubiee\\\\watchdog.log\",\n    \"interval_s\": 15.0,\n    \"restart_count\": 4,\n    \"last_wake_reconcile\": null,\n    \"last_reconcile\": 1790003610.4241982,\n    \"last_error\": null\n  }\n}\n\n"
+    },
+    {
+      "name": "engine_watchdog_help",
+      "cmd": [
+        "scubiee",
+        "engine",
+        "watchdog",
+        "-h"
+      ],
+      "ok": true,
+      "code": 0,
+      "ms": 206.0,
+      "tail": "usage: scubiee engine [-h] [--host HOST] [--port PORT] [--wait WAIT]\n                      [--no-open] [--logon] [--off]\n                      {start,stop,status,run,ensure,watchdog,supervisor,autostart}\n                      [path]\n\npositional arguments:\n  {start,stop,status,run,ensure,watchdog,supervisor,autostart}\n                        Daemon action (supervisor = logon loop; watchdog = in-\n                        session sidecar)\n  path                  Default repo for open\n\noptions:\n  -h, --help            show this help message and exit\n  --host HOST\n  --port PORT\n  --wait WAIT           Health wait seconds (start)\n  --no-open             run: do not open repo on start\n  --logon               supervisor: enter standby and stop leftover GPU\n                        (scheduled-task path)\n  --off                 autostart: unregister the logon supervisor task\n\n"
+    },
+    {
+      "name": "connect_kiro_dry",
+      "cmd": [
+        "scubiee",
+        "connect",
+        "--kiro",
+        "--dry-run",
+        "--repo",
+        "C:\\Users\\usman\\Downloads\\context-engine"
+      ],
+      "ok": true,
+      "code": 0,
+      "ms": 940.3,
+      "tail": "ownloads\\\\context-engine\\\\.kiro\\\\settings\\\\mcp.json\"\n          ],\n          \"rules\": {\n            \"repo\": \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\",\n            \"gate_line\": \"1:ce_57fe0a0bb68b776b2d600964fabd8072\",\n            \"ok\": true,\n            \"skipped\": false,\n            \"written\": [\n              \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\\\\.kiro\\\\steering\\\\scubiee.md\",\n              \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\\\\AGENTS.md\"\n            ],\n            \"dry_run\": true,\n            \"errors\": []\n          },\n          \"permissions\": {\n            \"ok\": true,\n            \"slug\": \"kiro\",\n            \"repo\": \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\",\n            \"profile\": \"locate\",\n            \"dry_run\": true,\n            \"artifacts\": [\n              {\n                \"path\": \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\\\\.scubiee\\\\mcp-permissions.json\",\n                \"action\": \"would_write_manifest\"\n              }\n            ],\n            \"skipped\": true,\n            \"skip_reason\": \"embedded on mcpServers entry during connect\"\n          }\n        }\n      ],\n      \"ok\": true\n    },\n    \"connected_tools\": [\n      \"cursor\",\n      \"kiro\"\n    ]\n  }\n]\n\n"
+    },
+    {
+      "name": "connect_claude_dry",
+      "cmd": [
+        "scubiee",
+        "connect",
+        "--claude",
+        "--dry-run",
+        "--repo",
+        "C:\\Users\\usman\\Downloads\\context-engine"
+      ],
+      "ok": true,
+      "code": 0,
+      "ms": 934.7,
+      "tail": "      \"repo\": \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\",\n            \"gate_line\": \"1:ce_57fe0a0bb68b776b2d600964fabd8072\",\n            \"ok\": true,\n            \"skipped\": false,\n            \"written\": [\n              \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\\\\.claude\\\\CLAUDE.md\",\n              \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\\\\AGENTS.md\"\n            ],\n            \"dry_run\": true,\n            \"errors\": []\n          },\n          \"permissions\": {\n            \"ok\": true,\n            \"slug\": \"claude-code\",\n            \"repo\": \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\",\n            \"profile\": \"locate\",\n            \"dry_run\": true,\n            \"artifacts\": [\n              {\n                \"path\": \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\\\\.claude\\\\settings.json\",\n                \"action\": \"would_write\"\n              },\n              {\n                \"path\": \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\\\\.scubiee\\\\mcp-permissions.json\",\n                \"action\": \"would_write_manifest\"\n              }\n            ],\n            \"skipped\": false\n          }\n        }\n      ],\n      \"ok\": true\n    },\n    \"connected_tools\": [\n      \"cursor\",\n      \"kiro\"\n    ]\n  }\n]\n\n"
+    },
+    {
+      "name": "connect_codex_dry",
+      "cmd": [
+        "scubiee",
+        "connect",
+        "--codex",
+        "--dry-run",
+        "--repo",
+        "C:\\Users\\usman\\Downloads\\context-engine"
+      ],
+      "ok": true,
+      "code": 0,
+      "ms": 968.9,
+      "tail": " \"repo\": \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\",\n            \"gate_line\": \"1:ce_57fe0a0bb68b776b2d600964fabd8072\",\n            \"ok\": true,\n            \"skipped\": false,\n            \"written\": [\n              \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\\\\.codex\\\\AGENTS.md\",\n              \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\\\\AGENTS.md\"\n            ],\n            \"dry_run\": true,\n            \"errors\": []\n          },\n          \"permissions\": {\n            \"ok\": true,\n            \"slug\": \"codex\",\n            \"repo\": \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\",\n            \"profile\": \"locate\",\n            \"dry_run\": true,\n            \"artifacts\": [\n              {\n                \"path\": \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\\\\.codex\\\\SCUBIEE_MCP_PERMISSIONS.md\",\n                \"action\": \"would_write\"\n              },\n              {\n                \"path\": \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\\\\.scubiee\\\\mcp-permissions.json\",\n                \"action\": \"would_write_manifest\"\n              }\n            ],\n            \"skipped\": false\n          }\n        }\n      ],\n      \"ok\": true\n    },\n    \"connected_tools\": [\n      \"cursor\",\n      \"kiro\"\n    ]\n  }\n]\n\n"
+    },
+    {
+      "name": "certify_canary",
+      "cmd": [
+        "scubiee",
+        "certify",
+        "C:\\Users\\usman\\Downloads\\context-engine",
+        "--skip-daemon",
+        "--canary"
+      ],
+      "ok": true,
+      "code": 0,
+      "ms": 6528.7,
+      "tail": "e,\n      \"status\": \"passed\",\n      \"detail\": \"recovery={'reason': 'watcher_overflow', 'dirty_paths': ['recovered.py'], 'marked': 1, 'sync_status': 'needs_full'} dirty=['recovered.py']\"\n    },\n    {\n      \"name\": \"doctor_safe_repair_classification\",\n      \"ok\": true,\n      \"required\": true,\n      \"status\": \"passed\",\n      \"detail\": \"{'bind_daemon': 'safe', 'initialize_repo': 'manual'}\"\n    },\n    {\n      \"name\": \"autonomous_standby_idle_policy\",\n      \"ok\": true,\n      \"required\": true,\n      \"status\": \"passed\",\n      \"detail\": \"idle_s=10.0 cmd=['engine', 'supervisor', '--logon']\"\n    },\n    {\n      \"name\": \"publication_coherence\",\n      \"ok\": true,\n      \"required\": true,\n      \"status\": \"passed\",\n      \"detail\": \"clean=ok corrupt=checksum_mismatch\"\n    },\n    {\n      \"name\": \"external_client_matrix\",\n      \"ok\": false,\n      \"required\": false,\n      \"status\": \"skipped\",\n      \"detail\": \"optional: scubiee test clients --clients\"\n    },\n    {\n      \"name\": \"semantic_canary\",\n      \"ok\": false,\n      \"required\": false,\n      \"status\": \"skipped\",\n      \"detail\": \"enable with --skip-canary false when index is warm\"\n    }\n  ],\n  \"failures\": [],\n  \"ms\": 5901.1,\n  \"certify_version\": 1\n}\n\n"
+    },
+    {
+      "name": "search2",
+      "cmd": [
+        "scubiee",
+        "search",
+        "MultiArchConductor retrieve_D_channel_best _channel_maps affinity_scores score_all FastEmbed",
+        "C:\\Users\\usman\\Downloads\\context-engine"
+      ],
+      "ok": true,
+      "code": 0,
+      "ms": 1275.8,
+      "tail": "view\": \"\",\n      \"source\": \"D_channel_best:bm25\"\n    },\n    {\n      \"rank\": 3,\n      \"file\": \"tests/test_embed_keepalive.py\",\n      \"score\": 13.2691,\n      \"chunk_id\": 5628,\n      \"preview\": \"\",\n      \"source\": \"D_channel_best:bm25\"\n    },\n    {\n      \"rank\": 4,\n      \"file\": \"packages/conductor/architectures.py\",\n      \"score\": 8.5177,\n      \"chunk_id\": 536,\n      \"preview\": \"\",\n      \"source\": \"D_channel_best:bm25+dense+graph\"\n    },\n    {\n      \"rank\": 5,\n      \"file\": \"tests/test_dense_map_required.py\",\n      \"score\": 4.1547,\n      \"chunk_id\": 5564,\n      \"preview\": \"\",\n      \"source\": \"D_channel_best:dense\"\n    },\n    {\n      \"rank\": 6,\n      \"file\": \"packages/pipeline/mcp_host_sim/scenario.py\",\n      \"score\": 3.9311,\n      \"chunk_id\": 2811,\n      \"preview\": \"\",\n      \"source\": \"D_channel_best:dense\"\n    },\n    {\n      \"rank\": 7,\n      \"file\": \"packages/pipeline/accel.py\",\n      \"score\": 3.1062,\n      \"chunk_id\": 1665,\n      \"preview\": \"\",\n      \"source\": \"D_channel_best:graph\"\n    },\n    {\n      \"rank\": 8,\n      \"file\": \"packages/trace_lab/pack_bakeoff.py\",\n      \"score\": 2.7268,\n      \"chunk_id\": 4239,\n      \"preview\": \"\",\n      \"source\": \"D_channel_best:graph\"\n    }\n  ]\n}\n\n"
+    }
+  ]
+}

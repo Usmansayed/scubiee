@@ -54,6 +54,66 @@ def test_ensure_keepalive_already_running_no_deadlock(monkeypatch) -> None:
     eng.stop_embed_keepalive_loop()
 
 
+def test_embed_keepalive_skips_when_search_in_flight(monkeypatch) -> None:
+    from pipeline import engine as eng
+
+    monkeypatch.setattr(eng, "embedder_is_loaded", lambda: True)
+    eng._SEARCH_IN_FLIGHT.set()
+    try:
+        out = eng.embed_keepalive(".")
+        assert out.get("ok") is True
+        assert out.get("skipped") is True
+        assert out.get("reason") == "search_in_flight"
+    finally:
+        eng._SEARCH_IN_FLIGHT.clear()
+
+
+def test_embed_keepalive_skips_when_embed_busy(monkeypatch) -> None:
+    from pipeline import engine as eng
+
+    monkeypatch.setattr(eng, "embedder_is_loaded", lambda: True)
+    eng._EMBED_BUSY.set()
+    try:
+        out = eng.embed_keepalive(".")
+        assert out.get("ok") is True
+        assert out.get("skipped") is True
+        assert out.get("reason") == "embed_busy"
+    finally:
+        eng._EMBED_BUSY.clear()
+
+
+def test_embed_keepalive_skips_after_recent_search(monkeypatch) -> None:
+    import time
+
+    from pipeline import engine as eng
+
+    monkeypatch.setattr(eng, "embedder_is_loaded", lambda: True)
+    eng._LAST_SEARCH_DONE_AT = time.time()
+    out = eng.embed_keepalive(".")
+    assert out.get("ok") is True
+    assert out.get("skipped") is True
+    assert out.get("reason") == "recent_search"
+    eng._LAST_SEARCH_DONE_AT = 0.0
+
+
+def test_keepalive_index_touch_dense_bm25_capped_graph() -> None:
+    import numpy as np
+    from pipeline import engine as eng
+
+    fake_eng = MagicMock()
+    fake_eng.conductor._n = 64
+    fake_eng.conductor.dense.score_all = MagicMock(return_value=[])
+    fake_eng.conductor.bm25.score_all = MagicMock(return_value=[])
+    fake_eng.conductor.graph.affinity_scores = MagicMock(return_value=(None, [], 0.0))
+    qvec = np.ones(8, dtype=np.float32)
+    eng._keepalive_index_touch(fake_eng, "warmup", qvec)
+    fake_eng.conductor.dense.score_all.assert_called_once()
+    fake_eng.conductor.bm25.score_all.assert_called_once_with("warmup")
+    fake_eng.conductor.graph.affinity_scores.assert_called_once()
+    kwargs = fake_eng.conductor.graph.affinity_scores.call_args.kwargs
+    assert kwargs.get("max_visit") == 64
+
+
 def test_embed_keepalive_skips_when_not_loaded(monkeypatch) -> None:
     from pipeline import engine as eng
 
@@ -64,22 +124,88 @@ def test_embed_keepalive_skips_when_not_loaded(monkeypatch) -> None:
     assert out.get("reason") == "embedder_not_loaded"
 
 
-def test_embed_keepalive_encodes_when_loaded(monkeypatch) -> None:
+def test_embed_keepalive_encodes_and_retrieves_when_loaded(monkeypatch) -> None:
+    import numpy as np
     from pipeline import engine as eng
 
     monkeypatch.setattr(eng, "embedder_is_loaded", lambda: True)
+    monkeypatch.setattr(eng, "prime_dense_ready", lambda: True)
     inner = MagicMock()
+    inner.format_query = lambda s: s
+    inner._encode_batch = MagicMock(return_value=np.ones((1, 8), dtype=np.float32))
     fake_emb = MagicMock()
     fake_emb._ensure = MagicMock(return_value=inner)
     fake_eng = MagicMock()
     fake_eng.embedder = fake_emb
+    fake_eng.conductor.dense.score_all = MagicMock(return_value=[])
     monkeypatch.setattr(eng, "load_engine", lambda _root: fake_eng)
-    monkeypatch.setattr(eng, "run_embed_infer", lambda fn, timeout_s=None: fn())
+    monkeypatch.setattr(eng, "run_embed_infer", lambda fn, timeout_s=None, **_k: fn())
     out = eng.embed_keepalive(".")
     assert out.get("ok") is True
     assert out.get("ms") is not None
-    inner.embed_one.assert_called_once()
-    assert "keepalive" in str(inner.embed_one.call_args[0][0])
+    inner._encode_batch.assert_called_once()
+    assert "keepalive" in str(inner._encode_batch.call_args[0][0][0])
+    fake_eng.conductor.dense.score_all.assert_called_once()
+    fake_eng.conductor.bm25.score_all.assert_called()
+    fake_eng.conductor.graph.affinity_scores.assert_called()
+    assert out.get("retrieve_ok") is True
+
+
+def test_embed_keepalive_retrieve_off_embed_worker(monkeypatch) -> None:
+    """Retrieve must not run inside run_embed_infer (would block map encode)."""
+    import numpy as np
+    from pipeline import engine as eng
+
+    monkeypatch.setattr(eng, "embedder_is_loaded", lambda: True)
+    monkeypatch.setattr(eng, "prime_dense_ready", lambda: True)
+    inner = MagicMock()
+    inner.format_query = lambda s: s
+    inner._encode_batch = MagicMock(return_value=np.ones((1, 8), dtype=np.float32))
+    fake_emb = MagicMock()
+    fake_emb._ensure = MagicMock(return_value=inner)
+    fake_eng = MagicMock()
+    fake_eng.embedder = fake_emb
+    order: list[str] = []
+
+    def _retrieve(*_a, **_k):
+        order.append("retrieve")
+        return []
+
+    fake_eng.conductor.dense.score_all = _retrieve
+    monkeypatch.setattr(eng, "load_engine", lambda _root: fake_eng)
+
+    def _run(fn, timeout_s=None, **_k):
+        order.append("enter")
+        try:
+            return fn()
+        finally:
+            order.append("exit")
+
+    monkeypatch.setattr(eng, "run_embed_infer", _run)
+    out = eng.embed_keepalive(".")
+    assert out.get("retrieve_ok") is True
+    assert order == ["enter", "exit", "retrieve"]
+
+
+def test_embed_keepalive_encode_ok_if_retrieve_fails(monkeypatch) -> None:
+    import numpy as np
+    from pipeline import engine as eng
+
+    monkeypatch.setattr(eng, "embedder_is_loaded", lambda: True)
+    monkeypatch.setattr(eng, "prime_dense_ready", lambda: True)
+    inner = MagicMock()
+    inner.format_query = lambda s: s
+    inner._encode_batch = MagicMock(return_value=np.ones((1, 8), dtype=np.float32))
+    fake_emb = MagicMock()
+    fake_emb._ensure = MagicMock(return_value=inner)
+    fake_eng = MagicMock()
+    fake_eng.embedder = fake_emb
+    fake_eng.conductor.dense.score_all = MagicMock(side_effect=RuntimeError("cold graph"))
+    monkeypatch.setattr(eng, "load_engine", lambda _root: fake_eng)
+    monkeypatch.setattr(eng, "run_embed_infer", lambda fn, timeout_s=None, **_k: fn())
+    out = eng.embed_keepalive(".")
+    assert out.get("ok") is True
+    assert out.get("retrieve_ok") is False
 
 
 def test_embed_keepalive_skips_on_timeout(monkeypatch) -> None:
@@ -87,7 +213,7 @@ def test_embed_keepalive_skips_on_timeout(monkeypatch) -> None:
 
     monkeypatch.setattr(eng, "embedder_is_loaded", lambda: True)
 
-    def _boom(_fn, timeout_s=None):
+    def _boom(_fn, timeout_s=None, **_k):
         raise FuturesTimeoutError()
 
     monkeypatch.setattr(eng, "run_embed_infer", _boom)
@@ -97,13 +223,15 @@ def test_embed_keepalive_skips_on_timeout(monkeypatch) -> None:
     assert out.get("reason") == "timeout"
 
 
-def test_embed_keepalive_interval_default_is_15s(monkeypatch) -> None:
+def test_embed_keepalive_interval_default_is_8s(monkeypatch) -> None:
     from pipeline import engine as eng
 
     monkeypatch.delenv("CTX_EMBED_KEEPALIVE_S", raising=False)
-    assert eng.embed_keepalive_interval_s() == 15.0
+    assert eng.embed_keepalive_interval_s() == 8.0
     monkeypatch.setenv("CTX_EMBED_KEEPALIVE_S", "20")
     assert eng.embed_keepalive_interval_s() == 20.0
+    monkeypatch.setenv("CTX_EMBED_KEEPALIVE_S", "3")
+    assert eng.embed_keepalive_interval_s() == 5.0
 
 
 def test_embed_keepalive_disabled(monkeypatch) -> None:
@@ -147,8 +275,8 @@ def test_keepalive_loop_ticks_immediately(monkeypatch) -> None:
     assert (ticks[0] - t0) < 1.5
 
 
-def test_keepalive_loop_prewarm_polls_fast_when_soft_cold(monkeypatch) -> None:
-    """While soft-ready but embedder cold, loop must re-kick prewarm ~2s (not 15s)."""
+def test_keepalive_loop_does_not_kick_prewarm_when_embedder_cold(monkeypatch) -> None:
+    """Attach kicks prewarm once; keepalive must not re-enter ORT while load holds GIL."""
     import time
 
     from pipeline import engine as eng
@@ -157,47 +285,30 @@ def test_keepalive_loop_prewarm_polls_fast_when_soft_cold(monkeypatch) -> None:
     monkeypatch.setenv("CTX_EMBED_KEEPALIVE_S", "60")
     eng.stop_embed_keepalive_loop()
     kicks: list[float] = []
+    ticks: list[float] = []
 
     monkeypatch.setattr(eng, "embedder_is_loaded", lambda: False)
-    monkeypatch.setattr(
-        eng,
-        "prewarm_status",
-        lambda: {"running": False},
-    )
     monkeypatch.setattr(
         eng,
         "prewarm_embedder_async",
         lambda *_a, **_k: kicks.append(time.time()) or {"ok": True, "started": True},
     )
     monkeypatch.setattr(
+        eng,
+        "embed_keepalive",
+        lambda *_a, **_k: ticks.append(time.time()) or {"ok": True, "ms": 1.0},
+    )
+    monkeypatch.setattr(
         "pipeline.lifecycle_runtime.active_client_count",
         lambda: 1,
     )
 
-    class _Eng:
-        texts = ["chunk"]
-
-    class _CE:
-        engine = _Eng()
-
-        def health(self):
-            raise AssertionError("keepalive must not call health() for soft_seen")
-
-    monkeypatch.setattr(
-        "pipeline.ce_service.get_context_engine",
-        lambda: _CE(),
-    )
-
-    t0 = time.time()
     out = eng.ensure_embed_keepalive_loop(".")
     assert out.get("started") or out.get("already_running")
-    deadline = time.time() + 5.0
-    while time.time() < deadline and len(kicks) < 2:
-        time.sleep(0.05)
+    time.sleep(0.4)
     eng.stop_embed_keepalive_loop()
-    assert len(kicks) >= 2, f"expected ≥2 prewarm kicks within 5s, got {len(kicks)}"
-    assert (kicks[1] - kicks[0]) < 3.5, f"gap={kicks[1] - kicks[0]:.2f}s (want ~2s)"
-    assert (kicks[0] - t0) < 1.5
+    assert kicks == [], f"keepalive must not kick prewarm, got {len(kicks)}"
+    assert ticks == [], "keepalive encode must wait until embedder is loaded"
 
 
 def test_keeper_tick_skips_when_clients_active(tmp_path: Path, monkeypatch) -> None:

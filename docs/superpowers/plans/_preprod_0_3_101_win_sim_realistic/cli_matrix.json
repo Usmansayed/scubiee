@@ -1,0 +1,231 @@
+{
+  "ok": false,
+  "n": 18,
+  "failed": [
+    "doctor",
+    "doctor_fix",
+    "sync_now"
+  ],
+  "rows": [
+    {
+      "name": "version",
+      "cmd": [
+        "scubiee",
+        "--version"
+      ],
+      "ok": true,
+      "code": 0,
+      "ms": 900.6,
+      "tail": "scubiee 0.3.101\n\n"
+    },
+    {
+      "name": "help",
+      "cmd": [
+        "scubiee",
+        "-h"
+      ],
+      "ok": true,
+      "code": 0,
+      "ms": 183.9,
+      "tail": "rphan engine:\n                        kill lockers, restore MCP pins, rebind daemon to this\n                        repo.\n    migrate             Check or apply data migrations after a version upgrade\n    diagnose            Run installation diagnostics, test the setup, and save\n                        a shareable log file\n    connect             Connect Scubiee to AI coding tools (installs MCP\n                        config + rules)\n    disconnect          Disconnect Scubiee from AI coding tools (removes MCP\n                        config + rules)\n    upgrade             One-command upgrade: package swap, migrations,\n                        MCP/rules rebind, daemon restart, health check (cross-\n                        OS)\n\noptions:\n  -h, --help            show this help message and exit\n\n"
+    },
+    {
+      "name": "preflight",
+      "cmd": [
+        "scubiee",
+        "preflight",
+        "C:\\Users\\usman\\Downloads\\context-engine"
+      ],
+      "ok": true,
+      "code": 0,
+      "ms": 3260.4,
+      "tail": "U via DirectML (Intel iGPU / APU graphics use CPU instead)\",\n    \"fastembed\": true,\n    \"onnxruntime\": true,\n    \"providers\": [\n      \"DmlExecutionProvider\",\n      \"CPUExecutionProvider\"\n    ],\n    \"provider_ok\": true,\n    \"model_warm\": true,\n    \"provider_validation\": {\n      \"ok\": true,\n      \"profile\": \"dml\",\n      \"provider\": \"DmlExecutionProvider\",\n      \"available_providers\": [\n        \"DmlExecutionProvider\",\n        \"CPUExecutionProvider\"\n      ],\n      \"provider_available\": true,\n      \"model_warm\": true,\n      \"detail\": \"DmlExecutionProvider warmed cached model nomic-ai/CodeRankEmbed\"\n    },\n    \"sentence_transformers\": false,\n    \"missing\": [],\n    \"hint\": \"Run `python -m pipeline setup` (or `pip install -e \\\".[dml]\\\"`) so FastEmbed uses DmlExecutionProvider at batch=16.\"\n  }\n}\n\n"
+    },
+    {
+      "name": "preflight_lexical",
+      "cmd": [
+        "scubiee",
+        "preflight",
+        "C:\\Users\\usman\\Downloads\\context-engine",
+        "--lexical-only"
+      ],
+      "ok": true,
+      "code": 0,
+      "ms": 2751.9,
+      "tail": "U via DirectML (Intel iGPU / APU graphics use CPU instead)\",\n    \"fastembed\": true,\n    \"onnxruntime\": true,\n    \"providers\": [\n      \"DmlExecutionProvider\",\n      \"CPUExecutionProvider\"\n    ],\n    \"provider_ok\": true,\n    \"model_warm\": true,\n    \"provider_validation\": {\n      \"ok\": true,\n      \"profile\": \"dml\",\n      \"provider\": \"DmlExecutionProvider\",\n      \"available_providers\": [\n        \"DmlExecutionProvider\",\n        \"CPUExecutionProvider\"\n      ],\n      \"provider_available\": true,\n      \"model_warm\": true,\n      \"detail\": \"DmlExecutionProvider warmed cached model nomic-ai/CodeRankEmbed\"\n    },\n    \"sentence_transformers\": false,\n    \"missing\": [],\n    \"hint\": \"Run `python -m pipeline setup` (or `pip install -e \\\".[dml]\\\"`) so FastEmbed uses DmlExecutionProvider at batch=16.\"\n  }\n}\n\n"
+    },
+    {
+      "name": "doctor",
+      "cmd": [
+        "scubiee",
+        "doctor",
+        "C:\\Users\\usman\\Downloads\\context-engine"
+      ],
+      "ok": false,
+      "code": 1,
+      "ms": 3783.9,
+      "tail": "    \"repair\": null\n  },\n  \"journal\": {\n    \"pending\": true,\n    \"paths\": [\n      \"docs/macos-handoff-0.3.101.md\",\n      \"docs/superpowers/plans/_preprod_0_3_101_win_sim_realistic/report.md\",\n      \"zed/scubiee_mcp_permissions.md\"\n    ]\n  },\n  \"git_family\": {\n    \"needs_reconcile\": false,\n    \"groups\": [],\n    \"duplicate_count\": 0\n  },\n  \"meta\": {\n    \"chunks\": 7174,\n    \"files_indexed\": 1159,\n    \"collection\": \"context-engine_57fe0a0bb68b776b\",\n    \"embed_model\": \"nomic-ai/CodeRankEmbed\",\n    \"project_id\": \"ce_57fe0a0bb68b776b2d600964fabd8072\"\n  },\n  \"checked_at\": 1790005103.246645,\n  \"repair_plan\": [\n    {\n      \"id\": \"replay_dirty_journal\",\n      \"kind\": \"safe\",\n      \"detail\": \"replay dirty journal then sync-now\"\n    }\n  ],\n  \"repairs\": [\n    \"replay dirty journal then sync-now\"\n  ]\n}\n\n"
+    },
+    {
+      "name": "doctor_fix",
+      "cmd": [
+        "scubiee",
+        "doctor",
+        "C:\\Users\\usman\\Downloads\\context-engine",
+        "--fix"
+      ],
+      "ok": false,
+      "code": 1,
+      "ms": 82050.7,
+      "tail": "erpowers/plans/_preprod_0_3_101_win_sim_realistic/report.md\",\n        \"zed/scubiee_mcp_permissions.md\"\n      ]\n    },\n    \"git_family\": {\n      \"needs_reconcile\": false,\n      \"groups\": [],\n      \"duplicate_count\": 0\n    },\n    \"meta\": {\n      \"chunks\": 7174,\n      \"files_indexed\": 1159,\n      \"collection\": \"context-engine_57fe0a0bb68b776b\",\n      \"embed_model\": \"nomic-ai/CodeRankEmbed\",\n      \"project_id\": \"ce_57fe0a0bb68b776b2d600964fabd8072\"\n    },\n    \"checked_at\": 1790005185.223407,\n    \"repair_plan\": [\n      {\n        \"id\": \"replay_dirty_journal\",\n        \"kind\": \"safe\",\n        \"detail\": \"replay dirty journal then sync-now\"\n      }\n    ],\n    \"repairs\": [\n      \"replay dirty journal then sync-now\"\n    ]\n  }\n}\n\n[sync] memory mode=large_reindex rss_cap=1000MB mlx_batch=64 cache=512MB\n"
+    },
+    {
+      "name": "setup_status",
+      "cmd": [
+        "scubiee",
+        "setup",
+        "--status"
+      ],
+      "ok": true,
+      "code": 0,
+      "ms": 206.7,
+      "tail": "coreml_compute_units\": null,\n      \"windows_discrete_amd_nvidia\": true\n    },\n    \"installed_at\": \"2026-09-20T18:47:28.320434+00:00\",\n    \"batch_calibration\": {\n      \"ok\": true,\n      \"winner\": 16,\n      \"texts_per_sec\": null,\n      \"reason\": \"deferred \\u2014 DirectML not yet visible in this process\"\n    },\n    \"envelope\": {\n      \"tier\": \"standard\",\n      \"batch_ceiling\": 16,\n      \"embed_workers\": 1,\n      \"index_workers\": 2,\n      \"aggressive_unload\": false,\n      \"queue_limit\": 2\n    },\n    \"hardware_fingerprint\": \"bfee6cc27b63a395df27b44eea24a05f4bfa50117595ecb44b7e213a494d2b5d\",\n    \"cuda_fallback_hint\": \"\"\n  },\n  \"envelope\": {\n    \"tier\": \"standard\",\n    \"batch_ceiling\": 16,\n    \"embed_workers\": 1,\n    \"index_workers\": 2,\n    \"aggressive_unload\": false,\n    \"queue_limit\": 2\n  }\n}\n\n"
+    },
+    {
+      "name": "resources",
+      "cmd": [
+        "scubiee",
+        "resources"
+      ],
+      "ok": true,
+      "code": 0,
+      "ms": 557.4,
+      "tail": " idle \\u2014 boost throughput\",\n        \"sample\": {\n          \"cpu_percent\": 6.2,\n          \"ram_percent\": 84.8,\n          \"ram_available_mb\": 2393.0625,\n          \"ram_total_mb\": 15753.09375,\n          \"ts\": 1790005186.1582859,\n          \"source\": \"psutil\"\n        }\n      },\n      \"graph\": {\n        \"pressure\": \"idle\",\n        \"allow\": true,\n        \"batch_size\": 16,\n        \"pause_s\": 0.0,\n        \"reason\": \"system idle \\u2014 boost throughput\",\n        \"sample\": {\n          \"cpu_percent\": 6.2,\n          \"ram_percent\": 84.8,\n          \"ram_available_mb\": 2393.0625,\n          \"ram_total_mb\": 15753.09375,\n          \"ts\": 1790005186.1582859,\n          \"source\": \"psutil\"\n        }\n      }\n    },\n    \"embed_scheduler\": {\n      \"holder\": null,\n      \"queued\": 0,\n      \"queue\": []\n    }\n  }\n}\n\n"
+    },
+    {
+      "name": "list",
+      "cmd": [
+        "scubiee",
+        "list"
+      ],
+      "ok": true,
+      "code": 0,
+      "ms": 473.5,
+      "tail": "t-engine\",\n    \"paths\": [\n      \"c:\\\\users\\\\usman\\\\downloads\\\\context-engine\"\n    ],\n    \"store_dir\": \"C:\\\\Users\\\\usman\\\\.scubiee\\\\projects\\\\ce_57fe0a0bb68b776b2d600964fabd8072\",\n    \"state\": \"active\",\n    \"paused\": false,\n    \"pinned\": false,\n    \"git_common_dir\": \"c:\\\\users\\\\usman\\\\downloads\\\\context-engine\\\\.git\",\n    \"initialized_at\": 1789930073.849491,\n    \"last_activated_at\": 1790004516.6361382,\n    \"last_access_at\": 1790005183.7429714,\n    \"presence\": \"active\",\n    \"forget_allowed\": false,\n    \"root_exists\": true,\n    \"presence_reasons\": [\n      \"c:\\\\users\\\\usman\\\\downloads\\\\context-engine: identity matches ce_57fe0a0bb68b776b2d600964fabd8072\"\n    ],\n    \"indexed\": true,\n    \"index_exists\": true,\n    \"has_index\": true,\n    \"index_state\": \"ready\",\n    \"name\": \"context-engine\"\n  }\n]\n\n"
+    },
+    {
+      "name": "status",
+      "cmd": [
+        "scubiee",
+        "status",
+        "C:\\Users\\usman\\Downloads\\context-engine"
+      ],
+      "ok": true,
+      "code": 0,
+      "ms": 1718.8,
+      "tail": "\\\\vectordb\",\n    \"collections\": [\n      {\n        \"name\": \"context-engine_57fe0a0bb68b776b\",\n        \"cwd\": \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\",\n        \"dim\": 768,\n        \"bits\": 8,\n        \"ntotal\": 7174,\n        \"updated_at\": 1790004516.5619557\n      }\n    ]\n  },\n  \"server\": {\n    \"ok\": true,\n    \"service\": \"scubiee\",\n    \"version\": \"0.3.101\",\n    \"warm\": true,\n    \"warm_state\": \"ready\",\n    \"warm_ready\": true,\n    \"soft_search_ready\": true,\n    \"embedder_loaded\": true,\n    \"embed_prewarm_running\": false,\n    \"dense_ready\": true,\n    \"warm_phase\": \"dense\",\n    \"chunks\": 7174,\n    \"generation\": 2,\n    \"index_usable\": true,\n    \"last_sync_at\": 1790004524.8306496,\n    \"repo\": \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\",\n    \"dashboard\": \"/dashboard\",\n    \"api\": \"/v1/*\"\n  }\n}\n\n"
+    },
+    {
+      "name": "gate",
+      "cmd": [
+        "scubiee",
+        "gate",
+        "C:\\Users\\usman\\Downloads\\context-engine"
+      ],
+      "ok": true,
+      "code": 0,
+      "ms": 1102.9,
+      "tail": "1:ce_57fe0a0bb68b776b2d600964fabd8072\n\n"
+    },
+    {
+      "name": "engine_status",
+      "cmd": [
+        "scubiee",
+        "engine",
+        "status",
+        "C:\\Users\\usman\\Downloads\\context-engine"
+      ],
+      "ok": true,
+      "code": 0,
+      "ms": 9546.3,
+      "tail": "6b\",\n      \"project_id\": \"ce_57fe0a0bb68b776b2d600964fabd8072\",\n      \"last_incremental_at\": 1790004518.5502183\n    },\n    \"last_bg_sync\": {\n      \"refreshed\": true,\n      \"files\": [\n        \"docs/macos-handoff-0.3.101.md\",\n        \"docs/superpowers/plans/_preprod_0_3_101_win_sim_realistic/report.md\",\n        \"zed/scubiee_mcp_permissions.md\"\n      ],\n      \"chunks_upserted\": 1,\n      \"chunks_removed\": 1,\n      \"ms\": 30653.4,\n      \"strategy\": \"incremental\",\n      \"error\": null,\n      \"graph_error\": null,\n      \"warnings\": [],\n      \"confirmation_required\": false,\n      \"reason\": \"dirty\",\n      \"dirty_paths\": [\n        \"docs/macos-handoff-0.3.101.md\",\n        \"docs/superpowers/plans/_preprod_0_3_101_win_sim_realistic/report.md\",\n        \"zed/scubiee_mcp_permissions.md\"\n      ]\n    }\n  }\n}\n\n"
+    },
+    {
+      "name": "dashboard_status",
+      "cmd": [
+        "scubiee",
+        "dashboard",
+        "--status"
+      ],
+      "ok": true,
+      "code": 0,
+      "ms": 437.6,
+      "tail": "{\n  \"ok\": true,\n  \"running\": false\n}\n\n"
+    },
+    {
+      "name": "diagnose_no_tests",
+      "cmd": [
+        "scubiee",
+        "diagnose",
+        "--no-tests"
+      ],
+      "ok": true,
+      "code": 0,
+      "ms": 3222.1,
+      "tail": "\"stale_accel\": false\n  },\n  \"log_file\": \"C:\\\\Users\\\\usman\\\\.scubiee\\\\logs\\\\diagnose_20260921_211002.json\"\n}\n\nRunning diagnostics...\n[\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591]   0%  Starting\n[\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591]   5%  Checking platform\n[\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591]  10%  Checking Python\n[\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591]  15%  Detecting hardware\n[\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591]  25%  Checking acceleration\n[\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591]  35%  Checking libraries\n[\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591]  45%  Validating capabilities\n[\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591]  55%  Checking memory config\n[\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591]  60%  Checking managed projects\n[\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591]  65%  Checking daemon\n[\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591]  98%  Saving report\n[\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588] 100%  All checks passed\n"
+    },
+    {
+      "name": "certify_skip_daemon",
+      "cmd": [
+        "scubiee",
+        "certify",
+        "C:\\Users\\usman\\Downloads\\context-engine",
+        "--skip-daemon"
+      ],
+      "ok": true,
+      "code": 0,
+      "ms": 6541.6,
+      "tail": "octor_safe_repair_classification\",\n      \"ok\": true,\n      \"required\": true,\n      \"status\": \"passed\",\n      \"detail\": \"{'bind_daemon': 'safe', 'initialize_repo': 'manual'}\"\n    },\n    {\n      \"name\": \"autonomous_standby_idle_policy\",\n      \"ok\": true,\n      \"required\": true,\n      \"status\": \"passed\",\n      \"detail\": \"idle_s=10.0 cmd=['engine', 'supervisor', '--logon']\"\n    },\n    {\n      \"name\": \"publication_coherence\",\n      \"ok\": true,\n      \"required\": true,\n      \"status\": \"passed\",\n      \"detail\": \"clean=ok corrupt=checksum_mismatch\"\n    },\n    {\n      \"name\": \"external_client_matrix\",\n      \"ok\": false,\n      \"required\": false,\n      \"status\": \"skipped\",\n      \"detail\": \"optional: scubiee test clients --clients\"\n    }\n  ],\n  \"failures\": [],\n  \"ms\": 5971.6,\n  \"certify_version\": 1\n}\n\n"
+    },
+    {
+      "name": "connect_cursor_dry",
+      "cmd": [
+        "scubiee",
+        "connect",
+        "--cursor",
+        "--dry-run",
+        "--repo",
+        "C:\\Users\\usman\\Downloads\\context-engine"
+      ],
+      "ok": true,
+      "code": 0,
+      "ms": 900.0,
+      "tail": "ue,\n            \"errors\": []\n          },\n          \"permissions\": {\n            \"ok\": true,\n            \"slug\": \"cursor\",\n            \"repo\": \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\",\n            \"profile\": \"locate\",\n            \"dry_run\": true,\n            \"artifacts\": [\n              {\n                \"path\": \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\\\\.cursor\\\\permissions.json\",\n                \"action\": \"would_write\"\n              },\n              {\n                \"path\": \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\\\\.scubiee\\\\mcp-permissions.json\",\n                \"action\": \"would_write_manifest\"\n              }\n            ],\n            \"skipped\": false\n          }\n        }\n      ],\n      \"ok\": true\n    },\n    \"connected_tools\": [\n      \"cursor\",\n      \"kiro\"\n    ]\n  }\n]\n\n"
+    },
+    {
+      "name": "search",
+      "cmd": [
+        "scubiee",
+        "search",
+        "retrieve_D_channel_best FastEmbed embed_keepalive graph bm25 dense packages/pipeline/engine.py::search",
+        "C:\\Users\\usman\\Downloads\\context-engine"
+      ],
+      "ok": true,
+      "code": 0,
+      "ms": 1408.0,
+      "tail": " \"\",\n      \"source\": \"D_channel_best:dense\"\n    },\n    {\n      \"rank\": 5,\n      \"file\": \"packages/pipeline/searcher.py\",\n      \"score\": 11.9603,\n      \"chunk_id\": 3528,\n      \"preview\": \"\",\n      \"source\": \"D_channel_best:graph\"\n    },\n    {\n      \"rank\": 6,\n      \"file\": \"packages/pipeline/locate.py\",\n      \"score\": 10.5987,\n      \"chunk_id\": 2670,\n      \"preview\": \"\",\n      \"source\": \"D_channel_best:dense\"\n    },\n    {\n      \"rank\": 7,\n      \"file\": \"packages/pipeline/mcp_lifecycle.py\",\n      \"score\": 8.433,\n      \"chunk_id\": 2859,\n      \"preview\": \"\",\n      \"source\": \"D_channel_best:bm25\"\n    },\n    {\n      \"rank\": 8,\n      \"file\": \"tests/test_locate_quality_combo.py\",\n      \"score\": 6.6808,\n      \"chunk_id\": 5995,\n      \"preview\": \"\",\n      \"source\": \"D_channel_best:bm25\"\n    }\n  ]\n}\n\n"
+    },
+    {
+      "name": "sync_now",
+      "cmd": [
+        "scubiee",
+        "sync-now",
+        "C:\\Users\\usman\\Downloads\\context-engine"
+      ],
+      "ok": false,
+      "code": 1,
+      "ms": 75494.7,
+      "tail": "o/how-everything-works.md\",\n      \"web-info/product-guide-for-website.md\",\n      \"web-info/website-content.md\"\n    ],\n    \"chunks_upserted\": 0,\n    \"chunks_removed\": 0,\n    \"ms\": 74699.9,\n    \"strategy\": \"explicit_full_index_required\",\n    \"error\": \"14344 chunks changed, exceeding the automatic limit of 10000; run `scubiee index C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine --force` explicitly\",\n    \"graph_error\": null,\n    \"warnings\": [\n      \"No graph or vector artifacts were published for this oversized change.\"\n    ],\n    \"confirmation_required\": false\n  },\n  \"error\": \"14344 chunks changed, exceeding the automatic limit of 10000; run `scubiee index C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine --force` explicitly\"\n}\n\n[sync] memory mode=large_reindex rss_cap=1000MB mlx_batch=64 cache=512MB\n"
+    }
+  ]
+}

@@ -17,8 +17,20 @@ def wd_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     home = tmp_path / "ce"
     home.mkdir()
     monkeypatch.setenv("CTX_HOME", str(home))
+    monkeypatch.setenv("CTX_REPO", str(home))
     monkeypatch.setenv("CTX_WATCHDOG", "1")
     monkeypatch.setenv("CTX_WATCHDOG_INTERVAL_S", "0.05")
+    # Never probe / restart the live enrolled daemon on :8765.
+    monkeypatch.setattr(
+        "pipeline.process_control.pids_listening_on_port", lambda _port: []
+    )
+    monkeypatch.setattr(
+        "pipeline.warm_autoload.mcp_frontend_present", lambda: False
+    )
+    monkeypatch.setattr(
+        "pipeline.daemon.start_daemon",
+        lambda *_a, **_k: {"ok": True, "skipped": "test_isolate"},
+    )
     return home
 
 
@@ -129,7 +141,7 @@ def test_loop_heals_hung_alive_engine_when_mcp_clients(
 def test_loop_does_not_autoload_when_mcp_clients_but_pid_dead(
     wd_home: Path, monkeypatch: pytest.MonkeyPatch
 ):
-    """MCP still connected must not make the watchdog cold-start the engine."""
+    """No MCP demand + dead PID → agent-owned warm; watchdog must not cold-start."""
     from pipeline import watchdog as wd
     from pipeline.lifecycle_runtime import note_activity
 
@@ -141,7 +153,7 @@ def test_loop_does_not_autoload_when_mcp_clients_but_pid_dead(
     monkeypatch.setattr(wd, "_health_ok", lambda: False)
     monkeypatch.setattr(wd, "_pid_alive", lambda pid: False)
     monkeypatch.setattr("pipeline.daemon._read_lock_pid", lambda: 4242)
-    monkeypatch.setattr("pipeline.lifecycle_runtime.active_client_count", lambda: 2)
+    monkeypatch.setattr("pipeline.lifecycle_runtime.active_client_count", lambda: 0)
     monkeypatch.setattr(wd, "BACKOFF_S", (0.01, 0.01, 0.01))
     monkeypatch.setattr(wd, "FAILS_BEFORE_RESTART", 2)
     with patch(

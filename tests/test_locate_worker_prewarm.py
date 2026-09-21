@@ -18,8 +18,12 @@ def _reset_prewarm(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     life._LOCATE_PREWARM_RESULT = {}
     life._LOCATE_PREWARM_THREAD = None
     life._SOFT_READY_UNTIL = 0.0
+    life._LOCATE_DUMMY_SEARCH_ARMED = False
+    life._LAST_SEARCH_PROBE_OK_AT = 0.0
     yield
     life._LOCATE_PREWARM_DONE.clear()
+    life._LOCATE_DUMMY_SEARCH_ARMED = False
+    life._LAST_SEARCH_PROBE_OK_AT = 0.0
 
 
 def test_prewarm_locate_worker_marks_soft_and_imports(monkeypatch, tmp_path: Path) -> None:
@@ -81,3 +85,92 @@ def test_mark_soft_ready_default_ttl_long(monkeypatch) -> None:
     monkeypatch.setattr(life, "_SOFT_READY_TTL_S", 300.0)
     life.mark_soft_ready()
     assert life._SOFT_READY_UNTIL >= time.time() + 290.0
+
+
+def test_kick_dummy_search_once_is_idempotent(monkeypatch, tmp_path: Path) -> None:
+    import pipeline.mcp_lifecycle as life
+
+    calls: list[int] = []
+
+    class _Client:
+        def __init__(self, **_k):
+            pass
+
+        def post(self, *_a, **_k):
+            return {"ok": True, "tick": False, "status": {"last_retrieve_ok": False}}
+
+        def search(self, *_a, **_k):
+            calls.append(1)
+            return {"ok": True, "hits": []}
+
+    class _InlineThread:
+        def __init__(self, target=None, **_k):
+            self._target = target
+
+        def start(self):
+            if self._target is not None:
+                self._target()
+
+    monkeypatch.setattr("pipeline.client.EngineClient", _Client)
+    monkeypatch.setattr(life.threading, "Thread", _InlineThread)
+    life._kick_dummy_search_once(tmp_path)
+    life._kick_dummy_search_once(tmp_path)
+    assert calls == [1]
+
+
+def test_kick_dummy_search_skipped_in_bridge(monkeypatch, tmp_path: Path) -> None:
+    import pipeline.mcp_lifecycle as life
+
+    monkeypatch.setenv("CTX_MCP_BRIDGE", "1")
+    calls: list[int] = []
+
+    class _Client:
+        def __init__(self, **_k):
+            pass
+
+        def search(self, *_a, **_k):
+            calls.append(1)
+            return {"ok": True}
+
+    monkeypatch.setattr("pipeline.client.EngineClient", _Client)
+    life._kick_dummy_search_once(tmp_path)
+    assert calls == []
+    assert life._LOCATE_DUMMY_SEARCH_ARMED is False
+
+
+def test_kick_dummy_search_skips_when_keepalive_retrieve_warm(
+    monkeypatch, tmp_path: Path
+) -> None:
+    import time
+
+    import pipeline.mcp_lifecycle as life
+
+    monkeypatch.delenv("CTX_MCP_BRIDGE", raising=False)
+    life._LOCATE_DUMMY_SEARCH_ARMED = False
+    life._LAST_SEARCH_PROBE_OK_AT = 0.0
+    searches: list[int] = []
+
+    class _Client:
+        def __init__(self, **_k):
+            pass
+
+        def post(self, path, _body=None):
+            assert "keepalive" in path
+            return {
+                "ok": True,
+                "tick": False,
+                "status": {
+                    "last_retrieve_ok": True,
+                    "last_at": time.time(),
+                },
+            }
+
+        def search(self, *_a, **_k):
+            searches.append(1)
+            return {"ok": True}
+
+    monkeypatch.setattr("pipeline.client.EngineClient", _Client)
+    life._kick_dummy_search_once(tmp_path)
+    assert searches == []
+    assert life._LOCATE_DUMMY_SEARCH_ARMED is True
+    assert life.search_probe_fresh(max_age_s=30.0) is True

@@ -130,8 +130,8 @@ def server_entry(
         "CTX_ENGINE_SPAWN_OWNER": "supervisor",
         "CTX_LOCATE_STREAK_MS": "60000",
         "CTX_EMBED_KEEPALIVE": "1",
-        # 15s keeps DirectML hot so map after idle stays <1s (was 45s).
-        "CTX_EMBED_KEEPALIVE_S": "15",
+        # 8s beats ~10s Windows/AMD D3 idle; 15s let GPU/ORT go cold.
+        "CTX_EMBED_KEEPALIVE_S": "8",
         # Polite cap: 25% starved ORT; 0 was uncapped. 35% ≈ old wait-then-ms
         # politeness without collapsing to one core on typical desktops.
         "CTX_ENGINE_CPU_CAP_PCT": "35",

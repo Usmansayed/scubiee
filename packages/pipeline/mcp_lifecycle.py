@@ -45,6 +45,7 @@ _LOCATE_PREWARM_LOCK = threading.Lock()
 _LOCATE_PREWARM_THREAD: threading.Thread | None = None
 _LOCATE_PREWARM_DONE = threading.Event()
 _LOCATE_PREWARM_RESULT: dict[str, Any] = {}
+_LOCATE_DUMMY_SEARCH_ARMED = False
 
 
 def mark_soft_ready(*, ttl_s: float | None = None) -> None:
@@ -98,7 +99,8 @@ def locate_worker_prewarm_done() -> bool:
 
 def reset_locate_worker_prewarm() -> None:
     """Allow another locate-worker prewarm after an engine soft flap."""
-    global _LOCATE_PREWARM_THREAD, _LOCATE_PREWARM_RESULT
+    global _LOCATE_PREWARM_THREAD, _LOCATE_PREWARM_RESULT, _LOCATE_DUMMY_SEARCH_ARMED
+    _LOCATE_DUMMY_SEARCH_ARMED = False
     with _LOCATE_PREWARM_LOCK:
         t = _LOCATE_PREWARM_THREAD
         if t is not None and t.is_alive():
@@ -386,6 +388,126 @@ def _stderr(msg: str) -> None:
     print(msg, file=__import__("sys").stderr, flush=True)
 
 
+def _engine_retrieve_recently_warm(repo: Path, *, max_age_s: float = 30.0) -> bool:
+    """True when engine keepalive already touched retrieve recently (cross-process)."""
+    try:
+        from pipeline.client import EngineClient
+
+        st = (
+            EngineClient(workspace_path=str(repo), timeout=1.5).post(
+                "/v1/embed/keepalive",
+                {"path": str(repo), "ensure_loop": False, "tick": 0},
+            )
+            or {}
+        )
+        status = st.get("status") if isinstance(st, dict) else None
+        if not isinstance(status, dict):
+            status = st if isinstance(st, dict) else {}
+        if not bool(status.get("last_retrieve_ok")):
+            return False
+        last_at = float(status.get("last_at") or 0.0)
+        if last_at <= 0.0:
+            return False
+        return (time.time() - last_at) < max(1.0, float(max_age_s))
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _kick_dummy_search_once(repo: Path) -> None:
+    """One background engine search after dense is up.
+
+    Pays locate-worker HTTP/JSON JIT and engine retrieve (graph/BM25/dense)
+    before the user's first map. Do not run during ORT prewarm. Skip when the
+    engine keepalive already warmed retrieve (avoids dual-MCP pile-up after
+    host-sim clean_slate reconnects Cursor).
+    """
+    global _LOCATE_DUMMY_SEARCH_ARMED
+    if _is_bridge_process():
+        return
+    if _LOCATE_DUMMY_SEARCH_ARMED:
+        return
+    if search_probe_fresh(max_age_s=30.0):
+        _LOCATE_DUMMY_SEARCH_ARMED = True
+        return
+    if _engine_retrieve_recently_warm(repo, max_age_s=30.0):
+        _LOCATE_DUMMY_SEARCH_ARMED = True
+        note_search_probe_ok()
+        return
+    _LOCATE_DUMMY_SEARCH_ARMED = True
+
+    def _run() -> None:
+        try:
+            if _engine_retrieve_recently_warm(repo, max_age_s=30.0):
+                note_search_probe_ok()
+                return
+            from pipeline.client import EngineClient
+
+            EngineClient(workspace_path=str(repo), timeout=25.0).search(
+                "scubiee locate dummy warmup retrieve_D_channel_best "
+                "FastEmbed embed_keepalive graph bm25 dense",
+                top_k=3,
+                path=str(repo),
+            )
+            note_search_probe_ok()
+        except Exception:  # noqa: BLE001
+            pass
+
+    try:
+        threading.Thread(
+            target=_run, name="scubiee-locate-dummy-search", daemon=True
+        ).start()
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _arm_dummy_search_poller(repo: Path, stop: threading.Event) -> None:
+    """Do not wait for the first heartbeat interval (often 5s) to JIT search."""
+    if _is_bridge_process():
+        return
+
+    def _run() -> None:
+        for _ in range(80):
+            if stop.is_set():
+                return
+            try:
+                from pipeline.warm_autoload import in_prewarm
+
+                if in_prewarm():
+                    if stop.wait(1.25):
+                        return
+                    continue
+            except Exception:  # noqa: BLE001
+                try:
+                    from pipeline.engine import prewarm_busy_stamp_active
+
+                    if prewarm_busy_stamp_active(max_age_s=180.0):
+                        if stop.wait(1.25):
+                            return
+                        continue
+                except Exception:  # noqa: BLE001
+                    pass
+            loaded = False
+            try:
+                from pipeline.client import EngineClient
+
+                h = EngineClient(workspace_path=str(repo), timeout=1.5).health() or {}
+                loaded = bool(h.get("embedder_loaded"))
+            except Exception:  # noqa: BLE001
+                loaded = False
+            if loaded:
+                _kick_dummy_search_once(repo)
+                return
+            if stop.wait(1.25):
+                return
+
+    try:
+        threading.Thread(
+            target=_run, name="scubiee-dummy-search-arm", daemon=True
+        ).start()
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _heartbeat_interval_s() -> float:
     try:
         from pipeline.lifecycle_runtime import disconnect_debounce_seconds
@@ -407,7 +529,8 @@ def _stop_heartbeat() -> None:
 
 
 def _start_heartbeat(repo: Path, client_id: str) -> None:
-    global _HEARTBEAT_STOP, _HEARTBEAT_THREAD
+    global _HEARTBEAT_STOP, _HEARTBEAT_THREAD, _LOCATE_DUMMY_SEARCH_ARMED
+    _LOCATE_DUMMY_SEARCH_ARMED = False
     _stop_heartbeat()
     stop = threading.Event()
     _HEARTBEAT_STOP = stop
@@ -441,6 +564,7 @@ def _start_heartbeat(repo: Path, client_id: str) -> None:
                 from pipeline.client import EngineClient
 
                 client = EngineClient(workspace_path=str(repo), timeout=1.5)
+                h: dict[str, Any] = {}
                 try:
                     h = client.health() or {}
                     soft = bool(
@@ -464,6 +588,11 @@ def _start_heartbeat(repo: Path, client_id: str) -> None:
                     {"path": str(repo), "ensure_loop": True, "tick": 0},
                 )
                 try:
+                    if bool(h.get("embedder_loaded")):
+                        _kick_dummy_search_once(repo)
+                except Exception:  # noqa: BLE001
+                    pass
+                try:
                     from pipeline.engine import prime_dense_ready
 
                     if prime_dense_ready():
@@ -482,6 +611,7 @@ def _start_heartbeat(repo: Path, client_id: str) -> None:
     t = threading.Thread(target=_loop, name="scubiee-mcp-heartbeat", daemon=True)
     _HEARTBEAT_THREAD = t
     t.start()
+    _arm_dummy_search_poller(repo, stop)
 
 
 def warm_engine_for_mcp(

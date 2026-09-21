@@ -33,6 +33,7 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeou
 _EMBED_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="scubiee-embed")
 _EMBED_INFER_LOCK = threading.RLock()  # retained for tests / status; executor is authority
 _EMBED_WORKER_LOCAL = threading.local()
+_EMBED_BUSY = threading.Event()
 
 
 def try_embed_infer_lock(*, blocking: bool = True, timeout: float = -1.0) -> bool:
@@ -48,22 +49,35 @@ def release_embed_infer_lock() -> None:
         pass
 
 
-def run_embed_infer(fn, *, timeout_s: float | None = 120.0):
+_ABORT_EMBED = object()
+
+
+def run_embed_infer(
+    fn, *, timeout_s: float | None = 120.0, abort_if_search: bool = False
+):
     """Run ``fn`` on the single embed worker. ``timeout_s=None`` waits forever.
 
     Re-entrant: if already on the embed worker (e.g. search submitted a job that
     calls ``_LazyEmbedder.embed_one`` → another ``run_embed_infer``), run inline.
     Nested submit on ``max_workers=1`` would otherwise deadlock forever.
+
+    ``abort_if_search``: keepalive ticks only — if a real map/search set
+    ``_SEARCH_IN_FLIGHT`` before this job starts, skip encode so locate is not
+    queued behind a dummy tick.
     """
     if getattr(_EMBED_WORKER_LOCAL, "inside", False):
         return fn()
 
     def _wrap():
+        if abort_if_search and _SEARCH_IN_FLIGHT.is_set():
+            return _ABORT_EMBED
         _EMBED_WORKER_LOCAL.inside = True
+        _EMBED_BUSY.set()
         try:
             return fn()
         finally:
             _EMBED_WORKER_LOCAL.inside = False
+            _EMBED_BUSY.clear()
 
     fut = _EMBED_EXECUTOR.submit(_wrap)
     return fut.result(timeout=timeout_s)
@@ -476,11 +490,14 @@ def prewarm_embedder(root: Path | str | None = None) -> dict[str, Any]:
 _KEEPALIVE_LOCK = threading.RLock()
 _KEEPALIVE_STOP: threading.Event | None = None
 _KEEPALIVE_THREAD: threading.Thread | None = None
+_SEARCH_IN_FLIGHT = threading.Event()
+_LAST_SEARCH_DONE_AT = 0.0
 _KEEPALIVE_STATE: dict[str, Any] = {
     "running": False,
     "last_ms": None,
     "last_at": None,
     "last_error": None,
+    "last_retrieve_ok": None,
     "ticks": 0,
 }
 
@@ -492,16 +509,17 @@ def embed_keepalive_enabled() -> bool:
 
 
 def embed_keepalive_interval_s() -> float:
-    """Seconds between dummy encodes while MCP clients are connected.
+    """Seconds between dummy encode+retrieve ticks while MCP clients are connected.
 
-    Default **15s** so DirectML/GPU clocks stay hot — map after idle stays
-    sub-second. Override with ``CTX_EMBED_KEEPALIVE_S`` (5–120).
+    Default **8s** — Windows/AMD DirectML often drops to D3 ~10s after last GPU
+    work (ORT idle thread-pool/cache goes cold). 15s was longer than that window.
+    Override with ``CTX_EMBED_KEEPALIVE_S`` (5–120).
     """
-    raw = (os.environ.get("CTX_EMBED_KEEPALIVE_S") or "15").strip()
+    raw = (os.environ.get("CTX_EMBED_KEEPALIVE_S") or "8").strip()
     try:
         return max(5.0, min(120.0, float(raw)))
     except ValueError:
-        return 15.0
+        return 8.0
 
 
 def embed_keepalive_timeout_s() -> float:
@@ -522,20 +540,101 @@ def embed_keepalive_status() -> dict[str, Any]:
             "last_ms": _KEEPALIVE_STATE.get("last_ms"),
             "last_at": _KEEPALIVE_STATE.get("last_at"),
             "last_error": _KEEPALIVE_STATE.get("last_error"),
+            "last_retrieve_ok": _KEEPALIVE_STATE.get("last_retrieve_ok"),
             "ticks": int(_KEEPALIVE_STATE.get("ticks") or 0),
             "embedder_loaded": embedder_is_loaded(),
         }
 
 
-def embed_keepalive(root: Path | str | None = None) -> dict[str, Any]:
-    """Cheap dummy encode to keep ORT/DML sessions and GPU clocks warm.
+def _keepalive_index_touch(eng: Any, query: str, qvec: np.ndarray) -> None:
+    """Keep retrieve channels hot without a full D-channel BFS on the HTTP path.
 
-    No-op (ok=True, skipped) when the embedder is not loaded — never forces a
-    cold load. Runs on the single embed worker with a short timeout so a stuck
-    tick cannot wedge map/pack.
+    Dense+BM25 are numpy (GIL-light). Graph BFS is capped so keepalive cannot
+    starve ThreadingHTTPServer the way retrieve_D_channel_best did. Abort early
+    if a real map/search starts mid-touch (dual MCP clients + host-sim).
+    """
+    if _SEARCH_IN_FLIGHT.is_set() or _EMBED_BUSY.is_set():
+        return
+    cond = getattr(eng, "conductor", None)
+    if cond is None:
+        raise RuntimeError("no_conductor")
+    try:
+        n = int(getattr(cond, "_n", 0) or 0)
+    except (TypeError, ValueError):
+        n = 0
+    if n <= 0:
+        try:
+            n = int(np.asarray(qvec).size)
+        except Exception:  # noqa: BLE001
+            n = 1
+    try:
+        from conductor.channel_pool import channel_pool
+
+        pool = channel_pool()
+        for _ in range(3):
+            pool.submit(lambda: None)
+    except Exception:  # noqa: BLE001
+        pass
+    if _SEARCH_IN_FLIGHT.is_set():
+        return
+    dense = getattr(cond, "dense", None)
+    score_dense = getattr(dense, "score_all", None) if dense is not None else None
+    if score_dense is None:
+        raise RuntimeError("no_dense")
+    score_dense(qvec)
+    if _SEARCH_IN_FLIGHT.is_set():
+        return
+    bm25 = getattr(cond, "bm25", None)
+    score_bm25 = getattr(bm25, "score_all", None) if bm25 is not None else None
+    if score_bm25 is not None:
+        score_bm25(query)
+    if _SEARCH_IN_FLIGHT.is_set():
+        return
+    graph = getattr(cond, "graph", None)
+    aff = getattr(graph, "affinity_scores", None) if graph is not None else None
+    if aff is not None:
+        # 64 visits keeps graph pages warm without 1–2s GIL stalls under dual MCP.
+        aff(query, max(n, 1), max_visit=64)
+
+
+def _keepalive_qvec(arr: Any) -> np.ndarray | None:
+    try:
+        vec = np.asarray(arr, dtype=np.float32)
+        if vec.ndim == 2 and vec.shape[0] >= 1:
+            vec = vec[0]
+        vec = np.reshape(vec, -1)
+        if vec.size == 0:
+            return None
+        return vec
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def embed_keepalive(root: Path | str | None = None) -> dict[str, Any]:
+    """Dummy encode + D-channel retrieve to keep ORT/DML and retrieve indexes warm.
+
+    Encode runs on the single embed worker (never nest). Retrieve runs on the
+    keepalive thread so graph/BM25/dense pages stay hot without queuing behind
+    the next map encode. No-op when the embedder is not loaded.
     """
     if not embedder_is_loaded():
         return {"ok": True, "skipped": True, "reason": "embedder_not_loaded"}
+    if _SEARCH_IN_FLIGHT.is_set() or _EMBED_BUSY.is_set():
+        return {
+            "ok": True,
+            "skipped": True,
+            "reason": "search_in_flight" if _SEARCH_IN_FLIGHT.is_set() else "embed_busy",
+        }
+    # Do not steal the embed worker between consecutive maps/pack (host-sim
+    # map_second was paying ~2.5s behind a keepalive encode).
+    try:
+        cooldown = float((os.environ.get("CTX_EMBED_KEEPALIVE_SEARCH_COOLDOWN_S") or "4").strip())
+    except ValueError:
+        cooldown = 4.0
+    cooldown = max(0.0, min(30.0, cooldown))
+    if cooldown > 0.0 and _LAST_SEARCH_DONE_AT > 0.0:
+        if (time.time() - float(_LAST_SEARCH_DONE_AT)) < cooldown:
+            return {"ok": True, "skipped": True, "reason": "recent_search"}
     try:
         st = prewarm_status() or {}
         if bool(st.get("running")) or bool(st.get("priming")):
@@ -556,7 +655,7 @@ def embed_keepalive(root: Path | str | None = None) -> dict[str, Any]:
     try:
         root_p = Path(root or os.environ.get("CTX_REPO") or ".").resolve()
 
-        def _tick() -> None:
+        def _tick() -> tuple[Any, Any]:
             eng = load_engine(root_p)
             emb = eng.embedder
             # Must call the real Embedder while already on the embed worker —
@@ -565,9 +664,28 @@ def embed_keepalive(root: Path | str | None = None) -> dict[str, Any]:
             # Bypass embedder.cache — a fixed dummy string skips DML after the
             # first tick and GPU clocks drop (post-idle map paid ~3s again).
             payload = real.format_query(f"scubiee keepalive {time.time_ns()}")
-            real._encode_batch([payload])
+            arr = real._encode_batch([payload])
+            return eng, arr
 
-        run_embed_infer(_tick, timeout_s=embed_keepalive_timeout_s())
+        out = run_embed_infer(
+            _tick,
+            timeout_s=embed_keepalive_timeout_s(),
+            abort_if_search=True,
+        )
+        if out is _ABORT_EMBED:
+            return {"ok": True, "skipped": True, "reason": "search_in_flight"}
+        eng, arr = out
+        retrieve_ok = False
+        retrieve_error: str | None = None
+        qvec = _keepalive_qvec(arr)
+        if qvec is None:
+            retrieve_error = "no_qvec"
+        else:
+            try:
+                _keepalive_index_touch(eng, "scubiee keepalive retrieve", qvec)
+                retrieve_ok = True
+            except Exception as exc:  # noqa: BLE001
+                retrieve_error = str(exc)
         ms = round((time.perf_counter() - t0) * 1000, 1)
         with _KEEPALIVE_LOCK:
             _KEEPALIVE_STATE.update(
@@ -575,10 +693,19 @@ def embed_keepalive(root: Path | str | None = None) -> dict[str, Any]:
                     "last_ms": ms,
                     "last_at": time.time(),
                     "last_error": None,
+                    "last_retrieve_ok": retrieve_ok,
                     "ticks": int(_KEEPALIVE_STATE.get("ticks") or 0) + 1,
                 }
             )
-        return {"ok": True, "ms": ms, "embedder_loaded": True}
+        out: dict[str, Any] = {
+            "ok": True,
+            "ms": ms,
+            "embedder_loaded": True,
+            "retrieve_ok": retrieve_ok,
+        }
+        if retrieve_error:
+            out["retrieve_error"] = retrieve_error
+        return out
     except FuturesTimeoutError:
         with _KEEPALIVE_LOCK:
             _KEEPALIVE_STATE["last_error"] = "timeout"
@@ -861,6 +988,7 @@ class WarmSearchEngine:
         *,
         skip_freshness: bool = False,
     ) -> list[SearchResult]:
+        global _LAST_SEARCH_DONE_AT
         gate: dict[str, Any] = {"freshness": {"strategy": "skipped"}, "sync": None}
         if not skip_freshness:
             gen = _store_generation_mtime(self.store)
@@ -955,6 +1083,7 @@ class WarmSearchEngine:
             wait_s = max(0.0, min(30.0, float(wait_raw)))
         except ValueError:
             wait_s = 0.0
+        _SEARCH_IN_FLIGHT.set()
         try:
             if not embedder_is_loaded():
                 prewarm_embedder_async(self.root)
@@ -995,6 +1124,8 @@ class WarmSearchEngine:
             dense_ready = True
         except Exception:
             if not allow_pseudo:
+                _LAST_SEARCH_DONE_AT = time.time()
+                _SEARCH_IN_FLIGHT.clear()
                 raise RuntimeError(
                     "dense_embed_required: FastEmbed not ready for map/search "
                     "(D_channel_best). Retry after embedder loads, or run "
@@ -1007,15 +1138,19 @@ class WarmSearchEngine:
             dim = int(self.embedder.dim or 768)
             qvec = rng.normal(size=dim).astype(np.float32)
             qvec /= max(float(np.linalg.norm(qvec)), 1e-12)
-        embed_ms = (time.perf_counter() - t0) * 1000
+        try:
+            embed_ms = (time.perf_counter() - t0) * 1000
 
-        t1 = time.perf_counter()
-        # One production retrieve path. Research arches stay on MultiArchConductor
-        # for bakeoffs; the engine does not select them.
-        retrieve_fn = self.conductor.retrieve_D_channel_best
-        route = "D_channel_best" if dense_ready else "D_channel_best:pseudo"
-        hits = retrieve_fn(query, qvec, top_k=top_k)
-        retrieve_ms = (time.perf_counter() - t1) * 1000
+            t1 = time.perf_counter()
+            # One production retrieve path. Research arches stay on MultiArchConductor
+            # for bakeoffs; the engine does not select them.
+            retrieve_fn = self.conductor.retrieve_D_channel_best
+            route = "D_channel_best" if dense_ready else "D_channel_best:pseudo"
+            hits = retrieve_fn(query, qvec, top_k=top_k)
+            retrieve_ms = (time.perf_counter() - t1) * 1000
+        finally:
+            _LAST_SEARCH_DONE_AT = time.time()
+            _SEARCH_IN_FLIGHT.clear()
 
         dirty_set = set(gate.get("dirty_boost_files") or [])
         if dirty_set:

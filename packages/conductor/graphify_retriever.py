@@ -121,6 +121,7 @@ class GraphifyChunkRetriever:
         n_chunks: int,
         *,
         extra_seed_files: list[tuple[str, float]] | None = None,
+        max_visit: int | None = None,
     ) -> tuple[np.ndarray, list[str], float]:
         """Map Graphify scores + dual-seed BFS onto chunks.
 
@@ -174,7 +175,10 @@ class GraphifyChunkRetriever:
                 hop[s] = 0
                 q.append(s)
 
+        visit_cap = int(max_visit) if max_visit is not None and max_visit > 0 else None
         while q:
+            if visit_cap is not None and len(hop) >= visit_cap:
+                break
             cur = q.popleft()
             depth = hop[cur]
             if depth >= self.depth:
@@ -183,6 +187,8 @@ class GraphifyChunkRetriever:
                 if nb not in hop:
                     hop[nb] = depth + 1
                     q.append(nb)
+                    if visit_cap is not None and len(hop) >= visit_cap:
+                        break
 
         max_seed = max((score_map.get(s, 0.0) for s in seeds), default=0.0)
         max_soft = max(soft_weight.values(), default=0.0)

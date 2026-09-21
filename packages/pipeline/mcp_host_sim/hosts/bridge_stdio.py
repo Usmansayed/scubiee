@@ -168,6 +168,15 @@ class BridgeHost:
         # env_extra must not accidentally flip bridge back to auto mid-sim.
         if (env.get("CTX_MCP_BRIDGE_MODE") or "").strip().lower() == "auto":
             env["CTX_MCP_BRIDGE_MODE"] = "shared"
+        # Opt-in: overlay checkout packages/ (unreleased engine.py). Default off
+        # so `uv tool install .` host-sims measure the installed wheel.
+        if (os.environ.get("CTX_SIM_DEV") or "").strip().lower() in {"1", "true", "yes", "on"}:
+            packages = str((self.repo / "packages").resolve())
+            if (self.repo / "packages" / "pipeline").is_dir():
+                prev = (env.get("PYTHONPATH") or "").strip()
+                env["PYTHONPATH"] = packages if not prev else packages + os.pathsep + prev
+        env.setdefault("CTX_EMBED_KEEPALIVE", "1")
+        env.setdefault("CTX_EMBED_KEEPALIVE_S", "8")
         creationflags = 0
         if os.name == "nt":
             creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)

@@ -1,0 +1,82 @@
+{
+  "session_id": "cursor@conn-acc440",
+  "project_id": "ce_57fe0a0bb68b776b2d600964fabd8072",
+  "version": "0.3.101",
+  "dense": true,
+  "retrieve_mode": "D_channel_best",
+  "calls": [
+    {
+      "tool": "map",
+      "query": "embed_keepalive dummy_search locate worker retrieve_D_channel_best",
+      "elapsed_ms": 865.6,
+      "embed_ms": 203.0,
+      "retrieve_ms": 399.8,
+      "sources_seen": ["bm25", "dense", "graph"]
+    },
+    {
+      "tool": "pack_context",
+      "seeds": [
+        "packages/pipeline/engine.py::embed_keepalive",
+        "packages/pipeline/mcp_lifecycle.py::_kick_dummy_search_once",
+        "packages/conductor/architectures.py::MultiArchConductor"
+      ],
+      "thin": false,
+      "elapsed_ms": 0.3
+    },
+    {"tool": "status", "ok": true, "warm_ready": true, "agent_ready": "yes"},
+    {"tool": "workspace", "action": "show", "ok": true},
+    {
+      "tool": "map",
+      "query": "mcp_host_sim Lane A FIRST_MAP_BUDGET_MS unique",
+      "elapsed_ms": 856.1,
+      "embed_ms": 164.3,
+      "retrieve_ms": 448.4
+    },
+    {
+      "tool": "expand_context",
+      "node": "packages/pipeline/engine.py::embed_keepalive",
+      "elapsed_ms": 0.5,
+      "hydrate_source": "cache",
+      "count": 10
+    },
+    {
+      "tool": "collect_hot_context",
+      "ids": "packages/pipeline/engine.py::embed_keepalive",
+      "ok": true,
+      "count": 1
+    },
+    {"tool": "workspace", "action": "pin", "path": "packages/pipeline/engine.py", "ok": true},
+    {
+      "tool": "map",
+      "query": "JobObject CTX_ENGINE_CPU_CAP_PCT memory_budget watchdog",
+      "elapsed_ms": 769.9,
+      "embed_ms": 163.4,
+      "retrieve_ms": 343.6
+    },
+    {
+      "tool": "pack_context",
+      "seeds": [
+        "packages/pipeline/memory_budget.py::scubiee_tree_rss_mb",
+        "packages/pipeline/mcp_lifecycle.py::prewarm_locate_worker"
+      ],
+      "thin": false,
+      "elapsed_ms": 0.3
+    },
+    {
+      "tool": "map",
+      "note": "first unique after watchdog pytest killed daemon then restart",
+      "elapsed_ms": 1756.1,
+      "embed_ms": 174.2,
+      "retrieve_ms": 1131.2,
+      "budget": "first_map_<=3000"
+    },
+    {
+      "tool": "map",
+      "note": "second unique after restart",
+      "elapsed_ms": 813.4,
+      "embed_ms": 184.7,
+      "retrieve_ms": 366.6,
+      "budget": "unique_<=1000"
+    }
+  ]
+}
