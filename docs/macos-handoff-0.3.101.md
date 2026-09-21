@@ -1,7 +1,7 @@
-# MacBook handoff — Scubiee 0.3.101 (OS-specific, realistic)
+# MacBook handoff — Scubiee 0.3.102 (OS-specific, realistic)
 
 **From:** Windows pre-prod on 2026-09-21 (`docs/superpowers/plans/_preprod_0_3_101_win_sim_realistic/`)  
-**Checkout:** install from **this git tip** (`uv tool install --force .`), not only the earlier PyPI cut — keepalive/dummy-search contention fixes landed after the morning report.  
+**Checkout / PyPI:** install **0.3.102** (`uv tool install scubiee` or `uv tool install --force .`) — keepalive/dummy-search contention fixes after the morning 0.3.101 cut.  
 **You are validating:** Apple Silicon (preferred) or Intel Mac. Windows already ran Cursor Lane A + idle 120s. **Mac must prove MLX/ORT, not DirectML.**
 
 Do **not** treat Windows numbers as Mac numbers. Unique maps are real FastEmbed + D-channel (dense + BM25 + **full** graph BFS). Few-ms is identical-query cache only.
@@ -10,7 +10,7 @@ Do **not** treat Windows numbers as Mac numbers. Unique maps are real FastEmbed 
 
 ## What Windows already proved (do not re-litigate)
 
-- Install: `uv tool` **0.3.101** from this tree, ORT DirectML 1.24.4.
+- Install: `uv tool` / PyPI **0.3.102**, ORT DirectML 1.24.4.
 - Keepalive **8s** + capped index touch (dense+BM25+graph `max_visit=64`) + skip when search/embed busy + **4s post-search cooldown** + keepalive encode **`abort_if_search`** (do not FIFO unique maps behind a dummy tick).
 - Dummy locate search skipped when engine keepalive already warmed retrieve (avoids dual-MCP pile-up after host-sim `clean_slate` reconnects Cursor).
 - Locate dummy `/v1/search` after `embedder_loaded` (MCP process; needs MCP reload). Bridge process does **not** arm dummy search.
@@ -50,7 +50,7 @@ pip uninstall -y scubiee 2>/dev/null || true
 cd /path/to/context-engine
 git pull   # or sync the tip you were given
 uv tool install --force . --refresh
-scubiee --version   # expect 0.3.101
+scubiee --version   # expect 0.3.102
 scubiee setup --repair
 scubiee setup --status   # acceleration.profile == mlx on Apple Silicon
 ```
