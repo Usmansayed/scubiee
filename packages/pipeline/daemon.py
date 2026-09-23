@@ -981,6 +981,29 @@ def _ensure_already_running(
         if version_adopt is not None:
             out["version_adopt"] = version_adopt
         return out
+    if open_wait:
+        # is_running() only proves the lock/PID is alive or /health answers —
+        # neither proves the engine is making progress. A wedged warm phase
+        # (ORT/DML init hung without ever reaching dense) previously made the
+        # open_repo(wait=True) call below block for the full 120s timeout
+        # with zero feedback, since it was waiting on a daemon that was never
+        # going to finish warming. Detect that cheaply (no network call)
+        # before committing to the long wait.
+        try:
+            from pipeline.warm_autoload import hung_prewarm_should_abort
+
+            if hung_prewarm_should_abort():
+                return {
+                    "ok": False,
+                    "already_running": True,
+                    "hung": True,
+                    "url": engine_url(),
+                    "repo": str(target),
+                    "error": "warm_phase wedged (prewarm stale)",
+                    "hint": "scubiee heal  # force-restarts the wedged daemon",
+                }
+        except Exception:  # noqa: BLE001
+            pass
     client = EngineClient(timeout=8.0 if not open_wait else 120.0)
     opened = client.open_repo(str(target), wait=open_wait)
     health = client.get("/health")

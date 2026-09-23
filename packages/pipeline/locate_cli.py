@@ -155,8 +155,13 @@ def cli_map(
             return {
                 "ok": False,
                 "tool": "map",
-                "error": "engine_down",
-                "detail": msg,
+                # The real exception text, not a generic label — a transient
+                # connection reset/timeout is not the same problem as a truly
+                # dead engine, and collapsing both into "engine_down" sent
+                # callers chasing the wrong fix (search_repo/`/health` can be
+                # succeeding at the exact same moment map hits this branch).
+                "error": msg,
+                "reason": "engine_down",
                 "repair": ["scubiee engine ensure .", "scubiee heal"],
                 "locate": {
                     "state": "starting",

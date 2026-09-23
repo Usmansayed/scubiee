@@ -216,7 +216,11 @@ def should_ignore_health_fail(*, max_age_s: float = DEFAULT_PREWARM_MAX_AGE_S) -
 
 def idle_busy_reason() -> str | None:
     """Non-None ⇒ disconnect idle sweeper must not stop the engine."""
-    snap = read_phase()
+    # max_age_s must be passed so a wedged prewarm (init thread died/hung
+    # without ever calling end_prewarm) actually expires here. Without it,
+    # read_phase() never sets `stale`, so this stayed "busy:prewarm" forever
+    # on every idle-sweep tick regardless of how old the snapshot was.
+    snap = read_phase(max_age_s=DEFAULT_PREWARM_MAX_AGE_S)
     if snap.get("phase") == PHASE_PREWARM and not snap.get("stale"):
         return "warm_phase:prewarm"
     try:

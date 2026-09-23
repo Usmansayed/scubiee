@@ -362,7 +362,13 @@ def watchdog_loop(*, stop_after: float | None = None) -> None:
                 except Exception:  # noqa: BLE001
                     hung = False
                 if hung:
-                    _log("health ok but hung prewarm — abort")
+                    # A 200 from /health does not prove the engine is making
+                    # progress — ORT/DML init can keep answering health while
+                    # warm_phase is genuinely wedged (see warm_autoload.py).
+                    # Fall through into the same restart path a failed health
+                    # check would reach, instead of relying on the PID-alive
+                    # branches below to independently re-detect the same hang.
+                    _log("health ok but hung prewarm — falling through to restart path")
                 else:
                     fails = 0
                     backoff_i = 0
@@ -499,7 +505,9 @@ def watchdog_loop(*, stop_after: float | None = None) -> None:
                     time.sleep(interval)
                     continue
                 if not stale_prewarm:
-                    snap = read_phase()
+                    from pipeline.warm_autoload import DEFAULT_PREWARM_MAX_AGE_S
+
+                    snap = read_phase(max_age_s=DEFAULT_PREWARM_MAX_AGE_S)
                     stale_prewarm = bool(
                         snap.get("stale") or str(snap.get("error") or "") == "prewarm_stale"
                     )

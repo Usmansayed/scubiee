@@ -1978,6 +1978,25 @@ _BUDGET_DEFAULT_CHARS = {"cap": 50_000, "wide": 100_000, "full": 500_000}
 _FOCUS_CHAR_CEILING = _BUDGET_MAX_CHARS["full"]
 _FOCUS_OVERLAP_MIN_LINES = 20
 
+# Full accepted expand_context direction/intent vocabulary, including aliases
+# that pipeline.context_trace.run_expand_context understands (deps/flow ->
+# callees; refs/dependents -> callers; site -> effects) but that the public
+# tool description only lists the six canonical names for. Keep in sync with
+# the `d in {...}` alias sets in context_trace.py if that vocabulary changes.
+_EXPAND_DIRECTION_VALUES = {
+    "callees",
+    "callers",
+    "effects",
+    "config",
+    "broad",
+    "all",
+    "deps",
+    "flow",
+    "refs",
+    "site",
+    "dependents",
+}
+
 
 def _normalize_budget(budget: str | None) -> str:
     val = (budget or "cap").strip().lower()
@@ -3941,7 +3960,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
 
     def expand_impl(
         handle: Annotated[str, Field(description="Session span handle from read/recall.")],
-        max_chars: Annotated[int, Field(description="Body budget.")] = 50000,
+        max_chars: Annotated[int, Field(ge=1, le=500_000, description="Body budget.")] = 50000,
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
         root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
         project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
@@ -3955,7 +3974,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             return _managed_locate_err("expand", repo)
 
         sid = _resolve_session(session_id)
-        cap = max(200, min(int(max_chars or 50000), _FOCUS_CHAR_CEILING))
+        cap = max(200, min(int(max_chars), _FOCUS_CHAR_CEILING))
         live = _expand_heatmap_ref(repo, handle, cap)
         if live is not None:
             live["session_id"] = sid
@@ -4379,6 +4398,10 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             hit = get_map_cached(repo=str(repo), query=args.query, fingerprint="soft_v1")
             if hit is not None and hit.get("dense") is True:
                 hit["elapsed_ms"] = round((_time.perf_counter() - _map_t0) * 1000, 1)
+                # Cache hit: the original embed/retrieve timings no longer happened
+                # this call. Replace them rather than replaying stale numbers.
+                if isinstance(hit.get("timings"), dict):
+                    hit["timings"] = {**hit["timings"], "cached": True, "embed_ms": 0.0, "retrieve_ms": 0.0}
                 hit["session_id"] = sid
                 return _format(hit, args.response_format)
         except Exception:  # noqa: BLE001
@@ -4830,6 +4853,12 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             p = (args.path or "").replace("\\", "/").strip()
             if not p:
                 return _err("workspace", "path required for pin", hint="workspace(action=pin, path='pkg/x.py')")
+            if not (repo / p).is_file():
+                return _err(
+                    "workspace",
+                    f"path not found: {p}",
+                    hint="Pass an existing repo-relative file. workspace(action=pin, path='pkg/x.py')",
+                )
             from pipeline.work_session import pin as _pin
 
             sess = _pin(repo, p, session_id=sid)
@@ -5547,6 +5576,18 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
     ) -> str:
         """Call 3 ladder: delta cards (+ optional bodies). direction=callers|effects|broad for flexibility."""
         sid = _resolve_session(session_id)
+        for _field_name, _field_val in (("direction", direction), ("intent", intent)):
+            _norm = (_field_val or "").strip().lower()
+            if _norm and _norm not in _EXPAND_DIRECTION_VALUES:
+                return _err(
+                    "expand_context",
+                    f"unknown {_field_name}: {_field_val!r}",
+                    hint=(
+                        f"{_field_name} must be one of: "
+                        + ", ".join(sorted(_EXPAND_DIRECTION_VALUES))
+                        + " (or leave unset)."
+                    ),
+                )
         with _bind_request_repo(root=root, project_id=project_id, session_id=session_id):
             repo = _default_repo()
         if not _is_repo_managed():
@@ -5680,7 +5721,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     )
                 ),
             ],
-            seed_file: Annotated[str, Field(description="Seed file path relative to repo.")],
+            seed_file: Annotated[str, Field(description="Seed file path relative to repo.")] = "",
             seed_symbol: Annotated[
                 str, Field(description="Seed symbol (optional if seed_line set).")
             ] = "",
@@ -5771,6 +5812,12 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
             session_id: Annotated[str, Field(description=_BIND_SESSION_DESC)] = "",
         ) -> str:
+            if not (seed_file or "").strip():
+                return _err(
+                    tool_name,
+                    "seed_file required",
+                    hint="Pass seed_file + seed_symbol (or seed_file + seed_line).",
+                )
             sid = _resolve_session(session_id)
             with _bind_request_repo(root=root, project_id=project_id, session_id=session_id):
                 repo = _default_repo()

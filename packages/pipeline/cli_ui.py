@@ -77,12 +77,13 @@ def init_terminal() -> None:
     _terminal_initialized = True
 
     if sys.platform == "win32":
-        any_tty = (
-            (hasattr(sys.stdout, "isatty") and sys.stdout.isatty())
-            or (hasattr(sys.stderr, "isatty") and sys.stderr.isatty())
-        )
-        if any_tty:
-            _init_windows_console()
+        # UTF-8 console output (checkmarks, box-drawing, em-dashes) is a
+        # process-wide console codepage setting, not a property of whether a
+        # given stream happens to be a TTY. Gating this on isatty() left every
+        # redirected/piped invocation (automation, `| Out-String`, captured
+        # terminals) rendering mojibake even though the bytes written were
+        # correct UTF-8 — set it unconditionally.
+        _init_windows_console()
 
     if os.environ.get("SCUBIEE_FORCE_COLOR"):
         _color_enabled = True
