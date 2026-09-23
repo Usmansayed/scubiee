@@ -123,9 +123,10 @@ def start_ast_hydrate_bg(repo: Path | str) -> dict[str, Any]:
     root = Path(repo).resolve()
     try:
         from pipeline.context_trace import ast_cache_ready
+        from trace_lab.composite_v1 import composite_edges_ready
 
-        if ast_cache_ready(root):
-            return {"ok": True, "already": True}
+        if ast_cache_ready(root) and composite_edges_ready(root):
+            return {"ok": True, "already": True, "edges": True}
     except Exception:  # noqa: BLE001
         pass
     with _AST_HYDRATE_LOCK:
@@ -135,9 +136,14 @@ def start_ast_hydrate_bg(repo: Path | str) -> dict[str, Any]:
 
         def _run() -> None:
             try:
-                from pipeline.context_trace import hydrate_ast_bundle
+                from pipeline.context_trace import prewarm_pack_graph
 
-                hydrate_ast_bundle(root, bake_on_miss=False)
+                report = prewarm_pack_graph(root)
+                edges = report.get("edges") or {}
+                _stderr(
+                    f"[scubiee] pack-graph prewarm ok={int(bool(report.get('ok')))} "
+                    f"edges={edges.get('source')} ms={report.get('ms')}"
+                )
             except Exception as exc:  # noqa: BLE001
                 _stderr(f"[scubiee] ast hydrate bg failed: {exc}")
 

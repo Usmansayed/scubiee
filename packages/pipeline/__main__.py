@@ -1787,6 +1787,9 @@ def cmd_expand(args: argparse.Namespace) -> int:
 
 def cmd_connect(args: argparse.Namespace) -> int:
     """Connect Scubiee to AI coding tools (MCP config + rules)."""
+    from pipeline.install_lean import maybe_reexec_newer_uv
+
+    maybe_reexec_newer_uv()
     from pipeline.rules_installer import install_tools
     from pipeline.tool_registry import ALL_SLUGS, CONNECT_SLUGS, normalize_tool_slug
 
@@ -1813,6 +1816,13 @@ def cmd_connect(args: argparse.Namespace) -> int:
 
     dry_run = getattr(args, "dry_run", False)
     repo = getattr(args, "repo", None)
+    if not dry_run:
+        try:
+            from pipeline.install_lean import apply_lean
+
+            apply_lean()
+        except Exception:  # noqa: BLE001
+            pass
     results = install_tools(selected, dry_run=dry_run, repo=repo)
 
     runtime: dict[str, Any] | None = None
@@ -1897,6 +1907,9 @@ def cmd_disconnect(args: argparse.Namespace) -> int:
 
 def cmd_upgrade(args: argparse.Namespace) -> int:
     """One-command upgrade: swap package, migrate, rebind MCP/rules, health-check."""
+    from pipeline.install_lean import maybe_reexec_newer_uv
+
+    maybe_reexec_newer_uv()
     from pipeline.upgrade import check_pypi_version, do_upgrade, installed_version
 
     check_only = bool(getattr(args, "check", False))

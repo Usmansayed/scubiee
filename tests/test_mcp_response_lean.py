@@ -304,7 +304,10 @@ def test_pack_context_slim_heatmap_only_no_bodies(monkeypatch: pytest.MonkeyPatc
     assert out["heatmap"][0]["loc"] == "a.py:1-2"
     assert out["heatmap"][0]["s"] == "f"
     g = next(h for h in out["heatmap"] if h.get("id") == "a.py::g")
-    assert g["heat"] == "cold"
+    # 0.8 is above the hot threshold. "cold" in the raw payload only meant
+    # this row did not receive a body.
+    assert g["heat"] == "hot"
+    assert g["sc"] == 0.8
     assert not any("def f" in str(v) for v in out.get("heatmap", []))
     assert out["g"] == "1:ce_x"
     assert out["session_id"] == "cursor@conn-1"

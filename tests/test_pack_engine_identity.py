@@ -19,15 +19,15 @@ def test_pack_engine_report_default_no_escape() -> None:
 
 
 def test_pack_engine_report_broad_escapes_default_engine() -> None:
-    """pack_context passes engine=composite_v1; policy=broad must still escape."""
+    """policy=broad stays on composite_v1 and records the helper re-rank."""
     rep = pack_engine_report(
         requested_engine="composite_v1",
         policy="broad",
         ran_engine=BROAD_ESCAPE_ENGINE,
     )
-    assert rep["engine"] == BROAD_ESCAPE_ENGINE
+    assert rep["engine"] == PROD_PACK_ENGINE
     assert rep["escape"]["used"] is True
-    assert rep["escape"]["to"] == BROAD_ESCAPE_ENGINE
+    assert rep["escape"]["to"] == "composite_rerank"
     assert rep["escape"]["restored"] == PROD_PACK_ENGINE
 
 

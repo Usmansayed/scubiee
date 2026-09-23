@@ -476,6 +476,16 @@ def run_upgrade(
     record_component_applied("daemon", version=str(new_version), detail=daemon.get("action") or "")
     report["phases"].append("daemon")
 
+    # Drop older pip/conda copies and retarget MCP pythonw at the keeper
+    # before rebind, so connect cannot pin the stale interpreter again.
+    try:
+        from pipeline.install_lean import apply_lean
+
+        report["lean"] = apply_lean()
+    except Exception as exc:  # noqa: BLE001
+        report["lean"] = {"ok": False, "error": str(exc)}
+    report["phases"].append("lean")
+
     # REBIND MCP + rules (stamp + kill workers before rewriting mcp.json)
     if connect:
         from pipeline.mcp_hot_reload import nudge_mcp_hot_reload
@@ -579,6 +589,14 @@ def run_upgrade(
         "Upgrade complete — daemon restarted on the new package.",
         "Reload Scubiee MCP in your IDE (or run `scubiee heal` if tools look stale).",
     ]
+    lean = report.get("lean") or {}
+    removed = [
+        row for row in (lean.get("removed") or []) if row.get("ok") and not row.get("skipped")
+    ]
+    if removed:
+        report["next_steps"].append(
+            f"Removed {len(removed)} older Scubiee install(s) so PATH and MCP stay on one copy."
+        )
     if report.get("rebind", {}).get("skipped"):
         report["next_steps"].append(
             "Run `scubiee connect --cursor` (or other tools) if MCP pins look stale."

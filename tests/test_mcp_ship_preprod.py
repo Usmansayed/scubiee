@@ -269,6 +269,7 @@ def test_pack_lean_default_heatmap_no_bodies(
     monkeypatch.setattr("pipeline.context_trace.run_pack_context", _fake_pack)
     monkeypatch.setattr("pipeline.context_trace.load_trace", lambda *a, **k: {})
     monkeypatch.setattr("pipeline.context_trace.persist_trace", lambda *a, **k: None)
+    monkeypatch.setattr("pipeline.context_trace.ast_cache_ready", lambda *_a, **_k: True)
 
     from pipeline.mcp_locate import create_mcp
 
@@ -286,12 +287,10 @@ def test_pack_lean_default_heatmap_no_bodies(
     assert lean.get("ok") is True
     assert lean.get("heatmap")
     assert not lean.get("bodies") and not lean.get("pack")
-    # Lean heatmap uses search/map-reuse (no AST run_pack_context) unless bodies/broad.
-    # Lean formatter strips mode/policy/engine/include_bodies — absence of bodies is the contract.
-    if captured:
-        assert captured.get("include_bodies") is False
-        assert captured.get("mode") == "lean"
-        assert captured.get("policy") == "strict"
+    # Warm AST → lean pack uses composite_v1 (include_bodies=False).
+    assert captured.get("include_bodies") is False
+    assert captured.get("mode") == "lean"
+    assert captured.get("policy") == "strict"
 
 
 def test_pack_include_bodies_flag_and_env(

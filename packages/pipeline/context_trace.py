@@ -6,11 +6,12 @@ Uses PolyTrace (+ AST/LSP; Graphify when available) on the bound repo.
 
 from __future__ import annotations
 
+import ast
 import os
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -159,12 +160,14 @@ def pack_engine_report(
     escaped = policy_n == "broad" and is_default
 
     if escaped:
-        engine_used = ran_engine or BROAD_ESCAPE_ENGINE
+        # Broad stays on composite. Helper demotion is the wider rank; polytrace
+        # remains an explicit engine, not this escape.
+        engine_used = PROD_PACK_ENGINE
         escape = {
             "used": True,
             "reason": "policy=broad",
             "from": requested,
-            "to": BROAD_ESCAPE_ENGINE,
+            "to": "composite_rerank",
             "restored": requested,
         }
     else:
@@ -583,29 +586,31 @@ def hydrate_ast_bundle(
             "ms": round((time.perf_counter() - t0) * 1000, 1),
         }
 
-    if not bake_on_miss:
-        try:
-            from pipeline.warm_contract import set_ast_hydrated
 
-            set_ast_hydrated(False, source="miss")
-        except Exception:  # noqa: BLE001
-            pass
+def prewarm_pack_graph(root: Path | str) -> dict[str, Any]:
+    """Hydrate the AST bundle, then load composite edges before the first pack.
+
+    Runs on the locate-worker background thread after dense embed is up, so the
+    first pack_context does not pay the call-graph build on the request.
+    """
+    t0 = time.perf_counter()
+    root_p = Path(root).resolve()
+    hyd = hydrate_ast_bundle(root_p, bake_on_miss=False)
+    rt = _CACHE.get(_repo_cache_key(root_p))
+    if rt is None:
         return {
             "ok": False,
-            "source": "miss",
+            "hydrate": hyd,
+            "edges": None,
             "ms": round((time.perf_counter() - t0) * 1000, 1),
         }
+    from trace_lab.composite_v1 import ensure_composite_edges
 
-    _load_repo(root_p, with_graphify=gfy)
-    try:
-        from pipeline.warm_contract import set_ast_hydrated
-
-        set_ast_hydrated(True, source="baked")
-    except Exception:  # noqa: BLE001
-        pass
+    edges = ensure_composite_edges(rt.root, rt.nodes, rt.graph, rt.lsp, rt.gfy)
     return {
-        "ok": True,
-        "source": "baked",
+        "ok": bool(edges.get("ok")),
+        "hydrate": hyd,
+        "edges": edges,
         "ms": round((time.perf_counter() - t0) * 1000, 1),
     }
 
@@ -1344,6 +1349,7 @@ def ensure_seeds_on_heatmap(
     nodes: dict[str, TraceNode],
     *,
     k: int = 16,
+    root: Path | str | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, bool], list[str]]:
     """Guarantee each accepted seed appears in the heatmap (inject if missing).
 
@@ -1368,6 +1374,13 @@ def ensure_seeds_on_heatmap(
             # Keep seed visible — bump score floor so it is not buried by agreement noise.
             by_id[sid]["score"] = max(float(by_id[sid].get("score") or 0), 1.05)
             by_id[sid]["heat"] = "hot"
+            if root is not None:
+                existing = nodes.get(sid)
+                if existing is not None:
+                    existing = refresh_node_from_disk(root, nodes, existing)
+                    by_id[sid]["start_line"] = existing.start_line
+                    by_id[sid]["end_line"] = existing.end_line
+                    by_id[sid]["loc"] = f"{existing.file}:{existing.start_line}-{existing.end_line}"
             continue
         node = nodes.get(sid)
         if node is None:
@@ -1377,6 +1390,8 @@ def ensure_seeds_on_heatmap(
                 node = resolve_seed_node(nodes, file=file, symbol=sym)
         if node is None:
             continue
+        if root is not None:
+            node = refresh_node_from_disk(root, nodes, node)
         card = {
             "id": node.id,
             "file": node.file,
@@ -2205,12 +2220,78 @@ _HEATMAP_HOWTO = (
 )
 
 
+_LIVE_SPAN_CACHE: dict[tuple[str, int], dict[str, list[tuple[int, int, str]]]] = {}
+
+
+def live_symbol_span(
+    root: Path | str,
+    file: str,
+    symbol: str,
+    *,
+    near_line: int = 0,
+) -> tuple[int, int, str] | None:
+    """Current on-disk span for ``symbol``. Ignores a stale AST bundle."""
+    rel = (file or "").replace("\\", "/").strip()
+    sym = (symbol or "").strip()
+    if not rel or not sym:
+        return None
+    path = Path(root) / rel
+    if not path.is_file():
+        return None
+    try:
+        mtime = path.stat().st_mtime_ns
+    except OSError:
+        return None
+    key = (str(path.resolve()), mtime)
+    cached = _LIVE_SPAN_CACHE.get(key)
+    if cached is None:
+        try:
+            src = path.read_text(encoding="utf-8", errors="replace")
+            tree = ast.parse(src)
+        except (OSError, SyntaxError):
+            return None
+        lines = src.splitlines()
+        cached = {}
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                continue
+            end = int(getattr(node, "end_lineno", None) or node.lineno)
+            start = int(node.lineno)
+            text = "\n".join(lines[start - 1 : end])
+            cached.setdefault(node.name, []).append((start, end, text))
+        _LIVE_SPAN_CACHE[key] = cached
+    spans = _LIVE_SPAN_CACHE[key].get(sym) or _LIVE_SPAN_CACHE[key].get(sym.split(".")[-1]) or []
+    if not spans:
+        return None
+    if near_line:
+        return min(spans, key=lambda s: abs(s[0] - near_line))
+    return spans[0]
+
+
+def refresh_node_from_disk(
+    root: Path | str,
+    nodes: dict[str, TraceNode],
+    node: TraceNode,
+) -> TraceNode:
+    """Replace a frozen node when the file's symbol moved since the AST bake."""
+    span = live_symbol_span(root, node.file, node.symbol, near_line=node.start_line)
+    if span is None:
+        return node
+    start, end, text = span
+    if start == node.start_line and end == node.end_line and text == (node.text or ""):
+        return node
+    fresh = replace(node, start_line=start, end_line=end, text=text)
+    nodes[node.id] = fresh
+    return fresh
+
+
 def heatmap_to_cards(
     hm: Heatmap,
     nodes: dict[str, TraceNode],
     *,
     k: int = 24,
     min_score: float = _WARM,
+    root: Path | str | None = None,
 ) -> list[dict[str, Any]]:
     cards: list[dict[str, Any]] = []
     rank = 0
@@ -2220,6 +2301,8 @@ def heatmap_to_cards(
         n = nodes.get(c.node_id)
         if n is None:
             continue
+        if root is not None:
+            n = refresh_node_from_disk(root, nodes, n)
         rank += 1
         score = round(float(c.score), 4)
         heat = _heat(float(c.score))
@@ -2387,7 +2470,7 @@ def run_map_context(
     timing["merge_ms"] = round((time.perf_counter() - t_merge) * 1000, 1)
 
     t_cards = time.perf_counter()
-    cards = heatmap_to_cards(merged, rt.nodes, k=k)
+    cards = heatmap_to_cards(merged, rt.nodes, k=k, root=rt.root)
     timing["cards_ms"] = round((time.perf_counter() - t_cards) * 1000, 1)
 
     def _seed_blob(n: TraceNode | None) -> dict[str, Any] | None:
@@ -2461,6 +2544,202 @@ def _resolve_node_id(rt: _RepoTrace, node: str) -> str | None:
     return None
 
 
+def _call_names_in_source(text: str) -> list[str]:
+    """Call leaves in a function body, in source order, public names only."""
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return []
+    names: list[str] = []
+    seen: set[str] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        fn = node.func
+        name = fn.id if isinstance(fn, ast.Name) else (fn.attr if isinstance(fn, ast.Attribute) else "")
+        if not name or name in seen or name.startswith("_"):
+            continue
+        seen.add(name)
+        names.append(name)
+    return names
+
+
+def _import_bindings(text: str) -> dict[str, tuple[str, str]]:
+    """Local name → (module, symbol) for imports inside the function text."""
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return {}
+    out: dict[str, tuple[str, str]] = {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module:
+            for alias in node.names:
+                local = alias.asname or alias.name
+                out[local] = (node.module, alias.name)
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                local = alias.asname or alias.name.split(".")[-1]
+                out[local] = (alias.name, "")
+    return out
+
+
+def _repo_module_file(root: Path, module: str) -> str | None:
+    rel = (module or "").strip().replace(".", "/")
+    if not rel:
+        return None
+    for cand in (
+        f"packages/{rel}.py",
+        f"{rel}.py",
+        f"packages/{rel}/__init__.py",
+        f"{rel}/__init__.py",
+    ):
+        try:
+            if (Path(root) / cand).is_file():
+                return cand
+        except OSError:
+            continue
+    return None
+
+
+def _expand_disk_delta(
+    root: Path,
+    nodes: dict[str, TraceNode],
+    node: str,
+    *,
+    direction: str,
+    k: int,
+) -> dict[str, Any] | None:
+    """Callees of a symbol that exists on disk but not in the baked graph.
+
+    A full rebake is too slow for the request. Callers and effects still need
+    reverse edges, so those directions return an empty delta with a hint.
+    """
+    raw = (node or "").replace("\\", "/").strip()
+    if "::" not in raw:
+        return None
+    file_s, symbol = raw.split("::", 1)
+    file_s = file_s.strip().lstrip("./")
+    symbol = symbol.strip()
+    span = live_symbol_span(root, file_s, symbol)
+    if span is None:
+        return None
+    start, end, text = span
+    nid = f"{file_s}::{symbol}"
+    d = (direction or "all").lower().strip() or "all"
+    if d in {"deps"}:
+        d = "callees"
+    callerish = d in {"callers", "refs", "effects", "site", "dependents"}
+    delta: list[dict[str, Any]] = []
+    if callerish:
+        hint = (
+            "Symbol is on disk but not in the baked call graph yet. "
+            "Callees are read from the file; callers and effects need a graph refresh."
+        )
+    else:
+        by_leaf: dict[str, list[TraceNode]] = {}
+        for n in nodes.values():
+            leaf = (n.symbol or "").split(".")[-1]
+            by_leaf.setdefault(leaf, []).append(n)
+        imports = _import_bindings(text)
+        seen_ids: set[str] = set()
+        for name in _call_names_in_source(text):
+            cands = by_leaf.get(name) or []
+            same = [n for n in cands if n.file.replace("\\", "/") == file_s]
+            pick: TraceNode | None
+            if len(same) == 1:
+                pick = same[0]
+            elif len(cands) == 1:
+                pick = cands[0]
+            elif same:
+                pick = same[0]
+            else:
+                pick = None
+            card: dict[str, Any] | None = None
+            if pick is not None and pick.kind != "class":
+                score = 0.9
+                card = {
+                    "id": pick.id,
+                    "file": pick.file,
+                    "symbol": pick.symbol,
+                    "kind": pick.kind,
+                    "role": card_role(pick.file, pick.kind),
+                    "start_line": pick.start_line,
+                    "end_line": pick.end_line,
+                    "loc": f"{pick.file}:{pick.start_line}-{pick.end_line}",
+                    "score": score,
+                    "heat": _heat(score),
+                    "why": f"disk:{symbol}->{name}",
+                    "path": [nid, pick.id],
+                }
+            else:
+                binding = imports.get(name)
+                if binding:
+                    module, imported = binding
+                    rel = _repo_module_file(root, module)
+                    target = imported or name
+                    found = live_symbol_span(root, rel, target) if rel else None
+                    if rel and found is not None:
+                        st, en, _body = found
+                        fid = f"{rel}::{target}"
+                        score = 0.9
+                        card = {
+                            "id": fid,
+                            "file": rel,
+                            "symbol": target,
+                            "kind": "function",
+                            "role": card_role(rel, "function"),
+                            "start_line": st,
+                            "end_line": en,
+                            "loc": f"{rel}:{st}-{en}",
+                            "score": score,
+                            "heat": _heat(score),
+                            "why": f"disk-import:{symbol}->{name}",
+                            "path": [nid, fid],
+                        }
+            if card is None or card["id"] in seen_ids or card["id"] == nid:
+                continue
+            seen_ids.add(str(card["id"]))
+            card["rank"] = len(delta) + 1
+            delta.append(card)
+            if len(delta) >= max(1, int(k)):
+                break
+        hint = (
+            "Callees parsed from the current file. "
+            "The baked graph does not contain this symbol yet."
+        )
+    return {
+        "ok": True,
+        "tool": "expand_context",
+        "from": nid,
+        "direction": d,
+        "delta": delta,
+        "count": len(delta),
+        "pack": [],
+        "packed": 0,
+        "chars": 0,
+        "bodies": False,
+        "source": "disk",
+        "loc": f"{file_s}:{start}-{end}",
+        "guide": hint,
+        "elapsed_ms": 0.0,
+    }
+
+
+def _expand_why_is_direct_call(why: str) -> bool:
+    """True for a forward call edge, not a bare 'use' mention."""
+    w = (why or "").lower()
+    if _expand_why_is_reverse(w):
+        return False
+    if w.startswith("expand:calls") or w.startswith("expand:dispatches"):
+        return True
+    return "calls:" in w or "dispatches:" in w
+
+
+def _expand_symbol_is_effect(symbol: str) -> bool:
+    leaf = (symbol or "").split(".")[-1].lower()
+    return leaf in {"log", "logger", "track", "analytics", "print", "info", "debug", "send"}
+
+
 def _expand_why_is_reverse(why: str) -> bool:
     w = (why or "").lower()
     return any(
@@ -2491,6 +2770,8 @@ def rank_expand_delta(
     q_tokens = {t for t in ql.replace("::", " ").replace("/", " ").replace(".", " ").split() if len(t) >= 3}
     d = (direction or "").lower()
     callersish = d in {"callers", "refs", "dependents"}
+    calleeish = d in {"callees", "deps", "flow"}
+    effectish = d in {"effects", "site"}
     # Leaf seed → boost same-file public siblings (blind: savings_defaults → put_span).
     rescue_from_leaf = bool(seed_symbol) and _is_leaf_helper_seed(
         seed_symbol, query=""
@@ -2541,12 +2822,20 @@ def rank_expand_delta(
         if leaf_seed_rescue:
             same_file_pen = 0
         score = -float(c.get("score") or 0)
+        # Callers climb out of the seed file. Callees/effects stay on the
+        # direct call or effect, which is usually in the seed file.
+        if calleeish or effectish:
+            file_rank = 0 if same_file else 1
+        else:
+            file_rank = -cross
+        direct_rank = 0 if calleeish and _expand_why_is_direct_call(why) else (1 if calleeish else 0)
         return (
             reverse_rank,
             forward_rank,
             same_file_pen,
             leaf_seed_rescue,
-            -cross,
+            direct_rank,
+            file_rank,
             path_pen,
             -q_hit,
             helper_pen,
@@ -2774,18 +3063,19 @@ def _neighbor_cards(
         if d in {"all", "broad"}:
             keep = True
         elif d in {"callees", "deps", "flow"}:
-            keep = rel_l in forward
+            # Direct calls only. "uses" pulls in shared helpers that are not callees.
+            keep = rel_l in {"calls", "dispatches"}
         elif d in {"callers", "refs", "dependents"}:
             keep = rel_l in reverse or rel_l == "used_by"
         elif d in {"effects", "site"}:
-            keep = short in effect_names or rel_l in forward
+            keep = short in effect_names
         elif d == "config":
             keep = n.kind == "const" or rel_l in {"uses", "used_by"}
         else:
             keep = True
         if not keep:
             continue
-        if d == "effects" and short not in effect_names and rel_l not in forward:
+        if d == "effects" and short not in effect_names:
             continue
         seen.add(vid)
         score = min(0.95, base_score * max(0.4, w))
@@ -2845,6 +3135,16 @@ def run_expand_context(
     rt = _load_repo(root)
     nid = _resolve_node_id(rt, node)
     if nid is None or nid not in rt.nodes:
+        disk = _expand_disk_delta(
+            root,
+            rt.nodes,
+            node,
+            direction=(intent or direction or "all"),
+            k=k,
+        )
+        if disk is not None:
+            disk["elapsed_ms"] = round((time.perf_counter() - t0) * 1000, 1)
+            return disk
         return {"ok": False, "error": f"unknown node {node!r}"}
 
     seed = rt.nodes[nid]
@@ -2877,16 +3177,12 @@ def run_expand_context(
 
     def _tracer() -> list[dict[str, Any]]:
         hm = rt.poly(_case(q, seed, case_id="expand"), rt.nodes, rt.graph, rt.lex)
-        cards = heatmap_to_cards(hm, rt.nodes, k=k + len(prior) + 8, min_score=_WARM)
+        cards = heatmap_to_cards(hm, rt.nodes, k=k + len(prior) + 8, min_score=_WARM, root=rt.root)
         if d in {"callees", "flow"}:
             cards = [
                 c
                 for c in cards
-                if any(
-                    tok in (c.get("why") or "").lower()
-                    for tok in ("call", "use", "dispatch", "pass", "produc")
-                )
-                or c.get("id") == nid
+                if _expand_why_is_direct_call(str(c.get("why") or ""))
             ]
         elif d in {"callers", "refs"}:
             # Prefer reverse-ish why; drop pure forward CALLS: noise from polytrace.
@@ -2909,11 +3205,7 @@ def run_expand_context(
             cards = [
                 c
                 for c in cards
-                if any(
-                    tok in (c.get("why") or "").lower()
-                    for tok in ("log", "track", "send", "print", "effect", "call", "use")
-                )
-                or c.get("id") == nid
+                if _expand_symbol_is_effect(str(c.get("symbol") or c.get("s") or ""))
             ]
         elif d == "config":
             cards = [
@@ -2941,10 +3233,13 @@ def run_expand_context(
     if d in {"callers", "refs", "dependents"}:
         lexical = _lexical_caller_cards(rt, nid, k=max(k, 12), prior=prior)
 
-    # Merge: lexical + structural first for callers; else tracer then fill gaps
+    # Callers/effects: structural (and lexical callers) first.
+    # Callees: direct call edges first; tracer only fills real call hops.
     merged: list[dict[str, Any]] = []
     seen: set[str] = set()
-    if d in {"callers", "refs", "effects", "site", "broad", "dependents"}:
+    if d in {"callees", "flow", "deps"}:
+        order = struct + tracer_cards
+    elif d in {"callers", "refs", "effects", "site", "broad", "dependents"}:
         order = lexical + struct + tracer_cards
     else:
         order = tracer_cards + struct + lexical
@@ -2968,11 +3263,13 @@ def run_expand_context(
         merged.append(c)
         if len(merged) >= k * 3:
             break
-    # Leaf expand: ensure same-file public siblings are candidates (blind put_span miss).
+    # Leaf expand: same-file public siblings help callers/broad climb out.
+    # They are not callees or effects.
     seen_ids = {str(c.get("id") or "") for c in merged}
-    for sib in _same_file_public_sibling_cards(rt, seed, prior=prior | seen_ids, k=8):
-        merged.append(sib)
-        seen_ids.add(str(sib.get("id") or ""))
+    if d not in {"callees", "flow", "deps", "effects", "site"}:
+        for sib in _same_file_public_sibling_cards(rt, seed, prior=prior | seen_ids, k=8):
+            merged.append(sib)
+            seen_ids.add(str(sib.get("id") or ""))
     merged = rank_expand_delta(
         merged,
         seed_file=seed.file,
@@ -3100,6 +3397,11 @@ def run_collect_hot(
     skip = skip_ids or set()
     bodies: list[dict[str, Any]] = []
     used = 0
+    prefer_remaining = sum(
+        1
+        for c in picked
+        if str(c.get("id") or "") in prefer and str(c.get("id") or "") not in skip
+    )
     for c in picked:
         cid = str(c.get("id") or "")
         if cid and cid in skip and cid not in prefer:
@@ -3107,13 +3409,18 @@ def run_collect_hot(
         n = rt.nodes.get(c["id"])
         if n is None:
             continue
+        n = refresh_node_from_disk(root, rt.nodes, n)
         if max_bodies is not None and len(bodies) >= max_bodies:
             break
         text = n.text or ""
+        if cid in prefer and prefer_remaining > 0:
+            share = max(400, (max_chars - used) // prefer_remaining)
+            if len(text) > share:
+                text = text[: share - 1] + "…"
+            prefer_remaining -= 1
         if used + len(text) > max_chars:
             remain = max_chars - used
             if remain < 200:
-                # Prefer truncating a prefer_id over dropping it entirely when budget is tight.
                 if cid in prefer and not bodies:
                     text = text[: max(200, remain - 1)] + "…"
                 else:
@@ -3127,7 +3434,7 @@ def run_collect_hot(
                 "symbol": n.symbol,
                 "start_line": n.start_line,
                 "end_line": n.end_line,
-                "loc": c.get("loc") or f"{n.file}:{n.start_line}-{n.end_line}",
+                "loc": f"{n.file}:{n.start_line}-{n.end_line}",
                 "score": c.get("score"),
                 "heat": c.get("heat"),
                 "why": c.get("why"),
@@ -3284,8 +3591,8 @@ def run_pack_context(
     """Heatmap (+ optional hot bodies). mode=lean (default) minimizes tokens; mode=full is larger.
 
     policy=strict uses the selected tracer (default composite_v1 via CTX_TRACE_ENGINE).
-    policy=broad temporarily uses polytrace for this pack only — escape hatch when the
-    lean slice is too tight (ignored when ``engine`` is an explicit multi-pack tool).
+    policy=broad stays on that tracer. Tiny and private helpers are demoted in
+    composite ranking, and a thin leaf may reseed to its enclosing class.
     When broad still yields a thin leaf method, one-shot reseed to enclosing public class.
     When a class seed packs file-local (e.g. Conductor), one-shot hop to richer subclass.
 
@@ -3391,11 +3698,11 @@ def run_pack_context(
         except Exception:  # noqa: BLE001
             pass
 
-    if broad_escape:
-        os.environ["CTX_TRACE_ENGINE"] = BROAD_ESCAPE_ENGINE
-        _CACHE.clear()
-        cache_cleared = True
-    elif engine_n:
+    # Stay on composite_v1. Helper demotion ranks substantial callees on this
+    # slice. Switching to polytrace cleared the repo cache and cost ~43s.
+    broad_escape = False
+
+    if engine_n:
         os.environ["CTX_TRACE_ENGINE"] = engine_n
     try:
         mapped = run_map_context(
@@ -3581,7 +3888,7 @@ def run_pack_context(
     try:
         rt_cov = _load_repo(root)
         cards, seed_coverage, seed_injected = ensure_seeds_on_heatmap(
-            cards, seed_metas, rt_cov.nodes, k=max(int(k), 16)
+            cards, seed_metas, rt_cov.nodes, k=max(int(k), 16), root=root
         )
     except Exception:  # noqa: BLE001
         seed_coverage = seed_coverage_report(
@@ -3637,10 +3944,23 @@ def run_pack_context(
             if c.get("id")
         }
     packed_all = set(skip) | body_packed
+
+    def _card_score(card: dict[str, Any]) -> float:
+        return float(card.get("score") or 0)
+
+    # Cold is a low score. A high-score callee that did not receive a body
+    # is still hot; it belongs in the collect hint, not the cold list.
     cold_locs = [
         _slim_card(c)
         for c in cards
-        if c.get("id") not in hot_marked
+        if c.get("id") not in hot_marked and _card_score(c) < float(hot_threshold)
+    ]
+    unpacked_hot = [
+        c
+        for c in cards
+        if c.get("id")
+        and c.get("id") not in body_packed
+        and _card_score(c) >= float(hot_threshold)
     ]
     heatmap_slim = [_slim_card(c) for c in cards]
     chain = build_call_chain(cards, limit=8 if mode_n == "lean" else 12)
@@ -3665,8 +3985,8 @@ def run_pack_context(
         },
         {
             "tool": "collect_hot_context",
-            "when": "need bodies for cold heatmap cards",
-            "args": {"ids": [c["id"] for c in cold_locs[:4] if c.get("id")]},
+            "when": "need bodies for high-score cards that were not packed",
+            "args": {"ids": [c["id"] for c in unpacked_hot[:4] if c.get("id")]},
         },
         {
             "tool": "pack_context",
@@ -3745,9 +4065,11 @@ def run_pack_context(
         engine_report = {
             **engine_report,
             "escape": {
+                "used": True,
                 "reason": "policy=broad",
                 "from": PROD_PACK_ENGINE,
-                "to": "leaf_fastfail_composite",
+                "to": "composite_rerank",
+                "restored": PROD_PACK_ENGINE,
             },
             "engine": PROD_PACK_ENGINE,
         }

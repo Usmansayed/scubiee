@@ -105,8 +105,10 @@ def _search_via_server(
                 file=str(h["file"]),
                 score=float(h["score"]),
                 chunk_id=int(h["chunk_id"]),
-                preview=str(h.get("preview") or ""),
+                preview=str(h.get("preview") or h.get("why") or ""),
                 source=str(h.get("source") or "d_rerank"),
+                start_line=int(h["start_line"]) if h.get("start_line") else None,
+                end_line=int(h["end_line"]) if h.get("end_line") else None,
             )
         )
     return out

@@ -972,6 +972,15 @@ def wipe_all(
     pkg_out: dict[str, Any] | None = None
     if package:
         if progress is not None:
+            progress.step_active("Removing older pip copies")
+        try:
+            from pipeline.install_lean import uninstall_pip_copies
+
+            actions.append({"pip_copies": uninstall_pip_copies()})
+        except Exception as exc:  # noqa: BLE001
+            actions.append({"pip_copies": [{"ok": False, "error": str(exc)}]})
+        if progress is not None:
+            progress.step_finish("Older pip copies removed")
             progress.step_active("Removing scubiee package")
         import shutil
         import subprocess

@@ -655,8 +655,10 @@ class MultiArchConductor(Conductor):
         *,
         per_channel: int = 4,
     ) -> list[Hit]:
-        """Union channel leaders, then D-score.
+        """Dense shortlist, then D-score.
 
+        Every hit must come from the embedding shortlist. BM25 and graph only
+        tag those files; they cannot add a file semantic search did not retrieve.
         Soft (low path_likeness) queries widen the dense shortlist so gold that
         sits just outside the top-4 is still eligible. Hub stems with no path
         overlap are lightly demoted so graphify/serve.py cannot monopolize NL hits.
@@ -687,6 +689,8 @@ class MultiArchConductor(Conductor):
 
         pool: list[Hit] = []
         for f, chans in channels.items():
+            if "dense" not in chans:
+                continue
             cid = self._best_chunk(f, g_aff, b_all, d_all, query=query)
             if cid < 0:
                 continue

@@ -616,3 +616,39 @@ def test_wrong_ctx_repo_with_project_id_fails_closed_not_cwd(
     assert mcp_locate._default_repo() == fake.resolve()
     assert mcp_locate._is_repo_managed() is False
     assert mcp_locate._env_pin_project_mismatch() is True
+
+
+def test_missing_root_and_bad_project_id_stay_unmanaged(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """A folder or id the caller named must not attach the IDE workspace."""
+    engine = tmp_path / "engine"
+    engine.mkdir()
+    _enroll_scubiee(engine, "ce_engine")
+    (engine / ".git").mkdir()
+    monkeypatch.chdir(engine)
+    monkeypatch.setenv("CTX_HOME", str(tmp_path / "home"))
+    (tmp_path / "home").mkdir()
+    from pipeline.project_id import save_registry
+
+    save_registry(
+        {
+            "projects": {
+                "ce_engine": {
+                    "managed": True,
+                    "root": str(engine.resolve()),
+                    "paths": [str(engine.resolve())],
+                }
+            }
+        }
+    )
+    monkeypatch.setenv("CURSOR_PROJECT_DIR", str(engine))
+    monkeypatch.delenv("CTX_REPO", raising=False)
+    monkeypatch.delenv("CTX_PROJECT_ID", raising=False)
+    missing = tmp_path / "not-a-repo"
+    with mcp_locate._bind_request_repo(root=str(missing), project_id="ce_does_not_exist"):
+        assert mcp_locate._is_repo_managed() is False
+        assert mcp_locate._default_repo() != engine.resolve()
+    with mcp_locate._bind_request_repo(project_id="ce_does_not_exist"):
+        assert mcp_locate._is_repo_managed() is False
+        assert mcp_locate._default_repo() != engine.resolve()

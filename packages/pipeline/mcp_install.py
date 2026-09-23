@@ -185,6 +185,16 @@ def server_entry(
                 pyw = background_python()
         except Exception:  # noqa: BLE001
             pyw = interpreter()
+        # A newer (or equal) uv tool install must win over an older pip/conda
+        # interpreter that happens to be running connect.
+        try:
+            from pipeline.install_lean import newer_uv_pythonw
+
+            preferred = newer_uv_pythonw()
+            if preferred:
+                pyw = preferred
+        except Exception:  # noqa: BLE001
+            pass
         pyw_s = str(Path(pyw)).replace("\\", "/")
         # Worker children also use pythonw (bridge CREATE_NO_WINDOW alone is not enough
         # if the shim itself is a console EXE).

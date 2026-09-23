@@ -120,6 +120,35 @@ def test_channel_maps_reuses_process_pool() -> None:
     assert channel_pool() is a
 
 
+def test_d_channel_best_omits_files_semantic_search_missed() -> None:
+    """Keyword or graph leaders that are outside the dense shortlist stay off the map."""
+    from unittest.mock import patch
+
+    texts = [
+        "bm25 keyword keeper tick sync index map pack",
+        "other lexical filler alpha beta gamma",
+        "semantic embed neighbor",
+    ]
+    files = [
+        "packages/bm25_only.py",
+        "packages/filler.py",
+        "packages/semantic_hit.py",
+    ]
+    cond = _tiny_conductor(texts, files)
+    qvec = np.zeros(8, dtype=np.float32)
+    qvec[2] = 1.0
+    with patch("conductor.architectures.path_likeness", return_value=0.9):
+        hits = cond.retrieve_D_channel_best(
+            "bm25 keyword keeper tick sync index map pack",
+            qvec,
+            top_k=5,
+            per_channel=1,
+        )
+    files_out = [h.file.replace("\\", "/") for h in hits]
+    assert files_out == ["packages/semantic_hit.py"]
+    assert all("dense" in h.source for h in hits)
+
+
 def test_d_channel_best_file_order_from_full_scores() -> None:
     texts = [
         "def retrieve_D_channel_best fusion union leaders",

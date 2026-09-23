@@ -1067,7 +1067,7 @@ class WarmSearchEngine:
         # single-flight the embed — DirectML/ORT is not safe under ThreadingHTTPServer.
         max_q = int(os.environ.get("CTX_QUERY_MAX_CHARS", "2000") or "2000")
         q_embed = (query or "")[: max(64, max_q)]
-        # Map/search always use real FastEmbed → D_channel_best (BM25+dense+graph).
+        # Map/search always use real FastEmbed → D_channel_best (dense shortlist).
         # Never skip dense for skip_freshness. Never park the HTTP worker on a
         # full sync cold load (that GIL-starved /health and failed Lane A settle).
         # Kick async + brief join; if still cold → dense_embed_required (retry).

@@ -1,0 +1,157 @@
+{
+  "version": 1,
+  "description": "Frozen OOD seed-quality gate. Do not add cases that only exist to justify a one-off bonus. Gold is allowlists (any match passes).",
+  "min_pass_rate": 0.7,
+  "cases": [
+    {
+      "id": "turbo_codec",
+      "query": "TurboQuant compress_mix FAISS bits online vector quantization TurboQuantCodec packages/pipeline/turbo_quant.py",
+      "file_any": ["packages/pipeline/turbo_quant.py"],
+      "symbol_any": ["TurboQuantCodec"]
+    },
+    {
+      "id": "project_resolve",
+      "query": "resolve_project project_id ce_ enroll id.json packages/pipeline/project_id.py",
+      "file_any": ["packages/pipeline/project_id.py"],
+      "symbol_any": ["resolve_project"]
+    },
+    {
+      "id": "merkle_sync",
+      "query": "merkle sync incremental dirty file hash SyncDiff scan_file_hashes packages/pipeline/merkle.py",
+      "file_any": ["packages/pipeline/merkle.py"],
+      "symbol_any": ["SyncDiff", "scan_file_hashes"]
+    },
+    {
+      "id": "freshness_verify",
+      "query": "verify_merkle_leaves freshness SyncDiff file_mtimes packages/pipeline/freshness.py",
+      "file_any": ["packages/pipeline/freshness.py"],
+      "symbol_any": ["verify_merkle_leaves"]
+    },
+    {
+      "id": "bm25_index",
+      "query": "bm25_index BM25Index tokenize search hybrid packages/conductor/bm25_index.py",
+      "file_any": ["packages/conductor/bm25_index.py"],
+      "symbol_any": ["BM25Index"]
+    },
+    {
+      "id": "multiarch",
+      "query": "MultiArchConductor architectures hop D_rerank packages/conductor/architectures.py",
+      "file_any": ["packages/conductor/architectures.py"],
+      "symbol_any": ["MultiArchConductor"]
+    },
+    {
+      "id": "graphify_load",
+      "query": "graphify_layer load_store_graphify_graph CALLS edges packages/trace_lab/graphify_layer.py",
+      "file_any": ["packages/trace_lab/graphify_layer.py"],
+      "symbol_any": ["load_store_graphify_graph"]
+    },
+    {
+      "id": "embedder",
+      "query": "Embedder embed_many FastEmbed DML providers packages/pipeline/embedder.py",
+      "file_any": ["packages/pipeline/embedder.py"],
+      "symbol_any": ["Embedder"]
+    },
+    {
+      "id": "poly_trace",
+      "query": "polytrace composite_v1 channels packages/trace_lab/polytrace.py",
+      "file_any": ["packages/trace_lab/polytrace.py"],
+      "symbol_any": ["poly_trace", "bind_polytrace"]
+    },
+    {
+      "id": "watchdog",
+      "query": "watchdog restart_count last_reconcile packages/pipeline/watchdog.py",
+      "file_any": ["packages/pipeline/watchdog.py"],
+      "symbol_any": ["watchdog_status", "start_watchdog", "watchdog_loop"]
+    },
+    {
+      "id": "index_repo",
+      "query": "index_repo embed chunks merkle incremental packages/pipeline/indexer.py",
+      "file_any": ["packages/pipeline/indexer.py"],
+      "symbol_any": ["index_repo"]
+    },
+    {
+      "id": "ensure_daemon",
+      "query": "ensure_daemon EngineClient healthy force_if_hung packages/pipeline/daemon.py",
+      "file_any": ["packages/pipeline/daemon.py"],
+      "symbol_any": ["ensure_daemon"]
+    },
+    {
+      "id": "gate_rules",
+      "query": "write_project_gate_rules AGENTS.md GATE packages/pipeline/rules_installer.py",
+      "file_any": ["packages/pipeline/rules_installer.py"],
+      "symbol_any": ["write_project_gate_rules"]
+    },
+    {
+      "id": "session_load",
+      "query": "load_session rematerialize work_session pins packages/pipeline/work_session.py",
+      "file_any": ["packages/pipeline/work_session.py"],
+      "symbol_any": ["load_session"]
+    },
+    {
+      "id": "wipe_repo",
+      "query": "wipe_repo wipe project index collections packages/pipeline/wipe.py",
+      "file_any": ["packages/pipeline/wipe.py"],
+      "symbol_any": ["wipe_repo", "wipe"]
+    },
+    {
+      "id": "permissions",
+      "query": "apply_permissions_to_repo_tool_surface mcpAllowlist autoApprove packages/pipeline/mcp_permissions.py",
+      "file_any": ["packages/pipeline/mcp_permissions.py"],
+      "symbol_any": ["apply_permissions_to_repo_tool_surface"]
+    },
+    {
+      "id": "hot_reload",
+      "query": "write_active_build_stamp CTX_SCUBIEE_BUILD packages/pipeline/mcp_hot_reload.py",
+      "file_any": ["packages/pipeline/mcp_hot_reload.py"],
+      "symbol_any": ["write_active_build_stamp"]
+    },
+    {
+      "id": "diagnose",
+      "query": "diagnose doctor health check provider readiness packages/pipeline/diagnose.py",
+      "file_any": ["packages/pipeline/diagnose.py", "packages/pipeline/doctor.py"],
+      "symbol_any": ["diagnose"]
+    },
+    {
+      "id": "keeper_tick",
+      "query": "keeper_tick sync_loop watcher dirty journal packages/pipeline/sync_loop.py",
+      "file_any": ["packages/pipeline/sync_loop.py"],
+      "symbol_any": ["keeper_tick", "BackgroundSyncLoop", "enable_session_keeper_defaults"]
+    },
+    {
+      "id": "store_lock",
+      "query": "store_write_lock with_store_lock exclusive index store packages/pipeline/store_lock.py",
+      "file_any": ["packages/pipeline/store_lock.py"],
+      "symbol_any": ["store_write_lock", "store_lock_file", "quiesce_background_indexing"]
+    },
+    {
+      "id": "hot_patch",
+      "query": "hot_patch query-time freshness disk text BM25 without re-embed packages/pipeline/hot_patch.py",
+      "file_any": ["packages/pipeline/hot_patch.py"],
+      "symbol_any": []
+    },
+    {
+      "id": "artifact_atomic",
+      "query": "atomic_write_text artifact_guard validate_manifest packages/pipeline/artifact_guard.py",
+      "file_any": ["packages/pipeline/artifact_guard.py"],
+      "symbol_any": ["atomic_write_text", "validate_manifest", "publish_manifest"]
+    },
+    {
+      "id": "resources_mgr",
+      "query": "ResourceManager resources.py CUDA DirectML MLX provider packages/pipeline/resources.py",
+      "file_any": ["packages/pipeline/resources.py"],
+      "symbol_any": ["ResourceManager"]
+    },
+    {
+      "id": "faiss_adapter",
+      "query": "FaissDenseAdapter dense FAISS searcher adapter packages/pipeline/searcher.py",
+      "file_any": ["packages/pipeline/searcher.py"],
+      "symbol_any": ["FaissDenseAdapter"]
+    },
+    {
+      "id": "upgrade_run",
+      "query": "run_upgrade migrate check_pypi_version packages/pipeline/upgrade_supervisor.py",
+      "file_any": ["packages/pipeline/upgrade_supervisor.py", "packages/pipeline/upgrade.py"],
+      "symbol_any": ["run_upgrade", "check_pypi_version"]
+    }
+  ]
+}

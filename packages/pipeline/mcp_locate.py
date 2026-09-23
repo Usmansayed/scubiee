@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import threading
 import time
@@ -99,6 +100,229 @@ def _resolve_pack_bodies(include_bodies_flag: int | bool | None) -> bool:
     from pipeline.mcp_response_lean import pack_bodies_enabled
 
     return pack_bodies_enabled()
+
+
+def _lean_pack_seed_card(
+    *,
+    file: str,
+    symbol: str = "",
+    line: int = 0,
+    score: float = 1.0,
+    rank: int = 1,
+    why: str = "seed",
+) -> dict[str, Any] | None:
+    """Build a lean heatmap seed row. Score must beat map-reuse neighbors after slim re-rank."""
+    f = (file or "").replace("\\", "/").strip()
+    if not f:
+        return None
+    sym = (symbol or "").strip()
+    ln = int(line or 0)
+    return {
+        "id": f"{f}::{sym}" if sym else f,
+        "file": f,
+        "symbol": sym,
+        "start_line": ln or None,
+        "end_line": None,
+        "score": float(score),
+        "heat": "hot",
+        "rank": int(rank),
+        "why": why,
+        "loc": f"{f}:{ln}" if ln else f,
+    }
+
+
+def _lean_pack_fallback_heatmap(
+    *,
+    query: str,
+    seed_file: str,
+    seed_symbol: str = "",
+    seed_line: int = 0,
+    seed2_file: str = "",
+    seed2_symbol: str = "",
+    seed2_line: int = 0,
+    seed3_file: str = "",
+    seed3_symbol: str = "",
+    seed3_line: int = 0,
+    k: int = 16,
+    hot_threshold: float = 0.65,
+    repo: Any,
+    session_id: str,
+    search_fn: Any | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, Any] | None, str]:
+    """Legacy map-card heatmap. pack_context does not call this.
+
+    A cold AST returns ast_warming instead of these neighbors. Kept so span
+    tests can still build a seed card from disk. Returns
+    (heatmap, primary_seed_card, engine_tag).
+    """
+    from pipeline.session_store import load_store
+
+    cards: list[dict[str, Any]] = []
+    engine_tag = "map_reuse"
+    try:
+        from pipeline.map_result_cache import get_recent_map_cards
+
+        cards = get_recent_map_cards(repo=str(repo), limit=max(4, min(int(k or 16), 48)))
+    except Exception:  # noqa: BLE001
+        cards = []
+    if not cards:
+        try:
+            store = load_store(repo, session_id=session_id)
+            qn = _norm_query(query)
+            cache = store.get("map_cache") or {}
+            row = cache.get(qn)
+            cards = list((row or {}).get("cards") or [])
+            if not cards:
+                for _qk, crow in sorted(
+                    cache.items(),
+                    key=lambda kv: float((kv[1] or {}).get("ts") or 0),
+                    reverse=True,
+                ):
+                    cards = list((crow or {}).get("cards") or [])
+                    if cards:
+                        break
+        except Exception:  # noqa: BLE001
+            cards = []
+
+    max_map_sc = max((float(c.get("score") or 0.0) for c in cards), default=1.0)
+    # Beat BM25-scale map scores so slim re-rank keeps seeds hot and front.
+    seed_boost = max(max_map_sc + 10.0, 100.0)
+
+    seed_specs = [
+        (seed_file, seed_symbol, seed_line, "seed"),
+        (seed2_file, seed2_symbol, seed2_line, "seed2"),
+        (seed3_file, seed3_symbol, seed3_line, "seed3"),
+    ]
+    heatmap: list[dict[str, Any]] = []
+    seed_ids: set[str] = set()
+    primary: dict[str, Any] | None = None
+    for i, (sf, ss, sl, why) in enumerate(seed_specs):
+        card = _lean_pack_seed_card(
+            file=sf,
+            symbol=ss,
+            line=sl,
+            score=seed_boost - (0.1 * i),
+            rank=i + 1,
+            why=why,
+        )
+        if not card:
+            continue
+        # Prefer map loc/lines when the same seed appeared on the prior map.
+        for c in cards:
+            f = str(c.get("file") or "").replace("\\", "/")
+            sym = str(c.get("symbol") or "")
+            if f == card["file"] and (not card["symbol"] or sym == card["symbol"]):
+                s = int(c.get("start_line") or 0)
+                e = int(c.get("end_line") or 0)
+                if s:
+                    card["start_line"] = s
+                    card["end_line"] = e or s
+                    card["loc"] = str(c.get("loc") or f"{f}:{s}-{e or s}")
+                if sym and not card["symbol"]:
+                    card["symbol"] = sym
+                    card["id"] = f"{f}::{sym}"
+                break
+        if card.get("symbol"):
+            from pipeline.context_trace import live_symbol_span
+
+            span = live_symbol_span(
+                repo,
+                card["file"],
+                card["symbol"],
+                near_line=int(card.get("start_line") or sl or 0),
+            )
+            if span is not None:
+                start, end, _text = span
+                card["start_line"] = start
+                card["end_line"] = end
+                card["loc"] = f"{card['file']}:{start}-{end}"
+        seed_ids.add(str(card["id"]))
+        heatmap.append(card)
+        if primary is None:
+            primary = card
+
+    for c in cards:
+        f = str(c.get("file") or "").replace("\\", "/")
+        if not f:
+            continue
+        sym = str(c.get("symbol") or "")
+        iid = str(c.get("id") or "")
+        if not iid:
+            s0 = int(c.get("start_line") or 0)
+            e0 = int(c.get("end_line") or 0)
+            iid = f"{f}::{sym}" if sym else (f"{f}:{s0}-{e0}" if s0 and e0 else f)
+        if iid in seed_ids:
+            continue
+        # Same-file neighbors of a seed are useful; only drop exact seed ids above.
+        s = int(c.get("start_line") or 0)
+        e = int(c.get("end_line") or 0)
+        sc = float(c.get("score") or 0.0)
+        heatmap.append(
+            {
+                "id": iid,
+                "file": f,
+                "symbol": sym,
+                "start_line": s or None,
+                "end_line": e or None,
+                "score": sc,
+                "heat": "hot" if sc >= float(hot_threshold or 0.65) else "warm",
+                "rank": len(heatmap) + 1,
+                "why": (c.get("why") or "")[:160],
+                "loc": c.get("loc") or (f"{f}:{s}-{e}" if s and e else f),
+            }
+        )
+
+    if len(heatmap) < 3:
+        engine_tag = "search_lean"
+        hits_raw: list[dict[str, Any]] = []
+        try:
+            if search_fn is not None:
+                hits_raw = list(search_fn(query, max(4, min(int(k or 16), 48))) or [])
+            else:
+                from pipeline.client import EngineClient
+                from pipeline.mcp_lifecycle import soft_ready_cached
+                from pipeline.session_isolation import mcp_client_name
+
+                if soft_ready_cached():
+                    res = EngineClient(
+                        workspace_path=str(repo),
+                        client=mcp_client_name(),
+                        timeout=3.0,
+                    ).search(
+                        query,
+                        top_k=max(4, min(int(k or 16), 48)),
+                        path=str(repo),
+                    )
+                    if isinstance(res, dict) and res.get("ok") is not False:
+                        hits_raw = list(res.get("hits") or [])
+        except Exception:  # noqa: BLE001
+            hits_raw = []
+        seen = {str(h.get("id") or h.get("file") or "").replace("\\", "/") for h in heatmap}
+        seen |= {str(h.get("file") or "").replace("\\", "/") for h in heatmap}
+        for h in hits_raw:
+            f = str(h.get("file") or h.get("path") or "").replace("\\", "/")
+            if not f or f in seen:
+                continue
+            seen.add(f)
+            s = int(h.get("start_line") or 0)
+            e = int(h.get("end_line") or 0)
+            sc = float(h.get("score") or 0.0)
+            heatmap.append(
+                {
+                    "id": f"{f}:{s}-{e}" if s and e else f,
+                    "file": f,
+                    "symbol": "",
+                    "start_line": s or None,
+                    "end_line": e or None,
+                    "score": sc,
+                    "heat": "hot" if sc >= float(hot_threshold or 0.65) else "warm",
+                    "rank": len(heatmap) + 1,
+                    "why": (h.get("why") or "")[:160],
+                    "loc": f"{f}:{s}-{e}" if s and e else f,
+                }
+            )
+
+    return heatmap[: max(4, min(int(k or 16), 48))], primary, engine_tag
 
 
 # Default shipped locate tools (permissions + docs). Lab/classic add extras at register time.
@@ -902,11 +1126,16 @@ def _resolve_request_repo(*, root: str = "", project_id: str = "") -> Path | Non
 
                     if read_id_file(enrolled) == pid:
                         return enrolled
-                    return None
+                    # Wrong id on a real folder must not fall through to the
+                    # IDE workspace and look managed.
+                    return Path("__scubiee_unresolved_project__")
                 return enrolled
             git = _git_root_walk(start)
             if git is not None:
                 return git
+            return start
+        # Explicit root that is not on disk is not this repo.
+        if start is not None and not _path_exists(start):
             return start
 
     if pid:
@@ -914,6 +1143,9 @@ def _resolve_request_repo(*, root: str = "", project_id: str = "") -> Path | Non
         if found is not None:
             # Verify the project_id resolves to an actual enrolled path
             return found
+        # A project id the caller named and we cannot enroll must stay
+        # unmanaged. Returning None would bind the IDE workspace instead.
+        return Path("__scubiee_unresolved_project__")
 
     return None
 
@@ -1341,8 +1573,25 @@ def _collect_hot_from_card_locs(
             if oid in by_id:
                 continue
             if "::" in oid:
-                f, _, _sym = oid.partition("::")
-                picked.append({"id": oid, "file": f, "loc": f, "score": 0.9})
+                f, _, sym = oid.partition("::")
+                from pipeline.context_trace import live_symbol_span
+
+                span = live_symbol_span(repo, f, sym)
+                if span is None:
+                    continue
+                start, end, text = span
+                picked.append(
+                    {
+                        "id": oid,
+                        "file": f,
+                        "symbol": sym,
+                        "loc": f"{f}:{start}-{end}",
+                        "start_line": start,
+                        "end_line": end,
+                        "score": 0.9,
+                        "_live_text": text,
+                    }
+                )
     else:
         picked = [c for c in cards if float(c.get("score") or 0) >= threshold]
     picked.sort(
@@ -1354,6 +1603,7 @@ def _collect_hot_from_card_locs(
     bodies: list[dict[str, Any]] = []
     used = 0
     root = Path(repo)
+    prefer_remaining = sum(1 for c in picked if str(c.get("id") or "") in prefer)
     for c in picked:
         if len(bodies) >= max_bodies:
             break
@@ -1379,6 +1629,11 @@ def _collect_hot_from_card_locs(
         text = "\n".join(lines[start - 1 : end])
         if not text:
             continue
+        if cid in prefer and prefer_remaining > 0:
+            share = max(400, (max_chars - used) // prefer_remaining)
+            if len(text) > share:
+                text = text[: share - 1] + "…"
+            prefer_remaining -= 1
         if used + len(text) > max_chars:
             remain = max_chars - used
             if remain < 200:
@@ -2712,6 +2967,58 @@ def _format(card: dict[str, Any], fmt: str) -> str:
 
 # ---- server -----------------------------------------------------------------
 
+def _expand_heatmap_ref(repo: Path, handle: str, max_chars: int) -> dict[str, Any] | None:
+    """Open a pack/map id from the current file. Ship has no recall() tool."""
+    raw = (handle or "").replace("\\", "/").strip()
+    if not raw:
+        return None
+    file_s = ""
+    start = 0
+    end = 0
+    text = ""
+    symbol = ""
+    if "::" in raw:
+        file_s, symbol = raw.split("::", 1)
+        from pipeline.context_trace import live_symbol_span
+
+        span = live_symbol_span(repo, file_s, symbol)
+        if span is None:
+            return None
+        start, end, text = span
+    else:
+        m = re.match(r"^(?P<file>.+):(?P<start>\d+)-(?P<end>\d+)$", raw)
+        if not m:
+            return None
+        file_s = m.group("file")
+        start = int(m.group("start"))
+        end = int(m.group("end"))
+        path = Path(repo) / file_s
+        if not path.is_file():
+            return None
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        s = max(0, start - 1)
+        e = min(len(lines), max(end, start))
+        text = "\n".join(lines[s:e])
+        start = s + 1
+        end = e
+    if not text.strip():
+        return None
+    body = text if len(text) <= max_chars else text[: max_chars - 1] + "…"
+    return {
+        "ok": True,
+        "tool": "expand",
+        "handle": raw,
+        "file": file_s.replace("\\", "/"),
+        "symbol": symbol,
+        "start_line": start,
+        "end_line": end,
+        "text": body,
+        "chars": len(body),
+        "truncated": len(body) < len(text),
+        "next": "Edit now. Pass another heatmap id file::symbol to open a different span.",
+    }
+
+
 def create_mcp(name: str = "scubiee") -> "FastMCP":
     if FastMCP is None:
         raise RuntimeError("pip install mcp")
@@ -3648,13 +3955,18 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             return _managed_locate_err("expand", repo)
 
         sid = _resolve_session(session_id)
+        cap = max(200, min(int(max_chars or 50000), _FOCUS_CHAR_CEILING))
+        live = _expand_heatmap_ref(repo, handle, cap)
+        if live is not None:
+            live["session_id"] = sid
+            return _format(live, response_format)
         try:
             from pipeline.session_store import expand as _expand
 
             card = _expand(
                 repo,
                 handle,
-                max_chars=max(200, min(int(max_chars or 50000), _FOCUS_CHAR_CEILING)),
+                max_chars=cap,
                 session_id=sid,
             )
         except Exception as exc:  # noqa: BLE001
@@ -3662,7 +3974,11 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         if not card.get("ok"):
             return _err(
                 "expand", str(card.get("error") or "unknown handle"),
-                handle=handle, hint="recall() for valid handles; search again if stale.",
+                handle=handle,
+                hint=(
+                    "Pass a heatmap id file::symbol or file:start-end. "
+                    "Stored handles work after a previous expand or read."
+                ),
             )
         out = {
             "ok": True, "tool": "expand", "handle": handle,
@@ -5346,9 +5662,9 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 str,
                 Field(
                     description=(
-                        "lean (default): compressed heatmap locs only (no bodies). "
-                        "full: larger heatmap card set. Native-Read top heats; "
-                        "collect_hot_context only if you need bodies batched."
+                        "Does not change ranking. Neighbors always come from the composite "
+                        "tracer. lean (default) and full are accepted so older callers "
+                        "keep working; neither replays the last map."
                     )
                 ),
             ] = "lean",
@@ -5356,8 +5672,9 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 str,
                 Field(
                     description=(
-                        "strict (default). On pack_context only: broad = one-shot polytrace escape. "
-                        "Ignored for pack_poly_embed / pack_semantic (engine is fixed)."
+                        "Does not change ranking. strict (default) and broad both stay on "
+                        "composite_v1. broad is not a polytrace escape and does not "
+                        "replay map cards."
                     )
                 ),
             ] = "strict",
@@ -5424,173 +5741,11 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     persist_trace,
                     run_pack_context,
                 )
-                from pipeline.mcp_lifecycle import join_attach_warm_if_needed
-
-                # Lean heatmap: never cold-bake or load a 50MB AST pickle on the
-                # request thread (GIL + disk → multi-second). Prefer in-process
-                # AST cache; otherwise build a search-seed heatmap (sub-second).
+                # One ranker. mode=lean and policy=broad must not substitute the
+                # last map for composite neighbors, and must not block on a bake.
                 mode_n = (mode or "lean").strip().lower() or "lean"
                 want_bodies = _resolve_pack_bodies(include_bodies)
                 policy_n = (policy or "strict").strip().lower() or "strict"
-                # Search/map-reuse lean path: heatmap only. Broad/escape packs and
-                # body packs still go through run_pack_context.
-                lean_fast = (
-                    mode_n in {"lean", "heatmap"}
-                    and not want_bodies
-                    and policy_n in {"strict", "lean"}
-                )
-                if not lean_fast:
-                    # Full/AST packs may join attach; lean never waits on serve-join
-                    # (observed ~3–4s LOCATE_SLA when warm_ready briefly flapped).
-                    join_attach_warm_if_needed(repo, need_ast=False)
-                if lean_fast:
-                    # Lean heatmap only — do not kick AST hydrate here.
-                    # Parallel 50MB pickle IO GIL-starves map-reuse/search on
-                    # the same worker. expand/collect hydrate when they need it.
-                    from pipeline.session_store import load_store
-
-                    t_pack = time.perf_counter()
-                    heatmap: list[dict[str, Any]] = []
-                    seed_file_n = (seed_file or "").replace("\\", "/")
-                    seed_card = {
-                        "id": f"{seed_file_n}::{seed_symbol}" if seed_symbol else seed_file_n,
-                        "file": seed_file_n,
-                        "symbol": seed_symbol or "",
-                        "start_line": int(seed_line or 0) or None,
-                        "end_line": None,
-                        "score": 1.0,
-                        "heat": "hot",
-                        "rank": 1,
-                        "why": "seed",
-                        "loc": (
-                            f"{seed_file_n}:{int(seed_line or 0)}"
-                            if seed_file_n and int(seed_line or 0)
-                            else seed_file_n
-                        ),
-                    }
-                    if seed_card.get("file"):
-                        heatmap.append(seed_card)
-
-                    # Prefer recent map cards (process cache, then session) —
-                    # avoids a second engine search that GIL-contended to ~3–4s.
-                    engine_tag = "map_reuse"
-                    cards: list[dict[str, Any]] = []
-                    try:
-                        from pipeline.map_result_cache import get_recent_map_cards
-
-                        cards = get_recent_map_cards(repo=str(repo), limit=max(4, min(int(k or 16), 48)))
-                    except Exception:  # noqa: BLE001
-                        cards = []
-                    if not cards:
-                        try:
-                            store = load_store(repo, session_id=sid)
-                            qn = _norm_query(query)
-                            cache = store.get("map_cache") or {}
-                            row = cache.get(qn)
-                            cards = list((row or {}).get("cards") or [])
-                            if not cards:
-                                for _qk, crow in sorted(
-                                    cache.items(),
-                                    key=lambda kv: float((kv[1] or {}).get("ts") or 0),
-                                    reverse=True,
-                                ):
-                                    cards = list((crow or {}).get("cards") or [])
-                                    if cards:
-                                        break
-                        except Exception:  # noqa: BLE001
-                            cards = []
-                    for i, c in enumerate(cards, start=2):
-                        f = str(c.get("file") or "").replace("\\", "/")
-                        if not f or f == seed_card.get("file"):
-                            continue
-                        s = int(c.get("start_line") or 0)
-                        e = int(c.get("end_line") or 0)
-                        heatmap.append(
-                            {
-                                "id": str(c.get("id") or (f"{f}:{s}-{e}" if s and e else f)),
-                                "file": f,
-                                "symbol": str(c.get("symbol") or ""),
-                                "start_line": s or None,
-                                "end_line": e or None,
-                                "score": float(c.get("score") or 0.0),
-                                "heat": (
-                                    "hot"
-                                    if float(c.get("score") or 0) >= float(hot_threshold or 0.65)
-                                    else "warm"
-                                ),
-                                "rank": i,
-                                "why": (c.get("why") or "")[:160],
-                                "loc": c.get("loc")
-                                or (f"{f}:{s}-{e}" if s and e else f),
-                            }
-                        )
-
-                    # Search only if map reuse left us thin (standalone pack).
-                    if len(heatmap) < 3:
-                        engine_tag = "search_lean"
-                        hits_raw: list[dict[str, Any]] = []
-                        try:
-                            from pipeline.client import EngineClient
-                            from pipeline.mcp_lifecycle import soft_ready_cached
-                            from pipeline.session_isolation import mcp_client_name
-
-                            if soft_ready_cached():
-                                res = EngineClient(
-                                    workspace_path=str(repo),
-                                    client=mcp_client_name(),
-                                    timeout=3.0,
-                                ).search(
-                                    query,
-                                    top_k=max(4, min(int(k or 16), 48)),
-                                    path=str(repo),
-                                )
-                                if isinstance(res, dict) and res.get("ok") is not False:
-                                    hits_raw = list(res.get("hits") or [])
-                        except Exception:  # noqa: BLE001
-                            hits_raw = []
-                        seen = {str(h.get("file") or "").replace("\\", "/") for h in heatmap}
-                        for i, h in enumerate(hits_raw, start=len(heatmap) + 1):
-                            f = str(h.get("file") or h.get("path") or "").replace("\\", "/")
-                            if not f or f in seen:
-                                continue
-                            seen.add(f)
-                            s = int(h.get("start_line") or 0)
-                            e = int(h.get("end_line") or 0)
-                            heatmap.append(
-                                {
-                                    "id": f"{f}:{s}-{e}" if s and e else f,
-                                    "file": f,
-                                    "symbol": "",
-                                    "start_line": s or None,
-                                    "end_line": e or None,
-                                    "score": float(h.get("score") or 0.0),
-                                    "heat": (
-                                        "hot"
-                                        if float(h.get("score") or 0) >= float(hot_threshold or 0.65)
-                                        else "warm"
-                                    ),
-                                    "rank": i,
-                                    "why": (h.get("why") or "")[:160],
-                                    "loc": f"{f}:{s}-{e}" if s and e else f,
-                                }
-                            )
-
-                    out = {
-                        "ok": True,
-                        "tool": tool_name,
-                        "query": query,
-                        "mode": mode_n,
-                        "policy": policy_n,
-                        "include_bodies": False,
-                        "heatmap": heatmap[: max(4, min(int(k or 16), 48))],
-                        "count": len(heatmap),
-                        "seed": seed_card if seed_card.get("file") else None,
-                        "thin": len(heatmap) < 3,
-                        "engine": engine_tag,
-                        "elapsed_ms": round((time.perf_counter() - t_pack) * 1000, 1),
-                        "next": "Native-Read top heatmap locs → EDIT; expand_context if thin.",
-                    }
-                    return _format(out, response_format)
                 if not ast_cache_ready(repo):
                     # Never cold-bake AST on the pack request thread (20s+ GIL).
                     try:
@@ -5617,9 +5772,8 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                         tool_name,
                         "ast_warming",
                         hint=(
-                            "AST bundle not ready for broad/body pack. "
-                            "Use mode=lean (heatmap only) now, or retry after expand "
-                            "warms the graph; Native-Read top locs."
+                            "AST bundle is still loading. Retry pack_context; "
+                            "do not treat a previous map as this pack."
                         ),
                         status="warming",
                     )
@@ -5657,6 +5811,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     tool_name=tool_name,
                     include_bodies=want_bodies,
                 )
+                # A missing seed stays an error. Map cards are not a stand-in pack.
                 out["session_id"] = sid
                 if out.get("ok"):
                     persist = out.pop("_persist", {}) or {}
@@ -5697,7 +5852,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         tool_name="pack_context",
         engine="composite_v1",
         doc=(
-            "Call 2 ladder (composite_v1): lean heatmap locs by default. "
+            "Call 2 ladder (composite_v1). Ranking does not change with mode or policy. "
             "Native-Read top heats; include_bodies=1 or CTX_MCP_PACK_BODIES=1 for bodies."
         ),
     )

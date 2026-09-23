@@ -112,57 +112,85 @@ def cli_map(
             }
 
     t0 = time.perf_counter()
-    try:
-        hits = search_repo(
-            root,
-            q,
-            top_k=max(1, min(int(k), 30)),
-            use_server=not local,
-        )
-    except SearchEngineError as exc:
-        if local:
+    hits = None
+    # Health can be true while FastEmbed is still loading. Keep retrying inside
+    # the same wait_ready budget instead of failing the first search.
+    while True:
+        try:
+            hits = search_repo(
+                root,
+                q,
+                top_k=max(1, min(int(k), 30)),
+                use_server=not local,
+                server_url=None
+                if local
+                else (os.environ.get("CTX_SEARCH_URL") or "http://127.0.0.1:8765"),
+            )
+            break
+        except SearchEngineError as exc:
+            msg = str(exc)
+            if (
+                wait_s > 0
+                and not local
+                and "dense_embed_required" in msg
+                and time.monotonic() < deadline
+            ):
+                time.sleep(1.0)
+                continue
+            if local or "dense_embed_required" in msg:
+                return {
+                    "ok": False,
+                    "tool": "map",
+                    "error": msg,
+                    "repair": ["scubiee engine ensure .", "scubiee heal"],
+                    "locate": {
+                        "state": "error",
+                        "reason": msg,
+                        "repair": ["scubiee engine ensure ."],
+                        "should_use": "dense_embed_required" in msg,
+                        "should_retry": "dense_embed_required" in msg,
+                        "retry_after_s": 3,
+                    },
+                }
             return {
                 "ok": False,
                 "tool": "map",
-                "error": str(exc),
+                "error": "engine_down",
+                "detail": msg,
+                "repair": ["scubiee engine ensure .", "scubiee heal"],
                 "locate": {
-                    "state": "error",
-                    "reason": str(exc),
-                    "repair": ["scubiee engine ensure .", "scubiee heal"],
-                    "should_use": False,
-                    "should_retry": False,
+                    "state": "starting",
+                    "reason": "engine_down",
+                    "repair": ["scubiee engine ensure ."],
+                    "should_use": True,
+                    "should_retry": True,
+                    "retry_after_s": 3,
                 },
             }
-        # Prefer structured engine-down over silent local fallback (use --local).
-        return {
-            "ok": False,
-            "tool": "map",
-            "error": "engine_down",
-            "detail": str(exc),
-            "repair": ["scubiee engine ensure .", "scubiee heal"],
-            "locate": {
-                "state": "starting",
-                "reason": "engine_down",
-                "repair": ["scubiee engine ensure ."],
-                "should_use": True,
-                "should_retry": True,
-                "retry_after_s": 3,
-            },
-        }
-    except (RuntimeError, OSError) as exc:
-        return {
-            "ok": False,
-            "tool": "map",
-            "error": str(exc),
-            "repair": ["scubiee engine ensure .", "scubiee heal"],
-            "locate": {
-                "state": "error",
-                "reason": str(exc),
-                "repair": ["scubiee engine ensure ."],
-                "should_use": False,
-                "should_retry": False,
-            },
-        }
+        except (RuntimeError, OSError) as exc:
+            msg = str(exc)
+            if (
+                wait_s > 0
+                and not local
+                and "dense_embed_required" in msg
+                and time.monotonic() < deadline
+            ):
+                time.sleep(1.0)
+                continue
+            return {
+                "ok": False,
+                "tool": "map",
+                "error": msg,
+                "repair": ["scubiee engine ensure .", "scubiee heal"],
+                "locate": {
+                    "state": "error",
+                    "reason": msg,
+                    "repair": ["scubiee engine ensure ."],
+                    "should_use": "dense_embed_required" in msg,
+                    "should_retry": "dense_embed_required" in msg,
+                    "retry_after_s": 3,
+                },
+            }
     cards: list[dict[str, Any]] = []
     for h in hits:
         file = str(getattr(h, "file", "") or "").replace("\\", "/")

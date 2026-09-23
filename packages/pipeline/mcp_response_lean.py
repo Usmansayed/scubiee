@@ -166,6 +166,25 @@ def _ensure_loc(item: dict[str, Any]) -> str:
     return f
 
 
+def _row_score(item: dict[str, Any]) -> float:
+    """Rank score from either the raw card or an already-slimmed row.
+
+    A second lean pass only has ``sc``. ``score or 0`` treated that as missing
+    and wrote 0, which also made hot/cold follow row order instead of rank.
+    """
+    for key in ("score", "sc"):
+        if key not in item:
+            continue
+        raw = item.get(key)
+        if raw is None or raw == "":
+            continue
+        try:
+            return float(raw)
+        except (TypeError, ValueError):
+            continue
+    return 0.0
+
+
 def _heat_card(
     item: dict[str, Any],
     *,
@@ -185,7 +204,7 @@ def _heat_card(
         "id": iid,
         "loc": loc,
         "s": sym,
-        "sc": round(float(item.get("score") or 0), 4),
+        "sc": round(_row_score(item), 4),
     }
     if edge:
         out["e"] = edge
@@ -205,11 +224,39 @@ _MAP_LADDER_NEXT = (
 )
 
 
+def _pack_seed_ids(payload: dict[str, Any]) -> set[str]:
+    """Primary + optional seed2/seed3 / seeds[] ids that must stay hot and front-ranked."""
+    out: set[str] = set()
+    for key in ("seed", "seed2", "seed3"):
+        s = payload.get(key)
+        if isinstance(s, dict):
+            iid = str(s.get("id") or "")
+            if iid:
+                out.add(iid)
+            elif s.get("file"):
+                f = str(s.get("file") or "").replace("\\", "/")
+                sym = str(s.get("symbol") or "")
+                out.add(f"{f}::{sym}" if sym else f)
+    for s in payload.get("seeds") or []:
+        if not isinstance(s, dict):
+            continue
+        iid = str(s.get("id") or "")
+        if iid:
+            out.add(iid)
+            continue
+        f = str(s.get("file") or "").replace("\\", "/")
+        sym = str(s.get("symbol") or "")
+        if f:
+            out.add(f"{f}::{sym}" if sym else f)
+    return out
+
+
 def _pack_heatmap_only(payload: dict[str, Any], *, tool_name: str) -> dict[str, Any]:
     """Merge pack/chain/cold into one ranked heatmap (no bodies)."""
     hot_ids: set[str] = set()
     edge_by: dict[str, str] = {}
     by_id: dict[str, dict[str, Any]] = {}
+    seed_ids = _pack_seed_ids(payload)
 
     for p in payload.get("pack") or []:
         if not isinstance(p, dict):
@@ -246,33 +293,42 @@ def _pack_heatmap_only(payload: dict[str, Any], *, tool_name: str) -> dict[str, 
             continue
         cur = by_id.get(iid) or {}
         merged = dict(c)
-        merged.update({k: v for k, v in cur.items() if v not in (None, "")})
+        for key, val in cur.items():
+            if val in (None, ""):
+                continue
+            if key in {"score", "sc"}:
+                try:
+                    if float(val) > _row_score(merged):
+                        merged[key] = val
+                except (TypeError, ValueError):
+                    pass
+                continue
+            merged[key] = val
         by_id[iid] = merged
 
-    # When include_bodies=False, hot nodes are those omitted from cold (not in pack[]).
-    if not hot_ids and by_id:
-        cold_ids = {
-            str(c.get("id") or "")
-            for c in (payload.get("cold") or [])
-            if isinstance(c, dict) and c.get("id")
-        }
-        if cold_ids:
-            hot_ids = {i for i in by_id if i not in cold_ids}
-        else:
-            ranked = sorted(by_id.values(), key=lambda c: -float(c.get("score") or 0))
-            for c in ranked[:4]:
-                iid = str(c.get("id") or "")
-                if iid:
-                    hot_ids.add(iid)
+    # Heat follows the ranker score. ``cold`` means "no body was collected",
+    # not "low score" — a 0.99 callee must stay hot on the default heatmap.
+    try:
+        hot_threshold = float(payload.get("hot_threshold") or 0.65)
+    except (TypeError, ValueError):
+        hot_threshold = 0.65
 
     rows = list(by_id.values())
-    rows.sort(key=lambda c: -float(c.get("score") or 0))
+
+    def _rank_key(c: dict[str, Any]) -> tuple[int, float]:
+        iid = str(c.get("id") or "")
+        # Seeds first (stable order among seeds by score), then everyone else by score.
+        seed_ord = 0 if iid in seed_ids else 1
+        return (seed_ord, -_row_score(c))
+
+    rows.sort(key=_rank_key)
     heatmap: list[dict[str, Any]] = []
     for i, c in enumerate(rows, 1):
         iid = str(c.get("id") or "")
-        if iid in hot_ids:
+        sc = _row_score(c)
+        if iid in seed_ids or iid in hot_ids or sc >= hot_threshold:
             heat = "hot"
-        elif iid in edge_by:
+        elif iid in edge_by or sc >= 0.4:
             heat = "warm"
         else:
             heat = "cold"
@@ -289,7 +345,7 @@ def _pack_heatmap_only(payload: dict[str, Any], *, tool_name: str) -> dict[str, 
                     {
                         **c,
                         "symbol": c.get("s") or c.get("symbol"),
-                        "score": c.get("sc") or c.get("score"),
+                        "score": _row_score(c),
                     }
                     for c in heatmap
                 ]

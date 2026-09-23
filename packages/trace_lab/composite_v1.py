@@ -154,6 +154,29 @@ def _membership_edges(
     return out
 
 
+_HELPER_DEMOTE = 0.45
+_TINY_HELPER_LINES = 12
+
+
+def _query_names_symbol(symbol: str, query: str) -> bool:
+    ql = (query or "").lower()
+    leaf = (symbol or "").rsplit(".", 1)[-1].lower()
+    if not ql or not leaf:
+        return False
+    return leaf in ql or (symbol or "").lower() in ql
+
+
+def _demote_pack_helper(node: TraceNode, query: str) -> bool:
+    """Tiny bodies and private helpers lose the 1.0 call-score tie unless named."""
+    if _query_names_symbol(node.symbol, query):
+        return False
+    leaf = (node.symbol or "").rsplit(".", 1)[-1]
+    span = max(0, int(node.end_line) - int(node.start_line) + 1)
+    if 0 < span <= _TINY_HELPER_LINES:
+        return True
+    return leaf.startswith("_")
+
+
 def apply_rank_composite(
     scores: dict[str, float],
     why: dict[str, str],
@@ -201,6 +224,28 @@ def apply_rank_composite(
             scores[nid] = max(sc, 0.46)
         elif nid == next(iter(paths.get(nid, (nid,))), nid) and sc >= 0.9:
             scores[nid] = max(sc, 1.0)  # seed
+
+    # Direct calls share the seed's 1.0. Demote tiny and private helpers before
+    # heatmap_to_cards keeps the top k, then break the remaining tie toward
+    # the larger body so entrypoints outrank short public predicates.
+    query = spec.user_query or ""
+    for nid, sc in list(scores.items()):
+        if len(paths.get(nid, (nid,))) <= 1:
+            continue
+        n = nodes.get(nid)
+        if n is None:
+            continue
+        if _demote_pack_helper(n, query):
+            scores[nid] = float(sc) * _HELPER_DEMOTE
+            why[nid] = f"{why.get(nid, '')}|helper_demote".strip("|")
+            continue
+        # Direct calls share ~0.99 after the DFG boost. Span breaks that tie
+        # whether or not the query names the symbol. Skipping the nudge when
+        # named left run_map_context at a flat 0.99 and let 20-line helpers
+        # with +span sort above it.
+        if float(sc) >= 0.9:
+            span = max(0, int(n.end_line) - int(n.start_line) + 1)
+            scores[nid] = min(float(sc), 0.99) + min(span, 800) / 1_000_000
 
     return scores, why, paths
 
@@ -360,41 +405,86 @@ def _save_composite_edges(
         pass
 
 
+_EDGE_LOCK = __import__("threading").Lock()
+_EDGE_CACHE: dict[str, tuple[list[TypedEdge], list[TypedEdge]]] = {}
+
+
+def composite_edges_ready(root: Path | str) -> bool:
+    key = str(Path(root).resolve())
+    with _EDGE_LOCK:
+        return key in _EDGE_CACHE
+
+
+def ensure_composite_edges(
+    root: Path | str,
+    nodes,
+    graph,
+    lsp: LspIndex | None,
+    extra_graph: AstTraceGraph | None = None,
+) -> dict:
+    """Load or build the composite call/DFG edges once per process.
+
+    First miss may rebuild (~seconds). Later packs in this process reuse memory.
+    A disk pickle avoids a rebuild after process restart when the fingerprint matches.
+    """
+    import time
+
+    root_p = Path(root).resolve()
+    key = str(root_p)
+    t0 = time.perf_counter()
+    with _EDGE_LOCK:
+        hit = _EDGE_CACHE.get(key)
+        if hit is not None:
+            return {
+                "ok": True,
+                "source": "memory",
+                "ms": round((time.perf_counter() - t0) * 1000, 1),
+                "n_call": len(hit[0]),
+                "n_dfg": len(hit[1]),
+            }
+        jedi = _want_jedi()
+        try:
+            from trace_lab.corpus import corpus_fingerprint
+
+            fp = corpus_fingerprint(root_p)
+        except Exception:  # noqa: BLE001
+            fp = ""
+        loaded = _load_composite_edges(root_p, fingerprint=fp, jedi=jedi) if fp else None
+        if loaded is not None:
+            call_e, dfg_e = loaded
+            source = "disk"
+        else:
+            call_e = build_enriched_call_graph(
+                root_p, nodes, graph, lsp, extra=extra_graph, with_jedi=jedi
+            )
+            call_e = compose_pdg(call_e, edges_from_graphify(extra_graph))
+            dfg_e = build_dfg_edges(root_p, nodes, call_e)
+            if fp:
+                _save_composite_edges(
+                    root_p, fingerprint=fp, jedi=jedi, call_e=call_e, dfg_e=dfg_e
+                )
+            source = "build"
+        _EDGE_CACHE[key] = (call_e, dfg_e)
+        return {
+            "ok": True,
+            "source": source,
+            "ms": round((time.perf_counter() - t0) * 1000, 1),
+            "n_call": len(call_e),
+            "n_dfg": len(dfg_e),
+        }
+
+
 def bind_composite_v1(
     root: Path,
     lsp: LspIndex,
     extra_graph: AstTraceGraph | None = None,
 ):
     root = Path(root)
-    cache: dict[str, tuple[list[TypedEdge], list[TypedEdge]]] = {}
-    lock = __import__("threading").Lock()
 
     def _run(case, nodes, graph, lex):
-        key = str(root)
-        with lock:
-            if key not in cache:
-                jedi = _want_jedi()
-                try:
-                    from trace_lab.corpus import corpus_fingerprint
-
-                    fp = corpus_fingerprint(root)
-                except Exception:  # noqa: BLE001
-                    fp = ""
-                loaded = _load_composite_edges(root, fingerprint=fp, jedi=jedi) if fp else None
-                if loaded is not None:
-                    call_e, dfg_e = loaded
-                else:
-                    call_e = build_enriched_call_graph(
-                        root, nodes, graph, lsp, extra=extra_graph, with_jedi=jedi
-                    )
-                    call_e = compose_pdg(call_e, edges_from_graphify(extra_graph))
-                    dfg_e = build_dfg_edges(root, nodes, call_e)
-                    if fp:
-                        _save_composite_edges(
-                            root, fingerprint=fp, jedi=jedi, call_e=call_e, dfg_e=dfg_e
-                        )
-                cache[key] = (call_e, dfg_e)
-            call_e, dfg_e = cache[key]
+        ensure_composite_edges(root, nodes, graph, lsp, extra_graph)
+        with _EDGE_LOCK:
+            call_e, dfg_e = _EDGE_CACHE[str(root.resolve())]
         return run_composite_v1(
             case,
             nodes,
