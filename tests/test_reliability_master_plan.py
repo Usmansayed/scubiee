@@ -88,9 +88,37 @@ def test_derive_agent_ready_soft_yes_without_embedder() -> None:
             overlay_ready=False,
             locate=loc,
             embedder_loaded=True,
+            ast_hydrated=True,
         )
         == "yes"
     )
+    assert (
+        derive_agent_ready(
+            healthy=True,
+            soft_search_ready=True,
+            sync_state="ready",
+            ready=True,
+            syncing=False,
+            overlay_ready=False,
+            locate=loc,
+            embedder_loaded=True,
+            ast_hydrated=False,
+        )
+        == "warming"
+    )
+    cold_note = derive_agent_ready_note(
+        agent_ready="warming",
+        sync_state="ready",
+        syncing=False,
+        overlay_ready=False,
+        publish_pending=False,
+        ready=True,
+        locate=loc,
+        embedder_loaded=True,
+        ast_hydrated=False,
+    )
+    assert "pack_context" in cold_note
+    assert "reflect current repo state" not in cold_note
 
 
 def test_write_json_retries_permission_error(tmp_path: Path, monkeypatch) -> None:

@@ -181,6 +181,88 @@ def test_hydrate_prefers_bundle(monkeypatch, tmp_path):
     assert ct.ast_cache_ready(tmp_path) is True
 
 
+def test_hydrate_bake_on_miss_fills_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A cold repo bakes once, then the same process serves that cache."""
+    from pipeline import context_trace as ct
+
+    pkg = tmp_path / "pkg"
+    pkg.mkdir()
+    (pkg / "a.py").write_text("def helper():\n    return 1\n", encoding="utf-8")
+    monkeypatch.delenv("CTX_MCP_BRIDGE_CHILD", raising=False)
+    monkeypatch.delenv("CTX_TRACE_NO_BAKE", raising=False)
+    monkeypatch.delenv("CTX_AST_BAKE_CHILD", raising=False)
+    ct._CACHE.clear()
+    out = ct.hydrate_ast_bundle(tmp_path, bake_on_miss=True)
+    assert out["ok"] is True
+    assert out["source"] == "bake"
+    assert ct.ast_cache_ready(tmp_path) is True
+    again = ct.hydrate_ast_bundle(tmp_path, bake_on_miss=False)
+    assert again["ok"] is True
+    assert again["source"] == "cache"
+
+
+def test_hydrate_bake_from_bridge_child_uses_subprocess(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Bridge/locate children must bake out of process so the MCP thread is not GIL-stalled."""
+    from pipeline import context_trace as ct
+
+    pkg = tmp_path / "pkg"
+    pkg.mkdir()
+    (pkg / "a.py").write_text("def helper():\n    return 1\n", encoding="utf-8")
+    monkeypatch.setenv("CTX_MCP_BRIDGE_CHILD", "1")
+    monkeypatch.setenv("CTX_TRACE_NO_BAKE", "1")
+    ct._CACHE.clear()
+    out = ct.hydrate_ast_bundle(tmp_path, bake_on_miss=True)
+    assert isinstance(out, dict)
+    assert out.get("ok") is True
+    assert ct.ast_cache_ready(tmp_path) is True
+
+
+def test_status_ast_hydrated_follows_hydrate_flag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """status.ast_hydrated must flip when hydrate marks the bundle ready."""
+    from pipeline.runtime_controller import RuntimeController
+    from pipeline.warm_contract import set_ast_hydrated
+
+    RuntimeController.reset_for_tests()
+    ctrl = RuntimeController.get()
+    monkeypatch.setattr(
+        ctrl,
+        "_probe_health",
+        lambda repo: {"ok": True, "service": "scubiee", "embedder_loaded": True},
+    )
+    set_ast_hydrated(False, source="miss")
+    assert ctrl.snapshot(repo=tmp_path).as_status_fields()["ast_hydrated"] is False
+    # A sticky flag without an in-memory AST cache must not read as hydrated.
+    set_ast_hydrated(True, source="cache")
+    assert ctrl.snapshot(repo=tmp_path).as_status_fields()["ast_hydrated"] is False
+
+
+def test_status_ast_hydrated_follows_repo_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A warm in-process AST cache counts even if a miss probe cleared the flag."""
+    from pipeline.runtime_controller import RuntimeController
+    from pipeline.warm_contract import set_ast_hydrated
+
+    RuntimeController.reset_for_tests()
+    ctrl = RuntimeController.get()
+    monkeypatch.setattr(
+        ctrl,
+        "_probe_health",
+        lambda repo: {"ok": True, "service": "scubiee", "embedder_loaded": True},
+    )
+    set_ast_hydrated(False, source="miss")
+    monkeypatch.setattr("pipeline.context_trace.ast_cache_ready", lambda root, **_k: True)
+    assert ctrl.snapshot(repo=tmp_path).as_status_fields()["ast_hydrated"] is True
+
+
+def test_hydrate_status_label_accepts_none() -> None:
+    from pipeline.context_trace import hydrate_status_label
+
+    assert hydrate_status_label(None) == "miss"
+    assert hydrate_status_label({"source": "bundle"}) == "bundle"
+    assert hydrate_status_label({"error": "miss"}) == "miss"
+
+
 def test_map_result_cache_hit_miss():
     from pipeline.map_result_cache import clear_map_cache, get_map_cached, put_map_cached
 

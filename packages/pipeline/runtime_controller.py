@@ -121,6 +121,14 @@ class RuntimeController:
         with _LOCK:
             _INSTANCE = None
 
+    def note_ast_ready(self) -> None:
+        with self._lock:
+            self._ast_ready = True
+
+    def note_ast_cold(self) -> None:
+        with self._lock:
+            self._ast_ready = False
+
     def _mark_ready(self) -> None:
         with self._lock:
             self._state = _STATE_READY
@@ -146,6 +154,18 @@ class RuntimeController:
             err = self._last_error
             ast_ready = self._ast_ready
             elapsed = self._elapsed_ms()
+        if repo is not None:
+            # Cache is the only truth. A sticky hydrate flag must not report
+            # hydrated after the cache is cold, and a warm cache must not
+            # stay false because that flag was cleared.
+            try:
+                from pipeline.context_trace import ast_cache_ready
+
+                ast_ready = bool(ast_cache_ready(repo))
+            except Exception:  # noqa: BLE001
+                ast_ready = False
+            with self._lock:
+                self._ast_ready = ast_ready
         if soft or (engine_ok and embed):
             state = _STATE_READY
             try:

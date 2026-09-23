@@ -160,6 +160,18 @@ def set_ast_hydrated(ok: bool, *, source: str | None = None) -> None:
         _AST_HYDRATED = bool(ok)
         if source:
             _AST_SOURCE = source
+    # Status reads RuntimeController, which is a different bit from this flag.
+    # Keep them together so a hydrate in this process shows up on status.
+    try:
+        from pipeline.runtime_controller import RuntimeController
+
+        ctrl = RuntimeController.get()
+        if ok:
+            ctrl.note_ast_ready()
+        else:
+            ctrl.note_ast_cold()
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def ast_hydrated() -> bool:

@@ -9,6 +9,7 @@ from __future__ import annotations
 import ast
 import os
 import re
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
@@ -508,6 +509,76 @@ def _repo_cache_key(root: Path, *, with_graphify: bool | None = None) -> str:
     return f"{root}|gfy={int(bool(_want_graphify(with_graphify)))}|eng={_trace_engine()}"
 
 
+_HYDRATE_LOCK = threading.RLock()
+
+
+def hydrate_status_label(hyd: dict[str, Any] | None) -> str:
+    """Safe label for a hydrate result. Never assumes a dict."""
+    if not isinstance(hyd, dict):
+        return "miss"
+    return str(hyd.get("source") or hyd.get("error") or "miss")
+
+
+def _bridge_blocks_inprocess_bake() -> bool:
+    """True when this process must not cold-bake AST (MCP bridge or locate child)."""
+    if (os.environ.get("CTX_AST_BAKE_CHILD") or "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }:
+        return False
+    blocked = {"1", "true", "yes", "on"}
+    for key in ("CTX_MCP_BRIDGE_CHILD", "CTX_TRACE_NO_BAKE", "CTX_MCP_BRIDGE"):
+        if (os.environ.get(key) or "").strip().lower() in blocked:
+            return True
+    return False
+
+
+def _spawn_ast_bake(root: Path) -> dict[str, Any]:
+    """Bake in a fresh interpreter so the MCP process keeps its GIL."""
+    import subprocess
+    import sys
+
+    env = dict(os.environ)
+    for key in ("CTX_MCP_BRIDGE_CHILD", "CTX_TRACE_NO_BAKE", "CTX_MCP_BRIDGE"):
+        env.pop(key, None)
+    env["CTX_AST_BAKE_CHILD"] = "1"
+    pkg_root = str(Path(__file__).resolve().parents[1])
+    env["PYTHONPATH"] = pkg_root + os.pathsep + env.get("PYTHONPATH", "")
+    code = (
+        "import sys\n"
+        "from pipeline.context_trace import hydrate_ast_bundle\n"
+        "out = hydrate_ast_bundle(sys.argv[1], bake_on_miss=True)\n"
+        "raise SystemExit(0 if isinstance(out, dict) and out.get('ok') else 1)\n"
+    )
+    try:
+        from pipeline.process_job import hidden_run
+
+        proc = hidden_run(
+            [sys.executable, "-c", code, str(root)],
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=300,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "source": "bake_error", "error": "ast bake timed out"}
+    except (OSError, subprocess.SubprocessError) as exc:
+        return {"ok": False, "source": "bake_error", "error": str(exc)}
+    if proc.returncode != 0:
+        tail = "\n".join(
+            ((proc.stderr or "") + "\n" + (proc.stdout or "")).splitlines()[-8:]
+        )
+        return {
+            "ok": False,
+            "source": "bake_error",
+            "error": tail or f"exit {proc.returncode}",
+        }
+    return {"ok": True}
+
+
 def ast_cache_ready(root: Path | str, *, with_graphify: bool | None = None) -> bool:
     """True when this process already holds a fresh in-memory AST/trace repo."""
     key = _repo_cache_key(Path(root), with_graphify=with_graphify)
@@ -586,6 +657,58 @@ def hydrate_ast_bundle(
             "ms": round((time.perf_counter() - t0) * 1000, 1),
         }
 
+    if not bake_on_miss:
+        return {
+            "ok": False,
+            "source": "miss",
+            "error": "miss",
+            "ms": round((time.perf_counter() - t0) * 1000, 1),
+        }
+
+    with _HYDRATE_LOCK:
+        if ast_cache_ready(root_p, with_graphify=with_graphify):
+            return {
+                "ok": True,
+                "source": "cache",
+                "ms": round((time.perf_counter() - t0) * 1000, 1),
+            }
+        if _bridge_blocks_inprocess_bake():
+            spawned = _spawn_ast_bake(root_p)
+            if not spawned.get("ok"):
+                spawned["ms"] = round((time.perf_counter() - t0) * 1000, 1)
+                return spawned
+            loaded = hydrate_ast_bundle(
+                root_p, bake_on_miss=False, with_graphify=with_graphify
+            )
+            if loaded.get("ok"):
+                return loaded
+            return {
+                "ok": False,
+                "source": "bake_error",
+                "error": "bundle missing after bake",
+                "ms": round((time.perf_counter() - t0) * 1000, 1),
+            }
+        try:
+            _load_repo(root_p, with_graphify=gfy)
+        except Exception as exc:  # noqa: BLE001
+            return {
+                "ok": False,
+                "source": "bake_error",
+                "error": str(exc),
+                "ms": round((time.perf_counter() - t0) * 1000, 1),
+            }
+        try:
+            from pipeline.warm_contract import set_ast_hydrated
+
+            set_ast_hydrated(True, source="bake")
+        except Exception:  # noqa: BLE001
+            pass
+        return {
+            "ok": True,
+            "source": "bake",
+            "ms": round((time.perf_counter() - t0) * 1000, 1),
+        }
+
 
 def prewarm_pack_graph(root: Path | str) -> dict[str, Any]:
     """Hydrate the AST bundle, then load composite edges before the first pack.
@@ -595,7 +718,7 @@ def prewarm_pack_graph(root: Path | str) -> dict[str, Any]:
     """
     t0 = time.perf_counter()
     root_p = Path(root).resolve()
-    hyd = hydrate_ast_bundle(root_p, bake_on_miss=False)
+    hyd = hydrate_ast_bundle(root_p, bake_on_miss=True)
     rt = _CACHE.get(_repo_cache_key(root_p))
     if rt is None:
         return {

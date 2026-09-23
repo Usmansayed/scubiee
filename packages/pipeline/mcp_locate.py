@@ -5070,7 +5070,13 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     )
                     daemon_status = {
                         "ok": bool(opened.get("ok", True)) if isinstance(opened, dict) else True,
-                        "warm_state": warm_from_open or "ready",
+                        "warm_state": warm_from_open
+                        or (
+                            health_payload.get("warm_state")
+                            if isinstance(health_payload, dict)
+                            else None
+                        )
+                        or "unknown",
                         "warm_error": (opened.get("error") if isinstance(opened, dict) and opened.get("ok") is False else None),
                         "project_id": (opened.get("project_id") if isinstance(opened, dict) else None),
                         "soft_search_ready": bool(
@@ -5143,7 +5149,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 soft_search_ready = bool(
                     healthy
                     and not warm_error
-                    and str(warm_state or "").lower() in {"ready", "idle", ""}
+                    and str(warm_state or "").lower() in {"ready", "idle"}
                     and bound_pid
                     and (index_usable is not False)
                     and (
@@ -5223,7 +5229,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     # to re-test after scubiee init / connect.
                     **_managed_signal_fields(just_checked=True),
                     "warming": warming,
-                    "index_available": bool(index_usable),
+                    "index_available": index_usable,
                     "embedder_loaded": embedder_loaded,
                     "semantic_ready": bool(embedder_loaded) if embedder_loaded is not None else None,
                     "tools": tool_lists.get(surface, tool_lists["read"]),
@@ -5291,15 +5297,48 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
 
                     snap = RuntimeController.get().snapshot(repo=repo)
                     payload.update(snap.as_status_fields())
-                    # Soft BM25 map is ready without FastEmbed; full semantic is not.
-                    if payload.get("embedder_loaded") is False:
-                        payload["warm_ready"] = False
-                        if soft_search_ready or str(locate.get("state") or "") == "ready":
-                            payload["warm_ready_map"] = True
-                        else:
-                            payload["warm_ready_map"] = False
-                    elif snap.embedder_loaded and payload.get("embedder_loaded") is None:
+                    # Flags name one capability each. Do not let a soft index
+                    # mark semantic warm, or a cold AST mark pack as ready.
+                    if snap.embedder_loaded and payload.get("embedder_loaded") is None:
                         payload["embedder_loaded"] = True
+                    embedder_now = payload.get("embedder_loaded")
+                    payload["semantic_ready"] = (
+                        True if embedder_now is True else (False if embedder_now is False else None)
+                    )
+                    payload["warm_ready"] = bool(
+                        healthy and embedder_now is True
+                    )
+                    locate_ready = str(locate.get("state") or "") == "ready"
+                    payload["warm_ready_map"] = bool(
+                        healthy and soft_search_ready and locate_ready
+                    )
+                    payload["agent_ready"] = derive_agent_ready(
+                        healthy=healthy,
+                        soft_search_ready=soft_search_ready,
+                        sync_state=str(contract.get("sync_state") or "ready"),
+                        ready=bool(contract.get("ready")),
+                        syncing=bool(contract.get("syncing")),
+                        overlay_ready=bool(contract.get("overlay_ready")),
+                        publish_pending=bool(contract.get("publish_pending")),
+                        warming=warming,
+                        warm_state=str(warm_state) if warm_state else None,
+                        warm_error=str(warm_error or "") or None,
+                        project_bound=bool(bound_pid),
+                        locate=locate,
+                        embedder_loaded=embedder_now if isinstance(embedder_now, bool) else None,
+                        ast_hydrated=bool(payload.get("ast_hydrated")),
+                    )
+                    payload["agent_ready_note"] = derive_agent_ready_note(
+                        agent_ready=payload["agent_ready"],
+                        sync_state=str(contract.get("sync_state") or "ready"),
+                        syncing=bool(contract.get("syncing")),
+                        overlay_ready=bool(contract.get("overlay_ready")),
+                        publish_pending=bool(contract.get("publish_pending")),
+                        ready=bool(contract.get("ready")),
+                        locate=locate,
+                        embedder_loaded=embedder_now if isinstance(embedder_now, bool) else None,
+                        ast_hydrated=bool(payload.get("ast_hydrated")),
+                    )
                 except Exception:  # noqa: BLE001
                     try:
                         from pipeline.warm_contract import warm_status_fields
@@ -5548,13 +5587,16 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     ).start()
                 except Exception:  # noqa: BLE001
                     pass
+                from pipeline.context_trace import hydrate_status_label
+
                 return _err(
                     "expand_context",
                     "ast_warming",
                     hint=(
-                        f"AST bundle not ready (hydrate={hyd.get('source') or hyd.get('error')}, "
-                        f"{hyd_ms}ms). Background bake started — retry expand_context in a few "
-                        "seconds; map/pack stay available."
+                        "AST bundle not ready "
+                        f"(hydrate={hydrate_status_label(hyd)}, {hyd_ms}ms). "
+                        "Background bake started — retry expand_context and "
+                        "pack_context in a few seconds. map stays available."
                     ),
                     status="warming",
                     hydrate_ms=hyd_ms,
@@ -5593,7 +5635,9 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             )
             out["session_id"] = sid
             out["hydrate_ms"] = hyd_ms
-            out["hydrate_source"] = hyd.get("source")
+            from pipeline.context_trace import hydrate_status_label
+
+            out["hydrate_source"] = hydrate_status_label(hyd)
             if out.get("ok"):
                 # merge delta into persisted cards
                 cards = list(prior.get("cards") or [])
