@@ -117,7 +117,10 @@ _AST_HYDRATE_THREAD: threading.Thread | None = None
 def start_ast_hydrate_bg(repo: Path | str) -> dict[str, Any]:
     """Singleflight background AST bundle hydrate (expand/collect need it).
 
-    Never call on the map request path — 50MB pickle IO GIL-starves search.
+    Never call *inline* on the map request path — 50MB pickle IO GIL-starves
+    search. It is safe for warm-up (``prewarm_locate_worker``) to *join* the
+    thread this starts, since that happens before any real request is being
+    served in this process, not concurrently with one.
     """
     global _AST_HYDRATE_THREAD
     root = Path(repo).resolve()
@@ -132,7 +135,7 @@ def start_ast_hydrate_bg(repo: Path | str) -> dict[str, Any]:
     with _AST_HYDRATE_LOCK:
         t = _AST_HYDRATE_THREAD
         if t is not None and t.is_alive():
-            return {"ok": True, "running": True}
+            return {"ok": True, "running": True, "thread": t}
 
         def _run() -> None:
             try:
@@ -150,7 +153,7 @@ def start_ast_hydrate_bg(repo: Path | str) -> dict[str, Any]:
         t = threading.Thread(target=_run, name="scubiee-ast-hydrate-bg", daemon=True)
         _AST_HYDRATE_THREAD = t
         t.start()
-    return {"ok": True, "started": True}
+    return {"ok": True, "started": True, "thread": t}
 
 
 def join_locate_worker_prewarm(*, timeout_s: float = 0.0) -> dict[str, Any]:
@@ -302,8 +305,18 @@ def prewarm_locate_worker(repo: Path | str, *, deadline_s: float | None = None) 
         "error": embed_kick.get("error"),
     }
 
-    # AST hydrate after dense — never /health-poll during ORT GIL. Heartbeat
-    # also kicks start_ast_hydrate_bg once phase=dense so expand stays <1s.
+    # AST/graph hydrate after dense — never /health-poll during ORT GIL, and
+    # never run the pickle load inline on this thread (GIL-starves search).
+    # It IS safe to *wait* for the background thread here though: warm-up
+    # runs before any real map/pack request is being served in this process,
+    # so joining it (up to the remaining deadline budget) closes the gap that
+    # otherwise showed up as extra load_repo_ms/graph-build cost on whichever
+    # real call happened to be first (usually the first pack_context, and —
+    # via the seed-finalization path map also uses — sometimes the first map
+    # too). If the budget runs out before the hydrate finishes, warm-up still
+    # returns rather than blocking indefinitely; the background thread keeps
+    # running and the first real call pays whatever cost remains, same as
+    # before this fix — this only removes the gap, it never makes cold worse.
     ast_out: dict[str, Any] = {"ok": False, "skipped": True, "reason": "defer_until_dense"}
     dense_ready = False
     try:
@@ -315,7 +328,20 @@ def prewarm_locate_worker(repo: Path | str, *, deadline_s: float | None = None) 
         dense_ready = False
     if dense_ready and (soft_ready_cached() or out["probe"]["ok"]):
         try:
-            ast_out = dict(start_ast_hydrate_bg(root))
+            t_ast = time.perf_counter()
+            kick = dict(start_ast_hydrate_bg(root))
+            thread = kick.pop("thread", None)
+            remaining_s = deadline - time.time()
+            if thread is not None and remaining_s > 0.05:
+                thread.join(timeout=remaining_s)
+                if thread.is_alive():
+                    kick["ok"] = True
+                    kick["joined"] = False
+                    kick["reason"] = "deadline_exhausted"
+                else:
+                    kick["joined"] = True
+            ast_out = kick
+            ast_out["ms"] = round((time.perf_counter() - t_ast) * 1000, 1)
         except Exception as exc:  # noqa: BLE001
             ast_out = {"ok": False, "error": str(exc)}
     out["ast"] = ast_out
