@@ -11,6 +11,7 @@ MCP / CLI / dashboard are thin clients.
 from __future__ import annotations
 
 import os
+import sys
 import threading
 import time
 from pathlib import Path
@@ -52,8 +53,12 @@ class _RuntimePublisher:
         self.manager = manager
         self.runtime = runtime
 
-    def __call__(self, payload: dict[str, Any] | None = None) -> dict[str, Any]:
-        return self.manager._publish_runtime(self.runtime, payload)
+    def __call__(
+        self,
+        payload: dict[str, Any] | None = None,
+        delta: Any | None = None,
+    ) -> dict[str, Any]:
+        return self.manager._publish_runtime(self.runtime, payload, delta)
 
     def __eq__(self, other: object) -> bool:
         return other == self.manager.publish_engine
@@ -449,6 +454,12 @@ class RuntimeManager:
             prewarm_busy = bool((prewarm_status() or {}).get("running"))
         except Exception:  # noqa: BLE001
             pass
+        dense_missing = 0
+        try:
+            if self.engine is not None:
+                dense_missing = int(self.engine.dense_missing())
+        except Exception:  # noqa: BLE001
+            dense_missing = 0
         warm_phase = None
         try:
             from pipeline.warm_autoload import read_phase
@@ -467,6 +478,9 @@ class RuntimeManager:
             "ok": True,
             "service": "scubiee",
             "version": _daemon_version(),
+            # Serving process. engine.lock can name a launcher, so a probe that
+            # needs to know "did the engine restart mid-sync?" reads this.
+            "pid": os.getpid(),
             "warm": warm_bool,
             "warm_state": self.warm_state,
             "warm_ready": soft_ok,
@@ -476,6 +490,10 @@ class RuntimeManager:
             "dense_ready": bool(embedder_loaded and not prewarm_busy and n_chunks > 0),
             "warm_phase": warm_phase,
             "chunks": n_chunks,
+            # Chunks the corpus knows about but the vector store has no vector
+            # for. Anything above 0 means dense retrieval cannot return those
+            # files, so it must not stay hidden behind a healthy chunk count.
+            "dense_missing": dense_missing,
             "generation": self.generation,
             "index_usable": index_usable,
             "last_sync_at": self.last_sync_at,
@@ -554,13 +572,32 @@ class RuntimeManager:
         runtime = self._active_runtime
         if runtime is None or runtime.repo != repo.resolve():
             runtime = self._activate_runtime(repo)
+        os.environ["CTX_SYNC_WAIT_FOR_EMBEDDER"] = "1"
         loop = BackgroundSyncLoop(repo, on_refresh=_RuntimePublisher(self, runtime))
         loop.start()
         self.sync_loop = loop
         self._save_active_runtime()
 
-    def _publish_runtime(self, runtime: RepoRuntime, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+    def _publish_runtime(
+        self,
+        runtime: RepoRuntime,
+        payload: dict[str, Any] | None = None,
+        delta: Any | None = None,
+    ) -> dict[str, Any]:
         """Publish from a keeper without changing another repository's facade."""
+        hot = self._hot_publish_runtime(runtime, payload, delta)
+        if hot is not None:
+            return hot
+        # A hot sync defers its collection save past the publish. The full path
+        # below reloads vectors from disk, so persist them first or the new
+        # chunks publish with no dense rows (a modified file takes this path).
+        flush = getattr(delta, "flush", None)
+        if callable(flush):
+            try:
+                flush()
+            except Exception as exc:  # noqa: BLE001
+                print(f"[publish] deferred vector save failed: {exc}", file=sys.stderr, flush=True)
+        t_full = time.perf_counter()
         try:
             # Load-then-swap: never drop the live binder before the new one is ready
             # (dirty sync was wedging concurrent map/search for 15–60s).
@@ -578,16 +615,106 @@ class RuntimeManager:
                 compact_collection(runtime.project_id, force=False)
             except Exception:  # noqa: BLE001
                 pass
+            publish_ms = (time.perf_counter() - t_full) * 1000
+            if isinstance(payload, dict):
+                payload["publish"] = "full"
+                payload["publish_ms"] = round(publish_ms, 1)
             return {
                 "ok": True,
                 "generation": runtime.generation,
                 "last_sync_at": runtime.last_sync_at,
                 "chunks": len(engine.texts),
+                "publish": "full",
+                "publish_ms": round(publish_ms, 1),
                 "payload": payload,
             }
         except Exception as exc:  # noqa: BLE001
             self.hub.isolate_failure(runtime.project_id, exc)
             return {"ok": False, "error": str(exc), "generation": runtime.generation}
+
+    @staticmethod
+    def _hot_publish_enabled() -> bool:
+        """``CTX_HOT_PUBLISH=0`` rolls back to full publish without a downgrade."""
+        raw = (os.environ.get("CTX_HOT_PUBLISH") or "1").strip().lower()
+        return raw not in {"0", "false", "no", "off"}
+
+    def _hot_publish_runtime(
+        self,
+        runtime: RepoRuntime,
+        payload: dict[str, Any] | None,
+        delta: Any | None,
+    ) -> dict[str, Any] | None:
+        """Patch the live binder for a small append. None = caller does a full publish.
+
+        HTTP search runs with ``skip_freshness=True``, so map only ever sees the
+        published in-memory binder: writing chunks.jsonl is not enough, and a
+        full ``load_engine`` costs more than the whole 5s save→map budget. This
+        appends the rows the sync just embedded and advances the generation.
+
+        Admission is deliberately narrow (append-only, fully embedded, small,
+        dim-matched, binder in step with the corpus). Anything else — and any
+        failure at all — returns None so the proven full path runs.
+        """
+        if delta is None or not self._hot_publish_enabled():
+            return None
+        engine = runtime.engine
+        if engine is None or not hasattr(engine, "apply_chunk_delta"):
+            return None
+        if not getattr(delta, "append_only", False):
+            return None
+        records = list(getattr(delta, "records", None) or [])
+        matrix = getattr(delta, "matrix", None)
+        if not records or matrix is None:
+            return None
+        cap = max(1, int(os.environ.get("CTX_LIVE_MAX_CHUNKS", "300") or "300"))
+        if len(records) > cap:
+            return None
+        t0 = time.perf_counter()
+        try:
+            with self._lock:
+                info = engine.apply_chunk_delta(
+                    records,
+                    matrix,
+                    base_chunk_count=int(getattr(delta, "base_chunk_count", -1)),
+                )
+                runtime.generation += 1
+                runtime.last_sync_at = time.time()
+                runtime.warm_state = "ready"
+                runtime.error = None
+                if self._active_runtime is runtime:
+                    self._load_runtime_facade(runtime)
+        except Exception as exc:  # noqa: BLE001
+            # Never poison the live generation on a patch failure: the binder is
+            # only mutated inside apply_chunk_delta, which raises before it
+            # touches anything it cannot finish, and the full path reloads from
+            # disk anyway.
+            print(
+                f"[publish] hot patch declined ({exc}); falling back to full reload",
+                file=sys.stderr,
+                flush=True,
+            )
+            return None
+        publish_ms = (time.perf_counter() - t0) * 1000
+        if isinstance(payload, dict):
+            payload["publish"] = "patch"
+            payload["publish_ms"] = round(publish_ms, 1)
+        print(
+            f"[publish] hot patch chunks={info['chunks_before']}->{info['chunks_after']} "
+            f"appended={info['appended']} publish_ms={publish_ms:.1f} "
+            f"generation={runtime.generation} pid={os.getpid()}",
+            file=sys.stderr,
+            flush=True,
+        )
+        return {
+            "ok": True,
+            "generation": runtime.generation,
+            "last_sync_at": runtime.last_sync_at,
+            "chunks": len(engine.texts),
+            "publish": "patch",
+            "publish_ms": round(publish_ms, 1),
+            "appended": info["appended"],
+            "payload": payload,
+        }
 
     def _stop_keeper(self, *, final: bool = True, reason: str = "stop") -> None:
         loop = self.sync_loop
@@ -949,7 +1076,7 @@ class RuntimeManager:
                 resolve=False,
             )
             payload["project_id"] = project_id or store.project_id
-            payload["root_probe"] = self.index.probe(repo)
+            payload["root_probe"] = self._status_root_probe(repo)
             payload["meta"] = {
                 k: store.load_meta().get(k)
                 for k in (
@@ -969,6 +1096,27 @@ class RuntimeManager:
         except Exception as exc:  # noqa: BLE001
             payload["store_error"] = str(exc)
         return payload
+
+    def _status_root_probe(self, repo: Path) -> dict[str, Any]:
+        """Indexed-file freshness only. A full newcomer walk is ~12s here and
+        belongs on the keeper poll, not on every status request."""
+        key = str(repo)
+        now = time.monotonic()
+        cached = getattr(self, "_status_probe_cache", None)
+        if (
+            isinstance(cached, tuple)
+            and len(cached) == 3
+            and cached[0] == key
+            and (now - float(cached[1])) < 15.0
+            and isinstance(cached[2], dict)
+        ):
+            return cached[2]
+        from pipeline.root_probe import root_probe
+
+        probed = root_probe(repo, discover_newcomers=False).to_dict()
+        probed["discover_newcomers"] = False
+        self._status_probe_cache = (key, now, probed)
+        return probed
 
     def register(
         self,
@@ -1174,14 +1322,26 @@ class RuntimeManager:
         }
 
     def sync(
-        self, root: Path | str | None = None, *, confirm: bool = False
+        self,
+        root: Path | str | None = None,
+        *,
+        confirm: bool = False,
+        discover_newcomers: bool = True,
+        capacity_wait_s: float = 90.0,
+        inline: bool = True,
     ) -> dict[str, Any]:
         gate = self._gate(root)
         if gate:
             return gate
         repo = Path(root).resolve() if root else (self.repo or Path.cwd())
         self._activate_runtime(repo)
-        out = self.index.sync(repo, confirm=confirm)
+        out = self.index.sync(
+            repo,
+            confirm=confirm,
+            discover_newcomers=discover_newcomers,
+            capacity_wait_s=capacity_wait_s,
+            inline=inline,
+        )
         if out.get("refreshed"):
             pub = self.publish_engine()
             out["published"] = pub

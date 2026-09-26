@@ -47,10 +47,24 @@ class IndexManager:
             "vector_stats": stats.vector_stats,
         }
 
-    def sync(self, repo: Path | str, *, confirm: bool = False) -> dict[str, Any]:
+    def sync(
+        self,
+        repo: Path | str,
+        *,
+        confirm: bool = False,
+        discover_newcomers: bool = True,
+        capacity_wait_s: float = 90.0,
+        inline: bool = True,
+    ) -> dict[str, Any]:
         from pipeline.incremental import incremental_sync
 
-        result = incremental_sync(Path(repo).resolve(), confirm=confirm)
+        result = incremental_sync(
+            Path(repo).resolve(),
+            confirm=confirm,
+            discover_newcomers=discover_newcomers,
+            capacity_wait_s=capacity_wait_s,
+            inline=inline,
+        )
         out = result.to_dict()
         out["ok"] = result.error is None
         out["refreshed"] = bool(result.refreshed)

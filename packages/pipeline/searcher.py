@@ -28,27 +28,72 @@ class SearchResult:
 
 
 class FaissDenseAdapter(DenseIndex):
-    """DenseIndex API backed by a FaissCollection (TurboQuant + FAISS)."""
+    """DenseIndex API backed by a FaissCollection (TurboQuant + FAISS).
 
-    def __init__(self, col: FaissCollection, n_chunks: int):
-        mat = col.compressed.to_float32()
-        if mat.size == 0:
-            mat = np.zeros((n_chunks, col.meta.dim), dtype=np.float32)
-        super().__init__(mat)
+    The conductor addresses every channel by **chunk position** — the index of
+    the record in ``chunks.jsonl``, which is also the index into ``files``,
+    ``texts``, the BM25 docs and the graph spans. The vector store addresses
+    rows by **durable chunk id** and keeps tombstones, so its row order drifts
+    away from the chunk list after any incremental upsert or delete.
+
+    Passing ``chunk_ids`` re-indexes the vector matrix into chunk position
+    space: row ``i`` holds the vector for ``chunk_ids[i]``, and a chunk with no
+    live vector gets a zero row. Without that, dense scores are attributed to
+    whatever chunk happens to sit at the same offset in the other space, and
+    ``d_all[i]`` raises ``IndexError`` for every chunk past the end of the
+    vector matrix — which is exactly where newly synced chunks land.
+    """
+
+    def __init__(
+        self,
+        col: FaissCollection,
+        n_chunks: int,
+        chunk_ids: list[int] | None = None,
+    ):
+        dim = int(col.meta.dim)
+        mat = np.asarray(col.compressed.to_float32(), dtype=np.float32)
+        if mat.ndim != 2:
+            mat = np.zeros((0, dim), dtype=np.float32)
+        self._chunk_row: dict[int, int] | None = None
+        self._missing = 0
+        if chunk_ids is None:
+            rows = mat if mat.size else np.zeros((n_chunks, dim), dtype=np.float32)
+        else:
+            dead = {int(x) for x in (col.meta.dead_ids or [])}
+            vector_row = {
+                int(vid): row
+                for row, vid in enumerate(col.ids)
+                if int(vid) not in dead and row < mat.shape[0]
+            }
+            rows = np.zeros((len(chunk_ids), dim), dtype=np.float32)
+            for pos, cid in enumerate(chunk_ids):
+                row = vector_row.get(int(cid))
+                if row is None:
+                    self._missing += 1
+                    continue
+                rows[pos] = mat[row]
+            self._chunk_row = {int(cid): pos for pos, cid in enumerate(chunk_ids)}
+        super().__init__(rows)
         self.col = col
 
+    @property
+    def missing_vectors(self) -> int:
+        """Chunks in the corpus that have no live vector (dense can't rank them)."""
+        return self._missing
+
     def search(self, query_vec: np.ndarray, top_k: int = 50):
-        # Conductor arrays are positional 0..n-1. FAISS IndexIDMap2 returns
-        # durable chunk ids, which grow gaps after incremental delete/upsert.
         hits = self.col.search(query_vec, top_k=top_k)
         if not hits:
             return super().search(query_vec, top_k=top_k)
-        id_to_row = {int(vid): i for i, vid in enumerate(self.col.ids)}
+        row_of = self._chunk_row
+        if row_of is None:
+            # No chunk id list supplied — fall back to vector-store row order.
+            row_of = {int(vid): i for i, vid in enumerate(self.col.ids)}
         mapped: list[tuple[int, float]] = []
         for vid, score, *_rest in hits:
-            row = id_to_row.get(int(vid))
-            if row is not None:
-                mapped.append((row, float(score)))
+            pos = row_of.get(int(vid))
+            if pos is not None:
+                mapped.append((pos, float(score)))
         return mapped or super().search(query_vec, top_k=top_k)
 
 

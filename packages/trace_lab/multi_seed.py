@@ -146,6 +146,16 @@ def merge_seed_heatmaps(
         )
 
     cells = sorted(best.values(), key=lambda c: -c.score)
+    agreement_n = sum(1 for n in hits.values() if n >= 2)
+    if agreement_n == 0:
+        agreement_note = (
+            "Seeds do not share nodes. agreement_n=0 is expected when seeds "
+            "live in different files; the heatmap is their union, not a failed merge."
+        )
+    else:
+        agreement_note = (
+            f"{agreement_n} node(s) appear on two or more seeds and were boosted."
+        )
     return Heatmap(
         strategy="multi_seed_v1",
         cells=cells,
@@ -153,6 +163,7 @@ def merge_seed_heatmaps(
             "mode": "agreement_corridor",
             "seeds": list(seed_ids),
             "n_maps": len(maps),
-            "agreement_n": sum(1 for n in hits.values() if n >= 2),
+            "agreement_n": agreement_n,
+            "agreement_note": agreement_note,
         },
     )

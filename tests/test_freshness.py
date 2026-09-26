@@ -99,6 +99,31 @@ def test_hot_patch_reads_disk(tmp_path: Path):
     assert read_lines(f, 2, 3) == "beta\ngamma"
 
 
+def test_hot_patch_writes_to_chunk_position_not_durable_id(tmp_path: Path):
+    """After an incremental upsert, ids no longer equal positions.
+
+    ``texts`` is position space (``[c.text for c in chunks]``), so indexing by
+    ``ChunkRecord.id`` patched an unrelated chunk — and skipped ids past the end.
+    """
+    (tmp_path / "a.py").write_text("alpha_body\n", encoding="utf-8")
+    (tmp_path / "b.py").write_text("beta_body\n", encoding="utf-8")
+    chunks = [
+        ChunkRecord(
+            id=900, file="a.py", start_line=1, end_line=1, symbol=None, text="OLD_A", enriched="OLD_A"
+        ),
+        ChunkRecord(
+            id=901, file="b.py", start_line=1, end_line=1, symbol=None, text="OLD_B", enriched="OLD_B"
+        ),
+    ]
+    texts = ["OLD_A", "OLD_B"]
+
+    patched, touched = hot_patch_texts(tmp_path, chunks, texts, ["b.py"])
+
+    assert touched == [1], "position of b.py, not its id 901"
+    assert patched[0] == "OLD_A", "untouched chunk must keep its text"
+    assert "beta_body" in patched[1]
+
+
 def test_git_dirty_keeps_the_first_filename_intact(tmp_path: Path):
     """`git status --porcelain` pads unstaged rows with a leading space.
 

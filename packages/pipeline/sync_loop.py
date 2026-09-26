@@ -14,7 +14,7 @@ import sys
 import threading
 import time
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 from pipeline.dirty_journal import JournalingLedger
 from pipeline.dirty_ledger import DirtyLedger
@@ -27,6 +27,16 @@ DEFAULT_INITIAL_DELAY_MS = int(os.environ.get("CTX_SYNC_INITIAL_DELAY_MS", "5000
 DEFAULT_DEBOUNCE_MS = int(os.environ.get("CTX_DEBOUNCE_MS", "1000"))
 DEFAULT_REWRITE_DEBOUNCE_MS = int(os.environ.get("CTX_REWRITE_DEBOUNCE_MS", "2000"))
 DEFAULT_LOCATE_STREAK_MS = int(os.environ.get("CTX_LOCATE_STREAK_MS", "60000"))
+# How long a hot save's deferred graph merge waits before it becomes due. The
+# merge rebuilds the whole graph (~8s on a 16k-node repo) and the keeper runs one
+# batch at a time, so a catch-up that fires too eagerly becomes the thing the
+# *next* save waits behind. Waiting for a quiet repo keeps saves on their budget;
+# any unrelated non-hot sync carries the debt sooner anyway.
+DEFAULT_GRAPH_CATCHUP_DELAY_S = float(os.environ.get("CTX_GRAPH_CATCHUP_DELAY_S", "30.0"))
+# Minimum quiet period since the last save before a due catch-up may start. The
+# keeper runs one batch at a time; a catch-up that starts while an agent is still
+# saving blocks the next save for its whole duration.
+DEFAULT_GRAPH_CATCHUP_QUIET_S = float(os.environ.get("CTX_GRAPH_CATCHUP_QUIET_S", "20.0"))
 DEFAULT_LIVE_MAX_FILES = int(os.environ.get("CTX_LIVE_MAX_FILES", "200"))
 DEFAULT_LIVE_MAX_CHUNKS = int(os.environ.get("CTX_LIVE_MAX_CHUNKS", "300"))
 DEFAULT_AUTO_FULL_INDEX_CHUNKS = int(os.environ.get("CTX_AUTO_FULL_INDEX_CHUNKS", "10000"))
@@ -78,6 +88,20 @@ def _register_atexit() -> None:
     atexit.register(_on_exit)
 
 
+def _vdb_fingerprint(vdb) -> tuple | None:
+    """(size, mtime_ns) of every collection file — changes when anyone rewrites them."""
+    try:
+        root = vdb.collections_dir
+        stamp = []
+        for path in sorted(root.rglob("*")):
+            if path.is_file() and not path.name.startswith("."):
+                st = path.stat()
+                stamp.append((path.relative_to(root).as_posix(), st.st_size, st.st_mtime_ns))
+        return tuple(stamp)
+    except Exception:  # noqa: BLE001
+        return None
+
+
 class BackgroundSyncLoop:
     """Periodic root-probe + incremental_sync; final_check on stop/cwd/exit."""
 
@@ -89,6 +113,7 @@ class BackgroundSyncLoop:
         on_refresh=None,
         debounce_ms: int = DEFAULT_DEBOUNCE_MS,
         rewrite_debounce_ms: int = DEFAULT_REWRITE_DEBOUNCE_MS,
+        hot_debounce_ms: int | None = None,
         locate_streak_ms: int = DEFAULT_LOCATE_STREAK_MS,
         live_max_files: int = DEFAULT_LIVE_MAX_FILES,
         live_max_chunks: int = DEFAULT_LIVE_MAX_CHUNKS,
@@ -113,20 +138,39 @@ class BackgroundSyncLoop:
         self.bulk_reindex_threshold = max(1, DEFAULT_BULK_REINDEX_THRESHOLD)
         self.change_poll_ms = max(250, change_poll_ms)
         self.wake_gap_ms = max(1000, wake_gap_ms)
+        self.graph_catchup_delay_s = DEFAULT_GRAPH_CATCHUP_DELAY_S
         self.dirty_ledger = JournalingLedger(
             self.project_id,
             DirtyLedger(
                 debounce_ms=debounce_ms,
                 rewrite_debounce_ms=rewrite_debounce_ms,
+                hot_debounce_ms=hot_debounce_ms,
             ),
         )
         self._stop = threading.Event()
+        self._poll_now = False
+        self._last_newcomer_scan = 0.0
         self._thread: threading.Thread | None = None
         self._syncing = False
         self._lock = threading.Lock()
         self._last_locate_at: float | None = None
         self._pending_publish: dict | None = None
         self._pending_paths: set[str] = set()
+        # (payload, HotDelta) for the publish that is about to happen. Kept off
+        # the payload itself because status() serializes it to JSON. The payload
+        # object is held (not its id) so a recycled address cannot alias it.
+        self._hot_delta: tuple[dict, Any] | None = None
+        self._on_refresh_delta_arity: bool | None = None
+        # Deferred collection save from the last hot sync; run after its publish.
+        self._vector_flush: Any | None = None
+        # When the last save was marked. Graph catch-ups wait for a quiet window
+        # after it so their ~8s whole-graph merge never lands mid-burst.
+        self._last_hot_mark_at: float | None = None
+        self.graph_catchup_quiet_s = DEFAULT_GRAPH_CATCHUP_QUIET_S
+        self._newcomer_thread: threading.Thread | None = None
+        # (VectorDatabase, on-disk fingerprint) kept across hot syncs; see _hot_vdb.
+        self._hot_vdb_cache: tuple[Any, Any] | None = None
+        self._hot_vdb_pending: Any | None = None
         self.last_result: dict | None = None
         self.last_probe: dict | None = None
         self.needs_full = False
@@ -238,8 +282,12 @@ class BackgroundSyncLoop:
     ) -> None:
         # An edit ends the locate streak: process+publish freshness beats mid-thought
         # stability once the agent has changed disk.
-        if str(reason) in {"write", "disk_poll", "changed_file", "editor_save", "probe_write", "after_kiro_write", "watch"}:
+        from pipeline.dirty_ledger import HOT_SYNC_REASONS
+
+        if str(reason) in HOT_SYNC_REASONS or str(reason) == "disk_poll":
             self._last_locate_at = None
+        if str(reason) in HOT_SYNC_REASONS:
+            self._last_hot_mark_at = time.monotonic() if now is None else now
         self.dirty_ledger.mark(paths, reason=reason, now=now)
 
     def note_locate(self, *, now: float | None = None) -> None:
@@ -258,16 +306,11 @@ class BackgroundSyncLoop:
         from pipeline.root_probe import root_probe
 
         current_time = time.monotonic() if now is None else now
-        # Do not fight mid-locate map/pack with probe→dirty→sync (R6).
-        if self._locate_streak_active(now=current_time):
-            return []
-        # Change-poll root_probe was ~7–9s on this repo and GIL-starved search
-        # while Cursor MCP was active. Interval ticks already defer; poll must too.
-        if self._defer_interval_while_clients() and self._clients_active():
-            return []
+        # Indexed-file probe only. The newcomer walk was the 7–9s stall.
+        # Skipping the poll while a client is registered hid every save.
         t_probe_start = time.perf_counter()
         try:
-            probe = root_probe(self.repo)
+            probe = root_probe(self.repo, discover_newcomers=False)
         except Exception as exc:  # noqa: BLE001
             print(f"[keeper] change poll failed: {exc}", file=sys.stderr, flush=True)
             return []
@@ -303,9 +346,51 @@ class BackgroundSyncLoop:
         if not fresh:
             self.last_probe = {**probe.to_dict(), "reason": "change_poll"}
             return []
-        self.dirty_ledger.mark(fresh, reason="disk_poll", now=current_time)
+        self.mark_dirty(fresh, reason="disk_poll", now=current_time)
         self.last_probe = {**probe.to_dict(), "reason": "change_poll"}
         return fresh
+
+    def request_poll(self) -> None:
+        """Ask the keeper thread to probe on its next tick. Does not touch disk."""
+        self._poll_now = True
+
+    def _enqueue_newcomers(self, *, now: float) -> list[str]:
+        """Slow path for files that are not in the merkle yet. Not the 1s poll."""
+        from pipeline.root_probe import root_probe
+
+        try:
+            probe = root_probe(self.repo, discover_newcomers=True)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[keeper] newcomer scan failed: {exc}", file=sys.stderr, flush=True)
+            return []
+        fresh = [str(p).replace("\\", "/") for p in probe.added if str(p).strip()]
+        if not fresh:
+            return []
+        self.mark_dirty(fresh, reason="disk_poll", now=now)
+        return fresh
+
+    def _start_newcomer_scan(self, *, now: float | None = None) -> bool:
+        """Run the newcomer scan on its own thread. False if one is still running.
+
+        The scan walks the whole repo (``collect_index_relpaths``, ~7.5s here). On
+        the keeper thread it froze drain_due every 30s, so any save landing in
+        that window waited the full scan before syncing. It only reads the Merkle
+        and marks the (locked) ledger, so it does not need the keeper thread.
+        """
+        existing = self._newcomer_thread
+        if existing is not None and existing.is_alive():
+            return False
+
+        def _scan() -> None:
+            try:
+                self._enqueue_newcomers()
+            except Exception as exc:  # noqa: BLE001
+                print(f"[keeper] newcomer scan failed: {exc}", file=sys.stderr, flush=True)
+
+        thread = threading.Thread(target=_scan, name="ctx-newcomer-scan", daemon=True)
+        self._newcomer_thread = thread
+        thread.start()
+        return True
 
     def _adapt_poll_interval(self) -> None:
         """Adaptive backoff: slow I/O → increase poll interval; fast I/O → restore.
@@ -396,18 +481,29 @@ class BackgroundSyncLoop:
                 file=sys.stderr,
                 flush=True,
             )
-        paths = self.dirty_ledger.due_paths(now=current_time)
+        paths = self._additions_before_deletions(self.dirty_ledger.due_paths(now=current_time))
         if not paths:
             self.drain_publish(now=current_time)
             return []
+        if self._defer_cold_embedder(paths, now=current_time):
+            return [{"refreshed": False, "strategy": "embedder_cold", "files": paths[:50]}]
 
         estimated_total, estimates = self._estimate_dirty_chunks(paths)
-
-        deferred = self._defer_for_active_session(
-            paths, now=current_time, estimated_total=estimated_total
-        )
-        if deferred is not None:
-            return [deferred]
+        # A file the editor just saved must be embedded even when a large
+        # backlog is also due. Otherwise map searches a chunk list that never
+        # received the new path (the backlog slice keeps taking the first 50).
+        paths = self._hold_graph_catchups(paths, now=current_time)
+        if not paths:
+            self.drain_publish(now=current_time)
+            return []
+        writes, backlog = self._split_explicit_writes(paths)
+        if writes and backlog:
+            # Unconditional, not just above the bulk threshold: a single non-hot
+            # path costs ~7s here (it carries the whole-graph merge), which alone
+            # blows the save→map budget for anything queued behind it.
+            self.dirty_ledger.defer(backlog, now=current_time + 2.0)
+            paths = writes
+            estimated_total, estimates = self._estimate_dirty_chunks(paths)
 
         # --- Tier 3: >10000 chunks — refuse, require explicit full index ---
         if estimated_total > self.auto_full_index_chunks:
@@ -434,11 +530,21 @@ class BackgroundSyncLoop:
             self.dirty_ledger.defer(paths, now=current_time + 60.0)
             return [payload]
 
-        # --- Tier 2: 301–10000 chunks — bulk reindex (800 MB, sub-batched with checkpoints) ---
+        # --- Tier 2: 301–10000 chunks — sub-batches. While an IDE is locating
+        # or connected, do one batch and leave the rest due in 2s so locate
+        # is not stuck behind the whole set. Idle runs the set straight through.
         if estimated_total > self.bulk_reindex_threshold:
             self.catchup_chunked = True
+            work = paths
+            reason = "bulk_reindex"
+            if self._session_busy(current_time):
+                width = max(1, int(os.environ.get("CTX_BULK_SUB_BATCH", "50") or "50"))
+                work, rest = paths[:width], paths[width:]
+                if rest:
+                    self.dirty_ledger.defer(rest, now=current_time + 2.0)
+                reason = "bulk_slice"
             try:
-                payload = self._bulk_sync_paths(paths, reason="bulk_reindex")
+                payload = self._bulk_sync_paths(work, reason=reason)
             except Exception:
                 # Only re-mark paths that are NOT already published by
                 # completed sub-batches — avoid overriding durable progress.
@@ -484,9 +590,13 @@ class BackgroundSyncLoop:
         if deferred:
             self.catchup_chunked = True
             self.dirty_ledger.defer(deferred, now=current_time)
+        hot_batch = self._is_hot_batch(batch)
+        marked_at = self._oldest_marked_at(batch) if hot_batch else 0.0
+        queue_ms = (current_time - marked_at) * 1000 if marked_at > 0 else None
         self.dirty_ledger.begin(batch)
+        t_sync_wall = time.perf_counter()
         try:
-            payload = self._sync_paths(batch, reason="dirty")
+            payload = self._sync_paths(batch, reason="dirty", hot=hot_batch)
         except Exception:
             self.dirty_ledger.mark(batch, reason="retry", now=current_time)
             raise
@@ -514,17 +624,52 @@ class BackgroundSyncLoop:
             self.needs_full = True
             payload["needs_full"] = True
             self.dirty_ledger.defer(batch, now=current_time + 60.0)
-        elif payload.get("refreshed"):
-            self._invalidate_session_paths(batch)
+        elif payload.get("refreshed") and (
+            int(payload.get("chunks_upserted") or 0) + int(payload.get("chunks_removed") or 0) > 0
+        ):
+            wall = payload.setdefault("wall", {})
+            wall["sync_call_ms"] = round((time.perf_counter() - t_sync_wall) * 1000, 1)
+            # Hot lane: publish first. Session-span invalidation scans every
+            # session store (~130 here, 0.2–2s under search load) and a new file
+            # has no cached spans, so running it before the publish only delayed
+            # map. Other batches keep the invalidate-then-publish order.
+            invalidate_after = hot_batch and not int(payload.get("chunks_removed") or 0)
+            if not invalidate_after:
+                t_inval = time.perf_counter()
+                self._invalidate_session_paths(batch)
+                wall["invalidate_ms"] = round((time.perf_counter() - t_inval) * 1000, 1)
+            t_pub = time.perf_counter()
             self._publish_or_hold(payload, paths=batch, now=current_time)
+            wall["publish_call_ms"] = round((time.perf_counter() - t_pub) * 1000, 1)
+            if invalidate_after:
+                t_inval = time.perf_counter()
+                self._invalidate_session_paths(batch)
+                wall["invalidate_ms"] = round((time.perf_counter() - t_inval) * 1000, 1)
+        elif payload.get("error"):
+            print(
+                f"[keeper] dirty sync retry: {payload.get('error')}",
+                file=sys.stderr,
+                flush=True,
+            )
+            self.dirty_ledger.defer(batch, now=current_time + 2.0)
         else:
-            self.dirty_ledger.complete(batch, published=False)
-            if isinstance(payload, dict):
-                warns = payload.setdefault("warnings", [])
-                if isinstance(warns, list):
-                    warns.append(
-                        "sync did not refresh the index; search may be stale until retry"
-                    )
+            self.dirty_ledger.complete(batch, published=True)
+        if hot_batch:
+            self._log_hot_sync(
+                payload, batch, marked_at=marked_at, queue_ms=queue_ms
+            )
+        self._run_vector_flush(payload)
+        owed = payload.get("graph_pending")
+        if owed:
+            # Non-hot reason on purpose: the catch-up carries the slow whole-graph
+            # merge and must not re-enter the hot lane. Held back a few seconds so
+            # a burst of saves coalesces into one catch-up and the next save is
+            # never queued behind this one.
+            self.dirty_ledger.mark(
+                list(owed),
+                reason="graph_catchup",
+                now=current_time + self.graph_catchup_delay_s,
+            )
         self.drain_publish(now=current_time)
         if not any(
             entry.get("state") in {"queued", "due", "processing"}
@@ -578,46 +723,208 @@ class BackgroundSyncLoop:
         raw = (os.environ.get("CTX_KEEPER_DEFER_WHILE_CLIENTS") or "1").strip().lower()
         return raw not in {"0", "false", "no", "off"}
 
-    def _defer_for_active_session(
-        self, paths: list[str], *, now: float, estimated_total: int
-    ) -> dict | None:
-        """Hold sync while agents are mid-locate; defer bulk while MCP clients are up.
+    def _split_explicit_writes(self, paths: list[str]) -> tuple[list[str], list[str]]:
+        """Files marked by a save, ahead of a disk-poll backlog."""
+        from pipeline.dirty_ledger import HOT_SYNC_REASONS, normalize_dirty_path
 
-        Locate streak defers *all* sync (including live 1-file) so map/pack does not
-        fight embedder/index work. Disk edits clear the streak via ``mark_dirty``.
-        Bulk reindex still defers while any client is attached even without locate.
+        snap = self.dirty_ledger.snapshot().get("paths") or {}
+        writes: list[str] = []
+        backlog: list[str] = []
+        for path in paths:
+            entry = snap.get(normalize_dirty_path(path)) or {}
+            reason = str(entry.get("reason") or "")
+            if reason in HOT_SYNC_REASONS and (self.repo / path).is_file():
+                writes.append(path)
+            else:
+                backlog.append(path)
+        return writes, backlog
+
+    def _run_vector_flush(self, payload: dict | None = None) -> None:
+        """Persist the collection a hot sync left in memory. Never skipped.
+
+        Runs on the keeper thread after the publish and before the next sync, so
+        the next sync (which reloads the collection from disk) sees these rows.
         """
-        clients = self._clients_active()
-        locate = self._locate_streak_active(now=now)
-        bulk = estimated_total > self.bulk_reindex_threshold
-        if locate:
-            pass  # defer everything while locating
-        elif bulk and clients:
-            pass  # defer bulk while clients attached
-        else:
-            return None
-        # Re-queue soon; do not drop dirty state.
-        self.dirty_ledger.defer(paths, now=now + 15.0)
-        reason = "locate_streak" if locate else "clients_active"
+        flush, self._vector_flush = self._vector_flush, None
+        pending_vdb, self._hot_vdb_pending = self._hot_vdb_pending, None
+        if not callable(flush):
+            return
+        t0 = time.perf_counter()
+        try:
+            wrote = flush()
+        except Exception as exc:  # noqa: BLE001
+            # chunks.jsonl already names these ids; reconcile_vector_store
+            # re-embeds any chunk whose vector is missing on the next sync.
+            self._hot_vdb_cache = None
+            print(f"[keeper] deferred vector save failed: {exc}", file=sys.stderr, flush=True)
+            return
+        if pending_vdb is not None:
+            # Disk now matches this in-memory collection; the next hot sync may
+            # reuse it as long as nobody else rewrites the files meanwhile.
+            self._hot_vdb_cache = (pending_vdb, _vdb_fingerprint(pending_vdb))
+        if wrote is False:
+            return  # the publisher already flushed before a full reload
+        ms = (time.perf_counter() - t0) * 1000
+        if isinstance(payload, dict):
+            payload.setdefault("wall", {})["vector_flush_ms"] = round(ms, 1)
+        print(f"[keeper] deferred vector save ms={ms:.0f}", file=sys.stderr, flush=True)
+
+    def _oldest_marked_at(self, paths: list[str]) -> float:
+        """Monotonic time of the earliest save in this batch (0.0 if unknown)."""
+        from pipeline.dirty_ledger import normalize_dirty_path
+
+        snap = self.dirty_ledger.snapshot().get("paths") or {}
+        stamps = [
+            float((snap.get(normalize_dirty_path(path)) or {}).get("marked_at") or 0.0)
+            for path in paths
+        ]
+        stamps = [s for s in stamps if s > 0.0]
+        return min(stamps) if stamps else 0.0
+
+    def _log_hot_sync(
+        self,
+        payload: dict,
+        paths: list[str],
+        *,
+        marked_at: float,
+        queue_ms: float | None = None,
+    ) -> None:
+        """One line per save, with every stage of the 5s save→map budget.
+
+        When the SLA is missed this names the stage that ate it instead of
+        leaving a single opaque total. ``debounce_ms`` is how long the save sat
+        in the ledger (hot debounce plus tick latency); ``total_ms`` is mark →
+        published, which is the number the live probe measures.
+        """
+        stages = payload.get("stages") if isinstance(payload.get("stages"), dict) else {}
+        wall = payload.get("wall") if isinstance(payload.get("wall"), dict) else {}
+        publish_ms = payload.get("publish_ms")
+        sync_ms = float(payload.get("ms") or 0.0)
+        total_ms = (time.monotonic() - marked_at) * 1000 if marked_at > 0 else None
+        debounce_ms = queue_ms
+
+        def _fmt(value: Any) -> str:
+            return f"{float(value):.0f}" if isinstance(value, (int, float)) else "-"
+
         print(
-            f"[keeper] defer sync ({reason}): {len(paths)} paths "
-            f"~{estimated_total} chunks",
+            "[keeper] hot sync "
+            f"path={','.join(paths[:3])}{'…' if len(paths) > 3 else ''} "
+            f"debounce_ms={_fmt(debounce_ms)} "
+            f"slice_ms={_fmt(stages.get('slice_ms'))} "
+            f"parse_ms={_fmt(stages.get('parse_ms'))} "
+            f"graph_ms={_fmt(stages.get('graph_ms'))} "
+            f"embed_ms={_fmt(stages.get('embed_ms'))} "
+            f"write_ms={_fmt(stages.get('write_ms'))} "
+            f"vectors_ms={_fmt(stages.get('vectors_ms'))} "
+            f"(open={_fmt(stages.get('vec_open_ms'))} "
+            f"mutate={_fmt(stages.get('vec_mutate_ms'))} "
+            f"save={_fmt(stages.get('vec_save_ms'))}) "
+            f"chunkfile_ms={_fmt(stages.get('chunkfile_ms'))} "
+            f"reconcile_ms={_fmt(stages.get('reconcile_ms'))} "
+            f"publication_ms={_fmt(stages.get('publication_ms'))} "
+            f"cards_ms={_fmt(stages.get('cards_ms'))} "
+            f"sync_ms={_fmt(sync_ms)} "
+            f"sync_call_ms={_fmt(wall.get('sync_call_ms'))} "
+            f"invalidate_ms={_fmt(wall.get('invalidate_ms'))} "
+            f"publish_call_ms={_fmt(wall.get('publish_call_ms'))} "
+            f"publish_ms={_fmt(publish_ms)} "
+            f"total_ms={_fmt(total_ms)} "
+            f"upserted={payload.get('chunks_upserted')} "
+            f"removed={payload.get('chunks_removed')} "
+            f"publish={payload.get('publish') or '-'} "
+            f"pid={os.getpid()}",
             file=sys.stderr,
             flush=True,
         )
-        payload = {
-            "refreshed": False,
-            "files": paths[:50],
-            "chunks_upserted": 0,
-            "chunks_removed": 0,
-            "strategy": "deferred_active_session",
-            "reason": reason,
-            "estimated_chunks": estimated_total,
-            "clients_active": clients,
-            "locate_streak_active": locate,
-        }
-        self.last_result = payload
-        return payload
+
+    def _hold_graph_catchups(self, paths: list[str], *, now: float) -> list[str]:
+        """Push due graph catch-ups back until saves have been quiet for a while."""
+        from pipeline.dirty_ledger import normalize_dirty_path
+
+        last_hot = self._last_hot_mark_at
+        if last_hot is None:
+            return paths
+        quiet_until = last_hot + max(0.0, float(self.graph_catchup_quiet_s))
+        if now >= quiet_until:
+            return paths
+        snap = self.dirty_ledger.snapshot().get("paths") or {}
+        held = [
+            p
+            for p in paths
+            if str((snap.get(normalize_dirty_path(p)) or {}).get("reason") or "")
+            == "graph_catchup"
+        ]
+        if not held:
+            return paths
+        self.dirty_ledger.defer(held, now=quiet_until)
+        held_set = set(held)
+        return [p for p in paths if p not in held_set]
+
+    def _is_hot_batch(self, paths: list[str]) -> bool:
+        """True when every path in the batch was marked by a save the user awaits.
+
+        Selects the hot lane: no vector compaction during the touch and an
+        append-only patch publish instead of a full binder rebuild.
+        """
+        from pipeline.dirty_ledger import is_hot_reason, normalize_dirty_path
+
+        if not paths:
+            return False
+        snap = self.dirty_ledger.snapshot().get("paths") or {}
+        for path in paths:
+            entry = snap.get(normalize_dirty_path(path)) or {}
+            if not is_hot_reason(entry.get("reason")):
+                return False
+        return True
+
+    def _additions_before_deletions(self, paths: list[str]) -> list[str]:
+        """Index files that still exist before a backlog of deletions."""
+        present: list[str] = []
+        missing: list[str] = []
+        for path in paths:
+            if (self.repo / path).is_file():
+                present.append(path)
+            else:
+                missing.append(path)
+        return present + missing
+
+    def _defer_cold_embedder(self, paths: list[str], *, now: float) -> bool:
+        """Leave the batch queued while FastEmbed is still loading.
+
+        The engine opts in with CTX_SYNC_WAIT_FOR_EMBEDDER=1. Unit tests leave
+        it unset so a missing model does not stall the ledger.
+        """
+        raw = (os.environ.get("CTX_SYNC_WAIT_FOR_EMBEDDER") or "").strip().lower()
+        if raw not in {"1", "true", "yes", "on"}:
+            return False
+        try:
+            from pipeline.engine import embedder_is_loaded, prewarm_embedder_async
+
+            if embedder_is_loaded():
+                return False
+            prewarm_embedder_async(self.repo)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[keeper] embedder prewarm skipped: {exc}", file=sys.stderr, flush=True)
+            return False
+        print(
+            f"[keeper] embedder cold — defer {len(paths)} path(s)",
+            file=sys.stderr,
+            flush=True,
+        )
+        self.dirty_ledger.defer(paths, now=now + 2.0)
+        return True
+
+    def _session_busy(self, now: float | None = None) -> bool:
+        """True when a locate streak or a connected IDE should see one batch at a time."""
+        if self._locate_streak_active(now=now):
+            return True
+        return bool(self._defer_interval_while_clients() and self._clients_active())
+
+    def _defer_for_active_session(
+        self, paths: list[str], *, now: float, estimated_total: int
+    ) -> dict | None:
+        """Kept for callers. Sizing now happens in ``drain_due``, not by dropping the set."""
+        return None
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
@@ -802,13 +1109,67 @@ class BackgroundSyncLoop:
             self._publish_or_hold(payload, paths=result.files)
         return payload
 
-    def _sync_paths(self, paths: list[str], *, reason: str) -> dict:
-        from pipeline.incremental import incremental_sync
+    def _hot_vdb(self):
+        """Vector DB reused across consecutive hot syncs, or None for a fresh one.
 
-        result = incremental_sync(self.repo, force_files=paths)
+        A fresh ``VectorDatabase`` per sync reopens the collection from disk and
+        then re-reads the whole ``faiss.index`` before the first append (~600ms
+        per save here). Reuse is only safe while nobody else wrote the collection,
+        so it is guarded by the on-disk fingerprint recorded after our own save;
+        any other writer (non-hot sync, compaction, full index) forces a reload.
+        """
+        if (os.environ.get("CTX_HOT_VDB_CACHE") or "1").strip().lower() in {"0", "false", "no", "off"}:
+            return None
+        cached = self._hot_vdb_cache
+        if cached is None:
+            return None
+        vdb, fingerprint = cached
+        if fingerprint is None or _vdb_fingerprint(vdb) != fingerprint:
+            self._hot_vdb_cache = None
+            return None
+        return vdb
+
+    def _sync_paths(self, paths: list[str], *, reason: str, hot: bool = False) -> dict:
+        from pipeline.incremental import incremental_sync
+        from pipeline.vectordb import VectorDatabase
+
+        vdb = None
+        if hot:
+            vdb = self._hot_vdb() or VectorDatabase()
+        else:
+            # Another writer is about to touch the collection on disk.
+            self._hot_vdb_cache = None
+        if vdb is not None:
+            result = incremental_sync(self.repo, force_files=paths, hot_lane=hot, vdb=vdb)
+            # Remembered now; the fingerprint is taken after the deferred save.
+            self._hot_vdb_pending = vdb
+        else:
+            result = incremental_sync(self.repo, force_files=paths, hot_lane=hot)
         payload = result.to_dict()
         payload["reason"] = reason
+        payload["hot_lane"] = bool(hot)
         payload["dirty_paths"] = paths
+        stages = getattr(result, "stages", None)
+        if stages:
+            payload["stages"] = dict(stages)
+        # A hot save skips the ~6s whole-graph merge; drain_due re-queues these
+        # once the batch is completed (marking here would be overwritten by
+        # ``complete``), so a non-hot tick carries them into graph.json.
+        owed = getattr(result, "graph_pending", None)
+        if owed:
+            payload["graph_pending"] = list(owed)
+        # Hot lane: the collection save runs after publish (see drain_due).
+        self._vector_flush = getattr(result, "vector_flush", None)
+        # Side channel, not payload: ``last_result`` is serialized by status().
+        delta = getattr(result, "hot_delta", None)
+        self._hot_delta = (payload, delta) if delta is not None else None
+        print(
+            f"[keeper] dirty sync refreshed={payload.get('refreshed')} "
+            f"upserted={payload.get('chunks_upserted')} removed={payload.get('chunks_removed')} "
+            f"ms={payload.get('ms')} error={payload.get('error')}",
+            file=sys.stderr,
+            flush=True,
+        )
         return payload
 
     def _bulk_sync_paths(self, paths: list[str], *, reason: str) -> dict:
@@ -981,7 +1342,11 @@ class BackgroundSyncLoop:
         now: float | None = None,
     ) -> None:
         current_time = time.monotonic() if now is None else now
-        if self._locate_streak_active(now=current_time):
+        hold = (
+            self._locate_streak_active(now=current_time)
+            and int(payload.get("chunks_upserted") or 0) > self.bulk_reindex_threshold
+        )
+        if hold:
             payload["overlay_ready"] = True
             self._pending_publish = payload
             self._pending_paths.update(paths)
@@ -994,16 +1359,52 @@ class BackgroundSyncLoop:
             payload["publish_error"] = payload.get("publish_error") or "publish_failed"
             self.dirty_ledger.complete(paths, published=False)
 
+    def _on_refresh_accepts_delta(self) -> bool:
+        """Probe the publisher's arity once — never call it twice to find out."""
+        cached = self._on_refresh_delta_arity
+        if cached is not None:
+            return cached
+        accepts = False
+        try:
+            import inspect
+
+            positional = 0
+            for param in inspect.signature(self.on_refresh).parameters.values():
+                if param.kind is inspect.Parameter.VAR_POSITIONAL:
+                    positional = 2
+                    break
+                if param.kind in (
+                    inspect.Parameter.POSITIONAL_ONLY,
+                    inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                ):
+                    positional += 1
+            accepts = positional >= 2
+        except (TypeError, ValueError):  # builtins / C callables
+            accepts = False
+        self._on_refresh_delta_arity = accepts
+        return accepts
+
     def _notify_refresh(self, payload: dict) -> bool:
         """Deliver a coherent publication. False means prior generation stays live."""
         if not self.on_refresh:
+            self._hot_delta = None
             return True
+        pending = self._hot_delta
+        delta = pending[1] if pending is not None and pending[0] is payload else None
         try:
-            result = self.on_refresh(payload)
+            if delta is not None and self._on_refresh_accepts_delta():
+                result = self.on_refresh(payload, delta)
+            else:
+                result = self.on_refresh(payload)
         except Exception as exc:  # noqa: BLE001
             print(f"[keeper] on_refresh error: {exc}", file=sys.stderr, flush=True)
             payload["publish_error"] = str(exc)
             return False
+        finally:
+            # One delta belongs to one publish attempt. A held/bulk publish that
+            # runs later must fall back to a full reload, not reuse these rows.
+            if self._hot_delta is pending:
+                self._hot_delta = None
         if isinstance(result, dict) and result.get("ok") is False:
             payload["publish_error"] = str(result.get("error") or "publish_failed")
             return False
@@ -1019,9 +1420,16 @@ class BackgroundSyncLoop:
             try:
                 now = time.monotonic()
                 self.check_time_gap(now=now)
-                if now >= next_change_poll:
+                if self._poll_now or now >= next_change_poll:
+                    self._poll_now = False
                     self.poll_repo_changes(now=now)
                     next_change_poll = now + self.change_poll_ms / 1000.0
+                if (
+                    now - self._last_newcomer_scan >= 30.0
+                    and not self._locate_streak_active(now=now)
+                ):
+                    self._last_newcomer_scan = now
+                    self._start_newcomer_scan(now=now)
                 if now >= next_probe:
                     self.keeper_tick(reason="interval")
                     next_probe = now + self.interval_ms / 1000.0

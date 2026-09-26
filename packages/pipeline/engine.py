@@ -347,7 +347,7 @@ def _mark_prewarm_busy(busy: bool) -> None:
     try:
         if busy:
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(str(time.time()), encoding="utf-8")
+            path.write_text(f"{time.time()} {os.getpid()}", encoding="utf-8")
         elif path.is_file():
             path.unlink()
     except OSError:
@@ -360,7 +360,7 @@ def prewarm_busy_stamp_active(*, max_age_s: float | None = None) -> bool:
     try:
         if not path.is_file():
             return False
-        age = time.time() - float((path.read_text(encoding="utf-8") or "0").strip() or 0)
+        age = time.time() - float((path.read_text(encoding="utf-8") or "0").split()[0] or 0)
         if max_age_s is None:
             from pipeline.warm_autoload import DEFAULT_PREWARM_MAX_AGE_S
 
@@ -1227,10 +1227,127 @@ class WarmSearchEngine:
         self._last_gate = gate
         return out
 
+    def dense_missing(self) -> int:
+        """Chunks with no live vector. >0 means dense cannot return those files."""
+        try:
+            return int(getattr(self.conductor.dense, "missing_vectors", 0) or 0)
+        except Exception:  # noqa: BLE001
+            return 0
+
+    def apply_chunk_delta(
+        self,
+        records: list[ChunkRecord],
+        matrix: Any,
+        *,
+        base_chunk_count: int | None = None,
+    ) -> dict[str, Any]:
+        """Append new chunks to this live binder instead of rebuilding it.
+
+        A full ``load_engine`` re-reads the corpus, reparses graph.json, rebuilds
+        BM25 and re-projects the whole vector matrix — measured in the tens of
+        seconds on this repo, which is why a saved file took ~100s to reach map.
+        A brand-new file is a pure append (``_slice_chunk_file`` keeps every
+        untouched chunk line and gives the new records fresh ids), so the live
+        object can absorb it in milliseconds.
+
+        Every channel is addressed by **chunk position**, so the append order
+        here must match ``chunks.jsonl``: engine lists, then the dense rows the
+        sync just embedded, then graph spans, and only then the conductor's
+        position counters — a concurrent search must never see a position whose
+        text/row has not landed yet. BM25 is intentionally left alone: it stays
+        one generation behind and ``_fit_channel`` zero-pads it, so new chunks
+        rank on dense (which is what admits a file into map's pool) until the
+        next full publish.
+
+        Raises on anything it cannot patch coherently; the caller falls back to
+        a full reload.
+        """
+        import numpy as np
+
+        if not records:
+            raise ValueError("empty delta")
+        dense = getattr(self.conductor, "dense", None)
+        if dense is None or getattr(dense, "matrix", None) is None:
+            raise RuntimeError("no dense channel to patch")
+        rows = np.asarray(matrix, dtype=np.float32)
+        if rows.ndim != 2 or rows.shape[0] != len(records):
+            raise ValueError(
+                f"matrix rows {getattr(rows, 'shape', None)} != records {len(records)}"
+            )
+        dim = int(dense.matrix.shape[1])
+        if int(rows.shape[1]) != dim:
+            raise ValueError(f"delta dim {rows.shape[1]} != dense dim {dim}")
+
+        n_before = len(self.chunks)
+        if base_chunk_count is not None and int(base_chunk_count) != n_before:
+            # The binder is not the corpus this delta was computed against.
+            raise RuntimeError(
+                f"binder drift: live chunks {n_before} != delta base {base_chunk_count}"
+            )
+        if len(self.texts) != n_before or len(self.files) != n_before:
+            raise RuntimeError("binder lists disagree on length")
+        chunk_row = getattr(dense, "_chunk_row", None)
+        if chunk_row is None:
+            raise RuntimeError("dense adapter has no chunk-id map")
+        new_ids = [int(r.id) for r in records]
+        if len(set(new_ids)) != len(new_ids) or any(i in chunk_row for i in new_ids):
+            raise RuntimeError("delta ids already present — not an append")
+
+        # 1. Corpus lists. ``self.files`` is the same object the conductor holds,
+        #    so appending in place keeps file space aligned.
+        conductor_files = getattr(self.conductor, "files", None)
+        new_files = [r.file.replace("\\", "/") for r in records]
+        self.chunks.extend(records)
+        self.texts.extend(r.text for r in records)
+        self.files.extend(new_files)
+        if conductor_files is not None and conductor_files is not self.files:
+            conductor_files.extend(new_files)
+
+        # 2. Dense rows, L2-normalized like DenseIndex does at construction.
+        norms = np.linalg.norm(rows, axis=1, keepdims=True)
+        normalized = rows / np.maximum(norms, 1e-12)
+        dense.matrix = np.vstack([dense.matrix, normalized])
+        for offset, cid in enumerate(new_ids):
+            chunk_row[cid] = n_before + offset
+
+        # 3. Graph spans (affinity for the new file arrives with the next full
+        #    publish; _fit_channel pads until then).
+        graph = getattr(self.conductor, "graph", None)
+        spans = getattr(graph, "spans", None)
+        by_file = getattr(graph, "_by_file", None)
+        if spans is not None and by_file is not None:
+            from conductor.graphify_retriever import normalize_file
+
+            for offset, record in enumerate(records):
+                span = ChunkSpan(
+                    index=n_before + offset,
+                    file=new_files[offset],
+                    start_line=record.start_line,
+                    end_line=record.end_line,
+                )
+                spans.append(span)
+                by_file.setdefault(normalize_file(span.file), []).append(span)
+
+        # 4. Position counters last.
+        n_after = len(self.chunks)
+        file_chunks = getattr(self.conductor, "_file_chunks", None)
+        if file_chunks is not None:
+            for offset, rel in enumerate(new_files):
+                file_chunks.setdefault(rel, []).append(n_before + offset)
+        self.conductor._n = n_after
+        return {
+            "patched": True,
+            "chunks_before": n_before,
+            "chunks_after": n_after,
+            "appended": len(records),
+            "files": sorted(set(new_files)),
+        }
+
     def status(self) -> dict[str, Any]:
         return {
             "root": str(self.root),
             "chunks": len(self.texts),
+            "dense_missing": self.dense_missing(),
             "capability_cards": len(self.capability.cards) if self.capability else 0,
             "load_ms": round(self.load_ms, 1),
             "loaded_at": self.loaded_at,
@@ -1325,7 +1442,12 @@ def load_engine(
         f_graph = pool.submit(_build_graph)
         f_bm25 = pool.submit(_build_bm25)
         f_cards = pool.submit(_build_cards)
-        dense = FaissDenseAdapter(col, n_chunks=len(chunks))
+        # Chunk ids re-index the vector matrix into chunk position space, the
+        # same space files/texts/bm25/graph use. Skipping this lets dense scores
+        # land on the wrong chunk and makes tail chunks raise IndexError.
+        dense = FaissDenseAdapter(
+            col, n_chunks=len(chunks), chunk_ids=[int(c.id) for c in chunks]
+        )
         graph = f_graph.result()
         bm25 = f_bm25.result()
         cards = f_cards.result()

@@ -13,6 +13,7 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 from pathlib import Path
+from typing import Any
 
 import networkx as nx
 import numpy as np
@@ -58,6 +59,24 @@ def _ident_tokens(query: str) -> set[str]:
     }
 
 
+def _fit_channel(scores: Any, n: int) -> np.ndarray:
+    """Force a channel score array to exactly ``n`` entries (one per chunk).
+
+    Every ranking helper indexes these arrays by chunk position. A channel built
+    over a different corpus snapshot used to raise ``IndexError`` deep inside
+    ``_best_chunk`` and turn the whole search into a 500. Padding with 0.0 keeps
+    the chunk rankable by the channels that do cover it.
+    """
+    arr = np.asarray(scores, dtype=np.float64).reshape(-1)
+    if arr.shape[0] == n:
+        return arr
+    fitted = np.zeros(n, dtype=np.float64)
+    keep = min(n, arr.shape[0])
+    if keep:
+        fitted[:keep] = arr[:keep]
+    return fitted
+
+
 def _znorm(vals: dict[str, float]) -> dict[str, float]:
     """Z-score a channel over the pool so channels mix on a common scale.
 
@@ -87,8 +106,9 @@ class MultiArchConductor(Conductor):
         f_bm25 = pool.submit(self.bm25.score_all, query)
         f_dense = pool.submit(self.dense.score_all, query_vec)
         g_aff, seed_files, _ = f_graph.result()
-        b_all = f_bm25.result()
-        d_all = np.asarray(f_dense.result(), dtype=np.float64)
+        b_all = _fit_channel(f_bm25.result(), n)
+        d_all = _fit_channel(f_dense.result(), n)
+        g_aff = _fit_channel(g_aff, n)
         hybrid_chunk = np.zeros(n, dtype=np.float64)
         # RRF ranks from the same score arrays — do not score_all again via search().
         rb = {

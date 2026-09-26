@@ -233,9 +233,9 @@ def test_status_ast_hydrated_follows_hydrate_flag(tmp_path: Path, monkeypatch: p
     )
     set_ast_hydrated(False, source="miss")
     assert ctrl.snapshot(repo=tmp_path).as_status_fields()["ast_hydrated"] is False
-    # A sticky flag without an in-memory AST cache must not read as hydrated.
+    # Hydrate sets this flag in the same process that serves pack.
     set_ast_hydrated(True, source="cache")
-    assert ctrl.snapshot(repo=tmp_path).as_status_fields()["ast_hydrated"] is False
+    assert ctrl.snapshot(repo=tmp_path).as_status_fields()["ast_hydrated"] is True
 
 
 def test_status_ast_hydrated_follows_repo_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

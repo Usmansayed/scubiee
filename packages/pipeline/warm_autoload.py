@@ -188,7 +188,13 @@ def hung_prewarm_should_abort(*, max_age_s: float = DEFAULT_PREWARM_MAX_AGE_S) -
     or wedge without ever flipping phase=dense.
     """
     snap = read_phase(max_age_s=max_age_s)
-    if snap.get("stale") or str(snap.get("error") or "") == "prewarm_stale":
+    # A stale file whose phase is not prewarm is a leftover from a dead
+    # process, not an in-flight embedder. Killing the live PID for that
+    # restarts the open forever.
+    phase = str(snap.get("phase") or "")
+    if str(snap.get("error") or "") == "prewarm_stale" or (
+        phase == PHASE_PREWARM and snap.get("stale")
+    ):
         return True
     if snap.get("phase") == PHASE_PREWARM:
         age = snap.get("age_s")
@@ -202,7 +208,16 @@ def hung_prewarm_should_abort(*, max_age_s: float = DEFAULT_PREWARM_MAX_AGE_S) -
 
         path = _prewarm_busy_path()
         if path.is_file():
-            age = time.time() - float((path.read_text(encoding="utf-8") or "0").strip() or 0)
+            parts = (path.read_text(encoding="utf-8") or "0").split()
+            age = time.time() - float(parts[0] or 0)
+            if len(parts) > 1:
+                from pipeline.daemon import _pid_alive
+
+                if not _pid_alive(int(parts[1])):
+                    return False
+            elif age > float(max_age_s):
+                # Old stamp with no pid. It outlived the process that wrote it.
+                return False
             return age > float(max_age_s)
     except Exception:  # noqa: BLE001
         return False

@@ -155,15 +155,16 @@ class RuntimeController:
             ast_ready = self._ast_ready
             elapsed = self._elapsed_ms()
         if repo is not None:
-            # Cache is the only truth. A sticky hydrate flag must not report
-            # hydrated after the cache is cold, and a warm cache must not
-            # stay false because that flag was cleared.
+            # Pack and status share this process. A hydrate that filled the
+            # cache, or the flag that hydrate sets, means pack can run.
+            # Do not clear that flag on a cache-key miss.
             try:
                 from pipeline.context_trace import ast_cache_ready
+                from pipeline.warm_contract import ast_hydrated as ast_flag
 
-                ast_ready = bool(ast_cache_ready(repo))
+                ast_ready = bool(ast_cache_ready(repo)) or bool(ast_flag()) or ast_ready
             except Exception:  # noqa: BLE001
-                ast_ready = False
+                ast_ready = bool(ast_ready)
             with self._lock:
                 self._ast_ready = ast_ready
         if soft or (engine_ok and embed):

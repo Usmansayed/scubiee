@@ -249,16 +249,6 @@ def derive_agent_ready_note(
         return "Repo not bound into the engine yet — call map/pack (auto-bind) or scubiee engine ensure ."
     if state in {"starting", "indexing"}:
         return f"Engine {state} — retry locate shortly (not a RAM warm-up stall)."
-    if state == "ready" and ast_hydrated is False:
-        lag = ""
-        if loc.get("stale") or syncing or overlay_ready or publish_pending:
-            lag = " Background sync may lag recent edits."
-        if embedder_loaded is False:
-            lag += " FastEmbed is still loading."
-        return (
-            "Map is ready. pack_context and expand_context wait until the "
-            "AST bundle is hydrated." + lag
-        )
     if embedder_loaded is False and state == "ready":
         return (
             "Soft locate ready (BM25/index); FastEmbed still loading in background — "
@@ -266,7 +256,11 @@ def derive_agent_ready_note(
         )
     if agent_ready == "yes" or state == "ready":
         if loc.get("stale") or syncing or overlay_ready or publish_pending:
-            return "Locate ready; background sync may lag recent edits."
+            return (
+                "Search can run on the current index (search_usable=true). "
+                "Recent edits are still syncing (index_fresh=false), so hits "
+                "may omit those edits."
+            )
         if embedder_loaded is False:
             return (
                 "Soft locate ready; semantic embedder still loading — proceed with map/pack."
@@ -327,13 +321,13 @@ def derive_agent_ready(
     if state == "ready" and loc.get("stale"):
         return "stale"
     if state == "ready":
-        return "warming" if ast_hydrated is False else "yes"
+        return "yes"
     if ready and not syncing:
-        return "warming" if ast_hydrated is False else "yes"
+        return "yes"
     if syncing or overlay_ready or publish_pending:
         return "stale"
     if sync_state in {"error", "needs_full", "deferred", "dense_pending"}:
         return "stale"
     if soft_search_ready:
-        return "warming" if ast_hydrated is False else "yes"
+        return "yes"
     return "warming"

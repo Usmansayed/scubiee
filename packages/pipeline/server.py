@@ -504,13 +504,22 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         if path in ("/v1/sync", "/sync"):
+            # Do not freshness-walk or embed on this thread. The keeper poll
+            # marks indexed dirty files and drain_due publishes them after
+            # the 1s debounce.
+            loop = ce.sync_loop
+            if loop is not None:
+                loop.request_poll()
             _json(
                 self,
                 200,
-                ce.sync(
-                    data.get("path") or None,
-                    confirm=bool(data.get("confirm")),
-                ),
+                {
+                    "ok": loop is not None,
+                    "strategy": "deferred",
+                    "refreshed": False,
+                    "debounce_ms": 1000,
+                    "error": None if loop is not None else "keeper not running",
+                },
             )
             return
 
@@ -876,6 +885,17 @@ def run_server(
     import gc
 
     gc.disable()
+    # A killed open leaves warm_phase.json and embed_prewarm.busy behind.
+    # The watchdog reads those and force-restarts the next process on its
+    # first tick, so the repo never finishes opening.
+    try:
+        from pipeline.engine import _mark_prewarm_busy
+        from pipeline.warm_autoload import mark_down
+
+        _mark_prewarm_busy(False)
+        mark_down()
+    except Exception:  # noqa: BLE001
+        pass
 
     # Disable Rayon parallelism in tokenizers to prevent memory corruption.
     # The Rayon thread pool on macOS ARM64 corrupts CPython's heap.

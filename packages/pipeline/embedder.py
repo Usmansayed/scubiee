@@ -363,9 +363,23 @@ class Embedder:
                 vecs = data["vecs"]
                 for i, k in enumerate(keys):
                     self.cache[str(k)] = vecs[i].astype(np.float32).tolist()
+                # The .npz is a snapshot; the .jsonl is the append log. Small
+                # batches no longer rewrite the snapshot, so rows appended after
+                # it would be lost on restart unless the log tail is replayed.
+                if (
+                    self.cache_path.exists()
+                    and self.cache_path.stat().st_mtime > npz.stat().st_mtime
+                ):
+                    self._replay_cache_log(skip_known=True)
                 return
             except Exception:  # noqa: BLE001
                 pass
+        self._replay_cache_log(skip_known=False)
+
+    def _replay_cache_log(self, *, skip_known: bool) -> None:
+        assert self.cache_path is not None
+        if not self.cache_path.exists():
+            return
         for line in self.cache_path.read_text(encoding="utf-8").splitlines():
             if not line.strip():
                 continue
@@ -376,6 +390,8 @@ class Embedder:
             key = row.get("key")
             emb = row.get("embedding")
             if key is None or emb is None:
+                continue
+            if skip_known and str(key) in self.cache:
                 continue
             self.cache[str(key)] = emb
 
@@ -876,10 +892,16 @@ class Embedder:
             start += len(batch)
 
         self.flush_cache()
-        try:
-            self.save_cache_npz()
-        except Exception:  # noqa: BLE001
-            pass
+        # The .jsonl append above already persists every new row. The .npz is
+        # only a load-time snapshot, and rewriting it re-compresses the *whole*
+        # cache (~1.5s at 10k entries) — paid on every agent save. Refresh it only
+        # for batches big enough to matter; _load_cache replays the log tail.
+        snapshot_min = int(os.environ.get("CTX_EMBED_NPZ_MIN_NEW", "64") or "64")
+        if len(pending_text) >= max(1, snapshot_min):
+            try:
+                self.save_cache_npz()
+            except Exception:  # noqa: BLE001
+                pass
 
         rows = [encoded[i] for i in range(len(texts))]
         matrix = np.stack(rows, axis=0)

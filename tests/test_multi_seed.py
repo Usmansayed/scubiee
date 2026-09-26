@@ -73,6 +73,24 @@ def test_seed_covered_and_light_merge() -> None:
     merged = merge_seed_heatmaps([hm1, light], [n1.id, n2.id], g)
     assert merged.strategy == "multi_seed_v1"
     assert merged.extra.get("mode") == "agreement_corridor"
+    assert int(merged.extra.get("agreement_n") or 0) >= 1
+    assert "boosted" in str(merged.extra.get("agreement_note") or "")
     assert n2.id in merged.by_id()
     # n2 appears on both maps → agreement boost above the weaker map score
     assert merged.by_id()[n2.id].score >= 0.5
+
+
+def test_disjoint_seeds_agreement_zero_is_not_a_failure() -> None:
+    left = Heatmap(
+        strategy="poly",
+        cells=[HeatCell(node_id="a.py::one", score=0.9, why="seed")],
+    )
+    right = Heatmap(
+        strategy="poly",
+        cells=[HeatCell(node_id="b.py::two", score=0.8, why="seed")],
+    )
+    merged = merge_seed_heatmaps([left, right], ["a.py::one", "b.py::two"])
+    assert merged.extra.get("agreement_n") == 0
+    assert "not a failed merge" in str(merged.extra.get("agreement_note") or "")
+    assert "a.py::one" in merged.by_id()
+    assert "b.py::two" in merged.by_id()

@@ -87,6 +87,16 @@ def test_hung_prewarm_should_abort(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     wa._UPDATED_AT = 0.0
     assert wa.hung_prewarm_should_abort(max_age_s=45.0) is True
     wa.mark_down()
+    raw = json.loads(wa.phase_path().read_text(encoding="utf-8"))
+    raw["updated_at"] = time.time() - 3600
+    raw["phase"] = "down"
+    wa.phase_path().write_text(json.dumps(raw), encoding="utf-8")
+    wa._PHASE = wa.PHASE_DOWN
+    wa._UPDATED_AT = 0.0
+    assert wa.hung_prewarm_should_abort(max_age_s=45.0) is False
+    stamp = tmp_path / "embed_prewarm.busy"
+    stamp.write_text(f"{time.time() - 3600} 999999", encoding="utf-8")
+    assert wa.hung_prewarm_should_abort(max_age_s=45.0) is False
 
 
 def test_mcp_demand_with_bridge(monkeypatch: pytest.MonkeyPatch) -> None:

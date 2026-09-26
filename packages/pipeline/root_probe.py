@@ -131,6 +131,12 @@ def root_probe(
             ck = canonical_relpath(rel)
             if ck in snap or ck in current:
                 continue
+            # The Merkle drops junk paths (``sanitize_file_hashes``), so a junk
+            # newcomer can never be recorded: it was re-reported as "added" on
+            # every poll and re-synced forever (~7s a cycle on this repo),
+            # stalling every save queued behind it.
+            if is_junk_rel(rel) or is_junk_rel(ck):
+                continue
             p = root / rel
             if p.is_file():
                 current[ck] = file_sha256(p)

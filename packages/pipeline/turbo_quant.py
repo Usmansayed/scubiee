@@ -15,6 +15,7 @@ use this NumPy reference implementation so the product works offline.
 
 from __future__ import annotations
 
+import functools
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -105,7 +106,20 @@ def _norm_ppf(p: np.ndarray) -> np.ndarray:
     return out
 
 
+@functools.lru_cache(maxsize=8)
 def _random_orthogonal(dim: int, seed: int) -> np.ndarray:
+    """Deterministic rotation for (dim, seed), computed once per process.
+
+    The QR of a 768×768 matrix is ~0.5s. Every sync loads a fresh collection, so
+    without the cache each agent save paid it again inside the vector write. The
+    returned array is shared, so it is made read-only.
+    """
+    q = _random_orthogonal_uncached(dim, seed)
+    q.setflags(write=False)
+    return q
+
+
+def _random_orthogonal_uncached(dim: int, seed: int) -> np.ndarray:
     rng = np.random.default_rng(seed)
     g = rng.normal(size=(dim, dim)).astype(np.float64)
     q, _ = np.linalg.qr(g)
@@ -239,13 +253,28 @@ class CompressedEmbeddingStore:
     def to_float32(self) -> np.ndarray:
         if self.ntotal == 0:
             return np.zeros((0, self.dim), dtype=np.float32)
+        return self.rows_float32(0, self.ntotal)
+
+    def rows_float32(self, start: int, stop: int | None = None) -> np.ndarray:
+        """Dequantize rows ``[start, stop)`` only.
+
+        ``FaissCollection.add`` needs just the rows it appended; decoding the whole
+        store for them cost ~200ms per agent save at 7.5k vectors, inside the
+        collection lock that search also takes. Same codec, same values as
+        ``to_float32()[start:stop]``.
+        """
+        n = self.ntotal
+        stop = n if stop is None else min(int(stop), n)
+        start = max(0, int(start))
+        if stop <= start:
+            return np.zeros((0, self.dim), dtype=np.float32)
         blob = {
             "dim": self.dim,
             "bits": self.bits,
             "seed": self.seed,
-            "norms": np.asarray(self._norms, dtype=np.float32),
-            "codes": np.asarray(self._codes, dtype=np.uint8),
-            "n": self.ntotal,
+            "norms": np.asarray(self._norms[start:stop], dtype=np.float32),
+            "codes": np.asarray(self._codes[start:stop], dtype=np.uint8),
+            "n": stop - start,
         }
         return self.codec.dequantize(blob)
 

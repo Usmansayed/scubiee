@@ -83,16 +83,18 @@ def test_lost_journal_allows_merkle_recovery_to_mark_paths(journal_root):
 def test_rewrite_during_indexing_schedules_follow_up_through_journal(journal_root):
     ledger = JournalingLedger(
         "ce_rewrite",
-        DirtyLedger(debounce_ms=1500, rewrite_debounce_ms=2500),
+        DirtyLedger(debounce_ms=1500, rewrite_debounce_ms=2500, hot_debounce_ms=250),
     )
     ledger.mark(["a.py"], reason="write", now=0.0)
-    assert ledger.due_paths(now=1.6) == ["a.py"]
+    # `write` is a save reason: due on the hot window, not the 1.5s bulk debounce.
+    assert ledger.due_paths(now=0.2) == []
+    assert ledger.due_paths(now=0.3) == ["a.py"]
     ledger.begin(["a.py"])
 
     ledger.mark(["a.py"], reason="write", now=2.0)
 
-    assert ledger.due_paths(now=3.4) == []
-    assert ledger.due_paths(now=3.6) == ["a.py"]
+    assert ledger.due_paths(now=2.2) == []
+    assert ledger.due_paths(now=2.3) == ["a.py"]
     persisted = json.loads(
         (journal_root / "ce_rewrite" / "dirty_journal.json").read_text(encoding="utf-8")
     )

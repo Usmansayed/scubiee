@@ -2158,6 +2158,11 @@ def rank_soft_map_cards(cards: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for i, (_p, _s, item) in enumerate(decorated, 1):
         item["rank"] = i
         out.append(item)
+    # Role penalty can put a lower score above a higher one. Say so; do not reorder.
+    for i, item in enumerate(out):
+        mine = float(item.get("score") or 0)
+        if any(float(c.get("score") or 0) > mine for c in out[i + 1 :]):
+            item["rank_note"] = "role_adjusted"
     return out
 
 
@@ -2858,9 +2863,46 @@ def _expand_why_is_direct_call(why: str) -> bool:
     return "calls:" in w or "dispatches:" in w
 
 
+_EFFECT_NAMES = frozenset(
+    {"log", "logger", "track", "analytics", "print", "info", "debug", "send"}
+)
+_EFFECT_IO_LEAVES = frozenset(
+    {
+        "write_text",
+        "write_bytes",
+        "writelines",
+        "dump",
+        "mkdir",
+        "unlink",
+        "remove",
+        "rmdir",
+    }
+)
+_EFFECT_BODY_MARKERS = (
+    "write_text(",
+    "write_bytes(",
+    ".dump(",
+    "mkdir(",
+    "unlink(",
+)
+_CONFIG_MARKERS = ("mcp.json", "settings.json", "/settings/", "config.json")
+
+
 def _expand_symbol_is_effect(symbol: str) -> bool:
     leaf = (symbol or "").split(".")[-1].lower()
-    return leaf in {"log", "logger", "track", "analytics", "print", "info", "debug", "send"}
+    return leaf in _EFFECT_NAMES or leaf in _EFFECT_IO_LEAVES
+
+
+def _node_writes_or_logs(node: TraceNode) -> bool:
+    if _expand_symbol_is_effect(node.symbol):
+        return True
+    text = node.text or ""
+    return any(tok in text for tok in _EFFECT_BODY_MARKERS)
+
+
+def _node_touches_config(node: TraceNode) -> bool:
+    blob = f"{node.symbol}\n{node.file}\n{node.text or ''}".lower()
+    return any(tok in blob for tok in _CONFIG_MARKERS)
 
 
 def _expand_why_is_reverse(why: str) -> bool:
@@ -3144,18 +3186,20 @@ def _neighbor_cards(
     d = (direction or "all").lower().strip()
     forward = {"calls", "uses", "contains", "dispatches", "overrides", "method"}
     reverse = {"called_by", "used_by", "imported_by", "rev:calls", "rev:uses"}
-    effect_names = {"log", "logger", "track", "analytics", "print", "info", "debug", "send"}
-
     def _edges_from(graph: AstTraceGraph | None) -> list[tuple[str, str, float]]:
         if graph is None:
             return []
         out: list[tuple[str, str, float]] = []
         for vid, rel, w in graph.neighbors(nid, directed=True):
             out.append((vid, rel, float(w)))
-        # Incoming = callers / used_by (composite may omit CALLED_BY membership)
+        # Incoming calls/uses: source is the real caller. Synthetic called_by
+        # and imported_by edges are stored callee → caller, so their incoming
+        # source is the callee and must not be treated as a caller.
         if d in {"callers", "refs", "dependents", "all", "broad", "effects"}:
             for e in graph.inc.get(nid, []):
                 rel = e.relation
+                if rel in {"called_by", "imported_by"}:
+                    continue
                 if rel in {"calls", "CALLS"}:
                     rel = "called_by"
                 elif rel in {"uses", "USES"}:
@@ -3182,6 +3226,9 @@ def _neighbor_cards(
             continue
         short = n.symbol.split(".")[-1].lower()
         rel_l = rel.lower()
+        seed_node = rt.nodes.get(nid)
+        seed_blob = f"{getattr(seed_node, 'symbol', '')}\n{getattr(seed_node, 'text', '')}".lower()
+        seed_names_config = any(tok in seed_blob for tok in _CONFIG_MARKERS)
         keep = False
         if d in {"all", "broad"}:
             keep = True
@@ -3191,14 +3238,17 @@ def _neighbor_cards(
         elif d in {"callers", "refs", "dependents"}:
             keep = rel_l in reverse or rel_l == "used_by"
         elif d in {"effects", "site"}:
-            keep = short in effect_names
+            keep = short in _EFFECT_NAMES or (
+                rel_l in {"calls", "dispatches"} and _node_writes_or_logs(n)
+            )
         elif d == "config":
-            keep = n.kind == "const" or rel_l in {"uses", "used_by"}
+            writes_config = rel_l in {"calls", "dispatches"} and _node_writes_or_logs(n) and (
+                _node_touches_config(n) or seed_names_config
+            )
+            keep = n.kind == "const" or rel_l in {"uses", "used_by"} or writes_config
         else:
             keep = True
         if not keep:
-            continue
-        if d == "effects" and short not in effect_names:
             continue
         seen.add(vid)
         score = min(0.95, base_score * max(0.4, w))
@@ -3351,6 +3401,9 @@ def run_expand_context(
         t_tr = time.perf_counter()
         tracer_cards = _tracer()
         tracer_ms = round((time.perf_counter() - t_tr) * 1000, 1)
+    if d in {"callees", "flow", "deps"}:
+        direct_ids = {str(c.get("id") or "") for c in struct}
+        tracer_cards = [c for c in tracer_cards if str(c.get("id") or "") in direct_ids]
 
     lexical: list[dict[str, Any]] = []
     if d in {"callers", "refs", "dependents"}:
@@ -3386,10 +3439,9 @@ def run_expand_context(
         merged.append(c)
         if len(merged) >= k * 3:
             break
-    # Leaf expand: same-file public siblings help callers/broad climb out.
-    # They are not callees or effects.
+    # Same-file siblings are a broad climb-out, not callers or callees.
     seen_ids = {str(c.get("id") or "") for c in merged}
-    if d not in {"callees", "flow", "deps", "effects", "site"}:
+    if d in {"all", "broad"}:
         for sib in _same_file_public_sibling_cards(rt, seed, prior=prior | seen_ids, k=8):
             merged.append(sib)
             seen_ids.add(str(sib.get("id") or ""))
@@ -3412,7 +3464,7 @@ def run_expand_context(
             root,
             delta,
             threshold=0.0,
-            max_chars=max(400, int(budget_chars)),
+            max_chars=max(1, int(budget_chars or 1)),
             max_bodies=max(1, int(max_bodies)),
             skip_ids=skip,
         )
@@ -3472,6 +3524,26 @@ def run_expand_context(
         "_persist_ids": [c["id"] for c in delta],
         "_persist_packed": sorted(packed_now),
     }
+
+
+def _fit_collect_text(
+    text: str,
+    *,
+    used: int,
+    max_chars: int,
+    share: int | None = None,
+) -> str | None:
+    """Cut a body to the remaining budget. None means there is no room left."""
+    remain = int(max_chars) - int(used)
+    if remain < 1:
+        return None
+    if share is not None:
+        remain = min(remain, max(1, int(share)))
+    if len(text) <= remain:
+        return text
+    if remain == 1:
+        return text[:1]
+    return text[: remain - 1] + "…"
 
 
 def run_collect_hot(
@@ -3536,20 +3608,14 @@ def run_collect_hot(
         if max_bodies is not None and len(bodies) >= max_bodies:
             break
         text = n.text or ""
+        share = None
         if cid in prefer and prefer_remaining > 0:
-            share = max(400, (max_chars - used) // prefer_remaining)
-            if len(text) > share:
-                text = text[: share - 1] + "…"
+            share = max(1, (max_chars - used) // max(1, prefer_remaining))
             prefer_remaining -= 1
-        if used + len(text) > max_chars:
-            remain = max_chars - used
-            if remain < 200:
-                if cid in prefer and not bodies:
-                    text = text[: max(200, remain - 1)] + "…"
-                else:
-                    break
-            else:
-                text = text[: remain - 1] + "…"
+        fitted = _fit_collect_text(text, used=used, max_chars=max_chars, share=share)
+        if fitted is None:
+            break
+        text = fitted
         bodies.append(
             {
                 "id": c["id"],
@@ -3898,10 +3964,10 @@ def run_pack_context(
         except Exception:  # noqa: BLE001
             pass
 
-    # Thin seed densify: class→contains/methods; function→calls/called_by/uses;
-    # still thin class → same-file public siblings (CapabilityCard next to CapabilityIndex).
+    # Thin seed densify only when the caller asked for more cards than we have.
+    # k=1 must stay the seed, not the seed plus a neighbor.
     seed_meta0 = mapped.get("seed") or {}
-    if len(cards) <= 3:
+    if len(cards) < max(1, int(k)) and len(cards) <= 3:
         try:
             rt_i = _load_repo(root)
             sid = str(seed_meta0.get("id") or "")
@@ -3918,6 +3984,8 @@ def run_pack_context(
 
                 def _add_extra(n: Any, rel: str, w: float = 1.0) -> None:
                     if n is None or n.id in seen_ids:
+                        return
+                    if len(cards) + len(extras) >= max(1, int(k)):
                         return
                     leaf = n.symbol.split(".")[-1]
                     if is_weak_seed_symbol(n.symbol) or leaf.startswith("_"):
@@ -4011,13 +4079,25 @@ def run_pack_context(
     try:
         rt_cov = _load_repo(root)
         cards, seed_coverage, seed_injected = ensure_seeds_on_heatmap(
-            cards, seed_metas, rt_cov.nodes, k=max(int(k), 16), root=root
+            cards, seed_metas, rt_cov.nodes, k=max(1, int(k)), root=root
         )
     except Exception:  # noqa: BLE001
         seed_coverage = seed_coverage_report(
             cards, [str(s.get("id") or "") for s in seed_metas if s.get("id")]
         )
         seed_injected = []
+
+    # k is the heatmap size. Requested seeds stay even when there are more seeds than k.
+    if int(k) > 0 and len(cards) > int(k):
+        seed_ids = {str(s.get("id") or "") for s in seed_metas if s.get("id")}
+        seeds_first = [c for c in cards if str(c.get("id") or "") in seed_ids]
+        rest = [c for c in cards if str(c.get("id") or "") not in seed_ids]
+        if len(seeds_first) >= int(k):
+            cards = seeds_first
+        else:
+            cards = seeds_first + rest[: int(k) - len(seeds_first)]
+        for i, c in enumerate(cards, 1):
+            c["rank"] = i
 
     # Demote pause/home/id helpers unless the query asks for them.
     cards = apply_heat_affinity(cards, query)
@@ -4050,7 +4130,7 @@ def run_pack_context(
             root,
             to_pack,
             threshold=0.0,  # already filtered list
-            max_chars=max(500, int(budget_chars)),
+            max_chars=max(1, int(budget_chars or 1)),
             max_bodies=max_bodies,
             skip_ids=skip,
             prefer_ids=set(prefer_ids) if prefer_ids else None,

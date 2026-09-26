@@ -43,16 +43,32 @@ def test_event_overflow_marks_full_and_reconciles_immediately(
 def test_atomic_save_rename_burst_uses_one_rewrite_quiet_window(tmp_path: Path) -> None:
     from pipeline.sync_loop import BackgroundSyncLoop
 
-    loop = BackgroundSyncLoop(tmp_path, debounce_ms=100, rewrite_debounce_ms=500)
+    # `watch` is a save reason, so the burst coalesces on the hot window (0.3.131):
+    # one quiet window measured from the last event, 250ms instead of 500ms.
+    loop = BackgroundSyncLoop(
+        tmp_path, debounce_ms=100, rewrite_debounce_ms=500, hot_debounce_ms=250
+    )
     loop.mark_dirty(["pkg/a.py"], reason="watch", now=1.0)
     loop.mark_dirty(["pkg/a.py"], reason="watch", now=1.1)
     loop.mark_dirty(["pkg/a.py"], reason="watch", now=1.2)
 
     entry = loop.status()["dirty"]["paths"]["pkg/a.py"]
     assert entry["rewrites"] == 2
+    assert entry["due_at"] == pytest.approx(1.45)
+    assert loop.dirty_ledger.due_paths(now=1.44) == []
+    assert loop.dirty_ledger.due_paths(now=1.46) == ["pkg/a.py"]
+
+
+def test_poll_discovery_burst_still_uses_the_long_rewrite_window(tmp_path: Path) -> None:
+    """Bulk discovery is unchanged: last event + rewrite_debounce_ms."""
+    from pipeline.sync_loop import BackgroundSyncLoop
+
+    loop = BackgroundSyncLoop(tmp_path, debounce_ms=100, rewrite_debounce_ms=500)
+    loop.mark_dirty(["pkg/a.py"], reason="disk_poll", now=1.0)
+    loop.mark_dirty(["pkg/a.py"], reason="disk_poll", now=1.2)
+
+    entry = loop.status()["dirty"]["paths"]["pkg/a.py"]
     assert entry["due_at"] == pytest.approx(1.7)
-    assert loop.dirty_ledger.due_paths(now=1.69) == []
-    assert loop.dirty_ledger.due_paths(now=1.71) == ["pkg/a.py"]
 
 
 def test_watcher_unavailable_does_not_block_merkle_reconcile(

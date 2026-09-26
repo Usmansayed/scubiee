@@ -1,0 +1,347 @@
+{
+  "version": "0.3.131",
+  "project_id": "ce_c505c4e65dbe5e2063a6c1089fe4db4e",
+  "repo": "C:\\Users\\usman\\Downloads\\context-engine",
+  "seed": {
+    "file": "packages/pipeline/incremental.py",
+    "symbol": "incremental_sync"
+  },
+  "rows": [
+    {
+      "tool": "gate",
+      "ok": true,
+      "wall_ms": 1710.3,
+      "elapsed_ms": null,
+      "error": null,
+      "keys": [
+        "raw"
+      ]
+    },
+    {
+      "tool": "status",
+      "ok": true,
+      "wall_ms": 489.2,
+      "elapsed_ms": null,
+      "error": null,
+      "keys": [
+        "agent_ready",
+        "agent_ready_note",
+        "embedder_loaded",
+        "engine",
+        "error",
+        "g",
+        "index_available",
+        "index_fresh",
+        "lifecycle_state",
+        "managed",
+        "n_spans",
+        "needs_full"
+      ],
+      "agent_ready": "yes",
+      "warm_ready": true
+    },
+    {
+      "tool": "map",
+      "ok": true,
+      "wall_ms": 937.6,
+      "elapsed_ms": 871.7,
+      "error": null,
+      "keys": [
+        "cards",
+        "dense",
+        "elapsed_ms",
+        "g",
+        "next",
+        "ok",
+        "retrieve_mode",
+        "session_id",
+        "suggested_seed",
+        "suggested_seeds",
+        "timings",
+        "tool"
+      ],
+      "retrieve_mode": "D_channel_best",
+      "dense": true,
+      "n_cards": 4
+    },
+    {
+      "tool": "pack_context",
+      "ok": false,
+      "wall_ms": 69.1,
+      "elapsed_ms": null,
+      "error": "ast_warming",
+      "keys": [
+        "error",
+        "g",
+        "hint",
+        "managed",
+        "ok",
+        "should_retry_status",
+        "should_use_mcp",
+        "stale_ctx_repo",
+        "status",
+        "status_age_s",
+        "status_ttl_s",
+        "tool"
+      ]
+    },
+    {
+      "tool": "expand_context",
+      "ok": true,
+      "wall_ms": 1244.0,
+      "elapsed_ms": 1.8,
+      "error": null,
+      "keys": [
+        "count",
+        "delta",
+        "direction",
+        "elapsed_ms",
+        "from",
+        "g",
+        "hydrate_ms",
+        "hydrate_source",
+        "ok",
+        "session_id",
+        "timings",
+        "tool"
+      ],
+      "count": 10,
+      "n_delta": 10
+    },
+    {
+      "tool": "collect_hot_context",
+      "ok": true,
+      "wall_ms": 96.4,
+      "elapsed_ms": null,
+      "error": null,
+      "keys": [
+        "count",
+        "g",
+        "next",
+        "ok",
+        "pack",
+        "session_id",
+        "tool"
+      ],
+      "count": 6
+    },
+    {
+      "tool": "workspace",
+      "ok": true,
+      "wall_ms": 76.1,
+      "elapsed_ms": null,
+      "error": null,
+      "keys": [
+        "action",
+        "focus_seen",
+        "g",
+        "heatmap",
+        "map_queries",
+        "ok",
+        "pins",
+        "session_id",
+        "spans",
+        "tool",
+        "topic"
+      ],
+      "action": "show",
+      "n_heatmap": 4,
+      "n_spans": 0
+    },
+    {
+      "tool": "workspace",
+      "ok": true,
+      "wall_ms": 80.3,
+      "elapsed_ms": null,
+      "error": null,
+      "keys": [
+        "action",
+        "g",
+        "ok",
+        "path",
+        "pins",
+        "session_id",
+        "tool"
+      ],
+      "action": "pin"
+    },
+    {
+      "tool": "workspace",
+      "ok": true,
+      "wall_ms": 79.0,
+      "elapsed_ms": null,
+      "error": null,
+      "keys": [
+        "action",
+        "focus_seen",
+        "g",
+        "heatmap",
+        "map_queries",
+        "ok",
+        "pins",
+        "session_id",
+        "spans",
+        "tool",
+        "topic"
+      ],
+      "action": "show",
+      "n_heatmap": 4,
+      "n_spans": 0
+    },
+    {
+      "tool": "workspace",
+      "ok": true,
+      "wall_ms": 70.7,
+      "elapsed_ms": null,
+      "error": null,
+      "keys": [
+        "action",
+        "g",
+        "ok",
+        "session_id",
+        "tool"
+      ],
+      "action": "clear"
+    },
+    {
+      "tool": "expand",
+      "ok": false,
+      "wall_ms": 0,
+      "error": "no_handle_from_collect",
+      "skipped": true
+    },
+    {
+      "tool": "map",
+      "ok": true,
+      "wall_ms": 161.1,
+      "elapsed_ms": 92.3,
+      "error": null,
+      "keys": [
+        "cards",
+        "dense",
+        "elapsed_ms",
+        "g",
+        "next",
+        "ok",
+        "retrieve_mode",
+        "session_id",
+        "suggested_seed",
+        "suggested_seeds",
+        "timings",
+        "tool"
+      ],
+      "retrieve_mode": "D_channel_best",
+      "dense": true,
+      "n_cards": 4
+    }
+  ],
+  "retry_rows": [
+    {
+      "tool": "map",
+      "ok": true,
+      "wall_ms": 1533.1,
+      "elapsed_ms": 1228.4,
+      "error": null
+    },
+    {
+      "tool": "pack_context",
+      "ok": false,
+      "wall_ms": 60.9,
+      "elapsed_ms": null,
+      "error": "ast_warming"
+    },
+    {
+      "tool": "pack_context",
+      "ok": false,
+      "wall_ms": 1192.7,
+      "elapsed_ms": null,
+      "error": "ast_warming"
+    },
+    {
+      "tool": "pack_context",
+      "ok": true,
+      "wall_ms": 2855.1,
+      "elapsed_ms": 295.8,
+      "error": null,
+      "n_heatmap": 16,
+      "thin": false
+    },
+    {
+      "tool": "expand_context",
+      "ok": true,
+      "wall_ms": 57.5,
+      "elapsed_ms": 0.4,
+      "error": null,
+      "n_delta": 6,
+      "count": 6
+    },
+    {
+      "tool": "collect_hot_context",
+      "ok": true,
+      "wall_ms": 62.0,
+      "elapsed_ms": null,
+      "error": null,
+      "count": 2,
+      "n_bodies": 2
+    },
+    {
+      "tool": "expand",
+      "ok": false,
+      "wall_ms": 0,
+      "error": "no_handle",
+      "skipped": true
+    },
+    {
+      "tool": "gate",
+      "ok": true,
+      "wall_ms": 71.5,
+      "elapsed_ms": null,
+      "error": null
+    },
+    {
+      "tool": "status",
+      "ok": true,
+      "wall_ms": 431.4,
+      "elapsed_ms": null,
+      "error": null
+    }
+  ],
+  "pack_recovered": true,
+  "expand_rows": [
+    {
+      "tool": "map",
+      "ok": true,
+      "wall_ms": 1900.9,
+      "elapsed_ms": 1446.1,
+      "error": null
+    },
+    {
+      "tool": "pack_context",
+      "ok": false,
+      "wall_ms": 2299.5,
+      "elapsed_ms": null,
+      "error": "ast_warming"
+    },
+    {
+      "tool": "pack_context",
+      "ok": false,
+      "wall_ms": 135.7,
+      "elapsed_ms": null,
+      "error": "ast_warming"
+    },
+    {
+      "tool": "pack_context",
+      "ok": true,
+      "wall_ms": 2080.0,
+      "elapsed_ms": 187.3,
+      "error": null
+    },
+    {
+      "tool": "collect_hot_context",
+      "ok": true,
+      "wall_ms": 43.0,
+      "elapsed_ms": null,
+      "error": null
+    }
+  ]
+}

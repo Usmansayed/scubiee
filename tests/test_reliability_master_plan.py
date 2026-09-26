@@ -44,6 +44,48 @@ def test_server_entry_build_matches_installed(tmp_path: Path, monkeypatch) -> No
     assert build.startswith("0.3.73-")
 
 
+def test_stale_sync_note_separates_search_from_freshness() -> None:
+    from pipeline.sync_status import derive_agent_ready, derive_agent_ready_note, derive_locate_state
+
+    loc = derive_locate_state(
+        healthy=True,
+        soft_search_ready=True,
+        warm_state="ready",
+        project_bound=True,
+        sync_state="syncing",
+        syncing=True,
+    )
+    assert loc["state"] == "ready"
+    assert loc["stale"] is True
+    assert (
+        derive_agent_ready(
+            healthy=True,
+            soft_search_ready=True,
+            sync_state="syncing",
+            ready=True,
+            syncing=True,
+            overlay_ready=False,
+            locate=loc,
+            embedder_loaded=True,
+            ast_hydrated=True,
+        )
+        == "stale"
+    )
+    note = derive_agent_ready_note(
+        agent_ready="stale",
+        sync_state="syncing",
+        syncing=True,
+        overlay_ready=False,
+        publish_pending=False,
+        ready=True,
+        locate=loc,
+        embedder_loaded=True,
+        ast_hydrated=True,
+    )
+    assert "search_usable=true" in note
+    assert "index_fresh=false" in note
+
+
 def test_derive_agent_ready_soft_yes_without_embedder() -> None:
     from pipeline.sync_status import derive_agent_ready, derive_agent_ready_note, derive_locate_state
 
@@ -104,10 +146,10 @@ def test_derive_agent_ready_soft_yes_without_embedder() -> None:
             embedder_loaded=True,
             ast_hydrated=False,
         )
-        == "warming"
+        == "yes"
     )
     cold_note = derive_agent_ready_note(
-        agent_ready="warming",
+        agent_ready="yes",
         sync_state="ready",
         syncing=False,
         overlay_ready=False,
@@ -117,8 +159,8 @@ def test_derive_agent_ready_soft_yes_without_embedder() -> None:
         embedder_loaded=True,
         ast_hydrated=False,
     )
-    assert "pack_context" in cold_note
-    assert "reflect current repo state" not in cold_note
+    assert "ready" in cold_note.lower()
+    assert "wait until the AST" not in cold_note
 
 
 def test_write_json_retries_permission_error(tmp_path: Path, monkeypatch) -> None:
@@ -172,16 +214,72 @@ def test_keeper_tick_skips_when_clients_active(tmp_path: Path, monkeypatch) -> N
     assert out.get("clients_active") is True
 
 
-def test_poll_repo_changes_skips_during_locate_streak(tmp_path: Path, monkeypatch) -> None:
+def test_poll_probes_indexed_files_while_clients_are_connected(
+    tmp_path: Path, monkeypatch
+) -> None:
     from conftest import enroll_test_repo
+    from pipeline.root_probe import RootProbeResult
+    from pipeline.sync_loop import BackgroundSyncLoop
+
+    home = tmp_path / "ce-home"
+    monkeypatch.setenv("CTX_HOME", str(home))
+    monkeypatch.setenv("CTX_KEEPER_DEFER_WHILE_CLIENTS", "1")
+    enroll_test_repo(tmp_path, home=home, project_id="ce_poll_clients_indexed0001")
+    loop = BackgroundSyncLoop(tmp_path, locate_streak_ms=60_000)
+    monkeypatch.setattr(loop, "_locate_streak_active", lambda now=None: False)
+    monkeypatch.setattr(loop, "_clients_active", lambda: True)
+    seen: dict[str, object] = {}
+
+    def _probe(repo, **kwargs):
+        seen["discover_newcomers"] = kwargs.get("discover_newcomers")
+        return RootProbeResult(
+            clean=True,
+            root="",
+            stored_root="",
+            ms=1.0,
+            added=[],
+            modified=[],
+            removed=[],
+            files_checked=0,
+            hashed=0,
+        )
+
+    monkeypatch.setattr("pipeline.root_probe.root_probe", _probe)
+    assert loop.poll_repo_changes() == []
+    assert seen["discover_newcomers"] is False
+
+
+def test_poll_marks_indexed_edits_during_locate_streak(tmp_path: Path, monkeypatch) -> None:
+    from conftest import enroll_test_repo
+    from pipeline.root_probe import RootProbeResult
     from pipeline.sync_loop import BackgroundSyncLoop
 
     home = tmp_path / "ce-home"
     monkeypatch.setenv("CTX_HOME", str(home))
     enroll_test_repo(tmp_path, home=home, project_id="ce_locate_streak_poll001")
-    loop = BackgroundSyncLoop(tmp_path, locate_streak_ms=60_000)
+    loop = BackgroundSyncLoop(tmp_path, locate_streak_ms=60_000, debounce_ms=1000)
     loop.note_locate()
-    assert loop.poll_repo_changes() == []
+    assert loop._locate_streak_active() is True
+
+    def _probe(repo, **kwargs):
+        return RootProbeResult(
+            clean=False,
+            root="abc",
+            stored_root="old",
+            ms=1.0,
+            added=[],
+            modified=["packages/pipeline/a.py"],
+            removed=[],
+            files_checked=1,
+            hashed=1,
+        )
+
+    monkeypatch.setattr("pipeline.root_probe.root_probe", _probe)
+    now = 100.0
+    assert loop.poll_repo_changes(now=now) == ["packages/pipeline/a.py"]
+    assert loop._locate_streak_active(now=now) is False
+    assert loop.dirty_ledger.due_paths(now=now + 0.5) == []
+    assert loop.dirty_ledger.due_paths(now=now + 1.0) == ["packages/pipeline/a.py"]
 
 
 def test_pack_sla_fields_present() -> None:

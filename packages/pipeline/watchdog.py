@@ -362,6 +362,24 @@ def watchdog_loop(*, stop_after: float | None = None) -> None:
                 except Exception:  # noqa: BLE001
                     hung = False
                 if hung:
+                    # A first open (0 chunks, still warming/indexing) is not a
+                    # wedged embedder. Restarting it every prewarm window is
+                    # why the keeper never starts.
+                    opening = False
+                    try:
+                        from pipeline.client import EngineClient
+                        from pipeline.daemon import engine_url
+
+                        health = EngineClient(engine_url(), timeout=2.0).get("/health")
+                        warm = str((health or {}).get("warm_state") or "").strip().lower()
+                        chunks = int((health or {}).get("chunks") or 0)
+                        opening = warm in {"warming", "indexing"} and chunks <= 0
+                    except Exception:  # noqa: BLE001
+                        opening = False
+                    if opening:
+                        _log("open in progress — not restarting for prewarm age")
+                        hung = False
+                if hung:
                     # A 200 from /health does not prove the engine is making
                     # progress — ORT/DML init can keep answering health while
                     # warm_phase is genuinely wedged (see warm_autoload.py).
@@ -478,10 +496,9 @@ def watchdog_loop(*, stop_after: float | None = None) -> None:
                 hung_prewarm = bool(hung_prewarm_should_abort())
             except Exception:  # noqa: BLE001
                 hung_prewarm = False
-            if (
-                pid_alive
-                and not hung_prewarm
-                and (_engine_busy_indexing() or _engine_busy_embed_prewarm())
+            if pid_alive and (
+                _engine_busy_indexing()
+                or (not hung_prewarm and _engine_busy_embed_prewarm())
             ):
                 _log(
                     f"skip restart indexing/prewarm alive_src={alive_src} "

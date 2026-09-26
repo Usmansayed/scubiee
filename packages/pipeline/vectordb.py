@@ -65,18 +65,28 @@ def _safe_name(name: str) -> str:
 
 
 def _read_faiss_index(path: Path):
-    """Load FAISS with mmap when available; fall back to full RAM read."""
+    """Load FAISS with mmap when available; fall back to full RAM read.
+
+    The returned index may be a view. ``FaissCollection`` must copy it into
+    owned storage before ``add`` or ``remove_ids`` — resizing a viewed
+    ``MaybeOwnedVector`` aborts the process.
+    """
+    index, _viewed = _open_faiss_index(path)
+    return index
+
+
+def _open_faiss_index(path: Path) -> tuple[faiss.Index, bool]:
+    """Return ``(index, viewed)``. ``viewed`` is true for an mmap load."""
     path = Path(path)
-    # Prefer IFC mmap (FlatCodes / HNSW-friendly); then classic MMAP; then RAM.
     for attr in ("IO_FLAG_MMAP_IFC", "IO_FLAG_MMAP"):
         flag = getattr(faiss, attr, None)
         if flag is None:
             continue
         try:
-            return faiss.read_index(str(path), int(flag))
+            return faiss.read_index(str(path), int(flag)), True
         except Exception:  # noqa: BLE001
             continue
-    return faiss.read_index(str(path))
+    return faiss.read_index(str(path)), False
 
 
 @dataclass
@@ -112,6 +122,7 @@ class FaissCollection:
             dim=meta.dim, bits=meta.bits, seed=meta.seed
         )
         self.index = self._new_index()
+        self._index_viewed = False
         self.ids: list[int] = []
         self.payloads: dict[int, dict[str, Any]] = {}
 
@@ -135,19 +146,43 @@ class FaissCollection:
     def live_count(self) -> int:
         return len(self.ids) - self.dead_count
 
+    def _own_index_storage(self) -> None:
+        """Copy an mmap index into RAM before add/remove.
+
+        ``faiss.clone_index`` on an IFC mmap index hits the same
+        ``MaybeOwnedVector::resize`` abort as ``add_with_ids``. A plain
+        ``read_index`` owns its codes.
+
+        Holds ``_lock``: swapping ``self.index`` under a concurrent ``search``
+        is the same undefined behaviour as mutating one (Faiss allows
+        concurrent *searches* only).
+        """
+        with self._lock:
+            if not getattr(self, "_index_viewed", False):
+                return
+            index_path = self.path / "faiss.index"
+            if index_path.is_file():
+                self.index = faiss.read_index(str(index_path))
+            else:
+                self._rebuild_faiss_from_compressed()
+                return
+            self._index_viewed = False
+
     def _rebuild_faiss_from_compressed(self) -> None:
-        self.index = self._new_index()
-        dead = set(self.meta.dead_ids)
-        live_rows = [row for row, vector_id in enumerate(self.ids) if vector_id not in dead]
-        if not live_rows:
-            return
-        all_vectors = self.compressed.to_float32()
-        if all_vectors.shape[0] != len(self.ids):
-            raise RuntimeError("compressed rows != ids")
-        mat = all_vectors[live_rows].copy()
-        live_ids = [self.ids[row] for row in live_rows]
-        faiss.normalize_L2(mat)
-        self.index.add_with_ids(mat, np.asarray(live_ids, dtype=np.int64))
+        with self._lock:
+            self.index = self._new_index()
+            self._index_viewed = False
+            dead = set(self.meta.dead_ids)
+            live_rows = [row for row, vector_id in enumerate(self.ids) if vector_id not in dead]
+            if not live_rows:
+                return
+            all_vectors = self.compressed.to_float32()
+            if all_vectors.shape[0] != len(self.ids):
+                raise RuntimeError("compressed rows != ids")
+            mat = all_vectors[live_rows].copy()
+            live_ids = [self.ids[row] for row in live_rows]
+            faiss.normalize_L2(mat)
+            self.index.add_with_ids(mat, np.asarray(live_ids, dtype=np.int64))
 
     def add(
         self,
@@ -155,41 +190,50 @@ class FaissCollection:
         ids: list[int] | np.ndarray,
         payloads: list[dict[str, Any]] | None = None,
     ) -> int:
-        vectors = np.asarray(vectors, dtype=np.float32)
-        if vectors.ndim == 1:
-            vectors = vectors.reshape(1, -1)
-        id_list = [int(i) for i in ids]
-        if vectors.shape[0] != len(id_list):
-            raise ValueError(
-                f"vectors/ids length mismatch: vectors={vectors.shape[0]} ids={len(id_list)}"
-            )
-        if vectors.shape[1] != self.meta.dim:
-            raise ValueError(f"dim mismatch: got {vectors.shape[1]} expected {self.meta.dim}")
-        if payloads is not None and len(payloads) != len(id_list):
-            raise ValueError("payloads/ids length mismatch")
+        # Faiss: concurrent searches are safe, mutation is not. ``search`` holds
+        # the same RLock, so an agent save can never run add_with_ids while a
+        # map/search reads the index (that race aborted the process).
+        with self._lock:
+            vectors = np.asarray(vectors, dtype=np.float32)
+            if vectors.ndim == 1:
+                vectors = vectors.reshape(1, -1)
+            id_list = [int(i) for i in ids]
+            if vectors.shape[0] != len(id_list):
+                raise ValueError(
+                    f"vectors/ids length mismatch: vectors={vectors.shape[0]} ids={len(id_list)}"
+                )
+            if vectors.shape[1] != self.meta.dim:
+                raise ValueError(f"dim mismatch: got {vectors.shape[1]} expected {self.meta.dim}")
+            if payloads is not None and len(payloads) != len(id_list):
+                raise ValueError("payloads/ids length mismatch")
 
-        # Remove existing ids first (upsert semantics)
-        existing = [i for i in id_list if i in self.ids]
-        if existing:
-            self.delete(existing)
-            self.compact()
+            self._own_index_storage()
+            # Remove existing ids first (upsert semantics)
+            existing = [i for i in id_list if i in self.ids]
+            if existing:
+                self.delete(existing)
+                self.compact()
 
-        self.compressed.add(vectors)
-        self.ids.extend(id_list)
-        if payloads:
-            for i, p in zip(id_list, payloads, strict=True):
-                self.payloads[i] = dict(p)
-        else:
-            for i in id_list:
-                self.payloads.setdefault(i, {})
+            self.compressed.add(vectors)
+            self.ids.extend(id_list)
+            if payloads:
+                for i, p in zip(id_list, payloads, strict=True):
+                    self.payloads[i] = dict(p)
+            else:
+                for i in id_list:
+                    self.payloads.setdefault(i, {})
 
-        start = len(self.ids) - len(id_list)
-        mat = self.compressed.to_float32()[start:].copy()
-        faiss.normalize_L2(mat)
-        self.index.add_with_ids(mat, np.asarray(id_list, dtype=np.int64))
-        self.meta.ntotal = int(self.index.ntotal)
-        self.meta.updated_at = time.time()
-        return len(id_list)
+            start = len(self.ids) - len(id_list)
+            rows_of = getattr(self.compressed, "rows_float32", None)
+            if callable(rows_of):
+                mat = np.array(rows_of(start), dtype=np.float32, copy=True)
+            else:
+                mat = self.compressed.to_float32()[start:].copy()
+            faiss.normalize_L2(mat)
+            self.index.add_with_ids(mat, np.asarray(id_list, dtype=np.int64))
+            self.meta.ntotal = int(self.index.ntotal)
+            self.meta.updated_at = time.time()
+            return len(id_list)
 
     def replace_all(
         self,
@@ -197,72 +241,76 @@ class FaissCollection:
         ids: list[int],
         payloads: list[dict[str, Any]] | None = None,
     ) -> int:
-        self.compressed = CompressedEmbeddingStore(
-            dim=self.meta.dim, bits=self.meta.bits, seed=self.meta.seed
-        )
-        self.ids = []
-        self.payloads = {}
-        self.index = self._new_index()
-        self.meta.dead_ids = []
-        if len(ids) == 0:
-            self.meta.ntotal = 0
-            self.meta.updated_at = time.time()
-            return 0
-        return self.add(vectors, ids, payloads)
+        with self._lock:
+            self.compressed = CompressedEmbeddingStore(
+                dim=self.meta.dim, bits=self.meta.bits, seed=self.meta.seed
+            )
+            self.ids = []
+            self.payloads = {}
+            self.index = self._new_index()
+            self.meta.dead_ids = []
+            if len(ids) == 0:
+                self.meta.ntotal = 0
+                self.meta.updated_at = time.time()
+                return 0
+            return self.add(vectors, ids, payloads)
 
     def delete(self, ids: list[int]) -> int:
         """Logically delete vectors without assuming FAISS releases OS memory."""
-        drop = set(int(i) for i in ids)
-        if not drop:
-            return 0
-        already_dead = set(self.meta.dead_ids)
-        removed = sorted(drop.intersection(self.ids) - already_dead)
-        if not removed:
-            return 0
-        for vector_id in removed:
-            self.payloads.pop(vector_id, None)
-        self.meta.dead_ids = sorted(already_dead.union(removed))
-        try:
-            self.index.remove_ids(np.asarray(removed, dtype=np.int64))
-        except (RecursionError, RuntimeError, AttributeError):
-            # Some FAISS wheels recurse on IndexIDMap2.remove_ids. Keep logical
-            # deletes in dead_ids; compact() rebuilds live rows later.
-            pass
-        self.meta.ntotal = max(0, len(self.ids) - len(self.meta.dead_ids))
-        self.meta.updated_at = time.time()
-        return len(removed)
+        with self._lock:
+            drop = set(int(i) for i in ids)
+            if not drop:
+                return 0
+            already_dead = set(self.meta.dead_ids)
+            removed = sorted(drop.intersection(self.ids) - already_dead)
+            if not removed:
+                return 0
+            self._own_index_storage()
+            for vector_id in removed:
+                self.payloads.pop(vector_id, None)
+            self.meta.dead_ids = sorted(already_dead.union(removed))
+            try:
+                self.index.remove_ids(np.asarray(removed, dtype=np.int64))
+            except (RecursionError, RuntimeError, AttributeError):
+                # Some FAISS wheels recurse on IndexIDMap2.remove_ids. Keep logical
+                # deletes in dead_ids; compact() rebuilds live rows later.
+                pass
+            self.meta.ntotal = max(0, len(self.ids) - len(self.meta.dead_ids))
+            self.meta.updated_at = time.time()
+            return len(removed)
 
     def compact(self) -> int:
         """Rebuild all vector artifacts from live rows, preserving vector IDs."""
-        dead = set(self.meta.dead_ids)
-        if not dead:
-            self._rebuild_faiss_from_compressed()
-            self.meta.ntotal = int(self.index.ntotal)
-            self.meta.updated_at = time.time()
-            return 0
-        keep_idx = [row for row, vector_id in enumerate(self.ids) if vector_id not in dead]
-        old_dead_count = len(dead)
-        if keep_idx:
-            mat = self.compressed.to_float32()[keep_idx].copy()
-            new_ids = [self.ids[row] for row in keep_idx]
-            new_payloads = [self.payloads.get(vector_id, {}) for vector_id in new_ids]
-        else:
-            mat = np.zeros((0, self.meta.dim), dtype=np.float32)
-            new_ids = []
-            new_payloads = []
-        self.compressed = CompressedEmbeddingStore(
-            dim=self.meta.dim, bits=self.meta.bits, seed=self.meta.seed
-        )
-        self.ids = []
-        self.payloads = {}
-        self.index = self._new_index()
-        self.meta.dead_ids = []
-        if new_ids:
-            self.add(mat, new_ids, new_payloads)
-        else:
-            self.meta.ntotal = 0
-            self.meta.updated_at = time.time()
-        return old_dead_count
+        with self._lock:
+            dead = set(self.meta.dead_ids)
+            if not dead:
+                self._rebuild_faiss_from_compressed()
+                self.meta.ntotal = int(self.index.ntotal)
+                self.meta.updated_at = time.time()
+                return 0
+            keep_idx = [row for row, vector_id in enumerate(self.ids) if vector_id not in dead]
+            old_dead_count = len(dead)
+            if keep_idx:
+                mat = self.compressed.to_float32()[keep_idx].copy()
+                new_ids = [self.ids[row] for row in keep_idx]
+                new_payloads = [self.payloads.get(vector_id, {}) for vector_id in new_ids]
+            else:
+                mat = np.zeros((0, self.meta.dim), dtype=np.float32)
+                new_ids = []
+                new_payloads = []
+            self.compressed = CompressedEmbeddingStore(
+                dim=self.meta.dim, bits=self.meta.bits, seed=self.meta.seed
+            )
+            self.ids = []
+            self.payloads = {}
+            self.index = self._new_index()
+            self.meta.dead_ids = []
+            if new_ids:
+                self.add(mat, new_ids, new_payloads)
+            else:
+                self.meta.ntotal = 0
+                self.meta.updated_at = time.time()
+            return old_dead_count
 
     def search(
         self, query: np.ndarray, top_k: int = 10
@@ -342,7 +390,7 @@ class FaissCollection:
                 col.payloads[int(row["id"])] = dict(row.get("payload") or {})
         index_path = path / "faiss.index"
         if index_path.exists() and col.ids:
-            col.index = _read_faiss_index(index_path)
+            col.index, col._index_viewed = _open_faiss_index(index_path)
             # Integrity: the serialized index contains live rows only.
             if int(col.index.ntotal) != col.live_count:
                 col._rebuild_faiss_from_compressed()

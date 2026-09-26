@@ -196,12 +196,62 @@ def invalidate_paths(repo: Path | str, paths: list[str]) -> dict[str, Any]:
         str(path).replace("\\", "/").lstrip("./") for path in paths if str(path)
     }
     removed_total = 0
+    rewritten = 0
     session_targets: list[str | None] = [None, *list_session_ids(repo_p)]
     for sid in session_targets:
+        if _store_file_cannot_mention(_store_path(repo_p, sid), normalized):
+            # Lock-free pre-filter: taking the msvcrt lock + mkdirs for each of
+            # ~130 stores cost ~2s by itself. A store whose raw text never names
+            # the path cannot hold a span for it.
+            continue
         store = load_store(repo_p, session_id=sid)
+        if not _store_mentions_paths(store, normalized):
+            # Rewriting every session store on every save cost ~3.5s at 129
+            # sessions and sat in front of the publish, so a saved file stayed
+            # invisible to map for that long. Only touch stores that cache it.
+            continue
         removed_total += _invalidate_store_paths(store, normalized)
         save_store(repo_p, store, session_id=sid)
-    return {"ok": True, "paths": sorted(normalized), "removed": removed_total}
+        rewritten += 1
+    return {
+        "ok": True,
+        "paths": sorted(normalized),
+        "removed": removed_total,
+        "stores_scanned": len(session_targets),
+        "stores_rewritten": rewritten,
+    }
+
+
+def _store_file_cannot_mention(path: Path, normalized: set[str]) -> bool:
+    """Cheap, unlocked check: True only when the store provably has no span for these paths.
+
+    Conservative: any read problem returns False so the locked path still runs.
+    JSON escapes ``\\`` as ``\\\\``, so both spellings of each path are checked.
+    """
+    if not path.is_file():
+        return True
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    for rel in normalized:
+        if not rel:
+            continue
+        variants = {rel, rel.replace("/", "\\\\"), rel.replace("/", "\\")}
+        if any(v in raw for v in variants):
+            return False
+    return True
+
+
+def _store_mentions_paths(store: dict[str, Any], normalized: set[str]) -> bool:
+    """True when invalidating ``normalized`` would change this store."""
+    for span in (store.get("spans") or {}).values():
+        if str((span or {}).get("path") or "").replace("\\", "/") in normalized:
+            return True
+    for key in (store.get("focus_seen") or {}):
+        if str(key).split(":", 1)[-1].replace("\\", "/") in normalized:
+            return True
+    return False
 
 
 def content_hash(text: str) -> str:
@@ -470,7 +520,7 @@ def expand(
     sp["last_served_ts"] = time.time()
     save_store(repo_p, store, session_id=sid)
 
-    max_chars = max(200, min(int(max_chars or 50000), 500_000))
+    max_chars = min(max(1, int(max_chars or 50000)), 500_000)
     body = text if len(text) <= max_chars else text[: max_chars - 1] + "…"
     from pipeline.capability import truncation_meta
 

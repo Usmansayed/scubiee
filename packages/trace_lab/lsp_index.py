@@ -59,8 +59,8 @@ def build_lsp_index(
         for e in edges:
             if e.relation in {"calls", "uses", "imports", "contains"}:
                 idx.used_by.setdefault(nid, []).append(e.source)
-            if e.relation == "called_by":
-                idx.refs.setdefault(nid, []).append(e.source)
+            # called_by on an incoming edge is callee → caller. Recording
+            # e.source here stores the callee as a ref of the caller.
         # called_by lives on the callee's out list; also scrape out
     for nid, edges in graph.out.items():
         for e in edges:

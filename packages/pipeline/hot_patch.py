@@ -46,16 +46,20 @@ def hot_patch_texts(
         return texts, []
     patched: list[str] = list(texts)
     touched: list[int] = []
-    for c in chunks:
+    # ``texts`` is chunk-*position* space (``[c.text for c in chunks]``), the
+    # same space BM25/dense/graph use. ``c.id`` is the durable vector id and
+    # drifts from position after any incremental upsert, so indexing by id
+    # patched whatever chunk happened to sit at that offset.
+    for position, c in enumerate(chunks):
         f = c.file.replace("\\", "/")
         if f not in dirty:
             continue
         live = read_lines(root / f, c.start_line, c.end_line)
         if not live:
             continue
-        if 0 <= c.id < len(patched):
-            patched[c.id] = live
-            touched.append(c.id)
+        if 0 <= position < len(patched):
+            patched[position] = live
+            touched.append(position)
     return patched, touched
 
 

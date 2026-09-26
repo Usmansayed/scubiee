@@ -182,3 +182,28 @@ def test_locate_streak_holds_publish_then_promotes(monkeypatch, tmp_path: Path):
 
     assert len(published) == 1
     assert loop.status()["publish_pending"] is False
+
+
+def test_junk_newcomer_is_not_reported_forever(tmp_path: Path, monkeypatch):
+    """A path the Merkle refuses to store must not be reported as "added".
+
+    ``.zed/SCUBIEE_MCP_PERMISSIONS.md`` was admitted by the newcomer scan but
+    dropped by ``sanitize_file_hashes``, so the probe never went clean and the
+    keeper re-synced it every poll (~7s each), stalling saves queued behind it.
+    """
+    from pipeline import merkle, root_probe as rp
+
+    store = _seed_store(tmp_path, {"pkg/a.py": "x=1\n"})
+    junk = ".zed/SCUBIEE_MCP_PERMISSIONS.md"
+    (tmp_path / ".zed").mkdir()
+    (tmp_path / junk).write_text("perm\n", encoding="utf-8")
+    assert merkle.is_junk_rel(junk), "precondition: the Merkle filter drops this path"
+
+    monkeypatch.setattr(
+        rp, "collect_index_relpaths", lambda *_a, **_k: ["pkg/a.py", junk]
+    )
+    r = root_probe(tmp_path, base_dir=store.base, discover_newcomers=True)
+
+    reported = [p.replace("\\", "/").lower() for p in r.added]
+    assert junk.lower() not in reported
+    assert r.clean, f"junk-only difference must leave the probe clean: {r.added}"

@@ -652,3 +652,13 @@ def test_missing_root_and_bad_project_id_stay_unmanaged(
     with mcp_locate._bind_request_repo(project_id="ce_does_not_exist"):
         assert mcp_locate._is_repo_managed() is False
         assert mcp_locate._default_repo() != engine.resolve()
+
+
+def test_create_mcp_silences_httpx_info_logs() -> None:
+    import logging
+
+    logging.getLogger("httpx").setLevel(logging.INFO)
+    logging.getLogger("httpcore").setLevel(logging.INFO)
+    mcp_locate.create_mcp(name="quiet-http")
+    assert logging.getLogger("httpx").level >= logging.WARNING
+    assert logging.getLogger("httpcore").level >= logging.WARNING

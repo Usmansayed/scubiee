@@ -113,7 +113,11 @@ def resolve_index_memory_budget(
     *,
     background: bool = False,
     store: PipelineStore | None = None,
+    touch_files: int | None = None,
 ) -> IndexMemoryBudget:
+    # A small named edit stays on the light budget even when the corpus is large.
+    if touch_files is not None and 0 < touch_files <= 300:
+        return background_budget()
     if store is not None and not is_bootstrap_index(store):
         if indexed_chunk_count(store) > LARGE_REINDEX_CHUNK_THRESHOLD:
             return large_reindex_budget()

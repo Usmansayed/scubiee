@@ -136,10 +136,12 @@ def test_locate_streak_defers_live_sync(
     loop = BackgroundSyncLoop(tmp_path, locate_streak_ms=60_000)
     now = 100.0
     loop.note_locate(now=now)
-    deferred = loop._defer_for_active_session(["a.py"], now=now + 1.0, estimated_total=1)
-    assert deferred is not None
-    assert deferred["reason"] == "locate_streak"
-    assert deferred["strategy"] == "deferred_active_session"
+    # Sizing is in drain_due. A busy session does not drop the dirty set.
+    assert loop._defer_for_active_session(["a.py"], now=now + 1.0, estimated_total=1) is None
+    assert (
+        loop._defer_for_active_session(["a.py"] * 400, now=now + 1.0, estimated_total=400)
+        is None
+    )
 
 
 def test_watchdog_honors_engine_start_request(

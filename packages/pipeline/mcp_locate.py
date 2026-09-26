@@ -89,6 +89,39 @@ def _phase_experiment() -> str:
     return "ship"
 
 
+def _bound_k(k: int, *, hi: int) -> int:
+    """Honor an explicit k. 0 is not the default. Values below 1 are rejected."""
+    try:
+        n = int(k)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("k must be an integer >= 1") from exc
+    if n < 1:
+        raise ValueError("k must be >= 1")
+    return min(n, hi)
+
+
+def _legacy_card_limit(k: int, *, hi: int = 48, default: int = 16) -> int:
+    """Internal heatmap helper. Honor k>=1. Missing or 0 keeps the helper default."""
+    try:
+        n = int(k) if k else default
+    except (TypeError, ValueError):
+        n = default
+    if n < 1:
+        n = default
+    return min(n, hi)
+
+
+def _bound_budget(value: int, *, default: int, hi: int = 50_000) -> int:
+    """0 or omitted uses default. Any positive budget is kept, down to 1 character."""
+    try:
+        n = int(value or 0)
+    except (TypeError, ValueError):
+        n = 0
+    if n < 1:
+        n = default
+    return min(n, hi)
+
+
 def _resolve_pack_bodies(include_bodies_flag: int | bool | None) -> bool:
     """Resolve MCP pack-body opt-in (flag OR CTX_MCP_PACK_BODIES). Default off = heatmap-only."""
     try:
@@ -162,7 +195,7 @@ def _lean_pack_fallback_heatmap(
     try:
         from pipeline.map_result_cache import get_recent_map_cards
 
-        cards = get_recent_map_cards(repo=str(repo), limit=max(4, min(int(k or 16), 48)))
+        cards = get_recent_map_cards(repo=str(repo), limit=_legacy_card_limit(k))
     except Exception:  # noqa: BLE001
         cards = []
     if not cards:
@@ -277,7 +310,7 @@ def _lean_pack_fallback_heatmap(
         hits_raw: list[dict[str, Any]] = []
         try:
             if search_fn is not None:
-                hits_raw = list(search_fn(query, max(4, min(int(k or 16), 48))) or [])
+                hits_raw = list(search_fn(query, _legacy_card_limit(k)) or [])
             else:
                 from pipeline.client import EngineClient
                 from pipeline.mcp_lifecycle import soft_ready_cached
@@ -290,7 +323,7 @@ def _lean_pack_fallback_heatmap(
                         timeout=3.0,
                     ).search(
                         query,
-                        top_k=max(4, min(int(k or 16), 48)),
+                        top_k=_legacy_card_limit(k),
                         path=str(repo),
                     )
                     if isinstance(res, dict) and res.get("ok") is not False:
@@ -322,7 +355,7 @@ def _lean_pack_fallback_heatmap(
                 }
             )
 
-    return heatmap[: max(4, min(int(k or 16), 48))], primary, engine_tag
+    return heatmap[: _legacy_card_limit(k)], primary, engine_tag
 
 
 # Default shipped locate tools (permissions + docs). Lab/classic add extras at register time.
@@ -1435,6 +1468,8 @@ _STATUS_SUMMARY_KEYS = (
     "warming",
     "agent_ready",
     "agent_ready_note",
+    "search_usable",
+    "index_fresh",
     "warm_ready",
     "warm_ready_map",
     "warm_phase",
@@ -1564,6 +1599,8 @@ def _collect_hot_from_card_locs(
     max_bodies: int = 8,
 ) -> dict[str, Any]:
     """Fill bodies from card loc spans via file read — no AST pickle load."""
+    from pipeline.context_trace import _fit_collect_text
+
     prefer = {str(x) for x in (prefer_ids or set()) if x}
     if only_ids:
         by_id = {str(c.get("id") or ""): c for c in cards if c.get("id")}
@@ -1629,16 +1666,14 @@ def _collect_hot_from_card_locs(
         text = "\n".join(lines[start - 1 : end])
         if not text:
             continue
+        share = None
         if cid in prefer and prefer_remaining > 0:
-            share = max(400, (max_chars - used) // prefer_remaining)
-            if len(text) > share:
-                text = text[: share - 1] + "…"
+            share = max(1, (max_chars - used) // max(1, prefer_remaining))
             prefer_remaining -= 1
-        if used + len(text) > max_chars:
-            remain = max_chars - used
-            if remain < 200:
-                break
-            text = text[: remain - 1] + "…"
+        fitted = _fit_collect_text(text, used=used, max_chars=max_chars, share=share)
+        if fitted is None:
+            break
+        text = fitted
         bodies.append(
             {
                 "id": cid or f"{file_s}::{start}",
@@ -3038,6 +3073,20 @@ def _expand_heatmap_ref(repo: Path, handle: str, max_chars: int) -> dict[str, An
     }
 
 
+def _quiet_mcp_http_logs() -> None:
+    """Keep engine HTTP chatter off the MCP stderr stream.
+
+    FastMCP sets the root logger to INFO. httpx then prints every
+    ``HTTP Request:`` line on stderr. Cursor shows each line as an MCP error
+    and closes the session while a tool such as ``status`` is still running.
+    """
+    import logging
+
+    for name in ("httpx", "httpcore", "httpcore.connection", "httpcore.http11"):
+        logging.getLogger(name).setLevel(logging.WARNING)
+    logging.getLogger("mcp.server.lowlevel.server").setLevel(logging.WARNING)
+
+
 def create_mcp(name: str = "scubiee") -> "FastMCP":
     if FastMCP is None:
         raise RuntimeError("pip install mcp")
@@ -3050,6 +3099,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         instructions=_server_instructions(surface),
         lifespan=mcp_lifespan_factory(repo),
     )
+    _quiet_mcp_http_logs()
     # FastMCP exposes no version parameter, so the low-level Server underneath it
     # falls back to the installed `mcp` package version and the IDE's MCP panel
     # advertises a scubiee release that does not exist.
@@ -3162,7 +3212,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                         next="Grep(literal) or search(full question)",
                     )
                 args.mode = "soft"
-                args.k = max(3, min(int(args.k), 12))
+                args.k = min(int(args.k), 12)
             include_mode = str(args.include or "hits").strip().lower()
             if args.fetch and include_mode == "hits":
                 include_mode = "span"
@@ -3974,7 +4024,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             return _managed_locate_err("expand", repo)
 
         sid = _resolve_session(session_id)
-        cap = max(200, min(int(max_chars), _FOCUS_CHAR_CEILING))
+        cap = max(1, min(int(max_chars), _FOCUS_CHAR_CEILING))
         live = _expand_heatmap_ref(repo, handle, cap)
         if live is not None:
             live["session_id"] = sid
@@ -5381,6 +5431,19 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                         )
                     except Exception:  # noqa: BLE001
                         pass
+                syncing_now = (
+                    bool(contract.get("syncing"))
+                    or bool(contract.get("overlay_ready"))
+                    or bool(contract.get("publish_pending"))
+                    or str(contract.get("sync_state") or "")
+                    in {"syncing", "overlay_ready", "catching_up"}
+                )
+                locate_ready_now = str(locate.get("state") or "") == "ready"
+                index_lagging = bool(locate.get("stale")) or syncing_now
+                payload["search_usable"] = bool(healthy and locate_ready_now)
+                payload["index_fresh"] = bool(
+                    healthy and locate_ready_now and not index_lagging
+                )
                 # Honest should_use from locate.state (managed alone is not enough).
                 signals = _managed_signal_fields(just_checked=True)
                 signals["should_use_mcp"] = bool(
@@ -5494,7 +5557,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 seed3_file=seed3_file,
                 seed3_symbol=seed3_symbol,
                 seed3_line=int(seed3_line or 0),
-                k=max(4, min(int(k or 24), 48)),
+                k=_bound_k(k, hi=48),
             )
             out["session_id"] = sid
             if out.get("ok"):
@@ -5540,8 +5603,9 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             Field(
                 description=(
                     "callees|callers|effects|config|broad|all (default all). "
-                    "Use callers when upward refs missing; effects for log/track/send; "
-                    "broad for structural 1-hop escape from a strict pack."
+                    "callers are incoming calls only. callees are direct calls only. "
+                    "effects are log/print plus direct calls that write files. "
+                    "config is consts, uses, and direct calls that touch settings or mcp.json."
                 )
             ),
         ] = "all",
@@ -5588,6 +5652,10 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                         + " (or leave unset)."
                     ),
                 )
+        try:
+            k = _bound_k(k, hi=24)
+        except ValueError as exc:
+            return _err("expand_context", str(exc))
         with _bind_request_repo(root=root, project_id=project_id, session_id=session_id):
             repo = _default_repo()
         if not _is_repo_managed():
@@ -5666,11 +5734,11 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 query=q,
                 direction=direction or "all",
                 intent=intent or "",
-                k=max(4, min(int(k or 12), 24)),
+                k=k,
                 prior_ids=prior_ids,  # type: ignore[arg-type]
                 pack_seen_ids=pack_seen_ids,  # type: ignore[arg-type]
                 with_bodies=bool(with_bodies),
-                budget_chars=max(400, int(budget_chars or 4000)),
+                budget_chars=_bound_budget(budget_chars, default=4000),
                 max_bodies=max(1, min(int(max_bodies or 3), 8)),
                 prior_packed_ids=prior_packed,
             )
@@ -5818,6 +5886,10 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     "seed_file required",
                     hint="Pass seed_file + seed_symbol (or seed_file + seed_line).",
                 )
+            try:
+                k = _bound_k(k, hi=48)
+            except ValueError as exc:
+                return _err(tool_name, str(exc))
             sid = _resolve_session(session_id)
             with _bind_request_repo(root=root, project_id=project_id, session_id=session_id):
                 repo = _default_repo()
@@ -5891,7 +5963,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     seed3_file=seed3_file,
                     seed3_symbol=seed3_symbol,
                     seed3_line=int(seed3_line or 0),
-                    k=max(4, min(int(k or 16), 48)),
+                    k=k,
                     hot_threshold=float(hot_threshold if hot_threshold is not None else 0.65),
                     budget_chars=budget if budget > 0 else None,
                     max_bodies=bodies_cap if bodies_cap > 0 else None,
@@ -5959,7 +6031,15 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
     )
 
     def collect_hot_context_impl(
-        threshold: Annotated[float, Field(description="Min score to include (default 0.82).")] = 0.82,
+        threshold: Annotated[
+            float | None,
+            Field(
+                description=(
+                    "Min score. Omit to use 0.45 on session cards after a lean pack. "
+                    "An explicit value is kept, including 0.82 and above."
+                )
+            ),
+        ] = None,
         max_chars: Annotated[int, Field(description="Total body budget.")] = 8000,
         ids: Annotated[
             str,
@@ -6001,10 +6081,11 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             # Explicit ids always win — never skip them (lean pack used to poison packed_ids).
             skip = prior_packed - only if only else prior_packed
             # Session collect after lean: use pack hot_threshold-ish floor, not 0.82 default.
-            thr = float(threshold or 0.82)
-            if not only and thr >= 0.82:
+            if threshold is None:
                 thr = 0.45
-            budget = max(500, min(int(max_chars or 8000), 50_000))
+            else:
+                thr = float(threshold)
+            budget = _bound_budget(max_chars, default=8000)
             # Prefer span-read when AST cold — never sync-load 50MB pickle here.
             if not ast_cache_ready(repo):
                 try:
@@ -6022,6 +6103,21 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     only_ids=only or None,
                     prefer_ids=only or None,
                 )
+                if not out.get("bodies") and skip and not only:
+                    out = {
+                        "ok": True,
+                        "tool": "collect_hot_context",
+                        "already_packed": True,
+                        "skipped_ids": sorted(skip),
+                        "bodies": [],
+                        "empty_bodies": True,
+                        "session_id": sid,
+                        "hint": (
+                            "Those cards were already collected in this session. "
+                            "Pass ids= to read them again."
+                        ),
+                    }
+                    return _format(out, response_format)
                 if not out.get("bodies"):
                     return _err(
                         "collect_hot_context",
@@ -6043,6 +6139,15 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     prefer_ids=only or None,
                 )
             out["session_id"] = sid
+            if not out.get("bodies") and skip and not only:
+                out["ok"] = True
+                out["already_packed"] = True
+                out["skipped_ids"] = sorted(skip)
+                out["empty_bodies"] = True
+                out["hint"] = (
+                    "Those cards were already collected in this session. "
+                    "Pass ids= to read them again."
+                )
             if out.get("ok") and out.get("bodies"):
                 packed = prior_packed | {str(b.get("id")) for b in out["bodies"] if b.get("id")}
                 persist_trace(
@@ -6191,6 +6296,7 @@ def main() -> None:
     os.environ.setdefault("CTX_ENGINE_TRANSITION_DEBOUNCE_S", "5")
     os.environ.setdefault("CTX_EMBED_IDLE_DEMOTE_S", "10")
     os.environ.setdefault("CTX_EMBED_PREWARM", "1")
+    _quiet_mcp_http_logs()
     # faiss on the main thread before FastMCP worker threads (#3182 Windows deadlock).
     try:
         import pipeline.vectordb  # noqa: F401
