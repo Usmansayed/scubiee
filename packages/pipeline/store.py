@@ -138,9 +138,21 @@ class PipelineStore:
 
         return load_mtimes(self.merkle_path)
 
-    def save_merkle(self, file_hashes: dict[str, str]) -> None:
+    def save_merkle(
+        self,
+        file_hashes: dict[str, str],
+        *,
+        reuse_mtimes: dict[str, float] | None = None,
+        restat: Any = None,
+    ) -> None:
         with store_write_lock(self.base):
-            save_snapshot(self.merkle_path, file_hashes, root=self.root)
+            save_snapshot(
+                self.merkle_path,
+                file_hashes,
+                root=self.root,
+                reuse_mtimes=reuse_mtimes,
+                restat=restat,
+            )
 
     def load_chunk_merkle(self) -> dict[str, dict[str, str]]:
         if not self.chunk_merkle_path.is_file():

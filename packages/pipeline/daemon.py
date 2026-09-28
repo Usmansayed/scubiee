@@ -632,7 +632,7 @@ def start_daemon(
             if os.name == "nt":
                 from pipeline.process_job import taskkill_silent
 
-                taskkill_silent(int(existing), tree=True)
+                taskkill_silent(int(existing), tree=True, reason="start_force_replace_unhealthy_lock")
             else:
                 os.kill(existing, 9)
         except Exception:  # noqa: BLE001
@@ -688,6 +688,132 @@ def start_daemon(
     env.setdefault("CTX_ENGINE_IDLE_S", os.environ.get("CTX_ENGINE_IDLE_S") or "120")
     env.setdefault("CTX_ENGINE_TRANSITION_DEBOUNCE_S", os.environ.get("CTX_ENGINE_TRANSITION_DEBOUNCE_S") or "5")
     env.setdefault("CTX_EMBED_PREWARM", os.environ.get("CTX_EMBED_PREWARM") or "1")
+    # OpenBLAS (numpy + faiss each bundle one) commits ~30MB per logical CPU at
+    # import: 2.4GB of the engine's ~3.5GB commit on 16 CPUs, never touched
+    # (RSS +40MB). The engine's BLAS work is a 7.6k x 768 mat-vec; one thread
+    # is plenty. Embedding runs on ORT/DirectML, not OpenBLAS (issue 3).
+    env.setdefault("OPENBLAS_NUM_THREADS", os.environ.get("CTX_ENGINE_BLAS_THREADS") or "1")
+    spawned_pid: int | None = None
+    if _engine_orphan_spawn_enabled():
+        orphan = _spawn_engine_orphan(cmd, env, cwd=repo_s)
+        if orphan.get("ok"):
+            spawned_pid = int(orphan["pid"])
+        else:
+            try:
+                with open(log_path(), "a", encoding="utf-8") as warn_f:
+                    warn_f.write(
+                        f"{time.strftime('%Y-%m-%d %H:%M:%S')} [daemon] WMI orphan spawn failed "
+                        f"({orphan.get('error') or orphan}); falling back to a child of pid "
+                        f"{os.getpid()} — it dies if this process tree is killed\n"
+                    )
+            except OSError:
+                pass
+    if spawned_pid is None:
+        spawned_pid = _spawn_engine_child(cmd, env)
+
+    meta = {
+        "pid": spawned_pid,
+        "url": f"http://{host}:{port}",
+        "repo": repo_s,
+        "started_at": time.time(),
+        "log": str(log_path()),
+        "ctx_home": env.get("CTX_HOME") or str(_home()),
+    }
+    return _after_spawn(meta, repo_s=repo_s, host=host, port=port, wait_s=wait_s)
+
+
+def _engine_orphan_spawn_enabled() -> bool:
+    """Windows: create the engine via WMI so it is nobody's child (issue 2).
+
+    A Popen child of an MCP bridge inherits the bridge's KILL_ON_JOB_CLOSE job
+    and sits in the host's process tree: reloading MCP in Cursor/Kiro killed the
+    engine with no log line and no crash event. ``CTX_ENGINE_ORPHAN_SPAWN=0``
+    restores the old Popen child.
+    """
+    if os.name != "nt":
+        return False
+    raw = (os.environ.get("CTX_ENGINE_ORPHAN_SPAWN") or "1").strip().lower()
+    return raw not in {"0", "false", "no", "off"}
+
+
+_ORPHAN_ENV_KEYS = frozenset(
+    {
+        "PATH",
+        "TOKENIZERS_PARALLELISM",
+        "OPENBLAS_NUM_THREADS",
+        "OMP_NUM_THREADS",
+        "MKL_NUM_THREADS",
+        "HF_HOME",
+        "HF_HUB_CACHE",
+        "HF_HUB_OFFLINE",
+        "TRANSFORMERS_OFFLINE",
+        "FASTEMBED_CACHE_PATH",
+        "SYSTEMROOT",
+        "TEMP",
+        "TMP",
+    }
+)
+_SECRETISH = ("TOKEN", "SECRET", "PASSWORD", "PASSWD", "CREDENTIAL", "API_KEY", "APIKEY", "PRIVATE")
+
+
+def _orphan_env(env: dict[str, str]) -> dict[str, str]:
+    """The part of the spawn env a WMI child would otherwise lose.
+
+    WMI starts the process with the user's default environment, not ours. Pass
+    Scubiee's own ``CTX_*`` config, Python flags and a small runtime allowlist;
+    never secret-looking variables (the boot file touches disk for ~1s).
+    """
+    out: dict[str, str] = {}
+    for key, value in env.items():
+        up = key.upper()
+        if up.startswith("CTX_"):
+            out[key] = value
+            continue
+        if not (up.startswith("PYTHON") or up.startswith("ORT_") or up in _ORPHAN_ENV_KEYS):
+            continue
+        if any(tok in up for tok in _SECRETISH):
+            continue
+        out[key] = value
+    return out
+
+
+def _spawn_engine_orphan(cmd: list[str], env: dict[str, str], *, cwd: str) -> dict[str, Any]:
+    """WMI-create ``python -m pipeline.engine_boot <boot.json> <engine args>``."""
+    import uuid
+
+    from pipeline.process_job import windows_wmi_create_process
+
+    home = _home()
+    boot = home / f"_boot_engine_{uuid.uuid4().hex[:10]}.json"
+    try:
+        boot.write_text(
+            json.dumps(
+                {
+                    "env": _orphan_env(env),
+                    "log": str(log_path()),
+                    "requested_by": f"{os.getpid()}:{os.environ.get('CTX_SCUBIEE_ROLE') or Path(sys.argv[0]).name}",
+                }
+            ),
+            encoding="utf-8",
+        )
+    except OSError as exc:
+        return {"ok": False, "error": f"boot_write:{exc}"}
+    # cmd = [py, -u, -m, pipeline, engine, run, ...] → keep py/-u, swap the module.
+    boot_cmd = [cmd[0], "-u", "-m", "pipeline.engine_boot", str(boot), *cmd[4:]]
+    created = windows_wmi_create_process(
+        subprocess.list2cmdline(boot_cmd),
+        cwd=cwd if Path(cwd).is_dir() else str(home),
+    )
+    if not created.get("ok"):
+        try:
+            boot.unlink(missing_ok=True)
+        except OSError:
+            pass
+    return created
+
+
+def _spawn_engine_child(cmd: list[str], env: dict[str, str]) -> int:
+    """Legacy path: the engine is a Popen child of this process (inherits its job)."""
     log_f = open(log_path(), "a", encoding="utf-8")  # noqa: SIM115
     log_f.write(f"\n--- start {time.strftime('%Y-%m-%d %H:%M:%S')} ---\n")
     log_f.flush()
@@ -699,14 +825,29 @@ def start_daemon(
         "stdin": subprocess.DEVNULL,
     }
     if os.name == "nt":
-        from pipeline.process_job import engine_popen_kwargs
+        from pipeline.process_job import CREATE_BREAKAWAY_FROM_JOB, engine_popen_kwargs
 
         kwargs.update(engine_popen_kwargs())
     elif sys.platform != "darwin":
         kwargs["start_new_session"] = True
 
+    proc = None
+    breakaway = (os.environ.get("CTX_ENGINE_BREAKAWAY") or "1").strip().lower() not in {"0", "false", "no", "off"}
+    if os.name == "nt" and breakaway:
+        # Leave this process's job (MCP bridge kill-job has BREAKAWAY_OK) so a
+        # bridge exit does not kill the engine; denied → plain child below.
+        try:
+            proc = subprocess.Popen(  # noqa: S603
+                cmd,
+                **{**kwargs, "creationflags": int(kwargs.get("creationflags") or 0) | CREATE_BREAKAWAY_FROM_JOB},
+            )
+        except OSError as exc:
+            log_f.write(f"[daemon] breakaway spawn denied ({exc}); engine stays in the caller's job\n")
+            log_f.flush()
+            proc = None
     try:
-        proc = subprocess.Popen(cmd, **kwargs)  # noqa: S603
+        if proc is None:
+            proc = subprocess.Popen(cmd, **kwargs)  # noqa: S603
     except PermissionError as exc:
         # WMI/pythonw parents often deny DETACHED+BREAKAWAY — soft retry.
         if os.name == "nt":
@@ -755,21 +896,25 @@ def start_daemon(
         log_f.close()
     except Exception:  # noqa: BLE001
         pass
+    return int(proc.pid)
 
-    meta = {
-        "pid": proc.pid,
-        "url": f"http://{host}:{port}",
-        "repo": repo_s,
-        "started_at": time.time(),
-        "log": str(log_path()),
-        "ctx_home": env.get("CTX_HOME") or str(_home()),
-    }
-    lock = acquire_lock(proc.pid, url=meta["url"], repo=repo_s)
+
+def _after_spawn(
+    meta: dict[str, Any],
+    *,
+    repo_s: str,
+    host: str,
+    port: int,
+    wait_s: float,
+) -> dict[str, Any]:
+    """Lock + meta files, start stamp, watchdog, optional health wait (both spawn paths)."""
+    spawned_pid = int(meta["pid"])
+    lock = acquire_lock(spawned_pid, url=meta["url"], repo=repo_s)
     if not lock.get("ok") and lock.get("already_running"):
         return lock
 
     meta_path().write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
-    pid_path().write_text(str(proc.pid), encoding="utf-8")
+    pid_path().write_text(str(spawned_pid), encoding="utf-8")
 
     # Stamp start immediately so idle sweeper does not kill a listen-first child
     # before /health is up (HTTP bind is ~3s; embedder/index lag much longer).
@@ -819,18 +964,29 @@ def start_daemon(
     }
 
 
-def stop_daemon(*, reason: str | None = None) -> dict[str, Any]:
+def stop_daemon(*, reason: str | None = None, audit: str | None = None) -> dict[str, Any]:
+    """Stop the engine. ``reason`` is the lifecycle transition; ``audit`` names the caller path."""
     from pipeline.lifecycle_runtime import (
         TRANSITION_REASON_USER,
         note_engine_transition,
     )
 
     stop_reason = str(reason or TRANSITION_REASON_USER)
+    why = f"{audit}:{stop_reason}" if audit else stop_reason
     host, port = default_host_port()
+    try:
+        from pipeline.engine_log import note_stop
+
+        note_stop("engine", _read_lock_pid(), reason=f"stop_daemon:{why}", method="http_shutdown+kill")
+    except Exception:  # noqa: BLE001
+        pass
     # Short timeout — shutdown is best-effort; pid/sweep handle hard stop.
     client = EngineClient(timeout=3.0)
     try:
-        client.post("/v1/shutdown", {})
+        client.post(
+            "/v1/shutdown",
+            {"reason": why, "caller_pid": os.getpid(), "caller": os.environ.get("CTX_SCUBIEE_ROLE") or sys.argv[0][-60:]},
+        )
     except Exception:  # noqa: BLE001
         pass
     # Kill by pid file and/or lock pid
@@ -849,7 +1005,7 @@ def stop_daemon(*, reason: str | None = None) -> dict[str, Any]:
     killed: list[int] = []
     skipped: list[dict[str, Any]] = []
     for pid in pids:
-        result = safe_terminate_pid(pid, grace_s=2.0, allow_child=True)
+        result = safe_terminate_pid(pid, grace_s=2.0, allow_child=True, reason=f"stop_daemon:{why}")
         if result.get("terminated"):
             killed.append(pid)
         elif result.get("skipped") == "not_context_engine":
@@ -921,7 +1077,7 @@ def force_restart_daemon(repo: Path | str | None = None, *, upgrade: bool = Fals
     if upgrade:
         stop_daemon_for_upgrade()
     else:
-        stop_daemon()
+        stop_daemon(audit="force_restart")
     from pipeline.process_control import kill_all_engine_daemons
 
     sweep = kill_all_engine_daemons(port=port, wait_s=5.0)
@@ -932,7 +1088,7 @@ def force_restart_daemon(repo: Path | str | None = None, *, upgrade: bool = Fals
             if os.name == "nt":
                 from pipeline.process_job import taskkill_silent
 
-                taskkill_silent(int(existing), tree=True)
+                taskkill_silent(int(existing), tree=True, reason="force_restart_hung_lock")
             else:
                 os.kill(existing, 9)
         except Exception:  # noqa: BLE001

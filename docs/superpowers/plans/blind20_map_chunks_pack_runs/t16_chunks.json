@@ -1,0 +1,32 @@
+[
+  {
+    "file": "packages/conductor/graphify_retriever.py",
+    "symbol": "GraphifyChunkRetriever",
+    "kind": "class",
+    "loc": "packages/conductor/graphify_retriever.py:89-270",
+    "start_line": 89,
+    "end_line": 270,
+    "score": 7.0,
+    "excerpt": "class GraphifyChunkRetriever:\n    def __init__(self, G: nx.Graph, spans: list[ChunkSpan], *, depth: int = 2):\n        self.G = G\n        self.spans = spans\n        self.depth = dep"
+  },
+  {
+    "file": "packages/conductor/conductor.py",
+    "symbol": "Conductor.retrieve_graphify",
+    "kind": "method",
+    "loc": "packages/conductor/conductor.py:65-70",
+    "start_line": 65,
+    "end_line": 70,
+    "score": 7.35,
+    "excerpt": "    def retrieve_graphify(self, query: str, top_k: int = 5) -> list[Hit]:\n        ids = self.graph.query_ranked_chunks(query, top_k=max(top_k, self.config.candidate_pool))\n        "
+  },
+  {
+    "file": "packages/graphify/build.py",
+    "symbol": "dedupe_edges",
+    "kind": "function",
+    "loc": "packages/graphify/build.py:347-367",
+    "start_line": 347,
+    "end_line": 367,
+    "score": 6.5,
+    "excerpt": "def dedupe_edges(edges: list[dict]) -> list[dict]:\n    \"\"\"Collapse exact parallel edges by ``(source, target, relation)``, keeping the\n    first occurrence.\n\n    The clustered buil"
+  }
+]

@@ -1,0 +1,92 @@
+{
+  "id": "r07",
+  "enrich_prompt": "cmd_wipe wipe uninstall remove store MCP rules halt confirm --all scubiee state",
+  "suggested_seed": {
+    "file": "packages/pipeline/wipe.py",
+    "symbol": "",
+    "loc": "packages/pipeline/wipe.py:1-1",
+    "score": 35.187197229379215
+  },
+  "chunks": [
+    {
+      "file": "packages/pipeline/wipe.py",
+      "symbol": "",
+      "loc": "packages/pipeline/wipe.py:1-1",
+      "score": 35.187197229379215,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "tests/test_stop_all_tools.py",
+      "symbol": "",
+      "loc": "tests/test_stop_all_tools.py:1-1",
+      "score": 26.17311942851318,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "score": 16.02444392837759,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "docs/web-info/uninstall-mac-linux.md",
+      "symbol": "",
+      "loc": "docs/web-info/uninstall-mac-linux.md:1-1",
+      "score": 5.723784156227256,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "tests/test_wipe.py",
+      "symbol": "",
+      "loc": "tests/test_wipe.py:1-1",
+      "score": 5.69913473477468,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "tests/test_mcp_no_repo_scubiee_after_wipe.py",
+      "symbol": "",
+      "loc": "tests/test_mcp_no_repo_scubiee_after_wipe.py:1-1",
+      "score": 5.191161309732061,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "docs/web-info/uninstall-windows.md",
+      "symbol": "",
+      "loc": "docs/web-info/uninstall-windows.md:1-1",
+      "score": 4.7441702995653365,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "docs/web-info/faq.md",
+      "symbol": "",
+      "loc": "docs/web-info/faq.md:1-1",
+      "score": 4.43568190256852,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": "",
+      "loc": "packages/pipeline/rules_installer.py:1-1",
+      "score": 4.388254382043241,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/pipeline/process_control.py",
+      "symbol": "",
+      "loc": "packages/pipeline/process_control.py:1-1",
+      "score": 4.297458383934073,
+      "start_line": null,
+      "end_line": null
+    }
+  ]
+}

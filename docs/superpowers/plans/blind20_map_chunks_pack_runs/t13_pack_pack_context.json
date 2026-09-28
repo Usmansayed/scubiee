@@ -1,0 +1,98 @@
+{
+  "ok": true,
+  "tool": "pack_context",
+  "engine": "composite_v1",
+  "elapsed_s": 0.122,
+  "n_pack": 4,
+  "seed": {
+    "file": "packages/pipeline/sync_loop.py",
+    "symbol": "BackgroundSyncLoop.sync_once",
+    "id": "packages/pipeline/sync_loop.py::BackgroundSyncLoop.sync_once"
+  },
+  "pack": [
+    {
+      "file": "packages/pipeline/sync_loop.py",
+      "symbol": "BackgroundSyncLoop.sync_once",
+      "score": 1.0,
+      "loc": "packages/pipeline/sync_loop.py:713-715",
+      "id": "packages/pipeline/sync_loop.py::BackgroundSyncLoop.sync_once",
+      "chars": 171
+    },
+    {
+      "file": "packages/pipeline/merkle.py",
+      "symbol": "file_sha256",
+      "score": 1.0,
+      "loc": "packages/pipeline/merkle.py:93-101",
+      "id": "packages/pipeline/merkle.py::file_sha256",
+      "chars": 252
+    },
+    {
+      "file": "packages/pipeline/merkle.py",
+      "symbol": "is_junk_rel",
+      "score": 1.0,
+      "loc": "packages/pipeline/merkle.py:118-126",
+      "id": "packages/pipeline/merkle.py::is_junk_rel",
+      "chars": 400
+    },
+    {
+      "file": "packages/pipeline/merkle.py",
+      "symbol": "root_hash",
+      "score": 1.0,
+      "loc": "packages/pipeline/merkle.py:181-188",
+      "id": "packages/pipeline/merkle.py::root_hash",
+      "chars": 276
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/pipeline/sync_loop.py::BackgroundSyncLoop.sync_once",
+      "loc": "packages/pipeline/sync_loop.py:713-715",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/merkle.py::file_sha256",
+      "loc": "packages/pipeline/merkle.py:93-101",
+      "edge": "calls",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/merkle.py::is_junk_rel",
+      "loc": "packages/pipeline/merkle.py:118-126",
+      "edge": "calls",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/merkle.py::root_hash",
+      "loc": "packages/pipeline/merkle.py:181-188",
+      "edge": "calls",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/sync_loop.py::BackgroundSyncLoop.start",
+      "loc": "packages/pipeline/sync_loop.py:602-621",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/sync_loop.py::_register_atexit",
+      "loc": "packages/pipeline/sync_loop.py:60-77",
+      "edge": "calls",
+      "score": 0.99
+    },
+    {
+      "id": "packages/graphify/extractors/base.py::_make_id",
+      "loc": "packages/graphify/extractors/base.py:54-55",
+      "edge": "calls",
+      "score": 0.9583
+    },
+    {
+      "id": "packages/pipeline/sync_loop.py::BackgroundSyncLoop.keeper_tick",
+      "loc": "packages/pipeline/sync_loop.py:629-695",
+      "edge": "calls",
+      "score": 0.9405
+    }
+  ],
+  "pack_query": "freshness sync background CTX_BACKGROUND_SYNC stale index checksum merkle refresh\nrelevant_chunks: packages/pipeline/sync_loop.py::BackgroundSyncLoop.sync_once@packages/pipeline/sync_loop.py:713-715 | packages/pipeline/sync_loop.py::BackgroundSyncLoop.start@packages/pipeline/sync_loop.py:602-621 | packages/pipeline/freshness.py::check_freshness@packages/pipeline/freshness.py:202-335",
+  "error": null
+}

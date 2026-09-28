@@ -1,0 +1,216 @@
+{
+  "id": "t01",
+  "family": "faiss-publish",
+  "task": "How does a rebuilt FAISS index get published so warm search starts serving the new vectors?",
+  "must_files": [
+    "packages/pipeline/artifact_guard.py",
+    "packages/pipeline/project_id.py",
+    "packages/pipeline/engine.py",
+    "packages/pipeline/ce_service.py"
+  ],
+  "must_symbols": [
+    "publish_manifest",
+    "index_is_usable",
+    "WarmSearchEngine",
+    "publish_engine"
+  ],
+  "map_k12": {
+    "elapsed_s": 1.811,
+    "top_files": [
+      "packages/pipeline/artifact_guard.py",
+      "packages/pipeline/memory_governor.py",
+      "packages/pipeline/engine.py",
+      "packages/pipeline/ce_service.py",
+      "tests/test_runtime_publish.py",
+      "packages/graphify/serve.py",
+      "tests/test_venture_stack.py",
+      "packages/trace_lab/vector_index.py"
+    ]
+  },
+  "map_k8": {
+    "elapsed_s": 0.247,
+    "top_files": [
+      "packages/pipeline/artifact_guard.py",
+      "packages/pipeline/memory_governor.py",
+      "packages/pipeline/engine.py",
+      "packages/pipeline/ce_service.py",
+      "tests/test_runtime_publish.py"
+    ]
+  },
+  "chunks_k12": [
+    {
+      "file": "packages/pipeline/artifact_guard.py",
+      "symbol": "publish_manifest",
+      "kind": "function",
+      "loc": "packages/pipeline/artifact_guard.py:68-81",
+      "start_line": 68,
+      "end_line": 81,
+      "score": 6.7
+    },
+    {
+      "file": "packages/pipeline/memory_governor.py",
+      "symbol": "MemoryGovernor.demote_after_index",
+      "kind": "method",
+      "loc": "packages/pipeline/memory_governor.py:320-334",
+      "start_line": 320,
+      "end_line": 334,
+      "score": 9.9
+    },
+    {
+      "file": "packages/pipeline/ce_service.py",
+      "symbol": "RuntimeManager.publish",
+      "kind": "method",
+      "loc": "packages/pipeline/ce_service.py:907-914",
+      "start_line": 907,
+      "end_line": 914,
+      "score": 9.55
+    }
+  ],
+  "chunks_k8": [
+    {
+      "file": "packages/pipeline/artifact_guard.py",
+      "symbol": "publish_manifest",
+      "kind": "function",
+      "loc": "packages/pipeline/artifact_guard.py:68-81",
+      "start_line": 68,
+      "end_line": 81,
+      "score": 6.7
+    },
+    {
+      "file": "packages/pipeline/memory_governor.py",
+      "symbol": "MemoryGovernor.demote_after_index",
+      "kind": "method",
+      "loc": "packages/pipeline/memory_governor.py:320-334",
+      "start_line": 320,
+      "end_line": 334,
+      "score": 9.9
+    },
+    {
+      "file": "packages/pipeline/ce_service.py",
+      "symbol": "RuntimeManager.publish",
+      "kind": "method",
+      "loc": "packages/pipeline/ce_service.py:907-914",
+      "start_line": 907,
+      "end_line": 914,
+      "score": 9.55
+    }
+  ],
+  "pack": {
+    "ok": true,
+    "elapsed_s": 4.271,
+    "n_pack": 4,
+    "pack": [
+      {
+        "file": "packages/pipeline/artifact_guard.py",
+        "symbol": "publish_manifest",
+        "loc": "packages/pipeline/artifact_guard.py:68-81",
+        "id": "packages/pipeline/artifact_guard.py::publish_manifest",
+        "chars": 558
+      },
+      {
+        "file": "packages/pipeline/memory_governor.py",
+        "symbol": "MemoryGovernor.demote_after_index",
+        "loc": "packages/pipeline/memory_governor.py:320-334",
+        "id": "packages/pipeline/memory_governor.py::MemoryGovernor.demote_after_index",
+        "chars": 672
+      },
+      {
+        "file": "packages/pipeline/artifact_guard.py",
+        "symbol": "atomic_write_text",
+        "loc": "packages/pipeline/artifact_guard.py:17-30",
+        "id": "packages/pipeline/artifact_guard.py::atomic_write_text",
+        "chars": 428
+      },
+      {
+        "file": "packages/pipeline/artifact_guard.py",
+        "symbol": "_checksum",
+        "loc": "packages/pipeline/artifact_guard.py:64-65",
+        "id": "packages/pipeline/artifact_guard.py::_checksum",
+        "chars": 90
+      }
+    ],
+    "chain": [
+      {
+        "id": "packages/pipeline/artifact_guard.py::publish_manifest",
+        "loc": "packages/pipeline/artifact_guard.py:68-81",
+        "edge": "seed",
+        "symbol": "publish_manifest"
+      },
+      {
+        "id": "packages/pipeline/memory_governor.py::MemoryGovernor.demote_after_index",
+        "loc": "packages/pipeline/memory_governor.py:320-334",
+        "edge": "seed",
+        "symbol": "MemoryGovernor.demote_after_index"
+      },
+      {
+        "id": "packages/pipeline/artifact_guard.py::atomic_write_text",
+        "loc": "packages/pipeline/artifact_guard.py:17-30",
+        "edge": "calls",
+        "symbol": "atomic_write_text"
+      },
+      {
+        "id": "packages/pipeline/artifact_guard.py::_checksum",
+        "loc": "packages/pipeline/artifact_guard.py:64-65",
+        "edge": "calls",
+        "symbol": "_checksum"
+      },
+      {
+        "id": "packages/pipeline/memory_governor.py::embed_idle_demote_s",
+        "loc": "packages/pipeline/memory_governor.py:53-63",
+        "edge": "calls",
+        "symbol": "embed_idle_demote_s"
+      },
+      {
+        "id": "packages/pipeline/memory_governor.py::MemoryGovernor._apply_locked",
+        "loc": "packages/pipeline/memory_governor.py:393-402",
+        "edge": "calls",
+        "symbol": "MemoryGovernor._apply_locked"
+      },
+      {
+        "id": "packages/pipeline/memory_governor.py::MemoryGovernor._demote_embedder_locked",
+        "loc": "packages/pipeline/memory_governor.py:404-426",
+        "edge": "calls",
+        "symbol": "MemoryGovernor._demote_embedder_locked"
+      },
+      {
+        "id": "packages/pipeline/memory_governor.py::MemoryGovernor._recompute_desired_locked",
+        "loc": "packages/pipeline/memory_governor.py:370-376",
+        "edge": "calls",
+        "symbol": "MemoryGovernor._recompute_desired_locked"
+      }
+    ],
+    "seed": {
+      "file": "packages/pipeline/artifact_guard.py",
+      "symbol": "publish_manifest",
+      "id": "packages/pipeline/artifact_guard.py::publish_manifest"
+    },
+    "error": null
+  },
+  "scores": {
+    "map_k12": {
+      "file": 0.75,
+      "symbol": 0.0,
+      "note": "raw map cards (symbols often empty)"
+    },
+    "map_k12_chunks": {
+      "file": 0.5,
+      "symbol": 0.25,
+      "chunks": [
+        "publish_manifest",
+        "MemoryGovernor.demote_after_index",
+        "RuntimeManager.publish"
+      ]
+    },
+    "map8_pack": {
+      "file": 0.5,
+      "symbol": 0.25,
+      "n_pack": 4,
+      "chunks": [
+        "publish_manifest",
+        "MemoryGovernor.demote_after_index",
+        "RuntimeManager.publish"
+      ],
+      "elapsed_s": 4.271
+    }
+  }
+}

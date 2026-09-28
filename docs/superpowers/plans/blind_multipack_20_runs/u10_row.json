@@ -1,0 +1,415 @@
+{
+  "id": "u10",
+  "family": "metadata-inject",
+  "task": "How does metadata injection enrich chunks before indexing?",
+  "enrich_map_query": "inject_metadata build_chunk_meta ChunkMeta render enrich_repo chunk_repo_from_ir",
+  "map_ok": true,
+  "suggested_seed": {
+    "file": "packages/enrich/__init__.py",
+    "symbol": "",
+    "source": "suggested_seed"
+  },
+  "resolved_seed": {
+    "file": "packages/enrich/__init__.py",
+    "symbol": "inject_metadata",
+    "how": "best_in_file"
+  },
+  "map_top_cards": [
+    {
+      "file": "packages/enrich/__init__.py",
+      "symbol": "",
+      "loc": "packages/enrich/__init__.py:1-1",
+      "score": 21.87734748671447
+    },
+    {
+      "file": "packages/metadata/__init__.py",
+      "symbol": "",
+      "loc": "packages/metadata/__init__.py:1-1",
+      "score": 20.253439779984575
+    },
+    {
+      "file": "tests/test_enrich.py",
+      "symbol": "",
+      "loc": "tests/test_enrich.py:1-1",
+      "score": 16.82806000934047
+    },
+    {
+      "file": "scripts/bench_budget_alloc.py",
+      "symbol": "",
+      "loc": "scripts/bench_budget_alloc.py:1-1",
+      "score": 13.713146547353347
+    },
+    {
+      "file": "packages/seir/render.py",
+      "symbol": "",
+      "loc": "packages/seir/render.py:1-1",
+      "score": 9.130456181141286
+    },
+    {
+      "file": "packages/seir/types.py",
+      "symbol": "",
+      "loc": "packages/seir/types.py:1-1",
+      "score": 2.0389437275048357
+    }
+  ],
+  "arms": {
+    "composite_v1": {
+      "ok": true,
+      "elapsed_s": 0.038,
+      "n_hot": 10,
+      "n_ranked": 10,
+      "hot_ids": [
+        "packages/enrich/__init__.py::inject_metadata",
+        "packages/metadata/__init__.py::_file_symbol_id",
+        "packages/metadata/__init__.py::_folder_name",
+        "packages/metadata/__init__.py::_functions_in_span",
+        "packages/metadata/__init__.py::_immediate_dependents",
+        "packages/metadata/__init__.py::_import_labels",
+        "packages/metadata/__init__.py::_module_name",
+        "packages/metadata/__init__.py::_related_siblings",
+        "packages/metadata/__init__.py::_repo_name",
+        "packages/metadata/__init__.py::build_chunk_meta"
+      ],
+      "top15_ids": [
+        "packages/enrich/__init__.py::inject_metadata",
+        "packages/metadata/__init__.py::_folder_name",
+        "packages/metadata/__init__.py::build_chunk_meta",
+        "packages/metadata/__init__.py::_repo_name",
+        "packages/metadata/__init__.py::_module_name",
+        "packages/metadata/__init__.py::_functions_in_span",
+        "packages/metadata/__init__.py::_import_labels",
+        "packages/metadata/__init__.py::_related_siblings",
+        "packages/metadata/__init__.py::_immediate_dependents",
+        "packages/metadata/__init__.py::_file_symbol_id"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/enrich/__init__.py::inject_metadata",
+          "file": "packages/enrich/__init__.py",
+          "symbol": "inject_metadata",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 487
+        },
+        {
+          "id": "packages/metadata/__init__.py::_folder_name",
+          "file": "packages/metadata/__init__.py",
+          "symbol": "_folder_name",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 130
+        },
+        {
+          "id": "packages/metadata/__init__.py::build_chunk_meta",
+          "file": "packages/metadata/__init__.py",
+          "symbol": "build_chunk_meta",
+          "kind": "function",
+          "score": 0.9405,
+          "body_chars": 698
+        },
+        {
+          "id": "packages/metadata/__init__.py::_repo_name",
+          "file": "packages/metadata/__init__.py",
+          "symbol": "_repo_name",
+          "kind": "function",
+          "score": 0.8168,
+          "body_chars": 80
+        },
+        {
+          "id": "packages/metadata/__init__.py::_module_name",
+          "file": "packages/metadata/__init__.py",
+          "symbol": "_module_name",
+          "kind": "function",
+          "score": 0.8168,
+          "body_chars": 177
+        },
+        {
+          "id": "packages/metadata/__init__.py::_functions_in_span",
+          "file": "packages/metadata/__init__.py",
+          "symbol": "_functions_in_span",
+          "kind": "function",
+          "score": 0.8168,
+          "body_chars": 830
+        },
+        {
+          "id": "packages/metadata/__init__.py::_import_labels",
+          "file": "packages/metadata/__init__.py",
+          "symbol": "_import_labels",
+          "kind": "function",
+          "score": 0.8168,
+          "body_chars": 469
+        },
+        {
+          "id": "packages/metadata/__init__.py::_related_siblings",
+          "file": "packages/metadata/__init__.py",
+          "symbol": "_related_siblings",
+          "kind": "function",
+          "score": 0.8168,
+          "body_chars": 270
+        },
+        {
+          "id": "packages/metadata/__init__.py::_immediate_dependents",
+          "file": "packages/metadata/__init__.py",
+          "symbol": "_immediate_dependents",
+          "kind": "function",
+          "score": 0.8168,
+          "body_chars": 669
+        },
+        {
+          "id": "packages/metadata/__init__.py::_file_symbol_id",
+          "file": "packages/metadata/__init__.py",
+          "symbol": "_file_symbol_id",
+          "kind": "function",
+          "score": 0.6846,
+          "body_chars": 198
+        }
+      ]
+    },
+    "semantic_tracer_fuse": {
+      "ok": true,
+      "elapsed_s": 0.265,
+      "n_hot": 10,
+      "n_ranked": 10,
+      "hot_ids": [
+        "packages/enrich/__init__.py::inject_metadata",
+        "packages/metadata/__init__.py::_file_symbol_id",
+        "packages/metadata/__init__.py::_folder_name",
+        "packages/metadata/__init__.py::_functions_in_span",
+        "packages/metadata/__init__.py::_immediate_dependents",
+        "packages/metadata/__init__.py::_import_labels",
+        "packages/metadata/__init__.py::_module_name",
+        "packages/metadata/__init__.py::_related_siblings",
+        "packages/metadata/__init__.py::_repo_name",
+        "packages/metadata/__init__.py::build_chunk_meta"
+      ],
+      "top15_ids": [
+        "packages/enrich/__init__.py::inject_metadata",
+        "packages/metadata/__init__.py::_folder_name",
+        "packages/metadata/__init__.py::build_chunk_meta",
+        "packages/metadata/__init__.py::_import_labels",
+        "packages/metadata/__init__.py::_immediate_dependents",
+        "packages/metadata/__init__.py::_functions_in_span",
+        "packages/metadata/__init__.py::_repo_name",
+        "packages/metadata/__init__.py::_module_name",
+        "packages/metadata/__init__.py::_related_siblings",
+        "packages/metadata/__init__.py::_file_symbol_id"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/enrich/__init__.py::inject_metadata",
+          "file": "packages/enrich/__init__.py",
+          "symbol": "inject_metadata",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 487
+        },
+        {
+          "id": "packages/metadata/__init__.py::_folder_name",
+          "file": "packages/metadata/__init__.py",
+          "symbol": "_folder_name",
+          "kind": "function",
+          "score": 0.8938,
+          "body_chars": 130
+        },
+        {
+          "id": "packages/metadata/__init__.py::build_chunk_meta",
+          "file": "packages/metadata/__init__.py",
+          "symbol": "build_chunk_meta",
+          "kind": "function",
+          "score": 0.886,
+          "body_chars": 698
+        },
+        {
+          "id": "packages/metadata/__init__.py::_import_labels",
+          "file": "packages/metadata/__init__.py",
+          "symbol": "_import_labels",
+          "kind": "function",
+          "score": 0.7268,
+          "body_chars": 469
+        },
+        {
+          "id": "packages/metadata/__init__.py::_immediate_dependents",
+          "file": "packages/metadata/__init__.py",
+          "symbol": "_immediate_dependents",
+          "kind": "function",
+          "score": 0.7242,
+          "body_chars": 669
+        },
+        {
+          "id": "packages/metadata/__init__.py::_functions_in_span",
+          "file": "packages/metadata/__init__.py",
+          "symbol": "_functions_in_span",
+          "kind": "function",
+          "score": 0.7233,
+          "body_chars": 830
+        },
+        {
+          "id": "packages/metadata/__init__.py::_repo_name",
+          "file": "packages/metadata/__init__.py",
+          "symbol": "_repo_name",
+          "kind": "function",
+          "score": 0.7222,
+          "body_chars": 80
+        },
+        {
+          "id": "packages/metadata/__init__.py::_module_name",
+          "file": "packages/metadata/__init__.py",
+          "symbol": "_module_name",
+          "kind": "function",
+          "score": 0.7222,
+          "body_chars": 177
+        },
+        {
+          "id": "packages/metadata/__init__.py::_related_siblings",
+          "file": "packages/metadata/__init__.py",
+          "symbol": "_related_siblings",
+          "kind": "function",
+          "score": 0.7211,
+          "body_chars": 270
+        },
+        {
+          "id": "packages/metadata/__init__.py::_file_symbol_id",
+          "file": "packages/metadata/__init__.py",
+          "symbol": "_file_symbol_id",
+          "kind": "function",
+          "score": 0.5772,
+          "body_chars": 198
+        }
+      ]
+    },
+    "hyb_fuse_demote_noise_plus": {
+      "ok": true,
+      "elapsed_s": 0.058,
+      "n_hot": 10,
+      "n_ranked": 10,
+      "hot_ids": [
+        "packages/enrich/__init__.py::inject_metadata",
+        "packages/metadata/__init__.py::_file_symbol_id",
+        "packages/metadata/__init__.py::_folder_name",
+        "packages/metadata/__init__.py::_functions_in_span",
+        "packages/metadata/__init__.py::_immediate_dependents",
+        "packages/metadata/__init__.py::_import_labels",
+        "packages/metadata/__init__.py::_module_name",
+        "packages/metadata/__init__.py::_related_siblings",
+        "packages/metadata/__init__.py::_repo_name",
+        "packages/metadata/__init__.py::build_chunk_meta"
+      ],
+      "top15_ids": [
+        "packages/enrich/__init__.py::inject_metadata",
+        "packages/metadata/__init__.py::build_chunk_meta",
+        "packages/metadata/__init__.py::_folder_name",
+        "packages/metadata/__init__.py::_import_labels",
+        "packages/metadata/__init__.py::_immediate_dependents",
+        "packages/metadata/__init__.py::_functions_in_span",
+        "packages/metadata/__init__.py::_module_name",
+        "packages/metadata/__init__.py::_repo_name",
+        "packages/metadata/__init__.py::_related_siblings",
+        "packages/metadata/__init__.py::_file_symbol_id"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/enrich/__init__.py::inject_metadata",
+          "file": "packages/enrich/__init__.py",
+          "symbol": "inject_metadata",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 487
+        },
+        {
+          "id": "packages/metadata/__init__.py::build_chunk_meta",
+          "file": "packages/metadata/__init__.py",
+          "symbol": "build_chunk_meta",
+          "kind": "function",
+          "score": 0.784,
+          "body_chars": 698
+        },
+        {
+          "id": "packages/metadata/__init__.py::_folder_name",
+          "file": "packages/metadata/__init__.py",
+          "symbol": "_folder_name",
+          "kind": "function",
+          "score": 0.7307,
+          "body_chars": 130
+        },
+        {
+          "id": "packages/metadata/__init__.py::_import_labels",
+          "file": "packages/metadata/__init__.py",
+          "symbol": "_import_labels",
+          "kind": "function",
+          "score": 0.6138,
+          "body_chars": 469
+        },
+        {
+          "id": "packages/metadata/__init__.py::_immediate_dependents",
+          "file": "packages/metadata/__init__.py",
+          "symbol": "_immediate_dependents",
+          "kind": "function",
+          "score": 0.6119,
+          "body_chars": 669
+        },
+        {
+          "id": "packages/metadata/__init__.py::_functions_in_span",
+          "file": "packages/metadata/__init__.py",
+          "symbol": "_functions_in_span",
+          "kind": "function",
+          "score": 0.6113,
+          "body_chars": 830
+        },
+        {
+          "id": "packages/metadata/__init__.py::_module_name",
+          "file": "packages/metadata/__init__.py",
+          "symbol": "_module_name",
+          "kind": "function",
+          "score": 0.6105,
+          "body_chars": 177
+        },
+        {
+          "id": "packages/metadata/__init__.py::_repo_name",
+          "file": "packages/metadata/__init__.py",
+          "symbol": "_repo_name",
+          "kind": "function",
+          "score": 0.6105,
+          "body_chars": 80
+        },
+        {
+          "id": "packages/metadata/__init__.py::_related_siblings",
+          "file": "packages/metadata/__init__.py",
+          "symbol": "_related_siblings",
+          "kind": "function",
+          "score": 0.6098,
+          "body_chars": 270
+        },
+        {
+          "id": "packages/metadata/__init__.py::_file_symbol_id",
+          "file": "packages/metadata/__init__.py",
+          "symbol": "_file_symbol_id",
+          "kind": "function",
+          "score": 0.48,
+          "body_chars": 198
+        }
+      ]
+    },
+    "poly_embed": {
+      "ok": true,
+      "elapsed_s": 0.002,
+      "n_hot": 1,
+      "n_ranked": 1,
+      "hot_ids": [
+        "packages/enrich/__init__.py::inject_metadata"
+      ],
+      "top15_ids": [
+        "packages/enrich/__init__.py::inject_metadata"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/enrich/__init__.py::inject_metadata",
+          "file": "packages/enrich/__init__.py",
+          "symbol": "inject_metadata",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 487
+        }
+      ]
+    }
+  }
+}

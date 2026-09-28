@@ -1,0 +1,76 @@
+{
+  "ok": true,
+  "tool": "pack_semantic",
+  "engine": "semantic_tracer_fuse",
+  "elapsed_s": 0.403,
+  "n_pack": 2,
+  "seed": {
+    "file": "packages/pipeline/mcp_bridge.py",
+    "symbol": "McpBridge",
+    "id": "packages/pipeline/mcp_bridge.py::McpBridge"
+  },
+  "pack": [
+    {
+      "file": "packages/pipeline/mcp_bridge.py",
+      "symbol": "McpBridge",
+      "score": 1.0,
+      "loc": "packages/pipeline/mcp_bridge.py:77-222",
+      "id": "packages/pipeline/mcp_bridge.py::McpBridge",
+      "chars": 5737
+    },
+    {
+      "file": "packages/pipeline/mcp_bridge.py",
+      "symbol": "McpBridge.run",
+      "score": 1.0,
+      "loc": "packages/pipeline/mcp_bridge.py:205-222",
+      "id": "packages/pipeline/mcp_bridge.py::McpBridge.run",
+      "chars": 263
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/pipeline/mcp_bridge.py::McpBridge",
+      "loc": "packages/pipeline/mcp_bridge.py:77-222",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/mcp_bridge.py::McpBridge.run",
+      "loc": "packages/pipeline/mcp_bridge.py:205-222",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/mcp_bridge.py::_stderr",
+      "loc": "packages/pipeline/mcp_bridge.py:32-33",
+      "edge": "calls",
+      "score": 0.9418
+    },
+    {
+      "id": "packages/pipeline/mcp_bridge_session.py::max_bridge_sessions",
+      "loc": "packages/pipeline/mcp_bridge_session.py:30-35",
+      "edge": "calls",
+      "score": 0.8802
+    },
+    {
+      "id": "packages/pipeline/mcp_bridge_session.py::bridge_mode",
+      "loc": "packages/pipeline/mcp_bridge_session.py:23-27",
+      "edge": "calls",
+      "score": 0.8764
+    },
+    {
+      "id": "packages/pipeline/mcp_bridge.py::McpBridge._shared_worker",
+      "loc": "packages/pipeline/mcp_bridge.py:88-89",
+      "edge": "contains",
+      "score": 0.6302
+    },
+    {
+      "id": "packages/pipeline/mcp_bridge.py::McpBridge._emit_client",
+      "loc": "packages/pipeline/mcp_bridge.py:117-120",
+      "edge": "contains",
+      "score": 0.5613
+    }
+  ],
+  "pack_query": "scubiee-mcp-bridge MCP bridge launch stdio tools forward hybrid experiment surface\nrelevant_chunks: packages/pipeline/mcp_bridge.py::McpBridge@packages/pipeline/mcp_bridge.py:77-222 | packages/pipeline/mcp_bridge.py::McpBridge.run@packages/pipeline/mcp_bridge.py:205-222 | packages/pipeline/mcp_bridge_session.py::bridge_mode@packages/pipeline/mcp_bridge_session.py:23-27",
+  "error": null
+}

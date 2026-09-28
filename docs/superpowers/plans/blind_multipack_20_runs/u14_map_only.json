@@ -1,0 +1,58 @@
+{
+  "id": "u14",
+  "family": "upgrade-flow",
+  "task": "Walk the one-command upgrade: package swap, migrate, MCP rebind.",
+  "enrich_map_query": "cmd_upgrade upgrade package swap migrate MCP rebind DiffPlan already_latest",
+  "map_ok": true,
+  "map_elapsed_s": 9.798,
+  "suggested_seed": {
+    "file": "packages/pipeline/__main__.py",
+    "symbol": "",
+    "source": "suggested_seed"
+  },
+  "map_top_cards": [
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "score": 26.22894571741307
+    },
+    {
+      "file": "packages/pipeline/upgrade.py",
+      "symbol": "",
+      "loc": "packages/pipeline/upgrade.py:1-1",
+      "score": 10.137279236908828
+    },
+    {
+      "file": "packages/pipeline/upgrade_manifest.py",
+      "symbol": "",
+      "loc": "packages/pipeline/upgrade_manifest.py:1-1",
+      "score": 8.671937578493761
+    },
+    {
+      "file": "packages/pipeline/upgrade_supervisor.py",
+      "symbol": "",
+      "loc": "packages/pipeline/upgrade_supervisor.py:1-1",
+      "score": 8.561748311382708
+    },
+    {
+      "file": "tests/test_mcp_hot_reload_reliability.py",
+      "symbol": "",
+      "loc": "tests/test_mcp_hot_reload_reliability.py:1-1",
+      "score": 7.40483130409657
+    },
+    {
+      "file": "tests/test_upgrade_supervisor.py",
+      "symbol": "",
+      "loc": "tests/test_upgrade_supervisor.py:1-1",
+      "score": 7.320108848920123
+    },
+    {
+      "file": "packages/pipeline/upgrade_platform.py",
+      "symbol": "",
+      "loc": "packages/pipeline/upgrade_platform.py:1-1",
+      "score": 5.007299561610031
+    }
+  ],
+  "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+}

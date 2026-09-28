@@ -1,0 +1,90 @@
+{
+  "ok": true,
+  "tool": "map",
+  "query": "dashboard HTTP routes status endpoints localhost operator serve cmd_dashboard uvicorn",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/pipeline/dashboard_server.py",
+      "symbol": "",
+      "score": 27.18701462749398,
+      "loc": "packages/pipeline/dashboard_server.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "packages/pipeline/dashboard_port.py",
+      "symbol": "",
+      "score": 21.09977976179564,
+      "loc": "packages/pipeline/dashboard_port.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "score": 14.840838759717979,
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "packages/pipeline/dashboard.py",
+      "symbol": "",
+      "score": 5.559186256060317,
+      "loc": "packages/pipeline/dashboard.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "docs/superpowers/plans/2026-08-17-ce-operator-dashboard.md",
+      "symbol": "",
+      "score": 5.078834676535303,
+      "loc": "docs/superpowers/plans/2026-08-17-ce-operator-dashboard.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "packages/graphify/serve.py",
+      "symbol": "",
+      "score": 4.788769256380471,
+      "loc": "packages/graphify/serve.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "docs/superpowers/specs/2026-08-17-ce-operator-dashboard-design.md",
+      "symbol": "",
+      "score": 4.769680590664103,
+      "loc": "docs/superpowers/specs/2026-08-17-ce-operator-dashboard-design.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "tests/test_dashboard_api.py",
+      "symbol": "",
+      "score": 4.174789356979346,
+      "loc": "tests/test_dashboard_api.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "tests/test_dashboard_ui_contract.py",
+      "symbol": "",
+      "score": 4.0756531039431705,
+      "loc": "tests/test_dashboard_ui_contract.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "packages/pipeline/dashboard_ui/app.js",
+      "symbol": "",
+      "score": 3.9786406120208815,
+      "loc": "packages/pipeline/dashboard_ui/app.js:1-1",
+      "why": ""
+    }
+  ],
+  "suggested_seed": null,
+  "elapsed_s": 0.804,
+  "via": "search_repo(use_server=True)"
+}

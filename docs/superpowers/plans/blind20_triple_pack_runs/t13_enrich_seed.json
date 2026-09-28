@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "elapsed_s": 0.039,
+  "seed_file": "packages/pipeline/sync_loop.py",
+  "seed": {
+    "file": "packages/pipeline/sync_loop.py",
+    "symbol": "enable_session_keeper_defaults",
+    "id": "packages/pipeline/sync_loop.py::enable_session_keeper_defaults",
+    "loc": null
+  },
+  "chunks": [
+    {
+      "file": "packages/pipeline/sync_loop.py",
+      "symbol": "enable_session_keeper_defaults",
+      "loc": "packages/pipeline/sync_loop.py:42-48",
+      "score": 1.0,
+      "kind": "function"
+    }
+  ],
+  "n_cards": 1,
+  "error": null
+}

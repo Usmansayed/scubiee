@@ -1,0 +1,32 @@
+[
+  {
+    "file": "packages/pipeline/watchdog.py",
+    "symbol": "is_watchdog_running",
+    "kind": "function",
+    "loc": "packages/pipeline/watchdog.py:113-121",
+    "start_line": 113,
+    "end_line": 121,
+    "score": 9.15,
+    "excerpt": "def is_watchdog_running() -> bool:\n    path = watchdog_pid_path()\n    if not path.is_file():\n        return False\n    try:\n        pid = int(path.read_text(encoding=\"utf-8\").strip("
+  },
+  {
+    "file": "packages/pipeline/client.py",
+    "symbol": "engine_url",
+    "kind": "function",
+    "loc": "packages/pipeline/client.py:32-37",
+    "start_line": 32,
+    "end_line": 37,
+    "score": 9.5,
+    "excerpt": "def engine_url() -> str:\n    return (\n        os.environ.get(\"CTX_ENGINE_URL\")\n        or os.environ.get(\"CTX_SEARCH_URL\")\n        or DEFAULT_URL\n    ).rstrip(\"/\")"
+  },
+  {
+    "file": "packages/pipeline/__main__.py",
+    "symbol": "cmd_engine",
+    "kind": "function",
+    "loc": "packages/pipeline/__main__.py:945-1111",
+    "start_line": 945,
+    "end_line": 1111,
+    "score": 7.2,
+    "excerpt": "def cmd_engine(args: argparse.Namespace) -> int:\n    \"\"\"Scubiee daemon control: start | stop | status | run | ensure | watchdog.\"\"\"\n    from pipeline.client import EngineClient, en"
+  }
+]

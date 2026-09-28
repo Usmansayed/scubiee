@@ -1,0 +1,55 @@
+{
+  "ok": true,
+  "tool": "pack_poly_embed",
+  "engine": "poly_embed",
+  "elapsed_s": 0.205,
+  "n_pack": 1,
+  "seed": {
+    "file": "packages/pipeline/watchdog.py",
+    "symbol": "_home",
+    "id": "packages/pipeline/watchdog.py::_home"
+  },
+  "pack": [
+    {
+      "file": "packages/pipeline/watchdog.py",
+      "symbol": "_home",
+      "score": 1.0,
+      "loc": "packages/pipeline/watchdog.py:27-30",
+      "id": "packages/pipeline/watchdog.py::_home",
+      "chars": 110
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/pipeline/watchdog.py::_home",
+      "loc": "packages/pipeline/watchdog.py:27-30",
+      "edge": "seed",
+      "score": 1.0
+    }
+  ],
+  "error": null,
+  "seed_chunks": [
+    {
+      "file": "packages/pipeline/watchdog.py",
+      "symbol": "_home",
+      "loc": "packages/pipeline/watchdog.py:27-30",
+      "score": 1.0,
+      "kind": "function"
+    },
+    {
+      "file": "packages/pipeline/project_id.py",
+      "symbol": "context_engine_home",
+      "loc": "packages/pipeline/project_id.py:108-113",
+      "score": 0.7994,
+      "kind": "function"
+    },
+    {
+      "file": "packages/pipeline/branding.py",
+      "symbol": "migrate_home_dir",
+      "loc": "packages/pipeline/branding.py:29-32",
+      "score": 0.5606,
+      "kind": "function"
+    }
+  ],
+  "pack_query": "engine watchdog idle timeout restart CTX_ENGINE_URL port 8765 pipeline engine run | seeds: packages/pipeline/watchdog.py::_home packages/pipeline/project_id.py::context_engine_home packages/pipeline/branding.py::migrate_home_dir"
+}

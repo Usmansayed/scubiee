@@ -123,10 +123,13 @@ def test_search_returns_warming_without_blocking_embedder(
 
     monkeypatch.setattr("pipeline.engine.ensure_embedder_ready", _boom)
     monkeypatch.setattr(mgr, "_ensure_engine", lambda *_a, **_k: None)
+    monkeypatch.setattr("pipeline.engine.prewarm_embedder_async", lambda *_a, **_k: {"ok": True})
     out = mgr.search("where is map", root=".")
     assert out.get("warming") is True
     assert out.get("should_retry") is True
-    assert out.get("error") == "engine_warming"
+    # Since 8c4c7f5 a cold embedder answers "dense_embed_loading" (kick the
+    # background load, tell the agent to retry) before the engine is touched.
+    assert out.get("error") in {"engine_warming", "dense_embed_loading"}
 
 def test_admit_wait_false_uses_background_open(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch

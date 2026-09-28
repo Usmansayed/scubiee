@@ -1,0 +1,210 @@
+{
+  "id": "t14",
+  "family": "memory-budget",
+  "task": "Where is embed / search memory budget capped so DML batches stay safe?",
+  "must_files": [
+    "packages/pipeline/memory_governor.py",
+    "packages/pipeline/embedder.py",
+    "packages/pipeline/accel.py"
+  ],
+  "must_symbols": [],
+  "map_k12": {
+    "elapsed_s": 0.452,
+    "top_files": [
+      "scripts/bench_budget_alloc.py",
+      "scripts/bench_mix_seq_ab.py",
+      "tests/test_memory_budget.py",
+      "packages/pipeline/memory_governor.py",
+      "packages/pipeline/accel.py",
+      "tests/test_coderank_fp16.py",
+      "packages/pipeline/memory_budget.py",
+      "docs/mlx-index-compute-and-memory.md"
+    ]
+  },
+  "map_k8": {
+    "elapsed_s": 0.328,
+    "top_files": [
+      "scripts/bench_budget_alloc.py",
+      "scripts/bench_mix_seq_ab.py",
+      "tests/test_memory_budget.py",
+      "packages/pipeline/memory_governor.py",
+      "packages/pipeline/accel.py"
+    ]
+  },
+  "chunks_k12": [
+    {
+      "file": "packages/pipeline/memory_governor.py",
+      "symbol": "embed_idle_demote_s",
+      "kind": "function",
+      "loc": "packages/pipeline/memory_governor.py:53-63",
+      "start_line": 53,
+      "end_line": 63,
+      "score": 6.0
+    },
+    {
+      "file": "packages/pipeline/memory_budget.py",
+      "symbol": "apply_index_memory_budget",
+      "kind": "function",
+      "loc": "packages/pipeline/memory_budget.py:127-162",
+      "start_line": 127,
+      "end_line": 162,
+      "score": 9.7
+    },
+    {
+      "file": "packages/pipeline/memory_budget.py",
+      "symbol": "force_apply_memory_budget",
+      "kind": "function",
+      "loc": "packages/pipeline/memory_budget.py:165-198",
+      "start_line": 165,
+      "end_line": 198,
+      "score": 9.35
+    }
+  ],
+  "chunks_k8": [
+    {
+      "file": "packages/pipeline/memory_governor.py",
+      "symbol": "embed_idle_demote_s",
+      "kind": "function",
+      "loc": "packages/pipeline/memory_governor.py:53-63",
+      "start_line": 53,
+      "end_line": 63,
+      "score": 6.0
+    },
+    {
+      "file": "packages/pipeline/memory_budget.py",
+      "symbol": "apply_index_memory_budget",
+      "kind": "function",
+      "loc": "packages/pipeline/memory_budget.py:127-162",
+      "start_line": 127,
+      "end_line": 162,
+      "score": 9.7
+    },
+    {
+      "file": "packages/pipeline/memory_budget.py",
+      "symbol": "force_apply_memory_budget",
+      "kind": "function",
+      "loc": "packages/pipeline/memory_budget.py:165-198",
+      "start_line": 165,
+      "end_line": 198,
+      "score": 9.35
+    }
+  ],
+  "pack": {
+    "ok": true,
+    "elapsed_s": 0.147,
+    "n_pack": 4,
+    "pack": [
+      {
+        "file": "packages/pipeline/memory_governor.py",
+        "symbol": "embed_idle_demote_s",
+        "loc": "packages/pipeline/memory_governor.py:53-63",
+        "id": "packages/pipeline/memory_governor.py::embed_idle_demote_s",
+        "chars": 401
+      },
+      {
+        "file": "packages/pipeline/memory_budget.py",
+        "symbol": "apply_index_memory_budget",
+        "loc": "packages/pipeline/memory_budget.py:127-162",
+        "id": "packages/pipeline/memory_budget.py::apply_index_memory_budget",
+        "chars": 1858
+      },
+      {
+        "file": "packages/pipeline/memory_governor.py",
+        "symbol": "_env_float",
+        "loc": "packages/pipeline/memory_governor.py:46-50",
+        "id": "packages/pipeline/memory_governor.py::_env_float",
+        "chars": 163
+      },
+      {
+        "file": "packages/pipeline/lifecycle_runtime.py",
+        "symbol": "idle_seconds",
+        "loc": "packages/pipeline/lifecycle_runtime.py:70-77",
+        "id": "packages/pipeline/lifecycle_runtime.py::idle_seconds",
+        "chars": 243
+      }
+    ],
+    "chain": [
+      {
+        "id": "packages/pipeline/memory_governor.py::embed_idle_demote_s",
+        "loc": "packages/pipeline/memory_governor.py:53-63",
+        "edge": "seed",
+        "symbol": "embed_idle_demote_s"
+      },
+      {
+        "id": "packages/pipeline/memory_budget.py::apply_index_memory_budget",
+        "loc": "packages/pipeline/memory_budget.py:127-162",
+        "edge": "seed",
+        "symbol": "apply_index_memory_budget"
+      },
+      {
+        "id": "packages/pipeline/memory_governor.py::_env_float",
+        "loc": "packages/pipeline/memory_governor.py:46-50",
+        "edge": "calls",
+        "symbol": "_env_float"
+      },
+      {
+        "id": "packages/pipeline/lifecycle_runtime.py::idle_seconds",
+        "loc": "packages/pipeline/lifecycle_runtime.py:70-77",
+        "edge": "calls",
+        "symbol": "idle_seconds"
+      },
+      {
+        "id": "packages/pipeline/accel.py::load_accel",
+        "loc": "packages/pipeline/accel.py:132-146",
+        "edge": "calls",
+        "symbol": "load_accel"
+      },
+      {
+        "id": "packages/pipeline/accel.py::accel_path",
+        "loc": "packages/pipeline/accel.py:53-67",
+        "edge": "calls",
+        "symbol": "accel_path"
+      },
+      {
+        "id": "packages/pipeline/project_id.py::context_engine_home",
+        "loc": "packages/pipeline/project_id.py:108-113",
+        "edge": "calls",
+        "symbol": "context_engine_home"
+      },
+      {
+        "id": "packages/pipeline/branding.py::migrate_home_dir",
+        "loc": "packages/pipeline/branding.py:29-32",
+        "edge": "calls",
+        "symbol": "migrate_home_dir"
+      }
+    ],
+    "seed": {
+      "file": "packages/pipeline/memory_governor.py",
+      "symbol": "embed_idle_demote_s",
+      "id": "packages/pipeline/memory_governor.py::embed_idle_demote_s"
+    },
+    "error": null
+  },
+  "scores": {
+    "map_k12": {
+      "file": 0.667,
+      "symbol": 1.0,
+      "note": "raw map cards (symbols often empty)"
+    },
+    "map_k12_chunks": {
+      "file": 0.333,
+      "symbol": 1.0,
+      "chunks": [
+        "embed_idle_demote_s",
+        "apply_index_memory_budget",
+        "force_apply_memory_budget"
+      ]
+    },
+    "map8_pack": {
+      "file": 0.667,
+      "symbol": 1.0,
+      "n_pack": 4,
+      "chunks": [
+        "embed_idle_demote_s",
+        "apply_index_memory_budget",
+        "force_apply_memory_budget"
+      ],
+      "elapsed_s": 0.147
+    }
+  }
+}

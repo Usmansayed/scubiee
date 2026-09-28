@@ -24,6 +24,9 @@ class McpStdioClient:
         self.env = {**os.environ, **(env or {})}
         self._proc: subprocess.Popen | None = None
         self._id = 0
+        # Optional: capture the server's stderr (bridge + worker logs) to a file.
+        self.stderr_path: str | None = None
+        self._stderr_fh = None
 
     @classmethod
     def from_config(cls, config: Path | str, server: str) -> "McpStdioClient":
@@ -34,11 +37,13 @@ class McpStdioClient:
         return cls(entry["command"], entry.get("args", []), entry.get("env"))
 
     def __enter__(self) -> "McpStdioClient":
+        if self.stderr_path:
+            self._stderr_fh = open(self.stderr_path, "a", encoding="utf-8")
         self._proc = subprocess.Popen(
             [self.command, *self.args],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
+            stderr=self._stderr_fh or subprocess.DEVNULL,
             env=self.env,
             text=True,
             encoding="utf-8",
@@ -65,6 +70,9 @@ class McpStdioClient:
         except subprocess.TimeoutExpired:
             proc.kill()
         self._proc = None
+        if self._stderr_fh is not None:
+            self._stderr_fh.close()
+            self._stderr_fh = None
 
     def _send(self, payload: dict) -> None:
         if self._proc is None or self._proc.stdin is None:

@@ -1,0 +1,32 @@
+[
+  {
+    "file": "packages/pipeline/mcp_bridge.py",
+    "symbol": "McpBridge",
+    "kind": "class",
+    "loc": "packages/pipeline/mcp_bridge.py:77-222",
+    "start_line": 77,
+    "end_line": 222,
+    "score": 7.55,
+    "excerpt": "class McpBridge:\n    \"\"\"stdio JSON-RPC proxy with session-aware child pool + concurrent client dispatch.\"\"\"\n\n    def __init__(self) -> None:\n        self._stdout_lock = threading.L"
+  },
+  {
+    "file": "packages/pipeline/mcp_bridge.py",
+    "symbol": "McpBridge.run",
+    "kind": "method",
+    "loc": "packages/pipeline/mcp_bridge.py:205-222",
+    "start_line": 205,
+    "end_line": 222,
+    "score": 6.2,
+    "excerpt": "    def run(self) -> None:\n        _stderr(f\"[scubiee-bridge] ready (mode={bridge_mode()}, sessions<={max_bridge_sessions()})\")\n        try:\n            for raw in sys.stdin:\n     "
+  },
+  {
+    "file": "packages/pipeline/mcp_bridge_session.py",
+    "symbol": "bridge_mode",
+    "kind": "function",
+    "loc": "packages/pipeline/mcp_bridge_session.py:23-27",
+    "start_line": 23,
+    "end_line": 27,
+    "score": 6.15,
+    "excerpt": "def bridge_mode() -> str:\n    raw = (os.environ.get(\"CTX_MCP_BRIDGE_MODE\") or \"auto\").strip().lower()\n    if raw in {\"shared\", \"isolated\", \"auto\"}:\n        return raw\n    return \"a"
+  }
+]

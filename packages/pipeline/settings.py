@@ -12,6 +12,10 @@ from typing import Any, Literal
 
 RegistrationMode = Literal["automatic", "mcp_cli"]
 
+# Near-OOM floor for bulk indexing (resources.classify -> "critical").
+# Hot saves are exempt after ~1s (resources.HOT_LANE_*).
+DEFAULT_MIN_FREE_RAM_MB = 512
+
 DEFAULT_PREFS: dict[str, Any] = {
     "version": 1,
     "registration_mode": "automatic",
@@ -26,7 +30,7 @@ DEFAULT_PREFS: dict[str, Any] = {
         "enabled": True,
         "max_cpu_busy": 70,
         "max_cpu_critical": 90,
-        "min_free_ram_mb": 512,
+        "min_free_ram_mb": DEFAULT_MIN_FREE_RAM_MB,
     },
 }
 

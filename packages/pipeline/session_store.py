@@ -197,12 +197,26 @@ def invalidate_paths(repo: Path | str, paths: list[str]) -> dict[str, Any]:
     }
     removed_total = 0
     rewritten = 0
-    session_targets: list[str | None] = [None, *list_session_ids(repo_p)]
+    session_targets: list[str | None] = [None, *_list_session_dirs(repo_p)]
+    try:
+        from pipeline.project_id import repo_runtime_dir
+
+        sessions_root = repo_runtime_dir(repo_p) / "sessions"
+    except Exception:  # noqa: BLE001
+        sessions_root = None
     for sid in session_targets:
-        if _store_file_cannot_mention(_store_path(repo_p, sid), normalized):
+        # Listed sids are existing directory names: build the path directly.
+        # ``_store_path`` resolves the repo and mkdirs on every call; that is
+        # ~5 GIL-releasing syscalls per store, ~7s for 130 stores while a
+        # search held the GIL (issue 4, invalidate_ms up to 6709).
+        if sid is not None and sessions_root is not None:
+            spath = sessions_root / sid / "session_store.json"
+        else:
+            spath = _store_path(repo_p, sid)
+        if _store_cannot_mention_cached(spath, normalized):
             # Lock-free pre-filter: taking the msvcrt lock + mkdirs for each of
-            # ~130 stores cost ~2s by itself. A store whose raw text never names
-            # the path cannot hold a span for it.
+            # ~130 stores cost ~2s by itself. A store that never names the
+            # path cannot hold a span for it.
             continue
         store = load_store(repo_p, session_id=sid)
         if not _store_mentions_paths(store, normalized):
@@ -220,6 +234,66 @@ def invalidate_paths(repo: Path | str, paths: list[str]) -> dict[str, Any]:
         "stores_scanned": len(session_targets),
         "stores_rewritten": rewritten,
     }
+
+
+def _list_session_dirs(repo_p: Path) -> list[str]:
+    """``list_session_ids`` via scandir: no extra stat per entry on Windows."""
+    try:
+        from pipeline.project_id import repo_runtime_dir
+
+        root = repo_runtime_dir(repo_p) / "sessions"
+        with os.scandir(root) as it:
+            return sorted(e.name for e in it if e.is_dir(follow_symlinks=False))
+    except FileNotFoundError:
+        return []
+    except Exception:  # noqa: BLE001
+        from pipeline.session_isolation import list_session_ids
+
+        return list_session_ids(repo_p)
+
+
+# path -> ((mtime_ns, size), paths the store caches spans / focus for)
+_MENTION_CACHE: dict[str, tuple[tuple[int, int], frozenset[str]]] = {}
+
+
+def _mentioned_paths(store: dict[str, Any]) -> frozenset[str]:
+    """Every path ``_store_mentions_paths`` could match, normalised the same way."""
+    out: set[str] = set()
+    for span in (store.get("spans") or {}).values():
+        p = str((span or {}).get("path") or "").replace("\\", "/")
+        if p:
+            out.add(p)
+    for key in (store.get("focus_seen") or {}):
+        out.add(str(key).split(":", 1)[-1].replace("\\", "/"))
+    return frozenset(out)
+
+
+def _store_cannot_mention_cached(path: Path, normalized: set[str]) -> bool:
+    """``_store_file_cannot_mention`` with the parse cached on (mtime_ns, size).
+
+    One GIL-held stat per store when nothing changed; a store is re-read only
+    after it was written. Any doubt falls back to the uncached text check.
+    """
+    from pipeline.fast_stat import fast_stat
+
+    st = fast_stat(path)
+    if st is None:
+        _MENTION_CACHE.pop(str(path), None)
+        return True
+    stamp = (int(st.st_mtime_ns), int(st.st_size))
+    key = str(path)
+    hit = _MENTION_CACHE.get(key)
+    if hit is None or hit[0] != stamp:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            _MENTION_CACHE.pop(key, None)
+            return _store_file_cannot_mention(path, normalized)
+        if not isinstance(data, dict):
+            return _store_file_cannot_mention(path, normalized)
+        hit = (stamp, _mentioned_paths(data))
+        _MENTION_CACHE[key] = hit
+    return not (hit[1] & normalized)
 
 
 def _store_file_cannot_mention(path: Path, normalized: set[str]) -> bool:

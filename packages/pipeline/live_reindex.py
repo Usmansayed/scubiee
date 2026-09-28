@@ -48,4 +48,8 @@ def notify_changed_files(
         }
     daemon = client or EngineClient()
     result = daemon.mark_dirty(normalized, reason=reason, path=str(root))
-    return {**result, "paths": normalized, "rejected_paths": rejected}
+    # Prefer daemon's filtered ``paths`` / ``dropped`` (builtins + .scubieeignore).
+    out = {**result, "rejected_paths": rejected}
+    if "paths" not in result:
+        out["paths"] = normalized
+    return out

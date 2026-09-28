@@ -419,6 +419,8 @@ One thing still unresolved, worth flagging precisely: `status.ast_hydrated` itse
 
 This update genuinely resolves both real defects found in the previous two passes: the `pack_context` AST-gating regression and the `expand_context` `NoneType` crash. Both were re-tested with the identical seed/symbol/call shape that reliably reproduced them before, and both now succeed cleanly, quickly, and with richer (graph-traced, not just dense) results than what `pack_context` produced even back when it "worked" two sessions ago. The fix appears to be a real root-cause change in `hydrate_ast_bundle`'s cold-miss return contract, not a superficial patch. The only loose end is that `status.ast_hydrated` doesn't yet reflect the improved reality — everything downstream of it works, but that one flag hasn't caught up.
 
+Sync probe marker: scubiee-sync-probe-20260924-kiros-experience
+
 ---
 
 ## 10. Fifth pass: full re-test of everything on 0.3.112, and the maintainers' own changelog confirms the findings
@@ -581,6 +583,46 @@ Worth recording the negative results too, since a bug hunt should show what was 
 - Concurrency: five parallel `gate`/`status` calls and two genuinely-parallel identical `map` calls all returned consistent, uncorrupted results with the same session id throughout — no race-condition crashes or cross-talk observed.
 
 ### Summary of this pass
+
+## 12. VS Code Copilot pass: broader MCP and regression testing (2026-09-24)
+
+This pass was run from VS Code Copilot against the self-hosted Scubiee MCP server in `c:\Users\usman\Downloads\context-engine`. I used explicit session ids to isolate test state from the default Copilot session. The goal was to exercise every MCP tool, repeat cached calls, probe invalid parameters, test expansion directions, and run the MCP-focused pytest suite.
+
+### What worked
+
+- All eight MCP tools were callable at the start: `gate`, `status`, `map`, `pack_context`, `expand_context`, `collect_hot_context`, `workspace`, and `expand`.
+- `map` returned relevant implementation and test cards in roughly 0.7-1.2 seconds. Identical repeated queries were deterministic and used a near-zero-latency cache path.
+- Multi-seed `pack_context` returned a non-thin heatmap with 39 agreement nodes. Single-seed warm packing completed in about 17ms; multi-seed packing in about 62ms.
+- Body collection respected `max_chars` and `max_bodies`; valid span handles worked with `expand`; invalid handles returned structured errors.
+- Explicit session isolation worked: the test session retained its heatmap and pins while the default Copilot session stayed empty.
+- Invalid roots, empty map queries, invalid workspace paths, unknown graph nodes, and missing body ids failed safely in most cases.
+
+### New findings
+
+1. **Readiness fields can contradict each other.** A full `status` response reported `warm_state=ready` and `runtime_state=READY`, while also reporting `ready=false`, `syncing=true`, `agent_ready=stale`, and `index_fresh=false`. A later summary became consistent after synchronization, but the full response is difficult for an agent to interpret safely.
+
+2. **Expansion direction is unreliable for `write_kiro_mcp`.** `expand_context(direction="callers")` returned `merge_mcp_json`, which is a callee and also appeared under `direction="callees"`. `direction="effects"` and `direction="config"` returned empty results even though the function clearly writes MCP configuration.
+
+3. **Broad expansion was too narrow.** `expand_context(direction="broad")` around `write_kiro_mcp` returned only the direct `merge_mcp_json` edge instead of the callers, callees, and configuration effects requested by the query.
+
+4. **`pack_context(k=0)` ignored the boundary.** `map(k=0)` correctly returned a validation error, but `pack_context(k=0)` silently returned six cards. The tools do not enforce the same result-count contract.
+
+5. **The MCP-focused regression suite has three reproducible failures.** The repository virtualenv produced `259 passed, 3 failed, 1 skipped, 3 deselected`:
+  - `test_search_returns_warming_without_blocking_embedder` expected `engine_warming` but received `dense_embed_loading`.
+  - `test_client_retries_transient_url_error` timed out instead of succeeding after the mocked transient URL failure.
+  - `test_warm_engine_for_mcp_waits_for_embedder` returned `ok=false` because the warm-up path was skipped by TTL state.
+
+  Rerunning just those three tests reproduced all three failures in 4.56 seconds.
+
+6. **The test run exposed Windows lifecycle instability.** The full run emitted a Windows fatal access violation while lifecycle/status tests were spawning daemon and watchdog threads. The stack included `mcp_lifecycle`, `runtime_controller`, `daemon`, and `silent_spawn` paths. This can terminate the test process and leave background processes behind.
+
+7. **The repository identity warning needs investigation.** Pytest warned that `.scubiee/id.json` contained project id `ce_c505c4e65dbe5e2063a6c1089fe4db4e`, but that id did not match the registry/store for the workspace, so the id file was ignored unless trust was forced.
+
+8. **The MCP surface became unavailable after stress testing.** Subsequent health and workspace calls reported that the Scubiee tools were disabled by the tool layer. It was unclear whether this came from lifecycle churn, the access violation, or MCP process teardown, but it is an important operational failure mode.
+
+### Overall Copilot experience
+
+The retrieval path is fast and pleasant when the engine is warm: map results are relevant, pack results are compact, body budgets are respected, and explicit sessions make parallel work understandable. The weak points are now concentrated in contracts and lifecycle behavior rather than basic retrieval: directional graph semantics are not trustworthy for every symbol, boundary parameters are inconsistent, readiness fields require interpretation, and the test suite still exposes warm-up/retry regressions plus a Windows process-stability problem. I would prioritize the three failing tests and the access violation before relying on Scubiee for unattended VS Code sessions.
 
 Five real bugs found across five different tools, ranging from a cosmetic timing-telemetry inconsistency (Bug 1) to a genuinely concerning stale-index-presented-as-fresh case (Bug 3). None were security-exploitable — every injection/traversal/malformed-input attempt was safely contained — and the validation that *does* exist (bounds checks on `map`, envelope-consistent errors on most paths, handle-registry isolation on `expand`) is generally solid. The gaps are concentrated in inconsistent enforcement across otherwise-similar parameters (`pack_context`'s `seed_file` is validated for existence but `workspace`'s `path` isn't; `max_chars` truncates correctly for positive values but not for zero/negative; `direction` isn't validated against its documented enum at all) rather than in any single badly-designed tool.
 

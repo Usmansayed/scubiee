@@ -1,0 +1,50 @@
+{
+  "ok": true,
+  "elapsed_s": 0.048,
+  "seed_file": "packages/pipeline/work_session.py",
+  "seed": {
+    "file": "packages/pipeline/work_session.py",
+    "symbol": "_session_path",
+    "id": "packages/pipeline/work_session.py::_session_path",
+    "loc": null
+  },
+  "chunks": [
+    {
+      "file": "packages/pipeline/work_session.py",
+      "symbol": "_session_path",
+      "loc": "packages/pipeline/work_session.py:16-29",
+      "score": 1.0,
+      "kind": "function"
+    },
+    {
+      "file": "packages/pipeline/project_id.py",
+      "symbol": "repo_runtime_dir",
+      "loc": "packages/pipeline/project_id.py:121-142",
+      "score": 1.0,
+      "kind": "function"
+    },
+    {
+      "file": "packages/pipeline/session_isolation.py",
+      "symbol": "_session_isolate_enabled",
+      "loc": "packages/pipeline/session_isolation.py:382-387",
+      "score": 1.0,
+      "kind": "function"
+    },
+    {
+      "file": "packages/pipeline/session_isolation.py",
+      "symbol": "default_process_session_id",
+      "loc": "packages/pipeline/session_isolation.py:326-331",
+      "score": 1.0,
+      "kind": "function"
+    },
+    {
+      "file": "packages/pipeline/session_isolation.py",
+      "symbol": "sanitize_session_id",
+      "loc": "packages/pipeline/session_isolation.py:174-177",
+      "score": 1.0,
+      "kind": "function"
+    }
+  ],
+  "n_cards": 12,
+  "error": null
+}

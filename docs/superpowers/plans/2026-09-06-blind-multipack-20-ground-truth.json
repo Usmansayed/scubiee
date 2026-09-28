@@ -1,0 +1,179 @@
+{
+  "protocol": "blind_multipack_v2_gt",
+  "authored": "2026-09-06",
+  "note": "Independent GT after frozen maps+packs. Must = edit-critical files/symbols for the task.",
+  "cases": {
+    "u01": {
+      "must_files": [
+        "packages/pipeline/incremental.py",
+        "packages/pipeline/chunk_merkle.py"
+      ],
+      "should_files": [
+        "packages/pipeline/store.py",
+        "packages/conductor/graphify_retriever.py",
+        "packages/pipeline/sync_loop.py"
+      ],
+      "must_symbols": [
+        "packages/pipeline/incremental.py::incremental_sync",
+        "packages/pipeline/chunk_merkle.py::diff_chunk_records"
+      ]
+    },
+    "u02": {
+      "must_files": ["packages/pipeline/chunk_compress.py"],
+      "should_files": ["packages/pipeline/indexer.py"],
+      "must_symbols": [
+        "packages/pipeline/chunk_compress.py::compress_chunk",
+        "packages/pipeline/chunk_compress.py::resolve_compress_mode"
+      ]
+    },
+    "u03": {
+      "must_files": [
+        "packages/pipeline/mcp_bridge_session.py",
+        "packages/pipeline/mcp_bridge.py"
+      ],
+      "should_files": ["packages/pipeline/session_isolation.py"],
+      "must_symbols": [
+        "packages/pipeline/mcp_bridge_session.py::ChildWorker._child_env",
+        "packages/pipeline/mcp_bridge_session.py::SessionRegistry"
+      ]
+    },
+    "u04": {
+      "must_files": ["packages/pipeline/resources.py"],
+      "should_files": ["packages/pipeline/ce_service.py", "packages/pipeline/engine.py"],
+      "must_symbols": [
+        "packages/pipeline/resources.py::ResourceManager.throttle",
+        "packages/pipeline/resources.py::ResourceManager.run_job"
+      ]
+    },
+    "u05": {
+      "must_files": ["packages/pipeline/memory_governor.py"],
+      "should_files": ["packages/pipeline/sync_loop.py", "packages/pipeline/engine.py"],
+      "must_symbols": [
+        "packages/pipeline/memory_governor.py::MemoryGovernor.maybe_demote_idle",
+        "packages/pipeline/memory_governor.py::MemoryGovernor.apply_tier"
+      ]
+    },
+    "u06": {
+      "must_files": [
+        "packages/pipeline/__main__.py",
+        "packages/pipeline/certify.py"
+      ],
+      "should_files": ["packages/pipeline/accel.py"],
+      "must_symbols": [
+        "packages/pipeline/__main__.py::cmd_doctor",
+        "packages/pipeline/__main__.py::cmd_certify"
+      ]
+    },
+    "u07": {
+      "must_files": ["packages/pipeline/__main__.py"],
+      "should_files": ["packages/pipeline/cli_ui.py"],
+      "must_symbols": ["packages/pipeline/__main__.py::cmd_disconnect"]
+    },
+    "u08": {
+      "must_files": ["packages/trace_lab/vector_index.py"],
+      "should_files": ["packages/trace_lab/vague_eval.py", "packages/trace_lab/embed_field.py"],
+      "must_symbols": [
+        "packages/trace_lab/vector_index.py::VectorIndex",
+        "packages/trace_lab/vector_index.py::hybrid_map_scores"
+      ]
+    },
+    "u09": {
+      "must_files": ["packages/trace_lab/recall_belt.py"],
+      "should_files": ["packages/trace_lab/prod_eval.py", "packages/trace_lab/verify_board.py"],
+      "must_symbols": [
+        "packages/trace_lab/recall_belt.py::bind_recall_belt",
+        "packages/trace_lab/recall_belt.py::recall_fuse"
+      ]
+    },
+    "u10": {
+      "must_files": [
+        "packages/enrich/__init__.py",
+        "packages/metadata/__init__.py"
+      ],
+      "should_files": ["packages/pipeline/indexer.py"],
+      "must_symbols": [
+        "packages/enrich/__init__.py::inject_metadata",
+        "packages/enrich/__init__.py::enrich_repo"
+      ]
+    },
+    "u11": {
+      "must_files": ["packages/pipeline/host_workspace.py"],
+      "should_files": ["packages/pipeline/session_isolation.py"],
+      "must_symbols": ["packages/pipeline/host_workspace.py::host_env_signals"]
+    },
+    "u12": {
+      "must_files": ["packages/pipeline/__main__.py"],
+      "should_files": [],
+      "must_symbols": [
+        "packages/pipeline/__main__.py::cmd_dashboard",
+        "packages/pipeline/__main__.py::cmd_serve"
+      ]
+    },
+    "u13": {
+      "must_files": [
+        "packages/pipeline/__main__.py",
+        "packages/pipeline/wipe.py"
+      ],
+      "should_files": [],
+      "must_symbols": [
+        "packages/pipeline/__main__.py::cmd_wipe",
+        "packages/pipeline/__main__.py::cmd_halt"
+      ]
+    },
+    "u14": {
+      "must_files": ["packages/pipeline/__main__.py"],
+      "should_files": [],
+      "must_symbols": ["packages/pipeline/__main__.py::cmd_upgrade"]
+    },
+    "u15": {
+      "must_files": [
+        "packages/pipeline/locate_cli.py",
+        "packages/pipeline/__main__.py"
+      ],
+      "should_files": [],
+      "must_symbols": [
+        "packages/pipeline/locate_cli.py::cli_expand",
+        "packages/pipeline/__main__.py::cmd_expand"
+      ]
+    },
+    "u16": {
+      "must_files": [
+        "packages/trace_lab/corpus.py",
+        "packages/trace_lab/composite_v1.py"
+      ],
+      "should_files": ["packages/pipeline/context_trace.py"],
+      "must_symbols": [
+        "packages/trace_lab/corpus.py::corpus_fingerprint",
+        "packages/trace_lab/corpus.py::extract_nodes"
+      ]
+    },
+    "u17": {
+      "must_files": ["packages/trace_lab/failure_report.py"],
+      "should_files": ["packages/trace_lab/prod_eval.py"],
+      "must_symbols": ["packages/trace_lab/failure_report.py::build_failure_report"]
+    },
+    "u18": {
+      "must_files": [
+        "packages/trace_lab/facts/call_graph.py",
+        "packages/trace_lab/composite_v1.py"
+      ],
+      "should_files": [],
+      "must_symbols": [
+        "packages/trace_lab/facts/call_graph.py::build_enriched_call_graph"
+      ]
+    },
+    "u19": {
+      "must_files": [
+        "packages/trace_lab/facts/dfg.py",
+        "packages/trace_lab/composite_v1.py"
+      ],
+      "should_files": ["packages/trace_lab/engine/best_first.py"],
+      "must_symbols": ["packages/trace_lab/facts/dfg.py::build_dfg_edges"]
+    },
+    "u20": {
+      "must_files": ["packages/pipeline/__main__.py"],
+      "should_files": ["packages/pipeline/wipe.py", "packages/pipeline/cli_ui.py"],
+      "must_symbols": ["packages/pipeline/__main__.py::cmd_unlock_tool"]
+    }
+  }
+}

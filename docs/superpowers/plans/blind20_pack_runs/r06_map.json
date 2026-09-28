@@ -1,0 +1,103 @@
+{
+  "ok": true,
+  "tool": "map",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/pipeline/dashboard_server.py",
+      "score": 27.132268231281436,
+      "why": "Dedicated loopback-only HTTP server for the CE operator dashboard.",
+      "role": "function",
+      "loc": "packages/pipeline/dashboard_server.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 2,
+      "file": "packages/pipeline/dashboard_port.py",
+      "score": 21.062564341194353,
+      "why": "Stable localhost port selection and dashboard process state.",
+      "role": "function",
+      "loc": "packages/pipeline/dashboard_port.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 3,
+      "file": "packages/pipeline/__main__.py",
+      "score": 14.841425905394681,
+      "why": "def cmd_dashboard(args: argparse.Namespace) -> int: \"\"\"Start, inspect, or stop the dedicated localhost operator dashboard.\"\"\" from pipeline.dashboard_server import ( dashboard_stat",
+      "role": "function",
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 4,
+      "file": "packages/pipeline/dashboard.py",
+      "score": 5.559404004797763,
+      "why": "\ufeff\"\"\"Minimal Context Engine settings dashboard (HTML + JSON API).\"\"\" from __future__ import annotations DASHBOARD_HTML = \"\"\"<!DOCTYPE html> <html lang=\"en\"> <head> <meta charset=\"ut",
+      "role": "function",
+      "loc": "packages/pipeline/dashboard.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 5,
+      "file": "docs/superpowers/plans/2026-08-17-ce-operator-dashboard.md",
+      "score": 5.079981371393074,
+      "why": "# CE Operator Dashboard Implementation Plan > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans ",
+      "role": "docs",
+      "loc": "docs/superpowers/plans/2026-08-17-ce-operator-dashboard.md:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 6,
+      "file": "packages/graphify/serve.py",
+      "score": 4.788854253105562,
+      "why": "def serve(graph_path: str | None = None) -> None: \"\"\"Start the MCP server over stdio (the default, per-developer transport).\"\"\" graph_path = graph_path or _default_graph_json() try",
+      "role": "function",
+      "loc": "packages/graphify/serve.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 7,
+      "file": "docs/superpowers/specs/2026-08-17-ce-operator-dashboard-design.md",
+      "score": 4.770213573958602,
+      "why": "# CE Operator Dashboard \u2014 Design **Date:** 2026-08-17 **Branch / worktree:** `feat/ce-dashboard` / `.worktrees/ce-dashboard` **Status:** Approved in conversation; ready for impleme",
+      "role": "docs",
+      "loc": "docs/superpowers/specs/2026-08-17-ce-operator-dashboard-design.md:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 8,
+      "file": "tests/test_dashboard_api.py",
+      "score": 4.175609952415018,
+      "why": "def test_mutation_accepts_localhost_origin_for_loopback_server(isolated_ce_home): from pipeline.dashboard_server import DashboardAPI status, payload = DashboardAPI().dispatch( \"POS",
+      "role": "test",
+      "loc": "tests/test_dashboard_api.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 9,
+      "file": "tests/test_dashboard_ui_contract.py",
+      "score": 4.076196588123121,
+      "why": "def test_ce_dashboard_serves_light_sidebar_shell_and_assets(): server = create_dashboard_server(port=0) thread = threading.Thread(target=server.serve_forever, daemon=True) thread.s",
+      "role": "test",
+      "loc": "tests/test_dashboard_ui_contract.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 10,
+      "file": "packages/pipeline/dashboard_ui/app.js",
+      "score": 3.978430297835764,
+      "why": "function statusBadge(value) { const status = String(value || \"unknown\").toLowerCase(); return `<span class=\"badge ${escapeHtml(status)}\">${escapeHtml(status)}</span>`; }",
+      "role": "function",
+      "loc": "packages/pipeline/dashboard_ui/app.js:1-1",
+      "symbol": ""
+    }
+  ],
+  "suggested_seed": {
+    "file": "packages/pipeline/dashboard_server.py",
+    "symbol": "",
+    "loc": "packages/pipeline/dashboard_server.py:1-1",
+    "score": 27.132268231281436
+  },
+  "next": "scubiee pack \"dashboard HTTP routes status endpoints localhost operator serve cmd_dashboard uvicorn\" --seed-file packages/pipeline/dashboard_server.py --mode lean"
+}

@@ -332,9 +332,32 @@ def _registry_path_identity_trusted(project_id: str, path: Path) -> bool:
     return read_id_file(path) == project_id
 
 
+_GIT_COMMON_CACHE: dict[str, tuple[float, Path]] = {}
+_GIT_COMMON_TTL_S = 300.0
+
+
 def git_common_dir(root: Path) -> Path | None:
-    """Return the shared Git administration directory for a checkout."""
+    """Return the shared Git administration directory for a checkout.
+
+    Cached per root (positive answers only, 5 min): every ``PipelineStore(root)``
+    resolves the project, and the engine builds one per 1s disk poll and per
+    save. Each lookup spawned ``git rev-parse`` — ~50ms normally, seconds when
+    Windows process creation is slow (issue 4: prep_ms spikes to 2.4s).
+    """
     root = root.resolve()
+    key = str(root)
+    hit = _GIT_COMMON_CACHE.get(key)
+    if hit is not None and (time.monotonic() - hit[0]) < _GIT_COMMON_TTL_S and hit[1].exists():
+        return hit[1]
+    found = _git_common_dir_uncached(root)
+    if found is not None:
+        _GIT_COMMON_CACHE[key] = (time.monotonic(), found)
+    else:
+        _GIT_COMMON_CACHE.pop(key, None)
+    return found
+
+
+def _git_common_dir_uncached(root: Path) -> Path | None:
     try:
         # hidden_run: CREATE_NO_WINDOW on Windows — pythonw→git otherwise
         # allocates a visible conhost flash on every identity/reconcile call.

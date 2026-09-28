@@ -1,0 +1,87 @@
+{
+  "ok": true,
+  "query": "work_session touch pins files role query session_id remember recent pack heatmap",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/pipeline/work_session.py",
+      "symbol": "",
+      "score": 16.6419,
+      "loc": "packages/pipeline/work_session.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "tests/test_mcp_locate.py",
+      "symbol": "",
+      "score": 13.5018,
+      "loc": "tests/test_mcp_locate.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "tests/test_session_isolation.py",
+      "symbol": "",
+      "score": 13.2383,
+      "loc": "tests/test_session_isolation.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "docs/superpowers/plans/2026-09-04-post-heatmap-next-tool.md",
+      "symbol": "",
+      "score": 11.9063,
+      "loc": "docs/superpowers/plans/2026-09-04-post-heatmap-next-tool.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "packages/pipeline/repo_runtime.py",
+      "symbol": "",
+      "score": 11.4383,
+      "loc": "packages/pipeline/repo_runtime.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "docs/superpowers/plans/2026-09-05-kiro-cli-ab-dev3-session.md",
+      "symbol": "",
+      "score": 4.24,
+      "loc": "docs/superpowers/plans/2026-09-05-kiro-cli-ab-dev3-session.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "docs/superpowers/plans/2026-09-06-blind-map-pack-20-results.md",
+      "symbol": "",
+      "score": 4.2106,
+      "loc": "docs/superpowers/plans/2026-09-06-blind-map-pack-20-results.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "fixtures/trace-lab/app/search/query.py",
+      "symbol": "",
+      "score": 3.7699,
+      "loc": "fixtures/trace-lab/app/search/query.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "docs/session-handoff-aug24-2026.md",
+      "symbol": "",
+      "score": 3.4588,
+      "loc": "docs/session-handoff-aug24-2026.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "scripts/blind_map_pack_phase2.py",
+      "symbol": "",
+      "score": 3.349,
+      "loc": "scripts/blind_map_pack_phase2.py:1-1",
+      "why": ""
+    }
+  ],
+  "elapsed_s": 0.521
+}

@@ -1,0 +1,61 @@
+{
+  "label": "full_curated",
+  "started_at": 1789404515.1583438,
+  "targets": [
+    "tests/test_lifecycle_runtime.py",
+    "tests/test_lifecycle_disconnect_unload.py",
+    "tests/test_runtime_controller.py",
+    "tests/test_mcp_bridge.py",
+    "tests/test_e2e_system_matrix.py",
+    "tests/test_memory_governor.py",
+    "tests/test_memory_budget.py",
+    "tests/test_runtime_publish.py",
+    "tests/test_live_reindexing.py",
+    "tests/test_watcher_recovery.py",
+    "tests/test_freshness.py",
+    "tests/test_sync_status_canaries.py",
+    "tests/test_incremental_context_ladder.py",
+    "tests/test_expand_after_pack.py",
+    "tests/test_attach_warm_pipeline.py",
+    "tests/test_locate_worker_prewarm.py",
+    "tests/test_reliability_master_plan.py"
+  ],
+  "suites": {
+    "wrapper_lifecycle": [
+      "tests/test_lifecycle_runtime.py",
+      "tests/test_lifecycle_disconnect_unload.py",
+      "tests/test_runtime_controller.py",
+      "tests/test_mcp_bridge.py",
+      "tests/test_e2e_system_matrix.py"
+    ],
+    "resources": [
+      "tests/test_memory_governor.py",
+      "tests/test_memory_budget.py",
+      "tests/test_runtime_publish.py"
+    ],
+    "sync": [
+      "tests/test_live_reindexing.py",
+      "tests/test_watcher_recovery.py",
+      "tests/test_freshness.py",
+      "tests/test_sync_status_canaries.py"
+    ],
+    "tools_locate": [
+      "tests/test_incremental_context_ladder.py",
+      "tests/test_expand_after_pack.py",
+      "tests/test_attach_warm_pipeline.py",
+      "tests/test_locate_worker_prewarm.py",
+      "tests/test_reliability_master_plan.py"
+    ]
+  },
+  "runs": [
+    {
+      "ok": false,
+      "returncode": 1,
+      "elapsed_ms": 30780.0,
+      "tail": "................................F....................................... [ 44%]\n......F................................................................. [ 88%]\n.F.................                                                      [100%]\n================================== FAILURES ===================================\nE   assert 0 == 1\nC:\\Users\\usman\\Downloads\\context-engine\\tests\\test_runtime_controller.py:39: assert 0 == 1\nE   AssertionError: expected call not found.\n    Expected: drop_engine(WindowsPath('C:/Users/usman/AppData/Local/Temp/pytest-of-usman/pytest-1220/test_publish_engine_bumps_gene0/proj'))\n      Actual: not called.\nC:\\Users\\usman\\Miniconda3\\Lib\\unittest\\mock.py:970: AssertionError: expected call not found.\nE   AssertionError: assert 'ensure' in ['worker']\nC:\\Users\\usman\\Downloads\\context-engine\\tests\\test_attach_warm_pipeline.py:69: AssertionError: assert 'ensure' in ['worker']\n============================== warnings summary ===============================\ntests/test_expand_after_pack.py::test_expand_callers_after_pack_not_empty\n  <unknown>:6: SyntaxWarning: invalid escape sequence '\\.'\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ===========================\nFAILED tests/test_runtime_controller.py::test_ensure_attach_is_singleflight\nFAILED tests/test_runtime_publish.py::test_publish_engine_bumps_generation - ...\nFAILED tests/test_attach_warm_pipeline.py::test_start_attach_warm_pipeline_returns_immediately\n3 failed, 160 passed, 1 warning in 29.74s\n\n"
+    }
+  ],
+  "ok": false,
+  "elapsed_ms": 30780.0,
+  "finished_at": 1789404545.9383588
+}

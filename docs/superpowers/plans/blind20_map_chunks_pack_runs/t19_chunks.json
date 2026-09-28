@@ -1,0 +1,32 @@
+[
+  {
+    "file": "packages/pipeline/__main__.py",
+    "symbol": "cmd_dashboard",
+    "kind": "function",
+    "loc": "packages/pipeline/__main__.py:923-942",
+    "start_line": 923,
+    "end_line": 942,
+    "score": 7.4,
+    "excerpt": "def cmd_dashboard(args: argparse.Namespace) -> int:\n    \"\"\"Start, inspect, or stop the dedicated localhost operator dashboard.\"\"\"\n    from pipeline.dashboard_server import (\n      "
+  },
+  {
+    "file": "packages/pipeline/dashboard_server.py",
+    "symbol": "dashboard_status",
+    "kind": "function",
+    "loc": "packages/pipeline/dashboard_server.py:675-688",
+    "start_line": 675,
+    "end_line": 688,
+    "score": 6.35,
+    "excerpt": "def dashboard_status(*, include_health: bool = True) -> dict[str, Any]:\n    lock = DashboardLock()\n    state = lock.read()\n    if not state:\n        return {\"ok\": True, \"running\": "
+  },
+  {
+    "file": "packages/pipeline/__main__.py",
+    "symbol": "cmd_status",
+    "kind": "function",
+    "loc": "packages/pipeline/__main__.py:772-843",
+    "start_line": 772,
+    "end_line": 843,
+    "score": 6.0,
+    "excerpt": "def cmd_status(args: argparse.Namespace) -> int:\n    from pipeline.repo_lifecycle import UNMANAGED, managed_state\n    from pipeline.project_id import read_id_file\n\n    root = Path("
+  }
+]

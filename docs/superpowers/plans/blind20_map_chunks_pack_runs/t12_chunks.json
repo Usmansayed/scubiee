@@ -1,0 +1,32 @@
+[
+  {
+    "file": "packages/pipeline/rules_installer.py",
+    "symbol": "gate_overview_mdc",
+    "kind": "function",
+    "loc": "packages/pipeline/rules_installer.py:182-193",
+    "start_line": 182,
+    "end_line": 193,
+    "score": 10.05,
+    "excerpt": "def gate_overview_mdc() -> str:\n    \"\"\"Fallback/overview mdc when no live gate_line - same policy as written rules.\"\"\"\n    return (\n        \"---\\n\"\n        \"description: Scubiee GA"
+  },
+  {
+    "file": "packages/pipeline/rules_installer.py",
+    "symbol": "write_project_gate_rules",
+    "kind": "function",
+    "loc": "packages/pipeline/rules_installer.py:1139-1202",
+    "start_line": 1139,
+    "end_line": 1202,
+    "score": 10.05,
+    "excerpt": "def write_project_gate_rules(\n    repo: Path | str,\n    *,\n    dry_run: bool = False,\n    slugs: list[str] | None = None,\n) -> dict[str, Any]:\n    \"\"\"Write compact GATE prefer+esca"
+  },
+  {
+    "file": "packages/pipeline/mcp_locate.py",
+    "symbol": "create_mcp",
+    "kind": "function",
+    "loc": "packages/pipeline/mcp_locate.py:2246-4682",
+    "start_line": 2246,
+    "end_line": 4682,
+    "score": 3.7,
+    "excerpt": "def create_mcp(name: str = \"scubiee\") -> \"FastMCP\":\n    if FastMCP is None:\n        raise RuntimeError(\"pip install mcp\")\n    surface = _active_surface()\n    mcp = FastMCP(name, in"
+  }
+]

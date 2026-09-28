@@ -1,0 +1,98 @@
+{
+  "ok": true,
+  "tool": "pack_semantic",
+  "engine": "semantic_tracer_fuse",
+  "elapsed_s": 0.393,
+  "n_pack": 4,
+  "seed": {
+    "file": "packages/pipeline/mcp_permissions.py",
+    "symbol": "merge_cursor_permissions",
+    "id": "packages/pipeline/mcp_permissions.py::merge_cursor_permissions"
+  },
+  "pack": [
+    {
+      "file": "packages/pipeline/mcp_permissions.py",
+      "symbol": "merge_cursor_permissions",
+      "score": 1.0,
+      "loc": "packages/pipeline/mcp_permissions.py:253-287",
+      "id": "packages/pipeline/mcp_permissions.py::merge_cursor_permissions",
+      "chars": 1317
+    },
+    {
+      "file": "packages/pipeline/mcp_permissions.py",
+      "symbol": "apply_permissions_to_repo_tool_surface",
+      "score": 1.0,
+      "loc": "packages/pipeline/mcp_permissions.py:518-531",
+      "id": "packages/pipeline/mcp_permissions.py::apply_permissions_to_repo_tool_surface",
+      "chars": 397
+    },
+    {
+      "file": "packages/pipeline/mcp_permissions.py",
+      "symbol": "tool_permission_plan",
+      "score": 0.9931,
+      "loc": "packages/pipeline/mcp_permissions.py:158-159",
+      "id": "packages/pipeline/mcp_permissions.py::tool_permission_plan",
+      "chars": 98
+    },
+    {
+      "file": "packages/pipeline/mcp_permissions.py",
+      "symbol": "write_tool_permission_artifacts",
+      "score": 0.9615,
+      "loc": "packages/pipeline/mcp_permissions.py:365-483",
+      "id": "packages/pipeline/mcp_permissions.py::write_tool_permission_artifacts",
+      "chars": 4188
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/pipeline/mcp_permissions.py::merge_cursor_permissions",
+      "loc": "packages/pipeline/mcp_permissions.py:253-287",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/mcp_permissions.py::apply_permissions_to_repo_tool_surface",
+      "loc": "packages/pipeline/mcp_permissions.py:518-531",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/mcp_permissions.py::tool_permission_plan",
+      "loc": "packages/pipeline/mcp_permissions.py:158-159",
+      "edge": "calls",
+      "score": 0.9931
+    },
+    {
+      "id": "packages/pipeline/mcp_permissions.py::write_tool_permission_artifacts",
+      "loc": "packages/pipeline/mcp_permissions.py:365-483",
+      "edge": "calls",
+      "score": 0.9615
+    },
+    {
+      "id": "packages/pipeline/mcp_permissions.py::_cursor_mcp_allowlist",
+      "loc": "packages/pipeline/mcp_permissions.py:211-221",
+      "edge": "calls",
+      "score": 0.9525
+    },
+    {
+      "id": "packages/pipeline/mcp_permissions.py::_write_json_object",
+      "loc": "packages/pipeline/mcp_permissions.py:243-250",
+      "edge": "calls",
+      "score": 0.9455
+    },
+    {
+      "id": "packages/pipeline/mcp_permissions.py::_load_json_object",
+      "loc": "packages/pipeline/mcp_permissions.py:233-240",
+      "edge": "calls",
+      "score": 0.9414
+    },
+    {
+      "id": "packages/pipeline/mcp_permissions.py::_merge_unique_strings",
+      "loc": "packages/pipeline/mcp_permissions.py:162-171",
+      "edge": "calls",
+      "score": 0.9364
+    }
+  ],
+  "pack_query": "mcp_permissions mcpAllowlist permissions.json autoApprove connect cursor install_tool surface\nrelevant_chunks: packages/pipeline/mcp_permissions.py::merge_cursor_permissions@packages/pipeline/mcp_permissions.py:253-287 | packages/pipeline/mcp_permissions.py::apply_permissions_to_repo_tool_surface@packages/pipeline/mcp_permissions.py:518-531 | packages/pipeline/mcp_install.py::write_cursor_mcp@packages/pipeline/mcp_install.py:274-290",
+  "error": null
+}

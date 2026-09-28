@@ -1,0 +1,32 @@
+[
+  {
+    "file": "packages/pipeline/repo_lifecycle.py",
+    "symbol": "never_index_repo",
+    "kind": "function",
+    "loc": "packages/pipeline/repo_lifecycle.py:619-639",
+    "start_line": 619,
+    "end_line": 639,
+    "score": 6.7,
+    "excerpt": "def never_index_repo(root: Path, *, reason: str | None = None) -> dict[str, Any]:\n    root = _root(root)\n    ref = resolve_project(root)\n    now = time.time()\n    current = (load_r"
+  },
+  {
+    "file": "packages/pipeline/repo_lifecycle.py",
+    "symbol": "activate_repo",
+    "kind": "function",
+    "loc": "packages/pipeline/repo_lifecycle.py:473-517",
+    "start_line": 473,
+    "end_line": 517,
+    "score": 3.7,
+    "excerpt": "def activate_repo(root: Path) -> dict[str, Any]:\n    root = _root(root)\n    project_id, entry = _project(root)\n    if not project_id or not _entry_managed(entry):\n        return {\n"
+  },
+  {
+    "file": "packages/graphify/extractors/resolution.py",
+    "symbol": "_pnpm_workspace_globs",
+    "kind": "function",
+    "loc": "packages/graphify/extractors/resolution.py:339-356",
+    "start_line": 339,
+    "end_line": 356,
+    "score": 2.7,
+    "excerpt": "def _pnpm_workspace_globs(workspace_file: Path) -> list[str]:\n    globs: list[str] = []\n    in_packages = False\n    for raw_line in workspace_file.read_text(encoding=\"utf-8\", error"
+  }
+]

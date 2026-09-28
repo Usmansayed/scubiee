@@ -1,0 +1,111 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 7.767,
+  "stdout_chars": 4013,
+  "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})",
+  "json": {
+    "ok": true,
+    "tool": "map",
+    "cards": [
+      {
+        "rank": 1,
+        "file": "packages/trace_lab/composite_v1.py",
+        "score": 19.441597935498162,
+        "why": "\"\"\"composite_v1 \u2014 fuse callgraph_jedi membership + polytrace-style precision + DFG boost.\"\"\" from __future__ import annotations from pathlib import Path from conductor.bm25_index i",
+        "role": "function",
+        "loc": "packages/trace_lab/composite_v1.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 2,
+        "file": "packages/trace_lab/engine/best_first.py",
+        "score": 18.56603732475149,
+        "why": "\"\"\"Best-first expansion over typed frontier edges.\"\"\" from __future__ import annotations import heapq from collections import defaultdict from trace_lab.facts import TypedEdge from",
+        "role": "function",
+        "loc": "packages/trace_lab/engine/best_first.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 3,
+        "file": "packages/trace_lab/engine/rank.py",
+        "score": 17.106413923145084,
+        "why": "\"\"\"Ranking presets: teleport, optional PPR, leaf genericness \u2014 membership already fixed.\"\"\" from __future__ import annotations from collections import defaultdict from conductor.bm",
+        "role": "function",
+        "loc": "packages/trace_lab/engine/rank.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 4,
+        "file": "packages/trace_lab/policy/slice_mask.py",
+        "score": 16.5638072226902,
+        "why": "\"\"\"Slice mask: drop excluded leaves before / during heat.\"\"\" from __future__ import annotations import re from conductor.bm25_index import tokenize from trace_lab.facts import Type",
+        "role": "function",
+        "loc": "packages/trace_lab/policy/slice_mask.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 5,
+        "file": "packages/trace_lab/facts/dfg.py",
+        "score": 15.880569377007076,
+        "why": "\"\"\"Lightweight Python DFG summaries: def-use, param/return, attribute flow.\"\"\" from __future__ import annotations import ast from collections import defaultdict from pathlib import",
+        "role": "function",
+        "loc": "packages/trace_lab/facts/dfg.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 6,
+        "file": "packages/trace_lab/engine/semantic_best_first.py",
+        "score": 15.3051219445715,
+        "why": "\"\"\"Comparator-guided best-first with optional trace-centroid refresh + info-gain stop.\"\"\" from __future__ import annotations import heapq from collections import defaultdict from t",
+        "role": "function",
+        "loc": "packages/trace_lab/engine/semantic_best_first.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 7,
+        "file": "packages/trace_lab/composite_semantic.py",
+        "score": 14.4810003479096,
+        "why": "\"\"\"composite_semantic \u2014 composite_v1 + Phase 0 semantic sensor (wrapper arm). Membership comes only from composite_v1. Embeddings rescore/gate the island. \"\"\" from __future__ impor",
+        "role": "function",
+        "loc": "packages/trace_lab/composite_semantic.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 8,
+        "file": "packages/trace_lab/semantic_tracer_v1.py",
+        "score": 14.448287099594591,
+        "why": "\"\"\"semantic_tracer_v1 \u2014 composite membership + comparator-guided expansion. Cycle 1 R&D arm. Does not invent edges; embeddings only rank legal hops. \"\"\" from __future__ import anno",
+        "role": "function",
+        "loc": "packages/trace_lab/semantic_tracer_v1.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 9,
+        "file": "packages/trace_lab/engine/__init__.py",
+        "score": 14.047734427801537,
+        "why": "\"\"\"Best-first frontier builder.\"\"\" from trace_lab.engine.best_first import best_first_expand from trace_lab.engine.frontier import build_frontier from trace_lab.engine.heatmap impo",
+        "role": "function",
+        "loc": "packages/trace_lab/engine/__init__.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 10,
+        "file": "packages/trace_lab/semantic_sensor.py",
+        "score": 13.85542644537827,
+        "why": "\"\"\"Semantic sensor for composite_v1 \u2014 Phase 0 rank-only fusion. Embeddings rescore admitted structural nodes. They do not invent membership. \"\"\" from __future__ import annotations ",
+        "role": "function",
+        "loc": "packages/trace_lab/semantic_sensor.py:1-1",
+        "symbol": ""
+      }
+    ],
+    "suggested_seed": {
+      "file": "packages/trace_lab/composite_v1.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/composite_v1.py:1-1",
+      "score": 19.441597935498162
+    },
+    "next": "scubiee pack \"composite_v1 membership edges best_first expand apply_rank_composite DFG PASSES_DATA_TO sink demotion poly foreign slice_mask trace_lab\" --seed-file packages/trace_lab/composite_v1.py --mode lean"
+  },
+  "stdout_preview": ""
+}

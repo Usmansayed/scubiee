@@ -1,0 +1,74 @@
+{
+  "id": "r07",
+  "family": "wipe-uninstall",
+  "task": "Trace wipe / uninstall removing store, MCP, and rules safely.",
+  "enrich_prompt": "cmd_wipe wipe uninstall remove store MCP rules halt confirm --all scubiee state",
+  "map": {
+    "elapsed_s": 0.954,
+    "n_cards": 10,
+    "suggested_seed": {
+      "file": "packages/pipeline/wipe.py",
+      "symbol": ""
+    },
+    "top_files": [
+      "packages/pipeline/wipe.py",
+      "tests/test_stop_all_tools.py",
+      "packages/pipeline/__main__.py",
+      "docs/web-info/uninstall-mac-linux.md",
+      "tests/test_wipe.py"
+    ]
+  },
+  "arms": {
+    "composite_v1": {
+      "ok": true,
+      "engine": "composite_v1",
+      "policy": "strict",
+      "elapsed_s": 0.036,
+      "n_pack": 1,
+      "pack": [
+        {
+          "file": "packages/pipeline/wipe.py",
+          "symbol": "_cursor_rule_paths",
+          "score": 1.0,
+          "loc": "packages/pipeline/wipe.py:29-31",
+          "id": "packages/pipeline/wipe.py::_cursor_rule_paths"
+        }
+      ],
+      "error": null
+    },
+    "polytrace": {
+      "ok": true,
+      "engine": "polytrace",
+      "policy": "strict",
+      "elapsed_s": 0.001,
+      "n_pack": 1,
+      "pack": [
+        {
+          "file": "packages/pipeline/wipe.py",
+          "symbol": "_cursor_rule_paths",
+          "score": 1.0,
+          "loc": "packages/pipeline/wipe.py:29-31",
+          "id": "packages/pipeline/wipe.py::_cursor_rule_paths"
+        }
+      ],
+      "error": null
+    },
+    "ultimate": {
+      "ok": true,
+      "engine": "ultimate",
+      "policy": "strict",
+      "elapsed_s": 0.016,
+      "n_pack": 1,
+      "pack": [
+        {
+          "file": "packages/pipeline/wipe.py",
+          "symbol": "_cursor_rule_paths",
+          "score": 1.0,
+          "loc": "packages/pipeline/wipe.py:29-31",
+          "id": "packages/pipeline/wipe.py::_cursor_rule_paths"
+        }
+      ],
+      "error": null
+    }
+  }
+}

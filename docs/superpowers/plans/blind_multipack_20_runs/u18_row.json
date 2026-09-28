@@ -1,0 +1,317 @@
+{
+  "id": "u18",
+  "family": "jedi-callgraph",
+  "task": "How does Jedi enrich the call graph used by composite membership?",
+  "enrich_map_query": "build_enriched_call_graph with_jedi Jedi call_graph TypedEdge composite membership",
+  "map_ok": true,
+  "suggested_seed": {
+    "file": "packages/trace_lab/facts/call_graph.py",
+    "symbol": "",
+    "source": "suggested_seed"
+  },
+  "resolved_seed": {
+    "file": "packages/trace_lab/facts/call_graph.py",
+    "symbol": "build_enriched_call_graph",
+    "how": "best_in_file"
+  },
+  "map_top_cards": [
+    {
+      "file": "packages/trace_lab/facts/call_graph.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/facts/call_graph.py:1-1",
+      "score": 33.28730855997905
+    },
+    {
+      "file": "packages/trace_lab/composite_v1.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/composite_v1.py:1-1",
+      "score": 17.424806066854458
+    },
+    {
+      "file": "packages/trace_lab/system_trace.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/system_trace.py:1-1",
+      "score": 14.023495380564963
+    },
+    {
+      "file": "packages/trace_lab/facts/__init__.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/facts/__init__.py:1-1",
+      "score": 7.231354882243393
+    },
+    {
+      "file": "packages/trace_lab/facts/dfg.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/facts/dfg.py:1-1",
+      "score": 6.48655072754002
+    },
+    {
+      "file": "packages/trace_lab/semantic_novel.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/semantic_novel.py:1-1",
+      "score": 5.056787071747017
+    },
+    {
+      "file": "packages/trace_lab/types.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/types.py:1-1",
+      "score": 4.064975201003856
+    },
+    {
+      "file": "packages/trace_lab/semantic_tracer_fuse.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/semantic_tracer_fuse.py:1-1",
+      "score": 3.5625965187103947
+    }
+  ],
+  "arms": {
+    "composite_v1": {
+      "ok": true,
+      "elapsed_s": 0.039,
+      "n_hot": 5,
+      "n_ranked": 5,
+      "hot_ids": [
+        "packages/trace_lab/facts/call_graph.py::build_enriched_call_graph",
+        "packages/trace_lab/facts/call_graph.py::edges_from_ast",
+        "packages/trace_lab/facts/call_graph.py::edges_from_dispatch",
+        "packages/trace_lab/facts/call_graph.py::edges_from_jedi",
+        "packages/trace_lab/facts/call_graph.py::merge_call_edges"
+      ],
+      "top15_ids": [
+        "packages/trace_lab/facts/call_graph.py::build_enriched_call_graph",
+        "packages/trace_lab/facts/call_graph.py::merge_call_edges",
+        "packages/trace_lab/facts/call_graph.py::edges_from_ast",
+        "packages/trace_lab/facts/call_graph.py::edges_from_dispatch",
+        "packages/trace_lab/facts/call_graph.py::edges_from_jedi"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/trace_lab/facts/call_graph.py::build_enriched_call_graph",
+          "file": "packages/trace_lab/facts/call_graph.py",
+          "symbol": "build_enriched_call_graph",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 1110
+        },
+        {
+          "id": "packages/trace_lab/facts/call_graph.py::merge_call_edges",
+          "file": "packages/trace_lab/facts/call_graph.py",
+          "symbol": "merge_call_edges",
+          "kind": "function",
+          "score": 0.99,
+          "body_chars": 375
+        },
+        {
+          "id": "packages/trace_lab/facts/call_graph.py::edges_from_ast",
+          "file": "packages/trace_lab/facts/call_graph.py",
+          "symbol": "edges_from_ast",
+          "kind": "function",
+          "score": 0.99,
+          "body_chars": 427
+        },
+        {
+          "id": "packages/trace_lab/facts/call_graph.py::edges_from_dispatch",
+          "file": "packages/trace_lab/facts/call_graph.py",
+          "symbol": "edges_from_dispatch",
+          "kind": "function",
+          "score": 0.99,
+          "body_chars": 485
+        },
+        {
+          "id": "packages/trace_lab/facts/call_graph.py::edges_from_jedi",
+          "file": "packages/trace_lab/facts/call_graph.py",
+          "symbol": "edges_from_jedi",
+          "kind": "function",
+          "score": 0.99,
+          "body_chars": 3295
+        }
+      ]
+    },
+    "semantic_tracer_fuse": {
+      "ok": true,
+      "elapsed_s": 0.363,
+      "n_hot": 5,
+      "n_ranked": 5,
+      "hot_ids": [
+        "packages/trace_lab/facts/call_graph.py::build_enriched_call_graph",
+        "packages/trace_lab/facts/call_graph.py::edges_from_ast",
+        "packages/trace_lab/facts/call_graph.py::edges_from_dispatch",
+        "packages/trace_lab/facts/call_graph.py::edges_from_jedi",
+        "packages/trace_lab/facts/call_graph.py::merge_call_edges"
+      ],
+      "top15_ids": [
+        "packages/trace_lab/facts/call_graph.py::build_enriched_call_graph",
+        "packages/trace_lab/facts/call_graph.py::edges_from_jedi",
+        "packages/trace_lab/facts/call_graph.py::edges_from_dispatch",
+        "packages/trace_lab/facts/call_graph.py::merge_call_edges",
+        "packages/trace_lab/facts/call_graph.py::edges_from_ast"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/trace_lab/facts/call_graph.py::build_enriched_call_graph",
+          "file": "packages/trace_lab/facts/call_graph.py",
+          "symbol": "build_enriched_call_graph",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 1110
+        },
+        {
+          "id": "packages/trace_lab/facts/call_graph.py::edges_from_jedi",
+          "file": "packages/trace_lab/facts/call_graph.py",
+          "symbol": "edges_from_jedi",
+          "kind": "function",
+          "score": 0.9417,
+          "body_chars": 3295
+        },
+        {
+          "id": "packages/trace_lab/facts/call_graph.py::edges_from_dispatch",
+          "file": "packages/trace_lab/facts/call_graph.py",
+          "symbol": "edges_from_dispatch",
+          "kind": "function",
+          "score": 0.9415,
+          "body_chars": 485
+        },
+        {
+          "id": "packages/trace_lab/facts/call_graph.py::merge_call_edges",
+          "file": "packages/trace_lab/facts/call_graph.py",
+          "symbol": "merge_call_edges",
+          "kind": "function",
+          "score": 0.9409,
+          "body_chars": 375
+        },
+        {
+          "id": "packages/trace_lab/facts/call_graph.py::edges_from_ast",
+          "file": "packages/trace_lab/facts/call_graph.py",
+          "symbol": "edges_from_ast",
+          "kind": "function",
+          "score": 0.9406,
+          "body_chars": 427
+        }
+      ]
+    },
+    "hyb_fuse_demote_noise_plus": {
+      "ok": true,
+      "elapsed_s": 0.06,
+      "n_hot": 5,
+      "n_ranked": 5,
+      "hot_ids": [
+        "packages/trace_lab/facts/call_graph.py::build_enriched_call_graph",
+        "packages/trace_lab/facts/call_graph.py::edges_from_ast",
+        "packages/trace_lab/facts/call_graph.py::edges_from_dispatch",
+        "packages/trace_lab/facts/call_graph.py::edges_from_jedi",
+        "packages/trace_lab/facts/call_graph.py::merge_call_edges"
+      ],
+      "top15_ids": [
+        "packages/trace_lab/facts/call_graph.py::build_enriched_call_graph",
+        "packages/trace_lab/facts/call_graph.py::edges_from_jedi",
+        "packages/trace_lab/facts/call_graph.py::edges_from_dispatch",
+        "packages/trace_lab/facts/call_graph.py::merge_call_edges",
+        "packages/trace_lab/facts/call_graph.py::edges_from_ast"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/trace_lab/facts/call_graph.py::build_enriched_call_graph",
+          "file": "packages/trace_lab/facts/call_graph.py",
+          "symbol": "build_enriched_call_graph",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 1110
+        },
+        {
+          "id": "packages/trace_lab/facts/call_graph.py::edges_from_jedi",
+          "file": "packages/trace_lab/facts/call_graph.py",
+          "symbol": "edges_from_jedi",
+          "kind": "function",
+          "score": 0.7642,
+          "body_chars": 3295
+        },
+        {
+          "id": "packages/trace_lab/facts/call_graph.py::edges_from_dispatch",
+          "file": "packages/trace_lab/facts/call_graph.py",
+          "symbol": "edges_from_dispatch",
+          "kind": "function",
+          "score": 0.764,
+          "body_chars": 485
+        },
+        {
+          "id": "packages/trace_lab/facts/call_graph.py::merge_call_edges",
+          "file": "packages/trace_lab/facts/call_graph.py",
+          "symbol": "merge_call_edges",
+          "kind": "function",
+          "score": 0.7636,
+          "body_chars": 375
+        },
+        {
+          "id": "packages/trace_lab/facts/call_graph.py::edges_from_ast",
+          "file": "packages/trace_lab/facts/call_graph.py",
+          "symbol": "edges_from_ast",
+          "kind": "function",
+          "score": 0.7634,
+          "body_chars": 427
+        }
+      ]
+    },
+    "poly_embed": {
+      "ok": true,
+      "elapsed_s": 0.002,
+      "n_hot": 5,
+      "n_ranked": 5,
+      "hot_ids": [
+        "packages/trace_lab/facts/call_graph.py::build_enriched_call_graph",
+        "packages/trace_lab/facts/call_graph.py::edges_from_ast",
+        "packages/trace_lab/facts/call_graph.py::edges_from_dispatch",
+        "packages/trace_lab/facts/call_graph.py::edges_from_jedi",
+        "packages/trace_lab/facts/call_graph.py::merge_call_edges"
+      ],
+      "top15_ids": [
+        "packages/trace_lab/facts/call_graph.py::build_enriched_call_graph",
+        "packages/trace_lab/facts/call_graph.py::edges_from_ast",
+        "packages/trace_lab/facts/call_graph.py::merge_call_edges",
+        "packages/trace_lab/facts/call_graph.py::edges_from_jedi",
+        "packages/trace_lab/facts/call_graph.py::edges_from_dispatch"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/trace_lab/facts/call_graph.py::build_enriched_call_graph",
+          "file": "packages/trace_lab/facts/call_graph.py",
+          "symbol": "build_enriched_call_graph",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 1110
+        },
+        {
+          "id": "packages/trace_lab/facts/call_graph.py::edges_from_ast",
+          "file": "packages/trace_lab/facts/call_graph.py",
+          "symbol": "edges_from_ast",
+          "kind": "function",
+          "score": 0.735,
+          "body_chars": 427
+        },
+        {
+          "id": "packages/trace_lab/facts/call_graph.py::merge_call_edges",
+          "file": "packages/trace_lab/facts/call_graph.py",
+          "symbol": "merge_call_edges",
+          "kind": "function",
+          "score": 0.735,
+          "body_chars": 375
+        },
+        {
+          "id": "packages/trace_lab/facts/call_graph.py::edges_from_jedi",
+          "file": "packages/trace_lab/facts/call_graph.py",
+          "symbol": "edges_from_jedi",
+          "kind": "function",
+          "score": 0.735,
+          "body_chars": 3295
+        },
+        {
+          "id": "packages/trace_lab/facts/call_graph.py::edges_from_dispatch",
+          "file": "packages/trace_lab/facts/call_graph.py",
+          "symbol": "edges_from_dispatch",
+          "kind": "function",
+          "score": 0.735,
+          "body_chars": 485
+        }
+      ]
+    }
+  }
+}

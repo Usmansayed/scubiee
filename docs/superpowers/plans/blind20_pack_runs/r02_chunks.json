@@ -1,0 +1,92 @@
+{
+  "id": "r02",
+  "enrich_prompt": "capability_cards CapabilityCard build cards attach map ranking locate index capability_cards.json",
+  "suggested_seed": {
+    "file": "packages/pipeline/capability.py",
+    "symbol": "",
+    "loc": "packages/pipeline/capability.py:1-1",
+    "score": 16.833922000606492
+  },
+  "chunks": [
+    {
+      "file": "packages/pipeline/capability.py",
+      "symbol": "",
+      "loc": "packages/pipeline/capability.py:1-1",
+      "score": 16.833922000606492,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/pipeline/engine.py",
+      "symbol": "",
+      "loc": "packages/pipeline/engine.py:1-1",
+      "score": 11.885644350535395,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/pipeline/locate.py",
+      "symbol": "",
+      "loc": "packages/pipeline/locate.py:1-1",
+      "score": 5.635230304298839,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "docs/superpowers/specs/2026-08-03-capability-locate-design.md",
+      "symbol": "",
+      "loc": "docs/superpowers/specs/2026-08-03-capability-locate-design.md:1-1",
+      "score": 5.513655502792087,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/pipeline/mcp_locate.py",
+      "symbol": "",
+      "loc": "packages/pipeline/mcp_locate.py:1-1",
+      "score": 5.158696299775212,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "scripts/blind_map_multipack_20.py",
+      "symbol": "",
+      "loc": "scripts/blind_map_multipack_20.py:1-1",
+      "score": 4.770982016676371,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/pipeline/context_trace.py",
+      "symbol": "",
+      "loc": "packages/pipeline/context_trace.py:1-1",
+      "score": 4.504437571508087,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/graphify/build.py",
+      "symbol": "",
+      "loc": "packages/graphify/build.py:1-1",
+      "score": 4.406206334685117,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "tests/test_mcp_exploration_regressions.py",
+      "symbol": "",
+      "loc": "tests/test_mcp_exploration_regressions.py:1-1",
+      "score": 4.338138702256818,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "tests/test_capability_promotion.py",
+      "symbol": "",
+      "loc": "tests/test_capability_promotion.py:1-1",
+      "score": 3.995942913901664,
+      "start_line": null,
+      "end_line": null
+    }
+  ]
+}

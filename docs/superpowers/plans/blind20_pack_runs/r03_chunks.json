@@ -1,0 +1,92 @@
+{
+  "id": "r03",
+  "enrich_prompt": "graphify graph_ir.json build_graphify GraphifyChunkRetriever parse IR edges call graph index",
+  "suggested_seed": {
+    "file": "packages/conductor/graphify_retriever.py",
+    "symbol": "",
+    "loc": "packages/conductor/graphify_retriever.py:1-1",
+    "score": 25.492220276808116
+  },
+  "chunks": [
+    {
+      "file": "packages/conductor/graphify_retriever.py",
+      "symbol": "",
+      "loc": "packages/conductor/graphify_retriever.py:1-1",
+      "score": 25.492220276808116,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "scripts/bench_size_ladder.py",
+      "symbol": "",
+      "loc": "scripts/bench_size_ladder.py:1-1",
+      "score": 13.809318810249552,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "scripts/bench_budget_alloc.py",
+      "symbol": "",
+      "loc": "scripts/bench_budget_alloc.py:1-1",
+      "score": 13.554970199693594,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "docs/superpowers/specs/2026-08-08-natural-sdk-context-engine-vs-graphify-smoke-design.md",
+      "symbol": "",
+      "loc": "docs/superpowers/specs/2026-08-08-natural-sdk-context-engine-vs-graphify-smoke-design.md:1-1",
+      "score": 7.892330388155587,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/parse_harness/bakeoff.py",
+      "symbol": "",
+      "loc": "packages/parse_harness/bakeoff.py:1-1",
+      "score": 6.985582649023666,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/graphify/paths.py",
+      "symbol": "",
+      "loc": "packages/graphify/paths.py:1-1",
+      "score": 6.889264224581469,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "docs/mlx-index-compute-and-memory.md",
+      "symbol": "",
+      "loc": "docs/mlx-index-compute-and-memory.md:1-1",
+      "score": 5.529987704738586,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/conductor/conductor.py",
+      "symbol": "",
+      "loc": "packages/conductor/conductor.py:1-1",
+      "score": 4.563163001604596,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/enrich/__main__.py",
+      "symbol": "",
+      "loc": "packages/enrich/__main__.py:1-1",
+      "score": 4.514122199035225,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "tests/_mcp_break_it_suite.py",
+      "symbol": "",
+      "loc": "tests/_mcp_break_it_suite.py:1-1",
+      "score": 4.454413197942241,
+      "start_line": null,
+      "end_line": null
+    }
+  ]
+}

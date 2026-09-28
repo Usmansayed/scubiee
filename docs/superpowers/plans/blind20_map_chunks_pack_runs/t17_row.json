@@ -1,0 +1,332 @@
+{
+  "id": "t17",
+  "family": "never-index",
+  "task": "How do never-index path denies keep fixture/tmp paths out of the product corpus?",
+  "enrich_prompt": "never_index deny path globs skip fixtures tmp out ab_workspaces indexing exclude",
+  "map": {
+    "elapsed_s": 0.34,
+    "top_files": [
+      "tests/test_repo_lifecycle.py",
+      "tests/test_auto_sessions_observability.py",
+      "packages/pipeline/repo_lifecycle.py",
+      "tests/test_index_coverage.py",
+      "tests/test_connect_formats.py"
+    ]
+  },
+  "selected_chunks": [
+    {
+      "file": "packages/pipeline/repo_lifecycle.py",
+      "symbol": "never_index_repo",
+      "kind": "function",
+      "loc": "packages/pipeline/repo_lifecycle.py:619-639",
+      "start_line": 619,
+      "end_line": 639,
+      "score": 6.7,
+      "excerpt": "def never_index_repo(root: Path, *, reason: str | None = None) -> dict[str, Any]:\n    root = _root(root)\n    ref = resolve_project(root)\n    now = time.time()\n    current = (load_r"
+    },
+    {
+      "file": "packages/pipeline/repo_lifecycle.py",
+      "symbol": "activate_repo",
+      "kind": "function",
+      "loc": "packages/pipeline/repo_lifecycle.py:473-517",
+      "start_line": 473,
+      "end_line": 517,
+      "score": 3.7,
+      "excerpt": "def activate_repo(root: Path) -> dict[str, Any]:\n    root = _root(root)\n    project_id, entry = _project(root)\n    if not project_id or not _entry_managed(entry):\n        return {\n"
+    },
+    {
+      "file": "packages/graphify/extractors/resolution.py",
+      "symbol": "_pnpm_workspace_globs",
+      "kind": "function",
+      "loc": "packages/graphify/extractors/resolution.py:339-356",
+      "start_line": 339,
+      "end_line": 356,
+      "score": 2.7,
+      "excerpt": "def _pnpm_workspace_globs(workspace_file: Path) -> list[str]:\n    globs: list[str] = []\n    in_packages = False\n    for raw_line in workspace_file.read_text(encoding=\"utf-8\", error"
+    }
+  ],
+  "arms": {
+    "pack_context": {
+      "ok": true,
+      "tool": "pack_context",
+      "engine": "composite_v1",
+      "elapsed_s": 0.13,
+      "n_pack": 4,
+      "seed": {
+        "file": "packages/pipeline/repo_lifecycle.py",
+        "symbol": "never_index_repo",
+        "id": "packages/pipeline/repo_lifecycle.py::never_index_repo"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/repo_lifecycle.py",
+          "symbol": "never_index_repo",
+          "score": 1.0,
+          "loc": "packages/pipeline/repo_lifecycle.py:619-639",
+          "id": "packages/pipeline/repo_lifecycle.py::never_index_repo",
+          "chars": 747
+        },
+        {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "load_registry",
+          "score": 1.0,
+          "loc": "packages/pipeline/project_id.py:220-226",
+          "id": "packages/pipeline/project_id.py::load_registry",
+          "chars": 319
+        },
+        {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "git_common_dir",
+          "score": 1.0,
+          "loc": "packages/pipeline/project_id.py:321-355",
+          "id": "packages/pipeline/project_id.py::git_common_dir",
+          "chars": 1312
+        },
+        {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "projects_root",
+          "score": 1.0,
+          "loc": "packages/pipeline/project_id.py:153-154",
+          "id": "packages/pipeline/project_id.py::projects_root",
+          "chars": 74
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/repo_lifecycle.py::never_index_repo",
+          "loc": "packages/pipeline/repo_lifecycle.py:619-639",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/project_id.py::load_registry",
+          "loc": "packages/pipeline/project_id.py:220-226",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/project_id.py::git_common_dir",
+          "loc": "packages/pipeline/project_id.py:321-355",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/project_id.py::projects_root",
+          "loc": "packages/pipeline/project_id.py:153-154",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/project_id.py::mutate_registry",
+          "loc": "packages/pipeline/project_id.py:248-254",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/project_id.py::_read_json",
+          "loc": "packages/pipeline/project_id.py:168-182",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/project_id.py::_norm_path",
+          "loc": "packages/pipeline/project_id.py:257-261",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/project_id.py::read_id_file",
+          "loc": "packages/pipeline/project_id.py:196-201",
+          "edge": "calls",
+          "score": 1.0
+        }
+      ],
+      "pack_query": "never_index deny path globs skip fixtures tmp out ab_workspaces indexing exclude\nrelevant_chunks: packages/pipeline/repo_lifecycle.py::never_index_repo@packages/pipeline/repo_lifecycle.py:619-639 | packages/pipeline/repo_lifecycle.py::activate_repo@packages/pipeline/repo_lifecycle.py:473-517 | packages/graphify/extractors/resolution.py::_pnpm_workspace_globs@packages/graphify/extractors/resolution.py:339-356",
+      "error": null
+    },
+    "pack_poly_embed": {
+      "ok": true,
+      "tool": "pack_poly_embed",
+      "engine": "poly_embed",
+      "elapsed_s": 0.194,
+      "n_pack": 4,
+      "seed": {
+        "file": "packages/pipeline/repo_lifecycle.py",
+        "symbol": "never_index_repo",
+        "id": "packages/pipeline/repo_lifecycle.py::never_index_repo"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/repo_lifecycle.py",
+          "symbol": "never_index_repo",
+          "score": 1.0,
+          "loc": "packages/pipeline/repo_lifecycle.py:619-639",
+          "id": "packages/pipeline/repo_lifecycle.py::never_index_repo",
+          "chars": 747
+        },
+        {
+          "file": "packages/pipeline/repo_lifecycle.py",
+          "symbol": "activate_repo",
+          "score": 1.0,
+          "loc": "packages/pipeline/repo_lifecycle.py:473-517",
+          "id": "packages/pipeline/repo_lifecycle.py::activate_repo",
+          "chars": 1407
+        },
+        {
+          "file": "packages/pipeline/repo_lifecycle.py",
+          "symbol": "NEVER_INDEX",
+          "score": 0.895,
+          "loc": "packages/pipeline/repo_lifecycle.py:30-30",
+          "id": "packages/pipeline/repo_lifecycle.py::NEVER_INDEX",
+          "chars": 27
+        },
+        {
+          "file": "packages/pipeline/repo_lifecycle.py",
+          "symbol": "ACTIVE",
+          "score": 0.7,
+          "loc": "packages/pipeline/repo_lifecycle.py:28-28",
+          "id": "packages/pipeline/repo_lifecycle.py::ACTIVE",
+          "chars": 17
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/repo_lifecycle.py::never_index_repo",
+          "loc": "packages/pipeline/repo_lifecycle.py:619-639",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/repo_lifecycle.py::activate_repo",
+          "loc": "packages/pipeline/repo_lifecycle.py:473-517",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/repo_lifecycle.py::NEVER_INDEX",
+          "loc": "packages/pipeline/repo_lifecycle.py:30-30",
+          "edge": "seed",
+          "score": 0.895
+        },
+        {
+          "id": "packages/pipeline/repo_lifecycle.py::ACTIVE",
+          "loc": "packages/pipeline/repo_lifecycle.py:28-28",
+          "edge": "seed",
+          "score": 0.7
+        },
+        {
+          "id": "packages/pipeline/repo_lifecycle.py::UNMANAGED",
+          "loc": "packages/pipeline/repo_lifecycle.py:31-31",
+          "edge": "seed",
+          "score": 0.7
+        },
+        {
+          "id": "packages/pipeline/repo_lifecycle.py::PAUSED",
+          "loc": "packages/pipeline/repo_lifecycle.py:29-29",
+          "edge": "seed",
+          "score": 0.7
+        }
+      ],
+      "pack_query": "never_index deny path globs skip fixtures tmp out ab_workspaces indexing exclude\nrelevant_chunks: packages/pipeline/repo_lifecycle.py::never_index_repo@packages/pipeline/repo_lifecycle.py:619-639 | packages/pipeline/repo_lifecycle.py::activate_repo@packages/pipeline/repo_lifecycle.py:473-517 | packages/graphify/extractors/resolution.py::_pnpm_workspace_globs@packages/graphify/extractors/resolution.py:339-356",
+      "error": null
+    },
+    "pack_semantic": {
+      "ok": true,
+      "tool": "pack_semantic",
+      "engine": "semantic_tracer_fuse",
+      "elapsed_s": 0.376,
+      "n_pack": 4,
+      "seed": {
+        "file": "packages/pipeline/repo_lifecycle.py",
+        "symbol": "never_index_repo",
+        "id": "packages/pipeline/repo_lifecycle.py::never_index_repo"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/repo_lifecycle.py",
+          "symbol": "never_index_repo",
+          "score": 1.0,
+          "loc": "packages/pipeline/repo_lifecycle.py:619-639",
+          "id": "packages/pipeline/repo_lifecycle.py::never_index_repo",
+          "chars": 747
+        },
+        {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "load_registry",
+          "score": 1.0,
+          "loc": "packages/pipeline/project_id.py:220-226",
+          "id": "packages/pipeline/project_id.py::load_registry",
+          "chars": 319
+        },
+        {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "git_common_dir",
+          "score": 1.0,
+          "loc": "packages/pipeline/project_id.py:321-355",
+          "id": "packages/pipeline/project_id.py::git_common_dir",
+          "chars": 1312
+        },
+        {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "mutate_registry",
+          "score": 1.0,
+          "loc": "packages/pipeline/project_id.py:248-254",
+          "id": "packages/pipeline/project_id.py::mutate_registry",
+          "chars": 296
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/repo_lifecycle.py::never_index_repo",
+          "loc": "packages/pipeline/repo_lifecycle.py:619-639",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/project_id.py::load_registry",
+          "loc": "packages/pipeline/project_id.py:220-226",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/project_id.py::git_common_dir",
+          "loc": "packages/pipeline/project_id.py:321-355",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/project_id.py::mutate_registry",
+          "loc": "packages/pipeline/project_id.py:248-254",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/project_id.py::projects_root",
+          "loc": "packages/pipeline/project_id.py:153-154",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/project_id.py::_norm_path",
+          "loc": "packages/pipeline/project_id.py:257-261",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/project_id.py::read_id_file",
+          "loc": "packages/pipeline/project_id.py:196-201",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/project_id.py::write_id_file",
+          "loc": "packages/pipeline/project_id.py:204-217",
+          "edge": "calls",
+          "score": 1.0
+        }
+      ],
+      "pack_query": "never_index deny path globs skip fixtures tmp out ab_workspaces indexing exclude\nrelevant_chunks: packages/pipeline/repo_lifecycle.py::never_index_repo@packages/pipeline/repo_lifecycle.py:619-639 | packages/pipeline/repo_lifecycle.py::activate_repo@packages/pipeline/repo_lifecycle.py:473-517 | packages/graphify/extractors/resolution.py::_pnpm_workspace_globs@packages/graphify/extractors/resolution.py:339-356",
+      "error": null
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "protocol": "blind10_pack_v1_phase1",
+  "created": "2026-09-06T07:19:26Z",
+  "arm": "composite_v1",
+  "scored": false,
+  "phase0": {
+    "skipped": true
+  },
+  "note": "FROZEN \u2014 do not score until Phase2 GT authored. No peeking.",
+  "cases": [
+    {
+      "id": "b01",
+      "family": "session-fail-closed",
+      "task": "Locate how session isolation fail-closes when session_id is missing on pack/locate.",
+      "enrich_prompt": "session isolation require_session_id fail closed locate pack persistence session_store put_span shared MCP process bucket missing session_id",
+      "arm": "composite_v1",
+      "seed": {
+        "file": "packages/pipeline/session_store.py",
+        "symbol": "",
+        "loc": "packages/pipeline/session_store.py:1-1",
+        "score": 15.068157267262922
+      },
+      "n_map_cards": 10,
+      "n_chunks": 10,
+      "n_pack": 4,
+      "map_path": "docs/superpowers/plans/blind10_pack_runs/b01_map.json",
+      "chunks_path": "docs/superpowers/plans/blind10_pack_runs/b01_chunks.json",
+      "pack_path": "docs/superpowers/plans/blind10_pack_runs/b01_pack_composite_v1.json",
+      "elapsed_s": 141.58,
+      "scored": false
+    }
+  ]
+}

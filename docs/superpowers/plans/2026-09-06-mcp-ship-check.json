@@ -1,0 +1,76 @@
+{
+  "ok": false,
+  "checks": {
+    "phase_tools": {
+      "ok": true,
+      "tools": [
+        "collect_hot_context",
+        "expand",
+        "expand_context",
+        "gate",
+        "map",
+        "pack_context",
+        "status",
+        "workspace"
+      ],
+      "missing": [],
+      "leaked": []
+    },
+    "registered": {
+      "ok": true,
+      "count": 8,
+      "missing": [],
+      "leaked": [],
+      "tools": [
+        "collect_hot_context",
+        "expand",
+        "expand_context",
+        "gate",
+        "map",
+        "pack_context",
+        "status",
+        "workspace"
+      ]
+    },
+    "gate": {
+      "ok": true,
+      "preview": "1:ce_c505c4e65dbe5e2063a6c1089fe4db4e sid:default"
+    },
+    "map": {
+      "ok": false,
+      "count": null,
+      "seed_file": null,
+      "seed_symbol": null
+    },
+    "pack_context": {
+      "ok": false,
+      "engine": null,
+      "heatmap_n": 0,
+      "seed": null,
+      "bodies_present": false
+    },
+    "expand_context": {
+      "ok": false,
+      "error": "no seed id"
+    },
+    "status": {
+      "ok": true,
+      "preview": "{\"ok\":true,\"tool\":\"status\",\"server\":\"scubiee\",\"surface\":\"phase\",\"managed\":true,\"should_use_mcp\":true,\"should_retry_statu",
+      "engine_healthy": true
+    },
+    "workspace": {
+      "ok": true,
+      "preview": "{\"ok\":true,\"tool\":\"workspace\",\"action\":\"show\",\"session_id\":\"default\",\"topic\":\"auth login session\",\"pins\":[],\"heatmap\":[{"
+    },
+    "collect_hot_context": {
+      "ok": true,
+      "preview": "{\"ok\":false,\"tool\":\"collect_hot_context\",\"error\":\"no session heatmap \u2014 call map/pack_context first (or pass ids=)\",\"mana"
+    }
+  },
+  "errors": [
+    "map failed: {'ok': False, 'tool': 'map', 'error': 'dense_embed_loading', 'repo': 'C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine', 'should_retry': True, 'warming': True, 'retry_after_s': 3, 'agent_ready': 'no', 'status': 'warming', 'ready': False, 'warm_state': 'embed_loading', 'managed': True, 'should_use_mcp': T",
+    "pack failed: {'ok': False, 'tool': 'pack_context', 'error': 'ast_warming', 'status': 'warming', 'managed': True, 'should_use_mcp': True, 'should_retry_status': True, 'status_ttl_s': 300, 'status_age_s': None, 'stale_ctx_repo': False, 'hint': 'AST bundle is still loading. Retry pack_context; do not treat a previo",
+    "no seed id from pack"
+  ],
+  "elapsed_ms": 11040.6
+}

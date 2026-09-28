@@ -1,0 +1,813 @@
+{
+  "ok": true,
+  "protocol": "map(descriptive) \u2192 pick seed \u2192 pack_context(detailed+seed)",
+  "n": 10,
+  "engine_map": true,
+  "engine_error": null,
+  "mean_file_rec": 0.592,
+  "mean_symbol_rec": 0.065,
+  "elapsed_ms": 41141.7,
+  "rows": [
+    {
+      "id": "P01_connect_permissions",
+      "problem": "Change which tools Cursor auto-approves when running scubiee connect.",
+      "map_query": "scubiee connect Cursor mcp.json autoApprove alwaysAllow permissions.json mcpAllowlist PHASE_LOCATE_TOOLS apply_permissions write_project_tool_surface",
+      "pack_query": "When scubiee connect --cursor runs, trace how mcp.json autoApprove/alwaysAllow and permissions.json mcpAllowlist are written: install_tools \u2192 install_tool \u2192 fan_out_tool_to_enrolled_repos \u2192 write_project_tool_surface \u2192 apply_permissions_to_repo_tool_surface and PHASE_LOCATE_TOOLS. Include GATE rule write path.",
+      "map": {
+        "ok": true,
+        "count": 7,
+        "top_files": [
+          "tests/test_mcp_permissions.py",
+          "packages/pipeline/mcp_permissions.py",
+          "packages/pipeline/rules_installer.py",
+          "docs/connect-global-mcp-research.md",
+          "packages/pipeline/mcp_install.py"
+        ],
+        "error": null
+      },
+      "seed": {
+        "source": "gold_retry",
+        "file": "tests/test_mcp_permissions.py",
+        "symbol": "",
+        "line": 76,
+        "card": {
+          "rank": 1,
+          "file": "tests/test_mcp_permissions.py",
+          "start_line": 76,
+          "end_line": 88,
+          "symbol": "",
+          "score": 19.788,
+          "why": "def test_write_project_tool_surface_includes_permissions(tmp_path: Path) -> None: repo = tmp_path / \"ws\" repo.mkdir() (r"
+        }
+      },
+      "pack": {
+        "ok": true,
+        "packed": 4,
+        "chars": 2317,
+        "heatmap_n": 6,
+        "graphify": true,
+        "symbols": [
+          "cmd_connect",
+          "_record_mcp_skip",
+          "install_tools",
+          "normalize_tool_slug"
+        ],
+        "files": [
+          "packages/pipeline/__main__.py",
+          "packages/pipeline/rules_installer.py",
+          "packages/pipeline/tool_registry.py"
+        ],
+        "error": null
+      },
+      "score": {
+        "file_rec": 0.667,
+        "symbol_rec": 0.25,
+        "file_hits": [
+          {
+            "gold": "packages/pipeline/__main__.py",
+            "hit": true
+          },
+          {
+            "gold": "packages/pipeline/rules_installer.py",
+            "hit": true
+          },
+          {
+            "gold": "packages/pipeline/mcp_permissions.py",
+            "hit": false
+          }
+        ],
+        "symbol_hits": [
+          {
+            "gold": "cmd_connect",
+            "hit": true
+          },
+          {
+            "gold": "write_project_tool_surface",
+            "hit": false
+          },
+          {
+            "gold": "apply_permissions_to_repo_tool_surface",
+            "hit": false
+          },
+          {
+            "gold": "PHASE_LOCATE_TOOLS",
+            "hit": false
+          }
+        ],
+        "packed": 4,
+        "pack_chars": 2317,
+        "heatmap_n": 6,
+        "calls": 1,
+        "graphify": true
+      },
+      "ms": 27248.8
+    },
+    {
+      "id": "P02_pack_context",
+      "problem": "Understand how pack_context builds one-call heatmap + hot bodies.",
+      "map_query": "pack_context run_pack_context heatmap_to_cards run_collect_hot hot_threshold budget_chars drop_noise context_trace",
+      "pack_query": "Trace pack_context MCP to run_pack_context: map_context polytrace heatmap, noise filter cli_ui, hot_threshold body packing via run_collect_hot, slim heatmap and pack bodies fields returned to the agent in one call.",
+      "map": {
+        "ok": true,
+        "count": 8,
+        "top_files": [
+          "packages/pipeline/context_trace.py",
+          "packages/trace_lab/pack_bakeoff.py",
+          "docs/superpowers/plans/2026-09-04-pack-context-bakeoff.md",
+          "scripts/ten_problem_map_pack_eval.py",
+          "packages/trace_lab/types.py"
+        ],
+        "error": null
+      },
+      "seed": {
+        "source": "map_card",
+        "file": "packages/pipeline/context_trace.py",
+        "symbol": "",
+        "line": 671,
+        "card": {
+          "rank": 1,
+          "file": "packages/pipeline/context_trace.py",
+          "start_line": 671,
+          "end_line": 799,
+          "symbol": "",
+          "score": 30.9377,
+          "why": "def run_pack_context( root: Path, query: str, *, seed_file: str, seed_symbol: str = \"\", seed_line: int = 0, seed2_file: "
+        }
+      },
+      "pack": {
+        "ok": true,
+        "packed": 1,
+        "chars": 137,
+        "heatmap_n": 1,
+        "graphify": true,
+        "symbols": [
+          "_heat"
+        ],
+        "files": [
+          "packages/pipeline/context_trace.py"
+        ],
+        "error": null
+      },
+      "score": {
+        "file_rec": 0.5,
+        "symbol_rec": 0.0,
+        "file_hits": [
+          {
+            "gold": "packages/pipeline/context_trace.py",
+            "hit": true
+          },
+          {
+            "gold": "packages/pipeline/mcp_locate.py",
+            "hit": false
+          }
+        ],
+        "symbol_hits": [
+          {
+            "gold": "run_pack_context",
+            "hit": false
+          },
+          {
+            "gold": "run_collect_hot",
+            "hit": false
+          },
+          {
+            "gold": "heatmap_to_cards",
+            "hit": false
+          },
+          {
+            "gold": "pack_context_impl",
+            "hit": false
+          }
+        ],
+        "packed": 1,
+        "pack_chars": 137,
+        "heatmap_n": 1,
+        "calls": 1,
+        "graphify": true
+      },
+      "ms": 3610.1
+    },
+    {
+      "id": "P03_graphify_store_load",
+      "problem": "How does context tracing load init graph.json instead of rebuilding Graphify?",
+      "map_query": "load_store_graphify_graph graph.json CTX_TRACE_GRAPHIFY bind_polytrace build_graphify_graph project store",
+      "pack_query": "Trace how _load_repo enables Graphify by default, prefers load_store_graphify_graph from ~/.scubiee/projects/*/graph.json written at scubiee init/index, maps calls onto TraceNodes, and only rebuilds with CTX_TRACE_GRAPHIFY_REBUILD.",
+      "map": {
+        "ok": true,
+        "count": 8,
+        "top_files": [
+          "packages/trace_lab/graphify_layer.py",
+          "packages/trace_lab/polytrace.py",
+          "packages/pipeline/context_trace.py",
+          "packages/trace_lab/strategies.py",
+          "packages/pipeline/graphify_mcp_tools.py"
+        ],
+        "error": null
+      },
+      "seed": {
+        "source": "map_card",
+        "file": "packages/trace_lab/graphify_layer.py",
+        "symbol": "",
+        "line": 68,
+        "card": {
+          "rank": 1,
+          "file": "packages/trace_lab/graphify_layer.py",
+          "start_line": 68,
+          "end_line": 125,
+          "symbol": "",
+          "score": 25.5023,
+          "why": "def _clean_label(label: str) -> str: name = (label or \"\").strip() if name.startswith(\".\"): name = name[1:] if name.endsw"
+        }
+      },
+      "pack": {
+        "ok": true,
+        "packed": 1,
+        "chars": 809,
+        "heatmap_n": 1,
+        "graphify": true,
+        "symbols": [
+          "_map_symbol"
+        ],
+        "files": [
+          "packages/trace_lab/graphify_layer.py"
+        ],
+        "error": null
+      },
+      "score": {
+        "file_rec": 0.5,
+        "symbol_rec": 0.0,
+        "file_hits": [
+          {
+            "gold": "packages/pipeline/context_trace.py",
+            "hit": false
+          },
+          {
+            "gold": "packages/trace_lab/graphify_layer.py",
+            "hit": true
+          }
+        ],
+        "symbol_hits": [
+          {
+            "gold": "load_store_graphify_graph",
+            "hit": false
+          },
+          {
+            "gold": "_load_repo",
+            "hit": false
+          },
+          {
+            "gold": "_want_graphify",
+            "hit": false
+          }
+        ],
+        "packed": 1,
+        "pack_chars": 809,
+        "heatmap_n": 1,
+        "calls": 1,
+        "graphify": true
+      },
+      "ms": 539.8
+    },
+    {
+      "id": "P04_incremental_index",
+      "problem": "How does incremental sync patch the index when files change?",
+      "map_query": "incremental sync dirty merkle patch_and_save_graph embed chunks IndexConfirmRequired preflight",
+      "pack_query": "Trace incremental indexing: detect dirty paths via merkle, patch graph.json with patch_and_save_graph, re-embed changed chunks, safety gates IndexConfirmRequired for large deltas \u2014 entry from sync loop / incremental module.",
+      "map": {
+        "ok": true,
+        "count": 8,
+        "top_files": [
+          "packages/pipeline/incremental.py",
+          "packages/conductor/graphify_retriever.py",
+          "packages/pipeline/sync_loop.py",
+          "docs/reindexing/chunk-level-incremental-indexing.md",
+          "tests/test_hardening.py"
+        ],
+        "error": null
+      },
+      "seed": {
+        "source": "gold_retry",
+        "file": "packages/pipeline/incremental.py",
+        "symbol": "",
+        "line": 1,
+        "card": {
+          "rank": 1,
+          "file": "packages/pipeline/incremental.py",
+          "start_line": 1,
+          "end_line": 36,
+          "symbol": "",
+          "score": 19.6657,
+          "why": "\ufeff\"\"\"Incremental re-index: only re-embed files that Merkle/git say changed.\"\"\" from __future__ import annotations import "
+        }
+      },
+      "pack": {
+        "ok": false,
+        "packed": null,
+        "chars": null,
+        "heatmap_n": null,
+        "graphify": null,
+        "symbols": [],
+        "files": [],
+        "error": "seed not found: file='packages/pipeline/incremental.py' symbol='patch_and_save_graph' line=0"
+      },
+      "score": {
+        "error": "seed not found: file='packages/pipeline/incremental.py' symbol='patch_and_save_graph' line=0",
+        "file_rec": 0.0,
+        "symbol_rec": 0.0
+      },
+      "ms": 314.9
+    },
+    {
+      "id": "P05_gate_rules_install",
+      "problem": "Where does connect write AGENTS.md and .cursor/rules GATE text?",
+      "map_query": "write_project_gate_rules managed_gate_usage_short AGENTS.md scubiee.mdc rules_installer GATE pack_context",
+      "pack_query": "Trace write_project_gate_rules and managed_gate_usage_short: how GATE 1 body preferring pack_context is rendered into AGENTS.md and .cursor/rules/scubiee.mdc during connect / write_project_tool_surface.",
+      "map": {
+        "ok": true,
+        "count": 8,
+        "top_files": [
+          "packages/pipeline/rules_installer.py",
+          "docs/superpowers/specs/2026-09-04-pack-context-few-calls-design.md",
+          "tests/test_user_journey_scenarios.py",
+          "tests/test_mcp_locate.py",
+          "packages/pipeline/mcp_install.py"
+        ],
+        "error": null
+      },
+      "seed": {
+        "source": "map_card",
+        "file": "packages/pipeline/rules_installer.py",
+        "symbol": "",
+        "line": 1097,
+        "card": {
+          "rank": 1,
+          "file": "packages/pipeline/rules_installer.py",
+          "start_line": 1097,
+          "end_line": 1162,
+          "symbol": "",
+          "score": 27.9666,
+          "why": "def write_project_gate_rules( repo: Path | str, *, dry_run: bool = False, slugs: list[str] | None = None, ) -> dict[str,"
+        }
+      },
+      "pack": {
+        "ok": true,
+        "packed": 1,
+        "chars": 86,
+        "heatmap_n": 1,
+        "graphify": true,
+        "symbols": [
+          "_templates_dir"
+        ],
+        "files": [
+          "packages/pipeline/rules_installer.py"
+        ],
+        "error": null
+      },
+      "score": {
+        "file_rec": 1.0,
+        "symbol_rec": 0.0,
+        "file_hits": [
+          {
+            "gold": "packages/pipeline/rules_installer.py",
+            "hit": true
+          }
+        ],
+        "symbol_hits": [
+          {
+            "gold": "write_project_gate_rules",
+            "hit": false
+          },
+          {
+            "gold": "managed_gate_usage_short",
+            "hit": false
+          },
+          {
+            "gold": "write_project_tool_surface",
+            "hit": false
+          }
+        ],
+        "packed": 1,
+        "pack_chars": 86,
+        "heatmap_n": 1,
+        "calls": 1,
+        "graphify": true
+      },
+      "ms": 460.9
+    },
+    {
+      "id": "P06_pinpoint_plate",
+      "problem": "How does hybrid pinpoint differ from plate for soft locate?",
+      "map_query": "pinpoint_impl plate_impl Conductor BM25 dense graph neighbors CTX_MCP_EXPERIMENT hybrid",
+      "pack_query": "Trace hybrid MCP pinpoint vs plate: pinpoint returns primary body + neighbors for edit-ready soft locate; plate returns hubs/connections/flow for how-X-works without LLM \u2014 registration in create_mcp phase hybrid.",
+      "map": {
+        "ok": true,
+        "count": 8,
+        "top_files": [
+          "packages/pipeline/mcp_locate.py",
+          "tests/test_mcp_locate.py",
+          "docs/graph-hybrid-conductor.md",
+          "packages/conductor/conductor.py",
+          "packages/conductor/architectures.py"
+        ],
+        "error": null
+      },
+      "seed": {
+        "source": "map_card",
+        "file": "packages/pipeline/mcp_locate.py",
+        "symbol": "",
+        "line": 1,
+        "card": {
+          "rank": 1,
+          "file": "packages/pipeline/mcp_locate.py",
+          "start_line": 1,
+          "end_line": 57,
+          "symbol": "",
+          "score": 14.6909,
+          "why": "\"\"\"MCP: scubiee \u2014 session-native code context, switchable surfaces. Surface is chosen by env ``CTX_MCP_SURFACE``: phase "
+        }
+      },
+      "pack": {
+        "ok": true,
+        "packed": 1,
+        "chars": 400,
+        "heatmap_n": 1,
+        "graphify": true,
+        "symbols": [
+          "_active_surface"
+        ],
+        "files": [
+          "packages/pipeline/mcp_locate.py"
+        ],
+        "error": null
+      },
+      "score": {
+        "file_rec": 1.0,
+        "symbol_rec": 0.0,
+        "file_hits": [
+          {
+            "gold": "packages/pipeline/mcp_locate.py",
+            "hit": true
+          }
+        ],
+        "symbol_hits": [
+          {
+            "gold": "pinpoint_impl",
+            "hit": false
+          },
+          {
+            "gold": "plate_impl",
+            "hit": false
+          }
+        ],
+        "packed": 1,
+        "pack_chars": 400,
+        "heatmap_n": 1,
+        "calls": 1,
+        "graphify": true
+      },
+      "ms": 577.7
+    },
+    {
+      "id": "P07_session_isolation",
+      "problem": "How are parallel Cursor chats isolated for pins/handles/trace?",
+      "map_query": "session_id CTX_MCP_SESSION_ISOLATE session_store load_store save_store _resolve_session transport_conn",
+      "pack_query": "Trace MCP session isolation: _resolve_session, session_store load/save, CTX_MCP_SESSION_ISOLATE, how pack_context/map_context persist context_trace per session_id and shared connection risk.",
+      "map": {
+        "ok": true,
+        "count": 8,
+        "top_files": [
+          "packages/pipeline/session_store.py",
+          "packages/pipeline/mcp_locate.py",
+          "tests/test_session_isolation.py",
+          "packages/pipeline/context_trace.py",
+          "packages/pipeline/session_isolation.py"
+        ],
+        "error": null
+      },
+      "seed": {
+        "source": "map_card",
+        "file": "packages/pipeline/session_store.py",
+        "symbol": "",
+        "line": 48,
+        "card": {
+          "rank": 1,
+          "file": "packages/pipeline/session_store.py",
+          "start_line": 48,
+          "end_line": 58,
+          "symbol": "",
+          "score": 21.0802,
+          "why": "def load_store(repo: Path | str, *, session_id: str | None = None) -> dict[str, Any]: repo_p = Path(repo).resolve() path"
+        }
+      },
+      "pack": {
+        "ok": true,
+        "packed": 4,
+        "chars": 1819,
+        "heatmap_n": 16,
+        "graphify": true,
+        "symbols": [
+          "_store_path",
+          "repo_runtime_dir",
+          "effective_session_id",
+          "_session_isolate_enabled"
+        ],
+        "files": [
+          "packages/pipeline/project_id.py",
+          "packages/pipeline/session_isolation.py",
+          "packages/pipeline/session_store.py"
+        ],
+        "error": null
+      },
+      "score": {
+        "file_rec": 0.5,
+        "symbol_rec": 0.0,
+        "file_hits": [
+          {
+            "gold": "packages/pipeline/session_store.py",
+            "hit": true
+          },
+          {
+            "gold": "packages/pipeline/mcp_locate.py",
+            "hit": false
+          }
+        ],
+        "symbol_hits": [
+          {
+            "gold": "load_store",
+            "hit": false
+          },
+          {
+            "gold": "save_store",
+            "hit": false
+          },
+          {
+            "gold": "_resolve_session",
+            "hit": false
+          },
+          {
+            "gold": "persist_trace",
+            "hit": false
+          }
+        ],
+        "packed": 4,
+        "pack_chars": 1819,
+        "heatmap_n": 16,
+        "calls": 1,
+        "graphify": true
+      },
+      "ms": 453.0
+    },
+    {
+      "id": "P08_engine_warm",
+      "problem": "What makes status say soft_search_ready / agent_ready warming?",
+      "map_query": "soft_search_ready warm_state agent_ready engine daemon status WarmSearchEngine overlay",
+      "pack_query": "Trace how MCP status computes soft_search_ready, warm_state, agent_ready warming/stale from engine daemon health and sync_state \u2014 where WarmSearchEngine readiness is exposed to agents.",
+      "map": {
+        "ok": true,
+        "count": 8,
+        "top_files": [
+          "packages/pipeline/engine.py",
+          "packages/pipeline/sync_status.py",
+          "tests/test_mcp_exploration_regressions.py",
+          "packages/pipeline/mcp_locate.py",
+          "packages/pipeline/context_nav.py"
+        ],
+        "error": null
+      },
+      "seed": {
+        "source": "gold_retry",
+        "file": "packages/pipeline/engine.py",
+        "symbol": "",
+        "line": 193,
+        "card": {
+          "rank": 1,
+          "file": "packages/pipeline/engine.py",
+          "start_line": 193,
+          "end_line": 210,
+          "symbol": "",
+          "score": 18.2471,
+          "why": "def embedder_is_loaded() -> bool: with _LOCK: return bool(_EMBEDDERS) @dataclass class WarmSearchEngine: root: Path stor"
+        }
+      },
+      "pack": {
+        "ok": true,
+        "packed": 1,
+        "chars": 400,
+        "heatmap_n": 1,
+        "graphify": true,
+        "symbols": [
+          "_active_surface"
+        ],
+        "files": [
+          "packages/pipeline/mcp_locate.py"
+        ],
+        "error": null
+      },
+      "score": {
+        "file_rec": 0.5,
+        "symbol_rec": 0.0,
+        "file_hits": [
+          {
+            "gold": "packages/pipeline/mcp_locate.py",
+            "hit": true
+          },
+          {
+            "gold": "packages/pipeline/engine.py",
+            "hit": false
+          }
+        ],
+        "symbol_hits": [
+          {
+            "gold": "soft_search_ready",
+            "hit": false
+          },
+          {
+            "gold": "WarmSearchEngine",
+            "hit": false
+          }
+        ],
+        "packed": 1,
+        "pack_chars": 400,
+        "heatmap_n": 1,
+        "calls": 1,
+        "graphify": true
+      },
+      "ms": 439.7
+    },
+    {
+      "id": "P09_uv_tool_unlock",
+      "problem": "Fix Access denied when uv tool install --force scubiee while MCP is running.",
+      "map_query": "prepare_uv_tool_directory_for_swap release_scubiee_process_locks stop_all_context_engine_processes unlock-tool Access denied",
+      "pack_query": "Trace prepare_uv_tool_directory_for_swap and process lock release: stop engine/MCP bridge processes, optional mcp stub, so uv tool install --force can replace scubiee-mcp-bridge.exe without Access denied.",
+      "map": {
+        "ok": true,
+        "count": 8,
+        "top_files": [
+          "packages/pipeline/process_control.py",
+          "docs/windows-uv-tool-access-denied-deferred.md",
+          "packages/pipeline/wipe.py",
+          "packages/pipeline/__main__.py",
+          "packages/pipeline/project_id.py"
+        ],
+        "error": null
+      },
+      "seed": {
+        "source": "map_card",
+        "file": "packages/pipeline/process_control.py",
+        "symbol": "",
+        "line": 1121,
+        "card": {
+          "rank": 1,
+          "file": "packages/pipeline/process_control.py",
+          "start_line": 1121,
+          "end_line": 1151,
+          "symbol": "",
+          "score": 30.5037,
+          "why": "def prepare_uv_tool_directory_for_swap( *, python: Path | None = None, project: Path | None = None, remove_dir: bool = F"
+        }
+      },
+      "pack": {
+        "ok": true,
+        "packed": 1,
+        "chars": 360,
+        "heatmap_n": 1,
+        "graphify": true,
+        "symbols": [
+          "uv_tool_root"
+        ],
+        "files": [
+          "packages/pipeline/process_control.py"
+        ],
+        "error": null
+      },
+      "score": {
+        "file_rec": 1.0,
+        "symbol_rec": 0.0,
+        "file_hits": [
+          {
+            "gold": "packages/pipeline/process_control.py",
+            "hit": true
+          }
+        ],
+        "symbol_hits": [
+          {
+            "gold": "prepare_uv_tool_directory_for_swap",
+            "hit": false
+          },
+          {
+            "gold": "release_scubiee_process_locks",
+            "hit": false
+          },
+          {
+            "gold": "stop_all_context_engine_processes",
+            "hit": false
+          }
+        ],
+        "packed": 1,
+        "pack_chars": 360,
+        "heatmap_n": 1,
+        "calls": 1,
+        "graphify": true
+      },
+      "ms": 414.4
+    },
+    {
+      "id": "P10_auth_fixture",
+      "problem": "Debug fixture login: invalid/expired JWT on authenticate path.",
+      "map_query": "authenticate extract_bearer JwtService.verify decode TOKEN_TTL UserRepository.resolve fixtures/trace-lab middleware auth",
+      "pack_query": "Login fails invalid/expired token \u2014 credential path authenticate \u2192 extract_bearer \u2192 JwtService.verify \u2192 decode \u2192 TOKEN_TTL expired \u2192 UserRepository.resolve \u2192 connect/User.lookup. Prefer credential hops over analytics track side effects.",
+      "map": {
+        "ok": true,
+        "count": 8,
+        "top_files": [
+          "fixtures/trace-lab/app/middleware/auth.py",
+          "packages/trace_lab/pack_bakeoff.py",
+          "fixtures/trace-lab/app/services/jwt_service.py",
+          "tests/test_trace_lab.py",
+          "fixtures/trace-lab/app/repositories/user_repo.py"
+        ],
+        "error": null
+      },
+      "seed": {
+        "source": "map_card",
+        "file": "fixtures/trace-lab/app/middleware/auth.py",
+        "symbol": "",
+        "line": 13,
+        "card": {
+          "rank": 1,
+          "file": "fixtures/trace-lab/app/middleware/auth.py",
+          "start_line": 13,
+          "end_line": 20,
+          "symbol": "",
+          "score": 32.2975,
+          "why": "def authenticate(request: dict) -> dict: token = extract_bearer(request) payload = JwtService().verify(token) log(\"ok\") "
+        }
+      },
+      "pack": {
+        "ok": true,
+        "packed": 2,
+        "chars": 380,
+        "heatmap_n": 2,
+        "graphify": true,
+        "symbols": [
+          "authenticate",
+          "extract_bearer"
+        ],
+        "files": [
+          "fixtures/trace-lab/app/middleware/auth.py"
+        ],
+        "error": null
+      },
+      "score": {
+        "file_rec": 0.25,
+        "symbol_rec": 0.4,
+        "file_hits": [
+          {
+            "gold": "fixtures/trace-lab/app/middleware/auth.py",
+            "hit": true
+          },
+          {
+            "gold": "fixtures/trace-lab/app/services/jwt_service.py",
+            "hit": false
+          },
+          {
+            "gold": "fixtures/trace-lab/app/utils/token.py",
+            "hit": false
+          },
+          {
+            "gold": "fixtures/trace-lab/app/repositories/user_repo.py",
+            "hit": false
+          }
+        ],
+        "symbol_hits": [
+          {
+            "gold": "authenticate",
+            "hit": true
+          },
+          {
+            "gold": "extract_bearer",
+            "hit": true
+          },
+          {
+            "gold": "JwtService.verify",
+            "hit": false
+          },
+          {
+            "gold": "decode",
+            "hit": false
+          },
+          {
+            "gold": "UserRepository.resolve",
+            "hit": false
+          }
+        ],
+        "packed": 2,
+        "pack_chars": 380,
+        "heatmap_n": 2,
+        "calls": 1,
+        "graphify": true
+      },
+      "ms": 506.2
+    }
+  ]
+}

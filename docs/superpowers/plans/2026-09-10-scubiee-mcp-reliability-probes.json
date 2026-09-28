@@ -1,0 +1,228 @@
+{
+  "generated_at": "2026-09-26T16:28:32",
+  "version": "0.3.31",
+  "project_id": "ce_2f9c289d2a885432f240969ea2889532",
+  "probes": [
+    {
+      "name": "http_health_baseline",
+      "ok": false,
+      "ms": 8335.4,
+      "detail": {
+        "_error": "TimeoutError: timed out"
+      },
+      "at": "2026-09-26T16:27:40"
+    },
+    {
+      "name": "cursor_mcp_idle_default_is_aggressive",
+      "ok": true,
+      "ms": 0.0,
+      "detail": {
+        "CTX_ENGINE_IDLE_S_in_mcp_json": "3600",
+        "note": "15s idle kills indexing mid-flight"
+      },
+      "at": "2026-09-26T16:27:40"
+    },
+    {
+      "name": "mcp_initialize",
+      "ok": true,
+      "ms": 10943.1,
+      "detail": {
+        "server": {
+          "name": "scubiee",
+          "version": "0.3.131"
+        }
+      },
+      "at": "2026-09-26T16:27:51"
+    },
+    {
+      "name": "mcp_tools_list",
+      "ok": true,
+      "ms": 4.9,
+      "detail": {
+        "tools": [
+          "collect_hot_context",
+          "expand",
+          "expand_context",
+          "gate",
+          "map",
+          "pack_context",
+          "status",
+          "workspace"
+        ],
+        "missing": []
+      },
+      "at": "2026-09-26T16:27:51"
+    },
+    {
+      "name": "mcp_status_signal_coherence",
+      "ok": true,
+      "ms": 13147.1,
+      "detail": {
+        "warm_state": null,
+        "soft_search_ready": false,
+        "agent_ready": "warming",
+        "ready": false,
+        "sync_state": "error",
+        "agent_ready_note": "Engine starting \u2014 retry locate shortly (not a RAM warm-up stall).",
+        "contradiction": false
+      },
+      "at": "2026-09-26T16:28:04"
+    },
+    {
+      "name": "mcp_map_happy",
+      "ok": false,
+      "ms": 551.2,
+      "detail": {
+        "ok": false,
+        "error": "Repository at __scubiee_unresolved_project__ is not managed by Scubiee.",
+        "n_cards": 0,
+        "seed": null,
+        "top": []
+      },
+      "at": "2026-09-26T16:28:04"
+    },
+    {
+      "name": "mcp_pack_lean_happy",
+      "ok": false,
+      "ms": 538.5,
+      "detail": {
+        "ok": false,
+        "error": "Repository at __scubiee_unresolved_project__ is not managed by Scubiee.",
+        "n_heat": 0,
+        "top": []
+      },
+      "at": "2026-09-26T16:28:05"
+    },
+    {
+      "name": "mcp_expand_context",
+      "ok": false,
+      "ms": 107.8,
+      "detail": {
+        "ok": false,
+        "error": "Repository at __scubiee_unresolved_project__ is not managed by Scubiee.",
+        "keys": [
+          "error",
+          "g",
+          "hint",
+          "index_skip",
+          "index_write_hint",
+          "managed",
+          "next_action",
+          "ok",
+          "should_retry_status",
+          "should_use_mcp",
+          "stale_ctx_repo",
+          "status_age_s",
+          "status_ttl_s",
+          "tool"
+        ]
+      },
+      "at": "2026-09-26T16:28:05"
+    },
+    {
+      "name": "mcp_burst_map_5x",
+      "ok": false,
+      "ms": 1371.8,
+      "detail": {
+        "fail": 5
+      },
+      "at": "2026-09-26T16:28:06"
+    },
+    {
+      "name": "cli_map_when_engine_stopped",
+      "ok": true,
+      "ms": 6281.3,
+      "detail": {
+        "stop_code": 0,
+        "map_code": 1,
+        "ms": 6281.3,
+        "snippet": "{\"ok\":false,\"tool\":\"map\",\"error\":\"dense_embed_loading\"}\nWin32 exception occurred releasing IUnknown at 0x000002179EEE0D00\nWin32 exception occurred releasing IUnknown at 0x000002176D716D30\nWin32 exception occurred releasing IUnknown at 0x000002176D717630\nWin32 exception occurred releasing IUnknown at 0x000002176D715BB0\nWin32 exception occurred releasing IUnknown at 0x000002176D8673F0\n"
+      },
+      "at": "2026-09-26T16:28:17"
+    },
+    {
+      "name": "cli_map_immediately_after_engine_start",
+      "ok": true,
+      "ms": 13726.6,
+      "detail": {
+        "map_ok": true,
+        "health": {
+          "ok": true,
+          "service": "scubiee",
+          "version": "0.3.131",
+          "pid": 11304,
+          "warm": true,
+          "warm_state": "ready",
+          "warm_ready": true,
+          "soft_search_ready": true,
+          "embedder_loaded": true,
+          "embed_prewarm_running": false,
+          "dense_ready": true,
+          "warm_phase": "dense",
+          "chunks": 7521,
+          "dense_missing": 0,
+          "generation": 1,
+          "index_usable": true,
+          "last_sync_at": 1790420296.2958674,
+          "repo": "C:\\Users\\usman\\Downloads\\context-engine",
+          "dashboard": "/dashboard",
+          "api": "/v1/*"
+        },
+        "snippet": "{\"ok\":true,\"tool\":\"map\",\"cards\":[{\"rank\":1,\"file\":\"packages/pipeline/rules_installer.py\",\"score\":16.0677,\"why\":\"def write_project_gate_rules( repo: Path | str, *, dry_run: bool = False, slugs: list[str] | None = None, ) -> dict[str, Any]: \\\"\\\"\\\"Write compact GATE Prefer/Forbid rules under the r\",\"role\":\"function\",\"loc\":\"packages/pipeline/rules_installer.py:1273-1338\",\"symbol\":\"write_project_gate_r"
+      },
+      "at": "2026-09-26T16:28:30"
+    }
+  ],
+  "pass_count": 6,
+  "fail_count": 5,
+  "session_issues": [
+    {
+      "id": "MCP-HOST-DISCONNECT-AFTER-KILL",
+      "severity": "P0",
+      "summary": "Killing scubiee-mcp / bridge during tool reinstall leaves Cursor MCP 'Not connected' / discovery error until host reload + mcp_auth",
+      "evidence": "Cursor CallDynamicTool returned Not connected; namespaceStatus=error until user reloaded / mcp_auth"
+    },
+    {
+      "id": "WARM-ERROR-DML-PROVIDER",
+      "severity": "P0",
+      "summary": "After wipe/reinstall, warm_state=error with DmlExecutionProvider missing until scubiee setup",
+      "evidence": "status.engine.warm_error referenced provider:DmlExecutionProvider; map returned error=warming"
+    },
+    {
+      "id": "CORRUPT-PUBLICATION-CHECKSUM",
+      "severity": "P0",
+      "summary": "doctor reported corrupt publication (checksum_mismatch); soft search stuck until scubiee rebuild",
+      "evidence": "scubiee doctor repair_plan rebuild_index; indexing oscillated until rebuild completed"
+    },
+    {
+      "id": "STATUS-SOFT-SEARCH-UNBOUND",
+      "severity": "P1",
+      "summary": "HTTP health can show ready while MCP status has soft_search_ready=false and project_id=null until engine ensure binds workspace",
+      "evidence": "Observed after rebuild: warm_state ready but soft_search_ready false / project_id null"
+    },
+    {
+      "id": "MAP-WINERROR-10061-RACE",
+      "severity": "P0",
+      "summary": "MCP map fails with WinError 10061 connection refused while parallel shell /health succeeds (engine flapping / idle retire)",
+      "evidence": "Repeated in Cursor session 2026-09-10 during indexing"
+    },
+    {
+      "id": "AGENT-READY-VOCAB-CONFUSING",
+      "severity": "P2",
+      "summary": "agent_ready values warming|stale|ready conflict with warm_state/index_usable; agents over-wait or over-retry",
+      "evidence": "status full: warm_state=ready soft_search_ready=true but agent_ready=stale ready=false syncing=true"
+    },
+    {
+      "id": "STATUS-TTL-STALE-AFTER-FLAP",
+      "severity": "P2",
+      "summary": "MCP status_age / status_ttl_s can report cached readiness while engine already down",
+      "evidence": "map unreachable while status_age_s still under TTL from prior ready card"
+    },
+    {
+      "id": "PYPI-INSTALL-FILE-LOCK",
+      "severity": "P1",
+      "summary": "uv tool install --force fails Access Denied while MCP bridge/python hold uv/tools/scubiee/Scripts",
+      "evidence": "Install of 0.3.31 required killing scubiee-mcp processes"
+    }
+  ]
+}

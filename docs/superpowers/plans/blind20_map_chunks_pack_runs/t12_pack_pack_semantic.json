@@ -1,0 +1,98 @@
+{
+  "ok": true,
+  "tool": "pack_semantic",
+  "engine": "semantic_tracer_fuse",
+  "elapsed_s": 0.35,
+  "n_pack": 4,
+  "seed": {
+    "file": "packages/pipeline/rules_installer.py",
+    "symbol": "gate_overview_mdc",
+    "id": "packages/pipeline/rules_installer.py::gate_overview_mdc"
+  },
+  "pack": [
+    {
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": "gate_overview_mdc",
+      "score": 1.0,
+      "loc": "packages/pipeline/rules_installer.py:182-193",
+      "id": "packages/pipeline/rules_installer.py::gate_overview_mdc",
+      "chars": 507
+    },
+    {
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": "write_project_gate_rules",
+      "score": 1.0,
+      "loc": "packages/pipeline/rules_installer.py:1139-1202",
+      "id": "packages/pipeline/rules_installer.py::write_project_gate_rules",
+      "chars": 2152
+    },
+    {
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": "managed_gate_overview_bullet",
+      "score": 0.9523,
+      "loc": "packages/pipeline/rules_installer.py:137-148",
+      "id": "packages/pipeline/rules_installer.py::managed_gate_overview_bullet",
+      "chars": 763
+    },
+    {
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": "_write_rule",
+      "score": 0.9504,
+      "loc": "packages/pipeline/rules_installer.py:1133-1136",
+      "id": "packages/pipeline/rules_installer.py::_write_rule",
+      "chars": 190
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/pipeline/rules_installer.py::gate_overview_mdc",
+      "loc": "packages/pipeline/rules_installer.py:182-193",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/rules_installer.py::write_project_gate_rules",
+      "loc": "packages/pipeline/rules_installer.py:1139-1202",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/rules_installer.py::managed_gate_overview_bullet",
+      "loc": "packages/pipeline/rules_installer.py:137-148",
+      "edge": "calls",
+      "score": 0.9523
+    },
+    {
+      "id": "packages/pipeline/rules_installer.py::_write_rule",
+      "loc": "packages/pipeline/rules_installer.py:1133-1136",
+      "edge": "calls",
+      "score": 0.9504
+    },
+    {
+      "id": "packages/pipeline/rules_installer.py::unmanaged_gate_rule_body",
+      "loc": "packages/pipeline/rules_installer.py:158-164",
+      "edge": "calls",
+      "score": 0.9474
+    },
+    {
+      "id": "packages/pipeline/rules_installer.py::gate_line_for_repo",
+      "loc": "packages/pipeline/rules_installer.py:266-280",
+      "edge": "calls",
+      "score": 0.9469
+    },
+    {
+      "id": "packages/pipeline/rules_installer.py::paused_gate_rule_body",
+      "loc": "packages/pipeline/rules_installer.py:174-179",
+      "edge": "calls",
+      "score": 0.9429
+    },
+    {
+      "id": "packages/pipeline/rules_installer.py::_write_rule_append_md",
+      "loc": "packages/pipeline/rules_installer.py:1109-1122",
+      "edge": "calls",
+      "score": 0.9411
+    }
+  ],
+  "pack_query": "write_project_gate_rules AGENTS.md GATE 1 project_id scubiee.mdc rules_installer\nrelevant_chunks: packages/pipeline/rules_installer.py::gate_overview_mdc@packages/pipeline/rules_installer.py:182-193 | packages/pipeline/rules_installer.py::write_project_gate_rules@packages/pipeline/rules_installer.py:1139-1202 | packages/pipeline/mcp_locate.py::create_mcp@packages/pipeline/mcp_locate.py:2246-4682",
+  "error": null
+}

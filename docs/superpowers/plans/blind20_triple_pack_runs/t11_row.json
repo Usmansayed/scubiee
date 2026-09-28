@@ -1,0 +1,192 @@
+{
+  "id": "t11",
+  "family": "permissions-allowlist",
+  "task": "How does connect write Cursor mcpAllowlist / permissions for Scubiee tools?",
+  "enrich_prompt": "mcp_permissions mcpAllowlist permissions.json autoApprove connect cursor install_tool surface",
+  "map": {
+    "elapsed_s": 0.45,
+    "n_cards": 9,
+    "top_files": [
+      "tests/test_mcp_permissions.py",
+      "tests/test_mcp_restore.py",
+      "packages/pipeline/mcp_permissions.py",
+      "packages/pipeline/rules_installer.py",
+      "tests/test_user_journey_scenarios.py"
+    ]
+  },
+  "enrich_seed": {
+    "ok": true,
+    "elapsed_s": 0.042,
+    "seed_file": "packages/pipeline/mcp_permissions.py",
+    "seed": {
+      "file": "packages/pipeline/mcp_permissions.py",
+      "symbol": "locate_tool_names",
+      "id": "packages/pipeline/mcp_permissions.py::locate_tool_names",
+      "loc": null
+    },
+    "chunks": [
+      {
+        "file": "packages/pipeline/mcp_permissions.py",
+        "symbol": "locate_tool_names",
+        "loc": "packages/pipeline/mcp_permissions.py:152-155",
+        "score": 1.0,
+        "kind": "function"
+      }
+    ],
+    "n_cards": 1,
+    "error": null
+  },
+  "arms": {
+    "pack_context": {
+      "ok": true,
+      "tool": "pack_context",
+      "engine": "composite_v1",
+      "elapsed_s": 0.044,
+      "n_pack": 1,
+      "seed": {
+        "file": "packages/pipeline/mcp_permissions.py",
+        "symbol": "locate_tool_names",
+        "id": "packages/pipeline/mcp_permissions.py::locate_tool_names"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/mcp_permissions.py",
+          "symbol": "locate_tool_names",
+          "score": 1.0,
+          "loc": "packages/pipeline/mcp_permissions.py:152-155",
+          "id": "packages/pipeline/mcp_permissions.py::locate_tool_names",
+          "chars": 206
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/mcp_permissions.py::locate_tool_names",
+          "loc": "packages/pipeline/mcp_permissions.py:152-155",
+          "edge": "seed",
+          "score": 1.0
+        }
+      ],
+      "error": null,
+      "seed_chunks": [
+        {
+          "file": "packages/pipeline/mcp_permissions.py",
+          "symbol": "locate_tool_names",
+          "loc": "packages/pipeline/mcp_permissions.py:152-155",
+          "score": 1.0,
+          "kind": "function"
+        }
+      ],
+      "pack_query": "mcp_permissions mcpAllowlist permissions.json autoApprove connect cursor install_tool surface | seeds: packages/pipeline/mcp_permissions.py::locate_tool_names"
+    },
+    "pack_poly_embed": {
+      "ok": true,
+      "tool": "pack_poly_embed",
+      "engine": "poly_embed",
+      "elapsed_s": 0.13,
+      "n_pack": 3,
+      "seed": {
+        "file": "packages/pipeline/mcp_permissions.py",
+        "symbol": "locate_tool_names",
+        "id": "packages/pipeline/mcp_permissions.py::locate_tool_names"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/mcp_permissions.py",
+          "symbol": "locate_tool_names",
+          "score": 1.0,
+          "loc": "packages/pipeline/mcp_permissions.py:152-155",
+          "id": "packages/pipeline/mcp_permissions.py::locate_tool_names",
+          "chars": 206
+        },
+        {
+          "file": "packages/pipeline/mcp_permissions.py",
+          "symbol": "PHASE_LOCATE_TOOLS",
+          "score": 0.7,
+          "loc": "packages/pipeline/mcp_permissions.py:29-46",
+          "id": "packages/pipeline/mcp_permissions.py::PHASE_LOCATE_TOOLS",
+          "chars": 307
+        },
+        {
+          "file": "packages/pipeline/mcp_permissions.py",
+          "symbol": "LEGACY_LOCATE_TOOLS",
+          "score": 0.7,
+          "loc": "packages/pipeline/mcp_permissions.py:49-57",
+          "id": "packages/pipeline/mcp_permissions.py::LEGACY_LOCATE_TOOLS",
+          "chars": 140
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/mcp_permissions.py::locate_tool_names",
+          "loc": "packages/pipeline/mcp_permissions.py:152-155",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/mcp_permissions.py::PHASE_LOCATE_TOOLS",
+          "loc": "packages/pipeline/mcp_permissions.py:29-46",
+          "edge": "seed",
+          "score": 0.7
+        },
+        {
+          "id": "packages/pipeline/mcp_permissions.py::LEGACY_LOCATE_TOOLS",
+          "loc": "packages/pipeline/mcp_permissions.py:49-57",
+          "edge": "seed",
+          "score": 0.7
+        }
+      ],
+      "error": null,
+      "seed_chunks": [
+        {
+          "file": "packages/pipeline/mcp_permissions.py",
+          "symbol": "locate_tool_names",
+          "loc": "packages/pipeline/mcp_permissions.py:152-155",
+          "score": 1.0,
+          "kind": "function"
+        }
+      ],
+      "pack_query": "mcp_permissions mcpAllowlist permissions.json autoApprove connect cursor install_tool surface | seeds: packages/pipeline/mcp_permissions.py::locate_tool_names"
+    },
+    "pack_semantic": {
+      "ok": true,
+      "tool": "pack_semantic",
+      "engine": "semantic_tracer_fuse",
+      "elapsed_s": 0.199,
+      "n_pack": 1,
+      "seed": {
+        "file": "packages/pipeline/mcp_permissions.py",
+        "symbol": "locate_tool_names",
+        "id": "packages/pipeline/mcp_permissions.py::locate_tool_names"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/mcp_permissions.py",
+          "symbol": "locate_tool_names",
+          "score": 1.0,
+          "loc": "packages/pipeline/mcp_permissions.py:152-155",
+          "id": "packages/pipeline/mcp_permissions.py::locate_tool_names",
+          "chars": 206
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/mcp_permissions.py::locate_tool_names",
+          "loc": "packages/pipeline/mcp_permissions.py:152-155",
+          "edge": "seed",
+          "score": 1.0
+        }
+      ],
+      "error": null,
+      "seed_chunks": [
+        {
+          "file": "packages/pipeline/mcp_permissions.py",
+          "symbol": "locate_tool_names",
+          "loc": "packages/pipeline/mcp_permissions.py:152-155",
+          "score": 1.0,
+          "kind": "function"
+        }
+      ],
+      "pack_query": "mcp_permissions mcpAllowlist permissions.json autoApprove connect cursor install_tool surface | seeds: packages/pipeline/mcp_permissions.py::locate_tool_names"
+    }
+  }
+}

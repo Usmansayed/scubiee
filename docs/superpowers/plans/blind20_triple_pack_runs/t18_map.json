@@ -1,0 +1,110 @@
+{
+  "ok": true,
+  "tool": "map",
+  "query": "cmd_wipe wipe uninstall remove MCP rules store halt confirm scubiee state cleanup",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/pipeline/wipe.py",
+      "symbol": "",
+      "score": 37.502,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/wipe.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "tests/test_stop_all_tools.py",
+      "symbol": "",
+      "score": 22.9692,
+      "start_line": null,
+      "end_line": null,
+      "loc": "tests/test_stop_all_tools.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "score": 15.663,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "docs/web-info/uninstall-mac-linux.md",
+      "symbol": "",
+      "score": 5.4732,
+      "start_line": null,
+      "end_line": null,
+      "loc": "docs/web-info/uninstall-mac-linux.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "tests/test_wipe.py",
+      "symbol": "",
+      "score": 5.4297,
+      "start_line": null,
+      "end_line": null,
+      "loc": "tests/test_wipe.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "tests/test_mcp_no_repo_scubiee_after_wipe.py",
+      "symbol": "",
+      "score": 5.2093,
+      "start_line": null,
+      "end_line": null,
+      "loc": "tests/test_mcp_no_repo_scubiee_after_wipe.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "docs/web-info/uninstall-windows.md",
+      "symbol": "",
+      "score": 4.471,
+      "start_line": null,
+      "end_line": null,
+      "loc": "docs/web-info/uninstall-windows.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "docs/web-info/faq.md",
+      "symbol": "",
+      "score": 4.4475,
+      "start_line": null,
+      "end_line": null,
+      "loc": "docs/web-info/faq.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "packages/pipeline/lifecycle_guard.py",
+      "symbol": "",
+      "score": 4.3486,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/lifecycle_guard.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": "",
+      "score": 4.3118,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/rules_installer.py:1-1",
+      "why": ""
+    }
+  ],
+  "suggested_seed": null,
+  "elapsed_s": 0.514,
+  "via": "search_repo(use_server=True)"
+}

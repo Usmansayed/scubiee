@@ -908,6 +908,22 @@ def enforce_mcp_warm_contract(*, now: float | None = None) -> dict[str, Any]:
         out["action"] = "hold_clients"
         return out
 
+    # Orphans were swept above, so a bridge still alive has a live IDE parent.
+    # Unloading here while the watchdog treats that bridge as demand would
+    # stop/start the engine in a loop (BETA-08).
+    try:
+        from pipeline.warm_autoload import mcp_frontend_present
+
+        if mcp_frontend_present():
+            try:
+                set_desired_mode(DESIRED_RUN)
+            except Exception:  # noqa: BLE001
+                pass
+            out["action"] = "hold_bridge"
+            return out
+    except Exception:  # noqa: BLE001
+        pass
+
     idle = apply_idle_policy(now=current)
     out["idle"] = idle
     out["action"] = str((idle or {}).get("action") or "none")

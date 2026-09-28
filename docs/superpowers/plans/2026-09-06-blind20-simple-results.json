@@ -1,0 +1,1627 @@
+{
+  "protocol": "blind20_simple_warm_map_pack",
+  "created": "2026-09-06T08:06:27Z",
+  "scored": false,
+  "elapsed_s": 197.5,
+  "arms": [
+    "composite_v1",
+    "polytrace",
+    "ultimate"
+  ],
+  "note": "FROZEN maps+packs. GT/compare only after this file exists.",
+  "rows": [
+    {
+      "id": "r01",
+      "family": "turboquant-search",
+      "task": "Where is TurboQuant / quantized FAISS used when serving search hits?",
+      "enrich_prompt": "TurboQuant faiss+turboquant quantized dense search serve WarmSearchEngine FaissDenseAdapter vector_backend bits compress",
+      "map": {
+        "elapsed_s": 127.927,
+        "n_cards": 10,
+        "suggested_seed": {
+          "file": "packages/pipeline/searcher.py",
+          "symbol": ""
+        },
+        "top_files": [
+          "packages/pipeline/searcher.py",
+          "packages/pipeline/engine.py",
+          "docs/pipeline-faiss-turboquant.md",
+          "packages/pipeline/turbo_quant.py",
+          "packages/pipeline/vectordb.py"
+        ]
+      },
+      "arms": {
+        "composite_v1": {
+          "ok": true,
+          "engine": "composite_v1",
+          "policy": "strict",
+          "elapsed_s": 18.86,
+          "n_pack": 3,
+          "pack": [
+            {
+              "file": "packages/pipeline/searcher.py",
+              "symbol": "FaissDenseAdapter.__init__",
+              "score": 1.0,
+              "loc": "packages/pipeline/searcher.py:33-38",
+              "id": "packages/pipeline/searcher.py::FaissDenseAdapter.__init__"
+            },
+            {
+              "file": "packages/pipeline/searcher.py",
+              "symbol": "SearchEngineError.__init__",
+              "score": 0.9405,
+              "loc": "packages/pipeline/searcher.py:58-60",
+              "id": "packages/pipeline/searcher.py::SearchEngineError.__init__"
+            },
+            {
+              "file": "packages/conductor/dense_index.py",
+              "symbol": "DenseIndex.__init__",
+              "score": 0.75,
+              "loc": "packages/conductor/dense_index.py:29-33",
+              "id": "packages/conductor/dense_index.py::DenseIndex.__init__"
+            }
+          ],
+          "error": null
+        },
+        "polytrace": {
+          "ok": true,
+          "engine": "polytrace",
+          "policy": "strict",
+          "elapsed_s": 13.691,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/searcher.py",
+              "symbol": "FaissDenseAdapter.__init__",
+              "score": 1.0,
+              "loc": "packages/pipeline/searcher.py:33-38",
+              "id": "packages/pipeline/searcher.py::FaissDenseAdapter.__init__"
+            }
+          ],
+          "error": null
+        },
+        "ultimate": {
+          "ok": true,
+          "engine": "ultimate",
+          "policy": "strict",
+          "elapsed_s": 14.394,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/searcher.py",
+              "symbol": "FaissDenseAdapter.__init__",
+              "score": 1.0,
+              "loc": "packages/pipeline/searcher.py:33-38",
+              "id": "packages/pipeline/searcher.py::FaissDenseAdapter.__init__"
+            }
+          ],
+          "error": null
+        }
+      }
+    },
+    {
+      "id": "r02",
+      "family": "capability-cards",
+      "task": "How are capability cards built and attached for locate/map ranking?",
+      "enrich_prompt": "capability_cards CapabilityCard build cards attach map ranking locate index capability_cards.json",
+      "map": {
+        "elapsed_s": 4.532,
+        "n_cards": 10,
+        "suggested_seed": {
+          "file": "packages/pipeline/capability.py",
+          "symbol": ""
+        },
+        "top_files": [
+          "packages/pipeline/capability.py",
+          "packages/pipeline/engine.py",
+          "packages/pipeline/locate.py",
+          "docs/superpowers/specs/2026-08-03-capability-locate-design.md",
+          "packages/pipeline/mcp_locate.py"
+        ]
+      },
+      "arms": {
+        "composite_v1": {
+          "ok": true,
+          "engine": "composite_v1",
+          "policy": "strict",
+          "elapsed_s": 0.039,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/capability.py",
+              "symbol": "CapabilityCard.blob",
+              "score": 1.0,
+              "loc": "packages/pipeline/capability.py:38-46",
+              "id": "packages/pipeline/capability.py::CapabilityCard.blob"
+            }
+          ],
+          "error": null
+        },
+        "polytrace": {
+          "ok": true,
+          "engine": "polytrace",
+          "policy": "strict",
+          "elapsed_s": 0.001,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/capability.py",
+              "symbol": "CapabilityCard.blob",
+              "score": 1.0,
+              "loc": "packages/pipeline/capability.py:38-46",
+              "id": "packages/pipeline/capability.py::CapabilityCard.blob"
+            }
+          ],
+          "error": null
+        },
+        "ultimate": {
+          "ok": true,
+          "engine": "ultimate",
+          "policy": "strict",
+          "elapsed_s": 0.014,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/capability.py",
+              "symbol": "CapabilityCard.blob",
+              "score": 1.0,
+              "loc": "packages/pipeline/capability.py:38-46",
+              "id": "packages/pipeline/capability.py::CapabilityCard.blob"
+            }
+          ],
+          "error": null
+        }
+      }
+    },
+    {
+      "id": "r03",
+      "family": "graphify-ir",
+      "task": "Trace graphify / Graph IR construction during index for call edges.",
+      "enrich_prompt": "graphify graph_ir.json build_graphify GraphifyChunkRetriever parse IR edges call graph index",
+      "map": {
+        "elapsed_s": 0.997,
+        "n_cards": 10,
+        "suggested_seed": {
+          "file": "packages/conductor/graphify_retriever.py",
+          "symbol": ""
+        },
+        "top_files": [
+          "packages/conductor/graphify_retriever.py",
+          "scripts/bench_size_ladder.py",
+          "scripts/bench_budget_alloc.py",
+          "docs/superpowers/specs/2026-08-08-natural-sdk-context-engine-vs-graphify-smoke-design.md",
+          "packages/parse_harness/bakeoff.py"
+        ]
+      },
+      "arms": {
+        "composite_v1": {
+          "ok": true,
+          "engine": "composite_v1",
+          "policy": "strict",
+          "elapsed_s": 0.037,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/conductor/graphify_retriever.py",
+              "symbol": "normalize_file",
+              "score": 1.0,
+              "loc": "packages/conductor/graphify_retriever.py:33-34",
+              "id": "packages/conductor/graphify_retriever.py::normalize_file"
+            }
+          ],
+          "error": null
+        },
+        "polytrace": {
+          "ok": true,
+          "engine": "polytrace",
+          "policy": "strict",
+          "elapsed_s": 0.001,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/conductor/graphify_retriever.py",
+              "symbol": "normalize_file",
+              "score": 1.0,
+              "loc": "packages/conductor/graphify_retriever.py:33-34",
+              "id": "packages/conductor/graphify_retriever.py::normalize_file"
+            }
+          ],
+          "error": null
+        },
+        "ultimate": {
+          "ok": true,
+          "engine": "ultimate",
+          "policy": "strict",
+          "elapsed_s": 0.015,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/conductor/graphify_retriever.py",
+              "symbol": "normalize_file",
+              "score": 1.0,
+              "loc": "packages/conductor/graphify_retriever.py:33-34",
+              "id": "packages/conductor/graphify_retriever.py::normalize_file"
+            }
+          ],
+          "error": null
+        }
+      }
+    },
+    {
+      "id": "r04",
+      "family": "never-index",
+      "task": "How does never-index / path deny prevent files from entering the corpus?",
+      "enrich_prompt": "never-index never_index deny paths skip files indexing exclude ignore globs managed",
+      "map": {
+        "elapsed_s": 0.832,
+        "n_cards": 10,
+        "suggested_seed": {
+          "file": "packages/pipeline/repo_lifecycle.py",
+          "symbol": ""
+        },
+        "top_files": [
+          "tests/test_repo_lifecycle.py",
+          "tests/test_auto_sessions_observability.py",
+          "packages/pipeline/repo_lifecycle.py",
+          "packages/pipeline/paths.py",
+          "tests/test_index_coverage.py"
+        ]
+      },
+      "arms": {
+        "composite_v1": {
+          "ok": true,
+          "engine": "composite_v1",
+          "policy": "strict",
+          "elapsed_s": 0.036,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/repo_lifecycle.py",
+              "symbol": "_root",
+              "score": 1.0,
+              "loc": "packages/pipeline/repo_lifecycle.py:34-35",
+              "id": "packages/pipeline/repo_lifecycle.py::_root"
+            }
+          ],
+          "error": null
+        },
+        "polytrace": {
+          "ok": true,
+          "engine": "polytrace",
+          "policy": "strict",
+          "elapsed_s": 0.001,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/repo_lifecycle.py",
+              "symbol": "_root",
+              "score": 1.0,
+              "loc": "packages/pipeline/repo_lifecycle.py:34-35",
+              "id": "packages/pipeline/repo_lifecycle.py::_root"
+            }
+          ],
+          "error": null
+        },
+        "ultimate": {
+          "ok": true,
+          "engine": "ultimate",
+          "policy": "strict",
+          "elapsed_s": 0.015,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/repo_lifecycle.py",
+              "symbol": "_root",
+              "score": 1.0,
+              "loc": "packages/pipeline/repo_lifecycle.py:34-35",
+              "id": "packages/pipeline/repo_lifecycle.py::_root"
+            }
+          ],
+          "error": null
+        }
+      }
+    },
+    {
+      "id": "r05",
+      "family": "connect-host",
+      "task": "How does `scubiee connect` wire MCP config into a host (Cursor/Claude)?",
+      "enrich_prompt": "cmd_connect connect host MCP mcp.json cursor claude install surface permissions bridge",
+      "map": {
+        "elapsed_s": 0.953,
+        "n_cards": 10,
+        "suggested_seed": {
+          "file": "packages/pipeline/__main__.py",
+          "symbol": ""
+        },
+        "top_files": [
+          "packages/pipeline/__main__.py",
+          "packages/pipeline/mcp_install.py",
+          "tests/test_mcp_bridge_concurrency.py",
+          "tests/test_mcp_permissions.py",
+          "packages/pipeline/mcp_permissions.py"
+        ]
+      },
+      "arms": {
+        "composite_v1": {
+          "ok": true,
+          "engine": "composite_v1",
+          "policy": "strict",
+          "elapsed_s": 0.036,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/__main__.py",
+              "symbol": "_version_only",
+              "score": 1.0,
+              "loc": "packages/pipeline/__main__.py:19-21",
+              "id": "packages/pipeline/__main__.py::_version_only"
+            }
+          ],
+          "error": null
+        },
+        "polytrace": {
+          "ok": true,
+          "engine": "polytrace",
+          "policy": "strict",
+          "elapsed_s": 0.001,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/__main__.py",
+              "symbol": "_version_only",
+              "score": 1.0,
+              "loc": "packages/pipeline/__main__.py:19-21",
+              "id": "packages/pipeline/__main__.py::_version_only"
+            }
+          ],
+          "error": null
+        },
+        "ultimate": {
+          "ok": true,
+          "engine": "ultimate",
+          "policy": "strict",
+          "elapsed_s": 0.016,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/__main__.py",
+              "symbol": "_version_only",
+              "score": 1.0,
+              "loc": "packages/pipeline/__main__.py:19-21",
+              "id": "packages/pipeline/__main__.py::_version_only"
+            }
+          ],
+          "error": null
+        }
+      }
+    },
+    {
+      "id": "r06",
+      "family": "dashboard-http",
+      "task": "Where are operator dashboard HTTP routes and status endpoints defined?",
+      "enrich_prompt": "dashboard HTTP routes status endpoints localhost operator serve cmd_dashboard uvicorn",
+      "map": {
+        "elapsed_s": 0.804,
+        "n_cards": 10,
+        "suggested_seed": {
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": ""
+        },
+        "top_files": [
+          "packages/pipeline/dashboard_server.py",
+          "packages/pipeline/dashboard_port.py",
+          "packages/pipeline/__main__.py",
+          "packages/pipeline/dashboard.py",
+          "docs/superpowers/plans/2026-08-17-ce-operator-dashboard.md"
+        ]
+      },
+      "arms": {
+        "composite_v1": {
+          "ok": true,
+          "engine": "composite_v1",
+          "policy": "strict",
+          "elapsed_s": 0.037,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/dashboard_server.py",
+              "symbol": "PublicAPIError.__init__",
+              "score": 1.0,
+              "loc": "packages/pipeline/dashboard_server.py:54-58",
+              "id": "packages/pipeline/dashboard_server.py::PublicAPIError.__init__"
+            }
+          ],
+          "error": null
+        },
+        "polytrace": {
+          "ok": true,
+          "engine": "polytrace",
+          "policy": "strict",
+          "elapsed_s": 0.001,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/dashboard_server.py",
+              "symbol": "PublicAPIError.__init__",
+              "score": 1.0,
+              "loc": "packages/pipeline/dashboard_server.py:54-58",
+              "id": "packages/pipeline/dashboard_server.py::PublicAPIError.__init__"
+            }
+          ],
+          "error": null
+        },
+        "ultimate": {
+          "ok": true,
+          "engine": "ultimate",
+          "policy": "strict",
+          "elapsed_s": 0.013,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/dashboard_server.py",
+              "symbol": "PublicAPIError.__init__",
+              "score": 1.0,
+              "loc": "packages/pipeline/dashboard_server.py:54-58",
+              "id": "packages/pipeline/dashboard_server.py::PublicAPIError.__init__"
+            }
+          ],
+          "error": null
+        }
+      }
+    },
+    {
+      "id": "r07",
+      "family": "wipe-uninstall",
+      "task": "Trace wipe / uninstall removing store, MCP, and rules safely.",
+      "enrich_prompt": "cmd_wipe wipe uninstall remove store MCP rules halt confirm --all scubiee state",
+      "map": {
+        "elapsed_s": 0.954,
+        "n_cards": 10,
+        "suggested_seed": {
+          "file": "packages/pipeline/wipe.py",
+          "symbol": ""
+        },
+        "top_files": [
+          "packages/pipeline/wipe.py",
+          "tests/test_stop_all_tools.py",
+          "packages/pipeline/__main__.py",
+          "docs/web-info/uninstall-mac-linux.md",
+          "tests/test_wipe.py"
+        ]
+      },
+      "arms": {
+        "composite_v1": {
+          "ok": true,
+          "engine": "composite_v1",
+          "policy": "strict",
+          "elapsed_s": 0.036,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/wipe.py",
+              "symbol": "_cursor_rule_paths",
+              "score": 1.0,
+              "loc": "packages/pipeline/wipe.py:29-31",
+              "id": "packages/pipeline/wipe.py::_cursor_rule_paths"
+            }
+          ],
+          "error": null
+        },
+        "polytrace": {
+          "ok": true,
+          "engine": "polytrace",
+          "policy": "strict",
+          "elapsed_s": 0.001,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/wipe.py",
+              "symbol": "_cursor_rule_paths",
+              "score": 1.0,
+              "loc": "packages/pipeline/wipe.py:29-31",
+              "id": "packages/pipeline/wipe.py::_cursor_rule_paths"
+            }
+          ],
+          "error": null
+        },
+        "ultimate": {
+          "ok": true,
+          "engine": "ultimate",
+          "policy": "strict",
+          "elapsed_s": 0.016,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/wipe.py",
+              "symbol": "_cursor_rule_paths",
+              "score": 1.0,
+              "loc": "packages/pipeline/wipe.py:29-31",
+              "id": "packages/pipeline/wipe.py::_cursor_rule_paths"
+            }
+          ],
+          "error": null
+        }
+      }
+    },
+    {
+      "id": "r08",
+      "family": "upgrade-supervisor",
+      "task": "How does upgrade / supervisor refresh the uv tool install without locking?",
+      "enrich_prompt": "cmd_upgrade upgrade supervisor uv tool unlock-tool Access denied logon scubiee install",
+      "map": {
+        "elapsed_s": 0.845,
+        "n_cards": 10,
+        "suggested_seed": {
+          "file": "packages/pipeline/__main__.py",
+          "symbol": ""
+        },
+        "top_files": [
+          "scripts/smoke_hot_reload.py",
+          "tests/mac_production_test.py",
+          "packages/pipeline/__main__.py",
+          "docs/windows-uv-tool-access-denied-deferred.md",
+          "packages/pipeline/upgrade.py"
+        ]
+      },
+      "arms": {
+        "composite_v1": {
+          "ok": true,
+          "engine": "composite_v1",
+          "policy": "strict",
+          "elapsed_s": 0.037,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/__main__.py",
+              "symbol": "_version_only",
+              "score": 1.0,
+              "loc": "packages/pipeline/__main__.py:19-21",
+              "id": "packages/pipeline/__main__.py::_version_only"
+            }
+          ],
+          "error": null
+        },
+        "polytrace": {
+          "ok": true,
+          "engine": "polytrace",
+          "policy": "strict",
+          "elapsed_s": 0.001,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/__main__.py",
+              "symbol": "_version_only",
+              "score": 1.0,
+              "loc": "packages/pipeline/__main__.py:19-21",
+              "id": "packages/pipeline/__main__.py::_version_only"
+            }
+          ],
+          "error": null
+        },
+        "ultimate": {
+          "ok": true,
+          "engine": "ultimate",
+          "policy": "strict",
+          "elapsed_s": 0.015,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/__main__.py",
+              "symbol": "_version_only",
+              "score": 1.0,
+              "loc": "packages/pipeline/__main__.py:19-21",
+              "id": "packages/pipeline/__main__.py::_version_only"
+            }
+          ],
+          "error": null
+        }
+      }
+    },
+    {
+      "id": "r09",
+      "family": "rerank-coderankllm",
+      "task": "Where does CodeRankLLM rerank run at search time (not index)?",
+      "enrich_prompt": "CodeRankLLM rerank search-time D_rerank conductor reranker not index embed",
+      "map": {
+        "elapsed_s": 0.83,
+        "n_cards": 10,
+        "suggested_seed": {
+          "file": "packages/pipeline/__init__.py",
+          "symbol": ""
+        },
+        "top_files": [
+          "packages/pipeline/__init__.py",
+          "packages/conductor/top3.py",
+          "packages/conductor/service.py",
+          "packages/conductor/query_router.py",
+          "packages/conductor/architectures.py"
+        ]
+      },
+      "arms": {
+        "composite_v1": {
+          "ok": true,
+          "engine": "composite_v1",
+          "policy": "strict",
+          "elapsed_s": 0.037,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/__init__.py",
+              "symbol": "__getattr__",
+              "score": 1.0,
+              "loc": "packages/pipeline/__init__.py:21-38",
+              "id": "packages/pipeline/__init__.py::__getattr__"
+            }
+          ],
+          "error": null
+        },
+        "polytrace": {
+          "ok": true,
+          "engine": "polytrace",
+          "policy": "strict",
+          "elapsed_s": 0.001,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/__init__.py",
+              "symbol": "__getattr__",
+              "score": 1.0,
+              "loc": "packages/pipeline/__init__.py:21-38",
+              "id": "packages/pipeline/__init__.py::__getattr__"
+            }
+          ],
+          "error": null
+        },
+        "ultimate": {
+          "ok": true,
+          "engine": "ultimate",
+          "policy": "strict",
+          "elapsed_s": 0.015,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/__init__.py",
+              "symbol": "__getattr__",
+              "score": 1.0,
+              "loc": "packages/pipeline/__init__.py:21-38",
+              "id": "packages/pipeline/__init__.py::__getattr__"
+            }
+          ],
+          "error": null
+        }
+      }
+    },
+    {
+      "id": "r10",
+      "family": "conductor-fusion",
+      "task": "How does MultiArchConductor fuse BM25, dense, and graph signals?",
+      "enrich_prompt": "MultiArchConductor BM25 dense graph fuse ConductorConfig search_repo rank hit_source",
+      "map": {
+        "elapsed_s": 0.945,
+        "n_cards": 7,
+        "suggested_seed": {
+          "file": "packages/pipeline/searcher.py",
+          "symbol": ""
+        },
+        "top_files": [
+          "packages/pipeline/searcher.py",
+          "packages/conductor/conductor.py",
+          "fixtures/trace-lab/app/search/rank.py",
+          "packages/conductor/__init__.py",
+          "packages/conductor/architectures.py"
+        ]
+      },
+      "arms": {
+        "composite_v1": {
+          "ok": true,
+          "engine": "composite_v1",
+          "policy": "strict",
+          "elapsed_s": 0.036,
+          "n_pack": 3,
+          "pack": [
+            {
+              "file": "packages/pipeline/searcher.py",
+              "symbol": "FaissDenseAdapter.__init__",
+              "score": 1.0,
+              "loc": "packages/pipeline/searcher.py:33-38",
+              "id": "packages/pipeline/searcher.py::FaissDenseAdapter.__init__"
+            },
+            {
+              "file": "packages/pipeline/searcher.py",
+              "symbol": "SearchEngineError.__init__",
+              "score": 0.9405,
+              "loc": "packages/pipeline/searcher.py:58-60",
+              "id": "packages/pipeline/searcher.py::SearchEngineError.__init__"
+            },
+            {
+              "file": "packages/conductor/dense_index.py",
+              "symbol": "DenseIndex.__init__",
+              "score": 0.75,
+              "loc": "packages/conductor/dense_index.py:29-33",
+              "id": "packages/conductor/dense_index.py::DenseIndex.__init__"
+            }
+          ],
+          "error": null
+        },
+        "polytrace": {
+          "ok": true,
+          "engine": "polytrace",
+          "policy": "strict",
+          "elapsed_s": 0.001,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/searcher.py",
+              "symbol": "FaissDenseAdapter.__init__",
+              "score": 1.0,
+              "loc": "packages/pipeline/searcher.py:33-38",
+              "id": "packages/pipeline/searcher.py::FaissDenseAdapter.__init__"
+            }
+          ],
+          "error": null
+        },
+        "ultimate": {
+          "ok": true,
+          "engine": "ultimate",
+          "policy": "strict",
+          "elapsed_s": 0.014,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/searcher.py",
+              "symbol": "FaissDenseAdapter.__init__",
+              "score": 1.0,
+              "loc": "packages/pipeline/searcher.py:33-38",
+              "id": "packages/pipeline/searcher.py::FaissDenseAdapter.__init__"
+            }
+          ],
+          "error": null
+        }
+      }
+    },
+    {
+      "id": "r11",
+      "family": "fast-index-mode",
+      "task": "What does fast indexing mode change vs full index (roots, embed, depth)?",
+      "enrich_prompt": "fast index mode fast_roots embed schema meta fast=true index_repo skip depth",
+      "map": {
+        "elapsed_s": 0.8,
+        "n_cards": 10,
+        "suggested_seed": {
+          "file": "packages/pipeline/indexer.py",
+          "symbol": ""
+        },
+        "top_files": [
+          "packages/pipeline/indexer.py",
+          "tests/test_index_confirm.py",
+          "packages/pipeline/paths.py",
+          "packages/pipeline/incremental.py",
+          "packages/pipeline/repo_lifecycle.py"
+        ]
+      },
+      "arms": {
+        "composite_v1": {
+          "ok": true,
+          "engine": "composite_v1",
+          "policy": "strict",
+          "elapsed_s": 0.039,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/indexer.py",
+              "symbol": "_schema_version",
+              "score": 1.0,
+              "loc": "packages/pipeline/indexer.py:29-33",
+              "id": "packages/pipeline/indexer.py::_schema_version"
+            }
+          ],
+          "error": null
+        },
+        "polytrace": {
+          "ok": true,
+          "engine": "polytrace",
+          "policy": "strict",
+          "elapsed_s": 0.001,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/indexer.py",
+              "symbol": "_schema_version",
+              "score": 1.0,
+              "loc": "packages/pipeline/indexer.py:29-33",
+              "id": "packages/pipeline/indexer.py::_schema_version"
+            }
+          ],
+          "error": null
+        },
+        "ultimate": {
+          "ok": true,
+          "engine": "ultimate",
+          "policy": "strict",
+          "elapsed_s": 0.015,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/indexer.py",
+              "symbol": "_schema_version",
+              "score": 1.0,
+              "loc": "packages/pipeline/indexer.py:29-33",
+              "id": "packages/pipeline/indexer.py::_schema_version"
+            }
+          ],
+          "error": null
+        }
+      }
+    },
+    {
+      "id": "r12",
+      "family": "resource-rss-cap",
+      "task": "How does resource manager / RSS cap throttle embed batch during index?",
+      "enrich_prompt": "ResourceManager RSS cap CTX_CE_RSS_CAP_MB embed batch ceiling pressure resources adaptive",
+      "map": {
+        "elapsed_s": 0.803,
+        "n_cards": 10,
+        "suggested_seed": {
+          "file": "packages/pipeline/memory_budget.py",
+          "symbol": ""
+        },
+        "top_files": [
+          "packages/pipeline/memory_budget.py",
+          "packages/pipeline/memory_governor.py",
+          "packages/pipeline/resources.py",
+          "packages/pipeline/embedder.py",
+          "tests/test_resources.py"
+        ]
+      },
+      "arms": {
+        "composite_v1": {
+          "ok": true,
+          "engine": "composite_v1",
+          "policy": "strict",
+          "elapsed_s": 0.036,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/memory_budget.py",
+              "symbol": "bootstrap_budget",
+              "score": 1.0,
+              "loc": "packages/pipeline/memory_budget.py:45-54",
+              "id": "packages/pipeline/memory_budget.py::bootstrap_budget"
+            }
+          ],
+          "error": null
+        },
+        "polytrace": {
+          "ok": true,
+          "engine": "polytrace",
+          "policy": "strict",
+          "elapsed_s": 0.001,
+          "n_pack": 2,
+          "pack": [
+            {
+              "file": "packages/pipeline/memory_budget.py",
+              "symbol": "bootstrap_budget",
+              "score": 1.0,
+              "loc": "packages/pipeline/memory_budget.py:45-54",
+              "id": "packages/pipeline/memory_budget.py::bootstrap_budget"
+            },
+            {
+              "file": "packages/pipeline/memory_budget.py",
+              "symbol": "BOOTSTRAP_RSS_CAP_MB",
+              "score": 0.85,
+              "loc": "packages/pipeline/memory_budget.py:23-23",
+              "id": "packages/pipeline/memory_budget.py::BOOTSTRAP_RSS_CAP_MB"
+            }
+          ],
+          "error": null
+        },
+        "ultimate": {
+          "ok": true,
+          "engine": "ultimate",
+          "policy": "strict",
+          "elapsed_s": 0.013,
+          "n_pack": 2,
+          "pack": [
+            {
+              "file": "packages/pipeline/memory_budget.py",
+              "symbol": "bootstrap_budget",
+              "score": 1.0,
+              "loc": "packages/pipeline/memory_budget.py:45-54",
+              "id": "packages/pipeline/memory_budget.py::bootstrap_budget"
+            },
+            {
+              "file": "packages/pipeline/memory_budget.py",
+              "symbol": "BOOTSTRAP_RSS_CAP_MB",
+              "score": 0.9818,
+              "loc": "packages/pipeline/memory_budget.py:23-23",
+              "id": "packages/pipeline/memory_budget.py::BOOTSTRAP_RSS_CAP_MB"
+            }
+          ],
+          "error": null
+        }
+      }
+    },
+    {
+      "id": "r13",
+      "family": "steering-rules",
+      "task": "How are steering / AGENTS.md / Cursor rules written when a repo is managed?",
+      "enrich_prompt": "steering AGENTS.md .cursor/rules scubiee.mdc write rules managed enroll inject GATE",
+      "map": {
+        "elapsed_s": 1.021,
+        "n_cards": 10,
+        "suggested_seed": {
+          "file": "packages/pipeline/rules_installer.py",
+          "symbol": ""
+        },
+        "top_files": [
+          "scripts/kiro_mcp_ab_dev_eval.py",
+          "docs/mcp-legacy-design.md",
+          "packages/pipeline/rules_installer.py",
+          "packages/pipeline/mcp_install.py",
+          "docs/connect-global-mcp-research.md"
+        ]
+      },
+      "arms": {
+        "composite_v1": {
+          "ok": true,
+          "engine": "composite_v1",
+          "policy": "strict",
+          "elapsed_s": 0.199,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/rules_installer.py",
+              "symbol": "_templates_dir",
+              "score": 1.0,
+              "loc": "packages/pipeline/rules_installer.py:40-41",
+              "id": "packages/pipeline/rules_installer.py::_templates_dir"
+            }
+          ],
+          "error": null
+        },
+        "polytrace": {
+          "ok": true,
+          "engine": "polytrace",
+          "policy": "strict",
+          "elapsed_s": 0.001,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/rules_installer.py",
+              "symbol": "_templates_dir",
+              "score": 1.0,
+              "loc": "packages/pipeline/rules_installer.py:40-41",
+              "id": "packages/pipeline/rules_installer.py::_templates_dir"
+            }
+          ],
+          "error": null
+        },
+        "ultimate": {
+          "ok": true,
+          "engine": "ultimate",
+          "policy": "strict",
+          "elapsed_s": 0.015,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/rules_installer.py",
+              "symbol": "_templates_dir",
+              "score": 1.0,
+              "loc": "packages/pipeline/rules_installer.py:40-41",
+              "id": "packages/pipeline/rules_installer.py::_templates_dir"
+            }
+          ],
+          "error": null
+        }
+      }
+    },
+    {
+      "id": "r14",
+      "family": "expand-directions",
+      "task": "Implement or debug expand callees vs callers vs effects heatmap deltas.",
+      "enrich_prompt": "expand_context direction callees callers effects broad with_bodies heatmap delta pack expand",
+      "map": {
+        "elapsed_s": 1.019,
+        "n_cards": 10,
+        "suggested_seed": {
+          "file": "packages/pipeline/locate_cli.py",
+          "symbol": ""
+        },
+        "top_files": [
+          "packages/pipeline/locate_cli.py",
+          "packages/pipeline/context_trace.py",
+          "tests/test_locate_cli.py",
+          "docs/superpowers/plans/2026-09-05-ladder-followup-real-eval.md",
+          "packages/pipeline/__main__.py"
+        ]
+      },
+      "arms": {
+        "composite_v1": {
+          "ok": true,
+          "engine": "composite_v1",
+          "policy": "strict",
+          "elapsed_s": 0.036,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/locate_cli.py",
+              "symbol": "_root",
+              "score": 1.0,
+              "loc": "packages/pipeline/locate_cli.py:14-15",
+              "id": "packages/pipeline/locate_cli.py::_root"
+            }
+          ],
+          "error": null
+        },
+        "polytrace": {
+          "ok": true,
+          "engine": "polytrace",
+          "policy": "strict",
+          "elapsed_s": 0.001,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/locate_cli.py",
+              "symbol": "_root",
+              "score": 1.0,
+              "loc": "packages/pipeline/locate_cli.py:14-15",
+              "id": "packages/pipeline/locate_cli.py::_root"
+            }
+          ],
+          "error": null
+        },
+        "ultimate": {
+          "ok": true,
+          "engine": "ultimate",
+          "policy": "strict",
+          "elapsed_s": 0.014,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/locate_cli.py",
+              "symbol": "_root",
+              "score": 1.0,
+              "loc": "packages/pipeline/locate_cli.py:14-15",
+              "id": "packages/pipeline/locate_cli.py::_root"
+            }
+          ],
+          "error": null
+        }
+      }
+    },
+    {
+      "id": "r15",
+      "family": "freshness-merkle",
+      "task": "How is freshness / clean vs dirty decided from merkle root_hash?",
+      "enrich_prompt": "freshness clean dirty merkle root_hash changed_count status sync reconcile files",
+      "map": {
+        "elapsed_s": 0.845,
+        "n_cards": 10,
+        "suggested_seed": {
+          "file": "packages/pipeline/freshness.py",
+          "symbol": ""
+        },
+        "top_files": [
+          "packages/pipeline/freshness.py",
+          "packages/pipeline/merkle.py",
+          "tests/test_root_probe.py",
+          "packages/pipeline/root_probe.py",
+          "docs/freshness.md"
+        ]
+      },
+      "arms": {
+        "composite_v1": {
+          "ok": true,
+          "engine": "composite_v1",
+          "policy": "strict",
+          "elapsed_s": 0.037,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/freshness.py",
+              "symbol": "FreshnessReport.changed_count",
+              "score": 1.0,
+              "loc": "packages/pipeline/freshness.py:47-48",
+              "id": "packages/pipeline/freshness.py::FreshnessReport.changed_count"
+            }
+          ],
+          "error": null
+        },
+        "polytrace": {
+          "ok": true,
+          "engine": "polytrace",
+          "policy": "strict",
+          "elapsed_s": 0.001,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/freshness.py",
+              "symbol": "FreshnessReport.changed_count",
+              "score": 1.0,
+              "loc": "packages/pipeline/freshness.py:47-48",
+              "id": "packages/pipeline/freshness.py::FreshnessReport.changed_count"
+            }
+          ],
+          "error": null
+        },
+        "ultimate": {
+          "ok": true,
+          "engine": "ultimate",
+          "policy": "strict",
+          "elapsed_s": 0.014,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/freshness.py",
+              "symbol": "FreshnessReport.changed_count",
+              "score": 1.0,
+              "loc": "packages/pipeline/freshness.py:47-48",
+              "id": "packages/pipeline/freshness.py::FreshnessReport.changed_count"
+            }
+          ],
+          "error": null
+        }
+      }
+    },
+    {
+      "id": "r16",
+      "family": "settings-reg-mode",
+      "task": "Where is registration mode automatic vs mcp_cli stored and applied?",
+      "enrich_prompt": "settings registration_mode automatic mcp_cli cmd_settings indexing prefs register consent",
+      "map": {
+        "elapsed_s": 0.803,
+        "n_cards": 7,
+        "suggested_seed": {
+          "file": "packages/pipeline/__main__.py",
+          "symbol": ""
+        },
+        "top_files": [
+          "packages/pipeline/__main__.py",
+          "packages/pipeline/settings.py",
+          "tests/test_registration_modes.py",
+          "packages/pipeline/registration.py",
+          "tests/test_dashboard_api.py"
+        ]
+      },
+      "arms": {
+        "composite_v1": {
+          "ok": true,
+          "engine": "composite_v1",
+          "policy": "strict",
+          "elapsed_s": 0.036,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/__main__.py",
+              "symbol": "_version_only",
+              "score": 1.0,
+              "loc": "packages/pipeline/__main__.py:19-21",
+              "id": "packages/pipeline/__main__.py::_version_only"
+            }
+          ],
+          "error": null
+        },
+        "polytrace": {
+          "ok": true,
+          "engine": "polytrace",
+          "policy": "strict",
+          "elapsed_s": 0.001,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/__main__.py",
+              "symbol": "_version_only",
+              "score": 1.0,
+              "loc": "packages/pipeline/__main__.py:19-21",
+              "id": "packages/pipeline/__main__.py::_version_only"
+            }
+          ],
+          "error": null
+        },
+        "ultimate": {
+          "ok": true,
+          "engine": "ultimate",
+          "policy": "strict",
+          "elapsed_s": 0.013,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/__main__.py",
+              "symbol": "_version_only",
+              "score": 1.0,
+              "loc": "packages/pipeline/__main__.py:19-21",
+              "id": "packages/pipeline/__main__.py::_version_only"
+            }
+          ],
+          "error": null
+        }
+      }
+    },
+    {
+      "id": "r17",
+      "family": "mcp-permissions",
+      "task": "How does mcp-permissions.json gate which MCP tools the agent may call?",
+      "enrich_prompt": "mcp-permissions.json permissions allow deny unlock-tool MCP tools gate host",
+      "map": {
+        "elapsed_s": 0.957,
+        "n_cards": 10,
+        "suggested_seed": {
+          "file": "packages/pipeline/mcp_permissions.py",
+          "symbol": ""
+        },
+        "top_files": [
+          "packages/pipeline/mcp_permissions.py",
+          "tests/test_mcp_permissions.py",
+          "docs/web-info/mcp-tools-reference.md",
+          "docs/windows-uv-tool-access-denied-deferred.md",
+          "tests/test_mcp_restore.py"
+        ]
+      },
+      "arms": {
+        "composite_v1": {
+          "ok": true,
+          "engine": "composite_v1",
+          "policy": "strict",
+          "elapsed_s": 0.037,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/mcp_permissions.py",
+              "symbol": "locate_tool_names",
+              "score": 1.0,
+              "loc": "packages/pipeline/mcp_permissions.py:150-153",
+              "id": "packages/pipeline/mcp_permissions.py::locate_tool_names"
+            }
+          ],
+          "error": null
+        },
+        "polytrace": {
+          "ok": true,
+          "engine": "polytrace",
+          "policy": "strict",
+          "elapsed_s": 0.001,
+          "n_pack": 3,
+          "pack": [
+            {
+              "file": "packages/pipeline/mcp_permissions.py",
+              "symbol": "locate_tool_names",
+              "score": 1.0,
+              "loc": "packages/pipeline/mcp_permissions.py:150-153",
+              "id": "packages/pipeline/mcp_permissions.py::locate_tool_names"
+            },
+            {
+              "file": "packages/pipeline/mcp_permissions.py",
+              "symbol": "PHASE_LOCATE_TOOLS",
+              "score": 0.85,
+              "loc": "packages/pipeline/mcp_permissions.py:29-44",
+              "id": "packages/pipeline/mcp_permissions.py::PHASE_LOCATE_TOOLS"
+            },
+            {
+              "file": "packages/pipeline/mcp_permissions.py",
+              "symbol": "LEGACY_LOCATE_TOOLS",
+              "score": 0.85,
+              "loc": "packages/pipeline/mcp_permissions.py:47-55",
+              "id": "packages/pipeline/mcp_permissions.py::LEGACY_LOCATE_TOOLS"
+            }
+          ],
+          "error": null
+        },
+        "ultimate": {
+          "ok": true,
+          "engine": "ultimate",
+          "policy": "strict",
+          "elapsed_s": 0.016,
+          "n_pack": 3,
+          "pack": [
+            {
+              "file": "packages/pipeline/mcp_permissions.py",
+              "symbol": "locate_tool_names",
+              "score": 1.0,
+              "loc": "packages/pipeline/mcp_permissions.py:150-153",
+              "id": "packages/pipeline/mcp_permissions.py::locate_tool_names"
+            },
+            {
+              "file": "packages/pipeline/mcp_permissions.py",
+              "symbol": "PHASE_LOCATE_TOOLS",
+              "score": 1.0,
+              "loc": "packages/pipeline/mcp_permissions.py:29-44",
+              "id": "packages/pipeline/mcp_permissions.py::PHASE_LOCATE_TOOLS"
+            },
+            {
+              "file": "packages/pipeline/mcp_permissions.py",
+              "symbol": "LEGACY_LOCATE_TOOLS",
+              "score": 1.0,
+              "loc": "packages/pipeline/mcp_permissions.py:47-55",
+              "id": "packages/pipeline/mcp_permissions.py::LEGACY_LOCATE_TOOLS"
+            }
+          ],
+          "error": null
+        }
+      }
+    },
+    {
+      "id": "r18",
+      "family": "polytrace-teleport",
+      "task": "Where does polytrace / PPR teleport jump outside the call island?",
+      "enrich_prompt": "polytrace teleport PPR personalized pageRank island hop callgraph bind_polytrace",
+      "map": {
+        "elapsed_s": 0.849,
+        "n_cards": 10,
+        "suggested_seed": {
+          "file": "packages/trace_lab/polytrace.py",
+          "symbol": ""
+        },
+        "top_files": [
+          "packages/trace_lab/polytrace.py",
+          "packages/trace_lab/engine/rank.py",
+          "packages/trace_lab/ultimate_trace.py",
+          "packages/trace_lab/map_bakeoff.py",
+          "docs/superpowers/specs/2026-09-05-ultimate-tracer-v1-design.md"
+        ]
+      },
+      "arms": {
+        "composite_v1": {
+          "ok": true,
+          "engine": "composite_v1",
+          "policy": "strict",
+          "elapsed_s": 0.036,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/trace_lab/polytrace.py",
+              "symbol": "faction_of",
+              "score": 1.0,
+              "loc": "packages/trace_lab/polytrace.py:97-102",
+              "id": "packages/trace_lab/polytrace.py::faction_of"
+            }
+          ],
+          "error": null
+        },
+        "polytrace": {
+          "ok": true,
+          "engine": "polytrace",
+          "policy": "strict",
+          "elapsed_s": 0.001,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/trace_lab/polytrace.py",
+              "symbol": "faction_of",
+              "score": 1.0,
+              "loc": "packages/trace_lab/polytrace.py:97-102",
+              "id": "packages/trace_lab/polytrace.py::faction_of"
+            }
+          ],
+          "error": null
+        },
+        "ultimate": {
+          "ok": true,
+          "engine": "ultimate",
+          "policy": "strict",
+          "elapsed_s": 0.013,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/trace_lab/polytrace.py",
+              "symbol": "faction_of",
+              "score": 1.0,
+              "loc": "packages/trace_lab/polytrace.py:97-102",
+              "id": "packages/trace_lab/polytrace.py::faction_of"
+            }
+          ],
+          "error": null
+        }
+      }
+    },
+    {
+      "id": "r19",
+      "family": "serve-warm-engine",
+      "task": "How does `scubiee serve` / engine keep a warm search engine in memory?",
+      "enrich_prompt": "scubiee serve engine run WarmSearchEngine load_engine daemon port 8765 warm cache",
+      "map": {
+        "elapsed_s": 0.937,
+        "n_cards": 10,
+        "suggested_seed": {
+          "file": "packages/pipeline/engine.py",
+          "symbol": ""
+        },
+        "top_files": [
+          "packages/pipeline/engine.py",
+          "packages/pipeline/ce_service.py",
+          "docs/web-info/dashboard-and-engine.md",
+          "tests/test_daemon_process_sweep.py",
+          "packages/pipeline/__main__.py"
+        ]
+      },
+      "arms": {
+        "composite_v1": {
+          "ok": true,
+          "engine": "composite_v1",
+          "policy": "strict",
+          "elapsed_s": 0.036,
+          "n_pack": 4,
+          "pack": [
+            {
+              "file": "packages/pipeline/engine.py",
+              "symbol": "_verify_gpu_provider",
+              "score": 1.0,
+              "loc": "packages/pipeline/engine.py:29-63",
+              "id": "packages/pipeline/engine.py::_verify_gpu_provider"
+            },
+            {
+              "file": "packages/pipeline/accel.py",
+              "symbol": "load_accel",
+              "score": 0.9405,
+              "loc": "packages/pipeline/accel.py:132-146",
+              "id": "packages/pipeline/accel.py::load_accel"
+            },
+            {
+              "file": "packages/pipeline/accel.py",
+              "symbol": "ort_available_providers",
+              "score": 0.9405,
+              "loc": "packages/pipeline/accel.py:1348-1357",
+              "id": "packages/pipeline/accel.py::ort_available_providers"
+            },
+            {
+              "file": "packages/pipeline/accel.py",
+              "symbol": "accel_path",
+              "score": 0.8168,
+              "loc": "packages/pipeline/accel.py:53-67",
+              "id": "packages/pipeline/accel.py::accel_path"
+            }
+          ],
+          "error": null
+        },
+        "polytrace": {
+          "ok": true,
+          "engine": "polytrace",
+          "policy": "strict",
+          "elapsed_s": 0.001,
+          "n_pack": 4,
+          "pack": [
+            {
+              "file": "packages/pipeline/engine.py",
+              "symbol": "_verify_gpu_provider",
+              "score": 1.0,
+              "loc": "packages/pipeline/engine.py:29-63",
+              "id": "packages/pipeline/engine.py::_verify_gpu_provider"
+            },
+            {
+              "file": "packages/pipeline/accel.py",
+              "symbol": "load_accel",
+              "score": 0.9,
+              "loc": "packages/pipeline/accel.py:132-146",
+              "id": "packages/pipeline/accel.py::load_accel"
+            },
+            {
+              "file": "packages/pipeline/accel.py",
+              "symbol": "ort_available_providers",
+              "score": 0.9,
+              "loc": "packages/pipeline/accel.py:1348-1357",
+              "id": "packages/pipeline/accel.py::ort_available_providers"
+            },
+            {
+              "file": "packages/pipeline/accel.py",
+              "symbol": "accel_path",
+              "score": 0.7857,
+              "loc": "packages/pipeline/accel.py:53-67",
+              "id": "packages/pipeline/accel.py::accel_path"
+            }
+          ],
+          "error": null
+        },
+        "ultimate": {
+          "ok": true,
+          "engine": "ultimate",
+          "policy": "strict",
+          "elapsed_s": 0.016,
+          "n_pack": 4,
+          "pack": [
+            {
+              "file": "packages/pipeline/engine.py",
+              "symbol": "_verify_gpu_provider",
+              "score": 1.0,
+              "loc": "packages/pipeline/engine.py:29-63",
+              "id": "packages/pipeline/engine.py::_verify_gpu_provider"
+            },
+            {
+              "file": "packages/pipeline/accel.py",
+              "symbol": "load_accel",
+              "score": 0.9658,
+              "loc": "packages/pipeline/accel.py:132-146",
+              "id": "packages/pipeline/accel.py::load_accel"
+            },
+            {
+              "file": "packages/pipeline/accel.py",
+              "symbol": "accel_path",
+              "score": 0.9227,
+              "loc": "packages/pipeline/accel.py:53-67",
+              "id": "packages/pipeline/accel.py::accel_path"
+            },
+            {
+              "file": "packages/pipeline/project_id.py",
+              "symbol": "context_engine_home",
+              "score": 0.8551,
+              "loc": "packages/pipeline/project_id.py:108-113",
+              "id": "packages/pipeline/project_id.py::context_engine_home"
+            }
+          ],
+          "error": null
+        }
+      }
+    },
+    {
+      "id": "r20",
+      "family": "chunk-vs-file-merkle",
+      "task": "Distinguish chunk_merkle vs file merkle roles in incremental updates.",
+      "enrich_prompt": "chunk_merkle.json merkle.json incremental chunk file hash patch re-embed dirty",
+      "map": {
+        "elapsed_s": 0.864,
+        "n_cards": 10,
+        "suggested_seed": {
+          "file": "packages/pipeline/chunk_merkle.py",
+          "symbol": ""
+        },
+        "top_files": [
+          "packages/pipeline/chunk_merkle.py",
+          "packages/pipeline/merkle.py",
+          "tests/test_chunk_merkle.py",
+          "packages/pipeline/incremental.py",
+          "docs/reindexing/chunk-level-incremental-indexing.md"
+        ]
+      },
+      "arms": {
+        "composite_v1": {
+          "ok": true,
+          "engine": "composite_v1",
+          "policy": "strict",
+          "elapsed_s": 0.037,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/chunk_merkle.py",
+              "symbol": "chunk_key",
+              "score": 1.0,
+              "loc": "packages/pipeline/chunk_merkle.py:16-20",
+              "id": "packages/pipeline/chunk_merkle.py::chunk_key"
+            }
+          ],
+          "error": null
+        },
+        "polytrace": {
+          "ok": true,
+          "engine": "polytrace",
+          "policy": "strict",
+          "elapsed_s": 0.001,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/chunk_merkle.py",
+              "symbol": "chunk_key",
+              "score": 1.0,
+              "loc": "packages/pipeline/chunk_merkle.py:16-20",
+              "id": "packages/pipeline/chunk_merkle.py::chunk_key"
+            }
+          ],
+          "error": null
+        },
+        "ultimate": {
+          "ok": true,
+          "engine": "ultimate",
+          "policy": "strict",
+          "elapsed_s": 0.016,
+          "n_pack": 1,
+          "pack": [
+            {
+              "file": "packages/pipeline/chunk_merkle.py",
+              "symbol": "chunk_key",
+              "score": 1.0,
+              "loc": "packages/pipeline/chunk_merkle.py:16-20",
+              "id": "packages/pipeline/chunk_merkle.py::chunk_key"
+            }
+          ],
+          "error": null
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+[mcp_host_sim] clean_slate: killing leftover MCP procs…
+[mcp_host_sim] clean_slate: stopping engine…
+[mcp_host_sim] clean_slate: running=False
+[mcp_host_sim] host_start: spawning bridge…
+[mcp_host_sim] bridge cmd='C:/Users/usman/AppData/Roaming/uv/tools/scubiee/Scripts/pythonw.exe' args=['-u', '-m', 'pipeline.mcp_bridge'] pid=26040
+[mcp_host_sim] host_start: ok=True pid=26040
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=True clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=True clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=False health=True clients=1
+[mcp_host_sim] warm poll running=True embedder=False soft=True health=True clients=1
+[mcp_host_sim] soft_ready FIRST at +3.51s from host_start (before any MCP map)
+[mcp_host_sim] warm poll running=True embedder=False soft=True health=True clients=1
+[mcp_host_sim] settle: waiting for soft_ready…
+[mcp_host_sim] settle soft-wait t=+4.1s soft=True embed=False rss=327.1
+[mcp_host_sim] settle soft-wait t=+7.6s soft=True embed=False rss=424.5
+[mcp_host_sim] settle: prewarm kicked; quiet sleep 30s (no /health polls)
+[mcp_host_sim] settle done at +33.05s soft=True embed=False rss=695.4
+[mcp_host_sim] settle_join: MCP map join for dense…
+[mcp_host_sim] settle_join map_ms=503.2 embed=False map_ok=True ok=False
+{
+  "ok": false,
+  "lane": "a",
+  "elapsed_ms": 209296.1,
+  "errors": [
+    "settle_join_embedder: SETTLE_EMBED_NOT_READY \u2014 {'ok': False, 'code': 'SETTLE_EMBED_NOT_READY', 'embedder_loaded': False, 'join_map_ms': 503.2, 'map_ok': True, 'tick': {'engine': {'running': True, 'pid': 24288, 'rss_mb': 1037.0, 'health_ok': False, 'warm_ready': False, 'embedder_loaded': False, 'soft_search_ready': False, 'at': 1789506891.6706605, 'health_error': 'Scubiee unreachable at http://127.0.0.1:8765: timed out'}, 'clients': {'active_clients': 0, 'client_ids': [], 'desired_mode': 'run', 'last_client_left_at': None, 'last_activity': 1789506890.5839186, 'raw_clients': {}}, 'ctx_home': 'C:\\\\Users\\\\usman\\\\.scubiee'}}"
+  ],
+  "report_paths": {
+    "json": "C:\\Users\\usman\\Downloads\\context-engine\\docs\\superpowers\\plans\\_preprod_0_3_94_cursor_open\\mcp-host-sim-20260915T211454Z.json",
+    "md": "C:\\Users\\usman\\Downloads\\context-engine\\docs\\superpowers\\plans\\_preprod_0_3_94_cursor_open\\mcp-host-sim-20260915T211454Z.md"
+  }
+}
+  phase clean_slate: ok=True ms=10765.5 code=None
+  phase host_start: ok=True ms=3582.6 code=None
+  phase auto_warm: ok=True ms=4058.0 code=None
+  phase settle: ok=True ms=28995.6 code=None
+  phase settle_join_embedder: ok=False ms=161891.5 code=SETTLE_EMBED_NOT_READY
+
+[mcp_host_sim] using real CTX_HOME (~/.scubiee)

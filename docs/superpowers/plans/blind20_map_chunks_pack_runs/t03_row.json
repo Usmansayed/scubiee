@@ -1,0 +1,244 @@
+{
+  "id": "t03",
+  "family": "chunk-pipeline",
+  "task": "Trace how source files become searchable chunks in the indexer pipeline.",
+  "enrich_prompt": "indexer chunk pipeline parse source files into chunks merkle symbol spans index_manager",
+  "map": {
+    "elapsed_s": 0.591,
+    "top_files": [
+      "packages/enrich/__init__.py",
+      "packages/pipeline/chunk_merkle.py",
+      "tests/test_runtime_publish.py",
+      "packages/pipeline/index_manager.py",
+      "packages/pipeline/indexer.py"
+    ]
+  },
+  "selected_chunks": [
+    {
+      "file": "packages/enrich/__init__.py",
+      "symbol": "chunk_file_from_ir",
+      "kind": "function",
+      "loc": "packages/enrich/__init__.py:70-122",
+      "start_line": 70,
+      "end_line": 122,
+      "score": 7.05,
+      "excerpt": "def chunk_file_from_ir(ir: RepoIR, root: Path, file_path: str) -> list[CodeChunk]:\n    \"\"\"Slice one file into symbol-span chunks using RepoIR line anchors only.\"\"\"\n    lines = _rea"
+    },
+    {
+      "file": "packages/pipeline/chunk_merkle.py",
+      "symbol": "chunk_key",
+      "kind": "function",
+      "loc": "packages/pipeline/chunk_merkle.py:16-20",
+      "start_line": 16,
+      "end_line": 20,
+      "score": 7.35,
+      "excerpt": "def chunk_key(chunk: ChunkRecord) -> str:\n    \"\"\"Stable identity: symbols survive line shifts; anonymous chunks use range.\"\"\"\n    if chunk.symbol:\n        return str(chunk.symbol)\n"
+    },
+    {
+      "file": "packages/enrich/__init__.py",
+      "symbol": "chunk_repo_from_ir",
+      "kind": "function",
+      "loc": "packages/enrich/__init__.py:125-133",
+      "start_line": 125,
+      "end_line": 133,
+      "score": 6.7,
+      "excerpt": "def chunk_repo_from_ir(ir: RepoIR, root: Path | None = None) -> list[CodeChunk]:\n    root = Path(root or ir.root)\n    chunks: list[CodeChunk] = []\n    for file_path in sorted(ir.fi"
+    }
+  ],
+  "arms": {
+    "pack_context": {
+      "ok": true,
+      "tool": "pack_context",
+      "engine": "composite_v1",
+      "elapsed_s": 0.131,
+      "n_pack": 4,
+      "seed": {
+        "file": "packages/enrich/__init__.py",
+        "symbol": "chunk_file_from_ir",
+        "id": "packages/enrich/__init__.py::chunk_file_from_ir"
+      },
+      "pack": [
+        {
+          "file": "packages/enrich/__init__.py",
+          "symbol": "chunk_file_from_ir",
+          "score": 1.0,
+          "loc": "packages/enrich/__init__.py:70-122",
+          "id": "packages/enrich/__init__.py::chunk_file_from_ir",
+          "chars": 1609
+        },
+        {
+          "file": "packages/pipeline/chunk_merkle.py",
+          "symbol": "chunk_key",
+          "score": 1.0,
+          "loc": "packages/pipeline/chunk_merkle.py:16-20",
+          "id": "packages/pipeline/chunk_merkle.py::chunk_key",
+          "chars": 230
+        },
+        {
+          "file": "packages/enrich/__init__.py",
+          "symbol": "_read_lines",
+          "score": 0.99,
+          "loc": "packages/enrich/__init__.py:65-67",
+          "id": "packages/enrich/__init__.py::_read_lines",
+          "chars": 157
+        },
+        {
+          "file": "packages/enrich/__init__.py",
+          "symbol": "_callable_symbols_for_file",
+          "score": 0.99,
+          "loc": "packages/enrich/__init__.py:51-62",
+          "id": "packages/enrich/__init__.py::_callable_symbols_for_file",
+          "chars": 500
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/enrich/__init__.py::chunk_file_from_ir",
+          "loc": "packages/enrich/__init__.py:70-122",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/chunk_merkle.py::chunk_key",
+          "loc": "packages/pipeline/chunk_merkle.py:16-20",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/enrich/__init__.py::_read_lines",
+          "loc": "packages/enrich/__init__.py:65-67",
+          "edge": "calls",
+          "score": 0.99
+        },
+        {
+          "id": "packages/enrich/__init__.py::_callable_symbols_for_file",
+          "loc": "packages/enrich/__init__.py:51-62",
+          "edge": "calls",
+          "score": 0.99
+        }
+      ],
+      "pack_query": "indexer chunk pipeline parse source files into chunks merkle symbol spans index_manager\nrelevant_chunks: packages/enrich/__init__.py::chunk_file_from_ir@packages/enrich/__init__.py:70-122 | packages/pipeline/chunk_merkle.py::chunk_key@packages/pipeline/chunk_merkle.py:16-20 | packages/enrich/__init__.py::chunk_repo_from_ir@packages/enrich/__init__.py:125-133",
+      "error": null
+    },
+    "pack_poly_embed": {
+      "ok": true,
+      "tool": "pack_poly_embed",
+      "engine": "poly_embed",
+      "elapsed_s": 0.197,
+      "n_pack": 2,
+      "seed": {
+        "file": "packages/enrich/__init__.py",
+        "symbol": "chunk_file_from_ir",
+        "id": "packages/enrich/__init__.py::chunk_file_from_ir"
+      },
+      "pack": [
+        {
+          "file": "packages/enrich/__init__.py",
+          "symbol": "chunk_file_from_ir",
+          "score": 1.0,
+          "loc": "packages/enrich/__init__.py:70-122",
+          "id": "packages/enrich/__init__.py::chunk_file_from_ir",
+          "chars": 1609
+        },
+        {
+          "file": "packages/pipeline/chunk_merkle.py",
+          "symbol": "chunk_key",
+          "score": 1.0,
+          "loc": "packages/pipeline/chunk_merkle.py:16-20",
+          "id": "packages/pipeline/chunk_merkle.py::chunk_key",
+          "chars": 230
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/enrich/__init__.py::chunk_file_from_ir",
+          "loc": "packages/enrich/__init__.py:70-122",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/chunk_merkle.py::chunk_key",
+          "loc": "packages/pipeline/chunk_merkle.py:16-20",
+          "edge": "seed",
+          "score": 1.0
+        }
+      ],
+      "pack_query": "indexer chunk pipeline parse source files into chunks merkle symbol spans index_manager\nrelevant_chunks: packages/enrich/__init__.py::chunk_file_from_ir@packages/enrich/__init__.py:70-122 | packages/pipeline/chunk_merkle.py::chunk_key@packages/pipeline/chunk_merkle.py:16-20 | packages/enrich/__init__.py::chunk_repo_from_ir@packages/enrich/__init__.py:125-133",
+      "error": null
+    },
+    "pack_semantic": {
+      "ok": true,
+      "tool": "pack_semantic",
+      "engine": "semantic_tracer_fuse",
+      "elapsed_s": 0.346,
+      "n_pack": 4,
+      "seed": {
+        "file": "packages/enrich/__init__.py",
+        "symbol": "chunk_file_from_ir",
+        "id": "packages/enrich/__init__.py::chunk_file_from_ir"
+      },
+      "pack": [
+        {
+          "file": "packages/enrich/__init__.py",
+          "symbol": "chunk_file_from_ir",
+          "score": 1.0,
+          "loc": "packages/enrich/__init__.py:70-122",
+          "id": "packages/enrich/__init__.py::chunk_file_from_ir",
+          "chars": 1609
+        },
+        {
+          "file": "packages/pipeline/chunk_merkle.py",
+          "symbol": "chunk_key",
+          "score": 1.0,
+          "loc": "packages/pipeline/chunk_merkle.py:16-20",
+          "id": "packages/pipeline/chunk_merkle.py::chunk_key",
+          "chars": 230
+        },
+        {
+          "file": "packages/enrich/__init__.py",
+          "symbol": "_read_lines",
+          "score": 0.9283,
+          "loc": "packages/enrich/__init__.py:65-67",
+          "id": "packages/enrich/__init__.py::_read_lines",
+          "chars": 157
+        },
+        {
+          "file": "packages/enrich/__init__.py",
+          "symbol": "_callable_symbols_for_file",
+          "score": 0.9265,
+          "loc": "packages/enrich/__init__.py:51-62",
+          "id": "packages/enrich/__init__.py::_callable_symbols_for_file",
+          "chars": 500
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/enrich/__init__.py::chunk_file_from_ir",
+          "loc": "packages/enrich/__init__.py:70-122",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/chunk_merkle.py::chunk_key",
+          "loc": "packages/pipeline/chunk_merkle.py:16-20",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/enrich/__init__.py::_read_lines",
+          "loc": "packages/enrich/__init__.py:65-67",
+          "edge": "calls",
+          "score": 0.9283
+        },
+        {
+          "id": "packages/enrich/__init__.py::_callable_symbols_for_file",
+          "loc": "packages/enrich/__init__.py:51-62",
+          "edge": "calls",
+          "score": 0.9265
+        }
+      ],
+      "pack_query": "indexer chunk pipeline parse source files into chunks merkle symbol spans index_manager\nrelevant_chunks: packages/enrich/__init__.py::chunk_file_from_ir@packages/enrich/__init__.py:70-122 | packages/pipeline/chunk_merkle.py::chunk_key@packages/pipeline/chunk_merkle.py:16-20 | packages/enrich/__init__.py::chunk_repo_from_ir@packages/enrich/__init__.py:125-133",
+      "error": null
+    }
+  }
+}

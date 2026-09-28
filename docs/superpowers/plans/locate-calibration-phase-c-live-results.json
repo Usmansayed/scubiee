@@ -1,0 +1,223 @@
+{
+  "protocol": {
+    "kind": "phase_c_live_policy_ab",
+    "model": "auto",
+    "effort": "medium",
+    "timeout_s": 420,
+    "n_tasks": 1,
+    "arms": [
+      "baseline",
+      "calibrated"
+    ],
+    "both_have_scubiee": true,
+    "run_id": "20260907T084356Z",
+    "engine_health": {
+      "ok": true,
+      "service": "scubiee",
+      "version": "0.3.25",
+      "warm": true,
+      "warm_state": "ready",
+      "generation": 11,
+      "index_usable": true,
+      "last_sync_at": 1788770521.103521,
+      "repo": "C:\\Users\\usman\\Downloads\\context-engine",
+      "dashboard": "/dashboard",
+      "api": "/v1/*"
+    }
+  },
+  "elapsed_s": 74.77,
+  "scoreboard": {
+    "baseline": {
+      "arm": "baseline",
+      "n": 1,
+      "mean_file_rec": 1.0,
+      "mean_symbol_rec": 1.0,
+      "mean_tokens": 877.0,
+      "mean_scubiee": 0.0,
+      "mean_native": 2.0,
+      "over_use_rate": 0.0,
+      "under_use_rate": 0.0
+    },
+    "calibrated": {
+      "arm": "calibrated",
+      "n": 1,
+      "mean_file_rec": 1.0,
+      "mean_symbol_rec": 1.0,
+      "mean_tokens": 899.0,
+      "mean_scubiee": 0.0,
+      "mean_native": 2.0,
+      "over_use_rate": 0.0,
+      "under_use_rate": 0.0
+    }
+  },
+  "over_use_rate_calibrated_needles": 0.0,
+  "under_use_rate_calibrated_soft": null,
+  "findings_draft": [
+    "Live arms both have Scubiee; policy text differs (baseline mandatory ladder vs calibrated Prefer/Forbid).",
+    "Scoreboard baseline file_rec=1.0 calibrated=1.0.",
+    "Needle over_use calibrated=0.0; soft/exact under_use calibrated=None.",
+    "mean scubiee_calls baseline=0.0 calibrated=0.0."
+  ],
+  "runs": [
+    {
+      "task_id": "C09_auth_jwt_trap",
+      "arm": "baseline",
+      "agent": "ab_policy_baseline",
+      "model": "auto",
+      "effort": "medium",
+      "require_mcp_startup": true,
+      "cmd": [
+        "C:\\Users\\usman\\AppData\\Local\\Kiro-Cli\\kiro-cli.exe",
+        "chat",
+        "--no-interactive",
+        "--trust-all-tools",
+        "--agent",
+        "ab_policy_baseline",
+        "--model",
+        "auto",
+        "--effort",
+        "medium",
+        "--wrap",
+        "never",
+        "--agent-engine",
+        "v1",
+        "--legacy-ui",
+        "--require-mcp-startup",
+        "LOCATE ONLY \u2014 do not edit any files.\nFixture login fails with invalid/expired JWT. Trace the credential path only: authenticate \u2192 extract_bearer \u2192 JwtService.verify \u2192 decode \u2192 TOKEN_TTL \u2192 UserRepository.resolve under fixtures/trace-lab. Do NOT pull billing/analytics/logger side effects even if names look related.\nEnd with a JSON block only:\n{\"files\":[\"rel/path.py\",...],\"symbols\":[\"name\",...],\"notes\":\"one sentence\"}"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_ms": 30503.6,
+      "out_chars": 3505,
+      "out_tokens_est": 877,
+      "credits": 0.34,
+      "reported_time_s": 16,
+      "tools": {
+        "scubiee_tools": [],
+        "native_tools": [
+          "read",
+          "read"
+        ],
+        "other_mcp_tools": [],
+        "scubiee_count": 0,
+        "native_count": 2,
+        "total_tool_mentions": 2
+      },
+      "gold": {
+        "file_hits": [
+          "fixtures/trace-lab/app/middleware/auth.py",
+          "fixtures/trace-lab/app/services/jwt_service.py",
+          "fixtures/trace-lab/app/utils/token.py",
+          "fixtures/trace-lab/app/repositories/user_repo.py"
+        ],
+        "symbol_hits": [
+          "authenticate",
+          "extract_bearer",
+          "JwtService.verify",
+          "decode",
+          "UserRepository.resolve"
+        ],
+        "file_rec": 1.0,
+        "symbol_rec": 1.0
+      },
+      "isolation": {
+        "scubiee_tools_seen": false,
+        "expected_scubiee": false,
+        "ok": true,
+        "note": "no scubiee leakage"
+      },
+      "log": "out/kiro_phase_c_live/20260907T084356Z/C09_auth_jwt_trap__baseline.log",
+      "taxonomy": "literal_needle",
+      "compliance": {
+        "taxonomy": "literal_needle",
+        "used_map": false,
+        "used_pack": false,
+        "used_native": true,
+        "over_use": false,
+        "under_use": false,
+        "scubiee_count": 0,
+        "native_count": 2
+      }
+    },
+    {
+      "task_id": "C09_auth_jwt_trap",
+      "arm": "calibrated",
+      "agent": "ab_policy_calibrated",
+      "model": "auto",
+      "effort": "medium",
+      "require_mcp_startup": true,
+      "cmd": [
+        "C:\\Users\\usman\\AppData\\Local\\Kiro-Cli\\kiro-cli.exe",
+        "chat",
+        "--no-interactive",
+        "--trust-all-tools",
+        "--agent",
+        "ab_policy_calibrated",
+        "--model",
+        "auto",
+        "--effort",
+        "medium",
+        "--wrap",
+        "never",
+        "--agent-engine",
+        "v1",
+        "--legacy-ui",
+        "--require-mcp-startup",
+        "LOCATE ONLY \u2014 do not edit any files.\nFixture login fails with invalid/expired JWT. Trace the credential path only: authenticate \u2192 extract_bearer \u2192 JwtService.verify \u2192 decode \u2192 TOKEN_TTL \u2192 UserRepository.resolve under fixtures/trace-lab. Do NOT pull billing/analytics/logger side effects even if names look related.\nEnd with a JSON block only:\n{\"files\":[\"rel/path.py\",...],\"symbols\":[\"name\",...],\"notes\":\"one sentence\"}"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_ms": 44256.0,
+      "out_chars": 3593,
+      "out_tokens_est": 899,
+      "credits": 0.34,
+      "reported_time_s": 19,
+      "tools": {
+        "scubiee_tools": [],
+        "native_tools": [
+          "read",
+          "read"
+        ],
+        "other_mcp_tools": [],
+        "scubiee_count": 0,
+        "native_count": 2,
+        "total_tool_mentions": 2
+      },
+      "gold": {
+        "file_hits": [
+          "fixtures/trace-lab/app/middleware/auth.py",
+          "fixtures/trace-lab/app/services/jwt_service.py",
+          "fixtures/trace-lab/app/utils/token.py",
+          "fixtures/trace-lab/app/repositories/user_repo.py"
+        ],
+        "symbol_hits": [
+          "authenticate",
+          "extract_bearer",
+          "JwtService.verify",
+          "decode",
+          "UserRepository.resolve"
+        ],
+        "file_rec": 1.0,
+        "symbol_rec": 1.0
+      },
+      "isolation": {
+        "scubiee_tools_seen": false,
+        "expected_scubiee": false,
+        "ok": true,
+        "note": "no scubiee leakage"
+      },
+      "log": "out/kiro_phase_c_live/20260907T084356Z/C09_auth_jwt_trap__calibrated.log",
+      "taxonomy": "literal_needle",
+      "compliance": {
+        "taxonomy": "literal_needle",
+        "used_map": false,
+        "used_pack": false,
+        "used_native": true,
+        "over_use": false,
+        "under_use": false,
+        "scubiee_count": 0,
+        "native_count": 2
+      }
+    }
+  ]
+}

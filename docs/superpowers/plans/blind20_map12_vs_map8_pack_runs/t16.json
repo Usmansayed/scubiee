@@ -1,0 +1,192 @@
+{
+  "id": "t16",
+  "family": "graphify-edges",
+  "task": "How does Graphify IR supply call edges into the conductor / tracer graph?",
+  "must_files": [
+    "packages/conductor/graphify_retriever.py",
+    "packages/trace_lab/graphify_layer.py",
+    "packages/conductor/conductor.py"
+  ],
+  "must_symbols": [
+    "GraphifyChunkRetriever",
+    "build_graphify_graph"
+  ],
+  "map_k12": {
+    "elapsed_s": 0.683,
+    "top_files": [
+      "packages/conductor/graphify_retriever.py",
+      "packages/conductor/conductor.py",
+      "packages/graphify/build.py",
+      "packages/conductor/__init__.py",
+      "packages/graphify/serve.py",
+      "packages/trace_lab/facts/__init__.py",
+      "tests/test_faiss_dense_adapter.py",
+      "packages/pipeline/engine.py"
+    ]
+  },
+  "map_k8": {
+    "elapsed_s": 0.506,
+    "top_files": [
+      "packages/conductor/graphify_retriever.py",
+      "packages/conductor/conductor.py",
+      "packages/graphify/build.py",
+      "packages/conductor/__init__.py",
+      "packages/graphify/serve.py"
+    ]
+  },
+  "chunks_k12": [
+    {
+      "file": "packages/conductor/graphify_retriever.py",
+      "symbol": "GraphifyChunkRetriever",
+      "kind": "class",
+      "loc": "packages/conductor/graphify_retriever.py:89-270",
+      "start_line": 89,
+      "end_line": 270,
+      "score": 7.0
+    },
+    {
+      "file": "packages/conductor/conductor.py",
+      "symbol": "Conductor.retrieve_graphify",
+      "kind": "method",
+      "loc": "packages/conductor/conductor.py:65-70",
+      "start_line": 65,
+      "end_line": 70,
+      "score": 7.35
+    },
+    {
+      "file": "packages/graphify/build.py",
+      "symbol": "dedupe_edges",
+      "kind": "function",
+      "loc": "packages/graphify/build.py:347-367",
+      "start_line": 347,
+      "end_line": 367,
+      "score": 6.5
+    }
+  ],
+  "chunks_k8": [
+    {
+      "file": "packages/conductor/graphify_retriever.py",
+      "symbol": "GraphifyChunkRetriever",
+      "kind": "class",
+      "loc": "packages/conductor/graphify_retriever.py:89-270",
+      "start_line": 89,
+      "end_line": 270,
+      "score": 7.0
+    },
+    {
+      "file": "packages/conductor/conductor.py",
+      "symbol": "Conductor.retrieve_graphify",
+      "kind": "method",
+      "loc": "packages/conductor/conductor.py:65-70",
+      "start_line": 65,
+      "end_line": 70,
+      "score": 7.35
+    },
+    {
+      "file": "packages/graphify/build.py",
+      "symbol": "dedupe_edges",
+      "kind": "function",
+      "loc": "packages/graphify/build.py:347-367",
+      "start_line": 347,
+      "end_line": 367,
+      "score": 6.5
+    }
+  ],
+  "pack": {
+    "ok": true,
+    "elapsed_s": 0.286,
+    "n_pack": 1,
+    "pack": [
+      {
+        "file": "packages/conductor/graphify_retriever.py",
+        "symbol": "GraphifyChunkRetriever",
+        "loc": "packages/conductor/graphify_retriever.py:89-270",
+        "id": "packages/conductor/graphify_retriever.py::GraphifyChunkRetriever",
+        "chars": 6000
+      }
+    ],
+    "chain": [
+      {
+        "id": "packages/conductor/graphify_retriever.py::GraphifyChunkRetriever",
+        "loc": "packages/conductor/graphify_retriever.py:89-270",
+        "edge": "seed",
+        "symbol": "GraphifyChunkRetriever"
+      },
+      {
+        "id": "packages/conductor/conductor.py::Conductor.retrieve_graphify",
+        "loc": "packages/conductor/conductor.py:65-70",
+        "edge": "seed",
+        "symbol": "Conductor.retrieve_graphify"
+      },
+      {
+        "id": "packages/conductor/conductor.py::Conductor._file_of",
+        "loc": "packages/conductor/conductor.py:62-63",
+        "edge": "calls",
+        "symbol": "Conductor._file_of"
+      },
+      {
+        "id": "packages/conductor/graphify_retriever.py::normalize_file",
+        "loc": "packages/conductor/graphify_retriever.py:33-34",
+        "edge": "calls",
+        "symbol": "normalize_file"
+      },
+      {
+        "id": "packages/graphify/serve.py::_strip_diacritics",
+        "loc": "packages/graphify/serve.py:158-163",
+        "edge": "calls",
+        "symbol": "_strip_diacritics"
+      },
+      {
+        "id": "packages/conductor/graphify_retriever.py::GraphifyChunkRetriever.seed_files",
+        "loc": "packages/conductor/graphify_retriever.py:224-235",
+        "edge": "contains",
+        "symbol": "GraphifyChunkRetriever.seed_files"
+      },
+      {
+        "id": "packages/conductor/graphify_retriever.py::GraphifyChunkRetriever._chunks_for_node",
+        "loc": "packages/conductor/graphify_retriever.py:98-116",
+        "edge": "contains",
+        "symbol": "GraphifyChunkRetriever._chunks_for_node"
+      },
+      {
+        "id": "packages/conductor/graphify_retriever.py::GraphifyChunkRetriever.affinity_scores",
+        "loc": "packages/conductor/graphify_retriever.py:118-207",
+        "edge": "contains",
+        "symbol": "GraphifyChunkRetriever.affinity_scores"
+      }
+    ],
+    "seed": {
+      "file": "packages/conductor/graphify_retriever.py",
+      "symbol": "GraphifyChunkRetriever",
+      "id": "packages/conductor/graphify_retriever.py::GraphifyChunkRetriever"
+    },
+    "error": null
+  },
+  "scores": {
+    "map_k12": {
+      "file": 0.667,
+      "symbol": 0.0,
+      "note": "raw map cards (symbols often empty)"
+    },
+    "map_k12_chunks": {
+      "file": 0.667,
+      "symbol": 0.5,
+      "chunks": [
+        "GraphifyChunkRetriever",
+        "Conductor.retrieve_graphify",
+        "dedupe_edges"
+      ]
+    },
+    "map8_pack": {
+      "file": 0.667,
+      "symbol": 0.5,
+      "n_pack": 1,
+      "chunks": [
+        "GraphifyChunkRetriever",
+        "Conductor.retrieve_graphify",
+        "dedupe_edges"
+      ],
+      "elapsed_s": 0.286
+    }
+  }
+}

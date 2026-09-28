@@ -1,0 +1,32 @@
+[
+  {
+    "file": "packages/pipeline/locate_cli.py",
+    "symbol": "cli_pack",
+    "kind": "function",
+    "loc": "packages/pipeline/locate_cli.py:179-227",
+    "start_line": 179,
+    "end_line": 227,
+    "score": 11.45,
+    "excerpt": "def cli_pack(\n    query: str,\n    *,\n    seed_file: str,\n    path: str | Path = \".\",\n    seed_symbol: str = \"\",\n    seed_line: int = 0,\n    mode: str = \"lean\",\n    policy: str = \"s"
+  },
+  {
+    "file": "packages/pipeline/locate_cli.py",
+    "symbol": "cli_map",
+    "kind": "function",
+    "loc": "packages/pipeline/locate_cli.py:60-176",
+    "start_line": 60,
+    "end_line": 176,
+    "score": 10.2,
+    "excerpt": "def cli_map(\n    query: str,\n    *,\n    path: str | Path = \".\",\n    k: int = 10,\n    local: bool = False,\n) -> dict[str, Any]:\n    \"\"\"Soft locate cards + suggested_seed (no bodies)"
+  },
+  {
+    "file": "packages/pipeline/__main__.py",
+    "symbol": "cmd_pack",
+    "kind": "function",
+    "loc": "packages/pipeline/__main__.py:1655-1679",
+    "start_line": 1655,
+    "end_line": 1679,
+    "score": 8.8,
+    "excerpt": "def cmd_pack(args: argparse.Namespace) -> int:\n    \"\"\"Tracer/heatmap pack via CLI (JSON). Same expanded query as map; seed from map.\"\"\"\n    from pipeline.locate_cli import cli_pack"
+  }
+]

@@ -1,0 +1,658 @@
+{
+  "id": "u07",
+  "family": "disconnect-tool",
+  "task": "How does disconnect remove a host tool surface and permissions?",
+  "enrich_map_query": "cmd_disconnect disconnect_tool remove mcp.json permissions surface uninstall host",
+  "map_ok": true,
+  "suggested_seed": {
+    "file": "packages/pipeline/__main__.py",
+    "symbol": "",
+    "source": "suggested_seed"
+  },
+  "resolved_seed": {
+    "file": "packages/pipeline/__main__.py",
+    "symbol": "cmd_disconnect",
+    "how": "best_in_file"
+  },
+  "map_top_cards": [
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "score": 15.37245802202235
+    },
+    {
+      "file": "packages/pipeline/mcp_permissions.py",
+      "symbol": "",
+      "loc": "packages/pipeline/mcp_permissions.py:1-1",
+      "score": 9.302869317679178
+    },
+    {
+      "file": "tests/test_mcp_permissions.py",
+      "symbol": "",
+      "loc": "tests/test_mcp_permissions.py:1-1",
+      "score": 8.025822041709523
+    },
+    {
+      "file": "docs/web-info/uninstall-mac-linux.md",
+      "symbol": "",
+      "loc": "docs/web-info/uninstall-mac-linux.md:1-1",
+      "score": 7.494013753564047
+    },
+    {
+      "file": "tests/test_connect_formats.py",
+      "symbol": "",
+      "loc": "tests/test_connect_formats.py:1-1",
+      "score": 5.293504202795619
+    },
+    {
+      "file": "packages/pipeline/process_control.py",
+      "symbol": "",
+      "loc": "packages/pipeline/process_control.py:1-1",
+      "score": 4.830424981583536
+    },
+    {
+      "file": "docs/web-info/mac-and-linux.md",
+      "symbol": "",
+      "loc": "docs/web-info/mac-and-linux.md:1-1",
+      "score": 4.331162451810709
+    },
+    {
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": "",
+      "loc": "packages/pipeline/rules_installer.py:1-1",
+      "score": 4.213036521485137
+    },
+    {
+      "file": "tests/test_package_install_entry.py",
+      "symbol": "",
+      "loc": "tests/test_package_install_entry.py:1-1",
+      "score": 4.165376679940641
+    }
+  ],
+  "arms": {
+    "composite_v1": {
+      "ok": true,
+      "elapsed_s": 0.042,
+      "n_hot": 71,
+      "n_ranked": 97,
+      "hot_ids": [
+        "packages/pipeline/__main__.py::cmd_disconnect",
+        "packages/pipeline/cli_ui.py::SetupProgress._clear_line",
+        "packages/pipeline/cli_ui.py::SetupProgress.notice",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.isatty",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+        "packages/pipeline/cli_ui.py::_init_windows_ansi",
+        "packages/pipeline/cli_ui.py::_init_windows_console",
+        "packages/pipeline/cli_ui.py::_supports_color",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/cli_ui.py::error",
+        "packages/pipeline/cli_ui.py::init_terminal",
+        "packages/pipeline/cli_ui.py::print_connect_summary",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/cli_ui.py::success",
+        "packages/pipeline/cli_ui.py::table",
+        "packages/pipeline/cli_ui.py::warn",
+        "packages/pipeline/connect_state.py::_state_path",
+        "packages/pipeline/connect_state.py::load_connected_tools",
+        "packages/pipeline/connect_state.py::remove_connected_tool",
+        "packages/pipeline/connect_state.py::save_connected_tools",
+        "packages/pipeline/managed_repos.py::_path_key",
+        "packages/pipeline/managed_repos.py::managed_repo_paths",
+        "packages/pipeline/mcp_install.py::verify_mcp_json",
+        "packages/pipeline/mcp_locate.py::_is_enrolled",
+        "packages/pipeline/mcp_permissions.py::apply_permissions_to_repo_tool_surface",
+        "packages/pipeline/project_id.py::load_registry",
+        "packages/pipeline/rules_installer.py::_connect_repo",
+        "packages/pipeline/rules_installer.py::_fan_out_managed_repos",
+        "packages/pipeline/rules_installer.py::_is_continue_project_mcp",
+        "packages/pipeline/rules_installer.py::_load_json_for_merge",
+        "packages/pipeline/rules_installer.py::_project_rules_eligible",
+        "packages/pipeline/rules_installer.py::_prune_empty_parents",
+        "packages/pipeline/rules_installer.py::_record_mcp_skip",
+        "packages/pipeline/rules_installer.py::_remove_continue_project_mcp",
+        "packages/pipeline/rules_installer.py::_remove_legacy_global_mcp",
+        "packages/pipeline/rules_installer.py::_remove_mcp_amp",
+        "packages/pipeline/rules_installer.py::_remove_mcp_continue_yaml",
+        "packages/pipeline/rules_installer.py::_remove_mcp_json_keyed",
+        "packages/pipeline/rules_installer.py::_remove_mcp_opencode"
+      ],
+      "top15_ids": [
+        "packages/pipeline/__main__.py::cmd_disconnect",
+        "packages/pipeline/tool_registry.py::normalize_tool_slug",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/tool_registry.py::resolve_mcp_project_paths",
+        "packages/pipeline/rules_installer.py::_record_mcp_skip",
+        "packages/pipeline/tool_registry.py::_home",
+        "packages/pipeline/rules_installer.py::uninstall_tools",
+        "packages/pipeline/cli_ui.py::print_connect_summary",
+        "packages/pipeline/tool_registry.py::get_tool",
+        "packages/pipeline/cli_ui.py::error",
+        "packages/pipeline/rules_installer.py::remove_project_tool_surface",
+        "packages/pipeline/rules_installer.py::_fan_out_managed_repos"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/__main__.py::cmd_disconnect",
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_disconnect",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 1795
+        },
+        {
+          "id": "packages/pipeline/tool_registry.py::normalize_tool_slug",
+          "file": "packages/pipeline/tool_registry.py",
+          "symbol": "normalize_tool_slug",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 111
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::status_line",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "status_line",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 628
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::colors",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "colors",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 114
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "_ScrubGraphifyStream.write",
+          "kind": "method",
+          "score": 1.0,
+          "body_chars": 227
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "_ScrubGraphifyStream.flush",
+          "kind": "method",
+          "score": 1.0,
+          "body_chars": 56
+        },
+        {
+          "id": "packages/pipeline/tool_registry.py::resolve_mcp_project_paths",
+          "file": "packages/pipeline/tool_registry.py",
+          "symbol": "resolve_mcp_project_paths",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 1273
+        },
+        {
+          "id": "packages/pipeline/rules_installer.py::_record_mcp_skip",
+          "file": "packages/pipeline/rules_installer.py",
+          "symbol": "_record_mcp_skip",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 207
+        },
+        {
+          "id": "packages/pipeline/tool_registry.py::_home",
+          "file": "packages/pipeline/tool_registry.py",
+          "symbol": "_home",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 43
+        },
+        {
+          "id": "packages/pipeline/rules_installer.py::uninstall_tools",
+          "file": "packages/pipeline/rules_installer.py",
+          "symbol": "uninstall_tools",
+          "kind": "function",
+          "score": 0.9405,
+          "body_chars": 601
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::print_connect_summary",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "print_connect_summary",
+          "kind": "function",
+          "score": 0.9405,
+          "body_chars": 1477
+        },
+        {
+          "id": "packages/pipeline/tool_registry.py::get_tool",
+          "file": "packages/pipeline/tool_registry.py",
+          "symbol": "get_tool",
+          "kind": "function",
+          "score": 0.9197,
+          "body_chars": 93
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::error",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "error",
+          "kind": "function",
+          "score": 0.855,
+          "body_chars": 159
+        },
+        {
+          "id": "packages/pipeline/rules_installer.py::remove_project_tool_surface",
+          "file": "packages/pipeline/rules_installer.py",
+          "symbol": "remove_project_tool_surface",
+          "kind": "function",
+          "score": 0.8351,
+          "body_chars": 1539
+        },
+        {
+          "id": "packages/pipeline/rules_installer.py::_fan_out_managed_repos",
+          "file": "packages/pipeline/rules_installer.py",
+          "symbol": "_fan_out_managed_repos",
+          "kind": "function",
+          "score": 0.8351,
+          "body_chars": 233
+        }
+      ]
+    },
+    "semantic_tracer_fuse": {
+      "ok": true,
+      "elapsed_s": 0.401,
+      "n_hot": 52,
+      "n_ranked": 97,
+      "hot_ids": [
+        "packages/pipeline/__main__.py::cmd_disconnect",
+        "packages/pipeline/cli_ui.py::SetupProgress._clear_line",
+        "packages/pipeline/cli_ui.py::SetupProgress.notice",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.isatty",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+        "packages/pipeline/cli_ui.py::_init_windows_ansi",
+        "packages/pipeline/cli_ui.py::_init_windows_console",
+        "packages/pipeline/cli_ui.py::_supports_color",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/cli_ui.py::error",
+        "packages/pipeline/cli_ui.py::init_terminal",
+        "packages/pipeline/cli_ui.py::print_connect_summary",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/cli_ui.py::success",
+        "packages/pipeline/cli_ui.py::table",
+        "packages/pipeline/cli_ui.py::warn",
+        "packages/pipeline/connect_state.py::_state_path",
+        "packages/pipeline/connect_state.py::load_connected_tools",
+        "packages/pipeline/connect_state.py::remove_connected_tool",
+        "packages/pipeline/connect_state.py::save_connected_tools",
+        "packages/pipeline/managed_repos.py::managed_repo_paths",
+        "packages/pipeline/project_id.py::load_registry",
+        "packages/pipeline/rules_installer.py::_connect_repo",
+        "packages/pipeline/rules_installer.py::_fan_out_managed_repos",
+        "packages/pipeline/rules_installer.py::_project_rules_eligible",
+        "packages/pipeline/rules_installer.py::_record_mcp_skip",
+        "packages/pipeline/rules_installer.py::_remove_legacy_global_mcp",
+        "packages/pipeline/rules_installer.py::_remove_mcp_json_keyed",
+        "packages/pipeline/rules_installer.py::_remove_rule_section",
+        "packages/pipeline/rules_installer.py::_remove_workspace_mcp",
+        "packages/pipeline/rules_installer.py::_strip_marked_sections",
+        "packages/pipeline/rules_installer.py::cleanup_project_gate_rules",
+        "packages/pipeline/rules_installer.py::fan_out_tool_to_enrolled_repos",
+        "packages/pipeline/rules_installer.py::gate_line_for_repo",
+        "packages/pipeline/rules_installer.py::remove_mcp_config",
+        "packages/pipeline/rules_installer.py::remove_project_tool_surface",
+        "packages/pipeline/rules_installer.py::uninstall_tool",
+        "packages/pipeline/rules_installer.py::uninstall_tools",
+        "packages/pipeline/rules_installer.py::write_project_tool_surface"
+      ],
+      "top15_ids": [
+        "packages/pipeline/__main__.py::cmd_disconnect",
+        "packages/pipeline/tool_registry.py::normalize_tool_slug",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/tool_registry.py::_home",
+        "packages/pipeline/tool_registry.py::resolve_mcp_project_paths",
+        "packages/pipeline/rules_installer.py::uninstall_tools",
+        "packages/pipeline/cli_ui.py::print_connect_summary",
+        "packages/pipeline/tool_registry.py::get_tool",
+        "packages/pipeline/rules_installer.py::_record_mcp_skip",
+        "packages/pipeline/cli_ui.py::_supports_color",
+        "packages/pipeline/cli_ui.py::error",
+        "packages/pipeline/rules_installer.py::uninstall_tool"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/__main__.py::cmd_disconnect",
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_disconnect",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 1795
+        },
+        {
+          "id": "packages/pipeline/tool_registry.py::normalize_tool_slug",
+          "file": "packages/pipeline/tool_registry.py",
+          "symbol": "normalize_tool_slug",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 111
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::colors",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "colors",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 114
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "_ScrubGraphifyStream.write",
+          "kind": "method",
+          "score": 1.0,
+          "body_chars": 227
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "_ScrubGraphifyStream.flush",
+          "kind": "method",
+          "score": 1.0,
+          "body_chars": 56
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::status_line",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "status_line",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 628
+        },
+        {
+          "id": "packages/pipeline/tool_registry.py::_home",
+          "file": "packages/pipeline/tool_registry.py",
+          "symbol": "_home",
+          "kind": "function",
+          "score": 0.9577,
+          "body_chars": 43
+        },
+        {
+          "id": "packages/pipeline/tool_registry.py::resolve_mcp_project_paths",
+          "file": "packages/pipeline/tool_registry.py",
+          "symbol": "resolve_mcp_project_paths",
+          "kind": "function",
+          "score": 0.9271,
+          "body_chars": 1273
+        },
+        {
+          "id": "packages/pipeline/rules_installer.py::uninstall_tools",
+          "file": "packages/pipeline/rules_installer.py",
+          "symbol": "uninstall_tools",
+          "kind": "function",
+          "score": 0.9014,
+          "body_chars": 601
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::print_connect_summary",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "print_connect_summary",
+          "kind": "function",
+          "score": 0.886,
+          "body_chars": 1477
+        },
+        {
+          "id": "packages/pipeline/tool_registry.py::get_tool",
+          "file": "packages/pipeline/tool_registry.py",
+          "symbol": "get_tool",
+          "kind": "function",
+          "score": 0.838,
+          "body_chars": 93
+        },
+        {
+          "id": "packages/pipeline/rules_installer.py::_record_mcp_skip",
+          "file": "packages/pipeline/rules_installer.py",
+          "symbol": "_record_mcp_skip",
+          "kind": "function",
+          "score": 0.8096,
+          "body_chars": 207
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::_supports_color",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "_supports_color",
+          "kind": "function",
+          "score": 0.7846,
+          "body_chars": 415
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::error",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "error",
+          "kind": "function",
+          "score": 0.7822,
+          "body_chars": 159
+        },
+        {
+          "id": "packages/pipeline/rules_installer.py::uninstall_tool",
+          "file": "packages/pipeline/rules_installer.py",
+          "symbol": "uninstall_tool",
+          "kind": "function",
+          "score": 0.7544,
+          "body_chars": 3674
+        }
+      ]
+    },
+    "hyb_fuse_demote_noise_plus": {
+      "ok": true,
+      "elapsed_s": 0.073,
+      "n_hot": 92,
+      "n_ranked": 97,
+      "hot_ids": [
+        "packages/pipeline/__main__.py::cmd_disconnect",
+        "packages/pipeline/branding.py::migrate_home_dir",
+        "packages/pipeline/cli_ui.py::SetupProgress._clear_line",
+        "packages/pipeline/cli_ui.py::SetupProgress.notice",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.isatty",
+        "packages/pipeline/cli_ui.py::_init_windows_ansi",
+        "packages/pipeline/cli_ui.py::_init_windows_console",
+        "packages/pipeline/cli_ui.py::_supports_color",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/cli_ui.py::init_terminal",
+        "packages/pipeline/cli_ui.py::print_connect_summary",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/cli_ui.py::success",
+        "packages/pipeline/cli_ui.py::table",
+        "packages/pipeline/connect_state.py::_state_path",
+        "packages/pipeline/connect_state.py::load_connected_tools",
+        "packages/pipeline/connect_state.py::remove_connected_tool",
+        "packages/pipeline/connect_state.py::save_connected_tools",
+        "packages/pipeline/hw_track.py::_darwin_getpath",
+        "packages/pipeline/hw_track.py::resolve_moved_path",
+        "packages/pipeline/managed_repos.py::_path_key",
+        "packages/pipeline/managed_repos.py::managed_repo_paths",
+        "packages/pipeline/mcp_install.py::_entry_command_text",
+        "packages/pipeline/mcp_install.py::_find_mcp_server_entry",
+        "packages/pipeline/mcp_install.py::verify_mcp_json",
+        "packages/pipeline/mcp_locate.py::_is_enrolled",
+        "packages/pipeline/mcp_permissions.py::apply_permissions_to_repo_tool_surface",
+        "packages/pipeline/mcp_permissions.py::write_tool_permission_artifacts",
+        "packages/pipeline/pause_resume.py::is_paused",
+        "packages/pipeline/project_id.py::_read_json",
+        "packages/pipeline/project_id.py::context_engine_home",
+        "packages/pipeline/project_id.py::index_is_usable",
+        "packages/pipeline/project_id.py::load_registry",
+        "packages/pipeline/project_id.py::read_id_file",
+        "packages/pipeline/project_id.py::registry_path",
+        "packages/pipeline/repo_lifecycle.py::_entry_managed",
+        "packages/pipeline/repo_lifecycle.py::_missing_retention_seconds",
+        "packages/pipeline/repo_lifecycle.py::_observed_presence",
+        "packages/pipeline/repo_lifecycle.py::_result"
+      ],
+      "top15_ids": [
+        "packages/pipeline/__main__.py::cmd_disconnect",
+        "packages/pipeline/rules_installer.py::uninstall_tools",
+        "packages/pipeline/tool_registry.py::normalize_tool_slug",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/cli_ui.py::print_connect_summary",
+        "packages/pipeline/rules_installer.py::uninstall_tool",
+        "packages/pipeline/tool_registry.py::get_tool",
+        "packages/pipeline/rules_installer.py::remove_project_tool_surface",
+        "packages/pipeline/tool_registry.py::connect_restart_hint",
+        "packages/pipeline/tool_registry.py::resolve_mcp_project_paths",
+        "packages/pipeline/cli_ui.py::table",
+        "packages/pipeline/cli_ui.py::success",
+        "packages/pipeline/tool_registry.py::_home"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/__main__.py::cmd_disconnect",
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_disconnect",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 1795
+        },
+        {
+          "id": "packages/pipeline/rules_installer.py::uninstall_tools",
+          "file": "packages/pipeline/rules_installer.py",
+          "symbol": "uninstall_tools",
+          "kind": "function",
+          "score": 0.8662,
+          "body_chars": 601
+        },
+        {
+          "id": "packages/pipeline/tool_registry.py::normalize_tool_slug",
+          "file": "packages/pipeline/tool_registry.py",
+          "symbol": "normalize_tool_slug",
+          "kind": "function",
+          "score": 0.8342,
+          "body_chars": 111
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::status_line",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "status_line",
+          "kind": "function",
+          "score": 0.805,
+          "body_chars": 628
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::colors",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "colors",
+          "kind": "function",
+          "score": 0.805,
+          "body_chars": 114
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "_ScrubGraphifyStream.flush",
+          "kind": "method",
+          "score": 0.805,
+          "body_chars": 56
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::print_connect_summary",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "print_connect_summary",
+          "kind": "function",
+          "score": 0.7796,
+          "body_chars": 1477
+        },
+        {
+          "id": "packages/pipeline/rules_installer.py::uninstall_tool",
+          "file": "packages/pipeline/rules_installer.py",
+          "symbol": "uninstall_tool",
+          "kind": "function",
+          "score": 0.7303,
+          "body_chars": 3674
+        },
+        {
+          "id": "packages/pipeline/tool_registry.py::get_tool",
+          "file": "packages/pipeline/tool_registry.py",
+          "symbol": "get_tool",
+          "kind": "function",
+          "score": 0.722,
+          "body_chars": 93
+        },
+        {
+          "id": "packages/pipeline/rules_installer.py::remove_project_tool_surface",
+          "file": "packages/pipeline/rules_installer.py",
+          "symbol": "remove_project_tool_surface",
+          "kind": "function",
+          "score": 0.6933,
+          "body_chars": 1539
+        },
+        {
+          "id": "packages/pipeline/tool_registry.py::connect_restart_hint",
+          "file": "packages/pipeline/tool_registry.py",
+          "symbol": "connect_restart_hint",
+          "kind": "function",
+          "score": 0.6457,
+          "body_chars": 451
+        },
+        {
+          "id": "packages/pipeline/tool_registry.py::resolve_mcp_project_paths",
+          "file": "packages/pipeline/tool_registry.py",
+          "symbol": "resolve_mcp_project_paths",
+          "kind": "function",
+          "score": 0.6225,
+          "body_chars": 1273
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::table",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "table",
+          "kind": "function",
+          "score": 0.616,
+          "body_chars": 1050
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::success",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "success",
+          "kind": "function",
+          "score": 0.6156,
+          "body_chars": 159
+        },
+        {
+          "id": "packages/pipeline/tool_registry.py::_home",
+          "file": "packages/pipeline/tool_registry.py",
+          "symbol": "_home",
+          "kind": "function",
+          "score": 0.6052,
+          "body_chars": 43
+        }
+      ]
+    },
+    "poly_embed": {
+      "ok": true,
+      "elapsed_s": 0.002,
+      "n_hot": 1,
+      "n_ranked": 1,
+      "hot_ids": [
+        "packages/pipeline/__main__.py::cmd_disconnect"
+      ],
+      "top15_ids": [
+        "packages/pipeline/__main__.py::cmd_disconnect"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/__main__.py::cmd_disconnect",
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_disconnect",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 1795
+        }
+      ]
+    }
+  }
+}

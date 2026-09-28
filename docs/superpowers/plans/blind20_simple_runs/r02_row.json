@@ -1,0 +1,74 @@
+{
+  "id": "r02",
+  "family": "capability-cards",
+  "task": "How are capability cards built and attached for locate/map ranking?",
+  "enrich_prompt": "capability_cards CapabilityCard build cards attach map ranking locate index capability_cards.json",
+  "map": {
+    "elapsed_s": 4.532,
+    "n_cards": 10,
+    "suggested_seed": {
+      "file": "packages/pipeline/capability.py",
+      "symbol": ""
+    },
+    "top_files": [
+      "packages/pipeline/capability.py",
+      "packages/pipeline/engine.py",
+      "packages/pipeline/locate.py",
+      "docs/superpowers/specs/2026-08-03-capability-locate-design.md",
+      "packages/pipeline/mcp_locate.py"
+    ]
+  },
+  "arms": {
+    "composite_v1": {
+      "ok": true,
+      "engine": "composite_v1",
+      "policy": "strict",
+      "elapsed_s": 0.039,
+      "n_pack": 1,
+      "pack": [
+        {
+          "file": "packages/pipeline/capability.py",
+          "symbol": "CapabilityCard.blob",
+          "score": 1.0,
+          "loc": "packages/pipeline/capability.py:38-46",
+          "id": "packages/pipeline/capability.py::CapabilityCard.blob"
+        }
+      ],
+      "error": null
+    },
+    "polytrace": {
+      "ok": true,
+      "engine": "polytrace",
+      "policy": "strict",
+      "elapsed_s": 0.001,
+      "n_pack": 1,
+      "pack": [
+        {
+          "file": "packages/pipeline/capability.py",
+          "symbol": "CapabilityCard.blob",
+          "score": 1.0,
+          "loc": "packages/pipeline/capability.py:38-46",
+          "id": "packages/pipeline/capability.py::CapabilityCard.blob"
+        }
+      ],
+      "error": null
+    },
+    "ultimate": {
+      "ok": true,
+      "engine": "ultimate",
+      "policy": "strict",
+      "elapsed_s": 0.014,
+      "n_pack": 1,
+      "pack": [
+        {
+          "file": "packages/pipeline/capability.py",
+          "symbol": "CapabilityCard.blob",
+          "score": 1.0,
+          "loc": "packages/pipeline/capability.py:38-46",
+          "id": "packages/pipeline/capability.py::CapabilityCard.blob"
+        }
+      ],
+      "error": null
+    }
+  }
+}

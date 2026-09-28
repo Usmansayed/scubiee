@@ -1,0 +1,131 @@
+{
+  "ok": true,
+  "sessions": [
+    {
+      "label": "A",
+      "init_ms": 9278.0,
+      "first_pack_ok": true,
+      "results": [
+        {
+          "tool": "gate",
+          "ms": 2835.1,
+          "index_skip": "index_skip: builtins+scubieeignore(n=7)",
+          "index_write_hint": true
+        },
+        {
+          "tool": "map",
+          "ms": 993.6,
+          "ok": true,
+          "n": 8,
+          "dense": true,
+          "seed": "packages/pipeline/context_trace.py::hydrate_ast_bundle"
+        },
+        {
+          "tool": "pack_0",
+          "ms": 4377.6,
+          "ok": true,
+          "n_heat": 16,
+          "thin": false,
+          "err": null,
+          "should_retry": null,
+          "retry_after_s": null,
+          "ast_wait_ms": null
+        },
+        {
+          "tool": "pack_1",
+          "ms": 2879.5,
+          "ok": true,
+          "n_heat": 16,
+          "thin": false,
+          "err": null,
+          "should_retry": null,
+          "retry_after_s": null,
+          "ast_wait_ms": null
+        },
+        {
+          "tool": "pack_2",
+          "ms": 230.3,
+          "ok": true,
+          "n_heat": 16,
+          "thin": false,
+          "err": null,
+          "should_retry": null,
+          "retry_after_s": null,
+          "ast_wait_ms": null
+        },
+        {
+          "tool": "status",
+          "ms": 510.4,
+          "agent_ready": "yes",
+          "pack_ready": true,
+          "ast_hydrated": true,
+          "embedder_loaded": true,
+          "warm_elapsed_ms": 12778.6
+        }
+      ]
+    },
+    {
+      "label": "B",
+      "init_ms": 8674.5,
+      "first_pack_ok": true,
+      "results": [
+        {
+          "tool": "gate",
+          "ms": 1224.3,
+          "index_skip": "index_skip: builtins+scubieeignore(n=7)",
+          "index_write_hint": true
+        },
+        {
+          "tool": "map",
+          "ms": 948.4,
+          "ok": true,
+          "n": 8,
+          "dense": true,
+          "seed": "packages/pipeline/context_trace.py::hydrate_ast_bundle"
+        },
+        {
+          "tool": "pack_0",
+          "ms": 1106.3,
+          "ok": true,
+          "n_heat": 16,
+          "thin": false,
+          "err": null,
+          "should_retry": null,
+          "retry_after_s": null,
+          "ast_wait_ms": null
+        },
+        {
+          "tool": "pack_1",
+          "ms": 202.9,
+          "ok": true,
+          "n_heat": 16,
+          "thin": false,
+          "err": null,
+          "should_retry": null,
+          "retry_after_s": null,
+          "ast_wait_ms": null
+        },
+        {
+          "tool": "pack_2",
+          "ms": 129.8,
+          "ok": true,
+          "n_heat": 16,
+          "thin": false,
+          "err": null,
+          "should_retry": null,
+          "retry_after_s": null,
+          "ast_wait_ms": null
+        },
+        {
+          "tool": "status",
+          "ms": 431.0,
+          "agent_ready": "yes",
+          "pack_ready": true,
+          "ast_hydrated": true,
+          "embedder_loaded": true,
+          "warm_elapsed_ms": 4680.4
+        }
+      ]
+    }
+  ]
+}

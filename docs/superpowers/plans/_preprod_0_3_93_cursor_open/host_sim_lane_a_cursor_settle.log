@@ -1,0 +1,42 @@
+[mcp_host_sim] clean_slate: killing leftover MCP procs…
+[mcp_host_sim] clean_slate: stopping engine…
+[mcp_host_sim] clean_slate: running=False
+[mcp_host_sim] host_start: spawning bridge…
+[mcp_host_sim] bridge cmd='C:/Users/usman/AppData/Roaming/uv/tools/scubiee/Scripts/pythonw.exe' args=['-u', '-m', 'pipeline.mcp_bridge'] pid=27088
+[mcp_host_sim] host_start: ok=True pid=27088
+[mcp_host_sim] warm poll running=True embedder=False soft=True health=True clients=1
+[mcp_host_sim] soft_ready FIRST at +1.15s from host_start (before any MCP map)
+[mcp_host_sim] warm poll running=True embedder=False soft=True health=True clients=1
+[mcp_host_sim] settle: waiting 3s for locate-worker prewarm…
+[mcp_host_sim] settle t=+4.7s min_left=25.3s soft=True embed=False health=True chunks=7015 rss=335.8
+[mcp_host_sim] settle t=+8.2s min_left=21.8s soft=True embed=False health=True chunks=7015 rss=646.0
+[mcp_host_sim] settle t=+11.8s min_left=18.2s soft=True embed=False health=True chunks=7015 rss=696.4
+[mcp_host_sim] settle t=+15.4s min_left=14.6s soft=True embed=False health=True chunks=7015 rss=695.0
+[mcp_host_sim] settle t=+18.9s min_left=11.1s soft=True embed=False health=True chunks=7015 rss=695.1
+[mcp_host_sim] settle t=+22.5s min_left=7.5s soft=True embed=False health=True chunks=7015 rss=694.1
+[mcp_host_sim] settle t=+26.0s min_left=4.0s soft=True embed=False health=True chunks=7015 rss=694.1
+[mcp_host_sim] settle t=+29.6s min_left=0.4s soft=True embed=False health=True chunks=7015 rss=694.7
+[mcp_host_sim] settle t=+33.1s min_left=0.0s soft=True embed=False health=True chunks=7015 rss=694.3
+[mcp_host_sim] settle done at +33.1s soft=True stable=1.0s embed=False
+[mcp_host_sim] true_first_map: skipping status+locate_warmup (next map is the real first MCP locate)
+[mcp_host_sim] map_first (after 30s settle, expect <=1s)…
+[mcp_host_sim] map_first done ok=True ms=2880.2 err=None soft_was_ready_at=+1.15s
+{
+  "ok": false,
+  "lane": "a",
+  "elapsed_ms": 56912.9,
+  "errors": [
+    "map_first: SETTLE_MAP_SLOW \u2014 {'ok': False, 'code': 'SETTLE_MAP_SLOW', 'elapsed_ms': 2880.2, 'steady_sla_ok': False, 'true_first_map': True, 'settle_s': 30.0, 'soft_first_from_host_s': 1.15, 'top': {'file': 'packages/pipeline/lifecycle_runtime.py', 'symbol': 'enforce_mcp_warm_contract', 'loc': 'packages/pipeline/lifecycle_runtime.py:850-886', 'score': 24.5744, 'kind': 'function'}, 'data_ok': True, 'error': None, 'raw_keys': ['_elapsed_ms', 'cards', 'elapsed_ms', 'g', 'next', 'ok', 'session_id', 'suggested_seed', 'suggested_seeds', 'tool']}"
+  ],
+  "report_paths": {
+    "json": "C:\\Users\\usman\\Downloads\\context-engine\\docs\\superpowers\\plans\\_preprod_0_3_93_cursor_open\\mcp-host-sim-20260915T202727Z.json",
+    "md": "C:\\Users\\usman\\Downloads\\context-engine\\docs\\superpowers\\plans\\_preprod_0_3_93_cursor_open\\mcp-host-sim-20260915T202727Z.md"
+  }
+}
+  phase clean_slate: ok=True ms=10952.2 code=None
+  phase host_start: ok=True ms=6949.1 code=None
+  phase auto_warm: ok=True ms=1696.8 code=None
+  phase settle: ok=True ms=34432.0 code=None
+  phase map_first: ok=False ms=2880.3 code=SETTLE_MAP_SLOW
+
+[mcp_host_sim] using real CTX_HOME (~/.scubiee)

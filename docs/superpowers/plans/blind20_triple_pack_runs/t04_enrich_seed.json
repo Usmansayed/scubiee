@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "elapsed_s": 0.038,
+  "seed_file": "packages/pipeline/project_id.py",
+  "seed": {
+    "file": "packages/pipeline/project_id.py",
+    "symbol": "_lock_registry_file",
+    "id": "packages/pipeline/project_id.py::_lock_registry_file",
+    "loc": null
+  },
+  "chunks": [
+    {
+      "file": "packages/pipeline/project_id.py",
+      "symbol": "_lock_registry_file",
+      "loc": "packages/pipeline/project_id.py:51-65",
+      "score": 1.0,
+      "kind": "function"
+    }
+  ],
+  "n_cards": 1,
+  "error": null
+}

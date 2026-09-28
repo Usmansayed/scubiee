@@ -1,0 +1,1346 @@
+{
+  "board": "verify_hard.json",
+  "model": "qwen3.5-0.8b-q4",
+  "hot_threshold": 0.45,
+  "n_cases": 10,
+  "summary": {
+    "polytrace": {
+      "n": 10,
+      "hard": 5,
+      "acc": 0.5,
+      "must_rec": 0.8667,
+      "prec": 0.8835,
+      "f1": 0.8227,
+      "ndcg": 0.9648,
+      "must_at_10": 0.7794,
+      "wall_s_mean": 0.0,
+      "llm_wall_s_mean": 0.0,
+      "eval_tok_s_mean": 0.0,
+      "under_5s": 10
+    },
+    "director_A": {
+      "n": 10,
+      "hard": 0,
+      "acc": 0.0,
+      "must_rec": 0.7244,
+      "prec": 0.4945,
+      "f1": 0.559,
+      "ndcg": 0.7954,
+      "must_at_10": 0.7028,
+      "wall_s_mean": 9.703,
+      "llm_wall_s_mean": 9.702,
+      "eval_tok_s_mean": 90.9,
+      "under_5s": 0
+    },
+    "director_B": {
+      "n": 10,
+      "hard": 0,
+      "acc": 0.0,
+      "must_rec": 0.7244,
+      "prec": 0.4945,
+      "f1": 0.559,
+      "ndcg": 0.7954,
+      "must_at_10": 0.7028,
+      "wall_s_mean": 18.245,
+      "llm_wall_s_mean": 18.244,
+      "eval_tok_s_mean": 31.8,
+      "under_5s": 0
+    },
+    "director_C": {
+      "n": 10,
+      "hard": 0,
+      "acc": 0.0,
+      "must_rec": 0.5318,
+      "prec": 0.4599,
+      "f1": 0.4247,
+      "ndcg": 0.6798,
+      "must_at_10": 0.5227,
+      "wall_s_mean": 14.533,
+      "llm_wall_s_mean": 14.531,
+      "eval_tok_s_mean": 31.7,
+      "under_5s": 0
+    }
+  },
+  "cases": [
+    {
+      "id": "h01",
+      "title": "auth-full-path",
+      "arms": {
+        "polytrace": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "ndcg": 1.0,
+          "must_at_10": 1.0,
+          "wall_s": 0.0,
+          "llm_wall_s": 0.0,
+          "eval_tok_s": 0.0,
+          "prompt_tok_s": 0.0
+        },
+        "director_A": {
+          "correct": false,
+          "missing_must": [
+            "app/config/database.py::connect",
+            "app/models/user.py::User.lookup"
+          ],
+          "forbidden_hot": [
+            "app/utils/logger.py::log"
+          ],
+          "extra_hot": [
+            "app/checkout/begin.py::begin",
+            "app/routes/login.py::login",
+            "app/uploads/scan.py::scan"
+          ],
+          "f1": 0.6522,
+          "recall_must": 0.7143,
+          "precision_hot": 0.6,
+          "ndcg": 0.7373,
+          "must_at_10": 0.7143,
+          "wall_s": 9.497,
+          "llm_wall_s": 9.496,
+          "eval_tok_s": 91.3,
+          "prompt_tok_s": 1111.7,
+          "eval_count": 110,
+          "prompt_tokens": 5637,
+          "n_pack": 28,
+          "plan_intent": "Identify nodes on the path from #1 to #20 (credentials/user-load) based on the graph links.",
+          "plan_note": "",
+          "keep_n": 10,
+          "drop_n": 12,
+          "raw_plan": "INTENT: Identify nodes on the path from #1 to #20 (credentials/user-load) based on the graph links.\nKEEP: #1, #4, #5, #6, #9, #13, #14, #17, #18, #20\nDROP: #2, #3, #7, #8, #10, #11, #12, #15, #16, #19, #21, #22,",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\nfrom authenticate, collect every hop that checks credentials and loads the user\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/middleware/auth.py::authenticate\nfile: app/middleware/auth.py\nsymbol: authenticate\nkind: function\nlines: 13-18\n\n### SEED SOURCE\n```\ndef authenticate(request: dict) -> dict:\n    token = extract_bearer(request)\n    payload = JwtService().verify(token)\n    log(\"ok\")\n    track(\"login\")\n    return payload\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 authenticate  --g:calls-->  #6 extract_bearer\n  #1 authenticate  --g:calls-->  #4 log\n  #1 authenticate  --g:calls-->  #2 track\n  #1 authenticate  --g:called_by-->  #5 login\n  #1 authenticate  --g:rev:called_by-->  #6 extract_bearer\n  #1 authenticate  --g:rev:called_by-->  #4 log\n  #1 authenticate  --g:rev:called_by-->  #2 track\n  #1 authenticate  --g:rev:calls-->  #5 login\n  #6 extract_bearer  --g:called_by-->  #1 authenticate\n  #6 extract_bearer  --g:rev:calls-->  #1 authenticate\n  #9 JwtService.verify  --g:calls-->  #13 decode\n  #9 JwtService.verify  --g:calls-->  #4 log\n  #9 JwtService.verify  --g:rev:called_by-->  #13 decode\n  #9 JwtService.verify  --g:"
+        },
+        "director_B": {
+          "correct": false,
+          "missing_must": [
+            "app/config/database.py::connect",
+            "app/models/user.py::User.lookup"
+          ],
+          "forbidden_hot": [
+            "app/utils/logger.py::log"
+          ],
+          "extra_hot": [
+            "app/checkout/begin.py::begin",
+            "app/routes/login.py::login",
+            "app/uploads/scan.py::scan"
+          ],
+          "f1": 0.6522,
+          "recall_must": 0.7143,
+          "precision_hot": 0.6,
+          "ndcg": 0.7373,
+          "must_at_10": 0.7143,
+          "wall_s": 18.576,
+          "llm_wall_s": 18.575,
+          "eval_tok_s": 32.1,
+          "prompt_tok_s": 487.8,
+          "eval_count": 110,
+          "prompt_tokens": 5637,
+          "n_pack": 28,
+          "plan_intent": "Identify nodes on the path from #1 to #20 (credentials/user-load) based on the graph links.",
+          "plan_note": "",
+          "keep_n": 10,
+          "drop_n": 12,
+          "raw_plan": "INTENT: Identify nodes on the path from #1 to #20 (credentials/user-load) based on the graph links.\nKEEP: #1, #4, #5, #6, #9, #13, #14, #17, #18, #20\nDROP: #2, #3, #7, #8, #10, #11, #12, #15, #16, #19, #21, #22,",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\nfrom authenticate, collect every hop that checks credentials and loads the user\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/middleware/auth.py::authenticate\nfile: app/middleware/auth.py\nsymbol: authenticate\nkind: function\nlines: 13-18\n\n### SEED SOURCE\n```\ndef authenticate(request: dict) -> dict:\n    token = extract_bearer(request)\n    payload = JwtService().verify(token)\n    log(\"ok\")\n    track(\"login\")\n    return payload\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 authenticate  --g:calls-->  #6 extract_bearer\n  #1 authenticate  --g:calls-->  #4 log\n  #1 authenticate  --g:calls-->  #2 track\n  #1 authenticate  --g:called_by-->  #5 login\n  #1 authenticate  --g:rev:called_by-->  #6 extract_bearer\n  #1 authenticate  --g:rev:called_by-->  #4 log\n  #1 authenticate  --g:rev:called_by-->  #2 track\n  #1 authenticate  --g:rev:calls-->  #5 login\n  #6 extract_bearer  --g:called_by-->  #1 authenticate\n  #6 extract_bearer  --g:rev:calls-->  #1 authenticate\n  #9 JwtService.verify  --g:calls-->  #13 decode\n  #9 JwtService.verify  --g:calls-->  #4 log\n  #9 JwtService.verify  --g:rev:called_by-->  #13 decode\n  #9 JwtService.verify  --g:"
+        },
+        "director_C": {
+          "correct": false,
+          "missing_must": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 0.25,
+          "recall_must": 0.1429,
+          "precision_hot": 1.0,
+          "ndcg": 0.4478,
+          "must_at_10": 0.1429,
+          "wall_s": 13.281,
+          "llm_wall_s": 13.28,
+          "eval_tok_s": 32.2,
+          "prompt_tok_s": 546.6,
+          "eval_count": 90,
+          "prompt_tokens": 5683,
+          "n_pack": 28,
+          "plan_intent": "KEEP #1",
+          "plan_note": "",
+          "keep_n": 1,
+          "drop_n": 21,
+          "raw_plan": "INTENT: KEEP #1\nKEEP: #1\nDROP: #2, #3, #4, #5, #6, #7, #8, #9, #10, #11, #12, #13, #14, #15, #16, #17, #18, #19, #20, #21, #22,",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\nfrom authenticate, collect every hop that checks credentials and loads the user\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/middleware/auth.py::authenticate\nfile: app/middleware/auth.py\nsymbol: authenticate\nkind: function\nlines: 13-18\n\n### SEED SOURCE\n```\ndef authenticate(request: dict) -> dict:\n    token = extract_bearer(request)\n    payload = JwtService().verify(token)\n    log(\"ok\")\n    track(\"login\")\n    return payload\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 authenticate  --g:calls-->  #6 extract_bearer\n  #1 authenticate  --g:calls-->  #5 log\n  #1 authenticate  --g:calls-->  #2 track\n  #1 authenticate  --g:called_by-->  #4 login\n  #1 authenticate  --g:rev:called_by-->  #6 extract_bearer\n  #1 authenticate  --g:rev:called_by-->  #5 log\n  #1 authenticate  --g:rev:called_by-->  #2 track\n  #1 authenticate  --g:rev:calls-->  #4 login\n  #6 extract_bearer  --g:called_by-->  #1 authenticate\n  #6 extract_bearer  --g:rev:calls-->  #1 authenticate\n  #8 JwtService.verify  --g:calls-->  #14 decode\n  #8 JwtService.verify  --g:calls-->  #5 log\n  #8 JwtService.verify  --g:rev:called_by-->  #14 decode\n  #8 JwtService.verify  --g:"
+        }
+      }
+    },
+    {
+      "id": "h02",
+      "title": "auth-no-side-effects",
+      "arms": {
+        "polytrace": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/config/database.py::connect"
+          ],
+          "f1": 0.9231,
+          "recall_must": 1.0,
+          "precision_hot": 0.8571,
+          "ndcg": 0.9943,
+          "must_at_10": 1.0,
+          "wall_s": 0.0,
+          "llm_wall_s": 0.0,
+          "eval_tok_s": 0.0,
+          "prompt_tok_s": 0.0
+        },
+        "director_A": {
+          "correct": false,
+          "missing_must": [
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup"
+          ],
+          "forbidden_hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/utils/logger.py::log"
+          ],
+          "extra_hot": [
+            "app/audit/record.py::record",
+            "app/jobs/digest.py::send_digest",
+            "app/oauth/refresh.py::refresh",
+            "app/routes/login.py::login"
+          ],
+          "f1": 0.5,
+          "recall_must": 0.6667,
+          "precision_hot": 0.4,
+          "ndcg": 0.7936,
+          "must_at_10": 0.6667,
+          "wall_s": 9.502,
+          "llm_wall_s": 9.5,
+          "eval_tok_s": 91.1,
+          "prompt_tok_s": 1111.8,
+          "eval_count": 110,
+          "prompt_tokens": 5594,
+          "n_pack": 28,
+          "plan_intent": "Identify nodes on the path from #1 to #21 (credentials/user-load) while avoiding unrelated features.",
+          "plan_note": "",
+          "keep_n": 10,
+          "drop_n": 12,
+          "raw_plan": "INTENT: Identify nodes on the path from #1 to #21 (credentials/user-load) while avoiding unrelated features.\nKEEP: #1, #4, #6, #10, #15, #16, #17, #18, #20, #21\nDROP: #2, #3, #5, #7, #8, #9, #11, #12, #13, #14, #19, #22, #",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\ncredential checking path only \u2014 skip ok logs and login analytics\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/middleware/auth.py::authenticate\nfile: app/middleware/auth.py\nsymbol: authenticate\nkind: function\nlines: 13-18\n\n### SEED SOURCE\n```\ndef authenticate(request: dict) -> dict:\n    token = extract_bearer(request)\n    payload = JwtService().verify(token)\n    log(\"ok\")\n    track(\"login\")\n    return payload\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 authenticate  --g:calls-->  #8 extract_bearer\n  #1 authenticate  --g:calls-->  #10 log\n  #1 authenticate  --g:calls-->  #7 track\n  #1 authenticate  --g:called_by-->  #4 login\n  #1 authenticate  --g:rev:called_by-->  #8 extract_bearer\n  #1 authenticate  --g:rev:called_by-->  #10 log\n  #1 authenticate  --g:rev:called_by-->  #7 track\n  #1 authenticate  --g:rev:calls-->  #4 login\n  #8 extract_bearer  --g:called_by-->  #1 authenticate\n  #8 extract_bearer  --g:rev:calls-->  #1 authenticate\n  #6 JwtService.verify  --g:calls-->  #15 decode\n  #6 JwtService.verify  --g:calls-->  #10 log\n  #6 JwtService.verify  --g:rev:called_by-->  #15 decode\n  #6 JwtService.verify  --g:rev:called_b"
+        },
+        "director_B": {
+          "correct": false,
+          "missing_must": [
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup"
+          ],
+          "forbidden_hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/utils/logger.py::log"
+          ],
+          "extra_hot": [
+            "app/audit/record.py::record",
+            "app/jobs/digest.py::send_digest",
+            "app/oauth/refresh.py::refresh",
+            "app/routes/login.py::login"
+          ],
+          "f1": 0.5,
+          "recall_must": 0.6667,
+          "precision_hot": 0.4,
+          "ndcg": 0.7936,
+          "must_at_10": 0.6667,
+          "wall_s": 17.057,
+          "llm_wall_s": 17.056,
+          "eval_tok_s": 32.4,
+          "prompt_tok_s": 551.7,
+          "eval_count": 110,
+          "prompt_tokens": 5594,
+          "n_pack": 28,
+          "plan_intent": "Identify nodes on the path from #1 to #21 (credentials/user-load) while avoiding unrelated features.",
+          "plan_note": "",
+          "keep_n": 10,
+          "drop_n": 12,
+          "raw_plan": "INTENT: Identify nodes on the path from #1 to #21 (credentials/user-load) while avoiding unrelated features.\nKEEP: #1, #4, #6, #10, #15, #16, #17, #18, #20, #21\nDROP: #2, #3, #5, #7, #8, #9, #11, #12, #13, #14, #19, #22, #",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\ncredential checking path only \u2014 skip ok logs and login analytics\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/middleware/auth.py::authenticate\nfile: app/middleware/auth.py\nsymbol: authenticate\nkind: function\nlines: 13-18\n\n### SEED SOURCE\n```\ndef authenticate(request: dict) -> dict:\n    token = extract_bearer(request)\n    payload = JwtService().verify(token)\n    log(\"ok\")\n    track(\"login\")\n    return payload\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 authenticate  --g:calls-->  #8 extract_bearer\n  #1 authenticate  --g:calls-->  #10 log\n  #1 authenticate  --g:calls-->  #7 track\n  #1 authenticate  --g:called_by-->  #4 login\n  #1 authenticate  --g:rev:called_by-->  #8 extract_bearer\n  #1 authenticate  --g:rev:called_by-->  #10 log\n  #1 authenticate  --g:rev:called_by-->  #7 track\n  #1 authenticate  --g:rev:calls-->  #4 login\n  #8 extract_bearer  --g:called_by-->  #1 authenticate\n  #8 extract_bearer  --g:rev:calls-->  #1 authenticate\n  #6 JwtService.verify  --g:calls-->  #15 decode\n  #6 JwtService.verify  --g:calls-->  #10 log\n  #6 JwtService.verify  --g:rev:called_by-->  #15 decode\n  #6 JwtService.verify  --g:rev:called_b"
+        },
+        "director_C": {
+          "correct": false,
+          "missing_must": [
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup"
+          ],
+          "forbidden_hot": [
+            "app/analytics/tracker.py::track",
+            "app/billing/invoices.py::charge",
+            "app/config/security.py::TOKEN_TTL",
+            "app/utils/logger.py::log"
+          ],
+          "extra_hot": [
+            "app/audit/record.py::record",
+            "app/handlers/welcome.py::handle",
+            "app/inventory/reserve.py::reserve",
+            "app/jobs/digest.py::send_digest",
+            "app/oauth/refresh.py::refresh",
+            "app/routes/login.py::login"
+          ],
+          "f1": 0.4,
+          "recall_must": 0.6667,
+          "precision_hot": 0.2857,
+          "ndcg": 0.6878,
+          "must_at_10": 0.5,
+          "wall_s": 14.453,
+          "llm_wall_s": 14.452,
+          "eval_tok_s": 32.3,
+          "prompt_tok_s": 487.4,
+          "eval_count": 90,
+          "prompt_tokens": 5639,
+          "n_pack": 28,
+          "plan_intent": "KEEP #1",
+          "plan_note": "clipped_keep",
+          "keep_n": 14,
+          "drop_n": 14,
+          "raw_plan": "INTENT: KEEP #1\nKEEP: #1, #4, #6, #7, #11, #15, #16, #17, #18, #19, #20, #21, #22, #23, #24, #25, #26, #27, #28\nDROP: #2, #3, #",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\ncredential checking path only \u2014 skip ok logs and login analytics\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/middleware/auth.py::authenticate\nfile: app/middleware/auth.py\nsymbol: authenticate\nkind: function\nlines: 13-18\n\n### SEED SOURCE\n```\ndef authenticate(request: dict) -> dict:\n    token = extract_bearer(request)\n    payload = JwtService().verify(token)\n    log(\"ok\")\n    track(\"login\")\n    return payload\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 authenticate  --g:calls-->  #8 extract_bearer\n  #1 authenticate  --g:calls-->  #11 log\n  #1 authenticate  --g:calls-->  #7 track\n  #1 authenticate  --g:called_by-->  #4 login\n  #1 authenticate  --g:rev:called_by-->  #8 extract_bearer\n  #1 authenticate  --g:rev:called_by-->  #11 log\n  #1 authenticate  --g:rev:called_by-->  #7 track\n  #1 authenticate  --g:rev:calls-->  #4 login\n  #8 extract_bearer  --g:called_by-->  #1 authenticate\n  #8 extract_bearer  --g:rev:calls-->  #1 authenticate\n  #6 JwtService.verify  --g:calls-->  #15 decode\n  #6 JwtService.verify  --g:calls-->  #11 log\n  #6 JwtService.verify  --g:rev:called_by-->  #15 decode\n  #6 JwtService.verify  --g:rev:called_b"
+        }
+      }
+    },
+    {
+      "id": "h03",
+      "title": "login-entry-deep",
+      "arms": {
+        "polytrace": {
+          "correct": false,
+          "missing_must": [
+            "app/config/database.py::connect",
+            "app/models/user.py::User.lookup"
+          ],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 0.8571,
+          "recall_must": 0.75,
+          "precision_hot": 1.0,
+          "ndcg": 1.0,
+          "must_at_10": 0.75,
+          "wall_s": 0.0,
+          "llm_wall_s": 0.0,
+          "eval_tok_s": 0.0,
+          "prompt_tok_s": 0.0
+        },
+        "director_A": {
+          "correct": false,
+          "missing_must": [
+            "app/config/database.py::connect",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/utils/token.py::decode"
+          ],
+          "forbidden_hot": [
+            "app/utils/logger.py::log"
+          ],
+          "extra_hot": [
+            "app/cart/validate.py::validate",
+            "app/checkout/begin.py::begin",
+            "app/inventory/reserve.py::reserve",
+            "app/pricing/quote.py::quote",
+            "app/shipping/schedule.py::schedule"
+          ],
+          "f1": 0.4444,
+          "recall_must": 0.5,
+          "precision_hot": 0.4,
+          "ndcg": 0.7589,
+          "must_at_10": 0.5,
+          "wall_s": 9.666,
+          "llm_wall_s": 9.665,
+          "eval_tok_s": 90.5,
+          "prompt_tok_s": 1101.7,
+          "eval_count": 110,
+          "prompt_tokens": 5738,
+          "n_pack": 28,
+          "plan_intent": "Trace login route to complete auth until user row loaded from db.",
+          "plan_note": "",
+          "keep_n": 10,
+          "drop_n": 14,
+          "raw_plan": "INTENT: Trace login route to complete auth until user row loaded from db.\nKEEP: #1, #4, #9, #10, #11, #20, #25, #26, #27, #28\nDROP: #2, #3, #5, #6, #7, #8, #12, #13, #14, #15, #16, #17, #18, #19, #2",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\nfrom the login route, follow auth until the user row is loaded from db\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/routes/login.py::login\nfile: app/routes/login.py\nsymbol: login\nkind: function\nlines: 6-7\n\n### SEED SOURCE\n```\ndef login(request: dict) -> dict:\n    return authenticate(request)\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 login  --g:calls-->  #4 authenticate\n  #1 login  --g:rev:called_by-->  #4 authenticate\n  #4 authenticate  --g:calls-->  #9 extract_bearer\n  #4 authenticate  --g:calls-->  #11 log\n  #4 authenticate  --g:calls-->  #2 track\n  #4 authenticate  --g:called_by-->  #1 login\n  #4 authenticate  --g:rev:called_by-->  #9 extract_bearer\n  #4 authenticate  --g:rev:called_by-->  #11 log\n  #4 authenticate  --g:rev:called_by-->  #2 track\n  #4 authenticate  --g:rev:calls-->  #1 login\n  #9 extract_bearer  --g:called_by-->  #4 authenticate\n  #9 extract_bearer  --g:rev:calls-->  #4 authenticate\n  #10 JwtService.verify  --g:calls-->  #18 decode\n  #10 JwtService.verify  --g:calls-->  #11 log\n  #10 JwtService.verify  --g:rev:called_by-->  #18 decode\n  #10 JwtService.verify  --g:rev:called_by-->  #11 log\n  #11 log"
+        },
+        "director_B": {
+          "correct": false,
+          "missing_must": [
+            "app/config/database.py::connect",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/utils/token.py::decode"
+          ],
+          "forbidden_hot": [
+            "app/utils/logger.py::log"
+          ],
+          "extra_hot": [
+            "app/cart/validate.py::validate",
+            "app/checkout/begin.py::begin",
+            "app/inventory/reserve.py::reserve",
+            "app/pricing/quote.py::quote",
+            "app/shipping/schedule.py::schedule"
+          ],
+          "f1": 0.4444,
+          "recall_must": 0.5,
+          "precision_hot": 0.4,
+          "ndcg": 0.7589,
+          "must_at_10": 0.5,
+          "wall_s": 18.723,
+          "llm_wall_s": 18.721,
+          "eval_tok_s": 31.8,
+          "prompt_tok_s": 478.0,
+          "eval_count": 110,
+          "prompt_tokens": 5738,
+          "n_pack": 28,
+          "plan_intent": "Trace login route to complete auth until user row loaded from db.",
+          "plan_note": "",
+          "keep_n": 10,
+          "drop_n": 14,
+          "raw_plan": "INTENT: Trace login route to complete auth until user row loaded from db.\nKEEP: #1, #4, #9, #10, #11, #20, #25, #26, #27, #28\nDROP: #2, #3, #5, #6, #7, #8, #12, #13, #14, #15, #16, #17, #18, #19, #2",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\nfrom the login route, follow auth until the user row is loaded from db\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/routes/login.py::login\nfile: app/routes/login.py\nsymbol: login\nkind: function\nlines: 6-7\n\n### SEED SOURCE\n```\ndef login(request: dict) -> dict:\n    return authenticate(request)\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 login  --g:calls-->  #4 authenticate\n  #1 login  --g:rev:called_by-->  #4 authenticate\n  #4 authenticate  --g:calls-->  #9 extract_bearer\n  #4 authenticate  --g:calls-->  #11 log\n  #4 authenticate  --g:calls-->  #2 track\n  #4 authenticate  --g:called_by-->  #1 login\n  #4 authenticate  --g:rev:called_by-->  #9 extract_bearer\n  #4 authenticate  --g:rev:called_by-->  #11 log\n  #4 authenticate  --g:rev:called_by-->  #2 track\n  #4 authenticate  --g:rev:calls-->  #1 login\n  #9 extract_bearer  --g:called_by-->  #4 authenticate\n  #9 extract_bearer  --g:rev:calls-->  #4 authenticate\n  #10 JwtService.verify  --g:calls-->  #18 decode\n  #10 JwtService.verify  --g:calls-->  #11 log\n  #10 JwtService.verify  --g:rev:called_by-->  #18 decode\n  #10 JwtService.verify  --g:rev:called_by-->  #11 log\n  #11 log"
+        },
+        "director_C": {
+          "correct": false,
+          "missing_must": [
+            "app/config/database.py::connect",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login"
+          ],
+          "forbidden_hot": [
+            "app/utils/logger.py::log"
+          ],
+          "extra_hot": [
+            "app/cart/validate.py::validate",
+            "app/checkout/begin.py::begin",
+            "app/config/security.py::TOKEN_TTL",
+            "app/inventory/reserve.py::reserve",
+            "app/oauth/rotate.py::rotate",
+            "app/pricing/quote.py::quote"
+          ],
+          "f1": 0.4211,
+          "recall_must": 0.5,
+          "precision_hot": 0.3636,
+          "ndcg": 0.6878,
+          "must_at_10": 0.5,
+          "wall_s": 13.659,
+          "llm_wall_s": 13.657,
+          "eval_tok_s": 31.8,
+          "prompt_tok_s": 538.7,
+          "eval_count": 90,
+          "prompt_tokens": 5784,
+          "n_pack": 28,
+          "plan_intent": "KEEP",
+          "plan_note": "",
+          "keep_n": 12,
+          "drop_n": 11,
+          "raw_plan": "INTENT: KEEP\nKEEP: #1, #4, #9, #10, #11, #17, #22, #23, #25, #26, #27, #28\nDROP: #2, #3, #5, #6, #7, #8, #12, #13, #14, #15, #1",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\nfrom the login route, follow auth until the user row is loaded from db\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/routes/login.py::login\nfile: app/routes/login.py\nsymbol: login\nkind: function\nlines: 6-7\n\n### SEED SOURCE\n```\ndef login(request: dict) -> dict:\n    return authenticate(request)\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 login  --g:calls-->  #4 authenticate\n  #1 login  --g:rev:called_by-->  #4 authenticate\n  #4 authenticate  --g:calls-->  #9 extract_bearer\n  #4 authenticate  --g:calls-->  #11 log\n  #4 authenticate  --g:calls-->  #2 track\n  #4 authenticate  --g:called_by-->  #1 login\n  #4 authenticate  --g:rev:called_by-->  #9 extract_bearer\n  #4 authenticate  --g:rev:called_by-->  #11 log\n  #4 authenticate  --g:rev:called_by-->  #2 track\n  #4 authenticate  --g:rev:calls-->  #1 login\n  #9 extract_bearer  --g:called_by-->  #4 authenticate\n  #9 extract_bearer  --g:rev:calls-->  #4 authenticate\n  #10 JwtService.verify  --g:calls-->  #22 decode\n  #10 JwtService.verify  --g:calls-->  #11 log\n  #10 JwtService.verify  --g:rev:called_by-->  #22 decode\n  #10 JwtService.verify  --g:rev:called_by-->  #11 log\n  #11 log"
+        }
+      }
+    },
+    {
+      "id": "h04",
+      "title": "oauth-refresh-deep",
+      "arms": {
+        "polytrace": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "ndcg": 0.9974,
+          "must_at_10": 1.0,
+          "wall_s": 0.0,
+          "llm_wall_s": 0.0,
+          "eval_tok_s": 0.0,
+          "prompt_tok_s": 0.0
+        },
+        "director_A": {
+          "correct": false,
+          "missing_must": [
+            "app/models/user.py::User.lookup",
+            "app/oauth/nonce.py::stamp",
+            "app/utils/token.py::decode"
+          ],
+          "forbidden_hot": [
+            "app/billing/invoices.py::charge",
+            "app/middleware/auth.py::authenticate",
+            "app/utils/logger.py::log"
+          ],
+          "extra_hot": [
+            "app/checkout/begin.py::begin",
+            "app/inventory/reserve.py::reserve",
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/runner.py::execute",
+            "app/middleware/auth.py::extract_bearer",
+            "app/uploads/scan.py::scan"
+          ],
+          "f1": 0.4545,
+          "recall_must": 0.625,
+          "precision_hot": 0.3571,
+          "ndcg": 0.6923,
+          "must_at_10": 0.5,
+          "wall_s": 9.602,
+          "llm_wall_s": 9.6,
+          "eval_tok_s": 90.1,
+          "prompt_tok_s": 1106.2,
+          "eval_count": 110,
+          "prompt_tokens": 5684,
+          "n_pack": 28,
+          "plan_intent": "Identify nodes on the path from seed to final task (refresh -> stamp -> verify -> load user).",
+          "plan_note": "clipped_keep",
+          "keep_n": 14,
+          "drop_n": 14,
+          "raw_plan": "INTENT: Identify nodes on the path from seed to final task (refresh -> stamp -> verify -> load user).\nKEEP: #1, #3, #4, #5, #6, #10, #12, #14, #15, #16, #17, #18, #19, #20, #21, #22, #23, #24, #25, #26, #27, #28\nDROP",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\nrefresh a session token: rotate, stamp nonce, verify claims, load user\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/oauth/refresh.py::refresh\nfile: app/oauth/refresh.py\nsymbol: refresh\nkind: function\nlines: 8-12\n\n### SEED SOURCE\n```\ndef refresh(token: str) -> dict:\n    rotated = rotate(token)\n    claims = JwtService().verify(rotated)\n    log(\"refreshed\")\n    return claims\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 refresh  --g:calls-->  #3 rotate\n  #1 refresh  --g:calls-->  #5 log\n  #1 refresh  --g:rev:called_by-->  #3 rotate\n  #1 refresh  --g:rev:called_by-->  #5 log\n  #3 rotate  --g:called_by-->  #1 refresh\n  #3 rotate  --g:calls-->  #2 stamp\n  #3 rotate  --g:rev:calls-->  #1 refresh\n  #3 rotate  --g:rev:called_by-->  #2 stamp\n  #4 JwtService.verify  --g:calls-->  #13 decode\n  #4 JwtService.verify  --g:calls-->  #5 log\n  #4 JwtService.verify  --g:rev:called_by-->  #13 decode\n  #4 JwtService.verify  --g:rev:called_by-->  #5 log\n  #5 log  --g:called_by-->  #8 record\n  #5 log  --g:called_by-->  #12 begin\n  #5 log  --g:called_by-->  #9 handle\n  #5 log  --g:called_by-->  #14 send_digest\n  #5 log  --g:called_by-->  #6 auth"
+        },
+        "director_B": {
+          "correct": false,
+          "missing_must": [
+            "app/models/user.py::User.lookup",
+            "app/oauth/nonce.py::stamp",
+            "app/utils/token.py::decode"
+          ],
+          "forbidden_hot": [
+            "app/billing/invoices.py::charge",
+            "app/middleware/auth.py::authenticate",
+            "app/utils/logger.py::log"
+          ],
+          "extra_hot": [
+            "app/checkout/begin.py::begin",
+            "app/inventory/reserve.py::reserve",
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/runner.py::execute",
+            "app/middleware/auth.py::extract_bearer",
+            "app/uploads/scan.py::scan"
+          ],
+          "f1": 0.4545,
+          "recall_must": 0.625,
+          "precision_hot": 0.3571,
+          "ndcg": 0.6923,
+          "must_at_10": 0.5,
+          "wall_s": 17.129,
+          "llm_wall_s": 17.127,
+          "eval_tok_s": 32.1,
+          "prompt_tok_s": 545.2,
+          "eval_count": 110,
+          "prompt_tokens": 5684,
+          "n_pack": 28,
+          "plan_intent": "Identify nodes on the path from seed to final task (refresh -> stamp -> verify -> load user).",
+          "plan_note": "clipped_keep",
+          "keep_n": 14,
+          "drop_n": 14,
+          "raw_plan": "INTENT: Identify nodes on the path from seed to final task (refresh -> stamp -> verify -> load user).\nKEEP: #1, #3, #4, #5, #6, #10, #12, #14, #15, #16, #17, #18, #19, #20, #21, #22, #23, #24, #25, #26, #27, #28\nDROP",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\nrefresh a session token: rotate, stamp nonce, verify claims, load user\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/oauth/refresh.py::refresh\nfile: app/oauth/refresh.py\nsymbol: refresh\nkind: function\nlines: 8-12\n\n### SEED SOURCE\n```\ndef refresh(token: str) -> dict:\n    rotated = rotate(token)\n    claims = JwtService().verify(rotated)\n    log(\"refreshed\")\n    return claims\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 refresh  --g:calls-->  #3 rotate\n  #1 refresh  --g:calls-->  #5 log\n  #1 refresh  --g:rev:called_by-->  #3 rotate\n  #1 refresh  --g:rev:called_by-->  #5 log\n  #3 rotate  --g:called_by-->  #1 refresh\n  #3 rotate  --g:calls-->  #2 stamp\n  #3 rotate  --g:rev:calls-->  #1 refresh\n  #3 rotate  --g:rev:called_by-->  #2 stamp\n  #4 JwtService.verify  --g:calls-->  #13 decode\n  #4 JwtService.verify  --g:calls-->  #5 log\n  #4 JwtService.verify  --g:rev:called_by-->  #13 decode\n  #4 JwtService.verify  --g:rev:called_by-->  #5 log\n  #5 log  --g:called_by-->  #8 record\n  #5 log  --g:called_by-->  #12 begin\n  #5 log  --g:called_by-->  #9 handle\n  #5 log  --g:called_by-->  #14 send_digest\n  #5 log  --g:called_by-->  #6 auth"
+        },
+        "director_C": {
+          "correct": false,
+          "missing_must": [
+            "app/config/database.py::connect",
+            "app/models/user.py::User.lookup",
+            "app/oauth/nonce.py::stamp",
+            "app/oauth/refresh.py::refresh",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "forbidden_hot": [
+            "app/analytics/tracker.py::track",
+            "app/utils/logger.py::log"
+          ],
+          "extra_hot": [
+            "app/cart/validate.py::validate",
+            "app/inventory/reserve.py::reserve",
+            "app/jobs/deliver.py::deliver",
+            "app/jobs/digest.py::send_digest",
+            "app/middleware/auth.py::extract_bearer",
+            "app/pricing/quote.py::quote",
+            "app/shipping/schedule.py::schedule",
+            "app/webhooks/verify_sig.py::verify_sig"
+          ],
+          "f1": 0.2,
+          "recall_must": 0.25,
+          "precision_hot": 0.1667,
+          "ndcg": 0.4514,
+          "must_at_10": 0.25,
+          "wall_s": 15.247,
+          "llm_wall_s": 15.244,
+          "eval_tok_s": 32.0,
+          "prompt_tok_s": 467.7,
+          "eval_count": 90,
+          "prompt_tokens": 5767,
+          "n_pack": 28,
+          "plan_intent": "KEEP",
+          "plan_note": "",
+          "keep_n": 13,
+          "drop_n": 10,
+          "raw_plan": "INTENT: KEEP\nKEEP: #1, #3, #5, #13, #15, #17, #19, #21, #23, #25, #26, #27, #28\nDROP: #2, #4, #6, #7, #8, #9, #10, #11, #12, #1",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\nrefresh a session token: rotate, stamp nonce, verify claims, load user\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/oauth/refresh.py::refresh\nfile: app/oauth/refresh.py\nsymbol: refresh\nkind: function\nlines: 8-12\n\n### SEED SOURCE\n```\ndef refresh(token: str) -> dict:\n    rotated = rotate(token)\n    claims = JwtService().verify(rotated)\n    log(\"refreshed\")\n    return claims\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 refresh  --g:calls-->  #3 rotate\n  #1 refresh  --g:calls-->  #5 log\n  #1 refresh  --g:rev:called_by-->  #3 rotate\n  #1 refresh  --g:rev:called_by-->  #5 log\n  #3 rotate  --g:called_by-->  #1 refresh\n  #3 rotate  --g:calls-->  #2 stamp\n  #3 rotate  --g:rev:calls-->  #1 refresh\n  #3 rotate  --g:rev:called_by-->  #2 stamp\n  #4 JwtService.verify  --g:calls-->  #13 decode\n  #4 JwtService.verify  --g:calls-->  #5 log\n  #4 JwtService.verify  --g:rev:called_by-->  #13 decode\n  #4 JwtService.verify  --g:rev:called_by-->  #5 log\n  #5 log  --g:called_by-->  #9 record\n  #5 log  --g:called_by-->  #11 begin\n  #5 log  --g:called_by-->  #10 handle\n  #5 log  --g:called_by-->  #15 send_digest\n  #5 log  --g:called_by-->  #7 aut"
+        }
+      }
+    },
+    {
+      "id": "h05",
+      "title": "jwt-verify-deep",
+      "arms": {
+        "polytrace": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "ndcg": 1.0,
+          "must_at_10": 1.0,
+          "wall_s": 0.001,
+          "llm_wall_s": 0.0,
+          "eval_tok_s": 0.0,
+          "prompt_tok_s": 0.0
+        },
+        "director_A": {
+          "correct": false,
+          "missing_must": [],
+          "forbidden_hot": [
+            "app/utils/logger.py::log"
+          ],
+          "extra_hot": [
+            "app/audit/record.py::record",
+            "app/jobs/digest.py::send_digest"
+          ],
+          "f1": 0.8,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "ndcg": 0.9601,
+          "must_at_10": 1.0,
+          "wall_s": 9.821,
+          "llm_wall_s": 9.819,
+          "eval_tok_s": 91.6,
+          "prompt_tok_s": 1091.0,
+          "eval_count": 110,
+          "prompt_tokens": 5828,
+          "n_pack": 28,
+          "plan_intent": "Identify nodes on the path from #1 to #20.",
+          "plan_note": "",
+          "keep_n": 9,
+          "drop_n": 15,
+          "raw_plan": "INTENT: Identify nodes on the path from #1 to #20.\nKEEP: #1, #5, #10, #4, #11, #12, #17, #18, #20\nDROP: #2, #3, #6, #7, #8, #9, #13, #14, #15, #16, #19, #21, #22, #23, #24, #2",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\nfrom JwtService.verify collect decode, ttl check, and user resolve path\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/services/jwt_service.py::JwtService.verify\nfile: app/services/jwt_service.py\nsymbol: JwtService.verify\nkind: method\nlines: 10-17\n\n### SEED SOURCE\n```\n    def verify(self, value: str) -> dict:\n        claims = decode(value)\n        age = int(claims.get(\"age\", 0))\n        if age > TOKEN_TTL:\n            raise ValueError(\"expired\")\n        UserRepository().resolve(claims[\"sub\"])\n        log(\"verified\")\n        return claims\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 JwtService.verify  --g:calls-->  #5 decode\n  #1 JwtService.verify  --g:calls-->  #10 log\n  #1 JwtService.verify  --g:rev:called_by-->  #5 decode\n  #1 JwtService.verify  --g:rev:called_by-->  #10 log\n  #5 decode  --g:called_by-->  #1 JwtService.verify\n  #5 decode  --g:rev:calls-->  #1 JwtService.verify\n  #4 UserRepository.resolve  --g:calls-->  #10 log\n  #4 UserRepository.resolve  --g:calls-->  #17 connect\n  #4 UserRepository.resolve  --g:calls-->  #18 User.lookup\n  #4 UserRepository.resolve  --g:rev:called_by-->  #10 log\n  #4 UserRepository.reso"
+        },
+        "director_B": {
+          "correct": false,
+          "missing_must": [],
+          "forbidden_hot": [
+            "app/utils/logger.py::log"
+          ],
+          "extra_hot": [
+            "app/audit/record.py::record",
+            "app/jobs/digest.py::send_digest"
+          ],
+          "f1": 0.8,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "ndcg": 0.9601,
+          "must_at_10": 1.0,
+          "wall_s": 19.054,
+          "llm_wall_s": 19.052,
+          "eval_tok_s": 31.5,
+          "prompt_tok_s": 473.5,
+          "eval_count": 110,
+          "prompt_tokens": 5828,
+          "n_pack": 28,
+          "plan_intent": "Identify nodes on the path from #1 to #20.",
+          "plan_note": "",
+          "keep_n": 9,
+          "drop_n": 15,
+          "raw_plan": "INTENT: Identify nodes on the path from #1 to #20.\nKEEP: #1, #5, #10, #4, #11, #12, #17, #18, #20\nDROP: #2, #3, #6, #7, #8, #9, #13, #14, #15, #16, #19, #21, #22, #23, #24, #2",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\nfrom JwtService.verify collect decode, ttl check, and user resolve path\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/services/jwt_service.py::JwtService.verify\nfile: app/services/jwt_service.py\nsymbol: JwtService.verify\nkind: method\nlines: 10-17\n\n### SEED SOURCE\n```\n    def verify(self, value: str) -> dict:\n        claims = decode(value)\n        age = int(claims.get(\"age\", 0))\n        if age > TOKEN_TTL:\n            raise ValueError(\"expired\")\n        UserRepository().resolve(claims[\"sub\"])\n        log(\"verified\")\n        return claims\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 JwtService.verify  --g:calls-->  #5 decode\n  #1 JwtService.verify  --g:calls-->  #10 log\n  #1 JwtService.verify  --g:rev:called_by-->  #5 decode\n  #1 JwtService.verify  --g:rev:called_by-->  #10 log\n  #5 decode  --g:called_by-->  #1 JwtService.verify\n  #5 decode  --g:rev:calls-->  #1 JwtService.verify\n  #4 UserRepository.resolve  --g:calls-->  #10 log\n  #4 UserRepository.resolve  --g:calls-->  #17 connect\n  #4 UserRepository.resolve  --g:calls-->  #18 User.lookup\n  #4 UserRepository.resolve  --g:rev:called_by-->  #10 log\n  #4 UserRepository.reso"
+        },
+        "director_C": {
+          "correct": false,
+          "missing_must": [
+            "app/config/database.py::connect"
+          ],
+          "forbidden_hot": [
+            "app/utils/logger.py::log"
+          ],
+          "extra_hot": [
+            "app/audit/record.py::record",
+            "app/billing/invoices.py::charge",
+            "app/cart/validate.py::validate",
+            "app/inventory/reserve.py::reserve",
+            "app/inventory/warehouse.py::levels",
+            "app/shipping/schedule.py::schedule"
+          ],
+          "f1": 0.5556,
+          "recall_must": 0.8333,
+          "precision_hot": 0.4167,
+          "ndcg": 0.8752,
+          "must_at_10": 0.8333,
+          "wall_s": 14.019,
+          "llm_wall_s": 14.018,
+          "eval_tok_s": 31.4,
+          "prompt_tok_s": 530.9,
+          "eval_count": 90,
+          "prompt_tokens": 5874,
+          "n_pack": 28,
+          "plan_intent": "KEEP",
+          "plan_note": "",
+          "keep_n": 12,
+          "drop_n": 10,
+          "raw_plan": "INTENT: KEEP\nKEEP: #1, #5, #10, #4, #11, #12, #21, #22, #25, #26, #27, #28\nDROP: #3, #6, #7, #8, #9, #13, #14, #15, #16, #17, #",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\nfrom JwtService.verify collect decode, ttl check, and user resolve path\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/services/jwt_service.py::JwtService.verify\nfile: app/services/jwt_service.py\nsymbol: JwtService.verify\nkind: method\nlines: 10-17\n\n### SEED SOURCE\n```\n    def verify(self, value: str) -> dict:\n        claims = decode(value)\n        age = int(claims.get(\"age\", 0))\n        if age > TOKEN_TTL:\n            raise ValueError(\"expired\")\n        UserRepository().resolve(claims[\"sub\"])\n        log(\"verified\")\n        return claims\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 JwtService.verify  --g:calls-->  #5 decode\n  #1 JwtService.verify  --g:calls-->  #10 log\n  #1 JwtService.verify  --g:rev:called_by-->  #5 decode\n  #1 JwtService.verify  --g:rev:called_by-->  #10 log\n  #5 decode  --g:called_by-->  #1 JwtService.verify\n  #5 decode  --g:rev:calls-->  #1 JwtService.verify\n  #4 UserRepository.resolve  --g:calls-->  #10 log\n  #4 UserRepository.resolve  --g:calls-->  #18 connect\n  #4 UserRepository.resolve  --g:calls-->  #21 User.lookup\n  #4 UserRepository.resolve  --g:rev:called_by-->  #10 log\n  #4 UserRepository.reso"
+        }
+      }
+    },
+    {
+      "id": "h06",
+      "title": "resolve-deep",
+      "arms": {
+        "polytrace": {
+          "correct": false,
+          "missing_must": [
+            "app/utils/logger.py::log"
+          ],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 0.8571,
+          "recall_must": 0.75,
+          "precision_hot": 1.0,
+          "ndcg": 1.0,
+          "must_at_10": 0.75,
+          "wall_s": 0.0,
+          "llm_wall_s": 0.0,
+          "eval_tok_s": 0.0,
+          "prompt_tok_s": 0.0
+        },
+        "director_A": {
+          "correct": false,
+          "missing_must": [],
+          "forbidden_hot": [
+            "app/billing/invoices.py::charge",
+            "app/middleware/auth.py::authenticate",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "extra_hot": [
+            "app/analytics/tracker.py::track",
+            "app/config/security.py::TOKEN_TTL",
+            "app/jobs/runner.py::execute",
+            "app/middleware/auth.py::extract_bearer",
+            "app/services/session.py::start",
+            "app/uploads/scan.py::scan"
+          ],
+          "f1": 0.4444,
+          "recall_must": 1.0,
+          "precision_hot": 0.2857,
+          "ndcg": 0.9002,
+          "must_at_10": 1.0,
+          "wall_s": 9.876,
+          "llm_wall_s": 9.875,
+          "eval_tok_s": 91.2,
+          "prompt_tok_s": 1085.4,
+          "eval_count": 110,
+          "prompt_tokens": 5884,
+          "n_pack": 28,
+          "plan_intent": "Determine which candidate functions are required to execute the `UserRepository.resolve` method starting from the seed.",
+          "plan_note": "clipped_keep",
+          "keep_n": 14,
+          "drop_n": 14,
+          "raw_plan": "INTENT: Determine which candidate functions are required to execute the `UserRepository.resolve` method starting from the seed.\nKEEP: #1, #4, #5, #6, #3, #10, #14, #15, #16, #17, #18, #19, #20, #21, #22, #23, #24, #25, #26, #27, #28\nDROP: #2,",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\nhow UserRepository.resolve loads the user row including db connect\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/repositories/user_repo.py::UserRepository.resolve\nfile: app/repositories/user_repo.py\nsymbol: UserRepository.resolve\nkind: method\nlines: 9-12\n\n### SEED SOURCE\n```\n    def resolve(self, key: str) -> dict:\n        log(\"lookup\")\n        db = connect()\n        return User.lookup(db, key)\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 UserRepository.resolve  --g:calls-->  #6 log\n  #1 UserRepository.resolve  --g:calls-->  #5 connect\n  #1 UserRepository.resolve  --g:calls-->  #4 User.lookup\n  #1 UserRepository.resolve  --g:rev:called_by-->  #6 log\n  #1 UserRepository.resolve  --g:rev:called_by-->  #5 connect\n  #1 UserRepository.resolve  --g:rev:called_by-->  #4 User.lookup\n  #6 log  --g:called_by-->  #2 record\n  #6 log  --g:called_by-->  #11 begin\n  #6 log  --g:called_by-->  #9 handle\n  #6 log  --g:called_by-->  #12 send_digest\n  #6 log  --g:called_by-->  #10 authenticate\n  #6 log  --g:called_by-->  #13 refresh\n  #6 log  --g:called_by-->  #14 scan\n  #6 log  --g:called_by-->  #1 UserRepository.resolve\n  #6 log  --g:calle"
+        },
+        "director_B": {
+          "correct": false,
+          "missing_must": [],
+          "forbidden_hot": [
+            "app/billing/invoices.py::charge",
+            "app/middleware/auth.py::authenticate",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "extra_hot": [
+            "app/analytics/tracker.py::track",
+            "app/config/security.py::TOKEN_TTL",
+            "app/jobs/runner.py::execute",
+            "app/middleware/auth.py::extract_bearer",
+            "app/services/session.py::start",
+            "app/uploads/scan.py::scan"
+          ],
+          "f1": 0.4444,
+          "recall_must": 1.0,
+          "precision_hot": 0.2857,
+          "ndcg": 0.9002,
+          "must_at_10": 1.0,
+          "wall_s": 17.833,
+          "llm_wall_s": 17.831,
+          "eval_tok_s": 31.3,
+          "prompt_tok_s": 531.1,
+          "eval_count": 110,
+          "prompt_tokens": 5884,
+          "n_pack": 28,
+          "plan_intent": "Determine which candidate functions are required to execute the `UserRepository.resolve` method starting from the seed.",
+          "plan_note": "clipped_keep",
+          "keep_n": 14,
+          "drop_n": 14,
+          "raw_plan": "INTENT: Determine which candidate functions are required to execute the `UserRepository.resolve` method starting from the seed.\nKEEP: #1, #4, #5, #6, #3, #10, #14, #15, #16, #17, #18, #19, #20, #21, #22, #23, #24, #25, #26, #27, #28\nDROP: #2,",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\nhow UserRepository.resolve loads the user row including db connect\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/repositories/user_repo.py::UserRepository.resolve\nfile: app/repositories/user_repo.py\nsymbol: UserRepository.resolve\nkind: method\nlines: 9-12\n\n### SEED SOURCE\n```\n    def resolve(self, key: str) -> dict:\n        log(\"lookup\")\n        db = connect()\n        return User.lookup(db, key)\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 UserRepository.resolve  --g:calls-->  #6 log\n  #1 UserRepository.resolve  --g:calls-->  #5 connect\n  #1 UserRepository.resolve  --g:calls-->  #4 User.lookup\n  #1 UserRepository.resolve  --g:rev:called_by-->  #6 log\n  #1 UserRepository.resolve  --g:rev:called_by-->  #5 connect\n  #1 UserRepository.resolve  --g:rev:called_by-->  #4 User.lookup\n  #6 log  --g:called_by-->  #2 record\n  #6 log  --g:called_by-->  #11 begin\n  #6 log  --g:called_by-->  #9 handle\n  #6 log  --g:called_by-->  #12 send_digest\n  #6 log  --g:called_by-->  #10 authenticate\n  #6 log  --g:called_by-->  #13 refresh\n  #6 log  --g:called_by-->  #14 scan\n  #6 log  --g:called_by-->  #1 UserRepository.resolve\n  #6 log  --g:calle"
+        },
+        "director_C": {
+          "correct": false,
+          "missing_must": [
+            "app/repositories/user_repo.py::UserRepository.resolve"
+          ],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/analytics/tracker.py::track",
+            "app/bootstrap.py::start",
+            "app/cart/validate.py::validate",
+            "app/checkout/begin.py::begin",
+            "app/inventory/reserve.py::reserve",
+            "app/jobs/digest.py::send_digest",
+            "app/pricing/quote.py::quote",
+            "app/routes/login.py::login",
+            "app/shipping/schedule.py::schedule"
+          ],
+          "f1": 0.375,
+          "recall_must": 0.75,
+          "precision_hot": 0.25,
+          "ndcg": 0.8797,
+          "must_at_10": 0.75,
+          "wall_s": 15.982,
+          "llm_wall_s": 15.98,
+          "eval_tok_s": 31.2,
+          "prompt_tok_s": 456.1,
+          "eval_count": 90,
+          "prompt_tokens": 5930,
+          "n_pack": 28,
+          "plan_intent": "KEEP",
+          "plan_note": "",
+          "keep_n": 13,
+          "drop_n": 10,
+          "raw_plan": "INTENT: KEEP\nKEEP: #1, #4, #5, #6, #11, #15, #19, #21, #23, #25, #26, #27, #28\nDROP: #2, #3, #7, #8, #9, #10, #12, #13, #14, #1",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\nhow UserRepository.resolve loads the user row including db connect\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/repositories/user_repo.py::UserRepository.resolve\nfile: app/repositories/user_repo.py\nsymbol: UserRepository.resolve\nkind: method\nlines: 9-12\n\n### SEED SOURCE\n```\n    def resolve(self, key: str) -> dict:\n        log(\"lookup\")\n        db = connect()\n        return User.lookup(db, key)\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 UserRepository.resolve  --g:calls-->  #6 log\n  #1 UserRepository.resolve  --g:calls-->  #5 connect\n  #1 UserRepository.resolve  --g:calls-->  #4 User.lookup\n  #1 UserRepository.resolve  --g:rev:called_by-->  #6 log\n  #1 UserRepository.resolve  --g:rev:called_by-->  #5 connect\n  #1 UserRepository.resolve  --g:rev:called_by-->  #4 User.lookup\n  #6 log  --g:called_by-->  #3 record\n  #6 log  --g:called_by-->  #11 begin\n  #6 log  --g:called_by-->  #9 handle\n  #6 log  --g:called_by-->  #15 send_digest\n  #6 log  --g:called_by-->  #10 authenticate\n  #6 log  --g:called_by-->  #14 refresh\n  #6 log  --g:called_by-->  #13 scan\n  #6 log  --g:called_by-->  #1 UserRepository.resolve\n  #6 log  --g:calle"
+        }
+      }
+    },
+    {
+      "id": "h07",
+      "title": "oauth-no-telemetry",
+      "arms": {
+        "polytrace": {
+          "correct": false,
+          "missing_must": [],
+          "forbidden_hot": [
+            "app/utils/logger.py::log"
+          ],
+          "extra_hot": [
+            "app/config/database.py::connect"
+          ],
+          "f1": 0.875,
+          "recall_must": 1.0,
+          "precision_hot": 0.7778,
+          "ndcg": 0.9649,
+          "must_at_10": 1.0,
+          "wall_s": 0.0,
+          "llm_wall_s": 0.0,
+          "eval_tok_s": 0.0,
+          "prompt_tok_s": 0.0
+        },
+        "director_A": {
+          "correct": false,
+          "missing_must": [
+            "app/models/user.py::User.lookup",
+            "app/oauth/nonce.py::stamp",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/utils/token.py::decode"
+          ],
+          "forbidden_hot": [
+            "app/utils/logger.py::log"
+          ],
+          "extra_hot": [],
+          "f1": 0.5455,
+          "recall_must": 0.4286,
+          "precision_hot": 0.75,
+          "ndcg": 0.629,
+          "must_at_10": 0.4286,
+          "wall_s": 9.409,
+          "llm_wall_s": 9.408,
+          "eval_tok_s": 91.5,
+          "prompt_tok_s": 1120.5,
+          "eval_count": 110,
+          "prompt_tokens": 5550,
+          "n_pack": 28,
+          "plan_intent": "Identify nodes on the path from seed to task (refresh -> rotate -> verify -> log)",
+          "plan_note": "",
+          "keep_n": 4,
+          "drop_n": 19,
+          "raw_plan": "INTENT: Identify nodes on the path from seed to task (refresh -> rotate -> verify -> log)\nKEEP: #1, #4, #5, #6\nDROP: #2, #3, #7, #8, #9, #10, #11, #12, #13, #14, #15, #16, #17, #18, #19, #20, #21, #22, #23, #",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\noauth refresh credential chain without logging or analytics noise\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/oauth/refresh.py::refresh\nfile: app/oauth/refresh.py\nsymbol: refresh\nkind: function\nlines: 8-12\n\n### SEED SOURCE\n```\ndef refresh(token: str) -> dict:\n    rotated = rotate(token)\n    claims = JwtService().verify(rotated)\n    log(\"refreshed\")\n    return claims\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 refresh  --g:calls-->  #4 rotate\n  #1 refresh  --g:calls-->  #6 log\n  #1 refresh  --g:rev:called_by-->  #4 rotate\n  #1 refresh  --g:rev:called_by-->  #6 log\n  #4 rotate  --g:called_by-->  #1 refresh\n  #4 rotate  --g:calls-->  #14 stamp\n  #4 rotate  --g:rev:calls-->  #1 refresh\n  #4 rotate  --g:rev:called_by-->  #14 stamp\n  #5 JwtService.verify  --g:calls-->  #11 decode\n  #5 JwtService.verify  --g:calls-->  #6 log\n  #5 JwtService.verify  --g:rev:called_by-->  #11 decode\n  #5 JwtService.verify  --g:rev:called_by-->  #6 log\n  #6 log  --g:called_by-->  #17 record\n  #6 log  --g:called_by-->  #7 begin\n  #6 log  --g:called_by-->  #9 handle\n  #6 log  --g:called_by-->  #18 send_digest\n  #6 log  --g:called_by-->  #16 authen"
+        },
+        "director_B": {
+          "correct": false,
+          "missing_must": [
+            "app/models/user.py::User.lookup",
+            "app/oauth/nonce.py::stamp",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/utils/token.py::decode"
+          ],
+          "forbidden_hot": [
+            "app/utils/logger.py::log"
+          ],
+          "extra_hot": [],
+          "f1": 0.5455,
+          "recall_must": 0.4286,
+          "precision_hot": 0.75,
+          "ndcg": 0.629,
+          "must_at_10": 0.4286,
+          "wall_s": 17.799,
+          "llm_wall_s": 17.798,
+          "eval_tok_s": 32.6,
+          "prompt_tok_s": 499.2,
+          "eval_count": 110,
+          "prompt_tokens": 5550,
+          "n_pack": 28,
+          "plan_intent": "Identify nodes on the path from seed to task (refresh -> rotate -> verify -> log)",
+          "plan_note": "",
+          "keep_n": 4,
+          "drop_n": 19,
+          "raw_plan": "INTENT: Identify nodes on the path from seed to task (refresh -> rotate -> verify -> log)\nKEEP: #1, #4, #5, #6\nDROP: #2, #3, #7, #8, #9, #10, #11, #12, #13, #14, #15, #16, #17, #18, #19, #20, #21, #22, #23, #",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\noauth refresh credential chain without logging or analytics noise\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/oauth/refresh.py::refresh\nfile: app/oauth/refresh.py\nsymbol: refresh\nkind: function\nlines: 8-12\n\n### SEED SOURCE\n```\ndef refresh(token: str) -> dict:\n    rotated = rotate(token)\n    claims = JwtService().verify(rotated)\n    log(\"refreshed\")\n    return claims\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 refresh  --g:calls-->  #4 rotate\n  #1 refresh  --g:calls-->  #6 log\n  #1 refresh  --g:rev:called_by-->  #4 rotate\n  #1 refresh  --g:rev:called_by-->  #6 log\n  #4 rotate  --g:called_by-->  #1 refresh\n  #4 rotate  --g:calls-->  #14 stamp\n  #4 rotate  --g:rev:calls-->  #1 refresh\n  #4 rotate  --g:rev:called_by-->  #14 stamp\n  #5 JwtService.verify  --g:calls-->  #11 decode\n  #5 JwtService.verify  --g:calls-->  #6 log\n  #5 JwtService.verify  --g:rev:called_by-->  #11 decode\n  #5 JwtService.verify  --g:rev:called_by-->  #6 log\n  #6 log  --g:called_by-->  #17 record\n  #6 log  --g:called_by-->  #7 begin\n  #6 log  --g:called_by-->  #9 handle\n  #6 log  --g:called_by-->  #18 send_digest\n  #6 log  --g:called_by-->  #16 authen"
+        },
+        "director_C": {
+          "correct": false,
+          "missing_must": [
+            "app/models/user.py::User.lookup",
+            "app/utils/token.py::decode"
+          ],
+          "forbidden_hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/utils/logger.py::log"
+          ],
+          "extra_hot": [
+            "app/audit/record.py::record",
+            "app/config/security.py::TOKEN_TTL",
+            "app/webhooks/verify_sig.py::verify_sig"
+          ],
+          "f1": 0.5882,
+          "recall_must": 0.7143,
+          "precision_hot": 0.5,
+          "ndcg": 0.7934,
+          "must_at_10": 0.7143,
+          "wall_s": 13.014,
+          "llm_wall_s": 13.013,
+          "eval_tok_s": 32.5,
+          "prompt_tok_s": 550.9,
+          "eval_count": 90,
+          "prompt_tokens": 5595,
+          "n_pack": 28,
+          "plan_intent": "KEEP",
+          "plan_note": "",
+          "keep_n": 10,
+          "drop_n": 12,
+          "raw_plan": "INTENT: KEEP\nKEEP: #1, #4, #5, #6, #13, #15, #17, #19, #20, #23\nDROP: #2, #3, #7, #8, #9, #10, #11, #12, #14, #16, #18, #21, #2",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\noauth refresh credential chain without logging or analytics noise\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/oauth/refresh.py::refresh\nfile: app/oauth/refresh.py\nsymbol: refresh\nkind: function\nlines: 8-12\n\n### SEED SOURCE\n```\ndef refresh(token: str) -> dict:\n    rotated = rotate(token)\n    claims = JwtService().verify(rotated)\n    log(\"refreshed\")\n    return claims\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 refresh  --g:calls-->  #4 rotate\n  #1 refresh  --g:calls-->  #6 log\n  #1 refresh  --g:rev:called_by-->  #4 rotate\n  #1 refresh  --g:rev:called_by-->  #6 log\n  #4 rotate  --g:called_by-->  #1 refresh\n  #4 rotate  --g:calls-->  #13 stamp\n  #4 rotate  --g:rev:calls-->  #1 refresh\n  #4 rotate  --g:rev:called_by-->  #13 stamp\n  #5 JwtService.verify  --g:calls-->  #11 decode\n  #5 JwtService.verify  --g:calls-->  #6 log\n  #5 JwtService.verify  --g:rev:called_by-->  #11 decode\n  #5 JwtService.verify  --g:rev:called_by-->  #6 log\n  #6 log  --g:called_by-->  #17 record\n  #6 log  --g:called_by-->  #7 begin\n  #6 log  --g:called_by-->  #9 handle\n  #6 log  --g:called_by-->  #16 send_digest\n  #6 log  --g:called_by-->  #15 authen"
+        }
+      }
+    },
+    {
+      "id": "h08",
+      "title": "mid-decode-up",
+      "arms": {
+        "polytrace": {
+          "correct": false,
+          "missing_must": [
+            "app/config/database.py::connect",
+            "app/config/security.py::TOKEN_TTL",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 0.2857,
+          "recall_must": 0.1667,
+          "precision_hot": 1.0,
+          "ndcg": 1.0,
+          "must_at_10": 0.1667,
+          "wall_s": 0.0,
+          "llm_wall_s": 0.0,
+          "eval_tok_s": 0.0,
+          "prompt_tok_s": 0.0
+        },
+        "director_A": {
+          "correct": false,
+          "missing_must": [],
+          "forbidden_hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/utils/logger.py::log"
+          ],
+          "extra_hot": [
+            "app/analytics/tracker.py::track",
+            "app/audit/record.py::record",
+            "app/jobs/digest.py::send_digest",
+            "app/routes/login.py::login",
+            "app/uploads/scan.py::scan",
+            "app/webhooks/verify_sig.py::verify_sig"
+          ],
+          "f1": 0.6,
+          "recall_must": 1.0,
+          "precision_hot": 0.4286,
+          "ndcg": 0.9285,
+          "must_at_10": 1.0,
+          "wall_s": 9.809,
+          "llm_wall_s": 9.808,
+          "eval_tok_s": 90.9,
+          "prompt_tok_s": 1090.2,
+          "eval_count": 110,
+          "prompt_tokens": 5787,
+          "n_pack": 28,
+          "plan_intent": "Identify related verify/ttl/user-load code for claims checking.",
+          "plan_note": "clipped_keep",
+          "keep_n": 14,
+          "drop_n": 14,
+          "raw_plan": "INTENT: Identify related verify/ttl/user-load code for claims checking.\nKEEP: #1, #2, #4, #5, #6, #8, #10, #14, #15, #16, #17, #18, #19, #20, #21, #22, #23, #24, #25, #26, #27, #28\nDROP: #3, #7, #9",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\nstarting at decode, what related verify/ttl/user-load code belongs with claims checking?\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/utils/token.py::decode\nfile: app/utils/token.py\nsymbol: decode\nkind: function\nlines: 4-8\n\n### SEED SOURCE\n```\ndef decode(value: str) -> dict:\n    parts = value.split(\".\", 2)\n    if len(parts) != 3:\n        return {\"sub\": value, \"age\": 0}\n    return {\"sub\": parts[0], \"age\": int(parts[1] or 0)}\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 decode  --g:called_by-->  #2 JwtService.verify\n  #1 decode  --g:rev:calls-->  #2 JwtService.verify\n  #2 JwtService.verify  --g:calls-->  #1 decode\n  #2 JwtService.verify  --g:calls-->  #8 log\n  #2 JwtService.verify  --g:rev:called_by-->  #1 decode\n  #2 JwtService.verify  --g:rev:called_by-->  #8 log\n  #6 UserRepository.resolve  --g:calls-->  #8 log\n  #6 UserRepository.resolve  --g:calls-->  #14 connect\n  #6 UserRepository.resolve  --g:calls-->  #15 User.lookup\n  #6 UserRepository.resolve  --g:rev:called_by-->  #8 log\n  #6 UserRepository.resolve  --g:rev:called_by-->  #14 connect\n  #6 UserRepository.resolve  --g:rev:called_by-->  #15 User.lookup\n  #8 log  --"
+        },
+        "director_B": {
+          "correct": false,
+          "missing_must": [],
+          "forbidden_hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/utils/logger.py::log"
+          ],
+          "extra_hot": [
+            "app/analytics/tracker.py::track",
+            "app/audit/record.py::record",
+            "app/jobs/digest.py::send_digest",
+            "app/routes/login.py::login",
+            "app/uploads/scan.py::scan",
+            "app/webhooks/verify_sig.py::verify_sig"
+          ],
+          "f1": 0.6,
+          "recall_must": 1.0,
+          "precision_hot": 0.4286,
+          "ndcg": 0.9285,
+          "must_at_10": 1.0,
+          "wall_s": 17.746,
+          "llm_wall_s": 17.744,
+          "eval_tok_s": 31.6,
+          "prompt_tok_s": 538.2,
+          "eval_count": 110,
+          "prompt_tokens": 5787,
+          "n_pack": 28,
+          "plan_intent": "Identify related verify/ttl/user-load code for claims checking.",
+          "plan_note": "clipped_keep",
+          "keep_n": 14,
+          "drop_n": 14,
+          "raw_plan": "INTENT: Identify related verify/ttl/user-load code for claims checking.\nKEEP: #1, #2, #4, #5, #6, #8, #10, #14, #15, #16, #17, #18, #19, #20, #21, #22, #23, #24, #25, #26, #27, #28\nDROP: #3, #7, #9",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\nstarting at decode, what related verify/ttl/user-load code belongs with claims checking?\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/utils/token.py::decode\nfile: app/utils/token.py\nsymbol: decode\nkind: function\nlines: 4-8\n\n### SEED SOURCE\n```\ndef decode(value: str) -> dict:\n    parts = value.split(\".\", 2)\n    if len(parts) != 3:\n        return {\"sub\": value, \"age\": 0}\n    return {\"sub\": parts[0], \"age\": int(parts[1] or 0)}\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 decode  --g:called_by-->  #2 JwtService.verify\n  #1 decode  --g:rev:calls-->  #2 JwtService.verify\n  #2 JwtService.verify  --g:calls-->  #1 decode\n  #2 JwtService.verify  --g:calls-->  #8 log\n  #2 JwtService.verify  --g:rev:called_by-->  #1 decode\n  #2 JwtService.verify  --g:rev:called_by-->  #8 log\n  #6 UserRepository.resolve  --g:calls-->  #8 log\n  #6 UserRepository.resolve  --g:calls-->  #14 connect\n  #6 UserRepository.resolve  --g:calls-->  #15 User.lookup\n  #6 UserRepository.resolve  --g:rev:called_by-->  #8 log\n  #6 UserRepository.resolve  --g:rev:called_by-->  #14 connect\n  #6 UserRepository.resolve  --g:rev:called_by-->  #15 User.lookup\n  #8 log  --"
+        },
+        "director_C": {
+          "correct": false,
+          "missing_must": [
+            "app/config/database.py::connect",
+            "app/config/security.py::TOKEN_TTL",
+            "app/models/user.py::User.lookup",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "forbidden_hot": [
+            "app/utils/logger.py::log"
+          ],
+          "extra_hot": [],
+          "f1": 0.4444,
+          "recall_must": 0.3333,
+          "precision_hot": 0.6667,
+          "ndcg": 0.6441,
+          "must_at_10": 0.5,
+          "wall_s": 15.13,
+          "llm_wall_s": 15.127,
+          "eval_tok_s": 31.8,
+          "prompt_tok_s": 473.9,
+          "eval_count": 90,
+          "prompt_tokens": 5771,
+          "n_pack": 28,
+          "plan_intent": "KEEP",
+          "plan_note": "",
+          "keep_n": 4,
+          "drop_n": 19,
+          "raw_plan": "INTENT: KEEP\nKEEP: #1, #2, #7, #8\nDROP: #3, #4, #5, #6, #9, #10, #11, #12, #13, #14, #15, #16, #17, #18, #19, #20, #21, #22, #2",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\nstarting at decode, what related verify/ttl/user-load code belongs with claims checking?\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/utils/token.py::decode\nfile: app/utils/token.py\nsymbol: decode\nkind: function\nlines: 4-8\n\n### SEED SOURCE\n```\ndef decode(value: str) -> dict:\n    parts = value.split(\".\", 2)\n    if len(parts) != 3:\n        return {\"sub\": value, \"age\": 0}\n    return {\"sub\": parts[0], \"age\": int(parts[1] or 0)}\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 decode  --g:called_by-->  #2 JwtService.verify\n  #1 decode  --g:rev:calls-->  #2 JwtService.verify\n  #2 JwtService.verify  --g:calls-->  #1 decode\n  #2 JwtService.verify  --g:calls-->  #8 log\n  #2 JwtService.verify  --g:rev:called_by-->  #1 decode\n  #2 JwtService.verify  --g:rev:called_by-->  #8 log\n  #7 UserRepository.resolve  --g:calls-->  #8 log\n  #7 UserRepository.resolve  --g:calls-->  #19 connect\n  #7 UserRepository.resolve  --g:calls-->  #15 User.lookup\n  #7 UserRepository.resolve  --g:rev:called_by-->  #8 log\n  #7 UserRepository.resolve  --g:rev:called_by-->  #19 connect\n  #7 UserRepository.resolve  --g:rev:called_by-->  #15 User.lookup\n  #8 log  --"
+        }
+      }
+    },
+    {
+      "id": "h09",
+      "title": "checkout-full",
+      "arms": {
+        "polytrace": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/analytics/tracker.py::track",
+            "app/inventory/warehouse.py::levels"
+          ],
+          "f1": 0.9286,
+          "recall_must": 1.0,
+          "precision_hot": 0.8667,
+          "ndcg": 0.9488,
+          "must_at_10": 0.7273,
+          "wall_s": 0.0,
+          "llm_wall_s": 0.0,
+          "eval_tok_s": 0.0,
+          "prompt_tok_s": 0.0
+        },
+        "director_A": {
+          "correct": false,
+          "missing_must": [
+            "app/tax/rates.py::rate_for"
+          ],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/utils/logger.py::log"
+          ],
+          "f1": 0.8824,
+          "recall_must": 0.9091,
+          "precision_hot": 0.8571,
+          "ndcg": 0.9445,
+          "must_at_10": 0.8182,
+          "wall_s": 9.915,
+          "llm_wall_s": 9.913,
+          "eval_tok_s": 89.7,
+          "prompt_tok_s": 1086.3,
+          "eval_count": 110,
+          "prompt_tokens": 5887,
+          "n_pack": 28,
+          "plan_intent": "Identify nodes on the path: begin, validate, quote, reserve, charge, ship.",
+          "plan_note": "clipped_keep",
+          "keep_n": 14,
+          "drop_n": 14,
+          "raw_plan": "INTENT: Identify nodes on the path: begin, validate, quote, reserve, charge, ship.\nKEEP: #1, #2, #3, #4, #5, #6, #7, #12, #13, #14, #15, #16, #17, #18, #19, #20, #21, #22, #23, #24, #25, #26, #27, #",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\ncollect the full checkout begin path: validate cart, quote, reserve, charge, ship\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/checkout/begin.py::begin\nfile: app/checkout/begin.py\nsymbol: begin\nkind: function\nlines: 11-21\n\n### SEED SOURCE\n```\ndef begin(cart: dict, user_id: str) -> dict:\n    validate(cart)\n    priced = quote(cart)\n    for item in cart.get(\"items\") or []:\n        reserve(item[\"sku\"], int(item.get(\"qty\") or 1))\n    ok = charge(user_id, int(priced[\"total\"]))\n    if not ok:\n        raise ValueError(\"pay\")\n    ship = schedule(cart.get(\"id\") or \"o1\", cart.get(\"email\") or \"a@b.c\")\n    log(\"checkout-ok\")\n    return {\"priced\": priced, \"ship\": ship}\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 begin  --g:calls-->  #2 validate\n  #1 begin  --g:calls-->  #4 quote\n  #1 begin  --g:calls-->  #3 reserve\n  #1 begin  --g:calls-->  #5 charge\n  #1 begin  --g:calls-->  #6 schedule\n  #1 begin  --g:calls-->  #7 log\n  #1 begin  --g:rev:called_by-->  #2 validate\n  #1 begin  --g:rev:called_by-->  #4 quote\n  #1 begin  --g:rev:called_by-->  #3 reserve\n  #1 begin  --g:rev:called_by-->  #5 charge\n  #1 begin  --g:rev:called_by-->  #6 sc"
+        },
+        "director_B": {
+          "correct": false,
+          "missing_must": [
+            "app/tax/rates.py::rate_for"
+          ],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/utils/logger.py::log"
+          ],
+          "f1": 0.8824,
+          "recall_must": 0.9091,
+          "precision_hot": 0.8571,
+          "ndcg": 0.9445,
+          "must_at_10": 0.8182,
+          "wall_s": 18.148,
+          "llm_wall_s": 18.146,
+          "eval_tok_s": 31.2,
+          "prompt_tok_s": 530.0,
+          "eval_count": 110,
+          "prompt_tokens": 5887,
+          "n_pack": 28,
+          "plan_intent": "Identify nodes on the path: begin, validate, quote, reserve, charge, ship.",
+          "plan_note": "clipped_keep",
+          "keep_n": 14,
+          "drop_n": 14,
+          "raw_plan": "INTENT: Identify nodes on the path: begin, validate, quote, reserve, charge, ship.\nKEEP: #1, #2, #3, #4, #5, #6, #7, #12, #13, #14, #15, #16, #17, #18, #19, #20, #21, #22, #23, #24, #25, #26, #27, #",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\ncollect the full checkout begin path: validate cart, quote, reserve, charge, ship\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/checkout/begin.py::begin\nfile: app/checkout/begin.py\nsymbol: begin\nkind: function\nlines: 11-21\n\n### SEED SOURCE\n```\ndef begin(cart: dict, user_id: str) -> dict:\n    validate(cart)\n    priced = quote(cart)\n    for item in cart.get(\"items\") or []:\n        reserve(item[\"sku\"], int(item.get(\"qty\") or 1))\n    ok = charge(user_id, int(priced[\"total\"]))\n    if not ok:\n        raise ValueError(\"pay\")\n    ship = schedule(cart.get(\"id\") or \"o1\", cart.get(\"email\") or \"a@b.c\")\n    log(\"checkout-ok\")\n    return {\"priced\": priced, \"ship\": ship}\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 begin  --g:calls-->  #2 validate\n  #1 begin  --g:calls-->  #4 quote\n  #1 begin  --g:calls-->  #3 reserve\n  #1 begin  --g:calls-->  #5 charge\n  #1 begin  --g:calls-->  #6 schedule\n  #1 begin  --g:calls-->  #7 log\n  #1 begin  --g:rev:called_by-->  #2 validate\n  #1 begin  --g:rev:called_by-->  #4 quote\n  #1 begin  --g:rev:called_by-->  #3 reserve\n  #1 begin  --g:rev:called_by-->  #5 charge\n  #1 begin  --g:rev:called_by-->  #6 sc"
+        },
+        "director_C": {
+          "correct": false,
+          "missing_must": [
+            "app/cart/validate.py::validate",
+            "app/pricing/catalog.py::unit_price",
+            "app/tax/rates.py::rate_for"
+          ],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/inventory/warehouse.py::levels",
+            "app/services/session.py::start",
+            "app/utils/logger.py::log"
+          ],
+          "f1": 0.7273,
+          "recall_must": 0.7273,
+          "precision_hot": 0.7273,
+          "ndcg": 0.811,
+          "must_at_10": 0.6364,
+          "wall_s": 16.043,
+          "llm_wall_s": 16.041,
+          "eval_tok_s": 31.1,
+          "prompt_tok_s": 454.3,
+          "eval_count": 90,
+          "prompt_tokens": 5933,
+          "n_pack": 28,
+          "plan_intent": "KEEP",
+          "plan_note": "",
+          "keep_n": 12,
+          "drop_n": 11,
+          "raw_plan": "INTENT: KEEP\nKEEP: #1, #2, #3, #4, #5, #6, #7, #16, #18, #20, #21, #22\nDROP: #8, #9, #10, #11, #12, #13, #14, #15, #17, #19, #2",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\ncollect the full checkout begin path: validate cart, quote, reserve, charge, ship\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/checkout/begin.py::begin\nfile: app/checkout/begin.py\nsymbol: begin\nkind: function\nlines: 11-21\n\n### SEED SOURCE\n```\ndef begin(cart: dict, user_id: str) -> dict:\n    validate(cart)\n    priced = quote(cart)\n    for item in cart.get(\"items\") or []:\n        reserve(item[\"sku\"], int(item.get(\"qty\") or 1))\n    ok = charge(user_id, int(priced[\"total\"]))\n    if not ok:\n        raise ValueError(\"pay\")\n    ship = schedule(cart.get(\"id\") or \"o1\", cart.get(\"email\") or \"a@b.c\")\n    log(\"checkout-ok\")\n    return {\"priced\": priced, \"ship\": ship}\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 begin  --g:calls-->  #2 validate\n  #1 begin  --g:calls-->  #4 quote\n  #1 begin  --g:calls-->  #3 reserve\n  #1 begin  --g:calls-->  #5 charge\n  #1 begin  --g:calls-->  #6 schedule\n  #1 begin  --g:calls-->  #7 log\n  #1 begin  --g:rev:called_by-->  #2 validate\n  #1 begin  --g:rev:called_by-->  #4 quote\n  #1 begin  --g:rev:called_by-->  #3 reserve\n  #1 begin  --g:rev:called_by-->  #5 charge\n  #1 begin  --g:rev:called_by-->  #6 sc"
+        }
+      }
+    },
+    {
+      "id": "h10",
+      "title": "checkout-pricing-only",
+      "arms": {
+        "polytrace": {
+          "correct": false,
+          "missing_must": [],
+          "forbidden_hot": [
+            "app/billing/invoices.py::charge",
+            "app/notify/mailer.py::send",
+            "app/shipping/schedule.py::schedule"
+          ],
+          "extra_hot": [
+            "app/analytics/tracker.py::track",
+            "app/audit/record.py::record",
+            "app/cart/validate.py::validate",
+            "app/http/client.py::get",
+            "app/inventory/reserve.py::reserve",
+            "app/inventory/stock.py::available",
+            "app/inventory/warehouse.py::levels"
+          ],
+          "f1": 0.5,
+          "recall_must": 1.0,
+          "precision_hot": 0.3333,
+          "ndcg": 0.7422,
+          "must_at_10": 0.4,
+          "wall_s": 0.0,
+          "llm_wall_s": 0.0,
+          "eval_tok_s": 0.0,
+          "prompt_tok_s": 0.0
+        },
+        "director_A": {
+          "correct": false,
+          "missing_must": [
+            "app/pricing/catalog.py::unit_price",
+            "app/pricing/quote.py::quote",
+            "app/tax/rates.py::rate_for"
+          ],
+          "forbidden_hot": [
+            "app/billing/invoices.py::charge",
+            "app/shipping/schedule.py::schedule"
+          ],
+          "extra_hot": [
+            "app/audit/record.py::record",
+            "app/cart/validate.py::validate",
+            "app/http/client.py::get",
+            "app/inventory/reserve.py::reserve",
+            "app/inventory/stock.py::available",
+            "app/utils/logger.py::log"
+          ],
+          "f1": 0.2667,
+          "recall_must": 0.4,
+          "precision_hot": 0.2,
+          "ndcg": 0.6097,
+          "must_at_10": 0.4,
+          "wall_s": 9.937,
+          "llm_wall_s": 9.935,
+          "eval_tok_s": 91.5,
+          "prompt_tok_s": 1081.2,
+          "eval_count": 110,
+          "prompt_tokens": 5924,
+          "n_pack": 28,
+          "plan_intent": "Determine which candidate functions are required to complete the task of quoting and taxing cart items.",
+          "plan_note": "",
+          "keep_n": 11,
+          "drop_n": 13,
+          "raw_plan": "INTENT: Determine which candidate functions are required to complete the task of quoting and taxing cart items.\nKEEP: #1, #2, #3, #4, #5, #6, #9, #10, #11, #16, #17\nDROP: #7, #8, #12, #13, #14, #15, #18, #19, #20, #21, #22, #23, #2",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\nfrom checkout begin, only quoting and tax \u2014 not payment or shipping\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/checkout/begin.py::begin\nfile: app/checkout/begin.py\nsymbol: begin\nkind: function\nlines: 11-21\n\n### SEED SOURCE\n```\ndef begin(cart: dict, user_id: str) -> dict:\n    validate(cart)\n    priced = quote(cart)\n    for item in cart.get(\"items\") or []:\n        reserve(item[\"sku\"], int(item.get(\"qty\") or 1))\n    ok = charge(user_id, int(priced[\"total\"]))\n    if not ok:\n        raise ValueError(\"pay\")\n    ship = schedule(cart.get(\"id\") or \"o1\", cart.get(\"email\") or \"a@b.c\")\n    log(\"checkout-ok\")\n    return {\"priced\": priced, \"ship\": ship}\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 begin  --g:calls-->  #4 validate\n  #1 begin  --g:calls-->  #2 quote\n  #1 begin  --g:calls-->  #5 reserve\n  #1 begin  --g:calls-->  #6 charge\n  #1 begin  --g:calls-->  #3 schedule\n  #1 begin  --g:calls-->  #9 log\n  #1 begin  --g:rev:called_by-->  #4 validate\n  #1 begin  --g:rev:called_by-->  #2 quote\n  #1 begin  --g:rev:called_by-->  #5 reserve\n  #1 begin  --g:rev:called_by-->  #6 charge\n  #1 begin  --g:rev:called_by-->  #3 schedule\n  #1 be"
+        },
+        "director_B": {
+          "correct": false,
+          "missing_must": [
+            "app/pricing/catalog.py::unit_price",
+            "app/pricing/quote.py::quote",
+            "app/tax/rates.py::rate_for"
+          ],
+          "forbidden_hot": [
+            "app/billing/invoices.py::charge",
+            "app/shipping/schedule.py::schedule"
+          ],
+          "extra_hot": [
+            "app/audit/record.py::record",
+            "app/cart/validate.py::validate",
+            "app/http/client.py::get",
+            "app/inventory/reserve.py::reserve",
+            "app/inventory/stock.py::available",
+            "app/utils/logger.py::log"
+          ],
+          "f1": 0.2667,
+          "recall_must": 0.4,
+          "precision_hot": 0.2,
+          "ndcg": 0.6097,
+          "must_at_10": 0.4,
+          "wall_s": 20.388,
+          "llm_wall_s": 20.386,
+          "eval_tok_s": 31.0,
+          "prompt_tok_s": 453.7,
+          "eval_count": 110,
+          "prompt_tokens": 5924,
+          "n_pack": 28,
+          "plan_intent": "Determine which candidate functions are required to complete the task of quoting and taxing cart items.",
+          "plan_note": "",
+          "keep_n": 11,
+          "drop_n": 13,
+          "raw_plan": "INTENT: Determine which candidate functions are required to complete the task of quoting and taxing cart items.\nKEEP: #1, #2, #3, #4, #5, #6, #9, #10, #11, #16, #17\nDROP: #7, #8, #12, #13, #14, #15, #18, #19, #20, #21, #22, #23, #2",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\nfrom checkout begin, only quoting and tax \u2014 not payment or shipping\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/checkout/begin.py::begin\nfile: app/checkout/begin.py\nsymbol: begin\nkind: function\nlines: 11-21\n\n### SEED SOURCE\n```\ndef begin(cart: dict, user_id: str) -> dict:\n    validate(cart)\n    priced = quote(cart)\n    for item in cart.get(\"items\") or []:\n        reserve(item[\"sku\"], int(item.get(\"qty\") or 1))\n    ok = charge(user_id, int(priced[\"total\"]))\n    if not ok:\n        raise ValueError(\"pay\")\n    ship = schedule(cart.get(\"id\") or \"o1\", cart.get(\"email\") or \"a@b.c\")\n    log(\"checkout-ok\")\n    return {\"priced\": priced, \"ship\": ship}\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 begin  --g:calls-->  #4 validate\n  #1 begin  --g:calls-->  #2 quote\n  #1 begin  --g:calls-->  #5 reserve\n  #1 begin  --g:calls-->  #6 charge\n  #1 begin  --g:calls-->  #3 schedule\n  #1 begin  --g:calls-->  #9 log\n  #1 begin  --g:rev:called_by-->  #4 validate\n  #1 begin  --g:rev:called_by-->  #2 quote\n  #1 begin  --g:rev:called_by-->  #5 reserve\n  #1 begin  --g:rev:called_by-->  #6 charge\n  #1 begin  --g:rev:called_by-->  #3 schedule\n  #1 be"
+        },
+        "director_C": {
+          "correct": false,
+          "missing_must": [
+            "app/pricing/catalog.py::unit_price",
+            "app/pricing/quote.py::quote",
+            "app/tax/compute.py::compute"
+          ],
+          "forbidden_hot": [
+            "app/billing/invoices.py::charge",
+            "app/shipping/schedule.py::schedule"
+          ],
+          "extra_hot": [
+            "app/cart/validate.py::validate",
+            "app/inventory/reserve.py::reserve",
+            "app/inventory/stock.py::available",
+            "app/inventory/warehouse.py::levels",
+            "app/utils/logger.py::log"
+          ],
+          "f1": 0.2857,
+          "recall_must": 0.4,
+          "precision_hot": 0.2222,
+          "ndcg": 0.5198,
+          "must_at_10": 0.4,
+          "wall_s": 14.498,
+          "llm_wall_s": 14.496,
+          "eval_tok_s": 30.9,
+          "prompt_tok_s": 522.7,
+          "eval_count": 90,
+          "prompt_tokens": 6010,
+          "n_pack": 28,
+          "plan_intent": "KEEP",
+          "plan_note": "",
+          "keep_n": 10,
+          "drop_n": 13,
+          "raw_plan": "INTENT: KEEP\nKEEP: #1, #2, #3, #4, #5, #6, #10, #19, #24, #25\nDROP: #7, #8, #9, #11, #12, #13, #14, #15, #16, #17, #18, #20, #2",
+          "prompt_preview": "## TASK (agent request \u2014 follow this exactly)\nfrom checkout begin, only quoting and tax \u2014 not payment or shipping\n\n## SEED (trace starts here \u2014 always KEEP #1)\nid: app/checkout/begin.py::begin\nfile: app/checkout/begin.py\nsymbol: begin\nkind: function\nlines: 11-21\n\n### SEED SOURCE\n```\ndef begin(cart: dict, user_id: str) -> dict:\n    validate(cart)\n    priced = quote(cart)\n    for item in cart.get(\"items\") or []:\n        reserve(item[\"sku\"], int(item.get(\"qty\") or 1))\n    ok = charge(user_id, int(priced[\"total\"]))\n    if not ok:\n        raise ValueError(\"pay\")\n    ship = schedule(cart.get(\"id\") or \"o1\", cart.get(\"email\") or \"a@b.c\")\n    log(\"checkout-ok\")\n    return {\"priced\": priced, \"ship\": ship}\n```\n\n## GRAPHIFY CALL GRAPH (among candidates)\n  #1 begin  --g:calls-->  #4 validate\n  #1 begin  --g:calls-->  #2 quote\n  #1 begin  --g:calls-->  #5 reserve\n  #1 begin  --g:calls-->  #6 charge\n  #1 begin  --g:calls-->  #3 schedule\n  #1 begin  --g:calls-->  #10 log\n  #1 begin  --g:rev:called_by-->  #4 validate\n  #1 begin  --g:rev:called_by-->  #2 quote\n  #1 begin  --g:rev:called_by-->  #5 reserve\n  #1 begin  --g:rev:called_by-->  #6 charge\n  #1 begin  --g:rev:called_by-->  #3 schedule\n  #1 b"
+        }
+      }
+    }
+  ]
+}

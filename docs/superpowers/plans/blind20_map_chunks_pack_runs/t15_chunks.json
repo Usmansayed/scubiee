@@ -1,0 +1,32 @@
+[
+  {
+    "file": "packages/pipeline/capability.py",
+    "symbol": "build_cards",
+    "kind": "function",
+    "loc": "packages/pipeline/capability.py:367-381",
+    "start_line": 367,
+    "end_line": 381,
+    "score": 9.7,
+    "excerpt": "def build_cards(\n    root: Path,\n    *,\n    rels: Iterable[str] | None = None,\n) -> list[CapabilityCard]:\n    root = root.resolve()\n    cards: list[CapabilityCard] = []\n    for rel"
+  },
+  {
+    "file": "packages/graphify/build.py",
+    "symbol": "build_from_json",
+    "kind": "function",
+    "loc": "packages/graphify/build.py:539-1016",
+    "start_line": 539,
+    "end_line": 1016,
+    "score": 9.35,
+    "excerpt": "def build_from_json(extraction: dict, *, directed: bool = False, root: str | Path | None = None) -> nx.Graph:\n    \"\"\"Build a NetworkX graph from an extraction dict.\n\n    directed=T"
+  },
+  {
+    "file": "packages/pipeline/engine.py",
+    "symbol": "WarmSearchEngine.locate_capability",
+    "kind": "method",
+    "loc": "packages/pipeline/engine.py:211-215",
+    "start_line": 211,
+    "end_line": 215,
+    "score": 7.35,
+    "excerpt": "    def locate_capability(self, query: str, top_k: int = 5) -> list[LocateHit]:\n        idx = self.capability\n        if idx is None:\n            return []\n        return idx.locat"
+  }
+]

@@ -1,0 +1,393 @@
+{
+  "ok": true,
+  "scenario": "cursor_cold_attach_steady_leave",
+  "lane": "a",
+  "live": true,
+  "mcp_client": "cursor",
+  "repo": "C:\\Users\\usman\\Downloads\\context-engine",
+  "project_id": "ce_0a779347a9061995489923aad707cb0b",
+  "engine_url": "http://127.0.0.1:8765",
+  "phases": [
+    {
+      "name": "clean_slate",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 11990.2,
+      "budget_ms": null,
+      "evidence": {
+        "ok": true,
+        "tick": {
+          "engine": {
+            "running": false,
+            "pid": 6220,
+            "rss_mb": null,
+            "health_ok": false,
+            "warm_ready": false,
+            "embedder_loaded": false,
+            "soft_search_ready": false,
+            "at": 1789510038.573989,
+            "health_error": "listener_absent"
+          },
+          "clients": {
+            "active_clients": 0,
+            "client_ids": [],
+            "desired_mode": "run",
+            "last_client_left_at": null,
+            "last_activity": 1789510025.3539171,
+            "raw_clients": {}
+          },
+          "ctx_home": "C:\\Users\\usman\\.scubiee"
+        },
+        "engine_still_up": false,
+        "kill": {
+          "exclude_bridge": false,
+          "stop_engine_workers": {
+            "ok": true,
+            "killed": [
+              3132,
+              3456
+            ],
+            "skipped": [
+              6220
+            ]
+          },
+          "stop_all": {
+            "stop_watchdog": {
+              "ok": true,
+              "stopped_pid": 24848,
+              "running": false
+            },
+            "stop_daemon": {
+              "ok": true,
+              "running": false,
+              "killed": [],
+              "skipped_pids": [],
+              "sweep": {
+                "ok": true,
+                "killed": [],
+                "remaining_pids": [],
+                "still_healthy": false,
+                "port": 8765
+              },
+              "stop_reason": "user"
+            },
+            "stop_uv_tool_processes": {
+              "root": "C:\\Users\\usman\\AppData\\Roaming\\uv\\tools\\scubiee",
+              "killed": [],
+              "failed": [],
+              "skipped": [
+                14276,
+                16232,
+                17848,
+                26136
+              ],
+              "remaining": [],
+              "ok": true
+            },
+            "extra_killed": [],
+            "extra_failed": [],
+            "remaining": [],
+            "remaining_pids": [],
+            "ok": true,
+            "self_pid": 17848
+          },
+          "stop_uv_tool": {
+            "root": "C:\\Users\\usman\\AppData\\Roaming\\uv\\tools\\scubiee",
+            "killed": [],
+            "failed": [],
+            "skipped": [
+              14276,
+              16232,
+              17848,
+              26136
+            ],
+            "remaining": [],
+            "ok": true
+          },
+          "killed_rounds": [
+            []
+          ],
+          "skipped_bridge_pids": [],
+          "remaining": [],
+          "remaining_pids": [],
+          "ok": true,
+          "self_pid": 17848
+        }
+      }
+    },
+    {
+      "name": "host_start",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 6917.3,
+      "budget_ms": null,
+      "evidence": {
+        "ok": true,
+        "pid": 20616,
+        "server": {
+          "name": "scubiee",
+          "version": "0.3.95"
+        }
+      }
+    },
+    {
+      "name": "auto_warm",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 6237.1,
+      "budget_ms": 30000.0,
+      "evidence": {
+        "ok": true,
+        "warm": true,
+        "clients": 1,
+        "tick": {
+          "engine": {
+            "running": true,
+            "pid": 6056,
+            "rss_mb": 384.7,
+            "health_ok": true,
+            "warm_ready": true,
+            "embedder_loaded": false,
+            "soft_search_ready": true,
+            "at": 1789510051.8851514,
+            "embed_prewarm_running": false,
+            "chunks": 7038
+          },
+          "clients": {
+            "active_clients": 1,
+            "client_ids": [
+              "mcp:cursor@bridge-23468"
+            ],
+            "desired_mode": "run",
+            "last_client_left_at": null,
+            "last_activity": 1789510051.581083,
+            "raw_clients": {
+              "mcp:cursor@bridge-23468": {
+                "client_id": "mcp:cursor@bridge-23468",
+                "host": "cursor",
+                "kind": "bridge",
+                "last_seen_at": 1789510041.7325711,
+                "pid": 23468,
+                "registered_at": 1789510041.7325711
+              }
+            }
+          },
+          "ctx_home": "C:\\Users\\usman\\.scubiee"
+        },
+        "elapsed_from_host_s": 6.24,
+        "soft_first_from_host_s": 5.16,
+        "soft_settle_s": 1.08,
+        "maps_before_soft": 0
+      }
+    },
+    {
+      "name": "settle",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 26796.5,
+      "budget_ms": 80000.0,
+      "evidence": {
+        "ok": true,
+        "code": null,
+        "waited_from_host_s": 33.03,
+        "settle_s": 30.0,
+        "soft_first_from_host_s": 5.16,
+        "soft_search_ready": true,
+        "embedder_loaded": false,
+        "prewarm_kicked": true,
+        "tick": {
+          "engine": {
+            "running": true,
+            "pid": 6056,
+            "rss_mb": 699.2,
+            "health_ok": true,
+            "warm_ready": true,
+            "embedder_loaded": false,
+            "soft_search_ready": true,
+            "at": 1789510076.2264216,
+            "health_error": "Scubiee unreachable at http://127.0.0.1:8765: timed out",
+            "soft_sticky": true,
+            "chunks": 7038
+          },
+          "clients": {
+            "active_clients": 2,
+            "client_ids": [
+              "mcp:cursor@bridge-23468",
+              "mcp:cursor@proc-14868"
+            ],
+            "desired_mode": "run",
+            "last_client_left_at": null,
+            "last_activity": 1789510078.7573235,
+            "raw_clients": {
+              "mcp:cursor@bridge-23468": {
+                "client_id": "mcp:cursor@bridge-23468",
+                "host": "cursor",
+                "kind": "bridge",
+                "last_seen_at": 1789510041.7325711,
+                "pid": 23468,
+                "registered_at": 1789510041.7325711
+              },
+              "mcp:cursor@proc-14868": {
+                "client_id": "mcp:cursor@proc-14868",
+                "host": "cursor",
+                "kind": "mcp",
+                "last_seen_at": 1789510078.7187567,
+                "pid": 14868,
+                "registered_at": 1789510052.772117
+              }
+            }
+          },
+          "ctx_home": "C:\\Users\\usman\\.scubiee"
+        }
+      }
+    },
+    {
+      "name": "settle_join_embedder",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 52323.8,
+      "budget_ms": 120000.0,
+      "evidence": {
+        "ok": true,
+        "code": null,
+        "embedder_loaded": true,
+        "join_map_ms": 2790.4,
+        "map_ok": true,
+        "health_proxy_ok": true,
+        "tick": {
+          "engine": {
+            "running": true,
+            "pid": 6056,
+            "rss_mb": 694.8,
+            "health_ok": true,
+            "warm_ready": true,
+            "embedder_loaded": false,
+            "soft_search_ready": true,
+            "at": 1789510128.5643327,
+            "health_error": "Scubiee unreachable at http://127.0.0.1:8765: timed out",
+            "soft_sticky": true,
+            "chunks": 7038
+          },
+          "clients": {
+            "active_clients": 2,
+            "client_ids": [
+              "mcp:cursor@bridge-23468",
+              "mcp:cursor@proc-14868"
+            ],
+            "desired_mode": "run",
+            "last_client_left_at": null,
+            "last_activity": 1789510128.2295737,
+            "raw_clients": {
+              "mcp:cursor@bridge-23468": {
+                "client_id": "mcp:cursor@bridge-23468",
+                "host": "cursor",
+                "kind": "bridge",
+                "last_seen_at": 1789510041.7325711,
+                "pid": 23468,
+                "registered_at": 1789510041.7325711
+              },
+              "mcp:cursor@proc-14868": {
+                "client_id": "mcp:cursor@proc-14868",
+                "host": "cursor",
+                "kind": "mcp",
+                "last_seen_at": 1789510126.7118053,
+                "pid": 14868,
+                "registered_at": 1789510052.772117
+              }
+            }
+          },
+          "ctx_home": "C:\\Users\\usman\\.scubiee"
+        }
+      }
+    },
+    {
+      "name": "map_first",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 129.6,
+      "budget_ms": 1000.0,
+      "evidence": {
+        "ok": true,
+        "code": null,
+        "elapsed_ms": 129.6,
+        "steady_sla_ok": true,
+        "true_first_map": true,
+        "settle_s": 30.0,
+        "soft_first_from_host_s": 5.16,
+        "top": {
+          "file": "packages/pipeline/lifecycle_runtime.py",
+          "symbol": "enforce_mcp_warm_contract",
+          "loc": "packages/pipeline/lifecycle_runtime.py:850-886",
+          "score": 24.5744,
+          "kind": "function"
+        },
+        "data_ok": true,
+        "error": null,
+        "raw_keys": [
+          "_elapsed_ms",
+          "cards",
+          "elapsed_ms",
+          "g",
+          "next",
+          "ok",
+          "session_id",
+          "suggested_seed",
+          "suggested_seeds",
+          "tool"
+        ]
+      }
+    },
+    {
+      "name": "pack_first",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 53.5,
+      "budget_ms": 1000.0,
+      "evidence": {
+        "ok": true,
+        "code": null,
+        "elapsed_ms": 53.5,
+        "heatmap_n": 9,
+        "data_ok": true
+      }
+    },
+    {
+      "name": "expand_first",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 651.5,
+      "budget_ms": 20000,
+      "evidence": {
+        "ok": true,
+        "code": null,
+        "elapsed_ms": 646.5,
+        "hydrate_ms": 583.7,
+        "hydrate_source": "bundle_stale",
+        "timings": {
+          "struct_ms": 0.0,
+          "tracer_ms": 0.0,
+          "tracer_used": false
+        },
+        "bridges_before": 1,
+        "bridges_after": 1,
+        "delta_n": 0,
+        "error": null,
+        "data_ok": true
+      }
+    },
+    {
+      "name": "idle_hold",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 0.0,
+      "budget_ms": null,
+      "evidence": {
+        "ok": true,
+        "skipped": true
+      }
+    }
+  ],
+  "errors": [],
+  "idle_s": 0,
+  "elapsed_ms": 105169.8
+}

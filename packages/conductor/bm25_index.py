@@ -82,19 +82,95 @@ class BM25Index:
             )
             for t in buckets
         }
+        self._dead_idx = None
+        self._publish_snapshot()
+
+    def _publish_snapshot(self) -> None:
+        # One attribute swap so a concurrent score_all never mixes a new postings
+        # table (ids past the old N) with an old length-norm array.
+        self._snap = (self._postings, self._denom, self.idf, getattr(self, "_dead_idx", None))
+
+    def _current(self) -> tuple:
+        snap = getattr(self, "_snap", None)
+        if snap is None:  # pickled by an older build
+            if not hasattr(self, "_postings"):
+                self._rebuild_accel()
+            else:
+                self._publish_snapshot()
+            snap = self._snap
+        return snap
+
+    def append_docs(self, texts: list[str]) -> int:
+        """Add docs at positions N.. without a full rebuild (hot publish).
+
+        Postings, lengths and avgdl are exact. IDF is refreshed for the new
+        docs' terms; other terms keep weights computed for the previous N until
+        the next full rebuild (N moves by a handful of chunks per save).
+        Returns the new N.
+        """
+        if not texts:
+            return self.N
+        postings, denom, idf, dead = self._current()
+        start = int(denom.shape[0])
+        new_docs = [tokenize(t) for t in texts]
+        new_tf = [Counter(d) for d in new_docs]
+        new_len = [len(d) for d in new_docs]
+        n_new = start + len(new_docs)
+        doc_len = list(self.doc_len[:start]) + new_len
+        avgdl = sum(doc_len) / max(n_new, 1)
+        new_denom = np.asarray(
+            self.k1 * (1.0 - self.b + self.b * np.asarray(doc_len, dtype=np.float64) / max(avgdl, 1e-9)),
+            dtype=np.float64,
+        )
+        buckets: dict[str, list[int]] = defaultdict(list)
+        freqs: dict[str, list[float]] = defaultdict(list)
+        for j, tf in enumerate(new_tf):
+            for t, f in tf.items():
+                buckets[t].append(start + j)
+                freqs[t].append(float(f))
+        new_postings = dict(postings)
+        new_idf = dict(idf)
+        for t, ids in buckets.items():
+            old = postings.get(t)
+            add_ids = np.asarray(ids, dtype=np.int32)
+            add_f = np.asarray(freqs[t], dtype=np.float64)
+            if old is None:
+                new_postings[t] = (add_ids, add_f)
+            else:
+                new_postings[t] = (np.concatenate([old[0], add_ids]), np.concatenate([old[1], add_f]))
+            df = int(new_postings[t][0].size)
+            new_idf[t] = math.log(1.0 + (n_new - df + 0.5) / (df + 0.5))
+        self.docs.extend(new_docs)
+        self._tf.extend(new_tf)
+        self.doc_len = doc_len
+        self.avgdl = avgdl
+        self.idf = new_idf
+        self._postings = new_postings
+        self._denom = new_denom
+        self.N = n_new
+        self._dead_idx = dead
+        self._publish_snapshot()
+        return n_new
+
+    def mark_dead(self, positions: list[int]) -> None:
+        """Tombstoned chunks (edited away / deleted) score 0 until the next rebuild."""
+        pos = [int(p) for p in positions if 0 <= int(p) < self.N]
+        if not pos:
+            return
+        postings, denom, idf, dead = self._current()
+        merged = set(int(i) for i in (dead.tolist() if dead is not None else [])) | set(pos)
+        self._dead_idx = np.asarray(sorted(merged), dtype=np.int64)
+        self._publish_snapshot()
 
     def score_all(self, query: str) -> np.ndarray:
         """Return BM25 score for every doc (float64 length N)."""
-        if not hasattr(self, "_postings"):
-            self._rebuild_accel()
+        postings, denom, idf_map, dead = self._current()
         q_terms = tokenize(query)
-        scores = np.zeros(self.N, dtype=np.float64)
-        if not q_terms or self.N == 0:
+        n = int(denom.shape[0])
+        scores = np.zeros(n, dtype=np.float64)
+        if not q_terms or n == 0:
             return scores
         k1p1 = self.k1 + 1.0
-        postings = self._postings
-        denom = self._denom
-        idf_map = self.idf
         for t in q_terms:
             packed = postings.get(t)
             if packed is None:
@@ -104,6 +180,8 @@ class BM25Index:
             if idf == 0.0:
                 continue
             scores[docs] += idf * (f * k1p1) / (f + denom[docs])
+        if dead is not None and dead.size:
+            scores[dead] = 0.0
         return scores
 
     def search(self, query: str, top_k: int = 50) -> list[tuple[int, float]]:

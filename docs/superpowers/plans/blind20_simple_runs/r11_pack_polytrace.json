@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "engine": "polytrace",
+  "policy": "strict",
+  "elapsed_s": 0.001,
+  "n_pack": 1,
+  "pack": [
+    {
+      "file": "packages/pipeline/indexer.py",
+      "symbol": "_schema_version",
+      "score": 1.0,
+      "loc": "packages/pipeline/indexer.py:29-33",
+      "id": "packages/pipeline/indexer.py::_schema_version"
+    }
+  ],
+  "error": null
+}

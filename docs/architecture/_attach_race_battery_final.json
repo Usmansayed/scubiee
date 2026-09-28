@@ -1,0 +1,171 @@
+{
+  "ok": true,
+  "sessions": [
+    {
+      "label": "A",
+      "init_ms": 9707.9,
+      "map_ok": true,
+      "first_pack_ok": true,
+      "results": [
+        {
+          "tool": "gate",
+          "ms": 1603.0,
+          "index_skip": "index_skip: builtins+scubieeignore(n=7)",
+          "index_write_hint": true
+        },
+        {
+          "tool": "wait_warm",
+          "ms": 11434.5,
+          "polls": 2,
+          "done": true,
+          "stage": "ready"
+        },
+        {
+          "tool": "map",
+          "ms": 2336.8,
+          "ok": true,
+          "n": 8,
+          "dense": true,
+          "err": null,
+          "seed": "packages/pipeline/context_trace.py::hydrate_ast_bundle"
+        },
+        {
+          "tool": "pack_0",
+          "ms": 231.8,
+          "ok": true,
+          "n_heat": 16,
+          "thin": false,
+          "err": null,
+          "should_retry": null,
+          "retry_after_s": null,
+          "ast_wait_ms": null
+        },
+        {
+          "tool": "pack_1",
+          "ms": 112.1,
+          "ok": true,
+          "n_heat": 16,
+          "thin": false,
+          "err": null,
+          "should_retry": null,
+          "retry_after_s": null,
+          "ast_wait_ms": null
+        },
+        {
+          "tool": "pack_2",
+          "ms": 87.8,
+          "ok": true,
+          "n_heat": 16,
+          "thin": false,
+          "err": null,
+          "should_retry": null,
+          "retry_after_s": null,
+          "ast_wait_ms": null
+        },
+        {
+          "tool": "status",
+          "ms": 141.5,
+          "agent_ready": "yes",
+          "pack_ready": true,
+          "ast_hydrated": true,
+          "embedder_loaded": true,
+          "warm_elapsed_ms": 17490.7,
+          "warm_wait": {
+            "done": true,
+            "stage": "ready",
+            "wait_for": "agent_ready=yes AND embedder_loaded=true AND pack_ready=true",
+            "soft_ready": true,
+            "dense_ready": true,
+            "pack_ready": true,
+            "elapsed_s": 17.5,
+            "retry_after_s": 0,
+            "note": "Warm. map/pack_context run at full quality."
+          }
+        }
+      ]
+    },
+    {
+      "label": "B",
+      "init_ms": 8509.2,
+      "map_ok": true,
+      "first_pack_ok": true,
+      "results": [
+        {
+          "tool": "gate",
+          "ms": 4129.8,
+          "index_skip": "index_skip: builtins+scubieeignore(n=7)",
+          "index_write_hint": true
+        },
+        {
+          "tool": "wait_warm",
+          "ms": 10280.8,
+          "polls": 2,
+          "done": true,
+          "stage": "ready"
+        },
+        {
+          "tool": "map",
+          "ms": 3292.5,
+          "ok": true,
+          "n": 8,
+          "dense": true,
+          "err": null,
+          "seed": "packages/pipeline/context_trace.py::hydrate_ast_bundle"
+        },
+        {
+          "tool": "pack_0",
+          "ms": 204.1,
+          "ok": true,
+          "n_heat": 16,
+          "thin": false,
+          "err": null,
+          "should_retry": null,
+          "retry_after_s": null,
+          "ast_wait_ms": null
+        },
+        {
+          "tool": "pack_1",
+          "ms": 200.4,
+          "ok": true,
+          "n_heat": 16,
+          "thin": false,
+          "err": null,
+          "should_retry": null,
+          "retry_after_s": null,
+          "ast_wait_ms": null
+        },
+        {
+          "tool": "pack_2",
+          "ms": 106.3,
+          "ok": true,
+          "n_heat": 16,
+          "thin": false,
+          "err": null,
+          "should_retry": null,
+          "retry_after_s": null,
+          "ast_wait_ms": null
+        },
+        {
+          "tool": "status",
+          "ms": 155.2,
+          "agent_ready": "yes",
+          "pack_ready": true,
+          "ast_hydrated": true,
+          "embedder_loaded": true,
+          "warm_elapsed_ms": 19957.3,
+          "warm_wait": {
+            "done": true,
+            "stage": "ready",
+            "wait_for": "agent_ready=yes AND embedder_loaded=true AND pack_ready=true",
+            "soft_ready": true,
+            "dense_ready": true,
+            "pack_ready": true,
+            "elapsed_s": 20.0,
+            "retry_after_s": 0,
+            "note": "Warm. map/pack_context run at full quality."
+          }
+        }
+      ]
+    }
+  ]
+}

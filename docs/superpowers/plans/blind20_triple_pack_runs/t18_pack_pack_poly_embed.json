@@ -1,0 +1,41 @@
+{
+  "ok": true,
+  "tool": "pack_poly_embed",
+  "engine": "poly_embed",
+  "elapsed_s": 0.132,
+  "n_pack": 1,
+  "seed": {
+    "file": "packages/pipeline/wipe.py",
+    "symbol": "_cursor_rule_paths",
+    "id": "packages/pipeline/wipe.py::_cursor_rule_paths"
+  },
+  "pack": [
+    {
+      "file": "packages/pipeline/wipe.py",
+      "symbol": "_cursor_rule_paths",
+      "score": 1.0,
+      "loc": "packages/pipeline/wipe.py:29-31",
+      "id": "packages/pipeline/wipe.py::_cursor_rule_paths",
+      "chars": 145
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/pipeline/wipe.py::_cursor_rule_paths",
+      "loc": "packages/pipeline/wipe.py:29-31",
+      "edge": "seed",
+      "score": 1.0
+    }
+  ],
+  "error": null,
+  "seed_chunks": [
+    {
+      "file": "packages/pipeline/wipe.py",
+      "symbol": "_cursor_rule_paths",
+      "loc": "packages/pipeline/wipe.py:29-31",
+      "score": 1.0,
+      "kind": "function"
+    }
+  ],
+  "pack_query": "cmd_wipe wipe uninstall remove MCP rules store halt confirm scubiee state cleanup | seeds: packages/pipeline/wipe.py::_cursor_rule_paths"
+}

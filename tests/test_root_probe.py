@@ -91,6 +91,31 @@ def test_root_probe_detects_new_file_on_fast_index(tmp_path: Path):
     assert "pkg/new_mod.py" in r.added
 
 
+def test_dir_watch_finds_new_files_without_a_repo_walk(tmp_path: Path):
+    from pipeline.root_probe import DirWatch
+
+    store = _seed_store(tmp_path, {"pkg/a.py": "x=1\n"})
+    store.save_meta({"fast": False, "git_head": None})
+    (tmp_path / "old").mkdir()
+    (tmp_path / "old" / "stale.py").write_text("S=1\n", encoding="utf-8")
+    watch = DirWatch()
+    first = root_probe(tmp_path, base_dir=store.base, discover_newcomers=False, dir_watch=watch)
+    assert first.clean
+
+    time.sleep(0.05)
+    (tmp_path / "pkg" / "new_mod.py").write_text("NEW=1\n", encoding="utf-8")
+    (tmp_path / "pkg" / "sub").mkdir()
+    (tmp_path / "pkg" / "sub" / "deep.py").write_text("D=1\n", encoding="utf-8")
+    (tmp_path / "pkg" / "notes.txt").write_text("no\n", encoding="utf-8")
+    (tmp_path / "node_modules" / "x").mkdir(parents=True)
+    (tmp_path / "node_modules" / "x" / "i.js").write_text("1\n", encoding="utf-8")
+    r = root_probe(tmp_path, base_dir=store.base, discover_newcomers=False, dir_watch=watch)
+    assert set(r.added) == {"pkg/new_mod.py", "pkg/sub/deep.py"}
+
+    again = root_probe(tmp_path, base_dir=store.base, discover_newcomers=False, dir_watch=watch)
+    assert not again.added
+
+
 def test_root_probe_detects_new_file_on_full_index(tmp_path: Path):
     store = _seed_store(tmp_path, {"pkg/a.py": "x=1\n"})
     store.save_meta({"fast": False, "git_head": None})
@@ -167,7 +192,18 @@ def test_locate_streak_holds_publish_then_promotes(monkeypatch, tmp_path: Path):
         on_refresh=lambda payload: published.append(payload),
     )
     monkeypatch.setattr(loop, "_clients_active", lambda *a, **k: False)
-    monkeypatch.setattr(loop, "_sync_paths", lambda paths, **_: {"refreshed": True})
+    # Hold applies only to bulk upserts during a locate streak (hot small
+    # saves publish immediately for the ≤5s save→map SLA).
+    bulk = loop.bulk_reindex_threshold + 1
+    monkeypatch.setattr(
+        loop,
+        "_sync_paths",
+        lambda paths, **_: {
+            "refreshed": True,
+            "chunks_upserted": bulk,
+            "chunks_removed": 0,
+        },
+    )
     now = time.monotonic()
 
     loop.mark_dirty(["pkg/a.py"], reason="write")

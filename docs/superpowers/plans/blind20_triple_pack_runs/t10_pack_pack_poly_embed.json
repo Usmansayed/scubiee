@@ -1,0 +1,69 @@
+{
+  "ok": true,
+  "tool": "pack_poly_embed",
+  "engine": "poly_embed",
+  "elapsed_s": 0.17,
+  "n_pack": 2,
+  "seed": {
+    "file": "packages/pipeline/session_store.py",
+    "symbol": "_store_path",
+    "id": "packages/pipeline/session_store.py::_store_path"
+  },
+  "pack": [
+    {
+      "file": "packages/pipeline/session_store.py",
+      "symbol": "_store_path",
+      "score": 1.0,
+      "loc": "packages/pipeline/session_store.py:17-29",
+      "id": "packages/pipeline/session_store.py::_store_path",
+      "chars": 535
+    },
+    {
+      "file": "packages/pipeline/session_store.py",
+      "symbol": "effective_session_id",
+      "score": 0.735,
+      "loc": "packages/pipeline/session_store.py:74-77",
+      "id": "packages/pipeline/session_store.py::effective_session_id",
+      "chars": 171
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/pipeline/session_store.py::_store_path",
+      "loc": "packages/pipeline/session_store.py:17-29",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/session_store.py::effective_session_id",
+      "loc": "packages/pipeline/session_store.py:74-77",
+      "edge": "seed",
+      "score": 0.735
+    }
+  ],
+  "error": null,
+  "seed_chunks": [
+    {
+      "file": "packages/pipeline/session_store.py",
+      "symbol": "_store_path",
+      "loc": "packages/pipeline/session_store.py:17-29",
+      "score": 1.0,
+      "kind": "function"
+    },
+    {
+      "file": "packages/pipeline/project_id.py",
+      "symbol": "repo_runtime_dir",
+      "loc": "packages/pipeline/project_id.py:121-142",
+      "score": 1.0,
+      "kind": "function"
+    },
+    {
+      "file": "packages/pipeline/session_isolation.py",
+      "symbol": "effective_session_id",
+      "loc": "packages/pipeline/session_isolation.py:368-375",
+      "score": 1.0,
+      "kind": "function"
+    }
+  ],
+  "pack_query": "mcp_response_lean slim pack heatmap cold cards token savings CTX_TOKEN_MODE | seeds: packages/pipeline/session_store.py::_store_path packages/pipeline/project_id.py::repo_runtime_dir packages/pipeline/session_isolation.py::effective_session_id packages/pipeline/session_isolation.py::_session_isolate_enabled packages/pipeline/session_isolation.py::default_process_session_id"
+}

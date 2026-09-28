@@ -1,0 +1,151 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 19.206,
+  "stdout_chars": 5361,
+  "stderr_tail": "<unknown>:6: SyntaxWarning: invalid escape sequence '\\.'\n<unknown>:6: SyntaxWarning: invalid escape sequence '\\.'\n<unknown>:6: SyntaxWarning: invalid escape sequence '\\.'\n<unknown>:6: SyntaxWarning: invalid escape sequence '\\.'",
+  "json": {
+    "ok": true,
+    "tool": "pack",
+    "seed": {
+      "id": "packages/pipeline/session_store.py::_store_path",
+      "file": "packages/pipeline/session_store.py",
+      "symbol": "_store_path"
+    },
+    "chain": [
+      {
+        "id": "packages/pipeline/session_store.py::_store_path",
+        "loc": "packages/pipeline/session_store.py:17-29",
+        "edge": "seed",
+        "score": 1.0
+      },
+      {
+        "id": "packages/pipeline/project_id.py::repo_runtime_dir",
+        "loc": "packages/pipeline/project_id.py:121-142",
+        "edge": "calls",
+        "score": 1.0
+      },
+      {
+        "id": "packages/pipeline/session_isolation.py::effective_session_id",
+        "loc": "packages/pipeline/session_isolation.py:368-375",
+        "edge": "calls",
+        "score": 1.0
+      },
+      {
+        "id": "packages/pipeline/session_isolation.py::_session_isolate_enabled",
+        "loc": "packages/pipeline/session_isolation.py:382-387",
+        "edge": "calls",
+        "score": 1.0
+      },
+      {
+        "id": "packages/pipeline/session_isolation.py::default_process_session_id",
+        "loc": "packages/pipeline/session_isolation.py:326-331",
+        "edge": "calls",
+        "score": 1.0
+      },
+      {
+        "id": "packages/pipeline/session_isolation.py::detect_mcp_host",
+        "loc": "packages/pipeline/session_isolation.py:180-188",
+        "edge": "calls",
+        "score": 1.0
+      },
+      {
+        "id": "packages/pipeline/session_isolation.py::sanitize_session_id",
+        "loc": "packages/pipeline/session_isolation.py:174-177",
+        "edge": "calls",
+        "score": 1.0
+      },
+      {
+        "id": "packages/pipeline/session_store.py::effective_session_id",
+        "loc": "packages/pipeline/session_store.py:74-77",
+        "edge": "calls",
+        "score": 0.99
+      }
+    ],
+    "pack": [
+      {
+        "id": "packages/pipeline/session_store.py::_store_path",
+        "loc": "packages/pipeline/session_store.py:17-29",
+        "text": "def _store_path(repo: Path, session_id: str | None = None) -> Path:\n    from pipeline.session_isolation import effective_session_id, session_data_dir\n\n    repo_p = Path(repo).resolve()\n    sid = effective_session_id(session_id)\n    if sid:\n        return session_data_dir(repo_p, sid) / \"session_store.json\"\n    from pipeline.project_id import repo_runtime_dir\n\n    base = repo_runtime_dir(repo_p)\n    base.mkdir(parents=True, exist_ok=True)\n    name = os.environ.get(\"CTX_SESSION_STORE\") or \"session_store.json\"\n    return base / name"
+      },
+      {
+        "id": "packages/pipeline/project_id.py::repo_runtime_dir",
+        "loc": "packages/pipeline/project_id.py:121-142",
+        "text": "def repo_runtime_dir(root: Path) -> Path:\n    \"\"\"Writable per-repo runtime dir (enrollment vs MCP scratch).\n\n    Enrolled checkouts use ``<repo>/.scubiee``. Unenrolled repos (including\n    immediately after ``wipe``) must not recreate ``.scubiee`` \u2014 MCP session\n    state goes under ``~/.scubiee/scratch/<key>/`` or a temp dir when home is\n    gone.\n    \"\"\"\n    root = root.resolve()\n    try:\n        from pipeline.mcp_locate import _is_enrolled\n\n        if _is_enrolled(root):\n            return id_dir_path(root)\n    except Exception:  # noqa: BLE001\n        pass\n    home = context_engine_home()\n    if home.is_dir():\n        return home / \"scratch\" / legacy_repo_key(root)\n    import tempfile\n\n    return Path(tempfile.gettempdir()) / \"scubiee-scratch\" / legacy_repo_key(root)"
+      },
+      {
+        "id": "packages/pipeline/session_isolation.py::effective_session_id",
+        "loc": "packages/pipeline/session_isolation.py:368-375",
+        "text": "def effective_session_id(explicit: str | None = None) -> str | None:\n    info = resolve_session(explicit)\n    sid = str(info.get(\"session_id\") or \"\").strip()\n    if sid and sid != \"default\":\n        return sid\n    if _session_isolate_enabled():\n        return default_process_session_id()\n    return None if sid == \"default\" else sid"
+      },
+      {
+        "id": "packages/pipeline/session_isolation.py::_session_isolate_enabled",
+        "loc": "packages/pipeline/session_isolation.py:382-387",
+        "text": "def _session_isolate_enabled() -> bool:\n    return (os.environ.get(\"CTX_MCP_SESSION_ISOLATE\") or \"\").strip().lower() in {\n        \"1\",\n        \"true\",\n        \"yes\",\n    }"
+      }
+    ],
+    "cold": [
+      {
+        "id": "packages/pipeline/session_isolation.py::default_process_session_id",
+        "loc": "packages/pipeline/session_isolation.py:326-331",
+        "score": 1.0
+      },
+      {
+        "id": "packages/pipeline/session_isolation.py::detect_mcp_host",
+        "loc": "packages/pipeline/session_isolation.py:180-188",
+        "score": 1.0
+      },
+      {
+        "id": "packages/pipeline/session_isolation.py::sanitize_session_id",
+        "loc": "packages/pipeline/session_isolation.py:174-177",
+        "score": 1.0
+      },
+      {
+        "id": "packages/pipeline/session_store.py::effective_session_id",
+        "loc": "packages/pipeline/session_store.py:74-77",
+        "score": 0.99
+      },
+      {
+        "id": "packages/pipeline/session_isolation.py::_make_session_info",
+        "loc": "packages/pipeline/session_isolation.py:206-225",
+        "score": 0.9767
+      },
+      {
+        "id": "packages/pipeline/session_isolation.py::resolve_session",
+        "loc": "packages/pipeline/session_isolation.py:334-358",
+        "score": 0.9554
+      },
+      {
+        "id": "packages/pipeline/session_isolation.py::session_data_dir",
+        "loc": "packages/pipeline/session_isolation.py:390-396",
+        "score": 0.9405
+      },
+      {
+        "id": "packages/pipeline/session_isolation.py::_host_env_signals",
+        "loc": "packages/pipeline/session_isolation.py:61-65",
+        "score": 0.8571
+      },
+      {
+        "id": "packages/pipeline/project_id.py::context_engine_home",
+        "loc": "packages/pipeline/project_id.py:108-113",
+        "score": 0.8168
+      },
+      {
+        "id": "packages/pipeline/project_id.py::legacy_repo_key",
+        "loc": "packages/pipeline/project_id.py:543-544",
+        "score": 0.8168
+      },
+      {
+        "id": "packages/pipeline/project_id.py::id_dir_path",
+        "loc": "packages/pipeline/project_id.py:116-118",
+        "score": 0.8168
+      },
+      {
+        "id": "packages/pipeline/session_isolation.py::detect_host_chat_session_from_env",
+        "loc": "packages/pipeline/session_isolation.py:228-249",
+        "score": 0.8007
+      }
+    ]
+  },
+  "stdout_preview": ""
+}

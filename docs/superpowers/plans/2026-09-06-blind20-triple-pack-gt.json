@@ -1,0 +1,149 @@
+{
+  "protocol": "blind20_triple_pack_gt_v1",
+  "authored_after_freeze": true,
+  "note": "Must-files authored AFTER phase1 freeze via independent code inspection.",
+  "cases": [
+    {
+      "id": "t01",
+      "must_files": [
+        "packages/pipeline/artifact_guard.py",
+        "packages/pipeline/project_id.py",
+        "packages/pipeline/engine.py",
+        "packages/pipeline/ce_service.py"
+      ],
+      "must_symbols": ["publish_manifest", "index_is_usable", "WarmSearchEngine", "publish_engine"]
+    },
+    {
+      "id": "t02",
+      "must_files": ["packages/conductor/bm25_index.py"],
+      "must_symbols": ["BM25Index", "tokenize", "build"]
+    },
+    {
+      "id": "t03",
+      "must_files": [
+        "packages/pipeline/index_manager.py",
+        "packages/pipeline/indexer.py",
+        "packages/pipeline/chunk_merkle.py"
+      ],
+      "must_symbols": []
+    },
+    {
+      "id": "t04",
+      "must_files": [
+        "packages/pipeline/project_id.py",
+        "packages/pipeline/repo_lifecycle.py",
+        "packages/pipeline/rules_installer.py"
+      ],
+      "must_symbols": ["write_project_gate_rules"]
+    },
+    {
+      "id": "t05",
+      "must_files": [
+        "packages/pipeline/watchdog.py",
+        "packages/pipeline/engine.py"
+      ],
+      "must_symbols": ["watchdog_loop", "WarmSearchEngine"]
+    },
+    {
+      "id": "t06",
+      "must_files": [
+        "packages/pipeline/mcp_bridge.py",
+        "packages/pipeline/mcp_bridge_session.py"
+      ],
+      "must_symbols": []
+    },
+    {
+      "id": "t07",
+      "must_files": [
+        "packages/pipeline/__main__.py",
+        "packages/pipeline/locate_cli.py"
+      ],
+      "must_symbols": ["cmd_map", "cmd_pack"]
+    },
+    {
+      "id": "t08",
+      "must_files": ["packages/pipeline/context_trace.py", "packages/pipeline/mcp_locate.py"],
+      "must_symbols": ["run_expand_context"]
+    },
+    {
+      "id": "t09",
+      "must_files": ["packages/pipeline/work_session.py"],
+      "must_symbols": ["touch"]
+    },
+    {
+      "id": "t10",
+      "must_files": ["packages/pipeline/mcp_response_lean.py", "packages/pipeline/mcp_locate.py"],
+      "must_symbols": []
+    },
+    {
+      "id": "t11",
+      "must_files": [
+        "packages/pipeline/mcp_permissions.py",
+        "packages/pipeline/rules_installer.py"
+      ],
+      "must_symbols": ["apply_permissions_to_repo_tool_surface"]
+    },
+    {
+      "id": "t12",
+      "must_files": ["packages/pipeline/rules_installer.py"],
+      "must_symbols": ["write_project_gate_rules"]
+    },
+    {
+      "id": "t13",
+      "must_files": [
+        "packages/pipeline/sync_loop.py",
+        "packages/pipeline/freshness.py"
+      ],
+      "must_symbols": []
+    },
+    {
+      "id": "t14",
+      "must_files": [
+        "packages/pipeline/memory_governor.py",
+        "packages/pipeline/embedder.py",
+        "packages/pipeline/accel.py"
+      ],
+      "must_symbols": []
+    },
+    {
+      "id": "t15",
+      "must_files": ["packages/pipeline/capability.py"],
+      "must_symbols": ["CapabilityCard"]
+    },
+    {
+      "id": "t16",
+      "must_files": [
+        "packages/conductor/graphify_retriever.py",
+        "packages/trace_lab/graphify_layer.py",
+        "packages/conductor/conductor.py"
+      ],
+      "must_symbols": ["GraphifyChunkRetriever", "build_graphify_graph"]
+    },
+    {
+      "id": "t17",
+      "must_files": ["packages/pipeline/repo_lifecycle.py"],
+      "must_symbols": ["never_index_repo"]
+    },
+    {
+      "id": "t18",
+      "must_files": ["packages/pipeline/wipe.py", "packages/pipeline/__main__.py"],
+      "must_symbols": ["cmd_wipe"]
+    },
+    {
+      "id": "t19",
+      "must_files": [
+        "packages/pipeline/dashboard_server.py",
+        "packages/pipeline/__main__.py"
+      ],
+      "must_symbols": ["cmd_dashboard"]
+    },
+    {
+      "id": "t20",
+      "must_files": [
+        "packages/conductor/architectures.py",
+        "packages/pipeline/indexer.py"
+      ],
+      "must_symbols": ["rerank_score"]
+    }
+  ]
+}

@@ -1,0 +1,1065 @@
+{
+  "n_cases": 10,
+  "board": "verify_prod.json",
+  "definition": "correct <=> all must hot AND no must_not hot",
+  "summary": {
+    "polytrace": {
+      "correct": 3,
+      "n": 10,
+      "accuracy": 0.3,
+      "mean_f1": 0.7837,
+      "mean_recall_must": 0.9167,
+      "mean_precision_hot": 0.7341,
+      "mean_ndcg": 0.9182,
+      "mean_must_at_5": 0,
+      "mean_must_at_10": 0,
+      "total_inversions": 13,
+      "failed_ids": [
+        "p01",
+        "p02",
+        "p10",
+        "p19",
+        "p20",
+        "p28",
+        "p33"
+      ]
+    },
+    "callgraph_jedi": {
+      "correct": 7,
+      "n": 10,
+      "accuracy": 0.7,
+      "mean_f1": 0.7324,
+      "mean_recall_must": 0.9667,
+      "mean_precision_hot": 0.6159,
+      "mean_ndcg": 0.9441,
+      "mean_must_at_5": 0,
+      "mean_must_at_10": 0,
+      "total_inversions": 0,
+      "failed_ids": [
+        "p02",
+        "p19",
+        "p20"
+      ]
+    },
+    "composite_v1": {
+      "correct": 9,
+      "n": 10,
+      "accuracy": 0.9,
+      "mean_f1": 0.8732,
+      "mean_recall_must": 0.9667,
+      "mean_precision_hot": 0.8351,
+      "mean_ndcg": 0.9629,
+      "mean_must_at_5": 0,
+      "mean_must_at_10": 0,
+      "total_inversions": 0,
+      "failed_ids": [
+        "p19"
+      ]
+    }
+  },
+  "cases": [
+    {
+      "id": "p01",
+      "family": "auth-full-path",
+      "prompt": "I am debugging login auth. Starting from authenticate and JwtService.verify, I need every hop that validates the bearer token / JWT claims and loads the user from the repository into the model \u2014 credential checking and user resolution only. Do not pull billing, mail, or analytics side effects into the heatmap.",
+      "arms": {
+        "polytrace": {
+          "correct": false,
+          "missing_must": [],
+          "forbidden_hot": [
+            "app/utils/logger.py::log"
+          ],
+          "extra_hot": [],
+          "f1": 0.9412,
+          "recall_must": 1.0,
+          "precision_hot": 0.8889,
+          "ndcg": 0.9648,
+          "inversions": 4,
+          "explored_nodes": 9,
+          "hot_count": 9,
+          "failure_report": {
+            "case_id": "p01",
+            "strategy": "polytrace+prod",
+            "explored_nodes": 9,
+            "hot_count": 9,
+            "must_recall": 1.0,
+            "false_negatives": [],
+            "false_positives_forbidden": [
+              {
+                "id": "app/utils/logger.py::log",
+                "symbol": "log",
+                "score": 0.9
+              }
+            ]
+          }
+        },
+        "callgraph_jedi": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/models/user.py::User",
+            "app/oauth/nonce.py::stamp",
+            "app/oauth/refresh.py::refresh",
+            "app/oauth/rotate.py::rotate",
+            "app/repositories/user_repo.py::UserRepository",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService"
+          ],
+          "f1": 0.6957,
+          "recall_must": 1.0,
+          "precision_hot": 0.5333,
+          "ndcg": 0.8936,
+          "inversions": 0,
+          "explored_nodes": 15,
+          "hot_count": 15,
+          "failure_report": {
+            "case_id": "p01",
+            "strategy": "callgraph_jedi+prod",
+            "explored_nodes": 15,
+            "hot_count": 15,
+            "must_recall": 1.0,
+            "false_negatives": [],
+            "false_positives_forbidden": []
+          }
+        },
+        "composite_v1": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "ndcg": 1.0,
+          "inversions": 0,
+          "explored_nodes": 7,
+          "hot_count": 7,
+          "failure_report": {
+            "case_id": "p01",
+            "strategy": "composite_v1+prod",
+            "explored_nodes": 7,
+            "hot_count": 7,
+            "must_recall": 1.0,
+            "false_negatives": [],
+            "false_positives_forbidden": []
+          }
+        }
+      }
+    },
+    {
+      "id": "p02",
+      "family": "auth-no-side-effects",
+      "prompt": "Same auth stack, but I only care about the credential-checking path (bearer extract \u2192 JWT verify \u2192 decode \u2192 user resolve). Explicitly exclude ok-logging and login analytics tracking even if authenticate calls them.",
+      "arms": {
+        "polytrace": {
+          "correct": false,
+          "missing_must": [
+            "app/models/user.py::User.lookup"
+          ],
+          "forbidden_hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/utils/logger.py::log"
+          ],
+          "extra_hot": [],
+          "f1": 0.7692,
+          "recall_must": 0.8333,
+          "precision_hot": 0.7143,
+          "ndcg": 0.8697,
+          "inversions": 2,
+          "explored_nodes": 7,
+          "hot_count": 7,
+          "failure_report": {
+            "case_id": "p02",
+            "strategy": "polytrace+prod",
+            "explored_nodes": 7,
+            "hot_count": 7,
+            "must_recall": 0.8333,
+            "false_negatives": [
+              {
+                "id": "app/models/user.py::User.lookup",
+                "symbol": "User.lookup",
+                "file": "app/models/user.py",
+                "class": "no_slice_mask",
+                "score": null
+              }
+            ],
+            "false_positives_forbidden": [
+              {
+                "id": "app/config/security.py::TOKEN_TTL",
+                "symbol": "TOKEN_TTL",
+                "score": 0.742
+              },
+              {
+                "id": "app/utils/logger.py::log",
+                "symbol": "log",
+                "score": 0.9
+              }
+            ]
+          }
+        },
+        "callgraph_jedi": {
+          "correct": false,
+          "missing_must": [],
+          "forbidden_hot": [
+            "app/config/security.py::TOKEN_TTL"
+          ],
+          "extra_hot": [
+            "app/config/database.py::connect",
+            "app/models/user.py::User",
+            "app/oauth/nonce.py::stamp",
+            "app/oauth/refresh.py::refresh",
+            "app/oauth/rotate.py::rotate",
+            "app/repositories/user_repo.py::UserRepository",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService"
+          ],
+          "f1": 0.5714,
+          "recall_must": 1.0,
+          "precision_hot": 0.4,
+          "ndcg": 0.9348,
+          "inversions": 0,
+          "explored_nodes": 15,
+          "hot_count": 15,
+          "failure_report": {
+            "case_id": "p02",
+            "strategy": "callgraph_jedi+prod",
+            "explored_nodes": 15,
+            "hot_count": 15,
+            "must_recall": 1.0,
+            "false_negatives": [],
+            "false_positives_forbidden": [
+              {
+                "id": "app/config/security.py::TOKEN_TTL",
+                "symbol": "TOKEN_TTL",
+                "score": 0.7833
+              }
+            ]
+          }
+        },
+        "composite_v1": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/config/database.py::connect"
+          ],
+          "f1": 0.9231,
+          "recall_must": 1.0,
+          "precision_hot": 0.8571,
+          "ndcg": 0.9943,
+          "inversions": 0,
+          "explored_nodes": 7,
+          "hot_count": 7,
+          "failure_report": {
+            "case_id": "p02",
+            "strategy": "composite_v1+prod",
+            "explored_nodes": 7,
+            "hot_count": 7,
+            "must_recall": 1.0,
+            "false_negatives": [],
+            "false_positives_forbidden": []
+          }
+        }
+      }
+    },
+    {
+      "id": "p09",
+      "family": "checkout-full",
+      "prompt": "I am implementing checkout. From checkout begin and cart validate, collect the full begin path the agent must read to understand how a checkout starts: validation, pricing quote, inventory reserve, and payment charge wiring. Include the structural callees on that path.",
+      "arms": {
+        "polytrace": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/analytics/tracker.py::track",
+            "app/inventory/warehouse.py::levels",
+            "app/utils/logger.py::log"
+          ],
+          "f1": 0.8966,
+          "recall_must": 1.0,
+          "precision_hot": 0.8125,
+          "ndcg": 0.8929,
+          "inversions": 0,
+          "explored_nodes": 16,
+          "hot_count": 16,
+          "failure_report": {
+            "case_id": "p09",
+            "strategy": "polytrace+prod",
+            "explored_nodes": 16,
+            "hot_count": 16,
+            "must_recall": 1.0,
+            "false_negatives": [],
+            "false_positives_forbidden": []
+          }
+        },
+        "callgraph_jedi": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/config/database.py::connect",
+            "app/inventory/warehouse.py::levels"
+          ],
+          "f1": 0.9286,
+          "recall_must": 1.0,
+          "precision_hot": 0.8667,
+          "ndcg": 0.9308,
+          "inversions": 0,
+          "explored_nodes": 17,
+          "hot_count": 15,
+          "failure_report": {
+            "case_id": "p09",
+            "strategy": "callgraph_jedi+prod",
+            "explored_nodes": 17,
+            "hot_count": 15,
+            "must_recall": 1.0,
+            "false_negatives": [],
+            "false_positives_forbidden": []
+          }
+        },
+        "composite_v1": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/config/database.py::connect",
+            "app/inventory/warehouse.py::levels"
+          ],
+          "f1": 0.9286,
+          "recall_must": 1.0,
+          "precision_hot": 0.8667,
+          "ndcg": 0.9011,
+          "inversions": 0,
+          "explored_nodes": 15,
+          "hot_count": 15,
+          "failure_report": {
+            "case_id": "p09",
+            "strategy": "composite_v1+prod",
+            "explored_nodes": 15,
+            "hot_count": 15,
+            "must_recall": 1.0,
+            "false_negatives": [],
+            "false_positives_forbidden": []
+          }
+        }
+      }
+    },
+    {
+      "id": "p10",
+      "family": "checkout-pricing-only",
+      "prompt": "Focus a pricing-only slice of checkout: from begin and quote, collect quoting and catalog unit pricing needed to price the cart. Skip inventory reservation and payment charge even if begin eventually reaches them.",
+      "arms": {
+        "polytrace": {
+          "correct": false,
+          "missing_must": [],
+          "forbidden_hot": [
+            "app/billing/invoices.py::charge",
+            "app/notify/mailer.py::send",
+            "app/shipping/schedule.py::schedule"
+          ],
+          "extra_hot": [
+            "app/analytics/tracker.py::track",
+            "app/audit/record.py::record",
+            "app/cart/validate.py::validate",
+            "app/http/client.py::get",
+            "app/inventory/reserve.py::reserve",
+            "app/inventory/stock.py::available",
+            "app/inventory/warehouse.py::levels",
+            "app/utils/logger.py::log"
+          ],
+          "f1": 0.4762,
+          "recall_must": 1.0,
+          "precision_hot": 0.3125,
+          "ndcg": 0.7929,
+          "inversions": 7,
+          "explored_nodes": 16,
+          "hot_count": 16,
+          "failure_report": {
+            "case_id": "p10",
+            "strategy": "polytrace+prod",
+            "explored_nodes": 16,
+            "hot_count": 16,
+            "must_recall": 1.0,
+            "false_negatives": [],
+            "false_positives_forbidden": [
+              {
+                "id": "app/billing/invoices.py::charge",
+                "symbol": "charge",
+                "score": 0.9
+              },
+              {
+                "id": "app/notify/mailer.py::send",
+                "symbol": "send",
+                "score": 0.7857
+              },
+              {
+                "id": "app/shipping/schedule.py::schedule",
+                "symbol": "schedule",
+                "score": 0.9
+              }
+            ]
+          }
+        },
+        "callgraph_jedi": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/audit/record.py::record",
+            "app/cart/validate.py::validate",
+            "app/config/database.py::connect",
+            "app/inventory/reserve.py::reserve",
+            "app/inventory/stock.py::available",
+            "app/inventory/warehouse.py::levels"
+          ],
+          "f1": 0.625,
+          "recall_must": 1.0,
+          "precision_hot": 0.4545,
+          "ndcg": 0.8677,
+          "inversions": 0,
+          "explored_nodes": 12,
+          "hot_count": 11,
+          "failure_report": {
+            "case_id": "p10",
+            "strategy": "callgraph_jedi+prod",
+            "explored_nodes": 12,
+            "hot_count": 11,
+            "must_recall": 1.0,
+            "false_negatives": [],
+            "false_positives_forbidden": []
+          }
+        },
+        "composite_v1": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/cart/validate.py::validate",
+            "app/config/database.py::connect",
+            "app/inventory/reserve.py::reserve",
+            "app/inventory/stock.py::available",
+            "app/inventory/warehouse.py::levels"
+          ],
+          "f1": 0.6667,
+          "recall_must": 1.0,
+          "precision_hot": 0.5,
+          "ndcg": 0.8813,
+          "inversions": 0,
+          "explored_nodes": 10,
+          "hot_count": 10,
+          "failure_report": {
+            "case_id": "p10",
+            "strategy": "composite_v1+prod",
+            "explored_nodes": 10,
+            "hot_count": 10,
+            "must_recall": 1.0,
+            "false_negatives": [],
+            "false_positives_forbidden": []
+          }
+        }
+      }
+    },
+    {
+      "id": "p12",
+      "family": "checkout-pay-ship",
+      "prompt": "Payment slice of checkout: from begin and invoices.charge, follow how checkout charges the card (http pay) and records audit. Skip pure inventory-only branches that are not on the charge path.",
+      "arms": {
+        "polytrace": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/analytics/tracker.py::track",
+            "app/cart/validate.py::validate",
+            "app/inventory/reserve.py::reserve",
+            "app/inventory/stock.py::available",
+            "app/inventory/warehouse.py::levels",
+            "app/pricing/catalog.py::unit_price",
+            "app/pricing/quote.py::quote",
+            "app/tax/compute.py::compute",
+            "app/tax/rates.py::rate_for",
+            "app/utils/logger.py::log"
+          ],
+          "f1": 0.5455,
+          "recall_must": 1.0,
+          "precision_hot": 0.375,
+          "ndcg": 0.8449,
+          "inversions": 0,
+          "explored_nodes": 16,
+          "hot_count": 16,
+          "failure_report": {
+            "case_id": "p12",
+            "strategy": "polytrace+prod",
+            "explored_nodes": 16,
+            "hot_count": 16,
+            "must_recall": 1.0,
+            "false_negatives": [],
+            "false_positives_forbidden": []
+          }
+        },
+        "callgraph_jedi": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/cart/validate.py::validate",
+            "app/config/database.py::connect",
+            "app/inventory/reserve.py::reserve",
+            "app/inventory/stock.py::available",
+            "app/inventory/warehouse.py::levels",
+            "app/pricing/catalog.py::unit_price",
+            "app/pricing/quote.py::quote",
+            "app/tax/compute.py::compute",
+            "app/tax/rates.py::rate_for"
+          ],
+          "f1": 0.5714,
+          "recall_must": 1.0,
+          "precision_hot": 0.4,
+          "ndcg": 0.8686,
+          "inversions": 0,
+          "explored_nodes": 17,
+          "hot_count": 15,
+          "failure_report": {
+            "case_id": "p12",
+            "strategy": "callgraph_jedi+prod",
+            "explored_nodes": 17,
+            "hot_count": 15,
+            "must_recall": 1.0,
+            "false_negatives": [],
+            "false_positives_forbidden": []
+          }
+        },
+        "composite_v1": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/cart/validate.py::validate",
+            "app/config/database.py::connect",
+            "app/inventory/reserve.py::reserve",
+            "app/inventory/stock.py::available",
+            "app/inventory/warehouse.py::levels",
+            "app/pricing/catalog.py::unit_price",
+            "app/pricing/quote.py::quote",
+            "app/tax/compute.py::compute",
+            "app/tax/rates.py::rate_for"
+          ],
+          "f1": 0.5714,
+          "recall_must": 1.0,
+          "precision_hot": 0.4,
+          "ndcg": 0.8592,
+          "inversions": 0,
+          "explored_nodes": 16,
+          "hot_count": 15,
+          "failure_report": {
+            "case_id": "p12",
+            "strategy": "composite_v1+prod",
+            "explored_nodes": 16,
+            "hot_count": 15,
+            "must_recall": 1.0,
+            "false_negatives": [],
+            "false_positives_forbidden": []
+          }
+        }
+      }
+    },
+    {
+      "id": "p13",
+      "family": "pricing-deep",
+      "prompt": "Pricing deep dive: from quote and catalog.unit_price, collect catalog unit pricing and anything quote needs to compute a price. Keep pay/checkout orchestration out unless required for quote itself.",
+      "arms": {
+        "polytrace": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "ndcg": 1.0,
+          "inversions": 0,
+          "explored_nodes": 4,
+          "hot_count": 4,
+          "failure_report": {
+            "case_id": "p13",
+            "strategy": "polytrace+prod",
+            "explored_nodes": 4,
+            "hot_count": 4,
+            "must_recall": 1.0,
+            "false_negatives": [],
+            "false_positives_forbidden": []
+          }
+        },
+        "callgraph_jedi": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "ndcg": 1.0,
+          "inversions": 0,
+          "explored_nodes": 4,
+          "hot_count": 4,
+          "failure_report": {
+            "case_id": "p13",
+            "strategy": "callgraph_jedi+prod",
+            "explored_nodes": 4,
+            "hot_count": 4,
+            "must_recall": 1.0,
+            "false_negatives": [],
+            "false_positives_forbidden": []
+          }
+        },
+        "composite_v1": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "ndcg": 1.0,
+          "inversions": 0,
+          "explored_nodes": 4,
+          "hot_count": 4,
+          "failure_report": {
+            "case_id": "p13",
+            "strategy": "composite_v1+prod",
+            "explored_nodes": 4,
+            "hot_count": 4,
+            "must_recall": 1.0,
+            "false_negatives": [],
+            "false_positives_forbidden": []
+          }
+        }
+      }
+    },
+    {
+      "id": "p19",
+      "family": "jobs-full",
+      "prompt": "Background jobs: from worker.run and jobs.runner execute path, trace dequeue \u2192 execute \u2192 digest delivery so I can see how a job is processed end-to-end.",
+      "arms": {
+        "polytrace": {
+          "correct": false,
+          "missing_must": [
+            "app/utils/logger.py::log"
+          ],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/http/client.py::get"
+          ],
+          "f1": 0.8333,
+          "recall_must": 0.8333,
+          "precision_hot": 0.8333,
+          "ndcg": 0.9102,
+          "inversions": 0,
+          "explored_nodes": 6,
+          "hot_count": 6,
+          "failure_report": {
+            "case_id": "p19",
+            "strategy": "polytrace+prod",
+            "explored_nodes": 6,
+            "hot_count": 6,
+            "must_recall": 0.8333,
+            "false_negatives": [
+              {
+                "id": "app/utils/logger.py::log",
+                "symbol": "log",
+                "file": "app/utils/logger.py",
+                "class": "missing_edge",
+                "score": null
+              }
+            ],
+            "false_positives_forbidden": []
+          }
+        },
+        "callgraph_jedi": {
+          "correct": false,
+          "missing_must": [
+            "app/analytics/tracker.py::track",
+            "app/utils/logger.py::log"
+          ],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/http/client.py::get",
+            "app/jobs/deliver.py::deliver",
+            "app/jobs/queue.py::_PENDING",
+            "app/jobs/queue.py::enqueue",
+            "app/notify/mailer.py::send"
+          ],
+          "f1": 0.5333,
+          "recall_must": 0.6667,
+          "precision_hot": 0.4444,
+          "ndcg": 0.959,
+          "inversions": 0,
+          "explored_nodes": 11,
+          "hot_count": 9,
+          "failure_report": {
+            "case_id": "p19",
+            "strategy": "callgraph_jedi+prod",
+            "explored_nodes": 11,
+            "hot_count": 9,
+            "must_recall": 0.6667,
+            "false_negatives": [
+              {
+                "id": "app/analytics/tracker.py::track",
+                "symbol": "track",
+                "file": "app/analytics/tracker.py",
+                "class": "rank_crush",
+                "score": 0.2013
+              },
+              {
+                "id": "app/utils/logger.py::log",
+                "symbol": "log",
+                "file": "app/utils/logger.py",
+                "class": "rank_crush",
+                "score": 0.2013
+              }
+            ],
+            "false_positives_forbidden": []
+          }
+        },
+        "composite_v1": {
+          "correct": false,
+          "missing_must": [
+            "app/analytics/tracker.py::track",
+            "app/utils/logger.py::log"
+          ],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 0.8,
+          "recall_must": 0.6667,
+          "precision_hot": 1.0,
+          "ndcg": 1.0,
+          "inversions": 0,
+          "explored_nodes": 4,
+          "hot_count": 4,
+          "failure_report": {
+            "case_id": "p19",
+            "strategy": "composite_v1+prod",
+            "explored_nodes": 4,
+            "hot_count": 4,
+            "must_recall": 0.6667,
+            "false_negatives": [
+              {
+                "id": "app/analytics/tracker.py::track",
+                "symbol": "track",
+                "file": "app/analytics/tracker.py",
+                "class": "missing_edge",
+                "score": null
+              },
+              {
+                "id": "app/utils/logger.py::log",
+                "symbol": "log",
+                "file": "app/utils/logger.py",
+                "class": "missing_edge",
+                "score": null
+              }
+            ],
+            "false_positives_forbidden": []
+          }
+        }
+      }
+    },
+    {
+      "id": "p20",
+      "family": "jobs-no-telemetry",
+      "prompt": "Job run until digest is produced, without telemetry noise: follow run/execute into digest generation; drop unrelated log/track-only leaves that are not required for digest.",
+      "arms": {
+        "polytrace": {
+          "correct": false,
+          "missing_must": [],
+          "forbidden_hot": [
+            "app/analytics/tracker.py::track",
+            "app/utils/logger.py::log"
+          ],
+          "extra_hot": [
+            "app/http/client.py::get"
+          ],
+          "f1": 0.7273,
+          "recall_must": 1.0,
+          "precision_hot": 0.5714,
+          "ndcg": 0.9966,
+          "inversions": 0,
+          "explored_nodes": 7,
+          "hot_count": 7,
+          "failure_report": {
+            "case_id": "p20",
+            "strategy": "polytrace+prod",
+            "explored_nodes": 7,
+            "hot_count": 7,
+            "must_recall": 1.0,
+            "false_negatives": [],
+            "false_positives_forbidden": [
+              {
+                "id": "app/analytics/tracker.py::track",
+                "symbol": "track",
+                "score": 0.6653
+              },
+              {
+                "id": "app/utils/logger.py::log",
+                "symbol": "log",
+                "score": 0.6653
+              }
+            ]
+          }
+        },
+        "callgraph_jedi": {
+          "correct": false,
+          "missing_must": [],
+          "forbidden_hot": [
+            "app/notify/mailer.py::send"
+          ],
+          "extra_hot": [
+            "app/http/client.py::get",
+            "app/jobs/deliver.py::deliver",
+            "app/jobs/queue.py::_PENDING",
+            "app/jobs/queue.py::enqueue"
+          ],
+          "f1": 0.6154,
+          "recall_must": 1.0,
+          "precision_hot": 0.4444,
+          "ndcg": 0.9981,
+          "inversions": 0,
+          "explored_nodes": 9,
+          "hot_count": 9,
+          "failure_report": {
+            "case_id": "p20",
+            "strategy": "callgraph_jedi+prod",
+            "explored_nodes": 9,
+            "hot_count": 9,
+            "must_recall": 1.0,
+            "false_negatives": [],
+            "false_positives_forbidden": [
+              {
+                "id": "app/notify/mailer.py::send",
+                "symbol": "send",
+                "score": 0.5353
+              }
+            ]
+          }
+        },
+        "composite_v1": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "ndcg": 1.0,
+          "inversions": 0,
+          "explored_nodes": 4,
+          "hot_count": 4,
+          "failure_report": {
+            "case_id": "p20",
+            "strategy": "composite_v1+prod",
+            "explored_nodes": 4,
+            "hot_count": 4,
+            "must_recall": 1.0,
+            "false_negatives": [],
+            "false_positives_forbidden": []
+          }
+        }
+      }
+    },
+    {
+      "id": "p28",
+      "family": "webhook-ingest-full",
+      "prompt": "Webhook ingress: from ingest and verify_sig, collect signature verification, parse, and routing for an inbound webhook so I can harden verification.",
+      "arms": {
+        "polytrace": {
+          "correct": false,
+          "missing_must": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get",
+            "app/notify/mailer.py::send"
+          ],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/webhooks/handlers.py::on_refund"
+          ],
+          "f1": 0.7143,
+          "recall_must": 0.625,
+          "precision_hot": 0.8333,
+          "ndcg": 0.9102,
+          "inversions": 0,
+          "explored_nodes": 6,
+          "hot_count": 6,
+          "failure_report": {
+            "case_id": "p28",
+            "strategy": "polytrace+prod",
+            "explored_nodes": 6,
+            "hot_count": 6,
+            "must_recall": 0.625,
+            "false_negatives": [
+              {
+                "id": "app/billing/invoices.py::charge",
+                "symbol": "charge",
+                "file": "app/billing/invoices.py",
+                "class": "missing_edge",
+                "score": null
+              },
+              {
+                "id": "app/http/client.py::get",
+                "symbol": "get",
+                "file": "app/http/client.py",
+                "class": "missing_edge",
+                "score": null
+              },
+              {
+                "id": "app/notify/mailer.py::send",
+                "symbol": "send",
+                "file": "app/notify/mailer.py",
+                "class": "missing_edge",
+                "score": null
+              }
+            ],
+            "false_positives_forbidden": []
+          }
+        },
+        "callgraph_jedi": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/audit/record.py::record",
+            "app/config/database.py::connect",
+            "app/webhooks/handlers.py::on_refund"
+          ],
+          "f1": 0.8421,
+          "recall_must": 1.0,
+          "precision_hot": 0.7273,
+          "ndcg": 0.9889,
+          "inversions": 0,
+          "explored_nodes": 13,
+          "hot_count": 11,
+          "failure_report": {
+            "case_id": "p28",
+            "strategy": "callgraph_jedi+prod",
+            "explored_nodes": 13,
+            "hot_count": 11,
+            "must_recall": 1.0,
+            "false_negatives": [],
+            "false_positives_forbidden": []
+          }
+        },
+        "composite_v1": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/audit/record.py::record",
+            "app/config/database.py::connect",
+            "app/webhooks/handlers.py::on_refund"
+          ],
+          "f1": 0.8421,
+          "recall_must": 1.0,
+          "precision_hot": 0.7273,
+          "ndcg": 0.9934,
+          "inversions": 0,
+          "explored_nodes": 11,
+          "hot_count": 11,
+          "failure_report": {
+            "case_id": "p28",
+            "strategy": "composite_v1+prod",
+            "explored_nodes": 11,
+            "hot_count": 11,
+            "must_recall": 1.0,
+            "false_negatives": [],
+            "false_positives_forbidden": []
+          }
+        }
+      }
+    },
+    {
+      "id": "p33",
+      "family": "search-full",
+      "prompt": "Search path: from search.query and rank, collect tokenize \u2192 rank/score \u2192 fetch_docs for answering a search request.",
+      "arms": {
+        "polytrace": {
+          "correct": false,
+          "missing_must": [
+            "app/config/database.py::connect"
+          ],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 0.9333,
+          "recall_must": 0.875,
+          "precision_hot": 1.0,
+          "ndcg": 1.0,
+          "inversions": 0,
+          "explored_nodes": 7,
+          "hot_count": 7,
+          "failure_report": {
+            "case_id": "p33",
+            "strategy": "polytrace+prod",
+            "explored_nodes": 7,
+            "hot_count": 7,
+            "must_recall": 0.875,
+            "false_negatives": [
+              {
+                "id": "app/config/database.py::connect",
+                "symbol": "connect",
+                "file": "app/config/database.py",
+                "class": "missing_edge",
+                "score": null
+              }
+            ],
+            "false_positives_forbidden": []
+          }
+        },
+        "callgraph_jedi": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/cache/memo.py::_STORE"
+          ],
+          "f1": 0.9412,
+          "recall_must": 1.0,
+          "precision_hot": 0.8889,
+          "ndcg": 1.0,
+          "inversions": 0,
+          "explored_nodes": 9,
+          "hot_count": 9,
+          "failure_report": {
+            "case_id": "p33",
+            "strategy": "callgraph_jedi+prod",
+            "explored_nodes": 9,
+            "hot_count": 9,
+            "must_recall": 1.0,
+            "false_negatives": [],
+            "false_positives_forbidden": []
+          }
+        },
+        "composite_v1": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "ndcg": 1.0,
+          "inversions": 0,
+          "explored_nodes": 8,
+          "hot_count": 8,
+          "failure_report": {
+            "case_id": "p33",
+            "strategy": "composite_v1+prod",
+            "explored_nodes": 8,
+            "hot_count": 8,
+            "must_recall": 1.0,
+            "false_negatives": [],
+            "false_positives_forbidden": []
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "ok": true,
+  "tool": "pack_poly_embed",
+  "engine": "poly_embed",
+  "elapsed_s": 0.197,
+  "n_pack": 2,
+  "seed": {
+    "file": "packages/enrich/__init__.py",
+    "symbol": "chunk_file_from_ir",
+    "id": "packages/enrich/__init__.py::chunk_file_from_ir"
+  },
+  "pack": [
+    {
+      "file": "packages/enrich/__init__.py",
+      "symbol": "chunk_file_from_ir",
+      "score": 1.0,
+      "loc": "packages/enrich/__init__.py:70-122",
+      "id": "packages/enrich/__init__.py::chunk_file_from_ir",
+      "chars": 1609
+    },
+    {
+      "file": "packages/pipeline/chunk_merkle.py",
+      "symbol": "chunk_key",
+      "score": 1.0,
+      "loc": "packages/pipeline/chunk_merkle.py:16-20",
+      "id": "packages/pipeline/chunk_merkle.py::chunk_key",
+      "chars": 230
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/enrich/__init__.py::chunk_file_from_ir",
+      "loc": "packages/enrich/__init__.py:70-122",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/chunk_merkle.py::chunk_key",
+      "loc": "packages/pipeline/chunk_merkle.py:16-20",
+      "edge": "seed",
+      "score": 1.0
+    }
+  ],
+  "pack_query": "indexer chunk pipeline parse source files into chunks merkle symbol spans index_manager\nrelevant_chunks: packages/enrich/__init__.py::chunk_file_from_ir@packages/enrich/__init__.py:70-122 | packages/pipeline/chunk_merkle.py::chunk_key@packages/pipeline/chunk_merkle.py:16-20 | packages/enrich/__init__.py::chunk_repo_from_ir@packages/enrich/__init__.py:125-133",
+  "error": null
+}

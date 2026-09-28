@@ -1,0 +1,103 @@
+{
+  "ok": true,
+  "tool": "map",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/pipeline/searcher.py",
+      "score": 12.009241656201695,
+      "why": "\ufeff\"\"\"Search using FAISS collection dense + BM25 + Graphify \u2192 Conductor D_rerank.\"\"\" from __future__ import annotations import json import os import urllib.error import urllib.reques",
+      "role": "function",
+      "loc": "packages/pipeline/searcher.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 2,
+      "file": "packages/pipeline/engine.py",
+      "score": 8.273225259045152,
+      "why": "def embedder_is_loaded() -> bool: with _LOCK: return bool(_EMBEDDERS) @dataclass class WarmSearchEngine: root: Path store: PipelineStore chunks: list[ChunkRecord] texts: list[str] ",
+      "role": "function",
+      "loc": "packages/pipeline/engine.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 3,
+      "file": "docs/pipeline-faiss-turboquant.md",
+      "score": 7.207662212622842,
+      "why": "# Context Engine \u2014 full retrieval pipeline Date: 2026-08-02 ## Product pipeline ``` repo files \u2502 \u251c\u2500 Merkle scan (SHA-256 file tree) \u2192 {added, modified, removed} \u251c\u2500 Graphify AST \u2192 R",
+      "role": "docs",
+      "loc": "docs/pipeline-faiss-turboquant.md:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 4,
+      "file": "packages/pipeline/turbo_quant.py",
+      "score": 6.796524899815508,
+      "why": "def _unpack(self, packed: np.ndarray, n: int) -> np.ndarray: arr = np.asarray(packed) if arr.ndim == 1: arr = arr.reshape(n, self.dim) return arr.astype(np.int64) class CompressedE",
+      "role": "function",
+      "loc": "packages/pipeline/turbo_quant.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 5,
+      "file": "packages/pipeline/vectordb.py",
+      "score": 6.179797795576778,
+      "why": "\"\"\"FAISS vector database with TurboQuant compression and named collections. Layout under ``~/.scubiee/vectordb/`` (override with CTX_VECTORDB_ROOT):: catalog.json collections/ <saf",
+      "role": "function",
+      "loc": "packages/pipeline/vectordb.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 6,
+      "file": "tests/test_faiss_dense_adapter.py",
+      "score": 4.842708065410253,
+      "why": "def test_faiss_adapter_maps_gapped_ids_to_rows(): mat = np.eye(3, 4, dtype=np.float32) col = _FakeCol(ids=[0, 1, 2772], matrix=mat) col._hits = [(2772, 0.91, {})] adapter = FaissDe",
+      "role": "test",
+      "loc": "tests/test_faiss_dense_adapter.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 7,
+      "file": "packages/pipeline/__init__.py",
+      "score": 4.474195679305604,
+      "why": "\"\"\"Context Engine indexing + search pipeline. Merkle sync \u2192 Graphify RepoIR \u2192 enrich chunks \u2192 embed \u2192 TurboQuant compress \u2192 FAISS vector DB \u2192 Conductor D_rerank search. \"\"\" from __",
+      "role": "function",
+      "loc": "packages/pipeline/__init__.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 8,
+      "file": "scripts/cleanup_local_indexes.py",
+      "score": 4.206640081827217,
+      "why": "\"\"\"Wipe local FAISS/TurboQuant collections + compress-bench indexes. Keeps bakeoff reports under out/compress_bench/*.md|json. \"\"\" from __future__ import annotations import json im",
+      "role": "other",
+      "loc": "scripts/cleanup_local_indexes.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 9,
+      "file": "packages/pipeline/faiss_store.py",
+      "score": 3.2984860731081267,
+      "why": "\"\"\"Backward-compatible alias \u2014 prefer ``pipeline.vectordb``. \"\"\" from pipeline.vectordb import FaissCollection, VectorDatabase, cwd_collection_name # Old name used in early pipelin",
+      "role": "function",
+      "loc": "packages/pipeline/faiss_store.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 10,
+      "file": "packages/trace_lab/semantic_venture.py",
+      "score": 2.6623960314169093,
+      "why": "def _store_meta_for_root(root: Path) -> dict[str, Any]: \"\"\"Load publication meta for *root*'s project store (empty dict if unavailable).\"\"\" try: import json from pipeline.project_i",
+      "role": "function",
+      "loc": "packages/trace_lab/semantic_venture.py:1-1",
+      "symbol": ""
+    }
+  ],
+  "suggested_seed": {
+    "file": "packages/pipeline/searcher.py",
+    "symbol": "",
+    "loc": "packages/pipeline/searcher.py:1-1",
+    "score": 12.009241656201695
+  },
+  "next": "scubiee pack \"TurboQuant faiss+turboquant quantized dense search serve WarmSearchEngine FaissDenseAdapter vector_backend bits compress\" --seed-file packages/pipeline/searcher.py --mode lean"
+}

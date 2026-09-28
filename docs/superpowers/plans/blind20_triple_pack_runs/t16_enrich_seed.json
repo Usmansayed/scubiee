@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "elapsed_s": 0.041,
+  "seed_file": "packages/conductor/graphify_retriever.py",
+  "seed": {
+    "file": "packages/conductor/graphify_retriever.py",
+    "symbol": "normalize_file",
+    "id": "packages/conductor/graphify_retriever.py::normalize_file",
+    "loc": null
+  },
+  "chunks": [
+    {
+      "file": "packages/conductor/graphify_retriever.py",
+      "symbol": "normalize_file",
+      "loc": "packages/conductor/graphify_retriever.py:33-34",
+      "score": 1.0,
+      "kind": "function"
+    }
+  ],
+  "n_cards": 1,
+  "error": null
+}

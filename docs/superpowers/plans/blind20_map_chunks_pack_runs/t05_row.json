@@ -1,0 +1,314 @@
+{
+  "id": "t05",
+  "family": "engine-watchdog",
+  "task": "How does the engine watchdog keep the warm HTTP daemon alive and restart on idle?",
+  "enrich_prompt": "engine watchdog idle timeout restart CTX_ENGINE_URL port 8765 pipeline engine run",
+  "map": {
+    "elapsed_s": 0.542,
+    "top_files": [
+      "scripts/blind20_simple_map_pack.py",
+      "packages/pipeline/watchdog.py",
+      "packages/pipeline/client.py",
+      "tests/_prod_post_restart.py",
+      "packages/pipeline/diagnose.py"
+    ]
+  },
+  "selected_chunks": [
+    {
+      "file": "packages/pipeline/watchdog.py",
+      "symbol": "is_watchdog_running",
+      "kind": "function",
+      "loc": "packages/pipeline/watchdog.py:113-121",
+      "start_line": 113,
+      "end_line": 121,
+      "score": 9.15,
+      "excerpt": "def is_watchdog_running() -> bool:\n    path = watchdog_pid_path()\n    if not path.is_file():\n        return False\n    try:\n        pid = int(path.read_text(encoding=\"utf-8\").strip("
+    },
+    {
+      "file": "packages/pipeline/client.py",
+      "symbol": "engine_url",
+      "kind": "function",
+      "loc": "packages/pipeline/client.py:32-37",
+      "start_line": 32,
+      "end_line": 37,
+      "score": 9.5,
+      "excerpt": "def engine_url() -> str:\n    return (\n        os.environ.get(\"CTX_ENGINE_URL\")\n        or os.environ.get(\"CTX_SEARCH_URL\")\n        or DEFAULT_URL\n    ).rstrip(\"/\")"
+    },
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "cmd_engine",
+      "kind": "function",
+      "loc": "packages/pipeline/__main__.py:945-1111",
+      "start_line": 945,
+      "end_line": 1111,
+      "score": 7.2,
+      "excerpt": "def cmd_engine(args: argparse.Namespace) -> int:\n    \"\"\"Scubiee daemon control: start | stop | status | run | ensure | watchdog.\"\"\"\n    from pipeline.client import EngineClient, en"
+    }
+  ],
+  "arms": {
+    "pack_context": {
+      "ok": true,
+      "tool": "pack_context",
+      "engine": "composite_v1",
+      "elapsed_s": 0.17,
+      "n_pack": 4,
+      "seed": {
+        "file": "packages/pipeline/watchdog.py",
+        "symbol": "is_watchdog_running",
+        "id": "packages/pipeline/watchdog.py::is_watchdog_running"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/watchdog.py",
+          "symbol": "is_watchdog_running",
+          "score": 1.0,
+          "loc": "packages/pipeline/watchdog.py:113-121",
+          "id": "packages/pipeline/watchdog.py::is_watchdog_running",
+          "chars": 268
+        },
+        {
+          "file": "packages/pipeline/client.py",
+          "symbol": "engine_url",
+          "score": 1.0,
+          "loc": "packages/pipeline/client.py:32-37",
+          "id": "packages/pipeline/client.py::engine_url",
+          "chars": 163
+        },
+        {
+          "file": "packages/pipeline/watchdog.py",
+          "symbol": "watchdog_pid_path",
+          "score": 0.8415,
+          "loc": "packages/pipeline/watchdog.py:33-34",
+          "id": "packages/pipeline/watchdog.py::watchdog_pid_path",
+          "chars": 68
+        },
+        {
+          "file": "packages/pipeline/watchdog.py",
+          "symbol": "_pid_alive",
+          "score": 0.8415,
+          "loc": "packages/pipeline/watchdog.py:92-110",
+          "id": "packages/pipeline/watchdog.py::_pid_alive",
+          "chars": 538
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/watchdog.py::is_watchdog_running",
+          "loc": "packages/pipeline/watchdog.py:113-121",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/client.py::engine_url",
+          "loc": "packages/pipeline/client.py:32-37",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/watchdog.py::watchdog_pid_path",
+          "loc": "packages/pipeline/watchdog.py:33-34",
+          "edge": "calls",
+          "score": 0.8415
+        },
+        {
+          "id": "packages/pipeline/watchdog.py::_pid_alive",
+          "loc": "packages/pipeline/watchdog.py:92-110",
+          "edge": "calls",
+          "score": 0.8415
+        },
+        {
+          "id": "packages/pipeline/client.py::EngineClient.get",
+          "loc": "packages/pipeline/client.py:87-88",
+          "edge": "calls",
+          "score": 0.7994
+        },
+        {
+          "id": "packages/pipeline/watchdog.py::_home",
+          "loc": "packages/pipeline/watchdog.py:27-30",
+          "edge": "calls",
+          "score": 0.6212
+        },
+        {
+          "id": "packages/pipeline/client.py::EngineClient._request",
+          "loc": "packages/pipeline/client.py:93-167",
+          "edge": "calls",
+          "score": 0.5606
+        },
+        {
+          "id": "packages/pipeline/project_id.py::context_engine_home",
+          "loc": "packages/pipeline/project_id.py:108-113",
+          "edge": "calls",
+          "score": 0.46
+        }
+      ],
+      "pack_query": "engine watchdog idle timeout restart CTX_ENGINE_URL port 8765 pipeline engine run\nrelevant_chunks: packages/pipeline/watchdog.py::is_watchdog_running@packages/pipeline/watchdog.py:113-121 | packages/pipeline/client.py::engine_url@packages/pipeline/client.py:32-37 | packages/pipeline/__main__.py::cmd_engine@packages/pipeline/__main__.py:945-1111",
+      "error": null
+    },
+    "pack_poly_embed": {
+      "ok": true,
+      "tool": "pack_poly_embed",
+      "engine": "poly_embed",
+      "elapsed_s": 0.411,
+      "n_pack": 4,
+      "seed": {
+        "file": "packages/pipeline/watchdog.py",
+        "symbol": "is_watchdog_running",
+        "id": "packages/pipeline/watchdog.py::is_watchdog_running"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/watchdog.py",
+          "symbol": "is_watchdog_running",
+          "score": 1.0,
+          "loc": "packages/pipeline/watchdog.py:113-121",
+          "id": "packages/pipeline/watchdog.py::is_watchdog_running",
+          "chars": 268
+        },
+        {
+          "file": "packages/pipeline/client.py",
+          "symbol": "engine_url",
+          "score": 1.0,
+          "loc": "packages/pipeline/client.py:32-37",
+          "id": "packages/pipeline/client.py::engine_url",
+          "chars": 163
+        },
+        {
+          "file": "packages/pipeline/watchdog.py",
+          "symbol": "watchdog_pid_path",
+          "score": 0.735,
+          "loc": "packages/pipeline/watchdog.py:33-34",
+          "id": "packages/pipeline/watchdog.py::watchdog_pid_path",
+          "chars": 68
+        },
+        {
+          "file": "packages/pipeline/client.py",
+          "symbol": "DEFAULT_URL",
+          "score": 0.7,
+          "loc": "packages/pipeline/client.py:29-29",
+          "id": "packages/pipeline/client.py::DEFAULT_URL",
+          "chars": 37
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/watchdog.py::is_watchdog_running",
+          "loc": "packages/pipeline/watchdog.py:113-121",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/client.py::engine_url",
+          "loc": "packages/pipeline/client.py:32-37",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/watchdog.py::watchdog_pid_path",
+          "loc": "packages/pipeline/watchdog.py:33-34",
+          "edge": "seed",
+          "score": 0.735
+        },
+        {
+          "id": "packages/pipeline/client.py::DEFAULT_URL",
+          "loc": "packages/pipeline/client.py:29-29",
+          "edge": "seed",
+          "score": 0.7
+        }
+      ],
+      "pack_query": "engine watchdog idle timeout restart CTX_ENGINE_URL port 8765 pipeline engine run\nrelevant_chunks: packages/pipeline/watchdog.py::is_watchdog_running@packages/pipeline/watchdog.py:113-121 | packages/pipeline/client.py::engine_url@packages/pipeline/client.py:32-37 | packages/pipeline/__main__.py::cmd_engine@packages/pipeline/__main__.py:945-1111",
+      "error": null
+    },
+    "pack_semantic": {
+      "ok": true,
+      "tool": "pack_semantic",
+      "engine": "semantic_tracer_fuse",
+      "elapsed_s": 0.348,
+      "n_pack": 4,
+      "seed": {
+        "file": "packages/pipeline/watchdog.py",
+        "symbol": "is_watchdog_running",
+        "id": "packages/pipeline/watchdog.py::is_watchdog_running"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/watchdog.py",
+          "symbol": "is_watchdog_running",
+          "score": 1.0,
+          "loc": "packages/pipeline/watchdog.py:113-121",
+          "id": "packages/pipeline/watchdog.py::is_watchdog_running",
+          "chars": 268
+        },
+        {
+          "file": "packages/pipeline/client.py",
+          "symbol": "engine_url",
+          "score": 1.0,
+          "loc": "packages/pipeline/client.py:32-37",
+          "id": "packages/pipeline/client.py::engine_url",
+          "chars": 163
+        },
+        {
+          "file": "packages/pipeline/watchdog.py",
+          "symbol": "_pid_alive",
+          "score": 0.8062,
+          "loc": "packages/pipeline/watchdog.py:92-110",
+          "id": "packages/pipeline/watchdog.py::_pid_alive",
+          "chars": 538
+        },
+        {
+          "file": "packages/pipeline/watchdog.py",
+          "symbol": "watchdog_pid_path",
+          "score": 0.8034,
+          "loc": "packages/pipeline/watchdog.py:33-34",
+          "id": "packages/pipeline/watchdog.py::watchdog_pid_path",
+          "chars": 68
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/watchdog.py::is_watchdog_running",
+          "loc": "packages/pipeline/watchdog.py:113-121",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/client.py::engine_url",
+          "loc": "packages/pipeline/client.py:32-37",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/watchdog.py::_pid_alive",
+          "loc": "packages/pipeline/watchdog.py:92-110",
+          "edge": "calls",
+          "score": 0.8062
+        },
+        {
+          "id": "packages/pipeline/watchdog.py::watchdog_pid_path",
+          "loc": "packages/pipeline/watchdog.py:33-34",
+          "edge": "calls",
+          "score": 0.8034
+        },
+        {
+          "id": "packages/pipeline/client.py::EngineClient.get",
+          "loc": "packages/pipeline/client.py:87-88",
+          "edge": "calls",
+          "score": 0.7444
+        },
+        {
+          "id": "packages/pipeline/watchdog.py::_home",
+          "loc": "packages/pipeline/watchdog.py:27-30",
+          "edge": "calls",
+          "score": 0.574
+        },
+        {
+          "id": "packages/pipeline/client.py::EngineClient._request",
+          "loc": "packages/pipeline/client.py:93-167",
+          "edge": "calls",
+          "score": 0.4951
+        }
+      ],
+      "pack_query": "engine watchdog idle timeout restart CTX_ENGINE_URL port 8765 pipeline engine run\nrelevant_chunks: packages/pipeline/watchdog.py::is_watchdog_running@packages/pipeline/watchdog.py:113-121 | packages/pipeline/client.py::engine_url@packages/pipeline/client.py:32-37 | packages/pipeline/__main__.py::cmd_engine@packages/pipeline/__main__.py:945-1111",
+      "error": null
+    }
+  }
+}

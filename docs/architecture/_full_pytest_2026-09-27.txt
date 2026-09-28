@@ -1,0 +1,27 @@
+﻿
+FAILED tests/test_accel_pip_drain.py::test_requirement_satisfied_for_installed_pip
+FAILED tests/test_auto_sessions_observability.py::test_client_injects_workspace_and_optional_session_telemetry
+FAILED tests/test_dashboard_api.py::test_background_server_reuses_pid_and_stops
+FAILED tests/test_e2e_pipeline.py::test_full_pipeline_stores_in_faiss_collection
+FAILED tests/test_lifecycle_ownership.py::test_attach_mcp_session_is_nonblocking
+FAILED tests/test_lifecycle_simulation.py::test_watchdog_child_stays_alive_then_exits_clean
+FAILED tests/test_live_reindexing.py::test_final_check_forces_held_publish - ...
+FAILED tests/test_locate_quality_combo.py::test_polytrace_prefers_poly_trace_over_faction
+FAILED tests/test_mcp_agent_warm_retry.py::test_search_returns_warming_without_blocking_embedder
+FAILED tests/test_mcp_exploration_regressions.py::test_client_retries_transient_url_error
+FAILED tests/test_mcp_exploration_regressions.py::test_find_repo_files_ignores_scubiee_snapshot_dirs
+FAILED tests/test_mcp_lifecycle_universal.py::test_warm_engine_for_mcp_waits_for_embedder
+FAILED tests/test_multi_seed_v1.py::test_seed_covered_by_heatmap_and_light - ...
+FAILED tests/test_multi_seed_v1.py::test_seed_specs_from_args_dedupes_and_caps
+FAILED tests/test_multi_seed_v1.py::test_merge_agreement_boosts_shared_nodes
+FAILED tests/test_polytrace.py::test_polytrace_mean_f1_and_recall_hit_95 - As...
+FAILED tests/test_polytrace.py::test_polytrace_job_run_follows_generic_execute
+FAILED tests/test_project_id.py::test_incremental_missing_graph_falls_back - ...
+FAILED tests/test_pythonw_mcp_stdio.py::test_pythonw_mcp_bridge_initialize_roundtrip
+FAILED tests/test_runtime_publish.py::test_runtime_routes_live_events_to_active_keeper
+FAILED tests/test_vague_prompts.py::test_oracle_polytrace_holds_on_vague_prompts
+FAILED tests/test_verify_board.py::test_poly_embed_matches_polytrace_correctness
+FAILED tests/test_watcher_recovery.py::test_5000_event_storm_processes_only_configured_batch
+23 failed, 1896 passed, 10 skipped, 14 deselected, 3 warnings in 724.46s (0:12:04)
+
+

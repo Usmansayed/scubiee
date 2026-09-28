@@ -1,0 +1,103 @@
+{
+  "ok": true,
+  "tool": "map",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/pipeline/wipe.py",
+      "score": 35.187197229379215,
+      "why": "Wipe Scubiee state \u2014 repo-local or full machine (``--all``).",
+      "role": "function",
+      "loc": "packages/pipeline/wipe.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 2,
+      "file": "tests/test_stop_all_tools.py",
+      "score": 26.17311942851318,
+      "why": "Stop must surgically remove Scubiee MCP/rules for every supported tool.",
+      "role": "test",
+      "loc": "tests/test_stop_all_tools.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 3,
+      "file": "packages/pipeline/__main__.py",
+      "score": 16.02444392837759,
+      "why": "def cmd_wipe(args: argparse.Namespace) -> int: \"\"\"Remove Scubiee state for this repo, or everything with --all.\"\"\" from pipeline.wipe import wipe confirmed = bool(getattr(args, \"co",
+      "role": "function",
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 4,
+      "file": "docs/web-info/uninstall-mac-linux.md",
+      "score": 5.723784156227256,
+      "why": "# Uninstall (Mac & Linux) Remove Scubiee from a machine without the Windows-specific uv lock issues (though quitting Cursor is still recommended). --- ## Standard full uninstall ``",
+      "role": "docs",
+      "loc": "docs/web-info/uninstall-mac-linux.md:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 5,
+      "file": "tests/test_wipe.py",
+      "score": 5.69913473477468,
+      "why": "\"\"\"wipe --all requires --yes; repo wipe removes id + store.\"\"\" from __future__ import annotations import json from pathlib import Path import pytest from pipeline.wipe import audit",
+      "role": "test",
+      "loc": "tests/test_wipe.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 6,
+      "file": "tests/test_mcp_no_repo_scubiee_after_wipe.py",
+      "score": 5.191161309732061,
+      "why": "\"\"\"MCP session I/O must not recreate repo ``.scubiee`` before ``init``.\"\"\" from __future__ import annotations from pathlib import Path import pytest from pipeline.session_isolation",
+      "role": "test",
+      "loc": "tests/test_mcp_no_repo_scubiee_after_wipe.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 7,
+      "file": "docs/web-info/uninstall-windows.md",
+      "score": 4.7441702995653365,
+      "why": "# Uninstall on Windows (uv tool install) Complete guide for removing Scubiee on Windows when MCP, the engine daemon, or uv file locks get in the way. **Docs assume [scubiee 0.3.13]",
+      "role": "docs",
+      "loc": "docs/web-info/uninstall-windows.md:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 8,
+      "file": "docs/web-info/faq.md",
+      "score": 4.43568190256852,
+      "why": "# FAQ Short answers to common questions. Docs assume **[scubiee 0.3.14](https://pypi.org/project/scubiee/0.3.14/)** (published on PyPI). Full install/debug playbook: [Install & deb",
+      "role": "docs",
+      "loc": "docs/web-info/faq.md:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 9,
+      "file": "packages/pipeline/rules_installer.py",
+      "score": 4.388254382043241,
+      "why": "def remove_mcp_config( tool: ToolDef, path: Path, *, schema: str | None = None, key: str | None = None, warnings: list[dict[str, str]] | None = None, ) -> bool: \"\"\"Remove only Scub",
+      "role": "function",
+      "loc": "packages/pipeline/rules_installer.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 10,
+      "file": "packages/pipeline/process_control.py",
+      "score": 4.297458383934073,
+      "why": "def disable_mcp_to_prevent_respawn(*, project: Path | None = None) -> dict[str, Any]: \"\"\"Remove/disable Scubiee MCP everywhere so hosts don't respawn lockers mid-wipe.\"\"\" from pipe",
+      "role": "function",
+      "loc": "packages/pipeline/process_control.py:1-1",
+      "symbol": ""
+    }
+  ],
+  "suggested_seed": {
+    "file": "packages/pipeline/wipe.py",
+    "symbol": "",
+    "loc": "packages/pipeline/wipe.py:1-1",
+    "score": 35.187197229379215
+  },
+  "next": "scubiee pack \"cmd_wipe wipe uninstall remove store MCP rules halt confirm --all scubiee state\" --seed-file packages/pipeline/wipe.py --mode lean"
+}

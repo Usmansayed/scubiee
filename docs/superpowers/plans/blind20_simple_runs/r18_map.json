@@ -1,0 +1,90 @@
+{
+  "ok": true,
+  "tool": "map",
+  "query": "polytrace teleport PPR personalized pageRank island hop callgraph bind_polytrace",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/trace_lab/polytrace.py",
+      "symbol": "",
+      "score": 20.56674721918411,
+      "loc": "packages/trace_lab/polytrace.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "packages/trace_lab/engine/rank.py",
+      "symbol": "",
+      "score": 6.770891682575573,
+      "loc": "packages/trace_lab/engine/rank.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "packages/trace_lab/ultimate_trace.py",
+      "symbol": "",
+      "score": 5.206369832956769,
+      "loc": "packages/trace_lab/ultimate_trace.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "packages/trace_lab/map_bakeoff.py",
+      "symbol": "",
+      "score": 4.795956912346137,
+      "loc": "packages/trace_lab/map_bakeoff.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "docs/superpowers/specs/2026-09-05-ultimate-tracer-v1-design.md",
+      "symbol": "",
+      "score": 4.588791793185947,
+      "loc": "docs/superpowers/specs/2026-09-05-ultimate-tracer-v1-design.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "tests/test_polytrace.py",
+      "symbol": "",
+      "score": 4.2074474968338205,
+      "loc": "tests/test_polytrace.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "packages/trace_lab/vague_eval.py",
+      "symbol": "",
+      "score": 4.00002904031061,
+      "loc": "packages/trace_lab/vague_eval.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "packages/trace_lab/poly_embed.py",
+      "symbol": "",
+      "score": 3.867081061188478,
+      "loc": "packages/trace_lab/poly_embed.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "packages/trace_lab/arms/__init__.py",
+      "symbol": "",
+      "score": 3.5337092766109643,
+      "loc": "packages/trace_lab/arms/__init__.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "packages/trace_lab/system_trace.py",
+      "symbol": "",
+      "score": 3.288349786826772,
+      "loc": "packages/trace_lab/system_trace.py:1-1",
+      "why": ""
+    }
+  ],
+  "suggested_seed": null,
+  "elapsed_s": 0.849,
+  "via": "search_repo(use_server=True)"
+}

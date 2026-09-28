@@ -63,6 +63,7 @@ class _RepoTrace:
     gfy: AstTraceGraph | None
     poly: Any
     built_at: float
+    bundle_mtime_ns: int = 0
 
 
 def _heat(score: float) -> str:
@@ -253,6 +254,14 @@ def _repo_bundle_path(root: Path) -> Path:
     return root / ".scubiee" / "cache" / f"trace_repo_v{_REPO_BUNDLE_VERSION}.pkl"
 
 
+def _bundle_mtime_ns(root: Path) -> int:
+    """Disk mtime of the AST bundle, or 0 when absent. Cheap staleness signal."""
+    try:
+        return int(_repo_bundle_path(root).stat().st_mtime_ns)
+    except OSError:
+        return 0
+
+
 def _dump_lsp(idx: LspIndex) -> dict[str, Any]:
     return {
         "defs": dict(idx.defs),
@@ -402,25 +411,51 @@ def _save_repo_bundle(
         pass
 
 
-def _load_repo(root: Path, *, with_graphify: bool | None = None) -> _RepoTrace:
+def _load_repo(
+    root: Path, *, with_graphify: bool | None = None, force_bake: bool = False
+) -> _RepoTrace:
     root = root.resolve()
     import os
+
+    # Point the per-file parse cache at this repo's disk cache so a freshly
+    # spawned revalidate child inherits warm parses (PERF-1).
+    try:
+        from trace_lab.corpus import set_parse_cache_root
+
+        set_parse_cache_root(root)
+    except Exception:  # noqa: BLE001
+        pass
 
     with_graphify = _want_graphify(with_graphify)
     engine = _trace_engine()
     key = f"{root}|gfy={int(bool(with_graphify))}|eng={engine}"
     cached = _CACHE.get(key)
-    if cached and (time.time() - cached.built_at) < 600:
+    # Invalidate the in-memory trace when a background revalidate rewrote the
+    # disk bundle underneath this (long-lived MCP locate worker) process —
+    # otherwise pack keeps resolving seeds against the pre-rebake nodes for up to
+    # the 600s TTL, which is the second half of BUG-A. A stat is cheap.
+    if (
+        cached
+        and not force_bake
+        and (time.time() - cached.built_at) < 600
+        and cached.bundle_mtime_ns == _bundle_mtime_ns(root)
+    ):
         return cached
 
     fingerprint = corpus_fingerprint(root)
     # One disk unpickle: prefer fresh fingerprint, else accept stale (beats bake).
-    bundled = _try_load_repo_bundle(
-        root,
-        fingerprint=fingerprint,
-        with_graphify=with_graphify,
-        engine=engine,
-        allow_stale=True,
+    # ``force_bake`` (the background revalidate — BUG-A / stale-while-revalidate)
+    # skips the stale bundle so an edited corpus is re-extracted and written back.
+    bundled = (
+        None
+        if force_bake
+        else _try_load_repo_bundle(
+            root,
+            fingerprint=fingerprint,
+            with_graphify=with_graphify,
+            engine=engine,
+            allow_stale=True,
+        )
     )
     if bundled is not None:
         if len(bundled) >= 6:
@@ -499,6 +534,7 @@ def _load_repo(root: Path, *, with_graphify: bool | None = None) -> _RepoTrace:
         gfy=gfy,
         poly=poly,
         built_at=time.time(),
+        bundle_mtime_ns=_bundle_mtime_ns(root),
     )
     _CACHE[key] = rt
     return rt
@@ -535,8 +571,12 @@ def _bridge_blocks_inprocess_bake() -> bool:
     return False
 
 
-def _spawn_ast_bake(root: Path) -> dict[str, Any]:
-    """Bake in a fresh interpreter so the MCP process keeps its GIL."""
+def _spawn_ast_bake(root: Path, *, force: bool = False) -> dict[str, Any]:
+    """Bake in a fresh interpreter so the MCP process keeps its GIL.
+
+    ``force`` re-extracts even when a (stale) bundle exists — the background
+    revalidate for BUG-A. Without it the child only bakes on a missing bundle.
+    """
     import subprocess
     import sys
 
@@ -549,9 +589,9 @@ def _spawn_ast_bake(root: Path) -> dict[str, Any]:
     code = (
         "import sys\n"
         "from pipeline.context_trace import hydrate_ast_bundle\n"
-        "out = hydrate_ast_bundle(sys.argv[1], bake_on_miss=True)\n"
+        "out = hydrate_ast_bundle(sys.argv[1], bake_on_miss=True, force=%s)\n"
         "raise SystemExit(0 if isinstance(out, dict) and out.get('ok') else 1)\n"
-    )
+    ) % ("True" if force else "False")
     try:
         from pipeline.process_job import hidden_run
 
@@ -579,6 +619,90 @@ def _spawn_ast_bake(root: Path) -> dict[str, Any]:
     return {"ok": True}
 
 
+_REFRESH_LOCK = threading.RLock()
+_REFRESH_INFLIGHT: set[str] = set()
+# root -> fingerprint we last (re)baked to disk, so a burst of saves coalesces.
+_REFRESH_LAST_FP: dict[str, str] = {}
+
+
+def ast_bundle_is_stale(root: Path | str, *, with_graphify: bool | None = None) -> bool:
+    """True when the on-disk AST bundle's fingerprint != the current corpus.
+
+    Missing bundle counts as stale. Cheap: one stat-walk + one small header read.
+    """
+    root_p = Path(root).resolve()
+    path = _repo_bundle_path(root_p)
+    if not path.is_file():
+        return True
+    raw = _read_repo_bundle_raw(path)
+    if raw is None or raw.get("version") != _REPO_BUNDLE_VERSION:
+        return True
+    if raw.get("engine") != _trace_engine():
+        return True
+    if bool(raw.get("with_graphify")) != bool(_want_graphify(with_graphify)):
+        return True
+    try:
+        return raw.get("fingerprint") != corpus_fingerprint(root_p)
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def refresh_ast_bundle_if_stale(
+    root: Path | str, *, with_graphify: bool | None = None, block: bool = True
+) -> dict[str, Any]:
+    """Stale-while-revalidate rebake of the disk AST bundle (BUG-A).
+
+    Serve-stale stays the request-path behavior (BETA-02); this is the background
+    revalidate the keeper runs after a corpus-changing sync so the *next*
+    pack_context resolves seeds for freshly edited/created files. Single-flight
+    per root and coalesced on the corpus fingerprint, so a burst of saves triggers
+    at most one rebake per distinct corpus state. Never call on a request/hot path.
+    """
+    root_p = Path(root).resolve()
+    key = str(root_p)
+    try:
+        fp = corpus_fingerprint(root_p)
+    except Exception:  # noqa: BLE001
+        fp = ""
+    with _REFRESH_LOCK:
+        if key in _REFRESH_INFLIGHT:
+            return {"ok": True, "skipped": "in_flight"}
+        if fp and _REFRESH_LAST_FP.get(key) == fp and not ast_bundle_is_stale(
+            root_p, with_graphify=with_graphify
+        ):
+            return {"ok": True, "skipped": "fresh"}
+        if not ast_bundle_is_stale(root_p, with_graphify=with_graphify):
+            _REFRESH_LAST_FP[key] = fp
+            return {"ok": True, "skipped": "fresh"}
+        _REFRESH_INFLIGHT.add(key)
+
+    def _run() -> dict[str, Any]:
+        t0 = time.perf_counter()
+        try:
+            # A fresh interpreter keeps the engine's GIL free (in-process rebake
+            # contended badly with concurrent search + graph catch-ups — PERF-1).
+            # The child reuses a disk-backed parse cache (trace_lab.corpus) so it
+            # is warm despite being a new process, and writes the disk bundle the
+            # MCP locate worker reloads on its next _load_repo.
+            out = _spawn_ast_bake(root_p, force=True)
+            out.setdefault("source", "revalidate" if out.get("ok") else "bake_error")
+            with _REFRESH_LOCK:
+                if out.get("ok"):
+                    _REFRESH_LAST_FP[key] = fp
+            out.setdefault("ms", round((time.perf_counter() - t0) * 1000, 1))
+            return out
+        finally:
+            with _REFRESH_LOCK:
+                _REFRESH_INFLIGHT.discard(key)
+
+    if block:
+        return _run()
+    threading.Thread(
+        target=_run, name="scubiee-ast-revalidate", daemon=True
+    ).start()
+    return {"ok": True, "started": True}
+
+
 def ast_cache_ready(root: Path | str, *, with_graphify: bool | None = None) -> bool:
     """True when this process already holds a fresh in-memory AST/trace repo."""
     key = _repo_cache_key(Path(root), with_graphify=with_graphify)
@@ -591,14 +715,38 @@ def hydrate_ast_bundle(
     *,
     bake_on_miss: bool = False,
     with_graphify: bool | None = None,
+    force: bool = False,
 ) -> dict[str, Any]:
     """Populate ``_CACHE`` from disk bundle (fast) or optional full bake.
 
     Attach-warm uses ``bake_on_miss=False`` so the 10s budget is not blown by a
     cold AST rebuild. Pack can call with ``bake_on_miss=True`` once embed is hot.
+    ``force`` re-extracts and rewrites the disk bundle even when a stale one is
+    present — the background revalidate that keeps pack's corpus in step with an
+    edited repo (BUG-A / stale-while-revalidate). Callers must run it off any
+    request/hot path.
     """
     t0 = time.perf_counter()
     root_p = Path(root).resolve()
+    if force:
+        try:
+            _load_repo(root_p, with_graphify=_want_graphify(with_graphify), force_bake=True)
+            src = "bake_forced"
+            ok = True
+        except Exception as exc:  # noqa: BLE001
+            return {
+                "ok": False,
+                "source": "bake_error",
+                "error": str(exc),
+                "ms": round((time.perf_counter() - t0) * 1000, 1),
+            }
+        try:
+            from pipeline.warm_contract import set_ast_hydrated
+
+            set_ast_hydrated(True, source=src)
+        except Exception:  # noqa: BLE001
+            pass
+        return {"ok": ok, "source": src, "ms": round((time.perf_counter() - t0) * 1000, 1)}
     if ast_cache_ready(root_p, with_graphify=with_graphify):
         try:
             from pipeline.warm_contract import set_ast_hydrated
@@ -615,14 +763,17 @@ def hydrate_ast_bundle(
     gfy = _want_graphify(with_graphify)
     engine = _trace_engine()
     fingerprint = corpus_fingerprint(root_p)
-    # One unpickle. When bake_on_miss=False, accept a slightly stale bundle
-    # rather than missing (and never double-read the 50MB pickle).
+    # One unpickle. Always accept a stale bundle: a bake would only load the
+    # same file again (``_load_repo`` uses allow_stale=True), and in an edited
+    # repo the fingerprint is nearly always stale. Rejecting it here made the
+    # locate worker spawn a bake child on every attach, so pack returned
+    # ast_warming for 15s+ after map was already dense (BETA-02).
     bundled = _try_load_repo_bundle(
         root_p,
         fingerprint=fingerprint,
         with_graphify=gfy,
         engine=engine,
-        allow_stale=not bake_on_miss,
+        allow_stale=True,
     )
     if bundled is not None:
         # Defensive: older mocks may still return a 5-tuple.
@@ -644,6 +795,7 @@ def hydrate_ast_bundle(
             gfy=gfy_g,
             poly=poly,
             built_at=time.time(),
+            bundle_mtime_ns=_bundle_mtime_ns(root_p),
         )
         try:
             from pipeline.warm_contract import set_ast_hydrated
@@ -3317,8 +3469,14 @@ def run_expand_context(
         )
         if disk is not None:
             disk["elapsed_ms"] = round((time.perf_counter() - t0) * 1000, 1)
+            if int(disk.get("count") or 0) == 0 and not disk.get("empty_reason"):
+                disk["empty_reason"] = "no_edges"
             return disk
-        return {"ok": False, "error": f"unknown node {node!r}"}
+        return {
+            "ok": False,
+            "error": f"unknown node {node!r}",
+            "empty_reason": "node_unresolved",
+        }
 
     seed = rt.nodes[nid]
     d = (intent or direction or "all").lower().strip() or "all"
@@ -3456,6 +3614,11 @@ def run_expand_context(
     for i, c in enumerate(delta, 1):
         c["rank"] = i
 
+    empty_reason: str | None = None
+    if not delta:
+        pre_filter_n = len(struct) + len(tracer_cards) + len(lexical)
+        empty_reason = "already_expanded" if pre_filter_n > 0 else "no_edges"
+
     bodies: list[dict[str, Any]] = []
     packed_now: set[str] = set()
     if with_bodies and delta:
@@ -3494,7 +3657,7 @@ def run_expand_context(
         },
     ]
 
-    return {
+    out: dict[str, Any] = {
         "ok": True,
         "tool": "expand_context",
         "from": nid,
@@ -3524,6 +3687,9 @@ def run_expand_context(
         "_persist_ids": [c["id"] for c in delta],
         "_persist_packed": sorted(packed_now),
     }
+    if empty_reason:
+        out["empty_reason"] = empty_reason
+    return out
 
 
 def _fit_collect_text(

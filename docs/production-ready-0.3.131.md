@@ -27,7 +27,28 @@ Sync is **working well**, not literally perfect under every load shape — see c
 - **Edits/deletes** still use full publish (BM25 rebuild); append-only hot patch is for **new-file** hot reasons.
 - `CTX_KEEPER_DEFER_WHILE_CLIENTS=1` can delay sync while MCP clients are chatty.
 - After `uv tool install --reinstall`, run `scubiee setup --repair --skip-model --skip-bench` to keep DirectML.
+  For a dev checkout, prefer `scripts/sync-uv-install.ps1` (below): it replaces only the scubiee package and leaves DirectML alone.
 - Keep **one** install owning `~/.scubiee` (uv-tool vs Miniconda fights the daemon).
+
+## Install sync (dev checkout → uv-tool)
+
+Cursor/Kiro MCP runs `pythonw -m pipeline.mcp_bridge` from the uv-tool env, not `packages/`. An agent shell with `PYTHONPATH=packages` can make fixes look live when they are not.
+
+```powershell
+# replace scubiee in the uv-tool env (no deps), verify byte parity + pipeline.ignore import
+powershell -ExecutionPolicy Bypass -File scripts/sync-uv-install.ps1
+# verify only
+powershell -ExecutionPolicy Bypass -File scripts/sync-uv-install.ps1 -CheckOnly
+# then: scubiee engine stop; scubiee engine ensure .   and reload Scubiee MCP in the IDE
+```
+
+`OK` requires `ignore.py` present, `differ: 0 missing: 0`, and the tool interpreter importing `pipeline.ignore` with `PYTHONPATH` cleared.
+
+## Warm wait criteria (soft ≠ dense)
+
+- Soft (BM25/index) is up in seconds. Dense (FastEmbed/ORT, DirectML) cold load was **~60–110 s** on this machine. A fixed ~30 s wait is not enough.
+- Wait on `status`, not the clock: `warm_wait.done=true`, i.e. `agent_ready=yes` **and** `embedder_loaded=true` **and** `pack_ready=true`. `warm_wait.stage` shows which part is still loading (`engine_down` → `soft_loading` → `dense_loading` → `pack_ast_loading` → `ready`). Re-check after `warm_wait.retry_after_s`.
+- `pack_context` waits up to `CTX_MCP_PACK_AST_WAIT_S` (default 10 s) for the AST bundle. If it still is not loaded, it returns `ast_warming` with `should_retry=true` and `retry_after_s`.
 
 ## MCP ship tools — response times
 

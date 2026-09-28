@@ -1,0 +1,92 @@
+{
+  "id": "r05",
+  "enrich_prompt": "cmd_connect connect host MCP mcp.json cursor claude install surface permissions bridge",
+  "suggested_seed": {
+    "file": "packages/pipeline/__main__.py",
+    "symbol": "",
+    "loc": "packages/pipeline/__main__.py:1-1",
+    "score": 13.01139376640832
+  },
+  "chunks": [
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "score": 13.01139376640832,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/pipeline/mcp_install.py",
+      "symbol": "",
+      "loc": "packages/pipeline/mcp_install.py:1-1",
+      "score": 5.571583692498198,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "tests/test_mcp_bridge_concurrency.py",
+      "symbol": "",
+      "loc": "tests/test_mcp_bridge_concurrency.py:1-1",
+      "score": 5.406696369783725,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "tests/test_mcp_permissions.py",
+      "symbol": "",
+      "loc": "tests/test_mcp_permissions.py:1-1",
+      "score": 5.344782646071347,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/pipeline/mcp_permissions.py",
+      "symbol": "",
+      "loc": "packages/pipeline/mcp_permissions.py:1-1",
+      "score": 5.0930557009299795,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "docs/web-info/cursor-mcp.md",
+      "symbol": "",
+      "loc": "docs/web-info/cursor-mcp.md:1-1",
+      "score": 4.995124692309904,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "tests/test_mcp_restore.py",
+      "symbol": "",
+      "loc": "tests/test_mcp_restore.py:1-1",
+      "score": 4.938789813050838,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "docs/cursor-mcp-workspace-resolution-research.md",
+      "symbol": "",
+      "loc": "docs/cursor-mcp-workspace-resolution-research.md:1-1",
+      "score": 4.9142498634378375,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "scripts/kiro_mcp_ab_dev_eval.py",
+      "symbol": "",
+      "loc": "scripts/kiro_mcp_ab_dev_eval.py:1-1",
+      "score": 4.912089984898667,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "docs/connect-global-mcp-research.md",
+      "symbol": "",
+      "loc": "docs/connect-global-mcp-research.md:1-1",
+      "score": 4.870473760733825,
+      "start_line": null,
+      "end_line": null
+    }
+  ]
+}

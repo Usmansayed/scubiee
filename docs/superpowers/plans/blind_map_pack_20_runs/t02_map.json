@@ -1,0 +1,111 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 6.671,
+  "stdout_chars": 3945,
+  "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})",
+  "json": {
+    "ok": true,
+    "tool": "map",
+    "cards": [
+      {
+        "rank": 1,
+        "file": "packages/pipeline/rules_installer.py",
+        "score": 16.612201075669514,
+        "why": "def write_project_gate_rules( repo: Path | str, *, dry_run: bool = False, slugs: list[str] | None = None, ) -> dict[str, Any]: \"\"\"Write compact GATE prefer+escape rules under the r",
+        "role": "function",
+        "loc": "packages/pipeline/rules_installer.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 2,
+        "file": "packages/pipeline/mcp_permissions.py",
+        "score": 16.389254068147082,
+        "why": "def apply_permissions_to_repo_tool_surface( tool_slug: str, repo: Path | str, *, profile: PermissionProfile = \"locate\", dry_run: bool = False, ) -> dict[str, Any]: \"\"\"Sidecar permi",
+        "role": "function",
+        "loc": "packages/pipeline/mcp_permissions.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 3,
+        "file": "tests/test_mcp_permissions.py",
+        "score": 15.103675426687904,
+        "why": "def test_write_project_tool_surface_includes_permissions(tmp_path: Path) -> None: repo = tmp_path / \"ws\" repo.mkdir() (repo / \".git\").mkdir() tool = TOOL_MAP[\"cline\"] report = writ",
+        "role": "test",
+        "loc": "tests/test_mcp_permissions.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 4,
+        "file": "tests/test_token_efficient_gating.py",
+        "score": 13.520754113058068,
+        "why": "\"\"\"Token-efficient MCP gating: connect-time tools, minimal instructions, init rules.\"\"\" from __future__ import annotations import json from pathlib import Path import pytest from p",
+        "role": "test",
+        "loc": "tests/test_token_efficient_gating.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 5,
+        "file": "tests/test_user_journey_scenarios.py",
+        "score": 13.003380881897156,
+        "why": "def test_s10_disconnect_removes_global_and_project_files( fake_home: Path, tmp_path: Path, monkeypatch ) -> None: repo = _git_repo(tmp_path / \"proj\") pid = \"ce_scenario_disc1234567",
+        "role": "test",
+        "loc": "tests/test_user_journey_scenarios.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 6,
+        "file": "packages/pipeline/templates/scubiee.md",
+        "score": 8.131531229724818,
+        "why": "# Scubiee GATE - when to use Policy only; tool how-to is in Scubiee MCP server instructions. - **GATE 0** - Not managed (no `scubiee init`). BAN Scubiee MCP locate tools (`map`, `f",
+        "role": "docs",
+        "loc": "packages/pipeline/templates/scubiee.md:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 7,
+        "file": "scripts/kiro_mcp_ab_dev_eval.py",
+        "score": 7.2988699656660065,
+        "why": "def install_gate_surface(ws: Path, *, with_mcp: bool) -> dict[str, str]: \"\"\"Write AGENTS.md + Kiro steering (+ Cursor rule) so hosts load locate policy. with_mcp=True \u2192 full MUST-U",
+        "role": "other",
+        "loc": "scripts/kiro_mcp_ab_dev_eval.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 8,
+        "file": "docs/web-info/cursor-mcp.md",
+        "score": 6.521397023366882,
+        "why": "# Cursor & MCP Scubiee integrates with AI coding tools through the **Model Context Protocol (MCP)**. The MCP server name is **`scubiee`**. It talks to the local Scubiee daemon (def",
+        "role": "docs",
+        "loc": "docs/web-info/cursor-mcp.md:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 9,
+        "file": "packages/pipeline/mcp_install.py",
+        "score": 6.386996565267164,
+        "why": "def write_cursor_mcp( repo: Path | str | None = None, *, host: str = \"127.0.0.1\", port: int = 8765, ) -> dict[str, str]: \"\"\"Write project mcp.json with CTX_REPO; avoid a user-level",
+        "role": "function",
+        "loc": "packages/pipeline/mcp_install.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 10,
+        "file": "packages/pipeline/tool_registry.py",
+        "score": 5.607884798881992,
+        "why": "\"\"\"Registry of AI coding tools: project-local MCP + GATE rules paths. Connect records tools in ``~/.scubiee/connected_tools.json`` and fans out repo-pinned MCP + compact GATE rules",
+        "role": "function",
+        "loc": "packages/pipeline/tool_registry.py:1-1",
+        "symbol": ""
+      }
+    ],
+    "suggested_seed": {
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": "",
+      "loc": "packages/pipeline/rules_installer.py:1-1",
+      "score": 16.612201075669514
+    },
+    "next": "scubiee pack \"scubiee connect install_tool write_project_tool_surface apply_permissions_to_repo_tool_surface Cursor mcp.json autoApprove permissions.json mcpAllowlist write_project_gate_rules AGENTS.md GATE\" --seed-file packages/pipeline/rules_installer.py --mode lean"
+  },
+  "stdout_preview": ""
+}

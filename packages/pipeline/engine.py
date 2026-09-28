@@ -149,6 +149,19 @@ def promotable_cards(
 
 
 def _engine_key(root: Path, base_dir: Path | None) -> str:
+    # ``base_dir=None`` means "the project's own store", which is exactly what
+    # publish_engine passes explicitly. Keying them differently made
+    # prewarm/keepalive (no base_dir) load a second full binder next to the
+    # published one: 5-12s of GIL-heavy work on every engine start (issue 4).
+    if base_dir is None:
+        try:
+            from pipeline.project_id import peek_project
+
+            ref = peek_project(root.resolve())
+            if ref is not None:
+                base_dir = ref.store_dir
+        except Exception:  # noqa: BLE001
+            base_dir = None
     return f"{root.resolve()}::{base_dir.resolve() if base_dir else ''}"
 
 
@@ -164,6 +177,11 @@ def _store_generation_mtime(store: PipelineStore) -> float:
     return latest
 
 
+import weakref as _weakref
+
+_LAZY_WRAPPERS: "_weakref.WeakSet[_LazyEmbedder]" = _weakref.WeakSet()
+
+
 class _LazyEmbedder:
     """Defer model weights until the first semantic query (locate_only tier)."""
 
@@ -173,8 +191,19 @@ class _LazyEmbedder:
         self.cache_path = cache_path
         self.backend = "lazy"
         self._inner: Embedder | None = None
+        _LAZY_WRAPPERS.add(self)
 
     def _ensure(self) -> Embedder:
+        if self._inner is not None:
+            # A wrapper can outlive release_embedders() (the published runtime
+            # engine is not always in _ENGINES). Using its weights without
+            # registering them left embedder_is_loaded() False forever: every
+            # search answered dense_embed_loading and the keeper deferred every
+            # save as "embedder cold" (live wedge after an idle demote).
+            key = f"{self.model}|{self.dim}|{self.cache_path}"
+            with _LOCK:
+                _EMBEDDERS.setdefault(key, self._inner)
+            return self._inner
         if self._inner is None:
             self._inner = get_embedder(
                 self.model,
@@ -251,6 +280,10 @@ def release_embedders() -> int:
     except Exception:  # noqa: BLE001
         pass
     with _LOCK:
+        # Every wrapper, not only those of engines still in _ENGINES: one held
+        # by the published runtime kept the ORT weights resident after a demote.
+        for emb in list(_LAZY_WRAPPERS):
+            emb.unload()
         for eng in _ENGINES.values():
             emb = eng.embedder
             if isinstance(emb, _LazyEmbedder):
@@ -275,7 +308,8 @@ def embedder_is_loaded() -> bool:
         return bool(_EMBEDDERS)
 
 
-_PREWARM_LOCK = threading.Lock()
+# Reentrant: prewarm_status() is called from code that may already hold it.
+_PREWARM_LOCK = threading.RLock()
 _PREWARM_STATE: dict[str, Any] = {
     "running": False,
     "done": False,
@@ -285,17 +319,21 @@ _PREWARM_STATE: dict[str, Any] = {
 
 
 def prewarm_status() -> dict[str, Any]:
+    # Copy under the lock, then call out. embedder_is_loaded() takes _LOCK, and
+    # release_embedders() takes _LOCK -> _PREWARM_LOCK: nesting them here the
+    # other way round is an ABBA deadlock with /health on one side.
     with _PREWARM_LOCK:
-        return {
-            "running": bool(_PREWARM_STATE.get("running")),
-            "done": bool(_PREWARM_STATE.get("done")),
-            "error": _PREWARM_STATE.get("error"),
-            "ms": _PREWARM_STATE.get("ms"),
-            "embedder_loaded": embedder_is_loaded(),
-            "prime_done": bool(_PREWARM_STATE.get("prime_done")) or prime_dense_ready(),
-            "priming": bool(_PREWARM_STATE.get("priming")),
-            "prime_dense": dict(_PREWARM_STATE.get("prime_dense") or {}),
-        }
+        state = dict(_PREWARM_STATE)
+    return {
+        "running": bool(state.get("running")),
+        "done": bool(state.get("done")),
+        "error": state.get("error"),
+        "ms": state.get("ms"),
+        "embedder_loaded": embedder_is_loaded(),
+        "prime_done": bool(state.get("prime_done")) or prime_dense_ready(),
+        "priming": bool(state.get("priming")),
+        "prime_dense": dict(state.get("prime_dense") or {}),
+    }
 
 
 def _prime_done_path() -> Path:
@@ -348,8 +386,27 @@ def _mark_prewarm_busy(busy: bool) -> None:
         if busy:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(f"{time.time()} {os.getpid()}", encoding="utf-8")
-        elif path.is_file():
+            return
+        if not path.is_file():
+            return
+    except OSError:
+        return
+    # Windows: unlink fails (WinError 32) while the watchdog or a bridge has the
+    # stamp open for a read. Swallowing that left a "busy" stamp with this live
+    # pid behind forever, and the watchdog force-restarted a healthy engine as a
+    # hung prewarm 3 minutes later (issue 2). Retry briefly, then neutralise the
+    # stamp in place: overwriting is allowed where deleting is not, and pid 0
+    # reads as "writer gone" in hung_prewarm_should_abort.
+    for attempt in range(5):
+        try:
             path.unlink()
+            return
+        except FileNotFoundError:
+            return
+        except OSError:
+            time.sleep(0.02 * (attempt + 1))
+    try:
+        path.write_text("0 0", encoding="utf-8")
     except OSError:
         pass
 
@@ -794,9 +851,14 @@ def prewarm_embedder_async(root: Path | str | None = None) -> dict[str, Any]:
                 _mark_prime_done(True, {"ok": False, "error": str(exc)})
         return {"ok": True, "already_warm": True, **prewarm_status()}
     with _PREWARM_LOCK:
-        if _PREWARM_STATE.get("running"):
-            return {"ok": True, "already_running": True, **prewarm_status()}
-        _PREWARM_STATE.update({"running": True, "error": None})
+        already_running = bool(_PREWARM_STATE.get("running"))
+        if not already_running:
+            _PREWARM_STATE.update({"running": True, "error": None})
+    if already_running:
+        # prewarm_status() takes _PREWARM_LOCK: calling it inside the block above
+        # self-deadlocked this thread, and then every /health waited on the lock
+        # forever -> watchdog "force heal hung engine" -> engine PID change.
+        return {"ok": True, "already_running": True, **prewarm_status()}
     try:
         from pipeline.warm_autoload import begin_prewarm
 
@@ -1240,6 +1302,235 @@ class WarmSearchEngine:
         matrix: Any,
         *,
         base_chunk_count: int | None = None,
+        removed_ids: list[int] | None = None,
+        embedded_ids: list[int] | None = None,
+    ) -> dict[str, Any]:
+        """Patch this live binder with one sync's chunk delta.
+
+        Without ``removed_ids``/``embedded_ids`` this is a pure append (every
+        record embedded, in order). With them it also covers edits and
+        deletions: removed chunks become tombstones (blank file, zero vector,
+        dropped from every per-file index) because positions cannot shift under
+        concurrent searches, and records whose id is already live are updated in
+        place. The next full publish compacts tombstones away.
+        """
+        if removed_ids is None and embedded_ids is None:
+            return self._append_chunk_delta(records, matrix, base_chunk_count=base_chunk_count)
+        return self._patch_chunk_delta(
+            records,
+            matrix,
+            base_chunk_count=base_chunk_count,
+            removed_ids=[int(i) for i in (removed_ids or [])],
+            embedded_ids=[int(i) for i in (embedded_ids or [])],
+        )
+
+    def _bm25_patch(
+        self,
+        texts: list[str],
+        *,
+        n_before: int,
+        dead_positions: list[int] | None = None,
+    ) -> bool:
+        """Keep BM25 in step with a hot patch (new chunks + tombstones).
+
+        BM25 used to stay a generation behind, so a function saved seconds ago
+        was reachable only through dense: an exact-name query did not find it
+        until the next full publish (disk_save_probe edit steps timed out).
+        Skipped, with the old behaviour, when BM25 is not aligned with the binder.
+        """
+        bm25 = getattr(self.conductor, "bm25", None)
+        append = getattr(bm25, "append_docs", None)
+        if bm25 is None or append is None:
+            return False
+        if int(getattr(bm25, "N", -1)) != int(n_before):
+            print(
+                f"[publish] bm25 not patched: index has {getattr(bm25, 'N', None)} docs, "
+                f"binder {n_before}; new chunks rank on dense until the next full publish",
+                file=sys.stderr,
+                flush=True,
+            )
+            return False
+        if dead_positions:
+            bm25.mark_dead(list(dead_positions))
+        append(list(texts))
+        return True
+
+    def _patch_chunk_delta(
+        self,
+        records: list[ChunkRecord],
+        matrix: Any,
+        *,
+        base_chunk_count: int | None,
+        removed_ids: list[int],
+        embedded_ids: list[int],
+    ) -> dict[str, Any]:
+        import numpy as np
+        from conductor.graphify_retriever import normalize_file
+
+        if not records and not removed_ids:
+            raise ValueError("empty delta")
+        dense = getattr(self.conductor, "dense", None)
+        if dense is None or getattr(dense, "matrix", None) is None:
+            raise RuntimeError("no dense channel to patch")
+        chunk_row = getattr(dense, "_chunk_row", None)
+        if chunk_row is None:
+            raise RuntimeError("dense adapter has no chunk-id map")
+        dim = int(dense.matrix.shape[1])
+        if embedded_ids:
+            rows = np.asarray(matrix, dtype=np.float32)
+            if rows.ndim != 2 or rows.shape[0] != len(embedded_ids):
+                raise ValueError(
+                    f"matrix rows {getattr(rows, 'shape', None)} != embedded {len(embedded_ids)}"
+                )
+            if int(rows.shape[1]) != dim:
+                raise ValueError(f"delta dim {rows.shape[1]} != dense dim {dim}")
+        else:
+            rows = np.zeros((0, dim), dtype=np.float32)
+        row_of_new = {cid: j for j, cid in enumerate(embedded_ids)}
+
+        n_before = len(self.chunks)
+        if len(self.texts) != n_before or len(self.files) != n_before:
+            raise RuntimeError("binder lists disagree on length")
+        ids = [int(r.id) for r in records]
+        if len(set(ids)) != len(ids) or set(ids) & set(removed_ids):
+            raise RuntimeError("delta ids overlap")
+        appended: list[ChunkRecord] = []
+        in_place: list[ChunkRecord] = []
+        for record in records:
+            rid = int(record.id)
+            if rid in row_of_new:
+                if rid in chunk_row:
+                    raise RuntimeError(f"re-embedded chunk {rid} is already live")
+                appended.append(record)
+            elif rid in chunk_row:
+                in_place.append(record)
+            else:
+                raise RuntimeError(f"chunk {rid} has neither a new row nor a live one")
+        for rid in removed_ids:
+            if rid not in chunk_row:
+                raise RuntimeError(f"removed chunk {rid} is not live")
+        if base_chunk_count is not None:
+            # base = on-disk count without the touched files' old chunks, which
+            # are exactly the in-place and removed ones.
+            alive = n_before - int(getattr(self, "_tombstones", 0))
+            expected = int(base_chunk_count) + len(in_place) + len(removed_ids)
+            if alive != expected:
+                raise RuntimeError(f"binder drift: live chunks {alive} != delta base {expected}")
+
+        conductor_files = getattr(self.conductor, "files", None)
+        graph = getattr(self.conductor, "graph", None)
+        spans = getattr(graph, "spans", None)
+        by_file = getattr(graph, "_by_file", None)
+        file_chunks = getattr(self.conductor, "_file_chunks", None)
+        touched: set[str] = set()
+
+        # Copy-on-write so a concurrent search keeps a consistent matrix.
+        new_mat = dense.matrix
+        if appended:
+            new_rows = np.stack([rows[row_of_new[int(r.id)]] for r in appended])
+            norms = np.linalg.norm(new_rows, axis=1, keepdims=True)
+            new_mat = np.vstack([new_mat, new_rows / np.maximum(norms, 1e-12)])
+        elif removed_ids:
+            new_mat = new_mat.copy()
+
+        # 1. Appends, in the same order as _append_chunk_delta.
+        for offset, record in enumerate(appended):
+            rel = record.file.replace("\\", "/")
+            self.chunks.append(record)
+            self.texts.append(record.text)
+            self.files.append(rel)
+            if conductor_files is not None and conductor_files is not self.files:
+                conductor_files.append(rel)
+            if spans is not None:
+                spans.append(
+                    ChunkSpan(
+                        index=n_before + offset,
+                        file=rel,
+                        start_line=record.start_line,
+                        end_line=record.end_line,
+                    )
+                )
+            touched.add(rel)
+
+        # 2. Unchanged chunks keep their vector; only lines (and text) move.
+        for record in in_place:
+            pos = int(chunk_row[int(record.id)])
+            rel = record.file.replace("\\", "/")
+            self.chunks[pos] = record
+            self.texts[pos] = record.text
+            if spans is not None and 0 <= pos < len(spans):
+                spans[pos] = ChunkSpan(
+                    index=pos, file=rel, start_line=record.start_line, end_line=record.end_line
+                )
+            touched.add(rel)
+
+        # 3. Tombstones.
+        dead_positions: list[int] = []
+        for rid in removed_ids:
+            pos = int(chunk_row[rid])
+            dead_positions.append(pos)
+            old = self.chunks[pos]
+            rel = str(old.file).replace("\\", "/")
+            touched.add(rel)
+            if 0 <= pos < new_mat.shape[0]:
+                new_mat[pos] = 0.0
+            self.chunks[pos] = ChunkRecord(
+                id=int(old.id), file="", start_line=0, end_line=0, symbol=None, text="", enriched=""
+            )
+            self.texts[pos] = ""
+            self.files[pos] = ""
+            if conductor_files is not None and conductor_files is not self.files:
+                conductor_files[pos] = ""
+            if spans is not None and 0 <= pos < len(spans):
+                if by_file is not None:
+                    key = normalize_file(spans[pos].file)
+                    by_file[key] = [s for s in by_file.get(key, []) if s.index != pos]
+                    if not by_file[key]:
+                        by_file.pop(key, None)
+                spans[pos] = ChunkSpan(index=pos, file="", start_line=0, end_line=0)
+
+        dense.matrix = new_mat
+        for offset, record in enumerate(appended):
+            chunk_row[int(record.id)] = n_before + offset
+        for rid in removed_ids:
+            chunk_row.pop(rid, None)
+        self._bm25_patch(
+            [r.text for r in appended], n_before=n_before, dead_positions=dead_positions
+        )
+
+        # 4. Per-file position lists, then the position counter.
+        n_after = len(self.chunks)
+        for rel in touched:
+            positions = [p for p in range(n_after) if self.files[p] == rel]
+            if file_chunks is not None:
+                if positions:
+                    file_chunks[rel] = positions
+                else:
+                    file_chunks.pop(rel, None)
+            if by_file is not None and spans is not None:
+                key = normalize_file(rel)
+                if positions:
+                    by_file[key] = [spans[p] for p in positions if p < len(spans)]
+                else:
+                    by_file.pop(key, None)
+        self._tombstones = int(getattr(self, "_tombstones", 0)) + len(removed_ids)
+        self.conductor._n = n_after
+        return {
+            "patched": True,
+            "chunks_before": n_before,
+            "chunks_after": n_after,
+            "appended": len(appended),
+            "updated": len(in_place),
+            "removed": len(removed_ids),
+            "files": sorted(touched),
+        }
+
+    def _append_chunk_delta(
+        self,
+        records: list[ChunkRecord],
+        matrix: Any,
+        *,
+        base_chunk_count: int | None = None,
     ) -> dict[str, Any]:
         """Append new chunks to this live binder instead of rebuilding it.
 
@@ -1254,10 +1545,9 @@ class WarmSearchEngine:
         here must match ``chunks.jsonl``: engine lists, then the dense rows the
         sync just embedded, then graph spans, and only then the conductor's
         position counters — a concurrent search must never see a position whose
-        text/row has not landed yet. BM25 is intentionally left alone: it stays
-        one generation behind and ``_fit_channel`` zero-pads it, so new chunks
-        rank on dense (which is what admits a file into map's pool) until the
-        next full publish.
+        text/row has not landed yet. BM25 gets the new chunks' postings too
+        (``_bm25_patch``); if it is not aligned with the binder it is left one
+        generation behind and ``_fit_channel`` zero-pads it, as before.
 
         Raises on anything it cannot patch coherently; the caller falls back to
         a full reload.
@@ -1279,10 +1569,11 @@ class WarmSearchEngine:
             raise ValueError(f"delta dim {rows.shape[1]} != dense dim {dim}")
 
         n_before = len(self.chunks)
-        if base_chunk_count is not None and int(base_chunk_count) != n_before:
+        alive = n_before - int(getattr(self, "_tombstones", 0))
+        if base_chunk_count is not None and int(base_chunk_count) != alive:
             # The binder is not the corpus this delta was computed against.
             raise RuntimeError(
-                f"binder drift: live chunks {n_before} != delta base {base_chunk_count}"
+                f"binder drift: live chunks {alive} != delta base {base_chunk_count}"
             )
         if len(self.texts) != n_before or len(self.files) != n_before:
             raise RuntimeError("binder lists disagree on length")
@@ -1328,6 +1619,9 @@ class WarmSearchEngine:
                 spans.append(span)
                 by_file.setdefault(normalize_file(span.file), []).append(span)
 
+        # 3b. BM25 postings for the new chunks (exact-identifier queries).
+        self._bm25_patch([r.text for r in records], n_before=n_before)
+
         # 4. Position counters last.
         n_after = len(self.chunks)
         file_chunks = getattr(self.conductor, "_file_chunks", None)
@@ -1346,7 +1640,7 @@ class WarmSearchEngine:
     def status(self) -> dict[str, Any]:
         return {
             "root": str(self.root),
-            "chunks": len(self.texts),
+            "chunks": len(self.texts) - int(getattr(self, "_tombstones", 0)),
             "dense_missing": self.dense_missing(),
             "capability_cards": len(self.capability.cards) if self.capability else 0,
             "load_ms": round(self.load_ms, 1),
@@ -1384,7 +1678,22 @@ def load_engine(
 
         if (store.base / MANIFEST_NAME).is_file():
             report = validate_manifest(store.base)
-            if str(report.get("reason") or "") in {
+            print(f"[engine] publication invalid on load: {report}", file=sys.stderr, flush=True)
+            republished: dict[str, Any] = {}
+            if str(report.get("reason") or "") == "checksum_mismatch":
+                # A stale manifest over artifacts this process just wrote is the
+                # common case; a full reindex (minutes, and it used to quiesce
+                # the engine itself) is only for a genuinely mixed generation.
+                try:
+                    from pipeline.artifact_guard import republish_manifest_if_coherent
+
+                    republished = republish_manifest_if_coherent(store.base)
+                except Exception as exc:  # noqa: BLE001
+                    republished = {"ok": False, "reason": str(exc)}
+                print(f"[engine] manifest republish: {republished}", file=sys.stderr, flush=True)
+            if republished.get("ok") and index_is_usable(store.base):
+                pass
+            elif str(report.get("reason") or "") in {
                 "checksum_mismatch",
                 "artifact_missing",
                 "manifest_invalid",
@@ -1509,6 +1818,17 @@ def load_engine(
         load_ms=(time.perf_counter() - t0) * 1000,
         loaded_at=time.time(),
         capability=CapabilityIndex(cards),
+    )
+    try:
+        caller = sys._getframe(1).f_code.co_name  # noqa: SLF001
+    except Exception:  # noqa: BLE001
+        caller = "?"
+    # Every full binder load is seconds of GIL-heavy work: make it visible.
+    print(
+        f"[engine] load_engine chunks={len(texts)} ms={eng.load_ms:.0f} "
+        f"force={int(force_reload)} base_dir={'y' if base_dir else 'n'} caller={caller}",
+        file=sys.stderr,
+        flush=True,
     )
     with _LOCK:
         if not force_reload and key in _ENGINES:

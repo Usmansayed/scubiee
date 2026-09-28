@@ -1,0 +1,74 @@
+{
+  "ok": true,
+  "tool": "pack_poly_embed",
+  "engine": "poly_embed",
+  "elapsed_s": 0.229,
+  "n_pack": 4,
+  "seed": {
+    "file": "packages/pipeline/work_session.py",
+    "symbol": "touch",
+    "id": "packages/pipeline/work_session.py::touch"
+  },
+  "pack": [
+    {
+      "file": "packages/pipeline/work_session.py",
+      "symbol": "touch",
+      "score": 1.0,
+      "loc": "packages/pipeline/work_session.py:80-116",
+      "id": "packages/pipeline/work_session.py::touch",
+      "chars": 1310
+    },
+    {
+      "file": "packages/pipeline/work_session.py",
+      "symbol": "heatmap",
+      "score": 1.0,
+      "loc": "packages/pipeline/work_session.py:142-165",
+      "id": "packages/pipeline/work_session.py::heatmap",
+      "chars": 970
+    },
+    {
+      "file": "packages/pipeline/work_session.py",
+      "symbol": "save_session",
+      "score": 0.735,
+      "loc": "packages/pipeline/work_session.py:59-77",
+      "id": "packages/pipeline/work_session.py::save_session",
+      "chars": 625
+    },
+    {
+      "file": "packages/pipeline/work_session.py",
+      "symbol": "load_session",
+      "score": 0.735,
+      "loc": "packages/pipeline/work_session.py:32-56",
+      "id": "packages/pipeline/work_session.py::load_session",
+      "chars": 837
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/pipeline/work_session.py::touch",
+      "loc": "packages/pipeline/work_session.py:80-116",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/work_session.py::heatmap",
+      "loc": "packages/pipeline/work_session.py:142-165",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/work_session.py::save_session",
+      "loc": "packages/pipeline/work_session.py:59-77",
+      "edge": "seed",
+      "score": 0.735
+    },
+    {
+      "id": "packages/pipeline/work_session.py::load_session",
+      "loc": "packages/pipeline/work_session.py:32-56",
+      "edge": "seed",
+      "score": 0.735
+    }
+  ],
+  "pack_query": "work_session touch pins files role query session_id remember recent pack heatmap\nrelevant_chunks: packages/pipeline/work_session.py::touch@packages/pipeline/work_session.py:80-116 | packages/pipeline/work_session.py::heatmap@packages/pipeline/work_session.py:142-165 | packages/pipeline/repo_runtime.py::RepoRuntime.touch@packages/pipeline/repo_runtime.py:35-59",
+  "error": null
+}

@@ -1,0 +1,98 @@
+{
+  "ok": true,
+  "tool": "pack_semantic",
+  "engine": "semantic_tracer_fuse",
+  "elapsed_s": 0.386,
+  "n_pack": 4,
+  "seed": {
+    "file": "packages/pipeline/project_id.py",
+    "symbol": "repo_runtime_dir",
+    "id": "packages/pipeline/project_id.py::repo_runtime_dir"
+  },
+  "pack": [
+    {
+      "file": "packages/pipeline/project_id.py",
+      "symbol": "repo_runtime_dir",
+      "score": 1.0,
+      "loc": "packages/pipeline/project_id.py:121-142",
+      "id": "packages/pipeline/project_id.py::repo_runtime_dir",
+      "chars": 780
+    },
+    {
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": "gate_line_for_repo",
+      "score": 1.0,
+      "loc": "packages/pipeline/rules_installer.py:266-280",
+      "id": "packages/pipeline/rules_installer.py::gate_line_for_repo",
+      "chars": 460
+    },
+    {
+      "file": "packages/pipeline/project_id.py",
+      "symbol": "id_dir_path",
+      "score": 0.9472,
+      "loc": "packages/pipeline/project_id.py:116-118",
+      "id": "packages/pipeline/project_id.py::id_dir_path",
+      "chars": 150
+    },
+    {
+      "file": "packages/pipeline/project_id.py",
+      "symbol": "context_engine_home",
+      "score": 0.9419,
+      "loc": "packages/pipeline/project_id.py:108-113",
+      "id": "packages/pipeline/project_id.py::context_engine_home",
+      "chars": 235
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/pipeline/project_id.py::repo_runtime_dir",
+      "loc": "packages/pipeline/project_id.py:121-142",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/rules_installer.py::gate_line_for_repo",
+      "loc": "packages/pipeline/rules_installer.py:266-280",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/project_id.py::id_dir_path",
+      "loc": "packages/pipeline/project_id.py:116-118",
+      "edge": "calls",
+      "score": 0.9472
+    },
+    {
+      "id": "packages/pipeline/project_id.py::context_engine_home",
+      "loc": "packages/pipeline/project_id.py:108-113",
+      "edge": "calls",
+      "score": 0.9419
+    },
+    {
+      "id": "packages/pipeline/project_id.py::legacy_repo_key",
+      "loc": "packages/pipeline/project_id.py:543-544",
+      "edge": "calls",
+      "score": 0.9389
+    },
+    {
+      "id": "packages/pipeline/pause_resume.py::is_paused",
+      "loc": "packages/pipeline/pause_resume.py:49-61",
+      "edge": "calls",
+      "score": 0.8688
+    },
+    {
+      "id": "packages/pipeline/project_id.py::read_id_file",
+      "loc": "packages/pipeline/project_id.py:196-201",
+      "edge": "calls",
+      "score": 0.8682
+    },
+    {
+      "id": "packages/pipeline/mcp_locate.py::_is_enrolled",
+      "loc": "packages/pipeline/mcp_locate.py:584-590",
+      "edge": "calls",
+      "score": 0.8669
+    }
+  ],
+  "pack_query": "gate enroll managed project_id .scubiee id.json GATE line AGENTS.md bind repo\nrelevant_chunks: packages/pipeline/project_id.py::repo_runtime_dir@packages/pipeline/project_id.py:121-142 | packages/pipeline/rules_installer.py::gate_line_for_repo@packages/pipeline/rules_installer.py:266-280 | packages/pipeline/managed_repos.py::managed_repo_paths@packages/pipeline/managed_repos.py:213-275",
+  "error": null
+}

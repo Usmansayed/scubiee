@@ -1,0 +1,110 @@
+{
+  "ok": true,
+  "tool": "map",
+  "query": "indexer chunk pipeline parse source files into chunks merkle symbol spans index_manager",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/enrich/__init__.py",
+      "symbol": "",
+      "score": 32.9889,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/enrich/__init__.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "packages/pipeline/chunk_merkle.py",
+      "symbol": "",
+      "score": 23.0257,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/chunk_merkle.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "tests/test_runtime_publish.py",
+      "symbol": "",
+      "score": 10.8942,
+      "start_line": null,
+      "end_line": null,
+      "loc": "tests/test_runtime_publish.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "packages/pipeline/index_manager.py",
+      "symbol": "",
+      "score": 7.8716,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/index_manager.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "packages/pipeline/indexer.py",
+      "symbol": "",
+      "score": 7.0616,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/indexer.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "packages/pipeline/merkle.py",
+      "symbol": "",
+      "score": 6.7226,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/merkle.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "tests/test_chunk_merkle.py",
+      "symbol": "",
+      "score": 5.0513,
+      "start_line": null,
+      "end_line": null,
+      "loc": "tests/test_chunk_merkle.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "docs/reindexing/chunk-level-incremental-indexing.md",
+      "symbol": "",
+      "score": 4.888,
+      "start_line": null,
+      "end_line": null,
+      "loc": "docs/reindexing/chunk-level-incremental-indexing.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "score": 4.674,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "packages/pipeline/memory_budget.py",
+      "symbol": "",
+      "score": 4.599,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/memory_budget.py:1-1",
+      "why": ""
+    }
+  ],
+  "suggested_seed": null,
+  "elapsed_s": 0.503,
+  "via": "search_repo(use_server=True)"
+}

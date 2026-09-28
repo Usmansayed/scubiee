@@ -1,0 +1,103 @@
+{
+  "ok": true,
+  "tool": "map",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/conductor/graphify_retriever.py",
+      "score": 25.492220276808116,
+      "why": "def load_or_build_graph(extraction: dict, root: Path, out_json: Path) -> nx.Graph: if out_json.exists(): return _load_graph(str(out_json)) return build_and_save_graph(extraction, r",
+      "role": "function",
+      "loc": "packages/conductor/graphify_retriever.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 2,
+      "file": "scripts/bench_size_ladder.py",
+      "score": 13.809318810249552,
+      "why": "def main() -> int: os.environ.setdefault(\"CTX_EMBED_BATCH\", \"16\") os.environ.setdefault(\"CTX_ACCEL_PROFILE\", \"dml\") repo = REPO.resolve() store = PipelineStore(repo) ir_path = stor",
+      "role": "other",
+      "loc": "scripts/bench_size_ladder.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 3,
+      "file": "scripts/bench_budget_alloc.py",
+      "score": 13.554970199693594,
+      "why": "def main() -> int: os.environ.setdefault(\"CTX_EMBED_BATCH\", \"16\") os.environ.setdefault(\"CTX_ACCEL_PROFILE\", \"dml\") repo = REPO.resolve() store = PipelineStore(repo) ir_path = stor",
+      "role": "other",
+      "loc": "scripts/bench_budget_alloc.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 4,
+      "file": "docs/superpowers/specs/2026-08-08-natural-sdk-context-engine-vs-graphify-smoke-design.md",
+      "score": 7.892330388155587,
+      "why": "# Natural Cursor SDK smoke A/B: Context Engine vs Graphify **Date:** 2026-08-08 **Status:** approved for implementation ## Goal Verify that a normal local Cursor SDK agent discover",
+      "role": "docs",
+      "loc": "docs/superpowers/specs/2026-08-08-natural-sdk-context-engine-vs-graphify-smoke-design.md:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 5,
+      "file": "packages/parse_harness/bakeoff.py",
+      "score": 6.985582649023666,
+      "why": "def run_bakeoff(repo_root: Path, *, out_dir: Path | None = None) -> dict: repo_root = repo_root.resolve() ir = parse_with_graphify(repo_root, parallel=False) cc = probe_claude_cont",
+      "role": "function",
+      "loc": "packages/parse_harness/bakeoff.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 6,
+      "file": "packages/graphify/paths.py",
+      "score": 6.889264224581469,
+      "why": "def load_node_link_graph(path_or_data): \"\"\"Load a graphify graph.json into a networkx graph, accepting both writers. The clustered writer stores edges under ``links`` (networkx's n",
+      "role": "function",
+      "loc": "packages/graphify/paths.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 7,
+      "file": "docs/mlx-index-compute-and-memory.md",
+      "score": 5.529987704738586,
+      "why": "# Full traditional index: time, model compute, memory budgets **Date:** 2026-08-19 **Machine:** Apple M5 MacBook Air, 16 GB **Backend:** MLX FP16 CodeRankEmbed (`CTX_EMBED_BACKEND=",
+      "role": "docs",
+      "loc": "docs/mlx-index-compute-and-memory.md:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 8,
+      "file": "packages/conductor/conductor.py",
+      "score": 4.563163001604596,
+      "why": "def retrieve_graphify(self, query: str, top_k: int = 5) -> list[Hit]: ids = self.graph.query_ranked_chunks(query, top_k=max(top_k, self.config.candidate_pool)) return [ Hit(chunk_i",
+      "role": "function",
+      "loc": "packages/conductor/conductor.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 9,
+      "file": "packages/enrich/__main__.py",
+      "score": 4.514122199035225,
+      "why": "def main(argv: list[str] | None = None) -> int: parser = argparse.ArgumentParser(description=\"Generate graph-enriched code chunks\") parser.add_argument(\"repo\", type=Path) parser.ad",
+      "role": "function",
+      "loc": "packages/enrich/__main__.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 10,
+      "file": "tests/_mcp_break_it_suite.py",
+      "score": 4.454413197942241,
+      "why": "def _send(self, msg: dict) -> None: if not self.proc.stdin: raise RuntimeError(\"stdin closed\") self.proc.stdin.write(json.dumps(msg) + \"\\n\") self.proc.stdin.flush()",
+      "role": "test",
+      "loc": "tests/_mcp_break_it_suite.py:1-1",
+      "symbol": ""
+    }
+  ],
+  "suggested_seed": {
+    "file": "packages/conductor/graphify_retriever.py",
+    "symbol": "",
+    "loc": "packages/conductor/graphify_retriever.py:1-1",
+    "score": 25.492220276808116
+  },
+  "next": "scubiee pack \"graphify graph_ir.json build_graphify GraphifyChunkRetriever parse IR edges call graph index\" --seed-file packages/conductor/graphify_retriever.py --mode lean"
+}

@@ -1,0 +1,211 @@
+{
+  "id": "t20",
+  "family": "dense-rerank",
+  "task": "How does search-time CodeRankLLM / dense rerank reorder conductor hits?",
+  "must_files": [
+    "packages/conductor/architectures.py",
+    "packages/pipeline/indexer.py"
+  ],
+  "must_symbols": [
+    "rerank_score"
+  ],
+  "map_k12": {
+    "elapsed_s": 0.721,
+    "top_files": [
+      "packages/conductor/architectures.py",
+      "packages/conductor/service.py",
+      "packages/conductor/top3.py",
+      "packages/conductor/query_router.py",
+      "packages/pipeline/searcher.py",
+      "docs/conductor-final-architecture.md",
+      "packages/pipeline/__init__.py",
+      "fixtures/trace-lab/app/search/rank.py"
+    ]
+  },
+  "map_k8": {
+    "elapsed_s": 0.305,
+    "top_files": [
+      "packages/conductor/architectures.py",
+      "packages/conductor/service.py",
+      "packages/conductor/top3.py",
+      "packages/conductor/query_router.py",
+      "packages/pipeline/searcher.py"
+    ]
+  },
+  "chunks_k12": [
+    {
+      "file": "packages/conductor/architectures.py",
+      "symbol": "MultiArchConductor.retrieve_D_rerank",
+      "kind": "method",
+      "loc": "packages/conductor/architectures.py:437-439",
+      "start_line": 437,
+      "end_line": 439,
+      "score": 10.35
+    },
+    {
+      "file": "packages/conductor/service.py",
+      "symbol": "ConductorEngine.search",
+      "kind": "method",
+      "loc": "packages/conductor/service.py:209-281",
+      "start_line": 209,
+      "end_line": 281,
+      "score": 8.75
+    },
+    {
+      "file": "packages/pipeline/searcher.py",
+      "symbol": "FaissDenseAdapter.search",
+      "kind": "method",
+      "loc": "packages/pipeline/searcher.py:40-52",
+      "start_line": 40,
+      "end_line": 52,
+      "score": 8.4
+    }
+  ],
+  "chunks_k8": [
+    {
+      "file": "packages/conductor/architectures.py",
+      "symbol": "MultiArchConductor.retrieve_D_rerank",
+      "kind": "method",
+      "loc": "packages/conductor/architectures.py:437-439",
+      "start_line": 437,
+      "end_line": 439,
+      "score": 10.35
+    },
+    {
+      "file": "packages/conductor/service.py",
+      "symbol": "ConductorEngine.search",
+      "kind": "method",
+      "loc": "packages/conductor/service.py:209-281",
+      "start_line": 209,
+      "end_line": 281,
+      "score": 8.75
+    },
+    {
+      "file": "packages/pipeline/searcher.py",
+      "symbol": "FaissDenseAdapter.search",
+      "kind": "method",
+      "loc": "packages/pipeline/searcher.py:40-52",
+      "start_line": 40,
+      "end_line": 52,
+      "score": 8.4
+    }
+  ],
+  "pack": {
+    "ok": true,
+    "elapsed_s": 0.175,
+    "n_pack": 4,
+    "pack": [
+      {
+        "file": "packages/conductor/architectures.py",
+        "symbol": "MultiArchConductor.retrieve_D_rerank",
+        "loc": "packages/conductor/architectures.py:437-439",
+        "id": "packages/conductor/architectures.py::MultiArchConductor.retrieve_D_rerank",
+        "chars": 247
+      },
+      {
+        "file": "packages/conductor/service.py",
+        "symbol": "ConductorEngine.search",
+        "loc": "packages/conductor/service.py:209-281",
+        "id": "packages/conductor/service.py::ConductorEngine.search",
+        "chars": 3692
+      },
+      {
+        "file": "packages/graphify/extractors/base.py",
+        "symbol": "_file_stem",
+        "loc": "packages/graphify/extractors/base.py:58-81",
+        "id": "packages/graphify/extractors/base.py::_file_stem",
+        "chars": 1267
+      },
+      {
+        "file": "packages/graphify/extractors/base.py",
+        "symbol": "_make_id",
+        "loc": "packages/graphify/extractors/base.py:54-55",
+        "id": "packages/graphify/extractors/base.py::_make_id",
+        "chars": 60
+      }
+    ],
+    "chain": [
+      {
+        "id": "packages/conductor/architectures.py::MultiArchConductor.retrieve_D_rerank",
+        "loc": "packages/conductor/architectures.py:437-439",
+        "edge": "seed",
+        "symbol": "MultiArchConductor.retrieve_D_rerank"
+      },
+      {
+        "id": "packages/conductor/service.py::ConductorEngine.search",
+        "loc": "packages/conductor/service.py:209-281",
+        "edge": "seed",
+        "symbol": "ConductorEngine.search"
+      },
+      {
+        "id": "packages/graphify/extractors/base.py::_file_stem",
+        "loc": "packages/graphify/extractors/base.py:58-81",
+        "edge": "calls",
+        "symbol": "_file_stem"
+      },
+      {
+        "id": "packages/graphify/extractors/base.py::_make_id",
+        "loc": "packages/graphify/extractors/base.py:54-55",
+        "edge": "calls",
+        "symbol": "_make_id"
+      },
+      {
+        "id": "packages/graphify/ids.py::make_id",
+        "loc": "packages/graphify/ids.py:43-50",
+        "edge": "calls",
+        "symbol": "make_id"
+      },
+      {
+        "id": "packages/graphify/extractors/base.py::_read_text",
+        "loc": "packages/graphify/extractors/base.py:84-85",
+        "edge": "calls",
+        "symbol": "_read_text"
+      },
+      {
+        "id": "packages/conductor/architectures.py::_query_key_tokens",
+        "loc": "packages/conductor/architectures.py:47-48",
+        "edge": "calls",
+        "symbol": "_query_key_tokens"
+      },
+      {
+        "id": "packages/conductor/architectures.py::_path_tokens",
+        "loc": "packages/conductor/architectures.py:43-44",
+        "edge": "calls",
+        "symbol": "_path_tokens"
+      }
+    ],
+    "seed": {
+      "file": "packages/conductor/architectures.py",
+      "symbol": "MultiArchConductor.retrieve_D_rerank",
+      "id": "packages/conductor/architectures.py::MultiArchConductor.retrieve_D_rerank"
+    },
+    "error": null
+  },
+  "scores": {
+    "map_k12": {
+      "file": 0.5,
+      "symbol": 0.0,
+      "note": "raw map cards (symbols often empty)"
+    },
+    "map_k12_chunks": {
+      "file": 0.5,
+      "symbol": 0.0,
+      "chunks": [
+        "MultiArchConductor.retrieve_D_rerank",
+        "ConductorEngine.search",
+        "FaissDenseAdapter.search"
+      ]
+    },
+    "map8_pack": {
+      "file": 0.5,
+      "symbol": 0.0,
+      "n_pack": 4,
+      "chunks": [
+        "MultiArchConductor.retrieve_D_rerank",
+        "ConductorEngine.search",
+        "FaissDenseAdapter.search"
+      ],
+      "elapsed_s": 0.175
+    }
+  }
+}

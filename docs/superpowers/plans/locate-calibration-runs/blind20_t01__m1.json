@@ -1,0 +1,87 @@
+{
+  "case": {
+    "id": "blind20_t01",
+    "source": "blind_map_pack_20",
+    "family": "session-isolation",
+    "task": "Fix a bug where two parallel agent chats share recall/pins in one MCP process.",
+    "enrich_query": "session isolation require_session_id fail closed MCP shared process bucket session_store put_span work_session rematerialize pins recall per connection CTX_MCP_SESSION_ID",
+    "taxonomy": "exact_edit",
+    "taxonomy_confidence": "heuristic",
+    "hypothesis_policy": {
+      "lead": "scubiee_map_or_pack",
+      "next": "pack_if_seed_ok",
+      "native": "span_read_locs"
+    },
+    "must_files": [
+      "packages/pipeline/session_isolation.py",
+      "packages/pipeline/session_store.py",
+      "packages/pipeline/work_session.py"
+    ],
+    "must_symbols": [
+      "packages/pipeline/session_isolation.py::effective_session_id",
+      "packages/pipeline/session_isolation.py::_session_isolate_enabled",
+      "packages/pipeline/session_store.py::put_span"
+    ],
+    "should_files": [
+      "packages/pipeline/mcp_bridge_session.py",
+      "packages/pipeline/mcp_locate.py"
+    ],
+    "gold_status": "has_gold",
+    "notes": "",
+    "baseline_frozen": true
+  },
+  "M1a": {
+    "arm": "M1a_map_read",
+    "ok": true,
+    "elapsed_s": 1.377,
+    "seed": {
+      "file": "packages/pipeline/session_store.py",
+      "symbol": "put_span",
+      "start_line": 266,
+      "loc": "packages/pipeline/session_store.py:266-391",
+      "kind": "function",
+      "role": "function",
+      "score": 15.318832182868888
+    },
+    "map_source": "cli_map",
+    "n_cards": 10,
+    "read_chars": 6276,
+    "rounds": 6,
+    "result_tokens": 3461,
+    "round_trip_tax": 15000,
+    "total_proxy": 18461,
+    "round_trip_tax_per_call": 2500,
+    "must_file": 1.0,
+    "must_sym": 0.333,
+    "file_hits": 3,
+    "file_n": 3,
+    "sym_hits": 1,
+    "sym_n": 3,
+    "case_id": "blind20_t01",
+    "taxonomy": "exact_edit"
+  },
+  "M1b": {
+    "arm": "M1b_map_pack",
+    "ok": true,
+    "elapsed_s": 1.225,
+    "seed_file": "packages/pipeline/session_store.py",
+    "seed_symbol": "put_span",
+    "seed_ok": true,
+    "map_source": "cli_map",
+    "heatmap_n": 16,
+    "read_chars": 6050,
+    "rounds": 7,
+    "result_tokens": 9391,
+    "round_trip_tax": 17500,
+    "total_proxy": 26891,
+    "round_trip_tax_per_call": 2500,
+    "must_file": 1.0,
+    "must_sym": 1.0,
+    "file_hits": 3,
+    "file_n": 3,
+    "sym_hits": 3,
+    "sym_n": 3,
+    "case_id": "blind20_t01",
+    "taxonomy": "exact_edit"
+  }
+}

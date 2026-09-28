@@ -100,7 +100,7 @@ def test_runtime_routes_live_events_to_active_keeper(runtime, tmp_path: Path):
     dirty = runtime.mark_dirty(["pkg/a.py"], reason="write")
     located = runtime.note_locate()
 
-    assert dirty == {"ok": True, "paths": ["pkg/a.py"], "reason": "write"}
+    assert dirty == {"ok": True, "paths": ["pkg/a.py"], "reason": "write", "dropped": []}
     assert located == {"ok": True}
     loop.mark_dirty.assert_called_once_with(["pkg/a.py"], reason="write")
     loop.note_locate.assert_called_once()

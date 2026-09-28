@@ -1,0 +1,33 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 1.686,
+  "stdout_chars": 855,
+  "stderr_tail": "",
+  "json": {
+    "ok": true,
+    "tool": "pack",
+    "seed": {
+      "id": "packages/pipeline/mcp_locate.py::_active_surface",
+      "file": "packages/pipeline/mcp_locate.py",
+      "symbol": "_active_surface"
+    },
+    "chain": [
+      {
+        "id": "packages/pipeline/mcp_locate.py::_active_surface",
+        "loc": "packages/pipeline/mcp_locate.py:58-66",
+        "edge": "seed",
+        "score": 1.0
+      }
+    ],
+    "pack": [
+      {
+        "id": "packages/pipeline/mcp_locate.py::_active_surface",
+        "loc": "packages/pipeline/mcp_locate.py:58-66",
+        "text": "def _active_surface() -> str:\n    # Product default is phase (map/focus/workspace/status). Legacy surfaces\n    # remain available via CTX_MCP_SURFACE=read|nav|...\n    val = (os.environ.get(\"CTX_MCP_SURFACE\") or \"phase\").strip().lower()\n    if val in {\"graphify\"}:\n        return \"graph\"\n    if val in {\"trajectory\", \"map_focus\"}:\n        return \"phase\"\n    return val if val in _SURFACES else \"phase\""
+      }
+    ],
+    "cold": []
+  },
+  "stdout_preview": ""
+}

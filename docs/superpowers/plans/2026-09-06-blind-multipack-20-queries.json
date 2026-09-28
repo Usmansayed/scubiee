@@ -1,0 +1,133 @@
+{
+  "protocol": "blind_map_multipack_v2",
+  "note": "NEW 20 queries — not the prior t01–t20 set. Multi-arm pack after map.",
+  "created": "2026-09-06",
+  "arms": [
+    "composite_v1",
+    "semantic_tracer_fuse",
+    "hyb_fuse_demote_noise_plus",
+    "poly_embed"
+  ],
+  "cases": [
+    {
+      "id": "u01",
+      "family": "merkle-incremental",
+      "task": "How does incremental sync detect dirty paths via merkle and patch the graph?",
+      "enrich_map_query": "incremental sync merkle dirty paths patch_and_save_graph re-embed changed chunks IndexConfirmRequired sync_loop chunk_merkle"
+    },
+    {
+      "id": "u02",
+      "family": "chunk-compress",
+      "task": "Where is chunk compression applied before embedding storage?",
+      "enrich_map_query": "chunk_compress compress chunks embed pipeline token budget pack slices file_slice"
+    },
+    {
+      "id": "u03",
+      "family": "mcp-bridge",
+      "task": "How does the MCP bridge attach a session id for host connections?",
+      "enrich_map_query": "mcp_bridge_session bridge host connection session_id CTX_MCP_SESSION_ID attach isolate"
+    },
+    {
+      "id": "u04",
+      "family": "fair-schedule",
+      "task": "Debug fair scheduling / fairness when multiple locate jobs compete.",
+      "enrich_map_query": "fair_schedule FairSchedule queue fairness locate jobs throttle resources"
+    },
+    {
+      "id": "u05",
+      "family": "memory-governor",
+      "task": "How does the memory governor decide to pause or limit heavy embed work?",
+      "enrich_map_query": "memory_governor pause limit embed RSS pressure resources status halt"
+    },
+    {
+      "id": "u06",
+      "family": "doctor-certify",
+      "task": "What does scubiee doctor / certify check for install health?",
+      "enrich_map_query": "cmd_doctor cmd_certify doctor certify health package accel providers install"
+    },
+    {
+      "id": "u07",
+      "family": "disconnect-tool",
+      "task": "How does disconnect remove a host tool surface and permissions?",
+      "enrich_map_query": "cmd_disconnect disconnect_tool remove mcp.json permissions surface uninstall host"
+    },
+    {
+      "id": "u08",
+      "family": "vector-index",
+      "task": "How does VectorIndex retrieve neighbors for vague map ranking?",
+      "enrich_map_query": "VectorIndex retrieve neighbors vague_eval map ranking dense embed affinities"
+    },
+    {
+      "id": "u09",
+      "family": "recall-belt",
+      "task": "Where is recall_belt / recall_fuse wired as a non-LLM tracer arm?",
+      "enrich_map_query": "recall_belt recall_fuse bind_recall_belt prod_eval tracers non-LLM heatmap"
+    },
+    {
+      "id": "u10",
+      "family": "metadata-inject",
+      "task": "How does metadata injection enrich chunks before indexing?",
+      "enrich_map_query": "inject_metadata build_chunk_meta ChunkMeta render enrich_repo chunk_repo_from_ir"
+    },
+    {
+      "id": "u11",
+      "family": "host-env-signals",
+      "task": "Trace loadhost_env_signals / host_env_signals used by pack or locate.",
+      "enrich_map_query": "host_env_signals loadhost_env_signals pack locate environment host signals"
+    },
+    {
+      "id": "u12",
+      "family": "dashboard-serve",
+      "task": "How does scubiee dashboard / serve start the local UI and engine?",
+      "enrich_map_query": "cmd_dashboard cmd_serve dashboard serve local UI engine HTTP"
+    },
+    {
+      "id": "u13",
+      "family": "wipe-halt",
+      "task": "What does wipe vs halt do to runtime state and indexes?",
+      "enrich_map_query": "cmd_wipe cmd_halt wipe halt runtime index unlock stop resources"
+    },
+    {
+      "id": "u14",
+      "family": "upgrade-flow",
+      "task": "Walk the one-command upgrade: package swap, migrate, MCP rebind.",
+      "enrich_map_query": "cmd_upgrade upgrade package swap migrate MCP rebind DiffPlan already_latest"
+    },
+    {
+      "id": "u15",
+      "family": "locate-cli-expand",
+      "task": "Implement or debug scubiee expand CLI after lean pack missing hop.",
+      "enrich_map_query": "cli_expand cmd_expand locate_cli direction callees with_bodies expand after pack"
+    },
+    {
+      "id": "u16",
+      "family": "corpus-fingerprint",
+      "task": "Where is corpus fingerprint computed for composite edge cache invalidation?",
+      "enrich_map_query": "corpus_fingerprint composite edges cache invalidation trace_lab extract_nodes"
+    },
+    {
+      "id": "u17",
+      "family": "failure-report",
+      "task": "How does build_failure_report summarize false negatives on verify boards?",
+      "enrich_map_query": "build_failure_report failure_report false_negatives explored_nodes hot_count verify"
+    },
+    {
+      "id": "u18",
+      "family": "jedi-callgraph",
+      "task": "How does Jedi enrich the call graph used by composite membership?",
+      "enrich_map_query": "build_enriched_call_graph with_jedi Jedi call_graph TypedEdge composite membership"
+    },
+    {
+      "id": "u19",
+      "family": "dfg-edges",
+      "task": "Where are DFG PASSES_DATA_TO edges built and consumed in ranking?",
+      "enrich_map_query": "build_dfg_edges PASSES_DATA_TO dfg_pairs apply_rank_composite dataflow"
+    },
+    {
+      "id": "u20",
+      "family": "unlock-tool",
+      "task": "How does unlock_tool clear a paused or locked MCP tool permission?",
+      "enrich_map_query": "cmd_unlock_tool unlock_tool permissions paused locked mcp allowlist"
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "case": {
+    "id": "blind20_t05",
+    "source": "blind_map_pack_20",
+    "family": "embed-filter-noise",
+    "task": "How do we demote logger/analytics noise on a structural island without dropping bridges?",
+    "enrich_query": "apply_embed_keep_drop demote_noise_plus SITE_EFFECTS bridge names path preserve hot_floor EmbedField affinities poly_embed hybrid",
+    "taxonomy": "soft_understand",
+    "taxonomy_confidence": "heuristic",
+    "hypothesis_policy": {
+      "lead": "scubiee_map",
+      "next": "conditional_pack",
+      "native": "span_read_after_heatmap"
+    },
+    "must_files": [
+      "packages/trace_lab/embed_filter.py",
+      "packages/trace_lab/poly_embed.py"
+    ],
+    "must_symbols": [
+      "packages/trace_lab/embed_filter.py::apply_embed_keep_drop"
+    ],
+    "should_files": [
+      "packages/trace_lab/semantic_hybrid.py"
+    ],
+    "gold_status": "has_gold",
+    "notes": "",
+    "baseline_frozen": true
+  },
+  "M1a": {
+    "arm": "M1a_map_read",
+    "ok": true,
+    "elapsed_s": 1.276,
+    "seed": {
+      "file": "packages/trace_lab/embed_filter.py",
+      "symbol": "apply_embed_keep_drop",
+      "start_line": 86,
+      "loc": "packages/trace_lab/embed_filter.py:86-395",
+      "kind": "function",
+      "role": "function",
+      "score": 17.399790130837587
+    },
+    "map_source": "cli_map",
+    "n_cards": 7,
+    "read_chars": 9922,
+    "rounds": 6,
+    "result_tokens": 3829,
+    "round_trip_tax": 15000,
+    "total_proxy": 18829,
+    "round_trip_tax_per_call": 2500,
+    "must_file": 1.0,
+    "must_sym": 1.0,
+    "file_hits": 2,
+    "file_n": 2,
+    "sym_hits": 1,
+    "sym_n": 1,
+    "case_id": "blind20_t05",
+    "taxonomy": "soft_understand"
+  },
+  "M1b": {
+    "arm": "M1b_map_pack",
+    "ok": true,
+    "elapsed_s": 0.973,
+    "seed_file": "packages/trace_lab/embed_filter.py",
+    "seed_symbol": "apply_embed_keep_drop",
+    "seed_ok": true,
+    "map_source": "cli_map",
+    "heatmap_n": 9,
+    "read_chars": 5471,
+    "rounds": 7,
+    "result_tokens": 6200,
+    "round_trip_tax": 17500,
+    "total_proxy": 23700,
+    "round_trip_tax_per_call": 2500,
+    "must_file": 1.0,
+    "must_sym": 1.0,
+    "file_hits": 2,
+    "file_n": 2,
+    "sym_hits": 1,
+    "sym_n": 1,
+    "case_id": "blind20_t05",
+    "taxonomy": "soft_understand"
+  }
+}

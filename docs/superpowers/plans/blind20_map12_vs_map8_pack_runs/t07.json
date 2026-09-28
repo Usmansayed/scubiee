@@ -1,0 +1,205 @@
+{
+  "id": "t07",
+  "family": "locate-cli",
+  "task": "How do `scubiee map` and `scubiee pack` CLI commands parse args and call locate?",
+  "must_files": [
+    "packages/pipeline/__main__.py",
+    "packages/pipeline/locate_cli.py"
+  ],
+  "must_symbols": [
+    "cmd_map",
+    "cmd_pack"
+  ],
+  "map_k12": {
+    "elapsed_s": 0.849,
+    "top_files": [
+      "packages/pipeline/locate_cli.py",
+      "scripts/blind_map_pack_20.py",
+      "tests/test_locate_cli.py",
+      "packages/pipeline/__main__.py",
+      "packages/pipeline/templates/scubiee.md",
+      "docs/superpowers/plans/2026-09-06-blind-map-pack-20-phase2.md",
+      "scripts/blind20_map_chunks_pack.py",
+      "packages/pipeline/mcp_response_lean.py"
+    ]
+  },
+  "map_k8": {
+    "elapsed_s": 0.589,
+    "top_files": [
+      "packages/pipeline/locate_cli.py",
+      "scripts/blind_map_pack_20.py",
+      "tests/test_locate_cli.py",
+      "packages/pipeline/__main__.py",
+      "packages/pipeline/templates/scubiee.md"
+    ]
+  },
+  "chunks_k12": [
+    {
+      "file": "packages/pipeline/locate_cli.py",
+      "symbol": "cli_pack",
+      "kind": "function",
+      "loc": "packages/pipeline/locate_cli.py:179-227",
+      "start_line": 179,
+      "end_line": 227,
+      "score": 11.45
+    },
+    {
+      "file": "packages/pipeline/locate_cli.py",
+      "symbol": "cli_map",
+      "kind": "function",
+      "loc": "packages/pipeline/locate_cli.py:60-176",
+      "start_line": 60,
+      "end_line": 176,
+      "score": 10.2
+    },
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "cmd_pack",
+      "kind": "function",
+      "loc": "packages/pipeline/__main__.py:1655-1679",
+      "start_line": 1655,
+      "end_line": 1679,
+      "score": 8.8
+    }
+  ],
+  "chunks_k8": [
+    {
+      "file": "packages/pipeline/locate_cli.py",
+      "symbol": "cli_pack",
+      "kind": "function",
+      "loc": "packages/pipeline/locate_cli.py:179-227",
+      "start_line": 179,
+      "end_line": 227,
+      "score": 11.45
+    },
+    {
+      "file": "packages/pipeline/locate_cli.py",
+      "symbol": "cli_map",
+      "kind": "function",
+      "loc": "packages/pipeline/locate_cli.py:60-176",
+      "start_line": 60,
+      "end_line": 176,
+      "score": 10.2
+    },
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "cmd_pack",
+      "kind": "function",
+      "loc": "packages/pipeline/__main__.py:1655-1679",
+      "start_line": 1655,
+      "end_line": 1679,
+      "score": 8.8
+    }
+  ],
+  "pack": {
+    "ok": true,
+    "elapsed_s": 0.186,
+    "n_pack": 3,
+    "pack": [
+      {
+        "file": "packages/pipeline/locate_cli.py",
+        "symbol": "cli_pack",
+        "loc": "packages/pipeline/locate_cli.py:179-227",
+        "id": "packages/pipeline/locate_cli.py::cli_pack",
+        "chars": 1627
+      },
+      {
+        "file": "packages/pipeline/context_trace.py",
+        "symbol": "_trace_engine",
+        "loc": "packages/pipeline/context_trace.py:57-93",
+        "id": "packages/pipeline/context_trace.py::_trace_engine",
+        "chars": 1050
+      },
+      {
+        "file": "packages/pipeline/locate_cli.py",
+        "symbol": "cli_map",
+        "loc": "packages/pipeline/locate_cli.py:60-176",
+        "id": "packages/pipeline/locate_cli.py::cli_map",
+        "chars": 3323
+      }
+    ],
+    "chain": [
+      {
+        "id": "packages/pipeline/locate_cli.py::cli_pack",
+        "loc": "packages/pipeline/locate_cli.py:179-227",
+        "edge": "seed",
+        "symbol": "cli_pack"
+      },
+      {
+        "id": "packages/pipeline/context_trace.py::_trace_engine",
+        "loc": "packages/pipeline/context_trace.py:57-93",
+        "edge": "calls",
+        "symbol": "_trace_engine"
+      },
+      {
+        "id": "packages/pipeline/locate_cli.py::cli_map",
+        "loc": "packages/pipeline/locate_cli.py:60-176",
+        "edge": "seed",
+        "symbol": "cli_map"
+      },
+      {
+        "id": "packages/pipeline/locate_cli.py::_root",
+        "loc": "packages/pipeline/locate_cli.py:14-15",
+        "edge": "calls",
+        "symbol": "_root"
+      },
+      {
+        "id": "packages/pipeline/context_trace.py::run_pack_context",
+        "loc": "packages/pipeline/context_trace.py:1100-1315",
+        "edge": "calls",
+        "symbol": "run_pack_context"
+      },
+      {
+        "id": "packages/pipeline/context_trace.py::pick_suggested_seed",
+        "loc": "packages/pipeline/context_trace.py:398-432",
+        "edge": "calls",
+        "symbol": "pick_suggested_seed"
+      },
+      {
+        "id": "packages/pipeline/searcher.py::search_repo",
+        "loc": "packages/pipeline/searcher.py:115-145",
+        "edge": "calls",
+        "symbol": "search_repo"
+      },
+      {
+        "id": "packages/pipeline/context_trace.py::_load_repo",
+        "loc": "packages/pipeline/context_trace.py:276-355",
+        "edge": "calls",
+        "symbol": "_load_repo"
+      }
+    ],
+    "seed": {
+      "file": "packages/pipeline/locate_cli.py",
+      "symbol": "cli_pack",
+      "id": "packages/pipeline/locate_cli.py::cli_pack"
+    },
+    "error": null
+  },
+  "scores": {
+    "map_k12": {
+      "file": 1.0,
+      "symbol": 0.0,
+      "note": "raw map cards (symbols often empty)"
+    },
+    "map_k12_chunks": {
+      "file": 1.0,
+      "symbol": 0.5,
+      "chunks": [
+        "cli_pack",
+        "cli_map",
+        "cmd_pack"
+      ]
+    },
+    "map8_pack": {
+      "file": 1.0,
+      "symbol": 0.5,
+      "n_pack": 3,
+      "chunks": [
+        "cli_pack",
+        "cli_map",
+        "cmd_pack"
+      ],
+      "elapsed_s": 0.186
+    }
+  }
+}

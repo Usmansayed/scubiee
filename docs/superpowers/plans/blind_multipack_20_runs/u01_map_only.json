@@ -1,0 +1,64 @@
+{
+  "id": "u01",
+  "family": "merkle-incremental",
+  "task": "How does incremental sync detect dirty paths via merkle and patch the graph?",
+  "enrich_map_query": "incremental sync merkle dirty paths patch_and_save_graph re-embed changed chunks IndexConfirmRequired sync_loop chunk_merkle",
+  "map_ok": true,
+  "map_elapsed_s": 9.703,
+  "suggested_seed": {
+    "file": "packages/pipeline/incremental.py",
+    "symbol": "",
+    "source": "suggested_seed"
+  },
+  "map_top_cards": [
+    {
+      "file": "packages/pipeline/incremental.py",
+      "symbol": "",
+      "loc": "packages/pipeline/incremental.py:1-1",
+      "score": 21.15449254088071
+    },
+    {
+      "file": "packages/conductor/graphify_retriever.py",
+      "symbol": "",
+      "loc": "packages/conductor/graphify_retriever.py:1-1",
+      "score": 15.220149961823829
+    },
+    {
+      "file": "tests/test_hardening.py",
+      "symbol": "",
+      "loc": "tests/test_hardening.py:1-1",
+      "score": 12.448676539413345
+    },
+    {
+      "file": "packages/pipeline/sync_loop.py",
+      "symbol": "",
+      "loc": "packages/pipeline/sync_loop.py:1-1",
+      "score": 10.982302283936217
+    },
+    {
+      "file": "docs/reindexing/chunk-level-incremental-indexing.md",
+      "symbol": "",
+      "loc": "docs/reindexing/chunk-level-incremental-indexing.md:1-1",
+      "score": 9.498848165692898
+    },
+    {
+      "file": "packages/pipeline/index_manager.py",
+      "symbol": "",
+      "loc": "packages/pipeline/index_manager.py:1-1",
+      "score": 6.049460334162867
+    },
+    {
+      "file": "packages/pipeline/__init__.py",
+      "symbol": "",
+      "loc": "packages/pipeline/__init__.py:1-1",
+      "score": 5.316196931389527
+    },
+    {
+      "file": "web-info/context-engine-internals.md",
+      "symbol": "",
+      "loc": "web-info/context-engine-internals.md:1-1",
+      "score": 2.6894407782760954
+    }
+  ],
+  "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+}

@@ -1,0 +1,90 @@
+{
+  "ok": true,
+  "tool": "map",
+  "query": "CodeRankLLM rerank search-time D_rerank conductor reranker not index embed",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/pipeline/__init__.py",
+      "symbol": "",
+      "score": 23.05524819356282,
+      "loc": "packages/pipeline/__init__.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "packages/conductor/top3.py",
+      "symbol": "",
+      "score": 18.877273701396415,
+      "loc": "packages/conductor/top3.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "packages/conductor/service.py",
+      "symbol": "",
+      "score": 12.471985585883962,
+      "loc": "packages/conductor/service.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "packages/conductor/query_router.py",
+      "symbol": "",
+      "score": 12.40009574267539,
+      "loc": "packages/conductor/query_router.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "packages/conductor/architectures.py",
+      "symbol": "",
+      "score": 12.315572943097116,
+      "loc": "packages/conductor/architectures.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "docs/conductor-final-architecture.md",
+      "symbol": "",
+      "score": 12.090580922017436,
+      "loc": "docs/conductor-final-architecture.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "packages/pipeline/searcher.py",
+      "symbol": "",
+      "score": 11.762150778936169,
+      "loc": "packages/pipeline/searcher.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "docs/pipeline-faiss-turboquant.md",
+      "symbol": "",
+      "score": 10.285106527840705,
+      "loc": "docs/pipeline-faiss-turboquant.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "fixtures/trace-lab/app/search/rank.py",
+      "symbol": "",
+      "score": 6.224241708511532,
+      "loc": "fixtures/trace-lab/app/search/rank.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "packages/conductor/conductor.py",
+      "symbol": "",
+      "score": 5.997705688159928,
+      "loc": "packages/conductor/conductor.py:1-1",
+      "why": ""
+    }
+  ],
+  "suggested_seed": null,
+  "elapsed_s": 0.83,
+  "via": "search_repo(use_server=True)"
+}

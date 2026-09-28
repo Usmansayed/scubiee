@@ -1,0 +1,403 @@
+{
+  "elapsed_s": 7.08,
+  "board": "verify_ood_v10_realistic.json",
+  "input_style": "enriched_paragraph + seed_code_chunks + multi_seed_merge",
+  "summary": {
+    "composite_v1": {
+      "correct": 5,
+      "n": 8,
+      "accuracy": 0.625,
+      "mean_f1": 0.9097,
+      "mean_recall_must": 0.9127,
+      "mean_precision_hot": 0.9287,
+      "mean_must_at_10": 0.9127,
+      "mean_n_hot": 6.625,
+      "failed": [
+        "real02",
+        "real04",
+        "real05"
+      ]
+    },
+    "semantic_tracer_fuse": {
+      "correct": 5,
+      "n": 8,
+      "accuracy": 0.625,
+      "mean_f1": 0.9097,
+      "mean_recall_must": 0.9127,
+      "mean_precision_hot": 0.9287,
+      "mean_must_at_10": 0.9127,
+      "mean_n_hot": 6.625,
+      "failed": [
+        "real02",
+        "real04",
+        "real05"
+      ]
+    },
+    "poly_embed": {
+      "correct": 7,
+      "n": 8,
+      "accuracy": 0.875,
+      "mean_f1": 0.9406,
+      "mean_recall_must": 0.9844,
+      "mean_precision_hot": 0.9079,
+      "mean_must_at_10": 0.9705,
+      "mean_n_hot": 7.875,
+      "failed": [
+        "real06"
+      ]
+    },
+    "hyb_fuse_demote_noise_plus": {
+      "correct": 6,
+      "n": 8,
+      "accuracy": 0.75,
+      "mean_f1": 0.9215,
+      "mean_recall_must": 0.9127,
+      "mean_precision_hot": 0.9617,
+      "mean_must_at_10": 0.9127,
+      "mean_n_hot": 6.375,
+      "failed": [
+        "real02",
+        "real04"
+      ]
+    }
+  },
+  "delta_vs_composite": {
+    "accuracy": 0.125,
+    "f1": 0.0118,
+    "must": 0.0
+  },
+  "per_case": [
+    {
+      "id": "real01",
+      "chunks": [
+        "app/middleware/auth.py::authenticate",
+        "app/services/jwt_service.py::JwtService.verify"
+      ],
+      "arms": {
+        "composite_v1": {
+          "correct": true,
+          "must": 1.0,
+          "f1": 1.0,
+          "missing": [],
+          "forbidden": []
+        },
+        "semantic_tracer_fuse": {
+          "correct": true,
+          "must": 1.0,
+          "f1": 1.0,
+          "missing": [],
+          "forbidden": []
+        },
+        "poly_embed": {
+          "correct": true,
+          "must": 1.0,
+          "f1": 1.0,
+          "missing": [],
+          "forbidden": []
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "correct": true,
+          "must": 1.0,
+          "f1": 1.0,
+          "missing": [],
+          "forbidden": []
+        }
+      }
+    },
+    {
+      "id": "real02",
+      "chunks": [
+        "app/checkout/begin.py::begin",
+        "app/pricing/quote.py::quote"
+      ],
+      "arms": {
+        "composite_v1": {
+          "correct": false,
+          "must": 0.4444,
+          "f1": 0.5797,
+          "missing": [
+            "charge",
+            "validate",
+            "reserve",
+            "send",
+            "schedule"
+          ],
+          "forbidden": [
+            "log"
+          ]
+        },
+        "semantic_tracer_fuse": {
+          "correct": false,
+          "must": 0.4444,
+          "f1": 0.5797,
+          "missing": [
+            "charge",
+            "validate",
+            "reserve",
+            "send",
+            "schedule"
+          ],
+          "forbidden": [
+            "log"
+          ]
+        },
+        "poly_embed": {
+          "correct": true,
+          "must": 1.0,
+          "f1": 0.88,
+          "missing": [],
+          "forbidden": []
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "correct": false,
+          "must": 0.4444,
+          "f1": 0.6154,
+          "missing": [
+            "charge",
+            "validate",
+            "reserve",
+            "send",
+            "schedule"
+          ],
+          "forbidden": []
+        }
+      }
+    },
+    {
+      "id": "real03",
+      "chunks": [
+        "app/webhooks/ingest.py::ingest",
+        "app/webhooks/route.py::route",
+        "app/webhooks/handlers.py::on_payment"
+      ],
+      "arms": {
+        "composite_v1": {
+          "correct": true,
+          "must": 1.0,
+          "f1": 0.9,
+          "missing": [],
+          "forbidden": []
+        },
+        "semantic_tracer_fuse": {
+          "correct": true,
+          "must": 1.0,
+          "f1": 0.9,
+          "missing": [],
+          "forbidden": []
+        },
+        "poly_embed": {
+          "correct": true,
+          "must": 1.0,
+          "f1": 0.9474,
+          "missing": [],
+          "forbidden": []
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "correct": true,
+          "must": 1.0,
+          "f1": 0.9,
+          "missing": [],
+          "forbidden": []
+        }
+      }
+    },
+    {
+      "id": "real04",
+      "chunks": [
+        "app/uploads/receive.py::receive",
+        "app/uploads/index_file.py::index_file"
+      ],
+      "arms": {
+        "composite_v1": {
+          "correct": false,
+          "must": 0.8571,
+          "f1": 0.9231,
+          "missing": [
+            "send"
+          ],
+          "forbidden": []
+        },
+        "semantic_tracer_fuse": {
+          "correct": false,
+          "must": 0.8571,
+          "f1": 0.9231,
+          "missing": [
+            "send"
+          ],
+          "forbidden": []
+        },
+        "poly_embed": {
+          "correct": true,
+          "must": 1.0,
+          "f1": 1.0,
+          "missing": [],
+          "forbidden": []
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "correct": false,
+          "must": 0.8571,
+          "f1": 0.9231,
+          "missing": [
+            "send"
+          ],
+          "forbidden": []
+        }
+      }
+    },
+    {
+      "id": "real05",
+      "chunks": [
+        "app/oauth/refresh.py::refresh",
+        "app/oauth/rotate.py::rotate"
+      ],
+      "arms": {
+        "composite_v1": {
+          "correct": false,
+          "must": 1.0,
+          "f1": 0.875,
+          "missing": [],
+          "forbidden": [
+            "log"
+          ]
+        },
+        "semantic_tracer_fuse": {
+          "correct": false,
+          "must": 1.0,
+          "f1": 0.875,
+          "missing": [],
+          "forbidden": [
+            "log"
+          ]
+        },
+        "poly_embed": {
+          "correct": true,
+          "must": 1.0,
+          "f1": 0.875,
+          "missing": [],
+          "forbidden": []
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "correct": true,
+          "must": 1.0,
+          "f1": 0.9333,
+          "missing": [],
+          "forbidden": []
+        }
+      }
+    },
+    {
+      "id": "real06",
+      "chunks": [
+        "app/search/query.py::query",
+        "app/search/rank.py::rank",
+        "app/search/fetch_docs.py::fetch_docs"
+      ],
+      "arms": {
+        "composite_v1": {
+          "correct": true,
+          "must": 1.0,
+          "f1": 1.0,
+          "missing": [],
+          "forbidden": []
+        },
+        "semantic_tracer_fuse": {
+          "correct": true,
+          "must": 1.0,
+          "f1": 1.0,
+          "missing": [],
+          "forbidden": []
+        },
+        "poly_embed": {
+          "correct": false,
+          "must": 0.875,
+          "f1": 0.9333,
+          "missing": [
+            "connect"
+          ],
+          "forbidden": []
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "correct": true,
+          "must": 1.0,
+          "f1": 1.0,
+          "missing": [],
+          "forbidden": []
+        }
+      }
+    },
+    {
+      "id": "real07",
+      "chunks": [
+        "app/jobs/worker.py::run",
+        "app/jobs/runner.py::execute"
+      ],
+      "arms": {
+        "composite_v1": {
+          "correct": true,
+          "must": 1.0,
+          "f1": 1.0,
+          "missing": [],
+          "forbidden": []
+        },
+        "semantic_tracer_fuse": {
+          "correct": true,
+          "must": 1.0,
+          "f1": 1.0,
+          "missing": [],
+          "forbidden": []
+        },
+        "poly_embed": {
+          "correct": true,
+          "must": 1.0,
+          "f1": 0.8889,
+          "missing": [],
+          "forbidden": []
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "correct": true,
+          "must": 1.0,
+          "f1": 1.0,
+          "missing": [],
+          "forbidden": []
+        }
+      }
+    },
+    {
+      "id": "real08",
+      "chunks": [
+        "app/handlers/welcome.py::handle",
+        "app/services/session.py::start"
+      ],
+      "arms": {
+        "composite_v1": {
+          "correct": true,
+          "must": 1.0,
+          "f1": 1.0,
+          "missing": [],
+          "forbidden": []
+        },
+        "semantic_tracer_fuse": {
+          "correct": true,
+          "must": 1.0,
+          "f1": 1.0,
+          "missing": [],
+          "forbidden": []
+        },
+        "poly_embed": {
+          "correct": true,
+          "must": 1.0,
+          "f1": 1.0,
+          "missing": [],
+          "forbidden": []
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "correct": true,
+          "must": 1.0,
+          "f1": 1.0,
+          "missing": [],
+          "forbidden": []
+        }
+      }
+    }
+  ]
+}

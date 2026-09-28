@@ -1,0 +1,286 @@
+{
+  "id": "t14",
+  "family": "memory-budget",
+  "task": "Where is embed / search memory budget capped so DML batches stay safe?",
+  "enrich_prompt": "memory_budget embed batch DML VRAM cap search concurrent budget chars",
+  "map": {
+    "elapsed_s": 0.334,
+    "top_files": [
+      "scripts/bench_budget_alloc.py",
+      "scripts/bench_mix_seq_ab.py",
+      "tests/test_memory_budget.py",
+      "packages/pipeline/memory_governor.py",
+      "packages/pipeline/accel.py"
+    ]
+  },
+  "selected_chunks": [
+    {
+      "file": "packages/pipeline/memory_governor.py",
+      "symbol": "embed_idle_demote_s",
+      "kind": "function",
+      "loc": "packages/pipeline/memory_governor.py:53-63",
+      "start_line": 53,
+      "end_line": 63,
+      "score": 6.0,
+      "excerpt": "def embed_idle_demote_s() -> float:\n    \"\"\"Align serve demotion with lifecycle idle window (default 25s).\"\"\"\n    raw = os.environ.get(\"CTX_EMBED_IDLE_DEMOTE_S\", \"\").strip()\n    if "
+    },
+    {
+      "file": "packages/pipeline/memory_budget.py",
+      "symbol": "apply_index_memory_budget",
+      "kind": "function",
+      "loc": "packages/pipeline/memory_budget.py:127-162",
+      "start_line": 127,
+      "end_line": 162,
+      "score": 9.7,
+      "excerpt": "def apply_index_memory_budget(budget: IndexMemoryBudget) -> None:\n    \"\"\"Apply budget as env defaults (never override explicit caller env).\"\"\"\n    os.environ.setdefault(\"CTX_CE_MEM"
+    },
+    {
+      "file": "packages/pipeline/memory_budget.py",
+      "symbol": "force_apply_memory_budget",
+      "kind": "function",
+      "loc": "packages/pipeline/memory_budget.py:165-198",
+      "start_line": 165,
+      "end_line": 198,
+      "score": 9.35,
+      "excerpt": "def force_apply_memory_budget(budget: IndexMemoryBudget) -> None:\n    \"\"\"Unconditionally override memory budget env vars.\n\n    Used after a bulk operation finishes to restore the c"
+    }
+  ],
+  "arms": {
+    "pack_context": {
+      "ok": true,
+      "tool": "pack_context",
+      "engine": "composite_v1",
+      "elapsed_s": 0.129,
+      "n_pack": 4,
+      "seed": {
+        "file": "packages/pipeline/memory_governor.py",
+        "symbol": "embed_idle_demote_s",
+        "id": "packages/pipeline/memory_governor.py::embed_idle_demote_s"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/memory_governor.py",
+          "symbol": "embed_idle_demote_s",
+          "score": 1.0,
+          "loc": "packages/pipeline/memory_governor.py:53-63",
+          "id": "packages/pipeline/memory_governor.py::embed_idle_demote_s",
+          "chars": 401
+        },
+        {
+          "file": "packages/pipeline/memory_budget.py",
+          "symbol": "apply_index_memory_budget",
+          "score": 1.0,
+          "loc": "packages/pipeline/memory_budget.py:127-162",
+          "id": "packages/pipeline/memory_budget.py::apply_index_memory_budget",
+          "chars": 1858
+        },
+        {
+          "file": "packages/pipeline/memory_governor.py",
+          "symbol": "_env_float",
+          "score": 0.99,
+          "loc": "packages/pipeline/memory_governor.py:46-50",
+          "id": "packages/pipeline/memory_governor.py::_env_float",
+          "chars": 163
+        },
+        {
+          "file": "packages/pipeline/lifecycle_runtime.py",
+          "symbol": "idle_seconds",
+          "score": 0.9405,
+          "loc": "packages/pipeline/lifecycle_runtime.py:70-77",
+          "id": "packages/pipeline/lifecycle_runtime.py::idle_seconds",
+          "chars": 243
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/memory_governor.py::embed_idle_demote_s",
+          "loc": "packages/pipeline/memory_governor.py:53-63",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/memory_budget.py::apply_index_memory_budget",
+          "loc": "packages/pipeline/memory_budget.py:127-162",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/memory_governor.py::_env_float",
+          "loc": "packages/pipeline/memory_governor.py:46-50",
+          "edge": "calls",
+          "score": 0.99
+        },
+        {
+          "id": "packages/pipeline/lifecycle_runtime.py::idle_seconds",
+          "loc": "packages/pipeline/lifecycle_runtime.py:70-77",
+          "edge": "calls",
+          "score": 0.9405
+        },
+        {
+          "id": "packages/pipeline/accel.py::load_accel",
+          "loc": "packages/pipeline/accel.py:132-146",
+          "edge": "calls",
+          "score": 0.9405
+        },
+        {
+          "id": "packages/pipeline/accel.py::accel_path",
+          "loc": "packages/pipeline/accel.py:53-67",
+          "edge": "calls",
+          "score": 0.8168
+        },
+        {
+          "id": "packages/pipeline/project_id.py::context_engine_home",
+          "loc": "packages/pipeline/project_id.py:108-113",
+          "edge": "calls",
+          "score": 0.6504
+        },
+        {
+          "id": "packages/pipeline/branding.py::migrate_home_dir",
+          "loc": "packages/pipeline/branding.py:29-32",
+          "edge": "calls",
+          "score": 0.4997
+        }
+      ],
+      "pack_query": "memory_budget embed batch DML VRAM cap search concurrent budget chars\nrelevant_chunks: packages/pipeline/memory_governor.py::embed_idle_demote_s@packages/pipeline/memory_governor.py:53-63 | packages/pipeline/memory_budget.py::apply_index_memory_budget@packages/pipeline/memory_budget.py:127-162 | packages/pipeline/memory_budget.py::force_apply_memory_budget@packages/pipeline/memory_budget.py:165-198",
+      "error": null
+    },
+    "pack_poly_embed": {
+      "ok": true,
+      "tool": "pack_poly_embed",
+      "engine": "poly_embed",
+      "elapsed_s": 0.228,
+      "n_pack": 2,
+      "seed": {
+        "file": "packages/pipeline/memory_governor.py",
+        "symbol": "embed_idle_demote_s",
+        "id": "packages/pipeline/memory_governor.py::embed_idle_demote_s"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/memory_governor.py",
+          "symbol": "embed_idle_demote_s",
+          "score": 1.0,
+          "loc": "packages/pipeline/memory_governor.py:53-63",
+          "id": "packages/pipeline/memory_governor.py::embed_idle_demote_s",
+          "chars": 401
+        },
+        {
+          "file": "packages/pipeline/memory_budget.py",
+          "symbol": "apply_index_memory_budget",
+          "score": 1.0,
+          "loc": "packages/pipeline/memory_budget.py:127-162",
+          "id": "packages/pipeline/memory_budget.py::apply_index_memory_budget",
+          "chars": 1858
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/memory_governor.py::embed_idle_demote_s",
+          "loc": "packages/pipeline/memory_governor.py:53-63",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/memory_budget.py::apply_index_memory_budget",
+          "loc": "packages/pipeline/memory_budget.py:127-162",
+          "edge": "seed",
+          "score": 1.0
+        }
+      ],
+      "pack_query": "memory_budget embed batch DML VRAM cap search concurrent budget chars\nrelevant_chunks: packages/pipeline/memory_governor.py::embed_idle_demote_s@packages/pipeline/memory_governor.py:53-63 | packages/pipeline/memory_budget.py::apply_index_memory_budget@packages/pipeline/memory_budget.py:127-162 | packages/pipeline/memory_budget.py::force_apply_memory_budget@packages/pipeline/memory_budget.py:165-198",
+      "error": null
+    },
+    "pack_semantic": {
+      "ok": true,
+      "tool": "pack_semantic",
+      "engine": "semantic_tracer_fuse",
+      "elapsed_s": 0.409,
+      "n_pack": 4,
+      "seed": {
+        "file": "packages/pipeline/memory_governor.py",
+        "symbol": "embed_idle_demote_s",
+        "id": "packages/pipeline/memory_governor.py::embed_idle_demote_s"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/memory_governor.py",
+          "symbol": "embed_idle_demote_s",
+          "score": 1.0,
+          "loc": "packages/pipeline/memory_governor.py:53-63",
+          "id": "packages/pipeline/memory_governor.py::embed_idle_demote_s",
+          "chars": 401
+        },
+        {
+          "file": "packages/pipeline/memory_budget.py",
+          "symbol": "apply_index_memory_budget",
+          "score": 1.0,
+          "loc": "packages/pipeline/memory_budget.py:127-162",
+          "id": "packages/pipeline/memory_budget.py::apply_index_memory_budget",
+          "chars": 1858
+        },
+        {
+          "file": "packages/pipeline/memory_governor.py",
+          "symbol": "_env_float",
+          "score": 0.9396,
+          "loc": "packages/pipeline/memory_governor.py:46-50",
+          "id": "packages/pipeline/memory_governor.py::_env_float",
+          "chars": 163
+        },
+        {
+          "file": "packages/pipeline/lifecycle_runtime.py",
+          "symbol": "idle_seconds",
+          "score": 0.8679,
+          "loc": "packages/pipeline/lifecycle_runtime.py:70-77",
+          "id": "packages/pipeline/lifecycle_runtime.py::idle_seconds",
+          "chars": 243
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/memory_governor.py::embed_idle_demote_s",
+          "loc": "packages/pipeline/memory_governor.py:53-63",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/memory_budget.py::apply_index_memory_budget",
+          "loc": "packages/pipeline/memory_budget.py:127-162",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/memory_governor.py::_env_float",
+          "loc": "packages/pipeline/memory_governor.py:46-50",
+          "edge": "calls",
+          "score": 0.9396
+        },
+        {
+          "id": "packages/pipeline/lifecycle_runtime.py::idle_seconds",
+          "loc": "packages/pipeline/lifecycle_runtime.py:70-77",
+          "edge": "calls",
+          "score": 0.8679
+        },
+        {
+          "id": "packages/pipeline/accel.py::load_accel",
+          "loc": "packages/pipeline/accel.py:132-146",
+          "edge": "calls",
+          "score": 0.8457
+        },
+        {
+          "id": "packages/pipeline/accel.py::accel_path",
+          "loc": "packages/pipeline/accel.py:53-67",
+          "edge": "calls",
+          "score": 0.6934
+        },
+        {
+          "id": "packages/pipeline/project_id.py::context_engine_home",
+          "loc": "packages/pipeline/project_id.py:108-113",
+          "edge": "calls",
+          "score": 0.5197
+        }
+      ],
+      "pack_query": "memory_budget embed batch DML VRAM cap search concurrent budget chars\nrelevant_chunks: packages/pipeline/memory_governor.py::embed_idle_demote_s@packages/pipeline/memory_governor.py:53-63 | packages/pipeline/memory_budget.py::apply_index_memory_budget@packages/pipeline/memory_budget.py:127-162 | packages/pipeline/memory_budget.py::force_apply_memory_budget@packages/pipeline/memory_budget.py:165-198",
+      "error": null
+    }
+  }
+}

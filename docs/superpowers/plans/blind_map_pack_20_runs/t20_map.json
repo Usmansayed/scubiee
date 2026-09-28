@@ -1,0 +1,102 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 8.333,
+  "stdout_chars": 3551,
+  "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})",
+  "json": {
+    "ok": true,
+    "tool": "map",
+    "cards": [
+      {
+        "rank": 1,
+        "file": "packages/trace_lab/strategies.py",
+        "score": 19.52953135337676,
+        "why": "def compile_bundle( root: Path, *, cache_root: Path | None = None, with_graphify: bool = True, with_embed_power: bool = False, require_real_embeds: bool = False, ) -> tuple[dict[st",
+        "role": "function",
+        "loc": "packages/trace_lab/strategies.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 2,
+        "file": "packages/trace_lab/semantic_hybrid.py",
+        "score": 18.970232295359416,
+        "why": "drop_mode=drop_mode, blend_mode=blend_mode, strategy=strategy, ) return run def register_hybrid_arms( tracers: dict, root: Path, lsp: LspIndex, field: EmbedField, extra_graph: AstT",
+        "role": "function",
+        "loc": "packages/trace_lab/semantic_hybrid.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 3,
+        "file": "tests/test_semantic_hybrid.py",
+        "score": 16.685953736824395,
+        "why": "def test_hybrid_ship_candidate_registered() -> None: root = default_fixture_root() _nodes, _graph, _lex, tracers = compile_bundle( root, with_graphify=False, with_embed_power=True,",
+        "role": "test",
+        "loc": "tests/test_semantic_hybrid.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 4,
+        "file": "docs/superpowers/plans/2026-09-06-hybrid-combo-crossboard.md",
+        "score": 14.498468747910575,
+        "why": "# Hybrid combo cross-board sweep Elapsed: 12.38s \u00b7 boards: verify_ood_v2.json, verify_ood_v3.json, verify_ood_v4.json **Anti-overfit rule:** win on \u22652 of v2/v3/v4; do not crown v2-",
+        "role": "docs",
+        "loc": "docs/superpowers/plans/2026-09-06-hybrid-combo-crossboard.md:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 5,
+        "file": "scripts/hybrid_combo_crossboard.py",
+        "score": 14.13673115457187,
+        "why": "def run_sweep(*, hot: float = HOT_THRESHOLD) -> dict[str, Any]: t0 = time.time() root = default_fixture_root().resolve() nodes, graph, lex, tracers = compile_bundle( root, with_gra",
+        "role": "other",
+        "loc": "scripts/hybrid_combo_crossboard.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 6,
+        "file": "scripts/semantic_stack_smoke.py",
+        "score": 13.081087140126854,
+        "why": "\"\"\"Quick fixture smoke \u2014 semantic stack before board bakeoffs.\"\"\" from __future__ import annotations from trace_lab.cases import default_fixture_root from trace_lab.sim import HOT_",
+        "role": "other",
+        "loc": "scripts/semantic_stack_smoke.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 7,
+        "file": "docs/superpowers/specs/2026-08-11-cbm-ce-hybrid-design.md",
+        "score": 5.538765287399292,
+        "why": "# CBM + Context Engine hybrid (Option A) **Date:** 2026-08-11 **Status:** design approved \u2014 implemented (v1 facade + trial arm `cbm_ce`) **Upstream:** [DeusData/codebase-memory-mcp",
+        "role": "docs",
+        "loc": "docs/superpowers/specs/2026-08-11-cbm-ce-hybrid-design.md:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 8,
+        "file": "docs/freshness.md",
+        "score": 5.01814762832853,
+        "why": "# Freshness & low-friction stale search See also: [research-freshness.md](research-freshness.md). ## Fixed caveats (Aug 2026) | Issue | Fix | |-------|-----| | `git_fast` missed gi",
+        "role": "docs",
+        "loc": "docs/freshness.md:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 9,
+        "file": "packages/trace_lab/semantic_novel.py",
+        "score": 3.269782024030388,
+        "why": "def bind_semantic_ensemble( root: Path, lsp: LspIndex, field: EmbedField | SemanticIndex, extra_graph: AstTraceGraph | None = None, ): \"\"\"Max-fuse composite_v1 + comparator fuse + ",
+        "role": "function",
+        "loc": "packages/trace_lab/semantic_novel.py:1-1",
+        "symbol": ""
+      }
+    ],
+    "suggested_seed": {
+      "file": "packages/trace_lab/strategies.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/strategies.py:1-1",
+      "score": 19.52953135337676
+    },
+    "next": "scubiee pack \"register_hybrid_arms HYBRID_SPECS hyb_fuse_demote_noise_plus compile_bundle with_embed_power strategies bind_hybrid_filter\" --seed-file packages/trace_lab/strategies.py --mode lean"
+  },
+  "stdout_preview": ""
+}

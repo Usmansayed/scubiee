@@ -1,0 +1,227 @@
+{
+  "ok": true,
+  "root": "C:\\Users\\usman\\Downloads\\context-engine",
+  "k": 12,
+  "budget_chars": 12000,
+  "rows": [
+    {
+      "arm": "A_guide_plus_simulated_reads",
+      "tool_calls": 8,
+      "map_calls": 1,
+      "read_calls_sim": 7,
+      "response_chars": 4995,
+      "read_chars_sim": 1320,
+      "total_chars": 6315,
+      "total_tok_est": 1578,
+      "cards": 7,
+      "ms": 19238.3,
+      "ids": [
+        "fixtures/trace-lab/app/middleware/auth.py::authenticate",
+        "fixtures/trace-lab/app/middleware/auth.py::extract_bearer",
+        "fixtures/trace-lab/app/services/jwt_service.py::JwtService.verify",
+        "fixtures/trace-lab/app/utils/token.py::decode",
+        "fixtures/trace-lab/app/repositories/user_repo.py::UserRepository.resolve",
+        "fixtures/trace-lab/app/config/database.py::connect",
+        "fixtures/trace-lab/app/models/user.py::User.lookup"
+      ],
+      "graphify": true,
+      "case": "auth",
+      "score": {
+        "gold_hit": 5,
+        "gold_n": 5,
+        "gold_rec": 1.0,
+        "useful_frac": null
+      }
+    },
+    {
+      "arm": "B_guide_plus_collect",
+      "tool_calls": 2,
+      "map_calls": 1,
+      "collect_calls": 1,
+      "response_chars": 7737,
+      "total_chars": 7737,
+      "total_tok_est": 1934,
+      "cards": 7,
+      "packed": 5,
+      "pack_chars": 958,
+      "ms": 0.7,
+      "ids": [
+        "fixtures/trace-lab/app/middleware/auth.py::authenticate",
+        "fixtures/trace-lab/app/middleware/auth.py::extract_bearer",
+        "fixtures/trace-lab/app/services/jwt_service.py::JwtService.verify",
+        "fixtures/trace-lab/app/utils/token.py::decode",
+        "fixtures/trace-lab/app/repositories/user_repo.py::UserRepository.resolve",
+        "fixtures/trace-lab/app/config/database.py::connect",
+        "fixtures/trace-lab/app/models/user.py::User.lookup"
+      ],
+      "packed_ids": [
+        "fixtures/trace-lab/app/middleware/auth.py::authenticate",
+        "fixtures/trace-lab/app/middleware/auth.py::extract_bearer",
+        "fixtures/trace-lab/app/services/jwt_service.py::JwtService.verify",
+        "fixtures/trace-lab/app/utils/token.py::decode",
+        "fixtures/trace-lab/app/repositories/user_repo.py::UserRepository.resolve"
+      ],
+      "graphify": true,
+      "case": "auth",
+      "score": {
+        "gold_hit": 5,
+        "gold_n": 5,
+        "gold_rec": 1.0,
+        "useful_frac": null
+      }
+    },
+    {
+      "arm": "C_pack_context",
+      "tool_calls": 1,
+      "map_calls": 0,
+      "pack_calls": 1,
+      "response_chars": 5848,
+      "total_chars": 5848,
+      "total_tok_est": 1462,
+      "cards": 7,
+      "packed": 5,
+      "pack_chars": 958,
+      "ms": 0.6,
+      "ids": [
+        "fixtures/trace-lab/app/middleware/auth.py::authenticate",
+        "fixtures/trace-lab/app/middleware/auth.py::extract_bearer",
+        "fixtures/trace-lab/app/services/jwt_service.py::JwtService.verify",
+        "fixtures/trace-lab/app/utils/token.py::decode",
+        "fixtures/trace-lab/app/repositories/user_repo.py::UserRepository.resolve",
+        "fixtures/trace-lab/app/config/database.py::connect",
+        "fixtures/trace-lab/app/models/user.py::User.lookup"
+      ],
+      "packed_ids": [
+        "fixtures/trace-lab/app/middleware/auth.py::authenticate",
+        "fixtures/trace-lab/app/middleware/auth.py::extract_bearer",
+        "fixtures/trace-lab/app/services/jwt_service.py::JwtService.verify",
+        "fixtures/trace-lab/app/utils/token.py::decode",
+        "fixtures/trace-lab/app/repositories/user_repo.py::UserRepository.resolve"
+      ],
+      "graphify": true,
+      "noise_dropped": true,
+      "case": "auth",
+      "score": {
+        "gold_hit": 5,
+        "gold_n": 5,
+        "gold_rec": 1.0,
+        "useful_frac": null
+      }
+    },
+    {
+      "arm": "A_guide_plus_simulated_reads",
+      "tool_calls": 13,
+      "map_calls": 1,
+      "read_calls_sim": 12,
+      "response_chars": 6450,
+      "read_chars_sim": 7120,
+      "total_chars": 13570,
+      "total_tok_est": 3392,
+      "cards": 12,
+      "ms": 1.7,
+      "ids": [
+        "packages/pipeline/__main__.py::cmd_connect",
+        "packages/pipeline/cli_ui.py::error",
+        "packages/pipeline/cli_ui.py::info",
+        "packages/pipeline/cli_ui.py::print_connect_summary",
+        "packages/pipeline/rules_installer.py::install_tools",
+        "packages/pipeline/tool_registry.py::normalize_tool_slug",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/cli_ui.py::table",
+        "packages/pipeline/cli_ui.py::success",
+        "packages/pipeline/cli_ui.py::warn",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write"
+      ],
+      "graphify": true,
+      "case": "connect",
+      "score": {
+        "gold_hit": 2,
+        "gold_n": 5,
+        "gold_rec": 0.4,
+        "useful_frac": 0.25
+      }
+    },
+    {
+      "arm": "B_guide_plus_collect",
+      "tool_calls": 2,
+      "map_calls": 1,
+      "collect_calls": 1,
+      "response_chars": 16424,
+      "total_chars": 16424,
+      "total_tok_est": 4106,
+      "cards": 12,
+      "packed": 12,
+      "pack_chars": 6240,
+      "ms": 1.6,
+      "ids": [
+        "packages/pipeline/__main__.py::cmd_connect",
+        "packages/pipeline/cli_ui.py::error",
+        "packages/pipeline/cli_ui.py::info",
+        "packages/pipeline/cli_ui.py::print_connect_summary",
+        "packages/pipeline/rules_installer.py::install_tools",
+        "packages/pipeline/tool_registry.py::normalize_tool_slug",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/cli_ui.py::table",
+        "packages/pipeline/cli_ui.py::success",
+        "packages/pipeline/cli_ui.py::warn",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write"
+      ],
+      "packed_ids": [
+        "packages/pipeline/__main__.py::cmd_connect",
+        "packages/pipeline/cli_ui.py::error",
+        "packages/pipeline/cli_ui.py::info",
+        "packages/pipeline/cli_ui.py::print_connect_summary",
+        "packages/pipeline/rules_installer.py::install_tools",
+        "packages/pipeline/tool_registry.py::normalize_tool_slug",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/cli_ui.py::table",
+        "packages/pipeline/cli_ui.py::success",
+        "packages/pipeline/cli_ui.py::warn",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write"
+      ],
+      "graphify": true,
+      "case": "connect",
+      "score": {
+        "gold_hit": 2,
+        "gold_n": 5,
+        "gold_rec": 0.4,
+        "useful_frac": 0.25
+      }
+    },
+    {
+      "arm": "C_pack_context",
+      "tool_calls": 1,
+      "map_calls": 0,
+      "pack_calls": 1,
+      "response_chars": 4534,
+      "total_chars": 4534,
+      "total_tok_est": 1133,
+      "cards": 3,
+      "packed": 3,
+      "pack_chars": 2110,
+      "ms": 1.7,
+      "ids": [
+        "packages/pipeline/__main__.py::cmd_connect",
+        "packages/pipeline/rules_installer.py::install_tools",
+        "packages/pipeline/tool_registry.py::normalize_tool_slug"
+      ],
+      "packed_ids": [
+        "packages/pipeline/__main__.py::cmd_connect",
+        "packages/pipeline/rules_installer.py::install_tools",
+        "packages/pipeline/tool_registry.py::normalize_tool_slug"
+      ],
+      "graphify": true,
+      "noise_dropped": true,
+      "case": "connect",
+      "score": {
+        "gold_hit": 2,
+        "gold_n": 5,
+        "gold_rec": 0.4,
+        "useful_frac": 1.0
+      }
+    }
+  ]
+}

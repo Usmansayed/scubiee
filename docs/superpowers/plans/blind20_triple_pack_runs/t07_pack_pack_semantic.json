@@ -1,0 +1,41 @@
+{
+  "ok": true,
+  "tool": "pack_semantic",
+  "engine": "semantic_tracer_fuse",
+  "elapsed_s": 0.222,
+  "n_pack": 1,
+  "seed": {
+    "file": "packages/pipeline/locate_cli.py",
+    "symbol": "_root",
+    "id": "packages/pipeline/locate_cli.py::_root"
+  },
+  "pack": [
+    {
+      "file": "packages/pipeline/locate_cli.py",
+      "symbol": "_root",
+      "score": 1.0,
+      "loc": "packages/pipeline/locate_cli.py:14-15",
+      "id": "packages/pipeline/locate_cli.py::_root",
+      "chars": 95
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/pipeline/locate_cli.py::_root",
+      "loc": "packages/pipeline/locate_cli.py:14-15",
+      "edge": "seed",
+      "score": 1.0
+    }
+  ],
+  "error": null,
+  "seed_chunks": [
+    {
+      "file": "packages/pipeline/locate_cli.py",
+      "symbol": "_root",
+      "loc": "packages/pipeline/locate_cli.py:14-15",
+      "score": 1.0,
+      "kind": "function"
+    }
+  ],
+  "pack_query": "scubiee map pack CLI locate_cli argparse seed-file mode lean enrich prompt | seeds: packages/pipeline/locate_cli.py::_root"
+}

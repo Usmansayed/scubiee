@@ -12,48 +12,22 @@ import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, Iterable
 
 from pipeline.artifact_guard import atomic_write_text
-
-DEFAULT_IGNORE_DIRS = {
-    ".git",
-    ".hg",
-    ".svn",
-    ".venv",
-    ".venv-proof",
-    "venv",
-    "node_modules",
-    "dist",
-    "build",
-    "__pycache__",
-    ".turbo",
-    ".next",
-    "out",
-    "coverage",
-    ".scubiee",
-    "site-packages",
-    # Keep aligned with pipeline.paths._SKIP_SUBSTRINGS: fixture/vendored/
-    # experimental trees are never part of the indexed universe. A mismatch
-    # here means scan_file_hashes() (merkle snapshot) hashes thousands of
-    # files the real indexer never touches, so root_probe() sees them as
-    # permanent "newcomers" and the keeper loop never converges (#3182).
-    "vendor",
-    "testdata",
-    "research",
-    "sandbox",
-    "references",
-    "experiments",
-    "design_benchmarks",
-}
-
-_JUNK_PATH_MARKERS = (
-    "/site-packages/",
-    "/.venv/",
-    "/.venv-",
-    "/venv/",
-    "/node_modules/",
-    "/__pycache__/",
+from pipeline.ignore import (
+    BUILTIN_IGNORE_DIRS,
+    BUILTIN_PATH_MARKERS,
+    is_builtin_ignored_dir_name,
+    load_scubiee_ignore,
+    should_index_rel,
 )
+
+# Back-compat: callers that imported DEFAULT_IGNORE_DIRS still see builtins.
+# Fixture trees (testdata/, research/, …) live in repo ``.scubieeignore``.
+DEFAULT_IGNORE_DIRS = set(BUILTIN_IGNORE_DIRS)
+
+_JUNK_PATH_MARKERS = BUILTIN_PATH_MARKERS
 
 DEFAULT_EXTENSIONS = {
     ".py",
@@ -106,24 +80,16 @@ def _sha256_file(path: Path) -> str:
 
 
 def _is_ignored_dir_name(name: str) -> bool:
-    if name in DEFAULT_IGNORE_DIRS:
-        return True
-    if name.startswith(".venv") or name.startswith("venv"):
-        return True
-    if name.startswith(".") and name not in {".", ".."}:
-        return True
-    return False
+    return is_builtin_ignored_dir_name(name)
 
 
-def is_junk_rel(rel: str) -> bool:
-    """True for venv / site-packages / cache paths that must never be indexed."""
-    norm = "/" + rel.replace("\\", "/").strip("/") + "/"
-    if any(m in norm for m in _JUNK_PATH_MARKERS):
-        return True
-    if "/scubiee-0." in norm:
-        return True
-    parts = rel.replace("\\", "/").split("/")
-    return any(_is_ignored_dir_name(p) for p in parts[:-1])
+def is_junk_rel(rel: str, root: Path | str | None = None, *, rules: Any = None) -> bool:
+    """True for paths that must never be indexed (builtins + ``.scubieeignore``).
+
+    Pass preloaded ``rules`` in loops: loading them resolves the root and stats
+    the ignore file on every call.
+    """
+    return not should_index_rel(root, rel, rules=rules)
 
 
 def canonical_relpath(rel: str) -> str:
@@ -134,18 +100,32 @@ def canonical_relpath(rel: str) -> str:
     return norm
 
 
-def sanitize_file_hashes(file_hashes: dict[str, str]) -> dict[str, str]:
+def sanitize_file_hashes(
+    file_hashes: dict[str, str],
+    *,
+    root: Path | str | None = None,
+) -> dict[str, str]:
     merged: dict[str, str] = {}
+    # Load ignore rules once: per-key loading resolved the root and stat'ed the
+    # ignore file 1.1k times — ~300ms on every hot save (issue 4, merkle_ms).
+    rules = None
+    if root is not None:
+        try:
+            from pipeline.ignore import load_scubiee_ignore
+
+            rules = load_scubiee_ignore(root)
+        except Exception:  # noqa: BLE001
+            rules = None
     for k, v in file_hashes.items():
-        if is_junk_rel(k):
+        if is_junk_rel(k, root=root, rules=rules):
             continue
         ck = canonical_relpath(k)
         merged[ck] = v
     return merged
 
 
-def _should_skip(rel: Path, extensions: set[str]) -> bool:
-    if is_junk_rel(rel.as_posix()):
+def _should_skip(rel: Path, extensions: set[str], *, root: Path | str | None = None) -> bool:
+    if is_junk_rel(rel.as_posix(), root=root):
         return True
     if rel.suffix.lower() not in extensions:
         return True
@@ -160,10 +140,24 @@ def scan_file_hashes(
     """Hash indexable files. Never descends into venv/node_modules/etc."""
     root = root.resolve()
     exts = extensions or DEFAULT_EXTENSIONS
+    rules = load_scubiee_ignore(root)
     out: dict[str, str] = {}
     for dirpath, dirnames, filenames in os.walk(root, topdown=True):
-        dirnames[:] = [d for d in dirnames if not _is_ignored_dir_name(d)]
         dp = Path(dirpath)
+        try:
+            parent_rel = dp.relative_to(root).as_posix()
+            if parent_rel == ".":
+                parent_rel = ""
+        except ValueError:
+            parent_rel = ""
+
+        kept_dirs: list[str] = []
+        for d in dirnames:
+            child_rel = f"{parent_rel}/{d}" if parent_rel else d
+            if should_index_rel(root, child_rel, is_dir=True, rules=rules):
+                kept_dirs.append(d)
+        dirnames[:] = kept_dirs
+
         for fname in filenames:
             path = dp / fname
             if not path.is_file():
@@ -172,7 +166,7 @@ def scan_file_hashes(
                 rel = path.relative_to(root)
             except ValueError:
                 continue
-            if _should_skip(rel, exts):
+            if _should_skip(rel, exts, root=root):
                 continue
             out[canonical_relpath(rel.as_posix())] = _sha256_file(path)
     return out
@@ -219,7 +213,14 @@ def load_mtimes(path: Path) -> dict[str, float]:
     return {str(k): float(v) for k, v in pairs}
 
 
-def save_snapshot(path: Path, file_hashes: dict[str, str], *, root: Path | None = None) -> None:
+def save_snapshot(
+    path: Path,
+    file_hashes: dict[str, str],
+    *,
+    root: Path | None = None,
+    reuse_mtimes: dict[str, float] | None = None,
+    restat: Iterable[str] | None = None,
+) -> None:
     """Persist a merkle snapshot.
 
     Keys are canonicalized (``canonical_relpath``) before the root hash is
@@ -230,14 +231,21 @@ def save_snapshot(path: Path, file_hashes: dict[str, str], *, root: Path | None 
     and reported a spuriously dirty repo (#3182).
     """
     path.parent.mkdir(parents=True, exist_ok=True)
-    canonical = sanitize_file_hashes(file_hashes)
+    canonical = sanitize_file_hashes(file_hashes, root=root)
     mtimes: list[tuple[str, float]] = []
+    restat_c = {canonical_relpath(r) for r in (restat or ())}
     if root is not None:
         for orig_rel in sorted(file_hashes):
+            ck = canonical_relpath(orig_rel)
+            # A patch only re-hashed ``restat``: keep the mtime recorded next to
+            # every other file's (unchanged) hash instead of 1.1k fresh stats.
+            if reuse_mtimes is not None and ck not in restat_c and ck in reuse_mtimes:
+                mtimes.append((ck, float(reuse_mtimes[ck])))
+                continue
             p = root / orig_rel
             try:
                 if p.is_file():
-                    mtimes.append((canonical_relpath(orig_rel), p.stat().st_mtime))
+                    mtimes.append((ck, p.stat().st_mtime))
             except OSError:
                 pass
     payload = {

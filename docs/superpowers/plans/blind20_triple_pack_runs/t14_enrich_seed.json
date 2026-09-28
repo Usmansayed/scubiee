@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "elapsed_s": 0.047,
+  "seed_file": "packages/pipeline/memory_governor.py",
+  "seed": {
+    "file": "packages/pipeline/memory_governor.py",
+    "symbol": "_env_float",
+    "id": "packages/pipeline/memory_governor.py::_env_float",
+    "loc": null
+  },
+  "chunks": [
+    {
+      "file": "packages/pipeline/memory_governor.py",
+      "symbol": "_env_float",
+      "loc": "packages/pipeline/memory_governor.py:46-50",
+      "score": 1.0,
+      "kind": "function"
+    }
+  ],
+  "n_cards": 1,
+  "error": null
+}

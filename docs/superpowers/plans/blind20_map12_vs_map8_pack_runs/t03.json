@@ -1,0 +1,186 @@
+{
+  "id": "t03",
+  "family": "chunk-pipeline",
+  "task": "Trace how source files become searchable chunks in the indexer pipeline.",
+  "must_files": [
+    "packages/pipeline/index_manager.py",
+    "packages/pipeline/indexer.py",
+    "packages/pipeline/chunk_merkle.py"
+  ],
+  "must_symbols": [],
+  "map_k12": {
+    "elapsed_s": 0.733,
+    "top_files": [
+      "packages/enrich/__init__.py",
+      "packages/pipeline/chunk_merkle.py",
+      "tests/test_runtime_publish.py",
+      "packages/pipeline/index_manager.py",
+      "packages/pipeline/indexer.py",
+      "packages/pipeline/merkle.py",
+      "tests/test_chunk_merkle.py",
+      "docs/reindexing/chunk-level-incremental-indexing.md"
+    ]
+  },
+  "map_k8": {
+    "elapsed_s": 0.473,
+    "top_files": [
+      "packages/enrich/__init__.py",
+      "packages/pipeline/chunk_merkle.py",
+      "tests/test_runtime_publish.py",
+      "packages/pipeline/index_manager.py",
+      "packages/pipeline/indexer.py"
+    ]
+  },
+  "chunks_k12": [
+    {
+      "file": "packages/enrich/__init__.py",
+      "symbol": "chunk_file_from_ir",
+      "kind": "function",
+      "loc": "packages/enrich/__init__.py:70-122",
+      "start_line": 70,
+      "end_line": 122,
+      "score": 7.05
+    },
+    {
+      "file": "packages/pipeline/chunk_merkle.py",
+      "symbol": "chunk_key",
+      "kind": "function",
+      "loc": "packages/pipeline/chunk_merkle.py:16-20",
+      "start_line": 16,
+      "end_line": 20,
+      "score": 7.35
+    },
+    {
+      "file": "packages/enrich/__init__.py",
+      "symbol": "chunk_repo_from_ir",
+      "kind": "function",
+      "loc": "packages/enrich/__init__.py:125-133",
+      "start_line": 125,
+      "end_line": 133,
+      "score": 6.7
+    }
+  ],
+  "chunks_k8": [
+    {
+      "file": "packages/enrich/__init__.py",
+      "symbol": "chunk_file_from_ir",
+      "kind": "function",
+      "loc": "packages/enrich/__init__.py:70-122",
+      "start_line": 70,
+      "end_line": 122,
+      "score": 7.05
+    },
+    {
+      "file": "packages/pipeline/chunk_merkle.py",
+      "symbol": "chunk_key",
+      "kind": "function",
+      "loc": "packages/pipeline/chunk_merkle.py:16-20",
+      "start_line": 16,
+      "end_line": 20,
+      "score": 7.35
+    },
+    {
+      "file": "packages/enrich/__init__.py",
+      "symbol": "chunk_repo_from_ir",
+      "kind": "function",
+      "loc": "packages/enrich/__init__.py:125-133",
+      "start_line": 125,
+      "end_line": 133,
+      "score": 6.7
+    }
+  ],
+  "pack": {
+    "ok": true,
+    "elapsed_s": 0.171,
+    "n_pack": 4,
+    "pack": [
+      {
+        "file": "packages/enrich/__init__.py",
+        "symbol": "chunk_file_from_ir",
+        "loc": "packages/enrich/__init__.py:70-122",
+        "id": "packages/enrich/__init__.py::chunk_file_from_ir",
+        "chars": 1609
+      },
+      {
+        "file": "packages/pipeline/chunk_merkle.py",
+        "symbol": "chunk_key",
+        "loc": "packages/pipeline/chunk_merkle.py:16-20",
+        "id": "packages/pipeline/chunk_merkle.py::chunk_key",
+        "chars": 230
+      },
+      {
+        "file": "packages/enrich/__init__.py",
+        "symbol": "_read_lines",
+        "loc": "packages/enrich/__init__.py:65-67",
+        "id": "packages/enrich/__init__.py::_read_lines",
+        "chars": 157
+      },
+      {
+        "file": "packages/enrich/__init__.py",
+        "symbol": "_callable_symbols_for_file",
+        "loc": "packages/enrich/__init__.py:51-62",
+        "id": "packages/enrich/__init__.py::_callable_symbols_for_file",
+        "chars": 500
+      }
+    ],
+    "chain": [
+      {
+        "id": "packages/enrich/__init__.py::chunk_file_from_ir",
+        "loc": "packages/enrich/__init__.py:70-122",
+        "edge": "seed",
+        "symbol": "chunk_file_from_ir"
+      },
+      {
+        "id": "packages/pipeline/chunk_merkle.py::chunk_key",
+        "loc": "packages/pipeline/chunk_merkle.py:16-20",
+        "edge": "seed",
+        "symbol": "chunk_key"
+      },
+      {
+        "id": "packages/enrich/__init__.py::_read_lines",
+        "loc": "packages/enrich/__init__.py:65-67",
+        "edge": "calls",
+        "symbol": "_read_lines"
+      },
+      {
+        "id": "packages/enrich/__init__.py::_callable_symbols_for_file",
+        "loc": "packages/enrich/__init__.py:51-62",
+        "edge": "calls",
+        "symbol": "_callable_symbols_for_file"
+      }
+    ],
+    "seed": {
+      "file": "packages/enrich/__init__.py",
+      "symbol": "chunk_file_from_ir",
+      "id": "packages/enrich/__init__.py::chunk_file_from_ir"
+    },
+    "error": null
+  },
+  "scores": {
+    "map_k12": {
+      "file": 1.0,
+      "symbol": 1.0,
+      "note": "raw map cards (symbols often empty)"
+    },
+    "map_k12_chunks": {
+      "file": 0.333,
+      "symbol": 1.0,
+      "chunks": [
+        "chunk_file_from_ir",
+        "chunk_key",
+        "chunk_repo_from_ir"
+      ]
+    },
+    "map8_pack": {
+      "file": 0.333,
+      "symbol": 1.0,
+      "n_pack": 4,
+      "chunks": [
+        "chunk_file_from_ir",
+        "chunk_key",
+        "chunk_repo_from_ir"
+      ],
+      "elapsed_s": 0.171
+    }
+  }
+}

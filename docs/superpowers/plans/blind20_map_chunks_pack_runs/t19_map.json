@@ -1,0 +1,79 @@
+{
+  "ok": true,
+  "query": "dashboard_server HTTP status health endpoints operator uvicorn cmd_dashboard",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "score": 17.2202,
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "tests/test_dashboard_api.py",
+      "symbol": "",
+      "score": 15.3961,
+      "loc": "tests/test_dashboard_api.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "tests/test_dashboard_ui_contract.py",
+      "symbol": "",
+      "score": 12.9731,
+      "loc": "tests/test_dashboard_ui_contract.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "packages/pipeline/dashboard_server.py",
+      "symbol": "",
+      "score": 9.3814,
+      "loc": "packages/pipeline/dashboard_server.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "docs/superpowers/specs/2026-08-17-ce-operator-dashboard-design.md",
+      "symbol": "",
+      "score": 8.8065,
+      "loc": "docs/superpowers/specs/2026-08-17-ce-operator-dashboard-design.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "fixtures/trace-lab/app/routes/health.py",
+      "symbol": "",
+      "score": 8.0593,
+      "loc": "fixtures/trace-lab/app/routes/health.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "packages/pipeline/server.py",
+      "symbol": "",
+      "score": 6.9766,
+      "loc": "packages/pipeline/server.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "docs/web-info/dashboard-and-engine.md",
+      "symbol": "",
+      "score": 6.1906,
+      "loc": "docs/web-info/dashboard-and-engine.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "docs/superpowers/plans/2026-09-06-tool-first-then-blind10.md",
+      "symbol": "",
+      "score": 2.2684,
+      "loc": "docs/superpowers/plans/2026-09-06-tool-first-then-blind10.md:1-1",
+      "why": ""
+    }
+  ],
+  "elapsed_s": 0.321
+}

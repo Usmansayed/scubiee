@@ -1,0 +1,110 @@
+{
+  "ok": true,
+  "tool": "map",
+  "query": "publish FAISS index republish store checksum WarmSearchEngine serve hits after rebuild vector index publication usable",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/pipeline/artifact_guard.py",
+      "symbol": "",
+      "score": 30.8485,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/artifact_guard.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "packages/pipeline/memory_governor.py",
+      "symbol": "",
+      "score": 23.4257,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/memory_governor.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "packages/pipeline/engine.py",
+      "symbol": "",
+      "score": 5.7693,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/engine.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "packages/pipeline/ce_service.py",
+      "symbol": "",
+      "score": 4.543,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/ce_service.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "tests/test_runtime_publish.py",
+      "symbol": "",
+      "score": 4.531,
+      "start_line": null,
+      "end_line": null,
+      "loc": "tests/test_runtime_publish.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "packages/graphify/serve.py",
+      "symbol": "",
+      "score": 4.2563,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/graphify/serve.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "tests/test_venture_stack.py",
+      "symbol": "",
+      "score": 4.171,
+      "start_line": null,
+      "end_line": null,
+      "loc": "tests/test_venture_stack.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "packages/trace_lab/vector_index.py",
+      "symbol": "",
+      "score": 4.1661,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/trace_lab/vector_index.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "packages/pipeline/client.py",
+      "symbol": "",
+      "score": 4.0609,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/client.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "packages/pipeline/faiss_store.py",
+      "symbol": "",
+      "score": 3.8057,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/faiss_store.py:1-1",
+      "why": ""
+    }
+  ],
+  "suggested_seed": null,
+  "elapsed_s": 5.236,
+  "via": "search_repo(use_server=True)"
+}

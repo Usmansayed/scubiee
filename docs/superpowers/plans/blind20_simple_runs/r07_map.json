@@ -1,0 +1,90 @@
+{
+  "ok": true,
+  "tool": "map",
+  "query": "cmd_wipe wipe uninstall remove store MCP rules halt confirm --all scubiee state",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/pipeline/wipe.py",
+      "symbol": "",
+      "score": 35.18529144348767,
+      "loc": "packages/pipeline/wipe.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "tests/test_stop_all_tools.py",
+      "symbol": "",
+      "score": 26.157483832725866,
+      "loc": "tests/test_stop_all_tools.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "score": 16.023235105134162,
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "docs/web-info/uninstall-mac-linux.md",
+      "symbol": "",
+      "score": 5.7222334590992014,
+      "loc": "docs/web-info/uninstall-mac-linux.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "tests/test_wipe.py",
+      "symbol": "",
+      "score": 5.698873716718725,
+      "loc": "tests/test_wipe.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "tests/test_mcp_no_repo_scubiee_after_wipe.py",
+      "symbol": "",
+      "score": 5.190829958402031,
+      "loc": "tests/test_mcp_no_repo_scubiee_after_wipe.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "docs/web-info/uninstall-windows.md",
+      "symbol": "",
+      "score": 4.743450241349663,
+      "loc": "docs/web-info/uninstall-windows.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "docs/web-info/faq.md",
+      "symbol": "",
+      "score": 4.435270279380975,
+      "loc": "docs/web-info/faq.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": "",
+      "score": 4.387724468137834,
+      "loc": "packages/pipeline/rules_installer.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "packages/pipeline/process_control.py",
+      "symbol": "",
+      "score": 4.296943787435875,
+      "loc": "packages/pipeline/process_control.py:1-1",
+      "why": ""
+    }
+  ],
+  "suggested_seed": null,
+  "elapsed_s": 0.954,
+  "via": "search_repo(use_server=True)"
+}

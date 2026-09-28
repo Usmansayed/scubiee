@@ -1,0 +1,164 @@
+{
+  "id": "t08",
+  "family": "expand-hop",
+  "task": "How does expand_context follow callees/callers/effects hops from a packed node?",
+  "enrich_prompt": "expand_context direction callees callers effects with_bodies hop chain node id",
+  "map": {
+    "elapsed_s": 0.515,
+    "n_cards": 10,
+    "top_files": [
+      "packages/pipeline/context_trace.py",
+      "packages/pipeline/locate_cli.py",
+      "docs/superpowers/plans/2026-09-05-ladder-followup-real-eval.md",
+      "tests/test_locate_cli.py",
+      "tests/test_incremental_context_ladder.py"
+    ]
+  },
+  "enrich_seed": {
+    "ok": true,
+    "elapsed_s": 0.041,
+    "seed_file": "packages/pipeline/context_trace.py",
+    "seed": {
+      "file": "packages/pipeline/context_trace.py",
+      "symbol": "_heat",
+      "id": "packages/pipeline/context_trace.py::_heat",
+      "loc": null
+    },
+    "chunks": [
+      {
+        "file": "packages/pipeline/context_trace.py",
+        "symbol": "_heat",
+        "loc": "packages/pipeline/context_trace.py:39-44",
+        "score": 1.0,
+        "kind": "function"
+      }
+    ],
+    "n_cards": 1,
+    "error": null
+  },
+  "arms": {
+    "pack_context": {
+      "ok": true,
+      "tool": "pack_context",
+      "engine": "composite_v1",
+      "elapsed_s": 0.04,
+      "n_pack": 1,
+      "seed": {
+        "file": "packages/pipeline/context_trace.py",
+        "symbol": "_heat",
+        "id": "packages/pipeline/context_trace.py::_heat"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/context_trace.py",
+          "symbol": "_heat",
+          "score": 1.0,
+          "loc": "packages/pipeline/context_trace.py:39-44",
+          "id": "packages/pipeline/context_trace.py::_heat",
+          "chars": 137
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/context_trace.py::_heat",
+          "loc": "packages/pipeline/context_trace.py:39-44",
+          "edge": "seed",
+          "score": 1.0
+        }
+      ],
+      "error": null,
+      "seed_chunks": [
+        {
+          "file": "packages/pipeline/context_trace.py",
+          "symbol": "_heat",
+          "loc": "packages/pipeline/context_trace.py:39-44",
+          "score": 1.0,
+          "kind": "function"
+        }
+      ],
+      "pack_query": "expand_context direction callees callers effects with_bodies hop chain node id | seeds: packages/pipeline/context_trace.py::_heat"
+    },
+    "pack_poly_embed": {
+      "ok": true,
+      "tool": "pack_poly_embed",
+      "engine": "poly_embed",
+      "elapsed_s": 0.144,
+      "n_pack": 1,
+      "seed": {
+        "file": "packages/pipeline/context_trace.py",
+        "symbol": "_heat",
+        "id": "packages/pipeline/context_trace.py::_heat"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/context_trace.py",
+          "symbol": "_heat",
+          "score": 1.0,
+          "loc": "packages/pipeline/context_trace.py:39-44",
+          "id": "packages/pipeline/context_trace.py::_heat",
+          "chars": 137
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/context_trace.py::_heat",
+          "loc": "packages/pipeline/context_trace.py:39-44",
+          "edge": "seed",
+          "score": 1.0
+        }
+      ],
+      "error": null,
+      "seed_chunks": [
+        {
+          "file": "packages/pipeline/context_trace.py",
+          "symbol": "_heat",
+          "loc": "packages/pipeline/context_trace.py:39-44",
+          "score": 1.0,
+          "kind": "function"
+        }
+      ],
+      "pack_query": "expand_context direction callees callers effects with_bodies hop chain node id | seeds: packages/pipeline/context_trace.py::_heat"
+    },
+    "pack_semantic": {
+      "ok": true,
+      "tool": "pack_semantic",
+      "engine": "semantic_tracer_fuse",
+      "elapsed_s": 0.24,
+      "n_pack": 1,
+      "seed": {
+        "file": "packages/pipeline/context_trace.py",
+        "symbol": "_heat",
+        "id": "packages/pipeline/context_trace.py::_heat"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/context_trace.py",
+          "symbol": "_heat",
+          "score": 1.0,
+          "loc": "packages/pipeline/context_trace.py:39-44",
+          "id": "packages/pipeline/context_trace.py::_heat",
+          "chars": 137
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/context_trace.py::_heat",
+          "loc": "packages/pipeline/context_trace.py:39-44",
+          "edge": "seed",
+          "score": 1.0
+        }
+      ],
+      "error": null,
+      "seed_chunks": [
+        {
+          "file": "packages/pipeline/context_trace.py",
+          "symbol": "_heat",
+          "loc": "packages/pipeline/context_trace.py:39-44",
+          "score": 1.0,
+          "kind": "function"
+        }
+      ],
+      "pack_query": "expand_context direction callees callers effects with_bodies hop chain node id | seeds: packages/pipeline/context_trace.py::_heat"
+    }
+  }
+}

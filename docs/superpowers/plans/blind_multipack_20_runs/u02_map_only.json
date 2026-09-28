@@ -1,0 +1,15 @@
+{
+  "id": "u02",
+  "family": "chunk-compress",
+  "task": "Where is chunk compression applied before embedding storage?",
+  "enrich_map_query": "chunk_compress compress chunks embed pipeline token budget pack slices file_slice",
+  "map_ok": false,
+  "map_elapsed_s": 1.097,
+  "suggested_seed": {
+    "file": "",
+    "symbol": "",
+    "source": "missing"
+  },
+  "map_top_cards": [],
+  "stderr_tail": "use_server=not local,\n    )\n  File \"C:\\Users\\usman\\Downloads\\context-engine\\packages\\pipeline\\searcher.py\", line 144, in search_repo\n    eng = load_engine(root, base_dir=base_dir, vdb=vdb)\n  File \"C:\\Users\\usman\\Downloads\\context-engine\\packages\\pipeline\\engine.py\", line 457, in load_engine\n    raise RuntimeError(\n        \"Index publication is missing or checksum-invalid; refusing mixed generation.\"\n    )\nRuntimeError: Index publication is missing or checksum-invalid; refusing mixed generation.\n"
+}

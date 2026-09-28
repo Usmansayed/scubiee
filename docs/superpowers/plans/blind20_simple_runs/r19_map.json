@@ -1,0 +1,90 @@
+{
+  "ok": true,
+  "tool": "map",
+  "query": "scubiee serve engine run WarmSearchEngine load_engine daemon port 8765 warm cache",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/pipeline/engine.py",
+      "symbol": "",
+      "score": 13.082415910060934,
+      "loc": "packages/pipeline/engine.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "packages/pipeline/ce_service.py",
+      "symbol": "",
+      "score": 11.663092111704119,
+      "loc": "packages/pipeline/ce_service.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "docs/web-info/dashboard-and-engine.md",
+      "symbol": "",
+      "score": 4.76768906857912,
+      "loc": "docs/web-info/dashboard-and-engine.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "tests/test_daemon_process_sweep.py",
+      "symbol": "",
+      "score": 4.680722046135056,
+      "loc": "tests/test_daemon_process_sweep.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "score": 4.426581976534182,
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "tests/test_mcp_parallel_map_stress.py",
+      "symbol": "",
+      "score": 4.386004421585868,
+      "loc": "tests/test_mcp_parallel_map_stress.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "tests/windows_production_test.py",
+      "symbol": "",
+      "score": 3.9883031194428025,
+      "loc": "tests/windows_production_test.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "tests/_mcp_break_it_suite.py",
+      "symbol": "",
+      "score": 3.885602182244737,
+      "loc": "tests/_mcp_break_it_suite.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "packages/conductor/dense_index.py",
+      "symbol": "",
+      "score": 3.6326059462882148,
+      "loc": "packages/conductor/dense_index.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "packages/conductor/service.py",
+      "symbol": "",
+      "score": 3.601482912250246,
+      "loc": "packages/conductor/service.py:1-1",
+      "why": ""
+    }
+  ],
+  "suggested_seed": null,
+  "elapsed_s": 0.937,
+  "via": "search_repo(use_server=True)"
+}

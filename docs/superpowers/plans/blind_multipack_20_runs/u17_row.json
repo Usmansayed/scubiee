@@ -1,0 +1,209 @@
+{
+  "id": "u17",
+  "family": "failure-report",
+  "task": "How does build_failure_report summarize false negatives on verify boards?",
+  "enrich_map_query": "build_failure_report failure_report false_negatives explored_nodes hot_count verify",
+  "map_ok": true,
+  "suggested_seed": {
+    "file": "packages/trace_lab/failure_report.py",
+    "symbol": "",
+    "source": "suggested_seed"
+  },
+  "resolved_seed": {
+    "file": "packages/trace_lab/failure_report.py",
+    "symbol": "build_failure_report",
+    "how": "best_in_file"
+  },
+  "map_top_cards": [
+    {
+      "file": "packages/trace_lab/failure_report.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/failure_report.py:1-1",
+      "score": 37.71380133813064
+    },
+    {
+      "file": "tests/test_polytrace.py",
+      "symbol": "",
+      "loc": "tests/test_polytrace.py:1-1",
+      "score": 12.538386545060385
+    },
+    {
+      "file": "packages/trace_lab/metrics.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/metrics.py:1-1",
+      "score": 12.022469712682135
+    },
+    {
+      "file": "tests/test_trace_lab.py",
+      "symbol": "",
+      "loc": "tests/test_trace_lab.py:1-1",
+      "score": 11.96341557197613
+    },
+    {
+      "file": "tests/test_trace_lab_novel.py",
+      "symbol": "",
+      "loc": "tests/test_trace_lab_novel.py:1-1",
+      "score": 11.923268186713514
+    },
+    {
+      "file": "packages/trace_lab/sim.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/sim.py:1-1",
+      "score": 5.5509170673069255
+    },
+    {
+      "file": "packages/trace_lab/types.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/types.py:1-1",
+      "score": 5.469750799911906
+    },
+    {
+      "file": "tests/test_verify_board.py",
+      "symbol": "",
+      "loc": "tests/test_verify_board.py:1-1",
+      "score": 5.306630948033589
+    },
+    {
+      "file": "tests/test_verify_hard.py",
+      "symbol": "",
+      "loc": "tests/test_verify_hard.py:1-1",
+      "score": 4.852681970596313
+    },
+    {
+      "file": "docs/publish-setup.md",
+      "symbol": "",
+      "loc": "docs/publish-setup.md:1-1",
+      "score": 3.7181782759158812
+    }
+  ],
+  "arms": {
+    "composite_v1": {
+      "ok": true,
+      "elapsed_s": 0.041,
+      "n_hot": 2,
+      "n_ranked": 2,
+      "hot_ids": [
+        "packages/trace_lab/failure_report.py::build_failure_report",
+        "packages/trace_lab/failure_report.py::classify_miss"
+      ],
+      "top15_ids": [
+        "packages/trace_lab/failure_report.py::build_failure_report",
+        "packages/trace_lab/failure_report.py::classify_miss"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/trace_lab/failure_report.py::build_failure_report",
+          "file": "packages/trace_lab/failure_report.py",
+          "symbol": "build_failure_report",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 1378
+        },
+        {
+          "id": "packages/trace_lab/failure_report.py::classify_miss",
+          "file": "packages/trace_lab/failure_report.py",
+          "symbol": "classify_miss",
+          "kind": "function",
+          "score": 0.99,
+          "body_chars": 766
+        }
+      ]
+    },
+    "semantic_tracer_fuse": {
+      "ok": true,
+      "elapsed_s": 0.353,
+      "n_hot": 2,
+      "n_ranked": 2,
+      "hot_ids": [
+        "packages/trace_lab/failure_report.py::build_failure_report",
+        "packages/trace_lab/failure_report.py::classify_miss"
+      ],
+      "top15_ids": [
+        "packages/trace_lab/failure_report.py::build_failure_report",
+        "packages/trace_lab/failure_report.py::classify_miss"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/trace_lab/failure_report.py::build_failure_report",
+          "file": "packages/trace_lab/failure_report.py",
+          "symbol": "build_failure_report",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 1378
+        },
+        {
+          "id": "packages/trace_lab/failure_report.py::classify_miss",
+          "file": "packages/trace_lab/failure_report.py",
+          "symbol": "classify_miss",
+          "kind": "function",
+          "score": 0.943,
+          "body_chars": 766
+        }
+      ]
+    },
+    "hyb_fuse_demote_noise_plus": {
+      "ok": true,
+      "elapsed_s": 0.058,
+      "n_hot": 2,
+      "n_ranked": 2,
+      "hot_ids": [
+        "packages/trace_lab/failure_report.py::build_failure_report",
+        "packages/trace_lab/failure_report.py::classify_miss"
+      ],
+      "top15_ids": [
+        "packages/trace_lab/failure_report.py::build_failure_report",
+        "packages/trace_lab/failure_report.py::classify_miss"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/trace_lab/failure_report.py::build_failure_report",
+          "file": "packages/trace_lab/failure_report.py",
+          "symbol": "build_failure_report",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 1378
+        },
+        {
+          "id": "packages/trace_lab/failure_report.py::classify_miss",
+          "file": "packages/trace_lab/failure_report.py",
+          "symbol": "classify_miss",
+          "kind": "function",
+          "score": 0.7651,
+          "body_chars": 766
+        }
+      ]
+    },
+    "poly_embed": {
+      "ok": true,
+      "elapsed_s": 0.002,
+      "n_hot": 2,
+      "n_ranked": 2,
+      "hot_ids": [
+        "packages/trace_lab/failure_report.py::build_failure_report",
+        "packages/trace_lab/failure_report.py::classify_miss"
+      ],
+      "top15_ids": [
+        "packages/trace_lab/failure_report.py::build_failure_report",
+        "packages/trace_lab/failure_report.py::classify_miss"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/trace_lab/failure_report.py::build_failure_report",
+          "file": "packages/trace_lab/failure_report.py",
+          "symbol": "build_failure_report",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 1378
+        },
+        {
+          "id": "packages/trace_lab/failure_report.py::classify_miss",
+          "file": "packages/trace_lab/failure_report.py",
+          "symbol": "classify_miss",
+          "kind": "function",
+          "score": 0.735,
+          "body_chars": 766
+        }
+      ]
+    }
+  }
+}

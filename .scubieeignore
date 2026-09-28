@@ -1,0 +1,10 @@
+# Project fixtures / non-product trees (not builtin — customize per repo).
+# Builtins cover node_modules, .venv, dist, IDE trees, etc.
+# Write live sync probes under packages/|modules/|src/|tests/|scripts/ (see gate index_write_hint).
+testdata/
+research/
+sandbox/
+experiments/
+references/
+design_benchmarks/
+fixtures/

@@ -11,6 +11,7 @@ from trace_lab.corpus import (
     extract_nodes,
     iter_python_files,
     module_name_for,
+    read_and_parse,
     rel_posix,
 )
 from trace_lab.types import TraceEdge, TraceNode
@@ -105,10 +106,8 @@ def build_ast_graph(root: Path, nodes: dict[str, TraceNode] | None = None) -> As
 
     for path in iter_python_files(root):
         rel = rel_posix(root, path)
-        text = path.read_text(encoding="utf-8-sig", errors="replace")
-        try:
-            tree = ast.parse(text)
-        except SyntaxError:
+        _text, tree = read_and_parse(path)
+        if tree is None:
             continue
         imports = _collect_imports(tree, by_mod, symbols_in_file)
         file_nodes = by_file.get(rel, [])
@@ -139,6 +138,32 @@ def build_ast_graph(root: Path, nodes: dict[str, TraceNode] | None = None) -> As
     return AstTraceGraph(nodes, edges)
 
 
+def _iter_import_stmts(tree: ast.AST):
+    """Yield every Import/ImportFrom without ``ast.walk``'s full-tree cost.
+
+    ``ast.walk`` visited every expression node of every file (~13s of a rebake in
+    profiling — PERF-1); imports only appear as statements in module / function /
+    class / control-flow bodies, so descend those and skip expressions entirely.
+    Still finds lazy function-local imports (which Scubiee uses heavily) and
+    try/except-guarded imports.
+    """
+    stack: list[ast.AST] = [tree]
+    while stack:
+        node = stack.pop()
+        for field in ("body", "orelse", "finalbody"):
+            for stmt in getattr(node, field, None) or []:
+                if isinstance(stmt, (ast.Import, ast.ImportFrom)):
+                    yield stmt
+                elif isinstance(stmt, ast.stmt):
+                    stack.append(stmt)
+        for handler in getattr(node, "handlers", None) or []:
+            for stmt in getattr(handler, "body", None) or []:
+                if isinstance(stmt, (ast.Import, ast.ImportFrom)):
+                    yield stmt
+                elif isinstance(stmt, ast.stmt):
+                    stack.append(stmt)
+
+
 def _collect_imports(
     tree: ast.AST,
     by_mod: dict[str, str],
@@ -146,7 +171,7 @@ def _collect_imports(
 ) -> dict[str, list[str]]:
     """local name -> candidate TraceNode ids."""
     out: dict[str, list[str]] = defaultdict(list)
-    for stmt in ast.walk(tree):
+    for stmt in _iter_import_stmts(tree):
         if isinstance(stmt, ast.ImportFrom) and stmt.module:
             mod = stmt.module
             rel = by_mod.get(mod)

@@ -1,0 +1,225 @@
+﻿{
+  "ok": false,
+  "repo": "C:\\Users\\usman\\Downloads\\context-engine",
+  "project_id": "ce_0a779347a9061995489923aad707cb0b",
+  "install": {
+    "version": "0.3.92",
+    "python": "C:\\Users\\usman\\AppData\\Roaming\\uv\\tools\\scubiee\\Scripts\\python.exe",
+    "active_binary": "C:\\Users\\usman\\.local\\bin\\scubiee",
+    "expected_binary": "C:\\Users\\usman\\AppData\\Roaming\\uv\\tools\\scubiee\\Scripts\\scubiee.exe",
+    "binaries_match": false,
+    "extra_on_path": [],
+    "multiple_installs": false,
+    "hint": "Invoked as C:\\Users\\usman\\.local\\bin\\scubiee but this Python's scubiee is C:\\Users\\usman\\AppData\\Roaming\\uv\\tools\\scubiee\\Scripts\\scubiee.exe. Call the expected binary or fix PATH."
+  },
+  "enrollment": {
+    "enrolled": true
+  },
+  "capabilities": {
+    "ok": false,
+    "require_semantic": true,
+    "capabilities": {
+      "faiss": {
+        "module": "faiss",
+        "available": true,
+        "required": true,
+        "hint": "Install the CE vector dependencies, then rerun `scubiee preflight`."
+      },
+      "rapidfuzz": {
+        "module": "rapidfuzz",
+        "available": true,
+        "required": true,
+        "hint": "Install `rapidfuzz`; graph deduplication cannot run without it."
+      },
+      "typescript_parser": {
+        "module": "tree_sitter_typescript",
+        "available": true,
+        "required": true,
+        "hint": "Install the TypeScript tree-sitter parser; CE refuses partial TS/TSX indexing."
+      },
+      "json_parser": {
+        "module": "tree_sitter_json",
+        "available": true,
+        "required": true,
+        "hint": "Install the JSON tree-sitter parser; CE refuses partial JSON indexing."
+      },
+      "embed_accel": {
+        "module": "fastembed+onnxruntime",
+        "available": false,
+        "required": true,
+        "hint": "Run `python -m pipeline setup` (or `pip install -e \".[dml]\"`) so FastEmbed uses DmlExecutionProvider at batch=16.",
+        "detail": {
+          "profile": "dml",
+          "provider": "DmlExecutionProvider",
+          "batch_size": 16,
+          "backend": "fastembed",
+          "texts_per_sec": 35.61,
+          "providers": [
+            "AzureExecutionProvider",
+            "CPUExecutionProvider"
+          ]
+        }
+      },
+      "semantic_search_st": {
+        "module": "sentence_transformers",
+        "available": false,
+        "required": false,
+        "hint": "Optional PyTorch fallback only \u2014 production path is FastEmbed+ORT."
+      }
+    },
+    "missing_required": [
+      "provider:DmlExecutionProvider"
+    ],
+    "accel": {
+      "ok": false,
+      "profile": "dml",
+      "provider": "DmlExecutionProvider",
+      "batch_size": 16,
+      "backend": "fastembed",
+      "texts_per_sec": 35.61,
+      "reason": "Windows discrete AMD GPU via DirectML (Intel iGPU / APU graphics use CPU instead)",
+      "fastembed": true,
+      "onnxruntime": true,
+      "providers": [
+        "AzureExecutionProvider",
+        "CPUExecutionProvider"
+      ],
+      "provider_ok": false,
+      "model_warm": false,
+      "provider_validation": {
+        "ok": false,
+        "profile": "dml",
+        "provider": "DmlExecutionProvider",
+        "available_providers": [
+          "AzureExecutionProvider",
+          "CPUExecutionProvider"
+        ],
+        "provider_available": false,
+        "model_warm": false,
+        "detail": "saved provider DmlExecutionProvider is unavailable"
+      },
+      "sentence_transformers": false,
+      "missing": [
+        "provider:DmlExecutionProvider"
+      ],
+      "hint": "Run `python -m pipeline setup` (or `pip install -e \".[dml]\"`) so FastEmbed uses DmlExecutionProvider at batch=16."
+    }
+  },
+  "accel": {
+    "ok": false,
+    "profile": "dml",
+    "provider": "DmlExecutionProvider",
+    "batch_size": 16,
+    "backend": "fastembed",
+    "texts_per_sec": 35.61,
+    "reason": "Windows discrete AMD GPU via DirectML (Intel iGPU / APU graphics use CPU instead)",
+    "fastembed": true,
+    "onnxruntime": true,
+    "providers": [
+      "AzureExecutionProvider",
+      "CPUExecutionProvider"
+    ],
+    "provider_ok": false,
+    "model_warm": false,
+    "provider_validation": {
+      "ok": false,
+      "profile": "dml",
+      "provider": "DmlExecutionProvider",
+      "available_providers": [
+        "AzureExecutionProvider",
+        "CPUExecutionProvider"
+      ],
+      "provider_available": false,
+      "model_warm": false,
+      "detail": "saved provider DmlExecutionProvider is unavailable"
+    },
+    "sentence_transformers": false,
+    "missing": [
+      "provider:DmlExecutionProvider"
+    ],
+    "hint": "Run `python -m pipeline setup` (or `pip install -e \".[dml]\"`) so FastEmbed uses DmlExecutionProvider at batch=16.",
+    "preferred_profile": "dml",
+    "active_profile": "dml",
+    "backup_reason": null,
+    "envelope": {
+      "tier": "standard",
+      "batch_ceiling": 16,
+      "embed_workers": 1,
+      "index_workers": 2,
+      "aggressive_unload": false,
+      "queue_limit": 2
+    },
+    "onnx_file": "onnx/model_fp16.onnx",
+    "recommended_command": "python -m pipeline serve"
+  },
+  "connect_registry": {
+    "ok": true,
+    "connected_tools": [
+      "cursor"
+    ],
+    "managed_repos": 1,
+    "enrolled_repos": 1,
+    "stale_registry_paths": [],
+    "unenrolled_managed_repos": [],
+    "warnings": []
+  },
+  "readiness": {
+    "index_usable": true,
+    "manifest": {
+      "ok": true,
+      "artifacts": [
+        "chunks.jsonl",
+        "graph.json",
+        "graph_ir.json",
+        "merkle.json",
+        "meta.json"
+      ]
+    },
+    "soft_search_ready": false,
+    "embed_profile": "dml",
+    "embed_batch": 16,
+    "embed_tps": 35.61
+  },
+  "binding": {
+    "ok": true,
+    "healthy": true,
+    "matched": true,
+    "bound_repo": "C:\\Users\\usman\\Downloads\\context-engine",
+    "repo": "C:\\Users\\usman\\Downloads\\context-engine",
+    "lock_pid": 23396,
+    "repair": null
+  },
+  "journal": {
+    "pending": false,
+    "paths": []
+  },
+  "git_family": {
+    "needs_reconcile": false,
+    "groups": [],
+    "duplicate_count": 0
+  },
+  "meta": {
+    "chunks": 6987,
+    "files_indexed": 1064,
+    "collection": "context-engine_0a779347a9061995",
+    "embed_model": "nomic-ai/CodeRankEmbed",
+    "project_id": "ce_0a779347a9061995489923aad707cb0b"
+  },
+  "checked_at": 1789487742.888886,
+  "repair_plan": [
+    {
+      "id": "install_deps",
+      "kind": "manual",
+      "detail": "install missing deps: provider:DmlExecutionProvider"
+    },
+    {
+      "id": "init_repair",
+      "kind": "manual",
+      "detail": "Run `python -m pipeline setup` (or `pip install -e \".[dml]\"`) so FastEmbed uses DmlExecutionProvider at batch=16."
+    }
+  ],
+  "repairs": [
+    "install missing deps: provider:DmlExecutionProvider",
+    "Run `python -m pipeline setup` (or `pip install -e \".[dml]\"`) so FastEmbed uses DmlExecutionProvider at batch=16."
+  ]
+}

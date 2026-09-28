@@ -1,0 +1,358 @@
+{
+  "protocol": "blind20_simple_phase2",
+  "metric": "must_file_recall (seed file counted as present)",
+  "summary_mean": {
+    "composite_v1": 0.6625,
+    "polytrace": 0.6625,
+    "ultimate": 0.6625,
+    "map_top5": 0.8333
+  },
+  "thin_packs_n_le_1": {
+    "composite_v1": 17,
+    "polytrace": 17,
+    "ultimate": 17
+  },
+  "winner": "composite_v1",
+  "per_case": [
+    {
+      "id": "r01",
+      "family": "turboquant-search",
+      "map": 1.0,
+      "composite_v1": 0.25,
+      "polytrace": 0.25,
+      "ultimate": 0.25,
+      "n_pack": {
+        "composite_v1": 3,
+        "polytrace": 1,
+        "ultimate": 1
+      },
+      "seed": {
+        "file": "packages/pipeline/searcher.py",
+        "symbol": ""
+      }
+    },
+    {
+      "id": "r02",
+      "family": "capability-cards",
+      "map": 1.0,
+      "composite_v1": 1.0,
+      "polytrace": 1.0,
+      "ultimate": 1.0,
+      "n_pack": {
+        "composite_v1": 1,
+        "polytrace": 1,
+        "ultimate": 1
+      },
+      "seed": {
+        "file": "packages/pipeline/capability.py",
+        "symbol": ""
+      }
+    },
+    {
+      "id": "r03",
+      "family": "graphify-ir",
+      "map": 0.5,
+      "composite_v1": 0.5,
+      "polytrace": 0.5,
+      "ultimate": 0.5,
+      "n_pack": {
+        "composite_v1": 1,
+        "polytrace": 1,
+        "ultimate": 1
+      },
+      "seed": {
+        "file": "packages/conductor/graphify_retriever.py",
+        "symbol": ""
+      }
+    },
+    {
+      "id": "r04",
+      "family": "never-index",
+      "map": 1.0,
+      "composite_v1": 1.0,
+      "polytrace": 1.0,
+      "ultimate": 1.0,
+      "n_pack": {
+        "composite_v1": 1,
+        "polytrace": 1,
+        "ultimate": 1
+      },
+      "seed": {
+        "file": "packages/pipeline/repo_lifecycle.py",
+        "symbol": ""
+      }
+    },
+    {
+      "id": "r05",
+      "family": "connect-host",
+      "map": 0.667,
+      "composite_v1": 0.333,
+      "polytrace": 0.333,
+      "ultimate": 0.333,
+      "n_pack": {
+        "composite_v1": 1,
+        "polytrace": 1,
+        "ultimate": 1
+      },
+      "seed": {
+        "file": "packages/pipeline/__main__.py",
+        "symbol": ""
+      }
+    },
+    {
+      "id": "r06",
+      "family": "dashboard-http",
+      "map": 1.0,
+      "composite_v1": 1.0,
+      "polytrace": 1.0,
+      "ultimate": 1.0,
+      "n_pack": {
+        "composite_v1": 1,
+        "polytrace": 1,
+        "ultimate": 1
+      },
+      "seed": {
+        "file": "packages/pipeline/dashboard_server.py",
+        "symbol": ""
+      }
+    },
+    {
+      "id": "r07",
+      "family": "wipe-uninstall",
+      "map": 1.0,
+      "composite_v1": 1.0,
+      "polytrace": 1.0,
+      "ultimate": 1.0,
+      "n_pack": {
+        "composite_v1": 1,
+        "polytrace": 1,
+        "ultimate": 1
+      },
+      "seed": {
+        "file": "packages/pipeline/wipe.py",
+        "symbol": ""
+      }
+    },
+    {
+      "id": "r08",
+      "family": "upgrade-supervisor",
+      "map": 0.5,
+      "composite_v1": 0.5,
+      "polytrace": 0.5,
+      "ultimate": 0.5,
+      "n_pack": {
+        "composite_v1": 1,
+        "polytrace": 1,
+        "ultimate": 1
+      },
+      "seed": {
+        "file": "packages/pipeline/__main__.py",
+        "symbol": ""
+      }
+    },
+    {
+      "id": "r09",
+      "family": "rerank-coderankllm",
+      "map": 0.667,
+      "composite_v1": 0.0,
+      "polytrace": 0.0,
+      "ultimate": 0.0,
+      "n_pack": {
+        "composite_v1": 1,
+        "polytrace": 1,
+        "ultimate": 1
+      },
+      "seed": {
+        "file": "packages/pipeline/__init__.py",
+        "symbol": ""
+      }
+    },
+    {
+      "id": "r10",
+      "family": "conductor-fusion",
+      "map": 1.0,
+      "composite_v1": 0.5,
+      "polytrace": 0.5,
+      "ultimate": 0.5,
+      "n_pack": {
+        "composite_v1": 3,
+        "polytrace": 1,
+        "ultimate": 1
+      },
+      "seed": {
+        "file": "packages/pipeline/searcher.py",
+        "symbol": ""
+      }
+    },
+    {
+      "id": "r11",
+      "family": "fast-index-mode",
+      "map": 1.0,
+      "composite_v1": 1.0,
+      "polytrace": 1.0,
+      "ultimate": 1.0,
+      "n_pack": {
+        "composite_v1": 1,
+        "polytrace": 1,
+        "ultimate": 1
+      },
+      "seed": {
+        "file": "packages/pipeline/indexer.py",
+        "symbol": ""
+      }
+    },
+    {
+      "id": "r12",
+      "family": "resource-rss-cap",
+      "map": 1.0,
+      "composite_v1": 0.5,
+      "polytrace": 0.5,
+      "ultimate": 0.5,
+      "n_pack": {
+        "composite_v1": 1,
+        "polytrace": 2,
+        "ultimate": 2
+      },
+      "seed": {
+        "file": "packages/pipeline/memory_budget.py",
+        "symbol": ""
+      }
+    },
+    {
+      "id": "r13",
+      "family": "steering-rules",
+      "map": 1.0,
+      "composite_v1": 1.0,
+      "polytrace": 1.0,
+      "ultimate": 1.0,
+      "n_pack": {
+        "composite_v1": 1,
+        "polytrace": 1,
+        "ultimate": 1
+      },
+      "seed": {
+        "file": "packages/pipeline/rules_installer.py",
+        "symbol": ""
+      }
+    },
+    {
+      "id": "r14",
+      "family": "expand-directions",
+      "map": 0.667,
+      "composite_v1": 0.333,
+      "polytrace": 0.333,
+      "ultimate": 0.333,
+      "n_pack": {
+        "composite_v1": 1,
+        "polytrace": 1,
+        "ultimate": 1
+      },
+      "seed": {
+        "file": "packages/pipeline/locate_cli.py",
+        "symbol": ""
+      }
+    },
+    {
+      "id": "r15",
+      "family": "freshness-merkle",
+      "map": 1.0,
+      "composite_v1": 1.0,
+      "polytrace": 1.0,
+      "ultimate": 1.0,
+      "n_pack": {
+        "composite_v1": 1,
+        "polytrace": 1,
+        "ultimate": 1
+      },
+      "seed": {
+        "file": "packages/pipeline/freshness.py",
+        "symbol": ""
+      }
+    },
+    {
+      "id": "r16",
+      "family": "settings-reg-mode",
+      "map": 0.5,
+      "composite_v1": 0.5,
+      "polytrace": 0.5,
+      "ultimate": 0.5,
+      "n_pack": {
+        "composite_v1": 1,
+        "polytrace": 1,
+        "ultimate": 1
+      },
+      "seed": {
+        "file": "packages/pipeline/__main__.py",
+        "symbol": ""
+      }
+    },
+    {
+      "id": "r17",
+      "family": "mcp-permissions",
+      "map": 1.0,
+      "composite_v1": 1.0,
+      "polytrace": 1.0,
+      "ultimate": 1.0,
+      "n_pack": {
+        "composite_v1": 1,
+        "polytrace": 3,
+        "ultimate": 3
+      },
+      "seed": {
+        "file": "packages/pipeline/mcp_permissions.py",
+        "symbol": ""
+      }
+    },
+    {
+      "id": "r18",
+      "family": "polytrace-teleport",
+      "map": 1.0,
+      "composite_v1": 1.0,
+      "polytrace": 1.0,
+      "ultimate": 1.0,
+      "n_pack": {
+        "composite_v1": 1,
+        "polytrace": 1,
+        "ultimate": 1
+      },
+      "seed": {
+        "file": "packages/trace_lab/polytrace.py",
+        "symbol": ""
+      }
+    },
+    {
+      "id": "r19",
+      "family": "serve-warm-engine",
+      "map": 0.5,
+      "composite_v1": 0.5,
+      "polytrace": 0.5,
+      "ultimate": 0.5,
+      "n_pack": {
+        "composite_v1": 4,
+        "polytrace": 4,
+        "ultimate": 4
+      },
+      "seed": {
+        "file": "packages/pipeline/engine.py",
+        "symbol": ""
+      }
+    },
+    {
+      "id": "r20",
+      "family": "chunk-vs-file-merkle",
+      "map": 0.667,
+      "composite_v1": 0.333,
+      "polytrace": 0.333,
+      "ultimate": 0.333,
+      "n_pack": {
+        "composite_v1": 1,
+        "polytrace": 1,
+        "ultimate": 1
+      },
+      "seed": {
+        "file": "packages/pipeline/chunk_merkle.py",
+        "symbol": ""
+      }
+    }
+  ]
+}

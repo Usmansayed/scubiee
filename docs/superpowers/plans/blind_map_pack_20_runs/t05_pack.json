@@ -1,0 +1,151 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 1.704,
+  "stdout_chars": 6794,
+  "stderr_tail": "",
+  "json": {
+    "ok": true,
+    "tool": "pack",
+    "seed": {
+      "id": "packages/trace_lab/poly_embed.py::poly_embed_trace",
+      "file": "packages/trace_lab/poly_embed.py",
+      "symbol": "poly_embed_trace"
+    },
+    "chain": [
+      {
+        "id": "packages/trace_lab/poly_embed.py::poly_embed_trace",
+        "loc": "packages/trace_lab/poly_embed.py:16-40",
+        "edge": "seed",
+        "score": 1.0
+      },
+      {
+        "id": "packages/trace_lab/polytrace.py::faction_of",
+        "loc": "packages/trace_lab/polytrace.py:97-102",
+        "edge": "calls",
+        "score": 1.0
+      },
+      {
+        "id": "packages/trace_lab/polytrace.py::is_foreign",
+        "loc": "packages/trace_lab/polytrace.py:105-119",
+        "edge": "calls",
+        "score": 1.0
+      },
+      {
+        "id": "packages/trace_lab/retrieve.py::query_intent",
+        "loc": "packages/trace_lab/retrieve.py:156-228",
+        "edge": "calls",
+        "score": 1.0
+      },
+      {
+        "id": "packages/conductor/bm25_index.py::tokenize",
+        "loc": "packages/conductor/bm25_index.py:14-15",
+        "edge": "calls",
+        "score": 1.0
+      },
+      {
+        "id": "packages/trace_lab/polytrace.py::_skip_node",
+        "loc": "packages/trace_lab/polytrace.py:144-154",
+        "edge": "calls",
+        "score": 1.0
+      },
+      {
+        "id": "packages/pipeline/repo_runtime.py::RepoHub.drop",
+        "loc": "packages/pipeline/repo_runtime.py:133-135",
+        "edge": "calls",
+        "score": 0.9405
+      },
+      {
+        "id": "packages/trace_lab/polytrace.py::poly_trace",
+        "loc": "packages/trace_lab/polytrace.py:231-334",
+        "edge": "calls",
+        "score": 0.9405
+      }
+    ],
+    "pack": [
+      {
+        "id": "packages/trace_lab/poly_embed.py::poly_embed_trace",
+        "loc": "packages/trace_lab/poly_embed.py:16-40",
+        "text": "def poly_embed_trace(\n    case: GoldCase,\n    nodes: dict[str, TraceNode],\n    graph: AstTraceGraph,\n    lex,\n    *,\n    lsp: LspIndex,\n    field: EmbedField,\n    struct_heatmap: Heatmap | None = None,\n) -> Heatmap:\n    if struct_heatmap is None:\n        struct_heatmap = poly_trace(\n            case, nodes, graph, lex, lsp=lsp, extra_graph=None\n        )\n    return apply_embed_keep_drop(\n        case,\n        nodes,\n        struct_heatmap,\n        field=field,\n        lsp=lsp,\n        graph=graph,\n        drop_mode=\"poly\",\n        blend_mode=\"poly\",\n        strategy=\"poly_embed\",\n    )"
+      },
+      {
+        "id": "packages/trace_lab/polytrace.py::faction_of",
+        "loc": "packages/trace_lab/polytrace.py:97-102",
+        "text": "def faction_of(path: str) -> str:\n    p = \"/\" + path.replace(\"\\\\\", \"/\")\n    for needle, fac in _FACTION_MARKERS:\n        if needle in p:\n            return fac\n    return \"auth\""
+      },
+      {
+        "id": "packages/trace_lab/polytrace.py::is_foreign",
+        "loc": "packages/trace_lab/polytrace.py:105-119",
+        "text": "def is_foreign(node: TraceNode, query: str, seed_file: str) -> bool:\n    \"\"\"Cross-faction hubs are illegal unless the query names them or they ally.\"\"\"\n    nf = faction_of(node.file)\n    if nf == \"plat\":\n        qtoks = set(tokenize(query))\n        ql = query.lower()\n        if qtoks & {\"log\", \"logger\", \"logging\"}:\n            return False\n        if any(p in ql for p in (\"print\", \"printing\", \"log output\", \"write log\")):\n            return False\n        return True\n    if node.file.replace(\"\\\\\", \"/\") == seed_file.replace(\"\\\\\", \"/\"):\n        return False\n    seed_fac = faction_of(seed_file)\n    return nf not in _ALLIES.get(seed_fac, frozenset({seed_fac}))"
+      },
+      {
+        "id": "packages/trace_lab/retrieve.py::query_intent",
+        "loc": "packages/trace_lab/retrieve.py:156-228",
+        "text": "def query_intent(query: str) -> str:\n    \"\"\"Classify a tracing query so walks can mask relations.\n\n    flow   \u2014 understand an execution path\n    config \u2014 locate a setting / constant\n    site   \u2014 find a specific call site or side effect\n    entry  \u2014 start from a caller / route\n    refs   \u2014 who uses / who calls a symbol\n    \"\"\"\n    q = query.lower()\n    if any(\n        p in q\n        for p in (\n            \"who uses\",\n            \"who calls\",\n            \"who reads\",\n            \"who references\",\n            \"who even reads\",\n            \"what reads\",\n        )\n    ):\n        return \"refs\"\n    if any(p in q for p in (\"printing\", \"print something\", \"write log\", \"log output\")):\n        return \"site\"\n    if any(p in q for p in (\"write log\", \"log output\", \"where does\")) and any(\n        p in q for p in (\"log\", \"write\", \"print\")\n    ):\n        return \"site\"\n    # Config needs a real setting cue \u2014 bare \"where is that?\" is not enough.\n    config_cue = any(\n        p in q\n        for p in (\n            \"configured\",\n            \"configuration\",\n            \"expiry\",\n            \"ttl\",\n            \"timeout\",\n            \"kicked out\",\n            \"stop working\",\n            \"expiry knob\",\n            \"after an hour\",\n            \"after a while\",\n            \"lifetime\",\n            \"how long\",\n            \"token lives\",\n            \"tokens live\",\n            \"only care\",\n        )\n    )\n    if config_cue or (\n        \"where is\" in q\n        and any(p in q for p in (\"token\", \"ttl\", \"expiry\", \"expire\", \"config\", \"timeout\", \"knob\"))\n    ):\n        return \"config\"\n    if any(p in q for p in (\"how does login\", \"login authenticate\", \"route\")):\n        return \"entry\"\n    if any(\n        p in q\n        for p in (\n            \"how does\",\n            \"how do\",\n            \"how is\",\n            \"what does\",\n            \"work\",\n            \"flow\",\n            \"walk me\",\n            \"path\",\n            \"figuring out\",\n            \"actually get\",\n        )\n    ):\n        return \"flow\"\n    return \"flow\""
+      }
+    ],
+    "cold": [
+      {
+        "id": "packages/conductor/bm25_index.py::tokenize",
+        "loc": "packages/conductor/bm25_index.py:14-15",
+        "score": 1.0
+      },
+      {
+        "id": "packages/trace_lab/polytrace.py::_skip_node",
+        "loc": "packages/trace_lab/polytrace.py:144-154",
+        "score": 1.0
+      },
+      {
+        "id": "packages/pipeline/repo_runtime.py::RepoHub.drop",
+        "loc": "packages/pipeline/repo_runtime.py:133-135",
+        "score": 0.9405
+      },
+      {
+        "id": "packages/trace_lab/polytrace.py::poly_trace",
+        "loc": "packages/trace_lab/polytrace.py:231-334",
+        "score": 0.9405
+      },
+      {
+        "id": "packages/trace_lab/retrieve.py::_ident_parts",
+        "loc": "packages/trace_lab/retrieve.py:123-131",
+        "score": 0.893
+      },
+      {
+        "id": "packages/trace_lab/retrieve.py::query_similarity",
+        "loc": "packages/trace_lab/retrieve.py:134-152",
+        "score": 0.8194
+      },
+      {
+        "id": "packages/trace_lab/polytrace.py::_lex_confirm",
+        "loc": "packages/trace_lab/polytrace.py:337-370",
+        "score": 0.8168
+      },
+      {
+        "id": "packages/trace_lab/polytrace.py::_cells",
+        "loc": "packages/trace_lab/polytrace.py:373-389",
+        "score": 0.8168
+      },
+      {
+        "id": "packages/trace_lab/polytrace.py::_channels",
+        "loc": "packages/trace_lab/polytrace.py:192-228",
+        "score": 0.8168
+      },
+      {
+        "id": "packages/trace_lab/polytrace.py::_allow",
+        "loc": "packages/trace_lab/polytrace.py:157-189",
+        "score": 0.8168
+      },
+      {
+        "id": "packages/trace_lab/polytrace.py::_raw_overlap",
+        "loc": "packages/trace_lab/polytrace.py:132-141",
+        "score": 0.6846
+      },
+      {
+        "id": "packages/trace_lab/retrieve.py::normalize",
+        "loc": "packages/trace_lab/retrieve.py:103-109",
+        "score": 0.6504
+      }
+    ]
+  },
+  "stdout_preview": ""
+}

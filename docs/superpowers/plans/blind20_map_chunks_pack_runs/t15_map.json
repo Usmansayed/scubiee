@@ -1,0 +1,87 @@
+{
+  "ok": true,
+  "query": "capability_cards attach CapabilityCard locate ranking search hits build cards json",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/pipeline/capability.py",
+      "symbol": "",
+      "score": 15.1548,
+      "loc": "packages/pipeline/capability.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "packages/pipeline/engine.py",
+      "symbol": "",
+      "score": 10.945,
+      "loc": "packages/pipeline/engine.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "docs/superpowers/specs/2026-08-03-capability-locate-design.md",
+      "symbol": "",
+      "score": 5.5527,
+      "loc": "docs/superpowers/specs/2026-08-03-capability-locate-design.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "packages/pipeline/locate.py",
+      "symbol": "",
+      "score": 5.3606,
+      "loc": "packages/pipeline/locate.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "packages/pipeline/mcp_locate.py",
+      "symbol": "",
+      "score": 4.7001,
+      "loc": "packages/pipeline/mcp_locate.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "tests/test_capability_promotion.py",
+      "symbol": "",
+      "score": 4.2085,
+      "loc": "tests/test_capability_promotion.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "packages/graphify/build.py",
+      "symbol": "",
+      "score": 4.1336,
+      "loc": "packages/graphify/build.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "scripts/eval_locate_quality.py",
+      "symbol": "",
+      "score": 3.8716,
+      "loc": "scripts/eval_locate_quality.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "packages/pipeline/context_trace.py",
+      "symbol": "",
+      "score": 3.8309,
+      "loc": "packages/pipeline/context_trace.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "scripts/blind_map_multipack_20.py",
+      "symbol": "",
+      "score": 3.6323,
+      "loc": "scripts/blind_map_multipack_20.py:1-1",
+      "why": ""
+    }
+  ],
+  "elapsed_s": 0.368
+}

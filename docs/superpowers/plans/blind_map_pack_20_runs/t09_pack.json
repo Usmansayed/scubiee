@@ -1,0 +1,33 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 1.687,
+  "stdout_chars": 485,
+  "stderr_tail": "",
+  "json": {
+    "ok": true,
+    "tool": "pack",
+    "seed": {
+      "id": "packages/pipeline/embedder.py::text_key",
+      "file": "packages/pipeline/embedder.py",
+      "symbol": "text_key"
+    },
+    "chain": [
+      {
+        "id": "packages/pipeline/embedder.py::text_key",
+        "loc": "packages/pipeline/embedder.py:30-31",
+        "edge": "seed",
+        "score": 1.0
+      }
+    ],
+    "pack": [
+      {
+        "id": "packages/pipeline/embedder.py::text_key",
+        "loc": "packages/pipeline/embedder.py:30-31",
+        "text": "def text_key(text: str) -> str:\n    return hashlib.sha256(text.encode(\"utf-8\")).hexdigest()"
+      }
+    ],
+    "cold": []
+  },
+  "stdout_preview": ""
+}

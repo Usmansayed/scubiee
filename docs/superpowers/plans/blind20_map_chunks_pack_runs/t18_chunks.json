@@ -1,0 +1,32 @@
+[
+  {
+    "file": "packages/pipeline/wipe.py",
+    "symbol": "wipe",
+    "kind": "function",
+    "loc": "packages/pipeline/wipe.py:1119-1146",
+    "start_line": 1119,
+    "end_line": 1146,
+    "score": 9.7,
+    "excerpt": "def wipe(\n    *,\n    all: bool = False,\n    yes: bool = False,\n    models: bool = True,\n    package: bool | None = None,\n    path: Path | str | None = None,\n    progress: Any | Non"
+  },
+  {
+    "file": "packages/pipeline/__main__.py",
+    "symbol": "cmd_wipe",
+    "kind": "function",
+    "loc": "packages/pipeline/__main__.py:414-505",
+    "start_line": 414,
+    "end_line": 505,
+    "score": 11.45,
+    "excerpt": "def cmd_wipe(args: argparse.Namespace) -> int:\n    \"\"\"Remove Scubiee state for this repo, or everything with --all.\"\"\"\n    from pipeline.wipe import wipe\n\n    confirmed = bool(geta"
+  },
+  {
+    "file": "packages/pipeline/rules_installer.py",
+    "symbol": "remove_mcp_config",
+    "kind": "function",
+    "loc": "packages/pipeline/rules_installer.py:1788-1815",
+    "start_line": 1788,
+    "end_line": 1815,
+    "score": 10.2,
+    "excerpt": "def remove_mcp_config(\n    tool: ToolDef,\n    path: Path,\n    *,\n    schema: str | None = None,\n    key: str | None = None,\n    warnings: list[dict[str, str]] | None = None,\n) -> b"
+  }
+]

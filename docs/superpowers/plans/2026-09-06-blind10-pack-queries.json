@@ -1,0 +1,77 @@
+{
+  "protocol": "blind10_pack_v1",
+  "created": "2026-09-06",
+  "note": "NEW 10 hard production-like queries. Phase1: enrich→map chunks→pack→store. Phase2: GT + score only after freeze. No peeking.",
+  "gate": "Phase0 tests/test_venture_stack.py + scripts/venture_preflight.py must be green first",
+  "arms_phase1": [
+    "composite_v1"
+  ],
+  "arms_deferred_until_wired": [
+    "venture_propose_verify",
+    "venture_propose_path1",
+    "venture_multiview",
+    "semantic_tracer_fuse"
+  ],
+  "cases": [
+    {
+      "id": "b01",
+      "family": "session-fail-closed",
+      "task": "Locate how session isolation fail-closes when session_id is missing on pack/locate.",
+      "enrich_prompt": "session isolation require_session_id fail closed locate pack persistence session_store put_span shared MCP process bucket missing session_id"
+    },
+    {
+      "id": "b02",
+      "family": "publication-guard",
+      "task": "Trace how publication_manifest checksums refuse mixed/corrupt index generation.",
+      "enrich_prompt": "publication_manifest validate_manifest publish_manifest checksum_mismatch index_is_usable load_engine refuse mixed generation artifact_guard"
+    },
+    {
+      "id": "b03",
+      "family": "pack-lean-bodies",
+      "task": "Find where lean pack attaches hot bodies vs cold card.loc spans for MCP responses.",
+      "enrich_prompt": "pack_context lean mode pack bodies cold loc mcp_response_lean heatmap chain expand_context with_bodies"
+    },
+    {
+      "id": "b04",
+      "family": "trace-engine-default",
+      "task": "How does CTX_TRACE_ENGINE select composite_v1 vs polytrace for production pack?",
+      "enrich_prompt": "CTX_TRACE_ENGINE _trace_engine composite_v1 polytrace ultimate bind_composite_v1 context_trace pack"
+    },
+    {
+      "id": "b05",
+      "family": "embed-accel-dml",
+      "task": "Trace Embedder DML/accel profile batch sizing used during index embed.",
+      "enrich_prompt": "Embedder AccelProfile resolve_runtime DmlExecutionProvider batch_size require_machine_setup accel.json fastembed CodeRankEmbed"
+    },
+    {
+      "id": "b06",
+      "family": "map-suggested-seed",
+      "task": "Where does map emit suggested_seed and cards for the locate ladder?",
+      "enrich_prompt": "map_context suggested_seed cards loc symbol heat rank soft locate scubiee map GUIDE"
+    },
+    {
+      "id": "b07",
+      "family": "checkout-fork",
+      "task": "How does copied checkout fork a new project_id instead of sharing the original store?",
+      "enrich_prompt": "Copied checkout detected forked new project checkout_identity git_family_duplicate project_id registry manage"
+    },
+    {
+      "id": "b08",
+      "family": "incremental-dirty",
+      "task": "Trace incremental dirty journal → re-embed path after file changes.",
+      "enrich_prompt": "dirty_journal incremental sync-now merkle chunk_merkle re-embed patch_and_save_graph IndexConfirmRequired"
+    },
+    {
+      "id": "b09",
+      "family": "venture-faiss-propose",
+      "task": "Locate product FAISS propose helpers used by venture propose_and_verify.",
+      "enrich_prompt": "product_faiss_ok _product_faiss_files propose_and_verify search_repo use_server faiss_boost resolve_file_to_nodes semantic_venture"
+    },
+    {
+      "id": "b10",
+      "family": "gate-managed",
+      "task": "How does gate/status report managed project_id and store usability?",
+      "enrich_prompt": "scubiee gate status managed project_id store_dir index_is_usable enrolled lifecycle_state ce_d9cb766c"
+    }
+  ]
+}

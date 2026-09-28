@@ -1,0 +1,46 @@
+{
+  "ok": true,
+  "tool": "pack_poly_embed",
+  "engine": "poly_embed",
+  "elapsed_s": 0.19,
+  "n_pack": 2,
+  "seed": {
+    "file": "packages/pipeline/locate_cli.py",
+    "symbol": "cli_pack",
+    "id": "packages/pipeline/locate_cli.py::cli_pack"
+  },
+  "pack": [
+    {
+      "file": "packages/pipeline/locate_cli.py",
+      "symbol": "cli_pack",
+      "score": 1.0,
+      "loc": "packages/pipeline/locate_cli.py:179-227",
+      "id": "packages/pipeline/locate_cli.py::cli_pack",
+      "chars": 1627
+    },
+    {
+      "file": "packages/pipeline/locate_cli.py",
+      "symbol": "cli_map",
+      "score": 1.0,
+      "loc": "packages/pipeline/locate_cli.py:60-176",
+      "id": "packages/pipeline/locate_cli.py::cli_map",
+      "chars": 4188
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/pipeline/locate_cli.py::cli_pack",
+      "loc": "packages/pipeline/locate_cli.py:179-227",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/locate_cli.py::cli_map",
+      "loc": "packages/pipeline/locate_cli.py:60-176",
+      "edge": "seed",
+      "score": 1.0
+    }
+  ],
+  "pack_query": "scubiee map pack CLI locate_cli argparse seed-file mode lean enrich prompt\nrelevant_chunks: packages/pipeline/locate_cli.py::cli_pack@packages/pipeline/locate_cli.py:179-227 | packages/pipeline/locate_cli.py::cli_map@packages/pipeline/locate_cli.py:60-176 | packages/pipeline/__main__.py::cmd_pack@packages/pipeline/__main__.py:1655-1679",
+  "error": null
+}

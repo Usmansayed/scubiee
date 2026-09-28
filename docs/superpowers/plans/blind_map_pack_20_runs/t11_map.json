@@ -1,0 +1,93 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 8.132,
+  "stdout_chars": 3240,
+  "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})",
+  "json": {
+    "ok": true,
+    "tool": "map",
+    "cards": [
+      {
+        "rank": 1,
+        "file": "packages/pipeline/mcp_locate.py",
+        "score": 16.264608358083294,
+        "why": "Shell = tests/build/git. Back off to classic: CTX_MCP_EXPERIMENT=classic. \"\"\" def _phase_server_instructions() -> str: header = managed_gate_mcp_header() if _phase_experiment() == ",
+        "role": "function",
+        "loc": "packages/pipeline/mcp_locate.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 2,
+        "file": "docs/superpowers/specs/2026-09-04-pack-context-few-calls-design.md",
+        "score": 15.010147045457712,
+        "why": "# Design: pack_context \u2014 few calls, fat relevant context **Date:** 2026-09-04 **Status:** approved \u2014 implementing ## Insight Fewer API calls with more relevant context often beats ",
+        "role": "docs",
+        "loc": "docs/superpowers/specs/2026-09-04-pack-context-few-calls-design.md:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 3,
+        "file": "packages/hybrid_cbm/server.py",
+        "score": 14.051624492675481,
+        "why": "\"\"\"FastMCP entry: CE soft search + CBM graph tools.\"\"\" from __future__ import annotations import os import sys from pathlib import Path from typing import Annotated, Any from hybri",
+        "role": "function",
+        "loc": "packages/hybrid_cbm/server.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 4,
+        "file": "packages/pipeline/rules_installer.py",
+        "score": 13.626159577804,
+        "why": "def managed_gate_mcp_header() -> str: \"\"\"Short reinforce of GATE policy inside MCP instructions (every turn \u2014 keep tiny).\"\"\" exp = (os.environ.get(\"CTX_MCP_EXPERIMENT\") or \"hybrid\"",
+        "role": "function",
+        "loc": "packages/pipeline/rules_installer.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 5,
+        "file": "scripts/install_mcp.py",
+        "score": 8.62635532625665,
+        "why": "\"\"\"Register context-engine as a Cursor MCP server (thin adapter \u2192 CE daemon).\"\"\" from __future__ import annotations import json from pipeline.mcp_install import server_entry, write",
+        "role": "other",
+        "loc": "scripts/install_mcp.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 6,
+        "file": "scripts/install_mcp_frontend.py",
+        "score": 6.778338109523141,
+        "why": "\"\"\"Register context-engine MCP pointed at frontend-mcp (or any repo).\"\"\" from __future__ import annotations import json import sys from pathlib import Path CE_ROOT = Path(__file__)",
+        "role": "other",
+        "loc": "scripts/install_mcp_frontend.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 7,
+        "file": "docs/superpowers/plans/2026-09-04-map-bakeoff-and-embeddings.md",
+        "score": 4.526120044949369,
+        "why": "# Map bakeoff + where embeddings still matter ## Experiment 28 vague prompts. Every arm: **map \u2192 pick seed(s) \u2192 PolyTrace** (structure only). Dense = real CodeRankEmbed (FastEmbed/",
+        "role": "docs",
+        "loc": "docs/superpowers/plans/2026-09-04-map-bakeoff-and-embeddings.md:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 8,
+        "file": "packages/trace_lab/strategies.py",
+        "score": 3.0904409998682465,
+        "why": "def hybrid( case: GoldCase, nodes: dict[str, TraceNode], graph: AstTraceGraph, lex: LexicalIndex, ) -> Heatmap: \"\"\"Seed + graph-confirmed BM25 weak seeds + relevance-aware AST walk",
+        "role": "function",
+        "loc": "packages/trace_lab/strategies.py:1-1",
+        "symbol": ""
+      }
+    ],
+    "suggested_seed": {
+      "file": "packages/pipeline/mcp_locate.py",
+      "symbol": "",
+      "loc": "packages/pipeline/mcp_locate.py:1-1",
+      "score": 16.264608358083294
+    },
+    "next": "scubiee pack \"pack_context map_context MCP tool register FastMCP server instructions hybrid experiment CTX_MCP_EXPERIMENT\" --seed-file packages/pipeline/mcp_locate.py --mode lean"
+  },
+  "stdout_preview": ""
+}

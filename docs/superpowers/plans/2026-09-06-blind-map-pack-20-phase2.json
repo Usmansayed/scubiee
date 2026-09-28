@@ -1,0 +1,606 @@
+{
+  "phase": "phase2_compare",
+  "summary": {
+    "n": 20,
+    "mean_map_must_file_recall": 0.775,
+    "mean_pack_must_file_recall": 0.55,
+    "mean_union_must_file_recall": 0.775,
+    "mean_pack_must_symbol_recall": 0.3333,
+    "seed_ok_rate": 0.8,
+    "perfect_union_file": 14,
+    "perfect_pack_symbol": 6,
+    "thin_pack_lt2": 13
+  },
+  "rows": [
+    {
+      "id": "t01",
+      "family": "session-isolation",
+      "task": "Fix a bug where two parallel agent chats share recall/pins in one MCP process.",
+      "seed": "packages/pipeline/session_store.py",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0,
+      "pack_must_file_recall": 0.6667,
+      "union_must_file_recall": 1.0,
+      "pack_must_symbol_recall": 0.6667,
+      "should_file_hit": 1.0,
+      "n_pack": 4,
+      "pack_ids": [
+        "packages/pipeline/project_id.py::repo_runtime_dir",
+        "packages/pipeline/session_isolation.py::_session_isolate_enabled",
+        "packages/pipeline/session_isolation.py::effective_session_id",
+        "packages/pipeline/session_store.py::_store_path"
+      ],
+      "missing_must_files": [],
+      "missing_must_symbols": [
+        "packages/pipeline/session_store.py::put_span"
+      ],
+      "missing_must_symbols_and_file": [],
+      "gt_must_files": [
+        "packages/pipeline/session_isolation.py",
+        "packages/pipeline/session_store.py",
+        "packages/pipeline/work_session.py"
+      ],
+      "gt_must_symbols": [
+        "packages/pipeline/session_isolation.py::effective_session_id",
+        "packages/pipeline/session_isolation.py::_session_isolate_enabled",
+        "packages/pipeline/session_store.py::put_span"
+      ]
+    },
+    {
+      "id": "t02",
+      "family": "install-cursor-surface",
+      "task": "Understand how scubiee connect wires Cursor mcp.json autoApprove and project permissions.",
+      "seed": "packages/pipeline/rules_installer.py",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0,
+      "pack_must_file_recall": 0.5,
+      "union_must_file_recall": 1.0,
+      "pack_must_symbol_recall": 0.0,
+      "should_file_hit": 1.0,
+      "n_pack": 1,
+      "pack_ids": [
+        "packages/pipeline/rules_installer.py::_templates_dir"
+      ],
+      "missing_must_files": [],
+      "missing_must_symbols": [
+        "packages/pipeline/rules_installer.py::install_tool",
+        "packages/pipeline/rules_installer.py::write_project_tool_surface",
+        "packages/pipeline/rules_installer.py::write_project_gate_rules",
+        "packages/pipeline/mcp_permissions.py::apply_permissions_to_repo_tool_surface"
+      ],
+      "missing_must_symbols_and_file": [],
+      "gt_must_files": [
+        "packages/pipeline/rules_installer.py",
+        "packages/pipeline/mcp_permissions.py"
+      ],
+      "gt_must_symbols": [
+        "packages/pipeline/rules_installer.py::install_tool",
+        "packages/pipeline/rules_installer.py::write_project_tool_surface",
+        "packages/pipeline/rules_installer.py::write_project_gate_rules",
+        "packages/pipeline/mcp_permissions.py::apply_permissions_to_repo_tool_surface"
+      ]
+    },
+    {
+      "id": "t03",
+      "family": "map-pack-ladder",
+      "task": "Explain how map suggests a seed and pack builds the lean heatmap with bodies.",
+      "seed": "packages/pipeline/context_trace.py",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 0.5,
+      "pack_must_file_recall": 0.5,
+      "union_must_file_recall": 0.5,
+      "pack_must_symbol_recall": 0.0,
+      "should_file_hit": null,
+      "n_pack": 1,
+      "pack_ids": [
+        "packages/pipeline/context_trace.py::_heat"
+      ],
+      "missing_must_files": [
+        "packages/pipeline/mcp_locate.py"
+      ],
+      "missing_must_symbols": [
+        "packages/pipeline/mcp_locate.py::map_context_impl",
+        "packages/pipeline/mcp_locate.py::pack_context_impl"
+      ],
+      "missing_must_symbols_and_file": [
+        "packages/pipeline/mcp_locate.py::map_context_impl",
+        "packages/pipeline/mcp_locate.py::pack_context_impl"
+      ],
+      "gt_must_files": [
+        "packages/pipeline/mcp_locate.py",
+        "packages/pipeline/context_trace.py"
+      ],
+      "gt_must_symbols": [
+        "packages/pipeline/mcp_locate.py::map_context_impl",
+        "packages/pipeline/mcp_locate.py::pack_context_impl"
+      ]
+    },
+    {
+      "id": "t04",
+      "family": "composite-tracer",
+      "task": "Where does composite_v1 decide membership then rank heat with DFG boost?",
+      "seed": "packages/trace_lab/composite_v1.py",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0,
+      "pack_must_file_recall": 1.0,
+      "union_must_file_recall": 1.0,
+      "pack_must_symbol_recall": 0.0,
+      "should_file_hit": 1.0,
+      "n_pack": 4,
+      "pack_ids": [
+        "packages/conductor/bm25_index.py::tokenize",
+        "packages/trace_lab/composite_v1.py::_membership_edges",
+        "packages/trace_lab/policy/slice_mask.py::short_name",
+        "packages/trace_lab/polytrace.py::faction_of"
+      ],
+      "missing_must_files": [],
+      "missing_must_symbols": [
+        "packages/trace_lab/composite_v1.py::apply_rank_composite"
+      ],
+      "missing_must_symbols_and_file": [],
+      "gt_must_files": [
+        "packages/trace_lab/composite_v1.py"
+      ],
+      "gt_must_symbols": [
+        "packages/trace_lab/composite_v1.py::apply_rank_composite"
+      ]
+    },
+    {
+      "id": "t05",
+      "family": "embed-filter-noise",
+      "task": "How do we demote logger/analytics noise on a structural island without dropping bridges?",
+      "seed": "packages/trace_lab/poly_embed.py",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0,
+      "pack_must_file_recall": 0.5,
+      "union_must_file_recall": 1.0,
+      "pack_must_symbol_recall": 0.0,
+      "should_file_hit": 1.0,
+      "n_pack": 4,
+      "pack_ids": [
+        "packages/trace_lab/poly_embed.py::poly_embed_trace",
+        "packages/trace_lab/polytrace.py::faction_of",
+        "packages/trace_lab/polytrace.py::is_foreign",
+        "packages/trace_lab/retrieve.py::query_intent"
+      ],
+      "missing_must_files": [],
+      "missing_must_symbols": [
+        "packages/trace_lab/embed_filter.py::apply_embed_keep_drop"
+      ],
+      "missing_must_symbols_and_file": [],
+      "gt_must_files": [
+        "packages/trace_lab/embed_filter.py",
+        "packages/trace_lab/poly_embed.py"
+      ],
+      "gt_must_symbols": [
+        "packages/trace_lab/embed_filter.py::apply_embed_keep_drop"
+      ]
+    },
+    {
+      "id": "t06",
+      "family": "semantic-comparator",
+      "task": "How does the semantic tracer use query/seed embeddings as edge expansion priority?",
+      "seed": "packages/trace_lab/semantic_tracer_fuse.py",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0,
+      "pack_must_file_recall": 0.3333,
+      "union_must_file_recall": 1.0,
+      "pack_must_symbol_recall": 0.0,
+      "should_file_hit": null,
+      "n_pack": 1,
+      "pack_ids": [
+        "packages/trace_lab/semantic_tracer_fuse.py::_graph_degree"
+      ],
+      "missing_must_files": [],
+      "missing_must_symbols": [
+        "packages/trace_lab/semantic_tracer_fuse.py::run_semantic_tracer_fuse"
+      ],
+      "missing_must_symbols_and_file": [],
+      "gt_must_files": [
+        "packages/trace_lab/semantic_compare.py",
+        "packages/trace_lab/engine/semantic_best_first.py",
+        "packages/trace_lab/semantic_tracer_fuse.py"
+      ],
+      "gt_must_symbols": [
+        "packages/trace_lab/semantic_tracer_fuse.py::run_semantic_tracer_fuse"
+      ]
+    },
+    {
+      "id": "t07",
+      "family": "cli-pack",
+      "task": "Implement or debug the scubiee pack CLI flag path for seed-file and lean mode.",
+      "seed": "packages/trace_lab/policy/faction.py",
+      "seed_in_must_files": false,
+      "map_must_file_recall": 0.0,
+      "pack_must_file_recall": 0.0,
+      "union_must_file_recall": 0.0,
+      "pack_must_symbol_recall": 0.0,
+      "should_file_hit": null,
+      "n_pack": 3,
+      "pack_ids": [
+        "packages/conductor/bm25_index.py::tokenize",
+        "packages/trace_lab/policy/faction.py::is_foreign_node",
+        "packages/trace_lab/polytrace.py::faction_of"
+      ],
+      "missing_must_files": [
+        "packages/pipeline/__main__.py",
+        "packages/pipeline/locate_cli.py"
+      ],
+      "missing_must_symbols": [
+        "packages/pipeline/__main__.py::cmd_pack",
+        "packages/pipeline/locate_cli.py::cli_pack"
+      ],
+      "missing_must_symbols_and_file": [
+        "packages/pipeline/__main__.py::cmd_pack",
+        "packages/pipeline/locate_cli.py::cli_pack"
+      ],
+      "gt_must_files": [
+        "packages/pipeline/__main__.py",
+        "packages/pipeline/locate_cli.py"
+      ],
+      "gt_must_symbols": [
+        "packages/pipeline/__main__.py::cmd_pack",
+        "packages/pipeline/locate_cli.py::cli_pack"
+      ]
+    },
+    {
+      "id": "t08",
+      "family": "index-publish",
+      "task": "Index publication missing or checksum invalid \u2014 find refuse-mixed-generation and republish path.",
+      "seed": "packages/pipeline/artifact_guard.py",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 0.5,
+      "pack_must_file_recall": 0.5,
+      "union_must_file_recall": 0.5,
+      "pack_must_symbol_recall": 1.0,
+      "should_file_hit": 0.0,
+      "n_pack": 4,
+      "pack_ids": [
+        "packages/pipeline/artifact_guard.py::_atomic_replace",
+        "packages/pipeline/artifact_guard.py::_atomic_write_text_unlocked",
+        "packages/pipeline/artifact_guard.py::atomic_write_text",
+        "packages/pipeline/store_lock.py::store_write_lock"
+      ],
+      "missing_must_files": [
+        "packages/pipeline/engine.py"
+      ],
+      "missing_must_symbols": [],
+      "missing_must_symbols_and_file": [],
+      "gt_must_files": [
+        "packages/pipeline/engine.py",
+        "packages/pipeline/artifact_guard.py"
+      ],
+      "gt_must_symbols": []
+    },
+    {
+      "id": "t09",
+      "family": "embed-backend",
+      "task": "How does embedding choose DirectML vs CUDA vs CPU and cache coderank vectors?",
+      "seed": "packages/pipeline/embedder.py",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0,
+      "pack_must_file_recall": 0.5,
+      "union_must_file_recall": 1.0,
+      "pack_must_symbol_recall": 1.0,
+      "should_file_hit": 1.0,
+      "n_pack": 1,
+      "pack_ids": [
+        "packages/pipeline/embedder.py::text_key"
+      ],
+      "missing_must_files": [],
+      "missing_must_symbols": [],
+      "missing_must_symbols_and_file": [],
+      "gt_must_files": [
+        "packages/pipeline/embedder.py",
+        "packages/pipeline/accel.py"
+      ],
+      "gt_must_symbols": []
+    },
+    {
+      "id": "t10",
+      "family": "gate-rules",
+      "task": "Where is the managed-repo GATE text written into AGENTS.md and steering files?",
+      "seed": "packages/pipeline/rules_installer.py",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0,
+      "pack_must_file_recall": 1.0,
+      "union_must_file_recall": 1.0,
+      "pack_must_symbol_recall": 0.0,
+      "should_file_hit": 1.0,
+      "n_pack": 1,
+      "pack_ids": [
+        "packages/pipeline/rules_installer.py::_templates_dir"
+      ],
+      "missing_must_files": [],
+      "missing_must_symbols": [
+        "packages/pipeline/rules_installer.py::write_project_gate_rules"
+      ],
+      "missing_must_symbols_and_file": [],
+      "gt_must_files": [
+        "packages/pipeline/rules_installer.py"
+      ],
+      "gt_must_symbols": [
+        "packages/pipeline/rules_installer.py::write_project_gate_rules"
+      ]
+    },
+    {
+      "id": "t11",
+      "family": "mcp-tool-schema",
+      "task": "Add or inspect MCP tool registration for pack_context and map_context schemas.",
+      "seed": "packages/pipeline/mcp_locate.py",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0,
+      "pack_must_file_recall": 1.0,
+      "union_must_file_recall": 1.0,
+      "pack_must_symbol_recall": 0.0,
+      "should_file_hit": null,
+      "n_pack": 1,
+      "pack_ids": [
+        "packages/pipeline/mcp_locate.py::_active_surface"
+      ],
+      "missing_must_files": [],
+      "missing_must_symbols": [
+        "packages/pipeline/mcp_locate.py::map_context_impl",
+        "packages/pipeline/mcp_locate.py::pack_context_impl"
+      ],
+      "missing_must_symbols_and_file": [],
+      "gt_must_files": [
+        "packages/pipeline/mcp_locate.py"
+      ],
+      "gt_must_symbols": [
+        "packages/pipeline/mcp_locate.py::map_context_impl",
+        "packages/pipeline/mcp_locate.py::pack_context_impl"
+      ]
+    },
+    {
+      "id": "t12",
+      "family": "expand-hop",
+      "task": "Missing callee hop after pack \u2014 how does expand_context direction callees with bodies work?",
+      "seed": "packages/pipeline/context_trace.py",
+      "seed_in_must_files": false,
+      "map_must_file_recall": 0.0,
+      "pack_must_file_recall": 0.0,
+      "union_must_file_recall": 0.0,
+      "pack_must_symbol_recall": 0.0,
+      "should_file_hit": 1.0,
+      "n_pack": 1,
+      "pack_ids": [
+        "packages/pipeline/context_trace.py::_heat"
+      ],
+      "missing_must_files": [
+        "packages/pipeline/mcp_locate.py"
+      ],
+      "missing_must_symbols": [
+        "packages/pipeline/mcp_locate.py::expand_context_impl"
+      ],
+      "missing_must_symbols_and_file": [
+        "packages/pipeline/mcp_locate.py::expand_context_impl"
+      ],
+      "gt_must_files": [
+        "packages/pipeline/mcp_locate.py"
+      ],
+      "gt_must_symbols": [
+        "packages/pipeline/mcp_locate.py::expand_context_impl"
+      ]
+    },
+    {
+      "id": "t13",
+      "family": "permissions-allowlist",
+      "task": "Debug mcp-permissions.json allowlist merge when installing a host tool surface.",
+      "seed": "packages/pipeline/rules_installer.py",
+      "seed_in_must_files": false,
+      "map_must_file_recall": 1.0,
+      "pack_must_file_recall": 0.0,
+      "union_must_file_recall": 1.0,
+      "pack_must_symbol_recall": 0.0,
+      "should_file_hit": 1.0,
+      "n_pack": 1,
+      "pack_ids": [
+        "packages/pipeline/rules_installer.py::_templates_dir"
+      ],
+      "missing_must_files": [],
+      "missing_must_symbols": [
+        "packages/pipeline/mcp_permissions.py::apply_permissions_to_repo_tool_surface"
+      ],
+      "missing_must_symbols_and_file": [],
+      "gt_must_files": [
+        "packages/pipeline/mcp_permissions.py"
+      ],
+      "gt_must_symbols": [
+        "packages/pipeline/mcp_permissions.py::apply_permissions_to_repo_tool_surface"
+      ]
+    },
+    {
+      "id": "t14",
+      "family": "graphify-ast",
+      "task": "How does graphify AST graph get built and fed into polytrace / composite edges?",
+      "seed": "packages/trace_lab/graphify_layer.py",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0,
+      "pack_must_file_recall": 1.0,
+      "union_must_file_recall": 1.0,
+      "pack_must_symbol_recall": 1.0,
+      "should_file_hit": 0.0,
+      "n_pack": 1,
+      "pack_ids": [
+        "packages/trace_lab/graphify_layer.py::_map_symbol"
+      ],
+      "missing_must_files": [],
+      "missing_must_symbols": [],
+      "missing_must_symbols_and_file": [],
+      "gt_must_files": [
+        "packages/trace_lab/graphify_layer.py"
+      ],
+      "gt_must_symbols": []
+    },
+    {
+      "id": "t15",
+      "family": "lsp-dispatch",
+      "task": "Where do LSP dispatch and override edges affect polytrace keep/drop for handlers?",
+      "seed": "packages/trace_lab/lsp_index.py",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0,
+      "pack_must_file_recall": 1.0,
+      "union_must_file_recall": 1.0,
+      "pack_must_symbol_recall": 1.0,
+      "should_file_hit": 1.0,
+      "n_pack": 4,
+      "pack_ids": [
+        "packages/trace_lab/ast_graph.py::_call_name",
+        "packages/trace_lab/lsp_index.py::_collect_inheritance",
+        "packages/trace_lab/lsp_index.py::_uniq_lists",
+        "packages/trace_lab/lsp_index.py::build_lsp_index"
+      ],
+      "missing_must_files": [],
+      "missing_must_symbols": [],
+      "missing_must_symbols_and_file": [],
+      "gt_must_files": [
+        "packages/trace_lab/lsp_index.py"
+      ],
+      "gt_must_symbols": []
+    },
+    {
+      "id": "t16",
+      "family": "session-store-files",
+      "task": "Trace persistence of session_store.json and work_session.json under .scubiee/sessions.",
+      "seed": "packages/pipeline/session_store.py",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0,
+      "pack_must_file_recall": 0.5,
+      "union_must_file_recall": 1.0,
+      "pack_must_symbol_recall": 0.0,
+      "should_file_hit": 1.0,
+      "n_pack": 4,
+      "pack_ids": [
+        "packages/pipeline/project_id.py::repo_runtime_dir",
+        "packages/pipeline/session_isolation.py::_session_isolate_enabled",
+        "packages/pipeline/session_isolation.py::effective_session_id",
+        "packages/pipeline/session_store.py::_store_path"
+      ],
+      "missing_must_files": [],
+      "missing_must_symbols": [
+        "packages/pipeline/session_store.py::put_span"
+      ],
+      "missing_must_symbols_and_file": [],
+      "gt_must_files": [
+        "packages/pipeline/session_store.py",
+        "packages/pipeline/work_session.py"
+      ],
+      "gt_must_symbols": [
+        "packages/pipeline/session_store.py::put_span"
+      ]
+    },
+    {
+      "id": "t17",
+      "family": "status-health",
+      "task": "What does scubiee status / gate report for managed health vs locate readiness?",
+      "seed": "packages/pipeline/__init__.py",
+      "seed_in_must_files": false,
+      "map_must_file_recall": 0.0,
+      "pack_must_file_recall": 0.0,
+      "union_must_file_recall": 0.0,
+      "pack_must_symbol_recall": 1.0,
+      "should_file_hit": 0.5,
+      "n_pack": 1,
+      "pack_ids": [
+        "packages/pipeline/__init__.py::__getattr__"
+      ],
+      "missing_must_files": [
+        "packages/pipeline/mcp_locate.py",
+        "packages/pipeline/gate_cli.py"
+      ],
+      "missing_must_symbols": [],
+      "missing_must_symbols_and_file": [],
+      "gt_must_files": [
+        "packages/pipeline/mcp_locate.py",
+        "packages/pipeline/gate_cli.py"
+      ],
+      "gt_must_symbols": []
+    },
+    {
+      "id": "t18",
+      "family": "teleport-ablation",
+      "task": "Why was strict embed teleport left off by default in semantic_tracer_fuse?",
+      "seed": "packages/trace_lab/semantic_tracer_fuse.py",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 0.5,
+      "pack_must_file_recall": 0.5,
+      "union_must_file_recall": 0.5,
+      "pack_must_symbol_recall": 0.0,
+      "should_file_hit": null,
+      "n_pack": 1,
+      "pack_ids": [
+        "packages/trace_lab/semantic_tracer_fuse.py::_graph_degree"
+      ],
+      "missing_must_files": [
+        "packages/trace_lab/semantic_teleport.py"
+      ],
+      "missing_must_symbols": [
+        "packages/trace_lab/semantic_teleport.py::apply_strict_embed_teleport"
+      ],
+      "missing_must_symbols_and_file": [
+        "packages/trace_lab/semantic_teleport.py::apply_strict_embed_teleport"
+      ],
+      "gt_must_files": [
+        "packages/trace_lab/semantic_teleport.py",
+        "packages/trace_lab/semantic_tracer_fuse.py"
+      ],
+      "gt_must_symbols": [
+        "packages/trace_lab/semantic_teleport.py::apply_strict_embed_teleport"
+      ]
+    },
+    {
+      "id": "t19",
+      "family": "prod-eval-enrich",
+      "task": "How does production-like verify enrich a paragraph with two seed code chunks?",
+      "seed": "packages/trace_lab/prod_eval.py",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0,
+      "pack_must_file_recall": 1.0,
+      "union_must_file_recall": 1.0,
+      "pack_must_symbol_recall": 1.0,
+      "should_file_hit": null,
+      "n_pack": 1,
+      "pack_ids": [
+        "packages/trace_lab/prod_eval.py::_enrich_query"
+      ],
+      "missing_must_files": [],
+      "missing_must_symbols": [],
+      "missing_must_symbols_and_file": [],
+      "gt_must_files": [
+        "packages/trace_lab/prod_eval.py"
+      ],
+      "gt_must_symbols": [
+        "packages/trace_lab/prod_eval.py::_enrich_query"
+      ]
+    },
+    {
+      "id": "t20",
+      "family": "hybrid-register",
+      "task": "Where are hybrid combo arms registered into compile_bundle with_embed_power?",
+      "seed": "packages/trace_lab/strategies.py",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0,
+      "pack_must_file_recall": 0.5,
+      "union_must_file_recall": 1.0,
+      "pack_must_symbol_recall": 0.0,
+      "should_file_hit": null,
+      "n_pack": 1,
+      "pack_ids": [
+        "packages/trace_lab/strategies.py::_seed_id"
+      ],
+      "missing_must_files": [],
+      "missing_must_symbols": [
+        "packages/trace_lab/semantic_hybrid.py::register_hybrid_arms"
+      ],
+      "missing_must_symbols_and_file": [],
+      "gt_must_files": [
+        "packages/trace_lab/semantic_hybrid.py",
+        "packages/trace_lab/strategies.py"
+      ],
+      "gt_must_symbols": [
+        "packages/trace_lab/semantic_hybrid.py::register_hybrid_arms"
+      ]
+    }
+  ]
+}

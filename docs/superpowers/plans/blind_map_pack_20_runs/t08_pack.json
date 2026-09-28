@@ -1,0 +1,100 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 1.746,
+  "stdout_chars": 5116,
+  "stderr_tail": "",
+  "json": {
+    "ok": true,
+    "tool": "pack",
+    "seed": {
+      "id": "packages/pipeline/artifact_guard.py::atomic_write_text",
+      "file": "packages/pipeline/artifact_guard.py",
+      "symbol": "atomic_write_text"
+    },
+    "chain": [
+      {
+        "id": "packages/pipeline/artifact_guard.py::atomic_write_text",
+        "loc": "packages/pipeline/artifact_guard.py:17-30",
+        "edge": "seed",
+        "score": 1.0
+      },
+      {
+        "id": "packages/pipeline/artifact_guard.py::_atomic_write_text_unlocked",
+        "loc": "packages/pipeline/artifact_guard.py:33-43",
+        "edge": "calls",
+        "score": 0.99
+      },
+      {
+        "id": "packages/pipeline/store_lock.py::store_write_lock",
+        "loc": "packages/pipeline/store_lock.py:60-103",
+        "edge": "calls",
+        "score": 0.9405
+      },
+      {
+        "id": "packages/pipeline/artifact_guard.py::_atomic_replace",
+        "loc": "packages/pipeline/artifact_guard.py:46-61",
+        "edge": "calls",
+        "score": 0.8598
+      },
+      {
+        "id": "packages/pipeline/store_lock.py::_held_dirs",
+        "loc": "packages/pipeline/store_lock.py:21-26",
+        "edge": "calls",
+        "score": 0.8168
+      },
+      {
+        "id": "packages/pipeline/store_lock.py::store_lock_file",
+        "loc": "packages/pipeline/store_lock.py:17-18",
+        "edge": "calls",
+        "score": 0.8168
+      },
+      {
+        "id": "packages/pipeline/store_lock.py::_release_fd",
+        "loc": "packages/pipeline/store_lock.py:41-56",
+        "edge": "calls",
+        "score": 0.8168
+      }
+    ],
+    "pack": [
+      {
+        "id": "packages/pipeline/artifact_guard.py::atomic_write_text",
+        "loc": "packages/pipeline/artifact_guard.py:17-30",
+        "text": "def atomic_write_text(\n    path: Path,\n    text: str,\n    *,\n    lock_dir: Path | None = None,\n) -> None:\n    \"\"\"Replace a text artifact atomically using a same-directory temporary file.\"\"\"\n    if lock_dir is not None:\n        from pipeline.store_lock import store_write_lock\n\n        with store_write_lock(lock_dir):\n            _atomic_write_text_unlocked(path, text)\n        return\n    _atomic_write_text_unlocked(path, text)"
+      },
+      {
+        "id": "packages/pipeline/artifact_guard.py::_atomic_write_text_unlocked",
+        "loc": "packages/pipeline/artifact_guard.py:33-43",
+        "text": "def _atomic_write_text_unlocked(path: Path, text: str) -> None:\n    path.parent.mkdir(parents=True, exist_ok=True)\n    fd, temp_name = tempfile.mkstemp(prefix=f\".{path.name}.\", suffix=\".tmp\", dir=path.parent)\n    try:\n        with os.fdopen(fd, \"w\", encoding=\"utf-8\", newline=\"\") as handle:\n            handle.write(text)\n            handle.flush()\n            os.fsync(handle.fileno())\n        _atomic_replace(Path(temp_name), path)\n    finally:\n        Path(temp_name).unlink(missing_ok=True)"
+      },
+      {
+        "id": "packages/pipeline/store_lock.py::store_write_lock",
+        "loc": "packages/pipeline/store_lock.py:60-103",
+        "text": "def store_write_lock(store_dir: Path, *, timeout: float = 120.0) -> Iterator[None]:\n    \"\"\"Exclusive lock for all artifact writes under *store_dir*.\"\"\"\n    store_dir = Path(store_dir).resolve()\n    held = _held_dirs()\n    if store_dir in held:\n        yield\n        return\n\n    store_dir.mkdir(parents=True, exist_ok=True)\n    lock_path = store_lock_file(store_dir)\n    deadline = time.monotonic() + timeout\n    fd = os.open(str(lock_path), os.O_CREAT | os.O_RDWR)\n    acquired = False\n    try:\n        while True:\n            try:\n                if sys.platform == \"win32\":\n                    import msvcrt\n\n                    os.lseek(fd, 0, os.SEEK_SET)\n                    msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)\n                else:\n                    import fcntl\n\n                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)\n                acquired = True\n                break\n            except OSError:\n                if time.monotonic() >= deadline:\n                    raise TimeoutError(\n                        f\"timed out waiting for store lock ({lock_path}); \"\n                        \"another scubiee process may be indexing \u2014 \"\n                        \"run: scubiee engine stop\"\n                    ) from None\n                time.sleep(0.1)\n        held.add(store_dir)\n        try:\n            yield\n        finally:\n            held.discard(store_dir)\n    finally:\n        if acquired:\n            _release_fd(fd)\n        os.close(fd)"
+      },
+      {
+        "id": "packages/pipeline/artifact_guard.py::_atomic_replace",
+        "loc": "packages/pipeline/artifact_guard.py:46-61",
+        "text": "def _atomic_replace(src: Path, dst: Path) -> None:\n    \"\"\"os.replace with retries \u2014 Windows denies rename when readers hold dst open.\"\"\"\n    last_exc: OSError | None = None\n    for attempt in range(30):\n        try:\n            src.replace(dst)\n            return\n        except OSError as exc:\n            last_exc = exc\n            winerr = getattr(exc, \"winerror\", None)\n            if winerr not in (5, 32) and exc.errno not in (13, 16):\n                raise\n            if attempt < 29:\n                time.sleep(min(0.25 * (attempt + 1), 2.0))\n    if last_exc is not None:\n        raise last_exc"
+      }
+    ],
+    "cold": [
+      {
+        "id": "packages/pipeline/store_lock.py::_held_dirs",
+        "loc": "packages/pipeline/store_lock.py:21-26",
+        "score": 0.8168
+      },
+      {
+        "id": "packages/pipeline/store_lock.py::store_lock_file",
+        "loc": "packages/pipeline/store_lock.py:17-18",
+        "score": 0.8168
+      },
+      {
+        "id": "packages/pipeline/store_lock.py::_release_fd",
+        "loc": "packages/pipeline/store_lock.py:41-56",
+        "score": 0.8168
+      }
+    ]
+  },
+  "stdout_preview": ""
+}

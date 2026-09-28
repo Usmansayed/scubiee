@@ -156,11 +156,14 @@ def test_map_cache_roundtrip(tmp_path: Path) -> None:
     (repo / ".scubiee").mkdir()
     qn = "daemon watchdog restart"
     cards = [{"file": "watchdog.py", "rank": 1}]
-    _map_cache_put(repo, qn, 8, cards, session_id="test-cache")
+    _map_cache_put(repo, qn, 8, cards, session_id="test-cache", token="ep:3")
     from pipeline.session_store import load_store
 
     store = load_store(repo, session_id="test-cache")
-    assert _map_cache_get(store, qn, 8) == cards
+    assert _map_cache_get(store, qn, 8, token="ep:3") == cards
+    # After a publish (new token) or with no token, the duplicate path re-queries.
+    assert _map_cache_get(store, qn, 8, token="ep:4") is None
+    assert _map_cache_get(store, qn, 8) is None
 
 
 def test_derive_agent_ready_stale_while_syncing() -> None:

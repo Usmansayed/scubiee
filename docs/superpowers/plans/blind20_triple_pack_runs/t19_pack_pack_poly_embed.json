@@ -1,0 +1,41 @@
+{
+  "ok": true,
+  "tool": "pack_poly_embed",
+  "engine": "poly_embed",
+  "elapsed_s": 0.134,
+  "n_pack": 1,
+  "seed": {
+    "file": "packages/pipeline/__main__.py",
+    "symbol": "_version_only",
+    "id": "packages/pipeline/__main__.py::_version_only"
+  },
+  "pack": [
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "_version_only",
+      "score": 1.0,
+      "loc": "packages/pipeline/__main__.py:19-21",
+      "id": "packages/pipeline/__main__.py::_version_only",
+      "chars": 180
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/pipeline/__main__.py::_version_only",
+      "loc": "packages/pipeline/__main__.py:19-21",
+      "edge": "seed",
+      "score": 1.0
+    }
+  ],
+  "error": null,
+  "seed_chunks": [
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "_version_only",
+      "loc": "packages/pipeline/__main__.py:19-21",
+      "score": 1.0,
+      "kind": "function"
+    }
+  ],
+  "pack_query": "dashboard_server HTTP status health endpoints operator uvicorn cmd_dashboard | seeds: packages/pipeline/__main__.py::_version_only"
+}

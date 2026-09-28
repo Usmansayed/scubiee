@@ -1,0 +1,110 @@
+{
+  "ok": true,
+  "tool": "map",
+  "query": "memory_budget embed batch DML VRAM cap search concurrent budget chars",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "scripts/bench_budget_alloc.py",
+      "symbol": "",
+      "score": 14.4552,
+      "start_line": null,
+      "end_line": null,
+      "loc": "scripts/bench_budget_alloc.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "scripts/bench_mix_seq_ab.py",
+      "symbol": "",
+      "score": 12.5172,
+      "start_line": null,
+      "end_line": null,
+      "loc": "scripts/bench_mix_seq_ab.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "tests/test_memory_budget.py",
+      "symbol": "",
+      "score": 13.4422,
+      "start_line": null,
+      "end_line": null,
+      "loc": "tests/test_memory_budget.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "packages/pipeline/memory_governor.py",
+      "symbol": "",
+      "score": 11.2088,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/memory_governor.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "packages/pipeline/accel.py",
+      "symbol": "",
+      "score": 10.3555,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/accel.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "tests/test_coderank_fp16.py",
+      "symbol": "",
+      "score": 9.802,
+      "start_line": null,
+      "end_line": null,
+      "loc": "tests/test_coderank_fp16.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "packages/pipeline/memory_budget.py",
+      "symbol": "",
+      "score": 7.8126,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/memory_budget.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "docs/mlx-index-compute-and-memory.md",
+      "symbol": "",
+      "score": 4.2379,
+      "start_line": null,
+      "end_line": null,
+      "loc": "docs/mlx-index-compute-and-memory.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "docs/budget-allocation-experiment.md",
+      "symbol": "",
+      "score": 3.8445,
+      "start_line": null,
+      "end_line": null,
+      "loc": "docs/budget-allocation-experiment.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "packages/pipeline/diagnose.py",
+      "symbol": "",
+      "score": 3.5129,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/diagnose.py:1-1",
+      "why": ""
+    }
+  ],
+  "suggested_seed": null,
+  "elapsed_s": 0.388,
+  "via": "search_repo(use_server=True)"
+}

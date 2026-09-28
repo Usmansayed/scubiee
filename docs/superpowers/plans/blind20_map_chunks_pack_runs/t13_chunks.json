@@ -1,0 +1,32 @@
+[
+  {
+    "file": "packages/pipeline/sync_loop.py",
+    "symbol": "BackgroundSyncLoop.sync_once",
+    "kind": "method",
+    "loc": "packages/pipeline/sync_loop.py:713-715",
+    "start_line": 713,
+    "end_line": 715,
+    "score": 7.0,
+    "excerpt": "    def sync_once(self) -> dict:\n        \"\"\"Force incremental path (trigger file / manual). Still root-gated via tick.\"\"\"\n        return self.keeper_tick(reason=\"trigger\")"
+  },
+  {
+    "file": "packages/pipeline/sync_loop.py",
+    "symbol": "BackgroundSyncLoop.start",
+    "kind": "method",
+    "loc": "packages/pipeline/sync_loop.py:602-621",
+    "start_line": 602,
+    "end_line": 621,
+    "score": 6.55,
+    "excerpt": "    def start(self) -> None:\n        if self._thread and self._thread.is_alive():\n            return\n        enabled = os.environ.get(\"CTX_BACKGROUND_SYNC\", \"0\").strip().lower()\n  "
+  },
+  {
+    "file": "packages/pipeline/freshness.py",
+    "symbol": "check_freshness",
+    "kind": "function",
+    "loc": "packages/pipeline/freshness.py:202-335",
+    "start_line": 202,
+    "end_line": 335,
+    "score": 6.35,
+    "excerpt": "def check_freshness(\n    root: Path,\n    merkle_snapshot: dict[str, str],\n    *,\n    indexed_head: str | None = None,\n    extensions: set[str] | None = None,\n    fast_paths: list[P"
+  }
+]

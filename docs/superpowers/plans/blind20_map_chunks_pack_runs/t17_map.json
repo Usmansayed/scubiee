@@ -1,0 +1,87 @@
+{
+  "ok": true,
+  "query": "never_index deny path globs skip fixtures tmp out ab_workspaces indexing exclude",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "tests/test_repo_lifecycle.py",
+      "symbol": "",
+      "score": 12.8419,
+      "loc": "tests/test_repo_lifecycle.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "tests/test_auto_sessions_observability.py",
+      "symbol": "",
+      "score": 12.546,
+      "loc": "tests/test_auto_sessions_observability.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "packages/pipeline/repo_lifecycle.py",
+      "symbol": "",
+      "score": 10.9114,
+      "loc": "packages/pipeline/repo_lifecycle.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "tests/test_index_coverage.py",
+      "symbol": "",
+      "score": 4.5278,
+      "loc": "tests/test_index_coverage.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "tests/test_connect_formats.py",
+      "symbol": "",
+      "score": 3.5074,
+      "loc": "tests/test_connect_formats.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "packages/graphify/extractors/resolution.py",
+      "symbol": "",
+      "score": 3.4602,
+      "loc": "packages/graphify/extractors/resolution.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "tests/test_progress_ui.py",
+      "symbol": "",
+      "score": 3.3349,
+      "loc": "tests/test_progress_ui.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "tests/test_scenario_backtracking.py",
+      "symbol": "",
+      "score": 3.3199,
+      "loc": "tests/test_scenario_backtracking.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "tests/test_mcp_agent_eval_regressions.py",
+      "symbol": "",
+      "score": 3.3193,
+      "loc": "tests/test_mcp_agent_eval_regressions.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "tests/test_resources.py",
+      "symbol": "",
+      "score": 3.2852,
+      "loc": "tests/test_resources.py:1-1",
+      "why": ""
+    }
+  ],
+  "elapsed_s": 0.34
+}

@@ -90,11 +90,15 @@ def test_copied_trees_do_not_re_enter_through_a_nested_root(tmp_path):
 
 
 def test_testdata_fixtures_skipped_by_default(tmp_path):
-    # Indexing this monorepo with testdata/ as a fast root pulled 2k+ fixture
-    # .py files and stalled at chunk before embed ever ran.
+    # Fast roots are prefix-anchored, so testdata/... never matches packages|/scripts/.
+    # Project fixtures also belong in ``.scubieeignore`` for full (non-fast) scans.
+    from pipeline.ignore import clear_ignore_cache
+
     _write(tmp_path, "packages/pkg/mod.py")
     _write(tmp_path, "testdata/frontend-mcp/src/app.py")
     _write(tmp_path, "scripts/run.py")
+    (tmp_path / ".scubieeignore").write_text("testdata/\n", encoding="utf-8")
+    clear_ignore_cache()
 
     found = {
         p.relative_to(tmp_path).as_posix() for p in collect_index_paths(tmp_path, fast=True)

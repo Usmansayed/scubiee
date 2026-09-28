@@ -1,0 +1,48 @@
+{
+  "mcpServers": {
+    "scubiee": {
+      "command": "C:/Users/usman/Downloads/context-engine/.venv-cli-test/Scripts/scubiee-mcp-bridge.EXE",
+      "args": [],
+      "env": {
+        "CTX_ENGINE_URL": "http://127.0.0.1:8765",
+        "CTX_TOKEN_MODE": "savings",
+        "CTX_BACKGROUND_SYNC": "1",
+        "CTX_ALLOW_BG_FULL": "0",
+        "CTX_AUTO_INDEX": "1",
+        "CTX_SYNC_INTERVAL_MS": "300000",
+        "CTX_REGISTRATION_MODE": "automatic",
+        "CTX_MCP_SURFACE": "phase",
+        "CTX_MCP_SESSION_ISOLATE": "1",
+        "CTX_MCP_BRIDGE_MODE": "auto",
+        "CTX_ENGINE_IDLE_S": "25",
+        "CTX_ENGINE_TRANSITION_DEBOUNCE_S": "25",
+        "PYTHONUTF8": "1",
+        "CTX_SCUBIEE_BUILD": "0.3.131-1790410175",
+        "CTX_REPO": "C:/Users/usman/Downloads/context-engine",
+        "CTX_PROJECT_ID": "ce_3536ac8e8e83bb8e4d888db37847729c",
+        "CTX_MCP_CLIENT": "kiro"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "gate",
+        "map",
+        "focus",
+        "grep",
+        "glob",
+        "workspace",
+        "expand",
+        "status"
+      ],
+      "alwaysAllow": [
+        "gate",
+        "map",
+        "focus",
+        "grep",
+        "glob",
+        "workspace",
+        "expand",
+        "status"
+      ]
+    }
+  }
+}

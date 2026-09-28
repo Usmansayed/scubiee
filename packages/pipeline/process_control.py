@@ -146,6 +146,14 @@ def _terminate_pid_no_tree(pid: int) -> None:
         for child in proc.children(recursive=True):
             if child.pid == me or _pid_in_our_ancestry(child.pid, me):
                 continue
+            # An engine/watchdog started by an MCP bridge is a descendant of
+            # it. Reaping that bridge must not take the machine-wide daemon
+            # down with it (issue 2); they have their own stop paths.
+            try:
+                if _is_durable_engine_process({"cmdline": " ".join(child.cmdline())}):
+                    continue
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
             try:
                 child.kill()
             except (psutil.NoSuchProcess, psutil.AccessDenied):
@@ -270,6 +278,7 @@ def safe_terminate_pid(
     *,
     grace_s: float = 1.0,
     allow_child: bool = False,
+    reason: str | None = None,
 ) -> dict[str, Any]:
     """Terminate *pid* only when it matches CE; never kill ourselves or ancestors.
 
@@ -289,6 +298,12 @@ def safe_terminate_pid(
         return {"pid": pid, "ok": True, "skipped": "self_or_ancestor"}
     if not is_context_engine_process(pid):
         return {"pid": pid, "ok": False, "skipped": "not_context_engine"}
+    try:
+        from pipeline.engine_log import classify_pid, note_stop
+
+        note_stop(classify_pid(pid), pid, reason=reason or "unspecified", method="psutil_kill")
+    except Exception:  # noqa: BLE001
+        pass
     try:
         _terminate_pid_no_tree(pid)
         return {"pid": pid, "ok": True, "terminated": True}
@@ -348,6 +363,10 @@ def enumerate_scubiee_processes(*, exclude_self: bool = True) -> list[dict[str, 
     except ImportError:
         return found
 
+    # One tree walk per enumeration: on Windows every ppid() is a full process
+    # snapshot, and redoing the walk per candidate held the GIL for ~2s per
+    # call inside the engine (idle sweeper), stalling search and saves.
+    protected = _protected_process_tree_pids(my_pid) if exclude_self else set()
     for proc in psutil.process_iter(["pid", "exe", "name"]):
         try:
             info = proc.info
@@ -359,8 +378,7 @@ def enumerate_scubiee_processes(*, exclude_self: bool = True) -> list[dict[str, 
                 or _exe_matches_scubiee(exe)
             ):
                 continue
-            # Protection check is a full process-tree walk — only for survivors.
-            if exclude_self and _pid_is_protected(pid, my_pid):
+            if exclude_self and pid in protected:
                 continue
             cmdline = proc.cmdline() or []
             if (
@@ -539,7 +557,8 @@ def reap_orphaned_mcp_processes(*, keep_pids: set[int] | None = None) -> dict[st
     keep.add(int(os.getpid()))
     killed: list[int] = []
     skipped: list[int] = []
-    for proc in enumerate_scubiee_processes(exclude_self=True):
+    listed = enumerate_scubiee_processes(exclude_self=True)
+    for proc in listed:
         pid = int(proc["pid"])
         if pid in keep:
             skipped.append(pid)
@@ -553,14 +572,16 @@ def reap_orphaned_mcp_processes(*, keep_pids: set[int] | None = None) -> dict[st
         if ppid > 0 and _pid_alive(ppid):
             skipped.append(pid)
             continue
-        result = safe_terminate_pid(pid, grace_s=0.5, allow_child=True)
+        result = safe_terminate_pid(
+            pid, grace_s=0.5, allow_child=True, reason=f"reap_orphan_mcp_parent_gone:ppid={ppid}"
+        )
         if result.get("terminated"):
             killed.append(pid)
         else:
             skipped.append(pid)
     remaining = [
         p
-        for p in enumerate_scubiee_processes(exclude_self=True)
+        for p in (enumerate_scubiee_processes(exclude_self=True) if killed else listed)
         if (_is_mcp_bridge_process(p) or _is_mcp_worker_process(p))
         and not _is_durable_engine_process(p)
         and not _pid_alive(int(p.get("ppid") or 0))
@@ -783,7 +804,7 @@ def kill_all_engine_daemons(*, port: int = 8765, wait_s: float = 5.0) -> dict[st
     killed: list[int] = []
 
     for pid in enumerate_engine_run_pids(port=port):
-        result = safe_terminate_pid(pid, grace_s=1.0, allow_child=True)
+        result = safe_terminate_pid(pid, grace_s=1.0, allow_child=True, reason="engine_sweep")
         if result.get("terminated"):
             killed.append(pid)
         elif result.get("skipped") == "not_context_engine":
@@ -792,7 +813,7 @@ def kill_all_engine_daemons(*, port: int = 8765, wait_s: float = 5.0) -> dict[st
                 if os.name == "nt":
                     from pipeline.process_job import taskkill_silent
 
-                    taskkill_silent(int(pid), tree=True)
+                    taskkill_silent(int(pid), tree=True, reason="engine_sweep_marker_lag")
                 else:
                     os.kill(pid, 9)
                 killed.append(pid)
@@ -805,7 +826,9 @@ def kill_all_engine_daemons(*, port: int = 8765, wait_s: float = 5.0) -> dict[st
         if pid in killed or pid == os.getpid() or _pid_in_our_ancestry(pid):
             continue
         if is_context_engine_process(pid) or pid in enumerate_engine_run_pids(port=None):
-            result = safe_terminate_pid(pid, grace_s=0.5, allow_child=True)
+            result = safe_terminate_pid(
+                pid, grace_s=0.5, allow_child=True, reason=f"port_sweep:{port}"
+            )
             if result.get("terminated"):
                 killed.append(pid)
             else:
@@ -813,7 +836,7 @@ def kill_all_engine_daemons(*, port: int = 8765, wait_s: float = 5.0) -> dict[st
                     if os.name == "nt":
                         from pipeline.process_job import taskkill_silent
 
-                        taskkill_silent(int(pid), tree=True)
+                        taskkill_silent(int(pid), tree=True, reason=f"port_sweep:{port}")
                     else:
                         os.kill(pid, 9)
                     killed.append(pid)
@@ -839,7 +862,7 @@ def kill_all_engine_daemons(*, port: int = 8765, wait_s: float = 5.0) -> dict[st
             break
         for pid in still:
             if pid not in killed:
-                safe_terminate_pid(pid, grace_s=0.3)
+                safe_terminate_pid(pid, grace_s=0.3, reason="engine_sweep_retry")
                 killed.append(pid)
         time.sleep(0.25)
 

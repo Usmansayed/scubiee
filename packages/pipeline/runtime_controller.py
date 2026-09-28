@@ -28,11 +28,10 @@ _INSTANCE: RuntimeController | None = None
 
 
 def warm_deadline_ms() -> int:
-    raw = (os.environ.get("CTX_WARM_DEADLINE_MS") or "30000").strip()
-    try:
-        return max(1000, int(float(raw)))
-    except ValueError:
-        return 30_000
+    """Delegates to the single reader in ``warm_contract`` (name kept for importers)."""
+    from pipeline.warm_contract import warm_deadline_ms as _warm_deadline_ms
+
+    return _warm_deadline_ms()
 
 
 def attach_warm_enabled() -> bool:
@@ -80,12 +79,15 @@ class ReadySnapshot:
         return self.warm_ready
 
     def as_status_fields(self) -> dict[str, Any]:
+        from pipeline.warm_contract import warm_deadline_source
+
         return {
             "warm_ready": self.warm_ready,
             "warm_ready_map": self.warm_ready_map,
             "warm_phase": self.state.lower(),
             "warm_elapsed_ms": self.elapsed_ms,
             "warm_deadline_ms": warm_deadline_ms(),
+            "warm_deadline_source": warm_deadline_source(),
             "embedder_loaded": self.embedder_loaded,
             "soft_search_ready": self.soft_search_ready,
             "ast_hydrated": self.ast_ready,

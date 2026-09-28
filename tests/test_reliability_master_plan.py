@@ -256,6 +256,7 @@ def test_poll_marks_indexed_edits_during_locate_streak(tmp_path: Path, monkeypat
 
     home = tmp_path / "ce-home"
     monkeypatch.setenv("CTX_HOME", str(home))
+    monkeypatch.setenv("CTX_POLL_HOT_MAX", "0")
     enroll_test_repo(tmp_path, home=home, project_id="ce_locate_streak_poll001")
     loop = BackgroundSyncLoop(tmp_path, locate_streak_ms=60_000, debounce_ms=1000)
     loop.note_locate()

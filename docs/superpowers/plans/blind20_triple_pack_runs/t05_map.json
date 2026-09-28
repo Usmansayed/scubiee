@@ -1,0 +1,110 @@
+{
+  "ok": true,
+  "tool": "map",
+  "query": "engine watchdog idle timeout restart CTX_ENGINE_URL port 8765 pipeline engine run",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "scripts/blind20_simple_map_pack.py",
+      "symbol": "",
+      "score": 33.6725,
+      "start_line": null,
+      "end_line": null,
+      "loc": "scripts/blind20_simple_map_pack.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "packages/pipeline/watchdog.py",
+      "symbol": "",
+      "score": 23.93,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/watchdog.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "packages/pipeline/client.py",
+      "symbol": "",
+      "score": 12.6589,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/client.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "tests/_prod_post_restart.py",
+      "symbol": "",
+      "score": 12.3907,
+      "start_line": null,
+      "end_line": null,
+      "loc": "tests/_prod_post_restart.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "packages/pipeline/diagnose.py",
+      "symbol": "",
+      "score": 12.1633,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/diagnose.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "scripts/install_mcp_frontend.py",
+      "symbol": "",
+      "score": 10.5441,
+      "start_line": null,
+      "end_line": null,
+      "loc": "scripts/install_mcp_frontend.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "tests/test_daemon_process_sweep.py",
+      "symbol": "",
+      "score": 4.71,
+      "start_line": null,
+      "end_line": null,
+      "loc": "tests/test_daemon_process_sweep.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "packages/pipeline/daemon.py",
+      "symbol": "",
+      "score": 4.6189,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/daemon.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "score": 4.6048,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "packages/pipeline/wipe.py",
+      "symbol": "",
+      "score": 4.2685,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/wipe.py:1-1",
+      "why": ""
+    }
+  ],
+  "suggested_seed": null,
+  "elapsed_s": 0.651,
+  "via": "search_repo(use_server=True)"
+}

@@ -1,0 +1,164 @@
+{
+  "id": "t04",
+  "family": "gate-enroll",
+  "task": "How does gate / project enrollment decide a repo is managed and bind project_id?",
+  "enrich_prompt": "gate enroll managed project_id .scubiee id.json GATE line AGENTS.md bind repo",
+  "map": {
+    "elapsed_s": 0.769,
+    "n_cards": 10,
+    "top_files": [
+      "packages/pipeline/project_id.py",
+      "packages/pipeline/rules_installer.py",
+      "tests/test_mcp_repo_resolution.py",
+      "packages/pipeline/gate_cli.py",
+      "tests/test_token_efficient_gating.py"
+    ]
+  },
+  "enrich_seed": {
+    "ok": true,
+    "elapsed_s": 0.038,
+    "seed_file": "packages/pipeline/project_id.py",
+    "seed": {
+      "file": "packages/pipeline/project_id.py",
+      "symbol": "_lock_registry_file",
+      "id": "packages/pipeline/project_id.py::_lock_registry_file",
+      "loc": null
+    },
+    "chunks": [
+      {
+        "file": "packages/pipeline/project_id.py",
+        "symbol": "_lock_registry_file",
+        "loc": "packages/pipeline/project_id.py:51-65",
+        "score": 1.0,
+        "kind": "function"
+      }
+    ],
+    "n_cards": 1,
+    "error": null
+  },
+  "arms": {
+    "pack_context": {
+      "ok": true,
+      "tool": "pack_context",
+      "engine": "composite_v1",
+      "elapsed_s": 0.043,
+      "n_pack": 1,
+      "seed": {
+        "file": "packages/pipeline/project_id.py",
+        "symbol": "_lock_registry_file",
+        "id": "packages/pipeline/project_id.py::_lock_registry_file"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "_lock_registry_file",
+          "score": 1.0,
+          "loc": "packages/pipeline/project_id.py:51-65",
+          "id": "packages/pipeline/project_id.py::_lock_registry_file",
+          "chars": 384
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/project_id.py::_lock_registry_file",
+          "loc": "packages/pipeline/project_id.py:51-65",
+          "edge": "seed",
+          "score": 1.0
+        }
+      ],
+      "error": null,
+      "seed_chunks": [
+        {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "_lock_registry_file",
+          "loc": "packages/pipeline/project_id.py:51-65",
+          "score": 1.0,
+          "kind": "function"
+        }
+      ],
+      "pack_query": "gate enroll managed project_id .scubiee id.json GATE line AGENTS.md bind repo | seeds: packages/pipeline/project_id.py::_lock_registry_file"
+    },
+    "pack_poly_embed": {
+      "ok": true,
+      "tool": "pack_poly_embed",
+      "engine": "poly_embed",
+      "elapsed_s": 0.134,
+      "n_pack": 1,
+      "seed": {
+        "file": "packages/pipeline/project_id.py",
+        "symbol": "_lock_registry_file",
+        "id": "packages/pipeline/project_id.py::_lock_registry_file"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "_lock_registry_file",
+          "score": 1.0,
+          "loc": "packages/pipeline/project_id.py:51-65",
+          "id": "packages/pipeline/project_id.py::_lock_registry_file",
+          "chars": 384
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/project_id.py::_lock_registry_file",
+          "loc": "packages/pipeline/project_id.py:51-65",
+          "edge": "seed",
+          "score": 1.0
+        }
+      ],
+      "error": null,
+      "seed_chunks": [
+        {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "_lock_registry_file",
+          "loc": "packages/pipeline/project_id.py:51-65",
+          "score": 1.0,
+          "kind": "function"
+        }
+      ],
+      "pack_query": "gate enroll managed project_id .scubiee id.json GATE line AGENTS.md bind repo | seeds: packages/pipeline/project_id.py::_lock_registry_file"
+    },
+    "pack_semantic": {
+      "ok": true,
+      "tool": "pack_semantic",
+      "engine": "semantic_tracer_fuse",
+      "elapsed_s": 0.231,
+      "n_pack": 1,
+      "seed": {
+        "file": "packages/pipeline/project_id.py",
+        "symbol": "_lock_registry_file",
+        "id": "packages/pipeline/project_id.py::_lock_registry_file"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "_lock_registry_file",
+          "score": 1.0,
+          "loc": "packages/pipeline/project_id.py:51-65",
+          "id": "packages/pipeline/project_id.py::_lock_registry_file",
+          "chars": 384
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/project_id.py::_lock_registry_file",
+          "loc": "packages/pipeline/project_id.py:51-65",
+          "edge": "seed",
+          "score": 1.0
+        }
+      ],
+      "error": null,
+      "seed_chunks": [
+        {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "_lock_registry_file",
+          "loc": "packages/pipeline/project_id.py:51-65",
+          "score": 1.0,
+          "kind": "function"
+        }
+      ],
+      "pack_query": "gate enroll managed project_id .scubiee id.json GATE line AGENTS.md bind repo | seeds: packages/pipeline/project_id.py::_lock_registry_file"
+    }
+  }
+}

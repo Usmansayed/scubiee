@@ -1,0 +1,82 @@
+{
+  "case": {
+    "id": "blind20_t13",
+    "source": "blind_map_pack_20",
+    "family": "permissions-allowlist",
+    "task": "Debug mcp-permissions.json allowlist merge when installing a host tool surface.",
+    "enrich_query": "mcp-permissions.json mcpAllowlist apply_permissions write_project_tool_surface install permissions merge allowlist",
+    "taxonomy": "soft_understand",
+    "taxonomy_confidence": "heuristic",
+    "hypothesis_policy": {
+      "lead": "scubiee_map",
+      "next": "conditional_pack",
+      "native": "span_read_after_heatmap"
+    },
+    "must_files": [
+      "packages/pipeline/mcp_permissions.py"
+    ],
+    "must_symbols": [
+      "packages/pipeline/mcp_permissions.py::apply_permissions_to_repo_tool_surface"
+    ],
+    "should_files": [
+      "packages/pipeline/rules_installer.py"
+    ],
+    "gold_status": "has_gold",
+    "notes": "",
+    "baseline_frozen": true
+  },
+  "M1a": {
+    "arm": "M1a_map_read",
+    "ok": true,
+    "elapsed_s": 1.355,
+    "seed": {
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": "write_project_tool_surface",
+      "start_line": 1317,
+      "loc": "packages/pipeline/rules_installer.py:1317-1381",
+      "kind": "function",
+      "role": "function",
+      "score": 13.894632287001212
+    },
+    "map_source": "cli_map",
+    "n_cards": 10,
+    "read_chars": 4957,
+    "rounds": 6,
+    "result_tokens": 3091,
+    "round_trip_tax": 15000,
+    "total_proxy": 18091,
+    "round_trip_tax_per_call": 2500,
+    "must_file": 1.0,
+    "must_sym": 0.0,
+    "file_hits": 1,
+    "file_n": 1,
+    "sym_hits": 0,
+    "sym_n": 1,
+    "case_id": "blind20_t13",
+    "taxonomy": "soft_understand"
+  },
+  "M1b": {
+    "arm": "M1b_map_pack",
+    "ok": true,
+    "elapsed_s": 1.163,
+    "seed_file": "packages/pipeline/rules_installer.py",
+    "seed_symbol": "write_project_tool_surface",
+    "seed_ok": true,
+    "map_source": "cli_map",
+    "heatmap_n": 16,
+    "read_chars": 5985,
+    "rounds": 7,
+    "result_tokens": 9755,
+    "round_trip_tax": 17500,
+    "total_proxy": 27255,
+    "round_trip_tax_per_call": 2500,
+    "must_file": 1.0,
+    "must_sym": 0.0,
+    "file_hits": 1,
+    "file_n": 1,
+    "sym_hits": 0,
+    "sym_n": 1,
+    "case_id": "blind20_t13",
+    "taxonomy": "soft_understand"
+  }
+}

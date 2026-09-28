@@ -1,0 +1,855 @@
+{
+  "protocol": "blind20_triple_pack_phase2",
+  "n": 20,
+  "mean_must_file_recall": {
+    "pack_context": 0.537,
+    "pack_poly_embed": 0.537,
+    "pack_semantic": 0.537,
+    "map_top5": 0.863
+  },
+  "thin_packs_n_le_1": {
+    "pack_context": 15,
+    "pack_poly_embed": 18,
+    "pack_semantic": 15
+  },
+  "pack_winner": "pack_context",
+  "per_case": [
+    {
+      "id": "t01",
+      "family": "faiss-publish",
+      "seed": {
+        "file": "packages/pipeline/artifact_guard.py",
+        "symbol": "atomic_write_text",
+        "id": "packages/pipeline/artifact_guard.py::atomic_write_text",
+        "loc": null
+      },
+      "must_files": [
+        "packages/pipeline/artifact_guard.py",
+        "packages/pipeline/project_id.py",
+        "packages/pipeline/engine.py",
+        "packages/pipeline/ce_service.py"
+      ],
+      "map_recall": 0.75,
+      "arms": {
+        "pack_context": {
+          "recall": 0.25,
+          "n_pack": 4,
+          "ok": true,
+          "files": [
+            "packages/pipeline/artifact_guard.py",
+            "packages/pipeline/store_lock.py"
+          ]
+        },
+        "pack_poly_embed": {
+          "recall": 0.25,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/artifact_guard.py"
+          ]
+        },
+        "pack_semantic": {
+          "recall": 0.25,
+          "n_pack": 4,
+          "ok": true,
+          "files": [
+            "packages/pipeline/artifact_guard.py",
+            "packages/pipeline/store_lock.py"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t02",
+      "family": "bm25-build",
+      "seed": {
+        "file": "packages/conductor/bm25_index.py",
+        "symbol": "tokenize",
+        "id": "packages/conductor/bm25_index.py::tokenize",
+        "loc": null
+      },
+      "must_files": [
+        "packages/conductor/bm25_index.py"
+      ],
+      "map_recall": 1.0,
+      "arms": {
+        "pack_context": {
+          "recall": 1.0,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/conductor/bm25_index.py"
+          ]
+        },
+        "pack_poly_embed": {
+          "recall": 1.0,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/conductor/bm25_index.py"
+          ]
+        },
+        "pack_semantic": {
+          "recall": 1.0,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/conductor/bm25_index.py"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t03",
+      "family": "chunk-pipeline",
+      "seed": {
+        "file": "packages/enrich/__init__.py",
+        "symbol": "EnrichedChunk.to_dict",
+        "id": "packages/enrich/__init__.py::EnrichedChunk.to_dict",
+        "loc": null
+      },
+      "must_files": [
+        "packages/pipeline/index_manager.py",
+        "packages/pipeline/indexer.py",
+        "packages/pipeline/chunk_merkle.py"
+      ],
+      "map_recall": 1.0,
+      "arms": {
+        "pack_context": {
+          "recall": 0.0,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/enrich/__init__.py"
+          ]
+        },
+        "pack_poly_embed": {
+          "recall": 0.0,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/enrich/__init__.py"
+          ]
+        },
+        "pack_semantic": {
+          "recall": 0.0,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/enrich/__init__.py"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t04",
+      "family": "gate-enroll",
+      "seed": {
+        "file": "packages/pipeline/project_id.py",
+        "symbol": "_lock_registry_file",
+        "id": "packages/pipeline/project_id.py::_lock_registry_file",
+        "loc": null
+      },
+      "must_files": [
+        "packages/pipeline/project_id.py",
+        "packages/pipeline/repo_lifecycle.py",
+        "packages/pipeline/rules_installer.py"
+      ],
+      "map_recall": 0.667,
+      "arms": {
+        "pack_context": {
+          "recall": 0.333,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/project_id.py"
+          ]
+        },
+        "pack_poly_embed": {
+          "recall": 0.333,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/project_id.py"
+          ]
+        },
+        "pack_semantic": {
+          "recall": 0.333,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/project_id.py"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t05",
+      "family": "engine-watchdog",
+      "seed": {
+        "file": "packages/pipeline/watchdog.py",
+        "symbol": "_home",
+        "id": "packages/pipeline/watchdog.py::_home",
+        "loc": null
+      },
+      "must_files": [
+        "packages/pipeline/watchdog.py",
+        "packages/pipeline/engine.py"
+      ],
+      "map_recall": 0.5,
+      "arms": {
+        "pack_context": {
+          "recall": 0.5,
+          "n_pack": 2,
+          "ok": true,
+          "files": [
+            "packages/pipeline/branding.py",
+            "packages/pipeline/project_id.py",
+            "packages/pipeline/watchdog.py"
+          ]
+        },
+        "pack_poly_embed": {
+          "recall": 0.5,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/watchdog.py"
+          ]
+        },
+        "pack_semantic": {
+          "recall": 0.5,
+          "n_pack": 2,
+          "ok": true,
+          "files": [
+            "packages/pipeline/branding.py",
+            "packages/pipeline/project_id.py",
+            "packages/pipeline/watchdog.py"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t06",
+      "family": "mcp-bridge",
+      "seed": {
+        "file": "packages/pipeline/mcp_bridge.py",
+        "symbol": "_stderr",
+        "id": "packages/pipeline/mcp_bridge.py::_stderr",
+        "loc": null
+      },
+      "must_files": [
+        "packages/pipeline/mcp_bridge.py",
+        "packages/pipeline/mcp_bridge_session.py"
+      ],
+      "map_recall": 1.0,
+      "arms": {
+        "pack_context": {
+          "recall": 0.5,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/mcp_bridge.py"
+          ]
+        },
+        "pack_poly_embed": {
+          "recall": 0.5,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/mcp_bridge.py"
+          ]
+        },
+        "pack_semantic": {
+          "recall": 0.5,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/mcp_bridge.py"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t07",
+      "family": "locate-cli",
+      "seed": {
+        "file": "packages/pipeline/locate_cli.py",
+        "symbol": "_root",
+        "id": "packages/pipeline/locate_cli.py::_root",
+        "loc": null
+      },
+      "must_files": [
+        "packages/pipeline/__main__.py",
+        "packages/pipeline/locate_cli.py"
+      ],
+      "map_recall": 1.0,
+      "arms": {
+        "pack_context": {
+          "recall": 0.5,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/locate_cli.py"
+          ]
+        },
+        "pack_poly_embed": {
+          "recall": 0.5,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/locate_cli.py"
+          ]
+        },
+        "pack_semantic": {
+          "recall": 0.5,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/locate_cli.py"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t08",
+      "family": "expand-hop",
+      "seed": {
+        "file": "packages/pipeline/context_trace.py",
+        "symbol": "_heat",
+        "id": "packages/pipeline/context_trace.py::_heat",
+        "loc": null
+      },
+      "must_files": [
+        "packages/pipeline/context_trace.py",
+        "packages/pipeline/mcp_locate.py"
+      ],
+      "map_recall": 0.5,
+      "arms": {
+        "pack_context": {
+          "recall": 0.5,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/context_trace.py"
+          ]
+        },
+        "pack_poly_embed": {
+          "recall": 0.5,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/context_trace.py"
+          ]
+        },
+        "pack_semantic": {
+          "recall": 0.5,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/context_trace.py"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t09",
+      "family": "work-session",
+      "seed": {
+        "file": "packages/pipeline/work_session.py",
+        "symbol": "_session_path",
+        "id": "packages/pipeline/work_session.py::_session_path",
+        "loc": null
+      },
+      "must_files": [
+        "packages/pipeline/work_session.py"
+      ],
+      "map_recall": 1.0,
+      "arms": {
+        "pack_context": {
+          "recall": 1.0,
+          "n_pack": 4,
+          "ok": true,
+          "files": [
+            "packages/pipeline/project_id.py",
+            "packages/pipeline/session_isolation.py",
+            "packages/pipeline/work_session.py"
+          ]
+        },
+        "pack_poly_embed": {
+          "recall": 1.0,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/work_session.py"
+          ]
+        },
+        "pack_semantic": {
+          "recall": 1.0,
+          "n_pack": 4,
+          "ok": true,
+          "files": [
+            "packages/pipeline/project_id.py",
+            "packages/pipeline/session_isolation.py",
+            "packages/pipeline/work_session.py"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t10",
+      "family": "response-lean",
+      "seed": {
+        "file": "packages/pipeline/session_store.py",
+        "symbol": "_store_path",
+        "id": "packages/pipeline/session_store.py::_store_path",
+        "loc": null
+      },
+      "must_files": [
+        "packages/pipeline/mcp_response_lean.py",
+        "packages/pipeline/mcp_locate.py"
+      ],
+      "map_recall": 1.0,
+      "arms": {
+        "pack_context": {
+          "recall": 0.0,
+          "n_pack": 4,
+          "ok": true,
+          "files": [
+            "packages/pipeline/project_id.py",
+            "packages/pipeline/session_isolation.py",
+            "packages/pipeline/session_store.py"
+          ]
+        },
+        "pack_poly_embed": {
+          "recall": 0.0,
+          "n_pack": 2,
+          "ok": true,
+          "files": [
+            "packages/pipeline/session_store.py"
+          ]
+        },
+        "pack_semantic": {
+          "recall": 0.0,
+          "n_pack": 4,
+          "ok": true,
+          "files": [
+            "packages/pipeline/project_id.py",
+            "packages/pipeline/session_isolation.py",
+            "packages/pipeline/session_store.py"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t11",
+      "family": "permissions-allowlist",
+      "seed": {
+        "file": "packages/pipeline/mcp_permissions.py",
+        "symbol": "locate_tool_names",
+        "id": "packages/pipeline/mcp_permissions.py::locate_tool_names",
+        "loc": null
+      },
+      "must_files": [
+        "packages/pipeline/mcp_permissions.py",
+        "packages/pipeline/rules_installer.py"
+      ],
+      "map_recall": 1.0,
+      "arms": {
+        "pack_context": {
+          "recall": 0.5,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/mcp_permissions.py"
+          ]
+        },
+        "pack_poly_embed": {
+          "recall": 0.5,
+          "n_pack": 3,
+          "ok": true,
+          "files": [
+            "packages/pipeline/mcp_permissions.py"
+          ]
+        },
+        "pack_semantic": {
+          "recall": 0.5,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/mcp_permissions.py"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t12",
+      "family": "rules-gate-text",
+      "seed": {
+        "file": "packages/pipeline/rules_installer.py",
+        "symbol": "_templates_dir",
+        "id": "packages/pipeline/rules_installer.py::_templates_dir",
+        "loc": null
+      },
+      "must_files": [
+        "packages/pipeline/rules_installer.py"
+      ],
+      "map_recall": 1.0,
+      "arms": {
+        "pack_context": {
+          "recall": 1.0,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/rules_installer.py"
+          ]
+        },
+        "pack_poly_embed": {
+          "recall": 1.0,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/rules_installer.py"
+          ]
+        },
+        "pack_semantic": {
+          "recall": 1.0,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/rules_installer.py"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t13",
+      "family": "freshness-sync",
+      "seed": {
+        "file": "packages/pipeline/sync_loop.py",
+        "symbol": "enable_session_keeper_defaults",
+        "id": "packages/pipeline/sync_loop.py::enable_session_keeper_defaults",
+        "loc": null
+      },
+      "must_files": [
+        "packages/pipeline/sync_loop.py",
+        "packages/pipeline/freshness.py"
+      ],
+      "map_recall": 1.0,
+      "arms": {
+        "pack_context": {
+          "recall": 0.5,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/sync_loop.py"
+          ]
+        },
+        "pack_poly_embed": {
+          "recall": 0.5,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/sync_loop.py"
+          ]
+        },
+        "pack_semantic": {
+          "recall": 0.5,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/sync_loop.py"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t14",
+      "family": "memory-budget",
+      "seed": {
+        "file": "packages/pipeline/memory_governor.py",
+        "symbol": "_env_float",
+        "id": "packages/pipeline/memory_governor.py::_env_float",
+        "loc": null
+      },
+      "must_files": [
+        "packages/pipeline/memory_governor.py",
+        "packages/pipeline/embedder.py",
+        "packages/pipeline/accel.py"
+      ],
+      "map_recall": 0.667,
+      "arms": {
+        "pack_context": {
+          "recall": 0.333,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/memory_governor.py"
+          ]
+        },
+        "pack_poly_embed": {
+          "recall": 0.333,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/memory_governor.py"
+          ]
+        },
+        "pack_semantic": {
+          "recall": 0.333,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/memory_governor.py"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t15",
+      "family": "capability-attach",
+      "seed": {
+        "file": "packages/pipeline/capability.py",
+        "symbol": "CapabilityCard.blob",
+        "id": "packages/pipeline/capability.py::CapabilityCard.blob",
+        "loc": null
+      },
+      "must_files": [
+        "packages/pipeline/capability.py"
+      ],
+      "map_recall": 1.0,
+      "arms": {
+        "pack_context": {
+          "recall": 1.0,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/capability.py"
+          ]
+        },
+        "pack_poly_embed": {
+          "recall": 1.0,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/capability.py"
+          ]
+        },
+        "pack_semantic": {
+          "recall": 1.0,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/capability.py"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t16",
+      "family": "graphify-edges",
+      "seed": {
+        "file": "packages/conductor/graphify_retriever.py",
+        "symbol": "normalize_file",
+        "id": "packages/conductor/graphify_retriever.py::normalize_file",
+        "loc": null
+      },
+      "must_files": [
+        "packages/conductor/graphify_retriever.py",
+        "packages/trace_lab/graphify_layer.py",
+        "packages/conductor/conductor.py"
+      ],
+      "map_recall": 0.667,
+      "arms": {
+        "pack_context": {
+          "recall": 0.333,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/conductor/graphify_retriever.py"
+          ]
+        },
+        "pack_poly_embed": {
+          "recall": 0.333,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/conductor/graphify_retriever.py"
+          ]
+        },
+        "pack_semantic": {
+          "recall": 0.333,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/conductor/graphify_retriever.py"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t17",
+      "family": "never-index",
+      "seed": {
+        "file": "packages/pipeline/repo_lifecycle.py",
+        "symbol": "_root",
+        "id": "packages/pipeline/repo_lifecycle.py::_root",
+        "loc": null
+      },
+      "must_files": [
+        "packages/pipeline/repo_lifecycle.py"
+      ],
+      "map_recall": 1.0,
+      "arms": {
+        "pack_context": {
+          "recall": 1.0,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/repo_lifecycle.py"
+          ]
+        },
+        "pack_poly_embed": {
+          "recall": 1.0,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/repo_lifecycle.py"
+          ]
+        },
+        "pack_semantic": {
+          "recall": 1.0,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/repo_lifecycle.py"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t18",
+      "family": "wipe-safe",
+      "seed": {
+        "file": "packages/pipeline/wipe.py",
+        "symbol": "_cursor_rule_paths",
+        "id": "packages/pipeline/wipe.py::_cursor_rule_paths",
+        "loc": null
+      },
+      "must_files": [
+        "packages/pipeline/wipe.py",
+        "packages/pipeline/__main__.py"
+      ],
+      "map_recall": 1.0,
+      "arms": {
+        "pack_context": {
+          "recall": 0.5,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/wipe.py"
+          ]
+        },
+        "pack_poly_embed": {
+          "recall": 0.5,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/wipe.py"
+          ]
+        },
+        "pack_semantic": {
+          "recall": 0.5,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/wipe.py"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t19",
+      "family": "dashboard-status",
+      "seed": {
+        "file": "packages/pipeline/__main__.py",
+        "symbol": "_version_only",
+        "id": "packages/pipeline/__main__.py::_version_only",
+        "loc": null
+      },
+      "must_files": [
+        "packages/pipeline/dashboard_server.py",
+        "packages/pipeline/__main__.py"
+      ],
+      "map_recall": 1.0,
+      "arms": {
+        "pack_context": {
+          "recall": 0.5,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/__main__.py"
+          ]
+        },
+        "pack_poly_embed": {
+          "recall": 0.5,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/__main__.py"
+          ]
+        },
+        "pack_semantic": {
+          "recall": 0.5,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/pipeline/__main__.py"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t20",
+      "family": "dense-rerank",
+      "seed": {
+        "file": "packages/conductor/architectures.py",
+        "symbol": "_path_tokens",
+        "id": "packages/conductor/architectures.py::_path_tokens",
+        "loc": null
+      },
+      "must_files": [
+        "packages/conductor/architectures.py",
+        "packages/pipeline/indexer.py"
+      ],
+      "map_recall": 0.5,
+      "arms": {
+        "pack_context": {
+          "recall": 0.5,
+          "n_pack": 2,
+          "ok": true,
+          "files": [
+            "packages/conductor/architectures.py",
+            "packages/conductor/f95.py"
+          ]
+        },
+        "pack_poly_embed": {
+          "recall": 0.5,
+          "n_pack": 1,
+          "ok": true,
+          "files": [
+            "packages/conductor/architectures.py"
+          ]
+        },
+        "pack_semantic": {
+          "recall": 0.5,
+          "n_pack": 2,
+          "ok": true,
+          "files": [
+            "packages/conductor/architectures.py",
+            "packages/conductor/f95.py"
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "id": "u13",
+  "family": "wipe-halt",
+  "task": "What does wipe vs halt do to runtime state and indexes?",
+  "enrich_map_query": "cmd_wipe cmd_halt wipe halt runtime index unlock stop resources",
+  "map_ok": true,
+  "map_elapsed_s": 9.305,
+  "suggested_seed": {
+    "file": "packages/pipeline/__main__.py",
+    "symbol": "",
+    "source": "suggested_seed"
+  },
+  "map_top_cards": [
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "score": 22.207208209313706
+    },
+    {
+      "file": "packages/pipeline/wipe.py",
+      "symbol": "",
+      "loc": "packages/pipeline/wipe.py:1-1",
+      "score": 8.293710934955186
+    },
+    {
+      "file": "tests/test_wipe.py",
+      "symbol": "",
+      "loc": "tests/test_wipe.py:1-1",
+      "score": 7.493879893614908
+    },
+    {
+      "file": "tests/test_process_release.py",
+      "symbol": "",
+      "loc": "tests/test_process_release.py:1-1",
+      "score": 5.1203449496128055
+    },
+    {
+      "file": "tests/test_lifecycle_guard.py",
+      "symbol": "",
+      "loc": "tests/test_lifecycle_guard.py:1-1",
+      "score": 4.14971314561026
+    },
+    {
+      "file": "packages/enrich/__init__.py",
+      "symbol": "",
+      "loc": "packages/enrich/__init__.py:1-1",
+      "score": 2.6704268035297627
+    },
+    {
+      "file": "packages/graphify/extract.py",
+      "symbol": "",
+      "loc": "packages/graphify/extract.py:1-1",
+      "score": 2.501338320673012
+    },
+    {
+      "file": "packages/parse_harness/graphify_adapter.py",
+      "symbol": "",
+      "loc": "packages/parse_harness/graphify_adapter.py:1-1",
+      "score": 2.282776313722634
+    }
+  ],
+  "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+}

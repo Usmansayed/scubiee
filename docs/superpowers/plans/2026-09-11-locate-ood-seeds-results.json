@@ -1,0 +1,434 @@
+{
+  "passed": 25,
+  "total": 25,
+  "pass_rate": 1.0,
+  "min_pass_rate": 0.7,
+  "elapsed_s": 63.29,
+  "rows": [
+    {
+      "id": "turbo_codec",
+      "ok": true,
+      "detail": "TurboQuantCodec@packages/pipeline/turbo_quant.py",
+      "map_ok": true,
+      "error": null,
+      "seed": {
+        "file": "packages/pipeline/turbo_quant.py",
+        "symbol": "TurboQuantCodec",
+        "start_line": 126,
+        "loc": "packages/pipeline/turbo_quant.py:126-190",
+        "kind": "class",
+        "role": "class",
+        "score": 19.597144056675617,
+        "end_line": 190
+      }
+    },
+    {
+      "id": "project_resolve",
+      "ok": true,
+      "detail": "resolve_project@packages/pipeline/project_id.py",
+      "map_ok": true,
+      "error": null,
+      "seed": {
+        "file": "packages/pipeline/project_id.py",
+        "symbol": "resolve_project",
+        "start_line": 588,
+        "loc": "packages/pipeline/project_id.py:588-739",
+        "kind": "function",
+        "role": "function",
+        "score": 26.379065145566912,
+        "end_line": 739
+      }
+    },
+    {
+      "id": "merkle_sync",
+      "ok": true,
+      "detail": "SyncDiff@packages/pipeline/merkle.py",
+      "map_ok": true,
+      "error": null,
+      "seed": {
+        "file": "packages/pipeline/merkle.py",
+        "symbol": "SyncDiff",
+        "start_line": 81,
+        "loc": "packages/pipeline/merkle.py:81-90",
+        "kind": "class",
+        "role": "class",
+        "score": 38.14099612174208,
+        "end_line": 90
+      }
+    },
+    {
+      "id": "freshness_verify",
+      "ok": true,
+      "detail": "verify_merkle_leaves@packages/pipeline/freshness.py",
+      "map_ok": true,
+      "error": null,
+      "seed": {
+        "file": "packages/pipeline/freshness.py",
+        "symbol": "verify_merkle_leaves",
+        "start_line": 167,
+        "loc": "packages/pipeline/freshness.py:167-203",
+        "kind": "function",
+        "role": "function",
+        "score": 30.175049386312374,
+        "end_line": 203
+      }
+    },
+    {
+      "id": "bm25_index",
+      "ok": true,
+      "detail": "BM25Index@packages/conductor/bm25_index.py",
+      "map_ok": true,
+      "error": null,
+      "seed": {
+        "file": "packages/conductor/bm25_index.py",
+        "symbol": "BM25Index",
+        "start_line": 18,
+        "loc": "packages/conductor/bm25_index.py:18-64",
+        "kind": "class",
+        "role": "class",
+        "score": 21.909387321212456,
+        "end_line": 64
+      }
+    },
+    {
+      "id": "multiarch",
+      "ok": true,
+      "detail": "MultiArchConductor@packages/conductor/architectures.py",
+      "map_ok": true,
+      "error": null,
+      "seed": {
+        "file": "packages/conductor/architectures.py",
+        "symbol": "MultiArchConductor",
+        "start_line": 75,
+        "loc": "packages/conductor/architectures.py:75-1420",
+        "kind": "class",
+        "role": "class",
+        "score": 30.470787739890326,
+        "end_line": 1420
+      }
+    },
+    {
+      "id": "graphify_load",
+      "ok": true,
+      "detail": "load_store_graphify_graph@packages/trace_lab/graphify_layer.py",
+      "map_ok": true,
+      "error": null,
+      "seed": {
+        "file": "packages/trace_lab/graphify_layer.py",
+        "symbol": "load_store_graphify_graph",
+        "start_line": 77,
+        "loc": "packages/trace_lab/graphify_layer.py:77-199",
+        "kind": "function",
+        "role": "function",
+        "score": 27.815296284893513,
+        "end_line": 199
+      }
+    },
+    {
+      "id": "embedder",
+      "ok": true,
+      "detail": "Embedder@packages/pipeline/embedder.py",
+      "map_ok": true,
+      "error": null,
+      "seed": {
+        "file": "packages/pipeline/embedder.py",
+        "symbol": "Embedder",
+        "start_line": 151,
+        "loc": "packages/pipeline/embedder.py:151-839",
+        "kind": "class",
+        "role": "class",
+        "score": 15.12641252685762,
+        "end_line": 839
+      }
+    },
+    {
+      "id": "poly_trace",
+      "ok": true,
+      "detail": "poly_trace@packages/trace_lab/polytrace.py",
+      "map_ok": true,
+      "error": null,
+      "seed": {
+        "file": "packages/trace_lab/polytrace.py",
+        "symbol": "poly_trace",
+        "start_line": 235,
+        "loc": "packages/trace_lab/polytrace.py:235-338",
+        "kind": "function",
+        "role": "function",
+        "score": 19.438727501303234,
+        "end_line": 338
+      }
+    },
+    {
+      "id": "watchdog",
+      "ok": true,
+      "detail": "watchdog_loop@packages/pipeline/watchdog.py",
+      "map_ok": true,
+      "error": null,
+      "seed": {
+        "file": "packages/pipeline/watchdog.py",
+        "symbol": "watchdog_loop",
+        "start_line": 168,
+        "loc": "packages/pipeline/watchdog.py:168-269",
+        "kind": "function",
+        "role": "function",
+        "score": 22.753409556542415,
+        "end_line": 269
+      }
+    },
+    {
+      "id": "index_repo",
+      "ok": true,
+      "detail": "index_repo@packages/pipeline/indexer.py",
+      "map_ok": true,
+      "error": null,
+      "seed": {
+        "file": "packages/pipeline/indexer.py",
+        "symbol": "index_repo",
+        "start_line": 105,
+        "loc": "packages/pipeline/indexer.py:105-543",
+        "kind": "function",
+        "role": "function",
+        "score": 25.128939425232808,
+        "end_line": 543
+      }
+    },
+    {
+      "id": "ensure_daemon",
+      "ok": true,
+      "detail": "ensure_daemon@packages/pipeline/daemon.py",
+      "map_ok": true,
+      "error": null,
+      "seed": {
+        "file": "packages/pipeline/daemon.py",
+        "symbol": "ensure_daemon",
+        "start_line": 504,
+        "loc": "packages/pipeline/daemon.py:504-593",
+        "kind": "function",
+        "role": "function",
+        "score": 35.92750854478729,
+        "end_line": 593
+      }
+    },
+    {
+      "id": "gate_rules",
+      "ok": true,
+      "detail": "write_project_gate_rules@packages/pipeline/rules_installer.py",
+      "map_ok": true,
+      "error": null,
+      "seed": {
+        "file": "packages/pipeline/rules_installer.py",
+        "symbol": "write_project_gate_rules",
+        "start_line": 1233,
+        "loc": "packages/pipeline/rules_installer.py:1233-1296",
+        "kind": "function",
+        "role": "function",
+        "score": 42.45083233067098,
+        "end_line": 1296
+      }
+    },
+    {
+      "id": "session_load",
+      "ok": true,
+      "detail": "load_session@packages/pipeline/work_session.py",
+      "map_ok": true,
+      "error": null,
+      "seed": {
+        "file": "packages/pipeline/work_session.py",
+        "symbol": "load_session",
+        "start_line": 32,
+        "loc": "packages/pipeline/work_session.py:32-56",
+        "kind": "function",
+        "role": "function",
+        "score": 27.99099148230605,
+        "end_line": 56
+      }
+    },
+    {
+      "id": "wipe_repo",
+      "ok": true,
+      "detail": "wipe_repo@packages/pipeline/wipe.py",
+      "map_ok": true,
+      "error": null,
+      "seed": {
+        "file": "packages/pipeline/wipe.py",
+        "symbol": "wipe_repo",
+        "start_line": 727,
+        "loc": "packages/pipeline/wipe.py:727-837",
+        "kind": "function",
+        "role": "function",
+        "score": 35.381657198398855,
+        "end_line": 837
+      }
+    },
+    {
+      "id": "permissions",
+      "ok": true,
+      "detail": "apply_permissions_to_repo_tool_surface@packages/pipeline/mcp_permissions.py",
+      "map_ok": true,
+      "error": null,
+      "seed": {
+        "file": "packages/pipeline/mcp_permissions.py",
+        "symbol": "apply_permissions_to_repo_tool_surface",
+        "start_line": 575,
+        "loc": "packages/pipeline/mcp_permissions.py:575-588",
+        "kind": "function",
+        "role": "function",
+        "score": 28.31034069830867,
+        "end_line": 588
+      }
+    },
+    {
+      "id": "hot_reload",
+      "ok": true,
+      "detail": "write_active_build_stamp@packages/pipeline/mcp_hot_reload.py",
+      "map_ok": true,
+      "error": null,
+      "seed": {
+        "file": "packages/pipeline/mcp_hot_reload.py",
+        "symbol": "write_active_build_stamp",
+        "start_line": 30,
+        "loc": "packages/pipeline/mcp_hot_reload.py:30-47",
+        "kind": "function",
+        "role": "function",
+        "score": 31.13470155120161,
+        "end_line": 47
+      }
+    },
+    {
+      "id": "diagnose",
+      "ok": true,
+      "detail": "diagnose@packages/pipeline/diagnose.py",
+      "map_ok": true,
+      "error": null,
+      "seed": {
+        "file": "packages/pipeline/diagnose.py",
+        "symbol": "diagnose",
+        "start_line": 288,
+        "loc": "packages/pipeline/diagnose.py:288-386",
+        "kind": "function",
+        "role": "function",
+        "score": 16.69659379124585,
+        "end_line": 386
+      }
+    },
+    {
+      "id": "keeper_tick",
+      "ok": true,
+      "detail": "BackgroundSyncLoop@packages/pipeline/sync_loop.py",
+      "map_ok": true,
+      "error": null,
+      "seed": {
+        "file": "packages/pipeline/sync_loop.py",
+        "symbol": "BackgroundSyncLoop",
+        "start_line": 81,
+        "loc": "packages/pipeline/sync_loop.py:81-992",
+        "kind": "class",
+        "role": "class",
+        "score": 24.135176665606377,
+        "end_line": 992
+      }
+    },
+    {
+      "id": "store_lock",
+      "ok": true,
+      "detail": "store_write_lock@packages/pipeline/store_lock.py",
+      "map_ok": true,
+      "error": null,
+      "seed": {
+        "file": "packages/pipeline/store_lock.py",
+        "symbol": "store_write_lock",
+        "start_line": 60,
+        "loc": "packages/pipeline/store_lock.py:60-103",
+        "kind": "function",
+        "role": "function",
+        "score": 35.822898160760346,
+        "end_line": 103
+      }
+    },
+    {
+      "id": "hot_patch",
+      "ok": true,
+      "detail": "hot_patch_texts@packages/pipeline/hot_patch.py",
+      "map_ok": true,
+      "error": null,
+      "seed": {
+        "file": "packages/pipeline/hot_patch.py",
+        "symbol": "hot_patch_texts",
+        "start_line": 34,
+        "loc": "packages/pipeline/hot_patch.py:34-59",
+        "kind": "function",
+        "role": "function",
+        "score": 20.8995215186131,
+        "end_line": 59
+      }
+    },
+    {
+      "id": "artifact_atomic",
+      "ok": true,
+      "detail": "validate_manifest@packages/pipeline/artifact_guard.py",
+      "map_ok": true,
+      "error": null,
+      "seed": {
+        "file": "packages/pipeline/artifact_guard.py",
+        "symbol": "validate_manifest",
+        "start_line": 102,
+        "loc": "packages/pipeline/artifact_guard.py:102-121",
+        "kind": "function",
+        "role": "function",
+        "score": 29.75484573882471,
+        "end_line": 121
+      }
+    },
+    {
+      "id": "resources_mgr",
+      "ok": true,
+      "detail": "ResourceManager@packages/pipeline/resources.py",
+      "map_ok": true,
+      "error": null,
+      "seed": {
+        "file": "packages/pipeline/resources.py",
+        "symbol": "ResourceManager",
+        "start_line": 81,
+        "loc": "packages/pipeline/resources.py:81-416",
+        "kind": "class",
+        "role": "class",
+        "score": 15.589641471326217,
+        "end_line": 416
+      }
+    },
+    {
+      "id": "faiss_adapter",
+      "ok": true,
+      "detail": "FaissDenseAdapter@packages/pipeline/searcher.py",
+      "map_ok": true,
+      "error": null,
+      "seed": {
+        "file": "packages/pipeline/searcher.py",
+        "symbol": "FaissDenseAdapter",
+        "start_line": 30,
+        "loc": "packages/pipeline/searcher.py:30-52",
+        "kind": "class",
+        "role": "class",
+        "score": 76.63629538923679,
+        "end_line": 52
+      }
+    },
+    {
+      "id": "upgrade_run",
+      "ok": true,
+      "detail": "run_upgrade@packages/pipeline/upgrade_supervisor.py",
+      "map_ok": true,
+      "error": null,
+      "seed": {
+        "file": "packages/pipeline/upgrade_supervisor.py",
+        "symbol": "run_upgrade",
+        "start_line": 255,
+        "loc": "packages/pipeline/upgrade_supervisor.py:255-593",
+        "kind": "function",
+        "role": "function",
+        "score": 28.614288418573814,
+        "end_line": 593
+      }
+    }
+  ]
+}

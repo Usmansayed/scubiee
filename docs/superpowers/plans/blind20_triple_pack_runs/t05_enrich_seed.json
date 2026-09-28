@@ -1,0 +1,36 @@
+{
+  "ok": true,
+  "elapsed_s": 0.041,
+  "seed_file": "packages/pipeline/watchdog.py",
+  "seed": {
+    "file": "packages/pipeline/watchdog.py",
+    "symbol": "_home",
+    "id": "packages/pipeline/watchdog.py::_home",
+    "loc": null
+  },
+  "chunks": [
+    {
+      "file": "packages/pipeline/watchdog.py",
+      "symbol": "_home",
+      "loc": "packages/pipeline/watchdog.py:27-30",
+      "score": 1.0,
+      "kind": "function"
+    },
+    {
+      "file": "packages/pipeline/project_id.py",
+      "symbol": "context_engine_home",
+      "loc": "packages/pipeline/project_id.py:108-113",
+      "score": 0.7994,
+      "kind": "function"
+    },
+    {
+      "file": "packages/pipeline/branding.py",
+      "symbol": "migrate_home_dir",
+      "loc": "packages/pipeline/branding.py:29-32",
+      "score": 0.5606,
+      "kind": "function"
+    }
+  ],
+  "n_cards": 3,
+  "error": null
+}

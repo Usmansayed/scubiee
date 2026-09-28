@@ -1,0 +1,92 @@
+{
+  "id": "r09",
+  "enrich_prompt": "CodeRankLLM rerank search-time D_rerank conductor reranker not index embed",
+  "suggested_seed": {
+    "file": "packages/pipeline/__init__.py",
+    "symbol": "",
+    "loc": "packages/pipeline/__init__.py:1-1",
+    "score": 23.013310761179508
+  },
+  "chunks": [
+    {
+      "file": "packages/pipeline/__init__.py",
+      "symbol": "",
+      "loc": "packages/pipeline/__init__.py:1-1",
+      "score": 23.013310761179508,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/conductor/top3.py",
+      "symbol": "",
+      "loc": "packages/conductor/top3.py:1-1",
+      "score": 18.851843309282355,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/conductor/service.py",
+      "symbol": "",
+      "loc": "packages/conductor/service.py:1-1",
+      "score": 12.472160094752697,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/conductor/query_router.py",
+      "symbol": "",
+      "loc": "packages/conductor/query_router.py:1-1",
+      "score": 12.400607282586716,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/conductor/architectures.py",
+      "symbol": "",
+      "loc": "packages/conductor/architectures.py:1-1",
+      "score": 12.315734835323006,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "docs/conductor-final-architecture.md",
+      "symbol": "",
+      "loc": "docs/conductor-final-architecture.md:1-1",
+      "score": 12.090894913840522,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/pipeline/searcher.py",
+      "symbol": "",
+      "loc": "packages/pipeline/searcher.py:1-1",
+      "score": 11.76334492966223,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "docs/pipeline-faiss-turboquant.md",
+      "symbol": "",
+      "loc": "docs/pipeline-faiss-turboquant.md:1-1",
+      "score": 10.285235060953251,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "fixtures/trace-lab/app/search/rank.py",
+      "symbol": "",
+      "loc": "fixtures/trace-lab/app/search/rank.py:1-1",
+      "score": 6.224110875731429,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/conductor/conductor.py",
+      "symbol": "",
+      "loc": "packages/conductor/conductor.py:1-1",
+      "score": 5.997737874080103,
+      "start_line": null,
+      "end_line": null
+    }
+  ]
+}

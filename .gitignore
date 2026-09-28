@@ -91,3 +91,14 @@ tools/llama-cpp/
 **/.scubiee/cache.stale-*/
 .scubiee/sessions/
 
+# ---- Local engine store + per-machine session state (regenerated) -----------
+# id.json / session_store.json / work_session.json / *.lock / mcp-permissions
+# are machine-local; enrollment + sessions regenerate on any clone.
+.scubiee/
+.claude/
+.codex/
+.continue/
+.amp/
+.zed/
+--help
+

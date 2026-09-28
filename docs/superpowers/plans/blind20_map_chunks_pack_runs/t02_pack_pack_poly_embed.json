@@ -1,0 +1,64 @@
+{
+  "ok": true,
+  "tool": "pack_poly_embed",
+  "engine": "poly_embed",
+  "elapsed_s": 0.208,
+  "n_pack": 2,
+  "seed": {
+    "file": "packages/conductor/bm25_index.py",
+    "symbol": "BM25Index",
+    "id": "packages/conductor/bm25_index.py::BM25Index"
+  },
+  "pack": [
+    {
+      "file": "packages/conductor/bm25_index.py",
+      "symbol": "BM25Index",
+      "score": 1.0,
+      "loc": "packages/conductor/bm25_index.py:18-64",
+      "id": "packages/conductor/bm25_index.py::BM25Index",
+      "chars": 1731
+    },
+    {
+      "file": "packages/pipeline/hot_patch.py",
+      "symbol": "rebuild_bm25",
+      "score": 1.0,
+      "loc": "packages/pipeline/hot_patch.py:62-63",
+      "id": "packages/pipeline/hot_patch.py::rebuild_bm25",
+      "chars": 76
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/conductor/bm25_index.py::BM25Index",
+      "loc": "packages/conductor/bm25_index.py:18-64",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/hot_patch.py::rebuild_bm25",
+      "loc": "packages/pipeline/hot_patch.py:62-63",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/conductor/bm25_index.py::BM25Index.score_all",
+      "loc": "packages/conductor/bm25_index.py:35-52",
+      "edge": "seed",
+      "score": 0.48
+    },
+    {
+      "id": "packages/conductor/bm25_index.py::tokenize",
+      "loc": "packages/conductor/bm25_index.py:14-15",
+      "edge": "seed",
+      "score": 0.48
+    },
+    {
+      "id": "packages/conductor/bm25_index.py::BM25Index.search",
+      "loc": "packages/conductor/bm25_index.py:54-64",
+      "edge": "seed",
+      "score": 0.48
+    }
+  ],
+  "pack_query": "BM25 index build tokenize corpus indexing conductor bm25_index lexical chunks\nrelevant_chunks: packages/conductor/bm25_index.py::BM25Index@packages/conductor/bm25_index.py:18-64 | packages/pipeline/hot_patch.py::rebuild_bm25@packages/pipeline/hot_patch.py:62-63 | packages/trace_lab/retrieve.py::LexicalIndex.bm25_scores@packages/trace_lab/retrieve.py:94-96",
+  "error": null
+}

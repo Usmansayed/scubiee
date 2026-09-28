@@ -1,0 +1,46 @@
+{
+  "ok": true,
+  "tool": "pack_poly_embed",
+  "engine": "poly_embed",
+  "elapsed_s": 0.21,
+  "n_pack": 2,
+  "seed": {
+    "file": "packages/pipeline/__main__.py",
+    "symbol": "cmd_dashboard",
+    "id": "packages/pipeline/__main__.py::cmd_dashboard"
+  },
+  "pack": [
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "cmd_dashboard",
+      "score": 1.0,
+      "loc": "packages/pipeline/__main__.py:923-942",
+      "id": "packages/pipeline/__main__.py::cmd_dashboard",
+      "chars": 668
+    },
+    {
+      "file": "packages/pipeline/dashboard_server.py",
+      "symbol": "dashboard_status",
+      "score": 1.0,
+      "loc": "packages/pipeline/dashboard_server.py:675-688",
+      "id": "packages/pipeline/dashboard_server.py::dashboard_status",
+      "chars": 525
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/pipeline/__main__.py::cmd_dashboard",
+      "loc": "packages/pipeline/__main__.py:923-942",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/dashboard_server.py::dashboard_status",
+      "loc": "packages/pipeline/dashboard_server.py:675-688",
+      "edge": "seed",
+      "score": 1.0
+    }
+  ],
+  "pack_query": "dashboard_server HTTP status health endpoints operator uvicorn cmd_dashboard\nrelevant_chunks: packages/pipeline/__main__.py::cmd_dashboard@packages/pipeline/__main__.py:923-942 | packages/pipeline/dashboard_server.py::dashboard_status@packages/pipeline/dashboard_server.py:675-688 | packages/pipeline/__main__.py::cmd_status@packages/pipeline/__main__.py:772-843",
+  "error": null
+}

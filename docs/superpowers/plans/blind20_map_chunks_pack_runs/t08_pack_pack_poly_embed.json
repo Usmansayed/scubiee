@@ -1,0 +1,64 @@
+{
+  "ok": true,
+  "tool": "pack_poly_embed",
+  "engine": "poly_embed",
+  "elapsed_s": 0.196,
+  "n_pack": 2,
+  "seed": {
+    "file": "packages/pipeline/context_trace.py",
+    "symbol": "run_expand_context",
+    "id": "packages/pipeline/context_trace.py::run_expand_context"
+  },
+  "pack": [
+    {
+      "file": "packages/pipeline/context_trace.py",
+      "symbol": "run_expand_context",
+      "score": 1.0,
+      "loc": "packages/pipeline/context_trace.py:807-952",
+      "id": "packages/pipeline/context_trace.py::run_expand_context",
+      "chars": 5061
+    },
+    {
+      "file": "packages/pipeline/context_trace.py",
+      "symbol": "build_call_chain",
+      "score": 1.0,
+      "loc": "packages/pipeline/context_trace.py:528-551",
+      "id": "packages/pipeline/context_trace.py::build_call_chain",
+      "chars": 869
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/pipeline/context_trace.py::run_expand_context",
+      "loc": "packages/pipeline/context_trace.py:807-952",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/context_trace.py::build_call_chain",
+      "loc": "packages/pipeline/context_trace.py:528-551",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/context_trace.py::run_collect_hot",
+      "loc": "packages/pipeline/context_trace.py:955-1051",
+      "edge": "seed",
+      "score": 0.735
+    },
+    {
+      "id": "packages/pipeline/context_trace.py::heatmap_to_cards",
+      "loc": "packages/pipeline/context_trace.py:581-619",
+      "edge": "seed",
+      "score": 0.735
+    },
+    {
+      "id": "packages/pipeline/context_trace.py::card_role",
+      "loc": "packages/pipeline/context_trace.py:372-395",
+      "edge": "seed",
+      "score": 0.655
+    }
+  ],
+  "pack_query": "expand_context direction callees callers effects with_bodies hop chain node id\nrelevant_chunks: packages/pipeline/context_trace.py::run_expand_context@packages/pipeline/context_trace.py:807-952 | packages/pipeline/context_trace.py::build_call_chain@packages/pipeline/context_trace.py:528-551 | packages/pipeline/locate_cli.py::cli_expand@packages/pipeline/locate_cli.py:230-258",
+  "error": null
+}

@@ -1,0 +1,110 @@
+{
+  "ok": true,
+  "tool": "map",
+  "query": "scubiee map pack CLI locate_cli argparse seed-file mode lean enrich prompt",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/pipeline/locate_cli.py",
+      "symbol": "",
+      "score": 34.9246,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/locate_cli.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "scripts/blind_map_pack_20.py",
+      "symbol": "",
+      "score": 30.3371,
+      "start_line": null,
+      "end_line": null,
+      "loc": "scripts/blind_map_pack_20.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "tests/test_locate_cli.py",
+      "symbol": "",
+      "score": 13.4038,
+      "start_line": null,
+      "end_line": null,
+      "loc": "tests/test_locate_cli.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "score": 13.1335,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "packages/pipeline/templates/scubiee.md",
+      "symbol": "",
+      "score": 6.8381,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/templates/scubiee.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "docs/superpowers/plans/2026-09-06-blind-map-pack-20-phase2.md",
+      "symbol": "",
+      "score": 5.3868,
+      "start_line": null,
+      "end_line": null,
+      "loc": "docs/superpowers/plans/2026-09-06-blind-map-pack-20-phase2.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "packages/pipeline/mcp_response_lean.py",
+      "symbol": "",
+      "score": 4.5182,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/mcp_response_lean.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "docs/superpowers/plans/2026-09-06-blind-map-pack-20-results.md",
+      "symbol": "",
+      "score": 4.5169,
+      "start_line": null,
+      "end_line": null,
+      "loc": "docs/superpowers/plans/2026-09-06-blind-map-pack-20-results.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "docs/scubiee-cli-e2e-manual-test.md",
+      "symbol": "",
+      "score": 4.4881,
+      "start_line": null,
+      "end_line": null,
+      "loc": "docs/scubiee-cli-e2e-manual-test.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "packages/pipeline/mcp_locate.py",
+      "symbol": "",
+      "score": 4.458,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/mcp_locate.py:1-1",
+      "why": ""
+    }
+  ],
+  "suggested_seed": null,
+  "elapsed_s": 0.658,
+  "via": "search_repo(use_server=True)"
+}

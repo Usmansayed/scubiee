@@ -1,0 +1,220 @@
+{
+  "id": "t20",
+  "family": "dense-rerank",
+  "task": "How does search-time CodeRankLLM / dense rerank reorder conductor hits?",
+  "enrich_prompt": "CodeRankLLM rerank search-time dense conductor D_rerank hits reorder not index",
+  "map": {
+    "elapsed_s": 0.408,
+    "n_cards": 10,
+    "top_files": [
+      "packages/conductor/architectures.py",
+      "packages/conductor/service.py",
+      "packages/conductor/top3.py",
+      "packages/conductor/query_router.py",
+      "packages/pipeline/searcher.py"
+    ]
+  },
+  "enrich_seed": {
+    "ok": true,
+    "elapsed_s": 0.055,
+    "seed_file": "packages/conductor/architectures.py",
+    "seed": {
+      "file": "packages/conductor/architectures.py",
+      "symbol": "_path_tokens",
+      "id": "packages/conductor/architectures.py::_path_tokens",
+      "loc": null
+    },
+    "chunks": [
+      {
+        "file": "packages/conductor/architectures.py",
+        "symbol": "_path_tokens",
+        "loc": "packages/conductor/architectures.py:43-44",
+        "score": 1.0,
+        "kind": "function"
+      },
+      {
+        "file": "packages/conductor/f95.py",
+        "symbol": "path_tokens",
+        "loc": "packages/conductor/f95.py:111-120",
+        "score": 0.9405,
+        "kind": "function"
+      }
+    ],
+    "n_cards": 2,
+    "error": null
+  },
+  "arms": {
+    "pack_context": {
+      "ok": true,
+      "tool": "pack_context",
+      "engine": "composite_v1",
+      "elapsed_s": 0.047,
+      "n_pack": 2,
+      "seed": {
+        "file": "packages/conductor/architectures.py",
+        "symbol": "_path_tokens",
+        "id": "packages/conductor/architectures.py::_path_tokens"
+      },
+      "pack": [
+        {
+          "file": "packages/conductor/architectures.py",
+          "symbol": "_path_tokens",
+          "score": 1.0,
+          "loc": "packages/conductor/architectures.py:43-44",
+          "id": "packages/conductor/architectures.py::_path_tokens",
+          "chars": 76
+        },
+        {
+          "file": "packages/conductor/f95.py",
+          "symbol": "path_tokens",
+          "score": 0.9405,
+          "loc": "packages/conductor/f95.py:111-120",
+          "id": "packages/conductor/f95.py::path_tokens",
+          "chars": 323
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/conductor/architectures.py::_path_tokens",
+          "loc": "packages/conductor/architectures.py:43-44",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/conductor/f95.py::path_tokens",
+          "loc": "packages/conductor/f95.py:111-120",
+          "edge": "calls",
+          "score": 0.9405
+        }
+      ],
+      "error": null,
+      "seed_chunks": [
+        {
+          "file": "packages/conductor/architectures.py",
+          "symbol": "_path_tokens",
+          "loc": "packages/conductor/architectures.py:43-44",
+          "score": 1.0,
+          "kind": "function"
+        },
+        {
+          "file": "packages/conductor/f95.py",
+          "symbol": "path_tokens",
+          "loc": "packages/conductor/f95.py:111-120",
+          "score": 0.9405,
+          "kind": "function"
+        }
+      ],
+      "pack_query": "CodeRankLLM rerank search-time dense conductor D_rerank hits reorder not index | seeds: packages/conductor/architectures.py::_path_tokens packages/conductor/f95.py::path_tokens"
+    },
+    "pack_poly_embed": {
+      "ok": true,
+      "tool": "pack_poly_embed",
+      "engine": "poly_embed",
+      "elapsed_s": 0.142,
+      "n_pack": 1,
+      "seed": {
+        "file": "packages/conductor/architectures.py",
+        "symbol": "_path_tokens",
+        "id": "packages/conductor/architectures.py::_path_tokens"
+      },
+      "pack": [
+        {
+          "file": "packages/conductor/architectures.py",
+          "symbol": "_path_tokens",
+          "score": 1.0,
+          "loc": "packages/conductor/architectures.py:43-44",
+          "id": "packages/conductor/architectures.py::_path_tokens",
+          "chars": 76
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/conductor/architectures.py::_path_tokens",
+          "loc": "packages/conductor/architectures.py:43-44",
+          "edge": "seed",
+          "score": 1.0
+        }
+      ],
+      "error": null,
+      "seed_chunks": [
+        {
+          "file": "packages/conductor/architectures.py",
+          "symbol": "_path_tokens",
+          "loc": "packages/conductor/architectures.py:43-44",
+          "score": 1.0,
+          "kind": "function"
+        },
+        {
+          "file": "packages/conductor/f95.py",
+          "symbol": "path_tokens",
+          "loc": "packages/conductor/f95.py:111-120",
+          "score": 0.9405,
+          "kind": "function"
+        }
+      ],
+      "pack_query": "CodeRankLLM rerank search-time dense conductor D_rerank hits reorder not index | seeds: packages/conductor/architectures.py::_path_tokens packages/conductor/f95.py::path_tokens"
+    },
+    "pack_semantic": {
+      "ok": true,
+      "tool": "pack_semantic",
+      "engine": "semantic_tracer_fuse",
+      "elapsed_s": 0.212,
+      "n_pack": 2,
+      "seed": {
+        "file": "packages/conductor/architectures.py",
+        "symbol": "_path_tokens",
+        "id": "packages/conductor/architectures.py::_path_tokens"
+      },
+      "pack": [
+        {
+          "file": "packages/conductor/architectures.py",
+          "symbol": "_path_tokens",
+          "score": 1.0,
+          "loc": "packages/conductor/architectures.py:43-44",
+          "id": "packages/conductor/architectures.py::_path_tokens",
+          "chars": 76
+        },
+        {
+          "file": "packages/conductor/f95.py",
+          "symbol": "path_tokens",
+          "score": 0.8885,
+          "loc": "packages/conductor/f95.py:111-120",
+          "id": "packages/conductor/f95.py::path_tokens",
+          "chars": 323
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/conductor/architectures.py::_path_tokens",
+          "loc": "packages/conductor/architectures.py:43-44",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/conductor/f95.py::path_tokens",
+          "loc": "packages/conductor/f95.py:111-120",
+          "edge": "calls",
+          "score": 0.8885
+        }
+      ],
+      "error": null,
+      "seed_chunks": [
+        {
+          "file": "packages/conductor/architectures.py",
+          "symbol": "_path_tokens",
+          "loc": "packages/conductor/architectures.py:43-44",
+          "score": 1.0,
+          "kind": "function"
+        },
+        {
+          "file": "packages/conductor/f95.py",
+          "symbol": "path_tokens",
+          "loc": "packages/conductor/f95.py:111-120",
+          "score": 0.9405,
+          "kind": "function"
+        }
+      ],
+      "pack_query": "CodeRankLLM rerank search-time dense conductor D_rerank hits reorder not index | seeds: packages/conductor/architectures.py::_path_tokens packages/conductor/f95.py::path_tokens"
+    }
+  }
+}

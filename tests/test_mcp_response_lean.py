@@ -529,3 +529,62 @@ def test_pack_context_full_locate_opt_in(monkeypatch: pytest.MonkeyPatch) -> Non
     out = apply_lean_fields(raw)
     assert out["guide"] == "keep"
     assert "heatmap" in out
+
+
+def test_heat_card_clamps_whole_class_loc(monkeypatch) -> None:
+    """BETA-10: a class seed spanning 1,370 lines gets a readable head loc + full_loc."""
+    from pipeline.mcp_response_lean import _heat_card
+
+    monkeypatch.delenv("CTX_PACK_LOC_MAX_LINES", raising=False)
+    monkeypatch.delenv("CTX_PACK_LOC_HEAD_LINES", raising=False)
+    big = _heat_card(
+        {
+            "id": "packages/pipeline/sync_loop.py::BackgroundSyncLoop",
+            "loc": "packages/pipeline/sync_loop.py:105-1474",
+            "symbol": "BackgroundSyncLoop",
+            "score": 1.0,
+        },
+        rank=1,
+        heat="hot",
+    )
+    assert big["loc"] == "packages/pipeline/sync_loop.py:105-224"
+    assert big["full_loc"] == "packages/pipeline/sync_loop.py:105-1474"
+
+    small = _heat_card(
+        {"id": "a.py::f", "loc": "a.py:10-40", "symbol": "f", "score": 0.5},
+        rank=2,
+        heat="warm",
+    )
+    assert small["loc"] == "a.py:10-40"
+    assert "full_loc" not in small
+
+
+def test_include_bodies_paths_clamp_loc(monkeypatch) -> None:
+    """BETA-10: chain/cold/pack loc pointers clamp too (include_bodies path)."""
+    from pipeline.mcp_response_lean import _slim_loc_item, _slim_pack_item
+
+    monkeypatch.delenv("CTX_PACK_LOC_MAX_LINES", raising=False)
+    monkeypatch.delenv("CTX_PACK_LOC_HEAD_LINES", raising=False)
+    chain = _slim_loc_item(
+        {
+            "id": "packages/pipeline/sync_loop.py::BackgroundSyncLoop",
+            "loc": "packages/pipeline/sync_loop.py:105-1474",
+            "edge": "seed",
+            "score": 1.05,
+            "symbol": "BackgroundSyncLoop",
+        }
+    )
+    assert chain["loc"] == "packages/pipeline/sync_loop.py:105-224"
+    assert chain["full_loc"] == "packages/pipeline/sync_loop.py:105-1474"
+
+    body = _slim_pack_item(
+        {
+            "id": "packages/pipeline/sync_loop.py::BackgroundSyncLoop",
+            "loc": "packages/pipeline/sync_loop.py:105-1474",
+            "text": "class BackgroundSyncLoop: ...",
+        }
+    )
+    # The requested body is preserved; only the loc pointer is bounded.
+    assert body["text"] == "class BackgroundSyncLoop: ..."
+    assert body["loc"] == "packages/pipeline/sync_loop.py:105-224"
+    assert body["full_loc"] == "packages/pipeline/sync_loop.py:105-1474"

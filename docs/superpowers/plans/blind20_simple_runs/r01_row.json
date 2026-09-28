@@ -1,0 +1,88 @@
+{
+  "id": "r01",
+  "family": "turboquant-search",
+  "task": "Where is TurboQuant / quantized FAISS used when serving search hits?",
+  "enrich_prompt": "TurboQuant faiss+turboquant quantized dense search serve WarmSearchEngine FaissDenseAdapter vector_backend bits compress",
+  "map": {
+    "elapsed_s": 127.927,
+    "n_cards": 10,
+    "suggested_seed": {
+      "file": "packages/pipeline/searcher.py",
+      "symbol": ""
+    },
+    "top_files": [
+      "packages/pipeline/searcher.py",
+      "packages/pipeline/engine.py",
+      "docs/pipeline-faiss-turboquant.md",
+      "packages/pipeline/turbo_quant.py",
+      "packages/pipeline/vectordb.py"
+    ]
+  },
+  "arms": {
+    "composite_v1": {
+      "ok": true,
+      "engine": "composite_v1",
+      "policy": "strict",
+      "elapsed_s": 18.86,
+      "n_pack": 3,
+      "pack": [
+        {
+          "file": "packages/pipeline/searcher.py",
+          "symbol": "FaissDenseAdapter.__init__",
+          "score": 1.0,
+          "loc": "packages/pipeline/searcher.py:33-38",
+          "id": "packages/pipeline/searcher.py::FaissDenseAdapter.__init__"
+        },
+        {
+          "file": "packages/pipeline/searcher.py",
+          "symbol": "SearchEngineError.__init__",
+          "score": 0.9405,
+          "loc": "packages/pipeline/searcher.py:58-60",
+          "id": "packages/pipeline/searcher.py::SearchEngineError.__init__"
+        },
+        {
+          "file": "packages/conductor/dense_index.py",
+          "symbol": "DenseIndex.__init__",
+          "score": 0.75,
+          "loc": "packages/conductor/dense_index.py:29-33",
+          "id": "packages/conductor/dense_index.py::DenseIndex.__init__"
+        }
+      ],
+      "error": null
+    },
+    "polytrace": {
+      "ok": true,
+      "engine": "polytrace",
+      "policy": "strict",
+      "elapsed_s": 13.691,
+      "n_pack": 1,
+      "pack": [
+        {
+          "file": "packages/pipeline/searcher.py",
+          "symbol": "FaissDenseAdapter.__init__",
+          "score": 1.0,
+          "loc": "packages/pipeline/searcher.py:33-38",
+          "id": "packages/pipeline/searcher.py::FaissDenseAdapter.__init__"
+        }
+      ],
+      "error": null
+    },
+    "ultimate": {
+      "ok": true,
+      "engine": "ultimate",
+      "policy": "strict",
+      "elapsed_s": 14.394,
+      "n_pack": 1,
+      "pack": [
+        {
+          "file": "packages/pipeline/searcher.py",
+          "symbol": "FaissDenseAdapter.__init__",
+          "score": 1.0,
+          "loc": "packages/pipeline/searcher.py:33-38",
+          "id": "packages/pipeline/searcher.py::FaissDenseAdapter.__init__"
+        }
+      ],
+      "error": null
+    }
+  }
+}

@@ -293,10 +293,23 @@ class HotDelta:
     # full-publish fallback) must call this first or it publishes chunks with
     # no vectors.
     flush: Any | None = None
+    # Ids of the records ``matrix`` rows belong to, in row order. Records not
+    # listed kept their id and vector (unchanged chunk, maybe moved lines).
+    embedded_ids: list[int] | None = None
 
     @property
     def append_only(self) -> bool:
         return not self.removed_ids and bool(self.records) and self.full_embed_coverage
+
+    @property
+    def patchable(self) -> bool:
+        """Edits and deletions the live binder can absorb without a reload."""
+        if self.append_only:
+            return True
+        if self.embedded_ids is None or not (self.records or self.removed_ids):
+            return False
+        rows = int(getattr(self.matrix, "shape", (0,))[0]) if self.matrix is not None else 0
+        return rows == len(self.embedded_ids)
 
 
 @dataclass
@@ -450,6 +463,7 @@ def _upsert_named_vectors(
         if dropped and callable(compact) and not hot_lane:
             compact()
     if embed_records and matrix is not None:
+        _avoid_tombstoned_ids(col, embed_records, stages)
         payloads = [
             {
                 "file": c.file,
@@ -492,7 +506,62 @@ def _patch_file_merkle(store: PipelineStore, root: Path, old: dict[str, str], to
         path = root / rel_posix
         if path.is_file():
             hashes[canonical] = file_sha256(path)
-    store.save_merkle(hashes)
+    try:
+        prev_mtimes = store.load_mtimes()
+    except Exception:  # noqa: BLE001
+        prev_mtimes = None
+    store.save_merkle(hashes, reuse_mtimes=prev_mtimes, restat=touch)
+
+
+def _avoid_tombstoned_ids(col, embed_records, stages: dict[str, float] | None) -> int:
+    """Give new chunks ids the collection has never held.
+
+    New ids start at max(id in chunks.jsonl) + 1. Deleting the newest file
+    lowers that max, but its vectors stay in the collection as tombstones, so
+    the next new file reused them and ``col.add`` took the upsert path: a full
+    ``compact()`` of every vector (~7s here) on a save the user waits on.
+    Must run before the ids are written anywhere (vectors precede chunk lines).
+    """
+    held = getattr(col, "ids", None)
+    if not held:
+        return 0
+    held_set = set(int(i) for i in held)
+    clashing = [c for c in embed_records if int(c.id) in held_set]
+    if not clashing:
+        return 0
+    next_free = max(max(held_set), max(int(c.id) for c in embed_records)) + 1
+    for rec in clashing:
+        rec.id = next_free
+        next_free += 1
+    if stages is not None:
+        stages["id_remap"] = float(len(clashing))
+    return len(clashing)
+
+
+def _commit_precomputed_graph(store: PipelineStore, src: Path, graph_json: Path) -> None:
+    """Swap a child-merged graph into place (rename; copy if a reader holds it)."""
+    if not src.is_file():
+        raise RuntimeError(f"precomputed graph missing: {src}")
+    with store_write_lock(store.base):
+        last: Exception | None = None
+        for attempt in range(5):
+            try:
+                os.replace(src, graph_json)
+                return
+            except PermissionError as exc:
+                # Windows: a reader without FILE_SHARE_DELETE blocks the rename.
+                last = exc
+                time.sleep(0.05 * (attempt + 1))
+        import shutil
+
+        try:
+            shutil.copyfile(src, graph_json)
+        except OSError as exc:
+            raise RuntimeError(f"graph commit failed: {exc}; last rename error {last}") from exc
+        try:
+            src.unlink()
+        except OSError:
+            pass
 
 
 def _refresh_publication(store: PipelineStore) -> None:
@@ -518,11 +587,14 @@ def _refresh_publication(store: PipelineStore) -> None:
     ]
     if not published:
         return
+    from pipeline.artifact_guard import read_manifest
+
+    previous = read_manifest(store.base)
     try:
         invalidate_manifest(store.base)
     except Exception:  # noqa: BLE001
         pass
-    publish_manifest(store.base, published)
+    publish_manifest(store.base, published, previous=previous)
     try:
         from pipeline.bm25_cache import invalidate_bm25_cache
 
@@ -650,12 +722,18 @@ def incremental_sync(
     capacity_wait_s: float = 90.0,
     inline: bool = True,
     hot_lane: bool = False,
+    graph_precomputed: Path | None = None,
 ) -> IncrementalResult:
     """Re-parse + re-embed only changed/removed files; upsert into FAISS collection.
 
     When *bulk* is True the bootstrap memory budget (800 MB RSS, batch 48) is
     used instead of the conservative background budget, suitable for 501–10000
     chunk changes that should complete in minutes like an initial index.
+
+    *graph_precomputed*: a graph.json a child process already merged for exactly
+    ``force_files`` (see ``pipeline.graph_merge_worker``). It replaces graph.json
+    instead of running the whole-graph merge here, and other owed paths are not
+    pulled into this sync because that graph does not carry them.
     """
     t0 = time.perf_counter()
     root = root.resolve()
@@ -663,8 +741,21 @@ def incremental_sync(
         from pipeline.resources import get_resource_manager
 
         rm = get_resource_manager()
-        budget = rm.wait_for_capacity("sync", timeout_s=capacity_wait_s)
-        if not budget.allow:
+        if hot_lane:
+            # A save is a few MB of work; the near-OOM guard is for bulk runs.
+            from pipeline.resources import hot_lane_wait_s
+
+            budget = rm.wait_for_capacity("sync", timeout_s=min(capacity_wait_s, hot_lane_wait_s()))
+            if not budget.allow:
+                print(
+                    f"[resources] hot sync under {budget.pressure} pressure "
+                    f"(available={(budget.sample or {}).get('ram_available_mb')}MB) — proceeding",
+                    file=sys.stderr,
+                    flush=True,
+                )
+        else:
+            budget = rm.wait_for_capacity("sync", timeout_s=capacity_wait_s)
+        if not budget.allow and not hot_lane:
             return IncrementalResult(
                 refreshed=False,
                 files=[],
@@ -676,6 +767,9 @@ def incremental_sync(
             )
     except Exception as exc:  # noqa: BLE001
         print(f"[resources] sync gate skipped: {exc}", file=sys.stderr, flush=True)
+    # Stage timers for the part before slicing (issue 4: sync_ms exceeded the
+    # sum of the logged stages by seconds).
+    t_gate_done = time.perf_counter()
 
     store = PipelineStore(root, base_dir=base_dir, vdb=vdb)
     from pipeline.memory_budget import apply_index_memory_budget, resolve_index_memory_budget
@@ -703,12 +797,20 @@ def incremental_sync(
         added, modified, removed_f = [], [], []
         for rel in {f.replace("\\", "/") for f in force_files}:
             p = root / rel
+            # ``old`` keys are canonical (backslash + lower-case on Windows).
+            known = rel in old or canonical_relpath(rel) in old
             if p.is_file():
-                if rel not in old:
+                if not known:
                     added.append(rel)
                 else:
                     modified.append(rel)  # force re-embed even if hash matches
-            elif rel in old:
+            else:
+                # Gone from disk: drop its chunks even when the merkle never
+                # listed it. A chunk-only "ghost" (deleted while the engine was
+                # down, or between a full index's chunking and its merkle scan)
+                # was skipped here, so the poll re-reported it as a save every
+                # second forever — which also held every graph catch-up behind
+                # a hot-quiet window that never elapsed (issue 6).
                 removed_f.append(rel)
         report = FreshnessReport(
             clean=False,
@@ -781,7 +883,7 @@ def incremental_sync(
             )
 
     changed = sorted(set(report.diff.changed_files) | set(force_files or []))
-    if not hot_lane:
+    if not hot_lane and graph_precomputed is None:
         # Catch up on graph work a previous hot save deferred. Re-parsing these
         # files is cheap (the chunk Merkle finds no delta, so nothing re-embeds);
         # it exists so their nodes/edges reach graph.json.
@@ -818,11 +920,16 @@ def incremental_sync(
             error="queued for keeper; request thread does not embed",
         )
 
+    t_prep_done = time.perf_counter()
+    t_after_reconcile: float | None = None
     try:
         # Per-stage wall clock. When a save misses the 5s map SLA the log has to
         # name the stage that ate it (parse vs embed vs write vs publish) instead
         # of one opaque total.
-        stages: dict[str, float] = {}
+        stages: dict[str, float] = {
+            "gate_ms": (t_gate_done - t0) * 1000,
+            "prep_ms": (t_prep_done - t_gate_done) * 1000,
+        }
         # Re-extract graph for touched files + neighbors? Keep simple: re-extract touched only,
         # rebuild full graph from all currently indexed file set + new
         touch_set = {f.replace("\\", "/") for f in touch}
@@ -921,6 +1028,7 @@ def incremental_sync(
         # and the paths are queued for a non-hot catch-up sync.
         t_graph = time.perf_counter()
         graph_pending: list[str] = []
+        graph_pruned: set[str] = set()
         if hot_lane and named_delta:
             graph_pending = sorted(touch_set)
             pending_meta = sorted(
@@ -930,13 +1038,28 @@ def incremental_sync(
         else:
             try:
                 graph_json = store.base / "graph.json"
-                if graph_json.is_file() or force_files:
+                if graph_precomputed is not None:
+                    stages["graph_commit"] = 1.0
+                    _commit_precomputed_graph(store, Path(graph_precomputed), graph_json)
+                elif graph_json.is_file():
+                    # No graph.json means a broken store: patching would write a
+                    # graph of only the touched files. Rebuild it whole instead.
+                    # Gone touched/owed paths are pruned too: a hot delete took
+                    # them out of the Merkle, so they never reach ``removed``.
+                    gone_owed = {
+                        str(p).replace("\\", "/")
+                        for p in (meta.get("graph_pending") or [])
+                        if not (root / str(p)).is_file()
+                    }
+                    gone_touched = {p for p in touch_set if not (root / p).is_file()}
+                    prune = sorted(set(removed) | gone_touched | gone_owed)
                     patch_and_save_graph(
                         raw,
                         root,
                         graph_json,
-                        prune_sources=list(removed) if removed else None,
+                        prune_sources=prune or None,
                     )
+                    graph_pruned = gone_owed
                 else:
                     roots = meta.get("fast_roots")
                     all_paths = collect_index_paths(
@@ -956,9 +1079,20 @@ def incremental_sync(
                     flush=True,
                 )
             else:
-                # This sync carried the graph, so nothing is owed any more.
+                # This sync carried the graph for its own paths. Only those are
+                # paid off: a precomputed graph covers exactly force_files, and a
+                # plain non-hot sync already pulled every owed path into touch.
                 if meta.get("graph_pending"):
-                    meta.pop("graph_pending", None)
+                    left = sorted(
+                        str(p)
+                        for p in meta.get("graph_pending") or []
+                        if str(p).replace("\\", "/") not in touch_set
+                        and str(p).replace("\\", "/") not in graph_pruned
+                    )
+                    if left:
+                        meta["graph_pending"] = left
+                    else:
+                        meta.pop("graph_pending", None)
         stages["graph_ms"] = (time.perf_counter() - t_graph) * 1000
 
         # A file Merkle diff decides what to parse. A chunk Merkle diff decides
@@ -1050,6 +1184,7 @@ def incremental_sync(
                     _refresh_publication(store)
                 except Exception as merkle_exc:  # noqa: BLE001
                     warnings.append(f"no_delta_merkle: {merkle_exc}")
+            t_nd_reconcile = time.perf_counter()
             try:
                 fixed = reconcile_vector_store(store, meta=meta)
                 backfilled = int(fixed.get("embedded") or 0) + int(
@@ -1057,6 +1192,7 @@ def incremental_sync(
                 )
             except Exception as bf_exc:  # noqa: BLE001
                 warnings.append(f"vector_reconcile: {bf_exc}")
+            stages["reconcile_ms"] = (time.perf_counter() - t_nd_reconcile) * 1000
             if backfilled:
                 from pipeline.engine import clear_engines
 
@@ -1064,7 +1200,12 @@ def incremental_sync(
             print(
                 f"[sync] no chunk delta files={len(touch)} "
                 f"paths={','.join(touch[:8])}{'…' if len(touch) > 8 else ''} "
-                f"reconciled={backfilled} ms={(time.perf_counter() - t0) * 1000:.0f}",
+                f"reconciled={backfilled} ms={(time.perf_counter() - t0) * 1000:.0f} "
+                + " ".join(
+                    f"{k}={v:.0f}"
+                    for k, v in stages.items()
+                    if k.endswith("_ms")
+                ),
                 file=sys.stderr,
                 flush=True,
             )
@@ -1128,14 +1269,20 @@ def incremental_sync(
                 dim=dim_delta,
                 full_embed_coverage=bool(coverage),
                 base_chunk_count=len(kept_lines or []),
+                embedded_ids=[int(r.id) for r in embed_records],
             )
             stages["write_ms"] = (time.perf_counter() - t_write) * 1000
             t_reconcile = time.perf_counter()
             try:
-                reconcile_vector_store(store, meta=meta)
+                # Crash-drift repair parses the whole corpus (~0.5s here). A save
+                # just wrote exactly its own delta; the graph catch-up for the
+                # same paths (non-hot, ~30s later) runs the full reconcile.
+                if not hot_lane:
+                    reconcile_vector_store(store, meta=meta)
             except Exception as bf_exc:  # noqa: BLE001
                 warnings.append(f"vector_reconcile: {bf_exc}")
             stages["reconcile_ms"] = (time.perf_counter() - t_reconcile) * 1000
+            t_after_reconcile = time.perf_counter()
             _patch_file_merkle(store, root, old, touch)
             chunk_merkle = store.load_chunk_merkle()
             for file in touch_set:
@@ -1338,6 +1485,8 @@ def incremental_sync(
         # index. Refresh the manifest only after all of those writes complete,
         # otherwise readiness will reject every live update as corruption.
         t_publication = time.perf_counter()
+        if t_after_reconcile is not None:
+            stages["merkle_ms"] = (t_publication - t_after_reconcile) * 1000
         _refresh_publication(store)
         stages["publication_ms"] = (time.perf_counter() - t_publication) * 1000
         t_cards = time.perf_counter()
@@ -1363,9 +1512,14 @@ def incremental_sync(
             warnings = list(warnings or [])
             warnings.append(f"capability_cards: {cap_exc}")
         stages["cards_ms"] = (time.perf_counter() - t_cards) * 1000
-        from pipeline.engine import clear_engines
+        if hot_delta is None:
+            # No publisher will patch a live binder: make this process reload.
+            # With a hot delta the engine's publisher patches (or reloads) the
+            # binder itself; clearing here only forced the next load_engine()
+            # caller (the 8s embed keepalive) into a full second load (issue 4).
+            from pipeline.engine import clear_engines
 
-        clear_engines()
+            clear_engines()
 
         upserted = len(embed_records)
         removed_n = len(removed_ids)

@@ -1,0 +1,92 @@
+{
+  "id": "r04",
+  "enrich_prompt": "never-index never_index deny paths skip files indexing exclude ignore globs managed",
+  "suggested_seed": {
+    "file": "packages/pipeline/repo_lifecycle.py",
+    "symbol": "",
+    "loc": "packages/pipeline/repo_lifecycle.py:1-1",
+    "score": 11.257855789543147
+  },
+  "chunks": [
+    {
+      "file": "tests/test_repo_lifecycle.py",
+      "symbol": "",
+      "loc": "tests/test_repo_lifecycle.py:1-1",
+      "score": 12.7595574358122,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "tests/test_auto_sessions_observability.py",
+      "symbol": "",
+      "loc": "tests/test_auto_sessions_observability.py:1-1",
+      "score": 12.165542968870025,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/pipeline/repo_lifecycle.py",
+      "symbol": "",
+      "loc": "packages/pipeline/repo_lifecycle.py:1-1",
+      "score": 11.257855789543147,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/pipeline/paths.py",
+      "symbol": "",
+      "loc": "packages/pipeline/paths.py:1-1",
+      "score": 5.596128302279031,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "tests/test_index_coverage.py",
+      "symbol": "",
+      "loc": "tests/test_index_coverage.py:1-1",
+      "score": 4.3923428953789365,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "docs/web-info/indexing-and-projects.md",
+      "symbol": "",
+      "loc": "docs/web-info/indexing-and-projects.md:1-1",
+      "score": 4.219713493758829,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "tests/test_scenario_backtracking.py",
+      "symbol": "",
+      "loc": "tests/test_scenario_backtracking.py:1-1",
+      "score": 3.7640415065377613,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/pipeline/index_manager.py",
+      "symbol": "",
+      "loc": "packages/pipeline/index_manager.py:1-1",
+      "score": 3.474022697976801,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "tests/test_prune_engine_state.py",
+      "symbol": "",
+      "loc": "tests/test_prune_engine_state.py:1-1",
+      "score": 3.272474326050167,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/graphify/detect.py",
+      "symbol": "",
+      "loc": "packages/graphify/detect.py:1-1",
+      "score": 3.2695488515572144,
+      "start_line": null,
+      "end_line": null
+    }
+  ]
+}

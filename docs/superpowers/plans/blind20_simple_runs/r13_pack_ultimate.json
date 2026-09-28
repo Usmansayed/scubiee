@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "engine": "ultimate",
+  "policy": "strict",
+  "elapsed_s": 0.015,
+  "n_pack": 1,
+  "pack": [
+    {
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": "_templates_dir",
+      "score": 1.0,
+      "loc": "packages/pipeline/rules_installer.py:40-41",
+      "id": "packages/pipeline/rules_installer.py::_templates_dir"
+    }
+  ],
+  "error": null
+}

@@ -44,10 +44,11 @@ def _shingles(text: str, k: int = 3) -> set[str]:
 
 
 def _make_minhash(text: str, num_perm: int = 128) -> MinHash:
-    # Strip spaces so "graph extractor" and "graphextractor" share shingles
+    # Strip spaces so "graph extractor" and "graphextractor" share shingles.
+    # Batch all shingles into one vectorized hash pass (see MinHash.update_batch)
+    # — per-shingle update() was ~2s of dedup on a 16k-node graph.
     m = MinHash(num_perm=num_perm)
-    for shingle in _shingles(text.replace(" ", "")):
-        m.update(shingle.encode("utf-8"))
+    m.update_batch([s.encode("utf-8") for s in _shingles(text.replace(" ", ""))])
     return m
 
 

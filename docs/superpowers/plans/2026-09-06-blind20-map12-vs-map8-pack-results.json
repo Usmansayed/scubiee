@@ -1,0 +1,4097 @@
+{
+  "protocol": "blind20_map12_vs_map8_pack",
+  "created": "2026-09-06T10:07:07Z",
+  "elapsed_s": 29.82,
+  "n": 20,
+  "mean_must_file": {
+    "map_k12": 0.863,
+    "map_k12_chunks": 0.7,
+    "map8_pack": 0.767
+  },
+  "mean_must_symbol": {
+    "map_k12": 0.25,
+    "map_k12_chunks": 0.679,
+    "map8_pack": 0.696
+  },
+  "starting_point_winner": "map8_pack",
+  "file_coverage_leader": "map_k12",
+  "rows": [
+    {
+      "id": "t01",
+      "family": "faiss-publish",
+      "task": "How does a rebuilt FAISS index get published so warm search starts serving the new vectors?",
+      "must_files": [
+        "packages/pipeline/artifact_guard.py",
+        "packages/pipeline/project_id.py",
+        "packages/pipeline/engine.py",
+        "packages/pipeline/ce_service.py"
+      ],
+      "must_symbols": [
+        "publish_manifest",
+        "index_is_usable",
+        "WarmSearchEngine",
+        "publish_engine"
+      ],
+      "map_k12": {
+        "elapsed_s": 1.811,
+        "top_files": [
+          "packages/pipeline/artifact_guard.py",
+          "packages/pipeline/memory_governor.py",
+          "packages/pipeline/engine.py",
+          "packages/pipeline/ce_service.py",
+          "tests/test_runtime_publish.py",
+          "packages/graphify/serve.py",
+          "tests/test_venture_stack.py",
+          "packages/trace_lab/vector_index.py"
+        ]
+      },
+      "map_k8": {
+        "elapsed_s": 0.247,
+        "top_files": [
+          "packages/pipeline/artifact_guard.py",
+          "packages/pipeline/memory_governor.py",
+          "packages/pipeline/engine.py",
+          "packages/pipeline/ce_service.py",
+          "tests/test_runtime_publish.py"
+        ]
+      },
+      "chunks_k12": [
+        {
+          "file": "packages/pipeline/artifact_guard.py",
+          "symbol": "publish_manifest",
+          "kind": "function",
+          "loc": "packages/pipeline/artifact_guard.py:68-81",
+          "start_line": 68,
+          "end_line": 81,
+          "score": 6.7
+        },
+        {
+          "file": "packages/pipeline/memory_governor.py",
+          "symbol": "MemoryGovernor.demote_after_index",
+          "kind": "method",
+          "loc": "packages/pipeline/memory_governor.py:320-334",
+          "start_line": 320,
+          "end_line": 334,
+          "score": 9.9
+        },
+        {
+          "file": "packages/pipeline/ce_service.py",
+          "symbol": "RuntimeManager.publish",
+          "kind": "method",
+          "loc": "packages/pipeline/ce_service.py:907-914",
+          "start_line": 907,
+          "end_line": 914,
+          "score": 9.55
+        }
+      ],
+      "chunks_k8": [
+        {
+          "file": "packages/pipeline/artifact_guard.py",
+          "symbol": "publish_manifest",
+          "kind": "function",
+          "loc": "packages/pipeline/artifact_guard.py:68-81",
+          "start_line": 68,
+          "end_line": 81,
+          "score": 6.7
+        },
+        {
+          "file": "packages/pipeline/memory_governor.py",
+          "symbol": "MemoryGovernor.demote_after_index",
+          "kind": "method",
+          "loc": "packages/pipeline/memory_governor.py:320-334",
+          "start_line": 320,
+          "end_line": 334,
+          "score": 9.9
+        },
+        {
+          "file": "packages/pipeline/ce_service.py",
+          "symbol": "RuntimeManager.publish",
+          "kind": "method",
+          "loc": "packages/pipeline/ce_service.py:907-914",
+          "start_line": 907,
+          "end_line": 914,
+          "score": 9.55
+        }
+      ],
+      "pack": {
+        "ok": true,
+        "elapsed_s": 4.271,
+        "n_pack": 4,
+        "pack": [
+          {
+            "file": "packages/pipeline/artifact_guard.py",
+            "symbol": "publish_manifest",
+            "loc": "packages/pipeline/artifact_guard.py:68-81",
+            "id": "packages/pipeline/artifact_guard.py::publish_manifest",
+            "chars": 558
+          },
+          {
+            "file": "packages/pipeline/memory_governor.py",
+            "symbol": "MemoryGovernor.demote_after_index",
+            "loc": "packages/pipeline/memory_governor.py:320-334",
+            "id": "packages/pipeline/memory_governor.py::MemoryGovernor.demote_after_index",
+            "chars": 672
+          },
+          {
+            "file": "packages/pipeline/artifact_guard.py",
+            "symbol": "atomic_write_text",
+            "loc": "packages/pipeline/artifact_guard.py:17-30",
+            "id": "packages/pipeline/artifact_guard.py::atomic_write_text",
+            "chars": 428
+          },
+          {
+            "file": "packages/pipeline/artifact_guard.py",
+            "symbol": "_checksum",
+            "loc": "packages/pipeline/artifact_guard.py:64-65",
+            "id": "packages/pipeline/artifact_guard.py::_checksum",
+            "chars": 90
+          }
+        ],
+        "chain": [
+          {
+            "id": "packages/pipeline/artifact_guard.py::publish_manifest",
+            "loc": "packages/pipeline/artifact_guard.py:68-81",
+            "edge": "seed",
+            "symbol": "publish_manifest"
+          },
+          {
+            "id": "packages/pipeline/memory_governor.py::MemoryGovernor.demote_after_index",
+            "loc": "packages/pipeline/memory_governor.py:320-334",
+            "edge": "seed",
+            "symbol": "MemoryGovernor.demote_after_index"
+          },
+          {
+            "id": "packages/pipeline/artifact_guard.py::atomic_write_text",
+            "loc": "packages/pipeline/artifact_guard.py:17-30",
+            "edge": "calls",
+            "symbol": "atomic_write_text"
+          },
+          {
+            "id": "packages/pipeline/artifact_guard.py::_checksum",
+            "loc": "packages/pipeline/artifact_guard.py:64-65",
+            "edge": "calls",
+            "symbol": "_checksum"
+          },
+          {
+            "id": "packages/pipeline/memory_governor.py::embed_idle_demote_s",
+            "loc": "packages/pipeline/memory_governor.py:53-63",
+            "edge": "calls",
+            "symbol": "embed_idle_demote_s"
+          },
+          {
+            "id": "packages/pipeline/memory_governor.py::MemoryGovernor._apply_locked",
+            "loc": "packages/pipeline/memory_governor.py:393-402",
+            "edge": "calls",
+            "symbol": "MemoryGovernor._apply_locked"
+          },
+          {
+            "id": "packages/pipeline/memory_governor.py::MemoryGovernor._demote_embedder_locked",
+            "loc": "packages/pipeline/memory_governor.py:404-426",
+            "edge": "calls",
+            "symbol": "MemoryGovernor._demote_embedder_locked"
+          },
+          {
+            "id": "packages/pipeline/memory_governor.py::MemoryGovernor._recompute_desired_locked",
+            "loc": "packages/pipeline/memory_governor.py:370-376",
+            "edge": "calls",
+            "symbol": "MemoryGovernor._recompute_desired_locked"
+          }
+        ],
+        "seed": {
+          "file": "packages/pipeline/artifact_guard.py",
+          "symbol": "publish_manifest",
+          "id": "packages/pipeline/artifact_guard.py::publish_manifest"
+        },
+        "error": null
+      },
+      "scores": {
+        "map_k12": {
+          "file": 0.75,
+          "symbol": 0.0,
+          "note": "raw map cards (symbols often empty)"
+        },
+        "map_k12_chunks": {
+          "file": 0.5,
+          "symbol": 0.25,
+          "chunks": [
+            "publish_manifest",
+            "MemoryGovernor.demote_after_index",
+            "RuntimeManager.publish"
+          ]
+        },
+        "map8_pack": {
+          "file": 0.5,
+          "symbol": 0.25,
+          "n_pack": 4,
+          "chunks": [
+            "publish_manifest",
+            "MemoryGovernor.demote_after_index",
+            "RuntimeManager.publish"
+          ],
+          "elapsed_s": 4.271
+        }
+      }
+    },
+    {
+      "id": "t02",
+      "family": "bm25-build",
+      "task": "Where is the BM25 lexical index built and tokenized during repo indexing?",
+      "must_files": [
+        "packages/conductor/bm25_index.py"
+      ],
+      "must_symbols": [
+        "BM25Index",
+        "tokenize",
+        "build"
+      ],
+      "map_k12": {
+        "elapsed_s": 0.437,
+        "top_files": [
+          "packages/conductor/bm25_index.py",
+          "packages/pipeline/__init__.py",
+          "packages/conductor/conductor.py",
+          "packages/pipeline/hot_patch.py",
+          "packages/trace_lab/retrieve.py",
+          "tests/test_storage_policy.py",
+          "packages/pipeline/engine.py",
+          "packages/trace_lab/vector_index.py"
+        ]
+      },
+      "map_k8": {
+        "elapsed_s": 0.243,
+        "top_files": [
+          "packages/conductor/bm25_index.py",
+          "packages/pipeline/__init__.py",
+          "packages/conductor/conductor.py",
+          "packages/pipeline/hot_patch.py",
+          "packages/trace_lab/retrieve.py"
+        ]
+      },
+      "chunks_k12": [
+        {
+          "file": "packages/conductor/bm25_index.py",
+          "symbol": "BM25Index",
+          "kind": "class",
+          "loc": "packages/conductor/bm25_index.py:18-64",
+          "start_line": 18,
+          "end_line": 64,
+          "score": 7.7
+        },
+        {
+          "file": "packages/pipeline/hot_patch.py",
+          "symbol": "rebuild_bm25",
+          "kind": "function",
+          "loc": "packages/pipeline/hot_patch.py:62-63",
+          "start_line": 62,
+          "end_line": 63,
+          "score": 9.0
+        },
+        {
+          "file": "packages/trace_lab/retrieve.py",
+          "symbol": "LexicalIndex.bm25_scores",
+          "kind": "method",
+          "loc": "packages/trace_lab/retrieve.py:94-96",
+          "start_line": 94,
+          "end_line": 96,
+          "score": 8.85
+        }
+      ],
+      "chunks_k8": [
+        {
+          "file": "packages/conductor/bm25_index.py",
+          "symbol": "BM25Index",
+          "kind": "class",
+          "loc": "packages/conductor/bm25_index.py:18-64",
+          "start_line": 18,
+          "end_line": 64,
+          "score": 7.7
+        },
+        {
+          "file": "packages/pipeline/hot_patch.py",
+          "symbol": "rebuild_bm25",
+          "kind": "function",
+          "loc": "packages/pipeline/hot_patch.py:62-63",
+          "start_line": 62,
+          "end_line": 63,
+          "score": 9.0
+        },
+        {
+          "file": "packages/trace_lab/retrieve.py",
+          "symbol": "LexicalIndex.bm25_scores",
+          "kind": "method",
+          "loc": "packages/trace_lab/retrieve.py:94-96",
+          "start_line": 94,
+          "end_line": 96,
+          "score": 8.85
+        }
+      ],
+      "pack": {
+        "ok": true,
+        "elapsed_s": 0.15,
+        "n_pack": 2,
+        "pack": [
+          {
+            "file": "packages/conductor/bm25_index.py",
+            "symbol": "BM25Index",
+            "loc": "packages/conductor/bm25_index.py:18-64",
+            "id": "packages/conductor/bm25_index.py::BM25Index",
+            "chars": 1731
+          },
+          {
+            "file": "packages/pipeline/hot_patch.py",
+            "symbol": "rebuild_bm25",
+            "loc": "packages/pipeline/hot_patch.py:62-63",
+            "id": "packages/pipeline/hot_patch.py::rebuild_bm25",
+            "chars": 76
+          }
+        ],
+        "chain": [
+          {
+            "id": "packages/conductor/bm25_index.py::BM25Index",
+            "loc": "packages/conductor/bm25_index.py:18-64",
+            "edge": "seed",
+            "symbol": "BM25Index"
+          },
+          {
+            "id": "packages/pipeline/hot_patch.py::rebuild_bm25",
+            "loc": "packages/pipeline/hot_patch.py:62-63",
+            "edge": "seed",
+            "symbol": "rebuild_bm25"
+          },
+          {
+            "id": "packages/conductor/bm25_index.py::BM25Index.score_all",
+            "loc": "packages/conductor/bm25_index.py:35-52",
+            "edge": "contains",
+            "symbol": "BM25Index.score_all"
+          },
+          {
+            "id": "packages/conductor/bm25_index.py::tokenize",
+            "loc": "packages/conductor/bm25_index.py:14-15",
+            "edge": "calls",
+            "symbol": "tokenize"
+          }
+        ],
+        "seed": {
+          "file": "packages/conductor/bm25_index.py",
+          "symbol": "BM25Index",
+          "id": "packages/conductor/bm25_index.py::BM25Index"
+        },
+        "error": null
+      },
+      "scores": {
+        "map_k12": {
+          "file": 1.0,
+          "symbol": 0.0,
+          "note": "raw map cards (symbols often empty)"
+        },
+        "map_k12_chunks": {
+          "file": 1.0,
+          "symbol": 0.333,
+          "chunks": [
+            "BM25Index",
+            "rebuild_bm25",
+            "LexicalIndex.bm25_scores"
+          ]
+        },
+        "map8_pack": {
+          "file": 1.0,
+          "symbol": 0.667,
+          "n_pack": 2,
+          "chunks": [
+            "BM25Index",
+            "rebuild_bm25",
+            "LexicalIndex.bm25_scores"
+          ],
+          "elapsed_s": 0.15
+        }
+      }
+    },
+    {
+      "id": "t03",
+      "family": "chunk-pipeline",
+      "task": "Trace how source files become searchable chunks in the indexer pipeline.",
+      "must_files": [
+        "packages/pipeline/index_manager.py",
+        "packages/pipeline/indexer.py",
+        "packages/pipeline/chunk_merkle.py"
+      ],
+      "must_symbols": [],
+      "map_k12": {
+        "elapsed_s": 0.733,
+        "top_files": [
+          "packages/enrich/__init__.py",
+          "packages/pipeline/chunk_merkle.py",
+          "tests/test_runtime_publish.py",
+          "packages/pipeline/index_manager.py",
+          "packages/pipeline/indexer.py",
+          "packages/pipeline/merkle.py",
+          "tests/test_chunk_merkle.py",
+          "docs/reindexing/chunk-level-incremental-indexing.md"
+        ]
+      },
+      "map_k8": {
+        "elapsed_s": 0.473,
+        "top_files": [
+          "packages/enrich/__init__.py",
+          "packages/pipeline/chunk_merkle.py",
+          "tests/test_runtime_publish.py",
+          "packages/pipeline/index_manager.py",
+          "packages/pipeline/indexer.py"
+        ]
+      },
+      "chunks_k12": [
+        {
+          "file": "packages/enrich/__init__.py",
+          "symbol": "chunk_file_from_ir",
+          "kind": "function",
+          "loc": "packages/enrich/__init__.py:70-122",
+          "start_line": 70,
+          "end_line": 122,
+          "score": 7.05
+        },
+        {
+          "file": "packages/pipeline/chunk_merkle.py",
+          "symbol": "chunk_key",
+          "kind": "function",
+          "loc": "packages/pipeline/chunk_merkle.py:16-20",
+          "start_line": 16,
+          "end_line": 20,
+          "score": 7.35
+        },
+        {
+          "file": "packages/enrich/__init__.py",
+          "symbol": "chunk_repo_from_ir",
+          "kind": "function",
+          "loc": "packages/enrich/__init__.py:125-133",
+          "start_line": 125,
+          "end_line": 133,
+          "score": 6.7
+        }
+      ],
+      "chunks_k8": [
+        {
+          "file": "packages/enrich/__init__.py",
+          "symbol": "chunk_file_from_ir",
+          "kind": "function",
+          "loc": "packages/enrich/__init__.py:70-122",
+          "start_line": 70,
+          "end_line": 122,
+          "score": 7.05
+        },
+        {
+          "file": "packages/pipeline/chunk_merkle.py",
+          "symbol": "chunk_key",
+          "kind": "function",
+          "loc": "packages/pipeline/chunk_merkle.py:16-20",
+          "start_line": 16,
+          "end_line": 20,
+          "score": 7.35
+        },
+        {
+          "file": "packages/enrich/__init__.py",
+          "symbol": "chunk_repo_from_ir",
+          "kind": "function",
+          "loc": "packages/enrich/__init__.py:125-133",
+          "start_line": 125,
+          "end_line": 133,
+          "score": 6.7
+        }
+      ],
+      "pack": {
+        "ok": true,
+        "elapsed_s": 0.171,
+        "n_pack": 4,
+        "pack": [
+          {
+            "file": "packages/enrich/__init__.py",
+            "symbol": "chunk_file_from_ir",
+            "loc": "packages/enrich/__init__.py:70-122",
+            "id": "packages/enrich/__init__.py::chunk_file_from_ir",
+            "chars": 1609
+          },
+          {
+            "file": "packages/pipeline/chunk_merkle.py",
+            "symbol": "chunk_key",
+            "loc": "packages/pipeline/chunk_merkle.py:16-20",
+            "id": "packages/pipeline/chunk_merkle.py::chunk_key",
+            "chars": 230
+          },
+          {
+            "file": "packages/enrich/__init__.py",
+            "symbol": "_read_lines",
+            "loc": "packages/enrich/__init__.py:65-67",
+            "id": "packages/enrich/__init__.py::_read_lines",
+            "chars": 157
+          },
+          {
+            "file": "packages/enrich/__init__.py",
+            "symbol": "_callable_symbols_for_file",
+            "loc": "packages/enrich/__init__.py:51-62",
+            "id": "packages/enrich/__init__.py::_callable_symbols_for_file",
+            "chars": 500
+          }
+        ],
+        "chain": [
+          {
+            "id": "packages/enrich/__init__.py::chunk_file_from_ir",
+            "loc": "packages/enrich/__init__.py:70-122",
+            "edge": "seed",
+            "symbol": "chunk_file_from_ir"
+          },
+          {
+            "id": "packages/pipeline/chunk_merkle.py::chunk_key",
+            "loc": "packages/pipeline/chunk_merkle.py:16-20",
+            "edge": "seed",
+            "symbol": "chunk_key"
+          },
+          {
+            "id": "packages/enrich/__init__.py::_read_lines",
+            "loc": "packages/enrich/__init__.py:65-67",
+            "edge": "calls",
+            "symbol": "_read_lines"
+          },
+          {
+            "id": "packages/enrich/__init__.py::_callable_symbols_for_file",
+            "loc": "packages/enrich/__init__.py:51-62",
+            "edge": "calls",
+            "symbol": "_callable_symbols_for_file"
+          }
+        ],
+        "seed": {
+          "file": "packages/enrich/__init__.py",
+          "symbol": "chunk_file_from_ir",
+          "id": "packages/enrich/__init__.py::chunk_file_from_ir"
+        },
+        "error": null
+      },
+      "scores": {
+        "map_k12": {
+          "file": 1.0,
+          "symbol": 1.0,
+          "note": "raw map cards (symbols often empty)"
+        },
+        "map_k12_chunks": {
+          "file": 0.333,
+          "symbol": 1.0,
+          "chunks": [
+            "chunk_file_from_ir",
+            "chunk_key",
+            "chunk_repo_from_ir"
+          ]
+        },
+        "map8_pack": {
+          "file": 0.333,
+          "symbol": 1.0,
+          "n_pack": 4,
+          "chunks": [
+            "chunk_file_from_ir",
+            "chunk_key",
+            "chunk_repo_from_ir"
+          ],
+          "elapsed_s": 0.171
+        }
+      }
+    },
+    {
+      "id": "t04",
+      "family": "gate-enroll",
+      "task": "How does gate / project enrollment decide a repo is managed and bind project_id?",
+      "must_files": [
+        "packages/pipeline/project_id.py",
+        "packages/pipeline/repo_lifecycle.py",
+        "packages/pipeline/rules_installer.py"
+      ],
+      "must_symbols": [
+        "write_project_gate_rules"
+      ],
+      "map_k12": {
+        "elapsed_s": 0.936,
+        "top_files": [
+          "packages/pipeline/project_id.py",
+          "packages/pipeline/rules_installer.py",
+          "tests/test_mcp_repo_resolution.py",
+          "packages/pipeline/gate_cli.py",
+          "tests/test_token_efficient_gating.py",
+          "tests/conftest.py",
+          "packages/pipeline/managed_repos.py",
+          "tests/test_local_first_connect.py"
+        ]
+      },
+      "map_k8": {
+        "elapsed_s": 0.553,
+        "top_files": [
+          "packages/pipeline/project_id.py",
+          "packages/pipeline/rules_installer.py",
+          "tests/test_mcp_repo_resolution.py",
+          "packages/pipeline/gate_cli.py",
+          "tests/test_token_efficient_gating.py"
+        ]
+      },
+      "chunks_k12": [
+        {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "repo_runtime_dir",
+          "kind": "function",
+          "loc": "packages/pipeline/project_id.py:121-142",
+          "start_line": 121,
+          "end_line": 142,
+          "score": 6.85
+        },
+        {
+          "file": "packages/pipeline/rules_installer.py",
+          "symbol": "gate_line_for_repo",
+          "kind": "function",
+          "loc": "packages/pipeline/rules_installer.py:266-280",
+          "start_line": 266,
+          "end_line": 280,
+          "score": 14.1
+        },
+        {
+          "file": "packages/pipeline/managed_repos.py",
+          "symbol": "managed_repo_paths",
+          "kind": "function",
+          "loc": "packages/pipeline/managed_repos.py:213-275",
+          "start_line": 213,
+          "end_line": 275,
+          "score": 10.9
+        }
+      ],
+      "chunks_k8": [
+        {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "repo_runtime_dir",
+          "kind": "function",
+          "loc": "packages/pipeline/project_id.py:121-142",
+          "start_line": 121,
+          "end_line": 142,
+          "score": 6.85
+        },
+        {
+          "file": "packages/pipeline/rules_installer.py",
+          "symbol": "gate_line_for_repo",
+          "kind": "function",
+          "loc": "packages/pipeline/rules_installer.py:266-280",
+          "start_line": 266,
+          "end_line": 280,
+          "score": 14.1
+        },
+        {
+          "file": "packages/pipeline/managed_repos.py",
+          "symbol": "managed_repo_paths",
+          "kind": "function",
+          "loc": "packages/pipeline/managed_repos.py:213-275",
+          "start_line": 213,
+          "end_line": 275,
+          "score": 10.9
+        }
+      ],
+      "pack": {
+        "ok": true,
+        "elapsed_s": 0.149,
+        "n_pack": 4,
+        "pack": [
+          {
+            "file": "packages/pipeline/project_id.py",
+            "symbol": "repo_runtime_dir",
+            "loc": "packages/pipeline/project_id.py:121-142",
+            "id": "packages/pipeline/project_id.py::repo_runtime_dir",
+            "chars": 780
+          },
+          {
+            "file": "packages/pipeline/rules_installer.py",
+            "symbol": "gate_line_for_repo",
+            "loc": "packages/pipeline/rules_installer.py:266-280",
+            "id": "packages/pipeline/rules_installer.py::gate_line_for_repo",
+            "chars": 460
+          },
+          {
+            "file": "packages/pipeline/project_id.py",
+            "symbol": "context_engine_home",
+            "loc": "packages/pipeline/project_id.py:108-113",
+            "id": "packages/pipeline/project_id.py::context_engine_home",
+            "chars": 235
+          },
+          {
+            "file": "packages/pipeline/project_id.py",
+            "symbol": "legacy_repo_key",
+            "loc": "packages/pipeline/project_id.py:543-544",
+            "id": "packages/pipeline/project_id.py::legacy_repo_key",
+            "chars": 119
+          }
+        ],
+        "chain": [
+          {
+            "id": "packages/pipeline/project_id.py::repo_runtime_dir",
+            "loc": "packages/pipeline/project_id.py:121-142",
+            "edge": "seed",
+            "symbol": "repo_runtime_dir"
+          },
+          {
+            "id": "packages/pipeline/rules_installer.py::gate_line_for_repo",
+            "loc": "packages/pipeline/rules_installer.py:266-280",
+            "edge": "seed",
+            "symbol": "gate_line_for_repo"
+          },
+          {
+            "id": "packages/pipeline/project_id.py::context_engine_home",
+            "loc": "packages/pipeline/project_id.py:108-113",
+            "edge": "calls",
+            "symbol": "context_engine_home"
+          },
+          {
+            "id": "packages/pipeline/project_id.py::legacy_repo_key",
+            "loc": "packages/pipeline/project_id.py:543-544",
+            "edge": "calls",
+            "symbol": "legacy_repo_key"
+          },
+          {
+            "id": "packages/pipeline/project_id.py::id_dir_path",
+            "loc": "packages/pipeline/project_id.py:116-118",
+            "edge": "calls",
+            "symbol": "id_dir_path"
+          },
+          {
+            "id": "packages/pipeline/mcp_locate.py::_is_enrolled",
+            "loc": "packages/pipeline/mcp_locate.py:584-590",
+            "edge": "calls",
+            "symbol": "_is_enrolled"
+          },
+          {
+            "id": "packages/pipeline/pause_resume.py::is_paused",
+            "loc": "packages/pipeline/pause_resume.py:49-61",
+            "edge": "calls",
+            "symbol": "is_paused"
+          },
+          {
+            "id": "packages/pipeline/project_id.py::read_id_file",
+            "loc": "packages/pipeline/project_id.py:196-201",
+            "edge": "calls",
+            "symbol": "read_id_file"
+          }
+        ],
+        "seed": {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "repo_runtime_dir",
+          "id": "packages/pipeline/project_id.py::repo_runtime_dir"
+        },
+        "error": null
+      },
+      "scores": {
+        "map_k12": {
+          "file": 0.667,
+          "symbol": 0.0,
+          "note": "raw map cards (symbols often empty)"
+        },
+        "map_k12_chunks": {
+          "file": 0.667,
+          "symbol": 0.0,
+          "chunks": [
+            "repo_runtime_dir",
+            "gate_line_for_repo",
+            "managed_repo_paths"
+          ]
+        },
+        "map8_pack": {
+          "file": 0.667,
+          "symbol": 0.0,
+          "n_pack": 4,
+          "chunks": [
+            "repo_runtime_dir",
+            "gate_line_for_repo",
+            "managed_repo_paths"
+          ],
+          "elapsed_s": 0.149
+        }
+      }
+    },
+    {
+      "id": "t05",
+      "family": "engine-watchdog",
+      "task": "How does the engine watchdog keep the warm HTTP daemon alive and restart on idle?",
+      "must_files": [
+        "packages/pipeline/watchdog.py",
+        "packages/pipeline/engine.py"
+      ],
+      "must_symbols": [
+        "watchdog_loop",
+        "WarmSearchEngine"
+      ],
+      "map_k12": {
+        "elapsed_s": 0.575,
+        "top_files": [
+          "scripts/blind20_simple_map_pack.py",
+          "packages/pipeline/watchdog.py",
+          "packages/pipeline/client.py",
+          "tests/_prod_post_restart.py",
+          "packages/pipeline/diagnose.py",
+          "scripts/install_mcp_frontend.py",
+          "tests/test_daemon_process_sweep.py",
+          "packages/pipeline/daemon.py"
+        ]
+      },
+      "map_k8": {
+        "elapsed_s": 0.399,
+        "top_files": [
+          "scripts/blind20_simple_map_pack.py",
+          "packages/pipeline/watchdog.py",
+          "packages/pipeline/client.py",
+          "tests/_prod_post_restart.py",
+          "packages/pipeline/diagnose.py"
+        ]
+      },
+      "chunks_k12": [
+        {
+          "file": "packages/pipeline/watchdog.py",
+          "symbol": "is_watchdog_running",
+          "kind": "function",
+          "loc": "packages/pipeline/watchdog.py:113-121",
+          "start_line": 113,
+          "end_line": 121,
+          "score": 9.15
+        },
+        {
+          "file": "packages/pipeline/client.py",
+          "symbol": "engine_url",
+          "kind": "function",
+          "loc": "packages/pipeline/client.py:32-37",
+          "start_line": 32,
+          "end_line": 37,
+          "score": 9.5
+        },
+        {
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_engine",
+          "kind": "function",
+          "loc": "packages/pipeline/__main__.py:945-1111",
+          "start_line": 945,
+          "end_line": 1111,
+          "score": 7.2
+        }
+      ],
+      "chunks_k8": [
+        {
+          "file": "packages/pipeline/watchdog.py",
+          "symbol": "is_watchdog_running",
+          "kind": "function",
+          "loc": "packages/pipeline/watchdog.py:113-121",
+          "start_line": 113,
+          "end_line": 121,
+          "score": 9.15
+        },
+        {
+          "file": "packages/pipeline/client.py",
+          "symbol": "engine_url",
+          "kind": "function",
+          "loc": "packages/pipeline/client.py:32-37",
+          "start_line": 32,
+          "end_line": 37,
+          "score": 9.5
+        },
+        {
+          "file": "packages/pipeline/daemon.py",
+          "symbol": "force_restart_daemon",
+          "kind": "function",
+          "loc": "packages/pipeline/daemon.py:416-472",
+          "start_line": 416,
+          "end_line": 472,
+          "score": 7.2
+        }
+      ],
+      "pack": {
+        "ok": true,
+        "elapsed_s": 0.165,
+        "n_pack": 4,
+        "pack": [
+          {
+            "file": "packages/pipeline/watchdog.py",
+            "symbol": "is_watchdog_running",
+            "loc": "packages/pipeline/watchdog.py:113-121",
+            "id": "packages/pipeline/watchdog.py::is_watchdog_running",
+            "chars": 268
+          },
+          {
+            "file": "packages/pipeline/client.py",
+            "symbol": "engine_url",
+            "loc": "packages/pipeline/client.py:32-37",
+            "id": "packages/pipeline/client.py::engine_url",
+            "chars": 163
+          },
+          {
+            "file": "packages/pipeline/watchdog.py",
+            "symbol": "watchdog_pid_path",
+            "loc": "packages/pipeline/watchdog.py:33-34",
+            "id": "packages/pipeline/watchdog.py::watchdog_pid_path",
+            "chars": 68
+          },
+          {
+            "file": "packages/pipeline/watchdog.py",
+            "symbol": "_pid_alive",
+            "loc": "packages/pipeline/watchdog.py:92-110",
+            "id": "packages/pipeline/watchdog.py::_pid_alive",
+            "chars": 538
+          }
+        ],
+        "chain": [
+          {
+            "id": "packages/pipeline/watchdog.py::is_watchdog_running",
+            "loc": "packages/pipeline/watchdog.py:113-121",
+            "edge": "seed",
+            "symbol": "is_watchdog_running"
+          },
+          {
+            "id": "packages/pipeline/client.py::engine_url",
+            "loc": "packages/pipeline/client.py:32-37",
+            "edge": "seed",
+            "symbol": "engine_url"
+          },
+          {
+            "id": "packages/pipeline/watchdog.py::watchdog_pid_path",
+            "loc": "packages/pipeline/watchdog.py:33-34",
+            "edge": "calls",
+            "symbol": "watchdog_pid_path"
+          },
+          {
+            "id": "packages/pipeline/watchdog.py::_pid_alive",
+            "loc": "packages/pipeline/watchdog.py:92-110",
+            "edge": "calls",
+            "symbol": "_pid_alive"
+          },
+          {
+            "id": "packages/pipeline/client.py::EngineClient.get",
+            "loc": "packages/pipeline/client.py:87-88",
+            "edge": "calls",
+            "symbol": "EngineClient.get"
+          },
+          {
+            "id": "packages/pipeline/watchdog.py::_home",
+            "loc": "packages/pipeline/watchdog.py:27-30",
+            "edge": "calls",
+            "symbol": "_home"
+          },
+          {
+            "id": "packages/pipeline/client.py::EngineClient._request",
+            "loc": "packages/pipeline/client.py:93-167",
+            "edge": "calls",
+            "symbol": "EngineClient._request"
+          },
+          {
+            "id": "packages/pipeline/project_id.py::context_engine_home",
+            "loc": "packages/pipeline/project_id.py:108-113",
+            "edge": "calls",
+            "symbol": "context_engine_home"
+          }
+        ],
+        "seed": {
+          "file": "packages/pipeline/watchdog.py",
+          "symbol": "is_watchdog_running",
+          "id": "packages/pipeline/watchdog.py::is_watchdog_running"
+        },
+        "error": null
+      },
+      "scores": {
+        "map_k12": {
+          "file": 0.5,
+          "symbol": 0.0,
+          "note": "raw map cards (symbols often empty)"
+        },
+        "map_k12_chunks": {
+          "file": 0.5,
+          "symbol": 0.0,
+          "chunks": [
+            "is_watchdog_running",
+            "engine_url",
+            "cmd_engine"
+          ]
+        },
+        "map8_pack": {
+          "file": 0.5,
+          "symbol": 0.0,
+          "n_pack": 4,
+          "chunks": [
+            "is_watchdog_running",
+            "engine_url",
+            "force_restart_daemon"
+          ],
+          "elapsed_s": 0.165
+        }
+      }
+    },
+    {
+      "id": "t06",
+      "family": "mcp-bridge",
+      "task": "How does the MCP bridge process launch and forward tools to the Scubiee MCP server?",
+      "must_files": [
+        "packages/pipeline/mcp_bridge.py",
+        "packages/pipeline/mcp_bridge_session.py"
+      ],
+      "must_symbols": [],
+      "map_k12": {
+        "elapsed_s": 0.472,
+        "top_files": [
+          "packages/pipeline/templates/scubiee.md",
+          "packages/pipeline/mcp_bridge.py",
+          "packages/pipeline/mcp_bridge_session.py",
+          "tests/test_mcp_bridge.py",
+          "scripts/kiro_mcp_reliability_probe.py",
+          "tests/test_mcp_bridge_concurrency.py",
+          "_live_mcp_payload_smoke.py",
+          "tests/test_hybrid_cbm.py"
+        ]
+      },
+      "map_k8": {
+        "elapsed_s": 0.349,
+        "top_files": [
+          "packages/pipeline/templates/scubiee.md",
+          "packages/pipeline/mcp_bridge.py",
+          "packages/pipeline/mcp_bridge_session.py",
+          "tests/test_mcp_bridge.py",
+          "scripts/kiro_mcp_reliability_probe.py"
+        ]
+      },
+      "chunks_k12": [
+        {
+          "file": "packages/pipeline/mcp_bridge.py",
+          "symbol": "McpBridge",
+          "kind": "class",
+          "loc": "packages/pipeline/mcp_bridge.py:77-222",
+          "start_line": 77,
+          "end_line": 222,
+          "score": 7.55
+        },
+        {
+          "file": "packages/pipeline/mcp_restore.py",
+          "symbol": "clear_cursor_disabled_scubiee",
+          "kind": "function",
+          "loc": "packages/pipeline/mcp_restore.py:334-409",
+          "start_line": 334,
+          "end_line": 409,
+          "score": 6.85
+        },
+        {
+          "file": "packages/pipeline/mcp_restore.py",
+          "symbol": "mcp_entry_needs_restore",
+          "kind": "function",
+          "loc": "packages/pipeline/mcp_restore.py:42-64",
+          "start_line": 42,
+          "end_line": 64,
+          "score": 6.7
+        }
+      ],
+      "chunks_k8": [
+        {
+          "file": "packages/pipeline/mcp_bridge.py",
+          "symbol": "McpBridge",
+          "kind": "class",
+          "loc": "packages/pipeline/mcp_bridge.py:77-222",
+          "start_line": 77,
+          "end_line": 222,
+          "score": 7.55
+        },
+        {
+          "file": "packages/pipeline/mcp_bridge.py",
+          "symbol": "McpBridge.run",
+          "kind": "method",
+          "loc": "packages/pipeline/mcp_bridge.py:205-222",
+          "start_line": 205,
+          "end_line": 222,
+          "score": 6.2
+        },
+        {
+          "file": "packages/pipeline/mcp_bridge_session.py",
+          "symbol": "bridge_mode",
+          "kind": "function",
+          "loc": "packages/pipeline/mcp_bridge_session.py:23-27",
+          "start_line": 23,
+          "end_line": 27,
+          "score": 6.15
+        }
+      ],
+      "pack": {
+        "ok": true,
+        "elapsed_s": 0.157,
+        "n_pack": 2,
+        "pack": [
+          {
+            "file": "packages/pipeline/mcp_bridge.py",
+            "symbol": "McpBridge",
+            "loc": "packages/pipeline/mcp_bridge.py:77-222",
+            "id": "packages/pipeline/mcp_bridge.py::McpBridge",
+            "chars": 5737
+          },
+          {
+            "file": "packages/pipeline/mcp_bridge.py",
+            "symbol": "McpBridge.run",
+            "loc": "packages/pipeline/mcp_bridge.py:205-222",
+            "id": "packages/pipeline/mcp_bridge.py::McpBridge.run",
+            "chars": 263
+          }
+        ],
+        "chain": [
+          {
+            "id": "packages/pipeline/mcp_bridge.py::McpBridge",
+            "loc": "packages/pipeline/mcp_bridge.py:77-222",
+            "edge": "seed",
+            "symbol": "McpBridge"
+          },
+          {
+            "id": "packages/pipeline/mcp_bridge.py::McpBridge.run",
+            "loc": "packages/pipeline/mcp_bridge.py:205-222",
+            "edge": "seed",
+            "symbol": "McpBridge.run"
+          },
+          {
+            "id": "packages/pipeline/mcp_bridge.py::_stderr",
+            "loc": "packages/pipeline/mcp_bridge.py:32-33",
+            "edge": "calls",
+            "symbol": "_stderr"
+          },
+          {
+            "id": "packages/pipeline/mcp_bridge_session.py::max_bridge_sessions",
+            "loc": "packages/pipeline/mcp_bridge_session.py:30-35",
+            "edge": "calls",
+            "symbol": "max_bridge_sessions"
+          },
+          {
+            "id": "packages/pipeline/mcp_bridge_session.py::bridge_mode",
+            "loc": "packages/pipeline/mcp_bridge_session.py:23-27",
+            "edge": "calls",
+            "symbol": "bridge_mode"
+          },
+          {
+            "id": "packages/pipeline/mcp_bridge.py::McpBridge._shared_worker",
+            "loc": "packages/pipeline/mcp_bridge.py:88-89",
+            "edge": "contains",
+            "symbol": "McpBridge._shared_worker"
+          },
+          {
+            "id": "packages/pipeline/mcp_bridge.py::McpBridge._emit_client",
+            "loc": "packages/pipeline/mcp_bridge.py:117-120",
+            "edge": "contains",
+            "symbol": "McpBridge._emit_client"
+          },
+          {
+            "id": "packages/pipeline/mcp_bridge.py::McpBridge._emit_tools_list_changed",
+            "loc": "packages/pipeline/mcp_bridge.py:122-123",
+            "edge": "contains",
+            "symbol": "McpBridge._emit_tools_list_changed"
+          }
+        ],
+        "seed": {
+          "file": "packages/pipeline/mcp_bridge.py",
+          "symbol": "McpBridge",
+          "id": "packages/pipeline/mcp_bridge.py::McpBridge"
+        },
+        "error": null
+      },
+      "scores": {
+        "map_k12": {
+          "file": 1.0,
+          "symbol": 1.0,
+          "note": "raw map cards (symbols often empty)"
+        },
+        "map_k12_chunks": {
+          "file": 0.5,
+          "symbol": 1.0,
+          "chunks": [
+            "McpBridge",
+            "clear_cursor_disabled_scubiee",
+            "mcp_entry_needs_restore"
+          ]
+        },
+        "map8_pack": {
+          "file": 1.0,
+          "symbol": 1.0,
+          "n_pack": 2,
+          "chunks": [
+            "McpBridge",
+            "McpBridge.run",
+            "bridge_mode"
+          ],
+          "elapsed_s": 0.157
+        }
+      }
+    },
+    {
+      "id": "t07",
+      "family": "locate-cli",
+      "task": "How do `scubiee map` and `scubiee pack` CLI commands parse args and call locate?",
+      "must_files": [
+        "packages/pipeline/__main__.py",
+        "packages/pipeline/locate_cli.py"
+      ],
+      "must_symbols": [
+        "cmd_map",
+        "cmd_pack"
+      ],
+      "map_k12": {
+        "elapsed_s": 0.849,
+        "top_files": [
+          "packages/pipeline/locate_cli.py",
+          "scripts/blind_map_pack_20.py",
+          "tests/test_locate_cli.py",
+          "packages/pipeline/__main__.py",
+          "packages/pipeline/templates/scubiee.md",
+          "docs/superpowers/plans/2026-09-06-blind-map-pack-20-phase2.md",
+          "scripts/blind20_map_chunks_pack.py",
+          "packages/pipeline/mcp_response_lean.py"
+        ]
+      },
+      "map_k8": {
+        "elapsed_s": 0.589,
+        "top_files": [
+          "packages/pipeline/locate_cli.py",
+          "scripts/blind_map_pack_20.py",
+          "tests/test_locate_cli.py",
+          "packages/pipeline/__main__.py",
+          "packages/pipeline/templates/scubiee.md"
+        ]
+      },
+      "chunks_k12": [
+        {
+          "file": "packages/pipeline/locate_cli.py",
+          "symbol": "cli_pack",
+          "kind": "function",
+          "loc": "packages/pipeline/locate_cli.py:179-227",
+          "start_line": 179,
+          "end_line": 227,
+          "score": 11.45
+        },
+        {
+          "file": "packages/pipeline/locate_cli.py",
+          "symbol": "cli_map",
+          "kind": "function",
+          "loc": "packages/pipeline/locate_cli.py:60-176",
+          "start_line": 60,
+          "end_line": 176,
+          "score": 10.2
+        },
+        {
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_pack",
+          "kind": "function",
+          "loc": "packages/pipeline/__main__.py:1655-1679",
+          "start_line": 1655,
+          "end_line": 1679,
+          "score": 8.8
+        }
+      ],
+      "chunks_k8": [
+        {
+          "file": "packages/pipeline/locate_cli.py",
+          "symbol": "cli_pack",
+          "kind": "function",
+          "loc": "packages/pipeline/locate_cli.py:179-227",
+          "start_line": 179,
+          "end_line": 227,
+          "score": 11.45
+        },
+        {
+          "file": "packages/pipeline/locate_cli.py",
+          "symbol": "cli_map",
+          "kind": "function",
+          "loc": "packages/pipeline/locate_cli.py:60-176",
+          "start_line": 60,
+          "end_line": 176,
+          "score": 10.2
+        },
+        {
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_pack",
+          "kind": "function",
+          "loc": "packages/pipeline/__main__.py:1655-1679",
+          "start_line": 1655,
+          "end_line": 1679,
+          "score": 8.8
+        }
+      ],
+      "pack": {
+        "ok": true,
+        "elapsed_s": 0.186,
+        "n_pack": 3,
+        "pack": [
+          {
+            "file": "packages/pipeline/locate_cli.py",
+            "symbol": "cli_pack",
+            "loc": "packages/pipeline/locate_cli.py:179-227",
+            "id": "packages/pipeline/locate_cli.py::cli_pack",
+            "chars": 1627
+          },
+          {
+            "file": "packages/pipeline/context_trace.py",
+            "symbol": "_trace_engine",
+            "loc": "packages/pipeline/context_trace.py:57-93",
+            "id": "packages/pipeline/context_trace.py::_trace_engine",
+            "chars": 1050
+          },
+          {
+            "file": "packages/pipeline/locate_cli.py",
+            "symbol": "cli_map",
+            "loc": "packages/pipeline/locate_cli.py:60-176",
+            "id": "packages/pipeline/locate_cli.py::cli_map",
+            "chars": 3323
+          }
+        ],
+        "chain": [
+          {
+            "id": "packages/pipeline/locate_cli.py::cli_pack",
+            "loc": "packages/pipeline/locate_cli.py:179-227",
+            "edge": "seed",
+            "symbol": "cli_pack"
+          },
+          {
+            "id": "packages/pipeline/context_trace.py::_trace_engine",
+            "loc": "packages/pipeline/context_trace.py:57-93",
+            "edge": "calls",
+            "symbol": "_trace_engine"
+          },
+          {
+            "id": "packages/pipeline/locate_cli.py::cli_map",
+            "loc": "packages/pipeline/locate_cli.py:60-176",
+            "edge": "seed",
+            "symbol": "cli_map"
+          },
+          {
+            "id": "packages/pipeline/locate_cli.py::_root",
+            "loc": "packages/pipeline/locate_cli.py:14-15",
+            "edge": "calls",
+            "symbol": "_root"
+          },
+          {
+            "id": "packages/pipeline/context_trace.py::run_pack_context",
+            "loc": "packages/pipeline/context_trace.py:1100-1315",
+            "edge": "calls",
+            "symbol": "run_pack_context"
+          },
+          {
+            "id": "packages/pipeline/context_trace.py::pick_suggested_seed",
+            "loc": "packages/pipeline/context_trace.py:398-432",
+            "edge": "calls",
+            "symbol": "pick_suggested_seed"
+          },
+          {
+            "id": "packages/pipeline/searcher.py::search_repo",
+            "loc": "packages/pipeline/searcher.py:115-145",
+            "edge": "calls",
+            "symbol": "search_repo"
+          },
+          {
+            "id": "packages/pipeline/context_trace.py::_load_repo",
+            "loc": "packages/pipeline/context_trace.py:276-355",
+            "edge": "calls",
+            "symbol": "_load_repo"
+          }
+        ],
+        "seed": {
+          "file": "packages/pipeline/locate_cli.py",
+          "symbol": "cli_pack",
+          "id": "packages/pipeline/locate_cli.py::cli_pack"
+        },
+        "error": null
+      },
+      "scores": {
+        "map_k12": {
+          "file": 1.0,
+          "symbol": 0.0,
+          "note": "raw map cards (symbols often empty)"
+        },
+        "map_k12_chunks": {
+          "file": 1.0,
+          "symbol": 0.5,
+          "chunks": [
+            "cli_pack",
+            "cli_map",
+            "cmd_pack"
+          ]
+        },
+        "map8_pack": {
+          "file": 1.0,
+          "symbol": 0.5,
+          "n_pack": 3,
+          "chunks": [
+            "cli_pack",
+            "cli_map",
+            "cmd_pack"
+          ],
+          "elapsed_s": 0.186
+        }
+      }
+    },
+    {
+      "id": "t08",
+      "family": "expand-hop",
+      "task": "How does expand_context follow callees/callers/effects hops from a packed node?",
+      "must_files": [
+        "packages/pipeline/context_trace.py",
+        "packages/pipeline/mcp_locate.py"
+      ],
+      "must_symbols": [
+        "run_expand_context"
+      ],
+      "map_k12": {
+        "elapsed_s": 0.587,
+        "top_files": [
+          "packages/pipeline/context_trace.py",
+          "packages/pipeline/locate_cli.py",
+          "docs/superpowers/plans/2026-09-05-ladder-followup-real-eval.md",
+          "tests/test_locate_cli.py",
+          "tests/test_incremental_context_ladder.py",
+          "packages/trace_lab/facts/dfg.py",
+          "packages/seir/rels.py",
+          "docs/superpowers/specs/2026-09-04-pack-context-few-calls-design.md"
+        ]
+      },
+      "map_k8": {
+        "elapsed_s": 0.363,
+        "top_files": [
+          "packages/pipeline/context_trace.py",
+          "packages/pipeline/locate_cli.py",
+          "docs/superpowers/plans/2026-09-05-ladder-followup-real-eval.md",
+          "tests/test_locate_cli.py",
+          "tests/test_incremental_context_ladder.py"
+        ]
+      },
+      "chunks_k12": [
+        {
+          "file": "packages/pipeline/context_trace.py",
+          "symbol": "run_expand_context",
+          "kind": "function",
+          "loc": "packages/pipeline/context_trace.py:807-952",
+          "start_line": 807,
+          "end_line": 952,
+          "score": 8.45
+        },
+        {
+          "file": "packages/pipeline/context_trace.py",
+          "symbol": "build_call_chain",
+          "kind": "function",
+          "loc": "packages/pipeline/context_trace.py:528-551",
+          "start_line": 528,
+          "end_line": 551,
+          "score": 6.35
+        },
+        {
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_expand",
+          "kind": "function",
+          "loc": "packages/pipeline/__main__.py:1682-1703",
+          "start_line": 1682,
+          "end_line": 1703,
+          "score": 4.75
+        }
+      ],
+      "chunks_k8": [
+        {
+          "file": "packages/pipeline/context_trace.py",
+          "symbol": "run_expand_context",
+          "kind": "function",
+          "loc": "packages/pipeline/context_trace.py:807-952",
+          "start_line": 807,
+          "end_line": 952,
+          "score": 8.45
+        },
+        {
+          "file": "packages/pipeline/context_trace.py",
+          "symbol": "build_call_chain",
+          "kind": "function",
+          "loc": "packages/pipeline/context_trace.py:528-551",
+          "start_line": 528,
+          "end_line": 551,
+          "score": 6.35
+        },
+        {
+          "file": "packages/pipeline/locate_cli.py",
+          "symbol": "cli_expand",
+          "kind": "function",
+          "loc": "packages/pipeline/locate_cli.py:230-258",
+          "start_line": 230,
+          "end_line": 258,
+          "score": 4.75
+        }
+      ],
+      "pack": {
+        "ok": true,
+        "elapsed_s": 0.134,
+        "n_pack": 2,
+        "pack": [
+          {
+            "file": "packages/pipeline/context_trace.py",
+            "symbol": "run_expand_context",
+            "loc": "packages/pipeline/context_trace.py:807-952",
+            "id": "packages/pipeline/context_trace.py::run_expand_context",
+            "chars": 5061
+          },
+          {
+            "file": "packages/pipeline/context_trace.py",
+            "symbol": "_load_repo",
+            "loc": "packages/pipeline/context_trace.py:276-355",
+            "id": "packages/pipeline/context_trace.py::_load_repo",
+            "chars": 939
+          }
+        ],
+        "chain": [
+          {
+            "id": "packages/pipeline/context_trace.py::run_expand_context",
+            "loc": "packages/pipeline/context_trace.py:807-952",
+            "edge": "seed",
+            "symbol": "run_expand_context"
+          },
+          {
+            "id": "packages/pipeline/context_trace.py::_load_repo",
+            "loc": "packages/pipeline/context_trace.py:276-355",
+            "edge": "calls",
+            "symbol": "_load_repo"
+          },
+          {
+            "id": "packages/pipeline/context_trace.py::_heat",
+            "loc": "packages/pipeline/context_trace.py:39-44",
+            "edge": "calls",
+            "symbol": "_heat"
+          },
+          {
+            "id": "packages/pipeline/context_trace.py::card_role",
+            "loc": "packages/pipeline/context_trace.py:372-395",
+            "edge": "calls",
+            "symbol": "card_role"
+          },
+          {
+            "id": "packages/pipeline/context_trace.py::_kind_pref",
+            "loc": "packages/pipeline/context_trace.py:361-369",
+            "edge": "calls",
+            "symbol": "_kind_pref"
+          },
+          {
+            "id": "packages/pipeline/context_trace.py::build_call_chain",
+            "loc": "packages/pipeline/context_trace.py:528-551",
+            "edge": "seed",
+            "symbol": "build_call_chain"
+          },
+          {
+            "id": "packages/pipeline/context_trace.py::_resolve_node_id",
+            "loc": "packages/pipeline/context_trace.py:697-710",
+            "edge": "calls",
+            "symbol": "_resolve_node_id"
+          },
+          {
+            "id": "packages/pipeline/context_trace.py::_neighbor_cards",
+            "loc": "packages/pipeline/context_trace.py:713-804",
+            "edge": "calls",
+            "symbol": "_neighbor_cards"
+          }
+        ],
+        "seed": {
+          "file": "packages/pipeline/context_trace.py",
+          "symbol": "run_expand_context",
+          "id": "packages/pipeline/context_trace.py::run_expand_context"
+        },
+        "error": null
+      },
+      "scores": {
+        "map_k12": {
+          "file": 0.5,
+          "symbol": 0.0,
+          "note": "raw map cards (symbols often empty)"
+        },
+        "map_k12_chunks": {
+          "file": 0.5,
+          "symbol": 1.0,
+          "chunks": [
+            "run_expand_context",
+            "build_call_chain",
+            "cmd_expand"
+          ]
+        },
+        "map8_pack": {
+          "file": 0.5,
+          "symbol": 1.0,
+          "n_pack": 2,
+          "chunks": [
+            "run_expand_context",
+            "build_call_chain",
+            "cli_expand"
+          ],
+          "elapsed_s": 0.134
+        }
+      }
+    },
+    {
+      "id": "t09",
+      "family": "work-session",
+      "task": "Where does work_session touch/pins remember files the agent recently packed?",
+      "must_files": [
+        "packages/pipeline/work_session.py"
+      ],
+      "must_symbols": [
+        "touch"
+      ],
+      "map_k12": {
+        "elapsed_s": 0.678,
+        "top_files": [
+          "packages/pipeline/work_session.py",
+          "tests/test_mcp_locate.py",
+          "tests/test_session_isolation.py",
+          "packages/pipeline/repo_runtime.py",
+          "docs/superpowers/plans/2026-09-05-kiro-cli-ab-dev3-session.md",
+          "docs/superpowers/plans/2026-09-06-blind-map-pack-20-results.md",
+          "fixtures/trace-lab/app/search/query.py",
+          "scripts/blind20_map12_vs_map8_pack.py"
+        ]
+      },
+      "map_k8": {
+        "elapsed_s": 0.51,
+        "top_files": [
+          "packages/pipeline/work_session.py",
+          "tests/test_mcp_locate.py",
+          "tests/test_session_isolation.py",
+          "packages/pipeline/repo_runtime.py",
+          "docs/superpowers/plans/2026-09-05-kiro-cli-ab-dev3-session.md"
+        ]
+      },
+      "chunks_k12": [
+        {
+          "file": "packages/pipeline/work_session.py",
+          "symbol": "touch",
+          "kind": "function",
+          "loc": "packages/pipeline/work_session.py:80-116",
+          "start_line": 80,
+          "end_line": 116,
+          "score": 7.9
+        },
+        {
+          "file": "packages/pipeline/work_session.py",
+          "symbol": "heatmap",
+          "kind": "function",
+          "loc": "packages/pipeline/work_session.py:142-165",
+          "start_line": 142,
+          "end_line": 165,
+          "score": 7.55
+        },
+        {
+          "file": "packages/pipeline/repo_runtime.py",
+          "symbol": "RepoRuntime.touch",
+          "kind": "method",
+          "loc": "packages/pipeline/repo_runtime.py:35-59",
+          "start_line": 35,
+          "end_line": 59,
+          "score": 6.35
+        }
+      ],
+      "chunks_k8": [
+        {
+          "file": "packages/pipeline/work_session.py",
+          "symbol": "touch",
+          "kind": "function",
+          "loc": "packages/pipeline/work_session.py:80-116",
+          "start_line": 80,
+          "end_line": 116,
+          "score": 7.9
+        },
+        {
+          "file": "packages/pipeline/work_session.py",
+          "symbol": "heatmap",
+          "kind": "function",
+          "loc": "packages/pipeline/work_session.py:142-165",
+          "start_line": 142,
+          "end_line": 165,
+          "score": 7.55
+        },
+        {
+          "file": "packages/pipeline/repo_runtime.py",
+          "symbol": "RepoRuntime.touch",
+          "kind": "method",
+          "loc": "packages/pipeline/repo_runtime.py:35-59",
+          "start_line": 35,
+          "end_line": 59,
+          "score": 6.35
+        }
+      ],
+      "pack": {
+        "ok": true,
+        "elapsed_s": 0.179,
+        "n_pack": 4,
+        "pack": [
+          {
+            "file": "packages/pipeline/work_session.py",
+            "symbol": "touch",
+            "loc": "packages/pipeline/work_session.py:80-116",
+            "id": "packages/pipeline/work_session.py::touch",
+            "chars": 1310
+          },
+          {
+            "file": "packages/pipeline/work_session.py",
+            "symbol": "_session_path",
+            "loc": "packages/pipeline/work_session.py:16-29",
+            "id": "packages/pipeline/work_session.py::_session_path",
+            "chars": 587
+          },
+          {
+            "file": "packages/pipeline/session_isolation.py",
+            "symbol": "session_json_lock",
+            "loc": "packages/pipeline/session_isolation.py:423-439",
+            "id": "packages/pipeline/session_isolation.py::session_json_lock",
+            "chars": 580
+          },
+          {
+            "file": "packages/pipeline/session_isolation.py",
+            "symbol": "sanitize_session_id",
+            "loc": "packages/pipeline/session_isolation.py:174-177",
+            "id": "packages/pipeline/session_isolation.py::sanitize_session_id",
+            "chars": 156
+          }
+        ],
+        "chain": [
+          {
+            "id": "packages/pipeline/work_session.py::touch",
+            "loc": "packages/pipeline/work_session.py:80-116",
+            "edge": "seed",
+            "symbol": "touch"
+          },
+          {
+            "id": "packages/pipeline/work_session.py::_session_path",
+            "loc": "packages/pipeline/work_session.py:16-29",
+            "edge": "calls",
+            "symbol": "_session_path"
+          },
+          {
+            "id": "packages/pipeline/session_isolation.py::session_json_lock",
+            "loc": "packages/pipeline/session_isolation.py:423-439",
+            "edge": "calls",
+            "symbol": "session_json_lock"
+          },
+          {
+            "id": "packages/pipeline/session_isolation.py::sanitize_session_id",
+            "loc": "packages/pipeline/session_isolation.py:174-177",
+            "edge": "calls",
+            "symbol": "sanitize_session_id"
+          },
+          {
+            "id": "packages/pipeline/work_session.py::heatmap",
+            "loc": "packages/pipeline/work_session.py:142-165",
+            "edge": "seed",
+            "symbol": "heatmap"
+          },
+          {
+            "id": "packages/pipeline/project_id.py::repo_runtime_dir",
+            "loc": "packages/pipeline/project_id.py:121-142",
+            "edge": "calls",
+            "symbol": "repo_runtime_dir"
+          },
+          {
+            "id": "packages/pipeline/work_session.py::load_session",
+            "loc": "packages/pipeline/work_session.py:32-56",
+            "edge": "calls",
+            "symbol": "load_session"
+          },
+          {
+            "id": "packages/pipeline/work_session.py::save_session",
+            "loc": "packages/pipeline/work_session.py:59-77",
+            "edge": "calls",
+            "symbol": "save_session"
+          }
+        ],
+        "seed": {
+          "file": "packages/pipeline/work_session.py",
+          "symbol": "touch",
+          "id": "packages/pipeline/work_session.py::touch"
+        },
+        "error": null
+      },
+      "scores": {
+        "map_k12": {
+          "file": 1.0,
+          "symbol": 0.0,
+          "note": "raw map cards (symbols often empty)"
+        },
+        "map_k12_chunks": {
+          "file": 1.0,
+          "symbol": 1.0,
+          "chunks": [
+            "touch",
+            "heatmap",
+            "RepoRuntime.touch"
+          ]
+        },
+        "map8_pack": {
+          "file": 1.0,
+          "symbol": 1.0,
+          "n_pack": 4,
+          "chunks": [
+            "touch",
+            "heatmap",
+            "RepoRuntime.touch"
+          ],
+          "elapsed_s": 0.179
+        }
+      }
+    },
+    {
+      "id": "t10",
+      "family": "response-lean",
+      "task": "How are MCP pack responses slimmed for token savings (lean formatting)?",
+      "must_files": [
+        "packages/pipeline/mcp_response_lean.py",
+        "packages/pipeline/mcp_locate.py"
+      ],
+      "must_symbols": [],
+      "map_k12": {
+        "elapsed_s": 0.638,
+        "top_files": [
+          "packages/pipeline/session_store.py",
+          "tests/test_mcp_response_lean.py",
+          "packages/pipeline/locate_cli.py",
+          "packages/pipeline/mcp_locate.py",
+          "packages/pipeline/mcp_response_lean.py",
+          "docs/superpowers/plans/2026-09-04-pack-context-bakeoff.md",
+          "packages/pipeline/context_trace.py",
+          "packages/trace_lab/types.py"
+        ]
+      },
+      "map_k8": {
+        "elapsed_s": 0.487,
+        "top_files": [
+          "packages/pipeline/session_store.py",
+          "tests/test_mcp_response_lean.py",
+          "packages/pipeline/locate_cli.py",
+          "packages/pipeline/mcp_locate.py",
+          "packages/pipeline/mcp_response_lean.py"
+        ]
+      },
+      "chunks_k12": [
+        {
+          "file": "packages/pipeline/session_store.py",
+          "symbol": "token_mode",
+          "kind": "function",
+          "loc": "packages/pipeline/session_store.py:223-224",
+          "start_line": 223,
+          "end_line": 224,
+          "score": 9.85
+        },
+        {
+          "file": "packages/pipeline/context_trace.py",
+          "symbol": "heatmap_to_cards",
+          "kind": "function",
+          "loc": "packages/pipeline/context_trace.py:581-619",
+          "start_line": 581,
+          "end_line": 619,
+          "score": 9.85
+        },
+        {
+          "file": "packages/pipeline/mcp_response_lean.py",
+          "symbol": "slim_locate_payload",
+          "kind": "function",
+          "loc": "packages/pipeline/mcp_response_lean.py:148-291",
+          "start_line": 148,
+          "end_line": 291,
+          "score": 7.2
+        }
+      ],
+      "chunks_k8": [
+        {
+          "file": "packages/pipeline/session_store.py",
+          "symbol": "token_mode",
+          "kind": "function",
+          "loc": "packages/pipeline/session_store.py:223-224",
+          "start_line": 223,
+          "end_line": 224,
+          "score": 9.85
+        },
+        {
+          "file": "packages/pipeline/context_trace.py",
+          "symbol": "heatmap_to_cards",
+          "kind": "function",
+          "loc": "packages/pipeline/context_trace.py:581-619",
+          "start_line": 581,
+          "end_line": 619,
+          "score": 9.85
+        },
+        {
+          "file": "packages/pipeline/mcp_response_lean.py",
+          "symbol": "slim_locate_payload",
+          "kind": "function",
+          "loc": "packages/pipeline/mcp_response_lean.py:148-291",
+          "start_line": 148,
+          "end_line": 291,
+          "score": 7.2
+        }
+      ],
+      "pack": {
+        "ok": true,
+        "elapsed_s": 0.167,
+        "n_pack": 4,
+        "pack": [
+          {
+            "file": "packages/pipeline/session_store.py",
+            "symbol": "token_mode",
+            "loc": "packages/pipeline/session_store.py:223-224",
+            "id": "packages/pipeline/session_store.py::token_mode",
+            "chars": 99
+          },
+          {
+            "file": "packages/pipeline/context_trace.py",
+            "symbol": "heatmap_to_cards",
+            "loc": "packages/pipeline/context_trace.py:581-619",
+            "id": "packages/pipeline/context_trace.py::heatmap_to_cards",
+            "chars": 1198
+          },
+          {
+            "file": "packages/pipeline/context_trace.py",
+            "symbol": "_heat",
+            "loc": "packages/pipeline/context_trace.py:39-44",
+            "id": "packages/pipeline/context_trace.py::_heat",
+            "chars": 137
+          },
+          {
+            "file": "packages/pipeline/context_trace.py",
+            "symbol": "card_role",
+            "loc": "packages/pipeline/context_trace.py:372-395",
+            "id": "packages/pipeline/context_trace.py::card_role",
+            "chars": 702
+          }
+        ],
+        "chain": [
+          {
+            "id": "packages/pipeline/session_store.py::token_mode",
+            "loc": "packages/pipeline/session_store.py:223-224",
+            "edge": "seed",
+            "symbol": "token_mode"
+          },
+          {
+            "id": "packages/pipeline/context_trace.py::heatmap_to_cards",
+            "loc": "packages/pipeline/context_trace.py:581-619",
+            "edge": "seed",
+            "symbol": "heatmap_to_cards"
+          },
+          {
+            "id": "packages/pipeline/context_trace.py::_heat",
+            "loc": "packages/pipeline/context_trace.py:39-44",
+            "edge": "calls",
+            "symbol": "_heat"
+          },
+          {
+            "id": "packages/pipeline/context_trace.py::card_role",
+            "loc": "packages/pipeline/context_trace.py:372-395",
+            "edge": "calls",
+            "symbol": "card_role"
+          }
+        ],
+        "seed": {
+          "file": "packages/pipeline/session_store.py",
+          "symbol": "token_mode",
+          "id": "packages/pipeline/session_store.py::token_mode"
+        },
+        "error": null
+      },
+      "scores": {
+        "map_k12": {
+          "file": 1.0,
+          "symbol": 1.0,
+          "note": "raw map cards (symbols often empty)"
+        },
+        "map_k12_chunks": {
+          "file": 0.5,
+          "symbol": 1.0,
+          "chunks": [
+            "token_mode",
+            "heatmap_to_cards",
+            "slim_locate_payload"
+          ]
+        },
+        "map8_pack": {
+          "file": 0.5,
+          "symbol": 1.0,
+          "n_pack": 4,
+          "chunks": [
+            "token_mode",
+            "heatmap_to_cards",
+            "slim_locate_payload"
+          ],
+          "elapsed_s": 0.167
+        }
+      }
+    },
+    {
+      "id": "t11",
+      "family": "permissions-allowlist",
+      "task": "How does connect write Cursor mcpAllowlist / permissions for Scubiee tools?",
+      "must_files": [
+        "packages/pipeline/mcp_permissions.py",
+        "packages/pipeline/rules_installer.py"
+      ],
+      "must_symbols": [
+        "apply_permissions_to_repo_tool_surface"
+      ],
+      "map_k12": {
+        "elapsed_s": 0.782,
+        "top_files": [
+          "tests/test_mcp_permissions.py",
+          "tests/test_mcp_restore.py",
+          "packages/pipeline/mcp_permissions.py",
+          "packages/pipeline/rules_installer.py",
+          "tests/test_user_journey_scenarios.py",
+          "docs/connect-global-mcp-research.md",
+          "packages/pipeline/mcp_install.py",
+          "scripts/kiro_mcp_ab_dev_eval.py"
+        ]
+      },
+      "map_k8": {
+        "elapsed_s": 0.349,
+        "top_files": [
+          "tests/test_mcp_permissions.py",
+          "tests/test_mcp_restore.py",
+          "packages/pipeline/mcp_permissions.py",
+          "packages/pipeline/rules_installer.py",
+          "tests/test_user_journey_scenarios.py"
+        ]
+      },
+      "chunks_k12": [
+        {
+          "file": "packages/pipeline/mcp_permissions.py",
+          "symbol": "merge_cursor_permissions",
+          "kind": "function",
+          "loc": "packages/pipeline/mcp_permissions.py:253-287",
+          "start_line": 253,
+          "end_line": 287,
+          "score": 10.4
+        },
+        {
+          "file": "packages/pipeline/mcp_permissions.py",
+          "symbol": "apply_permissions_to_repo_tool_surface",
+          "kind": "function",
+          "loc": "packages/pipeline/mcp_permissions.py:518-531",
+          "start_line": 518,
+          "end_line": 531,
+          "score": 9.0
+        },
+        {
+          "file": "packages/pipeline/mcp_install.py",
+          "symbol": "write_cursor_mcp",
+          "kind": "function",
+          "loc": "packages/pipeline/mcp_install.py:274-290",
+          "start_line": 274,
+          "end_line": 290,
+          "score": 6.7
+        }
+      ],
+      "chunks_k8": [
+        {
+          "file": "packages/pipeline/mcp_permissions.py",
+          "symbol": "merge_cursor_permissions",
+          "kind": "function",
+          "loc": "packages/pipeline/mcp_permissions.py:253-287",
+          "start_line": 253,
+          "end_line": 287,
+          "score": 10.4
+        },
+        {
+          "file": "packages/pipeline/mcp_permissions.py",
+          "symbol": "apply_permissions_to_repo_tool_surface",
+          "kind": "function",
+          "loc": "packages/pipeline/mcp_permissions.py:518-531",
+          "start_line": 518,
+          "end_line": 531,
+          "score": 9.0
+        },
+        {
+          "file": "packages/pipeline/mcp_install.py",
+          "symbol": "write_cursor_mcp",
+          "kind": "function",
+          "loc": "packages/pipeline/mcp_install.py:274-290",
+          "start_line": 274,
+          "end_line": 290,
+          "score": 6.7
+        }
+      ],
+      "pack": {
+        "ok": true,
+        "elapsed_s": 0.192,
+        "n_pack": 4,
+        "pack": [
+          {
+            "file": "packages/pipeline/mcp_permissions.py",
+            "symbol": "merge_cursor_permissions",
+            "loc": "packages/pipeline/mcp_permissions.py:253-287",
+            "id": "packages/pipeline/mcp_permissions.py::merge_cursor_permissions",
+            "chars": 1317
+          },
+          {
+            "file": "packages/pipeline/mcp_permissions.py",
+            "symbol": "_load_json_object",
+            "loc": "packages/pipeline/mcp_permissions.py:233-240",
+            "id": "packages/pipeline/mcp_permissions.py::_load_json_object",
+            "chars": 292
+          },
+          {
+            "file": "packages/pipeline/mcp_permissions.py",
+            "symbol": "_write_json_object",
+            "loc": "packages/pipeline/mcp_permissions.py:243-250",
+            "id": "packages/pipeline/mcp_permissions.py::_write_json_object",
+            "chars": 285
+          },
+          {
+            "file": "packages/pipeline/mcp_permissions.py",
+            "symbol": "apply_permissions_to_repo_tool_surface",
+            "loc": "packages/pipeline/mcp_permissions.py:518-531",
+            "id": "packages/pipeline/mcp_permissions.py::apply_permissions_to_repo_tool_surface",
+            "chars": 397
+          }
+        ],
+        "chain": [
+          {
+            "id": "packages/pipeline/mcp_permissions.py::merge_cursor_permissions",
+            "loc": "packages/pipeline/mcp_permissions.py:253-287",
+            "edge": "seed",
+            "symbol": "merge_cursor_permissions"
+          },
+          {
+            "id": "packages/pipeline/mcp_permissions.py::_load_json_object",
+            "loc": "packages/pipeline/mcp_permissions.py:233-240",
+            "edge": "calls",
+            "symbol": "_load_json_object"
+          },
+          {
+            "id": "packages/pipeline/mcp_permissions.py::_write_json_object",
+            "loc": "packages/pipeline/mcp_permissions.py:243-250",
+            "edge": "calls",
+            "symbol": "_write_json_object"
+          },
+          {
+            "id": "packages/pipeline/mcp_permissions.py::apply_permissions_to_repo_tool_surface",
+            "loc": "packages/pipeline/mcp_permissions.py:518-531",
+            "edge": "seed",
+            "symbol": "apply_permissions_to_repo_tool_surface"
+          },
+          {
+            "id": "packages/pipeline/mcp_permissions.py::tool_permission_plan",
+            "loc": "packages/pipeline/mcp_permissions.py:158-159",
+            "edge": "calls",
+            "symbol": "tool_permission_plan"
+          },
+          {
+            "id": "packages/pipeline/mcp_permissions.py::_cursor_mcp_allowlist",
+            "loc": "packages/pipeline/mcp_permissions.py:211-221",
+            "edge": "calls",
+            "symbol": "_cursor_mcp_allowlist"
+          },
+          {
+            "id": "packages/pipeline/mcp_permissions.py::_merge_unique_strings",
+            "loc": "packages/pipeline/mcp_permissions.py:162-171",
+            "edge": "calls",
+            "symbol": "_merge_unique_strings"
+          },
+          {
+            "id": "packages/pipeline/mcp_permissions.py::write_tool_permission_artifacts",
+            "loc": "packages/pipeline/mcp_permissions.py:365-483",
+            "edge": "calls",
+            "symbol": "write_tool_permission_artifacts"
+          }
+        ],
+        "seed": {
+          "file": "packages/pipeline/mcp_permissions.py",
+          "symbol": "merge_cursor_permissions",
+          "id": "packages/pipeline/mcp_permissions.py::merge_cursor_permissions"
+        },
+        "error": null
+      },
+      "scores": {
+        "map_k12": {
+          "file": 1.0,
+          "symbol": 0.0,
+          "note": "raw map cards (symbols often empty)"
+        },
+        "map_k12_chunks": {
+          "file": 0.5,
+          "symbol": 1.0,
+          "chunks": [
+            "merge_cursor_permissions",
+            "apply_permissions_to_repo_tool_surface",
+            "write_cursor_mcp"
+          ]
+        },
+        "map8_pack": {
+          "file": 0.5,
+          "symbol": 1.0,
+          "n_pack": 4,
+          "chunks": [
+            "merge_cursor_permissions",
+            "apply_permissions_to_repo_tool_surface",
+            "write_cursor_mcp"
+          ],
+          "elapsed_s": 0.192
+        }
+      }
+    },
+    {
+      "id": "t12",
+      "family": "rules-gate-text",
+      "task": "Where is the GATE 1 project rule text written into AGENTS.md / Cursor rules?",
+      "must_files": [
+        "packages/pipeline/rules_installer.py"
+      ],
+      "must_symbols": [
+        "write_project_gate_rules"
+      ],
+      "map_k12": {
+        "elapsed_s": 0.822,
+        "top_files": [
+          "packages/pipeline/rules_installer.py",
+          "tests/test_token_efficient_gating.py",
+          "tests/test_mcp_locate.py",
+          "tests/test_user_journey_scenarios.py",
+          "tests/test_connect_formats.py",
+          "scripts/kiro_mcp_ab_dev_eval.py",
+          "packages/pipeline/mcp_locate.py",
+          "packages/pipeline/upgrade_scenarios.py"
+        ]
+      },
+      "map_k8": {
+        "elapsed_s": 0.519,
+        "top_files": [
+          "packages/pipeline/rules_installer.py",
+          "tests/test_token_efficient_gating.py",
+          "tests/test_mcp_locate.py",
+          "tests/test_user_journey_scenarios.py",
+          "tests/test_connect_formats.py"
+        ]
+      },
+      "chunks_k12": [
+        {
+          "file": "packages/pipeline/rules_installer.py",
+          "symbol": "gate_overview_mdc",
+          "kind": "function",
+          "loc": "packages/pipeline/rules_installer.py:182-193",
+          "start_line": 182,
+          "end_line": 193,
+          "score": 10.05
+        },
+        {
+          "file": "packages/pipeline/rules_installer.py",
+          "symbol": "write_project_gate_rules",
+          "kind": "function",
+          "loc": "packages/pipeline/rules_installer.py:1139-1202",
+          "start_line": 1139,
+          "end_line": 1202,
+          "score": 10.05
+        },
+        {
+          "file": "packages/pipeline/mcp_locate.py",
+          "symbol": "create_mcp",
+          "kind": "function",
+          "loc": "packages/pipeline/mcp_locate.py:2246-4682",
+          "start_line": 2246,
+          "end_line": 4682,
+          "score": 3.7
+        }
+      ],
+      "chunks_k8": [
+        {
+          "file": "packages/pipeline/rules_installer.py",
+          "symbol": "gate_overview_mdc",
+          "kind": "function",
+          "loc": "packages/pipeline/rules_installer.py:182-193",
+          "start_line": 182,
+          "end_line": 193,
+          "score": 10.05
+        },
+        {
+          "file": "packages/pipeline/rules_installer.py",
+          "symbol": "write_project_gate_rules",
+          "kind": "function",
+          "loc": "packages/pipeline/rules_installer.py:1139-1202",
+          "start_line": 1139,
+          "end_line": 1202,
+          "score": 10.05
+        },
+        {
+          "file": "packages/pipeline/mcp_locate.py",
+          "symbol": "create_mcp",
+          "kind": "function",
+          "loc": "packages/pipeline/mcp_locate.py:2246-4682",
+          "start_line": 2246,
+          "end_line": 4682,
+          "score": 3.7
+        }
+      ],
+      "pack": {
+        "ok": true,
+        "elapsed_s": 0.154,
+        "n_pack": 4,
+        "pack": [
+          {
+            "file": "packages/pipeline/rules_installer.py",
+            "symbol": "gate_overview_mdc",
+            "loc": "packages/pipeline/rules_installer.py:182-193",
+            "id": "packages/pipeline/rules_installer.py::gate_overview_mdc",
+            "chars": 507
+          },
+          {
+            "file": "packages/pipeline/rules_installer.py",
+            "symbol": "write_project_gate_rules",
+            "loc": "packages/pipeline/rules_installer.py:1139-1202",
+            "id": "packages/pipeline/rules_installer.py::write_project_gate_rules",
+            "chars": 2152
+          },
+          {
+            "file": "packages/pipeline/rules_installer.py",
+            "symbol": "unmanaged_gate_rule_body",
+            "loc": "packages/pipeline/rules_installer.py:158-164",
+            "id": "packages/pipeline/rules_installer.py::unmanaged_gate_rule_body",
+            "chars": 340
+          },
+          {
+            "file": "packages/pipeline/rules_installer.py",
+            "symbol": "managed_gate_overview_bullet",
+            "loc": "packages/pipeline/rules_installer.py:137-148",
+            "id": "packages/pipeline/rules_installer.py::managed_gate_overview_bullet",
+            "chars": 763
+          }
+        ],
+        "chain": [
+          {
+            "id": "packages/pipeline/rules_installer.py::gate_overview_mdc",
+            "loc": "packages/pipeline/rules_installer.py:182-193",
+            "edge": "seed",
+            "symbol": "gate_overview_mdc"
+          },
+          {
+            "id": "packages/pipeline/rules_installer.py::write_project_gate_rules",
+            "loc": "packages/pipeline/rules_installer.py:1139-1202",
+            "edge": "seed",
+            "symbol": "write_project_gate_rules"
+          },
+          {
+            "id": "packages/pipeline/rules_installer.py::unmanaged_gate_rule_body",
+            "loc": "packages/pipeline/rules_installer.py:158-164",
+            "edge": "calls",
+            "symbol": "unmanaged_gate_rule_body"
+          },
+          {
+            "id": "packages/pipeline/rules_installer.py::managed_gate_overview_bullet",
+            "loc": "packages/pipeline/rules_installer.py:137-148",
+            "edge": "calls",
+            "symbol": "managed_gate_overview_bullet"
+          },
+          {
+            "id": "packages/pipeline/rules_installer.py::paused_gate_rule_body",
+            "loc": "packages/pipeline/rules_installer.py:174-179",
+            "edge": "calls",
+            "symbol": "paused_gate_rule_body"
+          },
+          {
+            "id": "packages/pipeline/rules_installer.py::gate_line_for_repo",
+            "loc": "packages/pipeline/rules_installer.py:266-280",
+            "edge": "calls",
+            "symbol": "gate_line_for_repo"
+          },
+          {
+            "id": "packages/pipeline/rules_installer.py::_project_rules_eligible",
+            "loc": "packages/pipeline/rules_installer.py:283-289",
+            "edge": "calls",
+            "symbol": "_project_rules_eligible"
+          },
+          {
+            "id": "packages/pipeline/rules_installer.py::_write_rule_append_md",
+            "loc": "packages/pipeline/rules_installer.py:1109-1122",
+            "edge": "calls",
+            "symbol": "_write_rule_append_md"
+          }
+        ],
+        "seed": {
+          "file": "packages/pipeline/rules_installer.py",
+          "symbol": "gate_overview_mdc",
+          "id": "packages/pipeline/rules_installer.py::gate_overview_mdc"
+        },
+        "error": null
+      },
+      "scores": {
+        "map_k12": {
+          "file": 1.0,
+          "symbol": 0.0,
+          "note": "raw map cards (symbols often empty)"
+        },
+        "map_k12_chunks": {
+          "file": 1.0,
+          "symbol": 1.0,
+          "chunks": [
+            "gate_overview_mdc",
+            "write_project_gate_rules",
+            "create_mcp"
+          ]
+        },
+        "map8_pack": {
+          "file": 1.0,
+          "symbol": 1.0,
+          "n_pack": 4,
+          "chunks": [
+            "gate_overview_mdc",
+            "write_project_gate_rules",
+            "create_mcp"
+          ],
+          "elapsed_s": 0.154
+        }
+      }
+    },
+    {
+      "id": "t13",
+      "family": "freshness-sync",
+      "task": "How does background freshness / sync decide the index is stale and needs refresh?",
+      "must_files": [
+        "packages/pipeline/sync_loop.py",
+        "packages/pipeline/freshness.py"
+      ],
+      "must_symbols": [],
+      "map_k12": {
+        "elapsed_s": 0.39,
+        "top_files": [
+          "packages/pipeline/sync_loop.py",
+          "docs/freshness.md",
+          "packages/pipeline/freshness.py",
+          "fixtures/trace-lab/app/oauth/refresh.py",
+          "docs/reindexing/index-freshness-agent-trajectory.md",
+          "docs/research-freshness.md",
+          "tests/test_freshness.py",
+          "docs/superpowers/specs/2026-08-03-keeper-sync-lifecycle-design.md"
+        ]
+      },
+      "map_k8": {
+        "elapsed_s": 0.248,
+        "top_files": [
+          "packages/pipeline/sync_loop.py",
+          "docs/freshness.md",
+          "packages/pipeline/freshness.py",
+          "fixtures/trace-lab/app/oauth/refresh.py",
+          "docs/reindexing/index-freshness-agent-trajectory.md"
+        ]
+      },
+      "chunks_k12": [
+        {
+          "file": "packages/pipeline/sync_loop.py",
+          "symbol": "BackgroundSyncLoop.sync_once",
+          "kind": "method",
+          "loc": "packages/pipeline/sync_loop.py:713-715",
+          "start_line": 713,
+          "end_line": 715,
+          "score": 7.0
+        },
+        {
+          "file": "packages/pipeline/ce_service.py",
+          "symbol": "RuntimeManager.sync",
+          "kind": "method",
+          "loc": "packages/pipeline/ce_service.py:892-905",
+          "start_line": 892,
+          "end_line": 905,
+          "score": 9.2
+        },
+        {
+          "file": "packages/pipeline/sync_loop.py",
+          "symbol": "BackgroundSyncLoop.start",
+          "kind": "method",
+          "loc": "packages/pipeline/sync_loop.py:602-621",
+          "start_line": 602,
+          "end_line": 621,
+          "score": 6.55
+        }
+      ],
+      "chunks_k8": [
+        {
+          "file": "packages/pipeline/sync_loop.py",
+          "symbol": "BackgroundSyncLoop.sync_once",
+          "kind": "method",
+          "loc": "packages/pipeline/sync_loop.py:713-715",
+          "start_line": 713,
+          "end_line": 715,
+          "score": 7.0
+        },
+        {
+          "file": "packages/pipeline/sync_loop.py",
+          "symbol": "BackgroundSyncLoop.start",
+          "kind": "method",
+          "loc": "packages/pipeline/sync_loop.py:602-621",
+          "start_line": 602,
+          "end_line": 621,
+          "score": 6.55
+        },
+        {
+          "file": "packages/pipeline/freshness.py",
+          "symbol": "check_freshness",
+          "kind": "function",
+          "loc": "packages/pipeline/freshness.py:202-335",
+          "start_line": 202,
+          "end_line": 335,
+          "score": 6.35
+        }
+      ],
+      "pack": {
+        "ok": true,
+        "elapsed_s": 0.151,
+        "n_pack": 4,
+        "pack": [
+          {
+            "file": "packages/pipeline/sync_loop.py",
+            "symbol": "BackgroundSyncLoop.sync_once",
+            "loc": "packages/pipeline/sync_loop.py:713-715",
+            "id": "packages/pipeline/sync_loop.py::BackgroundSyncLoop.sync_once",
+            "chars": 171
+          },
+          {
+            "file": "packages/pipeline/merkle.py",
+            "symbol": "file_sha256",
+            "loc": "packages/pipeline/merkle.py:93-101",
+            "id": "packages/pipeline/merkle.py::file_sha256",
+            "chars": 252
+          },
+          {
+            "file": "packages/pipeline/merkle.py",
+            "symbol": "is_junk_rel",
+            "loc": "packages/pipeline/merkle.py:118-126",
+            "id": "packages/pipeline/merkle.py::is_junk_rel",
+            "chars": 400
+          },
+          {
+            "file": "packages/pipeline/merkle.py",
+            "symbol": "root_hash",
+            "loc": "packages/pipeline/merkle.py:181-188",
+            "id": "packages/pipeline/merkle.py::root_hash",
+            "chars": 276
+          }
+        ],
+        "chain": [
+          {
+            "id": "packages/pipeline/sync_loop.py::BackgroundSyncLoop.sync_once",
+            "loc": "packages/pipeline/sync_loop.py:713-715",
+            "edge": "seed",
+            "symbol": "BackgroundSyncLoop.sync_once"
+          },
+          {
+            "id": "packages/pipeline/merkle.py::file_sha256",
+            "loc": "packages/pipeline/merkle.py:93-101",
+            "edge": "calls",
+            "symbol": "file_sha256"
+          },
+          {
+            "id": "packages/pipeline/merkle.py::is_junk_rel",
+            "loc": "packages/pipeline/merkle.py:118-126",
+            "edge": "calls",
+            "symbol": "is_junk_rel"
+          },
+          {
+            "id": "packages/pipeline/merkle.py::root_hash",
+            "loc": "packages/pipeline/merkle.py:181-188",
+            "edge": "calls",
+            "symbol": "root_hash"
+          },
+          {
+            "id": "packages/pipeline/sync_loop.py::BackgroundSyncLoop.start",
+            "loc": "packages/pipeline/sync_loop.py:602-621",
+            "edge": "seed",
+            "symbol": "BackgroundSyncLoop.start"
+          },
+          {
+            "id": "packages/pipeline/sync_loop.py::_register_atexit",
+            "loc": "packages/pipeline/sync_loop.py:60-77",
+            "edge": "calls",
+            "symbol": "_register_atexit"
+          },
+          {
+            "id": "packages/graphify/extractors/base.py::_make_id",
+            "loc": "packages/graphify/extractors/base.py:54-55",
+            "edge": "calls",
+            "symbol": "_make_id"
+          },
+          {
+            "id": "packages/pipeline/sync_loop.py::BackgroundSyncLoop.keeper_tick",
+            "loc": "packages/pipeline/sync_loop.py:629-695",
+            "edge": "calls",
+            "symbol": "BackgroundSyncLoop.keeper_tick"
+          }
+        ],
+        "seed": {
+          "file": "packages/pipeline/sync_loop.py",
+          "symbol": "BackgroundSyncLoop.sync_once",
+          "id": "packages/pipeline/sync_loop.py::BackgroundSyncLoop.sync_once"
+        },
+        "error": null
+      },
+      "scores": {
+        "map_k12": {
+          "file": 1.0,
+          "symbol": 1.0,
+          "note": "raw map cards (symbols often empty)"
+        },
+        "map_k12_chunks": {
+          "file": 0.5,
+          "symbol": 1.0,
+          "chunks": [
+            "BackgroundSyncLoop.sync_once",
+            "RuntimeManager.sync",
+            "BackgroundSyncLoop.start"
+          ]
+        },
+        "map8_pack": {
+          "file": 1.0,
+          "symbol": 1.0,
+          "n_pack": 4,
+          "chunks": [
+            "BackgroundSyncLoop.sync_once",
+            "BackgroundSyncLoop.start",
+            "check_freshness"
+          ],
+          "elapsed_s": 0.151
+        }
+      }
+    },
+    {
+      "id": "t14",
+      "family": "memory-budget",
+      "task": "Where is embed / search memory budget capped so DML batches stay safe?",
+      "must_files": [
+        "packages/pipeline/memory_governor.py",
+        "packages/pipeline/embedder.py",
+        "packages/pipeline/accel.py"
+      ],
+      "must_symbols": [],
+      "map_k12": {
+        "elapsed_s": 0.452,
+        "top_files": [
+          "scripts/bench_budget_alloc.py",
+          "scripts/bench_mix_seq_ab.py",
+          "tests/test_memory_budget.py",
+          "packages/pipeline/memory_governor.py",
+          "packages/pipeline/accel.py",
+          "tests/test_coderank_fp16.py",
+          "packages/pipeline/memory_budget.py",
+          "docs/mlx-index-compute-and-memory.md"
+        ]
+      },
+      "map_k8": {
+        "elapsed_s": 0.328,
+        "top_files": [
+          "scripts/bench_budget_alloc.py",
+          "scripts/bench_mix_seq_ab.py",
+          "tests/test_memory_budget.py",
+          "packages/pipeline/memory_governor.py",
+          "packages/pipeline/accel.py"
+        ]
+      },
+      "chunks_k12": [
+        {
+          "file": "packages/pipeline/memory_governor.py",
+          "symbol": "embed_idle_demote_s",
+          "kind": "function",
+          "loc": "packages/pipeline/memory_governor.py:53-63",
+          "start_line": 53,
+          "end_line": 63,
+          "score": 6.0
+        },
+        {
+          "file": "packages/pipeline/memory_budget.py",
+          "symbol": "apply_index_memory_budget",
+          "kind": "function",
+          "loc": "packages/pipeline/memory_budget.py:127-162",
+          "start_line": 127,
+          "end_line": 162,
+          "score": 9.7
+        },
+        {
+          "file": "packages/pipeline/memory_budget.py",
+          "symbol": "force_apply_memory_budget",
+          "kind": "function",
+          "loc": "packages/pipeline/memory_budget.py:165-198",
+          "start_line": 165,
+          "end_line": 198,
+          "score": 9.35
+        }
+      ],
+      "chunks_k8": [
+        {
+          "file": "packages/pipeline/memory_governor.py",
+          "symbol": "embed_idle_demote_s",
+          "kind": "function",
+          "loc": "packages/pipeline/memory_governor.py:53-63",
+          "start_line": 53,
+          "end_line": 63,
+          "score": 6.0
+        },
+        {
+          "file": "packages/pipeline/memory_budget.py",
+          "symbol": "apply_index_memory_budget",
+          "kind": "function",
+          "loc": "packages/pipeline/memory_budget.py:127-162",
+          "start_line": 127,
+          "end_line": 162,
+          "score": 9.7
+        },
+        {
+          "file": "packages/pipeline/memory_budget.py",
+          "symbol": "force_apply_memory_budget",
+          "kind": "function",
+          "loc": "packages/pipeline/memory_budget.py:165-198",
+          "start_line": 165,
+          "end_line": 198,
+          "score": 9.35
+        }
+      ],
+      "pack": {
+        "ok": true,
+        "elapsed_s": 0.147,
+        "n_pack": 4,
+        "pack": [
+          {
+            "file": "packages/pipeline/memory_governor.py",
+            "symbol": "embed_idle_demote_s",
+            "loc": "packages/pipeline/memory_governor.py:53-63",
+            "id": "packages/pipeline/memory_governor.py::embed_idle_demote_s",
+            "chars": 401
+          },
+          {
+            "file": "packages/pipeline/memory_budget.py",
+            "symbol": "apply_index_memory_budget",
+            "loc": "packages/pipeline/memory_budget.py:127-162",
+            "id": "packages/pipeline/memory_budget.py::apply_index_memory_budget",
+            "chars": 1858
+          },
+          {
+            "file": "packages/pipeline/memory_governor.py",
+            "symbol": "_env_float",
+            "loc": "packages/pipeline/memory_governor.py:46-50",
+            "id": "packages/pipeline/memory_governor.py::_env_float",
+            "chars": 163
+          },
+          {
+            "file": "packages/pipeline/lifecycle_runtime.py",
+            "symbol": "idle_seconds",
+            "loc": "packages/pipeline/lifecycle_runtime.py:70-77",
+            "id": "packages/pipeline/lifecycle_runtime.py::idle_seconds",
+            "chars": 243
+          }
+        ],
+        "chain": [
+          {
+            "id": "packages/pipeline/memory_governor.py::embed_idle_demote_s",
+            "loc": "packages/pipeline/memory_governor.py:53-63",
+            "edge": "seed",
+            "symbol": "embed_idle_demote_s"
+          },
+          {
+            "id": "packages/pipeline/memory_budget.py::apply_index_memory_budget",
+            "loc": "packages/pipeline/memory_budget.py:127-162",
+            "edge": "seed",
+            "symbol": "apply_index_memory_budget"
+          },
+          {
+            "id": "packages/pipeline/memory_governor.py::_env_float",
+            "loc": "packages/pipeline/memory_governor.py:46-50",
+            "edge": "calls",
+            "symbol": "_env_float"
+          },
+          {
+            "id": "packages/pipeline/lifecycle_runtime.py::idle_seconds",
+            "loc": "packages/pipeline/lifecycle_runtime.py:70-77",
+            "edge": "calls",
+            "symbol": "idle_seconds"
+          },
+          {
+            "id": "packages/pipeline/accel.py::load_accel",
+            "loc": "packages/pipeline/accel.py:132-146",
+            "edge": "calls",
+            "symbol": "load_accel"
+          },
+          {
+            "id": "packages/pipeline/accel.py::accel_path",
+            "loc": "packages/pipeline/accel.py:53-67",
+            "edge": "calls",
+            "symbol": "accel_path"
+          },
+          {
+            "id": "packages/pipeline/project_id.py::context_engine_home",
+            "loc": "packages/pipeline/project_id.py:108-113",
+            "edge": "calls",
+            "symbol": "context_engine_home"
+          },
+          {
+            "id": "packages/pipeline/branding.py::migrate_home_dir",
+            "loc": "packages/pipeline/branding.py:29-32",
+            "edge": "calls",
+            "symbol": "migrate_home_dir"
+          }
+        ],
+        "seed": {
+          "file": "packages/pipeline/memory_governor.py",
+          "symbol": "embed_idle_demote_s",
+          "id": "packages/pipeline/memory_governor.py::embed_idle_demote_s"
+        },
+        "error": null
+      },
+      "scores": {
+        "map_k12": {
+          "file": 0.667,
+          "symbol": 1.0,
+          "note": "raw map cards (symbols often empty)"
+        },
+        "map_k12_chunks": {
+          "file": 0.333,
+          "symbol": 1.0,
+          "chunks": [
+            "embed_idle_demote_s",
+            "apply_index_memory_budget",
+            "force_apply_memory_budget"
+          ]
+        },
+        "map8_pack": {
+          "file": 0.667,
+          "symbol": 1.0,
+          "n_pack": 4,
+          "chunks": [
+            "embed_idle_demote_s",
+            "apply_index_memory_budget",
+            "force_apply_memory_budget"
+          ],
+          "elapsed_s": 0.147
+        }
+      }
+    },
+    {
+      "id": "t15",
+      "family": "capability-attach",
+      "task": "How are capability cards attached to search hits for locate ranking?",
+      "must_files": [
+        "packages/pipeline/capability.py"
+      ],
+      "must_symbols": [
+        "CapabilityCard"
+      ],
+      "map_k12": {
+        "elapsed_s": 0.377,
+        "top_files": [
+          "packages/pipeline/capability.py",
+          "packages/pipeline/engine.py",
+          "docs/superpowers/specs/2026-08-03-capability-locate-design.md",
+          "packages/pipeline/locate.py",
+          "packages/pipeline/mcp_locate.py",
+          "tests/test_capability_promotion.py",
+          "packages/graphify/build.py",
+          "scripts/eval_locate_quality.py"
+        ]
+      },
+      "map_k8": {
+        "elapsed_s": 0.389,
+        "top_files": [
+          "packages/pipeline/capability.py",
+          "packages/pipeline/engine.py",
+          "docs/superpowers/specs/2026-08-03-capability-locate-design.md",
+          "packages/pipeline/locate.py",
+          "packages/pipeline/mcp_locate.py"
+        ]
+      },
+      "chunks_k12": [
+        {
+          "file": "packages/pipeline/capability.py",
+          "symbol": "build_cards",
+          "kind": "function",
+          "loc": "packages/pipeline/capability.py:367-381",
+          "start_line": 367,
+          "end_line": 381,
+          "score": 9.7
+        },
+        {
+          "file": "packages/graphify/build.py",
+          "symbol": "build_from_json",
+          "kind": "function",
+          "loc": "packages/graphify/build.py:539-1016",
+          "start_line": 539,
+          "end_line": 1016,
+          "score": 9.35
+        },
+        {
+          "file": "packages/pipeline/engine.py",
+          "symbol": "WarmSearchEngine.locate_capability",
+          "kind": "method",
+          "loc": "packages/pipeline/engine.py:211-215",
+          "start_line": 211,
+          "end_line": 215,
+          "score": 7.35
+        }
+      ],
+      "chunks_k8": [
+        {
+          "file": "packages/pipeline/capability.py",
+          "symbol": "build_cards",
+          "kind": "function",
+          "loc": "packages/pipeline/capability.py:367-381",
+          "start_line": 367,
+          "end_line": 381,
+          "score": 9.7
+        },
+        {
+          "file": "packages/graphify/build.py",
+          "symbol": "build_from_json",
+          "kind": "function",
+          "loc": "packages/graphify/build.py:539-1016",
+          "start_line": 539,
+          "end_line": 1016,
+          "score": 9.35
+        },
+        {
+          "file": "packages/pipeline/engine.py",
+          "symbol": "WarmSearchEngine.locate_capability",
+          "kind": "method",
+          "loc": "packages/pipeline/engine.py:211-215",
+          "start_line": 211,
+          "end_line": 215,
+          "score": 7.35
+        }
+      ],
+      "pack": {
+        "ok": true,
+        "elapsed_s": 0.143,
+        "n_pack": 4,
+        "pack": [
+          {
+            "file": "packages/pipeline/capability.py",
+            "symbol": "build_cards",
+            "loc": "packages/pipeline/capability.py:367-381",
+            "id": "packages/pipeline/capability.py::build_cards",
+            "chars": 440
+          },
+          {
+            "file": "packages/pipeline/capability.py",
+            "symbol": "_norm_path",
+            "loc": "packages/pipeline/capability.py:59-64",
+            "id": "packages/pipeline/capability.py::_norm_path",
+            "chars": 220
+          },
+          {
+            "file": "packages/pipeline/merkle.py",
+            "symbol": "is_junk_rel",
+            "loc": "packages/pipeline/merkle.py:118-126",
+            "id": "packages/pipeline/merkle.py::is_junk_rel",
+            "chars": 400
+          },
+          {
+            "file": "packages/graphify/build.py",
+            "symbol": "build_from_json",
+            "loc": "packages/graphify/build.py:539-1016",
+            "id": "packages/graphify/build.py::build_from_json",
+            "chars": 4940
+          }
+        ],
+        "chain": [
+          {
+            "id": "packages/pipeline/capability.py::build_cards",
+            "loc": "packages/pipeline/capability.py:367-381",
+            "edge": "seed",
+            "symbol": "build_cards"
+          },
+          {
+            "id": "packages/pipeline/capability.py::_norm_path",
+            "loc": "packages/pipeline/capability.py:59-64",
+            "edge": "calls",
+            "symbol": "_norm_path"
+          },
+          {
+            "id": "packages/pipeline/merkle.py::is_junk_rel",
+            "loc": "packages/pipeline/merkle.py:118-126",
+            "edge": "calls",
+            "symbol": "is_junk_rel"
+          },
+          {
+            "id": "packages/graphify/build.py::build_from_json",
+            "loc": "packages/graphify/build.py:539-1016",
+            "edge": "seed",
+            "symbol": "build_from_json"
+          },
+          {
+            "id": "packages/graphify/build.py::_old_file_stems",
+            "loc": "packages/graphify/build.py:370-384",
+            "edge": "calls",
+            "symbol": "_old_file_stems"
+          },
+          {
+            "id": "packages/graphify/build.py::_norm_source_file",
+            "loc": "packages/graphify/build.py:160-184",
+            "edge": "calls",
+            "symbol": "_norm_source_file"
+          },
+          {
+            "id": "packages/graphify/extractors/base.py::_file_stem",
+            "loc": "packages/graphify/extractors/base.py:58-81",
+            "edge": "calls",
+            "symbol": "_file_stem"
+          },
+          {
+            "id": "packages/graphify/ids.py::make_id",
+            "loc": "packages/graphify/ids.py:43-50",
+            "edge": "calls",
+            "symbol": "make_id"
+          }
+        ],
+        "seed": {
+          "file": "packages/pipeline/capability.py",
+          "symbol": "build_cards",
+          "id": "packages/pipeline/capability.py::build_cards"
+        },
+        "error": null
+      },
+      "scores": {
+        "map_k12": {
+          "file": 1.0,
+          "symbol": 0.0,
+          "note": "raw map cards (symbols often empty)"
+        },
+        "map_k12_chunks": {
+          "file": 1.0,
+          "symbol": 0.0,
+          "chunks": [
+            "build_cards",
+            "build_from_json",
+            "WarmSearchEngine.locate_capability"
+          ]
+        },
+        "map8_pack": {
+          "file": 1.0,
+          "symbol": 0.0,
+          "n_pack": 4,
+          "chunks": [
+            "build_cards",
+            "build_from_json",
+            "WarmSearchEngine.locate_capability"
+          ],
+          "elapsed_s": 0.143
+        }
+      }
+    },
+    {
+      "id": "t16",
+      "family": "graphify-edges",
+      "task": "How does Graphify IR supply call edges into the conductor / tracer graph?",
+      "must_files": [
+        "packages/conductor/graphify_retriever.py",
+        "packages/trace_lab/graphify_layer.py",
+        "packages/conductor/conductor.py"
+      ],
+      "must_symbols": [
+        "GraphifyChunkRetriever",
+        "build_graphify_graph"
+      ],
+      "map_k12": {
+        "elapsed_s": 0.683,
+        "top_files": [
+          "packages/conductor/graphify_retriever.py",
+          "packages/conductor/conductor.py",
+          "packages/graphify/build.py",
+          "packages/conductor/__init__.py",
+          "packages/graphify/serve.py",
+          "packages/trace_lab/facts/__init__.py",
+          "tests/test_faiss_dense_adapter.py",
+          "packages/pipeline/engine.py"
+        ]
+      },
+      "map_k8": {
+        "elapsed_s": 0.506,
+        "top_files": [
+          "packages/conductor/graphify_retriever.py",
+          "packages/conductor/conductor.py",
+          "packages/graphify/build.py",
+          "packages/conductor/__init__.py",
+          "packages/graphify/serve.py"
+        ]
+      },
+      "chunks_k12": [
+        {
+          "file": "packages/conductor/graphify_retriever.py",
+          "symbol": "GraphifyChunkRetriever",
+          "kind": "class",
+          "loc": "packages/conductor/graphify_retriever.py:89-270",
+          "start_line": 89,
+          "end_line": 270,
+          "score": 7.0
+        },
+        {
+          "file": "packages/conductor/conductor.py",
+          "symbol": "Conductor.retrieve_graphify",
+          "kind": "method",
+          "loc": "packages/conductor/conductor.py:65-70",
+          "start_line": 65,
+          "end_line": 70,
+          "score": 7.35
+        },
+        {
+          "file": "packages/graphify/build.py",
+          "symbol": "dedupe_edges",
+          "kind": "function",
+          "loc": "packages/graphify/build.py:347-367",
+          "start_line": 347,
+          "end_line": 367,
+          "score": 6.5
+        }
+      ],
+      "chunks_k8": [
+        {
+          "file": "packages/conductor/graphify_retriever.py",
+          "symbol": "GraphifyChunkRetriever",
+          "kind": "class",
+          "loc": "packages/conductor/graphify_retriever.py:89-270",
+          "start_line": 89,
+          "end_line": 270,
+          "score": 7.0
+        },
+        {
+          "file": "packages/conductor/conductor.py",
+          "symbol": "Conductor.retrieve_graphify",
+          "kind": "method",
+          "loc": "packages/conductor/conductor.py:65-70",
+          "start_line": 65,
+          "end_line": 70,
+          "score": 7.35
+        },
+        {
+          "file": "packages/graphify/build.py",
+          "symbol": "dedupe_edges",
+          "kind": "function",
+          "loc": "packages/graphify/build.py:347-367",
+          "start_line": 347,
+          "end_line": 367,
+          "score": 6.5
+        }
+      ],
+      "pack": {
+        "ok": true,
+        "elapsed_s": 0.286,
+        "n_pack": 1,
+        "pack": [
+          {
+            "file": "packages/conductor/graphify_retriever.py",
+            "symbol": "GraphifyChunkRetriever",
+            "loc": "packages/conductor/graphify_retriever.py:89-270",
+            "id": "packages/conductor/graphify_retriever.py::GraphifyChunkRetriever",
+            "chars": 6000
+          }
+        ],
+        "chain": [
+          {
+            "id": "packages/conductor/graphify_retriever.py::GraphifyChunkRetriever",
+            "loc": "packages/conductor/graphify_retriever.py:89-270",
+            "edge": "seed",
+            "symbol": "GraphifyChunkRetriever"
+          },
+          {
+            "id": "packages/conductor/conductor.py::Conductor.retrieve_graphify",
+            "loc": "packages/conductor/conductor.py:65-70",
+            "edge": "seed",
+            "symbol": "Conductor.retrieve_graphify"
+          },
+          {
+            "id": "packages/conductor/conductor.py::Conductor._file_of",
+            "loc": "packages/conductor/conductor.py:62-63",
+            "edge": "calls",
+            "symbol": "Conductor._file_of"
+          },
+          {
+            "id": "packages/conductor/graphify_retriever.py::normalize_file",
+            "loc": "packages/conductor/graphify_retriever.py:33-34",
+            "edge": "calls",
+            "symbol": "normalize_file"
+          },
+          {
+            "id": "packages/graphify/serve.py::_strip_diacritics",
+            "loc": "packages/graphify/serve.py:158-163",
+            "edge": "calls",
+            "symbol": "_strip_diacritics"
+          },
+          {
+            "id": "packages/conductor/graphify_retriever.py::GraphifyChunkRetriever.seed_files",
+            "loc": "packages/conductor/graphify_retriever.py:224-235",
+            "edge": "contains",
+            "symbol": "GraphifyChunkRetriever.seed_files"
+          },
+          {
+            "id": "packages/conductor/graphify_retriever.py::GraphifyChunkRetriever._chunks_for_node",
+            "loc": "packages/conductor/graphify_retriever.py:98-116",
+            "edge": "contains",
+            "symbol": "GraphifyChunkRetriever._chunks_for_node"
+          },
+          {
+            "id": "packages/conductor/graphify_retriever.py::GraphifyChunkRetriever.affinity_scores",
+            "loc": "packages/conductor/graphify_retriever.py:118-207",
+            "edge": "contains",
+            "symbol": "GraphifyChunkRetriever.affinity_scores"
+          }
+        ],
+        "seed": {
+          "file": "packages/conductor/graphify_retriever.py",
+          "symbol": "GraphifyChunkRetriever",
+          "id": "packages/conductor/graphify_retriever.py::GraphifyChunkRetriever"
+        },
+        "error": null
+      },
+      "scores": {
+        "map_k12": {
+          "file": 0.667,
+          "symbol": 0.0,
+          "note": "raw map cards (symbols often empty)"
+        },
+        "map_k12_chunks": {
+          "file": 0.667,
+          "symbol": 0.5,
+          "chunks": [
+            "GraphifyChunkRetriever",
+            "Conductor.retrieve_graphify",
+            "dedupe_edges"
+          ]
+        },
+        "map8_pack": {
+          "file": 0.667,
+          "symbol": 0.5,
+          "n_pack": 1,
+          "chunks": [
+            "GraphifyChunkRetriever",
+            "Conductor.retrieve_graphify",
+            "dedupe_edges"
+          ],
+          "elapsed_s": 0.286
+        }
+      }
+    },
+    {
+      "id": "t17",
+      "family": "never-index",
+      "task": "How do never-index path denies keep fixture/tmp paths out of the product corpus?",
+      "must_files": [
+        "packages/pipeline/repo_lifecycle.py"
+      ],
+      "must_symbols": [
+        "never_index_repo"
+      ],
+      "map_k12": {
+        "elapsed_s": 0.574,
+        "top_files": [
+          "tests/test_repo_lifecycle.py",
+          "tests/test_auto_sessions_observability.py",
+          "packages/pipeline/repo_lifecycle.py",
+          "tests/test_index_coverage.py",
+          "tests/test_connect_formats.py",
+          "packages/graphify/extractors/resolution.py",
+          "tests/test_progress_ui.py",
+          "tests/test_scenario_backtracking.py"
+        ]
+      },
+      "map_k8": {
+        "elapsed_s": 0.404,
+        "top_files": [
+          "tests/test_repo_lifecycle.py",
+          "tests/test_auto_sessions_observability.py",
+          "packages/pipeline/repo_lifecycle.py",
+          "tests/test_index_coverage.py",
+          "tests/test_connect_formats.py"
+        ]
+      },
+      "chunks_k12": [
+        {
+          "file": "packages/pipeline/repo_lifecycle.py",
+          "symbol": "never_index_repo",
+          "kind": "function",
+          "loc": "packages/pipeline/repo_lifecycle.py:619-639",
+          "start_line": 619,
+          "end_line": 639,
+          "score": 6.7
+        },
+        {
+          "file": "packages/pipeline/capability.py",
+          "symbol": "file_outline",
+          "kind": "function",
+          "loc": "packages/pipeline/capability.py:692-733",
+          "start_line": 692,
+          "end_line": 733,
+          "score": 6.7
+        },
+        {
+          "file": "packages/pipeline/checkout_identity.py",
+          "symbol": "remove_registry_checkout",
+          "kind": "function",
+          "loc": "packages/pipeline/checkout_identity.py:224-269",
+          "start_line": 224,
+          "end_line": 269,
+          "score": 6.7
+        }
+      ],
+      "chunks_k8": [
+        {
+          "file": "packages/pipeline/repo_lifecycle.py",
+          "symbol": "never_index_repo",
+          "kind": "function",
+          "loc": "packages/pipeline/repo_lifecycle.py:619-639",
+          "start_line": 619,
+          "end_line": 639,
+          "score": 6.7
+        },
+        {
+          "file": "packages/pipeline/repo_lifecycle.py",
+          "symbol": "activate_repo",
+          "kind": "function",
+          "loc": "packages/pipeline/repo_lifecycle.py:473-517",
+          "start_line": 473,
+          "end_line": 517,
+          "score": 3.7
+        },
+        {
+          "file": "packages/graphify/extractors/resolution.py",
+          "symbol": "_pnpm_workspace_globs",
+          "kind": "function",
+          "loc": "packages/graphify/extractors/resolution.py:339-356",
+          "start_line": 339,
+          "end_line": 356,
+          "score": 2.7
+        }
+      ],
+      "pack": {
+        "ok": true,
+        "elapsed_s": 0.149,
+        "n_pack": 4,
+        "pack": [
+          {
+            "file": "packages/pipeline/repo_lifecycle.py",
+            "symbol": "never_index_repo",
+            "loc": "packages/pipeline/repo_lifecycle.py:619-639",
+            "id": "packages/pipeline/repo_lifecycle.py::never_index_repo",
+            "chars": 747
+          },
+          {
+            "file": "packages/pipeline/project_id.py",
+            "symbol": "load_registry",
+            "loc": "packages/pipeline/project_id.py:220-226",
+            "id": "packages/pipeline/project_id.py::load_registry",
+            "chars": 319
+          },
+          {
+            "file": "packages/pipeline/project_id.py",
+            "symbol": "git_common_dir",
+            "loc": "packages/pipeline/project_id.py:321-355",
+            "id": "packages/pipeline/project_id.py::git_common_dir",
+            "chars": 1312
+          },
+          {
+            "file": "packages/pipeline/project_id.py",
+            "symbol": "projects_root",
+            "loc": "packages/pipeline/project_id.py:153-154",
+            "id": "packages/pipeline/project_id.py::projects_root",
+            "chars": 74
+          }
+        ],
+        "chain": [
+          {
+            "id": "packages/pipeline/repo_lifecycle.py::never_index_repo",
+            "loc": "packages/pipeline/repo_lifecycle.py:619-639",
+            "edge": "seed",
+            "symbol": "never_index_repo"
+          },
+          {
+            "id": "packages/pipeline/project_id.py::load_registry",
+            "loc": "packages/pipeline/project_id.py:220-226",
+            "edge": "calls",
+            "symbol": "load_registry"
+          },
+          {
+            "id": "packages/pipeline/project_id.py::git_common_dir",
+            "loc": "packages/pipeline/project_id.py:321-355",
+            "edge": "calls",
+            "symbol": "git_common_dir"
+          },
+          {
+            "id": "packages/pipeline/project_id.py::projects_root",
+            "loc": "packages/pipeline/project_id.py:153-154",
+            "edge": "calls",
+            "symbol": "projects_root"
+          },
+          {
+            "id": "packages/pipeline/project_id.py::mutate_registry",
+            "loc": "packages/pipeline/project_id.py:248-254",
+            "edge": "calls",
+            "symbol": "mutate_registry"
+          },
+          {
+            "id": "packages/pipeline/project_id.py::_read_json",
+            "loc": "packages/pipeline/project_id.py:168-182",
+            "edge": "calls",
+            "symbol": "_read_json"
+          },
+          {
+            "id": "packages/pipeline/project_id.py::_norm_path",
+            "loc": "packages/pipeline/project_id.py:257-261",
+            "edge": "calls",
+            "symbol": "_norm_path"
+          },
+          {
+            "id": "packages/pipeline/project_id.py::read_id_file",
+            "loc": "packages/pipeline/project_id.py:196-201",
+            "edge": "calls",
+            "symbol": "read_id_file"
+          }
+        ],
+        "seed": {
+          "file": "packages/pipeline/repo_lifecycle.py",
+          "symbol": "never_index_repo",
+          "id": "packages/pipeline/repo_lifecycle.py::never_index_repo"
+        },
+        "error": null
+      },
+      "scores": {
+        "map_k12": {
+          "file": 1.0,
+          "symbol": 0.0,
+          "note": "raw map cards (symbols often empty)"
+        },
+        "map_k12_chunks": {
+          "file": 1.0,
+          "symbol": 1.0,
+          "chunks": [
+            "never_index_repo",
+            "file_outline",
+            "remove_registry_checkout"
+          ]
+        },
+        "map8_pack": {
+          "file": 1.0,
+          "symbol": 1.0,
+          "n_pack": 4,
+          "chunks": [
+            "never_index_repo",
+            "activate_repo",
+            "_pnpm_workspace_globs"
+          ],
+          "elapsed_s": 0.149
+        }
+      }
+    },
+    {
+      "id": "t18",
+      "family": "wipe-safe",
+      "task": "Trace safe wipe / uninstall removing MCP config, rules, and local store.",
+      "must_files": [
+        "packages/pipeline/wipe.py",
+        "packages/pipeline/__main__.py"
+      ],
+      "must_symbols": [
+        "cmd_wipe"
+      ],
+      "map_k12": {
+        "elapsed_s": 0.756,
+        "top_files": [
+          "packages/pipeline/wipe.py",
+          "tests/test_stop_all_tools.py",
+          "packages/pipeline/__main__.py",
+          "docs/web-info/uninstall-mac-linux.md",
+          "tests/test_wipe.py",
+          "tests/test_mcp_no_repo_scubiee_after_wipe.py",
+          "docs/web-info/uninstall-windows.md",
+          "docs/web-info/faq.md"
+        ]
+      },
+      "map_k8": {
+        "elapsed_s": 0.528,
+        "top_files": [
+          "packages/pipeline/wipe.py",
+          "tests/test_stop_all_tools.py",
+          "packages/pipeline/__main__.py",
+          "docs/web-info/uninstall-mac-linux.md",
+          "tests/test_wipe.py"
+        ]
+      },
+      "chunks_k12": [
+        {
+          "file": "packages/pipeline/wipe.py",
+          "symbol": "wipe",
+          "kind": "function",
+          "loc": "packages/pipeline/wipe.py:1119-1146",
+          "start_line": 1119,
+          "end_line": 1146,
+          "score": 9.7
+        },
+        {
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_wipe",
+          "kind": "function",
+          "loc": "packages/pipeline/__main__.py:414-505",
+          "start_line": 414,
+          "end_line": 505,
+          "score": 11.45
+        },
+        {
+          "file": "packages/pipeline/rules_installer.py",
+          "symbol": "remove_mcp_config",
+          "kind": "function",
+          "loc": "packages/pipeline/rules_installer.py:1788-1815",
+          "start_line": 1788,
+          "end_line": 1815,
+          "score": 10.2
+        }
+      ],
+      "chunks_k8": [
+        {
+          "file": "packages/pipeline/wipe.py",
+          "symbol": "wipe",
+          "kind": "function",
+          "loc": "packages/pipeline/wipe.py:1119-1146",
+          "start_line": 1119,
+          "end_line": 1146,
+          "score": 9.7
+        },
+        {
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_wipe",
+          "kind": "function",
+          "loc": "packages/pipeline/__main__.py:414-505",
+          "start_line": 414,
+          "end_line": 505,
+          "score": 11.45
+        },
+        {
+          "file": "packages/pipeline/wipe.py",
+          "symbol": "_halt_scubiee_before_wipe",
+          "kind": "function",
+          "loc": "packages/pipeline/wipe.py:647-688",
+          "start_line": 647,
+          "end_line": 688,
+          "score": 8.7
+        }
+      ],
+      "pack": {
+        "ok": true,
+        "elapsed_s": 0.16,
+        "n_pack": 4,
+        "pack": [
+          {
+            "file": "packages/pipeline/wipe.py",
+            "symbol": "wipe",
+            "loc": "packages/pipeline/wipe.py:1119-1146",
+            "id": "packages/pipeline/wipe.py::wipe",
+            "chars": 960
+          },
+          {
+            "file": "packages/pipeline/wipe.py",
+            "symbol": "wipe_repo",
+            "loc": "packages/pipeline/wipe.py:727-837",
+            "id": "packages/pipeline/wipe.py::wipe_repo",
+            "chars": 4175
+          },
+          {
+            "file": "packages/pipeline/wipe.py",
+            "symbol": "_context_engine_homes",
+            "loc": "packages/pipeline/wipe.py:221-237",
+            "id": "packages/pipeline/wipe.py::_context_engine_homes",
+            "chars": 516
+          },
+          {
+            "file": "packages/pipeline/wipe.py",
+            "symbol": "_kiro_mcp_paths",
+            "loc": "packages/pipeline/wipe.py:34-36",
+            "id": "packages/pipeline/wipe.py::_kiro_mcp_paths",
+            "chars": 179
+          }
+        ],
+        "chain": [
+          {
+            "id": "packages/pipeline/wipe.py::wipe",
+            "loc": "packages/pipeline/wipe.py:1119-1146",
+            "edge": "seed",
+            "symbol": "wipe"
+          },
+          {
+            "id": "packages/pipeline/wipe.py::wipe_repo",
+            "loc": "packages/pipeline/wipe.py:727-837",
+            "edge": "calls",
+            "symbol": "wipe_repo"
+          },
+          {
+            "id": "packages/pipeline/wipe.py::_context_engine_homes",
+            "loc": "packages/pipeline/wipe.py:221-237",
+            "edge": "calls",
+            "symbol": "_context_engine_homes"
+          },
+          {
+            "id": "packages/pipeline/wipe.py::_kiro_mcp_paths",
+            "loc": "packages/pipeline/wipe.py:34-36",
+            "edge": "calls",
+            "symbol": "_kiro_mcp_paths"
+          },
+          {
+            "id": "packages/pipeline/wipe.py::_cursor_rule_paths",
+            "loc": "packages/pipeline/wipe.py:29-31",
+            "edge": "calls",
+            "symbol": "_cursor_rule_paths"
+          },
+          {
+            "id": "packages/pipeline/wipe.py::_kiro_steering_paths",
+            "loc": "packages/pipeline/wipe.py:39-41",
+            "edge": "calls",
+            "symbol": "_kiro_steering_paths"
+          },
+          {
+            "id": "packages/pipeline/wipe.py::_vectordb_roots",
+            "loc": "packages/pipeline/wipe.py:240-251",
+            "edge": "calls",
+            "symbol": "_vectordb_roots"
+          },
+          {
+            "id": "packages/pipeline/wipe.py::_registered_repo_roots",
+            "loc": "packages/pipeline/wipe.py:281-326",
+            "edge": "calls",
+            "symbol": "_registered_repo_roots"
+          }
+        ],
+        "seed": {
+          "file": "packages/pipeline/wipe.py",
+          "symbol": "wipe",
+          "id": "packages/pipeline/wipe.py::wipe"
+        },
+        "error": null
+      },
+      "scores": {
+        "map_k12": {
+          "file": 1.0,
+          "symbol": 0.0,
+          "note": "raw map cards (symbols often empty)"
+        },
+        "map_k12_chunks": {
+          "file": 1.0,
+          "symbol": 1.0,
+          "chunks": [
+            "wipe",
+            "cmd_wipe",
+            "remove_mcp_config"
+          ]
+        },
+        "map8_pack": {
+          "file": 1.0,
+          "symbol": 1.0,
+          "n_pack": 4,
+          "chunks": [
+            "wipe",
+            "cmd_wipe",
+            "_halt_scubiee_before_wipe"
+          ],
+          "elapsed_s": 0.16
+        }
+      }
+    },
+    {
+      "id": "t19",
+      "family": "dashboard-status",
+      "task": "Where are operator dashboard status and health HTTP endpoints defined?",
+      "must_files": [
+        "packages/pipeline/dashboard_server.py",
+        "packages/pipeline/__main__.py"
+      ],
+      "must_symbols": [
+        "cmd_dashboard"
+      ],
+      "map_k12": {
+        "elapsed_s": 0.461,
+        "top_files": [
+          "packages/pipeline/__main__.py",
+          "tests/test_dashboard_api.py",
+          "tests/test_dashboard_ui_contract.py",
+          "packages/pipeline/dashboard_server.py",
+          "docs/superpowers/specs/2026-08-17-ce-operator-dashboard-design.md",
+          "fixtures/trace-lab/app/routes/health.py",
+          "packages/pipeline/server.py",
+          "docs/web-info/dashboard-and-engine.md"
+        ]
+      },
+      "map_k8": {
+        "elapsed_s": 0.321,
+        "top_files": [
+          "packages/pipeline/__main__.py",
+          "tests/test_dashboard_api.py",
+          "tests/test_dashboard_ui_contract.py",
+          "packages/pipeline/dashboard_server.py",
+          "docs/superpowers/specs/2026-08-17-ce-operator-dashboard-design.md"
+        ]
+      },
+      "chunks_k12": [
+        {
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_dashboard",
+          "kind": "function",
+          "loc": "packages/pipeline/__main__.py:923-942",
+          "start_line": 923,
+          "end_line": 942,
+          "score": 7.4
+        },
+        {
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "dashboard_status",
+          "kind": "function",
+          "loc": "packages/pipeline/dashboard_server.py:675-688",
+          "start_line": 675,
+          "end_line": 688,
+          "score": 6.35
+        },
+        {
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_status",
+          "kind": "function",
+          "loc": "packages/pipeline/__main__.py:772-843",
+          "start_line": 772,
+          "end_line": 843,
+          "score": 6.0
+        }
+      ],
+      "chunks_k8": [
+        {
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_dashboard",
+          "kind": "function",
+          "loc": "packages/pipeline/__main__.py:923-942",
+          "start_line": 923,
+          "end_line": 942,
+          "score": 7.4
+        },
+        {
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "dashboard_status",
+          "kind": "function",
+          "loc": "packages/pipeline/dashboard_server.py:675-688",
+          "start_line": 675,
+          "end_line": 688,
+          "score": 6.35
+        },
+        {
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_status",
+          "kind": "function",
+          "loc": "packages/pipeline/__main__.py:772-843",
+          "start_line": 772,
+          "end_line": 843,
+          "score": 6.0
+        }
+      ],
+      "pack": {
+        "ok": true,
+        "elapsed_s": 0.144,
+        "n_pack": 4,
+        "pack": [
+          {
+            "file": "packages/pipeline/__main__.py",
+            "symbol": "cmd_dashboard",
+            "loc": "packages/pipeline/__main__.py:923-942",
+            "id": "packages/pipeline/__main__.py::cmd_dashboard",
+            "chars": 668
+          },
+          {
+            "file": "packages/pipeline/dashboard_server.py",
+            "symbol": "dashboard_status",
+            "loc": "packages/pipeline/dashboard_server.py:675-688",
+            "id": "packages/pipeline/dashboard_server.py::dashboard_status",
+            "chars": 525
+          },
+          {
+            "file": "packages/pipeline/dashboard_server.py",
+            "symbol": "_validated_dashboard_state",
+            "loc": "packages/pipeline/dashboard_server.py:626-639",
+            "id": "packages/pipeline/dashboard_server.py::_validated_dashboard_state",
+            "chars": 455
+          },
+          {
+            "file": "packages/pipeline/dashboard_server.py",
+            "symbol": "_clear_stale_state",
+            "loc": "packages/pipeline/dashboard_server.py:642-643",
+            "id": "packages/pipeline/dashboard_server.py::_clear_stale_state",
+            "chars": 145
+          }
+        ],
+        "chain": [
+          {
+            "id": "packages/pipeline/__main__.py::cmd_dashboard",
+            "loc": "packages/pipeline/__main__.py:923-942",
+            "edge": "seed",
+            "symbol": "cmd_dashboard"
+          },
+          {
+            "id": "packages/pipeline/dashboard_server.py::dashboard_status",
+            "loc": "packages/pipeline/dashboard_server.py:675-688",
+            "edge": "calls",
+            "symbol": "dashboard_status"
+          },
+          {
+            "id": "packages/pipeline/dashboard_server.py::_validated_dashboard_state",
+            "loc": "packages/pipeline/dashboard_server.py:626-639",
+            "edge": "calls",
+            "symbol": "_validated_dashboard_state"
+          },
+          {
+            "id": "packages/pipeline/dashboard_server.py::_clear_stale_state",
+            "loc": "packages/pipeline/dashboard_server.py:642-643",
+            "edge": "calls",
+            "symbol": "_clear_stale_state"
+          },
+          {
+            "id": "packages/pipeline/dashboard_server.py::_pid_alive",
+            "loc": "packages/pipeline/dashboard_server.py:646-672",
+            "edge": "calls",
+            "symbol": "_pid_alive"
+          },
+          {
+            "id": "packages/pipeline/dashboard_server.py::start_dashboard",
+            "loc": "packages/pipeline/dashboard_server.py:719-788",
+            "edge": "calls",
+            "symbol": "start_dashboard"
+          },
+          {
+            "id": "packages/pipeline/dashboard_server.py::stop_dashboard",
+            "loc": "packages/pipeline/dashboard_server.py:791-839",
+            "edge": "calls",
+            "symbol": "stop_dashboard"
+          },
+          {
+            "id": "packages/pipeline/dashboard_server.py::_fetch_health",
+            "loc": "packages/pipeline/dashboard_server.py:562-570",
+            "edge": "calls",
+            "symbol": "_fetch_health"
+          }
+        ],
+        "seed": {
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_dashboard",
+          "id": "packages/pipeline/__main__.py::cmd_dashboard"
+        },
+        "error": null
+      },
+      "scores": {
+        "map_k12": {
+          "file": 1.0,
+          "symbol": 0.0,
+          "note": "raw map cards (symbols often empty)"
+        },
+        "map_k12_chunks": {
+          "file": 1.0,
+          "symbol": 1.0,
+          "chunks": [
+            "cmd_dashboard",
+            "dashboard_status",
+            "cmd_status"
+          ]
+        },
+        "map8_pack": {
+          "file": 1.0,
+          "symbol": 1.0,
+          "n_pack": 4,
+          "chunks": [
+            "cmd_dashboard",
+            "dashboard_status",
+            "cmd_status"
+          ],
+          "elapsed_s": 0.144
+        }
+      }
+    },
+    {
+      "id": "t20",
+      "family": "dense-rerank",
+      "task": "How does search-time CodeRankLLM / dense rerank reorder conductor hits?",
+      "must_files": [
+        "packages/conductor/architectures.py",
+        "packages/pipeline/indexer.py"
+      ],
+      "must_symbols": [
+        "rerank_score"
+      ],
+      "map_k12": {
+        "elapsed_s": 0.721,
+        "top_files": [
+          "packages/conductor/architectures.py",
+          "packages/conductor/service.py",
+          "packages/conductor/top3.py",
+          "packages/conductor/query_router.py",
+          "packages/pipeline/searcher.py",
+          "docs/conductor-final-architecture.md",
+          "packages/pipeline/__init__.py",
+          "fixtures/trace-lab/app/search/rank.py"
+        ]
+      },
+      "map_k8": {
+        "elapsed_s": 0.305,
+        "top_files": [
+          "packages/conductor/architectures.py",
+          "packages/conductor/service.py",
+          "packages/conductor/top3.py",
+          "packages/conductor/query_router.py",
+          "packages/pipeline/searcher.py"
+        ]
+      },
+      "chunks_k12": [
+        {
+          "file": "packages/conductor/architectures.py",
+          "symbol": "MultiArchConductor.retrieve_D_rerank",
+          "kind": "method",
+          "loc": "packages/conductor/architectures.py:437-439",
+          "start_line": 437,
+          "end_line": 439,
+          "score": 10.35
+        },
+        {
+          "file": "packages/conductor/service.py",
+          "symbol": "ConductorEngine.search",
+          "kind": "method",
+          "loc": "packages/conductor/service.py:209-281",
+          "start_line": 209,
+          "end_line": 281,
+          "score": 8.75
+        },
+        {
+          "file": "packages/pipeline/searcher.py",
+          "symbol": "FaissDenseAdapter.search",
+          "kind": "method",
+          "loc": "packages/pipeline/searcher.py:40-52",
+          "start_line": 40,
+          "end_line": 52,
+          "score": 8.4
+        }
+      ],
+      "chunks_k8": [
+        {
+          "file": "packages/conductor/architectures.py",
+          "symbol": "MultiArchConductor.retrieve_D_rerank",
+          "kind": "method",
+          "loc": "packages/conductor/architectures.py:437-439",
+          "start_line": 437,
+          "end_line": 439,
+          "score": 10.35
+        },
+        {
+          "file": "packages/conductor/service.py",
+          "symbol": "ConductorEngine.search",
+          "kind": "method",
+          "loc": "packages/conductor/service.py:209-281",
+          "start_line": 209,
+          "end_line": 281,
+          "score": 8.75
+        },
+        {
+          "file": "packages/pipeline/searcher.py",
+          "symbol": "FaissDenseAdapter.search",
+          "kind": "method",
+          "loc": "packages/pipeline/searcher.py:40-52",
+          "start_line": 40,
+          "end_line": 52,
+          "score": 8.4
+        }
+      ],
+      "pack": {
+        "ok": true,
+        "elapsed_s": 0.175,
+        "n_pack": 4,
+        "pack": [
+          {
+            "file": "packages/conductor/architectures.py",
+            "symbol": "MultiArchConductor.retrieve_D_rerank",
+            "loc": "packages/conductor/architectures.py:437-439",
+            "id": "packages/conductor/architectures.py::MultiArchConductor.retrieve_D_rerank",
+            "chars": 247
+          },
+          {
+            "file": "packages/conductor/service.py",
+            "symbol": "ConductorEngine.search",
+            "loc": "packages/conductor/service.py:209-281",
+            "id": "packages/conductor/service.py::ConductorEngine.search",
+            "chars": 3692
+          },
+          {
+            "file": "packages/graphify/extractors/base.py",
+            "symbol": "_file_stem",
+            "loc": "packages/graphify/extractors/base.py:58-81",
+            "id": "packages/graphify/extractors/base.py::_file_stem",
+            "chars": 1267
+          },
+          {
+            "file": "packages/graphify/extractors/base.py",
+            "symbol": "_make_id",
+            "loc": "packages/graphify/extractors/base.py:54-55",
+            "id": "packages/graphify/extractors/base.py::_make_id",
+            "chars": 60
+          }
+        ],
+        "chain": [
+          {
+            "id": "packages/conductor/architectures.py::MultiArchConductor.retrieve_D_rerank",
+            "loc": "packages/conductor/architectures.py:437-439",
+            "edge": "seed",
+            "symbol": "MultiArchConductor.retrieve_D_rerank"
+          },
+          {
+            "id": "packages/conductor/service.py::ConductorEngine.search",
+            "loc": "packages/conductor/service.py:209-281",
+            "edge": "seed",
+            "symbol": "ConductorEngine.search"
+          },
+          {
+            "id": "packages/graphify/extractors/base.py::_file_stem",
+            "loc": "packages/graphify/extractors/base.py:58-81",
+            "edge": "calls",
+            "symbol": "_file_stem"
+          },
+          {
+            "id": "packages/graphify/extractors/base.py::_make_id",
+            "loc": "packages/graphify/extractors/base.py:54-55",
+            "edge": "calls",
+            "symbol": "_make_id"
+          },
+          {
+            "id": "packages/graphify/ids.py::make_id",
+            "loc": "packages/graphify/ids.py:43-50",
+            "edge": "calls",
+            "symbol": "make_id"
+          },
+          {
+            "id": "packages/graphify/extractors/base.py::_read_text",
+            "loc": "packages/graphify/extractors/base.py:84-85",
+            "edge": "calls",
+            "symbol": "_read_text"
+          },
+          {
+            "id": "packages/conductor/architectures.py::_query_key_tokens",
+            "loc": "packages/conductor/architectures.py:47-48",
+            "edge": "calls",
+            "symbol": "_query_key_tokens"
+          },
+          {
+            "id": "packages/conductor/architectures.py::_path_tokens",
+            "loc": "packages/conductor/architectures.py:43-44",
+            "edge": "calls",
+            "symbol": "_path_tokens"
+          }
+        ],
+        "seed": {
+          "file": "packages/conductor/architectures.py",
+          "symbol": "MultiArchConductor.retrieve_D_rerank",
+          "id": "packages/conductor/architectures.py::MultiArchConductor.retrieve_D_rerank"
+        },
+        "error": null
+      },
+      "scores": {
+        "map_k12": {
+          "file": 0.5,
+          "symbol": 0.0,
+          "note": "raw map cards (symbols often empty)"
+        },
+        "map_k12_chunks": {
+          "file": 0.5,
+          "symbol": 0.0,
+          "chunks": [
+            "MultiArchConductor.retrieve_D_rerank",
+            "ConductorEngine.search",
+            "FaissDenseAdapter.search"
+          ]
+        },
+        "map8_pack": {
+          "file": 0.5,
+          "symbol": 0.0,
+          "n_pack": 4,
+          "chunks": [
+            "MultiArchConductor.retrieve_D_rerank",
+            "ConductorEngine.search",
+            "FaissDenseAdapter.search"
+          ],
+          "elapsed_s": 0.175
+        }
+      }
+    }
+  ]
+}

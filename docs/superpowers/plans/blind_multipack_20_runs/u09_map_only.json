@@ -1,0 +1,70 @@
+{
+  "id": "u09",
+  "family": "recall-belt",
+  "task": "Where is recall_belt / recall_fuse wired as a non-LLM tracer arm?",
+  "enrich_map_query": "recall_belt recall_fuse bind_recall_belt prod_eval tracers non-LLM heatmap",
+  "map_ok": true,
+  "map_elapsed_s": 9.997,
+  "suggested_seed": {
+    "file": "packages/trace_lab/recall_belt.py",
+    "symbol": "",
+    "source": "suggested_seed"
+  },
+  "map_top_cards": [
+    {
+      "file": "packages/trace_lab/recall_belt.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/recall_belt.py:1-1",
+      "score": 29.254581200150177
+    },
+    {
+      "file": "docs/superpowers/plans/2026-09-04-recall-belt-no-llm.md",
+      "symbol": "",
+      "loc": "docs/superpowers/plans/2026-09-04-recall-belt-no-llm.md:1-1",
+      "score": 17.14355217319862
+    },
+    {
+      "file": "packages/trace_lab/prod_eval.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/prod_eval.py:1-1",
+      "score": 8.876927236763143
+    },
+    {
+      "file": "packages/trace_lab/vague_eval.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/vague_eval.py:1-1",
+      "score": 6.919444120658573
+    },
+    {
+      "file": "packages/trace_lab/arms/__init__.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/arms/__init__.py:1-1",
+      "score": 5.441352698936715
+    },
+    {
+      "file": "packages/trace_lab/strategies.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/strategies.py:1-1",
+      "score": 4.994401603999662
+    },
+    {
+      "file": "packages/trace_lab/verify_board.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/verify_board.py:1-1",
+      "score": 4.350729726392301
+    },
+    {
+      "file": "packages/trace_lab/semantic_sensor.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/semantic_sensor.py:1-1",
+      "score": 4.183592685253807
+    },
+    {
+      "file": "docs/superpowers/specs/2026-09-05-ultimate-tracer-v1-design.md",
+      "symbol": "",
+      "loc": "docs/superpowers/specs/2026-09-05-ultimate-tracer-v1-design.md:1-1",
+      "score": 3.2862899340299316
+    }
+  ],
+  "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+}

@@ -1,0 +1,119 @@
+{
+  "name": "ab_dev_with",
+  "description": "Dev A/B arm WITH Scubiee MCP only (no CLI locate)",
+  "includeMcpJson": false,
+  "includePowers": false,
+  "model": "claude-sonnet-5",
+  "prompt": "You are a coding agent doing a real development task.\n\nRules:\n- Implement the requested behavior with tests.\n- Prefer small, correct changes over large refactors.\n- Do not commit or push.\n- Do not modify files outside this workspace root.\n- BAN reading sibling A/B workspaces (any other `.ab_workspaces/**` tree, `../with`, `../without`).\n- BAN copying another arm's diffs, notes, or artifacts — discover and implement independently.\n- When done, summarize what changed and which tests you ran.\n\nFollow the project rules loaded as agent resources (AGENTS.md and .kiro/steering).\nThose rules are mandatory for how you explore, locate, and gather context — obey them strictly.\nDo not invent tools you do not have. Do not commit or push.\n",
+  "tools": [
+    "read",
+    "write",
+    "shell",
+    "@scubiee",
+    "@scubiee/gate",
+    "@scubiee/map",
+    "@scubiee/pack_context",
+    "@scubiee/expand_context",
+    "@scubiee/collect_hot_context",
+    "@scubiee/workspace",
+    "@scubiee/expand",
+    "@scubiee/status"
+  ],
+  "allowedTools": [
+    "read",
+    "write",
+    "shell",
+    "@scubiee",
+    "@scubiee/gate",
+    "@scubiee/map",
+    "@scubiee/pack_context",
+    "@scubiee/expand_context",
+    "@scubiee/collect_hot_context",
+    "@scubiee/workspace",
+    "@scubiee/expand",
+    "@scubiee/status"
+  ],
+  "resources": [
+    "file://AGENTS.md",
+    "file://.kiro/steering/scubiee.md"
+  ],
+  "permissions": {
+    "rules": [
+      {
+        "capability": "fs_write",
+        "match": [
+          "*"
+        ],
+        "effect": "allow"
+      },
+      {
+        "capability": "shell",
+        "match": [
+          "pytest *",
+          "python *",
+          "uv *",
+          "rg *",
+          "findstr *",
+          "dir *",
+          "ls *",
+          "git status*",
+          "git diff*",
+          "git log*",
+          "mkdir *",
+          "New-Item *"
+        ],
+        "effect": "allow"
+      }
+    ]
+  },
+  "mcpServers": {
+    "scubiee": {
+      "command": "C:/Users/usman/.local/bin/scubiee-mcp-bridge.EXE",
+      "args": [],
+      "env": {
+        "CTX_BACKGROUND_SYNC": "0",
+        "CTX_TRACE_ENGINE": "composite_v1",
+        "CTX_ALLOW_BG_FULL": "0",
+        "CTX_ENGINE_URL": "http://127.0.0.1:8765",
+        "CTX_AUTO_INDEX": "0",
+        "CTX_MCP_SESSION_ISOLATE": "1",
+        "CTX_MCP_SESSION_ID": "kiro-ab-683d41b40b8f",
+        "CTX_MCP_BRIDGE_MODE": "auto",
+        "CTX_REPO": "C:/Users/usman/Downloads/context-engine",
+        "CTX_MCP_CLIENT": "kiro",
+        "CTX_MCP_SURFACE": "phase",
+        "CTX_MCP_EXPERIMENT": "ship",
+        "CTX_TRACE_GRAPHIFY": "1",
+        "CTX_PROJECT_ID": "ce_f4e1adced6e0dd72db51bf587464e982",
+        "CTX_TOKEN_MODE": "savings",
+        "PYTHONUTF8": "1",
+        "CTX_ENGINE_IDLE_S": "3600",
+        "CTX_SCUBIEE_BUILD": "0.3.16-kiro-ab-dev"
+      },
+      "disabled": false,
+      "timeout": 300000,
+      "autoApprove": [
+        "gate",
+        "map",
+        "pack_context",
+        "expand_context",
+        "collect_hot_context",
+        "workspace",
+        "expand",
+        "status",
+        "*"
+      ],
+      "alwaysAllow": [
+        "gate",
+        "map",
+        "pack_context",
+        "expand_context",
+        "collect_hot_context",
+        "workspace",
+        "expand",
+        "status",
+        "*"
+      ]
+    }
+  }
+}

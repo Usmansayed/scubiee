@@ -1,0 +1,81 @@
+{
+  "case": {
+    "id": "anchor_literal_CTX_MCP_EXPERIMENT",
+    "source": "calibration_anchor",
+    "family": "",
+    "task": "Where is the env var string CTX_MCP_EXPERIMENT read for phase experiment?",
+    "enrich_query": "CTX_MCP_EXPERIMENT",
+    "taxonomy": "literal_needle",
+    "taxonomy_confidence": "manual",
+    "hypothesis_policy": {
+      "lead": "host_grep",
+      "next": "host_read",
+      "native": "first_class"
+    },
+    "must_files": [
+      "packages/pipeline/mcp_locate.py"
+    ],
+    "must_symbols": [
+      "_phase_experiment"
+    ],
+    "should_files": [],
+    "gold_status": "has_gold",
+    "notes": "over-use control",
+    "baseline_frozen": true
+  },
+  "native": {
+    "arm": "N1a_host_grep",
+    "ok": true,
+    "elapsed_s": 0.008,
+    "n_hits": 2,
+    "patterns": [
+      "_phase_experiment",
+      "CTX_MCP_EXPERIMENT"
+    ],
+    "read_chars": 2632,
+    "rounds": 2,
+    "result_tokens": 747,
+    "round_trip_tax": 5000,
+    "total_proxy": 5747,
+    "round_trip_tax_per_call": 2500,
+    "must_file": 1.0,
+    "must_sym": 1.0,
+    "file_hits": 1,
+    "file_n": 1,
+    "sym_hits": 1,
+    "sym_n": 1,
+    "case_id": "anchor_literal_CTX_MCP_EXPERIMENT",
+    "taxonomy": "literal_needle"
+  },
+  "forced_map": {
+    "arm": "M2b_map_on_needle",
+    "ok": true,
+    "elapsed_s": 0.844,
+    "seed": {
+      "file": "packages/pipeline/mcp_locate.py",
+      "symbol": "_phase_experiment",
+      "start_line": 71,
+      "loc": "packages/pipeline/mcp_locate.py:71-101",
+      "kind": "function",
+      "role": "function",
+      "score": 12.937627474966892
+    },
+    "map_source": "cli_map",
+    "n_cards": 7,
+    "read_chars": 3945,
+    "rounds": 4,
+    "result_tokens": 2289,
+    "round_trip_tax": 10000,
+    "total_proxy": 12289,
+    "round_trip_tax_per_call": 2500,
+    "must_file": 1.0,
+    "must_sym": 1.0,
+    "file_hits": 1,
+    "file_n": 1,
+    "sym_hits": 1,
+    "sym_n": 1,
+    "case_id": "anchor_literal_CTX_MCP_EXPERIMENT",
+    "taxonomy": "literal_needle"
+  },
+  "over_use": true
+}

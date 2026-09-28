@@ -1,0 +1,94 @@
+[
+  {
+    "label": "A",
+    "init_ms": 5819.9,
+    "results": [
+      {
+        "tool": "map",
+        "ms": 2120.7,
+        "ok": true,
+        "n": 4,
+        "dense": true
+      },
+      {
+        "tool": "pack_0",
+        "ms": 150.8,
+        "ok": false,
+        "n_heat": 0,
+        "thin": null,
+        "err": "ast_warming",
+        "warming": null
+      },
+      {
+        "tool": "pack_1",
+        "ms": 1127.1,
+        "ok": false,
+        "n_heat": 0,
+        "thin": null,
+        "err": "ast_warming",
+        "warming": null
+      },
+      {
+        "tool": "pack_2",
+        "ms": 72.4,
+        "ok": false,
+        "n_heat": 0,
+        "thin": null,
+        "err": "ast_warming",
+        "warming": null
+      },
+      {
+        "tool": "status",
+        "ms": 479.9,
+        "agent_ready": "yes",
+        "index_skip": "builtins+scubieeignore(n=7)"
+      }
+    ]
+  },
+  {
+    "label": "B",
+    "init_ms": 4945.4,
+    "results": [
+      {
+        "tool": "map",
+        "ms": 1370.5,
+        "ok": true,
+        "n": 4,
+        "dense": true
+      },
+      {
+        "tool": "pack_0",
+        "ms": 86.1,
+        "ok": false,
+        "n_heat": 0,
+        "thin": null,
+        "err": "ast_warming",
+        "warming": null
+      },
+      {
+        "tool": "pack_1",
+        "ms": 1491.7,
+        "ok": false,
+        "n_heat": 0,
+        "thin": null,
+        "err": "ast_warming",
+        "warming": null
+      },
+      {
+        "tool": "pack_2",
+        "ms": 73.6,
+        "ok": false,
+        "n_heat": 0,
+        "thin": null,
+        "err": "ast_warming",
+        "warming": null
+      },
+      {
+        "tool": "status",
+        "ms": 527.7,
+        "agent_ready": "yes",
+        "index_skip": "builtins+scubieeignore(n=7)"
+      }
+    ]
+  }
+]

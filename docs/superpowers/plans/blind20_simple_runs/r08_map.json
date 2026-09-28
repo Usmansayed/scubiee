@@ -1,0 +1,90 @@
+{
+  "ok": true,
+  "tool": "map",
+  "query": "cmd_upgrade upgrade supervisor uv tool unlock-tool Access denied logon scubiee install",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "scripts/smoke_hot_reload.py",
+      "symbol": "",
+      "score": 25.950769929135692,
+      "loc": "scripts/smoke_hot_reload.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "tests/mac_production_test.py",
+      "symbol": "",
+      "score": 20.42486167011355,
+      "loc": "tests/mac_production_test.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "score": 13.300847647171421,
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "docs/windows-uv-tool-access-denied-deferred.md",
+      "symbol": "",
+      "score": 6.9656044399631725,
+      "loc": "docs/windows-uv-tool-access-denied-deferred.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "packages/pipeline/upgrade.py",
+      "symbol": "",
+      "score": 6.463165163109939,
+      "loc": "packages/pipeline/upgrade.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "docs/web-info/windows.md",
+      "symbol": "",
+      "score": 6.11760540716443,
+      "loc": "docs/web-info/windows.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "packages/pipeline/upgrade_supervisor.py",
+      "symbol": "",
+      "score": 5.244930397847898,
+      "loc": "packages/pipeline/upgrade_supervisor.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "packages/pipeline/process_control.py",
+      "symbol": "",
+      "score": 5.183522004372312,
+      "loc": "packages/pipeline/process_control.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "docs/web-info/uninstall-windows.md",
+      "symbol": "",
+      "score": 4.737073053729463,
+      "loc": "docs/web-info/uninstall-windows.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "packages/pipeline/env_guard.py",
+      "symbol": "",
+      "score": 4.592858977601647,
+      "loc": "packages/pipeline/env_guard.py:1-1",
+      "why": ""
+    }
+  ],
+  "suggested_seed": null,
+  "elapsed_s": 0.845,
+  "via": "search_repo(use_server=True)"
+}

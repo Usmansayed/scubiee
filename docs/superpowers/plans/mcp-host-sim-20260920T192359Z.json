@@ -1,0 +1,457 @@
+{
+  "ok": false,
+  "scenario": "kiro_cold_attach_steady_leave",
+  "lane": "b",
+  "live": true,
+  "mcp_client": "kiro",
+  "repo": "C:\\Users\\usman\\Downloads\\context-engine",
+  "project_id": "ce_57fe0a0bb68b776b2d600964fabd8072",
+  "engine_url": "http://127.0.0.1:8765",
+  "phases": [
+    {
+      "name": "clean_slate",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 8837.7,
+      "budget_ms": null,
+      "evidence": {
+        "ok": true,
+        "tick": {
+          "engine": {
+            "running": false,
+            "pid": 3768,
+            "rss_mb": null,
+            "health_ok": false,
+            "warm_ready": false,
+            "embedder_loaded": false,
+            "soft_search_ready": false,
+            "at": 1789932163.5670218,
+            "health_error": "listener_absent"
+          },
+          "clients": {
+            "active_clients": 0,
+            "client_ids": [],
+            "desired_mode": "run",
+            "last_client_left_at": null,
+            "last_activity": 1789932055.8630543,
+            "raw_clients": {}
+          },
+          "ctx_home": "C:\\Users\\usman\\.scubiee"
+        },
+        "engine_still_up": false,
+        "kill": {
+          "exclude_bridge": false,
+          "stop_engine_workers": {
+            "ok": true,
+            "killed": [],
+            "skipped": []
+          },
+          "stop_all": {
+            "stop_watchdog": {
+              "ok": true,
+              "stopped_pid": 21928,
+              "running": false
+            },
+            "stop_daemon": {
+              "ok": true,
+              "running": false,
+              "killed": [],
+              "skipped_pids": [],
+              "sweep": {
+                "ok": true,
+                "killed": [],
+                "remaining_pids": [],
+                "still_healthy": false,
+                "port": 8765
+              },
+              "stop_reason": "user"
+            },
+            "stop_uv_tool_processes": {
+              "root": "C:\\Users\\usman\\AppData\\Roaming\\uv\\tools\\scubiee",
+              "killed": [],
+              "failed": [],
+              "skipped": [
+                1268,
+                15796
+              ],
+              "remaining": [],
+              "ok": true
+            },
+            "extra_killed": [],
+            "extra_failed": [],
+            "remaining": [],
+            "remaining_pids": [],
+            "ok": true,
+            "self_pid": 1268
+          },
+          "stop_uv_tool": {
+            "root": "C:\\Users\\usman\\AppData\\Roaming\\uv\\tools\\scubiee",
+            "killed": [],
+            "failed": [],
+            "skipped": [
+              1268,
+              15796
+            ],
+            "remaining": [],
+            "ok": true
+          },
+          "killed_rounds": [
+            []
+          ],
+          "skipped_bridge_pids": [],
+          "remaining": [],
+          "remaining_pids": [],
+          "ok": true,
+          "self_pid": 1268
+        }
+      }
+    },
+    {
+      "name": "host_start",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 2733.1,
+      "budget_ms": null,
+      "evidence": {
+        "ok": true,
+        "pid": 11796,
+        "server": {
+          "name": "scubiee",
+          "version": "0.3.101"
+        },
+        "watchdog": {
+          "ok": true,
+          "already_running": true,
+          "enabled": true,
+          "running": true,
+          "pid": 20788,
+          "log": "C:\\Users\\usman\\.scubiee\\watchdog.log",
+          "interval_s": 15.0,
+          "restart_count": 0,
+          "last_wake_reconcile": null,
+          "last_reconcile": null,
+          "last_error": null
+        }
+      }
+    },
+    {
+      "name": "auto_warm",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 17090.3,
+      "budget_ms": 40000.0,
+      "evidence": {
+        "ok": true,
+        "warm": true,
+        "clients": 2,
+        "tick": {
+          "engine": {
+            "running": true,
+            "pid": 17760,
+            "rss_mb": 760.6,
+            "health_ok": true,
+            "warm_ready": true,
+            "embedder_loaded": true,
+            "soft_search_ready": true,
+            "at": 1789932183.6052365,
+            "embed_prewarm_running": false,
+            "chunks": 7154
+          },
+          "clients": {
+            "active_clients": 2,
+            "client_ids": [
+              "mcp:kiro@bridge-2484",
+              "mcp:kiro@proc-21676"
+            ],
+            "desired_mode": "run",
+            "last_client_left_at": null,
+            "last_activity": 1789932183.1721961,
+            "raw_clients": {
+              "mcp:kiro@bridge-2484": {
+                "client_id": "mcp:kiro@bridge-2484",
+                "host": "kiro",
+                "kind": "bridge",
+                "last_seen_at": 1789932164.9864395,
+                "pid": 2484,
+                "registered_at": 1789932164.9864395
+              },
+              "mcp:kiro@proc-21676": {
+                "client_id": "mcp:kiro@proc-21676",
+                "host": "kiro",
+                "kind": "mcp",
+                "last_seen_at": 1789932183.1535149,
+                "pid": 21676,
+                "registered_at": 1789932174.740259
+              }
+            }
+          },
+          "ctx_home": "C:\\Users\\usman\\.scubiee"
+        },
+        "elapsed_from_host_s": 17.09,
+        "soft_first_from_host_s": 17.09,
+        "maps_before_soft": 0
+      }
+    },
+    {
+      "name": "settle",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 24597.4,
+      "budget_ms": 90000.0,
+      "evidence": {
+        "ok": true,
+        "code": null,
+        "waited_from_host_s": 41.69,
+        "settle_s": 40.0,
+        "soft_first_from_host_s": 17.09,
+        "soft_search_ready": true,
+        "embedder_loaded": true,
+        "prewarm_kicked": false,
+        "tick": {
+          "engine": {
+            "running": true,
+            "pid": 17760,
+            "rss_mb": 1183.6,
+            "health_ok": true,
+            "warm_ready": true,
+            "embedder_loaded": true,
+            "soft_search_ready": true,
+            "at": 1789932208.0229778,
+            "embed_prewarm_running": false,
+            "chunks": 7154
+          },
+          "clients": {
+            "active_clients": 2,
+            "client_ids": [
+              "mcp:kiro@bridge-2484",
+              "mcp:kiro@proc-21676"
+            ],
+            "desired_mode": "run",
+            "last_client_left_at": null,
+            "last_activity": 1789932206.4216635,
+            "raw_clients": {
+              "mcp:kiro@bridge-2484": {
+                "client_id": "mcp:kiro@bridge-2484",
+                "host": "kiro",
+                "kind": "bridge",
+                "last_seen_at": 1789932164.9864395,
+                "pid": 2484,
+                "registered_at": 1789932164.9864395
+              },
+              "mcp:kiro@proc-21676": {
+                "client_id": "mcp:kiro@proc-21676",
+                "host": "kiro",
+                "kind": "mcp",
+                "last_seen_at": 1789932206.3244991,
+                "pid": 21676,
+                "registered_at": 1789932174.740259
+              }
+            }
+          },
+          "ctx_home": "C:\\Users\\usman\\.scubiee"
+        }
+      }
+    },
+    {
+      "name": "settle_join_embedder",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 962.1,
+      "budget_ms": 120000.0,
+      "evidence": {
+        "ok": true,
+        "embedder_loaded": true,
+        "waited_from_host_s": 42.65,
+        "tick": {
+          "engine": {
+            "running": true,
+            "pid": 17760,
+            "rss_mb": 1189.3,
+            "health_ok": true,
+            "warm_ready": true,
+            "embedder_loaded": true,
+            "soft_search_ready": true,
+            "at": 1789932208.7143667,
+            "embed_prewarm_running": false,
+            "chunks": 7154
+          },
+          "clients": {
+            "active_clients": 2,
+            "client_ids": [
+              "mcp:kiro@bridge-2484",
+              "mcp:kiro@proc-21676"
+            ],
+            "desired_mode": "run",
+            "last_client_left_at": null,
+            "last_activity": 1789932206.4216635,
+            "raw_clients": {
+              "mcp:kiro@bridge-2484": {
+                "client_id": "mcp:kiro@bridge-2484",
+                "host": "kiro",
+                "kind": "bridge",
+                "last_seen_at": 1789932164.9864395,
+                "pid": 2484,
+                "registered_at": 1789932164.9864395
+              },
+              "mcp:kiro@proc-21676": {
+                "client_id": "mcp:kiro@proc-21676",
+                "host": "kiro",
+                "kind": "mcp",
+                "last_seen_at": 1789932206.3244991,
+                "pid": 21676,
+                "registered_at": 1789932174.740259
+              }
+            }
+          },
+          "ctx_home": "C:\\Users\\usman\\.scubiee"
+        },
+        "honest_first_map": true
+      }
+    },
+    {
+      "name": "map_first",
+      "ok": true,
+      "code": "SETTLE_MAP_SLOW",
+      "elapsed_ms": 2727.0,
+      "budget_ms": 3000.0,
+      "evidence": {
+        "ok": true,
+        "code": "SETTLE_MAP_SLOW",
+        "elapsed_ms": 2726.9,
+        "steady_sla_ok": false,
+        "true_first_map": true,
+        "settle_s": 40.0,
+        "soft_first_from_host_s": 17.09,
+        "dense": true,
+        "retrieve_mode": "D_channel_best",
+        "top": {
+          "file": "packages/pipeline/lifecycle_runtime.py",
+          "symbol": "enforce_mcp_warm_contract",
+          "loc": "packages/pipeline/lifecycle_runtime.py:880-916",
+          "score": 29.8826,
+          "kind": "function"
+        },
+        "data_ok": true,
+        "error": null,
+        "raw_keys": [
+          "_elapsed_ms",
+          "cards",
+          "dense",
+          "elapsed_ms",
+          "g",
+          "next",
+          "ok",
+          "retrieve_mode",
+          "session_id",
+          "suggested_seed",
+          "suggested_seeds",
+          "timings",
+          "tool"
+        ]
+      }
+    },
+    {
+      "name": "map_second",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 605.6,
+      "budget_ms": 1000.0,
+      "evidence": {
+        "ok": true,
+        "code": null,
+        "elapsed_ms": 605.5,
+        "dense": true,
+        "retrieve_mode": "D_channel_best"
+      }
+    },
+    {
+      "name": "status_first",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 431.0,
+      "budget_ms": 1000.0,
+      "evidence": {
+        "ok": true,
+        "code": null,
+        "elapsed_ms": 431.0
+      }
+    },
+    {
+      "name": "kiro_cli_map",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 25162.5,
+      "budget_ms": 180000.0,
+      "evidence": {
+        "ok": true,
+        "code": null,
+        "elapsed_ms": 25162.0,
+        "rc": 0,
+        "tail": [
+          "[m> [0mI'll call the Scubiee MCP map tool with the provided query.[0m[0m",
+          "Running tool [mmap[0m with the param[m (from mcp server: scubiee)[0m",
+          " \u22ee  {",
+          " \u22ee    \"query\": \"enforce_mcp_warm_contract disconnect debounce CTX_DISCONNECT_DEBOUNCE_S enter_standby apply_idle_policy leave_mcp_client register_client packages/pipeline/lifecycle_runtime.py mcp_lifecycle warm unload\",",
+          " \u22ee    \"project_id\": \"ce_57fe0a0bb68b776b2d600964fabd8072\"",
+          " \u22ee  }",
+          "[0m[m - Completed in 2.863s[0m",
+          "[m> [0mMAP_OK",
+          "[32mAll tools are now trusted ([0m[31m![0m[32m). Kiro will execute tools without asking for confirmation.[0m",
+          "Agents can sometimes do unexpected things so understand the risks.",
+          "Learn more at [38;5;141mhttps://kiro.dev/docs/cli/chat/security/#using-tools-trust-all-safely[0m",
+          "[m[0m[?25l[?25l[0m[0m[?25l[0m[0m[0m",
+          "[m",
+          " \u25b8 Credits: 0.20 \u2022 Time: 11s",
+          "[0m[1G[0m[0m[?25h"
+        ]
+      }
+    },
+    {
+      "name": "pack_first",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 169.6,
+      "budget_ms": 1000.0,
+      "evidence": {
+        "ok": true,
+        "code": null,
+        "elapsed_ms": 169.6,
+        "heatmap_n": 9,
+        "data_ok": true
+      }
+    },
+    {
+      "name": "expand_first",
+      "ok": false,
+      "code": "FAIL",
+      "elapsed_ms": 257.3,
+      "budget_ms": 1000.0,
+      "evidence": {
+        "ok": false,
+        "code": "FAIL",
+        "elapsed_ms": 252.8,
+        "hydrate_ms": 150.8,
+        "hydrate_source": null,
+        "timings": null,
+        "bridges_before": 1,
+        "bridges_after": 1,
+        "delta_n": 0,
+        "error": "ast_warming",
+        "data_ok": false
+      }
+    }
+  ],
+  "errors": [
+    "expand_first: FAIL \u2014 ast_warming"
+  ],
+  "idle_s": 120.0,
+  "skip_clean": false,
+  "settle_health_poll": false,
+  "kiro": {
+    "ok": true,
+    "pins": true,
+    "kiro_cli": "C:\\Users\\usman\\AppData\\Local\\Kiro-Cli\\kiro-cli.EXE",
+    "hint": "Kiro MCP pins written. SLA is BridgeHost with CTX_MCP_CLIENT=kiro (same stdio binary as .kiro/settings/mcp.json)."
+  },
+  "elapsed_ms": 83720.7
+}

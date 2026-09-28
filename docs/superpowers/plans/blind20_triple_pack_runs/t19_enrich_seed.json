@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "elapsed_s": 0.054,
+  "seed_file": "packages/pipeline/__main__.py",
+  "seed": {
+    "file": "packages/pipeline/__main__.py",
+    "symbol": "_version_only",
+    "id": "packages/pipeline/__main__.py::_version_only",
+    "loc": null
+  },
+  "chunks": [
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "_version_only",
+      "loc": "packages/pipeline/__main__.py:19-21",
+      "score": 1.0,
+      "kind": "function"
+    }
+  ],
+  "n_cards": 1,
+  "error": null
+}

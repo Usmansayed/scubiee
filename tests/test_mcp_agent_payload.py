@@ -156,6 +156,17 @@ def test_status_default_is_summary(monkeypatch, tmp_path) -> None:
         def healthy(self) -> bool:
             return True
 
+        def health(self) -> dict:
+            # status_impl derives healthy from a single health() round-trip.
+            return {
+                "ok": True,
+                "warm_state": "ready",
+                "soft_search_ready": True,
+                "project_id": "ce_summ",
+                "embedder_loaded": True,
+                "chunks": 12,
+            }
+
         def status(self, _root: str) -> dict:
             return {
                 "ok": True,

@@ -1,0 +1,110 @@
+{
+  "ok": true,
+  "tool": "map",
+  "query": "CodeRankLLM rerank search-time dense conductor D_rerank hits reorder not index",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/conductor/architectures.py",
+      "symbol": "",
+      "score": 12.3951,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/conductor/architectures.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "packages/conductor/service.py",
+      "symbol": "",
+      "score": 12.2918,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/conductor/service.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "packages/conductor/top3.py",
+      "symbol": "",
+      "score": 12.2161,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/conductor/top3.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "packages/conductor/query_router.py",
+      "symbol": "",
+      "score": 12.1011,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/conductor/query_router.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "packages/pipeline/searcher.py",
+      "symbol": "",
+      "score": 12.0063,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/searcher.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "docs/conductor-final-architecture.md",
+      "symbol": "",
+      "score": 11.6285,
+      "start_line": null,
+      "end_line": null,
+      "loc": "docs/conductor-final-architecture.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "packages/pipeline/__init__.py",
+      "symbol": "",
+      "score": 11.2485,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/__init__.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "fixtures/trace-lab/app/search/rank.py",
+      "symbol": "",
+      "score": 6.642,
+      "start_line": null,
+      "end_line": null,
+      "loc": "fixtures/trace-lab/app/search/rank.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "packages/conductor/conductor.py",
+      "symbol": "",
+      "score": 6.0088,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/conductor/conductor.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "packages/trace_lab/engine/rank.py",
+      "symbol": "",
+      "score": 5.8083,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/trace_lab/engine/rank.py:1-1",
+      "why": ""
+    }
+  ],
+  "suggested_seed": null,
+  "elapsed_s": 0.408,
+  "via": "search_repo(use_server=True)"
+}

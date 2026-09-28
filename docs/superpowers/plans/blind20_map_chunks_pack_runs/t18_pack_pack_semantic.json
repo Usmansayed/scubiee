@@ -1,0 +1,98 @@
+{
+  "ok": true,
+  "tool": "pack_semantic",
+  "engine": "semantic_tracer_fuse",
+  "elapsed_s": 0.708,
+  "n_pack": 4,
+  "seed": {
+    "file": "packages/pipeline/wipe.py",
+    "symbol": "wipe",
+    "id": "packages/pipeline/wipe.py::wipe"
+  },
+  "pack": [
+    {
+      "file": "packages/pipeline/wipe.py",
+      "symbol": "wipe",
+      "score": 1.0,
+      "loc": "packages/pipeline/wipe.py:1119-1146",
+      "id": "packages/pipeline/wipe.py::wipe",
+      "chars": 960
+    },
+    {
+      "file": "packages/pipeline/wipe.py",
+      "symbol": "wipe_repo",
+      "score": 1.0,
+      "loc": "packages/pipeline/wipe.py:727-837",
+      "id": "packages/pipeline/wipe.py::wipe_repo",
+      "chars": 4175
+    },
+    {
+      "file": "packages/pipeline/wipe.py",
+      "symbol": "_context_engine_homes",
+      "score": 1.0,
+      "loc": "packages/pipeline/wipe.py:221-237",
+      "id": "packages/pipeline/wipe.py::_context_engine_homes",
+      "chars": 516
+    },
+    {
+      "file": "packages/pipeline/wipe.py",
+      "symbol": "_rm_tree",
+      "score": 1.0,
+      "loc": "packages/pipeline/wipe.py:44-67",
+      "id": "packages/pipeline/wipe.py::_rm_tree",
+      "chars": 349
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/pipeline/wipe.py::wipe",
+      "loc": "packages/pipeline/wipe.py:1119-1146",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/wipe.py::wipe_repo",
+      "loc": "packages/pipeline/wipe.py:727-837",
+      "edge": "calls",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/wipe.py::_context_engine_homes",
+      "loc": "packages/pipeline/wipe.py:221-237",
+      "edge": "calls",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/wipe.py::_rm_tree",
+      "loc": "packages/pipeline/wipe.py:44-67",
+      "edge": "calls",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/process_control.py::uv_tool_root",
+      "loc": "packages/pipeline/process_control.py:16-23",
+      "edge": "calls",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/process_control.py::kill_all_scubiee_processes",
+      "loc": "packages/pipeline/process_control.py:400-455",
+      "edge": "calls",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/process_control.py::remove_tool_shims",
+      "loc": "packages/pipeline/process_control.py:553-567",
+      "edge": "calls",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/process_control.py::force_remove_uv_tool_dir",
+      "loc": "packages/pipeline/process_control.py:1056-1118",
+      "edge": "calls",
+      "score": 1.0
+    }
+  ],
+  "pack_query": "cmd_wipe wipe uninstall remove MCP rules store halt confirm scubiee state cleanup\nrelevant_chunks: packages/pipeline/wipe.py::wipe@packages/pipeline/wipe.py:1119-1146 | packages/pipeline/__main__.py::cmd_wipe@packages/pipeline/__main__.py:414-505 | packages/pipeline/rules_installer.py::remove_mcp_config@packages/pipeline/rules_installer.py:1788-1815",
+  "error": null
+}

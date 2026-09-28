@@ -1,0 +1,4256 @@
+{
+  "fixture": "C:\\Users\\usman\\Downloads\\context-engine\\fixtures\\trace-lab",
+  "n_prompts": 28,
+  "hot_threshold": 0.45,
+  "summary": {
+    "arms": {
+      "oracle": {
+        "mean_f1": 0.9643,
+        "mean_recall_must": 1.0,
+        "seed_ok": 28,
+        "seed_exact": 28,
+        "n": 28,
+        "sum_fn": 0,
+        "sum_forbidden_fp": 2
+      },
+      "bm25": {
+        "mean_f1": 0.7143,
+        "mean_recall_must": 0.7381,
+        "seed_ok": 22,
+        "seed_exact": 17,
+        "n": 28,
+        "sum_fn": 22,
+        "sum_forbidden_fp": 6
+      },
+      "vector": {
+        "mean_f1": 0.6213,
+        "mean_recall_must": 0.6548,
+        "seed_ok": 17,
+        "seed_exact": 15,
+        "n": 28,
+        "sum_fn": 28,
+        "sum_forbidden_fp": 8
+      },
+      "hybrid": {
+        "mean_f1": 0.6964,
+        "mean_recall_must": 0.7262,
+        "seed_ok": 21,
+        "seed_exact": 18,
+        "n": 28,
+        "sum_fn": 23,
+        "sum_forbidden_fp": 6
+      },
+      "mapfuse": {
+        "mean_f1": 0.6418,
+        "mean_recall_must": 0.7857,
+        "seed_ok": 22,
+        "seed_exact": 18,
+        "n": 28,
+        "sum_fn": 19,
+        "sum_forbidden_fp": 9
+      },
+      "embed_power": {
+        "mean_f1": 0.7587,
+        "mean_recall_must": 0.7798,
+        "seed_ok": 28,
+        "seed_exact": 13,
+        "n": 28,
+        "sum_fn": 22,
+        "sum_forbidden_fp": 2
+      },
+      "embed_power_oracle": {
+        "mean_f1": 0.917,
+        "mean_recall_must": 0.9464,
+        "seed_ok": 28,
+        "seed_exact": 28,
+        "n": 28,
+        "sum_fn": 5,
+        "sum_forbidden_fp": 3
+      }
+    },
+    "mean_family_jaccard": 0.1111,
+    "families_identical": 0,
+    "families_compared": 6,
+    "oracle_mean_family_jaccard": 1.0,
+    "oracle_families_identical": 6,
+    "mapfuse_mean_family_jaccard": 0.2176,
+    "mapfuse_families_identical": 0,
+    "embed_mean_family_jaccard": 0.5747,
+    "embed_families_identical": 1
+  },
+  "family_agreement": {
+    "auth-flow": {
+      "n": 3,
+      "mean_pairwise_jaccard": 0.3333,
+      "identical": false
+    },
+    "token-expiry": {
+      "n": 3,
+      "mean_pairwise_jaccard": 0.3333,
+      "identical": false
+    },
+    "auth-log": {
+      "n": 2,
+      "mean_pairwise_jaccard": 0.0,
+      "identical": false
+    },
+    "charge": {
+      "n": 2,
+      "mean_pairwise_jaccard": 0.0,
+      "identical": false
+    },
+    "event-emit": {
+      "n": 2,
+      "mean_pairwise_jaccard": 0.0,
+      "identical": false
+    },
+    "job-run": {
+      "n": 2,
+      "mean_pairwise_jaccard": 0.0,
+      "identical": false
+    },
+    "health": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "cors": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "session": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "ttl-refs": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "store-fetch": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "user-resolve": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "adversarial-pay-auth-words": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "negation-not-login": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "underspec-timeout": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "wrong-folder-cors": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "dynamic-welcome": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "generic-execute": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "side-effect-print": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "inherit-fetch": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    }
+  },
+  "mapfuse_family_agreement": {
+    "auth-flow": {
+      "n": 3,
+      "mean_pairwise_jaccard": 0.3333,
+      "identical": false
+    },
+    "token-expiry": {
+      "n": 3,
+      "mean_pairwise_jaccard": 0.2222,
+      "identical": false
+    },
+    "auth-log": {
+      "n": 2,
+      "mean_pairwise_jaccard": 0.75,
+      "identical": false
+    },
+    "charge": {
+      "n": 2,
+      "mean_pairwise_jaccard": 0.0,
+      "identical": false
+    },
+    "event-emit": {
+      "n": 2,
+      "mean_pairwise_jaccard": 0.0,
+      "identical": false
+    },
+    "job-run": {
+      "n": 2,
+      "mean_pairwise_jaccard": 0.0,
+      "identical": false
+    },
+    "health": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "cors": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "session": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "ttl-refs": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "store-fetch": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "user-resolve": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "adversarial-pay-auth-words": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "negation-not-login": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "underspec-timeout": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "wrong-folder-cors": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "dynamic-welcome": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "generic-execute": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "side-effect-print": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "inherit-fetch": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    }
+  },
+  "embed_family_agreement": {
+    "auth-flow": {
+      "n": 3,
+      "mean_pairwise_jaccard": 0.1704,
+      "identical": false
+    },
+    "token-expiry": {
+      "n": 3,
+      "mean_pairwise_jaccard": 0.7778,
+      "identical": false
+    },
+    "auth-log": {
+      "n": 2,
+      "mean_pairwise_jaccard": 0.6667,
+      "identical": false
+    },
+    "charge": {
+      "n": 2,
+      "mean_pairwise_jaccard": 0.3333,
+      "identical": false
+    },
+    "event-emit": {
+      "n": 2,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "job-run": {
+      "n": 2,
+      "mean_pairwise_jaccard": 0.5,
+      "identical": false
+    },
+    "health": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "cors": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "session": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "ttl-refs": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "store-fetch": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "user-resolve": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "adversarial-pay-auth-words": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "negation-not-login": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "underspec-timeout": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "wrong-folder-cors": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "dynamic-welcome": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "generic-execute": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "side-effect-print": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "inherit-fetch": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    }
+  },
+  "oracle_family_agreement": {
+    "auth-flow": {
+      "n": 3,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "token-expiry": {
+      "n": 3,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "auth-log": {
+      "n": 2,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "charge": {
+      "n": 2,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "event-emit": {
+      "n": 2,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "job-run": {
+      "n": 2,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "health": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "cors": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "session": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "ttl-refs": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "store-fetch": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "user-resolve": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "adversarial-pay-auth-words": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "negation-not-login": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "underspec-timeout": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "wrong-folder-cors": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "dynamic-welcome": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "generic-execute": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "side-effect-print": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    },
+    "inherit-fetch": {
+      "n": 1,
+      "mean_pairwise_jaccard": 1.0,
+      "identical": true
+    }
+  },
+  "prompts": [
+    {
+      "id": "v01",
+      "family": "auth-flow",
+      "prompt": "im stuck figuring out how users actually get logged in around here",
+      "gold_seed": "app/middleware/auth.py::authenticate",
+      "intent": "flow",
+      "arms": {
+        "oracle": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        },
+        "bm25": {
+          "seed": "app/http/client.py::get",
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "f1": 0.0,
+          "false_negatives": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "false_positives_forbidden": [
+            "app/http/client.py::get"
+          ],
+          "hot": [
+            "app/http/client.py::get"
+          ],
+          "intent": "flow"
+        },
+        "vector": {
+          "seed": "app/http/client.py::get",
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "f1": 0.0,
+          "false_negatives": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "false_positives_forbidden": [
+            "app/http/client.py::get"
+          ],
+          "hot": [
+            "app/http/client.py::get"
+          ],
+          "intent": "flow"
+        },
+        "hybrid": {
+          "seed": "app/http/client.py::get",
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "f1": 0.0,
+          "false_negatives": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "false_positives_forbidden": [
+            "app/http/client.py::get"
+          ],
+          "hot": [
+            "app/http/client.py::get"
+          ],
+          "intent": "flow"
+        },
+        "mapfuse": {
+          "seed": "app/http/client.py::get",
+          "seeds": [
+            "app/http/client.py::get"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "f1": 0.0,
+          "false_negatives": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "false_positives_forbidden": [
+            "app/http/client.py::get"
+          ],
+          "hot": [
+            "app/http/client.py::get"
+          ],
+          "intent": "flow"
+        },
+        "embed_power": {
+          "seed": "app/routes/login.py::login",
+          "seed_ok": true,
+          "seed_exact": false,
+          "recall_must": 0.5,
+          "precision_hot": 0.8,
+          "f1": 0.6154,
+          "false_negatives": [
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/utils/token.py::decode"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/services/session.py::start"
+          ],
+          "intent": "flow"
+        },
+        "embed_power_oracle": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 0.8333,
+          "precision_hot": 1.0,
+          "f1": 0.9091,
+          "false_negatives": [
+            "app/models/user.py::User.lookup"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        }
+      }
+    },
+    {
+      "id": "v02",
+      "family": "auth-flow",
+      "prompt": "walk me through the credential check path please, i keep missing pieces",
+      "gold_seed": "app/middleware/auth.py::authenticate",
+      "intent": "flow",
+      "arms": {
+        "oracle": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        },
+        "bm25": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        },
+        "vector": {
+          "seed": "app/routes/login.py::login",
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 1.0,
+          "precision_hot": 0.875,
+          "f1": 0.9333,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        },
+        "hybrid": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        },
+        "mapfuse": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate",
+            "app/routes/login.py::login",
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 0.875,
+          "f1": 0.9333,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        },
+        "embed_power": {
+          "seed": "app/services/jwt_service.py::JwtService.verify",
+          "seed_ok": true,
+          "seed_exact": false,
+          "recall_must": 0.6667,
+          "precision_hot": 1.0,
+          "f1": 0.8,
+          "false_negatives": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        },
+        "embed_power_oracle": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 0.8333,
+          "precision_hot": 1.0,
+          "f1": 0.9091,
+          "false_negatives": [
+            "app/models/user.py::User.lookup"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        }
+      }
+    },
+    {
+      "id": "v03",
+      "family": "auth-flow",
+      "prompt": "theres something with bearer headers and loading the account after claims, where is that?",
+      "gold_seed": "app/middleware/auth.py::authenticate",
+      "intent": "flow",
+      "arms": {
+        "oracle": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        },
+        "bm25": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        },
+        "vector": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        },
+        "hybrid": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        },
+        "mapfuse": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/routes/login.py::login"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 0.875,
+          "f1": 0.9333,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        },
+        "embed_power": {
+          "seed": "app/models/user.py::User.lookup",
+          "seed_ok": true,
+          "seed_exact": false,
+          "recall_must": 0.1667,
+          "precision_hot": 0.5,
+          "f1": 0.25,
+          "false_negatives": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/models/user.py::User.lookup"
+          ],
+          "intent": "flow"
+        },
+        "embed_power_oracle": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 0.8333,
+          "precision_hot": 0.8333,
+          "f1": 0.8333,
+          "false_negatives": [
+            "app/models/user.py::User.lookup"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        }
+      }
+    },
+    {
+      "id": "v04",
+      "family": "token-expiry",
+      "prompt": "people get kicked out after a while, where is that timeout even set?",
+      "gold_seed": "app/services/jwt_service.py::JwtService.verify",
+      "intent": "config",
+      "arms": {
+        "oracle": {
+          "seed": "app/services/jwt_service.py::JwtService.verify",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "config"
+        },
+        "bm25": {
+          "seed": "app/http/client.py::get",
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "f1": 0.0,
+          "false_negatives": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/http/client.py::get"
+          ],
+          "intent": "config"
+        },
+        "vector": {
+          "seed": "app/http/client.py::get",
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "f1": 0.0,
+          "false_negatives": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/http/client.py::get"
+          ],
+          "intent": "config"
+        },
+        "hybrid": {
+          "seed": "app/http/client.py::get",
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "f1": 0.0,
+          "false_negatives": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/http/client.py::get"
+          ],
+          "intent": "config"
+        },
+        "mapfuse": {
+          "seed": "app/http/client.py::get",
+          "seeds": [
+            "app/http/client.py::get"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "f1": 0.0,
+          "false_negatives": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/http/client.py::get"
+          ],
+          "intent": "config"
+        },
+        "embed_power": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seed_ok": true,
+          "seed_exact": false,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "f1": 0.8,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::SIGNING_KEY",
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "intent": "config"
+        },
+        "embed_power_oracle": {
+          "seed": "app/services/jwt_service.py::JwtService.verify",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 0.5,
+          "f1": 0.6667,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/models/user.py::User.lookup"
+          ],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/middleware/auth.py::authenticate",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "config"
+        }
+      }
+    },
+    {
+      "id": "v05",
+      "family": "token-expiry",
+      "prompt": "why do tokens stop working after roughly an hour?",
+      "gold_seed": "app/config/security.py::TOKEN_TTL",
+      "intent": "config",
+      "arms": {
+        "oracle": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "config"
+        },
+        "bm25": {
+          "seed": "app/services/jwt_service.py::JwtService.verify",
+          "seed_ok": true,
+          "seed_exact": false,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "config"
+        },
+        "vector": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "config"
+        },
+        "hybrid": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "config"
+        },
+        "mapfuse": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seeds": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode",
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 0.75,
+          "f1": 0.8571,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/middleware/auth.py::authenticate",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "config"
+        },
+        "embed_power": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "intent": "config"
+        },
+        "embed_power_oracle": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "intent": "config"
+        }
+      }
+    },
+    {
+      "id": "v06",
+      "family": "token-expiry",
+      "prompt": "wheres the expiry knob for the signed claims?",
+      "gold_seed": "app/config/security.py::TOKEN_TTL",
+      "intent": "config",
+      "arms": {
+        "oracle": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "f1": 0.8,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "config"
+        },
+        "bm25": {
+          "seed": "app/services/jwt_service.py::JwtService.verify",
+          "seed_ok": true,
+          "seed_exact": false,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "f1": 0.8,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "config"
+        },
+        "vector": {
+          "seed": "app/services/jwt_service.py::JwtService.verify",
+          "seed_ok": true,
+          "seed_exact": false,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "f1": 0.8,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "config"
+        },
+        "hybrid": {
+          "seed": "app/services/jwt_service.py::JwtService.verify",
+          "seed_ok": true,
+          "seed_exact": false,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "f1": 0.8,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "config"
+        },
+        "mapfuse": {
+          "seed": "app/services/jwt_service.py::JwtService.verify",
+          "seeds": [
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/middleware/auth.py::authenticate",
+            "app/config/security.py::TOKEN_TTL",
+            "app/routes/login.py::login"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "recall_must": 1.0,
+          "precision_hot": 0.3333,
+          "f1": 0.5,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "config"
+        },
+        "embed_power": {
+          "seed": "app/config/security.py::SIGNING_KEY",
+          "seed_ok": true,
+          "seed_exact": false,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "f1": 0.8,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::SIGNING_KEY",
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "intent": "config"
+        },
+        "embed_power_oracle": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "intent": "config"
+        }
+      }
+    },
+    {
+      "id": "v07",
+      "family": "auth-log",
+      "prompt": "auth middleware is printing something somewhere, can you find that?",
+      "gold_seed": "app/middleware/auth.py::authenticate",
+      "intent": "site",
+      "arms": {
+        "oracle": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/utils/logger.py::log"
+          ],
+          "intent": "site"
+        },
+        "bm25": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/utils/logger.py::log"
+          ],
+          "intent": "site"
+        },
+        "vector": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/utils/logger.py::log"
+          ],
+          "intent": "site"
+        },
+        "hybrid": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/utils/logger.py::log"
+          ],
+          "intent": "site"
+        },
+        "mapfuse": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/routes/login.py::login"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 0.5,
+          "f1": 0.6667,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/routes/login.py::login",
+            "app/utils/logger.py::log"
+          ],
+          "intent": "site"
+        },
+        "embed_power": {
+          "seed": "app/middleware/auth.py::extract_bearer",
+          "seed_ok": true,
+          "seed_exact": false,
+          "recall_must": 0.5,
+          "precision_hot": 0.3333,
+          "f1": 0.4,
+          "false_negatives": [
+            "app/utils/logger.py::log"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/routes/login.py::login"
+          ],
+          "intent": "site"
+        },
+        "embed_power_oracle": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 0.5,
+          "precision_hot": 0.5,
+          "f1": 0.5,
+          "false_negatives": [
+            "app/utils/logger.py::log"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "intent": "site"
+        }
+      }
+    },
+    {
+      "id": "v08",
+      "family": "auth-log",
+      "prompt": "where does the login check write log output?",
+      "gold_seed": "app/middleware/auth.py::authenticate",
+      "intent": "site",
+      "arms": {
+        "oracle": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/utils/logger.py::log"
+          ],
+          "intent": "site"
+        },
+        "bm25": {
+          "seed": "app/routes/login.py::login",
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "f1": 0.0,
+          "false_negatives": [
+            "app/middleware/auth.py::authenticate",
+            "app/utils/logger.py::log"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/routes/login.py::login"
+          ],
+          "intent": "site"
+        },
+        "vector": {
+          "seed": "app/routes/login.py::login",
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "f1": 0.0,
+          "false_negatives": [
+            "app/middleware/auth.py::authenticate",
+            "app/utils/logger.py::log"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/routes/login.py::login"
+          ],
+          "intent": "site"
+        },
+        "hybrid": {
+          "seed": "app/routes/login.py::login",
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "f1": 0.0,
+          "false_negatives": [
+            "app/middleware/auth.py::authenticate",
+            "app/utils/logger.py::log"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/routes/login.py::login"
+          ],
+          "intent": "site"
+        },
+        "mapfuse": {
+          "seed": "app/routes/login.py::login",
+          "seeds": [
+            "app/routes/login.py::login",
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "f1": 0.8,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/routes/login.py::login",
+            "app/utils/logger.py::log"
+          ],
+          "intent": "site"
+        },
+        "embed_power": {
+          "seed": "app/routes/login.py::login",
+          "seed_ok": true,
+          "seed_exact": false,
+          "recall_must": 0.5,
+          "precision_hot": 0.5,
+          "f1": 0.5,
+          "false_negatives": [
+            "app/utils/logger.py::log"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/routes/login.py::login"
+          ],
+          "intent": "site"
+        },
+        "embed_power_oracle": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/utils/logger.py::log"
+          ],
+          "intent": "site"
+        }
+      }
+    },
+    {
+      "id": "v09",
+      "family": "charge",
+      "prompt": "how do we bill someone a few cents against the pay api?",
+      "gold_seed": "app/billing/invoices.py::charge",
+      "intent": "flow",
+      "arms": {
+        "oracle": {
+          "seed": "app/billing/invoices.py::charge",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "intent": "flow"
+        },
+        "bm25": {
+          "seed": "app/billing/invoices.py::charge",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "intent": "flow"
+        },
+        "vector": {
+          "seed": "app/billing/invoices.py::charge",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "intent": "flow"
+        },
+        "hybrid": {
+          "seed": "app/billing/invoices.py::charge",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "intent": "flow"
+        },
+        "mapfuse": {
+          "seed": "app/billing/invoices.py::charge",
+          "seeds": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "intent": "flow"
+        },
+        "embed_power": {
+          "seed": "app/billing/invoices.py::charge",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "intent": "flow"
+        },
+        "embed_power_oracle": {
+          "seed": "app/billing/invoices.py::charge",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "intent": "flow"
+        }
+      }
+    },
+    {
+      "id": "v10",
+      "family": "charge",
+      "prompt": "i need the outbound payment request path, not login",
+      "gold_seed": "app/billing/invoices.py::charge",
+      "intent": "flow",
+      "arms": {
+        "oracle": {
+          "seed": "app/billing/invoices.py::charge",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "intent": "flow"
+        },
+        "bm25": {
+          "seed": "app/routes/login.py::login",
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "f1": 0.0,
+          "false_negatives": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        },
+        "vector": {
+          "seed": "app/routes/login.py::login",
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "f1": 0.0,
+          "false_negatives": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        },
+        "hybrid": {
+          "seed": "app/routes/login.py::login",
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "f1": 0.0,
+          "false_negatives": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        },
+        "mapfuse": {
+          "seed": "app/routes/login.py::login",
+          "seeds": [
+            "app/routes/login.py::login",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "f1": 0.0,
+          "false_negatives": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        },
+        "embed_power": {
+          "seed": "app/middleware/auth.py::extract_bearer",
+          "seed_ok": true,
+          "seed_exact": false,
+          "recall_must": 0.5,
+          "precision_hot": 0.5,
+          "f1": 0.5,
+          "false_negatives": [
+            "app/billing/invoices.py::charge"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/http/client.py::get",
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "intent": "flow"
+        },
+        "embed_power_oracle": {
+          "seed": "app/billing/invoices.py::charge",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "intent": "flow"
+        }
+      }
+    },
+    {
+      "id": "v11",
+      "family": "event-emit",
+      "prompt": "when we fire welcome what actually runs? feels like magic",
+      "gold_seed": "app/events/bus.py::emit",
+      "intent": "flow",
+      "arms": {
+        "oracle": {
+          "seed": "app/events/bus.py::emit",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ],
+          "intent": "flow"
+        },
+        "bm25": {
+          "seed": "app/handlers/welcome.py::handle",
+          "seed_ok": true,
+          "seed_exact": false,
+          "recall_must": 0.3333,
+          "precision_hot": 1.0,
+          "f1": 0.5,
+          "false_negatives": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/handlers/welcome.py::handle"
+          ],
+          "intent": "flow"
+        },
+        "vector": {
+          "seed": "app/jobs/worker.py::run",
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "f1": 0.0,
+          "false_negatives": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ],
+          "intent": "flow"
+        },
+        "hybrid": {
+          "seed": "app/jobs/worker.py::run",
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "f1": 0.0,
+          "false_negatives": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ],
+          "intent": "flow"
+        },
+        "mapfuse": {
+          "seed": "app/jobs/worker.py::run",
+          "seeds": [
+            "app/jobs/worker.py::run"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "f1": 0.0,
+          "false_negatives": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ],
+          "intent": "flow"
+        },
+        "embed_power": {
+          "seed": "app/bootstrap.py::start",
+          "seed_ok": true,
+          "seed_exact": false,
+          "recall_must": 0.3333,
+          "precision_hot": 0.75,
+          "f1": 0.4615,
+          "false_negatives": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/bootstrap.py::start",
+            "app/events/registry.py::HANDLERS",
+            "app/events/registry.py::bind",
+            "app/handlers/welcome.py::handle"
+          ],
+          "intent": "flow"
+        },
+        "embed_power_oracle": {
+          "seed": "app/events/bus.py::emit",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 0.75,
+          "f1": 0.8571,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::HANDLERS",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ],
+          "intent": "flow"
+        }
+      }
+    },
+    {
+      "id": "v12",
+      "family": "event-emit",
+      "prompt": "emit looks empty but something must handle the welcome event",
+      "gold_seed": "app/events/bus.py::emit",
+      "intent": "flow",
+      "arms": {
+        "oracle": {
+          "seed": "app/events/bus.py::emit",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ],
+          "intent": "flow"
+        },
+        "bm25": {
+          "seed": "app/handlers/welcome.py::handle",
+          "seed_ok": true,
+          "seed_exact": false,
+          "recall_must": 0.3333,
+          "precision_hot": 1.0,
+          "f1": 0.5,
+          "false_negatives": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/handlers/welcome.py::handle"
+          ],
+          "intent": "flow"
+        },
+        "vector": {
+          "seed": "app/handlers/welcome.py::handle",
+          "seed_ok": true,
+          "seed_exact": false,
+          "recall_must": 0.3333,
+          "precision_hot": 1.0,
+          "f1": 0.5,
+          "false_negatives": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/handlers/welcome.py::handle"
+          ],
+          "intent": "flow"
+        },
+        "hybrid": {
+          "seed": "app/handlers/welcome.py::handle",
+          "seed_ok": true,
+          "seed_exact": false,
+          "recall_must": 0.3333,
+          "precision_hot": 1.0,
+          "f1": 0.5,
+          "false_negatives": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/handlers/welcome.py::handle"
+          ],
+          "intent": "flow"
+        },
+        "mapfuse": {
+          "seed": "app/handlers/welcome.py::handle",
+          "seeds": [
+            "app/handlers/welcome.py::handle",
+            "app/bootstrap.py::start",
+            "app/events/bus.py::emit"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "recall_must": 1.0,
+          "precision_hot": 0.8,
+          "f1": 0.8889,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/bootstrap.py::start",
+            "app/events/bus.py::emit",
+            "app/events/registry.py::bind",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ],
+          "intent": "flow"
+        },
+        "embed_power": {
+          "seed": "app/bootstrap.py::start",
+          "seed_ok": true,
+          "seed_exact": false,
+          "recall_must": 0.3333,
+          "precision_hot": 0.5,
+          "f1": 0.4,
+          "false_negatives": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/bootstrap.py::start",
+            "app/events/registry.py::HANDLERS",
+            "app/events/registry.py::bind",
+            "app/handlers/welcome.py::handle"
+          ],
+          "intent": "flow"
+        },
+        "embed_power_oracle": {
+          "seed": "app/events/bus.py::emit",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 0.75,
+          "f1": 0.8571,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::HANDLERS",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ],
+          "intent": "flow"
+        }
+      }
+    },
+    {
+      "id": "v13",
+      "family": "job-run",
+      "prompt": "the worker loop that pulls jobs off a queue, how does that go?",
+      "gold_seed": "app/jobs/worker.py::run",
+      "intent": "flow",
+      "arms": {
+        "oracle": {
+          "seed": "app/jobs/worker.py::run",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ],
+          "intent": "flow"
+        },
+        "bm25": {
+          "seed": "app/jobs/worker.py::run",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ],
+          "intent": "flow"
+        },
+        "vector": {
+          "seed": "app/jobs/queue.py::enqueue",
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "f1": 0.0,
+          "false_negatives": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/queue.py::enqueue"
+          ],
+          "intent": "flow"
+        },
+        "hybrid": {
+          "seed": "app/jobs/worker.py::run",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ],
+          "intent": "flow"
+        },
+        "mapfuse": {
+          "seed": "app/jobs/worker.py::run",
+          "seeds": [
+            "app/jobs/worker.py::run",
+            "app/jobs/queue.py::enqueue",
+            "app/jobs/queue.py::_PENDING",
+            "app/jobs/runner.py::execute"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "f1": 0.8,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::_PENDING",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/queue.py::enqueue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ],
+          "intent": "flow"
+        },
+        "embed_power": {
+          "seed": "app/jobs/worker.py::run",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ],
+          "intent": "flow"
+        },
+        "embed_power_oracle": {
+          "seed": "app/jobs/worker.py::run",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ],
+          "intent": "flow"
+        }
+      }
+    },
+    {
+      "id": "v14",
+      "family": "job-run",
+      "prompt": "how does a digest email job actually get sent from the queue?",
+      "gold_seed": "app/jobs/worker.py::run",
+      "intent": "flow",
+      "arms": {
+        "oracle": {
+          "seed": "app/jobs/worker.py::run",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ],
+          "intent": "flow"
+        },
+        "bm25": {
+          "seed": "app/http/client.py::get",
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "f1": 0.0,
+          "false_negatives": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/http/client.py::get"
+          ],
+          "intent": "flow"
+        },
+        "vector": {
+          "seed": "app/http/client.py::get",
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "f1": 0.0,
+          "false_negatives": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/http/client.py::get"
+          ],
+          "intent": "flow"
+        },
+        "hybrid": {
+          "seed": "app/http/client.py::get",
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "f1": 0.0,
+          "false_negatives": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/http/client.py::get"
+          ],
+          "intent": "flow"
+        },
+        "mapfuse": {
+          "seed": "app/http/client.py::get",
+          "seeds": [
+            "app/http/client.py::get"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "f1": 0.0,
+          "false_negatives": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/http/client.py::get"
+          ],
+          "intent": "flow"
+        },
+        "embed_power": {
+          "seed": "app/jobs/digest.py::send_digest",
+          "seed_ok": true,
+          "seed_exact": false,
+          "recall_must": 0.5,
+          "precision_hot": 1.0,
+          "f1": 0.6667,
+          "false_negatives": [
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/worker.py::run"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/runner.py::execute"
+          ],
+          "intent": "flow"
+        },
+        "embed_power_oracle": {
+          "seed": "app/jobs/worker.py::run",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ],
+          "intent": "flow"
+        }
+      }
+    },
+    {
+      "id": "v15",
+      "family": "health",
+      "prompt": "just the health probe thing, nothing fancy",
+      "gold_seed": "app/routes/health.py::health",
+      "intent": "flow",
+      "arms": {
+        "oracle": {
+          "seed": "app/routes/health.py::health",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/routes/health.py::health"
+          ],
+          "intent": "flow"
+        },
+        "bm25": {
+          "seed": "app/routes/health.py::health",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/routes/health.py::health"
+          ],
+          "intent": "flow"
+        },
+        "vector": {
+          "seed": "app/routes/health.py::health",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/routes/health.py::health"
+          ],
+          "intent": "flow"
+        },
+        "hybrid": {
+          "seed": "app/routes/health.py::health",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/routes/health.py::health"
+          ],
+          "intent": "flow"
+        },
+        "mapfuse": {
+          "seed": "app/routes/health.py::health",
+          "seeds": [
+            "app/routes/health.py::health"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/routes/health.py::health"
+          ],
+          "intent": "flow"
+        },
+        "embed_power": {
+          "seed": "app/routes/health.py::health",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/routes/health.py::health"
+          ],
+          "intent": "flow"
+        },
+        "embed_power_oracle": {
+          "seed": "app/routes/health.py::health",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/routes/health.py::health"
+          ],
+          "intent": "flow"
+        }
+      }
+    },
+    {
+      "id": "v16",
+      "family": "cors",
+      "prompt": "cors headers middleware, leave auth alone",
+      "gold_seed": "app/middleware/cors.py::process",
+      "intent": "flow",
+      "arms": {
+        "oracle": {
+          "seed": "app/middleware/cors.py::process",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/cors.py::process"
+          ],
+          "intent": "flow"
+        },
+        "bm25": {
+          "seed": "app/middleware/cors.py::process",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/cors.py::process"
+          ],
+          "intent": "flow"
+        },
+        "vector": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "f1": 0.0,
+          "false_negatives": [
+            "app/middleware/cors.py::process"
+          ],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        },
+        "hybrid": {
+          "seed": "app/middleware/cors.py::process",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/cors.py::process"
+          ],
+          "intent": "flow"
+        },
+        "mapfuse": {
+          "seed": "app/middleware/cors.py::process",
+          "seeds": [
+            "app/middleware/cors.py::process"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/cors.py::process"
+          ],
+          "intent": "flow"
+        },
+        "embed_power": {
+          "seed": "app/middleware/cors.py::process",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/cors.py::process"
+          ],
+          "intent": "flow"
+        },
+        "embed_power_oracle": {
+          "seed": "app/middleware/cors.py::process",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/cors.py::process"
+          ],
+          "intent": "flow"
+        }
+      }
+    },
+    {
+      "id": "v17",
+      "family": "session",
+      "prompt": "that little helper that starts a user session object",
+      "gold_seed": "app/services/session.py::start",
+      "intent": "config",
+      "arms": {
+        "oracle": {
+          "seed": "app/services/session.py::start",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/services/session.py::start"
+          ],
+          "intent": "config"
+        },
+        "bm25": {
+          "seed": "app/services/session.py::start",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/services/session.py::start"
+          ],
+          "intent": "config"
+        },
+        "vector": {
+          "seed": "app/services/session.py::start",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/services/session.py::start"
+          ],
+          "intent": "config"
+        },
+        "hybrid": {
+          "seed": "app/services/session.py::start",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/services/session.py::start"
+          ],
+          "intent": "config"
+        },
+        "mapfuse": {
+          "seed": "app/services/session.py::start",
+          "seeds": [
+            "app/services/session.py::start"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/services/session.py::start"
+          ],
+          "intent": "config"
+        },
+        "embed_power": {
+          "seed": "app/services/session.py::start",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/services/session.py::start"
+          ],
+          "intent": "config"
+        },
+        "embed_power_oracle": {
+          "seed": "app/services/session.py::start",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/services/session.py::start"
+          ],
+          "intent": "config"
+        }
+      }
+    },
+    {
+      "id": "v18",
+      "family": "ttl-refs",
+      "prompt": "who even reads that TOKEN_TTL constant?",
+      "gold_seed": "app/config/security.py::TOKEN_TTL",
+      "intent": "refs",
+      "arms": {
+        "oracle": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "intent": "refs"
+        },
+        "bm25": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "intent": "refs"
+        },
+        "vector": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "intent": "refs"
+        },
+        "hybrid": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "intent": "refs"
+        },
+        "mapfuse": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seeds": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/config/database.py::connect"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 0.4,
+          "f1": 0.5714,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/config/security.py::TOKEN_TTL",
+            "app/middleware/auth.py::authenticate",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "intent": "refs"
+        },
+        "embed_power": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "intent": "refs"
+        },
+        "embed_power_oracle": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "intent": "refs"
+        }
+      }
+    },
+    {
+      "id": "v19",
+      "family": "store-fetch",
+      "prompt": "memory store fetch, i think it overrides something in base?",
+      "gold_seed": "app/stores/memory.py::MemoryStore.fetch",
+      "intent": "flow",
+      "arms": {
+        "oracle": {
+          "seed": "app/stores/memory.py::MemoryStore.fetch",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ],
+          "intent": "flow"
+        },
+        "bm25": {
+          "seed": "app/stores/memory.py::MemoryStore.fetch",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ],
+          "intent": "flow"
+        },
+        "vector": {
+          "seed": "app/stores/memory.py::MemoryStore.fetch",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ],
+          "intent": "flow"
+        },
+        "hybrid": {
+          "seed": "app/stores/memory.py::MemoryStore.fetch",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ],
+          "intent": "flow"
+        },
+        "mapfuse": {
+          "seed": "app/stores/memory.py::MemoryStore.fetch",
+          "seeds": [
+            "app/stores/memory.py::MemoryStore.fetch",
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.__init__"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "f1": 0.8,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.__init__",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ],
+          "intent": "flow"
+        },
+        "embed_power": {
+          "seed": "app/stores/memory.py::MemoryStore.fetch",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ],
+          "intent": "flow"
+        },
+        "embed_power_oracle": {
+          "seed": "app/stores/memory.py::MemoryStore.fetch",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ],
+          "intent": "flow"
+        }
+      }
+    },
+    {
+      "id": "v20",
+      "family": "user-resolve",
+      "prompt": "how does resolve pull the user row out of the database?",
+      "gold_seed": "app/repositories/user_repo.py::UserRepository.resolve",
+      "intent": "flow",
+      "arms": {
+        "oracle": {
+          "seed": "app/repositories/user_repo.py::UserRepository.resolve",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve"
+          ],
+          "intent": "flow"
+        },
+        "bm25": {
+          "seed": "app/repositories/user_repo.py::UserRepository.resolve",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve"
+          ],
+          "intent": "flow"
+        },
+        "vector": {
+          "seed": "app/repositories/user_repo.py::UserRepository.resolve",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve"
+          ],
+          "intent": "flow"
+        },
+        "hybrid": {
+          "seed": "app/repositories/user_repo.py::UserRepository.resolve",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve"
+          ],
+          "intent": "flow"
+        },
+        "mapfuse": {
+          "seed": "app/repositories/user_repo.py::UserRepository.resolve",
+          "seeds": [
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/config/database.py::connect"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 0.6,
+          "f1": 0.75,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/utils/token.py::decode"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        },
+        "embed_power": {
+          "seed": "app/repositories/user_repo.py::UserRepository.resolve",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve"
+          ],
+          "intent": "flow"
+        },
+        "embed_power_oracle": {
+          "seed": "app/repositories/user_repo.py::UserRepository.resolve",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve"
+          ],
+          "intent": "flow"
+        }
+      }
+    },
+    {
+      "id": "v21",
+      "family": "adversarial-pay-auth-words",
+      "prompt": "customer authentication tokens for the payment API \u2014 how do we charge?",
+      "gold_seed": "app/billing/invoices.py::charge",
+      "intent": "flow",
+      "arms": {
+        "oracle": {
+          "seed": "app/billing/invoices.py::charge",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "intent": "flow"
+        },
+        "bm25": {
+          "seed": "app/billing/invoices.py::charge",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "intent": "flow"
+        },
+        "vector": {
+          "seed": "app/billing/invoices.py::charge",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "intent": "flow"
+        },
+        "hybrid": {
+          "seed": "app/billing/invoices.py::charge",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "intent": "flow"
+        },
+        "mapfuse": {
+          "seed": "app/billing/invoices.py::charge",
+          "seeds": [
+            "app/billing/invoices.py::charge"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "intent": "flow"
+        },
+        "embed_power": {
+          "seed": "app/billing/invoices.py::charge",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "f1": 0.8,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/config/security.py::TOKEN_TTL",
+            "app/http/client.py::get"
+          ],
+          "intent": "flow"
+        },
+        "embed_power_oracle": {
+          "seed": "app/billing/invoices.py::charge",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "intent": "flow"
+        }
+      }
+    },
+    {
+      "id": "v22",
+      "family": "negation-not-login",
+      "prompt": "not the login stuff \u2014 i need the outbound payment request path",
+      "gold_seed": "app/billing/invoices.py::charge",
+      "intent": "flow",
+      "arms": {
+        "oracle": {
+          "seed": "app/billing/invoices.py::charge",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "intent": "flow"
+        },
+        "bm25": {
+          "seed": "app/routes/login.py::login",
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "f1": 0.0,
+          "false_negatives": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate",
+            "app/routes/login.py::login"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        },
+        "vector": {
+          "seed": "app/routes/login.py::login",
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "f1": 0.0,
+          "false_negatives": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate",
+            "app/routes/login.py::login"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        },
+        "hybrid": {
+          "seed": "app/routes/login.py::login",
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "f1": 0.0,
+          "false_negatives": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate",
+            "app/routes/login.py::login"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        },
+        "mapfuse": {
+          "seed": "app/routes/login.py::login",
+          "seeds": [
+            "app/routes/login.py::login",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "f1": 0.0,
+          "false_negatives": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate",
+            "app/routes/login.py::login"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        },
+        "embed_power": {
+          "seed": "app/http/client.py::get",
+          "seed_ok": true,
+          "seed_exact": false,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "intent": "flow"
+        },
+        "embed_power_oracle": {
+          "seed": "app/billing/invoices.py::charge",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "intent": "flow"
+        }
+      }
+    },
+    {
+      "id": "v23",
+      "family": "underspec-timeout",
+      "prompt": "the timeout thing",
+      "gold_seed": "app/config/security.py::TOKEN_TTL",
+      "intent": "config",
+      "arms": {
+        "oracle": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "f1": 0.8,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "config"
+        },
+        "bm25": {
+          "seed": "app/services/jwt_service.py::JwtService.verify",
+          "seed_ok": true,
+          "seed_exact": false,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "f1": 0.8,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "config"
+        },
+        "vector": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "f1": 0.8,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "config"
+        },
+        "hybrid": {
+          "seed": "app/services/jwt_service.py::JwtService.verify",
+          "seed_ok": true,
+          "seed_exact": false,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "f1": 0.8,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "config"
+        },
+        "mapfuse": {
+          "seed": "app/services/jwt_service.py::JwtService.verify",
+          "seeds": [
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/config/security.py::TOKEN_TTL",
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "recall_must": 1.0,
+          "precision_hot": 0.5,
+          "f1": 0.6667,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/middleware/auth.py::authenticate",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "config"
+        },
+        "embed_power": {
+          "seed": "app/stores/base.py::Store.fetch",
+          "seed_ok": true,
+          "seed_exact": false,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "f1": 0.8,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/stores/base.py::Store.fetch"
+          ],
+          "intent": "config"
+        },
+        "embed_power_oracle": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "intent": "config"
+        }
+      }
+    },
+    {
+      "id": "v24",
+      "family": "wrong-folder-cors",
+      "prompt": "middleware that only sets access-control headers",
+      "gold_seed": "app/middleware/cors.py::process",
+      "intent": "flow",
+      "arms": {
+        "oracle": {
+          "seed": "app/middleware/cors.py::process",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/cors.py::process"
+          ],
+          "intent": "flow"
+        },
+        "bm25": {
+          "seed": "app/middleware/cors.py::process",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/cors.py::process"
+          ],
+          "intent": "flow"
+        },
+        "vector": {
+          "seed": "app/middleware/cors.py::process",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/cors.py::process"
+          ],
+          "intent": "flow"
+        },
+        "hybrid": {
+          "seed": "app/middleware/cors.py::process",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/cors.py::process"
+          ],
+          "intent": "flow"
+        },
+        "mapfuse": {
+          "seed": "app/middleware/cors.py::process",
+          "seeds": [
+            "app/middleware/cors.py::process"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/cors.py::process"
+          ],
+          "intent": "flow"
+        },
+        "embed_power": {
+          "seed": "app/middleware/cors.py::process",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/cors.py::process"
+          ],
+          "intent": "flow"
+        },
+        "embed_power_oracle": {
+          "seed": "app/middleware/cors.py::process",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/cors.py::process"
+          ],
+          "intent": "flow"
+        }
+      }
+    },
+    {
+      "id": "v25",
+      "family": "dynamic-welcome",
+      "prompt": "something registers welcome and later emit runs it somehow",
+      "gold_seed": "app/events/bus.py::emit",
+      "intent": "flow",
+      "arms": {
+        "oracle": {
+          "seed": "app/events/bus.py::emit",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ],
+          "intent": "flow"
+        },
+        "bm25": {
+          "seed": "app/events/bus.py::emit",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ],
+          "intent": "flow"
+        },
+        "vector": {
+          "seed": "app/events/bus.py::emit",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ],
+          "intent": "flow"
+        },
+        "hybrid": {
+          "seed": "app/events/bus.py::emit",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ],
+          "intent": "flow"
+        },
+        "mapfuse": {
+          "seed": "app/events/bus.py::emit",
+          "seeds": [
+            "app/events/bus.py::emit",
+            "app/bootstrap.py::start",
+            "app/handlers/welcome.py::handle",
+            "app/events/registry.py::lookup"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 0.8,
+          "f1": 0.8889,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/bootstrap.py::start",
+            "app/events/bus.py::emit",
+            "app/events/registry.py::bind",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ],
+          "intent": "flow"
+        },
+        "embed_power": {
+          "seed": "app/bootstrap.py::start",
+          "seed_ok": true,
+          "seed_exact": false,
+          "recall_must": 0.3333,
+          "precision_hot": 0.5,
+          "f1": 0.4,
+          "false_negatives": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/bootstrap.py::start",
+            "app/events/registry.py::HANDLERS",
+            "app/events/registry.py::bind",
+            "app/handlers/welcome.py::handle"
+          ],
+          "intent": "flow"
+        },
+        "embed_power_oracle": {
+          "seed": "app/events/bus.py::emit",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 0.75,
+          "f1": 0.8571,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::HANDLERS",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ],
+          "intent": "flow"
+        }
+      }
+    },
+    {
+      "id": "v26",
+      "family": "generic-execute",
+      "prompt": "whatever executes a dequeued job body",
+      "gold_seed": "app/jobs/runner.py::execute",
+      "intent": "flow",
+      "arms": {
+        "oracle": {
+          "seed": "app/jobs/runner.py::execute",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/runner.py::execute"
+          ],
+          "intent": "flow"
+        },
+        "bm25": {
+          "seed": "app/jobs/runner.py::execute",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/runner.py::execute"
+          ],
+          "intent": "flow"
+        },
+        "vector": {
+          "seed": "app/jobs/runner.py::execute",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/runner.py::execute"
+          ],
+          "intent": "flow"
+        },
+        "hybrid": {
+          "seed": "app/jobs/runner.py::execute",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/runner.py::execute"
+          ],
+          "intent": "flow"
+        },
+        "mapfuse": {
+          "seed": "app/jobs/runner.py::execute",
+          "seeds": [
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run",
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::enqueue"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 0.6,
+          "f1": 0.75,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/queue.py::enqueue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ],
+          "intent": "flow"
+        },
+        "embed_power": {
+          "seed": "app/jobs/runner.py::execute",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "f1": 0.8,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute"
+          ],
+          "intent": "flow"
+        },
+        "embed_power_oracle": {
+          "seed": "app/jobs/runner.py::execute",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/runner.py::execute"
+          ],
+          "intent": "flow"
+        }
+      }
+    },
+    {
+      "id": "v27",
+      "family": "side-effect-print",
+      "prompt": "i see ok printed when auth succeeds \u2014 where?",
+      "gold_seed": "app/middleware/auth.py::authenticate",
+      "intent": "flow",
+      "arms": {
+        "oracle": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 0.25,
+          "f1": 0.4,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/utils/token.py::decode"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/logger.py::log",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        },
+        "bm25": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 0.25,
+          "f1": 0.4,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/utils/token.py::decode"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/logger.py::log",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        },
+        "vector": {
+          "seed": "app/routes/login.py::login",
+          "seed_ok": false,
+          "seed_exact": false,
+          "recall_must": 1.0,
+          "precision_hot": 0.2222,
+          "f1": 0.3636,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/utils/token.py::decode"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/logger.py::log",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        },
+        "hybrid": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 0.25,
+          "f1": 0.4,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/utils/token.py::decode"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/logger.py::log",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        },
+        "mapfuse": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate",
+            "app/routes/login.py::login",
+            "app/middleware/auth.py::extract_bearer",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 0.2222,
+          "f1": 0.3636,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/utils/token.py::decode"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/logger.py::log",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        },
+        "embed_power": {
+          "seed": "app/routes/health.py::health",
+          "seed_ok": true,
+          "seed_exact": false,
+          "recall_must": 0.5,
+          "precision_hot": 0.1667,
+          "f1": 0.25,
+          "false_negatives": [
+            "app/utils/logger.py::log"
+          ],
+          "false_positives_forbidden": [
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/utils/token.py::decode"
+          ],
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/health.py::health",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        },
+        "embed_power_oracle": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 0.5,
+          "precision_hot": 0.2,
+          "f1": 0.2857,
+          "false_negatives": [
+            "app/utils/logger.py::log"
+          ],
+          "false_positives_forbidden": [
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/utils/token.py::decode"
+          ],
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "intent": "flow"
+        }
+      }
+    },
+    {
+      "id": "v28",
+      "family": "inherit-fetch",
+      "prompt": "in-memory row fetch that overrides the abstract store",
+      "gold_seed": "app/stores/memory.py::MemoryStore.fetch",
+      "intent": "flow",
+      "arms": {
+        "oracle": {
+          "seed": "app/stores/memory.py::MemoryStore.fetch",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ],
+          "intent": "flow"
+        },
+        "bm25": {
+          "seed": "app/stores/memory.py::MemoryStore.fetch",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ],
+          "intent": "flow"
+        },
+        "vector": {
+          "seed": "app/stores/memory.py::MemoryStore.fetch",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ],
+          "intent": "flow"
+        },
+        "hybrid": {
+          "seed": "app/stores/memory.py::MemoryStore.fetch",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ],
+          "intent": "flow"
+        },
+        "mapfuse": {
+          "seed": "app/stores/memory.py::MemoryStore.fetch",
+          "seeds": [
+            "app/stores/memory.py::MemoryStore.fetch",
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.__init__"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "f1": 0.8,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.__init__",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ],
+          "intent": "flow"
+        },
+        "embed_power": {
+          "seed": "app/stores/memory.py::MemoryStore.fetch",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ],
+          "intent": "flow"
+        },
+        "embed_power_oracle": {
+          "seed": "app/stores/memory.py::MemoryStore.fetch",
+          "seed_ok": true,
+          "seed_exact": true,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "f1": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ],
+          "intent": "flow"
+        }
+      }
+    }
+  ]
+}

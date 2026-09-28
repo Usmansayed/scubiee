@@ -1,0 +1,41 @@
+{
+  "ok": true,
+  "tool": "pack_semantic",
+  "engine": "semantic_tracer_fuse",
+  "elapsed_s": 0.2,
+  "n_pack": 1,
+  "seed": {
+    "file": "packages/pipeline/memory_governor.py",
+    "symbol": "_env_float",
+    "id": "packages/pipeline/memory_governor.py::_env_float"
+  },
+  "pack": [
+    {
+      "file": "packages/pipeline/memory_governor.py",
+      "symbol": "_env_float",
+      "score": 1.0,
+      "loc": "packages/pipeline/memory_governor.py:46-50",
+      "id": "packages/pipeline/memory_governor.py::_env_float",
+      "chars": 163
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/pipeline/memory_governor.py::_env_float",
+      "loc": "packages/pipeline/memory_governor.py:46-50",
+      "edge": "seed",
+      "score": 1.0
+    }
+  ],
+  "error": null,
+  "seed_chunks": [
+    {
+      "file": "packages/pipeline/memory_governor.py",
+      "symbol": "_env_float",
+      "loc": "packages/pipeline/memory_governor.py:46-50",
+      "score": 1.0,
+      "kind": "function"
+    }
+  ],
+  "pack_query": "memory_budget embed batch DML VRAM cap search concurrent budget chars | seeds: packages/pipeline/memory_governor.py::_env_float"
+}

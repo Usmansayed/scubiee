@@ -1,0 +1,111 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 7.892,
+  "stdout_chars": 3598,
+  "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})",
+  "json": {
+    "ok": true,
+    "tool": "map",
+    "cards": [
+      {
+        "rank": 1,
+        "file": "packages/trace_lab/lsp_index.py",
+        "score": 18.07202316257421,
+        "why": "def build_lsp_index( root: Path, nodes: dict[str, TraceNode], graph: AstTraceGraph, ) -> LspIndex: root = root.resolve() idx = LspIndex() by_file: dict[str, list[TraceNode]] = defa",
+        "role": "function",
+        "loc": "packages/trace_lab/lsp_index.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 2,
+        "file": "packages/trace_lab/facts/dispatch.py",
+        "score": 9.682723407578925,
+        "why": "\"\"\"Dispatch / override edges from simulated LSP index.\"\"\" from __future__ import annotations from trace_lab.facts.call_graph import edges_from_dispatch from trace_lab.lsp_index imp",
+        "role": "function",
+        "loc": "packages/trace_lab/facts/dispatch.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 3,
+        "file": "packages/trace_lab/polytrace.py",
+        "score": 8.985642472916165,
+        "why": "def bind_polytrace( lsp: LspIndex, extra_graph: AstTraceGraph | None = None ): def polytrace(case, nodes, graph, lex): return poly_trace( case, nodes, graph, lex, lsp=lsp, extra_gr",
+        "role": "function",
+        "loc": "packages/trace_lab/polytrace.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 4,
+        "file": "fixtures/trace-lab/app/events/registry.py",
+        "score": 8.877941486275319,
+        "why": "def lookup(name: str): return HANDLERS[name]",
+        "role": "other",
+        "loc": "fixtures/trace-lab/app/events/registry.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 5,
+        "file": "packages/pipeline/context_trace.py",
+        "score": 8.268205125656165,
+        "why": "def _load_lsp(raw: dict[str, Any]) -> LspIndex: from collections import defaultdict idx = LspIndex() idx.defs = dict(raw.get(\"defs\") or {}) idx.refs = dict(raw.get(\"refs\") or {}) i",
+        "role": "function",
+        "loc": "packages/pipeline/context_trace.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 6,
+        "file": "packages/trace_lab/facts/call_graph.py",
+        "score": 6.463130835043474,
+        "why": "def edges_from_dispatch(lsp: LspIndex) -> list[TypedEdge]: out: list[TypedEdge] = [] for src, targets in lsp.dispatch.items(): for tgt in targets: out.append( TypedEdge(src, tgt, \"",
+        "role": "function",
+        "loc": "packages/trace_lab/facts/call_graph.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 7,
+        "file": "packages/trace_lab/poly_embed.py",
+        "score": 4.020385597531779,
+        "why": "def poly_embed_trace( case: GoldCase, nodes: dict[str, TraceNode], graph: AstTraceGraph, lex, *, lsp: LspIndex, field: EmbedField, struct_heatmap: Heatmap | None = None, ) -> Heatm",
+        "role": "function",
+        "loc": "packages/trace_lab/poly_embed.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 8,
+        "file": "fixtures/trace-lab/app/events/bus.py",
+        "score": 3.922682089497947,
+        "why": "\"\"\"In-process event bus. emit/lookup have no auth vocabulary.\"\"\" from app.events.registry import lookup",
+        "role": "other",
+        "loc": "fixtures/trace-lab/app/events/bus.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 9,
+        "file": "fixtures/trace-lab/app/handlers/welcome.py",
+        "score": 3.486503894312861,
+        "why": "def handle(payload: dict) -> dict: log(\"welcome\") track(\"welcome\") start(str(payload.get(\"user\") or \"\")) return {\"user\": payload.get(\"user\")}",
+        "role": "other",
+        "loc": "fixtures/trace-lab/app/handlers/welcome.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 10,
+        "file": "packages/trace_lab/types.py",
+        "score": 2.234903856066654,
+        "why": "def line_span(self) -> tuple[int, int]: return (self.start_line, self.end_line) @dataclass(frozen=True) class TraceEdge: source: str target: str relation: str weight: float @datacl",
+        "role": "function",
+        "loc": "packages/trace_lab/types.py:1-1",
+        "symbol": ""
+      }
+    ],
+    "suggested_seed": {
+      "file": "packages/trace_lab/lsp_index.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/lsp_index.py:1-1",
+      "score": 18.07202316257421
+    },
+    "next": "scubiee pack \"LspIndex dispatch overrides build_lsp_index polytrace used_by handle lookup registry\" --seed-file packages/trace_lab/lsp_index.py --mode lean"
+  },
+  "stdout_preview": ""
+}

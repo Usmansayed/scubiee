@@ -1,0 +1,132 @@
+{
+  "protocol": "blind20_triple_pack_v1",
+  "created": "2026-09-06",
+  "note": "20 NEW realistic dev-task queries authored WITHOUT codebase inspection. Warm map → seed chunks → pack_context / pack_poly_embed / pack_semantic. GT only after freeze.",
+  "arms": [
+    "pack_context",
+    "pack_poly_embed",
+    "pack_semantic"
+  ],
+  "cases": [
+    {
+      "id": "t01",
+      "family": "faiss-publish",
+      "task": "How does a rebuilt FAISS index get published so warm search starts serving the new vectors?",
+      "enrich_prompt": "publish FAISS index republish store checksum WarmSearchEngine serve hits after rebuild vector index publication usable"
+    },
+    {
+      "id": "t02",
+      "family": "bm25-build",
+      "task": "Where is the BM25 lexical index built and tokenized during repo indexing?",
+      "enrich_prompt": "BM25 index build tokenize corpus indexing conductor bm25_index lexical chunks"
+    },
+    {
+      "id": "t03",
+      "family": "chunk-pipeline",
+      "task": "Trace how source files become searchable chunks in the indexer pipeline.",
+      "enrich_prompt": "indexer chunk pipeline parse source files into chunks merkle symbol spans index_manager"
+    },
+    {
+      "id": "t04",
+      "family": "gate-enroll",
+      "task": "How does gate / project enrollment decide a repo is managed and bind project_id?",
+      "enrich_prompt": "gate enroll managed project_id .scubiee id.json GATE line AGENTS.md bind repo"
+    },
+    {
+      "id": "t05",
+      "family": "engine-watchdog",
+      "task": "How does the engine watchdog keep the warm HTTP daemon alive and restart on idle?",
+      "enrich_prompt": "engine watchdog idle timeout restart CTX_ENGINE_URL port 8765 pipeline engine run"
+    },
+    {
+      "id": "t06",
+      "family": "mcp-bridge",
+      "task": "How does the MCP bridge process launch and forward tools to the Scubiee MCP server?",
+      "enrich_prompt": "scubiee-mcp-bridge MCP bridge launch stdio tools forward hybrid experiment surface"
+    },
+    {
+      "id": "t07",
+      "family": "locate-cli",
+      "task": "How do `scubiee map` and `scubiee pack` CLI commands parse args and call locate?",
+      "enrich_prompt": "scubiee map pack CLI locate_cli argparse seed-file mode lean enrich prompt"
+    },
+    {
+      "id": "t08",
+      "family": "expand-hop",
+      "task": "How does expand_context follow callees/callers/effects hops from a packed node?",
+      "enrich_prompt": "expand_context direction callees callers effects with_bodies hop chain node id"
+    },
+    {
+      "id": "t09",
+      "family": "work-session",
+      "task": "Where does work_session touch/pins remember files the agent recently packed?",
+      "enrich_prompt": "work_session touch pins files role query session_id remember recent pack heatmap"
+    },
+    {
+      "id": "t10",
+      "family": "response-lean",
+      "task": "How are MCP pack responses slimmed for token savings (lean formatting)?",
+      "enrich_prompt": "mcp_response_lean slim pack heatmap cold cards token savings CTX_TOKEN_MODE"
+    },
+    {
+      "id": "t11",
+      "family": "permissions-allowlist",
+      "task": "How does connect write Cursor mcpAllowlist / permissions for Scubiee tools?",
+      "enrich_prompt": "mcp_permissions mcpAllowlist permissions.json autoApprove connect cursor install_tool surface"
+    },
+    {
+      "id": "t12",
+      "family": "rules-gate-text",
+      "task": "Where is the GATE 1 project rule text written into AGENTS.md / Cursor rules?",
+      "enrich_prompt": "write_project_gate_rules AGENTS.md GATE 1 project_id scubiee.mdc rules_installer"
+    },
+    {
+      "id": "t13",
+      "family": "freshness-sync",
+      "task": "How does background freshness / sync decide the index is stale and needs refresh?",
+      "enrich_prompt": "freshness sync background CTX_BACKGROUND_SYNC stale index checksum merkle refresh"
+    },
+    {
+      "id": "t14",
+      "family": "memory-budget",
+      "task": "Where is embed / search memory budget capped so DML batches stay safe?",
+      "enrich_prompt": "memory_budget embed batch DML VRAM cap search concurrent budget chars"
+    },
+    {
+      "id": "t15",
+      "family": "capability-attach",
+      "task": "How are capability cards attached to search hits for locate ranking?",
+      "enrich_prompt": "capability_cards attach CapabilityCard locate ranking search hits build cards json"
+    },
+    {
+      "id": "t16",
+      "family": "graphify-edges",
+      "task": "How does Graphify IR supply call edges into the conductor / tracer graph?",
+      "enrich_prompt": "graphify graph_ir call edges GraphifyChunkRetriever conductor extra_graph build_graphify"
+    },
+    {
+      "id": "t17",
+      "family": "never-index",
+      "task": "How do never-index path denies keep fixture/tmp paths out of the product corpus?",
+      "enrich_prompt": "never_index deny path globs skip fixtures tmp out ab_workspaces indexing exclude"
+    },
+    {
+      "id": "t18",
+      "family": "wipe-safe",
+      "task": "Trace safe wipe / uninstall removing MCP config, rules, and local store.",
+      "enrich_prompt": "cmd_wipe wipe uninstall remove MCP rules store halt confirm scubiee state cleanup"
+    },
+    {
+      "id": "t19",
+      "family": "dashboard-status",
+      "task": "Where are operator dashboard status and health HTTP endpoints defined?",
+      "enrich_prompt": "dashboard_server HTTP status health endpoints operator uvicorn cmd_dashboard"
+    },
+    {
+      "id": "t20",
+      "family": "dense-rerank",
+      "task": "How does search-time CodeRankLLM / dense rerank reorder conductor hits?",
+      "enrich_prompt": "CodeRankLLM rerank search-time dense conductor D_rerank hits reorder not index"
+    }
+  ]
+}

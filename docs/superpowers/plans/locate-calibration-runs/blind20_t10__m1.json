@@ -1,0 +1,82 @@
+{
+  "case": {
+    "id": "blind20_t10",
+    "source": "blind_map_pack_20",
+    "family": "gate-rules",
+    "task": "Where is the managed-repo GATE text written into AGENTS.md and steering files?",
+    "enrich_query": "write_project_gate_rules GATE 1 project_id AGENTS.md scubiee.md steering managed enroll",
+    "taxonomy": "soft_understand",
+    "taxonomy_confidence": "heuristic",
+    "hypothesis_policy": {
+      "lead": "scubiee_map",
+      "next": "conditional_pack",
+      "native": "span_read_after_heatmap"
+    },
+    "must_files": [
+      "packages/pipeline/rules_installer.py"
+    ],
+    "must_symbols": [
+      "packages/pipeline/rules_installer.py::write_project_gate_rules"
+    ],
+    "should_files": [
+      "packages/pipeline/gate_cli.py"
+    ],
+    "gold_status": "has_gold",
+    "notes": "",
+    "baseline_frozen": true
+  },
+  "M1a": {
+    "arm": "M1a_map_read",
+    "ok": true,
+    "elapsed_s": 1.533,
+    "seed": {
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": "write_project_gate_rules",
+      "start_line": 1144,
+      "loc": "packages/pipeline/rules_installer.py:1144-1209",
+      "kind": "function",
+      "role": "function",
+      "score": 18.69607657511326
+    },
+    "map_source": "cli_map",
+    "n_cards": 10,
+    "read_chars": 5458,
+    "rounds": 6,
+    "result_tokens": 3214,
+    "round_trip_tax": 15000,
+    "total_proxy": 18214,
+    "round_trip_tax_per_call": 2500,
+    "must_file": 1.0,
+    "must_sym": 1.0,
+    "file_hits": 1,
+    "file_n": 1,
+    "sym_hits": 1,
+    "sym_n": 1,
+    "case_id": "blind20_t10",
+    "taxonomy": "soft_understand"
+  },
+  "M1b": {
+    "arm": "M1b_map_pack",
+    "ok": true,
+    "elapsed_s": 1.506,
+    "seed_file": "packages/pipeline/rules_installer.py",
+    "seed_symbol": "write_project_gate_rules",
+    "seed_ok": true,
+    "map_source": "cli_map",
+    "heatmap_n": 14,
+    "read_chars": 5985,
+    "rounds": 7,
+    "result_tokens": 9264,
+    "round_trip_tax": 17500,
+    "total_proxy": 26764,
+    "round_trip_tax_per_call": 2500,
+    "must_file": 1.0,
+    "must_sym": 1.0,
+    "file_hits": 1,
+    "file_n": 1,
+    "sym_hits": 1,
+    "sym_n": 1,
+    "case_id": "blind20_t10",
+    "taxonomy": "soft_understand"
+  }
+}

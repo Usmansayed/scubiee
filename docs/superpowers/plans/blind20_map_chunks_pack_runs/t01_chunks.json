@@ -1,0 +1,32 @@
+[
+  {
+    "file": "packages/pipeline/artifact_guard.py",
+    "symbol": "publish_manifest",
+    "kind": "function",
+    "loc": "packages/pipeline/artifact_guard.py:68-81",
+    "start_line": 68,
+    "end_line": 81,
+    "score": 6.7,
+    "excerpt": "def publish_manifest(store: Path, files: Iterable[Path]) -> dict[str, object]:\n    \"\"\"Publish checksums for an already-written coherent set of artifacts.\"\"\"\n    store = store.resol"
+  },
+  {
+    "file": "packages/pipeline/memory_governor.py",
+    "symbol": "MemoryGovernor.demote_after_index",
+    "kind": "method",
+    "loc": "packages/pipeline/memory_governor.py:320-334",
+    "start_line": 320,
+    "end_line": 334,
+    "score": 9.9,
+    "excerpt": "    def demote_after_index(self) -> ServeTier:\n        \"\"\"Restore serve tier after bulk index / publish.\"\"\"\n        with self._lock:\n            self.indexing = False\n            s"
+  },
+  {
+    "file": "packages/pipeline/ce_service.py",
+    "symbol": "RuntimeManager.publish",
+    "kind": "method",
+    "loc": "packages/pipeline/ce_service.py:907-914",
+    "start_line": 907,
+    "end_line": 914,
+    "score": 9.55,
+    "excerpt": "    def publish(self, root: Path | str | None = None, *, payload: dict[str, Any] | None = None) -> dict[str, Any]:\n        \"\"\"Reload search after an out-of-process index/sync wrote"
+  }
+]

@@ -1,0 +1,173 @@
+{
+  "id": "u11",
+  "family": "host-env-signals",
+  "task": "Trace loadhost_env_signals / host_env_signals used by pack or locate.",
+  "enrich_map_query": "host_env_signals loadhost_env_signals pack locate environment host signals",
+  "map_ok": true,
+  "suggested_seed": {
+    "file": "packages/pipeline/host_workspace.py",
+    "symbol": "",
+    "source": "suggested_seed"
+  },
+  "resolved_seed": {
+    "file": "packages/pipeline/host_workspace.py",
+    "symbol": "host_env_signals",
+    "how": "best_in_file"
+  },
+  "map_top_cards": [
+    {
+      "file": "packages/pipeline/host_workspace.py",
+      "symbol": "",
+      "loc": "packages/pipeline/host_workspace.py:1-1",
+      "score": 45.85082677741386
+    },
+    {
+      "file": "packages/pipeline/session_isolation.py",
+      "symbol": "",
+      "loc": "packages/pipeline/session_isolation.py:1-1",
+      "score": 15.055296117082392
+    },
+    {
+      "file": "tests/test_session_isolation.py",
+      "symbol": "",
+      "loc": "tests/test_session_isolation.py:1-1",
+      "score": 12.70796442023946
+    },
+    {
+      "file": "packages/pipeline/locate.py",
+      "symbol": "",
+      "loc": "packages/pipeline/locate.py:1-1",
+      "score": 7.802488647058175
+    },
+    {
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": "",
+      "loc": "packages/pipeline/rules_installer.py:1-1",
+      "score": 2.9507616863398747
+    },
+    {
+      "file": "packages/pipeline/resources.py",
+      "symbol": "",
+      "loc": "packages/pipeline/resources.py:1-1",
+      "score": 2.801342248916626
+    },
+    {
+      "file": "packages/pipeline/mcp_permissions.py",
+      "symbol": "",
+      "loc": "packages/pipeline/mcp_permissions.py:1-1",
+      "score": 2.4943724831233416
+    },
+    {
+      "file": "packages/pipeline/context_nav.py",
+      "symbol": "",
+      "loc": "packages/pipeline/context_nav.py:1-1",
+      "score": 1.981544269582783
+    },
+    {
+      "file": "docs/web-info/daily-use.md",
+      "symbol": "",
+      "loc": "docs/web-info/daily-use.md:1-1",
+      "score": 0.9187117820756513
+    }
+  ],
+  "arms": {
+    "composite_v1": {
+      "ok": true,
+      "elapsed_s": 0.038,
+      "n_hot": 1,
+      "n_ranked": 1,
+      "hot_ids": [
+        "packages/pipeline/host_workspace.py::host_env_signals"
+      ],
+      "top15_ids": [
+        "packages/pipeline/host_workspace.py::host_env_signals"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/host_workspace.py::host_env_signals",
+          "file": "packages/pipeline/host_workspace.py",
+          "symbol": "host_env_signals",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 584
+        }
+      ]
+    },
+    "semantic_tracer_fuse": {
+      "ok": true,
+      "elapsed_s": 0.328,
+      "n_hot": 1,
+      "n_ranked": 1,
+      "hot_ids": [
+        "packages/pipeline/host_workspace.py::host_env_signals"
+      ],
+      "top15_ids": [
+        "packages/pipeline/host_workspace.py::host_env_signals"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/host_workspace.py::host_env_signals",
+          "file": "packages/pipeline/host_workspace.py",
+          "symbol": "host_env_signals",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 584
+        }
+      ]
+    },
+    "hyb_fuse_demote_noise_plus": {
+      "ok": true,
+      "elapsed_s": 0.058,
+      "n_hot": 1,
+      "n_ranked": 1,
+      "hot_ids": [
+        "packages/pipeline/host_workspace.py::host_env_signals"
+      ],
+      "top15_ids": [
+        "packages/pipeline/host_workspace.py::host_env_signals"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/host_workspace.py::host_env_signals",
+          "file": "packages/pipeline/host_workspace.py",
+          "symbol": "host_env_signals",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 584
+        }
+      ]
+    },
+    "poly_embed": {
+      "ok": true,
+      "elapsed_s": 0.002,
+      "n_hot": 2,
+      "n_ranked": 2,
+      "hot_ids": [
+        "packages/pipeline/host_workspace.py::HOST_SPECS",
+        "packages/pipeline/host_workspace.py::host_env_signals"
+      ],
+      "top15_ids": [
+        "packages/pipeline/host_workspace.py::host_env_signals",
+        "packages/pipeline/host_workspace.py::HOST_SPECS"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/host_workspace.py::host_env_signals",
+          "file": "packages/pipeline/host_workspace.py",
+          "symbol": "host_env_signals",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 584
+        },
+        {
+          "id": "packages/pipeline/host_workspace.py::HOST_SPECS",
+          "file": "packages/pipeline/host_workspace.py",
+          "symbol": "HOST_SPECS",
+          "kind": "const",
+          "score": 0.7,
+          "body_chars": 75
+        }
+      ]
+    }
+  }
+}

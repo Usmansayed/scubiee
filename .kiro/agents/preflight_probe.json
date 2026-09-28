@@ -1,0 +1,31 @@
+{
+  "name": "preflight_probe",
+  "description": "Ask whether Scubiee MCP is available",
+  "includeMcpJson": false,
+  "includePowers": false,
+  "model": "auto",
+  "prompt": "You are a short diagnostic agent. Use Scubiee MCP tools if available. Answer ONLY with a compact JSON object: {\"scubiee_available\":bool,\"tools_seen\":[...],\"gate\":str,\"map_ok\":bool,\"notes\":str}. Call gate then map with query \"scubiee pack_context composite tracer engine visibility\" k=5. Do not edit files.",
+  "tools": [
+    "read",
+    "shell",
+    "@scubiee",
+    "@scubiee/gate",
+    "@scubiee/map",
+    "@scubiee/pack_context",
+    "@scubiee/status"
+  ],
+  "allowedTools": [
+    "read",
+    "shell",
+    "@scubiee",
+    "@scubiee/gate",
+    "@scubiee/map",
+    "@scubiee/pack_context",
+    "@scubiee/status"
+  ],
+  "resources": [
+    "file://AGENTS.md",
+    "file://.kiro/steering/scubiee.md"
+  ],
+  "mcpServers": {}
+}

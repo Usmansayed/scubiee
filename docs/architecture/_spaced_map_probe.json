@@ -1,0 +1,129 @@
+{
+  "rows": [
+    {
+      "called_at": "11:50:02.692",
+      "returned_at": "11:50:11.934",
+      "wall_ms": 9242.3,
+      "elapsed_ms": null,
+      "ok": false,
+      "warming": true,
+      "error": "engine_warming",
+      "n_cards": 0,
+      "top": null,
+      "phase": "cold_first"
+    },
+    {
+      "called_at": "11:50:14.934",
+      "returned_at": "11:50:25.318",
+      "wall_ms": 10383.1,
+      "elapsed_ms": 10312.5,
+      "ok": true,
+      "warming": false,
+      "error": null,
+      "n_cards": 8,
+      "top": "run_pack_context",
+      "phase": "warmup_ok"
+    },
+    {
+      "called_at": "11:50:30.318",
+      "returned_at": "11:50:30.531",
+      "wall_ms": 213.3,
+      "elapsed_ms": 148.7,
+      "ok": true,
+      "warming": false,
+      "error": null,
+      "n_cards": 8,
+      "top": "run_pack_context",
+      "phase": "steady_1"
+    },
+    {
+      "called_at": "11:50:35.532",
+      "returned_at": "11:50:35.815",
+      "wall_ms": 283.4,
+      "elapsed_ms": 166.6,
+      "ok": true,
+      "warming": false,
+      "error": null,
+      "n_cards": 8,
+      "top": "run_pack_context",
+      "phase": "steady_2"
+    },
+    {
+      "called_at": "11:50:40.815",
+      "returned_at": "11:50:40.975",
+      "wall_ms": 159.9,
+      "elapsed_ms": 98.5,
+      "ok": true,
+      "warming": false,
+      "error": null,
+      "n_cards": 8,
+      "top": "run_pack_context",
+      "phase": "steady_3"
+    },
+    {
+      "called_at": "11:50:45.976",
+      "returned_at": "11:50:46.577",
+      "wall_ms": 601.3,
+      "elapsed_ms": 166.8,
+      "ok": true,
+      "warming": false,
+      "error": null,
+      "n_cards": 8,
+      "top": "run_pack_context",
+      "phase": "steady_4"
+    },
+    {
+      "called_at": "11:50:51.578",
+      "returned_at": "11:50:52.233",
+      "wall_ms": 655.0,
+      "elapsed_ms": 256.0,
+      "ok": true,
+      "warming": false,
+      "error": null,
+      "n_cards": 8,
+      "top": "run_pack_context",
+      "phase": "steady_5"
+    }
+  ],
+  "summary": {
+    "warmup_until_good_map_ms": 24591.6,
+    "cold_first": {
+      "called_at": "11:50:02.692",
+      "returned_at": "11:50:11.934",
+      "wall_ms": 9242.3,
+      "elapsed_ms": null,
+      "ok": false,
+      "warming": true,
+      "error": "engine_warming",
+      "n_cards": 0,
+      "top": null,
+      "phase": "cold_first"
+    },
+    "steady_n": 5,
+    "steady_wall_ms": [
+      213.3,
+      283.4,
+      159.9,
+      601.3,
+      655.0
+    ],
+    "steady_elapsed_ms": [
+      148.7,
+      166.6,
+      98.5,
+      166.8,
+      256.0
+    ],
+    "steady_wall_mean": 382.6,
+    "steady_wall_min": 159.9,
+    "steady_wall_max": 655.0,
+    "steady_elapsed_mean": 167.3,
+    "tops": [
+      "run_pack_context",
+      "run_pack_context",
+      "run_pack_context",
+      "run_pack_context",
+      "run_pack_context"
+    ]
+  }
+}

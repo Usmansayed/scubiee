@@ -10,6 +10,7 @@ default; tests that want a specific surface opt in via ``monkeypatch.setenv``.
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -109,7 +110,132 @@ def _isolate_scubiee_home(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     home.mkdir()
     monkeypatch.setenv("CTX_HOME", str(home))
     monkeypatch.setenv("CTX_ALLOW_TEST_HOME", "1")
+    # Unit tests never WMI-create a real engine (tests that need it opt in).
+    monkeypatch.setenv("CTX_ENGINE_ORPHAN_SPAWN", "0")
+    # Keeper tests fake _sync_paths; the child-process graph merge opts in.
+    monkeypatch.setenv("CTX_GRAPH_CATCHUP_ASYNC", "0")
+    # ce_service._start_keeper sets this in os.environ for the engine process.
+    # Tests that start a keeper leaked it into every later test, where it made
+    # the ledger defer batches as "embedder_cold". monkeypatch's undo removes
+    # it again after each test.
+    monkeypatch.delenv("CTX_SYNC_WAIT_FOR_EMBEDDER", raising=False)
     yield home
+
+
+def _pytest_owns(pid: int) -> bool:
+    """True for this pytest process and anything it spawned."""
+    me = os.getpid()
+    if int(pid) == me:
+        return True
+    try:
+        import psutil
+
+        return any(c.pid == int(pid) for c in psutil.Process(me).children(recursive=True))
+    except Exception:  # noqa: BLE001
+        return False
+
+
+_REAL_REPO = Path(__file__).resolve().parents[1]
+_GUARDED_MCP_CONFIGS = [
+    _REAL_REPO / ".cursor" / "mcp.json",
+    _REAL_REPO / ".kiro" / "settings" / "mcp.json",
+    _REAL_REPO / ".vscode" / "mcp.json",
+    _REAL_REPO / ".mcp.json",
+    Path.home() / ".cursor" / "mcp.json",
+    Path.home() / ".kiro" / "settings" / "mcp.json",
+]
+
+
+@pytest.fixture(autouse=True)
+def _never_touch_the_developers_mcp_configs(request: pytest.FixtureRequest):
+    """Restore real MCP configs a test rewrote.
+
+    ``stub_mcp_commands_to_noop`` walks ``Path.cwd()`` (the checkout under
+    pytest) and the home-level legacy paths. A full-suite run pointed this
+    repo's ``.cursor/mcp.json`` at ``cmd /c exit 0``, so every MCP session
+    afterwards died on initialize ("Not connected", issue 7).
+    """
+    before: dict[Path, bytes | None] = {}
+    for p in _GUARDED_MCP_CONFIGS:
+        try:
+            before[p] = p.read_bytes()
+        except OSError:
+            before[p] = None
+    yield
+    for p, data in before.items():
+        try:
+            now = p.read_bytes()
+        except OSError:
+            now = None
+        if now == data:
+            continue
+        try:
+            if data is None:
+                p.unlink(missing_ok=True)
+            else:
+                p.write_bytes(data)
+        except OSError:
+            continue
+        msg = f"[conftest] restored {p} rewritten by {request.node.nodeid}\n"
+        sys.__stderr__.write(msg)
+        try:
+            log = Path(os.environ.get("TEMP") or "/tmp") / "conftest_mcp_restores.log"
+            with log.open("a", encoding="utf-8") as fh:
+                fh.write(msg)
+        except OSError:
+            pass
+
+
+@pytest.fixture(autouse=True)
+def _never_kill_the_developers_processes(monkeypatch: pytest.MonkeyPatch):
+    """Unit tests may only kill processes they started.
+
+    ``test_wipe_repo_halts_before_removal`` ran the real post-wipe restart and
+    killed the live engine plus every uv-tool Scubiee process (MCP bridges,
+    watchdog) on the developer's machine: the silent "engine died" and "Not
+    connected" reports behind issues 2 and 7. Tests that exercise the kill
+    helpers monkeypatch them (or psutil) themselves, which overrides this.
+    """
+    import psutil
+
+    blocked: list[tuple[str, int]] = []
+    real_kill, real_terminate = psutil.Process.kill, psutil.Process.terminate
+    real_os_kill = os.kill
+
+    def _guard(name, real):
+        def _wrapped(self, *a, **k):
+            if not _pytest_owns(self.pid):
+                blocked.append((name, self.pid))
+                return None
+            return real(self, *a, **k)
+
+        return _wrapped
+
+    def _os_kill(pid, sig):
+        if sig != 0 and not _pytest_owns(pid):
+            blocked.append(("os.kill", int(pid)))
+            return None
+        return real_os_kill(pid, sig)
+
+    monkeypatch.setattr(psutil.Process, "kill", _guard("psutil.kill", real_kill))
+    monkeypatch.setattr(psutil.Process, "terminate", _guard("psutil.terminate", real_terminate))
+    monkeypatch.setattr(os, "kill", _os_kill)
+    try:
+        import pipeline.process_job as pj
+
+        real_taskkill = pj.taskkill_silent
+
+        def _taskkill(pid, *a, **k):
+            if not _pytest_owns(pid):
+                blocked.append(("taskkill", int(pid)))
+                return None
+            return real_taskkill(pid, *a, **k)
+
+        _taskkill.__wrapped__ = real_taskkill  # type: ignore[attr-defined]
+        monkeypatch.setattr(pj, "taskkill_silent", _taskkill)
+    except Exception:  # noqa: BLE001
+        pass
+    yield blocked
 
 
 def write_machine_setup(home: Path) -> Path:

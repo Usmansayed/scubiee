@@ -1,0 +1,93 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 8.214,
+  "stdout_chars": 3146,
+  "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})",
+  "json": {
+    "ok": true,
+    "tool": "map",
+    "cards": [
+      {
+        "rank": 1,
+        "file": "packages/trace_lab/prod_eval.py",
+        "score": 22.031127539541963,
+        "why": "def _enrich_query(paragraph: str, chunks: list[dict[str, Any]]) -> str: parts = [paragraph.strip(), \"\", \"## Seed code anchors\"] for i, ch in enumerate(chunks, start=1): parts.appen",
+        "role": "function",
+        "loc": "packages/trace_lab/prod_eval.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 2,
+        "file": "scripts/realistic_v10_bakeoff.py",
+        "score": 15.599912666281611,
+        "why": "\"\"\"Realistic agent-input bakeoff: enriched paragraph + seed code chunks + multi-seed merge.\"\"\" from __future__ import annotations import json import time from pathlib import Path f",
+        "role": "other",
+        "loc": "scripts/realistic_v10_bakeoff.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 3,
+        "file": "packages/trace_lab/system_trace.py",
+        "score": 6.283231863611761,
+        "why": "def _user_query(case: GoldCase) -> str: \"\"\"Strip seed-code enrichment blocks if present (## Seed code anchors).\"\"\" q = case.query or \"\" marker = \"## Seed code anchors\" if marker in",
+        "role": "function",
+        "loc": "packages/trace_lab/system_trace.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 4,
+        "file": "packages/enrich/__init__.py",
+        "score": 4.541019726546462,
+        "why": "\"\"\"Chunk derivation + metadata injection without a second AST parse. Chunks are sliced from source using RepoIR symbol line anchors (from Graphify). Metadata is prepended; chunk bo",
+        "role": "function",
+        "loc": "packages/enrich/__init__.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 5,
+        "file": "packages/pipeline/context_trace.py",
+        "score": 4.422257718602896,
+        "why": "def _case(query: str, seed: TraceNode, *, case_id: str = \"mcp\") -> GoldCase: return GoldCase( id=case_id, title=case_id, query=query, seed=GoldRef(file=seed.file, symbol=seed.symbo",
+        "role": "function",
+        "loc": "packages/pipeline/context_trace.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 6,
+        "file": "packages/trace_lab/map_bakeoff.py",
+        "score": 3.6361620849947096,
+        "why": "def multi_seed_poly( query: str, scores: dict[str, float], nodes: dict[str, TraceNode], graph: AstTraceGraph, lex: LexicalIndex, poly, *, top_k: int = 3, ): \"\"\"Map top-k \u2192 PolyTrac",
+        "role": "function",
+        "loc": "packages/trace_lab/map_bakeoff.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 7,
+        "file": "packages/trace_lab/seeded_compare.py",
+        "score": 3.4839872285166944,
+        "why": "\"\"\"Seeded head-to-head: PolyTrace (no embed) vs EmbedPower (CodeRank). Both arms receive the same gold seed + prompt. Gold context is loaded from fixtures/trace-lab/seeded_prompts.",
+        "role": "function",
+        "loc": "packages/trace_lab/seeded_compare.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 8,
+        "file": "packages/trace_lab/arms/__init__.py",
+        "score": 1.5446264442877724,
+        "why": "def register_system_arms( root: Path, lsp: LspIndex, extra_graph: AstTraceGraph | None, tracers: dict, ) -> dict: \"\"\"Add layered arms without removing polytrace.\"\"\" root = Path(roo",
+        "role": "function",
+        "loc": "packages/trace_lab/arms/__init__.py:1-1",
+        "symbol": ""
+      }
+    ],
+    "suggested_seed": {
+      "file": "packages/trace_lab/prod_eval.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/prod_eval.py:1-1",
+      "score": 22.031127539541963
+    },
+    "next": "scubiee pack \"_enrich_query Seed code anchors seed_chunks multi-seed merge_heatmaps prod_eval verify_prod\" --seed-file packages/trace_lab/prod_eval.py --mode lean"
+  },
+  "stdout_preview": ""
+}

@@ -1,0 +1,59 @@
+{
+  "ok": true,
+  "sessions": [
+    {
+      "label": "A",
+      "init_ms": 5898.2,
+      "map_ok": true,
+      "first_pack_ok": true,
+      "results": [
+        {
+          "tool": "gate",
+          "ms": 4846.2,
+          "index_skip": "index_skip: builtins+scubieeignore(n=7)",
+          "index_write_hint": true
+        },
+        {
+          "tool": "map",
+          "ms": 1058.2,
+          "ok": true,
+          "n": 8,
+          "dense": true,
+          "err": null,
+          "seed": "packages/pipeline/context_trace.py::hydrate_ast_bundle"
+        },
+        {
+          "tool": "pack_0",
+          "ms": 3418.7,
+          "ok": true,
+          "n_heat": 16,
+          "thin": false,
+          "err": null,
+          "should_retry": null,
+          "retry_after_s": null,
+          "ast_wait_ms": null
+        },
+        {
+          "tool": "status",
+          "ms": 4500.3,
+          "agent_ready": "yes",
+          "pack_ready": true,
+          "ast_hydrated": true,
+          "embedder_loaded": true,
+          "warm_elapsed_ms": 15018.3,
+          "warm_wait": {
+            "done": true,
+            "stage": "ready",
+            "wait_for": "agent_ready=yes AND embedder_loaded=true AND pack_ready=true",
+            "soft_ready": true,
+            "dense_ready": true,
+            "pack_ready": true,
+            "elapsed_s": 15.0,
+            "retry_after_s": 0,
+            "note": "Warm. map/pack_context run at full quality."
+          }
+        }
+      ]
+    }
+  ]
+}

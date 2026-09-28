@@ -1,0 +1,32 @@
+[
+  {
+    "file": "packages/pipeline/mcp_permissions.py",
+    "symbol": "merge_cursor_permissions",
+    "kind": "function",
+    "loc": "packages/pipeline/mcp_permissions.py:253-287",
+    "start_line": 253,
+    "end_line": 287,
+    "score": 10.4,
+    "excerpt": "def merge_cursor_permissions(\n    path: Path,\n    *,\n    profile: PermissionProfile = \"locate\",\n) -> dict[str, Any]:\n    \"\"\"Merge Scubiee entries into Cursor permissions.json witho"
+  },
+  {
+    "file": "packages/pipeline/mcp_permissions.py",
+    "symbol": "apply_permissions_to_repo_tool_surface",
+    "kind": "function",
+    "loc": "packages/pipeline/mcp_permissions.py:518-531",
+    "start_line": 518,
+    "end_line": 531,
+    "score": 9.0,
+    "excerpt": "def apply_permissions_to_repo_tool_surface(\n    tool_slug: str,\n    repo: Path | str,\n    *,\n    profile: PermissionProfile = \"locate\",\n    dry_run: bool = False,\n) -> dict[str, An"
+  },
+  {
+    "file": "packages/pipeline/mcp_install.py",
+    "symbol": "write_cursor_mcp",
+    "kind": "function",
+    "loc": "packages/pipeline/mcp_install.py:274-290",
+    "start_line": 274,
+    "end_line": 290,
+    "score": 6.7,
+    "excerpt": "def write_cursor_mcp(\n    repo: Path | str | None = None,\n    *,\n    host: str = \"127.0.0.1\",\n    port: int = 8765,\n) -> dict[str, str]:\n    \"\"\"Write project mcp.json with CTX_REPO"
+  }
+]

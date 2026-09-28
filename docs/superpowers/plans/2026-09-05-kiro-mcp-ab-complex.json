@@ -1,0 +1,1610 @@
+{
+  "started_at": "2026-09-05T04:16:05.185838+00:00",
+  "finished_at": "2026-09-05T04:40:24.425556+00:00",
+  "protocol": {
+    "model": "auto",
+    "effort": "medium",
+    "timeout_s": 420,
+    "n_tasks": 10,
+    "arms": [
+      "with",
+      "without"
+    ],
+    "sequential": true,
+    "agent_engine": "v1",
+    "legacy_ui": true,
+    "trust_all_tools": true,
+    "locate_only": true,
+    "includeMcpJson": false,
+    "mcp_neutralized": [
+      "project .kiro/settings/mcp.json",
+      "user ~/.kiro/settings/mcp.json"
+    ],
+    "agents": {
+      "with": "ab_with_scubiee",
+      "without": "ab_without_scubiee"
+    },
+    "engine_health": {
+      "ok": true,
+      "service": "scubiee",
+      "version": "0.3.15",
+      "warm": true,
+      "warm_state": "ready",
+      "generation": 12,
+      "index_usable": true,
+      "last_sync_at": 1788581760.9876974,
+      "repo": "C:\\Users\\usman\\Downloads\\context-engine",
+      "dashboard": "/dashboard",
+      "api": "/v1/*"
+    },
+    "kiro_cli": "C:\\Users\\usman\\AppData\\Local\\Kiro-Cli\\kiro-cli.exe",
+    "bridge": "C:\\Users\\usman\\.local\\bin\\scubiee-mcp-bridge.EXE",
+    "project_id": "ce_d9cb766c3820091ed9ffbc64ef33063c",
+    "run_id": "20260905T041605Z"
+  },
+  "tasks": [
+    {
+      "id": "C01_connect_permissions_gate",
+      "complexity": "multi-hop",
+      "gold_files": [
+        "packages/pipeline/__main__.py",
+        "packages/pipeline/rules_installer.py",
+        "packages/pipeline/mcp_permissions.py"
+      ],
+      "gold_symbols": [
+        "cmd_connect",
+        "write_project_tool_surface",
+        "apply_permissions_to_repo_tool_surface",
+        "write_project_gate_rules",
+        "PHASE_LOCATE_TOOLS"
+      ]
+    },
+    {
+      "id": "C02_pack_expand_ladder",
+      "complexity": "multi-hop",
+      "gold_files": [
+        "packages/pipeline/context_trace.py",
+        "packages/pipeline/mcp_locate.py"
+      ],
+      "gold_symbols": [
+        "run_pack_context",
+        "run_collect_hot",
+        "heatmap_to_cards",
+        "pack_context_impl",
+        "expand_context_impl"
+      ]
+    },
+    {
+      "id": "C03_composite_vs_poly_escape",
+      "complexity": "policy",
+      "gold_files": [
+        "packages/pipeline/context_trace.py",
+        "packages/trace_lab/composite_v1.py"
+      ],
+      "gold_symbols": [
+        "_trace_engine",
+        "bind_composite_v1",
+        "run_pack_context",
+        "run_composite_v1"
+      ]
+    },
+    {
+      "id": "C04_graphify_store_vs_rebuild",
+      "complexity": "multi-hop",
+      "gold_files": [
+        "packages/pipeline/context_trace.py",
+        "packages/trace_lab/graphify_layer.py"
+      ],
+      "gold_symbols": [
+        "load_store_graphify_graph",
+        "_load_repo",
+        "_want_graphify"
+      ]
+    },
+    {
+      "id": "C05_incremental_merkle_confirm",
+      "complexity": "multi-hop",
+      "gold_files": [
+        "packages/pipeline/incremental.py",
+        "packages/pipeline/sync_loop.py"
+      ],
+      "gold_symbols": [
+        "patch_and_save_graph",
+        "IndexConfirmRequired"
+      ]
+    },
+    {
+      "id": "C06_session_isolation_parallel",
+      "complexity": "cross-cutting",
+      "gold_files": [
+        "packages/pipeline/session_store.py",
+        "packages/pipeline/mcp_locate.py"
+      ],
+      "gold_symbols": [
+        "load_store",
+        "save_store",
+        "_resolve_session",
+        "persist_trace"
+      ]
+    },
+    {
+      "id": "C07_kiro_mcp_install",
+      "complexity": "host-surface",
+      "gold_files": [
+        "packages/pipeline/mcp_install.py"
+      ],
+      "gold_symbols": [
+        "write_kiro_mcp"
+      ]
+    },
+    {
+      "id": "C08_uv_access_denied_vague",
+      "complexity": "vague",
+      "gold_files": [
+        "packages/pipeline/process_control.py"
+      ],
+      "gold_symbols": [
+        "prepare_uv_tool_directory_for_swap",
+        "release_scubiee_process_locks",
+        "stop_all_context_engine_processes"
+      ]
+    },
+    {
+      "id": "C09_auth_jwt_trap",
+      "complexity": "fixture-trap",
+      "gold_files": [
+        "fixtures/trace-lab/app/middleware/auth.py",
+        "fixtures/trace-lab/app/services/jwt_service.py",
+        "fixtures/trace-lab/app/utils/token.py",
+        "fixtures/trace-lab/app/repositories/user_repo.py"
+      ],
+      "gold_symbols": [
+        "authenticate",
+        "extract_bearer",
+        "JwtService.verify",
+        "decode",
+        "UserRepository.resolve"
+      ]
+    },
+    {
+      "id": "C10_warm_status_ready",
+      "complexity": "cross-cutting",
+      "gold_files": [
+        "packages/pipeline/mcp_locate.py",
+        "packages/pipeline/engine.py"
+      ],
+      "gold_symbols": [
+        "soft_search_ready",
+        "WarmSearchEngine"
+      ]
+    }
+  ],
+  "runs": [
+    {
+      "task_id": "C01_connect_permissions_gate",
+      "arm": "with",
+      "agent": "ab_with_scubiee",
+      "model": "auto",
+      "effort": "medium",
+      "require_mcp_startup": true,
+      "cmd": [
+        "C:\\Users\\usman\\AppData\\Local\\Kiro-Cli\\kiro-cli.exe",
+        "chat",
+        "--no-interactive",
+        "--trust-all-tools",
+        "--agent",
+        "ab_with_scubiee",
+        "--model",
+        "auto",
+        "--effort",
+        "medium",
+        "--wrap",
+        "never",
+        "--agent-engine",
+        "v1",
+        "--legacy-ui",
+        "--require-mcp-startup",
+        "LOCATE ONLY — do not edit any files.\nI need the full connect surface for Cursor: when someone runs scubiee connect, where do autoApprove/alwaysAllow land in mcp.json, where does mcpAllowlist land in permissions.json, AND where does the AGENTS.md / .cursor/rules GATE text get written?\nTrace cmd_connect → tool surface writers → permission writers → gate rule writers. Ignore CLI banners and print helpers.\nEnd with a JSON block only:\n{\"files\":[\"rel/path.py\",...],\"symbols\":[\"name\",...],\"notes\":\"one sentence\"}"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_ms": 76486.3,
+      "out_chars": 8568,
+      "out_tokens_est": 2142,
+      "credits": 0.83,
+      "reported_time_s": 66,
+      "tools": {
+        "scubiee_tools": [
+          "map",
+          "pack_context"
+        ],
+        "native_tools": [
+          "read",
+          "read",
+          "read",
+          "read"
+        ],
+        "other_mcp_tools": [],
+        "scubiee_count": 2,
+        "native_count": 4,
+        "total_tool_mentions": 6
+      },
+      "gold": {
+        "file_hits": [
+          "packages/pipeline/__main__.py",
+          "packages/pipeline/rules_installer.py",
+          "packages/pipeline/mcp_permissions.py"
+        ],
+        "symbol_hits": [
+          "cmd_connect",
+          "write_project_tool_surface",
+          "apply_permissions_to_repo_tool_surface",
+          "write_project_gate_rules"
+        ],
+        "file_rec": 1.0,
+        "symbol_rec": 0.8
+      },
+      "isolation": {
+        "scubiee_tools_seen": true,
+        "expected_scubiee": true,
+        "ok": true,
+        "note": "scubiee tools used"
+      },
+      "log": "out/kiro_ab/20260905T041605Z/C01_connect_permissions_gate__with.log"
+    },
+    {
+      "task_id": "C01_connect_permissions_gate",
+      "arm": "without",
+      "agent": "ab_without_scubiee",
+      "model": "auto",
+      "effort": "medium",
+      "require_mcp_startup": false,
+      "cmd": [
+        "C:\\Users\\usman\\AppData\\Local\\Kiro-Cli\\kiro-cli.exe",
+        "chat",
+        "--no-interactive",
+        "--trust-all-tools",
+        "--agent",
+        "ab_without_scubiee",
+        "--model",
+        "auto",
+        "--effort",
+        "medium",
+        "--wrap",
+        "never",
+        "--agent-engine",
+        "v1",
+        "--legacy-ui",
+        "LOCATE ONLY — do not edit any files.\nI need the full connect surface for Cursor: when someone runs scubiee connect, where do autoApprove/alwaysAllow land in mcp.json, where does mcpAllowlist land in permissions.json, AND where does the AGENTS.md / .cursor/rules GATE text get written?\nTrace cmd_connect → tool surface writers → permission writers → gate rule writers. Ignore CLI banners and print helpers.\nEnd with a JSON block only:\n{\"files\":[\"rel/path.py\",...],\"symbols\":[\"name\",...],\"notes\":\"one sentence\"}"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_ms": 53342.0,
+      "out_chars": 9205,
+      "out_tokens_est": 2302,
+      "credits": 1.81,
+      "reported_time_s": 48,
+      "tools": {
+        "scubiee_tools": [],
+        "native_tools": [
+          "read",
+          "read",
+          "read",
+          "read",
+          "read"
+        ],
+        "other_mcp_tools": [],
+        "scubiee_count": 0,
+        "native_count": 5,
+        "total_tool_mentions": 5
+      },
+      "gold": {
+        "file_hits": [
+          "packages/pipeline/__main__.py",
+          "packages/pipeline/rules_installer.py",
+          "packages/pipeline/mcp_permissions.py"
+        ],
+        "symbol_hits": [
+          "cmd_connect",
+          "write_project_tool_surface",
+          "apply_permissions_to_repo_tool_surface",
+          "write_project_gate_rules"
+        ],
+        "file_rec": 1.0,
+        "symbol_rec": 0.8
+      },
+      "isolation": {
+        "scubiee_tools_seen": false,
+        "expected_scubiee": false,
+        "ok": true,
+        "note": "no scubiee leakage"
+      },
+      "log": "out/kiro_ab/20260905T041605Z/C01_connect_permissions_gate__without.log"
+    },
+    {
+      "task_id": "C02_pack_expand_ladder",
+      "arm": "with",
+      "agent": "ab_with_scubiee",
+      "model": "auto",
+      "effort": "medium",
+      "require_mcp_startup": true,
+      "cmd": [
+        "C:\\Users\\usman\\AppData\\Local\\Kiro-Cli\\kiro-cli.exe",
+        "chat",
+        "--no-interactive",
+        "--trust-all-tools",
+        "--agent",
+        "ab_with_scubiee",
+        "--model",
+        "auto",
+        "--effort",
+        "medium",
+        "--wrap",
+        "never",
+        "--agent-engine",
+        "v1",
+        "--legacy-ui",
+        "--require-mcp-startup",
+        "LOCATE ONLY — do not edit any files.\nExplain the agent locate ladder end-to-end: soft map → pack_context(lean) heatmap+bodies → expand_context delta hops. Where is pack implemented, how bodies are collected (run_collect_hot / heatmap_to_cards), and where expand_context is registered/impl?\nI care about the production MCP path, not tests.\nEnd with a JSON block only:\n{\"files\":[\"rel/path.py\",...],\"symbols\":[\"name\",...],\"notes\":\"one sentence\"}"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_ms": 101597.0,
+      "out_chars": 11743,
+      "out_tokens_est": 2936,
+      "credits": 1.3,
+      "reported_time_s": 91,
+      "tools": {
+        "scubiee_tools": [
+          "map",
+          "pack_context"
+        ],
+        "native_tools": [
+          "read",
+          "read",
+          "read",
+          "read",
+          "read",
+          "read",
+          "read"
+        ],
+        "other_mcp_tools": [],
+        "scubiee_count": 2,
+        "native_count": 7,
+        "total_tool_mentions": 9
+      },
+      "gold": {
+        "file_hits": [
+          "packages/pipeline/context_trace.py",
+          "packages/pipeline/mcp_locate.py"
+        ],
+        "symbol_hits": [
+          "run_pack_context",
+          "run_collect_hot",
+          "heatmap_to_cards",
+          "pack_context_impl",
+          "expand_context_impl"
+        ],
+        "file_rec": 1.0,
+        "symbol_rec": 1.0
+      },
+      "isolation": {
+        "scubiee_tools_seen": true,
+        "expected_scubiee": true,
+        "ok": true,
+        "note": "scubiee tools used"
+      },
+      "log": "out/kiro_ab/20260905T041605Z/C02_pack_expand_ladder__with.log"
+    },
+    {
+      "task_id": "C02_pack_expand_ladder",
+      "arm": "without",
+      "agent": "ab_without_scubiee",
+      "model": "auto",
+      "effort": "medium",
+      "require_mcp_startup": false,
+      "cmd": [
+        "C:\\Users\\usman\\AppData\\Local\\Kiro-Cli\\kiro-cli.exe",
+        "chat",
+        "--no-interactive",
+        "--trust-all-tools",
+        "--agent",
+        "ab_without_scubiee",
+        "--model",
+        "auto",
+        "--effort",
+        "medium",
+        "--wrap",
+        "never",
+        "--agent-engine",
+        "v1",
+        "--legacy-ui",
+        "LOCATE ONLY — do not edit any files.\nExplain the agent locate ladder end-to-end: soft map → pack_context(lean) heatmap+bodies → expand_context delta hops. Where is pack implemented, how bodies are collected (run_collect_hot / heatmap_to_cards), and where expand_context is registered/impl?\nI care about the production MCP path, not tests.\nEnd with a JSON block only:\n{\"files\":[\"rel/path.py\",...],\"symbols\":[\"name\",...],\"notes\":\"one sentence\"}"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_ms": 76504.3,
+      "out_chars": 36106,
+      "out_tokens_est": 9027,
+      "credits": 2.12,
+      "reported_time_s": 70,
+      "tools": {
+        "scubiee_tools": [],
+        "native_tools": [
+          "read",
+          "read",
+          "read",
+          "read",
+          "shell",
+          "shell",
+          "shell",
+          "read",
+          "read"
+        ],
+        "other_mcp_tools": [],
+        "scubiee_count": 0,
+        "native_count": 9,
+        "total_tool_mentions": 9
+      },
+      "gold": {
+        "file_hits": [
+          "packages/pipeline/context_trace.py",
+          "packages/pipeline/mcp_locate.py"
+        ],
+        "symbol_hits": [
+          "run_pack_context",
+          "run_collect_hot",
+          "heatmap_to_cards",
+          "pack_context_impl",
+          "expand_context_impl"
+        ],
+        "file_rec": 1.0,
+        "symbol_rec": 1.0
+      },
+      "isolation": {
+        "scubiee_tools_seen": false,
+        "expected_scubiee": false,
+        "ok": true,
+        "note": "no scubiee leakage"
+      },
+      "log": "out/kiro_ab/20260905T041605Z/C02_pack_expand_ladder__without.log"
+    },
+    {
+      "task_id": "C03_composite_vs_poly_escape",
+      "arm": "with",
+      "agent": "ab_with_scubiee",
+      "model": "auto",
+      "effort": "medium",
+      "require_mcp_startup": true,
+      "cmd": [
+        "C:\\Users\\usman\\AppData\\Local\\Kiro-Cli\\kiro-cli.exe",
+        "chat",
+        "--no-interactive",
+        "--trust-all-tools",
+        "--agent",
+        "ab_with_scubiee",
+        "--model",
+        "auto",
+        "--effort",
+        "medium",
+        "--wrap",
+        "never",
+        "--agent-engine",
+        "v1",
+        "--legacy-ui",
+        "--require-mcp-startup",
+        "LOCATE ONLY — do not edit any files.\nProduction tracing default should be composite_v1, but pack_context(policy=broad) must escape to polytrace temporarily. Find _trace_engine / bind_composite_v1 and the policy=broad temporary CTX_TRACE_ENGINE swap + restore path inside run_pack_context.\nDo not confuse this with CTX_MCP_EXPERIMENT=hybrid.\nEnd with a JSON block only:\n{\"files\":[\"rel/path.py\",...],\"symbols\":[\"name\",...],\"notes\":\"one sentence\"}"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_ms": 65953.2,
+      "out_chars": 4604,
+      "out_tokens_est": 1151,
+      "credits": 0.51,
+      "reported_time_s": 54,
+      "tools": {
+        "scubiee_tools": [
+          "map",
+          "pack_context"
+        ],
+        "native_tools": [
+          "read",
+          "read"
+        ],
+        "other_mcp_tools": [],
+        "scubiee_count": 2,
+        "native_count": 2,
+        "total_tool_mentions": 4
+      },
+      "gold": {
+        "file_hits": [
+          "packages/pipeline/context_trace.py",
+          "packages/trace_lab/composite_v1.py"
+        ],
+        "symbol_hits": [
+          "_trace_engine",
+          "bind_composite_v1",
+          "run_pack_context"
+        ],
+        "file_rec": 1.0,
+        "symbol_rec": 0.75
+      },
+      "isolation": {
+        "scubiee_tools_seen": true,
+        "expected_scubiee": true,
+        "ok": true,
+        "note": "scubiee tools used"
+      },
+      "log": "out/kiro_ab/20260905T041605Z/C03_composite_vs_poly_escape__with.log"
+    },
+    {
+      "task_id": "C03_composite_vs_poly_escape",
+      "arm": "without",
+      "agent": "ab_without_scubiee",
+      "model": "auto",
+      "effort": "medium",
+      "require_mcp_startup": false,
+      "cmd": [
+        "C:\\Users\\usman\\AppData\\Local\\Kiro-Cli\\kiro-cli.exe",
+        "chat",
+        "--no-interactive",
+        "--trust-all-tools",
+        "--agent",
+        "ab_without_scubiee",
+        "--model",
+        "auto",
+        "--effort",
+        "medium",
+        "--wrap",
+        "never",
+        "--agent-engine",
+        "v1",
+        "--legacy-ui",
+        "LOCATE ONLY — do not edit any files.\nProduction tracing default should be composite_v1, but pack_context(policy=broad) must escape to polytrace temporarily. Find _trace_engine / bind_composite_v1 and the policy=broad temporary CTX_TRACE_ENGINE swap + restore path inside run_pack_context.\nDo not confuse this with CTX_MCP_EXPERIMENT=hybrid.\nEnd with a JSON block only:\n{\"files\":[\"rel/path.py\",...],\"symbols\":[\"name\",...],\"notes\":\"one sentence\"}"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_ms": 41389.2,
+      "out_chars": 23572,
+      "out_tokens_est": 5893,
+      "credits": 0.42,
+      "reported_time_s": 36,
+      "tools": {
+        "scubiee_tools": [],
+        "native_tools": [
+          "shell",
+          "shell",
+          "read"
+        ],
+        "other_mcp_tools": [],
+        "scubiee_count": 0,
+        "native_count": 3,
+        "total_tool_mentions": 3
+      },
+      "gold": {
+        "file_hits": [
+          "packages/pipeline/context_trace.py",
+          "packages/trace_lab/composite_v1.py"
+        ],
+        "symbol_hits": [
+          "_trace_engine",
+          "bind_composite_v1",
+          "run_pack_context",
+          "run_composite_v1"
+        ],
+        "file_rec": 1.0,
+        "symbol_rec": 1.0
+      },
+      "isolation": {
+        "scubiee_tools_seen": false,
+        "expected_scubiee": false,
+        "ok": true,
+        "note": "no scubiee leakage"
+      },
+      "log": "out/kiro_ab/20260905T041605Z/C03_composite_vs_poly_escape__without.log"
+    },
+    {
+      "task_id": "C04_graphify_store_vs_rebuild",
+      "arm": "with",
+      "agent": "ab_with_scubiee",
+      "model": "auto",
+      "effort": "medium",
+      "require_mcp_startup": true,
+      "cmd": [
+        "C:\\Users\\usman\\AppData\\Local\\Kiro-Cli\\kiro-cli.exe",
+        "chat",
+        "--no-interactive",
+        "--trust-all-tools",
+        "--agent",
+        "ab_with_scubiee",
+        "--model",
+        "auto",
+        "--effort",
+        "medium",
+        "--wrap",
+        "never",
+        "--agent-engine",
+        "v1",
+        "--legacy-ui",
+        "--require-mcp-startup",
+        "LOCATE ONLY — do not edit any files.\nWhen context tracing starts, how does it prefer loading init graph.json from the project store instead of rebuilding Graphify every time? Trace load_store_graphify_graph, _load_repo / _want_graphify, and the rebuild escape hatch.\nEnd with a JSON block only:\n{\"files\":[\"rel/path.py\",...],\"symbols\":[\"name\",...],\"notes\":\"one sentence\"}"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_ms": 65249.9,
+      "out_chars": 4633,
+      "out_tokens_est": 1159,
+      "credits": 0.44,
+      "reported_time_s": 53,
+      "tools": {
+        "scubiee_tools": [
+          "map",
+          "pack_context"
+        ],
+        "native_tools": [
+          "read",
+          "read"
+        ],
+        "other_mcp_tools": [],
+        "scubiee_count": 2,
+        "native_count": 2,
+        "total_tool_mentions": 4
+      },
+      "gold": {
+        "file_hits": [
+          "packages/pipeline/context_trace.py",
+          "packages/trace_lab/graphify_layer.py"
+        ],
+        "symbol_hits": [
+          "load_store_graphify_graph",
+          "_load_repo",
+          "_want_graphify"
+        ],
+        "file_rec": 1.0,
+        "symbol_rec": 1.0
+      },
+      "isolation": {
+        "scubiee_tools_seen": true,
+        "expected_scubiee": true,
+        "ok": true,
+        "note": "scubiee tools used"
+      },
+      "log": "out/kiro_ab/20260905T041605Z/C04_graphify_store_vs_rebuild__with.log"
+    },
+    {
+      "task_id": "C04_graphify_store_vs_rebuild",
+      "arm": "without",
+      "agent": "ab_without_scubiee",
+      "model": "auto",
+      "effort": "medium",
+      "require_mcp_startup": false,
+      "cmd": [
+        "C:\\Users\\usman\\AppData\\Local\\Kiro-Cli\\kiro-cli.exe",
+        "chat",
+        "--no-interactive",
+        "--trust-all-tools",
+        "--agent",
+        "ab_without_scubiee",
+        "--model",
+        "auto",
+        "--effort",
+        "medium",
+        "--wrap",
+        "never",
+        "--agent-engine",
+        "v1",
+        "--legacy-ui",
+        "LOCATE ONLY — do not edit any files.\nWhen context tracing starts, how does it prefer loading init graph.json from the project store instead of rebuilding Graphify every time? Trace load_store_graphify_graph, _load_repo / _want_graphify, and the rebuild escape hatch.\nEnd with a JSON block only:\n{\"files\":[\"rel/path.py\",...],\"symbols\":[\"name\",...],\"notes\":\"one sentence\"}"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_ms": 77760.1,
+      "out_chars": 11186,
+      "out_tokens_est": 2797,
+      "credits": 0.58,
+      "reported_time_s": 72,
+      "tools": {
+        "scubiee_tools": [],
+        "native_tools": [
+          "shell",
+          "shell",
+          "shell",
+          "shell",
+          "shell",
+          "read",
+          "shell",
+          "read"
+        ],
+        "other_mcp_tools": [],
+        "scubiee_count": 0,
+        "native_count": 8,
+        "total_tool_mentions": 8
+      },
+      "gold": {
+        "file_hits": [
+          "packages/pipeline/context_trace.py",
+          "packages/trace_lab/graphify_layer.py"
+        ],
+        "symbol_hits": [
+          "load_store_graphify_graph",
+          "_load_repo",
+          "_want_graphify"
+        ],
+        "file_rec": 1.0,
+        "symbol_rec": 1.0
+      },
+      "isolation": {
+        "scubiee_tools_seen": false,
+        "expected_scubiee": false,
+        "ok": true,
+        "note": "no scubiee leakage"
+      },
+      "log": "out/kiro_ab/20260905T041605Z/C04_graphify_store_vs_rebuild__without.log"
+    },
+    {
+      "task_id": "C05_incremental_merkle_confirm",
+      "arm": "with",
+      "agent": "ab_with_scubiee",
+      "model": "auto",
+      "effort": "medium",
+      "require_mcp_startup": true,
+      "cmd": [
+        "C:\\Users\\usman\\AppData\\Local\\Kiro-Cli\\kiro-cli.exe",
+        "chat",
+        "--no-interactive",
+        "--trust-all-tools",
+        "--agent",
+        "ab_with_scubiee",
+        "--model",
+        "auto",
+        "--effort",
+        "medium",
+        "--wrap",
+        "never",
+        "--agent-engine",
+        "v1",
+        "--legacy-ui",
+        "--require-mcp-startup",
+        "LOCATE ONLY — do not edit any files.\nFiles change on disk — how does incremental sync detect dirty paths (merkle), patch graph.json (patch_and_save_graph), re-embed, and gate huge deltas with IndexConfirmRequired? Follow from sync_loop into incremental.\nEnd with a JSON block only:\n{\"files\":[\"rel/path.py\",...],\"symbols\":[\"name\",...],\"notes\":\"one sentence\"}"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_ms": 75312.2,
+      "out_chars": 7201,
+      "out_tokens_est": 1801,
+      "credits": 0.87,
+      "reported_time_s": 65,
+      "tools": {
+        "scubiee_tools": [
+          "map",
+          "pack_context"
+        ],
+        "native_tools": [
+          "read",
+          "read",
+          "read",
+          "read"
+        ],
+        "other_mcp_tools": [],
+        "scubiee_count": 2,
+        "native_count": 4,
+        "total_tool_mentions": 6
+      },
+      "gold": {
+        "file_hits": [
+          "packages/pipeline/incremental.py",
+          "packages/pipeline/sync_loop.py"
+        ],
+        "symbol_hits": [
+          "patch_and_save_graph",
+          "IndexConfirmRequired"
+        ],
+        "file_rec": 1.0,
+        "symbol_rec": 1.0
+      },
+      "isolation": {
+        "scubiee_tools_seen": true,
+        "expected_scubiee": true,
+        "ok": true,
+        "note": "scubiee tools used"
+      },
+      "log": "out/kiro_ab/20260905T041605Z/C05_incremental_merkle_confirm__with.log"
+    },
+    {
+      "task_id": "C05_incremental_merkle_confirm",
+      "arm": "without",
+      "agent": "ab_without_scubiee",
+      "model": "auto",
+      "effort": "medium",
+      "require_mcp_startup": false,
+      "cmd": [
+        "C:\\Users\\usman\\AppData\\Local\\Kiro-Cli\\kiro-cli.exe",
+        "chat",
+        "--no-interactive",
+        "--trust-all-tools",
+        "--agent",
+        "ab_without_scubiee",
+        "--model",
+        "auto",
+        "--effort",
+        "medium",
+        "--wrap",
+        "never",
+        "--agent-engine",
+        "v1",
+        "--legacy-ui",
+        "LOCATE ONLY — do not edit any files.\nFiles change on disk — how does incremental sync detect dirty paths (merkle), patch graph.json (patch_and_save_graph), re-embed, and gate huge deltas with IndexConfirmRequired? Follow from sync_loop into incremental.\nEnd with a JSON block only:\n{\"files\":[\"rel/path.py\",...],\"symbols\":[\"name\",...],\"notes\":\"one sentence\"}"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_ms": 104292.5,
+      "out_chars": 77491,
+      "out_tokens_est": 19373,
+      "credits": 2.45,
+      "reported_time_s": 99,
+      "tools": {
+        "scubiee_tools": [],
+        "native_tools": [
+          "shell",
+          "read",
+          "shell",
+          "shell",
+          "shell",
+          "read",
+          "read",
+          "shell",
+          "shell",
+          "read",
+          "read"
+        ],
+        "other_mcp_tools": [],
+        "scubiee_count": 0,
+        "native_count": 11,
+        "total_tool_mentions": 11
+      },
+      "gold": {
+        "file_hits": [
+          "packages/pipeline/incremental.py",
+          "packages/pipeline/sync_loop.py"
+        ],
+        "symbol_hits": [
+          "patch_and_save_graph",
+          "IndexConfirmRequired"
+        ],
+        "file_rec": 1.0,
+        "symbol_rec": 1.0
+      },
+      "isolation": {
+        "scubiee_tools_seen": false,
+        "expected_scubiee": false,
+        "ok": true,
+        "note": "no scubiee leakage"
+      },
+      "log": "out/kiro_ab/20260905T041605Z/C05_incremental_merkle_confirm__without.log"
+    },
+    {
+      "task_id": "C06_session_isolation_parallel",
+      "arm": "with",
+      "agent": "ab_with_scubiee",
+      "model": "auto",
+      "effort": "medium",
+      "require_mcp_startup": true,
+      "cmd": [
+        "C:\\Users\\usman\\AppData\\Local\\Kiro-Cli\\kiro-cli.exe",
+        "chat",
+        "--no-interactive",
+        "--trust-all-tools",
+        "--agent",
+        "ab_with_scubiee",
+        "--model",
+        "auto",
+        "--effort",
+        "medium",
+        "--wrap",
+        "never",
+        "--agent-engine",
+        "v1",
+        "--legacy-ui",
+        "--require-mcp-startup",
+        "LOCATE ONLY — do not edit any files.\nTwo Cursor chats share one MCP process — how are pins/handles/context_trace isolated per session_id? Trace _resolve_session, session_store load/save, CTX_MCP_SESSION_ISOLATE, and where pack/map persist per-session state.\nEnd with a JSON block only:\n{\"files\":[\"rel/path.py\",...],\"symbols\":[\"name\",...],\"notes\":\"one sentence\"}"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_ms": 66897.3,
+      "out_chars": 10686,
+      "out_tokens_est": 2672,
+      "credits": 0.97,
+      "reported_time_s": 56,
+      "tools": {
+        "scubiee_tools": [
+          "map"
+        ],
+        "native_tools": [
+          "read",
+          "read",
+          "read",
+          "read",
+          "shell",
+          "read"
+        ],
+        "other_mcp_tools": [],
+        "scubiee_count": 1,
+        "native_count": 6,
+        "total_tool_mentions": 7
+      },
+      "gold": {
+        "file_hits": [
+          "packages/pipeline/session_store.py",
+          "packages/pipeline/mcp_locate.py"
+        ],
+        "symbol_hits": [
+          "load_store",
+          "save_store",
+          "_resolve_session",
+          "persist_trace"
+        ],
+        "file_rec": 1.0,
+        "symbol_rec": 1.0
+      },
+      "isolation": {
+        "scubiee_tools_seen": true,
+        "expected_scubiee": true,
+        "ok": true,
+        "note": "scubiee tools used"
+      },
+      "log": "out/kiro_ab/20260905T041605Z/C06_session_isolation_parallel__with.log"
+    },
+    {
+      "task_id": "C06_session_isolation_parallel",
+      "arm": "without",
+      "agent": "ab_without_scubiee",
+      "model": "auto",
+      "effort": "medium",
+      "require_mcp_startup": false,
+      "cmd": [
+        "C:\\Users\\usman\\AppData\\Local\\Kiro-Cli\\kiro-cli.exe",
+        "chat",
+        "--no-interactive",
+        "--trust-all-tools",
+        "--agent",
+        "ab_without_scubiee",
+        "--model",
+        "auto",
+        "--effort",
+        "medium",
+        "--wrap",
+        "never",
+        "--agent-engine",
+        "v1",
+        "--legacy-ui",
+        "LOCATE ONLY — do not edit any files.\nTwo Cursor chats share one MCP process — how are pins/handles/context_trace isolated per session_id? Trace _resolve_session, session_store load/save, CTX_MCP_SESSION_ISOLATE, and where pack/map persist per-session state.\nEnd with a JSON block only:\n{\"files\":[\"rel/path.py\",...],\"symbols\":[\"name\",...],\"notes\":\"one sentence\"}"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_ms": 53117.0,
+      "out_chars": 21587,
+      "out_tokens_est": 5397,
+      "credits": 1.44,
+      "reported_time_s": 48,
+      "tools": {
+        "scubiee_tools": [],
+        "native_tools": [
+          "read",
+          "read",
+          "read",
+          "shell",
+          "shell"
+        ],
+        "other_mcp_tools": [],
+        "scubiee_count": 0,
+        "native_count": 5,
+        "total_tool_mentions": 5
+      },
+      "gold": {
+        "file_hits": [
+          "packages/pipeline/session_store.py",
+          "packages/pipeline/mcp_locate.py"
+        ],
+        "symbol_hits": [
+          "load_store",
+          "save_store",
+          "_resolve_session",
+          "persist_trace"
+        ],
+        "file_rec": 1.0,
+        "symbol_rec": 1.0
+      },
+      "isolation": {
+        "scubiee_tools_seen": false,
+        "expected_scubiee": false,
+        "ok": true,
+        "note": "no scubiee leakage"
+      },
+      "log": "out/kiro_ab/20260905T041605Z/C06_session_isolation_parallel__without.log"
+    },
+    {
+      "task_id": "C07_kiro_mcp_install",
+      "arm": "with",
+      "agent": "ab_with_scubiee",
+      "model": "auto",
+      "effort": "medium",
+      "require_mcp_startup": true,
+      "cmd": [
+        "C:\\Users\\usman\\AppData\\Local\\Kiro-Cli\\kiro-cli.exe",
+        "chat",
+        "--no-interactive",
+        "--trust-all-tools",
+        "--agent",
+        "ab_with_scubiee",
+        "--model",
+        "auto",
+        "--effort",
+        "medium",
+        "--wrap",
+        "never",
+        "--agent-engine",
+        "v1",
+        "--legacy-ui",
+        "--require-mcp-startup",
+        "LOCATE ONLY — do not edit any files.\nscubiee connect --kiro must write .kiro/settings/mcp.json and steering. Find write_kiro_mcp (and related install path) — env pins, autoApprove, project vs user behavior. Ignore Cursor-only writers unless they share helpers.\nEnd with a JSON block only:\n{\"files\":[\"rel/path.py\",...],\"symbols\":[\"name\",...],\"notes\":\"one sentence\"}"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_ms": 86605.0,
+      "out_chars": 13845,
+      "out_tokens_est": 3462,
+      "credits": 0.94,
+      "reported_time_s": 76,
+      "tools": {
+        "scubiee_tools": [
+          "map",
+          "pack_context"
+        ],
+        "native_tools": [
+          "read",
+          "read",
+          "shell",
+          "shell",
+          "read"
+        ],
+        "other_mcp_tools": [],
+        "scubiee_count": 2,
+        "native_count": 5,
+        "total_tool_mentions": 7
+      },
+      "gold": {
+        "file_hits": [
+          "packages/pipeline/mcp_install.py"
+        ],
+        "symbol_hits": [
+          "write_kiro_mcp"
+        ],
+        "file_rec": 1.0,
+        "symbol_rec": 1.0
+      },
+      "isolation": {
+        "scubiee_tools_seen": true,
+        "expected_scubiee": true,
+        "ok": true,
+        "note": "scubiee tools used"
+      },
+      "log": "out/kiro_ab/20260905T041605Z/C07_kiro_mcp_install__with.log"
+    },
+    {
+      "task_id": "C07_kiro_mcp_install",
+      "arm": "without",
+      "agent": "ab_without_scubiee",
+      "model": "auto",
+      "effort": "medium",
+      "require_mcp_startup": false,
+      "cmd": [
+        "C:\\Users\\usman\\AppData\\Local\\Kiro-Cli\\kiro-cli.exe",
+        "chat",
+        "--no-interactive",
+        "--trust-all-tools",
+        "--agent",
+        "ab_without_scubiee",
+        "--model",
+        "auto",
+        "--effort",
+        "medium",
+        "--wrap",
+        "never",
+        "--agent-engine",
+        "v1",
+        "--legacy-ui",
+        "LOCATE ONLY — do not edit any files.\nscubiee connect --kiro must write .kiro/settings/mcp.json and steering. Find write_kiro_mcp (and related install path) — env pins, autoApprove, project vs user behavior. Ignore Cursor-only writers unless they share helpers.\nEnd with a JSON block only:\n{\"files\":[\"rel/path.py\",...],\"symbols\":[\"name\",...],\"notes\":\"one sentence\"}"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_ms": 118964.3,
+      "out_chars": 1041589,
+      "out_tokens_est": 260398,
+      "credits": 1.88,
+      "reported_time_s": 113,
+      "tools": {
+        "scubiee_tools": [],
+        "native_tools": [
+          "shell",
+          "shell",
+          "shell",
+          "shell",
+          "read",
+          "read",
+          "read",
+          "read",
+          "read",
+          "read"
+        ],
+        "other_mcp_tools": [],
+        "scubiee_count": 0,
+        "native_count": 10,
+        "total_tool_mentions": 10
+      },
+      "gold": {
+        "file_hits": [
+          "packages/pipeline/mcp_install.py"
+        ],
+        "symbol_hits": [
+          "write_kiro_mcp"
+        ],
+        "file_rec": 1.0,
+        "symbol_rec": 1.0
+      },
+      "isolation": {
+        "scubiee_tools_seen": false,
+        "expected_scubiee": false,
+        "ok": true,
+        "note": "no scubiee leakage"
+      },
+      "log": "out/kiro_ab/20260905T041605Z/C07_kiro_mcp_install__without.log"
+    },
+    {
+      "task_id": "C08_uv_access_denied_vague",
+      "arm": "with",
+      "agent": "ab_with_scubiee",
+      "model": "auto",
+      "effort": "medium",
+      "require_mcp_startup": true,
+      "cmd": [
+        "C:\\Users\\usman\\AppData\\Local\\Kiro-Cli\\kiro-cli.exe",
+        "chat",
+        "--no-interactive",
+        "--trust-all-tools",
+        "--agent",
+        "ab_with_scubiee",
+        "--model",
+        "auto",
+        "--effort",
+        "medium",
+        "--wrap",
+        "never",
+        "--agent-engine",
+        "v1",
+        "--legacy-ui",
+        "--require-mcp-startup",
+        "LOCATE ONLY — do not edit any files.\nVague bug: 'Access denied' when forcing a uv tool reinstall of scubiee while an MCP bridge is still running on Windows. I don't know the function names — find the unlock/lock-release path that stops engine/MCP processes so the exe can be replaced.\nEnd with a JSON block only:\n{\"files\":[\"rel/path.py\",...],\"symbols\":[\"name\",...],\"notes\":\"one sentence\"}"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_ms": 106128.8,
+      "out_chars": 357891,
+      "out_tokens_est": 89473,
+      "credits": 1.48,
+      "reported_time_s": 95,
+      "tools": {
+        "scubiee_tools": [
+          "map",
+          "pack_context"
+        ],
+        "native_tools": [
+          "read",
+          "read",
+          "read",
+          "read",
+          "shell",
+          "read",
+          "read"
+        ],
+        "other_mcp_tools": [],
+        "scubiee_count": 2,
+        "native_count": 7,
+        "total_tool_mentions": 9
+      },
+      "gold": {
+        "file_hits": [
+          "packages/pipeline/process_control.py"
+        ],
+        "symbol_hits": [
+          "prepare_uv_tool_directory_for_swap",
+          "release_scubiee_process_locks",
+          "stop_all_context_engine_processes"
+        ],
+        "file_rec": 1.0,
+        "symbol_rec": 1.0
+      },
+      "isolation": {
+        "scubiee_tools_seen": true,
+        "expected_scubiee": true,
+        "ok": true,
+        "note": "scubiee tools used"
+      },
+      "log": "out/kiro_ab/20260905T041605Z/C08_uv_access_denied_vague__with.log"
+    },
+    {
+      "task_id": "C08_uv_access_denied_vague",
+      "arm": "without",
+      "agent": "ab_without_scubiee",
+      "model": "auto",
+      "effort": "medium",
+      "require_mcp_startup": false,
+      "cmd": [
+        "C:\\Users\\usman\\AppData\\Local\\Kiro-Cli\\kiro-cli.exe",
+        "chat",
+        "--no-interactive",
+        "--trust-all-tools",
+        "--agent",
+        "ab_without_scubiee",
+        "--model",
+        "auto",
+        "--effort",
+        "medium",
+        "--wrap",
+        "never",
+        "--agent-engine",
+        "v1",
+        "--legacy-ui",
+        "LOCATE ONLY — do not edit any files.\nVague bug: 'Access denied' when forcing a uv tool reinstall of scubiee while an MCP bridge is still running on Windows. I don't know the function names — find the unlock/lock-release path that stops engine/MCP processes so the exe can be replaced.\nEnd with a JSON block only:\n{\"files\":[\"rel/path.py\",...],\"symbols\":[\"name\",...],\"notes\":\"one sentence\"}"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_ms": 43353.1,
+      "out_chars": 6508,
+      "out_tokens_est": 1627,
+      "credits": 1.65,
+      "reported_time_s": 38,
+      "tools": {
+        "scubiee_tools": [],
+        "native_tools": [
+          "read",
+          "read",
+          "read",
+          "read",
+          "read",
+          "read"
+        ],
+        "other_mcp_tools": [],
+        "scubiee_count": 0,
+        "native_count": 6,
+        "total_tool_mentions": 6
+      },
+      "gold": {
+        "file_hits": [
+          "packages/pipeline/process_control.py"
+        ],
+        "symbol_hits": [
+          "prepare_uv_tool_directory_for_swap",
+          "release_scubiee_process_locks",
+          "stop_all_context_engine_processes"
+        ],
+        "file_rec": 1.0,
+        "symbol_rec": 1.0
+      },
+      "isolation": {
+        "scubiee_tools_seen": false,
+        "expected_scubiee": false,
+        "ok": true,
+        "note": "no scubiee leakage"
+      },
+      "log": "out/kiro_ab/20260905T041605Z/C08_uv_access_denied_vague__without.log"
+    },
+    {
+      "task_id": "C09_auth_jwt_trap",
+      "arm": "with",
+      "agent": "ab_with_scubiee",
+      "model": "auto",
+      "effort": "medium",
+      "require_mcp_startup": true,
+      "cmd": [
+        "C:\\Users\\usman\\AppData\\Local\\Kiro-Cli\\kiro-cli.exe",
+        "chat",
+        "--no-interactive",
+        "--trust-all-tools",
+        "--agent",
+        "ab_with_scubiee",
+        "--model",
+        "auto",
+        "--effort",
+        "medium",
+        "--wrap",
+        "never",
+        "--agent-engine",
+        "v1",
+        "--legacy-ui",
+        "--require-mcp-startup",
+        "LOCATE ONLY — do not edit any files.\nFixture login fails with invalid/expired JWT. Trace the credential path only: authenticate → extract_bearer → JwtService.verify → decode → TOKEN_TTL → UserRepository.resolve under fixtures/trace-lab. Do NOT pull billing/analytics/logger side effects even if names look related.\nEnd with a JSON block only:\n{\"files\":[\"rel/path.py\",...],\"symbols\":[\"name\",...],\"notes\":\"one sentence\"}"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_ms": 30383.3,
+      "out_chars": 3140,
+      "out_tokens_est": 785,
+      "credits": 0.27,
+      "reported_time_s": 20,
+      "tools": {
+        "scubiee_tools": [
+          "map"
+        ],
+        "native_tools": [
+          "read"
+        ],
+        "other_mcp_tools": [],
+        "scubiee_count": 1,
+        "native_count": 1,
+        "total_tool_mentions": 2
+      },
+      "gold": {
+        "file_hits": [
+          "fixtures/trace-lab/app/middleware/auth.py",
+          "fixtures/trace-lab/app/services/jwt_service.py",
+          "fixtures/trace-lab/app/utils/token.py",
+          "fixtures/trace-lab/app/repositories/user_repo.py"
+        ],
+        "symbol_hits": [
+          "authenticate",
+          "extract_bearer",
+          "JwtService.verify",
+          "decode",
+          "UserRepository.resolve"
+        ],
+        "file_rec": 1.0,
+        "symbol_rec": 1.0
+      },
+      "isolation": {
+        "scubiee_tools_seen": true,
+        "expected_scubiee": true,
+        "ok": true,
+        "note": "scubiee tools used"
+      },
+      "log": "out/kiro_ab/20260905T041605Z/C09_auth_jwt_trap__with.log"
+    },
+    {
+      "task_id": "C09_auth_jwt_trap",
+      "arm": "without",
+      "agent": "ab_without_scubiee",
+      "model": "auto",
+      "effort": "medium",
+      "require_mcp_startup": false,
+      "cmd": [
+        "C:\\Users\\usman\\AppData\\Local\\Kiro-Cli\\kiro-cli.exe",
+        "chat",
+        "--no-interactive",
+        "--trust-all-tools",
+        "--agent",
+        "ab_without_scubiee",
+        "--model",
+        "auto",
+        "--effort",
+        "medium",
+        "--wrap",
+        "never",
+        "--agent-engine",
+        "v1",
+        "--legacy-ui",
+        "LOCATE ONLY — do not edit any files.\nFixture login fails with invalid/expired JWT. Trace the credential path only: authenticate → extract_bearer → JwtService.verify → decode → TOKEN_TTL → UserRepository.resolve under fixtures/trace-lab. Do NOT pull billing/analytics/logger side effects even if names look related.\nEnd with a JSON block only:\n{\"files\":[\"rel/path.py\",...],\"symbols\":[\"name\",...],\"notes\":\"one sentence\"}"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_ms": 23710.7,
+      "out_chars": 3644,
+      "out_tokens_est": 911,
+      "credits": 0.32,
+      "reported_time_s": 18,
+      "tools": {
+        "scubiee_tools": [],
+        "native_tools": [
+          "read",
+          "read",
+          "read"
+        ],
+        "other_mcp_tools": [],
+        "scubiee_count": 0,
+        "native_count": 3,
+        "total_tool_mentions": 3
+      },
+      "gold": {
+        "file_hits": [
+          "fixtures/trace-lab/app/middleware/auth.py",
+          "fixtures/trace-lab/app/services/jwt_service.py",
+          "fixtures/trace-lab/app/utils/token.py",
+          "fixtures/trace-lab/app/repositories/user_repo.py"
+        ],
+        "symbol_hits": [
+          "authenticate",
+          "extract_bearer",
+          "JwtService.verify",
+          "decode",
+          "UserRepository.resolve"
+        ],
+        "file_rec": 1.0,
+        "symbol_rec": 1.0
+      },
+      "isolation": {
+        "scubiee_tools_seen": false,
+        "expected_scubiee": false,
+        "ok": true,
+        "note": "no scubiee leakage"
+      },
+      "log": "out/kiro_ab/20260905T041605Z/C09_auth_jwt_trap__without.log"
+    },
+    {
+      "task_id": "C10_warm_status_ready",
+      "arm": "with",
+      "agent": "ab_with_scubiee",
+      "model": "auto",
+      "effort": "medium",
+      "require_mcp_startup": true,
+      "cmd": [
+        "C:\\Users\\usman\\AppData\\Local\\Kiro-Cli\\kiro-cli.exe",
+        "chat",
+        "--no-interactive",
+        "--trust-all-tools",
+        "--agent",
+        "ab_with_scubiee",
+        "--model",
+        "auto",
+        "--effort",
+        "medium",
+        "--wrap",
+        "never",
+        "--agent-engine",
+        "v1",
+        "--legacy-ui",
+        "--require-mcp-startup",
+        "LOCATE ONLY — do not edit any files.\nMCP status sometimes says soft_search_ready / agent_ready warming or stale. Where is readiness computed from the engine daemon / WarmSearchEngine, and how does status expose warm_state to agents?\nEnd with a JSON block only:\n{\"files\":[\"rel/path.py\",...],\"symbols\":[\"name\",...],\"notes\":\"one sentence\"}"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_ms": 90675.1,
+      "out_chars": 8533,
+      "out_tokens_est": 2134,
+      "credits": 0.84,
+      "reported_time_s": 80,
+      "tools": {
+        "scubiee_tools": [
+          "map",
+          "pack_context",
+          "pinpoint"
+        ],
+        "native_tools": [
+          "read",
+          "read",
+          "read",
+          "read",
+          "shell",
+          "read"
+        ],
+        "other_mcp_tools": [],
+        "scubiee_count": 3,
+        "native_count": 6,
+        "total_tool_mentions": 9
+      },
+      "gold": {
+        "file_hits": [
+          "packages/pipeline/mcp_locate.py",
+          "packages/pipeline/engine.py"
+        ],
+        "symbol_hits": [
+          "soft_search_ready",
+          "WarmSearchEngine"
+        ],
+        "file_rec": 1.0,
+        "symbol_rec": 1.0
+      },
+      "isolation": {
+        "scubiee_tools_seen": true,
+        "expected_scubiee": true,
+        "ok": true,
+        "note": "scubiee tools used"
+      },
+      "log": "out/kiro_ab/20260905T041605Z/C10_warm_status_ready__with.log"
+    },
+    {
+      "task_id": "C10_warm_status_ready",
+      "arm": "without",
+      "agent": "ab_without_scubiee",
+      "model": "auto",
+      "effort": "medium",
+      "require_mcp_startup": false,
+      "cmd": [
+        "C:\\Users\\usman\\AppData\\Local\\Kiro-Cli\\kiro-cli.exe",
+        "chat",
+        "--no-interactive",
+        "--trust-all-tools",
+        "--agent",
+        "ab_without_scubiee",
+        "--model",
+        "auto",
+        "--effort",
+        "medium",
+        "--wrap",
+        "never",
+        "--agent-engine",
+        "v1",
+        "--legacy-ui",
+        "LOCATE ONLY — do not edit any files.\nMCP status sometimes says soft_search_ready / agent_ready warming or stale. Where is readiness computed from the engine daemon / WarmSearchEngine, and how does status expose warm_state to agents?\nEnd with a JSON block only:\n{\"files\":[\"rel/path.py\",...],\"symbols\":[\"name\",...],\"notes\":\"one sentence\"}"
+      ],
+      "exit_code": 0,
+      "timed_out": false,
+      "wall_ms": 96282.3,
+      "out_chars": 43998,
+      "out_tokens_est": 11000,
+      "credits": 1.07,
+      "reported_time_s": 91,
+      "tools": {
+        "scubiee_tools": [],
+        "native_tools": [
+          "shell",
+          "shell",
+          "shell",
+          "shell",
+          "read",
+          "shell",
+          "read",
+          "shell"
+        ],
+        "other_mcp_tools": [],
+        "scubiee_count": 0,
+        "native_count": 8,
+        "total_tool_mentions": 8
+      },
+      "gold": {
+        "file_hits": [
+          "packages/pipeline/mcp_locate.py",
+          "packages/pipeline/engine.py"
+        ],
+        "symbol_hits": [
+          "soft_search_ready",
+          "WarmSearchEngine"
+        ],
+        "file_rec": 1.0,
+        "symbol_rec": 1.0
+      },
+      "isolation": {
+        "scubiee_tools_seen": false,
+        "expected_scubiee": false,
+        "ok": true,
+        "note": "no scubiee leakage"
+      },
+      "log": "out/kiro_ab/20260905T041605Z/C10_warm_status_ready__without.log"
+    }
+  ],
+  "summary": {
+    "arms": {
+      "with": {
+        "n": 10,
+        "mean_wall_ms": 76528.81,
+        "mean_out_tokens_est": 10771.5,
+        "mean_credits": 0.845,
+        "mean_file_rec": 1.0,
+        "mean_symbol_rec": 0.955,
+        "mean_scubiee_tools": 1.9,
+        "mean_native_tools": 4.4,
+        "isolation_ok": true,
+        "exit_nonzero": 0
+      },
+      "without": {
+        "n": 10,
+        "mean_wall_ms": 68871.55,
+        "mean_out_tokens_est": 31872.5,
+        "mean_credits": 1.374,
+        "mean_file_rec": 1.0,
+        "mean_symbol_rec": 0.98,
+        "mean_scubiee_tools": 0.0,
+        "mean_native_tools": 6.8,
+        "isolation_ok": true,
+        "exit_nonzero": 0
+      }
+    }
+  }
+}

@@ -1,0 +1,210 @@
+{
+  "id": "t15",
+  "family": "capability-attach",
+  "task": "How are capability cards attached to search hits for locate ranking?",
+  "must_files": [
+    "packages/pipeline/capability.py"
+  ],
+  "must_symbols": [
+    "CapabilityCard"
+  ],
+  "map_k12": {
+    "elapsed_s": 0.377,
+    "top_files": [
+      "packages/pipeline/capability.py",
+      "packages/pipeline/engine.py",
+      "docs/superpowers/specs/2026-08-03-capability-locate-design.md",
+      "packages/pipeline/locate.py",
+      "packages/pipeline/mcp_locate.py",
+      "tests/test_capability_promotion.py",
+      "packages/graphify/build.py",
+      "scripts/eval_locate_quality.py"
+    ]
+  },
+  "map_k8": {
+    "elapsed_s": 0.389,
+    "top_files": [
+      "packages/pipeline/capability.py",
+      "packages/pipeline/engine.py",
+      "docs/superpowers/specs/2026-08-03-capability-locate-design.md",
+      "packages/pipeline/locate.py",
+      "packages/pipeline/mcp_locate.py"
+    ]
+  },
+  "chunks_k12": [
+    {
+      "file": "packages/pipeline/capability.py",
+      "symbol": "build_cards",
+      "kind": "function",
+      "loc": "packages/pipeline/capability.py:367-381",
+      "start_line": 367,
+      "end_line": 381,
+      "score": 9.7
+    },
+    {
+      "file": "packages/graphify/build.py",
+      "symbol": "build_from_json",
+      "kind": "function",
+      "loc": "packages/graphify/build.py:539-1016",
+      "start_line": 539,
+      "end_line": 1016,
+      "score": 9.35
+    },
+    {
+      "file": "packages/pipeline/engine.py",
+      "symbol": "WarmSearchEngine.locate_capability",
+      "kind": "method",
+      "loc": "packages/pipeline/engine.py:211-215",
+      "start_line": 211,
+      "end_line": 215,
+      "score": 7.35
+    }
+  ],
+  "chunks_k8": [
+    {
+      "file": "packages/pipeline/capability.py",
+      "symbol": "build_cards",
+      "kind": "function",
+      "loc": "packages/pipeline/capability.py:367-381",
+      "start_line": 367,
+      "end_line": 381,
+      "score": 9.7
+    },
+    {
+      "file": "packages/graphify/build.py",
+      "symbol": "build_from_json",
+      "kind": "function",
+      "loc": "packages/graphify/build.py:539-1016",
+      "start_line": 539,
+      "end_line": 1016,
+      "score": 9.35
+    },
+    {
+      "file": "packages/pipeline/engine.py",
+      "symbol": "WarmSearchEngine.locate_capability",
+      "kind": "method",
+      "loc": "packages/pipeline/engine.py:211-215",
+      "start_line": 211,
+      "end_line": 215,
+      "score": 7.35
+    }
+  ],
+  "pack": {
+    "ok": true,
+    "elapsed_s": 0.143,
+    "n_pack": 4,
+    "pack": [
+      {
+        "file": "packages/pipeline/capability.py",
+        "symbol": "build_cards",
+        "loc": "packages/pipeline/capability.py:367-381",
+        "id": "packages/pipeline/capability.py::build_cards",
+        "chars": 440
+      },
+      {
+        "file": "packages/pipeline/capability.py",
+        "symbol": "_norm_path",
+        "loc": "packages/pipeline/capability.py:59-64",
+        "id": "packages/pipeline/capability.py::_norm_path",
+        "chars": 220
+      },
+      {
+        "file": "packages/pipeline/merkle.py",
+        "symbol": "is_junk_rel",
+        "loc": "packages/pipeline/merkle.py:118-126",
+        "id": "packages/pipeline/merkle.py::is_junk_rel",
+        "chars": 400
+      },
+      {
+        "file": "packages/graphify/build.py",
+        "symbol": "build_from_json",
+        "loc": "packages/graphify/build.py:539-1016",
+        "id": "packages/graphify/build.py::build_from_json",
+        "chars": 4940
+      }
+    ],
+    "chain": [
+      {
+        "id": "packages/pipeline/capability.py::build_cards",
+        "loc": "packages/pipeline/capability.py:367-381",
+        "edge": "seed",
+        "symbol": "build_cards"
+      },
+      {
+        "id": "packages/pipeline/capability.py::_norm_path",
+        "loc": "packages/pipeline/capability.py:59-64",
+        "edge": "calls",
+        "symbol": "_norm_path"
+      },
+      {
+        "id": "packages/pipeline/merkle.py::is_junk_rel",
+        "loc": "packages/pipeline/merkle.py:118-126",
+        "edge": "calls",
+        "symbol": "is_junk_rel"
+      },
+      {
+        "id": "packages/graphify/build.py::build_from_json",
+        "loc": "packages/graphify/build.py:539-1016",
+        "edge": "seed",
+        "symbol": "build_from_json"
+      },
+      {
+        "id": "packages/graphify/build.py::_old_file_stems",
+        "loc": "packages/graphify/build.py:370-384",
+        "edge": "calls",
+        "symbol": "_old_file_stems"
+      },
+      {
+        "id": "packages/graphify/build.py::_norm_source_file",
+        "loc": "packages/graphify/build.py:160-184",
+        "edge": "calls",
+        "symbol": "_norm_source_file"
+      },
+      {
+        "id": "packages/graphify/extractors/base.py::_file_stem",
+        "loc": "packages/graphify/extractors/base.py:58-81",
+        "edge": "calls",
+        "symbol": "_file_stem"
+      },
+      {
+        "id": "packages/graphify/ids.py::make_id",
+        "loc": "packages/graphify/ids.py:43-50",
+        "edge": "calls",
+        "symbol": "make_id"
+      }
+    ],
+    "seed": {
+      "file": "packages/pipeline/capability.py",
+      "symbol": "build_cards",
+      "id": "packages/pipeline/capability.py::build_cards"
+    },
+    "error": null
+  },
+  "scores": {
+    "map_k12": {
+      "file": 1.0,
+      "symbol": 0.0,
+      "note": "raw map cards (symbols often empty)"
+    },
+    "map_k12_chunks": {
+      "file": 1.0,
+      "symbol": 0.0,
+      "chunks": [
+        "build_cards",
+        "build_from_json",
+        "WarmSearchEngine.locate_capability"
+      ]
+    },
+    "map8_pack": {
+      "file": 1.0,
+      "symbol": 0.0,
+      "n_pack": 4,
+      "chunks": [
+        "build_cards",
+        "build_from_json",
+        "WarmSearchEngine.locate_capability"
+      ],
+      "elapsed_s": 0.143
+    }
+  }
+}

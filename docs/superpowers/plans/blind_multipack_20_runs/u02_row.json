@@ -1,0 +1,539 @@
+{
+  "id": "u02",
+  "family": "chunk-compress",
+  "task": "Where is chunk compression applied before embedding storage?",
+  "enrich_map_query": "chunk_compress compress chunks embed pipeline token budget pack slices file_slice",
+  "map_ok": true,
+  "suggested_seed": {
+    "file": "packages/pipeline/chunk_compress.py",
+    "symbol": "",
+    "source": "suggested_seed"
+  },
+  "resolved_seed": {
+    "file": "packages/pipeline/chunk_compress.py",
+    "symbol": "compress_budget",
+    "how": "best_in_file"
+  },
+  "map_top_cards": [
+    {
+      "file": "packages/pipeline/chunk_compress.py",
+      "symbol": "",
+      "loc": "packages/pipeline/chunk_compress.py:1-1",
+      "score": 9.712701160003585
+    },
+    {
+      "file": "packages/graphify/file_slice.py",
+      "symbol": "",
+      "loc": "packages/graphify/file_slice.py:1-1",
+      "score": 6.836755661368068
+    },
+    {
+      "file": "packages/pipeline/chunk_merkle.py",
+      "symbol": "",
+      "loc": "packages/pipeline/chunk_merkle.py:1-1",
+      "score": 4.847313998494306
+    },
+    {
+      "file": "tests/test_memory_budget.py",
+      "symbol": "",
+      "loc": "tests/test_memory_budget.py:1-1",
+      "score": 4.490378117550444
+    },
+    {
+      "file": "scripts/bench_apple_silicon_embed.py",
+      "symbol": "",
+      "loc": "scripts/bench_apple_silicon_embed.py:1-1",
+      "score": 4.255366656710071
+    },
+    {
+      "file": "packages/pipeline/context_nav.py",
+      "symbol": "",
+      "loc": "packages/pipeline/context_nav.py:1-1",
+      "score": 4.2546952174122525
+    },
+    {
+      "file": "tests/test_chunk_merkle.py",
+      "symbol": "",
+      "loc": "tests/test_chunk_merkle.py:1-1",
+      "score": 4.198597354500254
+    },
+    {
+      "file": "docs/budget-allocation-experiment.md",
+      "symbol": "",
+      "loc": "docs/budget-allocation-experiment.md:1-1",
+      "score": 4.0924481466990335
+    },
+    {
+      "file": "scripts/bench_budget_alloc.py",
+      "symbol": "",
+      "loc": "scripts/bench_budget_alloc.py:1-1",
+      "score": 3.9100476714363
+    },
+    {
+      "file": "scripts/bench_mix_seq_ab.py",
+      "symbol": "",
+      "loc": "scripts/bench_mix_seq_ab.py:1-1",
+      "score": 3.771977126598358
+    }
+  ],
+  "arms": {
+    "composite_v1": {
+      "ok": true,
+      "elapsed_s": 0.041,
+      "n_hot": 12,
+      "n_ranked": 12,
+      "hot_ids": [
+        "packages/pipeline/chunk_compress.py::_docstring_from_body",
+        "packages/pipeline/chunk_compress.py::_fit_budget",
+        "packages/pipeline/chunk_compress.py::_idf_weight",
+        "packages/pipeline/chunk_compress.py::_importance_body_lines",
+        "packages/pipeline/chunk_compress.py::_pack_into",
+        "packages/pipeline/chunk_compress.py::_parse_meta_lines",
+        "packages/pipeline/chunk_compress.py::_rare_identifier_fill",
+        "packages/pipeline/chunk_compress.py::_signatures_and_calls",
+        "packages/pipeline/chunk_compress.py::_slice_budget",
+        "packages/pipeline/chunk_compress.py::_trim_to_budget",
+        "packages/pipeline/chunk_compress.py::compress_budget",
+        "packages/pipeline/chunk_compress.py::split_enriched"
+      ],
+      "top15_ids": [
+        "packages/pipeline/chunk_compress.py::compress_budget",
+        "packages/pipeline/chunk_compress.py::_pack_into",
+        "packages/pipeline/chunk_compress.py::_trim_to_budget",
+        "packages/pipeline/chunk_compress.py::_idf_weight",
+        "packages/pipeline/chunk_compress.py::split_enriched",
+        "packages/pipeline/chunk_compress.py::_parse_meta_lines",
+        "packages/pipeline/chunk_compress.py::_signatures_and_calls",
+        "packages/pipeline/chunk_compress.py::_docstring_from_body",
+        "packages/pipeline/chunk_compress.py::_slice_budget",
+        "packages/pipeline/chunk_compress.py::_rare_identifier_fill",
+        "packages/pipeline/chunk_compress.py::_fit_budget",
+        "packages/pipeline/chunk_compress.py::_importance_body_lines"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/chunk_compress.py::compress_budget",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "compress_budget",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 2682
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_pack_into",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_pack_into",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 142
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_trim_to_budget",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_trim_to_budget",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 523
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_idf_weight",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_idf_weight",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 209
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::split_enriched",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "split_enriched",
+          "kind": "function",
+          "score": 0.99,
+          "body_chars": 317
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_parse_meta_lines",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_parse_meta_lines",
+          "kind": "function",
+          "score": 0.99,
+          "body_chars": 1611
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_signatures_and_calls",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_signatures_and_calls",
+          "kind": "function",
+          "score": 0.99,
+          "body_chars": 2227
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_docstring_from_body",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_docstring_from_body",
+          "kind": "function",
+          "score": 0.99,
+          "body_chars": 518
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_slice_budget",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_slice_budget",
+          "kind": "function",
+          "score": 0.99,
+          "body_chars": 121
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_rare_identifier_fill",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_rare_identifier_fill",
+          "kind": "function",
+          "score": 0.99,
+          "body_chars": 1718
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_fit_budget",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_fit_budget",
+          "kind": "function",
+          "score": 0.8598,
+          "body_chars": 693
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_importance_body_lines",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_importance_body_lines",
+          "kind": "function",
+          "score": 0.8598,
+          "body_chars": 1194
+        }
+      ]
+    },
+    "semantic_tracer_fuse": {
+      "ok": true,
+      "elapsed_s": 0.398,
+      "n_hot": 12,
+      "n_ranked": 12,
+      "hot_ids": [
+        "packages/pipeline/chunk_compress.py::_docstring_from_body",
+        "packages/pipeline/chunk_compress.py::_fit_budget",
+        "packages/pipeline/chunk_compress.py::_idf_weight",
+        "packages/pipeline/chunk_compress.py::_importance_body_lines",
+        "packages/pipeline/chunk_compress.py::_pack_into",
+        "packages/pipeline/chunk_compress.py::_parse_meta_lines",
+        "packages/pipeline/chunk_compress.py::_rare_identifier_fill",
+        "packages/pipeline/chunk_compress.py::_signatures_and_calls",
+        "packages/pipeline/chunk_compress.py::_slice_budget",
+        "packages/pipeline/chunk_compress.py::_trim_to_budget",
+        "packages/pipeline/chunk_compress.py::compress_budget",
+        "packages/pipeline/chunk_compress.py::split_enriched"
+      ],
+      "top15_ids": [
+        "packages/pipeline/chunk_compress.py::compress_budget",
+        "packages/pipeline/chunk_compress.py::_pack_into",
+        "packages/pipeline/chunk_compress.py::_trim_to_budget",
+        "packages/pipeline/chunk_compress.py::_idf_weight",
+        "packages/pipeline/chunk_compress.py::_slice_budget",
+        "packages/pipeline/chunk_compress.py::split_enriched",
+        "packages/pipeline/chunk_compress.py::_signatures_and_calls",
+        "packages/pipeline/chunk_compress.py::_docstring_from_body",
+        "packages/pipeline/chunk_compress.py::_rare_identifier_fill",
+        "packages/pipeline/chunk_compress.py::_parse_meta_lines",
+        "packages/pipeline/chunk_compress.py::_fit_budget",
+        "packages/pipeline/chunk_compress.py::_importance_body_lines"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/chunk_compress.py::compress_budget",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "compress_budget",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 2682
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_pack_into",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_pack_into",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 142
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_trim_to_budget",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_trim_to_budget",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 523
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_idf_weight",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_idf_weight",
+          "kind": "function",
+          "score": 0.9904,
+          "body_chars": 209
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_slice_budget",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_slice_budget",
+          "kind": "function",
+          "score": 0.9608,
+          "body_chars": 121
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::split_enriched",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "split_enriched",
+          "kind": "function",
+          "score": 0.9588,
+          "body_chars": 317
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_signatures_and_calls",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_signatures_and_calls",
+          "kind": "function",
+          "score": 0.9554,
+          "body_chars": 2227
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_docstring_from_body",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_docstring_from_body",
+          "kind": "function",
+          "score": 0.9543,
+          "body_chars": 518
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_rare_identifier_fill",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_rare_identifier_fill",
+          "kind": "function",
+          "score": 0.9538,
+          "body_chars": 1718
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_parse_meta_lines",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_parse_meta_lines",
+          "kind": "function",
+          "score": 0.9507,
+          "body_chars": 1611
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_fit_budget",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_fit_budget",
+          "kind": "function",
+          "score": 0.8261,
+          "body_chars": 693
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_importance_body_lines",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_importance_body_lines",
+          "kind": "function",
+          "score": 0.807,
+          "body_chars": 1194
+        }
+      ]
+    },
+    "hyb_fuse_demote_noise_plus": {
+      "ok": true,
+      "elapsed_s": 0.062,
+      "n_hot": 12,
+      "n_ranked": 12,
+      "hot_ids": [
+        "packages/pipeline/chunk_compress.py::_docstring_from_body",
+        "packages/pipeline/chunk_compress.py::_fit_budget",
+        "packages/pipeline/chunk_compress.py::_idf_weight",
+        "packages/pipeline/chunk_compress.py::_importance_body_lines",
+        "packages/pipeline/chunk_compress.py::_pack_into",
+        "packages/pipeline/chunk_compress.py::_parse_meta_lines",
+        "packages/pipeline/chunk_compress.py::_rare_identifier_fill",
+        "packages/pipeline/chunk_compress.py::_signatures_and_calls",
+        "packages/pipeline/chunk_compress.py::_slice_budget",
+        "packages/pipeline/chunk_compress.py::_trim_to_budget",
+        "packages/pipeline/chunk_compress.py::compress_budget",
+        "packages/pipeline/chunk_compress.py::split_enriched"
+      ],
+      "top15_ids": [
+        "packages/pipeline/chunk_compress.py::compress_budget",
+        "packages/pipeline/chunk_compress.py::_pack_into",
+        "packages/pipeline/chunk_compress.py::_slice_budget",
+        "packages/pipeline/chunk_compress.py::_trim_to_budget",
+        "packages/pipeline/chunk_compress.py::_idf_weight",
+        "packages/pipeline/chunk_compress.py::_parse_meta_lines",
+        "packages/pipeline/chunk_compress.py::split_enriched",
+        "packages/pipeline/chunk_compress.py::_signatures_and_calls",
+        "packages/pipeline/chunk_compress.py::_docstring_from_body",
+        "packages/pipeline/chunk_compress.py::_rare_identifier_fill",
+        "packages/pipeline/chunk_compress.py::_fit_budget",
+        "packages/pipeline/chunk_compress.py::_importance_body_lines"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/chunk_compress.py::compress_budget",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "compress_budget",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 2682
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_pack_into",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_pack_into",
+          "kind": "function",
+          "score": 0.8605,
+          "body_chars": 142
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_slice_budget",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_slice_budget",
+          "kind": "function",
+          "score": 0.8486,
+          "body_chars": 121
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_trim_to_budget",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_trim_to_budget",
+          "kind": "function",
+          "score": 0.8077,
+          "body_chars": 523
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_idf_weight",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_idf_weight",
+          "kind": "function",
+          "score": 0.7983,
+          "body_chars": 209
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_parse_meta_lines",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_parse_meta_lines",
+          "kind": "function",
+          "score": 0.7933,
+          "body_chars": 1611
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::split_enriched",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "split_enriched",
+          "kind": "function",
+          "score": 0.7855,
+          "body_chars": 317
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_signatures_and_calls",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_signatures_and_calls",
+          "kind": "function",
+          "score": 0.7852,
+          "body_chars": 2227
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_docstring_from_body",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_docstring_from_body",
+          "kind": "function",
+          "score": 0.773,
+          "body_chars": 518
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_rare_identifier_fill",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_rare_identifier_fill",
+          "kind": "function",
+          "score": 0.7727,
+          "body_chars": 1718
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_fit_budget",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_fit_budget",
+          "kind": "function",
+          "score": 0.7514,
+          "body_chars": 693
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::_importance_body_lines",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "_importance_body_lines",
+          "kind": "function",
+          "score": 0.6699,
+          "body_chars": 1194
+        }
+      ]
+    },
+    "poly_embed": {
+      "ok": true,
+      "elapsed_s": 0.005,
+      "n_hot": 5,
+      "n_ranked": 5,
+      "hot_ids": [
+        "packages/pipeline/chunk_compress.py::BUDGET_PRESETS",
+        "packages/pipeline/chunk_compress.py::MAX_CHARS_DEFAULT",
+        "packages/pipeline/chunk_compress.py::TARGET_SOFT",
+        "packages/pipeline/chunk_compress.py::compress_budget",
+        "packages/pipeline/chunk_compress.py::split_enriched"
+      ],
+      "top15_ids": [
+        "packages/pipeline/chunk_compress.py::compress_budget",
+        "packages/pipeline/chunk_compress.py::BUDGET_PRESETS",
+        "packages/pipeline/chunk_compress.py::split_enriched",
+        "packages/pipeline/chunk_compress.py::MAX_CHARS_DEFAULT",
+        "packages/pipeline/chunk_compress.py::TARGET_SOFT"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/chunk_compress.py::compress_budget",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "compress_budget",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 2682
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::BUDGET_PRESETS",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "BUDGET_PRESETS",
+          "kind": "const",
+          "score": 0.745,
+          "body_chars": 320
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::split_enriched",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "split_enriched",
+          "kind": "function",
+          "score": 0.735,
+          "body_chars": 317
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::MAX_CHARS_DEFAULT",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "MAX_CHARS_DEFAULT",
+          "kind": "const",
+          "score": 0.7,
+          "body_chars": 23
+        },
+        {
+          "id": "packages/pipeline/chunk_compress.py::TARGET_SOFT",
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "TARGET_SOFT",
+          "kind": "const",
+          "score": 0.7,
+          "body_chars": 60
+        }
+      ]
+    }
+  }
+}

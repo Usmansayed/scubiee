@@ -255,13 +255,18 @@ def mcp_frontend_present() -> bool:
 
 
 def mcp_or_client_demand() -> tuple[int, bool]:
-    """Return ``(active_clients, has_demand)`` including live MCP bridges."""
-    try:
-        from pipeline.warm_autoload import mcp_or_client_demand as _demand
+    """Return ``(active_clients, has_demand)`` including live MCP bridges.
 
-        return _demand()
+    Uses this module's ``mcp_frontend_present`` so tests (and callers) that
+    patch it here see the effect; delegating to warm_autoload bypassed it.
+    """
+    try:
+        from pipeline.lifecycle_runtime import active_client_count
+
+        clients = int(active_client_count())
     except Exception:  # noqa: BLE001
-        return 0, False
+        clients = 0
+    return clients, bool(clients > 0 or mcp_frontend_present())
 
 
 def engine_process_alive() -> tuple[bool, str]:
@@ -302,6 +307,70 @@ def engine_process_alive() -> tuple[bool, str]:
     except Exception:  # noqa: BLE001
         pass
     return False, "none"
+
+
+_PREWARM_CPU_LAST: dict[str, float] = {}
+
+
+def _engine_tree_cpu_s() -> float | None:
+    """Total CPU seconds of the engine PID and its children (venv trampoline → real child)."""
+    try:
+        import psutil
+
+        from pipeline.daemon import _read_lock_pid
+
+        pid = int(_read_lock_pid() or 0)
+        if pid <= 0:
+            return None
+        root = psutil.Process(pid)
+        total = 0.0
+        for proc in [root, *root.children(recursive=True)]:
+            try:
+                t = proc.cpu_times()
+                total += float(t.user) + float(t.system)
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+        return total
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def reset_prewarm_progress() -> None:
+    _PREWARM_CPU_LAST.clear()
+
+
+def prewarm_still_progressing(*, now: float | None = None) -> tuple[bool, float | None]:
+    """True when a prewarm past the 45s abort window is slow, not wedged (BETA-15).
+
+    ORT/DirectML cold load takes 60-110s on some Windows machines. A wedged
+    load burns ~no CPU; a slow one keeps burning it. Treat "prewarm stale" as
+    hung only when the engine tree's CPU stopped growing between ticks, or the
+    grace cap (``CTX_WATCHDOG_PREWARM_GRACE_S``, default 180s since first
+    flagged) is used up. The first flagged tick has no baseline and counts as
+    progressing, so the heal waits one extra tick at most.
+    """
+    t = time.monotonic() if now is None else float(now)
+    try:
+        grace_s = float(os.environ.get("CTX_WATCHDOG_PREWARM_GRACE_S") or 180.0)
+    except ValueError:
+        grace_s = 180.0
+    try:
+        min_cpu_s = float(os.environ.get("CTX_WATCHDOG_PREWARM_MIN_CPU_S") or 1.0)
+    except ValueError:
+        min_cpu_s = 1.0
+    cpu = _engine_tree_cpu_s()
+    first = _PREWARM_CPU_LAST.setdefault("first_seen", t)
+    last_cpu = _PREWARM_CPU_LAST.get("cpu")
+    if cpu is not None:
+        _PREWARM_CPU_LAST["cpu"] = cpu
+    if t - first > grace_s:
+        return False, None
+    if cpu is None:
+        return False, None
+    if last_cpu is None:
+        return True, None
+    delta = cpu - float(last_cpu)
+    return delta >= min_cpu_s, round(delta, 2)
 
 
 def watchdog_loop(*, stop_after: float | None = None) -> None:
@@ -374,11 +443,31 @@ def watchdog_loop(*, stop_after: float | None = None) -> None:
                         warm = str((health or {}).get("warm_state") or "").strip().lower()
                         chunks = int((health or {}).get("chunks") or 0)
                         opening = warm in {"warming", "indexing"} and chunks <= 0
+                        loaded = bool((health or {}).get("embedder_loaded"))
                     except Exception:  # noqa: BLE001
                         opening = False
+                        loaded = False
                     if opening:
                         _log("open in progress — not restarting for prewarm age")
                         hung = False
+                    elif loaded:
+                        # "Hung prewarm" means the ORT load wedged. The engine
+                        # itself says the embedder is loaded, so the phase file
+                        # is stale (issue 2: a healthy engine serving saves was
+                        # force-restarted after 3 min of phase=prewarm while
+                        # its embedder had loaded at +30s).
+                        _log("prewarm phase stale but embedder_loaded=True — not restarting")
+                        hung = False
+                if hung:
+                    progressing, cpu_delta = prewarm_still_progressing()
+                    if progressing:
+                        _log(
+                            "prewarm slow but progressing "
+                            f"cpu_delta_s={cpu_delta} — not restarting"
+                        )
+                        hung = False
+                else:
+                    reset_prewarm_progress()
                 if hung:
                     # A 200 from /health does not prove the engine is making
                     # progress — ORT/DML init can keep answering health while
@@ -403,7 +492,13 @@ def watchdog_loop(*, stop_after: float | None = None) -> None:
 
                         contract = enforce_mcp_warm_contract()
                         action = str((contract or {}).get("action") or "")
-                        if action not in {"", "none", "already_standby", "hold_clients"}:
+                        if action not in {
+                            "",
+                            "none",
+                            "already_standby",
+                            "hold_clients",
+                            "hold_bridge",
+                        }:
                             _log(
                                 f"warm contract action={action} "
                                 f"clients={(contract or {}).get('active_clients')}"
@@ -496,6 +591,20 @@ def watchdog_loop(*, stop_after: float | None = None) -> None:
                 hung_prewarm = bool(hung_prewarm_should_abort())
             except Exception:  # noqa: BLE001
                 hung_prewarm = False
+            if pid_alive and hung_prewarm:
+                # Slow ORT/DML load past the 45s window is not a wedge while the
+                # engine keeps burning CPU; restarting it just restarts the load.
+                progressing, cpu_delta = prewarm_still_progressing()
+                if progressing:
+                    _log(
+                        "prewarm slow but progressing "
+                        f"cpu_delta_s={cpu_delta} alive_src={alive_src} — not restarting"
+                    )
+                    fails = 0
+                    time.sleep(interval)
+                    continue
+            elif not pid_alive:
+                reset_prewarm_progress()
             if pid_alive and (
                 _engine_busy_indexing()
                 or (not hung_prewarm and _engine_busy_embed_prewarm())
@@ -534,6 +643,12 @@ def watchdog_loop(*, stop_after: float | None = None) -> None:
             fail_limit = (
                 ALIVE_PID_FAILS_BEFORE_RESTART if pid_alive else FAILS_BEFORE_RESTART
             )
+            if stale_prewarm and pid_alive and prewarm_still_progressing()[0]:
+                # Same slow-vs-wedged gate as above for the read_phase stale path.
+                _log(f"stale prewarm but engine CPU still moving alive_src={alive_src}")
+                fails = 0
+                time.sleep(interval)
+                continue
             if stale_prewarm and pid_alive:
                 _log(
                     f"stale prewarm — force heal now alive_src={alive_src}"
@@ -541,6 +656,22 @@ def watchdog_loop(*, stop_after: float | None = None) -> None:
                 fails = fail_limit
             else:
                 fails += 1
+                # Only the first recovery after a healthy stretch (backoff_i==0)
+                # skips the wait, so a crash loop keeps the normal pacing.
+                if not pid_alive and fails < fail_limit and backoff_i == 0:
+                    # No PID, no lock, no port listener: the engine is gone, not
+                    # lagging. With a live bridge/client waiting, start now
+                    # instead of burning another 15s tick (BETA-03 / BETA-08).
+                    try:
+                        _c_now, demand_now = mcp_or_client_demand()
+                    except Exception:  # noqa: BLE001
+                        demand_now = False
+                    if demand_now:
+                        _log(
+                            f"engine dead with MCP demand clients={_c_now} — "
+                            "recover now (no fail-count wait)"
+                        )
+                        fails = fail_limit
             _log(
                 f"health fail count={fails}/{fail_limit} "
                 f"pid_alive={pid_alive} src={alive_src}"
@@ -630,6 +761,8 @@ def watchdog_loop(*, stop_after: float | None = None) -> None:
                 _log(f"force restart exception: {exc}")
                 result = {"ok": False, "error": str(exc)}
             _log(f"restart result={result.get('ok')} {result.get('error') or ''}".strip())
+            # New engine, new prewarm: its grace window starts fresh.
+            reset_prewarm_progress()
             state = _load_watchdog_state()
             _update_watchdog_state(
                 restart_count=int(state.get("restart_count") or 0) + 1,
@@ -729,7 +862,7 @@ def start_watchdog(*, orphan: bool = False) -> dict[str, Any]:
     }
 
 
-def stop_watchdog() -> dict[str, Any]:
+def stop_watchdog(*, reason: str = "stop_watchdog") -> dict[str, Any]:
     path = watchdog_pid_path()
     pid = None
     if path.is_file():
@@ -742,8 +875,11 @@ def stop_watchdog() -> dict[str, Any]:
             if os.name == "nt":
                 from pipeline.process_job import taskkill_silent
 
-                taskkill_silent(int(pid), tree=False)
+                taskkill_silent(int(pid), tree=False, reason=reason)
             else:
+                from pipeline.engine_log import note_stop
+
+                note_stop("watchdog", pid, reason=reason, method="SIGTERM")
                 os.kill(pid, 15)
         except Exception:  # noqa: BLE001
             pass

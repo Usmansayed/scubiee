@@ -1,0 +1,1755 @@
+{
+  "protocol": "locate_calibration_corpus_v1",
+  "phase": "A",
+  "created": "2026-09-06",
+  "framework": "docs/superpowers/specs/2026-09-06-locate-force-routing-research-framework.md",
+  "north_star": "Minimize total_proxy (result tokens + round-trip tax) without under/over-use; integrate with Grep/Glob.",
+  "n_cases": 65,
+  "n_with_gold": 65,
+  "taxonomy_counts": {
+    "exact_edit": 9,
+    "soft_understand": 49,
+    "rematerialize": 2,
+    "literal_needle": 3,
+    "name_path": 1,
+    "known_seed": 1
+  },
+  "baseline_policy": "current_ship_GATE_MCP_as_of_corpus_freeze",
+  "review_notes": [
+    "taxonomy_confidence=heuristic needs human spot-check before Phase B scoring claims",
+    "kiro_simple/complex prompts may be abbreviated \u2014 expand from harness if Phase C needs full text",
+    "anchors added for over-use (needle/name) and known_seed controls"
+  ],
+  "cases": [
+    {
+      "id": "blind20_t01",
+      "source": "blind_map_pack_20",
+      "family": "session-isolation",
+      "task": "Fix a bug where two parallel agent chats share recall/pins in one MCP process.",
+      "enrich_query": "session isolation require_session_id fail closed MCP shared process bucket session_store put_span work_session rematerialize pins recall per connection CTX_MCP_SESSION_ID",
+      "taxonomy": "exact_edit",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map_or_pack",
+        "next": "pack_if_seed_ok",
+        "native": "span_read_locs"
+      },
+      "must_files": [
+        "packages/pipeline/session_isolation.py",
+        "packages/pipeline/session_store.py",
+        "packages/pipeline/work_session.py"
+      ],
+      "must_symbols": [
+        "packages/pipeline/session_isolation.py::effective_session_id",
+        "packages/pipeline/session_isolation.py::_session_isolate_enabled",
+        "packages/pipeline/session_store.py::put_span"
+      ],
+      "should_files": [
+        "packages/pipeline/mcp_bridge_session.py",
+        "packages/pipeline/mcp_locate.py"
+      ],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "blind20_t02",
+      "source": "blind_map_pack_20",
+      "family": "install-cursor-surface",
+      "task": "Understand how scubiee connect wires Cursor mcp.json autoApprove and project permissions.",
+      "enrich_query": "scubiee connect install_tool write_project_tool_surface apply_permissions_to_repo_tool_surface Cursor mcp.json autoApprove permissions.json mcpAllowlist write_project_gate_rules AGENTS.md GATE",
+      "taxonomy": "exact_edit",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map_or_pack",
+        "next": "pack_if_seed_ok",
+        "native": "span_read_locs"
+      },
+      "must_files": [
+        "packages/pipeline/rules_installer.py",
+        "packages/pipeline/mcp_permissions.py"
+      ],
+      "must_symbols": [
+        "packages/pipeline/rules_installer.py::install_tool",
+        "packages/pipeline/rules_installer.py::write_project_tool_surface",
+        "packages/pipeline/rules_installer.py::write_project_gate_rules",
+        "packages/pipeline/mcp_permissions.py::apply_permissions_to_repo_tool_surface"
+      ],
+      "should_files": [
+        "packages/pipeline/tool_registry.py"
+      ],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "blind20_t03",
+      "source": "blind_map_pack_20",
+      "family": "map-pack-ladder",
+      "task": "Explain how map suggests a seed and pack builds the lean heatmap with bodies.",
+      "enrich_query": "map_context suggested_seed pack_context mode lean heatmap chain hot bodies cards loc rank expand_context collect_hot_context locate ladder",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/mcp_locate.py",
+        "packages/pipeline/context_trace.py"
+      ],
+      "must_symbols": [
+        "packages/pipeline/mcp_locate.py::map_context_impl",
+        "packages/pipeline/mcp_locate.py::pack_context_impl"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "blind20_t04",
+      "source": "blind_map_pack_20",
+      "family": "composite-tracer",
+      "task": "Where does composite_v1 decide membership then rank heat with DFG boost?",
+      "enrich_query": "composite_v1 membership edges best_first expand apply_rank_composite DFG PASSES_DATA_TO sink demotion poly foreign slice_mask trace_lab",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/trace_lab/composite_v1.py"
+      ],
+      "must_symbols": [
+        "packages/trace_lab/composite_v1.py::apply_rank_composite"
+      ],
+      "should_files": [
+        "packages/trace_lab/engine/best_first.py"
+      ],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "blind20_t05",
+      "source": "blind_map_pack_20",
+      "family": "embed-filter-noise",
+      "task": "How do we demote logger/analytics noise on a structural island without dropping bridges?",
+      "enrich_query": "apply_embed_keep_drop demote_noise_plus SITE_EFFECTS bridge names path preserve hot_floor EmbedField affinities poly_embed hybrid",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/trace_lab/embed_filter.py",
+        "packages/trace_lab/poly_embed.py"
+      ],
+      "must_symbols": [
+        "packages/trace_lab/embed_filter.py::apply_embed_keep_drop"
+      ],
+      "should_files": [
+        "packages/trace_lab/semantic_hybrid.py"
+      ],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "blind20_t06",
+      "source": "blind_map_pack_20",
+      "family": "semantic-comparator",
+      "task": "How does the semantic tracer use query/seed embeddings as edge expansion priority?",
+      "enrich_query": "SemanticComparator semantic_best_first_expand query seed affinity trace centroid refresh hub_penalty semantic_tracer_fuse edge_sim",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/trace_lab/semantic_compare.py",
+        "packages/trace_lab/engine/semantic_best_first.py",
+        "packages/trace_lab/semantic_tracer_fuse.py"
+      ],
+      "must_symbols": [
+        "packages/trace_lab/semantic_tracer_fuse.py::run_semantic_tracer_fuse"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "blind20_t07",
+      "source": "blind_map_pack_20",
+      "family": "cli-pack",
+      "task": "Implement or debug the scubiee pack CLI flag path for seed-file and lean mode.",
+      "enrich_query": "scubiee pack CLI argparse seed-file seed-symbol mode lean full policy strict broad pack_context command entry",
+      "taxonomy": "exact_edit",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map_or_pack",
+        "next": "pack_if_seed_ok",
+        "native": "span_read_locs"
+      },
+      "must_files": [
+        "packages/pipeline/__main__.py",
+        "packages/pipeline/locate_cli.py"
+      ],
+      "must_symbols": [
+        "packages/pipeline/__main__.py::cmd_pack",
+        "packages/pipeline/locate_cli.py::cli_pack"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "blind20_t08",
+      "source": "blind_map_pack_20",
+      "family": "index-publish",
+      "task": "Index publication missing or checksum invalid \u2014 find refuse-mixed-generation and republish path.",
+      "enrich_query": "Index publication missing checksum-invalid refusing mixed generation publish merkle chunks sync init scubiee index",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/engine.py",
+        "packages/pipeline/artifact_guard.py"
+      ],
+      "must_symbols": [],
+      "should_files": [
+        "packages/pipeline/ce_service.py"
+      ],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "blind20_t09",
+      "source": "blind_map_pack_20",
+      "family": "embed-backend",
+      "task": "How does embedding choose DirectML vs CUDA vs CPU and cache coderank vectors?",
+      "enrich_query": "EmbedField FastEmbed CodeRankEmbed DmlExecutionProvider CUDA cache coderank.jsonl batch providers embedder progress",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/embedder.py",
+        "packages/pipeline/accel.py"
+      ],
+      "must_symbols": [],
+      "should_files": [
+        "packages/trace_lab/embed_field.py"
+      ],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "blind20_t10",
+      "source": "blind_map_pack_20",
+      "family": "gate-rules",
+      "task": "Where is the managed-repo GATE text written into AGENTS.md and steering files?",
+      "enrich_query": "write_project_gate_rules GATE 1 project_id AGENTS.md scubiee.md steering managed enroll",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/rules_installer.py"
+      ],
+      "must_symbols": [
+        "packages/pipeline/rules_installer.py::write_project_gate_rules"
+      ],
+      "should_files": [
+        "packages/pipeline/gate_cli.py"
+      ],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "blind20_t11",
+      "source": "blind_map_pack_20",
+      "family": "mcp-tool-schema",
+      "task": "Add or inspect MCP tool registration for pack_context and map_context schemas.",
+      "enrich_query": "pack_context map_context MCP tool register FastMCP server instructions hybrid experiment CTX_MCP_EXPERIMENT",
+      "taxonomy": "exact_edit",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map_or_pack",
+        "next": "pack_if_seed_ok",
+        "native": "span_read_locs"
+      },
+      "must_files": [
+        "packages/pipeline/mcp_locate.py"
+      ],
+      "must_symbols": [
+        "packages/pipeline/mcp_locate.py::map_context_impl",
+        "packages/pipeline/mcp_locate.py::pack_context_impl"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "blind20_t12",
+      "source": "blind_map_pack_20",
+      "family": "expand-hop",
+      "task": "Missing callee hop after pack \u2014 how does expand_context direction callees with bodies work?",
+      "enrich_query": "expand_context direction callees callers effects broad with_bodies node id delta collect_hot_context",
+      "taxonomy": "exact_edit",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map_or_pack",
+        "next": "pack_if_seed_ok",
+        "native": "span_read_locs"
+      },
+      "must_files": [
+        "packages/pipeline/mcp_locate.py"
+      ],
+      "must_symbols": [
+        "packages/pipeline/mcp_locate.py::expand_context_impl"
+      ],
+      "should_files": [
+        "packages/pipeline/context_trace.py"
+      ],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "blind20_t13",
+      "source": "blind_map_pack_20",
+      "family": "permissions-allowlist",
+      "task": "Debug mcp-permissions.json allowlist merge when installing a host tool surface.",
+      "enrich_query": "mcp-permissions.json mcpAllowlist apply_permissions write_project_tool_surface install permissions merge allowlist",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/mcp_permissions.py"
+      ],
+      "must_symbols": [
+        "packages/pipeline/mcp_permissions.py::apply_permissions_to_repo_tool_surface"
+      ],
+      "should_files": [
+        "packages/pipeline/rules_installer.py"
+      ],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "blind20_t14",
+      "source": "blind_map_pack_20",
+      "family": "graphify-ast",
+      "task": "How does graphify AST graph get built and fed into polytrace / composite edges?",
+      "enrich_query": "graphify build_graphify_graph AstTraceGraph polytrace compose_pdg edges_from_graphify call graph",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/trace_lab/graphify_layer.py"
+      ],
+      "must_symbols": [],
+      "should_files": [
+        "packages/pipeline/context_trace.py"
+      ],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "blind20_t15",
+      "source": "blind_map_pack_20",
+      "family": "lsp-dispatch",
+      "task": "Where do LSP dispatch and override edges affect polytrace keep/drop for handlers?",
+      "enrich_query": "LspIndex dispatch overrides build_lsp_index polytrace used_by handle lookup registry",
+      "taxonomy": "rematerialize",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "workspace_or_expand_handle",
+        "next": "none",
+        "native": "none"
+      },
+      "must_files": [
+        "packages/trace_lab/lsp_index.py"
+      ],
+      "must_symbols": [],
+      "should_files": [
+        "packages/trace_lab/polytrace.py"
+      ],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "blind20_t16",
+      "source": "blind_map_pack_20",
+      "family": "session-store-files",
+      "task": "Trace persistence of session_store.json and work_session.json under .scubiee/sessions.",
+      "enrich_query": "session_store.json work_session.json .scubiee/sessions put_span lock rematerialize persist bucket",
+      "taxonomy": "rematerialize",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "workspace_or_expand_handle",
+        "next": "none",
+        "native": "none"
+      },
+      "must_files": [
+        "packages/pipeline/session_store.py",
+        "packages/pipeline/work_session.py"
+      ],
+      "must_symbols": [
+        "packages/pipeline/session_store.py::put_span"
+      ],
+      "should_files": [
+        "packages/pipeline/session_isolation.py"
+      ],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "blind20_t17",
+      "source": "blind_map_pack_20",
+      "family": "status-health",
+      "task": "What does scubiee status / gate report for managed health vs locate readiness?",
+      "enrich_query": "scubiee status gate managed health ok chunks merkle engine server project_id enroll",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/mcp_locate.py",
+        "packages/pipeline/gate_cli.py"
+      ],
+      "must_symbols": [],
+      "should_files": [
+        "packages/pipeline/engine.py",
+        "packages/pipeline/__main__.py"
+      ],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "blind20_t18",
+      "source": "blind_map_pack_20",
+      "family": "teleport-ablation",
+      "task": "Why was strict embed teleport left off by default in semantic_tracer_fuse?",
+      "enrich_query": "apply_strict_embed_teleport with_teleport semantic_tracer_fuse min_sem hub_penalty FN recovery must_not",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/trace_lab/semantic_teleport.py",
+        "packages/trace_lab/semantic_tracer_fuse.py"
+      ],
+      "must_symbols": [
+        "packages/trace_lab/semantic_teleport.py::apply_strict_embed_teleport"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "blind20_t19",
+      "source": "blind_map_pack_20",
+      "family": "prod-eval-enrich",
+      "task": "How does production-like verify enrich a paragraph with two seed code chunks?",
+      "enrich_query": "_enrich_query Seed code anchors seed_chunks multi-seed merge_heatmaps prod_eval verify_prod",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/trace_lab/prod_eval.py"
+      ],
+      "must_symbols": [
+        "packages/trace_lab/prod_eval.py::_enrich_query"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "blind20_t20",
+      "source": "blind_map_pack_20",
+      "family": "hybrid-register",
+      "task": "Where are hybrid combo arms registered into compile_bundle with_embed_power?",
+      "enrich_query": "register_hybrid_arms HYBRID_SPECS hyb_fuse_demote_noise_plus compile_bundle with_embed_power strategies bind_hybrid_filter",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/trace_lab/semantic_hybrid.py",
+        "packages/trace_lab/strategies.py"
+      ],
+      "must_symbols": [
+        "packages/trace_lab/semantic_hybrid.py::register_hybrid_arms"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "multipack_u01",
+      "source": "blind_multipack_20",
+      "family": "merkle-incremental",
+      "task": "How does incremental sync detect dirty paths via merkle and patch the graph?",
+      "enrich_query": "incremental sync merkle dirty paths patch_and_save_graph re-embed changed chunks IndexConfirmRequired sync_loop chunk_merkle",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/incremental.py",
+        "packages/pipeline/chunk_merkle.py"
+      ],
+      "must_symbols": [
+        "packages/pipeline/incremental.py::incremental_sync",
+        "packages/pipeline/chunk_merkle.py::diff_chunk_records"
+      ],
+      "should_files": [
+        "packages/pipeline/store.py",
+        "packages/conductor/graphify_retriever.py",
+        "packages/pipeline/sync_loop.py"
+      ],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "multipack_u02",
+      "source": "blind_multipack_20",
+      "family": "chunk-compress",
+      "task": "Where is chunk compression applied before embedding storage?",
+      "enrich_query": "chunk_compress compress chunks embed pipeline token budget pack slices file_slice",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/chunk_compress.py"
+      ],
+      "must_symbols": [
+        "packages/pipeline/chunk_compress.py::compress_chunk",
+        "packages/pipeline/chunk_compress.py::resolve_compress_mode"
+      ],
+      "should_files": [
+        "packages/pipeline/indexer.py"
+      ],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "multipack_u03",
+      "source": "blind_multipack_20",
+      "family": "mcp-bridge",
+      "task": "How does the MCP bridge attach a session id for host connections?",
+      "enrich_query": "mcp_bridge_session bridge host connection session_id CTX_MCP_SESSION_ID attach isolate",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/mcp_bridge_session.py",
+        "packages/pipeline/mcp_bridge.py"
+      ],
+      "must_symbols": [
+        "packages/pipeline/mcp_bridge_session.py::ChildWorker._child_env",
+        "packages/pipeline/mcp_bridge_session.py::SessionRegistry"
+      ],
+      "should_files": [
+        "packages/pipeline/session_isolation.py"
+      ],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "multipack_u04",
+      "source": "blind_multipack_20",
+      "family": "fair-schedule",
+      "task": "Debug fair scheduling / fairness when multiple locate jobs compete.",
+      "enrich_query": "fair_schedule FairSchedule queue fairness locate jobs throttle resources",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/resources.py"
+      ],
+      "must_symbols": [
+        "packages/pipeline/resources.py::ResourceManager.throttle",
+        "packages/pipeline/resources.py::ResourceManager.run_job"
+      ],
+      "should_files": [
+        "packages/pipeline/ce_service.py",
+        "packages/pipeline/engine.py"
+      ],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "multipack_u05",
+      "source": "blind_multipack_20",
+      "family": "memory-governor",
+      "task": "How does the memory governor decide to pause or limit heavy embed work?",
+      "enrich_query": "memory_governor pause limit embed RSS pressure resources status halt",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/memory_governor.py"
+      ],
+      "must_symbols": [
+        "packages/pipeline/memory_governor.py::MemoryGovernor.maybe_demote_idle",
+        "packages/pipeline/memory_governor.py::MemoryGovernor.apply_tier"
+      ],
+      "should_files": [
+        "packages/pipeline/sync_loop.py",
+        "packages/pipeline/engine.py"
+      ],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "multipack_u06",
+      "source": "blind_multipack_20",
+      "family": "doctor-certify",
+      "task": "What does scubiee doctor / certify check for install health?",
+      "enrich_query": "cmd_doctor cmd_certify doctor certify health package accel providers install",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/__main__.py",
+        "packages/pipeline/certify.py"
+      ],
+      "must_symbols": [
+        "packages/pipeline/__main__.py::cmd_doctor",
+        "packages/pipeline/__main__.py::cmd_certify"
+      ],
+      "should_files": [
+        "packages/pipeline/accel.py"
+      ],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "multipack_u07",
+      "source": "blind_multipack_20",
+      "family": "disconnect-tool",
+      "task": "How does disconnect remove a host tool surface and permissions?",
+      "enrich_query": "cmd_disconnect disconnect_tool remove mcp.json permissions surface uninstall host",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/__main__.py"
+      ],
+      "must_symbols": [
+        "packages/pipeline/__main__.py::cmd_disconnect"
+      ],
+      "should_files": [
+        "packages/pipeline/cli_ui.py"
+      ],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "multipack_u08",
+      "source": "blind_multipack_20",
+      "family": "vector-index",
+      "task": "How does VectorIndex retrieve neighbors for vague map ranking?",
+      "enrich_query": "VectorIndex retrieve neighbors vague_eval map ranking dense embed affinities",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/trace_lab/vector_index.py"
+      ],
+      "must_symbols": [
+        "packages/trace_lab/vector_index.py::VectorIndex",
+        "packages/trace_lab/vector_index.py::hybrid_map_scores"
+      ],
+      "should_files": [
+        "packages/trace_lab/vague_eval.py",
+        "packages/trace_lab/embed_field.py"
+      ],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "multipack_u09",
+      "source": "blind_multipack_20",
+      "family": "recall-belt",
+      "task": "Where is recall_belt / recall_fuse wired as a non-LLM tracer arm?",
+      "enrich_query": "recall_belt recall_fuse bind_recall_belt prod_eval tracers non-LLM heatmap",
+      "taxonomy": "exact_edit",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map_or_pack",
+        "next": "pack_if_seed_ok",
+        "native": "span_read_locs"
+      },
+      "must_files": [
+        "packages/trace_lab/recall_belt.py"
+      ],
+      "must_symbols": [
+        "packages/trace_lab/recall_belt.py::bind_recall_belt",
+        "packages/trace_lab/recall_belt.py::recall_fuse"
+      ],
+      "should_files": [
+        "packages/trace_lab/prod_eval.py",
+        "packages/trace_lab/verify_board.py"
+      ],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "multipack_u10",
+      "source": "blind_multipack_20",
+      "family": "metadata-inject",
+      "task": "How does metadata injection enrich chunks before indexing?",
+      "enrich_query": "inject_metadata build_chunk_meta ChunkMeta render enrich_repo chunk_repo_from_ir",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/enrich/__init__.py",
+        "packages/metadata/__init__.py"
+      ],
+      "must_symbols": [
+        "packages/enrich/__init__.py::inject_metadata",
+        "packages/enrich/__init__.py::enrich_repo"
+      ],
+      "should_files": [
+        "packages/pipeline/indexer.py"
+      ],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "multipack_u11",
+      "source": "blind_multipack_20",
+      "family": "host-env-signals",
+      "task": "Trace loadhost_env_signals / host_env_signals used by pack or locate.",
+      "enrich_query": "host_env_signals loadhost_env_signals pack locate environment host signals",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/host_workspace.py"
+      ],
+      "must_symbols": [
+        "packages/pipeline/host_workspace.py::host_env_signals"
+      ],
+      "should_files": [
+        "packages/pipeline/session_isolation.py"
+      ],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "multipack_u12",
+      "source": "blind_multipack_20",
+      "family": "dashboard-serve",
+      "task": "How does scubiee dashboard / serve start the local UI and engine?",
+      "enrich_query": "cmd_dashboard cmd_serve dashboard serve local UI engine HTTP",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/__main__.py"
+      ],
+      "must_symbols": [
+        "packages/pipeline/__main__.py::cmd_dashboard",
+        "packages/pipeline/__main__.py::cmd_serve"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "multipack_u13",
+      "source": "blind_multipack_20",
+      "family": "wipe-halt",
+      "task": "What does wipe vs halt do to runtime state and indexes?",
+      "enrich_query": "cmd_wipe cmd_halt wipe halt runtime index unlock stop resources",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/__main__.py",
+        "packages/pipeline/wipe.py"
+      ],
+      "must_symbols": [
+        "packages/pipeline/__main__.py::cmd_wipe",
+        "packages/pipeline/__main__.py::cmd_halt"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "multipack_u14",
+      "source": "blind_multipack_20",
+      "family": "upgrade-flow",
+      "task": "Walk the one-command upgrade: package swap, migrate, MCP rebind.",
+      "enrich_query": "cmd_upgrade upgrade package swap migrate MCP rebind DiffPlan already_latest",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/__main__.py"
+      ],
+      "must_symbols": [
+        "packages/pipeline/__main__.py::cmd_upgrade"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "multipack_u15",
+      "source": "blind_multipack_20",
+      "family": "locate-cli-expand",
+      "task": "Implement or debug scubiee expand CLI after lean pack missing hop.",
+      "enrich_query": "cli_expand cmd_expand locate_cli direction callees with_bodies expand after pack",
+      "taxonomy": "exact_edit",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map_or_pack",
+        "next": "pack_if_seed_ok",
+        "native": "span_read_locs"
+      },
+      "must_files": [
+        "packages/pipeline/locate_cli.py",
+        "packages/pipeline/__main__.py"
+      ],
+      "must_symbols": [
+        "packages/pipeline/locate_cli.py::cli_expand",
+        "packages/pipeline/__main__.py::cmd_expand"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "multipack_u16",
+      "source": "blind_multipack_20",
+      "family": "corpus-fingerprint",
+      "task": "Where is corpus fingerprint computed for composite edge cache invalidation?",
+      "enrich_query": "corpus_fingerprint composite edges cache invalidation trace_lab extract_nodes",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/trace_lab/corpus.py",
+        "packages/trace_lab/composite_v1.py"
+      ],
+      "must_symbols": [
+        "packages/trace_lab/corpus.py::corpus_fingerprint",
+        "packages/trace_lab/corpus.py::extract_nodes"
+      ],
+      "should_files": [
+        "packages/pipeline/context_trace.py"
+      ],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "multipack_u17",
+      "source": "blind_multipack_20",
+      "family": "failure-report",
+      "task": "How does build_failure_report summarize false negatives on verify boards?",
+      "enrich_query": "build_failure_report failure_report false_negatives explored_nodes hot_count verify",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/trace_lab/failure_report.py"
+      ],
+      "must_symbols": [
+        "packages/trace_lab/failure_report.py::build_failure_report"
+      ],
+      "should_files": [
+        "packages/trace_lab/prod_eval.py"
+      ],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "multipack_u18",
+      "source": "blind_multipack_20",
+      "family": "jedi-callgraph",
+      "task": "How does Jedi enrich the call graph used by composite membership?",
+      "enrich_query": "build_enriched_call_graph with_jedi Jedi call_graph TypedEdge composite membership",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/trace_lab/facts/call_graph.py",
+        "packages/trace_lab/composite_v1.py"
+      ],
+      "must_symbols": [
+        "packages/trace_lab/facts/call_graph.py::build_enriched_call_graph"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "multipack_u19",
+      "source": "blind_multipack_20",
+      "family": "dfg-edges",
+      "task": "Where are DFG PASSES_DATA_TO edges built and consumed in ranking?",
+      "enrich_query": "build_dfg_edges PASSES_DATA_TO dfg_pairs apply_rank_composite dataflow",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/trace_lab/facts/dfg.py",
+        "packages/trace_lab/composite_v1.py"
+      ],
+      "must_symbols": [
+        "packages/trace_lab/facts/dfg.py::build_dfg_edges"
+      ],
+      "should_files": [
+        "packages/trace_lab/engine/best_first.py"
+      ],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "multipack_u20",
+      "source": "blind_multipack_20",
+      "family": "unlock-tool",
+      "task": "How does unlock_tool clear a paused or locked MCP tool permission?",
+      "enrich_query": "cmd_unlock_tool unlock_tool permissions paused locked mcp allowlist",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/__main__.py"
+      ],
+      "must_symbols": [
+        "packages/pipeline/__main__.py::cmd_unlock_tool"
+      ],
+      "should_files": [
+        "packages/pipeline/wipe.py",
+        "packages/pipeline/cli_ui.py"
+      ],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "kiro_simple_P01_connect_permissions",
+      "source": "kiro_mcp_ab_simple",
+      "family": "kiro_locate",
+      "task": "P01 connect permissions",
+      "enrich_query": "cmd_connect write_project_tool_surface apply_permissions_to_repo_tool_surface PHASE_LOCATE_TOOLS",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/__main__.py",
+        "packages/pipeline/rules_installer.py",
+        "packages/pipeline/mcp_permissions.py"
+      ],
+      "must_symbols": [
+        "cmd_connect",
+        "write_project_tool_surface",
+        "apply_permissions_to_repo_tool_surface",
+        "PHASE_LOCATE_TOOLS"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "prompt may be long; use id if empty enrich",
+      "baseline_frozen": true
+    },
+    {
+      "id": "kiro_simple_P02_pack_context",
+      "source": "kiro_mcp_ab_simple",
+      "family": "kiro_locate",
+      "task": "P02 pack context",
+      "enrich_query": "run_pack_context run_collect_hot heatmap_to_cards pack_context_impl",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/context_trace.py",
+        "packages/pipeline/mcp_locate.py"
+      ],
+      "must_symbols": [
+        "run_pack_context",
+        "run_collect_hot",
+        "heatmap_to_cards",
+        "pack_context_impl"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "prompt may be long; use id if empty enrich",
+      "baseline_frozen": true
+    },
+    {
+      "id": "kiro_simple_P05_gate_rules",
+      "source": "kiro_mcp_ab_simple",
+      "family": "kiro_locate",
+      "task": "P05 gate rules",
+      "enrich_query": "write_project_gate_rules managed_gate_usage_short write_project_tool_surface",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/rules_installer.py"
+      ],
+      "must_symbols": [
+        "write_project_gate_rules",
+        "managed_gate_usage_short",
+        "write_project_tool_surface"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "prompt may be long; use id if empty enrich",
+      "baseline_frozen": true
+    },
+    {
+      "id": "kiro_simple_P09_uv_tool_unlock",
+      "source": "kiro_mcp_ab_simple",
+      "family": "kiro_locate",
+      "task": "P09 uv tool unlock",
+      "enrich_query": "prepare_uv_tool_directory_for_swap release_scubiee_process_locks stop_all_context_engine_processes",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/process_control.py"
+      ],
+      "must_symbols": [
+        "prepare_uv_tool_directory_for_swap",
+        "release_scubiee_process_locks",
+        "stop_all_context_engine_processes"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "prompt may be long; use id if empty enrich",
+      "baseline_frozen": true
+    },
+    {
+      "id": "kiro_simple_P10_auth_fixture",
+      "source": "kiro_mcp_ab_simple",
+      "family": "kiro_locate",
+      "task": "P10 auth fixture",
+      "enrich_query": "authenticate extract_bearer JwtService.verify decode UserRepository.resolve",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "fixtures/trace-lab/app/middleware/auth.py",
+        "fixtures/trace-lab/app/services/jwt_service.py",
+        "fixtures/trace-lab/app/utils/token.py",
+        "fixtures/trace-lab/app/repositories/user_repo.py"
+      ],
+      "must_symbols": [
+        "authenticate",
+        "extract_bearer",
+        "JwtService.verify",
+        "decode",
+        "UserRepository.resolve"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "prompt may be long; use id if empty enrich",
+      "baseline_frozen": true
+    },
+    {
+      "id": "kiro_complex_C01_connect_permissions_gate",
+      "source": "kiro_mcp_ab_complex",
+      "family": "multi-hop",
+      "task": "C01 connect permissions gate",
+      "enrich_query": "cmd_connect write_project_tool_surface apply_permissions_to_repo_tool_surface write_project_gate_rules PHASE_LOCATE_TOOLS",
+      "taxonomy": "exact_edit",
+      "taxonomy_confidence": "manual",
+      "hypothesis_policy": {
+        "lead": "scubiee_map_or_pack",
+        "next": "pack_if_seed_ok",
+        "native": "span_read_locs"
+      },
+      "must_files": [
+        "packages/pipeline/__main__.py",
+        "packages/pipeline/rules_installer.py",
+        "packages/pipeline/mcp_permissions.py"
+      ],
+      "must_symbols": [
+        "cmd_connect",
+        "write_project_tool_surface",
+        "apply_permissions_to_repo_tool_surface",
+        "write_project_gate_rules",
+        "PHASE_LOCATE_TOOLS"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "kiro_complex_C02_pack_expand_ladder",
+      "source": "kiro_mcp_ab_complex",
+      "family": "multi-hop",
+      "task": "C02 pack expand ladder",
+      "enrich_query": "run_pack_context run_collect_hot heatmap_to_cards pack_context_impl expand_context_impl",
+      "taxonomy": "exact_edit",
+      "taxonomy_confidence": "manual",
+      "hypothesis_policy": {
+        "lead": "scubiee_map_or_pack",
+        "next": "pack_if_seed_ok",
+        "native": "span_read_locs"
+      },
+      "must_files": [
+        "packages/pipeline/context_trace.py",
+        "packages/pipeline/mcp_locate.py"
+      ],
+      "must_symbols": [
+        "run_pack_context",
+        "run_collect_hot",
+        "heatmap_to_cards",
+        "pack_context_impl",
+        "expand_context_impl"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "kiro_complex_C03_composite_vs_poly_escape",
+      "source": "kiro_mcp_ab_complex",
+      "family": "policy",
+      "task": "C03 composite vs poly escape",
+      "enrich_query": "_trace_engine bind_composite_v1 run_pack_context run_composite_v1",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/context_trace.py",
+        "packages/trace_lab/composite_v1.py"
+      ],
+      "must_symbols": [
+        "_trace_engine",
+        "bind_composite_v1",
+        "run_pack_context",
+        "run_composite_v1"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "kiro_complex_C04_graphify_store_vs_rebuild",
+      "source": "kiro_mcp_ab_complex",
+      "family": "multi-hop",
+      "task": "C04 graphify store vs rebuild",
+      "enrich_query": "load_store_graphify_graph _load_repo _want_graphify",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/context_trace.py",
+        "packages/trace_lab/graphify_layer.py"
+      ],
+      "must_symbols": [
+        "load_store_graphify_graph",
+        "_load_repo",
+        "_want_graphify"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "kiro_complex_C05_incremental_merkle_confirm",
+      "source": "kiro_mcp_ab_complex",
+      "family": "multi-hop",
+      "task": "C05 incremental merkle confirm",
+      "enrich_query": "patch_and_save_graph IndexConfirmRequired",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/incremental.py",
+        "packages/pipeline/sync_loop.py"
+      ],
+      "must_symbols": [
+        "patch_and_save_graph",
+        "IndexConfirmRequired"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "kiro_complex_C06_session_isolation_parallel",
+      "source": "kiro_mcp_ab_complex",
+      "family": "cross-cutting",
+      "task": "C06 session isolation parallel",
+      "enrich_query": "load_store save_store _resolve_session persist_trace",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/session_store.py",
+        "packages/pipeline/mcp_locate.py"
+      ],
+      "must_symbols": [
+        "load_store",
+        "save_store",
+        "_resolve_session",
+        "persist_trace"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "kiro_complex_C07_kiro_mcp_install",
+      "source": "kiro_mcp_ab_complex",
+      "family": "host-surface",
+      "task": "C07 kiro mcp install",
+      "enrich_query": "write_kiro_mcp",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/mcp_install.py"
+      ],
+      "must_symbols": [
+        "write_kiro_mcp"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "kiro_complex_C08_uv_access_denied_vague",
+      "source": "kiro_mcp_ab_complex",
+      "family": "vague",
+      "task": "C08 uv access denied vague",
+      "enrich_query": "prepare_uv_tool_directory_for_swap release_scubiee_process_locks stop_all_context_engine_processes",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "manual",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/process_control.py"
+      ],
+      "must_symbols": [
+        "prepare_uv_tool_directory_for_swap",
+        "release_scubiee_process_locks",
+        "stop_all_context_engine_processes"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "kiro_complex_C09_auth_jwt_trap",
+      "source": "kiro_mcp_ab_complex",
+      "family": "fixture-trap",
+      "task": "C09 auth jwt trap",
+      "enrich_query": "authenticate extract_bearer JwtService.verify decode UserRepository.resolve",
+      "taxonomy": "literal_needle",
+      "taxonomy_confidence": "manual",
+      "hypothesis_policy": {
+        "lead": "host_grep",
+        "next": "host_read",
+        "native": "first_class"
+      },
+      "must_files": [
+        "fixtures/trace-lab/app/middleware/auth.py",
+        "fixtures/trace-lab/app/services/jwt_service.py",
+        "fixtures/trace-lab/app/utils/token.py",
+        "fixtures/trace-lab/app/repositories/user_repo.py"
+      ],
+      "must_symbols": [
+        "authenticate",
+        "extract_bearer",
+        "JwtService.verify",
+        "decode",
+        "UserRepository.resolve"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "kiro_complex_C10_warm_status_ready",
+      "source": "kiro_mcp_ab_complex",
+      "family": "cross-cutting",
+      "task": "C10 warm status ready",
+      "enrich_query": "soft_search_ready WarmSearchEngine",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "heuristic",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/mcp_locate.py",
+        "packages/pipeline/engine.py"
+      ],
+      "must_symbols": [
+        "soft_search_ready",
+        "WarmSearchEngine"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "personal3_p01",
+      "source": "personal3_map_vs_pack",
+      "family": "personal3",
+      "task": "I need to figure out how the tool gets wired into my editor when I connect it.",
+      "enrich_query": "when I run connect how does the tool install into the editor write mcp config permissions allowlist auto approve project rules gate text so the agent can call locate tools",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "manual",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/__main__.py",
+        "packages/pipeline/rules_installer.py",
+        "packages/pipeline/mcp_permissions.py"
+      ],
+      "must_symbols": [
+        "cmd_connect",
+        "write_project_tool_surface",
+        "apply_permissions_to_repo_tool_surface"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "gold from connect/freshness/pack path A/Bs",
+      "baseline_frozen": true
+    },
+    {
+      "id": "personal3_p02",
+      "source": "personal3_map_vs_pack",
+      "family": "personal3",
+      "task": "Search feels stale after I edit files \u2014 how does refresh / sync decide to update?",
+      "enrich_query": "after I change code when does background sync or freshness decide the index is stale and refresh embeddings or search without full rebuild",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "manual",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/freshness.py",
+        "packages/pipeline/incremental.py"
+      ],
+      "must_symbols": [
+        "ensure_fresh_for_search",
+        "rebuild_embeddings_if_needed"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "gold from connect/freshness/pack path A/Bs",
+      "baseline_frozen": true
+    },
+    {
+      "id": "personal3_p03",
+      "source": "personal3_map_vs_pack",
+      "family": "personal3",
+      "task": "I want to understand how a pack request turns a seed into a small set of code bodies.",
+      "enrich_query": "how does pack take a seed and query then walk calls to build a lean heatmap and return hottest function bodies under a character budget",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "manual",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/context_trace.py",
+        "packages/pipeline/locate_cli.py"
+      ],
+      "must_symbols": [
+        "run_pack_context",
+        "cli_pack"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "gold from connect/freshness/pack path A/Bs",
+      "baseline_frozen": true
+    },
+    {
+      "id": "cursor_connect",
+      "source": "cursor_ab_trials",
+      "family": "cursor_ab",
+      "task": "When I connect Scubiee to Cursor, what is the write path that installs MCP config + permissions?",
+      "enrich_query": "connect cursor install mcp config permissions allowlist autoApprove project rules gate write tool surface",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "manual",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/__main__.py",
+        "packages/pipeline/rules_installer.py",
+        "packages/pipeline/mcp_permissions.py"
+      ],
+      "must_symbols": [
+        "cmd_connect",
+        "install_tool",
+        "write_project_tool_surface",
+        "apply_permissions_to_repo_tool_surface"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "cursor_session",
+      "source": "cursor_ab_trials",
+      "family": "cursor_ab",
+      "task": "How does Scubiee keep two parallel Cursor chats from sharing locate state?",
+      "enrich_query": "session isolation parallel chats packed ids pins session_store work_session CTX_MCP_SESSION_ISOLATE fail closed",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "manual",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/session_isolation.py",
+        "packages/pipeline/session_store.py"
+      ],
+      "must_symbols": [
+        "effective_session_id",
+        "resolve_session"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "cursor_engine",
+      "source": "cursor_ab_trials",
+      "family": "cursor_ab",
+      "task": "How does the warm engine on :8765 get started, kept alive, and used for search?",
+      "enrich_query": "warm engine 8765 start_daemon watchdog health force_restart search_repo EngineClient DEFAULT_URL",
+      "taxonomy": "soft_understand",
+      "taxonomy_confidence": "manual",
+      "hypothesis_policy": {
+        "lead": "scubiee_map",
+        "next": "conditional_pack",
+        "native": "span_read_after_heatmap"
+      },
+      "must_files": [
+        "packages/pipeline/daemon.py",
+        "packages/pipeline/watchdog.py",
+        "packages/pipeline/client.py"
+      ],
+      "must_symbols": [
+        "start_daemon",
+        "force_restart_daemon"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "",
+      "baseline_frozen": true
+    },
+    {
+      "id": "anchor_literal_PHASE_LOCATE",
+      "source": "calibration_anchor",
+      "family": "",
+      "task": "Find the exact definition of the PHASE_LOCATE_TOOLS constant.",
+      "enrich_query": "PHASE_LOCATE_TOOLS",
+      "taxonomy": "literal_needle",
+      "taxonomy_confidence": "manual",
+      "hypothesis_policy": {
+        "lead": "host_grep",
+        "next": "host_read",
+        "native": "first_class"
+      },
+      "must_files": [
+        "packages/pipeline/mcp_permissions.py"
+      ],
+      "must_symbols": [
+        "PHASE_LOCATE_TOOLS"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "over-use control: Grep should win",
+      "baseline_frozen": true
+    },
+    {
+      "id": "anchor_literal_CTX_MCP_EXPERIMENT",
+      "source": "calibration_anchor",
+      "family": "",
+      "task": "Where is the env var string CTX_MCP_EXPERIMENT read for phase experiment?",
+      "enrich_query": "CTX_MCP_EXPERIMENT",
+      "taxonomy": "literal_needle",
+      "taxonomy_confidence": "manual",
+      "hypothesis_policy": {
+        "lead": "host_grep",
+        "next": "host_read",
+        "native": "first_class"
+      },
+      "must_files": [
+        "packages/pipeline/mcp_locate.py"
+      ],
+      "must_symbols": [
+        "_phase_experiment"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "over-use control",
+      "baseline_frozen": true
+    },
+    {
+      "id": "anchor_name_mcp_locate",
+      "source": "calibration_anchor",
+      "family": "",
+      "task": "Find the file named mcp_locate.py",
+      "enrich_query": "mcp_locate.py",
+      "taxonomy": "name_path",
+      "taxonomy_confidence": "manual",
+      "hypothesis_policy": {
+        "lead": "host_glob",
+        "next": "host_read",
+        "native": "first_class"
+      },
+      "must_files": [
+        "packages/pipeline/mcp_locate.py"
+      ],
+      "must_symbols": [],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "Glob-first control",
+      "baseline_frozen": true
+    },
+    {
+      "id": "anchor_known_seed_run_pack",
+      "source": "calibration_anchor",
+      "family": "",
+      "task": "From seed packages/pipeline/context_trace.py::run_pack_context, get the lean heatmap neighborhood.",
+      "enrich_query": "run_pack_context lean heatmap composite_v1",
+      "taxonomy": "known_seed",
+      "taxonomy_confidence": "manual",
+      "hypothesis_policy": {
+        "lead": "scubiee_pack",
+        "next": "expand_if_thin",
+        "native": "or_direct_read"
+      },
+      "must_files": [
+        "packages/pipeline/context_trace.py"
+      ],
+      "must_symbols": [
+        "run_pack_context"
+      ],
+      "should_files": [],
+      "gold_status": "has_gold",
+      "notes": "pack-first control; skip map",
+      "baseline_frozen": true
+    }
+  ]
+}

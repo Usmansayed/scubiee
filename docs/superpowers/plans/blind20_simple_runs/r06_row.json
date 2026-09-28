@@ -1,0 +1,74 @@
+{
+  "id": "r06",
+  "family": "dashboard-http",
+  "task": "Where are operator dashboard HTTP routes and status endpoints defined?",
+  "enrich_prompt": "dashboard HTTP routes status endpoints localhost operator serve cmd_dashboard uvicorn",
+  "map": {
+    "elapsed_s": 0.804,
+    "n_cards": 10,
+    "suggested_seed": {
+      "file": "packages/pipeline/dashboard_server.py",
+      "symbol": ""
+    },
+    "top_files": [
+      "packages/pipeline/dashboard_server.py",
+      "packages/pipeline/dashboard_port.py",
+      "packages/pipeline/__main__.py",
+      "packages/pipeline/dashboard.py",
+      "docs/superpowers/plans/2026-08-17-ce-operator-dashboard.md"
+    ]
+  },
+  "arms": {
+    "composite_v1": {
+      "ok": true,
+      "engine": "composite_v1",
+      "policy": "strict",
+      "elapsed_s": 0.037,
+      "n_pack": 1,
+      "pack": [
+        {
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "PublicAPIError.__init__",
+          "score": 1.0,
+          "loc": "packages/pipeline/dashboard_server.py:54-58",
+          "id": "packages/pipeline/dashboard_server.py::PublicAPIError.__init__"
+        }
+      ],
+      "error": null
+    },
+    "polytrace": {
+      "ok": true,
+      "engine": "polytrace",
+      "policy": "strict",
+      "elapsed_s": 0.001,
+      "n_pack": 1,
+      "pack": [
+        {
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "PublicAPIError.__init__",
+          "score": 1.0,
+          "loc": "packages/pipeline/dashboard_server.py:54-58",
+          "id": "packages/pipeline/dashboard_server.py::PublicAPIError.__init__"
+        }
+      ],
+      "error": null
+    },
+    "ultimate": {
+      "ok": true,
+      "engine": "ultimate",
+      "policy": "strict",
+      "elapsed_s": 0.013,
+      "n_pack": 1,
+      "pack": [
+        {
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "PublicAPIError.__init__",
+          "score": 1.0,
+          "loc": "packages/pipeline/dashboard_server.py:54-58",
+          "id": "packages/pipeline/dashboard_server.py::PublicAPIError.__init__"
+        }
+      ],
+      "error": null
+    }
+  }
+}

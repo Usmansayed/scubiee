@@ -1,0 +1,1179 @@
+{
+  "cli": "python -m pipeline (workspace)",
+  "cwd": "C:\\Users\\usman\\Downloads\\context-engine",
+  "query": "pack_context lean heatmap run_pack_context composite_v1 multi_seed_v1 _pack_heatmap_only cli_pack locate_cli mcp_response_lean context_trace seed rank",
+  "seed": "packages/pipeline/context_trace.py::run_pack_context",
+  "elapsed_ms": 127277.7,
+  "results": [
+    {
+      "name": "gate",
+      "exit": 0,
+      "elapsed_ms": 1860.0,
+      "run_error": null,
+      "stderr_tail": "arning: ImportError while loading the `logfire-plugin` Pydantic plugin, this plugin will not be installed.\n\nImportError(\"cannot import name 'LogData' from 'opentelemetry.sdk._logs' (C:\\\\Users\\\\usman\\\\Miniconda3\\\\Lib\\\\site-packages\\\\opentelemetry\\\\sdk\\\\_logs\\\\__init__.py)\")\n  plugins = get_plugins()\n",
+      "summary": {
+        "unparsed_head": "1:ce_7d597c1390dca6a1c5b8c4d661f421be\n"
+      }
+    },
+    {
+      "name": "status",
+      "exit": 0,
+      "elapsed_ms": 1790.5,
+      "run_error": null,
+      "stderr_tail": "",
+      "summary": {
+        "chunks": 7227
+      }
+    },
+    {
+      "name": "search",
+      "exit": 0,
+      "elapsed_ms": 1728.1,
+      "run_error": null,
+      "stderr_tail": "",
+      "summary": {
+        "elapsed_ms": 1265.8,
+        "hits": [
+          {
+            "rank": 1,
+            "file": "packages/pipeline/context_trace.py",
+            "score": 53.9305
+          },
+          {
+            "rank": 2,
+            "file": "scripts/pack_vs_composite_bakeoff.py",
+            "score": 16.0034
+          },
+          {
+            "rank": 3,
+            "file": "_cli_combo_run.py",
+            "score": 14.8411
+          },
+          {
+            "rank": 4,
+            "file": "tests/test_expand_after_pack.py",
+            "score": 13.6993
+          },
+          {
+            "rank": 5,
+            "file": "tests/test_mcp_ship_preprod.py",
+            "score": 11.9608
+          }
+        ]
+      }
+    },
+    {
+      "name": "map",
+      "exit": 0,
+      "elapsed_ms": 2975.6,
+      "run_error": null,
+      "stderr_tail": "",
+      "summary": {
+        "ok": true,
+        "tool": "map",
+        "elapsed_ms": 445.0,
+        "seed": {
+          "file": "packages/pipeline/context_trace.py",
+          "symbol": "run_pack_context",
+          "loc": "packages/pipeline/context_trace.py:3369-4130",
+          "score": 21.8435
+        },
+        "cards": [
+          {
+            "rank": 1,
+            "file": "packages/pipeline/mcp_response_lean.py",
+            "symbol": "_pack_heatmap_only",
+            "loc": "packages/pipeline/mcp_response_lean.py:235-388",
+            "score": 23.8006,
+            "role": "function",
+            "why": "def _pack_heatmap_only(payload: dict[str, Any], *, tool_name: str) -> dict[str, Any]: \"\"\"Merge pack/chain/cold into one ranked heatmap (no …"
+          },
+          {
+            "rank": 2,
+            "file": "packages/pipeline/context_trace.py",
+            "symbol": "run_pack_context",
+            "loc": "packages/pipeline/context_trace.py:3369-4130",
+            "score": 21.8435,
+            "role": "function",
+            "why": "def run_pack_context( root: Path, query: str, *, seed_file: str, seed_symbol: str = \"\", seed_line: int = 0, seed2_file: str = \"\", seed2_sym…"
+          },
+          {
+            "rank": 3,
+            "file": "packages/pipeline/locate_cli.py",
+            "symbol": "cli_pack",
+            "loc": "packages/pipeline/locate_cli.py:314-378",
+            "score": 19.7072,
+            "role": "function",
+            "why": "def cli_pack( query: str, *, seed_file: str, path: str | Path = \".\", seed_symbol: str = \"\", seed_line: int = 0, seed2_file: str = \"\", seed2…"
+          },
+          {
+            "rank": 4,
+            "file": "packages/pipeline/mcp_locate.py",
+            "symbol": "_resolve_pack_bodies",
+            "loc": "packages/pipeline/mcp_locate.py:92-104",
+            "score": 15.0262,
+            "role": "function",
+            "why": "def _resolve_pack_bodies(include_bodies_flag: int | bool | None) -> bool: \"\"\"Resolve MCP pack-body opt-in (flag OR CTX_MCP_PACK_BODIES). De…"
+          },
+          {
+            "rank": 5,
+            "file": "_cli_combo_run.py",
+            "loc": "_cli_combo_run.py:1-22",
+            "score": 23.4277,
+            "role": "other",
+            "why": "\"\"\"Re-run read-only locate CLI combinations against the workspace package.\"\"\" from __future__ import annotations import json import os impo…"
+          },
+          {
+            "rank": 6,
+            "file": "tests/test_lean_pack_seed_rank.py",
+            "symbol": "test_pack_heatmap_promotes_seed_over_high_score_neighbors",
+            "loc": "tests/test_lean_pack_seed_rank.py:12-43",
+            "score": 22.7652,
+            "role": "test",
+            "why": "def test_pack_heatmap_promotes_seed_over_high_score_neighbors() -> None: lean = _pack_heatmap_only( { \"ok\": True, \"tool\": \"pack_context\", \"…"
+          },
+          {
+            "rank": 7,
+            "file": "tests/test_pack_seed_heat_thin.py",
+            "loc": "tests/test_pack_seed_heat_thin.py:1-20",
+            "score": 19.0091,
+            "role": "test",
+            "why": "\"\"\"Seed policy, query-aware heat, thin-pack / explain-escape signals.\"\"\" from __future__ import annotations from pathlib import Path import…"
+          },
+          {
+            "rank": 8,
+            "file": "tests/_prod_post_restart.py",
+            "symbol": "test_mcp_tools",
+            "loc": "tests/_prod_post_restart.py:238-314",
+            "score": 15.5541,
+            "role": "test",
+            "why": "def test_mcp_tools() -> None: section(\"4. MCP stdio tools (ship surface)\") session = McpSession() query = ( \"pack_context run_pack_context …"
+          }
+        ]
+      }
+    },
+    {
+      "name": "map --full",
+      "exit": 0,
+      "elapsed_ms": 2919.7,
+      "run_error": null,
+      "stderr_tail": "",
+      "summary": {
+        "ok": true,
+        "tool": "map",
+        "count": 8,
+        "elapsed_ms": 450.9,
+        "seed": {
+          "file": "packages/pipeline/context_trace.py",
+          "symbol": "run_pack_context",
+          "loc": "packages/pipeline/context_trace.py:3369-4130",
+          "score": 21.8435,
+          "role": "function"
+        },
+        "cards": [
+          {
+            "rank": 1,
+            "file": "packages/pipeline/mcp_response_lean.py",
+            "symbol": "_pack_heatmap_only",
+            "loc": "packages/pipeline/mcp_response_lean.py:235-388",
+            "score": 23.8006,
+            "role": "function",
+            "why": "def _pack_heatmap_only(payload: dict[str, Any], *, tool_name: str) -> dict[str, Any]: \"\"\"Merge pack/chain/cold into one ranked heatmap (no …"
+          },
+          {
+            "rank": 2,
+            "file": "packages/pipeline/context_trace.py",
+            "symbol": "run_pack_context",
+            "loc": "packages/pipeline/context_trace.py:3369-4130",
+            "score": 21.8435,
+            "role": "function",
+            "why": "def run_pack_context( root: Path, query: str, *, seed_file: str, seed_symbol: str = \"\", seed_line: int = 0, seed2_file: str = \"\", seed2_sym…"
+          },
+          {
+            "rank": 3,
+            "file": "packages/pipeline/locate_cli.py",
+            "symbol": "cli_pack",
+            "loc": "packages/pipeline/locate_cli.py:314-378",
+            "score": 19.7072,
+            "role": "function",
+            "why": "def cli_pack( query: str, *, seed_file: str, path: str | Path = \".\", seed_symbol: str = \"\", seed_line: int = 0, seed2_file: str = \"\", seed2…"
+          },
+          {
+            "rank": 4,
+            "file": "packages/pipeline/mcp_locate.py",
+            "symbol": "_resolve_pack_bodies",
+            "loc": "packages/pipeline/mcp_locate.py:92-104",
+            "score": 15.0262,
+            "role": "function",
+            "why": "def _resolve_pack_bodies(include_bodies_flag: int | bool | None) -> bool: \"\"\"Resolve MCP pack-body opt-in (flag OR CTX_MCP_PACK_BODIES). De…"
+          },
+          {
+            "rank": 5,
+            "file": "_cli_combo_run.py",
+            "loc": "_cli_combo_run.py:1-22",
+            "score": 23.4277,
+            "role": "other",
+            "why": "\"\"\"Re-run read-only locate CLI combinations against the workspace package.\"\"\" from __future__ import annotations import json import os impo…"
+          },
+          {
+            "rank": 6,
+            "file": "tests/test_lean_pack_seed_rank.py",
+            "symbol": "test_pack_heatmap_promotes_seed_over_high_score_neighbors",
+            "loc": "tests/test_lean_pack_seed_rank.py:12-43",
+            "score": 22.7652,
+            "role": "test",
+            "why": "def test_pack_heatmap_promotes_seed_over_high_score_neighbors() -> None: lean = _pack_heatmap_only( { \"ok\": True, \"tool\": \"pack_context\", \"…"
+          },
+          {
+            "rank": 7,
+            "file": "tests/test_pack_seed_heat_thin.py",
+            "loc": "tests/test_pack_seed_heat_thin.py:1-20",
+            "score": 19.0091,
+            "role": "test",
+            "why": "\"\"\"Seed policy, query-aware heat, thin-pack / explain-escape signals.\"\"\" from __future__ import annotations from pathlib import Path import…"
+          },
+          {
+            "rank": 8,
+            "file": "tests/_prod_post_restart.py",
+            "symbol": "test_mcp_tools",
+            "loc": "tests/_prod_post_restart.py:238-314",
+            "score": 15.5541,
+            "role": "test",
+            "why": "def test_mcp_tools() -> None: section(\"4. MCP stdio tools (ship surface)\") session = McpSession() query = ( \"pack_context run_pack_context …"
+          }
+        ]
+      }
+    },
+    {
+      "name": "pack --mode lean --policy strict",
+      "exit": 0,
+      "elapsed_ms": 5847.3,
+      "run_error": null,
+      "stderr_tail": "<unknown>:6: SyntaxWarning: invalid escape sequence '\\.'\n",
+      "summary": {
+        "ok": true,
+        "tool": "pack",
+        "thin": false,
+        "elapsed_ms": 4631.2,
+        "seed": {
+          "file": "packages/pipeline/context_trace.py",
+          "symbol": "run_pack_context",
+          "id": "packages/pipeline/context_trace.py::run_pack_context"
+        },
+        "seed_coverage": {
+          "packages/pipeline/context_trace.py::run_pack_context": true
+        },
+        "heatmap": [
+          {
+            "r": 1,
+            "s": "run_pack_context",
+            "loc": "packages/pipeline/context_trace.py:3369-4128",
+            "sc": 1.05,
+            "heat": "hot",
+            "id": "packages/pipeline/context_trace.py::run_pack_context"
+          },
+          {
+            "r": 2,
+            "s": "_is_default_pack_engine",
+            "loc": "packages/pipeline/context_trace.py:140-142",
+            "sc": 1.0,
+            "heat": "hot",
+            "id": "packages/pipeline/context_trace.py::_is_default_pack_engine"
+          },
+          {
+            "r": 3,
+            "s": "_load_repo",
+            "loc": "packages/pipeline/context_trace.py:402-501",
+            "sc": 1.0,
+            "heat": "hot",
+            "id": "packages/pipeline/context_trace.py::_load_repo"
+          },
+          {
+            "r": 4,
+            "s": "resolve_seed_node",
+            "loc": "packages/pipeline/context_trace.py:2037-2162",
+            "sc": 1.0,
+            "heat": "hot",
+            "id": "packages/pipeline/context_trace.py::resolve_seed_node"
+          },
+          {
+            "r": 5,
+            "s": "seed_coverage_report",
+            "loc": "packages/pipeline/context_trace.py:1333-1339",
+            "sc": 1.0,
+            "heat": "warm",
+            "id": "packages/pipeline/context_trace.py::seed_coverage_report"
+          },
+          {
+            "r": 6,
+            "s": "card_role",
+            "loc": "packages/pipeline/context_trace.py:1609-1632",
+            "sc": 1.0,
+            "heat": "warm",
+            "id": "packages/pipeline/context_trace.py::card_role"
+          },
+          {
+            "r": 7,
+            "s": "is_weak_seed_symbol",
+            "loc": "packages/pipeline/context_trace.py:1170-1172",
+            "sc": 1.0,
+            "heat": "warm",
+            "id": "packages/pipeline/context_trace.py::is_weak_seed_symbol"
+          },
+          {
+            "r": 8,
+            "s": "_seed_symbol_penalty",
+            "loc": "packages/pipeline/context_trace.py:1027-1069",
+            "sc": 1.0,
+            "heat": "warm",
+            "id": "packages/pipeline/context_trace.py::_seed_symbol_penalty"
+          }
+        ]
+      }
+    },
+    {
+      "name": "pack --mode lean --policy broad",
+      "exit": 0,
+      "elapsed_ms": 44152.0,
+      "run_error": null,
+      "stderr_tail": "<unknown>:6: SyntaxWarning: invalid escape sequence '\\.'\n<unknown>:6: SyntaxWarning: invalid escape sequence '\\.'\n<unknown>:6: SyntaxWarning: invalid escape sequence '\\.'\n<unknown>:6: SyntaxWarning: invalid escape sequence '\\.'\n<unknown>:6: SyntaxWarning: invalid escape sequence '\\.'\n",
+      "summary": {
+        "ok": true,
+        "tool": "pack",
+        "thin": false,
+        "elapsed_ms": 42780.5,
+        "seed": {
+          "file": "packages/pipeline/context_trace.py",
+          "symbol": "run_pack_context",
+          "id": "packages/pipeline/context_trace.py::run_pack_context"
+        },
+        "seed_coverage": {
+          "packages/pipeline/context_trace.py::run_pack_context": true
+        },
+        "heatmap": [
+          {
+            "r": 1,
+            "s": "run_pack_context",
+            "loc": "packages/pipeline/context_trace.py:3369-4128",
+            "sc": 1.05,
+            "heat": "hot",
+            "id": "packages/pipeline/context_trace.py::run_pack_context"
+          },
+          {
+            "r": 2,
+            "s": "apply_heat_affinity",
+            "loc": "packages/pipeline/context_trace.py:1506-1522",
+            "sc": 0.9,
+            "heat": "hot",
+            "id": "packages/pipeline/context_trace.py::apply_heat_affinity"
+          },
+          {
+            "r": 3,
+            "s": "build_call_chain",
+            "loc": "packages/pipeline/context_trace.py:2165-2188",
+            "sc": 0.9,
+            "heat": "hot",
+            "id": "packages/pipeline/context_trace.py::build_call_chain"
+          },
+          {
+            "r": 4,
+            "s": "pack_engine_report",
+            "loc": "packages/pipeline/context_trace.py:145-184",
+            "sc": 0.9,
+            "heat": "hot",
+            "id": "packages/pipeline/context_trace.py::pack_engine_report"
+          },
+          {
+            "r": 5,
+            "s": "heatmap_is_thin",
+            "loc": "packages/pipeline/context_trace.py:1299-1315",
+            "sc": 0.9,
+            "heat": "warm",
+            "id": "packages/pipeline/context_trace.py::heatmap_is_thin"
+          },
+          {
+            "r": 6,
+            "s": "run_map_context",
+            "loc": "packages/pipeline/context_trace.py:2328-2524",
+            "sc": 0.9,
+            "heat": "warm",
+            "id": "packages/pipeline/context_trace.py::run_map_context"
+          },
+          {
+            "r": 7,
+            "s": "ensure_seeds_on_heatmap",
+            "loc": "packages/pipeline/context_trace.py:1342-1430",
+            "sc": 0.9,
+            "heat": "warm",
+            "id": "packages/pipeline/context_trace.py::ensure_seeds_on_heatmap"
+          },
+          {
+            "r": 8,
+            "s": "run_collect_hot",
+            "loc": "packages/pipeline/context_trace.py:3159-3278",
+            "sc": 0.9,
+            "heat": "warm",
+            "id": "packages/pipeline/context_trace.py::run_collect_hot"
+          }
+        ]
+      }
+    },
+    {
+      "name": "pack --mode full --policy strict",
+      "exit": 0,
+      "elapsed_ms": 2883.5,
+      "run_error": null,
+      "stderr_tail": "",
+      "summary": {
+        "ok": true,
+        "tool": "pack",
+        "thin": false,
+        "elapsed_ms": 1590.5,
+        "seed": {
+          "file": "packages/pipeline/context_trace.py",
+          "symbol": "run_pack_context",
+          "id": "packages/pipeline/context_trace.py::run_pack_context"
+        },
+        "seed_coverage": {
+          "packages/pipeline/context_trace.py::run_pack_context": true
+        },
+        "heatmap": [
+          {
+            "r": 1,
+            "s": "run_pack_context",
+            "loc": "packages/pipeline/context_trace.py:3369-4128",
+            "sc": 1.05,
+            "heat": "hot",
+            "id": "packages/pipeline/context_trace.py::run_pack_context"
+          },
+          {
+            "r": 2,
+            "s": "_is_default_pack_engine",
+            "loc": "packages/pipeline/context_trace.py:140-142",
+            "sc": 1.0,
+            "heat": "hot",
+            "id": "packages/pipeline/context_trace.py::_is_default_pack_engine"
+          },
+          {
+            "r": 3,
+            "s": "_load_repo",
+            "loc": "packages/pipeline/context_trace.py:402-501",
+            "sc": 1.0,
+            "heat": "hot",
+            "id": "packages/pipeline/context_trace.py::_load_repo"
+          },
+          {
+            "r": 4,
+            "s": "resolve_seed_node",
+            "loc": "packages/pipeline/context_trace.py:2037-2162",
+            "sc": 1.0,
+            "heat": "hot",
+            "id": "packages/pipeline/context_trace.py::resolve_seed_node"
+          },
+          {
+            "r": 5,
+            "s": "seed_coverage_report",
+            "loc": "packages/pipeline/context_trace.py:1333-1339",
+            "sc": 1.0,
+            "heat": "warm",
+            "id": "packages/pipeline/context_trace.py::seed_coverage_report"
+          },
+          {
+            "r": 6,
+            "s": "card_role",
+            "loc": "packages/pipeline/context_trace.py:1609-1632",
+            "sc": 1.0,
+            "heat": "warm",
+            "id": "packages/pipeline/context_trace.py::card_role"
+          },
+          {
+            "r": 7,
+            "s": "is_weak_seed_symbol",
+            "loc": "packages/pipeline/context_trace.py:1170-1172",
+            "sc": 1.0,
+            "heat": "warm",
+            "id": "packages/pipeline/context_trace.py::is_weak_seed_symbol"
+          },
+          {
+            "r": 8,
+            "s": "_seed_symbol_penalty",
+            "loc": "packages/pipeline/context_trace.py:1027-1069",
+            "sc": 1.0,
+            "heat": "warm",
+            "id": "packages/pipeline/context_trace.py::_seed_symbol_penalty"
+          }
+        ]
+      }
+    },
+    {
+      "name": "pack --mode full --policy broad",
+      "exit": 0,
+      "elapsed_ms": 41109.2,
+      "run_error": null,
+      "stderr_tail": "<unknown>:6: SyntaxWarning: invalid escape sequence '\\.'\n<unknown>:6: SyntaxWarning: invalid escape sequence '\\.'\n<unknown>:6: SyntaxWarning: invalid escape sequence '\\.'\n<unknown>:6: SyntaxWarning: invalid escape sequence '\\.'\n",
+      "summary": {
+        "ok": true,
+        "tool": "pack",
+        "thin": false,
+        "elapsed_ms": 39790.2,
+        "seed": {
+          "file": "packages/pipeline/context_trace.py",
+          "symbol": "run_pack_context",
+          "id": "packages/pipeline/context_trace.py::run_pack_context"
+        },
+        "seed_coverage": {
+          "packages/pipeline/context_trace.py::run_pack_context": true
+        },
+        "heatmap": [
+          {
+            "r": 1,
+            "s": "run_pack_context",
+            "loc": "packages/pipeline/context_trace.py:3369-4128",
+            "sc": 1.05,
+            "heat": "hot",
+            "id": "packages/pipeline/context_trace.py::run_pack_context"
+          },
+          {
+            "r": 2,
+            "s": "apply_heat_affinity",
+            "loc": "packages/pipeline/context_trace.py:1506-1522",
+            "sc": 0.9,
+            "heat": "hot",
+            "id": "packages/pipeline/context_trace.py::apply_heat_affinity"
+          },
+          {
+            "r": 3,
+            "s": "build_call_chain",
+            "loc": "packages/pipeline/context_trace.py:2165-2188",
+            "sc": 0.9,
+            "heat": "hot",
+            "id": "packages/pipeline/context_trace.py::build_call_chain"
+          },
+          {
+            "r": 4,
+            "s": "pack_engine_report",
+            "loc": "packages/pipeline/context_trace.py:145-184",
+            "sc": 0.9,
+            "heat": "hot",
+            "id": "packages/pipeline/context_trace.py::pack_engine_report"
+          },
+          {
+            "r": 5,
+            "s": "heatmap_is_thin",
+            "loc": "packages/pipeline/context_trace.py:1299-1315",
+            "sc": 0.9,
+            "heat": "warm",
+            "id": "packages/pipeline/context_trace.py::heatmap_is_thin"
+          },
+          {
+            "r": 6,
+            "s": "run_map_context",
+            "loc": "packages/pipeline/context_trace.py:2328-2524",
+            "sc": 0.9,
+            "heat": "warm",
+            "id": "packages/pipeline/context_trace.py::run_map_context"
+          },
+          {
+            "r": 7,
+            "s": "ensure_seeds_on_heatmap",
+            "loc": "packages/pipeline/context_trace.py:1342-1430",
+            "sc": 0.9,
+            "heat": "warm",
+            "id": "packages/pipeline/context_trace.py::ensure_seeds_on_heatmap"
+          },
+          {
+            "r": 8,
+            "s": "run_collect_hot",
+            "loc": "packages/pipeline/context_trace.py:3159-3278",
+            "sc": 0.9,
+            "heat": "warm",
+            "id": "packages/pipeline/context_trace.py::run_collect_hot"
+          }
+        ]
+      }
+    },
+    {
+      "name": "expand --direction callees",
+      "exit": 0,
+      "elapsed_ms": 2245.0,
+      "run_error": null,
+      "stderr_tail": "",
+      "summary": {
+        "ok": true,
+        "tool": "expand",
+        "count": 8,
+        "elapsed_ms": 1041.4,
+        "delta": [
+          {
+            "symbol": "ensure_seeds_on_heatmap",
+            "loc": "packages/pipeline/context_trace.py:1342-1430",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::ensure_seeds_on_heatmap"
+          },
+          {
+            "symbol": "seed_coverage_report",
+            "loc": "packages/pipeline/context_trace.py:1333-1339",
+            "score": 1.0,
+            "id": "packages/pipeline/context_trace.py::seed_coverage_report"
+          },
+          {
+            "symbol": "is_weak_seed_symbol",
+            "loc": "packages/pipeline/context_trace.py:1170-1172",
+            "score": 1.0,
+            "id": "packages/pipeline/context_trace.py::is_weak_seed_symbol"
+          },
+          {
+            "symbol": "heatmap_is_thin",
+            "loc": "packages/pipeline/context_trace.py:1299-1315",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::heatmap_is_thin"
+          },
+          {
+            "symbol": "resolve_seed_node",
+            "loc": "packages/pipeline/context_trace.py:2037-2162",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::resolve_seed_node"
+          },
+          {
+            "symbol": "_seed_symbol_penalty",
+            "loc": "packages/pipeline/context_trace.py:1027-1069",
+            "score": 1.0,
+            "id": "packages/pipeline/context_trace.py::_seed_symbol_penalty"
+          },
+          {
+            "symbol": "card_role",
+            "loc": "packages/pipeline/context_trace.py:1609-1632",
+            "score": 1.0,
+            "id": "packages/pipeline/context_trace.py::card_role"
+          },
+          {
+            "symbol": "short_symbol_leaf",
+            "loc": "packages/pipeline/context_trace.py:1285-1286",
+            "score": 1.0,
+            "id": "packages/pipeline/context_trace.py::short_symbol_leaf"
+          }
+        ]
+      }
+    },
+    {
+      "name": "expand --direction callees --with-bodies",
+      "exit": 0,
+      "elapsed_ms": 2255.6,
+      "run_error": null,
+      "stderr_tail": "",
+      "summary": {
+        "ok": true,
+        "tool": "expand",
+        "count": 8,
+        "elapsed_ms": 1008.5,
+        "pack": [
+          {
+            "loc": "packages/pipeline/context_trace.py:1333-1339",
+            "id": "packages/pipeline/context_trace.py::seed_coverage_report",
+            "text_head": "def seed_coverage_report(\n    cards: list[dict[str, Any]],\n    seed_ids: list[str],\n) -> dict[str, bool]:\n    \"\"\"Which accepted seed ids ap…"
+          },
+          {
+            "loc": "packages/pipeline/context_trace.py:1170-1172",
+            "id": "packages/pipeline/context_trace.py::is_weak_seed_symbol",
+            "text_head": "def is_weak_seed_symbol(symbol: str, *, query: str = \"\") -> bool:\n    \"\"\"True when symbol should not be a pack/map suggested seed.\"\"\"\n    r…"
+          },
+          {
+            "loc": "packages/pipeline/context_trace.py:1027-1069",
+            "id": "packages/pipeline/context_trace.py::_seed_symbol_penalty",
+            "text_head": "def _seed_symbol_penalty(symbol: str, *, query: str = \"\") -> int:\n    \"\"\"Lower is better. Prefer public names; penalize empty / private / w…"
+          }
+        ],
+        "delta": [
+          {
+            "symbol": "ensure_seeds_on_heatmap",
+            "loc": "packages/pipeline/context_trace.py:1342-1430",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::ensure_seeds_on_heatmap"
+          },
+          {
+            "symbol": "seed_coverage_report",
+            "loc": "packages/pipeline/context_trace.py:1333-1339",
+            "score": 1.0,
+            "id": "packages/pipeline/context_trace.py::seed_coverage_report"
+          },
+          {
+            "symbol": "is_weak_seed_symbol",
+            "loc": "packages/pipeline/context_trace.py:1170-1172",
+            "score": 1.0,
+            "id": "packages/pipeline/context_trace.py::is_weak_seed_symbol"
+          },
+          {
+            "symbol": "heatmap_is_thin",
+            "loc": "packages/pipeline/context_trace.py:1299-1315",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::heatmap_is_thin"
+          },
+          {
+            "symbol": "resolve_seed_node",
+            "loc": "packages/pipeline/context_trace.py:2037-2162",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::resolve_seed_node"
+          },
+          {
+            "symbol": "_seed_symbol_penalty",
+            "loc": "packages/pipeline/context_trace.py:1027-1069",
+            "score": 1.0,
+            "id": "packages/pipeline/context_trace.py::_seed_symbol_penalty"
+          },
+          {
+            "symbol": "card_role",
+            "loc": "packages/pipeline/context_trace.py:1609-1632",
+            "score": 1.0,
+            "id": "packages/pipeline/context_trace.py::card_role"
+          },
+          {
+            "symbol": "short_symbol_leaf",
+            "loc": "packages/pipeline/context_trace.py:1285-1286",
+            "score": 1.0,
+            "id": "packages/pipeline/context_trace.py::short_symbol_leaf"
+          }
+        ]
+      }
+    },
+    {
+      "name": "expand --direction callers",
+      "exit": 0,
+      "elapsed_ms": 2219.3,
+      "run_error": null,
+      "stderr_tail": "",
+      "summary": {
+        "ok": true,
+        "tool": "expand",
+        "count": 8,
+        "elapsed_ms": 1056.7,
+        "delta": [
+          {
+            "symbol": "cli_pack",
+            "loc": "packages/pipeline/locate_cli.py:314-376",
+            "score": 0.88,
+            "id": "packages/pipeline/locate_cli.py::cli_pack"
+          },
+          {
+            "symbol": "create_mcp",
+            "loc": "packages/pipeline/mcp_locate.py:3012-6196",
+            "score": 0.88,
+            "id": "packages/pipeline/mcp_locate.py::create_mcp"
+          },
+          {
+            "symbol": "_arm_c",
+            "loc": "packages/trace_lab/pack_bakeoff.py:140-171",
+            "score": 0.88,
+            "id": "packages/trace_lab/pack_bakeoff.py::_arm_c"
+          },
+          {
+            "symbol": "_pack_context",
+            "loc": "scripts/blind20_map12_vs_map8_pack.py:147-194",
+            "score": 0.45,
+            "id": "scripts/blind20_map12_vs_map8_pack.py::_pack_context"
+          },
+          {
+            "symbol": "_pack_heatmap",
+            "loc": "scripts/heatmap_pack_vs_agent_reads.py:142-177",
+            "score": 0.45,
+            "id": "scripts/heatmap_pack_vs_agent_reads.py::_pack_heatmap"
+          },
+          {
+            "symbol": "_map_pack",
+            "loc": "scripts/locate_calibration_phase_b.py:429-483",
+            "score": 0.648,
+            "id": "scripts/locate_calibration_phase_b.py::_map_pack"
+          },
+          {
+            "symbol": "arm_e1_broad_repack",
+            "loc": "scripts/locate_calibration_phase_b.py:610-664",
+            "score": 0.648,
+            "id": "scripts/locate_calibration_phase_b.py::arm_e1_broad_repack"
+          },
+          {
+            "symbol": "_pack_arm",
+            "loc": "scripts/blind20_map_chunks_pack.py:172-239",
+            "score": 0.45,
+            "id": "scripts/blind20_map_chunks_pack.py::_pack_arm"
+          }
+        ]
+      }
+    },
+    {
+      "name": "expand --direction callers --with-bodies",
+      "exit": 0,
+      "elapsed_ms": 2383.8,
+      "run_error": null,
+      "stderr_tail": "",
+      "summary": {
+        "ok": true,
+        "tool": "expand",
+        "count": 8,
+        "elapsed_ms": 1202.3,
+        "pack": [
+          {
+            "loc": "packages/pipeline/locate_cli.py:314-376",
+            "id": "packages/pipeline/locate_cli.py::cli_pack",
+            "text_head": "def cli_pack(\n    query: str,\n    *,\n    seed_file: str,\n    path: str | Path = \".\",\n    seed_symbol: str = \"\",\n    seed_line: int = 0,\n   …"
+          },
+          {
+            "loc": "packages/pipeline/mcp_locate.py:3012-6196",
+            "id": "packages/pipeline/mcp_locate.py::create_mcp",
+            "text_head": "def create_mcp(name: str = \"scubiee\") -> \"FastMCP\":\n    if FastMCP is None:\n        raise RuntimeError(\"pip install mcp\")\n    surface = _ac…"
+          }
+        ],
+        "delta": [
+          {
+            "symbol": "cli_pack",
+            "loc": "packages/pipeline/locate_cli.py:314-376",
+            "score": 0.88,
+            "id": "packages/pipeline/locate_cli.py::cli_pack"
+          },
+          {
+            "symbol": "create_mcp",
+            "loc": "packages/pipeline/mcp_locate.py:3012-6196",
+            "score": 0.88,
+            "id": "packages/pipeline/mcp_locate.py::create_mcp"
+          },
+          {
+            "symbol": "_arm_c",
+            "loc": "packages/trace_lab/pack_bakeoff.py:140-171",
+            "score": 0.88,
+            "id": "packages/trace_lab/pack_bakeoff.py::_arm_c"
+          },
+          {
+            "symbol": "_pack_context",
+            "loc": "scripts/blind20_map12_vs_map8_pack.py:147-194",
+            "score": 0.45,
+            "id": "scripts/blind20_map12_vs_map8_pack.py::_pack_context"
+          },
+          {
+            "symbol": "_pack_heatmap",
+            "loc": "scripts/heatmap_pack_vs_agent_reads.py:142-177",
+            "score": 0.45,
+            "id": "scripts/heatmap_pack_vs_agent_reads.py::_pack_heatmap"
+          },
+          {
+            "symbol": "_map_pack",
+            "loc": "scripts/locate_calibration_phase_b.py:429-483",
+            "score": 0.648,
+            "id": "scripts/locate_calibration_phase_b.py::_map_pack"
+          },
+          {
+            "symbol": "arm_e1_broad_repack",
+            "loc": "scripts/locate_calibration_phase_b.py:610-664",
+            "score": 0.648,
+            "id": "scripts/locate_calibration_phase_b.py::arm_e1_broad_repack"
+          },
+          {
+            "symbol": "_pack_arm",
+            "loc": "scripts/blind20_map_chunks_pack.py:172-239",
+            "score": 0.45,
+            "id": "scripts/blind20_map_chunks_pack.py::_pack_arm"
+          }
+        ]
+      }
+    },
+    {
+      "name": "expand --direction effects",
+      "exit": 0,
+      "elapsed_ms": 2254.0,
+      "run_error": null,
+      "stderr_tail": "",
+      "summary": {
+        "ok": true,
+        "tool": "expand",
+        "count": 0,
+        "elapsed_ms": 1042.9
+      }
+    },
+    {
+      "name": "expand --direction effects --with-bodies",
+      "exit": 0,
+      "elapsed_ms": 2232.1,
+      "run_error": null,
+      "stderr_tail": "",
+      "summary": {
+        "ok": true,
+        "tool": "expand",
+        "count": 0,
+        "elapsed_ms": 1041.6
+      }
+    },
+    {
+      "name": "expand --direction broad",
+      "exit": 0,
+      "elapsed_ms": 1934.6,
+      "run_error": null,
+      "stderr_tail": "",
+      "summary": {
+        "ok": true,
+        "tool": "expand",
+        "count": 8,
+        "elapsed_ms": 731.3,
+        "delta": [
+          {
+            "symbol": "ensure_seeds_on_heatmap",
+            "loc": "packages/pipeline/context_trace.py:1342-1430",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::ensure_seeds_on_heatmap"
+          },
+          {
+            "symbol": "heatmap_is_thin",
+            "loc": "packages/pipeline/context_trace.py:1299-1315",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::heatmap_is_thin"
+          },
+          {
+            "symbol": "resolve_seed_node",
+            "loc": "packages/pipeline/context_trace.py:2037-2162",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::resolve_seed_node"
+          },
+          {
+            "symbol": "apply_heat_affinity",
+            "loc": "packages/pipeline/context_trace.py:1506-1522",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::apply_heat_affinity"
+          },
+          {
+            "symbol": "build_call_chain",
+            "loc": "packages/pipeline/context_trace.py:2165-2188",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::build_call_chain"
+          },
+          {
+            "symbol": "pack_engine_report",
+            "loc": "packages/pipeline/context_trace.py:145-184",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::pack_engine_report"
+          },
+          {
+            "symbol": "run_map_context",
+            "loc": "packages/pipeline/context_trace.py:2328-2524",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::run_map_context"
+          },
+          {
+            "symbol": "run_collect_hot",
+            "loc": "packages/pipeline/context_trace.py:3159-3278",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::run_collect_hot"
+          }
+        ]
+      }
+    },
+    {
+      "name": "expand --direction broad --with-bodies",
+      "exit": 0,
+      "elapsed_ms": 1988.9,
+      "run_error": null,
+      "stderr_tail": "",
+      "summary": {
+        "ok": true,
+        "tool": "expand",
+        "count": 8,
+        "elapsed_ms": 778.7,
+        "pack": [
+          {
+            "loc": "packages/pipeline/context_trace.py:1342-1430",
+            "id": "packages/pipeline/context_trace.py::ensure_seeds_on_heatmap",
+            "text_head": "def ensure_seeds_on_heatmap(\n    cards: list[dict[str, Any]],\n    seed_metas: list[dict[str, Any]],\n    nodes: dict[str, TraceNode],\n    *,…"
+          },
+          {
+            "loc": "packages/pipeline/context_trace.py:1299-1315",
+            "id": "packages/pipeline/context_trace.py::heatmap_is_thin",
+            "text_head": "def heatmap_is_thin(cards: list[dict[str, Any]]) -> bool:\n    \"\"\"True when lean heatmap is too sparse / accessor-heavy for an explain ask.\"…"
+          }
+        ],
+        "delta": [
+          {
+            "symbol": "ensure_seeds_on_heatmap",
+            "loc": "packages/pipeline/context_trace.py:1342-1430",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::ensure_seeds_on_heatmap"
+          },
+          {
+            "symbol": "heatmap_is_thin",
+            "loc": "packages/pipeline/context_trace.py:1299-1315",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::heatmap_is_thin"
+          },
+          {
+            "symbol": "resolve_seed_node",
+            "loc": "packages/pipeline/context_trace.py:2037-2162",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::resolve_seed_node"
+          },
+          {
+            "symbol": "apply_heat_affinity",
+            "loc": "packages/pipeline/context_trace.py:1506-1522",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::apply_heat_affinity"
+          },
+          {
+            "symbol": "build_call_chain",
+            "loc": "packages/pipeline/context_trace.py:2165-2188",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::build_call_chain"
+          },
+          {
+            "symbol": "pack_engine_report",
+            "loc": "packages/pipeline/context_trace.py:145-184",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::pack_engine_report"
+          },
+          {
+            "symbol": "run_map_context",
+            "loc": "packages/pipeline/context_trace.py:2328-2524",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::run_map_context"
+          },
+          {
+            "symbol": "run_collect_hot",
+            "loc": "packages/pipeline/context_trace.py:3159-3278",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::run_collect_hot"
+          }
+        ]
+      }
+    },
+    {
+      "name": "expand --direction all",
+      "exit": 0,
+      "elapsed_ms": 1900.5,
+      "run_error": null,
+      "stderr_tail": "",
+      "summary": {
+        "ok": true,
+        "tool": "expand",
+        "count": 8,
+        "elapsed_ms": 714.8,
+        "delta": [
+          {
+            "symbol": "ensure_seeds_on_heatmap",
+            "loc": "packages/pipeline/context_trace.py:1342-1430",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::ensure_seeds_on_heatmap"
+          },
+          {
+            "symbol": "heatmap_is_thin",
+            "loc": "packages/pipeline/context_trace.py:1299-1315",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::heatmap_is_thin"
+          },
+          {
+            "symbol": "resolve_seed_node",
+            "loc": "packages/pipeline/context_trace.py:2037-2162",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::resolve_seed_node"
+          },
+          {
+            "symbol": "apply_heat_affinity",
+            "loc": "packages/pipeline/context_trace.py:1506-1522",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::apply_heat_affinity"
+          },
+          {
+            "symbol": "build_call_chain",
+            "loc": "packages/pipeline/context_trace.py:2165-2188",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::build_call_chain"
+          },
+          {
+            "symbol": "pack_engine_report",
+            "loc": "packages/pipeline/context_trace.py:145-184",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::pack_engine_report"
+          },
+          {
+            "symbol": "run_map_context",
+            "loc": "packages/pipeline/context_trace.py:2328-2524",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::run_map_context"
+          },
+          {
+            "symbol": "run_collect_hot",
+            "loc": "packages/pipeline/context_trace.py:3159-3278",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::run_collect_hot"
+          }
+        ]
+      }
+    },
+    {
+      "name": "expand --direction all --with-bodies",
+      "exit": 0,
+      "elapsed_ms": 2017.4,
+      "run_error": null,
+      "stderr_tail": "",
+      "summary": {
+        "ok": true,
+        "tool": "expand",
+        "count": 8,
+        "elapsed_ms": 814.3,
+        "pack": [
+          {
+            "loc": "packages/pipeline/context_trace.py:1342-1430",
+            "id": "packages/pipeline/context_trace.py::ensure_seeds_on_heatmap",
+            "text_head": "def ensure_seeds_on_heatmap(\n    cards: list[dict[str, Any]],\n    seed_metas: list[dict[str, Any]],\n    nodes: dict[str, TraceNode],\n    *,…"
+          },
+          {
+            "loc": "packages/pipeline/context_trace.py:1299-1315",
+            "id": "packages/pipeline/context_trace.py::heatmap_is_thin",
+            "text_head": "def heatmap_is_thin(cards: list[dict[str, Any]]) -> bool:\n    \"\"\"True when lean heatmap is too sparse / accessor-heavy for an explain ask.\"…"
+          }
+        ],
+        "delta": [
+          {
+            "symbol": "ensure_seeds_on_heatmap",
+            "loc": "packages/pipeline/context_trace.py:1342-1430",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::ensure_seeds_on_heatmap"
+          },
+          {
+            "symbol": "heatmap_is_thin",
+            "loc": "packages/pipeline/context_trace.py:1299-1315",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::heatmap_is_thin"
+          },
+          {
+            "symbol": "resolve_seed_node",
+            "loc": "packages/pipeline/context_trace.py:2037-2162",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::resolve_seed_node"
+          },
+          {
+            "symbol": "apply_heat_affinity",
+            "loc": "packages/pipeline/context_trace.py:1506-1522",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::apply_heat_affinity"
+          },
+          {
+            "symbol": "build_call_chain",
+            "loc": "packages/pipeline/context_trace.py:2165-2188",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::build_call_chain"
+          },
+          {
+            "symbol": "pack_engine_report",
+            "loc": "packages/pipeline/context_trace.py:145-184",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::pack_engine_report"
+          },
+          {
+            "symbol": "run_map_context",
+            "loc": "packages/pipeline/context_trace.py:2328-2524",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::run_map_context"
+          },
+          {
+            "symbol": "run_collect_hot",
+            "loc": "packages/pipeline/context_trace.py:3159-3278",
+            "score": 0.648,
+            "id": "packages/pipeline/context_trace.py::run_collect_hot"
+          }
+        ]
+      }
+    }
+  ]
+}

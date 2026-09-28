@@ -1,0 +1,380 @@
+{
+  "id": "t10",
+  "family": "response-lean",
+  "task": "How are MCP pack responses slimmed for token savings (lean formatting)?",
+  "enrich_prompt": "mcp_response_lean slim pack heatmap cold cards token savings CTX_TOKEN_MODE",
+  "map": {
+    "elapsed_s": 0.6,
+    "n_cards": 9,
+    "top_files": [
+      "packages/pipeline/session_store.py",
+      "tests/test_mcp_response_lean.py",
+      "packages/pipeline/locate_cli.py",
+      "packages/pipeline/mcp_locate.py",
+      "packages/pipeline/mcp_response_lean.py"
+    ]
+  },
+  "enrich_seed": {
+    "ok": true,
+    "elapsed_s": 0.04,
+    "seed_file": "packages/pipeline/session_store.py",
+    "seed": {
+      "file": "packages/pipeline/session_store.py",
+      "symbol": "_store_path",
+      "id": "packages/pipeline/session_store.py::_store_path",
+      "loc": null
+    },
+    "chunks": [
+      {
+        "file": "packages/pipeline/session_store.py",
+        "symbol": "_store_path",
+        "loc": "packages/pipeline/session_store.py:17-29",
+        "score": 1.0,
+        "kind": "function"
+      },
+      {
+        "file": "packages/pipeline/project_id.py",
+        "symbol": "repo_runtime_dir",
+        "loc": "packages/pipeline/project_id.py:121-142",
+        "score": 1.0,
+        "kind": "function"
+      },
+      {
+        "file": "packages/pipeline/session_isolation.py",
+        "symbol": "effective_session_id",
+        "loc": "packages/pipeline/session_isolation.py:368-375",
+        "score": 1.0,
+        "kind": "function"
+      },
+      {
+        "file": "packages/pipeline/session_isolation.py",
+        "symbol": "_session_isolate_enabled",
+        "loc": "packages/pipeline/session_isolation.py:382-387",
+        "score": 1.0,
+        "kind": "function"
+      },
+      {
+        "file": "packages/pipeline/session_isolation.py",
+        "symbol": "default_process_session_id",
+        "loc": "packages/pipeline/session_isolation.py:326-331",
+        "score": 1.0,
+        "kind": "function"
+      }
+    ],
+    "n_cards": 12,
+    "error": null
+  },
+  "arms": {
+    "pack_context": {
+      "ok": true,
+      "tool": "pack_context",
+      "engine": "composite_v1",
+      "elapsed_s": 0.056,
+      "n_pack": 4,
+      "seed": {
+        "file": "packages/pipeline/session_store.py",
+        "symbol": "_store_path",
+        "id": "packages/pipeline/session_store.py::_store_path"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/session_store.py",
+          "symbol": "_store_path",
+          "score": 1.0,
+          "loc": "packages/pipeline/session_store.py:17-29",
+          "id": "packages/pipeline/session_store.py::_store_path",
+          "chars": 535
+        },
+        {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "repo_runtime_dir",
+          "score": 1.0,
+          "loc": "packages/pipeline/project_id.py:121-142",
+          "id": "packages/pipeline/project_id.py::repo_runtime_dir",
+          "chars": 780
+        },
+        {
+          "file": "packages/pipeline/session_isolation.py",
+          "symbol": "effective_session_id",
+          "score": 1.0,
+          "loc": "packages/pipeline/session_isolation.py:368-375",
+          "id": "packages/pipeline/session_isolation.py::effective_session_id",
+          "chars": 333
+        },
+        {
+          "file": "packages/pipeline/session_isolation.py",
+          "symbol": "_session_isolate_enabled",
+          "score": 1.0,
+          "loc": "packages/pipeline/session_isolation.py:382-387",
+          "id": "packages/pipeline/session_isolation.py::_session_isolate_enabled",
+          "chars": 171
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/session_store.py::_store_path",
+          "loc": "packages/pipeline/session_store.py:17-29",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/project_id.py::repo_runtime_dir",
+          "loc": "packages/pipeline/project_id.py:121-142",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/session_isolation.py::effective_session_id",
+          "loc": "packages/pipeline/session_isolation.py:368-375",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/session_isolation.py::_session_isolate_enabled",
+          "loc": "packages/pipeline/session_isolation.py:382-387",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/session_isolation.py::default_process_session_id",
+          "loc": "packages/pipeline/session_isolation.py:326-331",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/session_isolation.py::detect_mcp_host",
+          "loc": "packages/pipeline/session_isolation.py:180-188",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/session_isolation.py::sanitize_session_id",
+          "loc": "packages/pipeline/session_isolation.py:174-177",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/session_store.py::effective_session_id",
+          "loc": "packages/pipeline/session_store.py:74-77",
+          "edge": "calls",
+          "score": 0.99
+        }
+      ],
+      "error": null,
+      "seed_chunks": [
+        {
+          "file": "packages/pipeline/session_store.py",
+          "symbol": "_store_path",
+          "loc": "packages/pipeline/session_store.py:17-29",
+          "score": 1.0,
+          "kind": "function"
+        },
+        {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "repo_runtime_dir",
+          "loc": "packages/pipeline/project_id.py:121-142",
+          "score": 1.0,
+          "kind": "function"
+        },
+        {
+          "file": "packages/pipeline/session_isolation.py",
+          "symbol": "effective_session_id",
+          "loc": "packages/pipeline/session_isolation.py:368-375",
+          "score": 1.0,
+          "kind": "function"
+        }
+      ],
+      "pack_query": "mcp_response_lean slim pack heatmap cold cards token savings CTX_TOKEN_MODE | seeds: packages/pipeline/session_store.py::_store_path packages/pipeline/project_id.py::repo_runtime_dir packages/pipeline/session_isolation.py::effective_session_id packages/pipeline/session_isolation.py::_session_isolate_enabled packages/pipeline/session_isolation.py::default_process_session_id"
+    },
+    "pack_poly_embed": {
+      "ok": true,
+      "tool": "pack_poly_embed",
+      "engine": "poly_embed",
+      "elapsed_s": 0.17,
+      "n_pack": 2,
+      "seed": {
+        "file": "packages/pipeline/session_store.py",
+        "symbol": "_store_path",
+        "id": "packages/pipeline/session_store.py::_store_path"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/session_store.py",
+          "symbol": "_store_path",
+          "score": 1.0,
+          "loc": "packages/pipeline/session_store.py:17-29",
+          "id": "packages/pipeline/session_store.py::_store_path",
+          "chars": 535
+        },
+        {
+          "file": "packages/pipeline/session_store.py",
+          "symbol": "effective_session_id",
+          "score": 0.735,
+          "loc": "packages/pipeline/session_store.py:74-77",
+          "id": "packages/pipeline/session_store.py::effective_session_id",
+          "chars": 171
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/session_store.py::_store_path",
+          "loc": "packages/pipeline/session_store.py:17-29",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/session_store.py::effective_session_id",
+          "loc": "packages/pipeline/session_store.py:74-77",
+          "edge": "seed",
+          "score": 0.735
+        }
+      ],
+      "error": null,
+      "seed_chunks": [
+        {
+          "file": "packages/pipeline/session_store.py",
+          "symbol": "_store_path",
+          "loc": "packages/pipeline/session_store.py:17-29",
+          "score": 1.0,
+          "kind": "function"
+        },
+        {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "repo_runtime_dir",
+          "loc": "packages/pipeline/project_id.py:121-142",
+          "score": 1.0,
+          "kind": "function"
+        },
+        {
+          "file": "packages/pipeline/session_isolation.py",
+          "symbol": "effective_session_id",
+          "loc": "packages/pipeline/session_isolation.py:368-375",
+          "score": 1.0,
+          "kind": "function"
+        }
+      ],
+      "pack_query": "mcp_response_lean slim pack heatmap cold cards token savings CTX_TOKEN_MODE | seeds: packages/pipeline/session_store.py::_store_path packages/pipeline/project_id.py::repo_runtime_dir packages/pipeline/session_isolation.py::effective_session_id packages/pipeline/session_isolation.py::_session_isolate_enabled packages/pipeline/session_isolation.py::default_process_session_id"
+    },
+    "pack_semantic": {
+      "ok": true,
+      "tool": "pack_semantic",
+      "engine": "semantic_tracer_fuse",
+      "elapsed_s": 0.258,
+      "n_pack": 4,
+      "seed": {
+        "file": "packages/pipeline/session_store.py",
+        "symbol": "_store_path",
+        "id": "packages/pipeline/session_store.py::_store_path"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/session_store.py",
+          "symbol": "_store_path",
+          "score": 1.0,
+          "loc": "packages/pipeline/session_store.py:17-29",
+          "id": "packages/pipeline/session_store.py::_store_path",
+          "chars": 535
+        },
+        {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "repo_runtime_dir",
+          "score": 1.0,
+          "loc": "packages/pipeline/project_id.py:121-142",
+          "id": "packages/pipeline/project_id.py::repo_runtime_dir",
+          "chars": 780
+        },
+        {
+          "file": "packages/pipeline/session_isolation.py",
+          "symbol": "effective_session_id",
+          "score": 1.0,
+          "loc": "packages/pipeline/session_isolation.py:368-375",
+          "id": "packages/pipeline/session_isolation.py::effective_session_id",
+          "chars": 333
+        },
+        {
+          "file": "packages/pipeline/session_isolation.py",
+          "symbol": "sanitize_session_id",
+          "score": 1.0,
+          "loc": "packages/pipeline/session_isolation.py:174-177",
+          "id": "packages/pipeline/session_isolation.py::sanitize_session_id",
+          "chars": 156
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/session_store.py::_store_path",
+          "loc": "packages/pipeline/session_store.py:17-29",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/project_id.py::repo_runtime_dir",
+          "loc": "packages/pipeline/project_id.py:121-142",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/session_isolation.py::effective_session_id",
+          "loc": "packages/pipeline/session_isolation.py:368-375",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/session_isolation.py::sanitize_session_id",
+          "loc": "packages/pipeline/session_isolation.py:174-177",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/session_isolation.py::_session_isolate_enabled",
+          "loc": "packages/pipeline/session_isolation.py:382-387",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/session_isolation.py::default_process_session_id",
+          "loc": "packages/pipeline/session_isolation.py:326-331",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/session_isolation.py::detect_mcp_host",
+          "loc": "packages/pipeline/session_isolation.py:180-188",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/session_store.py::effective_session_id",
+          "loc": "packages/pipeline/session_store.py:74-77",
+          "edge": "calls",
+          "score": 0.9364
+        }
+      ],
+      "error": null,
+      "seed_chunks": [
+        {
+          "file": "packages/pipeline/session_store.py",
+          "symbol": "_store_path",
+          "loc": "packages/pipeline/session_store.py:17-29",
+          "score": 1.0,
+          "kind": "function"
+        },
+        {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "repo_runtime_dir",
+          "loc": "packages/pipeline/project_id.py:121-142",
+          "score": 1.0,
+          "kind": "function"
+        },
+        {
+          "file": "packages/pipeline/session_isolation.py",
+          "symbol": "effective_session_id",
+          "loc": "packages/pipeline/session_isolation.py:368-375",
+          "score": 1.0,
+          "kind": "function"
+        }
+      ],
+      "pack_query": "mcp_response_lean slim pack heatmap cold cards token savings CTX_TOKEN_MODE | seeds: packages/pipeline/session_store.py::_store_path packages/pipeline/project_id.py::repo_runtime_dir packages/pipeline/session_isolation.py::effective_session_id packages/pipeline/session_isolation.py::_session_isolate_enabled packages/pipeline/session_isolation.py::default_process_session_id"
+    }
+  }
+}

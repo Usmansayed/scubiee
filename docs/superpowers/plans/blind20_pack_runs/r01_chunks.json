@@ -1,0 +1,92 @@
+{
+  "id": "r01",
+  "enrich_prompt": "TurboQuant faiss+turboquant quantized dense search serve WarmSearchEngine FaissDenseAdapter vector_backend bits compress",
+  "suggested_seed": {
+    "file": "packages/pipeline/searcher.py",
+    "symbol": "",
+    "loc": "packages/pipeline/searcher.py:1-1",
+    "score": 12.009241656201695
+  },
+  "chunks": [
+    {
+      "file": "packages/pipeline/searcher.py",
+      "symbol": "",
+      "loc": "packages/pipeline/searcher.py:1-1",
+      "score": 12.009241656201695,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/pipeline/engine.py",
+      "symbol": "",
+      "loc": "packages/pipeline/engine.py:1-1",
+      "score": 8.273225259045152,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "docs/pipeline-faiss-turboquant.md",
+      "symbol": "",
+      "loc": "docs/pipeline-faiss-turboquant.md:1-1",
+      "score": 7.207662212622842,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/pipeline/turbo_quant.py",
+      "symbol": "",
+      "loc": "packages/pipeline/turbo_quant.py:1-1",
+      "score": 6.796524899815508,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/pipeline/vectordb.py",
+      "symbol": "",
+      "loc": "packages/pipeline/vectordb.py:1-1",
+      "score": 6.179797795576778,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "tests/test_faiss_dense_adapter.py",
+      "symbol": "",
+      "loc": "tests/test_faiss_dense_adapter.py:1-1",
+      "score": 4.842708065410253,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/pipeline/__init__.py",
+      "symbol": "",
+      "loc": "packages/pipeline/__init__.py:1-1",
+      "score": 4.474195679305604,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "scripts/cleanup_local_indexes.py",
+      "symbol": "",
+      "loc": "scripts/cleanup_local_indexes.py:1-1",
+      "score": 4.206640081827217,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/pipeline/faiss_store.py",
+      "symbol": "",
+      "loc": "packages/pipeline/faiss_store.py:1-1",
+      "score": 3.2984860731081267,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/trace_lab/semantic_venture.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/semantic_venture.py:1-1",
+      "score": 2.6623960314169093,
+      "start_line": null,
+      "end_line": null
+    }
+  ]
+}

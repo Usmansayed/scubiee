@@ -1,0 +1,38 @@
+{
+  "ok": true,
+  "engine": "ultimate",
+  "policy": "strict",
+  "elapsed_s": 0.016,
+  "n_pack": 4,
+  "pack": [
+    {
+      "file": "packages/pipeline/engine.py",
+      "symbol": "_verify_gpu_provider",
+      "score": 1.0,
+      "loc": "packages/pipeline/engine.py:29-63",
+      "id": "packages/pipeline/engine.py::_verify_gpu_provider"
+    },
+    {
+      "file": "packages/pipeline/accel.py",
+      "symbol": "load_accel",
+      "score": 0.9658,
+      "loc": "packages/pipeline/accel.py:132-146",
+      "id": "packages/pipeline/accel.py::load_accel"
+    },
+    {
+      "file": "packages/pipeline/accel.py",
+      "symbol": "accel_path",
+      "score": 0.9227,
+      "loc": "packages/pipeline/accel.py:53-67",
+      "id": "packages/pipeline/accel.py::accel_path"
+    },
+    {
+      "file": "packages/pipeline/project_id.py",
+      "symbol": "context_engine_home",
+      "score": 0.8551,
+      "loc": "packages/pipeline/project_id.py:108-113",
+      "id": "packages/pipeline/project_id.py::context_engine_home"
+    }
+  ],
+  "error": null
+}

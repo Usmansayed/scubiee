@@ -1,0 +1,52 @@
+{
+  "id": "u10",
+  "family": "metadata-inject",
+  "task": "How does metadata injection enrich chunks before indexing?",
+  "enrich_map_query": "inject_metadata build_chunk_meta ChunkMeta render enrich_repo chunk_repo_from_ir",
+  "map_ok": true,
+  "map_elapsed_s": 10.319,
+  "suggested_seed": {
+    "file": "packages/enrich/__init__.py",
+    "symbol": "",
+    "source": "suggested_seed"
+  },
+  "map_top_cards": [
+    {
+      "file": "packages/enrich/__init__.py",
+      "symbol": "",
+      "loc": "packages/enrich/__init__.py:1-1",
+      "score": 21.87734748671447
+    },
+    {
+      "file": "packages/metadata/__init__.py",
+      "symbol": "",
+      "loc": "packages/metadata/__init__.py:1-1",
+      "score": 20.253439779984575
+    },
+    {
+      "file": "tests/test_enrich.py",
+      "symbol": "",
+      "loc": "tests/test_enrich.py:1-1",
+      "score": 16.82806000934047
+    },
+    {
+      "file": "scripts/bench_budget_alloc.py",
+      "symbol": "",
+      "loc": "scripts/bench_budget_alloc.py:1-1",
+      "score": 13.713146547353347
+    },
+    {
+      "file": "packages/seir/render.py",
+      "symbol": "",
+      "loc": "packages/seir/render.py:1-1",
+      "score": 9.130456181141286
+    },
+    {
+      "file": "packages/seir/types.py",
+      "symbol": "",
+      "loc": "packages/seir/types.py:1-1",
+      "score": 2.0389437275048357
+    }
+  ],
+  "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+}

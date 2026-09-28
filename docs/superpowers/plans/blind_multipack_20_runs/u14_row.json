@@ -1,0 +1,646 @@
+{
+  "id": "u14",
+  "family": "upgrade-flow",
+  "task": "Walk the one-command upgrade: package swap, migrate, MCP rebind.",
+  "enrich_map_query": "cmd_upgrade upgrade package swap migrate MCP rebind DiffPlan already_latest",
+  "map_ok": true,
+  "suggested_seed": {
+    "file": "packages/pipeline/__main__.py",
+    "symbol": "",
+    "source": "suggested_seed"
+  },
+  "resolved_seed": {
+    "file": "packages/pipeline/__main__.py",
+    "symbol": "cmd_upgrade",
+    "how": "best_in_file"
+  },
+  "map_top_cards": [
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "score": 26.22894571741307
+    },
+    {
+      "file": "packages/pipeline/upgrade.py",
+      "symbol": "",
+      "loc": "packages/pipeline/upgrade.py:1-1",
+      "score": 10.137279236908828
+    },
+    {
+      "file": "packages/pipeline/upgrade_manifest.py",
+      "symbol": "",
+      "loc": "packages/pipeline/upgrade_manifest.py:1-1",
+      "score": 8.671937578493761
+    },
+    {
+      "file": "packages/pipeline/upgrade_supervisor.py",
+      "symbol": "",
+      "loc": "packages/pipeline/upgrade_supervisor.py:1-1",
+      "score": 8.561748311382708
+    },
+    {
+      "file": "tests/test_mcp_hot_reload_reliability.py",
+      "symbol": "",
+      "loc": "tests/test_mcp_hot_reload_reliability.py:1-1",
+      "score": 7.40483130409657
+    },
+    {
+      "file": "tests/test_upgrade_supervisor.py",
+      "symbol": "",
+      "loc": "tests/test_upgrade_supervisor.py:1-1",
+      "score": 7.320108848920123
+    },
+    {
+      "file": "packages/pipeline/upgrade_platform.py",
+      "symbol": "",
+      "loc": "packages/pipeline/upgrade_platform.py:1-1",
+      "score": 5.007299561610031
+    }
+  ],
+  "arms": {
+    "composite_v1": {
+      "ok": true,
+      "elapsed_s": 0.041,
+      "n_hot": 157,
+      "n_ranked": 299,
+      "hot_ids": [
+        "packages/pipeline/__main__.py::cmd_upgrade",
+        "packages/pipeline/accel.py::AccelProfile.providers",
+        "packages/pipeline/accel.py::_env_disables_mlx",
+        "packages/pipeline/accel.py::_fallback_to_cpu_profile",
+        "packages/pipeline/accel.py::_is_apple_silicon",
+        "packages/pipeline/accel.py::_mlx_importable",
+        "packages/pipeline/accel.py::accel_path",
+        "packages/pipeline/accel.py::configure",
+        "packages/pipeline/accel.py::detect_hardware",
+        "packages/pipeline/accel.py::load_accel",
+        "packages/pipeline/accel.py::ort_available_providers",
+        "packages/pipeline/accel.py::recommend_profile",
+        "packages/pipeline/artifact_guard.py::atomic_write_text",
+        "packages/pipeline/branding.py::migrate_home_dir",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.isatty",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+        "packages/pipeline/cli_ui.py::_init_windows_ansi",
+        "packages/pipeline/cli_ui.py::_init_windows_console",
+        "packages/pipeline/cli_ui.py::_supports_color",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/cli_ui.py::init_terminal",
+        "packages/pipeline/cli_ui.py::kv",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/cli_ui.py::success",
+        "packages/pipeline/cli_ui.py::warn",
+        "packages/pipeline/connect_state.py::_state_path",
+        "packages/pipeline/connect_state.py::load_connected_tools",
+        "packages/pipeline/coreml_mac.py::coreml_model_name",
+        "packages/pipeline/coreml_mac.py::mac_gpu_only",
+        "packages/pipeline/coreml_mac.py::requested_compute_units",
+        "packages/pipeline/daemon.py::_pid_alive",
+        "packages/pipeline/daemon.py::_read_lock_pid",
+        "packages/pipeline/daemon.py::default_host_port",
+        "packages/pipeline/daemon.py::force_restart_daemon",
+        "packages/pipeline/daemon.py::is_running",
+        "packages/pipeline/daemon.py::meta_path",
+        "packages/pipeline/daemon.py::pid_path",
+        "packages/pipeline/daemon.py::stop_daemon",
+        "packages/pipeline/daemon.py::stop_daemon_for_upgrade"
+      ],
+      "top15_ids": [
+        "packages/pipeline/__main__.py::cmd_upgrade",
+        "packages/pipeline/upgrade.py::check_pypi_version",
+        "packages/pipeline/upgrade.py::installed_version",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/upgrade_platform.py::platform_name",
+        "packages/pipeline/project_id.py::context_engine_home",
+        "packages/pipeline/upgrade.py::_save_update_check",
+        "packages/pipeline/managed_repos.py::managed_repo_paths",
+        "packages/pipeline/cli_ui.py::success",
+        "packages/pipeline/upgrade.py::do_upgrade",
+        "packages/pipeline/cli_ui.py::kv",
+        "packages/pipeline/project_id.py::load_registry",
+        "packages/pipeline/upgrade.py::_update_check_path",
+        "packages/pipeline/lifecycle_runtime.py::abort_upgrade_transition",
+        "packages/pipeline/cli_ui.py::warn"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/__main__.py::cmd_upgrade",
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_upgrade",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 4772
+        },
+        {
+          "id": "packages/pipeline/upgrade.py::check_pypi_version",
+          "file": "packages/pipeline/upgrade.py",
+          "symbol": "check_pypi_version",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 1786
+        },
+        {
+          "id": "packages/pipeline/upgrade.py::installed_version",
+          "file": "packages/pipeline/upgrade.py",
+          "symbol": "installed_version",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 243
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::status_line",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "status_line",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 628
+        },
+        {
+          "id": "packages/pipeline/upgrade_platform.py::platform_name",
+          "file": "packages/pipeline/upgrade_platform.py",
+          "symbol": "platform_name",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 159
+        },
+        {
+          "id": "packages/pipeline/project_id.py::context_engine_home",
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "context_engine_home",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 235
+        },
+        {
+          "id": "packages/pipeline/upgrade.py::_save_update_check",
+          "file": "packages/pipeline/upgrade.py",
+          "symbol": "_save_update_check",
+          "kind": "function",
+          "score": 0.9874,
+          "body_chars": 209
+        },
+        {
+          "id": "packages/pipeline/managed_repos.py::managed_repo_paths",
+          "file": "packages/pipeline/managed_repos.py",
+          "symbol": "managed_repo_paths",
+          "kind": "function",
+          "score": 0.986,
+          "body_chars": 2086
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::success",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "success",
+          "kind": "function",
+          "score": 0.9405,
+          "body_chars": 159
+        },
+        {
+          "id": "packages/pipeline/upgrade.py::do_upgrade",
+          "file": "packages/pipeline/upgrade.py",
+          "symbol": "do_upgrade",
+          "kind": "function",
+          "score": 0.9405,
+          "body_chars": 1439
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::kv",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "kv",
+          "kind": "function",
+          "score": 0.9405,
+          "body_chars": 289
+        },
+        {
+          "id": "packages/pipeline/project_id.py::load_registry",
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "load_registry",
+          "kind": "function",
+          "score": 0.8986,
+          "body_chars": 319
+        },
+        {
+          "id": "packages/pipeline/upgrade.py::_update_check_path",
+          "file": "packages/pipeline/upgrade.py",
+          "symbol": "_update_check_path",
+          "kind": "function",
+          "score": 0.8626,
+          "body_chars": 145
+        },
+        {
+          "id": "packages/pipeline/lifecycle_runtime.py::abort_upgrade_transition",
+          "file": "packages/pipeline/lifecycle_runtime.py",
+          "symbol": "abort_upgrade_transition",
+          "kind": "function",
+          "score": 0.8596,
+          "body_chars": 661
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::warn",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "warn",
+          "kind": "function",
+          "score": 0.855,
+          "body_chars": 158
+        }
+      ]
+    },
+    "semantic_tracer_fuse": {
+      "ok": true,
+      "elapsed_s": 0.445,
+      "n_hot": 80,
+      "n_ranked": 303,
+      "hot_ids": [
+        "packages/pipeline/__main__.py::cmd_upgrade",
+        "packages/pipeline/accel.py::configure",
+        "packages/pipeline/artifact_guard.py::atomic_write_text",
+        "packages/pipeline/branding.py::migrate_home_dir",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.isatty",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+        "packages/pipeline/cli_ui.py::_supports_color",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/cli_ui.py::init_terminal",
+        "packages/pipeline/cli_ui.py::kv",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/cli_ui.py::success",
+        "packages/pipeline/cli_ui.py::warn",
+        "packages/pipeline/connect_state.py::load_connected_tools",
+        "packages/pipeline/coreml_mac.py::mac_gpu_only",
+        "packages/pipeline/coreml_mac.py::requested_compute_units",
+        "packages/pipeline/daemon.py::stop_daemon",
+        "packages/pipeline/daemon.py::stop_daemon_for_upgrade",
+        "packages/pipeline/lifecycle_runtime.py::abort_upgrade_transition",
+        "packages/pipeline/lifecycle_runtime.py::load_transition",
+        "packages/pipeline/managed_repos.py::managed_repo_paths",
+        "packages/pipeline/mcp_hot_reload.py::nudge_mcp_hot_reload",
+        "packages/pipeline/mcp_hot_reload.py::refresh_mcp_build_env",
+        "packages/pipeline/mcp_hot_reload.py::write_active_build_stamp",
+        "packages/pipeline/mcp_restore.py::heal_mcp_pins_if_stubbed",
+        "packages/pipeline/mcp_restore.py::restore_live_mcp_pins",
+        "packages/pipeline/memory_budget.py::bootstrap_budget",
+        "packages/pipeline/migrate.py::detect_migration_needed",
+        "packages/pipeline/migrate.py::migrate_all",
+        "packages/pipeline/pause_resume.py::is_paused",
+        "packages/pipeline/process_control.py::_is_mcp_bridge_process",
+        "packages/pipeline/process_control.py::_pid_is_protected",
+        "packages/pipeline/process_control.py::_terminate_pid_no_tree",
+        "packages/pipeline/process_control.py::enumerate_scubiee_processes",
+        "packages/pipeline/process_control.py::kill_all_scubiee_processes",
+        "packages/pipeline/process_control.py::release_scubiee_process_locks",
+        "packages/pipeline/process_control.py::safe_terminate_pid",
+        "packages/pipeline/process_control.py::unlock_uv_tool_env",
+        "packages/pipeline/project_id.py::context_engine_home"
+      ],
+      "top15_ids": [
+        "packages/pipeline/__main__.py::cmd_upgrade",
+        "packages/pipeline/upgrade.py::check_pypi_version",
+        "packages/pipeline/upgrade.py::installed_version",
+        "packages/pipeline/upgrade_platform.py::platform_name",
+        "packages/pipeline/project_id.py::context_engine_home",
+        "packages/pipeline/upgrade.py::do_upgrade",
+        "packages/pipeline/upgrade.py::_save_update_check",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/cli_ui.py::kv",
+        "packages/pipeline/cli_ui.py::success",
+        "packages/pipeline/upgrade.py::_update_check_path",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+        "packages/pipeline/cli_ui.py::warn",
+        "packages/pipeline/upgrade.py::_version_tuple"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/__main__.py::cmd_upgrade",
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_upgrade",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 4772
+        },
+        {
+          "id": "packages/pipeline/upgrade.py::check_pypi_version",
+          "file": "packages/pipeline/upgrade.py",
+          "symbol": "check_pypi_version",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 1786
+        },
+        {
+          "id": "packages/pipeline/upgrade.py::installed_version",
+          "file": "packages/pipeline/upgrade.py",
+          "symbol": "installed_version",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 243
+        },
+        {
+          "id": "packages/pipeline/upgrade_platform.py::platform_name",
+          "file": "packages/pipeline/upgrade_platform.py",
+          "symbol": "platform_name",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 159
+        },
+        {
+          "id": "packages/pipeline/project_id.py::context_engine_home",
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "context_engine_home",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 235
+        },
+        {
+          "id": "packages/pipeline/upgrade.py::do_upgrade",
+          "file": "packages/pipeline/upgrade.py",
+          "symbol": "do_upgrade",
+          "kind": "function",
+          "score": 0.8957,
+          "body_chars": 1439
+        },
+        {
+          "id": "packages/pipeline/upgrade.py::_save_update_check",
+          "file": "packages/pipeline/upgrade.py",
+          "symbol": "_save_update_check",
+          "kind": "function",
+          "score": 0.8787,
+          "body_chars": 209
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::colors",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "colors",
+          "kind": "function",
+          "score": 0.8678,
+          "body_chars": 114
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::kv",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "kv",
+          "kind": "function",
+          "score": 0.8633,
+          "body_chars": 289
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::success",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "success",
+          "kind": "function",
+          "score": 0.8575,
+          "body_chars": 159
+        },
+        {
+          "id": "packages/pipeline/upgrade.py::_update_check_path",
+          "file": "packages/pipeline/upgrade.py",
+          "symbol": "_update_check_path",
+          "kind": "function",
+          "score": 0.8282,
+          "body_chars": 145
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "_ScrubGraphifyStream.flush",
+          "kind": "method",
+          "score": 0.8223,
+          "body_chars": 56
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "_ScrubGraphifyStream.write",
+          "kind": "method",
+          "score": 0.8219,
+          "body_chars": 227
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::warn",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "warn",
+          "kind": "function",
+          "score": 0.7767,
+          "body_chars": 158
+        },
+        {
+          "id": "packages/pipeline/upgrade.py::_version_tuple",
+          "file": "packages/pipeline/upgrade.py",
+          "symbol": "_version_tuple",
+          "kind": "function",
+          "score": 0.7306,
+          "body_chars": 224
+        }
+      ]
+    },
+    "hyb_fuse_demote_noise_plus": {
+      "ok": true,
+      "elapsed_s": 0.103,
+      "n_hot": 286,
+      "n_ranked": 303,
+      "hot_ids": [
+        "packages/graphify/export.py::_git_head",
+        "packages/graphify/extract.py::extract",
+        "packages/parse_harness/graphify_adapter.py::graphify_to_repo_ir",
+        "packages/pipeline/__main__.py::cmd_upgrade",
+        "packages/pipeline/accel.py::AccelProfile.providers",
+        "packages/pipeline/accel.py::_align_profile_to_ort",
+        "packages/pipeline/accel.py::_apply_calibration_result",
+        "packages/pipeline/accel.py::_calibrate_mlx",
+        "packages/pipeline/accel.py::_do_calibration",
+        "packages/pipeline/accel.py::_ensure_coderank_int8",
+        "packages/pipeline/accel.py::_ensure_cuda_dll_paths",
+        "packages/pipeline/accel.py::_ensure_fastembed_import_deps",
+        "packages/pipeline/accel.py::_env_disables_mlx",
+        "packages/pipeline/accel.py::_fallback_to_cpu_profile",
+        "packages/pipeline/accel.py::_has_nvidia",
+        "packages/pipeline/accel.py::_install_ort_wheel",
+        "packages/pipeline/accel.py::_is_apple_silicon",
+        "packages/pipeline/accel.py::_mlx_importable",
+        "packages/pipeline/accel.py::_ort_profile_ready",
+        "packages/pipeline/accel.py::_probe_gpu_embed",
+        "packages/pipeline/accel.py::_refuse_coreml_cpu_fallback",
+        "packages/pipeline/accel.py::_refuse_cuda_cpu_fallback",
+        "packages/pipeline/accel.py::_requirement_satisfied",
+        "packages/pipeline/accel.py::_restore_env",
+        "packages/pipeline/accel.py::_windows_d3d12_gpus",
+        "packages/pipeline/accel.py::_windows_discrete_gpu_candidates",
+        "packages/pipeline/accel.py::accel_path",
+        "packages/pipeline/accel.py::configure",
+        "packages/pipeline/accel.py::detect_hardware",
+        "packages/pipeline/accel.py::ensure_coderank_fp16_onnx",
+        "packages/pipeline/accel.py::ensure_coderank_model",
+        "packages/pipeline/accel.py::install_profile_packages",
+        "packages/pipeline/accel.py::load_accel",
+        "packages/pipeline/accel.py::ort_available_providers",
+        "packages/pipeline/accel.py::ort_packages_for",
+        "packages/pipeline/accel.py::pip_install",
+        "packages/pipeline/accel.py::profile_packages_satisfied",
+        "packages/pipeline/accel.py::recommend_profile",
+        "packages/pipeline/accel.py::register_coderank",
+        "packages/pipeline/accel.py::save_accel"
+      ],
+      "top15_ids": [
+        "packages/pipeline/__main__.py::cmd_upgrade",
+        "packages/pipeline/upgrade.py::check_pypi_version",
+        "packages/pipeline/upgrade.py::installed_version",
+        "packages/pipeline/upgrade.py::do_upgrade",
+        "packages/pipeline/upgrade.py::_save_update_check",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/cli_ui.py::kv",
+        "packages/pipeline/cli_ui.py::success",
+        "packages/pipeline/project_id.py::context_engine_home",
+        "packages/pipeline/upgrade_platform.py::platform_name",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/upgrade_supervisor.py::run_upgrade",
+        "packages/pipeline/upgrade.py::_version_tuple",
+        "packages/pipeline/upgrade.py::_load_update_check",
+        "packages/pipeline/cli_ui.py::status_line"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/__main__.py::cmd_upgrade",
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_upgrade",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 4772
+        },
+        {
+          "id": "packages/pipeline/upgrade.py::check_pypi_version",
+          "file": "packages/pipeline/upgrade.py",
+          "symbol": "check_pypi_version",
+          "kind": "function",
+          "score": 0.8542,
+          "body_chars": 1786
+        },
+        {
+          "id": "packages/pipeline/upgrade.py::installed_version",
+          "file": "packages/pipeline/upgrade.py",
+          "symbol": "installed_version",
+          "kind": "function",
+          "score": 0.8302,
+          "body_chars": 243
+        },
+        {
+          "id": "packages/pipeline/upgrade.py::do_upgrade",
+          "file": "packages/pipeline/upgrade.py",
+          "symbol": "do_upgrade",
+          "kind": "function",
+          "score": 0.7972,
+          "body_chars": 1439
+        },
+        {
+          "id": "packages/pipeline/upgrade.py::_save_update_check",
+          "file": "packages/pipeline/upgrade.py",
+          "symbol": "_save_update_check",
+          "kind": "function",
+          "score": 0.7201,
+          "body_chars": 209
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::colors",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "colors",
+          "kind": "function",
+          "score": 0.7125,
+          "body_chars": 114
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::kv",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "kv",
+          "kind": "function",
+          "score": 0.7093,
+          "body_chars": 289
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::success",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "success",
+          "kind": "function",
+          "score": 0.7052,
+          "body_chars": 159
+        },
+        {
+          "id": "packages/pipeline/project_id.py::context_engine_home",
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "context_engine_home",
+          "kind": "function",
+          "score": 0.685,
+          "body_chars": 235
+        },
+        {
+          "id": "packages/pipeline/upgrade_platform.py::platform_name",
+          "file": "packages/pipeline/upgrade_platform.py",
+          "symbol": "platform_name",
+          "kind": "function",
+          "score": 0.685,
+          "body_chars": 159
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "_ScrubGraphifyStream.flush",
+          "kind": "method",
+          "score": 0.6806,
+          "body_chars": 56
+        },
+        {
+          "id": "packages/pipeline/upgrade_supervisor.py::run_upgrade",
+          "file": "packages/pipeline/upgrade_supervisor.py",
+          "symbol": "run_upgrade",
+          "kind": "function",
+          "score": 0.6777,
+          "body_chars": 11149
+        },
+        {
+          "id": "packages/pipeline/upgrade.py::_version_tuple",
+          "file": "packages/pipeline/upgrade.py",
+          "symbol": "_version_tuple",
+          "kind": "function",
+          "score": 0.6275,
+          "body_chars": 224
+        },
+        {
+          "id": "packages/pipeline/upgrade.py::_load_update_check",
+          "file": "packages/pipeline/upgrade.py",
+          "symbol": "_load_update_check",
+          "kind": "function",
+          "score": 0.611,
+          "body_chars": 251
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::status_line",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "status_line",
+          "kind": "function",
+          "score": 0.6013,
+          "body_chars": 628
+        }
+      ]
+    },
+    "poly_embed": {
+      "ok": true,
+      "elapsed_s": 0.002,
+      "n_hot": 1,
+      "n_ranked": 1,
+      "hot_ids": [
+        "packages/pipeline/__main__.py::cmd_upgrade"
+      ],
+      "top15_ids": [
+        "packages/pipeline/__main__.py::cmd_upgrade"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/__main__.py::cmd_upgrade",
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_upgrade",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 4772
+        }
+      ]
+    }
+  }
+}

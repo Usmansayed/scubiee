@@ -1,0 +1,53 @@
+{
+  "ok": true,
+  "elapsed_s": 1.7,
+  "passed": 9,
+  "failed": 0,
+  "results": [
+    {
+      "check": "pack_embed_many",
+      "ok": true,
+      "detail": "count=12"
+    },
+    {
+      "check": "expand_callers_upward",
+      "ok": true,
+      "detail": "count=12 top=['index_repo', 'incremental_sync', 'EmbedField.__init__', 'get_resource_manager']"
+    },
+    {
+      "check": "expand_callees",
+      "ok": true,
+      "detail": "count=12"
+    },
+    {
+      "check": "expand_effects",
+      "ok": true,
+      "detail": "count=12 (sparse OK)"
+    },
+    {
+      "check": "conductor_multiarch_hop",
+      "ok": true,
+      "detail": "seed=MultiArchConductor promoted={'from': 'Conductor', 'to': 'MultiArchConductor', 'helped': True} count=12"
+    },
+    {
+      "check": "broad_escape_helped_present",
+      "ok": true,
+      "detail": "escape_helped=True thin=False count=9"
+    },
+    {
+      "check": "broad_densified_or_usable",
+      "ok": true,
+      "detail": "escape_helped=true"
+    },
+    {
+      "check": "suggested_seed_nonempty",
+      "ok": true,
+      "detail": "symbol='FaissCollection'"
+    },
+    {
+      "check": "collect_after_lean",
+      "ok": true,
+      "detail": "count=1 packed_ids=[]"
+    }
+  ]
+}

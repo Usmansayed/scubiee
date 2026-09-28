@@ -1,0 +1,102 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 6.377,
+  "stdout_chars": 3450,
+  "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})",
+  "json": {
+    "ok": true,
+    "tool": "map",
+    "cards": [
+      {
+        "rank": 1,
+        "file": "packages/trace_lab/semantic_tracer_fuse.py",
+        "score": 18.6032378284128,
+        "why": "\"\"\"semantic_tracer_fuse \u2014 composite of Cycle 1\u20133 mechanisms that held up. Fusion recipe (evidence-driven): 1. composite membership (ground truth) 2. comparator best-first (edge/nod",
+        "role": "function",
+        "loc": "packages/trace_lab/semantic_tracer_fuse.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 2,
+        "file": "tests/test_semantic_tracer_fuse.py",
+        "score": 15.668329253659177,
+        "why": "def test_semantic_tracer_fuse_runs() -> None: root = default_fixture_root() nodes, graph, lex, tracers = compile_bundle( root, with_graphify=False, with_embed_power=True, require_r",
+        "role": "test",
+        "loc": "tests/test_semantic_tracer_fuse.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 3,
+        "file": "docs/superpowers/plans/2026-09-06-semantic-tracer-fuse-prod.md",
+        "score": 14.439897018504631,
+        "why": "# Semantic tracer fuse bakeoff \u2014 `verify_prod.json` Cases: 10 \u00b7 9.32s \u00b7 `real:fastembed` | Arm | Acc | F1 | Must | Prec | Must@10 | |-----|-----|----|------|------|---------| | `co",
+        "role": "docs",
+        "loc": "docs/superpowers/plans/2026-09-06-semantic-tracer-fuse-prod.md:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 4,
+        "file": "packages/trace_lab/semantic_compare.py",
+        "score": 12.916038617166533,
+        "why": "def hub_penalty(self, nid: str) -> float: \"\"\"Return multiplier in (0,1]: lower for hub-like generics with weak task affinity.\"\"\" if self._hub_prior is None or nid not in self.index",
+        "role": "function",
+        "loc": "packages/trace_lab/semantic_compare.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 5,
+        "file": "packages/trace_lab/semantic_hybrid.py",
+        "score": 12.850839895580624,
+        "why": "drop_mode=drop_mode, blend_mode=blend_mode, strategy=strategy, ) return run def register_hybrid_arms( tracers: dict, root: Path, lsp: LspIndex, field: EmbedField, extra_graph: AstT",
+        "role": "function",
+        "loc": "packages/trace_lab/semantic_hybrid.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 6,
+        "file": "packages/trace_lab/failure_report.py",
+        "score": 12.12716772451384,
+        "why": "def build_failure_report( gold: GoldCase, heatmap: Heatmap, nodes: dict[str, TraceNode], *, hot_threshold: float = HOT_THRESHOLD, ) -> dict[str, Any]: hot = {c.node_id for c in hea",
+        "role": "function",
+        "loc": "packages/trace_lab/failure_report.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 7,
+        "file": "scripts/semantic_tracer_fuse_bakeoff.py",
+        "score": 5.948308175710067,
+        "why": "\"\"\"Bakeoff: composite_v1 vs semantic_tracer_v1 vs fuse (+ controls).\"\"\" from __future__ import annotations import json import time from pathlib import Path from typing import Any f",
+        "role": "other",
+        "loc": "scripts/semantic_tracer_fuse_bakeoff.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 8,
+        "file": "tests/test_watcher_recovery.py",
+        "score": 3.946151574974772,
+        "why": "from __future__ import annotations import json import time from pathlib import Path import pytest @pytest.fixture(autouse=True)",
+        "role": "test",
+        "loc": "tests/test_watcher_recovery.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 9,
+        "file": "fixtures/trace-lab/app/events/registry.py",
+        "score": 3.026197162826353,
+        "why": "def bind(name: str, fn: object) -> None: HANDLERS[name] = fn",
+        "role": "other",
+        "loc": "fixtures/trace-lab/app/events/registry.py:1-1",
+        "symbol": ""
+      }
+    ],
+    "suggested_seed": {
+      "file": "packages/trace_lab/semantic_tracer_fuse.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/semantic_tracer_fuse.py:1-1",
+      "score": 18.6032378284128
+    },
+    "next": "scubiee pack \"apply_strict_embed_teleport with_teleport semantic_tracer_fuse min_sem hub_penalty FN recovery must_not\" --seed-file packages/trace_lab/semantic_tracer_fuse.py --mode lean"
+  },
+  "stdout_preview": ""
+}

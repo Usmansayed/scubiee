@@ -1,0 +1,90 @@
+{
+  "ok": true,
+  "tool": "map",
+  "query": "cmd_connect connect host MCP mcp.json cursor claude install surface permissions bridge",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "score": 13.011057700905516,
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "packages/pipeline/mcp_install.py",
+      "symbol": "",
+      "score": 5.570687934457617,
+      "loc": "packages/pipeline/mcp_install.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "tests/test_mcp_bridge_concurrency.py",
+      "symbol": "",
+      "score": 5.405991093764664,
+      "loc": "tests/test_mcp_bridge_concurrency.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "tests/test_mcp_permissions.py",
+      "symbol": "",
+      "score": 5.343976675994707,
+      "loc": "tests/test_mcp_permissions.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "packages/pipeline/mcp_permissions.py",
+      "symbol": "",
+      "score": 5.0916513552566585,
+      "loc": "packages/pipeline/mcp_permissions.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "docs/web-info/cursor-mcp.md",
+      "symbol": "",
+      "score": 4.994519404168663,
+      "loc": "docs/web-info/cursor-mcp.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "tests/test_mcp_restore.py",
+      "symbol": "",
+      "score": 4.938234259023552,
+      "loc": "tests/test_mcp_restore.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "docs/cursor-mcp-workspace-resolution-research.md",
+      "symbol": "",
+      "score": 4.913641995840421,
+      "loc": "docs/cursor-mcp-workspace-resolution-research.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "scripts/kiro_mcp_ab_dev_eval.py",
+      "symbol": "",
+      "score": 4.911639345089706,
+      "loc": "scripts/kiro_mcp_ab_dev_eval.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "docs/connect-global-mcp-research.md",
+      "symbol": "",
+      "score": 4.86979520496343,
+      "loc": "docs/connect-global-mcp-research.md:1-1",
+      "why": ""
+    }
+  ],
+  "suggested_seed": null,
+  "elapsed_s": 0.953,
+  "via": "search_repo(use_server=True)"
+}

@@ -1,0 +1,32 @@
+[
+  {
+    "file": "packages/conductor/architectures.py",
+    "symbol": "MultiArchConductor.retrieve_D_rerank",
+    "kind": "method",
+    "loc": "packages/conductor/architectures.py:437-439",
+    "start_line": 437,
+    "end_line": 439,
+    "score": 10.35,
+    "excerpt": "    def retrieve_D_rerank(self, query: str, query_vec: np.ndarray, top_k: int = 10) -> list[Hit]:\n        pool = self.retrieve_A_minrank_expand(query, query_vec, top_k=40)\n        "
+  },
+  {
+    "file": "packages/conductor/service.py",
+    "symbol": "ConductorEngine.search",
+    "kind": "method",
+    "loc": "packages/conductor/service.py:209-281",
+    "start_line": 209,
+    "end_line": 281,
+    "score": 8.75,
+    "excerpt": "    def search(self, query: str, mode: Mode = \"both\", top_k: int = 8) -> dict[str, Any]:\n        self.ensure_loaded()\n        assert self._cond is not None\n        top_k = max(1, m"
+  },
+  {
+    "file": "packages/pipeline/searcher.py",
+    "symbol": "FaissDenseAdapter.search",
+    "kind": "method",
+    "loc": "packages/pipeline/searcher.py:40-52",
+    "start_line": 40,
+    "end_line": 52,
+    "score": 8.4,
+    "excerpt": "    def search(self, query_vec: np.ndarray, top_k: int = 50):\n        # Conductor arrays are positional 0..n-1. FAISS IndexIDMap2 returns\n        # durable chunk ids, which grow ga"
+  }
+]

@@ -71,6 +71,29 @@ def _read_json(handler: BaseHTTPRequestHandler) -> dict:
         return {}
 
 
+_CLIENT_GONE_ERRORS = (ConnectionAbortedError, ConnectionResetError, BrokenPipeError)
+
+
+class EngineHTTPServer(ThreadingHTTPServer):
+    """ThreadingHTTPServer that does not dump a traceback when a client hangs up.
+
+    Probes and MCP clients time out and close mid-response all the time
+    (WinError 10053/10054). socketserver's default ``handle_error`` prints a
+    full traceback for each, which buried real errors in engine.log.
+    """
+
+    def handle_error(self, request, client_address) -> None:  # noqa: ANN001
+        exc = sys.exc_info()[1]
+        if isinstance(exc, _CLIENT_GONE_ERRORS):
+            try:
+                port = client_address[1] if isinstance(client_address, tuple) else client_address
+            except Exception:  # noqa: BLE001
+                port = "?"
+            sys.stderr.write(f"[http] client gone mid-response: {type(exc).__name__} port={port}\n")
+            return
+        super().handle_error(request, client_address)
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt: str, *args) -> None:
         sys.stderr.write("%s - %s\n" % (self.address_string(), fmt % args))
@@ -449,6 +472,41 @@ class Handler(BaseHTTPRequestHandler):
             if not root:
                 _json(self, 400, {"ok": False, "error": "workspace path required"})
                 return
+            # OPEN-C: /v1/dirty and note_locate on the already-running keeper skip
+            # admit()/registry write — that was stacking seconds onto the SLA clock.
+            if path in {"/v1/dirty", "/v1/note_locate"}:
+                loop = getattr(ce, "sync_loop", None)
+                try:
+                    same_repo = (
+                        loop is not None
+                        and getattr(loop, "running", False)
+                        and Path(str(root)).resolve() == Path(str(loop.repo)).resolve()
+                    )
+                except Exception:  # noqa: BLE001
+                    same_repo = False
+                if same_repo:
+                    self._request_context = {
+                        "status": "activated",
+                        "fast_dirty": True,
+                        "client": data.get("client"),
+                        "session_id": data.get("session_id"),
+                    }
+                    if path == "/v1/dirty":
+                        paths = data.get("paths")
+                        if not isinstance(paths, list) or not paths:
+                            _json(self, 400, {"ok": False, "error": "paths list required"})
+                            return
+                        _json(
+                            self,
+                            200,
+                            ce.mark_dirty(
+                                [str(item) for item in paths],
+                                reason=str(data.get("reason") or "changed_file"),
+                            ),
+                        )
+                        return
+                    _json(self, 200, ce.note_locate())
+                    return
             admission = admit(root, intentional=True)
             self._request_context = admission
             if admission.get("status") != "activated":
@@ -688,14 +746,22 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         if path == "/v1/shutdown":
+            reason = str(data.get("reason") or "http_shutdown")
+            print(
+                f"[engine] shutdown requested reason={reason} "
+                f"caller_pid={data.get('caller_pid')} caller={data.get('caller')}",
+                file=sys.stderr,
+                flush=True,
+            )
             ce.shutdown()
             _json(self, 200, {"ok": True, "shutdown": True})
             # stop server from another thread, then hard-exit (ORT RSS).
             def _stop() -> None:
                 time.sleep(0.2)
                 getattr(self.server, "shutdown", lambda: None)()
-                print("[engine] shutdown os._exit", file=sys.stderr, flush=True)
-                os._exit(0)
+                from pipeline.engine_log import hard_exit
+
+                hard_exit(0, reason=f"http_shutdown:{reason}")
 
             import threading
 
@@ -738,7 +804,9 @@ def _retire_self() -> bool:
         except Exception:  # noqa: BLE001
             pass
         print("[engine] retire_self running=false", file=sys.stderr, flush=True)
-        os._exit(0)
+        from pipeline.engine_log import hard_exit
+
+        hard_exit(0, reason="retire_self_idle_standby")
 
     threading.Thread(target=_die, name="ce-self-retire", daemon=True).start()
     return True
@@ -885,6 +953,21 @@ def run_server(
     import gc
 
     gc.disable()
+    # Every engine.log line gets a timestamp; a native crash dumps all Python
+    # thread stacks into the same log (issue 2: restarts were untimed guesswork).
+    try:
+        from pipeline.engine_log import enable_fault_dumps, install_line_timestamps
+
+        install_line_timestamps()
+        enable_fault_dumps()
+    except Exception:  # noqa: BLE001
+        pass
+    print(
+        f"[engine] process pid={os.getpid()} ppid={os.getppid()} "
+        f"spawn={os.environ.get('CTX_ENGINE_SPAWN_METHOD') or 'popen'}",
+        file=sys.stderr,
+        flush=True,
+    )
     # A killed open leaves warm_phase.json and embed_prewarm.busy behind.
     # The watchdog reads those and force-restarts the next process on its
     # first tick, so the repo never finishes opening.
@@ -922,7 +1005,7 @@ def run_server(
     )
     print(f"[engine] dashboard http://{host}:{port}/dashboard", file=sys.stderr, flush=True)
 
-    httpd = ThreadingHTTPServer((host, port), Handler)
+    httpd = EngineHTTPServer((host, port), Handler)
     _register_httpd(httpd)
 
     # Single-instance lock for foreground / daemon child
@@ -939,6 +1022,17 @@ def run_server(
             from pipeline.daemon import release_lock_if_owner
 
             release_lock_if_owner()
+        except Exception:  # noqa: BLE001
+            pass
+        # Interpreter exit would run ORT/DirectML DLL detach next (issue 2).
+        # Only the spawned daemon: an in-process caller (tests, foreground
+        # serve) would lose its real exit code and later atexit handlers.
+        if (os.environ.get("CTX_SCUBIEE_ROLE") or "").strip().lower() != "engine":
+            return
+        try:
+            from pipeline.engine_log import hard_exit
+
+            hard_exit(0, reason="interpreter_exit")
         except Exception:  # noqa: BLE001
             pass
 

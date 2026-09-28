@@ -1,0 +1,195 @@
+{
+  "id": "t06",
+  "family": "mcp-bridge",
+  "task": "How does the MCP bridge process launch and forward tools to the Scubiee MCP server?",
+  "must_files": [
+    "packages/pipeline/mcp_bridge.py",
+    "packages/pipeline/mcp_bridge_session.py"
+  ],
+  "must_symbols": [],
+  "map_k12": {
+    "elapsed_s": 0.472,
+    "top_files": [
+      "packages/pipeline/templates/scubiee.md",
+      "packages/pipeline/mcp_bridge.py",
+      "packages/pipeline/mcp_bridge_session.py",
+      "tests/test_mcp_bridge.py",
+      "scripts/kiro_mcp_reliability_probe.py",
+      "tests/test_mcp_bridge_concurrency.py",
+      "_live_mcp_payload_smoke.py",
+      "tests/test_hybrid_cbm.py"
+    ]
+  },
+  "map_k8": {
+    "elapsed_s": 0.349,
+    "top_files": [
+      "packages/pipeline/templates/scubiee.md",
+      "packages/pipeline/mcp_bridge.py",
+      "packages/pipeline/mcp_bridge_session.py",
+      "tests/test_mcp_bridge.py",
+      "scripts/kiro_mcp_reliability_probe.py"
+    ]
+  },
+  "chunks_k12": [
+    {
+      "file": "packages/pipeline/mcp_bridge.py",
+      "symbol": "McpBridge",
+      "kind": "class",
+      "loc": "packages/pipeline/mcp_bridge.py:77-222",
+      "start_line": 77,
+      "end_line": 222,
+      "score": 7.55
+    },
+    {
+      "file": "packages/pipeline/mcp_restore.py",
+      "symbol": "clear_cursor_disabled_scubiee",
+      "kind": "function",
+      "loc": "packages/pipeline/mcp_restore.py:334-409",
+      "start_line": 334,
+      "end_line": 409,
+      "score": 6.85
+    },
+    {
+      "file": "packages/pipeline/mcp_restore.py",
+      "symbol": "mcp_entry_needs_restore",
+      "kind": "function",
+      "loc": "packages/pipeline/mcp_restore.py:42-64",
+      "start_line": 42,
+      "end_line": 64,
+      "score": 6.7
+    }
+  ],
+  "chunks_k8": [
+    {
+      "file": "packages/pipeline/mcp_bridge.py",
+      "symbol": "McpBridge",
+      "kind": "class",
+      "loc": "packages/pipeline/mcp_bridge.py:77-222",
+      "start_line": 77,
+      "end_line": 222,
+      "score": 7.55
+    },
+    {
+      "file": "packages/pipeline/mcp_bridge.py",
+      "symbol": "McpBridge.run",
+      "kind": "method",
+      "loc": "packages/pipeline/mcp_bridge.py:205-222",
+      "start_line": 205,
+      "end_line": 222,
+      "score": 6.2
+    },
+    {
+      "file": "packages/pipeline/mcp_bridge_session.py",
+      "symbol": "bridge_mode",
+      "kind": "function",
+      "loc": "packages/pipeline/mcp_bridge_session.py:23-27",
+      "start_line": 23,
+      "end_line": 27,
+      "score": 6.15
+    }
+  ],
+  "pack": {
+    "ok": true,
+    "elapsed_s": 0.157,
+    "n_pack": 2,
+    "pack": [
+      {
+        "file": "packages/pipeline/mcp_bridge.py",
+        "symbol": "McpBridge",
+        "loc": "packages/pipeline/mcp_bridge.py:77-222",
+        "id": "packages/pipeline/mcp_bridge.py::McpBridge",
+        "chars": 5737
+      },
+      {
+        "file": "packages/pipeline/mcp_bridge.py",
+        "symbol": "McpBridge.run",
+        "loc": "packages/pipeline/mcp_bridge.py:205-222",
+        "id": "packages/pipeline/mcp_bridge.py::McpBridge.run",
+        "chars": 263
+      }
+    ],
+    "chain": [
+      {
+        "id": "packages/pipeline/mcp_bridge.py::McpBridge",
+        "loc": "packages/pipeline/mcp_bridge.py:77-222",
+        "edge": "seed",
+        "symbol": "McpBridge"
+      },
+      {
+        "id": "packages/pipeline/mcp_bridge.py::McpBridge.run",
+        "loc": "packages/pipeline/mcp_bridge.py:205-222",
+        "edge": "seed",
+        "symbol": "McpBridge.run"
+      },
+      {
+        "id": "packages/pipeline/mcp_bridge.py::_stderr",
+        "loc": "packages/pipeline/mcp_bridge.py:32-33",
+        "edge": "calls",
+        "symbol": "_stderr"
+      },
+      {
+        "id": "packages/pipeline/mcp_bridge_session.py::max_bridge_sessions",
+        "loc": "packages/pipeline/mcp_bridge_session.py:30-35",
+        "edge": "calls",
+        "symbol": "max_bridge_sessions"
+      },
+      {
+        "id": "packages/pipeline/mcp_bridge_session.py::bridge_mode",
+        "loc": "packages/pipeline/mcp_bridge_session.py:23-27",
+        "edge": "calls",
+        "symbol": "bridge_mode"
+      },
+      {
+        "id": "packages/pipeline/mcp_bridge.py::McpBridge._shared_worker",
+        "loc": "packages/pipeline/mcp_bridge.py:88-89",
+        "edge": "contains",
+        "symbol": "McpBridge._shared_worker"
+      },
+      {
+        "id": "packages/pipeline/mcp_bridge.py::McpBridge._emit_client",
+        "loc": "packages/pipeline/mcp_bridge.py:117-120",
+        "edge": "contains",
+        "symbol": "McpBridge._emit_client"
+      },
+      {
+        "id": "packages/pipeline/mcp_bridge.py::McpBridge._emit_tools_list_changed",
+        "loc": "packages/pipeline/mcp_bridge.py:122-123",
+        "edge": "contains",
+        "symbol": "McpBridge._emit_tools_list_changed"
+      }
+    ],
+    "seed": {
+      "file": "packages/pipeline/mcp_bridge.py",
+      "symbol": "McpBridge",
+      "id": "packages/pipeline/mcp_bridge.py::McpBridge"
+    },
+    "error": null
+  },
+  "scores": {
+    "map_k12": {
+      "file": 1.0,
+      "symbol": 1.0,
+      "note": "raw map cards (symbols often empty)"
+    },
+    "map_k12_chunks": {
+      "file": 0.5,
+      "symbol": 1.0,
+      "chunks": [
+        "McpBridge",
+        "clear_cursor_disabled_scubiee",
+        "mcp_entry_needs_restore"
+      ]
+    },
+    "map8_pack": {
+      "file": 1.0,
+      "symbol": 1.0,
+      "n_pack": 2,
+      "chunks": [
+        "McpBridge",
+        "McpBridge.run",
+        "bridge_mode"
+      ],
+      "elapsed_s": 0.157
+    }
+  }
+}

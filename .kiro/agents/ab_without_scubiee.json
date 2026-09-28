@@ -1,0 +1,37 @@
+{
+  "includeMcpJson": false,
+  "includePowers": false,
+  "model": "auto",
+  "permissions": {
+    "rules": [
+      {
+        "capability": "shell",
+        "match": [
+          "rg *",
+          "findstr *",
+          "dir *",
+          "ls *",
+          "type *",
+          "Get-ChildItem *",
+          "Select-String *"
+        ],
+        "effect": "allow"
+      }
+    ]
+  },
+  "name": "ab_without_scubiee",
+  "description": "A/B arm WITHOUT Scubiee MCP (isolated native tools only)",
+  "prompt": "You are a locate-only coding assistant for a fair A/B evaluation.\n\nHard rules:\n- Do NOT edit, create, or delete files.\n- Do NOT run git write commands, installs, or servers.\n- Prefer read/search tools. Keep exploration tight.\n- Finish with the requested JSON block (files + symbols).\n\nYou do NOT have scubiee MCP. BAN inventing MCP locate tools.\nBAN running `scubiee map`, `scubiee pack`, or `scubiee expand`.\nUse only built-in fs_read / fileSearch / listDirectory / shell (rg/findstr/dir).\n",
+  "mcpServers": {},
+  "tools": [
+    "read",
+    "shell"
+  ],
+  "allowedTools": [
+    "read",
+    "shell"
+  ],
+  "resources": [
+    "file://AGENTS.md"
+  ]
+}

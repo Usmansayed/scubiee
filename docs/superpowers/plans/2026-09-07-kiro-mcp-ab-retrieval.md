@@ -1,6 +1,6 @@
 # Kiro auto — real development A/B (with vs without Scubiee)
 
-**Date:** 2026-09-09T17:03:39.205149+00:00
+**Date:** 2026-09-10T03:25:37.139079+00:00
 **Model:** `claude-sonnet-5` · **Effort:** `medium`
 **Task:** `complex_retrieval` — complex multi-hop retrieval → single reasoning context file
 
@@ -10,19 +10,24 @@
 # Retrieval challenge — assemble a reasoning context pack (NO code changes)
 
 ## Mission
-You must retrieve enough multi-hop codebase context to answer a hard product question later —
-but you will NOT implement anything. Your ONLY deliverable is one markdown file that stores
-all context needed for reasoning.
+Retrieve enough multi-hop production evidence to answer a hard product question later.
+You will NOT implement anything. Your ONLY deliverable is one markdown context file.
 
-## Hard question (do not answer in chat — put evidence in the file)
-Trace the full `scubiee connect` surface for Cursor-like hosts end-to-end:
-1. Where connect starts and how tool-surface install is invoked.
-2. Where mcp.json autoApprove / alwaysAllow (or equivalent allowlists) are written.
-3. Where permissions.json mcpAllowlist (or equivalent) is applied for the project.
-4. Where AGENTS.md / host GATE rule text is written for managed repos.
-5. How Cursor rule install relates to that GATE text (if at all).
+## Hard question (soft — do not answer in chat; put evidence in the file)
+When a developer runs this product's **connect / enroll** flow for a Cursor-like IDE host,
+trace end-to-end how the repo becomes a managed coding surface:
 
-Ignore CLI banners/print helpers. Prefer production packages/ code over tests/docs.
+1. What starts that connect/enroll path and how host tool-surface install is triggered.
+2. Where the host MCP server config gets its tool auto-approve / always-allow style allowlists written.
+3. Where a separate project permission allowlist for MCP tools (if any) is applied onto the repo surface.
+4. Where standing agent/project GATE rule text is written for managed repos.
+5. How optional IDE-native rule install relates to that GATE text (if at all).
+
+Constraints on how you search:
+- Prefer production library code over tests, fixtures, docs, scripts, and eval harnesses.
+- Ignore CLI banners / pretty-print helpers.
+- Do **not** invent paths or symbols you did not retrieve.
+- Soft locate: enrich a short code-vocab query, then follow the project's locate ladder if tools are available.
 
 ## Deliverable (strict)
 Write exactly one file:
@@ -32,7 +37,7 @@ That file MUST contain:
 - A short problem restatement (≤8 lines).
 - An ordered call/flow narrative (entry → writers → side effects).
 - A table or bullet list of concrete `path` + `symbol` (+ optional `loc` if known) for every
-  hop you rely on.
+  hop you rely on — only what you actually found.
 - Short excerpts or paraphrases of the critical logic (enough to reason without re-opening the repo).
 - A final "open questions / unknowns" section if anything is still unclear.
 
@@ -41,12 +46,12 @@ That file MUST contain:
 - Do NOT commit or push.
 - Do NOT invent paths/symbols you did not find.
 - Do NOT read or copy from any sibling A/B workspace (no `../with`, `../without`, other
-  `.ab_workspaces/**` trees, or another arm's `out/ab_retrieval_context.md`).
+  `.ab_workspaces/**` trees, or another arm's retrieval output).
 - Work ONLY inside THIS workspace root.
 
 ## Success
 - File exists at `out/ab_retrieval_context.md`.
-- It is self-contained enough that a later agent could reason about connect→permissions→GATE
+- It is self-contained enough that a later agent could reason about connect → permissions → GATE
   without rediscovering the graph.
 - Stop when the file is written. Brief chat summary is OK; the file is the artifact.
 ```
@@ -67,28 +72,29 @@ That file MUST contain:
 
 | arm | status | success | credits | wall_ms | ~tok | scubiee# | native# | files changed | tests/retrieval | isolation | heatmap |
 |-----|--------|---------|--------:|--------:|-----:|---------:|--------:|--------------:|-----------------|-----------|---------|
-| with | `ok` | YES | 5.13 | 207094.5 | 10846 | 6 | 20 | 0 | file_rec=1.0 sym=0.833 (PASS) | OK | OK |
-| without | `ok` | YES | 6.23 | 162000.0 | 9238 | 0 | 13 | 4 | file_rec=1.0 sym=0.833 (PASS) | OK | n/a |
+| with | `ok` | YES | 7.78 | 268334.7 | 11785 | 12 | 25 | 1 | file_rec=0.75 sym=0.833 (PASS) | OK | OK |
+| without | `ok` | YES | 9.61 | 237139.9 | 14145 | 0 | 22 | 4 | file_rec=0.75 sym=0.833 (PASS) | OK | n/a |
 
 ### Savings (with − without); negative = with used less
 
 | Metric | delta |
 |--------|------:|
-| credits | -1.1 (-18%) |
-| wall_ms | +4.51e+04 (+28%) |
-| ~tokens (stdout/4) | +1.61e+03 (+17%) |
+| credits | -1.83 (-19%) |
+| wall_ms | +3.12e+04 (+13%) |
+| ~tokens (stdout/4) | -2.36e+03 (-17%) |
 
 ## Diffs
 
 ### with
 ```
-(no diff)
+.kiro/agents/ab_dev_with.json | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 ```
 
 ### without
 ```
-AGENTS.md | 23 ++++-------------------
- 1 file changed, 4 insertions(+), 19 deletions(-)
+AGENTS.md | 27 ++++-----------------------
+ 1 file changed, 4 insertions(+), 23 deletions(-)
 untracked: .kiro/ab_surface/, .kiro/agents/, .kiro/steering/
 ```
 
@@ -98,7 +104,7 @@ untracked: .kiro/ab_surface/, .kiro/agents/, .kiro/steering/
 {
   "model": "claude-sonnet-5",
   "effort": "medium",
-  "timeout_s": 900,
+  "timeout_s": 1200,
   "task_id": "complex_retrieval",
   "task": "complex multi-hop retrieval \u2192 single reasoning context file",
   "task_mode": "retrieval",
@@ -106,7 +112,8 @@ untracked: .kiro/ab_surface/, .kiro/agents/, .kiro/steering/
   "prompt_style": "outcome+requirements+constraints; no path spoilers; with-arm prompt silent on Scubiee (rules-only)",
   "arms_isolated": true,
   "arms": [
-    "with"
+    "with",
+    "without"
   ],
   "sequential": true,
   "agent_engine": "v1",
@@ -135,8 +142,8 @@ untracked: .kiro/ab_surface/, .kiro/agents/, .kiro/steering/
     "ok": true,
     "mode": "mcp",
     "exit_code": 0,
-    "wall_ms": 51780.4,
-    "log": "C:\\Users\\usman\\Downloads\\context-engine\\.ab_workspaces\\kiro_ab_dev\\20260909T170339Z_complex_retrieval\\logs\\kiro_mcp_preflight.log",
+    "wall_ms": 61581.7,
+    "log": "C:\\Users\\usman\\Downloads\\context-engine\\.ab_workspaces\\kiro_ab_dev\\20260910T032537Z_complex_retrieval\\logs\\kiro_mcp_preflight.log",
     "index": {
       "ok": true,
       "steps": [
@@ -205,7 +212,7 @@ untracked: .kiro/ab_surface/, .kiro/agents/, .kiro/steering/
           "ok": null
         }
       },
-      "notes": "All 8 core Scubiee MCP tools callable and returned ok:true. status showed managed:true, engine healthy, sync_state=syncing (agent_ready=stale, background sync active) but index_available:true. gate/status resolved project_id=ce_f4e1adced6e0dd72db51bf587464e982 (differs from ce_d9cb766c3820091ed9ffbc64ef33063c cited in AGENTS.md/.kiro/steering/scubiee.md \u2014 root likely resolved to parent context-engine repo rather than this nested ab_workspaces subfolder; steering/AGENTS.md rules were visible and followed regardless: forbid-first grep/glob, map(k=10 default, used k=5 per task)->pack_context(lean)->expand_context->collect_hot_context ladder). map returned 5 ranked cards with suggested_seed=packages/pipeline/session_store.py::expand. pack_context(lean, seed=that suggested_seed) returned 16 heatmap cards (hot: expand, effective_session_id x2, storepath). expand_context(direction=callees, with_bodies=false) returned 10 delta cards, no errors. collect_hot_context(ids=two heatmap node ids) returned ok:true but pack:[] (no bodies matched those ids/threshold \u2014 acceptable per task, bodies may be empty). workspace(show) returned heatmap/pins/map_queries reflecting the session's map/pack activity, confirming session state rematerialization. No shell scubiee CLI used at any point; no files edited. map_context/pinpoint/plate were not invoked \u2014 not part of required or confirmed-available surface, so left null per 'do not invent' rule."
+      "notes": "All calls succeeded with no errors. gate returned managed gate line '1:ce_f4e1adced6e0dd72db51bf587464e982 sid:kiro@conn-1bd7f0 shared'. status responded healthy=true, managed=true, tools list matches scubiee_tool_names. map(k=5) returned ranked cards with suggested_seed=packages/pipeline/session_store.py::record_session_metadata. pack_context(lean) using that seed returned 16 heatmap nodes (hot: record_session_metadata, _store_path, _empty, session_json_lock). expand_context(direction=callees, with_bodies=false) returned 10 delta callee nodes (session_data_dir, _file_lock_for, _lock_file, etc.) with no error. collect_hot_context with explicit ids returned ok:true but pack=[] (empty bodies \u2014 acceptable per task, ids may not have crossed threshold since scores were 0.0 in pack heatmap). workspace(show) returned pins=[], heatmap reflecting session_store.py/session_isolation.py hit counts, confirming session-scoped state persistence. AGENTS.md and .kiro/steering/scubiee.md GATE/locate rules were visible in context entries and followed (map\u2192pack_context ladder, no shell scubiee CLI used). No CLI locate commands were used at any point."
     },
     "tools": {
       "scubiee_tools": [
@@ -260,10 +267,10 @@ untracked: .kiro/ab_surface/, .kiro/agents/, .kiro/steering/
   "rules_probe": {
     "ok": true,
     "exit_code": 0,
-    "wall_ms": 33239.9,
-    "log": "C:\\Users\\usman\\Downloads\\context-engine\\.ab_workspaces\\kiro_ab_dev\\20260909T170339Z_complex_retrieval\\logs\\kiro_rules_probe.log",
-    "rules_file": "C:\\Users\\usman\\Downloads\\context-engine\\.ab_workspaces\\kiro_ab_dev\\20260909T170339Z_complex_retrieval\\with\\out\\ab_rules_seen.md",
-    "rules_chars": 2716,
+    "wall_ms": 32851.9,
+    "log": "C:\\Users\\usman\\Downloads\\context-engine\\.ab_workspaces\\kiro_ab_dev\\20260910T032537Z_complex_retrieval\\logs\\kiro_rules_probe.log",
+    "rules_file": "C:\\Users\\usman\\Downloads\\context-engine\\.ab_workspaces\\kiro_ab_dev\\20260910T032537Z_complex_retrieval\\with\\out\\ab_rules_seen.md",
+    "rules_chars": 2854,
     "quoted_must_use": true,
     "quoted_pack_context": true,
     "tools": {
@@ -277,25 +284,25 @@ untracked: .kiro/ab_surface/, .kiro/agents/, .kiro/steering/
       "cli_locate_count": 0,
       "native_count": 1
     },
-    "excerpt": "# Rules Visibility Probe\n\n## Resource visibility\n\n- `AGENTS.md` \u2014 visible/readable (provided as context entry, root of workspace).\n- `.kiro/steering/scubiee.md` \u2014 visible/readable (provided as context entry, appears twice: once as `.kiro/steering/scubiee.md` and once as `.kiro\\steering\\scubiee.md`, identical content).\n\n## Near-verbatim quote (MUST Use Scubiee / WHEN SCUBIEE MCP IS AVAILABLE sections)\n\n```\n**GATE 1:ce_d9cb766c3820091ed9ffbc64ef33063c** - Managed repo. `project_id='ce_d9cb766c3820091ed9ffbc64ef33063c'`.\n\n**MUST Use Scubiee MCP for locate** when `@scubiee/*` tools are callable. Prefer `map` / `pack_context` / `expand_context` / `collect_hot_context`. BAN shell `scubiee map|pack|expand` on this MCP-only surface. How-to steps \u2192 Scubiee MCP server instructions every turn.\n\n**Prefer host first (Forbid-first map/pack):**\n- Literals / imports / error strings / named-symbol under known path \u2192 Grep.\n- Filenames \u2192 Glob; known path \u2192 Read.\n- Health / `warm_state` / provider-dep \u2192 `gate`/`status` + Grep \u2014 **not** soft map\u2192pack.\n- After heatmap \u2192 Read `loc` spans only (guided); **re-Grep of packed ground = FAIL**.\n\n**WHEN SCUBIEE MCP IS AVAILABLE \u2014 STRICT, NO ESCAPE:**\n- Soft/unknown: **enrich** ~30\u201380 denser tokens (symbols/paths/outcome verbs \u2014 **not** keyword-salad; one sentence; BAN essays) \u2192 `map`(k=10) \u2192 **required next** `pack_context`(lean, packages/ `suggested_seed`; **Forbid** empty / `_` / test seeds). Vague one-liner **or** synonym dump = **FAIL**.\n- **Refine after map/expand:** fold `suggested_seed` / hot card names into the next pack/expand query (same thread; no unrelated thrash). Prefer 1\u00d7 map + 1\u00d7 pack; expand only if thin.\n- Skipping `pack_context` / map-only = **FAIL**. Warming/error \u2260 skip \u2014 retry `pack_context` / `status`.\n- Thin \u2192 `expand_context`; bodies \u2192 `collect_hot_context`.\n- Native-first while MCP is up = **FAIL**.\n- Native Grep/span-Read only after pack heatmap locs, **or** if MCP fully uncallable (no deadlock).\n- Empty heatmap **or** needle/health ask \u2192 stop ladder; Grep/Read \u2014 no map/status thrash.\n- Budget \u22643 MCP locate calls/beat. **BAN whole-file Read** of heatmap paths until expand/collect. Edit/Write stay native.\n```\n\n## Scubiee MCP tools I can actually call (from tool list)\n\n- `gate`\n- `status`\n- `map`\n- `pack_context`\n- `expand_context`\n- `collect_hot_context`\n- `expand`\n- `workspace`\n\n## Compliance statement\n\nYes \u2014 I will follow these locate/GATE rules for soft locate (enrich query \u2192 `map` \u2192 `pack_context`, etc.) e",
+    "excerpt": "# Rules Visibility Probe\n\n## 1. Resource visibility\n\n- **AGENTS.md** \u2014 Visible/readable. Provided as a context entry (root of workspace), delimited by `<!-- scubiee:start -->` / `<!-- scubiee:end -->`.\n- **.kiro/steering/scubiee.md** \u2014 Visible/readable. Provided as a context entry, `inclusion: always`, identical content to the AGENTS.md scubiee block.\n\nBoth resources were supplied directly in the context entries for this session (not invented).\n\n## 2. Near-verbatim quote (\u226440 lines) of the MUST Use Scubiee / WHEN SCUBIEE MCP IS AVAILABLE sections\n\n```\n**GATE 1:ce_f4e1adced6e0dd72db51bf587464e982** - Managed repo. `project_id='ce_f4e1adced6e0dd72db51bf587464e982'`.\n\n**MUST Use Scubiee MCP for locate** when `@scubiee/*` tools are callable. Prefer `map` / `pack_context` / `expand_context` / `collect_hot_context`. BAN shell `scubiee map|pack|expand` on this MCP-only surface. How-to steps \u2192 Scubiee MCP server instructions every turn.\n\n**Prefer host first (Forbid-first map/pack):**\n- Literals / imports / error strings / named-symbol under known path \u2192 Grep.\n- Filenames \u2192 Glob; known path \u2192 Read.\n- Health / `warm_state` / provider-dep \u2192 `gate`/`status` + Grep \u2014 **not** soft map\u2192pack.\n- After heatmap \u2192 Read `loc` spans only (guided); **re-Grep of packed ground = FAIL**.\n\n**WHEN SCUBIEE MCP IS AVAILABLE \u2014 STRICT, NO ESCAPE:**\n- Soft/unknown: **enrich** ~30\u201380 denser tokens (symbols/paths/outcome verbs \u2014 **not** keyword-salad; one sentence; BAN essays) \u2192 `map`(k=10) \u2192 **required next** `pack_context`(lean, packages/ `suggested_seed`; **Forbid** empty / `_` / test seeds). Vague one-liner **or** synonym dump = **FAIL**.\n- **Refine after map/expand:** fold `suggested_seed` / hot card names into the next pack/expand query (same thread; no unrelated thrash). Prefer 1\u00d7 map + 1\u00d7 pack; expand only if thin.\n- Skipping `pack_context` / map-only = **FAIL**. Warming/error \u2260 skip \u2014 retry `pack_context` / `status`.\n- Thin \u2192 `expand_context`; bodies \u2192 `collect_hot_context`.\n- Native-first while MCP is up = **FAIL**.\n- Native Grep/span-Read only after pack heatmap locs, **or** if MCP fully uncallable (no deadlock).\n- Empty heatmap **or** needle/health ask \u2192 stop ladder; Grep/Read \u2014 no map/status thrash.\n- Budget \u22643 MCP locate calls/beat. **BAN whole-file Read** of heatmap paths until expand/collect. Edit/Write stay native.\n```\n\n## 3. Scubiee MCP tool names actually callable (from tool list)\n\n- `gate`\n- `status`\n- `map`\n- `pack_context`\n- `expand_context`\n- `collect_hot_context`\n- `",
     "error": null
   },
   "snapshots": {
-    "with": "C:\\Users\\usman\\Downloads\\context-engine\\.ab_workspaces\\kiro_ab_dev\\20260909T170339Z_complex_retrieval\\with",
-    "without": "C:\\Users\\usman\\Downloads\\context-engine\\.ab_workspaces\\kiro_ab_dev\\20260909T170339Z_complex_retrieval\\without"
+    "with": "C:\\Users\\usman\\Downloads\\context-engine\\.ab_workspaces\\kiro_ab_dev\\20260910T032537Z_complex_retrieval\\with",
+    "without": "C:\\Users\\usman\\Downloads\\context-engine\\.ab_workspaces\\kiro_ab_dev\\20260910T032537Z_complex_retrieval\\without"
   },
-  "run_id": "20260909T170339Z_complex_retrieval",
+  "run_id": "20260910T032537Z_complex_retrieval",
   "project_id": "ce_d9cb766c3820091ed9ffbc64ef33063c",
   "out_json": "C:\\Users\\usman\\Downloads\\context-engine\\docs\\superpowers\\plans\\2026-09-07-kiro-mcp-ab-retrieval.json",
   "out_md": "C:\\Users\\usman\\Downloads\\context-engine\\docs\\superpowers\\plans\\2026-09-07-kiro-mcp-ab-retrieval.md",
   "scubiee_cli": "C:\\Users\\usman\\.local\\bin\\scubiee.EXE",
+  "pair_run": null,
+  "paired_without_from_with_baseline": false,
   "cross_arm_copy": {
     "ok": true,
-    "ratio": 0.0454,
+    "ratio": 0.1666,
     "note": "artifacts independently distinct"
-  },
-  "pair_run": "C:\\Users\\usman\\Downloads\\context-engine\\.ab_workspaces\\kiro_ab_dev\\20260909T170339Z_complex_retrieval",
-  "paired_without_from_with_baseline": true
+  }
 }
 ```
 

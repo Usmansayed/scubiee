@@ -1,0 +1,1713 @@
+{
+  "protocol": "blind_multipack_v2_phase2",
+  "winner": "semantic_tracer_fuse",
+  "embed_note": "real:coderank",
+  "summary": {
+    "composite_v1": {
+      "n": 20,
+      "mean_pack_must_file": 0.85,
+      "mean_pack_must_symbol": 0.575,
+      "mean_union_must_file": 0.975,
+      "mean_n_hot": 66.05,
+      "thin_packs": 5,
+      "seed_ok_rate": 1.0,
+      "map_must_file": 0.95
+    },
+    "semantic_tracer_fuse": {
+      "n": 20,
+      "mean_pack_must_file": 0.85,
+      "mean_pack_must_symbol": 0.575,
+      "mean_union_must_file": 0.975,
+      "mean_n_hot": 43.3,
+      "thin_packs": 5,
+      "seed_ok_rate": 1.0,
+      "map_must_file": 0.95
+    },
+    "hyb_fuse_demote_noise_plus": {
+      "n": 20,
+      "mean_pack_must_file": 0.85,
+      "mean_pack_must_symbol": 0.575,
+      "mean_union_must_file": 0.975,
+      "mean_n_hot": 83.7,
+      "thin_packs": 5,
+      "seed_ok_rate": 1.0,
+      "map_must_file": 0.95
+    },
+    "poly_embed": {
+      "n": 20,
+      "mean_pack_must_file": 0.775,
+      "mean_pack_must_symbol": 0.575,
+      "mean_union_must_file": 0.95,
+      "mean_n_hot": 1.75,
+      "thin_packs": 17,
+      "seed_ok_rate": 1.0,
+      "map_must_file": 0.95
+    }
+  },
+  "ranked": [
+    "semantic_tracer_fuse",
+    "composite_v1",
+    "hyb_fuse_demote_noise_plus",
+    "poly_embed"
+  ],
+  "seeds": [
+    {
+      "id": "u01",
+      "seed": "packages/pipeline/incremental.py::incremental_sync",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 0.5
+    },
+    {
+      "id": "u02",
+      "seed": "packages/pipeline/chunk_compress.py::compress_budget",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0
+    },
+    {
+      "id": "u03",
+      "seed": "packages/pipeline/mcp_bridge_session.py::max_bridge_sessions",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 0.5
+    },
+    {
+      "id": "u04",
+      "seed": "packages/pipeline/resources.py::ResourceManager.throttle",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0
+    },
+    {
+      "id": "u05",
+      "seed": "packages/pipeline/memory_governor.py::MemoryGovernor.note_embedder_unloaded",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0
+    },
+    {
+      "id": "u06",
+      "seed": "packages/pipeline/__main__.py::cmd_doctor",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0
+    },
+    {
+      "id": "u07",
+      "seed": "packages/pipeline/__main__.py::cmd_disconnect",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0
+    },
+    {
+      "id": "u08",
+      "seed": "packages/trace_lab/vector_index.py::hybrid_map_scores",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0
+    },
+    {
+      "id": "u09",
+      "seed": "packages/trace_lab/recall_belt.py::bind_recall_belt",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0
+    },
+    {
+      "id": "u10",
+      "seed": "packages/enrich/__init__.py::inject_metadata",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0
+    },
+    {
+      "id": "u11",
+      "seed": "packages/pipeline/host_workspace.py::host_env_signals",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0
+    },
+    {
+      "id": "u12",
+      "seed": "packages/pipeline/__main__.py::cmd_dashboard",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0
+    },
+    {
+      "id": "u13",
+      "seed": "packages/pipeline/__main__.py::cmd_wipe",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0
+    },
+    {
+      "id": "u14",
+      "seed": "packages/pipeline/__main__.py::cmd_upgrade",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0
+    },
+    {
+      "id": "u15",
+      "seed": "packages/pipeline/locate_cli.py::cli_expand",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0
+    },
+    {
+      "id": "u16",
+      "seed": "packages/trace_lab/corpus.py::_load_cached_nodes",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0
+    },
+    {
+      "id": "u17",
+      "seed": "packages/trace_lab/failure_report.py::build_failure_report",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0
+    },
+    {
+      "id": "u18",
+      "seed": "packages/trace_lab/facts/call_graph.py::build_enriched_call_graph",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0
+    },
+    {
+      "id": "u19",
+      "seed": "packages/trace_lab/facts/dfg.py::build_dfg_edges",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0
+    },
+    {
+      "id": "u20",
+      "seed": "packages/pipeline/__main__.py::cmd_unlock_tool",
+      "seed_in_must_files": true,
+      "map_must_file_recall": 1.0
+    }
+  ],
+  "per_arm": {
+    "composite_v1": [
+      {
+        "id": "u01",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.6667,
+        "n_hot": 330,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/chunk_merkle.py::diff_chunk_records"
+        ],
+        "top5": [
+          "incremental_sync",
+          "root_hash",
+          "collect_index_paths",
+          "chunk_key",
+          "chunk_digest"
+        ]
+      },
+      {
+        "id": "u02",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.0,
+        "n_hot": 12,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/chunk_compress.py::compress_chunk",
+          "packages/pipeline/chunk_compress.py::resolve_compress_mode"
+        ],
+        "top5": [
+          "compress_budget",
+          "_pack_into",
+          "_trim_to_budget",
+          "_idf_weight",
+          "split_enriched"
+        ]
+      },
+      {
+        "id": "u03",
+        "ok": true,
+        "pack_must_file_recall": 0.5,
+        "pack_must_symbol_recall": 0.0,
+        "union_must_file_recall": 0.5,
+        "should_file_hit": 1.0,
+        "n_hot": 1,
+        "thin": true,
+        "missing_must_files": [
+          "packages/pipeline/mcp_bridge.py"
+        ],
+        "missing_must_symbols": [
+          "packages/pipeline/mcp_bridge_session.py::ChildWorker._child_env",
+          "packages/pipeline/mcp_bridge_session.py::SessionRegistry"
+        ],
+        "top5": [
+          "max_bridge_sessions"
+        ]
+      },
+      {
+        "id": "u04",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.0,
+        "n_hot": 13,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/resources.py::ResourceManager.run_job"
+        ],
+        "top5": [
+          "ResourceManager.throttle",
+          "ResourceManager.sample",
+          "ResourceManager.budget",
+          "ResourceManager.wait_for_capacity",
+          "ResourceManager.apply_pause"
+        ]
+      },
+      {
+        "id": "u05",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.0,
+        "n_hot": 1,
+        "thin": true,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/memory_governor.py::MemoryGovernor.maybe_demote_idle",
+          "packages/pipeline/memory_governor.py::MemoryGovernor.apply_tier"
+        ],
+        "top5": [
+          "MemoryGovernor.note_embedder_unloaded"
+        ]
+      },
+      {
+        "id": "u06",
+        "ok": true,
+        "pack_must_file_recall": 0.5,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.0,
+        "n_hot": 334,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/__main__.py::cmd_certify"
+        ],
+        "top5": [
+          "cmd_doctor",
+          "apply_safe_repairs",
+          "doctor_repo",
+          "colors",
+          "status_line"
+        ]
+      },
+      {
+        "id": "u07",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 1.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 1.0,
+        "n_hot": 71,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [],
+        "top5": [
+          "cmd_disconnect",
+          "normalize_tool_slug",
+          "status_line",
+          "colors",
+          "_ScrubGraphifyStream.write"
+        ]
+      },
+      {
+        "id": "u08",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 1.0,
+        "n_hot": 9,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/trace_lab/vector_index.py::VectorIndex"
+        ],
+        "top5": [
+          "hybrid_map_scores",
+          "VectorIndex.scores",
+          "expand_query",
+          "normalize",
+          "tokenize"
+        ]
+      },
+      {
+        "id": "u09",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 1.0,
+        "n_hot": 6,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/trace_lab/recall_belt.py::recall_fuse"
+        ],
+        "top5": [
+          "bind_recall_belt",
+          "recall_belt",
+          "expand_island",
+          "_joint",
+          "_channels"
+        ]
+      },
+      {
+        "id": "u10",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.0,
+        "n_hot": 10,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/enrich/__init__.py::enrich_repo"
+        ],
+        "top5": [
+          "inject_metadata",
+          "_folder_name",
+          "build_chunk_meta",
+          "_repo_name",
+          "_module_name"
+        ]
+      },
+      {
+        "id": "u11",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 1.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 1.0,
+        "n_hot": 1,
+        "thin": true,
+        "missing_must_files": [],
+        "missing_must_symbols": [],
+        "top5": [
+          "host_env_signals"
+        ]
+      },
+      {
+        "id": "u12",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": null,
+        "n_hot": 28,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/__main__.py::cmd_serve"
+        ],
+        "top5": [
+          "cmd_dashboard",
+          "dashboard_status",
+          "_validated_dashboard_state",
+          "_clear_stale_state",
+          "_pid_alive"
+        ]
+      },
+      {
+        "id": "u13",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": null,
+        "n_hot": 149,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/__main__.py::cmd_halt"
+        ],
+        "top5": [
+          "cmd_wipe",
+          "warn",
+          "colors",
+          "_ScrubGraphifyStream.write",
+          "_ScrubGraphifyStream.flush"
+        ]
+      },
+      {
+        "id": "u14",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 1.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": null,
+        "n_hot": 157,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [],
+        "top5": [
+          "cmd_upgrade",
+          "check_pypi_version",
+          "installed_version",
+          "status_line",
+          "platform_name"
+        ]
+      },
+      {
+        "id": "u15",
+        "ok": true,
+        "pack_must_file_recall": 0.5,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": null,
+        "n_hot": 124,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/__main__.py::cmd_expand"
+        ],
+        "top5": [
+          "cli_expand",
+          "_load_repo",
+          "iter_python_files",
+          "rel_posix",
+          "_make_id"
+        ]
+      },
+      {
+        "id": "u16",
+        "ok": true,
+        "pack_must_file_recall": 0.5,
+        "pack_must_symbol_recall": 0.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 1.0,
+        "n_hot": 2,
+        "thin": true,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/trace_lab/corpus.py::corpus_fingerprint",
+          "packages/trace_lab/corpus.py::extract_nodes"
+        ],
+        "top5": [
+          "_load_cached_nodes",
+          "_cache_path"
+        ]
+      },
+      {
+        "id": "u17",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 1.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.0,
+        "n_hot": 2,
+        "thin": true,
+        "missing_must_files": [],
+        "missing_must_symbols": [],
+        "top5": [
+          "build_failure_report",
+          "classify_miss"
+        ]
+      },
+      {
+        "id": "u18",
+        "ok": true,
+        "pack_must_file_recall": 0.5,
+        "pack_must_symbol_recall": 1.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": null,
+        "n_hot": 5,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [],
+        "top5": [
+          "build_enriched_call_graph",
+          "merge_call_edges",
+          "edges_from_ast",
+          "edges_from_dispatch",
+          "edges_from_jedi"
+        ]
+      },
+      {
+        "id": "u19",
+        "ok": true,
+        "pack_must_file_recall": 0.5,
+        "pack_must_symbol_recall": 1.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 1.0,
+        "n_hot": 4,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [],
+        "top5": [
+          "build_dfg_edges",
+          "_parse",
+          "iter_python_files",
+          "rel_posix"
+        ]
+      },
+      {
+        "id": "u20",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 1.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.5,
+        "n_hot": 62,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [],
+        "top5": [
+          "cmd_unlock_tool",
+          "status_line",
+          "unlock_uv_tool_env",
+          "success",
+          "warn"
+        ]
+      }
+    ],
+    "semantic_tracer_fuse": [
+      {
+        "id": "u01",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.6667,
+        "n_hot": 218,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/chunk_merkle.py::diff_chunk_records"
+        ],
+        "top5": [
+          "incremental_sync",
+          "root_hash",
+          "collect_index_paths",
+          "chunk_key",
+          "chunk_digest"
+        ]
+      },
+      {
+        "id": "u02",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.0,
+        "n_hot": 12,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/chunk_compress.py::compress_chunk",
+          "packages/pipeline/chunk_compress.py::resolve_compress_mode"
+        ],
+        "top5": [
+          "compress_budget",
+          "_pack_into",
+          "_trim_to_budget",
+          "_idf_weight",
+          "_slice_budget"
+        ]
+      },
+      {
+        "id": "u03",
+        "ok": true,
+        "pack_must_file_recall": 0.5,
+        "pack_must_symbol_recall": 0.0,
+        "union_must_file_recall": 0.5,
+        "should_file_hit": 1.0,
+        "n_hot": 1,
+        "thin": true,
+        "missing_must_files": [
+          "packages/pipeline/mcp_bridge.py"
+        ],
+        "missing_must_symbols": [
+          "packages/pipeline/mcp_bridge_session.py::ChildWorker._child_env",
+          "packages/pipeline/mcp_bridge_session.py::SessionRegistry"
+        ],
+        "top5": [
+          "max_bridge_sessions"
+        ]
+      },
+      {
+        "id": "u04",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.0,
+        "n_hot": 12,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/resources.py::ResourceManager.run_job"
+        ],
+        "top5": [
+          "ResourceManager.throttle",
+          "ResourceManager.wait_for_capacity",
+          "ResourceManager.apply_pause",
+          "ResourceManager.sample",
+          "ResourceManager.budget"
+        ]
+      },
+      {
+        "id": "u05",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.0,
+        "n_hot": 1,
+        "thin": true,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/memory_governor.py::MemoryGovernor.maybe_demote_idle",
+          "packages/pipeline/memory_governor.py::MemoryGovernor.apply_tier"
+        ],
+        "top5": [
+          "MemoryGovernor.note_embedder_unloaded"
+        ]
+      },
+      {
+        "id": "u06",
+        "ok": true,
+        "pack_must_file_recall": 0.5,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 1.0,
+        "n_hot": 186,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/__main__.py::cmd_certify"
+        ],
+        "top5": [
+          "cmd_doctor",
+          "apply_safe_repairs",
+          "doctor_repo",
+          "index_is_usable",
+          "reconcile_git_families"
+        ]
+      },
+      {
+        "id": "u07",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 1.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 1.0,
+        "n_hot": 52,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [],
+        "top5": [
+          "cmd_disconnect",
+          "normalize_tool_slug",
+          "colors",
+          "_ScrubGraphifyStream.write",
+          "_ScrubGraphifyStream.flush"
+        ]
+      },
+      {
+        "id": "u08",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 1.0,
+        "n_hot": 9,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/trace_lab/vector_index.py::VectorIndex"
+        ],
+        "top5": [
+          "hybrid_map_scores",
+          "VectorIndex.scores",
+          "normalize",
+          "expand_query",
+          "tokenize"
+        ]
+      },
+      {
+        "id": "u09",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 1.0,
+        "n_hot": 6,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/trace_lab/recall_belt.py::recall_fuse"
+        ],
+        "top5": [
+          "bind_recall_belt",
+          "recall_belt",
+          "expand_island",
+          "_joint",
+          "_channels"
+        ]
+      },
+      {
+        "id": "u10",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.0,
+        "n_hot": 10,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/enrich/__init__.py::enrich_repo"
+        ],
+        "top5": [
+          "inject_metadata",
+          "_folder_name",
+          "build_chunk_meta",
+          "_import_labels",
+          "_immediate_dependents"
+        ]
+      },
+      {
+        "id": "u11",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 1.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 1.0,
+        "n_hot": 1,
+        "thin": true,
+        "missing_must_files": [],
+        "missing_must_symbols": [],
+        "top5": [
+          "host_env_signals"
+        ]
+      },
+      {
+        "id": "u12",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": null,
+        "n_hot": 27,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/__main__.py::cmd_serve"
+        ],
+        "top5": [
+          "cmd_dashboard",
+          "dashboard_status",
+          "_validated_dashboard_state",
+          "_clear_stale_state",
+          "_pid_alive"
+        ]
+      },
+      {
+        "id": "u13",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": null,
+        "n_hot": 112,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/__main__.py::cmd_halt"
+        ],
+        "top5": [
+          "cmd_wipe",
+          "colors",
+          "_ScrubGraphifyStream.write",
+          "_ScrubGraphifyStream.flush",
+          "status_line"
+        ]
+      },
+      {
+        "id": "u14",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 1.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": null,
+        "n_hot": 80,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [],
+        "top5": [
+          "cmd_upgrade",
+          "check_pypi_version",
+          "installed_version",
+          "platform_name",
+          "context_engine_home"
+        ]
+      },
+      {
+        "id": "u15",
+        "ok": true,
+        "pack_must_file_recall": 0.5,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": null,
+        "n_hot": 98,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/__main__.py::cmd_expand"
+        ],
+        "top5": [
+          "cli_expand",
+          "tokenize",
+          "_norm_path",
+          "_root",
+          "run_expand_context"
+        ]
+      },
+      {
+        "id": "u16",
+        "ok": true,
+        "pack_must_file_recall": 0.5,
+        "pack_must_symbol_recall": 0.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 1.0,
+        "n_hot": 2,
+        "thin": true,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/trace_lab/corpus.py::corpus_fingerprint",
+          "packages/trace_lab/corpus.py::extract_nodes"
+        ],
+        "top5": [
+          "_load_cached_nodes",
+          "_cache_path"
+        ]
+      },
+      {
+        "id": "u17",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 1.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.0,
+        "n_hot": 2,
+        "thin": true,
+        "missing_must_files": [],
+        "missing_must_symbols": [],
+        "top5": [
+          "build_failure_report",
+          "classify_miss"
+        ]
+      },
+      {
+        "id": "u18",
+        "ok": true,
+        "pack_must_file_recall": 0.5,
+        "pack_must_symbol_recall": 1.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": null,
+        "n_hot": 5,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [],
+        "top5": [
+          "build_enriched_call_graph",
+          "edges_from_jedi",
+          "edges_from_dispatch",
+          "merge_call_edges",
+          "edges_from_ast"
+        ]
+      },
+      {
+        "id": "u19",
+        "ok": true,
+        "pack_must_file_recall": 0.5,
+        "pack_must_symbol_recall": 1.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 1.0,
+        "n_hot": 4,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [],
+        "top5": [
+          "build_dfg_edges",
+          "_parse",
+          "iter_python_files",
+          "rel_posix"
+        ]
+      },
+      {
+        "id": "u20",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 1.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.5,
+        "n_hot": 28,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [],
+        "top5": [
+          "cmd_unlock_tool",
+          "unlock_uv_tool_env",
+          "success",
+          "warn",
+          "prepare_uv_tool_directory_for_swap"
+        ]
+      }
+    ],
+    "hyb_fuse_demote_noise_plus": [
+      {
+        "id": "u01",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.6667,
+        "n_hot": 365,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/chunk_merkle.py::diff_chunk_records"
+        ],
+        "top5": [
+          "incremental_sync",
+          "collect_index_paths",
+          "scan_file_hashes",
+          "file_sha256",
+          "root_hash"
+        ]
+      },
+      {
+        "id": "u02",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.0,
+        "n_hot": 12,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/chunk_compress.py::compress_chunk",
+          "packages/pipeline/chunk_compress.py::resolve_compress_mode"
+        ],
+        "top5": [
+          "compress_budget",
+          "_pack_into",
+          "_slice_budget",
+          "_trim_to_budget",
+          "_idf_weight"
+        ]
+      },
+      {
+        "id": "u03",
+        "ok": true,
+        "pack_must_file_recall": 0.5,
+        "pack_must_symbol_recall": 0.0,
+        "union_must_file_recall": 0.5,
+        "should_file_hit": 1.0,
+        "n_hot": 1,
+        "thin": true,
+        "missing_must_files": [
+          "packages/pipeline/mcp_bridge.py"
+        ],
+        "missing_must_symbols": [
+          "packages/pipeline/mcp_bridge_session.py::ChildWorker._child_env",
+          "packages/pipeline/mcp_bridge_session.py::SessionRegistry"
+        ],
+        "top5": [
+          "max_bridge_sessions"
+        ]
+      },
+      {
+        "id": "u04",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.0,
+        "n_hot": 13,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/resources.py::ResourceManager.run_job"
+        ],
+        "top5": [
+          "ResourceManager.throttle",
+          "ResourceManager.wait_for_capacity",
+          "ResourceManager.apply_pause",
+          "ResourceManager.budget",
+          "ResourceManager.sample"
+        ]
+      },
+      {
+        "id": "u05",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.0,
+        "n_hot": 1,
+        "thin": true,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/memory_governor.py::MemoryGovernor.maybe_demote_idle",
+          "packages/pipeline/memory_governor.py::MemoryGovernor.apply_tier"
+        ],
+        "top5": [
+          "MemoryGovernor.note_embedder_unloaded"
+        ]
+      },
+      {
+        "id": "u06",
+        "ok": true,
+        "pack_must_file_recall": 0.5,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.0,
+        "n_hot": 370,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/__main__.py::cmd_certify"
+        ],
+        "top5": [
+          "cmd_doctor",
+          "doctor_repo",
+          "apply_safe_repairs",
+          "index_is_usable",
+          "status_line"
+        ]
+      },
+      {
+        "id": "u07",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 1.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 1.0,
+        "n_hot": 92,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [],
+        "top5": [
+          "cmd_disconnect",
+          "uninstall_tools",
+          "normalize_tool_slug",
+          "status_line",
+          "colors"
+        ]
+      },
+      {
+        "id": "u08",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 1.0,
+        "n_hot": 9,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/trace_lab/vector_index.py::VectorIndex"
+        ],
+        "top5": [
+          "hybrid_map_scores",
+          "VectorIndex.scores",
+          "normalize",
+          "expand_query",
+          "tokenize"
+        ]
+      },
+      {
+        "id": "u09",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 1.0,
+        "n_hot": 6,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/trace_lab/recall_belt.py::recall_fuse"
+        ],
+        "top5": [
+          "bind_recall_belt",
+          "recall_belt",
+          "expand_island",
+          "_joint",
+          "_channels"
+        ]
+      },
+      {
+        "id": "u10",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.0,
+        "n_hot": 10,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/enrich/__init__.py::enrich_repo"
+        ],
+        "top5": [
+          "inject_metadata",
+          "build_chunk_meta",
+          "_folder_name",
+          "_import_labels",
+          "_immediate_dependents"
+        ]
+      },
+      {
+        "id": "u11",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 1.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 1.0,
+        "n_hot": 1,
+        "thin": true,
+        "missing_must_files": [],
+        "missing_must_symbols": [],
+        "top5": [
+          "host_env_signals"
+        ]
+      },
+      {
+        "id": "u12",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": null,
+        "n_hot": 28,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/__main__.py::cmd_serve"
+        ],
+        "top5": [
+          "cmd_dashboard",
+          "dashboard_status",
+          "_clear_stale_state",
+          "_validated_dashboard_state",
+          "print_dashboard_summary"
+        ]
+      },
+      {
+        "id": "u13",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": null,
+        "n_hot": 169,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/__main__.py::cmd_halt"
+        ],
+        "top5": [
+          "cmd_wipe",
+          "wipe",
+          "wipe_repo",
+          "status_line",
+          "colors"
+        ]
+      },
+      {
+        "id": "u14",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 1.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": null,
+        "n_hot": 286,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [],
+        "top5": [
+          "cmd_upgrade",
+          "check_pypi_version",
+          "installed_version",
+          "do_upgrade",
+          "_save_update_check"
+        ]
+      },
+      {
+        "id": "u15",
+        "ok": true,
+        "pack_must_file_recall": 0.5,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": null,
+        "n_hot": 209,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/__main__.py::cmd_expand"
+        ],
+        "top5": [
+          "cli_expand",
+          "run_expand_context",
+          "_root",
+          "_load_repo",
+          "_norm_path"
+        ]
+      },
+      {
+        "id": "u16",
+        "ok": true,
+        "pack_must_file_recall": 0.5,
+        "pack_must_symbol_recall": 0.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 1.0,
+        "n_hot": 2,
+        "thin": true,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/trace_lab/corpus.py::corpus_fingerprint",
+          "packages/trace_lab/corpus.py::extract_nodes"
+        ],
+        "top5": [
+          "_load_cached_nodes",
+          "_cache_path"
+        ]
+      },
+      {
+        "id": "u17",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 1.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.0,
+        "n_hot": 2,
+        "thin": true,
+        "missing_must_files": [],
+        "missing_must_symbols": [],
+        "top5": [
+          "build_failure_report",
+          "classify_miss"
+        ]
+      },
+      {
+        "id": "u18",
+        "ok": true,
+        "pack_must_file_recall": 0.5,
+        "pack_must_symbol_recall": 1.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": null,
+        "n_hot": 5,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [],
+        "top5": [
+          "build_enriched_call_graph",
+          "edges_from_jedi",
+          "edges_from_dispatch",
+          "merge_call_edges",
+          "edges_from_ast"
+        ]
+      },
+      {
+        "id": "u19",
+        "ok": true,
+        "pack_must_file_recall": 0.5,
+        "pack_must_symbol_recall": 1.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 1.0,
+        "n_hot": 4,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [],
+        "top5": [
+          "build_dfg_edges",
+          "_parse",
+          "iter_python_files",
+          "rel_posix"
+        ]
+      },
+      {
+        "id": "u20",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 1.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.5,
+        "n_hot": 89,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [],
+        "top5": [
+          "cmd_unlock_tool",
+          "unlock_uv_tool_env",
+          "success",
+          "prepare_uv_tool_directory_for_swap",
+          "status_line"
+        ]
+      }
+    ],
+    "poly_embed": [
+      {
+        "id": "u01",
+        "ok": true,
+        "pack_must_file_recall": 0.5,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 0.5,
+        "should_file_hit": 0.6667,
+        "n_hot": 4,
+        "thin": false,
+        "missing_must_files": [
+          "packages/pipeline/chunk_merkle.py"
+        ],
+        "missing_must_symbols": [
+          "packages/pipeline/chunk_merkle.py::diff_chunk_records"
+        ],
+        "top5": [
+          "incremental_sync",
+          "max_index_touch",
+          "AUTO_FULL_INDEX_CHUNKS",
+          "DEFAULT_MAX_TOUCH"
+        ]
+      },
+      {
+        "id": "u02",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.0,
+        "n_hot": 5,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/chunk_compress.py::compress_chunk",
+          "packages/pipeline/chunk_compress.py::resolve_compress_mode"
+        ],
+        "top5": [
+          "compress_budget",
+          "BUDGET_PRESETS",
+          "split_enriched",
+          "MAX_CHARS_DEFAULT",
+          "TARGET_SOFT"
+        ]
+      },
+      {
+        "id": "u03",
+        "ok": true,
+        "pack_must_file_recall": 0.5,
+        "pack_must_symbol_recall": 0.0,
+        "union_must_file_recall": 0.5,
+        "should_file_hit": 1.0,
+        "n_hot": 1,
+        "thin": true,
+        "missing_must_files": [
+          "packages/pipeline/mcp_bridge.py"
+        ],
+        "missing_must_symbols": [
+          "packages/pipeline/mcp_bridge_session.py::ChildWorker._child_env",
+          "packages/pipeline/mcp_bridge_session.py::SessionRegistry"
+        ],
+        "top5": [
+          "max_bridge_sessions"
+        ]
+      },
+      {
+        "id": "u04",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.0,
+        "n_hot": 1,
+        "thin": true,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/resources.py::ResourceManager.run_job"
+        ],
+        "top5": [
+          "ResourceManager.throttle"
+        ]
+      },
+      {
+        "id": "u05",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.0,
+        "n_hot": 1,
+        "thin": true,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/memory_governor.py::MemoryGovernor.maybe_demote_idle",
+          "packages/pipeline/memory_governor.py::MemoryGovernor.apply_tier"
+        ],
+        "top5": [
+          "MemoryGovernor.note_embedder_unloaded"
+        ]
+      },
+      {
+        "id": "u06",
+        "ok": true,
+        "pack_must_file_recall": 0.5,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.0,
+        "n_hot": 1,
+        "thin": true,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/__main__.py::cmd_certify"
+        ],
+        "top5": [
+          "cmd_doctor"
+        ]
+      },
+      {
+        "id": "u07",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 1.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.0,
+        "n_hot": 1,
+        "thin": true,
+        "missing_must_files": [],
+        "missing_must_symbols": [],
+        "top5": [
+          "cmd_disconnect"
+        ]
+      },
+      {
+        "id": "u08",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 1.0,
+        "n_hot": 1,
+        "thin": true,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/trace_lab/vector_index.py::VectorIndex"
+        ],
+        "top5": [
+          "hybrid_map_scores"
+        ]
+      },
+      {
+        "id": "u09",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 1.0,
+        "n_hot": 3,
+        "thin": true,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/trace_lab/recall_belt.py::recall_fuse"
+        ],
+        "top5": [
+          "bind_recall_belt",
+          "recall_belt",
+          "expand_island"
+        ]
+      },
+      {
+        "id": "u10",
+        "ok": true,
+        "pack_must_file_recall": 0.5,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.0,
+        "n_hot": 1,
+        "thin": true,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/enrich/__init__.py::enrich_repo"
+        ],
+        "top5": [
+          "inject_metadata"
+        ]
+      },
+      {
+        "id": "u11",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 1.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 1.0,
+        "n_hot": 2,
+        "thin": true,
+        "missing_must_files": [],
+        "missing_must_symbols": [],
+        "top5": [
+          "host_env_signals",
+          "HOST_SPECS"
+        ]
+      },
+      {
+        "id": "u12",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": null,
+        "n_hot": 1,
+        "thin": true,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/__main__.py::cmd_serve"
+        ],
+        "top5": [
+          "cmd_dashboard"
+        ]
+      },
+      {
+        "id": "u13",
+        "ok": true,
+        "pack_must_file_recall": 0.5,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": null,
+        "n_hot": 1,
+        "thin": true,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/__main__.py::cmd_halt"
+        ],
+        "top5": [
+          "cmd_wipe"
+        ]
+      },
+      {
+        "id": "u14",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 1.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": null,
+        "n_hot": 1,
+        "thin": true,
+        "missing_must_files": [],
+        "missing_must_symbols": [],
+        "top5": [
+          "cmd_upgrade"
+        ]
+      },
+      {
+        "id": "u15",
+        "ok": true,
+        "pack_must_file_recall": 0.5,
+        "pack_must_symbol_recall": 0.5,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": null,
+        "n_hot": 1,
+        "thin": true,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/pipeline/__main__.py::cmd_expand"
+        ],
+        "top5": [
+          "cli_expand"
+        ]
+      },
+      {
+        "id": "u16",
+        "ok": true,
+        "pack_must_file_recall": 0.5,
+        "pack_must_symbol_recall": 0.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 1.0,
+        "n_hot": 1,
+        "thin": true,
+        "missing_must_files": [],
+        "missing_must_symbols": [
+          "packages/trace_lab/corpus.py::corpus_fingerprint",
+          "packages/trace_lab/corpus.py::extract_nodes"
+        ],
+        "top5": [
+          "_load_cached_nodes"
+        ]
+      },
+      {
+        "id": "u17",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 1.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.0,
+        "n_hot": 2,
+        "thin": true,
+        "missing_must_files": [],
+        "missing_must_symbols": [],
+        "top5": [
+          "build_failure_report",
+          "classify_miss"
+        ]
+      },
+      {
+        "id": "u18",
+        "ok": true,
+        "pack_must_file_recall": 0.5,
+        "pack_must_symbol_recall": 1.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": null,
+        "n_hot": 5,
+        "thin": false,
+        "missing_must_files": [],
+        "missing_must_symbols": [],
+        "top5": [
+          "build_enriched_call_graph",
+          "edges_from_ast",
+          "merge_call_edges",
+          "edges_from_jedi",
+          "edges_from_dispatch"
+        ]
+      },
+      {
+        "id": "u19",
+        "ok": true,
+        "pack_must_file_recall": 0.5,
+        "pack_must_symbol_recall": 1.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 1.0,
+        "n_hot": 1,
+        "thin": true,
+        "missing_must_files": [],
+        "missing_must_symbols": [],
+        "top5": [
+          "build_dfg_edges"
+        ]
+      },
+      {
+        "id": "u20",
+        "ok": true,
+        "pack_must_file_recall": 1.0,
+        "pack_must_symbol_recall": 1.0,
+        "union_must_file_recall": 1.0,
+        "should_file_hit": 0.5,
+        "n_hot": 1,
+        "thin": true,
+        "missing_must_files": [],
+        "missing_must_symbols": [],
+        "top5": [
+          "cmd_unlock_tool"
+        ]
+      }
+    ]
+  }
+}

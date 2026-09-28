@@ -1,0 +1,326 @@
+{
+  "id": "t04",
+  "family": "gate-enroll",
+  "task": "How does gate / project enrollment decide a repo is managed and bind project_id?",
+  "enrich_prompt": "gate enroll managed project_id .scubiee id.json GATE line AGENTS.md bind repo",
+  "map": {
+    "elapsed_s": 0.656,
+    "top_files": [
+      "packages/pipeline/project_id.py",
+      "packages/pipeline/rules_installer.py",
+      "tests/test_mcp_repo_resolution.py",
+      "packages/pipeline/gate_cli.py",
+      "tests/test_token_efficient_gating.py"
+    ]
+  },
+  "selected_chunks": [
+    {
+      "file": "packages/pipeline/project_id.py",
+      "symbol": "repo_runtime_dir",
+      "kind": "function",
+      "loc": "packages/pipeline/project_id.py:121-142",
+      "start_line": 121,
+      "end_line": 142,
+      "score": 6.85,
+      "excerpt": "def repo_runtime_dir(root: Path) -> Path:\n    \"\"\"Writable per-repo runtime dir (enrollment vs MCP scratch).\n\n    Enrolled checkouts use ``<repo>/.scubiee``. Unenrolled repos (inclu"
+    },
+    {
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": "gate_line_for_repo",
+      "kind": "function",
+      "loc": "packages/pipeline/rules_installer.py:266-280",
+      "start_line": 266,
+      "end_line": 280,
+      "score": 14.1,
+      "excerpt": "def gate_line_for_repo(repo: Path | str) -> str:\n    \"\"\"Gate line from repo ``.scubiee/id.json`` (for project rules, no daemon).\"\"\"\n    from pipeline.pause_resume import is_paused\n"
+    },
+    {
+      "file": "packages/pipeline/managed_repos.py",
+      "symbol": "managed_repo_paths",
+      "kind": "function",
+      "loc": "packages/pipeline/managed_repos.py:213-275",
+      "start_line": 213,
+      "end_line": 275,
+      "score": 10.9,
+      "excerpt": "def managed_repo_paths(*, enrolled_only: bool = False) -> list[Path]:\n    \"\"\"Existing checkout directories for managed registry projects.\n\n    Parameters\n    ----------\n    enrolle"
+    }
+  ],
+  "arms": {
+    "pack_context": {
+      "ok": true,
+      "tool": "pack_context",
+      "engine": "composite_v1",
+      "elapsed_s": 0.148,
+      "n_pack": 4,
+      "seed": {
+        "file": "packages/pipeline/project_id.py",
+        "symbol": "repo_runtime_dir",
+        "id": "packages/pipeline/project_id.py::repo_runtime_dir"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "repo_runtime_dir",
+          "score": 1.0,
+          "loc": "packages/pipeline/project_id.py:121-142",
+          "id": "packages/pipeline/project_id.py::repo_runtime_dir",
+          "chars": 780
+        },
+        {
+          "file": "packages/pipeline/rules_installer.py",
+          "symbol": "gate_line_for_repo",
+          "score": 1.0,
+          "loc": "packages/pipeline/rules_installer.py:266-280",
+          "id": "packages/pipeline/rules_installer.py::gate_line_for_repo",
+          "chars": 460
+        },
+        {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "context_engine_home",
+          "score": 0.99,
+          "loc": "packages/pipeline/project_id.py:108-113",
+          "id": "packages/pipeline/project_id.py::context_engine_home",
+          "chars": 235
+        },
+        {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "legacy_repo_key",
+          "score": 0.99,
+          "loc": "packages/pipeline/project_id.py:543-544",
+          "id": "packages/pipeline/project_id.py::legacy_repo_key",
+          "chars": 119
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/project_id.py::repo_runtime_dir",
+          "loc": "packages/pipeline/project_id.py:121-142",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/rules_installer.py::gate_line_for_repo",
+          "loc": "packages/pipeline/rules_installer.py:266-280",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/project_id.py::context_engine_home",
+          "loc": "packages/pipeline/project_id.py:108-113",
+          "edge": "calls",
+          "score": 0.99
+        },
+        {
+          "id": "packages/pipeline/project_id.py::legacy_repo_key",
+          "loc": "packages/pipeline/project_id.py:543-544",
+          "edge": "calls",
+          "score": 0.99
+        },
+        {
+          "id": "packages/pipeline/project_id.py::id_dir_path",
+          "loc": "packages/pipeline/project_id.py:116-118",
+          "edge": "calls",
+          "score": 0.99
+        },
+        {
+          "id": "packages/pipeline/mcp_locate.py::_is_enrolled",
+          "loc": "packages/pipeline/mcp_locate.py:584-590",
+          "edge": "calls",
+          "score": 0.9405
+        },
+        {
+          "id": "packages/pipeline/pause_resume.py::is_paused",
+          "loc": "packages/pipeline/pause_resume.py:49-61",
+          "edge": "calls",
+          "score": 0.9405
+        },
+        {
+          "id": "packages/pipeline/project_id.py::read_id_file",
+          "loc": "packages/pipeline/project_id.py:196-201",
+          "edge": "calls",
+          "score": 0.9405
+        }
+      ],
+      "pack_query": "gate enroll managed project_id .scubiee id.json GATE line AGENTS.md bind repo\nrelevant_chunks: packages/pipeline/project_id.py::repo_runtime_dir@packages/pipeline/project_id.py:121-142 | packages/pipeline/rules_installer.py::gate_line_for_repo@packages/pipeline/rules_installer.py:266-280 | packages/pipeline/managed_repos.py::managed_repo_paths@packages/pipeline/managed_repos.py:213-275",
+      "error": null
+    },
+    "pack_poly_embed": {
+      "ok": true,
+      "tool": "pack_poly_embed",
+      "engine": "poly_embed",
+      "elapsed_s": 0.195,
+      "n_pack": 4,
+      "seed": {
+        "file": "packages/pipeline/project_id.py",
+        "symbol": "repo_runtime_dir",
+        "id": "packages/pipeline/project_id.py::repo_runtime_dir"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "repo_runtime_dir",
+          "score": 1.0,
+          "loc": "packages/pipeline/project_id.py:121-142",
+          "id": "packages/pipeline/project_id.py::repo_runtime_dir",
+          "chars": 780
+        },
+        {
+          "file": "packages/pipeline/rules_installer.py",
+          "symbol": "gate_line_for_repo",
+          "score": 1.0,
+          "loc": "packages/pipeline/rules_installer.py:266-280",
+          "id": "packages/pipeline/rules_installer.py::gate_line_for_repo",
+          "chars": 460
+        },
+        {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "legacy_repo_key",
+          "score": 0.735,
+          "loc": "packages/pipeline/project_id.py:543-544",
+          "id": "packages/pipeline/project_id.py::legacy_repo_key",
+          "chars": 119
+        },
+        {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "context_engine_home",
+          "score": 0.735,
+          "loc": "packages/pipeline/project_id.py:108-113",
+          "id": "packages/pipeline/project_id.py::context_engine_home",
+          "chars": 235
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/project_id.py::repo_runtime_dir",
+          "loc": "packages/pipeline/project_id.py:121-142",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/rules_installer.py::gate_line_for_repo",
+          "loc": "packages/pipeline/rules_installer.py:266-280",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/project_id.py::legacy_repo_key",
+          "loc": "packages/pipeline/project_id.py:543-544",
+          "edge": "seed",
+          "score": 0.735
+        },
+        {
+          "id": "packages/pipeline/project_id.py::context_engine_home",
+          "loc": "packages/pipeline/project_id.py:108-113",
+          "edge": "seed",
+          "score": 0.735
+        },
+        {
+          "id": "packages/pipeline/project_id.py::id_dir_path",
+          "loc": "packages/pipeline/project_id.py:116-118",
+          "edge": "seed",
+          "score": 0.735
+        }
+      ],
+      "pack_query": "gate enroll managed project_id .scubiee id.json GATE line AGENTS.md bind repo\nrelevant_chunks: packages/pipeline/project_id.py::repo_runtime_dir@packages/pipeline/project_id.py:121-142 | packages/pipeline/rules_installer.py::gate_line_for_repo@packages/pipeline/rules_installer.py:266-280 | packages/pipeline/managed_repos.py::managed_repo_paths@packages/pipeline/managed_repos.py:213-275",
+      "error": null
+    },
+    "pack_semantic": {
+      "ok": true,
+      "tool": "pack_semantic",
+      "engine": "semantic_tracer_fuse",
+      "elapsed_s": 0.386,
+      "n_pack": 4,
+      "seed": {
+        "file": "packages/pipeline/project_id.py",
+        "symbol": "repo_runtime_dir",
+        "id": "packages/pipeline/project_id.py::repo_runtime_dir"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "repo_runtime_dir",
+          "score": 1.0,
+          "loc": "packages/pipeline/project_id.py:121-142",
+          "id": "packages/pipeline/project_id.py::repo_runtime_dir",
+          "chars": 780
+        },
+        {
+          "file": "packages/pipeline/rules_installer.py",
+          "symbol": "gate_line_for_repo",
+          "score": 1.0,
+          "loc": "packages/pipeline/rules_installer.py:266-280",
+          "id": "packages/pipeline/rules_installer.py::gate_line_for_repo",
+          "chars": 460
+        },
+        {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "id_dir_path",
+          "score": 0.9472,
+          "loc": "packages/pipeline/project_id.py:116-118",
+          "id": "packages/pipeline/project_id.py::id_dir_path",
+          "chars": 150
+        },
+        {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "context_engine_home",
+          "score": 0.9419,
+          "loc": "packages/pipeline/project_id.py:108-113",
+          "id": "packages/pipeline/project_id.py::context_engine_home",
+          "chars": 235
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/project_id.py::repo_runtime_dir",
+          "loc": "packages/pipeline/project_id.py:121-142",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/rules_installer.py::gate_line_for_repo",
+          "loc": "packages/pipeline/rules_installer.py:266-280",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/project_id.py::id_dir_path",
+          "loc": "packages/pipeline/project_id.py:116-118",
+          "edge": "calls",
+          "score": 0.9472
+        },
+        {
+          "id": "packages/pipeline/project_id.py::context_engine_home",
+          "loc": "packages/pipeline/project_id.py:108-113",
+          "edge": "calls",
+          "score": 0.9419
+        },
+        {
+          "id": "packages/pipeline/project_id.py::legacy_repo_key",
+          "loc": "packages/pipeline/project_id.py:543-544",
+          "edge": "calls",
+          "score": 0.9389
+        },
+        {
+          "id": "packages/pipeline/pause_resume.py::is_paused",
+          "loc": "packages/pipeline/pause_resume.py:49-61",
+          "edge": "calls",
+          "score": 0.8688
+        },
+        {
+          "id": "packages/pipeline/project_id.py::read_id_file",
+          "loc": "packages/pipeline/project_id.py:196-201",
+          "edge": "calls",
+          "score": 0.8682
+        },
+        {
+          "id": "packages/pipeline/mcp_locate.py::_is_enrolled",
+          "loc": "packages/pipeline/mcp_locate.py:584-590",
+          "edge": "calls",
+          "score": 0.8669
+        }
+      ],
+      "pack_query": "gate enroll managed project_id .scubiee id.json GATE line AGENTS.md bind repo\nrelevant_chunks: packages/pipeline/project_id.py::repo_runtime_dir@packages/pipeline/project_id.py:121-142 | packages/pipeline/rules_installer.py::gate_line_for_repo@packages/pipeline/rules_installer.py:266-280 | packages/pipeline/managed_repos.py::managed_repo_paths@packages/pipeline/managed_repos.py:213-275",
+      "error": null
+    }
+  }
+}

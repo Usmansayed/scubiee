@@ -1,0 +1,111 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 8.948,
+  "stdout_chars": 3759,
+  "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})",
+  "json": {
+    "ok": true,
+    "tool": "map",
+    "cards": [
+      {
+        "rank": 1,
+        "file": "scripts/ten_problem_map_pack_eval.py",
+        "score": 29.993737287739688,
+        "why": "10-problem real-life eval: detailed map \u2192 pick seed \u2192 pack_context \u2192 score.",
+        "role": "other",
+        "loc": "scripts/ten_problem_map_pack_eval.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 2,
+        "file": "packages/trace_lab/policy/faction.py",
+        "score": 23.363911285998373,
+        "why": "Faction firewall with seed-closure override.",
+        "role": "function",
+        "loc": "packages/trace_lab/policy/faction.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 3,
+        "file": "docs/superpowers/plans/2026-09-04-pack-context-bakeoff.md",
+        "score": 13.69035250147029,
+        "why": "# Pack-context + few-call bakeoff **Date:** 2026-09-04 **Goal:** Full useful context in fewest agent calls; measure tokens vs guide+native. ## Spec ### `pack_context(query, seed\u2026, ",
+        "role": "docs",
+        "loc": "docs/superpowers/plans/2026-09-04-pack-context-bakeoff.md:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 4,
+        "file": "docs/superpowers/specs/2026-09-04-pack-context-few-calls-design.md",
+        "score": 13.052465297416916,
+        "why": "# Design: pack_context \u2014 few calls, fat relevant context **Date:** 2026-09-04 **Status:** approved \u2014 implementing ## Insight Fewer API calls with more relevant context often beats ",
+        "role": "docs",
+        "loc": "docs/superpowers/specs/2026-09-04-pack-context-few-calls-design.md:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 5,
+        "file": "docs/superpowers/specs/2026-09-05-incremental-context-ladder-design.md",
+        "score": 12.386060578909365,
+        "why": "# Design: Incremental Context Ladder (\u22643 calls, lean tokens) **Date:** 2026-09-05 **Status:** approved \u2014 implementing ## Problem One fat `pack_context` wastes tokens when the seed ",
+        "role": "docs",
+        "loc": "docs/superpowers/specs/2026-09-05-incremental-context-ladder-design.md:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 6,
+        "file": "tests/test_locate_cli.py",
+        "score": 12.333687996453707,
+        "why": "def test_slim_pack_keeps_bodies_drops_heatmap_chrome() -> None: fat = { \"ok\": True, \"tool\": \"pack_context\", \"cli\": \"pack\", \"guide\": \"LEAN PACK \u2014 ignore me\", \"howto\": \"long howto\", ",
+        "role": "test",
+        "loc": "tests/test_locate_cli.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 7,
+        "file": "tests/test_mcp_response_lean.py",
+        "score": 12.296728709824883,
+        "why": "def test_pack_context_full_locate_opt_in(monkeypatch: pytest.MonkeyPatch) -> None: monkeypatch.setenv(\"CTX_MCP_FULL_LOCATE\", \"1\") raw = { \"ok\": True, \"tool\": \"pack_context\", \"guide",
+        "role": "test",
+        "loc": "tests/test_mcp_response_lean.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 8,
+        "file": "AGENTS.md",
+        "score": 12.085796844077173,
+        "why": "<!-- scubiee:start --> **GATE 1:ce_d9cb766c3820091ed9ffbc64ef33063c** - Managed repo. `project_id='ce_d9cb766c3820091ed9ffbc64ef33063c'`. **MUST Use Scubiee CLI for locate** (shell",
+        "role": "docs",
+        "loc": "AGENTS.md:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 9,
+        "file": "packages/pipeline/context_trace.py",
+        "score": 12.059998786431116,
+        "why": "def pick_suggested_seed(cards: list[dict[str, Any]]) -> dict[str, Any] | None: \"\"\"Best soft-map card to feed pack_context \u2014 prefer packages/ function over tests/docs.\"\"\" scored: li",
+        "role": "function",
+        "loc": "packages/pipeline/context_trace.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 10,
+        "file": "packages/pipeline/rules_installer.py",
+        "score": 11.838049550399605,
+        "why": "def managed_gate_mcp_header() -> str: \"\"\"Short reinforce of GATE policy inside MCP instructions (every turn \u2014 keep tiny).\"\"\" exp = (os.environ.get(\"CTX_MCP_EXPERIMENT\") or \"hybrid\"",
+        "role": "function",
+        "loc": "packages/pipeline/rules_installer.py:1-1",
+        "symbol": ""
+      }
+    ],
+    "suggested_seed": {
+      "file": "packages/trace_lab/policy/faction.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/policy/faction.py:1-1",
+      "score": 23.363911285998373
+    },
+    "next": "scubiee pack \"scubiee pack CLI argparse seed-file seed-symbol mode lean full policy strict broad pack_context command entry\" --seed-file packages/trace_lab/policy/faction.py --mode lean"
+  },
+  "stdout_preview": ""
+}

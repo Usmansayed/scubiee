@@ -1,0 +1,61 @@
+{
+  "label": "full_curated",
+  "started_at": 1789394780.9732232,
+  "targets": [
+    "tests/test_lifecycle_runtime.py",
+    "tests/test_lifecycle_disconnect_unload.py",
+    "tests/test_runtime_controller.py",
+    "tests/test_mcp_bridge.py",
+    "tests/test_e2e_system_matrix.py",
+    "tests/test_memory_governor.py",
+    "tests/test_memory_budget.py",
+    "tests/test_runtime_publish.py",
+    "tests/test_live_reindexing.py",
+    "tests/test_watcher_recovery.py",
+    "tests/test_freshness.py",
+    "tests/test_sync_status_canaries.py",
+    "tests/test_incremental_context_ladder.py",
+    "tests/test_expand_after_pack.py",
+    "tests/test_attach_warm_pipeline.py",
+    "tests/test_locate_worker_prewarm.py",
+    "tests/test_reliability_master_plan.py"
+  ],
+  "suites": {
+    "wrapper_lifecycle": [
+      "tests/test_lifecycle_runtime.py",
+      "tests/test_lifecycle_disconnect_unload.py",
+      "tests/test_runtime_controller.py",
+      "tests/test_mcp_bridge.py",
+      "tests/test_e2e_system_matrix.py"
+    ],
+    "resources": [
+      "tests/test_memory_governor.py",
+      "tests/test_memory_budget.py",
+      "tests/test_runtime_publish.py"
+    ],
+    "sync": [
+      "tests/test_live_reindexing.py",
+      "tests/test_watcher_recovery.py",
+      "tests/test_freshness.py",
+      "tests/test_sync_status_canaries.py"
+    ],
+    "tools_locate": [
+      "tests/test_incremental_context_ladder.py",
+      "tests/test_expand_after_pack.py",
+      "tests/test_attach_warm_pipeline.py",
+      "tests/test_locate_worker_prewarm.py",
+      "tests/test_reliability_master_plan.py"
+    ]
+  },
+  "runs": [
+    {
+      "ok": true,
+      "returncode": 0,
+      "elapsed_ms": 25826.1,
+      "tail": "........................................................................ [ 44%]\n........................................................................ [ 88%]\n...................                                                      [100%]\n============================== warnings summary ===============================\ntests/test_expand_after_pack.py::test_expand_callers_after_pack_not_empty\n  <unknown>:6: SyntaxWarning: invalid escape sequence '\\.'\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n163 passed, 1 warning in 24.79s\n\n"
+    }
+  ],
+  "ok": true,
+  "elapsed_ms": 25826.1,
+  "finished_at": 1789394806.8001525
+}

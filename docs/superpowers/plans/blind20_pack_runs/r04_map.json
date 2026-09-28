@@ -1,0 +1,103 @@
+{
+  "ok": true,
+  "tool": "map",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "tests/test_repo_lifecycle.py",
+      "score": 12.7595574358122,
+      "why": "def test_never_index_takes_precedence(ce_home: Path, tmp_path: Path) -> None: repo = tmp_path / \"repo\" repo.mkdir() initialized = initialize_repo(repo, index=False) denied = never_",
+      "role": "test",
+      "loc": "tests/test_repo_lifecycle.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 2,
+      "file": "tests/test_auto_sessions_observability.py",
+      "score": 12.165542968870025,
+      "why": "def test_never_index_authorization_wins_before_runtime_creation( ce_home: Path, tmp_path: Path ) -> None: from pipeline.ce_service import RuntimeManager from pipeline.repo_lifecycl",
+      "role": "test",
+      "loc": "tests/test_auto_sessions_observability.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 3,
+      "file": "packages/pipeline/repo_lifecycle.py",
+      "score": 11.257855789543147,
+      "why": "def never_index_repo(root: Path, *, reason: str | None = None) -> dict[str, Any]: root = _root(root) ref = resolve_project(root) now = time.time() current = (load_registry().get(\"p",
+      "role": "function",
+      "loc": "packages/pipeline/repo_lifecycle.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 4,
+      "file": "packages/pipeline/paths.py",
+      "score": 5.596128302279031,
+      "why": "\"\"\"Shared index path collection (fast roots configurable).\"\"\" from __future__ import annotations import os from pathlib import Path from graphify.extract import collect_files from ",
+      "role": "function",
+      "loc": "packages/pipeline/paths.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 5,
+      "file": "tests/test_index_coverage.py",
+      "score": 4.3923428953789365,
+      "why": "\"\"\"Fast-mode indexing must not silently skip whole top-level directories. A repo's scripts/ and tests/ answer \"how do we run or verify X\". They were missing from the fast roots, so",
+      "role": "test",
+      "loc": "tests/test_index_coverage.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 6,
+      "file": "docs/web-info/indexing-and-projects.md",
+      "score": 4.219713493758829,
+      "why": "# Indexing & projects How Scubiee decides **what** to index, **when** to ask for confirmation, and **where** project data is stored. --- ## Project identity Each managed repository",
+      "role": "docs",
+      "loc": "docs/web-info/indexing-and-projects.md:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 7,
+      "file": "tests/test_scenario_backtracking.py",
+      "score": 3.7640415065377613,
+      "why": "def test_prune_never_connect_extensions() -> None: \"\"\"Branch-and-bound: never-connect cannot have workspace/pause/spawn branches.\"\"\" paths = enumerate_scenarios() never = [p for p ",
+      "role": "test",
+      "loc": "tests/test_scenario_backtracking.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 8,
+      "file": "packages/pipeline/index_manager.py",
+      "score": 3.474022697976801,
+      "why": "\"\"\"IndexManager \u2014 thin fa\u00e7ade over probe / full index / incremental sync. Always asks ResourceManager before heavy work (via indexer/incremental gates). \"\"\" from __future__ import ",
+      "role": "function",
+      "loc": "packages/pipeline/index_manager.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 9,
+      "file": "tests/test_prune_engine_state.py",
+      "score": 3.272474326050167,
+      "why": "def test_entry_without_paths_is_never_pruned(): registry = {\"projects\": {\"ce_unknown\": {\"paths\": []}, \"ce_bad\": \"not-a-dict\"}} assert prune.dead_project_ids(registry) == []",
+      "role": "test",
+      "loc": "tests/test_prune_engine_state.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 10,
+      "file": "packages/graphify/detect.py",
+      "score": 3.2695488515572144,
+      "why": "def _git_info_exclude(vcs_root: Path) -> Path | None: \"\"\"Resolve ``$GIT_DIR/info/exclude`` for the repo rooted at ``vcs_root``. ``info/exclude`` is where git records local-only, un",
+      "role": "function",
+      "loc": "packages/graphify/detect.py:1-1",
+      "symbol": ""
+    }
+  ],
+  "suggested_seed": {
+    "file": "packages/pipeline/repo_lifecycle.py",
+    "symbol": "",
+    "loc": "packages/pipeline/repo_lifecycle.py:1-1",
+    "score": 11.257855789543147
+  },
+  "next": "scubiee pack \"never-index never_index deny paths skip files indexing exclude ignore globs managed\" --seed-file packages/pipeline/repo_lifecycle.py --mode lean"
+}

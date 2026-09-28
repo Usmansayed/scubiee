@@ -1,0 +1,21 @@
+﻿Available models (* = default):
+
+* auto                 1.00x credits      Models chosen by task for optimal usage and consistent quality
+  claude-opus-5        2.20x credits      Claude Opus 5 model with 1M context window
+  claude-sonnet-5      1.30x credits      Claude Sonnet 5 model with 1M context window
+  claude-opus-4.8      2.20x credits      Claude Opus 4.8 model with 1M context window
+  gpt-5.6-sol          2.40x credits      Experimental preview of OpenAI GPT 5.6 Sol with 272k context window
+  gpt-5.6-terra        1.00x credits      Experimental preview of OpenAI GPT 5.6 Terra with 272k context window
+  gpt-5.6-luna         0.10x credits      Experimental preview of OpenAI GPT 5.6 Luna with 272k context window
+  claude-opus-4.7      2.20x credits      Claude Opus 4.7 model with 1M context window
+  claude-opus-4.6      2.20x credits      Claude Opus 4.6 model with 1M context window
+  claude-sonnet-4.6    1.30x credits      Claude Sonnet 4.6 model with 1M context window
+  claude-opus-4.5      2.20x credits      Claude Opus 4.5 model
+  claude-sonnet-4.5    1.30x credits      Claude Sonnet 4.5 model
+  claude-sonnet-4      1.30x credits      Hybrid reasoning and coding for regular use
+  claude-haiku-4.5     0.40x credits      The latest Claude Haiku model
+  deepseek-3.2         0.25x credits      Experimental preview of DeepSeek V3.2
+  minimax-m2.5         0.25x credits      MiniMax M2.5 model
+  minimax-m2.1         0.15x credits      Experimental preview of MiniMax M2.1
+  glm-5                0.50x credits      GLM-5 model
+  qwen3-coder-next     0.05x credits      Experimental preview of Qwen3 Coder Next

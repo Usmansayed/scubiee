@@ -1,0 +1,210 @@
+{
+  "id": "t17",
+  "family": "never-index",
+  "task": "How do never-index path denies keep fixture/tmp paths out of the product corpus?",
+  "must_files": [
+    "packages/pipeline/repo_lifecycle.py"
+  ],
+  "must_symbols": [
+    "never_index_repo"
+  ],
+  "map_k12": {
+    "elapsed_s": 0.574,
+    "top_files": [
+      "tests/test_repo_lifecycle.py",
+      "tests/test_auto_sessions_observability.py",
+      "packages/pipeline/repo_lifecycle.py",
+      "tests/test_index_coverage.py",
+      "tests/test_connect_formats.py",
+      "packages/graphify/extractors/resolution.py",
+      "tests/test_progress_ui.py",
+      "tests/test_scenario_backtracking.py"
+    ]
+  },
+  "map_k8": {
+    "elapsed_s": 0.404,
+    "top_files": [
+      "tests/test_repo_lifecycle.py",
+      "tests/test_auto_sessions_observability.py",
+      "packages/pipeline/repo_lifecycle.py",
+      "tests/test_index_coverage.py",
+      "tests/test_connect_formats.py"
+    ]
+  },
+  "chunks_k12": [
+    {
+      "file": "packages/pipeline/repo_lifecycle.py",
+      "symbol": "never_index_repo",
+      "kind": "function",
+      "loc": "packages/pipeline/repo_lifecycle.py:619-639",
+      "start_line": 619,
+      "end_line": 639,
+      "score": 6.7
+    },
+    {
+      "file": "packages/pipeline/capability.py",
+      "symbol": "file_outline",
+      "kind": "function",
+      "loc": "packages/pipeline/capability.py:692-733",
+      "start_line": 692,
+      "end_line": 733,
+      "score": 6.7
+    },
+    {
+      "file": "packages/pipeline/checkout_identity.py",
+      "symbol": "remove_registry_checkout",
+      "kind": "function",
+      "loc": "packages/pipeline/checkout_identity.py:224-269",
+      "start_line": 224,
+      "end_line": 269,
+      "score": 6.7
+    }
+  ],
+  "chunks_k8": [
+    {
+      "file": "packages/pipeline/repo_lifecycle.py",
+      "symbol": "never_index_repo",
+      "kind": "function",
+      "loc": "packages/pipeline/repo_lifecycle.py:619-639",
+      "start_line": 619,
+      "end_line": 639,
+      "score": 6.7
+    },
+    {
+      "file": "packages/pipeline/repo_lifecycle.py",
+      "symbol": "activate_repo",
+      "kind": "function",
+      "loc": "packages/pipeline/repo_lifecycle.py:473-517",
+      "start_line": 473,
+      "end_line": 517,
+      "score": 3.7
+    },
+    {
+      "file": "packages/graphify/extractors/resolution.py",
+      "symbol": "_pnpm_workspace_globs",
+      "kind": "function",
+      "loc": "packages/graphify/extractors/resolution.py:339-356",
+      "start_line": 339,
+      "end_line": 356,
+      "score": 2.7
+    }
+  ],
+  "pack": {
+    "ok": true,
+    "elapsed_s": 0.149,
+    "n_pack": 4,
+    "pack": [
+      {
+        "file": "packages/pipeline/repo_lifecycle.py",
+        "symbol": "never_index_repo",
+        "loc": "packages/pipeline/repo_lifecycle.py:619-639",
+        "id": "packages/pipeline/repo_lifecycle.py::never_index_repo",
+        "chars": 747
+      },
+      {
+        "file": "packages/pipeline/project_id.py",
+        "symbol": "load_registry",
+        "loc": "packages/pipeline/project_id.py:220-226",
+        "id": "packages/pipeline/project_id.py::load_registry",
+        "chars": 319
+      },
+      {
+        "file": "packages/pipeline/project_id.py",
+        "symbol": "git_common_dir",
+        "loc": "packages/pipeline/project_id.py:321-355",
+        "id": "packages/pipeline/project_id.py::git_common_dir",
+        "chars": 1312
+      },
+      {
+        "file": "packages/pipeline/project_id.py",
+        "symbol": "projects_root",
+        "loc": "packages/pipeline/project_id.py:153-154",
+        "id": "packages/pipeline/project_id.py::projects_root",
+        "chars": 74
+      }
+    ],
+    "chain": [
+      {
+        "id": "packages/pipeline/repo_lifecycle.py::never_index_repo",
+        "loc": "packages/pipeline/repo_lifecycle.py:619-639",
+        "edge": "seed",
+        "symbol": "never_index_repo"
+      },
+      {
+        "id": "packages/pipeline/project_id.py::load_registry",
+        "loc": "packages/pipeline/project_id.py:220-226",
+        "edge": "calls",
+        "symbol": "load_registry"
+      },
+      {
+        "id": "packages/pipeline/project_id.py::git_common_dir",
+        "loc": "packages/pipeline/project_id.py:321-355",
+        "edge": "calls",
+        "symbol": "git_common_dir"
+      },
+      {
+        "id": "packages/pipeline/project_id.py::projects_root",
+        "loc": "packages/pipeline/project_id.py:153-154",
+        "edge": "calls",
+        "symbol": "projects_root"
+      },
+      {
+        "id": "packages/pipeline/project_id.py::mutate_registry",
+        "loc": "packages/pipeline/project_id.py:248-254",
+        "edge": "calls",
+        "symbol": "mutate_registry"
+      },
+      {
+        "id": "packages/pipeline/project_id.py::_read_json",
+        "loc": "packages/pipeline/project_id.py:168-182",
+        "edge": "calls",
+        "symbol": "_read_json"
+      },
+      {
+        "id": "packages/pipeline/project_id.py::_norm_path",
+        "loc": "packages/pipeline/project_id.py:257-261",
+        "edge": "calls",
+        "symbol": "_norm_path"
+      },
+      {
+        "id": "packages/pipeline/project_id.py::read_id_file",
+        "loc": "packages/pipeline/project_id.py:196-201",
+        "edge": "calls",
+        "symbol": "read_id_file"
+      }
+    ],
+    "seed": {
+      "file": "packages/pipeline/repo_lifecycle.py",
+      "symbol": "never_index_repo",
+      "id": "packages/pipeline/repo_lifecycle.py::never_index_repo"
+    },
+    "error": null
+  },
+  "scores": {
+    "map_k12": {
+      "file": 1.0,
+      "symbol": 0.0,
+      "note": "raw map cards (symbols often empty)"
+    },
+    "map_k12_chunks": {
+      "file": 1.0,
+      "symbol": 1.0,
+      "chunks": [
+        "never_index_repo",
+        "file_outline",
+        "remove_registry_checkout"
+      ]
+    },
+    "map8_pack": {
+      "file": 1.0,
+      "symbol": 1.0,
+      "n_pack": 4,
+      "chunks": [
+        "never_index_repo",
+        "activate_repo",
+        "_pnpm_workspace_globs"
+      ],
+      "elapsed_s": 0.149
+    }
+  }
+}

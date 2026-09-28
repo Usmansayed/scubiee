@@ -1,0 +1,41 @@
+{
+  "ok": true,
+  "tool": "pack_semantic",
+  "engine": "semantic_tracer_fuse",
+  "elapsed_s": 0.191,
+  "n_pack": 1,
+  "seed": {
+    "file": "packages/conductor/graphify_retriever.py",
+    "symbol": "normalize_file",
+    "id": "packages/conductor/graphify_retriever.py::normalize_file"
+  },
+  "pack": [
+    {
+      "file": "packages/conductor/graphify_retriever.py",
+      "symbol": "normalize_file",
+      "score": 1.0,
+      "loc": "packages/conductor/graphify_retriever.py:33-34",
+      "id": "packages/conductor/graphify_retriever.py::normalize_file",
+      "chars": 85
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/conductor/graphify_retriever.py::normalize_file",
+      "loc": "packages/conductor/graphify_retriever.py:33-34",
+      "edge": "seed",
+      "score": 1.0
+    }
+  ],
+  "error": null,
+  "seed_chunks": [
+    {
+      "file": "packages/conductor/graphify_retriever.py",
+      "symbol": "normalize_file",
+      "loc": "packages/conductor/graphify_retriever.py:33-34",
+      "score": 1.0,
+      "kind": "function"
+    }
+  ],
+  "pack_query": "graphify graph_ir call edges GraphifyChunkRetriever conductor extra_graph build_graphify | seeds: packages/conductor/graphify_retriever.py::normalize_file"
+}

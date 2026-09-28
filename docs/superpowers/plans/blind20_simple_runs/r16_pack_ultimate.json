@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "engine": "ultimate",
+  "policy": "strict",
+  "elapsed_s": 0.013,
+  "n_pack": 1,
+  "pack": [
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "_version_only",
+      "score": 1.0,
+      "loc": "packages/pipeline/__main__.py:19-21",
+      "id": "packages/pipeline/__main__.py::_version_only"
+    }
+  ],
+  "error": null
+}

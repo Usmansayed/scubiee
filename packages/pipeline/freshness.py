@@ -123,7 +123,7 @@ def git_dirty_files(root: Path) -> list[str]:
         if " -> " in path:
             path = path.split(" -> ", 1)[1]
         path = path.replace("\\", "/").strip('"')
-        if is_junk_rel(path):
+        if is_junk_rel(path, root=root):
             continue
         files.append(path)
     return files
@@ -272,7 +272,7 @@ def check_freshness(
         candidates = sorted(set(candidates))
         current = dict(merkle_snapshot)
         for rel in candidates:
-            if is_junk_rel(rel):
+            if is_junk_rel(rel, root=root):
                 continue
             p = root / rel
             if p.is_file():
@@ -302,7 +302,7 @@ def check_freshness(
                 suspects.append(rel)
         # Dirty paths only matter if already indexed (or universe expansion allowed)
         for rel in dirty:
-            if is_junk_rel(rel):
+            if is_junk_rel(rel, root=root):
                 continue
             if rel in merkle_snapshot or not indexed_universe_only:
                 suspects.append(rel)
@@ -310,7 +310,7 @@ def check_freshness(
         if suspects:
             current = dict(merkle_snapshot)
             for rel in suspects:
-                if is_junk_rel(rel):
+                if is_junk_rel(rel, root=root):
                     continue
                 p = root / rel
                 if p.is_file():

@@ -1,0 +1,31 @@
+{
+  "ok": true,
+  "engine": "composite_v1",
+  "policy": "strict",
+  "elapsed_s": 18.86,
+  "n_pack": 3,
+  "pack": [
+    {
+      "file": "packages/pipeline/searcher.py",
+      "symbol": "FaissDenseAdapter.__init__",
+      "score": 1.0,
+      "loc": "packages/pipeline/searcher.py:33-38",
+      "id": "packages/pipeline/searcher.py::FaissDenseAdapter.__init__"
+    },
+    {
+      "file": "packages/pipeline/searcher.py",
+      "symbol": "SearchEngineError.__init__",
+      "score": 0.9405,
+      "loc": "packages/pipeline/searcher.py:58-60",
+      "id": "packages/pipeline/searcher.py::SearchEngineError.__init__"
+    },
+    {
+      "file": "packages/conductor/dense_index.py",
+      "symbol": "DenseIndex.__init__",
+      "score": 0.75,
+      "loc": "packages/conductor/dense_index.py:29-33",
+      "id": "packages/conductor/dense_index.py::DenseIndex.__init__"
+    }
+  ],
+  "error": null
+}

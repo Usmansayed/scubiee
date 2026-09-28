@@ -1,0 +1,62 @@
+{
+  "includeMcpJson": false,
+  "includePowers": false,
+  "model": "auto",
+  "permissions": {
+    "rules": [
+      {
+        "capability": "shell",
+        "match": [
+          "rg *",
+          "findstr *",
+          "dir *",
+          "ls *",
+          "type *",
+          "Get-ChildItem *",
+          "Select-String *"
+        ],
+        "effect": "allow"
+      }
+    ]
+  },
+  "mcpServers": {},
+  "tools": [
+    "read",
+    "shell",
+    "@scubiee",
+    "@scubiee/gate",
+    "@scubiee/map",
+    "@scubiee/pack_context",
+    "@scubiee/map_context",
+    "@scubiee/expand_context",
+    "@scubiee/collect_hot_context",
+    "@scubiee/pinpoint",
+    "@scubiee/plate",
+    "@scubiee/workspace",
+    "@scubiee/expand",
+    "@scubiee/status"
+  ],
+  "allowedTools": [
+    "read",
+    "shell",
+    "@scubiee",
+    "@scubiee/gate",
+    "@scubiee/map",
+    "@scubiee/pack_context",
+    "@scubiee/map_context",
+    "@scubiee/expand_context",
+    "@scubiee/collect_hot_context",
+    "@scubiee/pinpoint",
+    "@scubiee/plate",
+    "@scubiee/workspace",
+    "@scubiee/expand",
+    "@scubiee/status"
+  ],
+  "resources": [
+    "file://AGENTS.md",
+    "file://.kiro/steering/scubiee.md"
+  ],
+  "name": "ab_policy_baseline",
+  "description": "Phase C live \u2014 baseline mandatory map\u2192pack GATE",
+  "prompt": "You are a locate-only coding assistant for a fair A/B evaluation.\n\nHard rules:\n- Do NOT edit, create, or delete files.\n- Do NOT run git write commands, installs, or servers.\n- Prefer read/search tools. Keep exploration tight.\n- Finish with the requested JSON block (files + symbols).\n\nYou HAVE the scubiee MCP server. There is NO Scubiee CLI locate \u2014 BAN shell `scubiee map|pack|expand`.\nLOCATE PRIORITY (managed Prefer/Forbid):\n- Soft/structural \u2192 Prefer map \u2192 pack_context(mode=lean, same query) \u2192 Native-Read top heatmap locs. expand_context if thin.\n- Exact literals / imports / error strings / JWT-like needles \u2192 Prefer host Grep/rg FIRST (Forbid-first map/pack).\n- Filename/path \u2192 Prefer Glob/fileSearch first. Known path:lines \u2192 Prefer span Read.\n- Forbid packing empty/_/test seeds. After heatmap, guided native Grep/Read on card locs is OK.\n- If Scubiee errors \u2192 native; no deadlock. Do not parallel-thrash explore with Scubiee.\nThen answer with the JSON block.\n"
+}

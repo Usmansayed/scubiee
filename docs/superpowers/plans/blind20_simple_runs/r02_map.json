@@ -1,0 +1,90 @@
+{
+  "ok": true,
+  "tool": "map",
+  "query": "capability_cards CapabilityCard build cards attach map ranking locate index capability_cards.json",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/pipeline/capability.py",
+      "symbol": "",
+      "score": 16.832291312136533,
+      "loc": "packages/pipeline/capability.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "packages/pipeline/engine.py",
+      "symbol": "",
+      "score": 11.879644052159595,
+      "loc": "packages/pipeline/engine.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "packages/pipeline/locate.py",
+      "symbol": "",
+      "score": 5.633378493463926,
+      "loc": "packages/pipeline/locate.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "docs/superpowers/specs/2026-08-03-capability-locate-design.md",
+      "symbol": "",
+      "score": 5.509622946221391,
+      "loc": "docs/superpowers/specs/2026-08-03-capability-locate-design.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "packages/pipeline/mcp_locate.py",
+      "symbol": "",
+      "score": 5.153589666318281,
+      "loc": "packages/pipeline/mcp_locate.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "scripts/blind_map_multipack_20.py",
+      "symbol": "",
+      "score": 4.765810948447561,
+      "loc": "scripts/blind_map_multipack_20.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "packages/pipeline/context_trace.py",
+      "symbol": "",
+      "score": 4.4980153398084095,
+      "loc": "packages/pipeline/context_trace.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "packages/graphify/build.py",
+      "symbol": "",
+      "score": 4.406684506380527,
+      "loc": "packages/graphify/build.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "tests/test_mcp_exploration_regressions.py",
+      "symbol": "",
+      "score": 4.32948151464965,
+      "loc": "tests/test_mcp_exploration_regressions.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "tests/test_capability_promotion.py",
+      "symbol": "",
+      "score": 3.9908526169159937,
+      "loc": "tests/test_capability_promotion.py:1-1",
+      "why": ""
+    }
+  ],
+  "suggested_seed": null,
+  "elapsed_s": 4.532,
+  "via": "search_repo(use_server=True)"
+}

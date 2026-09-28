@@ -1,0 +1,137 @@
+[
+  {
+    "test": "phase_has_expand",
+    "ok": true,
+    "tools": [
+      "expand",
+      "focus",
+      "gate",
+      "glob",
+      "grep",
+      "map",
+      "status",
+      "workspace"
+    ]
+  },
+  {
+    "test": "phase_tool_set",
+    "ok": true
+  },
+  {
+    "test": "outline_bom:embedder.py",
+    "ok": true,
+    "count": 24
+  },
+  {
+    "test": "bom_stripped:embedder.py",
+    "ok": true
+  },
+  {
+    "test": "outline_bom:mcp_locate.py",
+    "ok": true,
+    "count": 76
+  },
+  {
+    "test": "bom_stripped:mcp_locate.py",
+    "ok": true
+  },
+  {
+    "test": "outline_bom:sync_loop.py",
+    "ok": true,
+    "count": 34
+  },
+  {
+    "test": "bom_stripped:sync_loop.py",
+    "ok": true
+  },
+  {
+    "test": "outline_bom:ce_service.py",
+    "ok": true,
+    "count": 48
+  },
+  {
+    "test": "bom_stripped:ce_service.py",
+    "ok": true
+  },
+  {
+    "test": "outline_bom:daemon.py",
+    "ok": true,
+    "count": 17
+  },
+  {
+    "test": "bom_stripped:daemon.py",
+    "ok": true
+  },
+  {
+    "test": "symbol_acquire_lines",
+    "ok": true,
+    "range": [
+      46,
+      65
+    ]
+  },
+  {
+    "test": "symbol_budget_lines",
+    "ok": true,
+    "range": [
+      248,
+      310
+    ]
+  },
+  {
+    "test": "truncation_next_start_line",
+    "ok": true,
+    "next_start_line": 168,
+    "lines_returned": "105-167 of 529"
+  },
+  {
+    "test": "already_in_session_strips_code",
+    "ok": true,
+    "status": "already_in_session"
+  },
+  {
+    "test": "expand_restores_body",
+    "ok": true,
+    "code_len": 2316
+  },
+  {
+    "test": "focus_symbol_acquire",
+    "ok": false,
+    "start": null,
+    "focus_ok": false
+  },
+  {
+    "test": "keeper_tick_full",
+    "ok": true,
+    "truncated": false
+  },
+  {
+    "test": "embed_many_full",
+    "ok": true,
+    "truncated": false
+  },
+  {
+    "test": "glob_no_worktrees",
+    "ok": true,
+    "files": [
+      "packages/pipeline/sync_loop.py"
+    ]
+  },
+  {
+    "test": "grep_embedder",
+    "ok": false
+  },
+  {
+    "test": "grep_extract_generic_engine",
+    "ok": true
+  },
+  {
+    "test": "map_code_vocab_ranks_sync_loop",
+    "ok": false,
+    "error": "requires_initialize"
+  },
+  {
+    "test": "missing_file_clear_error",
+    "ok": true
+  }
+]

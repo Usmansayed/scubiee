@@ -104,8 +104,22 @@ def store_write_lock(store_dir: Path, *, timeout: float = 120.0) -> Iterator[Non
 
 
 def quiesce_background_indexing(*, store_dir: Path | None = None) -> dict[str, Any]:
-    """Stop engine/watchdog workers so init/rebuild can write store artifacts."""
+    """Stop engine/watchdog workers so init/rebuild can write store artifacts.
+
+    Only for an *outside* writer (``scubiee index`` / init). Inside the engine
+    (load_engine -> heal_checksum_mismatch -> index_repo) this stopped the
+    watchdog and then the engine itself, and nothing brought either back
+    (issue 2, caught by the [stop] audit: by=engine at=...quiesce_background_indexing).
+    """
     out: dict[str, Any] = {"ok": True}
+    if (os.environ.get("CTX_SCUBIEE_ROLE") or "").strip().lower() in {"engine", "watchdog"}:
+        out["skipped"] = "in_process_daemon"
+        print(
+            "[store] quiesce skipped: rebuild runs inside the engine; not stopping engine/watchdog",
+            file=sys.stderr,
+            flush=True,
+        )
+        return out
     try:
         from pipeline.watchdog import stop_watchdog
 

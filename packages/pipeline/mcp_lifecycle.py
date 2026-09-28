@@ -213,11 +213,13 @@ def prewarm_locate_worker(repo: Path | str, *, deadline_s: float | None = None) 
     out["imports"] = imports
 
     try:
-        from pipeline.runtime_controller import warm_deadline_ms
+        from pipeline.warm_contract import warm_deadline_ms
 
         budget = float(deadline_s) if deadline_s is not None else warm_deadline_ms() / 1000.0
     except Exception:  # noqa: BLE001
-        budget = float(deadline_s) if deadline_s is not None else 30.0
+        from pipeline.warm_contract import DEFAULT_WARM_DEADLINE_MS
+
+        budget = float(deadline_s) if deadline_s is not None else DEFAULT_WARM_DEADLINE_MS / 1000.0
     deadline = time.time() + max(5.0, budget)
 
     # Kick engine open/register without blocking on ORT.

@@ -712,6 +712,11 @@ def test_nav_status_lists_six_tools(monkeypatch):
         def healthy(self):
             return True
 
+        def health(self):
+            # status_impl derives healthy from a single health() call.
+            return {"ok": True, "soft_search_ready": True, "warm_state": "ready",
+                    "project_id": "ce_fake", "chunks": 5}
+
     monkeypatch.setenv("CTX_MCP_SURFACE", "nav")
     monkeypatch.setattr(pc, "EngineClient", lambda *a, **k: _Ok())
     status_fn = _tool_fn(create_mcp(), "status")

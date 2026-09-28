@@ -1,0 +1,211 @@
+{
+  "id": "t11",
+  "family": "permissions-allowlist",
+  "task": "How does connect write Cursor mcpAllowlist / permissions for Scubiee tools?",
+  "must_files": [
+    "packages/pipeline/mcp_permissions.py",
+    "packages/pipeline/rules_installer.py"
+  ],
+  "must_symbols": [
+    "apply_permissions_to_repo_tool_surface"
+  ],
+  "map_k12": {
+    "elapsed_s": 0.782,
+    "top_files": [
+      "tests/test_mcp_permissions.py",
+      "tests/test_mcp_restore.py",
+      "packages/pipeline/mcp_permissions.py",
+      "packages/pipeline/rules_installer.py",
+      "tests/test_user_journey_scenarios.py",
+      "docs/connect-global-mcp-research.md",
+      "packages/pipeline/mcp_install.py",
+      "scripts/kiro_mcp_ab_dev_eval.py"
+    ]
+  },
+  "map_k8": {
+    "elapsed_s": 0.349,
+    "top_files": [
+      "tests/test_mcp_permissions.py",
+      "tests/test_mcp_restore.py",
+      "packages/pipeline/mcp_permissions.py",
+      "packages/pipeline/rules_installer.py",
+      "tests/test_user_journey_scenarios.py"
+    ]
+  },
+  "chunks_k12": [
+    {
+      "file": "packages/pipeline/mcp_permissions.py",
+      "symbol": "merge_cursor_permissions",
+      "kind": "function",
+      "loc": "packages/pipeline/mcp_permissions.py:253-287",
+      "start_line": 253,
+      "end_line": 287,
+      "score": 10.4
+    },
+    {
+      "file": "packages/pipeline/mcp_permissions.py",
+      "symbol": "apply_permissions_to_repo_tool_surface",
+      "kind": "function",
+      "loc": "packages/pipeline/mcp_permissions.py:518-531",
+      "start_line": 518,
+      "end_line": 531,
+      "score": 9.0
+    },
+    {
+      "file": "packages/pipeline/mcp_install.py",
+      "symbol": "write_cursor_mcp",
+      "kind": "function",
+      "loc": "packages/pipeline/mcp_install.py:274-290",
+      "start_line": 274,
+      "end_line": 290,
+      "score": 6.7
+    }
+  ],
+  "chunks_k8": [
+    {
+      "file": "packages/pipeline/mcp_permissions.py",
+      "symbol": "merge_cursor_permissions",
+      "kind": "function",
+      "loc": "packages/pipeline/mcp_permissions.py:253-287",
+      "start_line": 253,
+      "end_line": 287,
+      "score": 10.4
+    },
+    {
+      "file": "packages/pipeline/mcp_permissions.py",
+      "symbol": "apply_permissions_to_repo_tool_surface",
+      "kind": "function",
+      "loc": "packages/pipeline/mcp_permissions.py:518-531",
+      "start_line": 518,
+      "end_line": 531,
+      "score": 9.0
+    },
+    {
+      "file": "packages/pipeline/mcp_install.py",
+      "symbol": "write_cursor_mcp",
+      "kind": "function",
+      "loc": "packages/pipeline/mcp_install.py:274-290",
+      "start_line": 274,
+      "end_line": 290,
+      "score": 6.7
+    }
+  ],
+  "pack": {
+    "ok": true,
+    "elapsed_s": 0.192,
+    "n_pack": 4,
+    "pack": [
+      {
+        "file": "packages/pipeline/mcp_permissions.py",
+        "symbol": "merge_cursor_permissions",
+        "loc": "packages/pipeline/mcp_permissions.py:253-287",
+        "id": "packages/pipeline/mcp_permissions.py::merge_cursor_permissions",
+        "chars": 1317
+      },
+      {
+        "file": "packages/pipeline/mcp_permissions.py",
+        "symbol": "_load_json_object",
+        "loc": "packages/pipeline/mcp_permissions.py:233-240",
+        "id": "packages/pipeline/mcp_permissions.py::_load_json_object",
+        "chars": 292
+      },
+      {
+        "file": "packages/pipeline/mcp_permissions.py",
+        "symbol": "_write_json_object",
+        "loc": "packages/pipeline/mcp_permissions.py:243-250",
+        "id": "packages/pipeline/mcp_permissions.py::_write_json_object",
+        "chars": 285
+      },
+      {
+        "file": "packages/pipeline/mcp_permissions.py",
+        "symbol": "apply_permissions_to_repo_tool_surface",
+        "loc": "packages/pipeline/mcp_permissions.py:518-531",
+        "id": "packages/pipeline/mcp_permissions.py::apply_permissions_to_repo_tool_surface",
+        "chars": 397
+      }
+    ],
+    "chain": [
+      {
+        "id": "packages/pipeline/mcp_permissions.py::merge_cursor_permissions",
+        "loc": "packages/pipeline/mcp_permissions.py:253-287",
+        "edge": "seed",
+        "symbol": "merge_cursor_permissions"
+      },
+      {
+        "id": "packages/pipeline/mcp_permissions.py::_load_json_object",
+        "loc": "packages/pipeline/mcp_permissions.py:233-240",
+        "edge": "calls",
+        "symbol": "_load_json_object"
+      },
+      {
+        "id": "packages/pipeline/mcp_permissions.py::_write_json_object",
+        "loc": "packages/pipeline/mcp_permissions.py:243-250",
+        "edge": "calls",
+        "symbol": "_write_json_object"
+      },
+      {
+        "id": "packages/pipeline/mcp_permissions.py::apply_permissions_to_repo_tool_surface",
+        "loc": "packages/pipeline/mcp_permissions.py:518-531",
+        "edge": "seed",
+        "symbol": "apply_permissions_to_repo_tool_surface"
+      },
+      {
+        "id": "packages/pipeline/mcp_permissions.py::tool_permission_plan",
+        "loc": "packages/pipeline/mcp_permissions.py:158-159",
+        "edge": "calls",
+        "symbol": "tool_permission_plan"
+      },
+      {
+        "id": "packages/pipeline/mcp_permissions.py::_cursor_mcp_allowlist",
+        "loc": "packages/pipeline/mcp_permissions.py:211-221",
+        "edge": "calls",
+        "symbol": "_cursor_mcp_allowlist"
+      },
+      {
+        "id": "packages/pipeline/mcp_permissions.py::_merge_unique_strings",
+        "loc": "packages/pipeline/mcp_permissions.py:162-171",
+        "edge": "calls",
+        "symbol": "_merge_unique_strings"
+      },
+      {
+        "id": "packages/pipeline/mcp_permissions.py::write_tool_permission_artifacts",
+        "loc": "packages/pipeline/mcp_permissions.py:365-483",
+        "edge": "calls",
+        "symbol": "write_tool_permission_artifacts"
+      }
+    ],
+    "seed": {
+      "file": "packages/pipeline/mcp_permissions.py",
+      "symbol": "merge_cursor_permissions",
+      "id": "packages/pipeline/mcp_permissions.py::merge_cursor_permissions"
+    },
+    "error": null
+  },
+  "scores": {
+    "map_k12": {
+      "file": 1.0,
+      "symbol": 0.0,
+      "note": "raw map cards (symbols often empty)"
+    },
+    "map_k12_chunks": {
+      "file": 0.5,
+      "symbol": 1.0,
+      "chunks": [
+        "merge_cursor_permissions",
+        "apply_permissions_to_repo_tool_surface",
+        "write_cursor_mcp"
+      ]
+    },
+    "map8_pack": {
+      "file": 0.5,
+      "symbol": 1.0,
+      "n_pack": 4,
+      "chunks": [
+        "merge_cursor_permissions",
+        "apply_permissions_to_repo_tool_surface",
+        "write_cursor_mcp"
+      ],
+      "elapsed_s": 0.192
+    }
+  }
+}

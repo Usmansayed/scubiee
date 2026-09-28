@@ -1,0 +1,111 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 7.651,
+  "stdout_chars": 3750,
+  "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})",
+  "json": {
+    "ok": true,
+    "tool": "map",
+    "cards": [
+      {
+        "rank": 1,
+        "file": "packages/pipeline/embedder.py",
+        "score": 6.9612092972352055,
+        "why": "def _choose_backend(model: str, backend: str | None) -> str: \"\"\"Pick embed backend. Hardware accel (FastEmbed+ORT) wins over silent ST/CPU. Production path is always accel.json / d",
+        "role": "function",
+        "loc": "packages/pipeline/embedder.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 2,
+        "file": "packages/trace_lab/embed_field.py",
+        "score": 5.772260492626429,
+        "why": "def node_doc(n: TraceNode) -> str: \"\"\"Document text for embedding (code retrieval format, no query prefix).\"\"\" body = (n.lex_text or n.text or \"\").strip() # Cap body so we stay ins",
+        "role": "function",
+        "loc": "packages/trace_lab/embed_field.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 3,
+        "file": "tests/test_embedder_progress.py",
+        "score": 5.10620478515463,
+        "why": "def test_embed_many_prints_without_progress(monkeypatch, capsys, cpu_accel_profile) -> None: del cpu_accel_profile embedder = Embedder(model=\"nomic-ai/CodeRankEmbed\", batch_size=2)",
+        "role": "test",
+        "loc": "tests/test_embedder_progress.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 4,
+        "file": "scripts/embed_smoke.py",
+        "score": 5.105123407460946,
+        "why": "from pathlib import Path from pipeline.embedder import Embedder cache = Path(\"fixtures/trace-lab/.embed_cache/coderank.jsonl\") cache.parent.mkdir(parents=True, exist_ok=True) e = E",
+        "role": "other",
+        "loc": "scripts/embed_smoke.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 5,
+        "file": "tests/test_coderank_fp16.py",
+        "score": 4.609969575041659,
+        "why": "def test_coderank_fp16_ready_without_fastembed_import(monkeypatch, tmp_path: Path) -> None: from pipeline.accel import CODERANK_FP16_MIN_BYTES, coderank_fp16_onnx_ready, default_fa",
+        "role": "test",
+        "loc": "tests/test_coderank_fp16.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 6,
+        "file": "packages/pipeline/engine.py",
+        "score": 4.490930542765488,
+        "why": "def get_embedder( model: str, *, dim: int | None, cache_path: Path | None, eager: bool = True, ) -> Embedder: \"\"\"Process-wide CodeRank/Ollama embedder cache (load weights once).\"\"\"",
+        "role": "function",
+        "loc": "packages/pipeline/engine.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 7,
+        "file": "packages/pipeline/coreml_mac.py",
+        "score": 4.45007857014355,
+        "why": "\"\"\"macOS CoreML / Metal GPU path for CodeRank FastEmbed. CoreML EP requires fixed input shapes and a stable ORT batch size. Variable ``batch_size=len(batch)`` causes dynamic tensor",
+        "role": "function",
+        "loc": "packages/pipeline/coreml_mac.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 8,
+        "file": "tests/test_embed_power.py",
+        "score": 4.425203131963391,
+        "why": "\"\"\"EmbedPower: CodeRank embeddings drive soft seeds, edge capacity, and cut.\"\"\" from __future__ import annotations import sys from pathlib import Path import pytest ROOT = Path(__f",
+        "role": "test",
+        "loc": "tests/test_embed_power.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 9,
+        "file": "packages/trace_lab/embed_power.py",
+        "score": 4.332126531998078,
+        "why": "def bind_embed_power(lsp: LspIndex, field: EmbedField): def embed_power(case, nodes, graph, lex): return embed_power_trace(case, nodes, graph, lex, lsp=lsp, field=field) return emb",
+        "role": "function",
+        "loc": "packages/trace_lab/embed_power.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 10,
+        "file": "packages/pipeline/accel.py",
+        "score": 4.294815076814365,
+        "why": "def providers(self) -> list: if self.profile == \"mlx\" or self.backend == \"mlx\": raise RuntimeError(\"MLX backend does not use ONNX Runtime providers\") if self.profile == \"cuda\": ret",
+        "role": "function",
+        "loc": "packages/pipeline/accel.py:1-1",
+        "symbol": ""
+      }
+    ],
+    "suggested_seed": {
+      "file": "packages/pipeline/embedder.py",
+      "symbol": "",
+      "loc": "packages/pipeline/embedder.py:1-1",
+      "score": 6.9612092972352055
+    },
+    "next": "scubiee pack \"EmbedField FastEmbed CodeRankEmbed DmlExecutionProvider CUDA cache coderank.jsonl batch providers embedder progress\" --seed-file packages/pipeline/embedder.py --mode lean"
+  },
+  "stdout_preview": ""
+}

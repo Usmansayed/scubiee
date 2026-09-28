@@ -1,0 +1,55 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 1.743,
+  "stdout_chars": 2106,
+  "stderr_tail": "",
+  "json": {
+    "ok": true,
+    "tool": "pack",
+    "seed": {
+      "id": "packages/trace_lab/policy/faction.py::is_foreign_node",
+      "file": "packages/trace_lab/policy/faction.py",
+      "symbol": "is_foreign_node"
+    },
+    "chain": [
+      {
+        "id": "packages/trace_lab/policy/faction.py::is_foreign_node",
+        "loc": "packages/trace_lab/policy/faction.py:10-32",
+        "edge": "seed",
+        "score": 1.0
+      },
+      {
+        "id": "packages/conductor/bm25_index.py::tokenize",
+        "loc": "packages/conductor/bm25_index.py:14-15",
+        "edge": "calls",
+        "score": 0.9405
+      },
+      {
+        "id": "packages/trace_lab/polytrace.py::faction_of",
+        "loc": "packages/trace_lab/polytrace.py:97-102",
+        "edge": "calls",
+        "score": 0.9405
+      }
+    ],
+    "pack": [
+      {
+        "id": "packages/trace_lab/policy/faction.py::is_foreign_node",
+        "loc": "packages/trace_lab/policy/faction.py:10-32",
+        "text": "def is_foreign_node(\n    node: TraceNode,\n    *,\n    user_query: str,\n    seed_file: str,\n    seed_reachable: set[str] | None = None,\n) -> bool:\n    \"\"\"Foreign unless allied, query-named plat, same file, or seed-closure reachable.\"\"\"\n    if seed_reachable and node.id in seed_reachable:\n        return False\n    nf = faction_of(node.file)\n    if nf == \"plat\":\n        qtoks = set(tokenize(user_query))\n        ql = user_query.lower()\n        if qtoks & {\"log\", \"logger\", \"logging\"}:\n            return False\n        if any(p in ql for p in (\"print\", \"printing\", \"log output\", \"write log\")):\n            return False\n        return True\n    if node.file.replace(\"\\\\\", \"/\") == seed_file.replace(\"\\\\\", \"/\"):\n        return False\n    seed_fac = faction_of(seed_file)\n    return nf not in _ALLIES.get(seed_fac, frozenset({seed_fac}))"
+      },
+      {
+        "id": "packages/conductor/bm25_index.py::tokenize",
+        "loc": "packages/conductor/bm25_index.py:14-15",
+        "text": "def tokenize(text: str) -> list[str]:\n    return [t.lower() for t in _TOKEN.findall(text)]"
+      },
+      {
+        "id": "packages/trace_lab/polytrace.py::faction_of",
+        "loc": "packages/trace_lab/polytrace.py:97-102",
+        "text": "def faction_of(path: str) -> str:\n    p = \"/\" + path.replace(\"\\\\\", \"/\")\n    for needle, fac in _FACTION_MARKERS:\n        if needle in p:\n            return fac\n    return \"auth\""
+      }
+    ],
+    "cold": []
+  },
+  "stdout_preview": ""
+}

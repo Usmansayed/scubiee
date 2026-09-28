@@ -223,7 +223,11 @@ def attach_mcp_kill_job() -> dict[str, Any]:
     if os.name != "nt":
         return {"ok": True, "skipped": True, "platform": "posix"}
     name = f"Local\\ScubieeMcpKill-{os.getpid()}"
-    return _windows_assign(create=True, job_name=name, kill_on_close=True, cpu_cap=False)
+    # BREAKAWAY_OK: workers (spawned without the flag) still die with the
+    # bridge, but an engine spawned with CREATE_BREAKAWAY_FROM_JOB can leave.
+    return _windows_assign(
+        create=True, job_name=name, kill_on_close=True, cpu_cap=False, breakaway_ok=True
+    )
 
 
 def engine_job_memory_mb() -> int:
@@ -273,6 +277,7 @@ def _windows_assign(
     kill_on_close: bool = True,
     cpu_cap: bool = True,
     memory_mb: int = 0,
+    breakaway_ok: bool = False,
 ) -> dict[str, Any]:
     try:
         import ctypes
@@ -342,8 +347,9 @@ def _windows_assign(
             if memory_mb > 0:
                 flags |= JOB_OBJECT_LIMIT_JOB_MEMORY
                 info.JobMemoryLimit = int(memory_mb) * 1024 * 1024
-            # MCP children must stay in this job (Cursor close → kill workers).
-            if not kill_on_close:
+            # MCP children must stay in this job (Cursor close → kill workers);
+            # only children that ask for CREATE_BREAKAWAY_FROM_JOB may leave.
+            if not kill_on_close or breakaway_ok:
                 flags |= JOB_OBJECT_LIMIT_BREAKAWAY_OK
             info.BasicLimitInformation.LimitFlags = flags
             kernel32.SetInformationJobObject(
@@ -513,8 +519,12 @@ def taskkill_silent(
     *,
     tree: bool = False,
     force: bool = True,
+    reason: str | None = None,
 ) -> subprocess.CompletedProcess[Any] | None:
     """Kill a PID on Windows without flashing a console (CREATE_NO_WINDOW).
+
+    Every call is recorded by ``engine_log.note_stop`` (target kind, reason,
+    caller chain) so a restart in engine.log always has a named cause.
 
     ``taskkill.exe`` is a console subsystem binary — spawning it without
     CREATE_NO_WINDOW is a common source of "blinking terminals" when the
@@ -522,6 +532,17 @@ def taskkill_silent(
     """
     if os.name != "nt":
         return None
+    try:
+        from pipeline.engine_log import classify_pid, note_stop
+
+        note_stop(
+            classify_pid(int(pid)),
+            int(pid),
+            reason=reason or "unspecified",
+            method="taskkill" + ("/T" if tree else "") + ("/F" if force else ""),
+        )
+    except Exception:  # noqa: BLE001
+        pass
     cmd = ["taskkill", "/PID", str(int(pid))]
     if tree:
         cmd.append("/T")
@@ -551,6 +572,7 @@ def windows_wmi_create_process(
         return {"ok": False, "error": f"pywin32_missing:{exc}", "method": "wmi_com"}
 
     pythoncom.CoInitialize()
+    wmi = startup = process = in_params = out = None
     try:
         wmi = win32com.client.GetObject(r"winmgmts:\\.\root\cimv2")
         startup = wmi.Get("Win32_ProcessStartup").SpawnInstance_()
@@ -573,6 +595,10 @@ def windows_wmi_create_process(
     except Exception as exc:  # noqa: BLE001
         return {"ok": False, "error": str(exc), "method": "wmi_com"}
     finally:
+        # Release every COM proxy *before* CoUninitialize. Dropping them after
+        # (at function return) printed "Win32 exception occurred releasing
+        # IUnknown" five times on every `scubiee engine stop/ensure`.
+        wmi = startup = process = in_params = out = None  # noqa: F841
         try:
             pythoncom.CoUninitialize()
         except Exception:  # noqa: BLE001

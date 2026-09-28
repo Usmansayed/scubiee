@@ -1,0 +1,69 @@
+{
+  "ok": true,
+  "tool": "pack_poly_embed",
+  "engine": "poly_embed",
+  "elapsed_s": 0.13,
+  "n_pack": 3,
+  "seed": {
+    "file": "packages/pipeline/mcp_permissions.py",
+    "symbol": "locate_tool_names",
+    "id": "packages/pipeline/mcp_permissions.py::locate_tool_names"
+  },
+  "pack": [
+    {
+      "file": "packages/pipeline/mcp_permissions.py",
+      "symbol": "locate_tool_names",
+      "score": 1.0,
+      "loc": "packages/pipeline/mcp_permissions.py:152-155",
+      "id": "packages/pipeline/mcp_permissions.py::locate_tool_names",
+      "chars": 206
+    },
+    {
+      "file": "packages/pipeline/mcp_permissions.py",
+      "symbol": "PHASE_LOCATE_TOOLS",
+      "score": 0.7,
+      "loc": "packages/pipeline/mcp_permissions.py:29-46",
+      "id": "packages/pipeline/mcp_permissions.py::PHASE_LOCATE_TOOLS",
+      "chars": 307
+    },
+    {
+      "file": "packages/pipeline/mcp_permissions.py",
+      "symbol": "LEGACY_LOCATE_TOOLS",
+      "score": 0.7,
+      "loc": "packages/pipeline/mcp_permissions.py:49-57",
+      "id": "packages/pipeline/mcp_permissions.py::LEGACY_LOCATE_TOOLS",
+      "chars": 140
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/pipeline/mcp_permissions.py::locate_tool_names",
+      "loc": "packages/pipeline/mcp_permissions.py:152-155",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/mcp_permissions.py::PHASE_LOCATE_TOOLS",
+      "loc": "packages/pipeline/mcp_permissions.py:29-46",
+      "edge": "seed",
+      "score": 0.7
+    },
+    {
+      "id": "packages/pipeline/mcp_permissions.py::LEGACY_LOCATE_TOOLS",
+      "loc": "packages/pipeline/mcp_permissions.py:49-57",
+      "edge": "seed",
+      "score": 0.7
+    }
+  ],
+  "error": null,
+  "seed_chunks": [
+    {
+      "file": "packages/pipeline/mcp_permissions.py",
+      "symbol": "locate_tool_names",
+      "loc": "packages/pipeline/mcp_permissions.py:152-155",
+      "score": 1.0,
+      "kind": "function"
+    }
+  ],
+  "pack_query": "mcp_permissions mcpAllowlist permissions.json autoApprove connect cursor install_tool surface | seeds: packages/pipeline/mcp_permissions.py::locate_tool_names"
+}

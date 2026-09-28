@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "elapsed_s": 0.042,
+  "seed_file": "packages/pipeline/mcp_permissions.py",
+  "seed": {
+    "file": "packages/pipeline/mcp_permissions.py",
+    "symbol": "locate_tool_names",
+    "id": "packages/pipeline/mcp_permissions.py::locate_tool_names",
+    "loc": null
+  },
+  "chunks": [
+    {
+      "file": "packages/pipeline/mcp_permissions.py",
+      "symbol": "locate_tool_names",
+      "loc": "packages/pipeline/mcp_permissions.py:152-155",
+      "score": 1.0,
+      "kind": "function"
+    }
+  ],
+  "n_cards": 1,
+  "error": null
+}

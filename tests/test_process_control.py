@@ -73,6 +73,9 @@ def test_prepare_uv_tool_disables_mcp_before_stop(tmp_path: Path, monkeypatch) -
     monkeypatch.setattr(process_control, "disable_mcp_to_prevent_respawn", fake_disable)
     monkeypatch.setattr(process_control, "kill_all_scubiee_processes", fake_kill)
     monkeypatch.setattr(process_control.time, "sleep", lambda _s: None)
+    # The real poll scans the machine: with a developer's engine/bridges running
+    # it reports lockers and adds a second "stop" (failed only on live machines).
+    monkeypatch.setattr(process_control, "_wait_for_lockers_gone", lambda **_k: {"ok": True})
     report = process_control.prepare_uv_tool_directory_for_swap(remove_dir=False)
     assert order == ["stub", "stop", "mcp"]
     assert report["ok"] is True

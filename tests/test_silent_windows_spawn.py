@@ -25,6 +25,8 @@ def test_hidden_run_sets_create_no_window() -> None:
 def test_taskkill_silent_uses_hidden_run() -> None:
     from pipeline.process_job import taskkill_silent
 
+    # hidden_run is mocked, so the real helper is safe past the no-kill guard.
+    taskkill_silent = getattr(taskkill_silent, "__wrapped__", taskkill_silent)
     with patch("pipeline.process_job.hidden_run") as hr:
         hr.return_value = subprocess.CompletedProcess(["taskkill"], 0)
         taskkill_silent(4242, tree=True)

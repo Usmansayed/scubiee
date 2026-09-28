@@ -1,0 +1,103 @@
+{
+  "ok": true,
+  "tool": "map",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/pipeline/__main__.py",
+      "score": 13.01139376640832,
+      "why": "def cmd_connect(args: argparse.Namespace) -> int: \"\"\"Connect Scubiee to AI coding tools (MCP config + rules).\"\"\" from pipeline.rules_installer import install_tools from pipeline.to",
+      "role": "function",
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 2,
+      "file": "packages/pipeline/mcp_install.py",
+      "score": 5.571583692498198,
+      "why": "def write_cursor_mcp( repo: Path | str | None = None, *, host: str = \"127.0.0.1\", port: int = 8765, ) -> dict[str, str]: \"\"\"Write project mcp.json with CTX_REPO; avoid a user-level",
+      "role": "function",
+      "loc": "packages/pipeline/mcp_install.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 3,
+      "file": "tests/test_mcp_bridge_concurrency.py",
+      "score": 5.406696369783725,
+      "why": "def test_verify_mcp_json_accepts_bridge(tmp_path, monkeypatch): from pipeline.mcp_install import verify_mcp_json monkeypatch.setenv(\"CTX_HOME\", str(tmp_path)) path = tmp_path / \"mc",
+      "role": "test",
+      "loc": "tests/test_mcp_bridge_concurrency.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 4,
+      "file": "tests/test_mcp_permissions.py",
+      "score": 5.344782646071347,
+      "why": "def test_write_cursor_sidecar(tmp_path: Path) -> None: repo = tmp_path / \"repo\" repo.mkdir() report = write_tool_permission_artifacts(\"cursor\", repo) assert report[\"ok\"] perm_path ",
+      "role": "test",
+      "loc": "tests/test_mcp_permissions.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 5,
+      "file": "packages/pipeline/mcp_permissions.py",
+      "score": 5.0930557009299795,
+      "why": "\"\"\"Cross-host MCP tool permission presets for Scubiee locate tools. Each AI host implements approvals differently (embedded MCP fields, sidecar JSON, host settings, or UI-only). Th",
+      "role": "function",
+      "loc": "packages/pipeline/mcp_permissions.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 6,
+      "file": "docs/web-info/cursor-mcp.md",
+      "score": 4.995124692309904,
+      "why": "# Cursor & MCP Scubiee integrates with AI coding tools through the **Model Context Protocol (MCP)**. The MCP server name is **`scubiee`**. It talks to the local Scubiee daemon (def",
+      "role": "docs",
+      "loc": "docs/web-info/cursor-mcp.md:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 7,
+      "file": "tests/test_mcp_restore.py",
+      "score": 4.938789813050838,
+      "why": "def test_enrich_clears_sticky_disabled_for_cursor() -> None: from pipeline.mcp_permissions import enrich_server_entry_permissions entry = { \"command\": \"scubiee-mcp-bridge\", \"args\":",
+      "role": "test",
+      "loc": "tests/test_mcp_restore.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 8,
+      "file": "docs/cursor-mcp-workspace-resolution-research.md",
+      "score": 4.9142498634378375,
+      "why": "# Research: Cursor MCP workspace resolution (Mac + Windows) **Date:** 2026-08-26 **Trigger:** After `scubiee init` + `connect --cursor` on Apple Silicon, agent `status()` reported ",
+      "role": "docs",
+      "loc": "docs/cursor-mcp-workspace-resolution-research.md:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 9,
+      "file": "scripts/kiro_mcp_ab_dev_eval.py",
+      "score": 4.912089984898667,
+      "why": "def install_gate_surface(ws: Path, *, with_mcp: bool) -> dict[str, str]: \"\"\"Write AGENTS.md + Kiro steering (+ Cursor rule) so hosts load locate policy. with_mcp=True \u2192 full MUST-U",
+      "role": "other",
+      "loc": "scripts/kiro_mcp_ab_dev_eval.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 10,
+      "file": "docs/connect-global-mcp-research.md",
+      "score": 4.870473760733825,
+      "why": "# Global MCP + rules research (Scubiee `connect`) **Goal:** One `scubiee connect` run installs **user-global** MCP + rules for most hosts. Four broken hosts also need a **workspace",
+      "role": "docs",
+      "loc": "docs/connect-global-mcp-research.md:1-1",
+      "symbol": ""
+    }
+  ],
+  "suggested_seed": {
+    "file": "packages/pipeline/__main__.py",
+    "symbol": "",
+    "loc": "packages/pipeline/__main__.py:1-1",
+    "score": 13.01139376640832
+  },
+  "next": "scubiee pack \"cmd_connect connect host MCP mcp.json cursor claude install surface permissions bridge\" --seed-file packages/pipeline/__main__.py --mode lean"
+}

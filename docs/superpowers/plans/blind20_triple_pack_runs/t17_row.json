@@ -1,0 +1,164 @@
+{
+  "id": "t17",
+  "family": "never-index",
+  "task": "How do never-index path denies keep fixture/tmp paths out of the product corpus?",
+  "enrich_prompt": "never_index deny path globs skip fixtures tmp out ab_workspaces indexing exclude",
+  "map": {
+    "elapsed_s": 0.493,
+    "n_cards": 10,
+    "top_files": [
+      "tests/test_repo_lifecycle.py",
+      "tests/test_auto_sessions_observability.py",
+      "packages/pipeline/repo_lifecycle.py",
+      "tests/test_index_coverage.py",
+      "tests/test_connect_formats.py"
+    ]
+  },
+  "enrich_seed": {
+    "ok": true,
+    "elapsed_s": 0.044,
+    "seed_file": "packages/pipeline/repo_lifecycle.py",
+    "seed": {
+      "file": "packages/pipeline/repo_lifecycle.py",
+      "symbol": "_root",
+      "id": "packages/pipeline/repo_lifecycle.py::_root",
+      "loc": null
+    },
+    "chunks": [
+      {
+        "file": "packages/pipeline/repo_lifecycle.py",
+        "symbol": "_root",
+        "loc": "packages/pipeline/repo_lifecycle.py:34-35",
+        "score": 1.0,
+        "kind": "function"
+      }
+    ],
+    "n_cards": 1,
+    "error": null
+  },
+  "arms": {
+    "pack_context": {
+      "ok": true,
+      "tool": "pack_context",
+      "engine": "composite_v1",
+      "elapsed_s": 0.046,
+      "n_pack": 1,
+      "seed": {
+        "file": "packages/pipeline/repo_lifecycle.py",
+        "symbol": "_root",
+        "id": "packages/pipeline/repo_lifecycle.py::_root"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/repo_lifecycle.py",
+          "symbol": "_root",
+          "score": 1.0,
+          "loc": "packages/pipeline/repo_lifecycle.py:34-35",
+          "id": "packages/pipeline/repo_lifecycle.py::_root",
+          "chars": 68
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/repo_lifecycle.py::_root",
+          "loc": "packages/pipeline/repo_lifecycle.py:34-35",
+          "edge": "seed",
+          "score": 1.0
+        }
+      ],
+      "error": null,
+      "seed_chunks": [
+        {
+          "file": "packages/pipeline/repo_lifecycle.py",
+          "symbol": "_root",
+          "loc": "packages/pipeline/repo_lifecycle.py:34-35",
+          "score": 1.0,
+          "kind": "function"
+        }
+      ],
+      "pack_query": "never_index deny path globs skip fixtures tmp out ab_workspaces indexing exclude | seeds: packages/pipeline/repo_lifecycle.py::_root"
+    },
+    "pack_poly_embed": {
+      "ok": true,
+      "tool": "pack_poly_embed",
+      "engine": "poly_embed",
+      "elapsed_s": 0.132,
+      "n_pack": 1,
+      "seed": {
+        "file": "packages/pipeline/repo_lifecycle.py",
+        "symbol": "_root",
+        "id": "packages/pipeline/repo_lifecycle.py::_root"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/repo_lifecycle.py",
+          "symbol": "_root",
+          "score": 1.0,
+          "loc": "packages/pipeline/repo_lifecycle.py:34-35",
+          "id": "packages/pipeline/repo_lifecycle.py::_root",
+          "chars": 68
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/repo_lifecycle.py::_root",
+          "loc": "packages/pipeline/repo_lifecycle.py:34-35",
+          "edge": "seed",
+          "score": 1.0
+        }
+      ],
+      "error": null,
+      "seed_chunks": [
+        {
+          "file": "packages/pipeline/repo_lifecycle.py",
+          "symbol": "_root",
+          "loc": "packages/pipeline/repo_lifecycle.py:34-35",
+          "score": 1.0,
+          "kind": "function"
+        }
+      ],
+      "pack_query": "never_index deny path globs skip fixtures tmp out ab_workspaces indexing exclude | seeds: packages/pipeline/repo_lifecycle.py::_root"
+    },
+    "pack_semantic": {
+      "ok": true,
+      "tool": "pack_semantic",
+      "engine": "semantic_tracer_fuse",
+      "elapsed_s": 0.218,
+      "n_pack": 1,
+      "seed": {
+        "file": "packages/pipeline/repo_lifecycle.py",
+        "symbol": "_root",
+        "id": "packages/pipeline/repo_lifecycle.py::_root"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/repo_lifecycle.py",
+          "symbol": "_root",
+          "score": 1.0,
+          "loc": "packages/pipeline/repo_lifecycle.py:34-35",
+          "id": "packages/pipeline/repo_lifecycle.py::_root",
+          "chars": 68
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/repo_lifecycle.py::_root",
+          "loc": "packages/pipeline/repo_lifecycle.py:34-35",
+          "edge": "seed",
+          "score": 1.0
+        }
+      ],
+      "error": null,
+      "seed_chunks": [
+        {
+          "file": "packages/pipeline/repo_lifecycle.py",
+          "symbol": "_root",
+          "loc": "packages/pipeline/repo_lifecycle.py:34-35",
+          "score": 1.0,
+          "kind": "function"
+        }
+      ],
+      "pack_query": "never_index deny path globs skip fixtures tmp out ab_workspaces indexing exclude | seeds: packages/pipeline/repo_lifecycle.py::_root"
+    }
+  }
+}

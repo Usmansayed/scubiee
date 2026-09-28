@@ -1,0 +1,33 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 1.688,
+  "stdout_chars": 591,
+  "stderr_tail": "",
+  "json": {
+    "ok": true,
+    "tool": "pack",
+    "seed": {
+      "id": "packages/trace_lab/strategies.py::_seed_id",
+      "file": "packages/trace_lab/strategies.py",
+      "symbol": "_seed_id"
+    },
+    "chain": [
+      {
+        "id": "packages/trace_lab/strategies.py::_seed_id",
+        "loc": "packages/trace_lab/strategies.py:20-24",
+        "edge": "seed",
+        "score": 1.0
+      }
+    ],
+    "pack": [
+      {
+        "id": "packages/trace_lab/strategies.py::_seed_id",
+        "loc": "packages/trace_lab/strategies.py:20-24",
+        "text": "def _seed_id(case: GoldCase, nodes: dict[str, TraceNode]) -> str:\n    sid = case.seed.id\n    if sid in nodes:\n        return sid\n    raise KeyError(f\"seed {sid} not in corpus\")"
+      }
+    ],
+    "cold": []
+  },
+  "stdout_preview": ""
+}

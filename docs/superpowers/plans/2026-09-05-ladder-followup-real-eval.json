@@ -1,0 +1,558 @@
+{
+  "ok": true,
+  "engine": "composite_v1",
+  "protocol": "map \u2192 pack(lean,strict) \u2192 expand(callees|broad, with_bodies)",
+  "n": 10,
+  "mean_lean_file_rec": 0.592,
+  "mean_ladder_file_rec": 0.642,
+  "mean_lean_symbol_rec": 0.065,
+  "mean_ladder_symbol_rec": 0.098,
+  "mean_delta_file": 0.05,
+  "mean_delta_sym": 0.033,
+  "elapsed_ms": 34580.5,
+  "rows": [
+    {
+      "id": "P01_connect_permissions",
+      "seed": {
+        "source": "gold_fallback",
+        "file": "packages/pipeline/__main__.py",
+        "symbol": "cmd_connect",
+        "id": "packages/pipeline/__main__.py::cmd_connect"
+      },
+      "pack_ok": true,
+      "pack_engine": "composite_v1",
+      "pack_policy": "strict",
+      "lean": {
+        "file_rec": 0.667,
+        "symbol_rec": 0.25,
+        "file_hits": [
+          {
+            "gold": "packages/pipeline/__main__.py",
+            "hit": true
+          },
+          {
+            "gold": "packages/pipeline/rules_installer.py",
+            "hit": true
+          },
+          {
+            "gold": "packages/pipeline/mcp_permissions.py",
+            "hit": false
+          }
+        ],
+        "symbol_hits": [
+          {
+            "gold": "cmd_connect",
+            "hit": true
+          },
+          {
+            "gold": "write_project_tool_surface",
+            "hit": false
+          },
+          {
+            "gold": "apply_permissions_to_repo_tool_surface",
+            "hit": false
+          },
+          {
+            "gold": "PHASE_LOCATE_TOOLS",
+            "hit": false
+          }
+        ],
+        "packed": 4,
+        "pack_chars": 2317,
+        "heatmap_n": 6,
+        "calls": 1,
+        "graphify": true
+      },
+      "ladder": {
+        "file_rec": 0.667,
+        "symbol_rec": 0.25,
+        "packed": 7,
+        "pack_chars": 3286,
+        "expand_count": 12,
+        "expand_direction": "callees"
+      },
+      "delta_file": 0.0,
+      "delta_sym": 0.0,
+      "ms": 27736.0
+    },
+    {
+      "id": "P02_pack_context",
+      "seed": {
+        "source": "map_card",
+        "file": "packages/pipeline/context_trace.py",
+        "symbol": "",
+        "id": "packages/pipeline/context_trace.py::_heat"
+      },
+      "pack_ok": true,
+      "pack_engine": "composite_v1",
+      "pack_policy": "strict",
+      "lean": {
+        "file_rec": 0.5,
+        "symbol_rec": 0.0,
+        "file_hits": [
+          {
+            "gold": "packages/pipeline/context_trace.py",
+            "hit": true
+          },
+          {
+            "gold": "packages/pipeline/mcp_locate.py",
+            "hit": false
+          }
+        ],
+        "symbol_hits": [
+          {
+            "gold": "run_pack_context",
+            "hit": false
+          },
+          {
+            "gold": "run_collect_hot",
+            "hit": false
+          },
+          {
+            "gold": "heatmap_to_cards",
+            "hit": false
+          },
+          {
+            "gold": "pack_context_impl",
+            "hit": false
+          }
+        ],
+        "packed": 1,
+        "pack_chars": 137,
+        "heatmap_n": 1,
+        "calls": 1,
+        "graphify": true
+      },
+      "ladder": {
+        "file_rec": 0.5,
+        "symbol_rec": 0.0,
+        "packed": 3,
+        "pack_chars": 160,
+        "expand_count": 2,
+        "expand_direction": "callees"
+      },
+      "delta_file": 0.0,
+      "delta_sym": 0,
+      "ms": 3210.6
+    },
+    {
+      "id": "P03_graphify_store_load",
+      "seed": {
+        "source": "map_card",
+        "file": "packages/trace_lab/graphify_layer.py",
+        "symbol": "",
+        "id": "packages/trace_lab/graphify_layer.py::_map_symbol"
+      },
+      "pack_ok": true,
+      "pack_engine": "composite_v1",
+      "pack_policy": "strict",
+      "lean": {
+        "file_rec": 0.5,
+        "symbol_rec": 0.0,
+        "file_hits": [
+          {
+            "gold": "packages/pipeline/context_trace.py",
+            "hit": false
+          },
+          {
+            "gold": "packages/trace_lab/graphify_layer.py",
+            "hit": true
+          }
+        ],
+        "symbol_hits": [
+          {
+            "gold": "load_store_graphify_graph",
+            "hit": false
+          },
+          {
+            "gold": "_load_repo",
+            "hit": false
+          },
+          {
+            "gold": "_want_graphify",
+            "hit": false
+          }
+        ],
+        "packed": 1,
+        "pack_chars": 809,
+        "heatmap_n": 1,
+        "calls": 1,
+        "graphify": true
+      },
+      "ladder": {
+        "file_rec": 0.5,
+        "symbol_rec": 0.333,
+        "packed": 2,
+        "pack_chars": 3809,
+        "expand_count": 2,
+        "expand_direction": "callees+broad"
+      },
+      "delta_file": 0.0,
+      "delta_sym": 0.333,
+      "ms": 490.5
+    },
+    {
+      "id": "P04_incremental_index",
+      "seed": {
+        "source": "gold_retry",
+        "file": "packages/pipeline/incremental.py",
+        "symbol": "",
+        "id": ""
+      },
+      "pack_ok": false,
+      "pack_engine": null,
+      "pack_policy": null,
+      "lean": {
+        "file_rec": 0.0,
+        "symbol_rec": 0.0
+      },
+      "ladder": {
+        "file_rec": 0.0,
+        "symbol_rec": 0.0,
+        "packed": 0,
+        "pack_chars": 0,
+        "expand_count": null,
+        "expand_direction": null
+      },
+      "delta_file": 0,
+      "delta_sym": 0,
+      "ms": 286.2
+    },
+    {
+      "id": "P05_gate_rules_install",
+      "seed": {
+        "source": "map_card",
+        "file": "packages/pipeline/rules_installer.py",
+        "symbol": "",
+        "id": "packages/pipeline/rules_installer.py::_templates_dir"
+      },
+      "pack_ok": true,
+      "pack_engine": "composite_v1",
+      "pack_policy": "strict",
+      "lean": {
+        "file_rec": 1.0,
+        "symbol_rec": 0.0,
+        "file_hits": [
+          {
+            "gold": "packages/pipeline/rules_installer.py",
+            "hit": true
+          }
+        ],
+        "symbol_hits": [
+          {
+            "gold": "write_project_gate_rules",
+            "hit": false
+          },
+          {
+            "gold": "managed_gate_usage_short",
+            "hit": false
+          },
+          {
+            "gold": "write_project_tool_surface",
+            "hit": false
+          }
+        ],
+        "packed": 1,
+        "pack_chars": 86,
+        "heatmap_n": 1,
+        "calls": 1,
+        "graphify": true
+      },
+      "ladder": {
+        "file_rec": 1.0,
+        "symbol_rec": 0.0,
+        "packed": 1,
+        "pack_chars": 86,
+        "expand_count": 0,
+        "expand_direction": "callees+broad"
+      },
+      "delta_file": 0.0,
+      "delta_sym": 0,
+      "ms": 426.0
+    },
+    {
+      "id": "P06_pinpoint_plate",
+      "seed": {
+        "source": "map_card",
+        "file": "packages/pipeline/mcp_locate.py",
+        "symbol": "",
+        "id": "packages/pipeline/mcp_locate.py::_active_surface"
+      },
+      "pack_ok": true,
+      "pack_engine": "composite_v1",
+      "pack_policy": "strict",
+      "lean": {
+        "file_rec": 1.0,
+        "symbol_rec": 0.0,
+        "file_hits": [
+          {
+            "gold": "packages/pipeline/mcp_locate.py",
+            "hit": true
+          }
+        ],
+        "symbol_hits": [
+          {
+            "gold": "pinpoint_impl",
+            "hit": false
+          },
+          {
+            "gold": "plate_impl",
+            "hit": false
+          }
+        ],
+        "packed": 1,
+        "pack_chars": 400,
+        "heatmap_n": 1,
+        "calls": 1,
+        "graphify": true
+      },
+      "ladder": {
+        "file_rec": 1.0,
+        "symbol_rec": 0.0,
+        "packed": 4,
+        "pack_chars": 2232,
+        "expand_count": 5,
+        "expand_direction": "callees+broad"
+      },
+      "delta_file": 0.0,
+      "delta_sym": 0,
+      "ms": 510.8
+    },
+    {
+      "id": "P07_session_isolation",
+      "seed": {
+        "source": "map_card",
+        "file": "packages/pipeline/session_store.py",
+        "symbol": "",
+        "id": "packages/pipeline/session_store.py::_store_path"
+      },
+      "pack_ok": true,
+      "pack_engine": "composite_v1",
+      "pack_policy": "strict",
+      "lean": {
+        "file_rec": 0.5,
+        "symbol_rec": 0.0,
+        "file_hits": [
+          {
+            "gold": "packages/pipeline/session_store.py",
+            "hit": true
+          },
+          {
+            "gold": "packages/pipeline/mcp_locate.py",
+            "hit": false
+          }
+        ],
+        "symbol_hits": [
+          {
+            "gold": "load_store",
+            "hit": false
+          },
+          {
+            "gold": "save_store",
+            "hit": false
+          },
+          {
+            "gold": "_resolve_session",
+            "hit": false
+          },
+          {
+            "gold": "persist_trace",
+            "hit": false
+          }
+        ],
+        "packed": 4,
+        "pack_chars": 1819,
+        "heatmap_n": 16,
+        "calls": 1,
+        "graphify": true
+      },
+      "ladder": {
+        "file_rec": 1.0,
+        "symbol_rec": 0.0,
+        "packed": 7,
+        "pack_chars": 2412,
+        "expand_count": 8,
+        "expand_direction": "callees"
+      },
+      "delta_file": 0.5,
+      "delta_sym": 0,
+      "ms": 352.1
+    },
+    {
+      "id": "P08_engine_warm",
+      "seed": {
+        "source": "gold_retry",
+        "file": "packages/pipeline/mcp_locate.py",
+        "symbol": "",
+        "id": "packages/pipeline/mcp_locate.py::_active_surface"
+      },
+      "pack_ok": true,
+      "pack_engine": "composite_v1",
+      "pack_policy": "strict",
+      "lean": {
+        "file_rec": 0.5,
+        "symbol_rec": 0.0,
+        "file_hits": [
+          {
+            "gold": "packages/pipeline/mcp_locate.py",
+            "hit": true
+          },
+          {
+            "gold": "packages/pipeline/engine.py",
+            "hit": false
+          }
+        ],
+        "symbol_hits": [
+          {
+            "gold": "soft_search_ready",
+            "hit": false
+          },
+          {
+            "gold": "WarmSearchEngine",
+            "hit": false
+          }
+        ],
+        "packed": 1,
+        "pack_chars": 400,
+        "heatmap_n": 1,
+        "calls": 1,
+        "graphify": true
+      },
+      "ladder": {
+        "file_rec": 0.5,
+        "symbol_rec": 0.0,
+        "packed": 4,
+        "pack_chars": 2232,
+        "expand_count": 5,
+        "expand_direction": "callees+broad"
+      },
+      "delta_file": 0.0,
+      "delta_sym": 0,
+      "ms": 443.5
+    },
+    {
+      "id": "P09_uv_tool_unlock",
+      "seed": {
+        "source": "map_card",
+        "file": "packages/pipeline/process_control.py",
+        "symbol": "",
+        "id": "packages/pipeline/process_control.py::uv_tool_root"
+      },
+      "pack_ok": true,
+      "pack_engine": "composite_v1",
+      "pack_policy": "strict",
+      "lean": {
+        "file_rec": 1.0,
+        "symbol_rec": 0.0,
+        "file_hits": [
+          {
+            "gold": "packages/pipeline/process_control.py",
+            "hit": true
+          }
+        ],
+        "symbol_hits": [
+          {
+            "gold": "prepare_uv_tool_directory_for_swap",
+            "hit": false
+          },
+          {
+            "gold": "release_scubiee_process_locks",
+            "hit": false
+          },
+          {
+            "gold": "stop_all_context_engine_processes",
+            "hit": false
+          }
+        ],
+        "packed": 1,
+        "pack_chars": 360,
+        "heatmap_n": 1,
+        "calls": 1,
+        "graphify": true
+      },
+      "ladder": {
+        "file_rec": 1.0,
+        "symbol_rec": 0.0,
+        "packed": 3,
+        "pack_chars": 822,
+        "expand_count": 9,
+        "expand_direction": "callees+broad"
+      },
+      "delta_file": 0.0,
+      "delta_sym": 0,
+      "ms": 490.5
+    },
+    {
+      "id": "P10_auth_fixture",
+      "seed": {
+        "source": "map_card",
+        "file": "fixtures/trace-lab/app/middleware/auth.py",
+        "symbol": "",
+        "id": "fixtures/trace-lab/app/middleware/auth.py::authenticate"
+      },
+      "pack_ok": true,
+      "pack_engine": "composite_v1",
+      "pack_policy": "strict",
+      "lean": {
+        "file_rec": 0.25,
+        "symbol_rec": 0.4,
+        "file_hits": [
+          {
+            "gold": "fixtures/trace-lab/app/middleware/auth.py",
+            "hit": true
+          },
+          {
+            "gold": "fixtures/trace-lab/app/services/jwt_service.py",
+            "hit": false
+          },
+          {
+            "gold": "fixtures/trace-lab/app/utils/token.py",
+            "hit": false
+          },
+          {
+            "gold": "fixtures/trace-lab/app/repositories/user_repo.py",
+            "hit": false
+          }
+        ],
+        "symbol_hits": [
+          {
+            "gold": "authenticate",
+            "hit": true
+          },
+          {
+            "gold": "extract_bearer",
+            "hit": true
+          },
+          {
+            "gold": "JwtService.verify",
+            "hit": false
+          },
+          {
+            "gold": "decode",
+            "hit": false
+          },
+          {
+            "gold": "UserRepository.resolve",
+            "hit": false
+          }
+        ],
+        "packed": 2,
+        "pack_chars": 380,
+        "heatmap_n": 2,
+        "calls": 1,
+        "graphify": true
+      },
+      "ladder": {
+        "file_rec": 0.25,
+        "symbol_rec": 0.4,
+        "packed": 4,
+        "pack_chars": 489,
+        "expand_count": 2,
+        "expand_direction": "callees"
+      },
+      "delta_file": 0.0,
+      "delta_sym": 0.0,
+      "ms": 634.2
+    }
+  ]
+}

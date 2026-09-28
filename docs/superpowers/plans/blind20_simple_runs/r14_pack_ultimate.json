@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "engine": "ultimate",
+  "policy": "strict",
+  "elapsed_s": 0.014,
+  "n_pack": 1,
+  "pack": [
+    {
+      "file": "packages/pipeline/locate_cli.py",
+      "symbol": "_root",
+      "score": 1.0,
+      "loc": "packages/pipeline/locate_cli.py:14-15",
+      "id": "packages/pipeline/locate_cli.py::_root"
+    }
+  ],
+  "error": null
+}

@@ -1,0 +1,121 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 1.711,
+  "stdout_chars": 7684,
+  "stderr_tail": "",
+  "json": {
+    "ok": true,
+    "tool": "pack",
+    "seed": {
+      "id": "packages/trace_lab/lsp_index.py::build_lsp_index",
+      "file": "packages/trace_lab/lsp_index.py",
+      "symbol": "build_lsp_index"
+    },
+    "chain": [
+      {
+        "id": "packages/trace_lab/lsp_index.py::build_lsp_index",
+        "loc": "packages/trace_lab/lsp_index.py:38-119",
+        "edge": "seed",
+        "score": 1.0
+      },
+      {
+        "id": "packages/trace_lab/ast_graph.py::_call_name",
+        "loc": "packages/trace_lab/ast_graph.py:193-205",
+        "edge": "calls",
+        "score": 1.0
+      },
+      {
+        "id": "packages/trace_lab/lsp_index.py::_uniq_lists",
+        "loc": "packages/trace_lab/lsp_index.py:122-124",
+        "edge": "calls",
+        "score": 0.99
+      },
+      {
+        "id": "packages/trace_lab/lsp_index.py::_collect_inheritance",
+        "loc": "packages/trace_lab/lsp_index.py:161-189",
+        "edge": "calls",
+        "score": 0.99
+      },
+      {
+        "id": "packages/trace_lab/lsp_index.py::_parse",
+        "loc": "packages/trace_lab/lsp_index.py:127-133",
+        "edge": "calls",
+        "score": 0.99
+      },
+      {
+        "id": "packages/trace_lab/lsp_index.py::_bound_callbacks",
+        "loc": "packages/trace_lab/lsp_index.py:136-158",
+        "edge": "calls",
+        "score": 0.99
+      },
+      {
+        "id": "packages/trace_lab/ast_graph.py::_collect_imports",
+        "loc": "packages/trace_lab/ast_graph.py:142-190",
+        "edge": "calls",
+        "score": 0.9405
+      },
+      {
+        "id": "packages/trace_lab/corpus.py::iter_python_files",
+        "loc": "packages/trace_lab/corpus.py:47-71",
+        "edge": "calls",
+        "score": 0.9405
+      }
+    ],
+    "pack": [
+      {
+        "id": "packages/trace_lab/lsp_index.py::build_lsp_index",
+        "loc": "packages/trace_lab/lsp_index.py:38-119",
+        "text": "def build_lsp_index(\n    root: Path,\n    nodes: dict[str, TraceNode],\n    graph: AstTraceGraph,\n) -> LspIndex:\n    root = root.resolve()\n    idx = LspIndex()\n    by_file: dict[str, list[TraceNode]] = defaultdict(list)\n    for n in nodes.values():\n        by_file[n.file].append(n)\n        short = n.symbol.split(\".\")[-1]\n        idx.defs.setdefault(short, []).append(n.id)\n        idx.defs.setdefault(n.symbol, []).append(n.id)\n        if n.kind == \"method\" and \".\" in n.symbol:\n            cls = n.symbol.rsplit(\".\", 1)[0]\n            cls_id = f\"{n.file}::{cls}\"\n            idx.methods[cls_id].append(n.id)\n        if n.kind == \"class\":\n            idx.methods.setdefault(n.id, idx.methods.get(n.id, []))\n\n    for nid, edges in graph.inc.items():\n        for e in edges:\n            if e.relation in {\"calls\", \"uses\", \"imports\", \"contains\"}:\n                idx.used_by.setdefault(nid, []).append(e.source)\n            if e.relation == \"called_by\":\n                idx.refs.setdefault(nid, []).append(e.source)\n        # called_by lives on the callee's out list; also scrape out\n    for nid, edges in graph.out.items():\n        for e in edges:\n            if e.relation == \"called_by\":\n                idx.refs.setdefault(nid, []).append(e.target)\n            if e.relation in {\"calls\", \"uses\"}:\n                idx.used_by.setdefault(e.target, []).append(nid)\n\n    _uniq_lists(idx.used_by)\n    _uniq_lists(idx.refs)\n\n    by_mod = {module_name_for(rel): rel for rel in by_file}\n    symbols_in_file = {\n        rel: {n.symbol: n.id for n in group} | {n.symbol.split(\".\")[-1]: n.id for n in group}\n        for rel, group in by_file.items()\n    }\n\n    registered: list[str] = []\n    lookup_nodes: list[str] = []\n\n    for path in iter_python_files(root):\n        rel = rel_posix(root, path)\n        text = path.read_text(encoding=\"utf-8-sig\", errors=\"replace\")\n        try:\n            tree = ast.parse(text)\n        except SyntaxError:\n            continue\n        imports = _collect_imports(tree, by_mod, symbols_in_file)\n        _collect_inheritance(rel, tree, nodes, idx)\n        for n in by_file.get(rel, []):\n            if n.kind == \"class\":\n                continue\n            body = _parse(n.text)\n            if body is None:\n                continue\n            tabled = any(m in n.text for m in (\"HANDLERS\", \"REGISTRY\", \"DISPATCH\", \"_HANDLERS\"))\n            short = n.symbol.split(\".\")[-1]\n            if tabled and short in {\"lookup\", \"dispatch\", \"get_handler\", \"resolve_handler\"}:\n                lookup_nodes.append(n.id)\n            registered.extend(_bound_callbacks(body, imports, symbols_in_file.get(rel, {})))\n\n    registered = list(dict.fromkeys(registered))\n    lookup_nodes = list(dict.fromkeys(lookup_nodes))\n    dispatchers = set(lookup_nodes)\n    for src, edges in graph.out.items():\n        for e in edges:\n            if e.relation == \"calls\" and e.target in dispatchers:\n                dispatchers.add(src)\n    for src in dispatchers:\n        for dst in registered:\n            if dst != src:\n                idx.dispatch[src].append(dst)\n    _uniq_lists(idx.dispatch)\n    _uniq_lists(idx.overrides)\n    _uniq_lists(idx.methods)\n    return idx"
+      },
+      {
+        "id": "packages/trace_lab/ast_graph.py::_call_name",
+        "loc": "packages/trace_lab/ast_graph.py:193-205",
+        "text": "def _call_name(func: ast.AST) -> tuple[str | None, str | None]:\n    \"\"\"Return (base_name, attr) for Name, Attribute, or Call().attr.\"\"\"\n    if isinstance(func, ast.Name):\n        return func.id, None\n    if isinstance(func, ast.Attribute):\n        if isinstance(func.value, ast.Name):\n            return func.value.id, func.attr\n        if isinstance(func.value, ast.Call):\n            base, _ = _call_name(func.value.func)\n            return base, func.attr\n        if isinstance(func.value, ast.Attribute) and isinstance(func.value.value, ast.Name):\n            return func.value.value.id, func.attr\n    return None, None"
+      },
+      {
+        "id": "packages/trace_lab/lsp_index.py::_uniq_lists",
+        "loc": "packages/trace_lab/lsp_index.py:122-124",
+        "text": "def _uniq_lists(mapping: dict[str, list[str]]) -> None:\n    for k, vals in list(mapping.items()):\n        mapping[k] = list(dict.fromkeys(vals))"
+      },
+      {
+        "id": "packages/trace_lab/lsp_index.py::_collect_inheritance",
+        "loc": "packages/trace_lab/lsp_index.py:161-189",
+        "text": "def _collect_inheritance(\n    rel: str,\n    tree: ast.AST,\n    nodes: dict[str, TraceNode],\n    idx: LspIndex,\n) -> None:\n    for stmt in tree.body:\n        if not isinstance(stmt, ast.ClassDef):\n            continue\n        child_id = f\"{rel}::{stmt.name}\"\n        if child_id not in nodes:\n            continue\n        for base in stmt.bases:\n            bname = _call_name(base)[0] if not isinstance(base, ast.Name) else base.id\n            if isinstance(base, ast.Name):\n                bname = base.id\n            elif isinstance(base, ast.Attribute):\n                bname = base.attr\n            else:\n                continue\n            # match class nodes named bname\n            for nid, n in nodes.items():\n                if n.kind == \"class\" and n.symbol == bname:\n                    idx.bases[child_id].append(nid)\n                    for meth in idx.methods.get(child_id, []):\n                        mshort = meth.split(\"::\")[-1].split(\".\")[-1]\n                        for bm in idx.methods.get(nid, []):\n                            if bm.split(\"::\")[-1].split(\".\")[-1] == mshort:\n                                idx.overrides[meth].append(bm)"
+      }
+    ],
+    "cold": [
+      {
+        "id": "packages/trace_lab/lsp_index.py::_parse",
+        "loc": "packages/trace_lab/lsp_index.py:127-133",
+        "score": 0.99
+      },
+      {
+        "id": "packages/trace_lab/lsp_index.py::_bound_callbacks",
+        "loc": "packages/trace_lab/lsp_index.py:136-158",
+        "score": 0.99
+      },
+      {
+        "id": "packages/trace_lab/ast_graph.py::_collect_imports",
+        "loc": "packages/trace_lab/ast_graph.py:142-190",
+        "score": 0.9405
+      },
+      {
+        "id": "packages/trace_lab/corpus.py::iter_python_files",
+        "loc": "packages/trace_lab/corpus.py:47-71",
+        "score": 0.9405
+      },
+      {
+        "id": "packages/trace_lab/corpus.py::module_name_for",
+        "loc": "packages/trace_lab/corpus.py:78-83",
+        "score": 0.9405
+      },
+      {
+        "id": "packages/trace_lab/corpus.py::rel_posix",
+        "loc": "packages/trace_lab/corpus.py:74-75",
+        "score": 0.9405
+      }
+    ]
+  },
+  "stdout_preview": ""
+}

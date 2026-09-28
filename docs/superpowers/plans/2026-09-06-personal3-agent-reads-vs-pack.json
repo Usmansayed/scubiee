@@ -1,0 +1,679 @@
+{
+  "protocol": "personal3_agent_reads_vs_pack",
+  "note": "For each blind task: context an agent actually Read/Grepped before coding, vs prior pack_context output. No GT cheating \u2014 reads chosen from map cards + follow-the-call.",
+  "cases": [
+    {
+      "id": "p01",
+      "task": "I need to figure out how the tool gets wired into my editor when I connect it.",
+      "enrich_query": "when I run connect how does the tool install into the editor write mcp config permissions allowlist auto approve project rules gate text so the agent can call locate tools",
+      "agent_native_reads": [
+        {
+          "file": "packages/pipeline/__main__.py",
+          "start": 1706,
+          "end": 1744,
+          "why": "cmd_connect entry",
+          "n_lines": 39,
+          "chars": 1567,
+          "text": "def cmd_connect(args: argparse.Namespace) -> int:\n    \"\"\"Connect Scubiee to AI coding tools (MCP config + rules).\"\"\"\n    from pipeline.rules_installer import install_tools\n    from pipeline.tool_registry import ALL_SLUGS, CONNECT_SLUGS, normalize_tool_slug\n\n    # Collect selected tools\n    if getattr(args, \"all\", False):\n        selected = list(ALL_SLUGS)\n    else:\n        selected = []\n        for slug in CONNECT_SLUGS:\n            if getattr(args, slug.replace(\"-\", \"_\"), False):\n                selected.append(normalize_tool_slug(slug))\n        seen: set[str] = set()\n        selected = [s for s in selected if not (s in seen or seen.add(s))]\n\n    if not selected:\n        if sys.stdout.isatty():\n            from pipeline.cli_ui import error, info\n            error(\"No tools specified\", stream=sys.stderr)\n            info(f\"Use --all or specify tools: {', '.join(f'--{s}' for s in ALL_SLUGS[:4])}...\", stream=sys.stderr)\n            sys.stderr.write(\"\\n\")\n        else:\n            print(json.dumps({\"ok\": False, \"error\": \"no tools specified\"}, indent=2))\n        return 1\n\n    dry_run = getattr(args, \"dry_run\", False)\n    repo = getattr(args, \"repo\", None)\n    results = install_tools(selected, dry_run=dry_run, repo=repo)\n\n    if sys.stdout.isatty():\n        from pipeline.cli_ui import print_connect_summary\n\n        print_connect_summary(results, action=\"Connected\", dry_run=dry_run)\n    else:\n        print(json.dumps(results, indent=2, default=str))\n\n    fail_count = sum(1 for r in results if not r.get(\"ok\"))\n    return 0 if fail_count == 0 else 1"
+        },
+        {
+          "file": "packages/pipeline/rules_installer.py",
+          "start": 1627,
+          "end": 1680,
+          "why": "install_tools fan-out",
+          "n_lines": 54,
+          "chars": 1481,
+          "text": "def install_tools(\n    slugs: list[str],\n    *,\n    dry_run: bool = False,\n    repo: Path | str | None = None,\n) -> list[dict[str, Any]]:\n    results = []\n    for slug in slugs:\n        tool = get_tool(slug)\n        if not tool:\n            results.append({\"tool\": slug, \"ok\": False, \"errors\": [f\"unknown tool: {slug}\"]})\n            continue\n        results.append(install_tool(tool, dry_run=dry_run, repo=repo))\n    return results\n\n\n# ---------------------------------------------------------------------------\n# Removers\n# ---------------------------------------------------------------------------\n\ndef _remove_mcp_json_keyed(\n    path: Path,\n    key: str,\n    *,\n    warnings: list[dict[str, str]] | None = None,\n) -> bool:\n    if not path.is_file():\n        return False\n    try:\n        data = _load_json_for_merge(path)\n    except MCPConfigMergeError as exc:\n        _record_mcp_skip(warnings, path, str(exc))\n        return False\n    servers = data.get(key)\n    if not isinstance(servers, dict):\n        return False\n    removed = False\n    for name in MCP_SERVER_NAMES:\n        if name in servers:\n            del servers[name]\n            removed = True\n    if not removed:\n        return False\n    if servers:\n        data[key] = servers\n        _write_json(path, data)\n    else:\n        data.pop(key, None)\n        if set(data.keys()) <= {\"$schema\"}:\n            data.clear()\n        if data:\n            _write_json(path, data)\n        else:\n            path.unlink()"
+        },
+        {
+          "file": "packages/pipeline/rules_installer.py",
+          "start": 1487,
+          "end": 1553,
+          "why": "apply_connected_tools_to_repo",
+          "n_lines": 67,
+          "chars": 2241,
+          "text": "def apply_connected_tools_to_repo(\n    repo: Path | str,\n    *,\n    dry_run: bool = False,\n) -> dict[str, Any]:\n    \"\"\"After init, write project MCP + rules for every connected tool.\"\"\"\n    from pipeline.connect_state import load_connected_tools\n\n    root = Path(repo).resolve()\n    slugs = load_connected_tools()\n    report: dict[str, Any] = {\n        \"repo\": str(root),\n        \"ok\": True,\n        \"skipped\": False,\n        \"connected_tools\": slugs,\n        \"mcp_paths\": [],\n        \"dry_run\": dry_run,\n        \"errors\": [],\n    }\n    if not slugs:\n        report[\"skipped\"] = True\n        report[\"skip_reason\"] = (\n            \"no tools connected yet - run scubiee connect --<tool>\"\n        )\n        return report\n    if not _project_rules_eligible(root):\n        report[\"skipped\"] = True\n        report[\"skip_reason\"] = \"not a project folder\"\n        return report\n    gate = gate_line_for_repo(root)\n    if not gate.startswith(\"1:\") and gate != \"p\":\n        report[\"skipped\"] = True\n        report[\"skip_reason\"] = \"repo not enrolled\"\n        return report\n\n    if dry_run:\n        for slug in slugs:\n            tool = TOOL_MAP.get(slug)\n            if tool:\n                report[\"mcp_paths\"].extend(\n                    str(p) for p in resolve_mcp_project_paths(tool, root)\n                )\n                from pipeline.mcp_permissions import (\n                    apply_permissions_to_repo_tool_surface,\n                )\n\n                apply_permissions_to_repo_tool_surface(slug, root, dry_run=True)\n        rules = write_project_gate_rules(root, slugs=slugs, dry_run=True)\n        report[\"rules\"] = rules\n        return report\n\n    for slug in slugs:\n        tool = get_tool(slug)\n        if not tool:\n            continue\n        sub = write_project_tool_surface(root, tool, dry_run=False)\n        report[\"mcp_paths\"].extend(sub.get(\"mcp_paths\") or [])\n        if not sub.get(\"ok\", True):\n            report[\"ok\"] = False\n            report[\"errors\"].extend(sub.get(\"errors\") or [])\n\n    rules = write_project_gate_rules(root, slugs=slugs, dry_run=False)\n    report[\"rules\"] = rules\n    if not rules.get(\"ok\", True):\n        report[\"ok\"] = False\n        report[\"errors\"].extend(rules.get(\"errors\") or [])\n    return report"
+        },
+        {
+          "file": "packages/pipeline/rules_installer.py",
+          "start": 1139,
+          "end": 1202,
+          "why": "write_project_gate_rules",
+          "n_lines": 64,
+          "chars": 2152,
+          "text": "def write_project_gate_rules(\n    repo: Path | str,\n    *,\n    dry_run: bool = False,\n    slugs: list[str] | None = None,\n) -> dict[str, Any]:\n    \"\"\"Write compact GATE prefer+escape rules under the repo after ``scubiee init``.\n\n    Managed repos: Prefer Scubiee for retrieval when tools are available;\n    native Grep/Glob/Read OK if MCP fails (no BAN-native deadlock).\n    How-to (tool purpose, query tip) lives in MCP server instructions - not duplicated here.\n    \"\"\"\n    root = Path(repo).resolve()\n    gate = gate_line_for_repo(root)\n    report: dict[str, Any] = {\n        \"repo\": str(root),\n        \"gate_line\": gate,\n        \"ok\": True,\n        \"skipped\": False,\n        \"written\": [],\n        \"dry_run\": dry_run,\n        \"errors\": [],\n    }\n    if not _project_rules_eligible(root):\n        report[\"skipped\"] = True\n        report[\"skip_reason\"] = \"not a project folder\"\n        return report\n    if not gate.startswith(\"1:\") and gate != \"p\":\n        report[\"skipped\"] = True\n        report[\"skip_reason\"] = \"repo not enrolled\"\n        return report\n\n    from pipeline.tool_registry import TOOL_MAP, resolve_rule_project_paths\n\n    selected = TOOL_MAP.values()\n    if slugs:\n        selected = [TOOL_MAP[s] for s in slugs if s in TOOL_MAP]\n\n    for tool in selected:\n        if tool.rule_format == \"none\":\n            continue\n        for path in resolve_rule_project_paths(tool, root):\n            if dry_run:\n                report[\"written\"].append(str(path))\n                continue\n            try:\n                _write_rule(tool, path, gate_line=gate)\n                report[\"written\"].append(str(path))\n            except Exception as exc:  # noqa: BLE001\n                report[\"errors\"].append(f\"{path}: {exc}\")\n                report[\"ok\"] = False\n\n    agents = root / \"AGENTS.md\"\n    if dry_run:\n        report[\"written\"].append(str(agents))\n    else:\n        try:\n            _write_rule_append_md(agents, gate_line=gate)\n            report[\"written\"].append(str(agents))\n        except Exception as exc:  # noqa: BLE001\n            report[\"errors\"].append(f\"{agents}: {exc}\")\n            report[\"ok\"] = False\n\n    return report"
+        },
+        {
+          "file": "packages/pipeline/mcp_permissions.py",
+          "start": 518,
+          "end": 531,
+          "why": "apply_permissions_to_repo_tool_surface",
+          "n_lines": 14,
+          "chars": 397,
+          "text": "def apply_permissions_to_repo_tool_surface(\n    tool_slug: str,\n    repo: Path | str,\n    *,\n    profile: PermissionProfile = \"locate\",\n    dry_run: bool = False,\n) -> dict[str, Any]:\n    \"\"\"Sidecar permission files for one tool + repo (called after MCP write).\"\"\"\n    return write_tool_permission_artifacts(\n        tool_slug,\n        repo,\n        profile=profile,\n        dry_run=dry_run,\n    )"
+        },
+        {
+          "file": "packages/pipeline/mcp_permissions.py",
+          "start": 253,
+          "end": 320,
+          "why": "merge_cursor_permissions allowlist",
+          "n_lines": 68,
+          "chars": 2327,
+          "text": "def merge_cursor_permissions(\n    path: Path,\n    *,\n    profile: PermissionProfile = \"locate\",\n) -> dict[str, Any]:\n    \"\"\"Merge Scubiee entries into Cursor permissions.json without wiping user rules.\"\"\"\n    document = _load_json_object(path)\n    additions = _cursor_mcp_allowlist(profile=profile)\n    existing = document.get(\"mcpAllowlist\")\n    existing_list = existing if isinstance(existing, list) else []\n    document[\"mcpAllowlist\"] = _merge_unique_strings(\n        [str(x) for x in existing_list],\n        additions,\n    )\n    auto_run = document.get(\"autoRun\")\n    if not isinstance(auto_run, dict):\n        auto_run = {}\n    allow_instructions = auto_run.get(\"allow_instructions\")\n    instr_list = allow_instructions if isinstance(allow_instructions, list) else []\n    instr_list = _merge_unique_strings(\n        [str(x) for x in instr_list],\n        [\n            \"Allow Scubiee MCP locate tools (gate, map, focus, grep, glob, \"\n            \"workspace, expand, status) for read-only codebase navigation.\"\n        ],\n    )\n    auto_run[\"allow_instructions\"] = instr_list\n    document[\"autoRun\"] = auto_run\n    _write_json_object(path, document)\n    return {\n        \"ok\": True,\n        \"path\": str(path),\n        \"mcpAllowlist\": document[\"mcpAllowlist\"],\n        \"mechanism\": \"cursor_permissions_json\",\n    }\n\n\ndef merge_claude_settings_permissions(\n    path: Path,\n    *,\n    profile: PermissionProfile = \"locate\",\n) -> dict[str, Any]:\n    \"\"\"Merge mcp__scubiee__* allow rules into Claude Code settings.json.\"\"\"\n    document = _load_json_object(path)\n    document.setdefault(\n        \"$schema\",\n        \"https://json.schemastore.org/claude-code-settings.json\",\n    )\n    permissions = document.get(\"permissions\")\n    if not isinstance(permissions, dict):\n        permissions = {}\n    allow = permissions.get(\"allow\")\n    allow_list = allow if isinstance(allow, list) else []\n    permissions[\"allow\"] = _merge_unique_strings(\n        [str(x) for x in allow_list],\n        _claude_allow_rules(profile=profile),\n    )\n    document[\"permissions\"] = permissions\n    _write_json_object(path, document)\n    return {\n        \"ok\": True,\n        \"path\": str(path),\n        \"allow\": permissions[\"allow\"],\n        \"mechanism\": \"claude_settings_json\",\n    }\n\n\ndef _continue_permissions_yaml(*, profile: PermissionProfile) -> str:"
+        }
+      ],
+      "agent_totals": {
+        "n_spans": 6,
+        "n_lines": 306,
+        "chars": 10165
+      },
+      "pack_from_prior_run": {
+        "selected_chunks": [
+          {
+            "file": "packages/pipeline/rules_installer.py",
+            "symbol": "write_project_gate_rules",
+            "kind": "function",
+            "loc": "packages/pipeline/rules_installer.py:1139-1202",
+            "start_line": 1139,
+            "end_line": 1202,
+            "score": 18.35,
+            "excerpt": "def write_project_gate_rules(\n    repo: Path | str,\n    *,\n    dry_run: bool = False,\n    slugs: list[str] | None = None,\n) -> dict[str, Any]:\n    \"\"\"Write compact GATE prefer+escape rules under the repo after ``scubiee "
+          },
+          {
+            "file": "packages/pipeline/rules_installer.py",
+            "symbol": "apply_connected_tools_to_repo",
+            "kind": "function",
+            "loc": "packages/pipeline/rules_installer.py:1487-1553",
+            "start_line": 1487,
+            "end_line": 1553,
+            "score": 15.2,
+            "excerpt": "def apply_connected_tools_to_repo(\n    repo: Path | str,\n    *,\n    dry_run: bool = False,\n) -> dict[str, Any]:\n    \"\"\"After init, write project MCP + rules for every connected tool.\"\"\"\n    from pipeline.connect_state im"
+          },
+          {
+            "file": "packages/pipeline/tool_registry.py",
+            "symbol": "resolve_mcp_project_write_targets",
+            "kind": "function",
+            "loc": "packages/pipeline/tool_registry.py:390-404",
+            "start_line": 390,
+            "end_line": 404,
+            "score": 13.25,
+            "excerpt": "def resolve_mcp_project_write_targets(\n    tool: ToolDef, repo: Path | None\n) -> list[tuple[Path, str, str]]:\n    \"\"\"(path, schema, key) for every project MCP file this tool writes.\"\"\"\n    if repo is None:\n        return"
+          }
+        ],
+        "pack_items": [
+          {
+            "file": "packages/pipeline/rules_installer.py",
+            "symbol": "write_project_gate_rules",
+            "loc": "packages/pipeline/rules_installer.py:1139-1202",
+            "start": 1139,
+            "end": 1202,
+            "chars": 2152,
+            "text": "def write_project_gate_rules(\n    repo: Path | str,\n    *,\n    dry_run: bool = False,\n    slugs: list[str] | None = None,\n) -> dict[str, Any]:\n    \"\"\"Write compact GATE prefer+escape rules under the repo after ``scubiee init``.\n\n    Managed repos: Prefer Scubiee for retrieval when tools are available;\n    native Grep/Glob/Read OK if MCP fails (no BAN-native deadlock).\n    How-to (tool purpose, query tip) lives in MCP server instructions - not duplicated here.\n    \"\"\"\n    root = Path(repo).resolve()\n    gate = gate_line_for_repo(root)\n    report: dict[str, Any] = {\n        \"repo\": str(root),\n        \"gate_line\": gate,\n        \"ok\": True,\n        \"skipped\": False,\n        \"written\": [],\n        \"dry_run\": dry_run,\n        \"errors\": [],\n    }\n    if not _project_rules_eligible(root):\n        report[\"skipped\"] = True\n        report[\"skip_reason\"] = \"not a project folder\"\n        return report\n    if not gate.startswith(\"1:\") and gate != \"p\":\n        report[\"skipped\"] = True\n        report[\"skip_reason\"] = \"repo not enrolled\"\n        return report\n\n    from pipeline.tool_registry import TOOL_MAP, resolve_rule_project_paths\n\n    selected = TOOL_MAP.values()\n    if slugs:\n        selected = [TOOL_MAP[s] for s in slugs if s in TOOL_MAP]\n\n    for tool in selected:\n        if tool.rule_format == \"none\":\n            continue\n        for path in resolve_rule_project_paths(tool, root):\n            if dry_run:\n                report[\"written\"].append(str(path))\n                continue\n            try:\n                _write_rule(tool, path, gate_line=gate)\n                report[\"written\"].append(str(path))\n            except Exception as exc:  # noqa: BLE001\n                report[\"errors\"].append(f\"{path}: {exc}\")\n                report[\"ok\"] = False\n\n    agents = root / \"AGENTS.md\"\n    if dry_run:\n        report[\"written\"].append(str(agents))\n    else:\n        try:\n            _write_rule_append_md(agents, gate_line=gate)\n            report[\"written\"].append(str(agents))\n        except Exception as exc:  # noqa: BLE001\n            report[\"errors\"].append(f\"{agents}: {exc}\")\n            report[\"ok\"] = False\n\n    return report"
+          },
+          {
+            "file": "packages/pipeline/rules_installer.py",
+            "symbol": "gate_line_for_repo",
+            "loc": "packages/pipeline/rules_installer.py:266-280",
+            "start": 266,
+            "end": 280,
+            "chars": 460,
+            "text": "def gate_line_for_repo(repo: Path | str) -> str:\n    \"\"\"Gate line from repo ``.scubiee/id.json`` (for project rules, no daemon).\"\"\"\n    from pipeline.pause_resume import is_paused\n    from pipeline.project_id import read_id_file\n\n    root = Path(repo).resolve()\n    if is_paused():\n        return \"p\"\n    try:\n        pid = read_id_file(root) or \"\"\n        if pid:\n            return f\"1:{pid}\"\n    except Exception:  # noqa: BLE001\n        pass\n    return \"0\""
+          },
+          {
+            "file": "packages/pipeline/rules_installer.py",
+            "symbol": "_project_rules_eligible",
+            "loc": "packages/pipeline/rules_installer.py:283-289",
+            "start": 283,
+            "end": 289,
+            "chars": 220,
+            "text": "def _project_rules_eligible(repo: Path) -> bool:\n    root = Path(repo).resolve()\n    if (root / \".scubiee\" / \"id.json\").is_file():\n        return True\n    if (root / \".git\").is_dir():\n        return True\n    return False"
+          },
+          {
+            "file": "packages/pipeline/rules_installer.py",
+            "symbol": "apply_connected_tools_to_repo",
+            "loc": "packages/pipeline/rules_installer.py:1487-1553",
+            "start": 1487,
+            "end": 1553,
+            "chars": 2241,
+            "text": "def apply_connected_tools_to_repo(\n    repo: Path | str,\n    *,\n    dry_run: bool = False,\n) -> dict[str, Any]:\n    \"\"\"After init, write project MCP + rules for every connected tool.\"\"\"\n    from pipeline.connect_state import load_connected_tools\n\n    root = Path(repo).resolve()\n    slugs = load_connected_tools()\n    report: dict[str, Any] = {\n        \"repo\": str(root),\n        \"ok\": True,\n        \"skipped\": False,\n        \"connected_tools\": slugs,\n        \"mcp_paths\": [],\n        \"dry_run\": dry_run,\n        \"errors\": [],\n    }\n    if not slugs:\n        report[\"skipped\"] = True\n        report[\"skip_reason\"] = (\n            \"no tools connected yet - run scubiee connect --<tool>\"\n        )\n        return report\n    if not _project_rules_eligible(root):\n        report[\"skipped\"] = True\n        report[\"skip_reason\"] = \"not a project folder\"\n        return report\n    gate = gate_line_for_repo(root)\n    if not gate.startswith(\"1:\") and gate != \"p\":\n        report[\"skipped\"] = True\n        report[\"skip_reason\"] = \"repo not enrolled\"\n        return report\n\n    if dry_run:\n        for slug in slugs:\n            tool = TOOL_MAP.get(slug)\n            if tool:\n                report[\"mcp_paths\"].extend(\n                    str(p) for p in resolve_mcp_project_paths(tool, root)\n                )\n                from pipeline.mcp_permissions import (\n                    apply_permissions_to_repo_tool_surface,\n                )\n\n                apply_permissions_to_repo_tool_surface(slug, root, dry_run=True)\n        rules = write_project_gate_rules(root, slugs=slugs, dry_run=True)\n        report[\"rules\"] = rules\n        return report\n\n    for slug in slugs:\n        tool = get_tool(slug)\n        if not tool:\n            continue\n        sub = write_project_tool_surface(root, tool, dry_run=False)\n        report[\"mcp_paths\"].extend(sub.get(\"mcp_paths\") or [])\n        if not sub.get(\"ok\", True):\n            report[\"ok\"] = False\n            report[\"errors\"].extend(sub.get(\"errors\") or [])\n\n    rules = write_project_gate_rules(root, slugs=slugs, dry_run=False)\n    report[\"rules\"] = rules\n    if not rules.get(\"ok\", True):\n        report[\"ok\"] = False\n        report[\"errors\"].extend(rules.get(\"errors\") or [])\n    return report"
+          }
+        ],
+        "n_pack": 4,
+        "chain": [
+          {
+            "id": "packages/pipeline/rules_installer.py::write_project_gate_rules",
+            "loc": "packages/pipeline/rules_installer.py:1139-1202",
+            "edge": "seed",
+            "score": 1.0
+          },
+          {
+            "id": "packages/pipeline/rules_installer.py::gate_line_for_repo",
+            "loc": "packages/pipeline/rules_installer.py:266-280",
+            "edge": "calls",
+            "score": 1.0
+          },
+          {
+            "id": "packages/pipeline/rules_installer.py::_project_rules_eligible",
+            "loc": "packages/pipeline/rules_installer.py:283-289",
+            "edge": "calls",
+            "score": 1.0
+          },
+          {
+            "id": "packages/pipeline/rules_installer.py::apply_connected_tools_to_repo",
+            "loc": "packages/pipeline/rules_installer.py:1487-1553",
+            "edge": "seed",
+            "score": 1.0
+          },
+          {
+            "id": "packages/pipeline/mcp_permissions.py::apply_permissions_to_repo_tool_surface",
+            "loc": "packages/pipeline/mcp_permissions.py:518-531",
+            "edge": "calls",
+            "score": 1.0
+          },
+          {
+            "id": "packages/pipeline/tool_registry.py::resolve_mcp_project_paths",
+            "loc": "packages/pipeline/tool_registry.py:358-387",
+            "edge": "calls",
+            "score": 1.0
+          },
+          {
+            "id": "packages/pipeline/mcp_permissions.py::tool_permission_plan",
+            "loc": "packages/pipeline/mcp_permissions.py:158-159",
+            "edge": "calls",
+            "score": 1.0
+          },
+          {
+            "id": "packages/pipeline/mcp_permissions.py::_load_json_object",
+            "loc": "packages/pipeline/mcp_permissions.py:233-240",
+            "edge": "calls",
+            "score": 0.9973
+          }
+        ],
+        "body_chars": 5073
+      },
+      "overlap": {
+        "agent_files": [
+          "packages/pipeline/__main__.py",
+          "packages/pipeline/mcp_permissions.py",
+          "packages/pipeline/rules_installer.py"
+        ],
+        "pack_files": [
+          "packages/pipeline/rules_installer.py"
+        ],
+        "file_intersection": [
+          "packages/pipeline/rules_installer.py"
+        ],
+        "files_agent_only": [
+          "packages/pipeline/__main__.py",
+          "packages/pipeline/mcp_permissions.py"
+        ],
+        "files_pack_only": [],
+        "span_hits": [
+          {
+            "agent": "packages/pipeline/rules_installer.py:1487-1553",
+            "pack": "packages/pipeline/rules_installer.py:1487-1553",
+            "symbol": "apply_connected_tools_to_repo"
+          },
+          {
+            "agent": "packages/pipeline/rules_installer.py:1139-1202",
+            "pack": "packages/pipeline/rules_installer.py:1139-1202",
+            "symbol": "write_project_gate_rules"
+          }
+        ],
+        "file_recall_pack_covers_agent": 0.333,
+        "file_precision_pack_in_agent": 1.0
+      },
+      "usefulness": {
+        "pack_covered_agent_files_frac": 0.333,
+        "pack_body_chars": 5073,
+        "agent_read_chars": 10165,
+        "chars_saved_if_pack_enough": 0,
+        "judgment": "pack_partially_useful"
+      }
+    },
+    {
+      "id": "p02",
+      "task": "Search feels stale after I edit files \u2014 how does refresh / sync decide to update?",
+      "enrich_query": "after I change code when does background sync or freshness decide the index is stale and refresh embeddings or search without full rebuild",
+      "agent_native_reads": [
+        {
+          "file": "packages/pipeline/freshness.py",
+          "start": 202,
+          "end": 282,
+          "why": "check_freshness strategies",
+          "n_lines": 81,
+          "chars": 3371,
+          "text": "def check_freshness(\n    root: Path,\n    merkle_snapshot: dict[str, str],\n    *,\n    indexed_head: str | None = None,\n    extensions: set[str] | None = None,\n    fast_paths: list[Path] | None = None,\n    file_mtimes: dict[str, float] | None = None,\n    indexed_universe_only: bool = True,\n) -> FreshnessReport:\n    \"\"\"Detect drift. Merkle leaves are always verified \u2014 git is a speed hint only.\"\"\"\n    root = root.resolve()\n    head = git_head(root)\n    dirty = git_dirty_files(root) if head else []\n    corpus = len(merkle_snapshot) or 1\n\n    def _finish(diff: SyncDiff, detection: str, suffix: str = \"\") -> FreshnessReport:\n        strategy, reason = choose_strategy(\n            0 if diff.unchanged else len(diff.changed_files) + len(diff.removed),\n            corpus_size=corpus,\n        )\n        return FreshnessReport(\n            clean=diff.unchanged,\n            root=str(root),\n            diff=diff,\n            git_available=head is not None,\n            git_dirty=dirty,\n            git_head=head,\n            indexed_head=indexed_head,\n            strategy=strategy,\n            reason=reason + suffix,\n            detection=detection,\n        )\n\n    # --- Path A: same HEAD + clean porcelain \u2192 still VERIFY merkle leaves ---\n    # (gitignored indexed files never show in porcelain \u2014 Cursor/Claude use content hashes)\n    if (\n        head\n        and indexed_head\n        and head == indexed_head\n        and not dirty\n        and merkle_snapshot\n        and fast_paths is None\n    ):\n        diff = verify_merkle_leaves(root, merkle_snapshot, file_mtimes=file_mtimes)\n        if diff.unchanged:\n            return _finish(diff, \"git_fast\", \" [HEAD match + merkle leaves OK]\")\n        return _finish(diff, \"merkle_verify\", \" [porcelain clean but merkle leaf drifted]\")\n\n    # --- Path B: HEAD advanced \u2014 git diff + porcelain + merkle verify of those ---\n    if head and indexed_head and head != indexed_head and merkle_snapshot and fast_paths is None:\n        committed = git_diff_names(root, indexed_head, head)\n        candidates = sorted(set(committed) | set(dirty) | set(merkle_snapshot))\n        # Also mtime-suspect any merkle leaf (ignored files edited while commits moved)\n        if file_mtimes:\n            for rel, old_m in file_mtimes.items():\n                p = root / rel\n                try:\n                    if not p.is_file() or p.stat().st_mtime != old_m:\n                        candidates.append(rel)\n                except OSError:\n                    candidates.append(rel)\n        candidates = sorted(set(candidates))\n        current = dict(merkle_snapshot)\n        for rel in candidates:\n            if is_junk_rel(rel):\n                continue\n            p = root / rel\n            if p.is_file():\n                # Indexed universe only: never enlarge the corpus from random dirty paths\n                # (untracked .venv-proof / .cache used to flood \"added\" \u2192 full reindex).\n                if rel in merkle_snapshot or (\n                    not indexed_universe_only and (rel in committed or rel in dirty)\n                ):\n                    current[rel] = file_sha256(p)\n            elif rel in current:\n                current.pop(rel, None)\n        for rel in list(merkle_snapshot):\n            if not (root / rel).is_file():\n                current.pop(rel, None)\n        diff = diff_hashes(merkle_snapshot, current)"
+        },
+        {
+          "file": "packages/pipeline/incremental.py",
+          "start": 769,
+          "end": 860,
+          "why": "ensure_fresh_for_search gate",
+          "n_lines": 92,
+          "chars": 3319,
+          "text": "def ensure_fresh_for_search(\n    root: Path,\n    *,\n    base_dir: Path | None = None,\n    vdb: VectorDatabase | None = None,\n) -> dict:\n    \"\"\"Low-friction gate before search.\n\n    incremental \u2192 sync now (block)\n    background \u2192 kick thread, return dirty file boost set\n    full \u2192 background force reindex (Zoekt-style rebuild after large delta)\n    none \u2192 clean\n    \"\"\"\n    import threading\n\n    root = root.resolve()\n    store = PipelineStore(root, base_dir=base_dir, vdb=vdb)\n    meta = store.load_meta()\n    report = check_freshness(\n        root,\n        store.load_merkle(),\n        indexed_head=meta.get(\"git_head\"),\n        file_mtimes=store.load_mtimes(),\n    )\n    out = {\"freshness\": report.to_dict(), \"sync\": None}\n\n    if report.strategy == \"none\":\n        return out\n\n    if report.strategy == \"incremental\":\n        result = incremental_sync(root, base_dir=base_dir, vdb=vdb)\n        out[\"sync\"] = result.to_dict()\n        if not result.refreshed:\n            out[\"dirty_boost_files\"] = report.diff.changed_files\n        return out\n\n    if report.strategy == \"full\":\n        # Default OFF \u2014 auto full reindex previously walked .venv-proof / site-packages\n        # and thrashing RAM/GPU froze the host. Opt in with CTX_ALLOW_BG_FULL=1.\n        allow_bg = os.environ.get(\"CTX_ALLOW_BG_FULL\", \"0\").strip().lower() in {\n            \"1\",\n            \"true\",\n            \"yes\",\n            \"on\",\n        }\n        if allow_bg:\n\n            def _full():\n                from pipeline.indexer import index_repo\n\n                print(\n                    f\"[freshness] WARNING: full reindex starting for {root}\",\n                    file=sys.stderr,\n                    flush=True,\n                )\n                try:\n                    index_repo(\n                        root,\n                        force=True,\n                        fast=bool(meta.get(\"fast\")),\n                        fast_roots=meta.get(\"fast_roots\"),\n                        embed_model=meta.get(\"embed_model\"),\n                        base_dir=base_dir,\n                        vdb=vdb,\n                        bits=int(meta.get(\"bits\") or 4),\n                        quiesce=False,\n                    )\n                    from pipeline.engine import clear_engines\n\n                    clear_engines()\n                    print(\"[freshness] WARNING: full reindex complete\", file=sys.stderr, flush=True)\n                except Exception as exc:  # noqa: BLE001\n                    print(\n                        f\"[freshness] WARNING: full reindex failed: {exc}\",\n                        file=sys.stderr,\n                        flush=True,\n                    )\n\n            threading.Thread(target=_full, name=\"ctx-full-reindex\", daemon=True).start()\n            note = \"background force reindex started; BM25 hot-patch + dirty boost until done\"\n        else:\n            print(\n                \"[freshness] WARNING: large drift detected \u2014 NOT auto-reindexing \"\n                \"(set CTX_ALLOW_BG_FULL=1 or run: scubiee sync . --confirm)\",\n                file=sys.stderr,\n                flush=True,\n            )\n            note = (\n                \"full reindex skipped (CTX_ALLOW_BG_FULL=0); \"\n                \"run `scubiee sync . --confirm` if you want to index the large change set\"\n            )\n        out[\"sync\"] = {"
+        },
+        {
+          "file": "packages/pipeline/sync_loop.py",
+          "start": 713,
+          "end": 752,
+          "why": "BackgroundSyncLoop.sync_once",
+          "n_lines": 40,
+          "chars": 1760,
+          "text": "    def sync_once(self) -> dict:\n        \"\"\"Force incremental path (trigger file / manual). Still root-gated via tick.\"\"\"\n        return self.keeper_tick(reason=\"trigger\")\n\n    def _sync_unlocked(self, *, probe_meta: dict | None = None, reason: str = \"interval\") -> dict:\n        from pipeline.incremental import incremental_sync\n\n        result = incremental_sync(self.repo)\n        payload = result.to_dict()\n        payload[\"probe\"] = probe_meta\n        payload[\"reason\"] = reason\n        self.last_result = payload\n        if result.refreshed:\n            print(\n                f\"[keeper] refreshed {len(result.files)} files in {result.ms:.0f}ms\",\n                file=sys.stderr,\n                flush=True,\n            )\n            self._publish_or_hold(payload, paths=result.files)\n        return payload\n\n    def _sync_paths(self, paths: list[str], *, reason: str) -> dict:\n        from pipeline.incremental import incremental_sync\n\n        result = incremental_sync(self.repo, force_files=paths)\n        payload = result.to_dict()\n        payload[\"reason\"] = reason\n        payload[\"dirty_paths\"] = paths\n        return payload\n\n    def _bulk_sync_paths(self, paths: list[str], *, reason: str) -> dict:\n        \"\"\"Process dirty paths in committed sub-batches with bootstrap memory budget.\n\n        Used for 301\u201310000 chunk changes (like a GitHub pull) that should\n        complete in minutes. Processes files in sub-batches of ~50, committing\n        each to disk atomically. If the process is interrupted (power loss,\n        crash), only the in-flight sub-batch is lost \u2014 completed sub-batches\n        are durable, and the dirty journal re-queues unfinished paths on restart.\n\n        Uses 800 MB RSS cap and batch 48 \u2014 same as initial full index."
+        },
+        {
+          "file": "packages/pipeline/upgrade_supervisor.py",
+          "start": 151,
+          "end": 176,
+          "why": "rebuild_embeddings_if_needed",
+          "n_lines": 26,
+          "chars": 1122,
+          "text": "def rebuild_embeddings_if_needed(plan: DiffPlan) -> dict[str, Any]:\n    \"\"\"Shadow-style: force rebuild enrolled repos when plan says rebuild.\n\n    Keeps prior index until rebuild succeeds (indexer force=True writes in place\n    but we record intent; full blue/green lands in a later revision).\n    \"\"\"\n    action = plan.action_for(\"embeddings\")\n    if action is None or action.action == \"skip\":\n        return {\"ok\": True, \"skipped\": True, \"reason\": \"embeddings unchanged\"}\n\n    from pipeline.managed_repos import managed_repo_paths\n\n    reports: list[dict[str, Any]] = []\n    ok = True\n    for repo in managed_repo_paths(enrolled_only=True):\n        try:\n            from pipeline.repo_lifecycle import rebuild_repo\n\n            r = rebuild_repo(repo)\n            reports.append({\"repo\": str(repo), \"result\": r})\n            if isinstance(r, dict) and not r.get(\"ok\", True):\n                ok = False\n        except Exception as exc:  # noqa: BLE001\n            ok = False\n            reports.append({\"repo\": str(repo), \"error\": str(exc)})\n    return {\"ok\": ok, \"skipped\": False, \"reports\": reports, \"destructive\": True}"
+        }
+      ],
+      "agent_totals": {
+        "n_spans": 4,
+        "n_lines": 239,
+        "chars": 9572
+      },
+      "pack_from_prior_run": {
+        "selected_chunks": [
+          {
+            "file": "packages/pipeline/upgrade_supervisor.py",
+            "symbol": "rebuild_embeddings_if_needed",
+            "kind": "function",
+            "loc": "packages/pipeline/upgrade_supervisor.py:151-176",
+            "start_line": 151,
+            "end_line": 176,
+            "score": 10.75,
+            "excerpt": "def rebuild_embeddings_if_needed(plan: DiffPlan) -> dict[str, Any]:\n    \"\"\"Shadow-style: force rebuild enrolled repos when plan says rebuild.\n\n    Keeps prior index until rebuild succeeds (indexer force=True writes in pl"
+          },
+          {
+            "file": "packages/pipeline/memory_governor.py",
+            "symbol": "MemoryGovernor.demote_after_index",
+            "kind": "method",
+            "loc": "packages/pipeline/memory_governor.py:320-334",
+            "start_line": 320,
+            "end_line": 334,
+            "score": 9.55,
+            "excerpt": "    def demote_after_index(self) -> ServeTier:\n        \"\"\"Restore serve tier after bulk index / publish.\"\"\"\n        with self._lock:\n            self.indexing = False\n            self._recompute_desired_locked()\n        "
+          },
+          {
+            "file": "packages/pipeline/incremental.py",
+            "symbol": "ensure_fresh_for_search",
+            "kind": "function",
+            "loc": "packages/pipeline/incremental.py:769-886",
+            "start_line": 769,
+            "end_line": 886,
+            "score": 8.45,
+            "excerpt": "def ensure_fresh_for_search(\n    root: Path,\n    *,\n    base_dir: Path | None = None,\n    vdb: VectorDatabase | None = None,\n) -> dict:\n    \"\"\"Low-friction gate before search.\n\n    incremental \u2192 sync now (block)\n    back"
+          }
+        ],
+        "pack_items": [
+          {
+            "file": "packages/pipeline/upgrade_supervisor.py",
+            "symbol": "rebuild_embeddings_if_needed",
+            "loc": "packages/pipeline/upgrade_supervisor.py:151-176",
+            "start": 151,
+            "end": 176,
+            "chars": 1122,
+            "text": "def rebuild_embeddings_if_needed(plan: DiffPlan) -> dict[str, Any]:\n    \"\"\"Shadow-style: force rebuild enrolled repos when plan says rebuild.\n\n    Keeps prior index until rebuild succeeds (indexer force=True writes in place\n    but we record intent; full blue/green lands in a later revision).\n    \"\"\"\n    action = plan.action_for(\"embeddings\")\n    if action is None or action.action == \"skip\":\n        return {\"ok\": True, \"skipped\": True, \"reason\": \"embeddings unchanged\"}\n\n    from pipeline.managed_repos import managed_repo_paths\n\n    reports: list[dict[str, Any]] = []\n    ok = True\n    for repo in managed_repo_paths(enrolled_only=True):\n        try:\n            from pipeline.repo_lifecycle import rebuild_repo\n\n            r = rebuild_repo(repo)\n            reports.append({\"repo\": str(repo), \"result\": r})\n            if isinstance(r, dict) and not r.get(\"ok\", True):\n                ok = False\n        except Exception as exc:  # noqa: BLE001\n            ok = False\n            reports.append({\"repo\": str(repo), \"error\": str(exc)})\n    return {\"ok\": ok, \"skipped\": False, \"reports\": reports, \"destructive\": True}"
+          },
+          {
+            "file": "packages/pipeline/project_id.py",
+            "symbol": "load_registry",
+            "loc": "packages/pipeline/project_id.py:220-226",
+            "start": 220,
+            "end": 226,
+            "chars": 319,
+            "text": "def load_registry() -> dict[str, Any]:\n    data = _read_json(registry_path())\n    if \"projects\" not in data or not isinstance(data[\"projects\"], dict):\n        data[\"projects\"] = {}\n    revision = data.get(_REGISTRY_REVISION, 0)\n    data[_REGISTRY_REVISION] = revision if isinstance(revision, int) else 0\n    return data"
+          },
+          {
+            "file": "packages/pipeline/repo_lifecycle.py",
+            "symbol": "_entry_managed",
+            "loc": "packages/pipeline/repo_lifecycle.py:98-107",
+            "start": 98,
+            "end": 107,
+            "chars": 384,
+            "text": "def _entry_managed(entry: dict[str, Any]) -> bool:\n    \"\"\"True for enrolled registry rows unless explicitly opted out.\n\n    Legacy path-only rows (``paths`` without ``managed``) match MCP gate\n    semantics: id.json + registry entry implies managed until ``init`` writes\n    the explicit flag.\n    \"\"\"\n    if not entry:\n        return False\n    return bool(entry.get(\"managed\", True))"
+          },
+          {
+            "file": "packages/pipeline/repo_lifecycle.py",
+            "symbol": "_root",
+            "loc": "packages/pipeline/repo_lifecycle.py:34-35",
+            "start": 34,
+            "end": 35,
+            "chars": 68,
+            "text": "def _root(root: Path | str) -> Path:\n    return Path(root).resolve()"
+          }
+        ],
+        "n_pack": 4,
+        "chain": [
+          {
+            "id": "packages/pipeline/upgrade_supervisor.py::rebuild_embeddings_if_needed",
+            "loc": "packages/pipeline/upgrade_supervisor.py:151-176",
+            "edge": "seed",
+            "score": 1.0
+          },
+          {
+            "id": "packages/pipeline/project_id.py::load_registry",
+            "loc": "packages/pipeline/project_id.py:220-226",
+            "edge": "calls",
+            "score": 1.0
+          },
+          {
+            "id": "packages/pipeline/repo_lifecycle.py::_entry_managed",
+            "loc": "packages/pipeline/repo_lifecycle.py:98-107",
+            "edge": "calls",
+            "score": 1.0
+          },
+          {
+            "id": "packages/pipeline/repo_lifecycle.py::_root",
+            "loc": "packages/pipeline/repo_lifecycle.py:34-35",
+            "edge": "calls",
+            "score": 1.0
+          },
+          {
+            "id": "packages/pipeline/repo_lifecycle.py::_project",
+            "loc": "packages/pipeline/repo_lifecycle.py:84-95",
+            "edge": "calls",
+            "score": 1.0
+          },
+          {
+            "id": "packages/pipeline/project_id.py::_read_json",
+            "loc": "packages/pipeline/project_id.py:168-182",
+            "edge": "calls",
+            "score": 1.0
+          },
+          {
+            "id": "packages/pipeline/project_id.py::context_engine_home",
+            "loc": "packages/pipeline/project_id.py:108-113",
+            "edge": "calls",
+            "score": 1.0
+          },
+          {
+            "id": "packages/graphify/extractors/base.py::_file_stem",
+            "loc": "packages/graphify/extractors/base.py:58-81",
+            "edge": "calls",
+            "score": 1.0
+          }
+        ],
+        "body_chars": 1893
+      },
+      "overlap": {
+        "agent_files": [
+          "packages/pipeline/freshness.py",
+          "packages/pipeline/incremental.py",
+          "packages/pipeline/sync_loop.py",
+          "packages/pipeline/upgrade_supervisor.py"
+        ],
+        "pack_files": [
+          "packages/pipeline/project_id.py",
+          "packages/pipeline/repo_lifecycle.py",
+          "packages/pipeline/upgrade_supervisor.py"
+        ],
+        "file_intersection": [
+          "packages/pipeline/upgrade_supervisor.py"
+        ],
+        "files_agent_only": [
+          "packages/pipeline/freshness.py",
+          "packages/pipeline/incremental.py",
+          "packages/pipeline/sync_loop.py"
+        ],
+        "files_pack_only": [
+          "packages/pipeline/project_id.py",
+          "packages/pipeline/repo_lifecycle.py"
+        ],
+        "span_hits": [
+          {
+            "agent": "packages/pipeline/upgrade_supervisor.py:151-176",
+            "pack": "packages/pipeline/upgrade_supervisor.py:151-176",
+            "symbol": "rebuild_embeddings_if_needed"
+          }
+        ],
+        "file_recall_pack_covers_agent": 0.25,
+        "file_precision_pack_in_agent": 0.333
+      },
+      "usefulness": {
+        "pack_covered_agent_files_frac": 0.25,
+        "pack_body_chars": 1893,
+        "agent_read_chars": 9572,
+        "chars_saved_if_pack_enough": 0,
+        "judgment": "pack_missed_key_reads"
+      }
+    },
+    {
+      "id": "p03",
+      "task": "I want to understand how a pack request turns a seed into a small set of code bodies.",
+      "enrich_query": "how does pack take a seed and query then walk calls to build a lean heatmap and return hottest function bodies under a character budget",
+      "agent_native_reads": [
+        {
+          "file": "packages/pipeline/locate_cli.py",
+          "start": 179,
+          "end": 227,
+          "why": "cli_pack wrapper",
+          "n_lines": 49,
+          "chars": 1627,
+          "text": "def cli_pack(\n    query: str,\n    *,\n    seed_file: str,\n    path: str | Path = \".\",\n    seed_symbol: str = \"\",\n    seed_line: int = 0,\n    mode: str = \"lean\",\n    policy: str = \"strict\",\n    k: int = 16,\n) -> dict[str, Any]:\n    \"\"\"Tracer/heatmap + hot bodies. Requires seed_file from map or known path.\"\"\"\n    from pipeline.context_trace import run_pack_context\n\n    root = _root(path)\n    q = (query or \"\").strip()\n    seed = (seed_file or \"\").strip().replace(\"\\\\\", \"/\")\n    if not q:\n        return {\"ok\": False, \"tool\": \"pack\", \"error\": \"query required\"}\n    if not seed:\n        return {\n            \"ok\": False,\n            \"tool\": \"pack\",\n            \"error\": \"seed_file required\",\n            \"hint\": \"Run scubiee map first and pass suggested_seed.file\",\n        }\n    t0 = time.perf_counter()\n    out = run_pack_context(\n        root,\n        q,\n        seed_file=seed,\n        seed_symbol=seed_symbol or \"\",\n        seed_line=int(seed_line or 0),\n        mode=(mode or \"lean\").strip().lower() or \"lean\",\n        policy=(policy or \"strict\").strip().lower() or \"strict\",\n        k=max(1, min(int(k), 32)),\n    )\n    out = {k: v for k, v in out.items() if not str(k).startswith(\"_\")}\n    out[\"latency_ms\"] = round((time.perf_counter() - t0) * 1000, 1)\n    out[\"cli\"] = \"pack\"\n    out[\"query_tip\"] = (\n        \"Keep the SAME expanded code-vocab query from map; do not shrink to a vague phrase.\"\n    )\n    if out.get(\"ok\"):\n        out[\"next_cli\"] = (\n            \"Read pack[] then cold card.loc spans. If thin: \"\n            \"scubiee expand --node <heatmap id> --direction callees --with-bodies\"\n        )\n    return out"
+        },
+        {
+          "file": "packages/pipeline/__main__.py",
+          "start": 1655,
+          "end": 1695,
+          "why": "cmd_pack CLI",
+          "n_lines": 41,
+          "chars": 1551,
+          "text": "def cmd_pack(args: argparse.Namespace) -> int:\n    \"\"\"Tracer/heatmap pack via CLI (JSON). Same expanded query as map; seed from map.\"\"\"\n    from pipeline.locate_cli import cli_pack, emit_cli_json\n\n    import contextlib\n    import io\n\n    buf = io.StringIO()\n    with contextlib.redirect_stdout(buf):\n        out = cli_pack(\n            args.query,\n            seed_file=args.seed_file,\n            path=getattr(args, \"path\", \".\") or \".\",\n            seed_symbol=getattr(args, \"seed_symbol\", \"\") or \"\",\n            seed_line=int(getattr(args, \"seed_line\", 0) or 0),\n            mode=getattr(args, \"mode\", \"lean\") or \"lean\",\n            policy=getattr(args, \"policy\", \"strict\") or \"strict\",\n            k=int(getattr(args, \"k\", 16) or 16),\n        )\n    noise = buf.getvalue().strip()\n    if noise:\n        print(noise, file=sys.stderr)\n    # Default: pack[].text + chain + cold locs only (token-saving agent view).\n    emit_cli_json(out, full=bool(getattr(args, \"full\", False)))\n    return 0 if out.get(\"ok\") else 1\n\n\ndef cmd_expand(args: argparse.Namespace) -> int:\n    \"\"\"Expand heatmap delta via CLI (JSON). Use after lean pack if a hop is missing.\"\"\"\n    from pipeline.locate_cli import cli_expand, emit_cli_json\n\n    import contextlib\n    import io\n\n    buf = io.StringIO()\n    with contextlib.redirect_stdout(buf):\n        out = cli_expand(\n            node=args.node,\n            path=getattr(args, \"path\", \".\") or \".\",\n            query=getattr(args, \"query\", \"\") or \"\",\n            direction=getattr(args, \"direction\", \"callees\") or \"callees\","
+        },
+        {
+          "file": "packages/pipeline/context_trace.py",
+          "start": 1100,
+          "end": 1220,
+          "why": "run_pack_context core",
+          "n_lines": 121,
+          "chars": 4464,
+          "text": "def run_pack_context(\n    root: Path,\n    query: str,\n    *,\n    seed_file: str,\n    seed_symbol: str = \"\",\n    seed_line: int = 0,\n    seed2_file: str = \"\",\n    seed2_symbol: str = \"\",\n    seed2_line: int = 0,\n    k: int = 16,\n    hot_threshold: float = 0.65,\n    budget_chars: int | None = None,\n    max_bodies: int | None = None,\n    mode: str = \"lean\",\n    policy: str = \"strict\",\n    drop_noise: bool = True,\n    prior_packed_ids: set[str] | None = None,\n    engine: str | None = None,\n    tool_name: str = \"pack_context\",\n) -> dict[str, Any]:\n    \"\"\"Heatmap + hot bodies. mode=lean (default) minimizes tokens; mode=full is larger.\n\n    policy=strict uses the selected tracer (default composite_v1 via CTX_TRACE_ENGINE).\n    policy=broad temporarily uses polytrace for this pack only \u2014 escape hatch when the\n    lean slice is too tight (ignored when ``engine`` is an explicit multi-pack tool).\n\n    ``engine`` selects a shipped pack binder: composite_v1 | poly_embed |\n    semantic_tracer_fuse | polytrace | ultimate. MCP exposes these as separate tools.\n    \"\"\"\n    import os\n\n    mode_n = (mode or \"lean\").strip().lower()\n    if mode_n not in {\"lean\", \"full\"}:\n        mode_n = \"lean\"\n    policy_n = (policy or \"strict\").strip().lower()\n    if policy_n not in {\"strict\", \"broad\"}:\n        policy_n = \"strict\"\n    if budget_chars is None:\n        budget_chars = 6_000 if mode_n == \"lean\" else 12_000\n    if max_bodies is None:\n        max_bodies = 4 if mode_n == \"lean\" else 16\n\n    prev_engine = os.environ.get(\"CTX_TRACE_ENGINE\")\n    cache_cleared = False\n    engine_n = (engine or \"\").strip().lower() or None\n    # Explicit multi-pack engines win over policy=broad (broad is pack_context escape only).\n    if engine_n:\n        os.environ[\"CTX_TRACE_ENGINE\"] = engine_n\n    elif policy_n == \"broad\":\n        os.environ[\"CTX_TRACE_ENGINE\"] = \"polytrace\"\n        _CACHE.clear()\n        cache_cleared = True\n    try:\n        mapped = run_map_context(\n            root,\n            query,\n            seed_file=seed_file,\n            seed_symbol=seed_symbol,\n            seed_line=seed_line,\n            seed2_file=seed2_file,\n            seed2_symbol=seed2_symbol,\n            seed2_line=seed2_line,\n            k=k,\n        )\n    finally:\n        if engine_n or policy_n == \"broad\":\n            if prev_engine is None:\n                os.environ.pop(\"CTX_TRACE_ENGINE\", None)\n            else:\n                os.environ[\"CTX_TRACE_ENGINE\"] = prev_engine\n            if cache_cleared:\n                _CACHE.clear()\n\n    if not mapped.get(\"ok\"):\n        mapped[\"tool\"] = tool_name\n        return mapped\n\n    cards = list(mapped.get(\"heatmap\") or [])\n    if drop_noise:\n        cards = [c for c in cards if not _is_noise_card(c, query)]\n        # re-rank after filter\n        for i, c in enumerate(cards, 1):\n            c[\"rank\"] = i\n\n    hot = [c for c in cards if float(c.get(\"score\") or 0) >= hot_threshold]\n    # Prefer packing hot first; if few hot, take top cards until budget\n    to_pack = hot if hot else cards[: max(1, min(6, len(cards)))]\n    seed_id = str((mapped.get(\"seed\") or {}).get(\"id\") or \"\")\n    # Always try to pack the seed first (lean budget + prior_skip used to bury it).\n    if seed_id:\n        head = [c for c in to_pack if str(c.get(\"id\") or \"\") == seed_id]\n        if not head:\n            seed_card = next((c for c in cards if str(c.get(\"id\") or \"\") == seed_id), None)\n            if seed_card is not None:\n                head = [seed_card]\n        rest = [c for c in to_pack if str(c.get(\"id\") or \"\") != seed_id]\n        to_pack = head + rest\n    # Never skip the seed body on a fresh pack \u2014 prior_packed is for continuation only.\n    skip = set(prior_packed_ids or set())\n    if seed_id:\n        skip.discard(seed_id)\n    collected = run_collect_hot(\n        root,\n        to_pack,\n        threshold=0.0,  # already filtered list\n        max_chars=max(500, int(budget_chars)),\n        max_bodies=max_bodies,\n        skip_ids=skip,\n        prefer_ids={seed_id} if seed_id else None,\n    )\n    packed_now = {b.get(\"id\") for b in (collected.get(\"bodies\") or []) if b.get(\"id\")}\n    packed_all = set(skip) | packed_now\n    cold_locs = [\n        _slim_card(c)\n        for c in cards\n        if c.get(\"id\") not in packed_now\n    ]\n    heatmap_slim = [_slim_card(c) for c in cards]\n    chain = build_call_chain(cards, limit=8 if mode_n == \"lean\" else 12)\n    incomplete = len([c for c in to_pack if c.get(\"id\") not in packed_all]) > 0"
+        },
+        {
+          "file": "packages/pipeline/context_trace.py",
+          "start": 955,
+          "end": 1035,
+          "why": "run_collect_hot bodies",
+          "n_lines": 81,
+          "chars": 2873,
+          "text": "def run_collect_hot(\n    root: Path,\n    cards: list[dict[str, Any]],\n    *,\n    threshold: float = 0.82,\n    max_chars: int = 8000,\n    max_bodies: int | None = None,\n    skip_ids: set[str] | None = None,\n    only_ids: set[str] | None = None,\n    prefer_ids: set[str] | None = None,\n) -> dict[str, Any]:\n    rt = _load_repo(root)\n    picked = [c for c in cards if float(c.get(\"score\") or 0) >= threshold]\n    if only_ids:\n        # Allow explicit ids even if below threshold / not in scored cards\n        by_id = {c.get(\"id\"): c for c in cards if c.get(\"id\")}\n        extra: list[dict[str, Any]] = []\n        for oid in only_ids:\n            if oid in by_id:\n                extra.append(by_id[oid])\n            elif oid in rt.nodes:\n                n = rt.nodes[oid]\n                extra.append(\n                    {\n                        \"id\": oid,\n                        \"file\": n.file,\n                        \"symbol\": n.symbol,\n                        \"kind\": n.kind,\n                        \"score\": 0.9,\n                        \"loc\": f\"{n.file}:{n.start_line}-{n.end_line}\",\n                    }\n                )\n        picked = extra\n    prefer = {str(x) for x in (prefer_ids or set()) if x}\n    # Prefer packing real functions before consts/helpers when budget is tight.\n    # prefer_ids (seed) win over kind preference.\n    picked.sort(\n        key=lambda c: (\n            0 if str(c.get(\"id\") or \"\") in prefer else 1,\n            _kind_pref(str(c.get(\"kind\") or \"\")),\n            -float(c.get(\"score\") or 0),\n        )\n    )\n    skip = skip_ids or set()\n    bodies: list[dict[str, Any]] = []\n    used = 0\n    for c in picked:\n        cid = str(c.get(\"id\") or \"\")\n        if cid and cid in skip and cid not in prefer:\n            continue\n        n = rt.nodes.get(c[\"id\"])\n        if n is None:\n            continue\n        if max_bodies is not None and len(bodies) >= max_bodies:\n            break\n        text = n.text or \"\"\n        if used + len(text) > max_chars:\n            remain = max_chars - used\n            if remain < 200:\n                # Prefer truncating a prefer_id over dropping it entirely when budget is tight.\n                if cid in prefer and not bodies:\n                    text = text[: max(200, remain - 1)] + \"\u2026\"\n                else:\n                    break\n            else:\n                text = text[: remain - 1] + \"\u2026\"\n        bodies.append(\n            {\n                \"id\": c[\"id\"],\n                \"file\": n.file,\n                \"symbol\": n.symbol,\n                \"start_line\": n.start_line,\n                \"end_line\": n.end_line,\n                \"loc\": c.get(\"loc\") or f\"{n.file}:{n.start_line}-{n.end_line}\",\n                \"score\": c.get(\"score\"),\n                \"heat\": c.get(\"heat\"),\n                \"why\": c.get(\"why\"),\n                \"text\": text,\n            }\n        )\n        used += len(text)"
+        },
+        {
+          "file": "packages/pipeline/locate_cli.py",
+          "start": 230,
+          "end": 258,
+          "why": "cli_expand follow-up",
+          "n_lines": 29,
+          "chars": 955,
+          "text": "def cli_expand(\n    *,\n    node: str,\n    path: str | Path = \".\",\n    query: str = \"\",\n    direction: str = \"callees\",\n    with_bodies: bool = False,\n    k: int = 12,\n) -> dict[str, Any]:\n    \"\"\"Delta heatmap from a pack/map node. Prefer after lean pack when a hop is missing.\"\"\"\n    from pipeline.context_trace import run_expand_context\n\n    root = _root(path)\n    nid = (node or \"\").strip()\n    if not nid:\n        return {\"ok\": False, \"tool\": \"expand\", \"error\": \"node required (heatmap id)\"}\n    t0 = time.perf_counter()\n    out = run_expand_context(\n        root,\n        node=nid,\n        query=(query or \"\").strip(),\n        direction=(direction or \"callees\").strip().lower() or \"callees\",\n        with_bodies=bool(with_bodies),\n        k=max(1, min(int(k), 32)),\n    )\n    out = {k: v for k, v in out.items() if not str(k).startswith(\"_\")}\n    out[\"latency_ms\"] = round((time.perf_counter() - t0) * 1000, 1)\n    out[\"cli\"] = \"expand\"\n    return out"
+        }
+      ],
+      "agent_totals": {
+        "n_spans": 5,
+        "n_lines": 321,
+        "chars": 11470
+      },
+      "pack_from_prior_run": {
+        "selected_chunks": [
+          {
+            "file": "packages/pipeline/locate_cli.py",
+            "symbol": "cli_pack",
+            "kind": "function",
+            "loc": "packages/pipeline/locate_cli.py:179-227",
+            "start_line": 179,
+            "end_line": 227,
+            "score": 8.8,
+            "excerpt": "def cli_pack(\n    query: str,\n    *,\n    seed_file: str,\n    path: str | Path = \".\",\n    seed_symbol: str = \"\",\n    seed_line: int = 0,\n    mode: str = \"lean\",\n    policy: str = \"strict\",\n    k: int = 16,\n) -> dict[str, "
+          },
+          {
+            "file": "packages/pipeline/locate_cli.py",
+            "symbol": "cli_expand",
+            "kind": "function",
+            "loc": "packages/pipeline/locate_cli.py:230-258",
+            "start_line": 230,
+            "end_line": 258,
+            "score": 7.95,
+            "excerpt": "def cli_expand(\n    *,\n    node: str,\n    path: str | Path = \".\",\n    query: str = \"\",\n    direction: str = \"callees\",\n    with_bodies: bool = False,\n    k: int = 12,\n) -> dict[str, Any]:\n    \"\"\"Delta heatmap from a pack"
+          },
+          {
+            "file": "packages/pipeline/__main__.py",
+            "symbol": "cmd_pack",
+            "kind": "function",
+            "loc": "packages/pipeline/__main__.py:1655-1679",
+            "start_line": 1655,
+            "end_line": 1679,
+            "score": 7.75,
+            "excerpt": "def cmd_pack(args: argparse.Namespace) -> int:\n    \"\"\"Tracer/heatmap pack via CLI (JSON). Same expanded query as map; seed from map.\"\"\"\n    from pipeline.locate_cli import cli_pack, emit_cli_json\n\n    import contextlib\n "
+          }
+        ],
+        "pack_items": [
+          {
+            "file": "packages/pipeline/locate_cli.py",
+            "symbol": "cli_pack",
+            "loc": "packages/pipeline/locate_cli.py:179-227",
+            "start": 179,
+            "end": 227,
+            "chars": 1627,
+            "text": "def cli_pack(\n    query: str,\n    *,\n    seed_file: str,\n    path: str | Path = \".\",\n    seed_symbol: str = \"\",\n    seed_line: int = 0,\n    mode: str = \"lean\",\n    policy: str = \"strict\",\n    k: int = 16,\n) -> dict[str, Any]:\n    \"\"\"Tracer/heatmap + hot bodies. Requires seed_file from map or known path.\"\"\"\n    from pipeline.context_trace import run_pack_context\n\n    root = _root(path)\n    q = (query or \"\").strip()\n    seed = (seed_file or \"\").strip().replace(\"\\\\\", \"/\")\n    if not q:\n        return {\"ok\": False, \"tool\": \"pack\", \"error\": \"query required\"}\n    if not seed:\n        return {\n            \"ok\": False,\n            \"tool\": \"pack\",\n            \"error\": \"seed_file required\",\n            \"hint\": \"Run scubiee map first and pass suggested_seed.file\",\n        }\n    t0 = time.perf_counter()\n    out = run_pack_context(\n        root,\n        q,\n        seed_file=seed,\n        seed_symbol=seed_symbol or \"\",\n        seed_line=int(seed_line or 0),\n        mode=(mode or \"lean\").strip().lower() or \"lean\",\n        policy=(policy or \"strict\").strip().lower() or \"strict\",\n        k=max(1, min(int(k), 32)),\n    )\n    out = {k: v for k, v in out.items() if not str(k).startswith(\"_\")}\n    out[\"latency_ms\"] = round((time.perf_counter() - t0) * 1000, 1)\n    out[\"cli\"] = \"pack\"\n    out[\"query_tip\"] = (\n        \"Keep the SAME expanded code-vocab query from map; do not shrink to a vague phrase.\"\n    )\n    if out.get(\"ok\"):\n        out[\"next_cli\"] = (\n            \"Read pack[] then cold card.loc spans. If thin: \"\n            \"scubiee expand --node <heatmap id> --direction callees --with-bodies\"\n        )\n    return out"
+          },
+          {
+            "file": "packages/pipeline/context_trace.py",
+            "symbol": "_trace_engine",
+            "loc": "packages/pipeline/context_trace.py:57-93",
+            "start": 57,
+            "end": 93,
+            "chars": 1050,
+            "text": "def _trace_engine() -> str:\n    \"\"\"Normalize CTX_TRACE_ENGINE to a cache key / binder family.\n\n    Returns one of: polytrace | ultimate | poly_embed | semantic_fuse | system.\n    ``system`` covers composite_v1 (default) and callgraph_jedi.\n    \"\"\"\n    import os\n\n    raw = (os.environ.get(\"CTX_TRACE_ENGINE\") or \"composite_v1\").strip().lower()\n    if raw in {\"polytrace\", \"poly\"}:\n        return \"polytrace\"\n    if raw in {\"ultimate\", \"ultimate_trace\", \"ulti\"}:\n        return \"ultimate\"\n    if raw in {\"poly_embed\", \"poly-embed\", \"polyembed\"}:\n        return \"poly_embed\"\n    if raw in {\n        \"semantic_tracer_fuse\",\n        \"semantic_fuse\",\n        \"pack_semantic\",\n        \"fuse\",\n    }:\n        return \"semantic_fuse\"\n    if raw in {\n        \"system\",\n        \"system_trace\",\n        \"rank_default\",\n        \"semantic\",\n        \"pdg\",\n        \"dfg\",\n        \"callgraph_jedi\",\n        \"jedi\",\n        \"composite\",\n        \"composite_v1\",\n    }:\n        return \"system\"\n    # Unknown values fall back to the shipped composite\n    return \"system\""
+          },
+          {
+            "file": "packages/pipeline/context_trace.py",
+            "symbol": "_load_repo",
+            "loc": "packages/pipeline/context_trace.py:276-355",
+            "start": 276,
+            "end": 355,
+            "chars": 2689,
+            "text": "def _load_repo(root: Path, *, with_graphify: bool | None = None) -> _RepoTrace:\n    root = root.resolve()\n    import os\n\n    with_graphify = _want_graphify(with_graphify)\n    engine = _trace_engine()\n    key = f\"{root}|gfy={int(bool(with_graphify))}|eng={engine}\"\n    cached = _CACHE.get(key)\n    if cached and (time.time() - cached.built_at) < 600:\n        return cached\n\n    fingerprint = corpus_fingerprint(root)\n    bundled = _try_load_repo_bundle(\n        root, fingerprint=fingerprint, with_graphify=with_graphify, engine=engine\n    )\n    if bundled is not None:\n        nodes, graph, lsp, lex, gfy = bundled\n    else:\n        nodes = extract_nodes(root)\n        # Prefer application packages when the monorepo is huge\n        if len(nodes) > 8000:\n            slim: dict[str, TraceNode] = {\n                i: n\n                for i, n in nodes.items()\n                if n.file.startswith((\"packages/\", \"src/\", \"app/\", \"lib/\", \"fixtures/\"))\n            }\n            if slim:\n                nodes = slim\n        graph = build_ast_graph(root, nodes)\n        lsp = build_lsp_index(root, nodes, graph)\n        lex = LexicalIndex(nodes, include_path=False)\n        gfy = None\n        if with_graphify:\n            try:\n                from trace_lab.graphify_layer import (\n                    build_graphify_graph,\n                    load_store_graphify_graph,\n                )\n\n                # Prefer the graph.json written by `scubiee init` / index (fast).\n                gfy = load_store_graphify_graph(root, nodes)\n                rebuild = (os.environ.get(\"CTX_TRACE_GRAPHIFY_REBUILD\") or \"\").strip().lower() in {\n                    \"1\",\n                    \"true\",\n                    \"yes\",\n                    \"on\",\n                }\n                # Never rebuild Graphify AST on the interactive CLI path unless forced \u2014\n                # rebuild is multi-minute and was the dominant pack latency.\n                if gfy is None and rebuild:\n                    gfy = build_graphify_graph(root, nodes)\n            except Exception:  # noqa: BLE001\n                gfy = None\n        _save_repo_bundle(\n            root,\n            fingerprint=fingerprint,\n            with_graphify=with_graphify,\n            engine=engine,\n            nodes=nodes,\n            graph=graph,\n            lsp=lsp,\n            lex=lex,\n            gfy=gfy,\n        )\n\n    poly = _bind_pack_tracer(\n        root, engine=engine, nodes=nodes, lsp=lsp, gfy=gfy\n    )\n    rt = _RepoTrace(\n        root=root,\n        nodes=nodes,\n        graph=graph,\n        lsp=lsp,\n        lex=lex,\n        gfy=gfy,\n        poly=poly,\n        built_at=time.time(),\n    )\n    _CACHE[key] = rt\n    return rt"
+          },
+          {
+            "file": "packages/pipeline/locate_cli.py",
+            "symbol": "cli_expand",
+            "loc": "packages/pipeline/locate_cli.py:230-258",
+            "start": 230,
+            "end": 258,
+            "chars": 634,
+            "text": "def cli_expand(\n    *,\n    node: str,\n    path: str | Path = \".\",\n    query: str = \"\",\n    direction: str = \"callees\",\n    with_bodies: bool = False,\n    k: int = 12,\n) -> dict[str, Any]:\n    \"\"\"Delta heatmap from a pack/map node. Prefer after lean pack when a hop is missing.\"\"\"\n    from pipeline.context_trace import run_expand_context\n\n    root = _root(path)\n    nid = (node or \"\").strip()\n    if not nid:\n        return {\"ok\": False, \"tool\": \"expand\", \"error\": \"node required (heatmap id)\"}\n    t0 = time.perf_counter()\n    out = run_expand_context(\n        root,\n        node=nid,\n        query=(query or \"\").strip(),\n        di\u2026"
+          }
+        ],
+        "n_pack": 4,
+        "chain": [
+          {
+            "id": "packages/pipeline/locate_cli.py::cli_pack",
+            "loc": "packages/pipeline/locate_cli.py:179-227",
+            "edge": "seed",
+            "score": 1.0
+          },
+          {
+            "id": "packages/pipeline/context_trace.py::_trace_engine",
+            "loc": "packages/pipeline/context_trace.py:57-93",
+            "edge": "calls",
+            "score": 1.0
+          },
+          {
+            "id": "packages/pipeline/context_trace.py::_load_repo",
+            "loc": "packages/pipeline/context_trace.py:276-355",
+            "edge": "calls",
+            "score": 1.0
+          },
+          {
+            "id": "packages/pipeline/locate_cli.py::cli_expand",
+            "loc": "packages/pipeline/locate_cli.py:230-258",
+            "edge": "seed",
+            "score": 1.0
+          },
+          {
+            "id": "packages/pipeline/locate_cli.py::_root",
+            "loc": "packages/pipeline/locate_cli.py:14-15",
+            "edge": "calls",
+            "score": 0.99
+          },
+          {
+            "id": "packages/pipeline/context_trace.py::run_pack_context",
+            "loc": "packages/pipeline/context_trace.py:1100-1315",
+            "edge": "calls",
+            "score": 0.9405
+          },
+          {
+            "id": "packages/pipeline/context_trace.py::run_expand_context",
+            "loc": "packages/pipeline/context_trace.py:807-952",
+            "edge": "calls",
+            "score": 0.9405
+          },
+          {
+            "id": "packages/pipeline/context_trace.py::_heat",
+            "loc": "packages/pipeline/context_trace.py:39-44",
+            "edge": "calls",
+            "score": 0.8626
+          }
+        ],
+        "body_chars": 6000
+      },
+      "overlap": {
+        "agent_files": [
+          "packages/pipeline/__main__.py",
+          "packages/pipeline/context_trace.py",
+          "packages/pipeline/locate_cli.py"
+        ],
+        "pack_files": [
+          "packages/pipeline/context_trace.py",
+          "packages/pipeline/locate_cli.py"
+        ],
+        "file_intersection": [
+          "packages/pipeline/context_trace.py",
+          "packages/pipeline/locate_cli.py"
+        ],
+        "files_agent_only": [
+          "packages/pipeline/__main__.py"
+        ],
+        "files_pack_only": [],
+        "span_hits": [
+          {
+            "agent": "packages/pipeline/locate_cli.py:179-227",
+            "pack": "packages/pipeline/locate_cli.py:179-227",
+            "symbol": "cli_pack"
+          },
+          {
+            "agent": "packages/pipeline/locate_cli.py:230-258",
+            "pack": "packages/pipeline/locate_cli.py:230-258",
+            "symbol": "cli_expand"
+          }
+        ],
+        "file_recall_pack_covers_agent": 0.667,
+        "file_precision_pack_in_agent": 1.0
+      },
+      "usefulness": {
+        "pack_covered_agent_files_frac": 0.667,
+        "pack_body_chars": 6000,
+        "agent_read_chars": 11470,
+        "chars_saved_if_pack_enough": 5470,
+        "judgment": "pack_highly_useful"
+      }
+    }
+  ],
+  "summary": {
+    "judgments": [
+      "pack_partially_useful",
+      "pack_missed_key_reads",
+      "pack_highly_useful"
+    ],
+    "avg_agent_chars": 10402.3,
+    "avg_pack_chars": 4322.0,
+    "avg_file_recall_pack_covers_agent": 0.417
+  }
+}

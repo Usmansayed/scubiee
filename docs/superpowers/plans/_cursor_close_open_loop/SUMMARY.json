@@ -1,0 +1,100 @@
+{
+  "ok": true,
+  "preflight": {
+    "ok": true,
+    "errors": [],
+    "ort": {
+      "ok": true,
+      "checks": {
+        "has_dml": true
+      },
+      "ort_version": "1.24.4",
+      "providers": [
+        "DmlExecutionProvider",
+        "CPUExecutionProvider"
+      ],
+      "profile": "dml"
+    },
+    "health": {
+      "ok": false,
+      "ms": 362.3,
+      "soft_search_ready": false,
+      "embedder_loaded": false,
+      "url": "http://127.0.0.1:8765"
+    },
+    "busy": {
+      "ok": true,
+      "active": false,
+      "exists": false,
+      "age_s": null,
+      "path": "C:\\Users\\usman\\.scubiee\\embed_prewarm.busy"
+    }
+  },
+  "rounds_requested": 2,
+  "rounds_ran": 2,
+  "settle_s": 35.0,
+  "settle_health_poll": true,
+  "elapsed_ms": 116778.9,
+  "rounds": [
+    {
+      "round": 0,
+      "ok": true,
+      "wall_ms": 102299.8,
+      "skip_clean": false,
+      "settle_health_poll": true,
+      "post_health": {
+        "ok": false,
+        "ms": 2239.1,
+        "soft_search_ready": false,
+        "embedder_loaded": false,
+        "url": "http://127.0.0.1:8765"
+      },
+      "errors": [],
+      "phases": [
+        "clean_slate=ok 5410.5ms",
+        "host_start=ok 2507.0ms",
+        "auto_warm=ok 5515.5ms",
+        "settle=ok 37283.9ms",
+        "settle_join_embedder=ok 50646.7ms",
+        "map_first=ok 147.9ms",
+        "pack_first=ok 74.0ms",
+        "expand_first=ok 663.7ms",
+        "idle_hold=ok 0.0ms"
+      ],
+      "report_paths": {
+        "json": "C:\\Users\\usman\\Downloads\\context-engine\\docs\\superpowers\\plans\\_cursor_close_open_loop\\round_00\\mcp-host-sim-20260920T092054Z.json",
+        "md": "C:\\Users\\usman\\Downloads\\context-engine\\docs\\superpowers\\plans\\_cursor_close_open_loop\\round_00\\mcp-host-sim-20260920T092054Z.md"
+      }
+    },
+    {
+      "round": 1,
+      "ok": true,
+      "wall_ms": 12237.6,
+      "skip_clean": true,
+      "settle_health_poll": true,
+      "post_health": {
+        "ok": false,
+        "ms": 1.6,
+        "soft_search_ready": false,
+        "embedder_loaded": false,
+        "url": "http://127.0.0.1:8765"
+      },
+      "errors": [],
+      "phases": [
+        "clean_slate=ok 0.0ms",
+        "host_start=ok 2793.2ms",
+        "auto_warm=ok 1557.2ms",
+        "settle=ok 6622.2ms",
+        "settle_join_embedder=ok 392.5ms",
+        "map_first=ok 83.7ms",
+        "pack_first=ok 66.2ms",
+        "expand_first=ok 657.6ms",
+        "idle_hold=ok 0.0ms"
+      ],
+      "report_paths": {
+        "json": "C:\\Users\\usman\\Downloads\\context-engine\\docs\\superpowers\\plans\\_cursor_close_open_loop\\round_01\\mcp-host-sim-20260920T092109Z.json",
+        "md": "C:\\Users\\usman\\Downloads\\context-engine\\docs\\superpowers\\plans\\_cursor_close_open_loop\\round_01\\mcp-host-sim-20260920T092109Z.md"
+      }
+    }
+  ]
+}

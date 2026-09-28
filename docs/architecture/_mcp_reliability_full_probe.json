@@ -1,0 +1,57 @@
+{
+  "checks": [
+    {
+      "check": "initialize",
+      "ok": true,
+      "detail": {
+        "version": "0.3.80",
+        "boot_ms": 8321.1
+      }
+    },
+    {
+      "check": "warm_ready_within_15s",
+      "ok": true,
+      "detail": {
+        "ready_ms": 5839.0,
+        "warm_ready_map": true,
+        "embedder_loaded": true
+      }
+    },
+    {
+      "check": "map1_ok",
+      "ok": true,
+      "detail": {
+        "wall_ms": 3580.3,
+        "elapsed_ms": 3297.7
+      }
+    },
+    {
+      "check": "pack1_ok",
+      "ok": true,
+      "detail": {
+        "wall_ms": 21374.6,
+        "elapsed_ms": 3016.6,
+        "thin": false
+      }
+    },
+    {
+      "check": "map2_steady_ms",
+      "ok": true,
+      "detail": {
+        "wall_ms": 574.1,
+        "elapsed_ms": 301.6,
+        "cache": null
+      }
+    },
+    {
+      "check": "pack2_steady",
+      "ok": true,
+      "detail": {
+        "wall_ms": 1578.4,
+        "elapsed_ms": 332.5
+      }
+    }
+  ],
+  "failed": 0,
+  "passed": 6
+}

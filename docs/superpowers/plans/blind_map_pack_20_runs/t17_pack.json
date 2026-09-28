@@ -1,0 +1,33 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 1.7,
+  "stdout_chars": 1120,
+  "stderr_tail": "",
+  "json": {
+    "ok": true,
+    "tool": "pack",
+    "seed": {
+      "id": "packages/pipeline/__init__.py::__getattr__",
+      "file": "packages/pipeline/__init__.py",
+      "symbol": "__getattr__"
+    },
+    "chain": [
+      {
+        "id": "packages/pipeline/__init__.py::__getattr__",
+        "loc": "packages/pipeline/__init__.py:21-38",
+        "edge": "seed",
+        "score": 1.0
+      }
+    ],
+    "pack": [
+      {
+        "id": "packages/pipeline/__init__.py::__getattr__",
+        "loc": "packages/pipeline/__init__.py:21-38",
+        "text": "def __getattr__(name: str) -> Any:\n    if name in (\"IndexStats\", \"index_repo\"):\n        from pipeline.indexer import IndexStats, index_repo\n\n        return IndexStats if name == \"IndexStats\" else index_repo\n    if name in (\"SearchResult\", \"search_repo\"):\n        from pipeline.searcher import SearchResult, search_repo\n\n        return SearchResult if name == \"SearchResult\" else search_repo\n    if name == \"PipelineStore\":\n        from pipeline.store import PipelineStore\n\n        return PipelineStore\n    if name == \"load_engine\":\n        from pipeline.engine import load_engine\n\n        return load_engine\n    raise AttributeError(f\"module {__name__!r} has no attribute {name!r}\")"
+      }
+    ],
+    "cold": []
+  },
+  "stdout_preview": ""
+}

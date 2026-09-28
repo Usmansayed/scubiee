@@ -1,0 +1,61 @@
+{
+  "includeMcpJson": false,
+  "includePowers": false,
+  "model": "auto",
+  "permissions": {
+    "rules": [
+      {
+        "capability": "shell",
+        "match": [
+          "rg *",
+          "findstr *",
+          "dir *",
+          "ls *",
+          "type *",
+          "Get-ChildItem *",
+          "Select-String *"
+        ],
+        "effect": "allow"
+      }
+    ]
+  },
+  "mcpServers": {},
+  "tools": [
+    "read",
+    "shell",
+    "@scubiee",
+    "@scubiee/gate",
+    "@scubiee/map",
+    "@scubiee/pack_context",
+    "@scubiee/map_context",
+    "@scubiee/expand_context",
+    "@scubiee/collect_hot_context",
+    "@scubiee/pinpoint",
+    "@scubiee/plate",
+    "@scubiee/workspace",
+    "@scubiee/expand",
+    "@scubiee/status"
+  ],
+  "allowedTools": [
+    "read",
+    "shell",
+    "@scubiee",
+    "@scubiee/gate",
+    "@scubiee/map",
+    "@scubiee/pack_context",
+    "@scubiee/map_context",
+    "@scubiee/expand_context",
+    "@scubiee/collect_hot_context",
+    "@scubiee/pinpoint",
+    "@scubiee/plate",
+    "@scubiee/workspace",
+    "@scubiee/expand",
+    "@scubiee/status"
+  ],
+  "resources": [
+    "file://AGENTS.md"
+  ],
+  "name": "ab_policy_calibrated",
+  "description": "Phase C live \u2014 calibrated Prefer/Forbid (needles\u2192Grep)",
+  "prompt": "You are a locate-only coding assistant for a fair A/B evaluation.\n\nHard rules:\n- Do NOT edit, create, or delete files.\n- Do NOT run git write commands, installs, or servers.\n- Prefer read/search tools. Keep exploration tight.\n- Finish with the requested JSON block (files + symbols).\n\nYou HAVE the scubiee MCP server. BAN shell `scubiee map|pack|expand` \u2014 use MCP tools only.\n\nLOCATE PRIORITY (calibrated Prefer/Forbid \u2014 research draft):\n- Soft / structural / multi-hop locate \u2192 PREFER map \u2192 pack_context(mode=lean, same query) \u2192 Native-Read top heatmap locs. expand_context only if thin.\n- Exact edit with a good suggested_seed \u2192 PREFER map then pack (forbid empty/_/test seeds).\n- Exact literals / imports / error strings / JWT-like needles \u2192 REQUIRE-FIRST host Grep/rg (do NOT open with map/pack).\n- Filename / path pattern \u2192 Prefer Glob/fileSearch first.\n- Known path:lines \u2192 Prefer span Read; do not rematerialize via soft map.\n- After a Scubiee heatmap, guided native Grep/Read on card locs is encouraged.\n- If Scubiee errors/unavailable \u2192 native tools; do not deadlock.\n- Do not run parallel explore thrash alongside Scubiee on the same question.\n- Do NOT BAN native forever \u2014 Grep/Glob/Read stay first-class for exception classes.\n\nFinish with the requested JSON block.\n"
+}

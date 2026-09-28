@@ -1,0 +1,81 @@
+{
+  "project_id": "ce_3536ac8e8e83bb8e4d888db37847729c",
+  "experiments": [
+    {
+      "name": "baseline_health",
+      "pid": 11304,
+      "warm": "ready",
+      "emb": true,
+      "dense": true,
+      "chunks": 7521,
+      "gen": 1
+    },
+    {
+      "name": "dirty_accept",
+      "ok": true,
+      "paths": [
+        "packages/pipeline/_pract_sync_probe_PRACT_SYNC_24e7615b.py"
+      ],
+      "dropped": [],
+      "ms": 442.1
+    },
+    {
+      "name": "hot_sync_visible",
+      "ok": true,
+      "seconds": 4.809,
+      "search_ms": 146.9,
+      "iter": 4,
+      "pid": 11304,
+      "top": [
+        "packages/pipeline/_pract_sync_probe_PRACT_SYNC_24e7615b.py",
+        "tests/test_user_journey_scenarios.py",
+        "tests/test_lifecycle_just_works.py"
+      ]
+    },
+    {
+      "name": "dirty_testdata_ignored",
+      "ok": true,
+      "paths": [],
+      "dropped": [
+        {
+          "path": "testdata/_pract_ignore_probe.py",
+          "reason": "scubieeignore"
+        }
+      ]
+    },
+    {
+      "name": "dirty_builtin_filter",
+      "ok": true,
+      "paths": [
+        "packages/pipeline/ignore.py"
+      ],
+      "dropped": [
+        {
+          "path": "node_modules/fake/pkg.js",
+          "reason": "builtin"
+        }
+      ]
+    },
+    {
+      "name": "burst_search_15",
+      "unique_pids": [
+        11304
+      ],
+      "flaps": 0,
+      "fails": 0
+    },
+    {
+      "name": "http_pack",
+      "ok": false,
+      "ms": 29.0,
+      "keys": [
+        "error",
+        "ok",
+        "http_status"
+      ],
+      "error": "not found",
+      "thin": null,
+      "n": 0
+    }
+  ]
+}

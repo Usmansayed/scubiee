@@ -81,6 +81,7 @@ def test_broad_home_allows_explicit_confirm(monkeypatch, tmp_path: Path) -> None
 
 def test_index_file_hashes_skip_testdata(tmp_path: Path) -> None:
     from pipeline.indexer import _index_file_hashes
+    from pipeline.ignore import clear_ignore_cache
 
     (tmp_path / "src").mkdir()
     (tmp_path / "src" / "real.py").write_text("x=1\n", encoding="utf-8")
@@ -88,5 +89,7 @@ def test_index_file_hashes_skip_testdata(tmp_path: Path) -> None:
     td.mkdir(parents=True)
     for i in range(50):
         (td / f"f{i}.py").write_text(f"x={i}\n", encoding="utf-8")
+    (tmp_path / ".scubieeignore").write_text("testdata/\n", encoding="utf-8")
+    clear_ignore_cache()
     assert len(_index_file_hashes(tmp_path)) == 1
     assert preflight_index_scope(tmp_path, confirm=False) == 1

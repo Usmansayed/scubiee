@@ -16,7 +16,9 @@ import re
 import shutil
 import subprocess
 import sys
+import threading
 import time
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -213,6 +215,47 @@ Implement end-to-end: explore → edit → test.
             "tests/test_auto_sessions_observability.py",
         ),
     },
+    "disk_callers": {
+        "title": "same-file callers when the symbol is missing from the call graph",
+        "out_stem": "2026-09-23-kiro-disk-callers",
+        "prompt": """# Development task — callers of a function that is not in the baked call graph
+
+## Problem
+Asking "who calls this function" works when that function is already a node in the baked call graph. When the function exists on disk in a Python file but is missing from the graph, the callers direction currently comes back empty and tells the user to refresh the graph. That is the wrong outcome: the source file is already on disk, and a same-file scan can see which functions in that file call the missing one.
+
+The callee direction for a disk-only symbol already parses the body and resolves names. Do not regress that. Do not rebuild the whole graph on the request.
+
+## Desired outcome
+When someone asks for callers of a symbol that is not a graph node, but the symbol's source is on disk:
+- Return the functions in that same file that actually call it.
+- Do not return functions in the same file that do not call it.
+- A symbol nobody calls still succeeds with an empty caller list.
+- Callers that live only in other files are out of scope; same-file is the requirement.
+- Existing callee expansion for disk-only symbols must keep working.
+
+## Requirements
+1. Automated test: same file has one function that calls the missing symbol and one that does not. The symbol is absent from the graph. Only the real caller is returned.
+2. Automated test: a symbol with no callers returns success and an empty list.
+3. Keep the change small. Extend the existing expand path; do not add a second API.
+4. Do not commit or push. Local tests are fine.
+
+## Success criteria
+- Same-file callers of a graph-missing symbol are returned.
+- Non-callers in that file are not returned.
+- Uncalled symbol → success and empty.
+- Disk callee expansion still works.
+- Final reply: what changed and how you verified.
+
+Implement end-to-end: explore the codebase, then edit, then run the relevant tests yourself.
+""",
+        "test_keywords": (
+            "disk_callers",
+            "missing_graph",
+        ),
+        "test_files": (
+            "tests/test_disk_callers_missing_graph.py",
+        ),
+    },
     "pack_bodies_optin": {
         "title": "MCP pack body opt-in actually collects bodies",
         "out_stem": "2026-09-06-kiro-cli-ab-dev4-pack-bodies",
@@ -294,19 +337,24 @@ Implement end-to-end: explore → edit → test.
         "prompt": """# Retrieval challenge — assemble a reasoning context pack (NO code changes)
 
 ## Mission
-You must retrieve enough multi-hop codebase context to answer a hard product question later —
-but you will NOT implement anything. Your ONLY deliverable is one markdown file that stores
-all context needed for reasoning.
+Retrieve enough multi-hop production evidence to answer a hard product question later.
+You will NOT implement anything. Your ONLY deliverable is one markdown context file.
 
-## Hard question (do not answer in chat — put evidence in the file)
-Trace the full `scubiee connect` surface for Cursor-like hosts end-to-end:
-1. Where connect starts and how tool-surface install is invoked.
-2. Where mcp.json autoApprove / alwaysAllow (or equivalent allowlists) are written.
-3. Where permissions.json mcpAllowlist (or equivalent) is applied for the project.
-4. Where AGENTS.md / host GATE rule text is written for managed repos.
-5. How Cursor rule install relates to that GATE text (if at all).
+## Hard question (soft — do not answer in chat; put evidence in the file)
+When a developer runs this product's **connect / enroll** flow for a Cursor-like IDE host,
+trace end-to-end how the repo becomes a managed coding surface:
 
-Ignore CLI banners/print helpers. Prefer production packages/ code over tests/docs.
+1. What starts that connect/enroll path and how host tool-surface install is triggered.
+2. Where the host MCP server config gets its tool auto-approve / always-allow style allowlists written.
+3. Where a separate project permission allowlist for MCP tools (if any) is applied onto the repo surface.
+4. Where standing agent/project GATE rule text is written for managed repos.
+5. How optional IDE-native rule install relates to that GATE text (if at all).
+
+Constraints on how you search:
+- Prefer production library code over tests, fixtures, docs, scripts, and eval harnesses.
+- Ignore CLI banners / pretty-print helpers.
+- Do **not** invent paths or symbols you did not retrieve.
+- Soft locate: enrich a short code-vocab query, then follow the project's locate ladder if tools are available.
 
 ## Deliverable (strict)
 Write exactly one file:
@@ -316,7 +364,7 @@ That file MUST contain:
 - A short problem restatement (≤8 lines).
 - An ordered call/flow narrative (entry → writers → side effects).
 - A table or bullet list of concrete `path` + `symbol` (+ optional `loc` if known) for every
-  hop you rely on.
+  hop you rely on — only what you actually found.
 - Short excerpts or paraphrases of the critical logic (enough to reason without re-opening the repo).
 - A final "open questions / unknowns" section if anything is still unclear.
 
@@ -325,12 +373,12 @@ That file MUST contain:
 - Do NOT commit or push.
 - Do NOT invent paths/symbols you did not find.
 - Do NOT read or copy from any sibling A/B workspace (no `../with`, `../without`, other
-  `.ab_workspaces/**` trees, or another arm's `out/ab_retrieval_context.md`).
+  `.ab_workspaces/**` trees, or another arm's retrieval output).
 - Work ONLY inside THIS workspace root.
 
 ## Success
 - File exists at `out/ab_retrieval_context.md`.
-- It is self-contained enough that a later agent could reason about connect→permissions→GATE
+- It is self-contained enough that a later agent could reason about connect → permissions → GATE
   without rediscovering the graph.
 - Stop when the file is written. Brief chat summary is OK; the file is the artifact.
 """,
@@ -746,19 +794,14 @@ Rules:
 """
 
 # Explicit ladder tools (also allow @scubiee wildcard). Keep in sync with PHASE_LOCATE_TOOLS.
+# Phase surface only — do not allowlist tools the server does not expose.
 SCUBIEE_LOCATE_TOOLS = [
     "@scubiee",
     "@scubiee/gate",
     "@scubiee/map",
     "@scubiee/pack_context",
-    "@scubiee/map_context",
     "@scubiee/expand_context",
     "@scubiee/collect_hot_context",
-    "@scubiee/pinpoint",
-    "@scubiee/plate",
-    "@scubiee/focus",
-    "@scubiee/grep",
-    "@scubiee/glob",
     "@scubiee/workspace",
     "@scubiee/expand",
     "@scubiee/status",
@@ -766,16 +809,10 @@ SCUBIEE_LOCATE_TOOLS = [
 
 SCUBIEE_AUTO_APPROVE = [
     "gate",
+    "map",
     "pack_context",
-    "map_context",
     "expand_context",
     "collect_hot_context",
-    "map",
-    "pinpoint",
-    "plate",
-    "focus",
-    "grep",
-    "glob",
     "workspace",
     "expand",
     "status",
@@ -812,6 +849,7 @@ MCP_PREFLIGHT_REQUIRED = (
     "expand_context",
     "collect_hot_context",
     "workspace",
+    "expand",
 )
 
 
@@ -920,6 +958,9 @@ def _scubiee_env(repo: Path) -> dict[str, str]:
         "CTX_ENGINE_URL": "http://127.0.0.1:8765",
         "CTX_AUTO_INDEX": "0",
         "CTX_MCP_SESSION_ISOLATE": "1",
+        # Unique per agent write so Kiro does not inherit a stale Cursor/shell session
+        # id (that caused TransportClosed / locked session stores).
+        "CTX_MCP_SESSION_ID": f"kiro-ab-{uuid.uuid4().hex[:12]}",
         "CTX_MCP_BRIDGE_MODE": "auto",
         "CTX_REPO": str(locate_root).replace("\\", "/"),
         "CTX_MCP_CLIENT": "kiro",
@@ -929,6 +970,7 @@ def _scubiee_env(repo: Path) -> dict[str, str]:
         "CTX_PROJECT_ID": locate_pid,
         "CTX_TOKEN_MODE": "savings",
         "PYTHONUTF8": "1",
+        "CTX_ENGINE_IDLE_S": "3600",
         "CTX_SCUBIEE_BUILD": "0.3.16-kiro-ab-dev",
     }
     if PROJECT_MCP.is_file():
@@ -971,7 +1013,8 @@ def _gate_body() -> str:
     sys.path.insert(0, str(ROOT / "packages"))
     from pipeline.rules_installer import managed_gate_rule_body  # noqa: WPS433
 
-    return managed_gate_rule_body(f"1:{PROJECT_ID}", PROJECT_ID)
+    pid = _live_project_id(ROOT)
+    return managed_gate_rule_body(f"1:{pid}", pid)
 
 
 def _upsert_agents_gate(agents_md: Path, inner: str) -> None:
@@ -994,7 +1037,9 @@ def _gate_body_mcp() -> str:
     sys.path.insert(0, str(ROOT / "packages"))
     from pipeline.rules_installer import managed_gate_mcp_only_rule_body  # noqa: WPS433
 
-    return managed_gate_mcp_only_rule_body(f"1:{PROJECT_ID}", PROJECT_ID)
+    # Must match live gate / CTX_PROJECT_ID — stale A/B constant confused agents.
+    pid = _live_project_id(ROOT)
+    return managed_gate_mcp_only_rule_body(f"1:{pid}", pid)
 
 
 RULES_PROBE_PROMPT = """# Rules visibility probe (NO product work)
@@ -1079,16 +1124,24 @@ def assert_agent_surface(ws: Path, agent_path: Path, *, with_mcp: bool) -> list[
     errs: list[str] = []
     cfg = json.loads(agent_path.read_text(encoding="utf-8"))
     if with_mcp:
-        # Prefer workspace mcp.json + includeMcpJson so Kiro non-interactive loads Scubiee.
-        if cfg.get("includeMcpJson") is not True:
-            errs.append("with-arm includeMcpJson must be true (workspace mcp.json load)")
-        ws_mcp = ws / ".kiro" / "settings" / "mcp.json"
-        try:
-            ws_servers = (json.loads(ws_mcp.read_text(encoding="utf-8")).get("mcpServers") or {})
-        except (OSError, json.JSONDecodeError):
-            ws_servers = {}
-        if not ws_servers.get("scubiee"):
-            errs.append("with-arm workspace .kiro/settings/mcp.json must define scubiee")
+        # Agent-embedded MCP only (successful 170339 pattern). Do not require
+        # includeMcpJson — duplicate mcp.json + agent servers breaks Kiro load.
+        if cfg.get("includeMcpJson") is True:
+            # Still allowed if workspace mcp is empty; warn-as-error only when
+            # both surfaces define scubiee (duplicate).
+            ws_mcp = ws / ".kiro" / "settings" / "mcp.json"
+            try:
+                ws_servers = (
+                    json.loads(ws_mcp.read_text(encoding="utf-8")).get("mcpServers") or {}
+                )
+            except (OSError, json.JSONDecodeError):
+                ws_servers = {}
+            if ws_servers.get("scubiee") and (cfg.get("mcpServers") or {}).get("scubiee"):
+                errs.append(
+                    "with-arm must not define scubiee in BOTH agent mcpServers and mcp.json"
+                )
+        if not (cfg.get("mcpServers") or {}).get("scubiee"):
+            errs.append("with-arm must embed mcpServers.scubiee")
     elif cfg.get("includeMcpJson") is not False:
         errs.append("without-arm includeMcpJson must be false")
     tools = cfg.get("tools") or []
@@ -1107,6 +1160,8 @@ def assert_agent_surface(ws: Path, agent_path: Path, *, with_mcp: bool) -> list[
                 errs.append("with-arm MCP env missing CTX_REPO")
             if env.get("CTX_MCP_CLIENT") != "kiro":
                 errs.append("with-arm MCP env CTX_MCP_CLIENT must be kiro")
+            if not env.get("CTX_MCP_SESSION_ID"):
+                errs.append("with-arm MCP env missing CTX_MCP_SESSION_ID")
             if not (sc.get("autoApprove") or sc.get("alwaysAllow")):
                 errs.append("with-arm MCP missing autoApprove/alwaysAllow")
         if "@scubiee" not in [str(t) for t in tools] and not any(
@@ -1141,7 +1196,11 @@ def assert_agent_surface(ws: Path, agent_path: Path, *, with_mcp: bool) -> list[
                 errs.append(f"{label} missing heatmap pack emphasis")
             if "BAN whole-file" not in txt and "whole-file Read" not in txt:
                 errs.append(f"{label} missing whole-file Read ban after pack")
-            if "automatic FAIL" not in txt and "required next" not in txt.lower():
+            if (
+                "automatic FAIL" not in txt
+                and "required next" not in txt.lower()
+                and "skipping `pack_context`" not in txt.lower()
+            ):
                 errs.append(f"{label} must strictly require pack_context (FAIL if skipped)")
             if "warming" not in txt.lower() and "uncallable" not in txt.lower():
                 errs.append(f"{label} must forbid warming/error as excuse to skip pack")
@@ -1203,6 +1262,9 @@ def write_agents(ws: Path, *, model: str, with_mcp: bool) -> Path:
     ]
     mcp_servers: dict[str, Any] = {}
     auto_approve: list[str] = []
+    # Match the successful 20260909T170339Z run: agent-embedded MCP only.
+    # includeMcpJson=true + agent mcpServers makes Kiro skip mcp.json and still
+    # fail startup ("Skipping duplicate from legacy mcp.json").
     include_mcp_json = False
     if with_mcp:
         tools = tools + list(SCUBIEE_LOCATE_TOOLS)
@@ -1212,18 +1274,14 @@ def write_agents(ws: Path, *, model: str, with_mcp: bool) -> Path:
             "args": [],
             "env": _scubiee_env(ws),
             "disabled": False,
+            "timeout": 300000,
             "autoApprove": auto_approve,
             "alwaysAllow": auto_approve,
         }
         mcp_servers = {"scubiee": scubiee_cfg}
-        # Also write workspace mcp.json — Kiro non-interactive often fails to load
-        # agent-embedded mcpServers alone ("Not all mcp servers loaded").
         (ws / ".kiro" / "settings").mkdir(parents=True, exist_ok=True)
-        _write_json(
-            ws / ".kiro" / "settings" / "mcp.json",
-            {"mcpServers": {"scubiee": scubiee_cfg}},
-        )
-        include_mcp_json = True
+        # Keep workspace mcp.json empty so there is no duplicate server name.
+        _write_json(ws / ".kiro" / "settings" / "mcp.json", {"mcpServers": {}})
     else:
         (ws / ".kiro" / "settings").mkdir(parents=True, exist_ok=True)
         _write_json(ws / ".kiro" / "settings" / "mcp.json", {"mcpServers": {}})
@@ -1286,18 +1344,25 @@ def snapshot_workspace(dst: Path) -> None:
         shutil.rmtree(dst, ignore_errors=True)
     dst.mkdir(parents=True, exist_ok=True)
 
+    def _skip_name(n: str) -> bool:
+        if n in _EXCLUDE_DIRS:
+            return True
+        if n.endswith(".pyc") or n.endswith(".pyo"):
+            return True
+        # poisoned/rotated embed caches are huge and must not enter A/B snapshots
+        if n.startswith(".embed_cache"):
+            return True
+        # Locked venv DLLs abort copytree and are not part of the task.
+        if n.startswith(".venv"):
+            return True
+        return False
+
     def _ignore(dirpath: str, names: list[str]) -> set[str]:
-        ignored: set[str] = set()
-        for n in names:
-            if n in _EXCLUDE_DIRS:
-                ignored.add(n)
-            elif n.endswith(".pyc") or n.endswith(".pyo"):
-                ignored.add(n)
-        return ignored
+        return {n for n in names if _skip_name(n)}
 
     # copytree with ignore
     for item in ROOT.iterdir():
-        if item.name in _EXCLUDE_DIRS:
+        if _skip_name(item.name):
             continue
         target = dst / item.name
         if item.is_dir():
@@ -1433,11 +1498,12 @@ If MCP tools are NOT callable, set mcp_tools_visible=false and can_use_scubiee_m
 5. `expand_context` — node from pack seed/heatmap, direction=callees, with_bodies=false.
 6. `collect_hot_context` — ids= from one heatmap/pack node (or threshold) so bodies path is exercised.
 7. `workspace` — show/session rematerialize path (whatever the tool accepts for a light check).
+8. `expand` — pass a heatmap id (`file::symbol`) from the pack as `handle`. This is the ship `expand` tool, not `expand_context`.
 
 Optional if exposed (lab only — do NOT invent): `map_context`, `pinpoint`, `plate`.
 
 Answer ONLY with one JSON object (no markdown fence):
-{"can_use_scubiee_mcp":bool,"mcp_tools_visible":bool,"saw_gate_rules":bool,"permissions_ok":bool,"used_cli_locate":bool,"scubiee_tool_names":[str],"tools":{"gate":{"ok":bool},"status":{"ok":bool},"map":{"ok":bool},"pack_context":{"ok":bool,"heatmap_n":int|null},"expand_context":{"ok":bool},"collect_hot_context":{"ok":bool},"workspace":{"ok":bool},"map_context":{"ok":bool|null},"pinpoint":{"ok":bool|null},"plate":{"ok":bool|null}},"notes":str}
+{"can_use_scubiee_mcp":bool,"mcp_tools_visible":bool,"saw_gate_rules":bool,"permissions_ok":bool,"used_cli_locate":bool,"scubiee_tool_names":[str],"tools":{"gate":{"ok":bool},"status":{"ok":bool},"map":{"ok":bool},"pack_context":{"ok":bool,"heatmap_n":int|null},"expand_context":{"ok":bool},"collect_hot_context":{"ok":bool},"workspace":{"ok":bool},"expand":{"ok":bool},"map_context":{"ok":bool|null},"pinpoint":{"ok":bool|null},"plate":{"ok":bool|null}},"notes":str}
 
 Rules:
 - Do not edit files.
@@ -1464,8 +1530,88 @@ JSON shape:
 """
 
 
+def ensure_kiro_mcp_wait_settings() -> None:
+    """Force Kiro to wait for MCP before the first prompt.
+
+    ``mcp.loadedBefore=true`` blocks chat until servers finish init (or timeout).
+    Without this, non-interactive prints \"Not all mcp servers loaded\" and continues
+    with no @scubiee tools even when the server comes up a moment later.
+
+    Timeouts are milliseconds in ``~/.kiro/settings/cli.json`` (Kiro 2.21). Values
+    like 90 abort in ~3s and race the bridge; use >=120000 so map/pack attach.
+    Write the JSON file directly (UTF-8, no BOM) — ``kiro settings`` alone has been
+    flaky under Cursor shells and can leave stale/short timeouts.
+    """
+    cfg_path = Path.home() / ".kiro" / "settings" / "cli.json"
+    cfg_path.parent.mkdir(parents=True, exist_ok=True)
+    cfg: dict[str, Any] = {}
+    if cfg_path.is_file():
+        try:
+            raw = cfg_path.read_text(encoding="utf-8-sig")
+            loaded = json.loads(raw) if raw.strip() else {}
+            if isinstance(loaded, dict):
+                cfg = loaded
+        except (OSError, json.JSONDecodeError):
+            cfg = {}
+    cfg["mcp.loadedBefore"] = True
+    cfg["mcp.initTimeout"] = max(int(cfg.get("mcp.initTimeout") or 0), 120_000)
+    cfg["mcp.noInteractiveTimeout"] = max(
+        int(cfg.get("mcp.noInteractiveTimeout") or 0), 120_000
+    )
+    cfg.setdefault("toolSearch.enabled", False)
+    cfg_path.write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")
+    # Best-effort mirror via CLI (ignore failures).
+    for key, val in (
+        ("mcp.loadedBefore", "true"),
+        ("mcp.initTimeout", str(cfg["mcp.initTimeout"])),
+        ("mcp.noInteractiveTimeout", str(cfg["mcp.noInteractiveTimeout"])),
+    ):
+        subprocess.run(
+            [str(KIRO), "settings", key, val],
+            cwd=str(ROOT),
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+
+
+def _kill_hung_mcp_bridges() -> None:
+    """Best-effort: clear zombie scubiee-mcp-bridge processes that block new spawns."""
+    try:
+        subprocess.run(
+            [
+                "powershell",
+                "-NoProfile",
+                "-Command",
+                "Get-CimInstance Win32_Process | "
+                "Where-Object { $_.Name -match 'scubiee-mcp-bridge' } | "
+                "ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }",
+            ],
+            check=False,
+            capture_output=True,
+            timeout=15,
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _kiro_env(ws: Path) -> dict[str, str]:
-    env = os.environ.copy()
+    # Scrub Cursor agent env so Kiro MCP sessions are not pinned to
+    # CURSOR_CONVERSATION_ID (shows up as kiro@chat-<cursor-uuid>).
+    drop_prefixes = ("CURSOR_", "__CURSOR")
+    drop_exact = {
+        "CTX_MCP_SESSION_ID",
+        "CTX_MCP_SESSION_ISOLATE",
+        "VSCODE_IPC_HOOK",
+        "VSCODE_PID",
+    }
+    env = {
+        k: v
+        for k, v in os.environ.items()
+        if not k.startswith(drop_prefixes) and k not in drop_exact
+    }
     local_bin = str(Path.home() / ".local" / "bin")
     path_now = env.get("PATH") or env.get("Path") or ""
     if local_bin.lower() not in path_now.lower():
@@ -1475,6 +1621,12 @@ def _kiro_env(ws: Path) -> dict[str, str]:
     env["CTX_REPO"] = str(ws).replace("\\", "/")
     env.setdefault("PYTHONUTF8", "1")
     env.setdefault("PYTHONIOENCODING", "utf-8")
+    # Keep engine warm for the duration of the Kiro arm.
+    env["CTX_ENGINE_IDLE_S"] = "3600"
+    # Fresh Kiro-owned session id every launch (avoid Cursor chat reuse).
+    env["CTX_MCP_CLIENT"] = "kiro"
+    env["CTX_MCP_SESSION_ID"] = f"kiro-ab-{uuid.uuid4().hex[:10]}"
+    env["CTX_MCP_SESSION_ISOLATE"] = "1"
     return env
 
 
@@ -1853,23 +2005,36 @@ def deterministic_warm_proof(ws: Path, *, timeout_s: float = 120.0) -> dict[str,
             "text_head": (gate_text or str(gate_payload))[:120],
         }
 
-        map_raw = client.request(
-            "tools/call",
-            {
-                "name": "map",
-                "arguments": {"query": WARM_PROOF_QUERY, "k": 8},
-            },
-            timeout=90,
-        )
-        map_payload = _mcp_tool_payload(map_raw)
-        cards = map_payload.get("cards") or map_payload.get("results") or []
-        map_ok = bool(
-            map_payload.get("ok") is True
-            and isinstance(cards, list)
-            and len(cards) > 0
-            and not map_payload.get("error")
-            and str(map_payload.get("warm_state") or "").lower() not in {"warming", "error"}
-        )
+        map_payload: dict[str, Any] = {}
+        cards: list[Any] = []
+        map_ok = False
+        for attempt in range(4):
+            map_raw = client.request(
+                "tools/call",
+                {
+                    "name": "map",
+                    "arguments": {"query": WARM_PROOF_QUERY, "k": 8},
+                },
+                timeout=90,
+            )
+            map_payload = _mcp_tool_payload(map_raw)
+            cards = map_payload.get("cards") or map_payload.get("results") or []
+            if not isinstance(cards, list):
+                cards = []
+            warm = str(map_payload.get("warm_state") or "").lower()
+            err = str(map_payload.get("error") or "")
+            map_ok = bool(
+                map_payload.get("ok") is True
+                and len(cards) > 0
+                and not err
+                and warm not in {"warming", "error", "embed_loading", "ast_warming"}
+            )
+            if map_ok or (
+                err not in {"dense_embed_loading", "embed_loading", "ast_warming", "warming"}
+                and warm not in {"embed_loading", "warming", "ast_warming"}
+            ):
+                break
+            time.sleep(4.0 + attempt * 4.0)
         seed = map_payload.get("suggested_seed") or {}
         if not isinstance(seed, dict):
             seed = {}
@@ -1906,23 +2071,32 @@ def deterministic_warm_proof(ws: Path, *, timeout_s: float = 120.0) -> dict[str,
         }
         if seed_symbol:
             pack_args["seed_symbol"] = seed_symbol
-        pack_raw = client.request(
-            "tools/call",
-            {"name": "pack_context", "arguments": pack_args},
-            timeout=90,
-        )
-        pack_payload = _mcp_tool_payload(pack_raw)
-        heatmap = pack_payload.get("heatmap") or pack_payload.get("pack") or []
-        pack_ok = bool(
-            pack_payload.get("ok") is True
-            and isinstance(heatmap, list)
-            and len(heatmap) > 0
-            and not pack_payload.get("error")
-            and "seed not found" not in str(pack_payload.get("error") or "").lower()
-        )
+        pack_payload: dict[str, Any] = {}
+        heatmap: list[Any] = []
+        pack_ok = False
+        for attempt in range(4):
+            pack_raw = client.request(
+                "tools/call",
+                {"name": "pack_context", "arguments": pack_args},
+                timeout=90,
+            )
+            pack_payload = _mcp_tool_payload(pack_raw)
+            heatmap = pack_payload.get("heatmap") or pack_payload.get("pack") or []
+            if not isinstance(heatmap, list):
+                heatmap = []
+            pack_ok = bool(
+                pack_payload.get("ok") is True
+                and len(heatmap) > 0
+                and not pack_payload.get("error")
+                and "seed not found" not in str(pack_payload.get("error") or "").lower()
+            )
+            err = str(pack_payload.get("error") or "")
+            if pack_ok or err not in {"ast_warming", "warming"}:
+                break
+            time.sleep(4.0 + attempt * 4.0)
         report["checks"]["pack_context"] = {
             "ok": pack_ok,
-            "heatmap_n": len(heatmap) if isinstance(heatmap, list) else 0,
+            "heatmap_n": len(heatmap),
             "seed_file": seed_file,
             "seed_symbol": seed_symbol,
             "error": pack_payload.get("error"),
@@ -1994,6 +2168,8 @@ def run_kiro_mcp_preflight(
         }
 
     index_info = ensure_snapshot_index(ws, timeout_s=min(timeout_s, 600))
+    ensure_kiro_mcp_wait_settings()
+    _kill_hung_mcp_bridges()
 
     cmd = [
         str(KIRO),
@@ -2064,8 +2240,9 @@ def run_kiro_mcp_preflight(
             # Trust answer only if we also saw at least map+pack in log
             pass
 
-    # Hard require core ladder tools appear in the MCP log
-    core = ("gate", "map", "pack_context", "expand_context")
+    # Hard require every ship-surface tool in the MCP log. A missing tool aborts
+    # the benchmark; do not treat workspace/collect/status/expand as optional.
+    core = MCP_PREFLIGHT_REQUIRED
     core_missing = [n for n in core if n not in mcp_seen]
     used_cli = bool(cli_seen) or bool(
         answer.get("used_cli_locate") if isinstance(answer, dict) else False
@@ -2111,17 +2288,6 @@ def run_kiro_mcp_preflight(
         and "map" not in failed_required
         and "pack_context" not in failed_required
     )
-    # Soften ONLY for optional tools (workspace/collect/status) — never for map/pack.
-    if not ok and can_use and not core_missing and not used_cli and map_payload_ok and pack_payload_ok:
-        soft_missing = [n for n in missing_required if n not in core]
-        if not soft_missing or set(soft_missing) <= {"workspace", "collect_hot_context", "status"}:
-            claimed_ok = all(
-                (isinstance(tool_report.get(n), dict) and tool_report[n].get("ok"))
-                or n in mcp_seen
-                for n in MCP_PREFLIGHT_REQUIRED
-                if n not in {"map", "pack_context"}
-            )
-            ok = bool(claimed_ok and map_payload_ok and pack_payload_ok)
 
     err = None
     if not ok:
@@ -2563,57 +2729,27 @@ def _git_diff_stat(ws: Path) -> dict[str, Any]:
 
 
 def _run_tests(ws: Path) -> dict[str, Any]:
-    """Run focused tests related to soft-locate / seed helpers + any new tests agent added."""
-    keywords = tuple(
-        k.lower()
-        for k in (
-            "suggested_seed",
-            "next_actions",
-            "pick_suggested",
-            "bad seed",
-            "weak seed",
-            "weak_start",
-            "remake",
-            "start_reliability",
-            "assess_start",
-            "pack_context",
-            *ACTIVE_TEST_KEYWORDS,
-        )
-        if k
-    )
+    """Score this task's allowlist plus test files the agent added or edited.
+
+    Do not keyword-scan the suite. Unrelated failures (ladder, multi-seed)
+    were marking both arms failed even when the new tests were fine.
+    """
     candidates: list[str] = []
-    # Task allowlist first (narrow scoring)
     for rel in ACTIVE_TEST_FILES:
-        candidates.append(str(rel).replace("\\", "/"))
-    # Always include ladder smoke if present
-    candidates.append("tests/test_incremental_context_ladder.py")
-    # Tracked + untracked test files the agent may have added
+        rel_s = str(rel).replace("\\", "/")
+        if rel_s.endswith("test_incremental_context_ladder.py"):
+            continue
+        candidates.append(rel_s)
     proc_status = _run(["git", "status", "--porcelain", "--", "tests"], cwd=ws)
     for ln in (proc_status.stdout or "").splitlines():
-        path = ln[3:].strip().replace("\\", "/")
-        if path.startswith("tests/test_") and path.endswith(".py"):
-            candidates.append(path)
-
-    content_hits: list[str] = []
-    for p in (ws / "tests").glob("test_*.py"):
-        rel = str(p.relative_to(ws)).replace("\\", "/")
-        if rel in candidates:
+        path = ln[3:].strip().strip('"').replace("\\", "/")
+        if " -> " in path:
+            path = path.split(" -> ", 1)[1].strip()
+        if not (path.startswith("tests/test_") and path.endswith(".py")):
             continue
-        name_l = rel.lower()
-        # Filename keyword match is high-precision
-        if any(k in name_l for k in keywords if len(k) >= 6):
-            content_hits.append(rel)
+        if path.endswith("test_incremental_context_ladder.py"):
             continue
-        try:
-            text = p.read_text(encoding="utf-8", errors="replace")[:6000].lower()
-        except OSError:
-            continue
-        hits = sum(1 for k in keywords if k in text)
-        # Require ≥2 keyword hits so bare substrings do not pull half the suite
-        if hits >= 2:
-            content_hits.append(rel)
-    # Cap content-discovered files to keep scoring bounded
-    candidates.extend(content_hits[:8])
+        candidates.append(path)
 
     # de-dupe preserve order
     seen: set[str] = set()
@@ -2913,6 +3049,9 @@ def run_arm(
     log_dir: Path,
 ) -> dict[str, Any]:
     with_mcp = arm == "with"
+    if with_mcp:
+        ensure_kiro_mcp_wait_settings()
+        _kill_hung_mcp_bridges()
     agent_path = write_agents(ws, model=model, with_mcp=with_mcp)
     agent_name = agent_path.stem
     surface_errs = assert_agent_surface(ws, agent_path, with_mcp=with_mcp)
@@ -3047,30 +3186,40 @@ def run_arm(
     log_path = log_dir / f"{arm}.log"
     t0 = time.perf_counter()
     env = _kiro_env(ws)
+    # Stream to disk so a killed parent still leaves the credit footer.
+    raw_parts: list[str] = []
+
+    def _stream_chat() -> None:
+        assert proc.stdout is not None
+        with log_path.open("w", encoding="utf-8") as fh:
+            for line in proc.stdout:
+                raw_parts.append(line)
+                fh.write(line)
+                fh.flush()
+
+    proc = subprocess.Popen(
+        cmd,
+        cwd=str(ws),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        env=env,
+    )
+    reader = threading.Thread(target=_stream_chat, daemon=True)
+    reader.start()
+    timed_out = False
     try:
-        proc = subprocess.run(
-            cmd,
-            cwd=str(ws),
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=timeout_s,
-            env=env,
-        )
-        raw = (proc.stdout or "") + ("\n" + proc.stderr if proc.stderr else "")
-        exit_code = proc.returncode
-        timed_out = False
-    except subprocess.TimeoutExpired as exc:
-        raw = ""
-        if isinstance(exc.stdout, str):
-            raw += exc.stdout
-        if isinstance(exc.stderr, str):
-            raw += "\n" + exc.stderr
-        raw += f"\n[TIMEOUT after {timeout_s}s]"
-        exit_code = 124
+        exit_code = proc.wait(timeout=timeout_s)
+    except subprocess.TimeoutExpired:
+        proc.kill()
         timed_out = True
+        exit_code = 124
+        raw_parts.append(f"\n[TIMEOUT after {timeout_s}s]\n")
+    reader.join(timeout=15)
     wall_ms = (time.perf_counter() - t0) * 1000
+    raw = "".join(raw_parts)
     clean = _strip_ansi(raw)
     log_path.write_text(clean, encoding="utf-8")
 

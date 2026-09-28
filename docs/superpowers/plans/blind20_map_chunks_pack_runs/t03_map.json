@@ -1,0 +1,87 @@
+{
+  "ok": true,
+  "query": "indexer chunk pipeline parse source files into chunks merkle symbol spans index_manager",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/enrich/__init__.py",
+      "symbol": "",
+      "score": 32.9493,
+      "loc": "packages/enrich/__init__.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "packages/pipeline/chunk_merkle.py",
+      "symbol": "",
+      "score": 23.0168,
+      "loc": "packages/pipeline/chunk_merkle.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "tests/test_runtime_publish.py",
+      "symbol": "",
+      "score": 10.8943,
+      "loc": "tests/test_runtime_publish.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "packages/pipeline/index_manager.py",
+      "symbol": "",
+      "score": 7.8717,
+      "loc": "packages/pipeline/index_manager.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "packages/pipeline/indexer.py",
+      "symbol": "",
+      "score": 7.0617,
+      "loc": "packages/pipeline/indexer.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "packages/pipeline/merkle.py",
+      "symbol": "",
+      "score": 6.7227,
+      "loc": "packages/pipeline/merkle.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "tests/test_chunk_merkle.py",
+      "symbol": "",
+      "score": 5.0507,
+      "loc": "tests/test_chunk_merkle.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "docs/reindexing/chunk-level-incremental-indexing.md",
+      "symbol": "",
+      "score": 4.8881,
+      "loc": "docs/reindexing/chunk-level-incremental-indexing.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "score": 4.674,
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "packages/pipeline/memory_budget.py",
+      "symbol": "",
+      "score": 4.599,
+      "loc": "packages/pipeline/memory_budget.py:1-1",
+      "why": ""
+    }
+  ],
+  "elapsed_s": 0.591
+}

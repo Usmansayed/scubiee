@@ -192,7 +192,8 @@ def test_server_start_does_not_activate_repo_before_path_bearing_request(
             return None
 
     monkeypatch.setattr(server, "get_context_engine", lambda: Runtime())
-    monkeypatch.setattr(server, "ThreadingHTTPServer", Httpd)
+    monkeypatch.setattr(server, "EngineHTTPServer", Httpd)
+    monkeypatch.setattr(server, "_start_idle_sweeper", lambda **kwargs: None)
     monkeypatch.setattr("pipeline.daemon.acquire_lock", lambda *args, **kwargs: None)
     monkeypatch.setattr("pipeline.daemon.release_lock", lambda: None)
 

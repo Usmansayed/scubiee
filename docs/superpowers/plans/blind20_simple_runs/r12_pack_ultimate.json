@@ -1,0 +1,24 @@
+{
+  "ok": true,
+  "engine": "ultimate",
+  "policy": "strict",
+  "elapsed_s": 0.013,
+  "n_pack": 2,
+  "pack": [
+    {
+      "file": "packages/pipeline/memory_budget.py",
+      "symbol": "bootstrap_budget",
+      "score": 1.0,
+      "loc": "packages/pipeline/memory_budget.py:45-54",
+      "id": "packages/pipeline/memory_budget.py::bootstrap_budget"
+    },
+    {
+      "file": "packages/pipeline/memory_budget.py",
+      "symbol": "BOOTSTRAP_RSS_CAP_MB",
+      "score": 0.9818,
+      "loc": "packages/pipeline/memory_budget.py:23-23",
+      "id": "packages/pipeline/memory_budget.py::BOOTSTRAP_RSS_CAP_MB"
+    }
+  ],
+  "error": null
+}

@@ -1,0 +1,606 @@
+{
+  "protocol": "heatmap_pack_vs_agent_reads_v1",
+  "created": "2026-09-06T10:32:19Z",
+  "elapsed_s": 6.03,
+  "scubiee_note": "pack MCP returns compressed heatmap only (0.3.24+)",
+  "case": {
+    "id": "h01",
+    "task": "When I connect Scubiee to Cursor, I need to understand the full path that writes MCP config and permissions so the agent can call tools.",
+    "enrich_query": "connect cursor install mcp config permissions allowlist autoApprove project rules gate text write tool surface so agent can call locate pack"
+  },
+  "map": {
+    "ok": true,
+    "elapsed_s": 2.615,
+    "cards": [
+      {
+        "rank": 1,
+        "file": "packages/pipeline/mcp_permissions.py",
+        "symbol": "",
+        "score": 6.3311,
+        "loc": "packages/pipeline/mcp_permissions.py:1-1"
+      },
+      {
+        "rank": 2,
+        "file": "packages/pipeline/rules_installer.py",
+        "symbol": "",
+        "score": 5.8467,
+        "loc": "packages/pipeline/rules_installer.py:1-1"
+      },
+      {
+        "rank": 3,
+        "file": "scripts/kiro_mcp_ab_dev_eval.py",
+        "symbol": "",
+        "score": 5.7765,
+        "loc": "scripts/kiro_mcp_ab_dev_eval.py:1-1"
+      },
+      {
+        "rank": 4,
+        "file": "packages/pipeline/mcp_install.py",
+        "symbol": "",
+        "score": 5.4862,
+        "loc": "packages/pipeline/mcp_install.py:1-1"
+      },
+      {
+        "rank": 5,
+        "file": "tests/test_mcp_permissions.py",
+        "symbol": "",
+        "score": 5.1751,
+        "loc": "tests/test_mcp_permissions.py:1-1"
+      },
+      {
+        "rank": 6,
+        "file": "packages/pipeline/locate.py",
+        "symbol": "",
+        "score": 5.1409,
+        "loc": "packages/pipeline/locate.py:1-1"
+      },
+      {
+        "rank": 7,
+        "file": "docs/superpowers/plans/2026-09-06-personal3-map-vs-pack.md",
+        "symbol": "",
+        "score": 5.0596,
+        "loc": "docs/superpowers/plans/2026-09-06-personal3-map-vs-pack.md:1-1"
+      },
+      {
+        "rank": 8,
+        "file": "docs/web-info/cursor-mcp.md",
+        "symbol": "",
+        "score": 4.7846,
+        "loc": "docs/web-info/cursor-mcp.md:1-1"
+      },
+      {
+        "rank": 9,
+        "file": "scripts/heatmap_pack_vs_agent_reads.py",
+        "symbol": "",
+        "score": 4.652,
+        "loc": "scripts/heatmap_pack_vs_agent_reads.py:1-1"
+      },
+      {
+        "rank": 10,
+        "file": "docs/cursor-mcp-workspace-resolution-research.md",
+        "symbol": "",
+        "score": 4.6262,
+        "loc": "docs/cursor-mcp-workspace-resolution-research.md:1-1"
+      }
+    ]
+  },
+  "selected_chunks": [
+    {
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": "write_project_tool_surface",
+      "kind": "function",
+      "loc": "packages/pipeline/rules_installer.py:1312-1374",
+      "start_line": 1312,
+      "end_line": 1374,
+      "score": 17.35
+    },
+    {
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": "write_project_gate_rules",
+      "kind": "function",
+      "loc": "packages/pipeline/rules_installer.py:1139-1202",
+      "start_line": 1139,
+      "end_line": 1202,
+      "score": 17.15
+    },
+    {
+      "file": "packages/pipeline/mcp_permissions.py",
+      "symbol": "apply_permissions_to_repo_tool_surface",
+      "kind": "function",
+      "loc": "packages/pipeline/mcp_permissions.py:518-531",
+      "start_line": 518,
+      "end_line": 531,
+      "score": 13.8
+    }
+  ],
+  "pack_mcp_view": {
+    "ok": true,
+    "tool": "pack_context",
+    "seed": {
+      "id": "packages/pipeline/rules_installer.py::write_project_tool_surface",
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": "write_project_tool_surface"
+    },
+    "heatmap": [
+      {
+        "r": 1,
+        "heat": "hot",
+        "id": "packages/pipeline/rules_installer.py::write_project_tool_surface",
+        "loc": "packages/pipeline/rules_installer.py:1312-1374",
+        "s": "write_project_tool_surface",
+        "sc": 1.0,
+        "e": "seed"
+      },
+      {
+        "r": 2,
+        "heat": "hot",
+        "id": "packages/pipeline/rules_installer.py::_write_mcp_json_keyed",
+        "loc": "packages/pipeline/rules_installer.py:682-712",
+        "s": "_write_mcp_json_keyed",
+        "sc": 1.0,
+        "e": "calls"
+      },
+      {
+        "r": 3,
+        "heat": "hot",
+        "id": "packages/pipeline/rules_installer.py::_load_json_for_merge",
+        "loc": "packages/pipeline/rules_installer.py:333-352",
+        "s": "_load_json_for_merge",
+        "sc": 1.0,
+        "e": "calls"
+      },
+      {
+        "r": 4,
+        "heat": "hot",
+        "id": "packages/pipeline/rules_installer.py::_write_json",
+        "loc": "packages/pipeline/rules_installer.py:676-679",
+        "s": "_write_json",
+        "sc": 1.0,
+        "e": "calls"
+      },
+      {
+        "r": 5,
+        "heat": "warm",
+        "id": "packages/pipeline/branding.py::strip_legacy_mcp_keys",
+        "loc": "packages/pipeline/branding.py:24-26",
+        "s": "strip_legacy_mcp_keys",
+        "sc": 1.0,
+        "e": "calls"
+      },
+      {
+        "r": 6,
+        "heat": "warm",
+        "id": "packages/pipeline/rules_installer.py::write_project_gate_rules",
+        "loc": "packages/pipeline/rules_installer.py:1139-1202",
+        "s": "write_project_gate_rules",
+        "sc": 1.0,
+        "e": "seed"
+      },
+      {
+        "r": 7,
+        "heat": "warm",
+        "id": "packages/pipeline/mcp_permissions.py::tool_permission_plan",
+        "loc": "packages/pipeline/mcp_permissions.py:158-159",
+        "s": "tool_permission_plan",
+        "sc": 0.9967,
+        "e": "calls"
+      },
+      {
+        "r": 8,
+        "heat": "warm",
+        "id": "packages/pipeline/rules_installer.py::_write_workspace_mcp",
+        "loc": "packages/pipeline/rules_installer.py:532-629",
+        "s": "_write_workspace_mcp",
+        "sc": 0.99,
+        "e": "calls"
+      },
+      {
+        "r": 9,
+        "heat": "cold",
+        "id": "packages/pipeline/rules_installer.py::gate_line_for_repo",
+        "loc": "packages/pipeline/rules_installer.py:266-280",
+        "s": "gate_line_for_repo",
+        "sc": 0.99
+      },
+      {
+        "r": 10,
+        "heat": "cold",
+        "id": "packages/pipeline/rules_installer.py::_project_rules_eligible",
+        "loc": "packages/pipeline/rules_installer.py:283-289",
+        "s": "_project_rules_eligible",
+        "sc": 0.99
+      },
+      {
+        "r": 11,
+        "heat": "cold",
+        "id": "packages/pipeline/rules_installer.py::_write_rule_append_md",
+        "loc": "packages/pipeline/rules_installer.py:1109-1122",
+        "s": "_write_rule_append_md",
+        "sc": 0.99
+      },
+      {
+        "r": 12,
+        "heat": "cold",
+        "id": "packages/pipeline/rules_installer.py::_write_rule",
+        "loc": "packages/pipeline/rules_installer.py:1133-1136",
+        "s": "_write_rule",
+        "sc": 0.99
+      },
+      {
+        "r": 13,
+        "heat": "cold",
+        "id": "packages/pipeline/mcp_install.py::verify_mcp_json",
+        "loc": "packages/pipeline/mcp_install.py:187-230",
+        "s": "verify_mcp_json",
+        "sc": 0.9405
+      },
+      {
+        "r": 14,
+        "heat": "cold",
+        "id": "packages/pipeline/mcp_locate.py::_is_enrolled",
+        "loc": "packages/pipeline/mcp_locate.py:584-590",
+        "s": "_is_enrolled",
+        "sc": 0.9405
+      },
+      {
+        "r": 15,
+        "heat": "cold",
+        "id": "packages/pipeline/mcp_permissions.py::apply_permissions_to_repo_tool_surface",
+        "loc": "packages/pipeline/mcp_permissions.py:518-531",
+        "s": "apply_permissions_to_repo_tool_surface",
+        "sc": 0.9405
+      },
+      {
+        "r": 16,
+        "heat": "cold",
+        "id": "packages/pipeline/tool_registry.py::resolve_mcp_project_paths",
+        "loc": "packages/pipeline/tool_registry.py:358-387",
+        "s": "resolve_mcp_project_paths",
+        "sc": 0.9405
+      }
+    ],
+    "read": {
+      "top": 5,
+      "how": "Native-Read loc for top ~5 (heat=hot first, then warm). Spans only (file:start-end) \u2014 BAN whole-file Read. expand_context if a hop is missing; collect_hot_context(ids=) only when you need bodies batched."
+    },
+    "elapsed_s": 3.299,
+    "_raw_n_heatmap": 16,
+    "_raw_include_bodies": false,
+    "_has_code_body": false
+  },
+  "agent_needed_reads": [
+    {
+      "file": "packages/pipeline/__main__.py",
+      "start": 1706,
+      "end": 1744,
+      "why": "cmd_connect entry",
+      "n_lines": 39,
+      "chars": 1567,
+      "text_chars": 1567
+    },
+    {
+      "file": "packages/pipeline/rules_installer.py",
+      "start": 1560,
+      "end": 1640,
+      "why": "install_tool fan-out",
+      "n_lines": 81,
+      "chars": 2690,
+      "text_chars": 2690
+    },
+    {
+      "file": "packages/pipeline/rules_installer.py",
+      "start": 1487,
+      "end": 1553,
+      "why": "apply_connected_tools_to_repo",
+      "n_lines": 67,
+      "chars": 2241,
+      "text_chars": 2241
+    },
+    {
+      "file": "packages/pipeline/rules_installer.py",
+      "start": 1312,
+      "end": 1374,
+      "why": "write_project_tool_surface",
+      "n_lines": 63,
+      "chars": 2264,
+      "text_chars": 2264
+    },
+    {
+      "file": "packages/pipeline/rules_installer.py",
+      "start": 1139,
+      "end": 1202,
+      "why": "write_project_gate_rules",
+      "n_lines": 64,
+      "chars": 2152,
+      "text_chars": 2152
+    },
+    {
+      "file": "packages/pipeline/mcp_permissions.py",
+      "start": 518,
+      "end": 531,
+      "why": "apply_permissions_to_repo_tool_surface",
+      "n_lines": 14,
+      "chars": 397,
+      "text_chars": 397
+    },
+    {
+      "file": "packages/pipeline/mcp_permissions.py",
+      "start": 253,
+      "end": 320,
+      "why": "merge_cursor_permissions",
+      "n_lines": 68,
+      "chars": 2327,
+      "text_chars": 2327
+    }
+  ],
+  "agent_needed_reads_full_text": [
+    {
+      "file": "packages/pipeline/__main__.py",
+      "start": 1706,
+      "end": 1744,
+      "why": "cmd_connect entry",
+      "n_lines": 39,
+      "chars": 1567,
+      "text": "def cmd_connect(args: argparse.Namespace) -> int:\n    \"\"\"Connect Scubiee to AI coding tools (MCP config + rules).\"\"\"\n    from pipeline.rules_installer import install_tools\n    from pipeline.tool_registry import ALL_SLUGS, CONNECT_SLUGS, normalize_tool_slug\n\n    # Collect selected tools\n    if getattr(args, \"all\", False):\n        selected = list(ALL_SLUGS)\n    else:\n        selected = []\n        for slug in CONNECT_SLUGS:\n            if getattr(args, slug.replace(\"-\", \"_\"), False):\n                selected.append(normalize_tool_slug(slug))\n        seen: set[str] = set()\n        selected = [s for s in selected if not (s in seen or seen.add(s))]\n\n    if not selected:\n        if sys.stdout.isatty():\n            from pipeline.cli_ui import error, info\n            error(\"No tools specified\", stream=sys.stderr)\n            info(f\"Use --all or specify tools: {', '.join(f'--{s}' for s in ALL_SLUGS[:4])}...\", stream=sys.stderr)\n            sys.stderr.write(\"\\n\")\n        else:\n            print(json.dumps({\"ok\": False, \"error\": \"no tools specified\"}, indent=2))\n        return 1\n\n    dry_run = getattr(args, \"dry_run\", False)\n    repo = getattr(args, \"repo\", None)\n    results = install_tools(selected, dry_run=dry_run, repo=repo)\n\n    if sys.stdout.isatty():\n        from pipeline.cli_ui import print_connect_summary\n\n        print_connect_summary(results, action=\"Connected\", dry_run=dry_run)\n    else:\n        print(json.dumps(results, indent=2, default=str))\n\n    fail_count = sum(1 for r in results if not r.get(\"ok\"))\n    return 0 if fail_count == 0 else 1"
+    },
+    {
+      "file": "packages/pipeline/rules_installer.py",
+      "start": 1560,
+      "end": 1640,
+      "why": "install_tool fan-out",
+      "n_lines": 81,
+      "chars": 2690,
+      "text": "def install_tool(\n    tool: ToolDef,\n    *,\n    dry_run: bool = False,\n    repo: Path | str | None = None,\n) -> dict[str, Any]:\n    \"\"\"Record connected tool, clean legacy global MCP, fan-out project files.\"\"\"\n    from pipeline.connect_state import add_connected_tool, load_connected_tools\n\n    project_paths = resolve_mcp_project_paths(tool, Path.cwd())\n    rule_paths = resolve_rule_user_paths(tool)\n    primary_rule = rule_paths[0] if rule_paths else None\n\n    report: dict[str, Any] = {\n        \"tool\": tool.name,\n        \"slug\": tool.slug,\n        \"mcp_schema\": tool.mcp_schema,\n        \"scope\": \"project-local\",\n        \"mcp_path\": str(project_paths[0]) if project_paths else None,\n        \"mcp_paths\": [str(p) for p in project_paths],\n        \"rule_path\": str(primary_rule) if primary_rule else None,\n        \"rule_paths\": [],\n        \"dry_run\": dry_run,\n        \"ok\": True,\n        \"errors\": [],\n    }\n    if repo is not None:\n        report[\"repo_ignored\"] = True\n        report[\"note\"] = (\n            \"connect fans out to all enrolled repos; --repo is ignored\"\n        )\n\n    legacy_paths = [str(p) for p, _s, _k in resolve_mcp_legacy_global_paths(tool)]\n\n    if dry_run:\n        report[\"would_remove_legacy_global\"] = legacy_paths\n        report[\"project_fan_out\"] = fan_out_tool_to_enrolled_repos(\n            tool, dry_run=True\n        )\n        report[\"connected_tools\"] = load_connected_tools()\n        return report\n\n    from pipeline.connect_state import MachineSetupRequiredError, require_machine_setup\n\n    try:\n        require_machine_setup()\n    except MachineSetupRequiredError as exc:\n        report[\"ok\"] = False\n        report[\"errors\"].append(str(exc))\n        return report\n\n    report[\"legacy_global_removed\"] = _remove_legacy_global_mcp(tool)\n\n    fan = fan_out_tool_to_enrolled_repos(tool, dry_run=False)\n    report[\"project_fan_out\"] = fan\n    if not fan.get(\"ok\", True):\n        report[\"ok\"] = False\n        for sub in fan.get(\"reports\") or []:\n            for err in sub.get(\"errors\") or []:\n                report[\"errors\"].append(err)\n\n    report[\"connected_tools\"] = add_connected_tool(tool.slug)\n    report[\"rule_written\"] = None\n    report[\"rule_skipped\"] = \"project rules written on enrolled repos\"\n    return report\n\n\ndef install_tools(\n    slugs: list[str],\n    *,\n    dry_run: bool = False,\n    repo: Path | str | None = None,\n) -> list[dict[str, Any]]:\n    results = []\n    for slug in slugs:\n        tool = get_tool(slug)\n        if not tool:\n            results.append({\"tool\": slug, \"ok\": False, \"errors\": [f\"unknown tool: {slug}\"]})\n            continue\n        results.append(install_tool(tool, dry_run=dry_run, repo=repo))\n    return results"
+    },
+    {
+      "file": "packages/pipeline/rules_installer.py",
+      "start": 1487,
+      "end": 1553,
+      "why": "apply_connected_tools_to_repo",
+      "n_lines": 67,
+      "chars": 2241,
+      "text": "def apply_connected_tools_to_repo(\n    repo: Path | str,\n    *,\n    dry_run: bool = False,\n) -> dict[str, Any]:\n    \"\"\"After init, write project MCP + rules for every connected tool.\"\"\"\n    from pipeline.connect_state import load_connected_tools\n\n    root = Path(repo).resolve()\n    slugs = load_connected_tools()\n    report: dict[str, Any] = {\n        \"repo\": str(root),\n        \"ok\": True,\n        \"skipped\": False,\n        \"connected_tools\": slugs,\n        \"mcp_paths\": [],\n        \"dry_run\": dry_run,\n        \"errors\": [],\n    }\n    if not slugs:\n        report[\"skipped\"] = True\n        report[\"skip_reason\"] = (\n            \"no tools connected yet - run scubiee connect --<tool>\"\n        )\n        return report\n    if not _project_rules_eligible(root):\n        report[\"skipped\"] = True\n        report[\"skip_reason\"] = \"not a project folder\"\n        return report\n    gate = gate_line_for_repo(root)\n    if not gate.startswith(\"1:\") and gate != \"p\":\n        report[\"skipped\"] = True\n        report[\"skip_reason\"] = \"repo not enrolled\"\n        return report\n\n    if dry_run:\n        for slug in slugs:\n            tool = TOOL_MAP.get(slug)\n            if tool:\n                report[\"mcp_paths\"].extend(\n                    str(p) for p in resolve_mcp_project_paths(tool, root)\n                )\n                from pipeline.mcp_permissions import (\n                    apply_permissions_to_repo_tool_surface,\n                )\n\n                apply_permissions_to_repo_tool_surface(slug, root, dry_run=True)\n        rules = write_project_gate_rules(root, slugs=slugs, dry_run=True)\n        report[\"rules\"] = rules\n        return report\n\n    for slug in slugs:\n        tool = get_tool(slug)\n        if not tool:\n            continue\n        sub = write_project_tool_surface(root, tool, dry_run=False)\n        report[\"mcp_paths\"].extend(sub.get(\"mcp_paths\") or [])\n        if not sub.get(\"ok\", True):\n            report[\"ok\"] = False\n            report[\"errors\"].extend(sub.get(\"errors\") or [])\n\n    rules = write_project_gate_rules(root, slugs=slugs, dry_run=False)\n    report[\"rules\"] = rules\n    if not rules.get(\"ok\", True):\n        report[\"ok\"] = False\n        report[\"errors\"].extend(rules.get(\"errors\") or [])\n    return report"
+    },
+    {
+      "file": "packages/pipeline/rules_installer.py",
+      "start": 1312,
+      "end": 1374,
+      "why": "write_project_tool_surface",
+      "n_lines": 63,
+      "chars": 2264,
+      "text": "def write_project_tool_surface(\n    repo: Path | str,\n    tool: ToolDef,\n    *,\n    dry_run: bool = False,\n) -> dict[str, Any]:\n    \"\"\"Write repo-local MCP pin + GATE rules for one connected tool.\"\"\"\n    root = Path(repo).resolve()\n    from pipeline.mcp_locate import _is_enrolled\n\n    enrolled = _is_enrolled(root)\n    report: dict[str, Any] = {\n        \"repo\": str(root),\n        \"slug\": tool.slug,\n        \"ok\": True,\n        \"dry_run\": dry_run,\n        \"enrolled\": enrolled,\n        \"errors\": [],\n    }\n    if dry_run:\n        report[\"would_write_mcp\"] = [\n            str(p) for p in resolve_mcp_project_paths(tool, root)\n        ]\n        report[\"rules\"] = write_project_gate_rules(\n            root, slugs=[tool.slug], dry_run=True\n        )\n        from pipeline.mcp_permissions import apply_permissions_to_repo_tool_surface\n\n        report[\"permissions\"] = apply_permissions_to_repo_tool_surface(\n            tool.slug, root, dry_run=True\n        )\n        return report\n    try:\n        written = _write_workspace_mcp(tool, root)\n        report[\"mcp_paths\"] = [str(p) for p in written]\n        verify_failures: list[dict[str, Any]] = []\n        from pipeline.mcp_install import verify_mcp_json\n\n        for mcp_path in written:\n            if mcp_path.suffix.lower() != \".json\":\n                continue\n            checked = verify_mcp_json(mcp_path)\n            if not checked.get(\"ok\"):\n                verify_failures.append(checked)\n        if verify_failures:\n            report[\"mcp_verify\"] = verify_failures\n            report[\"errors\"].append(\"mcp post-write verify failed\")\n            report[\"ok\"] = False\n    except Exception as exc:  # noqa: BLE001\n        report[\"errors\"].append(f\"mcp write failed: {exc}\")\n        report[\"ok\"] = False\n    rules = write_project_gate_rules(root, slugs=[tool.slug], dry_run=False)\n    report[\"rules\"] = rules\n    if not rules.get(\"ok\", True):\n        report[\"ok\"] = False\n        report[\"errors\"].extend(rules.get(\"errors\") or [])\n    from pipeline.mcp_permissions import apply_permissions_to_repo_tool_surface\n\n    perm = apply_permissions_to_repo_tool_surface(tool.slug, root, dry_run=False)\n    report[\"permissions\"] = perm\n    if not perm.get(\"ok\", True):\n        report[\"ok\"] = False\n    return report"
+    },
+    {
+      "file": "packages/pipeline/rules_installer.py",
+      "start": 1139,
+      "end": 1202,
+      "why": "write_project_gate_rules",
+      "n_lines": 64,
+      "chars": 2152,
+      "text": "def write_project_gate_rules(\n    repo: Path | str,\n    *,\n    dry_run: bool = False,\n    slugs: list[str] | None = None,\n) -> dict[str, Any]:\n    \"\"\"Write compact GATE prefer+escape rules under the repo after ``scubiee init``.\n\n    Managed repos: Prefer Scubiee for retrieval when tools are available;\n    native Grep/Glob/Read OK if MCP fails (no BAN-native deadlock).\n    How-to (tool purpose, query tip) lives in MCP server instructions - not duplicated here.\n    \"\"\"\n    root = Path(repo).resolve()\n    gate = gate_line_for_repo(root)\n    report: dict[str, Any] = {\n        \"repo\": str(root),\n        \"gate_line\": gate,\n        \"ok\": True,\n        \"skipped\": False,\n        \"written\": [],\n        \"dry_run\": dry_run,\n        \"errors\": [],\n    }\n    if not _project_rules_eligible(root):\n        report[\"skipped\"] = True\n        report[\"skip_reason\"] = \"not a project folder\"\n        return report\n    if not gate.startswith(\"1:\") and gate != \"p\":\n        report[\"skipped\"] = True\n        report[\"skip_reason\"] = \"repo not enrolled\"\n        return report\n\n    from pipeline.tool_registry import TOOL_MAP, resolve_rule_project_paths\n\n    selected = TOOL_MAP.values()\n    if slugs:\n        selected = [TOOL_MAP[s] for s in slugs if s in TOOL_MAP]\n\n    for tool in selected:\n        if tool.rule_format == \"none\":\n            continue\n        for path in resolve_rule_project_paths(tool, root):\n            if dry_run:\n                report[\"written\"].append(str(path))\n                continue\n            try:\n                _write_rule(tool, path, gate_line=gate)\n                report[\"written\"].append(str(path))\n            except Exception as exc:  # noqa: BLE001\n                report[\"errors\"].append(f\"{path}: {exc}\")\n                report[\"ok\"] = False\n\n    agents = root / \"AGENTS.md\"\n    if dry_run:\n        report[\"written\"].append(str(agents))\n    else:\n        try:\n            _write_rule_append_md(agents, gate_line=gate)\n            report[\"written\"].append(str(agents))\n        except Exception as exc:  # noqa: BLE001\n            report[\"errors\"].append(f\"{agents}: {exc}\")\n            report[\"ok\"] = False\n\n    return report"
+    },
+    {
+      "file": "packages/pipeline/mcp_permissions.py",
+      "start": 518,
+      "end": 531,
+      "why": "apply_permissions_to_repo_tool_surface",
+      "n_lines": 14,
+      "chars": 397,
+      "text": "def apply_permissions_to_repo_tool_surface(\n    tool_slug: str,\n    repo: Path | str,\n    *,\n    profile: PermissionProfile = \"locate\",\n    dry_run: bool = False,\n) -> dict[str, Any]:\n    \"\"\"Sidecar permission files for one tool + repo (called after MCP write).\"\"\"\n    return write_tool_permission_artifacts(\n        tool_slug,\n        repo,\n        profile=profile,\n        dry_run=dry_run,\n    )"
+    },
+    {
+      "file": "packages/pipeline/mcp_permissions.py",
+      "start": 253,
+      "end": 320,
+      "why": "merge_cursor_permissions",
+      "n_lines": 68,
+      "chars": 2327,
+      "text": "def merge_cursor_permissions(\n    path: Path,\n    *,\n    profile: PermissionProfile = \"locate\",\n) -> dict[str, Any]:\n    \"\"\"Merge Scubiee entries into Cursor permissions.json without wiping user rules.\"\"\"\n    document = _load_json_object(path)\n    additions = _cursor_mcp_allowlist(profile=profile)\n    existing = document.get(\"mcpAllowlist\")\n    existing_list = existing if isinstance(existing, list) else []\n    document[\"mcpAllowlist\"] = _merge_unique_strings(\n        [str(x) for x in existing_list],\n        additions,\n    )\n    auto_run = document.get(\"autoRun\")\n    if not isinstance(auto_run, dict):\n        auto_run = {}\n    allow_instructions = auto_run.get(\"allow_instructions\")\n    instr_list = allow_instructions if isinstance(allow_instructions, list) else []\n    instr_list = _merge_unique_strings(\n        [str(x) for x in instr_list],\n        [\n            \"Allow Scubiee MCP locate tools (gate, map, focus, grep, glob, \"\n            \"workspace, expand, status) for read-only codebase navigation.\"\n        ],\n    )\n    auto_run[\"allow_instructions\"] = instr_list\n    document[\"autoRun\"] = auto_run\n    _write_json_object(path, document)\n    return {\n        \"ok\": True,\n        \"path\": str(path),\n        \"mcpAllowlist\": document[\"mcpAllowlist\"],\n        \"mechanism\": \"cursor_permissions_json\",\n    }\n\n\ndef merge_claude_settings_permissions(\n    path: Path,\n    *,\n    profile: PermissionProfile = \"locate\",\n) -> dict[str, Any]:\n    \"\"\"Merge mcp__scubiee__* allow rules into Claude Code settings.json.\"\"\"\n    document = _load_json_object(path)\n    document.setdefault(\n        \"$schema\",\n        \"https://json.schemastore.org/claude-code-settings.json\",\n    )\n    permissions = document.get(\"permissions\")\n    if not isinstance(permissions, dict):\n        permissions = {}\n    allow = permissions.get(\"allow\")\n    allow_list = allow if isinstance(allow, list) else []\n    permissions[\"allow\"] = _merge_unique_strings(\n        [str(x) for x in allow_list],\n        _claude_allow_rules(profile=profile),\n    )\n    document[\"permissions\"] = permissions\n    _write_json_object(path, document)\n    return {\n        \"ok\": True,\n        \"path\": str(path),\n        \"allow\": permissions[\"allow\"],\n        \"mechanism\": \"claude_settings_json\",\n    }\n\n\ndef _continue_permissions_yaml(*, profile: PermissionProfile) -> str:"
+    }
+  ],
+  "compare": {
+    "covered_full_heatmap": [
+      {
+        "agent": "packages/pipeline/rules_installer.py:1560-1640",
+        "why": "install_tool fan-out",
+        "chars": 2690,
+        "hits": "SAME_FILE_ONLY",
+        "cards": [
+          {
+            "r": 1,
+            "heat": "hot",
+            "id": "packages/pipeline/rules_installer.py::write_project_tool_surface",
+            "loc": "packages/pipeline/rules_installer.py:1312-1374",
+            "s": "write_project_tool_surface",
+            "sc": 1.0,
+            "e": "seed"
+          },
+          {
+            "r": 2,
+            "heat": "hot",
+            "id": "packages/pipeline/rules_installer.py::_write_mcp_json_keyed",
+            "loc": "packages/pipeline/rules_installer.py:682-712",
+            "s": "_write_mcp_json_keyed",
+            "sc": 1.0,
+            "e": "calls"
+          },
+          {
+            "r": 3,
+            "heat": "hot",
+            "id": "packages/pipeline/rules_installer.py::_load_json_for_merge",
+            "loc": "packages/pipeline/rules_installer.py:333-352",
+            "s": "_load_json_for_merge",
+            "sc": 1.0,
+            "e": "calls"
+          }
+        ]
+      },
+      {
+        "agent": "packages/pipeline/rules_installer.py:1487-1553",
+        "why": "apply_connected_tools_to_repo",
+        "chars": 2241,
+        "hits": "SAME_FILE_ONLY",
+        "cards": [
+          {
+            "r": 1,
+            "heat": "hot",
+            "id": "packages/pipeline/rules_installer.py::write_project_tool_surface",
+            "loc": "packages/pipeline/rules_installer.py:1312-1374",
+            "s": "write_project_tool_surface",
+            "sc": 1.0,
+            "e": "seed"
+          },
+          {
+            "r": 2,
+            "heat": "hot",
+            "id": "packages/pipeline/rules_installer.py::_write_mcp_json_keyed",
+            "loc": "packages/pipeline/rules_installer.py:682-712",
+            "s": "_write_mcp_json_keyed",
+            "sc": 1.0,
+            "e": "calls"
+          },
+          {
+            "r": 3,
+            "heat": "hot",
+            "id": "packages/pipeline/rules_installer.py::_load_json_for_merge",
+            "loc": "packages/pipeline/rules_installer.py:333-352",
+            "s": "_load_json_for_merge",
+            "sc": 1.0,
+            "e": "calls"
+          }
+        ]
+      },
+      {
+        "agent": "packages/pipeline/rules_installer.py:1312-1374",
+        "why": "write_project_tool_surface",
+        "chars": 2264,
+        "hits": [
+          {
+            "r": 1,
+            "heat": "hot",
+            "loc": "packages/pipeline/rules_installer.py:1312-1374",
+            "s": "write_project_tool_surface"
+          }
+        ]
+      },
+      {
+        "agent": "packages/pipeline/rules_installer.py:1139-1202",
+        "why": "write_project_gate_rules",
+        "chars": 2152,
+        "hits": [
+          {
+            "r": 6,
+            "heat": "warm",
+            "loc": "packages/pipeline/rules_installer.py:1139-1202",
+            "s": "write_project_gate_rules"
+          }
+        ]
+      },
+      {
+        "agent": "packages/pipeline/mcp_permissions.py:518-531",
+        "why": "apply_permissions_to_repo_tool_surface",
+        "chars": 397,
+        "hits": [
+          {
+            "r": 15,
+            "heat": "cold",
+            "loc": "packages/pipeline/mcp_permissions.py:518-531",
+            "s": "apply_permissions_to_repo_tool_surface"
+          }
+        ]
+      },
+      {
+        "agent": "packages/pipeline/mcp_permissions.py:253-320",
+        "why": "merge_cursor_permissions",
+        "chars": 2327,
+        "hits": "SAME_FILE_ONLY",
+        "cards": [
+          {
+            "r": 7,
+            "heat": "warm",
+            "id": "packages/pipeline/mcp_permissions.py::tool_permission_plan",
+            "loc": "packages/pipeline/mcp_permissions.py:158-159",
+            "s": "tool_permission_plan",
+            "sc": 0.9967,
+            "e": "calls"
+          },
+          {
+            "r": 15,
+            "heat": "cold",
+            "id": "packages/pipeline/mcp_permissions.py::apply_permissions_to_repo_tool_surface",
+            "loc": "packages/pipeline/mcp_permissions.py:518-531",
+            "s": "apply_permissions_to_repo_tool_surface",
+            "sc": 0.9405
+          }
+        ]
+      }
+    ],
+    "covered_read_top": [
+      {
+        "agent": "packages/pipeline/rules_installer.py:1560-1640",
+        "why": "install_tool fan-out",
+        "chars": 2690,
+        "hits": "SAME_FILE_ONLY"
+      },
+      {
+        "agent": "packages/pipeline/rules_installer.py:1487-1553",
+        "why": "apply_connected_tools_to_repo",
+        "chars": 2241,
+        "hits": "SAME_FILE_ONLY"
+      },
+      {
+        "agent": "packages/pipeline/rules_installer.py:1312-1374",
+        "why": "write_project_tool_surface",
+        "chars": 2264,
+        "hits": [
+          {
+            "r": 1,
+            "heat": "hot",
+            "id": "packages/pipeline/rules_installer.py::write_project_tool_surface",
+            "loc": "packages/pipeline/rules_installer.py:1312-1374",
+            "s": "write_project_tool_surface",
+            "sc": 1.0,
+            "e": "seed"
+          }
+        ]
+      },
+      {
+        "agent": "packages/pipeline/rules_installer.py:1139-1202",
+        "why": "write_project_gate_rules",
+        "chars": 2152,
+        "hits": "on_heatmap_but_below_read_top"
+      },
+      {
+        "agent": "packages/pipeline/mcp_permissions.py:518-531",
+        "why": "apply_permissions_to_repo_tool_surface",
+        "chars": 397,
+        "hits": "on_heatmap_but_below_read_top"
+      },
+      {
+        "agent": "packages/pipeline/mcp_permissions.py:253-320",
+        "why": "merge_cursor_permissions",
+        "chars": 2327,
+        "hits": "SAME_FILE_ONLY"
+      }
+    ],
+    "missing": [
+      {
+        "agent": "packages/pipeline/__main__.py:1706-1744",
+        "why": "cmd_connect entry",
+        "chars": 1567
+      }
+    ],
+    "summary": {
+      "heatmap_cards": 16,
+      "pack_json_chars": 3696,
+      "agent_read_chars": 13638,
+      "agent_spans": 7,
+      "span_cover_full_heatmap": 0.429,
+      "span_cover_read_top": 0.143,
+      "same_file_only": 3,
+      "missing_from_heatmap": 1,
+      "pack_has_code_bodies": false,
+      "compression_vs_agent_reads": 0.271
+    }
+  }
+}

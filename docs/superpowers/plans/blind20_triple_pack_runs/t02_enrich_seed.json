@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "elapsed_s": 0.052,
+  "seed_file": "packages/conductor/bm25_index.py",
+  "seed": {
+    "file": "packages/conductor/bm25_index.py",
+    "symbol": "tokenize",
+    "id": "packages/conductor/bm25_index.py::tokenize",
+    "loc": null
+  },
+  "chunks": [
+    {
+      "file": "packages/conductor/bm25_index.py",
+      "symbol": "tokenize",
+      "loc": "packages/conductor/bm25_index.py:14-15",
+      "score": 1.0,
+      "kind": "function"
+    }
+  ],
+  "n_cards": 1,
+  "error": null
+}

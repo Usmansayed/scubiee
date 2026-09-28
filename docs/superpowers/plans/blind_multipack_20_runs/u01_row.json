@@ -1,0 +1,682 @@
+{
+  "id": "u01",
+  "family": "merkle-incremental",
+  "task": "How does incremental sync detect dirty paths via merkle and patch the graph?",
+  "enrich_map_query": "incremental sync merkle dirty paths patch_and_save_graph re-embed changed chunks IndexConfirmRequired sync_loop chunk_merkle",
+  "map_ok": true,
+  "suggested_seed": {
+    "file": "packages/pipeline/incremental.py",
+    "symbol": "",
+    "source": "suggested_seed"
+  },
+  "resolved_seed": {
+    "file": "packages/pipeline/incremental.py",
+    "symbol": "incremental_sync",
+    "how": "best_in_file"
+  },
+  "map_top_cards": [
+    {
+      "file": "packages/pipeline/incremental.py",
+      "symbol": "",
+      "loc": "packages/pipeline/incremental.py:1-1",
+      "score": 21.15449254088071
+    },
+    {
+      "file": "packages/conductor/graphify_retriever.py",
+      "symbol": "",
+      "loc": "packages/conductor/graphify_retriever.py:1-1",
+      "score": 15.220149961823829
+    },
+    {
+      "file": "tests/test_hardening.py",
+      "symbol": "",
+      "loc": "tests/test_hardening.py:1-1",
+      "score": 12.448676539413345
+    },
+    {
+      "file": "packages/pipeline/sync_loop.py",
+      "symbol": "",
+      "loc": "packages/pipeline/sync_loop.py:1-1",
+      "score": 10.982302283936217
+    },
+    {
+      "file": "docs/reindexing/chunk-level-incremental-indexing.md",
+      "symbol": "",
+      "loc": "docs/reindexing/chunk-level-incremental-indexing.md:1-1",
+      "score": 9.498848165692898
+    },
+    {
+      "file": "packages/pipeline/index_manager.py",
+      "symbol": "",
+      "loc": "packages/pipeline/index_manager.py:1-1",
+      "score": 6.049460334162867
+    },
+    {
+      "file": "packages/pipeline/__init__.py",
+      "symbol": "",
+      "loc": "packages/pipeline/__init__.py:1-1",
+      "score": 5.316196931389527
+    },
+    {
+      "file": "web-info/context-engine-internals.md",
+      "symbol": "",
+      "loc": "web-info/context-engine-internals.md:1-1",
+      "score": 2.6894407782760954
+    }
+  ],
+  "arms": {
+    "composite_v1": {
+      "ok": true,
+      "elapsed_s": 3.494,
+      "n_hot": 330,
+      "n_ranked": 374,
+      "hot_ids": [
+        "packages/conductor/bm25_index.py::tokenize",
+        "packages/conductor/graphify_retriever.py::build_and_save_graph",
+        "packages/conductor/graphify_retriever.py::patch_and_save_graph",
+        "packages/enrich/__init__.py::_callable_symbols_for_file",
+        "packages/enrich/__init__.py::_read_lines",
+        "packages/enrich/__init__.py::chunk_file_from_ir",
+        "packages/enrich/__init__.py::inject_metadata",
+        "packages/graphify/analyze.py::_node_community_map",
+        "packages/graphify/build.py::_abs_identity",
+        "packages/graphify/build.py::_disambiguate_file_node_labels",
+        "packages/graphify/build.py::_doc_twin_remap",
+        "packages/graphify/build.py::_file_label_reassignments",
+        "packages/graphify/build.py::_fold_edge_aliases",
+        "packages/graphify/build.py::_fold_node_aliases",
+        "packages/graphify/build.py::_infer_merge_root",
+        "packages/graphify/build.py::_load_existing_graph",
+        "packages/graphify/build.py::_norm_source_file",
+        "packages/graphify/build.py::_normalize_hyperedge_members",
+        "packages/graphify/build.py::_old_file_stems",
+        "packages/graphify/build.py::_semantic_id_remap",
+        "packages/graphify/build.py::build",
+        "packages/graphify/build.py::build_from_json",
+        "packages/graphify/build.py::build_merge",
+        "packages/graphify/build.py::edge_data",
+        "packages/graphify/build.py::graph_has_legacy_ids",
+        "packages/graphify/cache.py::_absolutize_ids_in",
+        "packages/graphify/cache.py::_absolutize_source_files_in",
+        "packages/graphify/cache.py::_body_content",
+        "packages/graphify/cache.py::_cleanup_stale_ast_entries",
+        "packages/graphify/cache.py::_ensure_stat_index",
+        "packages/graphify/cache.py::_id_anchor",
+        "packages/graphify/cache.py::_normalize_path",
+        "packages/graphify/cache.py::_portability_anchors",
+        "packages/graphify/cache.py::_relativize_ids_in",
+        "packages/graphify/cache.py::_relativize_source_files_in",
+        "packages/graphify/cache.py::_resolve_prompt_fp",
+        "packages/graphify/cache.py::_rewrite_strings",
+        "packages/graphify/cache.py::_stat_index_file",
+        "packages/graphify/cache.py::_stat_key_to_absolute",
+        "packages/graphify/cache.py::cache_dir"
+      ],
+      "top15_ids": [
+        "packages/pipeline/incremental.py::incremental_sync",
+        "packages/pipeline/merkle.py::root_hash",
+        "packages/pipeline/paths.py::collect_index_paths",
+        "packages/pipeline/chunk_merkle.py::chunk_key",
+        "packages/pipeline/chunk_merkle.py::chunk_digest",
+        "packages/pipeline/merkle.py::file_sha256",
+        "packages/pipeline/merkle.py::scan_file_hashes",
+        "packages/graphify/extract.py::_file_node_id",
+        "packages/graphify/extract.py::_lang_family",
+        "packages/graphify/extract.py::_get_extractor",
+        "packages/graphify/extract.py::_lang_is_case_insensitive",
+        "packages/graphify/extractors/base.py::_make_id",
+        "packages/graphify/extractors/base.py::_file_stem",
+        "packages/pipeline/capability.py::_norm_path",
+        "packages/pipeline/merkle.py::is_junk_rel"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/incremental.py::incremental_sync",
+          "file": "packages/pipeline/incremental.py",
+          "symbol": "incremental_sync",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 21927
+        },
+        {
+          "id": "packages/pipeline/merkle.py::root_hash",
+          "file": "packages/pipeline/merkle.py",
+          "symbol": "root_hash",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 276
+        },
+        {
+          "id": "packages/pipeline/paths.py::collect_index_paths",
+          "file": "packages/pipeline/paths.py",
+          "symbol": "collect_index_paths",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 1113
+        },
+        {
+          "id": "packages/pipeline/chunk_merkle.py::chunk_key",
+          "file": "packages/pipeline/chunk_merkle.py",
+          "symbol": "chunk_key",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 230
+        },
+        {
+          "id": "packages/pipeline/chunk_merkle.py::chunk_digest",
+          "file": "packages/pipeline/chunk_merkle.py",
+          "symbol": "chunk_digest",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 210
+        },
+        {
+          "id": "packages/pipeline/merkle.py::file_sha256",
+          "file": "packages/pipeline/merkle.py",
+          "symbol": "file_sha256",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 252
+        },
+        {
+          "id": "packages/pipeline/merkle.py::scan_file_hashes",
+          "file": "packages/pipeline/merkle.py",
+          "symbol": "scan_file_hashes",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 842
+        },
+        {
+          "id": "packages/graphify/extract.py::_file_node_id",
+          "file": "packages/graphify/extract.py",
+          "symbol": "_file_node_id",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 535
+        },
+        {
+          "id": "packages/graphify/extract.py::_lang_family",
+          "file": "packages/graphify/extract.py",
+          "symbol": "_lang_family",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 250
+        },
+        {
+          "id": "packages/graphify/extract.py::_get_extractor",
+          "file": "packages/graphify/extract.py",
+          "symbol": "_get_extractor",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 2535
+        },
+        {
+          "id": "packages/graphify/extract.py::_lang_is_case_insensitive",
+          "file": "packages/graphify/extract.py",
+          "symbol": "_lang_is_case_insensitive",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 268
+        },
+        {
+          "id": "packages/graphify/extractors/base.py::_make_id",
+          "file": "packages/graphify/extractors/base.py",
+          "symbol": "_make_id",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 60
+        },
+        {
+          "id": "packages/graphify/extractors/base.py::_file_stem",
+          "file": "packages/graphify/extractors/base.py",
+          "symbol": "_file_stem",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 1267
+        },
+        {
+          "id": "packages/pipeline/capability.py::_norm_path",
+          "file": "packages/pipeline/capability.py",
+          "symbol": "_norm_path",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 220
+        },
+        {
+          "id": "packages/pipeline/merkle.py::is_junk_rel",
+          "file": "packages/pipeline/merkle.py",
+          "symbol": "is_junk_rel",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 400
+        }
+      ]
+    },
+    "semantic_tracer_fuse": {
+      "ok": true,
+      "elapsed_s": 0.654,
+      "n_hot": 218,
+      "n_ranked": 374,
+      "hot_ids": [
+        "packages/conductor/graphify_retriever.py::build_and_save_graph",
+        "packages/conductor/graphify_retriever.py::patch_and_save_graph",
+        "packages/enrich/__init__.py::_callable_symbols_for_file",
+        "packages/enrich/__init__.py::_read_lines",
+        "packages/enrich/__init__.py::chunk_file_from_ir",
+        "packages/enrich/__init__.py::inject_metadata",
+        "packages/graphify/analyze.py::_node_community_map",
+        "packages/graphify/build.py::_abs_identity",
+        "packages/graphify/build.py::_disambiguate_file_node_labels",
+        "packages/graphify/build.py::_doc_twin_remap",
+        "packages/graphify/build.py::_fold_edge_aliases",
+        "packages/graphify/build.py::_fold_node_aliases",
+        "packages/graphify/build.py::_infer_merge_root",
+        "packages/graphify/build.py::_load_existing_graph",
+        "packages/graphify/build.py::_norm_source_file",
+        "packages/graphify/build.py::_normalize_hyperedge_members",
+        "packages/graphify/build.py::_old_file_stems",
+        "packages/graphify/build.py::_semantic_id_remap",
+        "packages/graphify/build.py::build",
+        "packages/graphify/build.py::build_from_json",
+        "packages/graphify/build.py::build_merge",
+        "packages/graphify/build.py::edge_data",
+        "packages/graphify/build.py::graph_has_legacy_ids",
+        "packages/graphify/cache.py::_absolutize_ids_in",
+        "packages/graphify/cache.py::_absolutize_source_files_in",
+        "packages/graphify/cache.py::_body_content",
+        "packages/graphify/cache.py::_cleanup_stale_ast_entries",
+        "packages/graphify/cache.py::_ensure_stat_index",
+        "packages/graphify/cache.py::_normalize_path",
+        "packages/graphify/cache.py::_portability_anchors",
+        "packages/graphify/cache.py::_relativize_ids_in",
+        "packages/graphify/cache.py::_relativize_source_files_in",
+        "packages/graphify/cache.py::_resolve_prompt_fp",
+        "packages/graphify/cache.py::_rewrite_strings",
+        "packages/graphify/cache.py::cache_dir",
+        "packages/graphify/cache.py::file_hash",
+        "packages/graphify/cache.py::load_cached",
+        "packages/graphify/cache.py::prompt_fingerprint",
+        "packages/graphify/cache.py::save_cached",
+        "packages/graphify/dedup.py::_UF.components"
+      ],
+      "top15_ids": [
+        "packages/pipeline/incremental.py::incremental_sync",
+        "packages/pipeline/merkle.py::root_hash",
+        "packages/pipeline/paths.py::collect_index_paths",
+        "packages/pipeline/chunk_merkle.py::chunk_key",
+        "packages/pipeline/chunk_merkle.py::chunk_digest",
+        "packages/pipeline/merkle.py::file_sha256",
+        "packages/pipeline/merkle.py::scan_file_hashes",
+        "packages/pipeline/merkle.py::is_junk_rel",
+        "packages/pipeline/merkle.py::_is_ignored_dir_name",
+        "packages/graphify/extractors/base.py::_make_id",
+        "packages/graphify/extractors/base.py::_file_stem",
+        "packages/graphify/extractors/base.py::_read_text",
+        "packages/graphify/ids.py::normalize_id",
+        "packages/graphify/ids.py::make_id",
+        "packages/graphify/extract.py::_get_extractor"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/incremental.py::incremental_sync",
+          "file": "packages/pipeline/incremental.py",
+          "symbol": "incremental_sync",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 21927
+        },
+        {
+          "id": "packages/pipeline/merkle.py::root_hash",
+          "file": "packages/pipeline/merkle.py",
+          "symbol": "root_hash",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 276
+        },
+        {
+          "id": "packages/pipeline/paths.py::collect_index_paths",
+          "file": "packages/pipeline/paths.py",
+          "symbol": "collect_index_paths",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 1113
+        },
+        {
+          "id": "packages/pipeline/chunk_merkle.py::chunk_key",
+          "file": "packages/pipeline/chunk_merkle.py",
+          "symbol": "chunk_key",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 230
+        },
+        {
+          "id": "packages/pipeline/chunk_merkle.py::chunk_digest",
+          "file": "packages/pipeline/chunk_merkle.py",
+          "symbol": "chunk_digest",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 210
+        },
+        {
+          "id": "packages/pipeline/merkle.py::file_sha256",
+          "file": "packages/pipeline/merkle.py",
+          "symbol": "file_sha256",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 252
+        },
+        {
+          "id": "packages/pipeline/merkle.py::scan_file_hashes",
+          "file": "packages/pipeline/merkle.py",
+          "symbol": "scan_file_hashes",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 842
+        },
+        {
+          "id": "packages/pipeline/merkle.py::is_junk_rel",
+          "file": "packages/pipeline/merkle.py",
+          "symbol": "is_junk_rel",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 400
+        },
+        {
+          "id": "packages/pipeline/merkle.py::_is_ignored_dir_name",
+          "file": "packages/pipeline/merkle.py",
+          "symbol": "_is_ignored_dir_name",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 274
+        },
+        {
+          "id": "packages/graphify/extractors/base.py::_make_id",
+          "file": "packages/graphify/extractors/base.py",
+          "symbol": "_make_id",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 60
+        },
+        {
+          "id": "packages/graphify/extractors/base.py::_file_stem",
+          "file": "packages/graphify/extractors/base.py",
+          "symbol": "_file_stem",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 1267
+        },
+        {
+          "id": "packages/graphify/extractors/base.py::_read_text",
+          "file": "packages/graphify/extractors/base.py",
+          "symbol": "_read_text",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 126
+        },
+        {
+          "id": "packages/graphify/ids.py::normalize_id",
+          "file": "packages/graphify/ids.py",
+          "symbol": "normalize_id",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 329
+        },
+        {
+          "id": "packages/graphify/ids.py::make_id",
+          "file": "packages/graphify/ids.py",
+          "symbol": "make_id",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 392
+        },
+        {
+          "id": "packages/graphify/extract.py::_get_extractor",
+          "file": "packages/graphify/extract.py",
+          "symbol": "_get_extractor",
+          "kind": "function",
+          "score": 0.9924,
+          "body_chars": 2535
+        }
+      ]
+    },
+    "hyb_fuse_demote_noise_plus": {
+      "ok": true,
+      "elapsed_s": 0.114,
+      "n_hot": 365,
+      "n_ranked": 374,
+      "hot_ids": [
+        "packages/conductor/bm25_index.py::tokenize",
+        "packages/conductor/graphify_retriever.py::build_and_save_graph",
+        "packages/conductor/graphify_retriever.py::patch_and_save_graph",
+        "packages/enrich/__init__.py::_callable_symbols_for_file",
+        "packages/enrich/__init__.py::_read_lines",
+        "packages/enrich/__init__.py::chunk_file_from_ir",
+        "packages/enrich/__init__.py::inject_metadata",
+        "packages/graphify/analyze.py::_node_community_map",
+        "packages/graphify/build.py::_abs_identity",
+        "packages/graphify/build.py::_disambiguate_file_node_labels",
+        "packages/graphify/build.py::_doc_twin_remap",
+        "packages/graphify/build.py::_file_label_reassignments",
+        "packages/graphify/build.py::_fold_edge_aliases",
+        "packages/graphify/build.py::_fold_node_aliases",
+        "packages/graphify/build.py::_infer_merge_root",
+        "packages/graphify/build.py::_is_file_node_label",
+        "packages/graphify/build.py::_load_existing_graph",
+        "packages/graphify/build.py::_norm_source_file",
+        "packages/graphify/build.py::_normalize_hyperedge_members",
+        "packages/graphify/build.py::_old_file_stems",
+        "packages/graphify/build.py::_semantic_id_remap",
+        "packages/graphify/build.py::_shortest_unique_suffix",
+        "packages/graphify/build.py::build",
+        "packages/graphify/build.py::build_from_json",
+        "packages/graphify/build.py::build_merge",
+        "packages/graphify/build.py::edge_data",
+        "packages/graphify/build.py::graph_has_legacy_ids",
+        "packages/graphify/cache.py::_absolutize_ids_in",
+        "packages/graphify/cache.py::_absolutize_source_files_in",
+        "packages/graphify/cache.py::_body_content",
+        "packages/graphify/cache.py::_cleanup_stale_ast_entries",
+        "packages/graphify/cache.py::_ensure_stat_index",
+        "packages/graphify/cache.py::_flush_stat_index",
+        "packages/graphify/cache.py::_id_anchor",
+        "packages/graphify/cache.py::_normalize_path",
+        "packages/graphify/cache.py::_portability_anchors",
+        "packages/graphify/cache.py::_relativize_ids_in",
+        "packages/graphify/cache.py::_relativize_source_files_in",
+        "packages/graphify/cache.py::_resolve_prompt_fp",
+        "packages/graphify/cache.py::_rewrite_strings"
+      ],
+      "top15_ids": [
+        "packages/pipeline/incremental.py::incremental_sync",
+        "packages/pipeline/paths.py::collect_index_paths",
+        "packages/pipeline/merkle.py::scan_file_hashes",
+        "packages/pipeline/merkle.py::file_sha256",
+        "packages/pipeline/merkle.py::root_hash",
+        "packages/pipeline/chunk_merkle.py::chunk_digest",
+        "packages/pipeline/incremental.py::_confirm_hint",
+        "packages/pipeline/chunk_merkle.py::chunk_key",
+        "packages/graphify/extractors/base.py::_make_id",
+        "packages/graphify/extractors/base.py::_file_stem",
+        "packages/pipeline/merkle.py::_is_ignored_dir_name",
+        "packages/graphify/extract.py::_get_extractor",
+        "packages/pipeline/memory_budget.py::resolve_index_memory_budget",
+        "packages/pipeline/incremental.py::max_index_touch",
+        "packages/pipeline/memory_budget.py::apply_index_memory_budget"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/incremental.py::incremental_sync",
+          "file": "packages/pipeline/incremental.py",
+          "symbol": "incremental_sync",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 21927
+        },
+        {
+          "id": "packages/pipeline/paths.py::collect_index_paths",
+          "file": "packages/pipeline/paths.py",
+          "symbol": "collect_index_paths",
+          "kind": "function",
+          "score": 0.8441,
+          "body_chars": 1113
+        },
+        {
+          "id": "packages/pipeline/merkle.py::scan_file_hashes",
+          "file": "packages/pipeline/merkle.py",
+          "symbol": "scan_file_hashes",
+          "kind": "function",
+          "score": 0.8389,
+          "body_chars": 842
+        },
+        {
+          "id": "packages/pipeline/merkle.py::file_sha256",
+          "file": "packages/pipeline/merkle.py",
+          "symbol": "file_sha256",
+          "kind": "function",
+          "score": 0.8334,
+          "body_chars": 252
+        },
+        {
+          "id": "packages/pipeline/merkle.py::root_hash",
+          "file": "packages/pipeline/merkle.py",
+          "symbol": "root_hash",
+          "kind": "function",
+          "score": 0.8304,
+          "body_chars": 276
+        },
+        {
+          "id": "packages/pipeline/chunk_merkle.py::chunk_digest",
+          "file": "packages/pipeline/chunk_merkle.py",
+          "symbol": "chunk_digest",
+          "kind": "function",
+          "score": 0.8114,
+          "body_chars": 210
+        },
+        {
+          "id": "packages/pipeline/incremental.py::_confirm_hint",
+          "file": "packages/pipeline/incremental.py",
+          "symbol": "_confirm_hint",
+          "kind": "function",
+          "score": 0.8091,
+          "body_chars": 391
+        },
+        {
+          "id": "packages/pipeline/chunk_merkle.py::chunk_key",
+          "file": "packages/pipeline/chunk_merkle.py",
+          "symbol": "chunk_key",
+          "kind": "function",
+          "score": 0.805,
+          "body_chars": 230
+        },
+        {
+          "id": "packages/graphify/extractors/base.py::_make_id",
+          "file": "packages/graphify/extractors/base.py",
+          "symbol": "_make_id",
+          "kind": "function",
+          "score": 0.805,
+          "body_chars": 60
+        },
+        {
+          "id": "packages/graphify/extractors/base.py::_file_stem",
+          "file": "packages/graphify/extractors/base.py",
+          "symbol": "_file_stem",
+          "kind": "function",
+          "score": 0.805,
+          "body_chars": 1267
+        },
+        {
+          "id": "packages/pipeline/merkle.py::_is_ignored_dir_name",
+          "file": "packages/pipeline/merkle.py",
+          "symbol": "_is_ignored_dir_name",
+          "kind": "function",
+          "score": 0.805,
+          "body_chars": 274
+        },
+        {
+          "id": "packages/graphify/extract.py::_get_extractor",
+          "file": "packages/graphify/extract.py",
+          "symbol": "_get_extractor",
+          "kind": "function",
+          "score": 0.7997,
+          "body_chars": 2535
+        },
+        {
+          "id": "packages/pipeline/memory_budget.py::resolve_index_memory_budget",
+          "file": "packages/pipeline/memory_budget.py",
+          "symbol": "resolve_index_memory_budget",
+          "kind": "function",
+          "score": 0.7962,
+          "body_chars": 649
+        },
+        {
+          "id": "packages/pipeline/incremental.py::max_index_touch",
+          "file": "packages/pipeline/incremental.py",
+          "symbol": "max_index_touch",
+          "kind": "function",
+          "score": 0.794,
+          "body_chars": 113
+        },
+        {
+          "id": "packages/pipeline/memory_budget.py::apply_index_memory_budget",
+          "file": "packages/pipeline/memory_budget.py",
+          "symbol": "apply_index_memory_budget",
+          "kind": "function",
+          "score": 0.7914,
+          "body_chars": 1858
+        }
+      ]
+    },
+    "poly_embed": {
+      "ok": true,
+      "elapsed_s": 0.162,
+      "n_hot": 4,
+      "n_ranked": 4,
+      "hot_ids": [
+        "packages/pipeline/incremental.py::AUTO_FULL_INDEX_CHUNKS",
+        "packages/pipeline/incremental.py::DEFAULT_MAX_TOUCH",
+        "packages/pipeline/incremental.py::incremental_sync",
+        "packages/pipeline/incremental.py::max_index_touch"
+      ],
+      "top15_ids": [
+        "packages/pipeline/incremental.py::incremental_sync",
+        "packages/pipeline/incremental.py::max_index_touch",
+        "packages/pipeline/incremental.py::AUTO_FULL_INDEX_CHUNKS",
+        "packages/pipeline/incremental.py::DEFAULT_MAX_TOUCH"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/incremental.py::incremental_sync",
+          "file": "packages/pipeline/incremental.py",
+          "symbol": "incremental_sync",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 21927
+        },
+        {
+          "id": "packages/pipeline/incremental.py::max_index_touch",
+          "file": "packages/pipeline/incremental.py",
+          "symbol": "max_index_touch",
+          "kind": "function",
+          "score": 0.735,
+          "body_chars": 113
+        },
+        {
+          "id": "packages/pipeline/incremental.py::AUTO_FULL_INDEX_CHUNKS",
+          "file": "packages/pipeline/incremental.py",
+          "symbol": "AUTO_FULL_INDEX_CHUNKS",
+          "kind": "const",
+          "score": 0.7,
+          "body_chars": 83
+        },
+        {
+          "id": "packages/pipeline/incremental.py::DEFAULT_MAX_TOUCH",
+          "file": "packages/pipeline/incremental.py",
+          "symbol": "DEFAULT_MAX_TOUCH",
+          "kind": "const",
+          "score": 0.7,
+          "body_chars": 26
+        }
+      ]
+    }
+  }
+}

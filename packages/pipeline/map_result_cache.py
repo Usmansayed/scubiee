@@ -1,4 +1,10 @@
-"""Proximity map result cache — true few-ms repeats while clients stay connected."""
+"""Proximity map result cache — true few-ms repeats while clients stay connected.
+
+Entries are keyed on the engine's index token (``pipeline.index_generation``:
+runtime epoch + publish generation). Every publish changes the token, so a
+remap after an edit misses and re-queries instead of replaying pre-edit cards.
+No token (engine not loaded / stamp unreadable) means no caching at all.
+"""
 
 from __future__ import annotations
 
@@ -12,8 +18,8 @@ from typing import Any
 
 _LOCK = threading.Lock()
 _CACHE: dict[str, tuple[float, str, dict[str, Any]]] = {}
-# Last successful map payload per repo|query — survives fingerprint churn.
-_LAST: dict[str, tuple[float, dict[str, Any]]] = {}
+# Last successful map payload per repo|query, with the token it was built on.
+_LAST: dict[str, tuple[float, str, dict[str, Any]]] = {}
 
 
 def map_result_cache_enabled() -> bool:
@@ -23,11 +29,22 @@ def map_result_cache_enabled() -> bool:
 
 def _ttl_s() -> float:
     # Default 300s — idle hold (120s) must not expire cache before post_idle map.
+    # Freshness comes from the token; the TTL only bounds memory.
     raw = (os.environ.get("CTX_MAP_RESULT_CACHE_TTL_S") or "300").strip()
     try:
         return max(5.0, float(raw))
     except ValueError:
         return 120.0
+
+
+def current_index_token(repo: str | Path) -> str | None:
+    """Token of the index the engine is serving for ``repo`` (None = unknown)."""
+    try:
+        from pipeline.index_generation import read_token
+
+        return read_token(repo)
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def _norm_query(query: str) -> str:
@@ -61,26 +78,29 @@ def get_map_cached(
     *,
     repo: str,
     query: str,
-    fingerprint: str,
+    fingerprint: str | None,
 ) -> dict[str, Any] | None:
-    if not map_result_cache_enabled():
+    """Cached map payload built on index token ``fingerprint``, else None."""
+    if not map_result_cache_enabled() or not fingerprint:
         return None
     now = time.time()
-    # Prefer last-payload (no fingerprint) so identical-query remaps stay sub-ms
-    # even when corpus fingerprinting is skipped or churns.
     lk = _last_key(repo, query)
     with _LOCK:
         last = _LAST.get(lk)
         if last and (now - last[0]) <= _ttl_s():
-            out = dict(last[1])
-            if not _cached_map_is_dense(out):
+            if last[1] != fingerprint:
+                # Built on an older publish: never serve it again.
                 _LAST.pop(lk, None)
             else:
-                timing = dict(out.get("timing") or {})
-                timing["cache"] = "last"
-                out["timing"] = timing
-                out["cache"] = "last"
-                return out
+                out = dict(last[2])
+                if not _cached_map_is_dense(out):
+                    _LAST.pop(lk, None)
+                else:
+                    timing = dict(out.get("timing") or {})
+                    timing["cache"] = "last"
+                    out["timing"] = timing
+                    out["cache"] = "last"
+                    return out
     key = _key(repo, query, fingerprint)
     with _LOCK:
         row = _CACHE.get(key)
@@ -105,10 +125,11 @@ def put_map_cached(
     *,
     repo: str,
     query: str,
-    fingerprint: str,
+    fingerprint: str | None,
     payload: dict[str, Any],
 ) -> None:
-    if not map_result_cache_enabled():
+    """Store a map payload built on index token ``fingerprint`` (read *before* the search)."""
+    if not map_result_cache_enabled() or not fingerprint:
         return
     if not isinstance(payload, dict) or not payload.get("ok", True):
         return
@@ -129,7 +150,7 @@ def put_map_cached(
     now = time.time()
     with _LOCK:
         _CACHE[key] = (now, fingerprint, stored)
-        _LAST[_last_key(repo, query)] = (now, stored)
+        _LAST[_last_key(repo, query)] = (now, fingerprint, stored)
         if len(_CACHE) > 64:
             oldest = sorted(_CACHE.items(), key=lambda kv: kv[1][0])[: len(_CACHE) - 64]
             for k, _ in oldest:
@@ -147,17 +168,24 @@ def clear_map_cache() -> None:
 
 
 def get_recent_map_cards(*, repo: str, limit: int = 16) -> list[dict[str, Any]]:
-    """Most recent map cards for repo (process-local) — lean pack reuse without disk."""
+    """Most recent map cards for repo (process-local) — lean pack reuse without disk.
+
+    Only cards built on the index the engine serves now: after a publish they
+    may point at lines that moved or code that is gone.
+    """
     if not map_result_cache_enabled():
+        return []
+    token = current_index_token(repo)
+    if not token:
         return []
     root = _norm_repo(repo)
     now = time.time()
     best: tuple[float, list[dict[str, Any]]] | None = None
     with _LOCK:
-        for key, (ts, payload) in _LAST.items():
+        for key, (ts, fp, payload) in _LAST.items():
             if not key.startswith(root + "|"):
                 continue
-            if (now - ts) > _ttl_s():
+            if fp != token or (now - ts) > _ttl_s():
                 continue
             cards = list((payload or {}).get("cards") or [])
             if cards and (best is None or ts > best[0]):

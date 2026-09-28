@@ -1,0 +1,111 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 6.366,
+  "stdout_chars": 3509,
+  "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})",
+  "json": {
+    "ok": true,
+    "tool": "map",
+    "cards": [
+      {
+        "rank": 1,
+        "file": "packages/pipeline/__init__.py",
+        "score": 17.128107739643667,
+        "why": "Context Engine indexing + search pipeline.",
+        "role": "function",
+        "loc": "packages/pipeline/__init__.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 2,
+        "file": "packages/pipeline/tool_registry.py",
+        "score": 12.55294905909756,
+        "why": "Registry of AI coding tools: project-local MCP + GATE rules paths.",
+        "role": "function",
+        "loc": "packages/pipeline/tool_registry.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 3,
+        "file": "packages/pipeline/project_id.py",
+        "score": 12.698815685656758,
+        "why": "\"\"\"Hybrid project identity: in-repo id file + global registry + projects/<id>/. Resolve order: 1. ``<repo>/.scubiee/id.json`` \u2192 project_id 2. Registry lookup by absolute path (requ",
+        "role": "function",
+        "loc": "packages/pipeline/project_id.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 4,
+        "file": "tests/test_mcp_repo_resolution.py",
+        "score": 12.411146442958966,
+        "why": "def test_gate_line_managed_enrolled(tmp_path: Path, monkeypatch) -> None: repo = tmp_path / \"app\" repo.mkdir() sc = repo / \".scubiee\" sc.mkdir() pid = \"ce_gate_test1234567890abcdef",
+        "role": "test",
+        "loc": "tests/test_mcp_repo_resolution.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 5,
+        "file": "tests/test_token_efficient_gating.py",
+        "score": 11.920359514427297,
+        "why": "def test_gate_with_root_marks_enrolled_managed(tmp_path: Path, monkeypatch) -> None: \"\"\"Spawn-unmanaged process: gate(root=) binds enrolled repo.\"\"\" pytest.importorskip(\"mcp\") from",
+        "role": "test",
+        "loc": "tests/test_token_efficient_gating.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 6,
+        "file": "tests/test_project_id.py",
+        "score": 11.893623917428346,
+        "why": "def test_legacy_migration(ce_home: Path, tmp_path: Path): from pipeline.project_id import legacy_indexes_root, legacy_repo_key repo = tmp_path / \"legacyrepo\" repo.mkdir() legacy = ",
+        "role": "test",
+        "loc": "tests/test_project_id.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 7,
+        "file": "packages/pipeline/__main__.py",
+        "score": 11.850062238689022,
+        "why": "def cmd_status(args: argparse.Namespace) -> int: from pipeline.repo_lifecycle import UNMANAGED, managed_state from pipeline.project_id import read_id_file root = Path(args.path).re",
+        "role": "function",
+        "loc": "packages/pipeline/__main__.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 8,
+        "file": "tests/conftest.py",
+        "score": 11.524111543209717,
+        "why": "def enroll_test_repo( repo: Path, *, home: Path, project_id: str = \"ce_test1234567890abcdef12345678\", ) -> str: \"\"\"Register *repo* as managed without implicit bind side effects.\"\"\"",
+        "role": "test",
+        "loc": "tests/conftest.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 9,
+        "file": "packages/pipeline/rules_installer.py",
+        "score": 11.512624943906024,
+        "why": "def managed_gate_rule_body(gate_line: str, project_id: str) -> str: return ( f\"**GATE {gate_line}** - Managed repo. `project_id={project_id!r}`.\\n\\n\" f\"{managed_gate_usage_short()}",
+        "role": "function",
+        "loc": "packages/pipeline/rules_installer.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 10,
+        "file": "packages/pipeline/managed_repos.py",
+        "score": 11.509425891071121,
+        "why": "def managed_repo_paths(*, enrolled_only: bool = False) -> list[Path]: \"\"\"Existing checkout directories for managed registry projects. Parameters ---------- enrolled_only: When True",
+        "role": "function",
+        "loc": "packages/pipeline/managed_repos.py:1-1",
+        "symbol": ""
+      }
+    ],
+    "suggested_seed": {
+      "file": "packages/pipeline/__init__.py",
+      "symbol": "",
+      "loc": "packages/pipeline/__init__.py:1-1",
+      "score": 17.128107739643667
+    },
+    "next": "scubiee pack \"scubiee status gate managed health ok chunks merkle engine server project_id enroll\" --seed-file packages/pipeline/__init__.py --mode lean"
+  },
+  "stdout_preview": ""
+}

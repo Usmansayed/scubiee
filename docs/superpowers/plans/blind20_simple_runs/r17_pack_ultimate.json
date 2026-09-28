@@ -1,0 +1,31 @@
+{
+  "ok": true,
+  "engine": "ultimate",
+  "policy": "strict",
+  "elapsed_s": 0.016,
+  "n_pack": 3,
+  "pack": [
+    {
+      "file": "packages/pipeline/mcp_permissions.py",
+      "symbol": "locate_tool_names",
+      "score": 1.0,
+      "loc": "packages/pipeline/mcp_permissions.py:150-153",
+      "id": "packages/pipeline/mcp_permissions.py::locate_tool_names"
+    },
+    {
+      "file": "packages/pipeline/mcp_permissions.py",
+      "symbol": "PHASE_LOCATE_TOOLS",
+      "score": 1.0,
+      "loc": "packages/pipeline/mcp_permissions.py:29-44",
+      "id": "packages/pipeline/mcp_permissions.py::PHASE_LOCATE_TOOLS"
+    },
+    {
+      "file": "packages/pipeline/mcp_permissions.py",
+      "symbol": "LEGACY_LOCATE_TOOLS",
+      "score": 1.0,
+      "loc": "packages/pipeline/mcp_permissions.py:47-55",
+      "id": "packages/pipeline/mcp_permissions.py::LEGACY_LOCATE_TOOLS"
+    }
+  ],
+  "error": null
+}

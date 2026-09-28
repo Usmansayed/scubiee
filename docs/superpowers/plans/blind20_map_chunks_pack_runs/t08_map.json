@@ -1,0 +1,87 @@
+{
+  "ok": true,
+  "query": "expand_context direction callees callers effects with_bodies hop chain node id",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/pipeline/context_trace.py",
+      "symbol": "",
+      "score": 13.8831,
+      "loc": "packages/pipeline/context_trace.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "packages/pipeline/locate_cli.py",
+      "symbol": "",
+      "score": 12.5973,
+      "loc": "packages/pipeline/locate_cli.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "docs/superpowers/plans/2026-09-05-ladder-followup-real-eval.md",
+      "symbol": "",
+      "score": 11.6877,
+      "loc": "docs/superpowers/plans/2026-09-05-ladder-followup-real-eval.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "tests/test_locate_cli.py",
+      "symbol": "",
+      "score": 11.5197,
+      "loc": "tests/test_locate_cli.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "tests/test_incremental_context_ladder.py",
+      "symbol": "",
+      "score": 4.2744,
+      "loc": "tests/test_incremental_context_ladder.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "packages/trace_lab/facts/dfg.py",
+      "symbol": "",
+      "score": 3.703,
+      "loc": "packages/trace_lab/facts/dfg.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "packages/seir/rels.py",
+      "symbol": "",
+      "score": 3.63,
+      "loc": "packages/seir/rels.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "docs/superpowers/specs/2026-09-04-pack-context-few-calls-design.md",
+      "symbol": "",
+      "score": 3.3896,
+      "loc": "docs/superpowers/specs/2026-09-04-pack-context-few-calls-design.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "packages/graphify/extractors/engine.py",
+      "symbol": "",
+      "score": 3.3461,
+      "loc": "packages/graphify/extractors/engine.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "packages/graphify/extractors/resolution.py",
+      "symbol": "",
+      "score": 3.2487,
+      "loc": "packages/graphify/extractors/resolution.py:1-1",
+      "why": ""
+    }
+  ],
+  "elapsed_s": 0.404
+}

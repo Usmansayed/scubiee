@@ -1,0 +1,33 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 1.68,
+  "stdout_chars": 828,
+  "stderr_tail": "",
+  "json": {
+    "ok": true,
+    "tool": "pack",
+    "seed": {
+      "id": "packages/trace_lab/prod_eval.py::_enrich_query",
+      "file": "packages/trace_lab/prod_eval.py",
+      "symbol": "_enrich_query"
+    },
+    "chain": [
+      {
+        "id": "packages/trace_lab/prod_eval.py::_enrich_query",
+        "loc": "packages/trace_lab/prod_eval.py:22-29",
+        "edge": "seed",
+        "score": 1.0
+      }
+    ],
+    "pack": [
+      {
+        "id": "packages/trace_lab/prod_eval.py::_enrich_query",
+        "loc": "packages/trace_lab/prod_eval.py:22-29",
+        "text": "def _enrich_query(paragraph: str, chunks: list[dict[str, Any]]) -> str:\n    parts = [paragraph.strip(), \"\", \"## Seed code anchors\"]\n    for i, ch in enumerate(chunks, start=1):\n        parts.append(f\"### Seed {i}: {ch['file']}::{ch['symbol']}\")\n        parts.append(\"```\")\n        parts.append((ch.get(\"text\") or \"\").strip())\n        parts.append(\"```\")\n    return \"\\n\".join(parts)"
+      }
+    ],
+    "cold": []
+  },
+  "stdout_preview": ""
+}

@@ -1,0 +1,305 @@
+{
+  "elapsed_s": 5.52,
+  "board": "verify_ood_v9_distributed.json",
+  "n_tests": 4,
+  "tests": [
+    {
+      "id": "d1",
+      "family": "dist-checkout-graph",
+      "n_must": 13,
+      "n_must_files": 13,
+      "arms": {
+        "composite_v1": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "must_at_10": 0.6923,
+          "n_hot": 15,
+          "n_hot_files": 15
+        },
+        "semantic_tracer_fuse": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "must_at_10": 0.7692,
+          "n_hot": 15,
+          "n_hot_files": 15
+        },
+        "poly_embed": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "must_at_10": 0.6923,
+          "n_hot": 14,
+          "n_hot_files": 14
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "must_at_10": 0.7692,
+          "n_hot": 15,
+          "n_hot_files": 15
+        }
+      }
+    },
+    {
+      "id": "d2",
+      "family": "dist-auth-identity",
+      "n_must": 8,
+      "n_must_files": 7,
+      "arms": {
+        "composite_v1": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "must_at_10": 1.0,
+          "n_hot": 8,
+          "n_hot_files": 7
+        },
+        "semantic_tracer_fuse": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "must_at_10": 1.0,
+          "n_hot": 8,
+          "n_hot_files": 7
+        },
+        "poly_embed": {
+          "correct": false,
+          "missing_must": [
+            "connect",
+            "User.lookup",
+            "UserRepository.resolve",
+            "decode"
+          ],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 0.6667,
+          "recall_must": 0.5,
+          "precision_hot": 1.0,
+          "must_at_10": 0.5,
+          "n_hot": 4,
+          "n_hot_files": 3
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "must_at_10": 1.0,
+          "n_hot": 8,
+          "n_hot_files": 7
+        }
+      }
+    },
+    {
+      "id": "d3",
+      "family": "dist-webhook-pay",
+      "n_must": 9,
+      "n_must_files": 9,
+      "arms": {
+        "composite_v1": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/webhooks/handlers.py::on_refund"
+          ],
+          "f1": 0.9474,
+          "recall_must": 1.0,
+          "precision_hot": 0.9,
+          "must_at_10": 1.0,
+          "n_hot": 10,
+          "n_hot_files": 9
+        },
+        "semantic_tracer_fuse": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/webhooks/handlers.py::on_refund"
+          ],
+          "f1": 0.9474,
+          "recall_must": 1.0,
+          "precision_hot": 0.9,
+          "must_at_10": 1.0,
+          "n_hot": 10,
+          "n_hot_files": 9
+        },
+        "poly_embed": {
+          "correct": false,
+          "missing_must": [
+            "record",
+            "get"
+          ],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/webhooks/handlers.py::on_refund"
+          ],
+          "f1": 0.8235,
+          "recall_must": 0.7778,
+          "precision_hot": 0.875,
+          "must_at_10": 0.7778,
+          "n_hot": 8,
+          "n_hot_files": 7
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/webhooks/handlers.py::on_refund"
+          ],
+          "f1": 0.9474,
+          "recall_must": 1.0,
+          "precision_hot": 0.9,
+          "must_at_10": 1.0,
+          "n_hot": 10,
+          "n_hot_files": 9
+        }
+      }
+    },
+    {
+      "id": "d4",
+      "family": "dist-upload-search",
+      "n_must": 8,
+      "n_must_files": 8,
+      "arms": {
+        "composite_v1": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "must_at_10": 1.0,
+          "n_hot": 8,
+          "n_hot_files": 8
+        },
+        "semantic_tracer_fuse": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "must_at_10": 1.0,
+          "n_hot": 8,
+          "n_hot_files": 8
+        },
+        "poly_embed": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "must_at_10": 1.0,
+          "n_hot": 8,
+          "n_hot_files": 8
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "must_at_10": 1.0,
+          "n_hot": 8,
+          "n_hot_files": 8
+        }
+      }
+    }
+  ],
+  "summary": {
+    "composite_v1": {
+      "correct": 4,
+      "n": 4,
+      "accuracy": 1.0,
+      "mean_f1": 0.9869,
+      "mean_recall_must": 1.0,
+      "mean_precision_hot": 0.975,
+      "mean_must_at_10": 0.9231,
+      "mean_n_hot": 10.25,
+      "mean_n_hot_files": 9.75,
+      "failed": []
+    },
+    "semantic_tracer_fuse": {
+      "correct": 4,
+      "n": 4,
+      "accuracy": 1.0,
+      "mean_f1": 0.9869,
+      "mean_recall_must": 1.0,
+      "mean_precision_hot": 0.975,
+      "mean_must_at_10": 0.9423,
+      "mean_n_hot": 10.25,
+      "mean_n_hot_files": 9.75,
+      "failed": []
+    },
+    "poly_embed": {
+      "correct": 2,
+      "n": 4,
+      "accuracy": 0.5,
+      "mean_f1": 0.8725,
+      "mean_recall_must": 0.8195,
+      "mean_precision_hot": 0.9688,
+      "mean_must_at_10": 0.7425,
+      "mean_n_hot": 8.5,
+      "mean_n_hot_files": 8.0,
+      "failed": [
+        "d2",
+        "d3"
+      ]
+    },
+    "hyb_fuse_demote_noise_plus": {
+      "correct": 4,
+      "n": 4,
+      "accuracy": 1.0,
+      "mean_f1": 0.9869,
+      "mean_recall_must": 1.0,
+      "mean_precision_hot": 0.975,
+      "mean_must_at_10": 0.9423,
+      "mean_n_hot": 10.25,
+      "mean_n_hot_files": 9.75,
+      "failed": []
+    }
+  },
+  "candidate_vs_composite": {
+    "acc_delta": 0.0,
+    "must_delta": 0.0,
+    "f1_delta": 0.0
+  }
+}

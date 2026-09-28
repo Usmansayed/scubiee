@@ -191,7 +191,8 @@ def managed_gate_mcp_header() -> str:
         "after map re-enrich with suggested_seeds + hot cards before pack; vague/salad = FAIL. "
         "Health/warm_state → gate/status+Grep not soft map. "
         "After pack: Native-Read locs — BAN whole-file Read; re-Grep packed ground = FAIL; "
-        "empty heatmap → stop ladder. Native OK only if Scubiee fully uncallable — no deadlock."
+        "empty heatmap → stop ladder. Native OK only if Scubiee fully uncallable — no deadlock. "
+        "Respect gate index_skip / index_write_hint; customize via .scubieeignore."
     )
 
 

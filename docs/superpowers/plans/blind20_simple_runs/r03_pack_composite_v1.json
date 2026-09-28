@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "engine": "composite_v1",
+  "policy": "strict",
+  "elapsed_s": 0.037,
+  "n_pack": 1,
+  "pack": [
+    {
+      "file": "packages/conductor/graphify_retriever.py",
+      "symbol": "normalize_file",
+      "score": 1.0,
+      "loc": "packages/conductor/graphify_retriever.py:33-34",
+      "id": "packages/conductor/graphify_retriever.py::normalize_file"
+    }
+  ],
+  "error": null
+}

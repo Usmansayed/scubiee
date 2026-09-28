@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "engine": "ultimate",
+  "policy": "strict",
+  "elapsed_s": 0.016,
+  "n_pack": 1,
+  "pack": [
+    {
+      "file": "packages/pipeline/wipe.py",
+      "symbol": "_cursor_rule_paths",
+      "score": 1.0,
+      "loc": "packages/pipeline/wipe.py:29-31",
+      "id": "packages/pipeline/wipe.py::_cursor_rule_paths"
+    }
+  ],
+  "error": null
+}

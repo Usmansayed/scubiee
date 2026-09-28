@@ -1,0 +1,74 @@
+{
+  "ok": true,
+  "tool": "pack_poly_embed",
+  "engine": "poly_embed",
+  "elapsed_s": 0.194,
+  "n_pack": 1,
+  "seed": {
+    "file": "packages/conductor/graphify_retriever.py",
+    "symbol": "GraphifyChunkRetriever",
+    "id": "packages/conductor/graphify_retriever.py::GraphifyChunkRetriever"
+  },
+  "pack": [
+    {
+      "file": "packages/conductor/graphify_retriever.py",
+      "symbol": "GraphifyChunkRetriever",
+      "score": 1.0,
+      "loc": "packages/conductor/graphify_retriever.py:89-270",
+      "id": "packages/conductor/graphify_retriever.py::GraphifyChunkRetriever",
+      "chars": 6000
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/conductor/graphify_retriever.py::GraphifyChunkRetriever",
+      "loc": "packages/conductor/graphify_retriever.py:89-270",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/conductor/conductor.py::Conductor.retrieve_graphify",
+      "loc": "packages/conductor/conductor.py:65-70",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/conductor/graphify_retriever.py::GraphifyChunkRetriever.query_ranked_chunks",
+      "loc": "packages/conductor/graphify_retriever.py:209-222",
+      "edge": "seed",
+      "score": 0.48
+    },
+    {
+      "id": "packages/conductor/graphify_retriever.py::GraphifyChunkRetriever.chunks_for_files",
+      "loc": "packages/conductor/graphify_retriever.py:260-270",
+      "edge": "seed",
+      "score": 0.48
+    },
+    {
+      "id": "packages/conductor/graphify_retriever.py::normalize_file",
+      "loc": "packages/conductor/graphify_retriever.py:33-34",
+      "edge": "seed",
+      "score": 0.48
+    },
+    {
+      "id": "packages/conductor/graphify_retriever.py::GraphifyChunkRetriever.seed_files",
+      "loc": "packages/conductor/graphify_retriever.py:224-235",
+      "edge": "seed",
+      "score": 0.48
+    },
+    {
+      "id": "packages/conductor/graphify_retriever.py::GraphifyChunkRetriever.neighbor_files",
+      "loc": "packages/conductor/graphify_retriever.py:237-258",
+      "edge": "seed",
+      "score": 0.48
+    },
+    {
+      "id": "packages/conductor/graphify_retriever.py::GraphifyChunkRetriever.affinity_scores",
+      "loc": "packages/conductor/graphify_retriever.py:118-207",
+      "edge": "seed",
+      "score": 0.48
+    }
+  ],
+  "pack_query": "graphify graph_ir call edges GraphifyChunkRetriever conductor extra_graph build_graphify\nrelevant_chunks: packages/conductor/graphify_retriever.py::GraphifyChunkRetriever@packages/conductor/graphify_retriever.py:89-270 | packages/conductor/conductor.py::Conductor.retrieve_graphify@packages/conductor/conductor.py:65-70 | packages/graphify/build.py::dedupe_edges@packages/graphify/build.py:347-367",
+  "error": null
+}

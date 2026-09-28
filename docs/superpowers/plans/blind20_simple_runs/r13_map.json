@@ -1,0 +1,90 @@
+{
+  "ok": true,
+  "tool": "map",
+  "query": "steering AGENTS.md .cursor/rules scubiee.mdc write rules managed enroll inject GATE",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "scripts/kiro_mcp_ab_dev_eval.py",
+      "symbol": "",
+      "score": 12.324059325254327,
+      "loc": "scripts/kiro_mcp_ab_dev_eval.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "docs/mcp-legacy-design.md",
+      "symbol": "",
+      "score": 9.177993969367243,
+      "loc": "docs/mcp-legacy-design.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": "",
+      "score": 8.997387595198813,
+      "loc": "packages/pipeline/rules_installer.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "packages/pipeline/mcp_install.py",
+      "symbol": "",
+      "score": 8.007723072517251,
+      "loc": "packages/pipeline/mcp_install.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "docs/connect-global-mcp-research.md",
+      "symbol": "",
+      "score": 7.338102818111286,
+      "loc": "docs/connect-global-mcp-research.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "packages/pipeline/upgrade_scenarios.py",
+      "symbol": "",
+      "score": 6.7084145562663835,
+      "loc": "packages/pipeline/upgrade_scenarios.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "tests/test_token_efficient_gating.py",
+      "symbol": "",
+      "score": 6.54605257217065,
+      "loc": "tests/test_token_efficient_gating.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "packages/pipeline/wipe.py",
+      "symbol": "",
+      "score": 6.01554561985666,
+      "loc": "packages/pipeline/wipe.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "tests/test_user_journey_scenarios.py",
+      "symbol": "",
+      "score": 5.788672429981757,
+      "loc": "tests/test_user_journey_scenarios.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "tests/test_mcp_exploration_regressions.py",
+      "symbol": "",
+      "score": 4.5475508967669285,
+      "loc": "tests/test_mcp_exploration_regressions.py:1-1",
+      "why": ""
+    }
+  ],
+  "suggested_seed": null,
+  "elapsed_s": 1.021,
+  "via": "search_repo(use_server=True)"
+}

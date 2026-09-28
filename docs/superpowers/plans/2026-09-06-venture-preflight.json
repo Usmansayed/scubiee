@@ -1,0 +1,49 @@
+{
+  "ort_providers": [
+    "DmlExecutionProvider",
+    "CPUExecutionProvider"
+  ],
+  "accel_profile": "dml",
+  "accel_provider": "DmlExecutionProvider",
+  "accel_batch": 16,
+  "embed_backend": "fastembed",
+  "embed_device": "dml",
+  "embed_ok": true,
+  "accel_ok": true,
+  "field_backend": "real:fastembed",
+  "field_dim": 768,
+  "field_n": 76,
+  "field_ok": true,
+  "faiss_fixture": {
+    "ok": false,
+    "skipped": true,
+    "reason": "do_not_search_fixture_under_product_project"
+  },
+  "faiss_product_repo": {
+    "ok": true,
+    "n_hits": 8,
+    "sample": [
+      [
+        "fixtures/ce-sim-repo/auth.py",
+        18.792896541935285
+      ],
+      [
+        "docs/publish-setup.md",
+        11.57733141473755
+      ],
+      [
+        "fixtures/trace-lab/app/oauth/rotate.py",
+        8.08922732675215
+      ]
+    ],
+    "root": "C:\\Users\\usman\\Downloads\\context-engine",
+    "meta_root": "C:\\Users\\usman\\Downloads\\context-engine",
+    "search_root": "C:\\Users\\usman\\Downloads\\context-engine",
+    "chunks": 5791,
+    "error": null
+  },
+  "faiss_gate_ok": true,
+  "dml_live": true,
+  "blockers": [],
+  "ok": true
+}

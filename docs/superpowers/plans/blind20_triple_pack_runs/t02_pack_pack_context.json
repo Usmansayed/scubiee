@@ -1,0 +1,41 @@
+{
+  "ok": true,
+  "tool": "pack_context",
+  "engine": "composite_v1",
+  "elapsed_s": 0.041,
+  "n_pack": 1,
+  "seed": {
+    "file": "packages/conductor/bm25_index.py",
+    "symbol": "tokenize",
+    "id": "packages/conductor/bm25_index.py::tokenize"
+  },
+  "pack": [
+    {
+      "file": "packages/conductor/bm25_index.py",
+      "symbol": "tokenize",
+      "score": 1.0,
+      "loc": "packages/conductor/bm25_index.py:14-15",
+      "id": "packages/conductor/bm25_index.py::tokenize",
+      "chars": 90
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/conductor/bm25_index.py::tokenize",
+      "loc": "packages/conductor/bm25_index.py:14-15",
+      "edge": "seed",
+      "score": 1.0
+    }
+  ],
+  "error": null,
+  "seed_chunks": [
+    {
+      "file": "packages/conductor/bm25_index.py",
+      "symbol": "tokenize",
+      "loc": "packages/conductor/bm25_index.py:14-15",
+      "score": 1.0,
+      "kind": "function"
+    }
+  ],
+  "pack_query": "BM25 index build tokenize corpus indexing conductor bm25_index lexical chunks | seeds: packages/conductor/bm25_index.py::tokenize"
+}

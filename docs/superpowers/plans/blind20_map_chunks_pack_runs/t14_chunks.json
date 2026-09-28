@@ -1,0 +1,32 @@
+[
+  {
+    "file": "packages/pipeline/memory_governor.py",
+    "symbol": "embed_idle_demote_s",
+    "kind": "function",
+    "loc": "packages/pipeline/memory_governor.py:53-63",
+    "start_line": 53,
+    "end_line": 63,
+    "score": 6.0,
+    "excerpt": "def embed_idle_demote_s() -> float:\n    \"\"\"Align serve demotion with lifecycle idle window (default 25s).\"\"\"\n    raw = os.environ.get(\"CTX_EMBED_IDLE_DEMOTE_S\", \"\").strip()\n    if "
+  },
+  {
+    "file": "packages/pipeline/memory_budget.py",
+    "symbol": "apply_index_memory_budget",
+    "kind": "function",
+    "loc": "packages/pipeline/memory_budget.py:127-162",
+    "start_line": 127,
+    "end_line": 162,
+    "score": 9.7,
+    "excerpt": "def apply_index_memory_budget(budget: IndexMemoryBudget) -> None:\n    \"\"\"Apply budget as env defaults (never override explicit caller env).\"\"\"\n    os.environ.setdefault(\"CTX_CE_MEM"
+  },
+  {
+    "file": "packages/pipeline/memory_budget.py",
+    "symbol": "force_apply_memory_budget",
+    "kind": "function",
+    "loc": "packages/pipeline/memory_budget.py:165-198",
+    "start_line": 165,
+    "end_line": 198,
+    "score": 9.35,
+    "excerpt": "def force_apply_memory_budget(budget: IndexMemoryBudget) -> None:\n    \"\"\"Unconditionally override memory budget env vars.\n\n    Used after a bulk operation finishes to restore the c"
+  }
+]

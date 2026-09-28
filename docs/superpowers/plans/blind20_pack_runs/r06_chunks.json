@@ -1,0 +1,92 @@
+{
+  "id": "r06",
+  "enrich_prompt": "dashboard HTTP routes status endpoints localhost operator serve cmd_dashboard uvicorn",
+  "suggested_seed": {
+    "file": "packages/pipeline/dashboard_server.py",
+    "symbol": "",
+    "loc": "packages/pipeline/dashboard_server.py:1-1",
+    "score": 27.132268231281436
+  },
+  "chunks": [
+    {
+      "file": "packages/pipeline/dashboard_server.py",
+      "symbol": "",
+      "loc": "packages/pipeline/dashboard_server.py:1-1",
+      "score": 27.132268231281436,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/pipeline/dashboard_port.py",
+      "symbol": "",
+      "loc": "packages/pipeline/dashboard_port.py:1-1",
+      "score": 21.062564341194353,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "score": 14.841425905394681,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/pipeline/dashboard.py",
+      "symbol": "",
+      "loc": "packages/pipeline/dashboard.py:1-1",
+      "score": 5.559404004797763,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "docs/superpowers/plans/2026-08-17-ce-operator-dashboard.md",
+      "symbol": "",
+      "loc": "docs/superpowers/plans/2026-08-17-ce-operator-dashboard.md:1-1",
+      "score": 5.079981371393074,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/graphify/serve.py",
+      "symbol": "",
+      "loc": "packages/graphify/serve.py:1-1",
+      "score": 4.788854253105562,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "docs/superpowers/specs/2026-08-17-ce-operator-dashboard-design.md",
+      "symbol": "",
+      "loc": "docs/superpowers/specs/2026-08-17-ce-operator-dashboard-design.md:1-1",
+      "score": 4.770213573958602,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "tests/test_dashboard_api.py",
+      "symbol": "",
+      "loc": "tests/test_dashboard_api.py:1-1",
+      "score": 4.175609952415018,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "tests/test_dashboard_ui_contract.py",
+      "symbol": "",
+      "loc": "tests/test_dashboard_ui_contract.py:1-1",
+      "score": 4.076196588123121,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/pipeline/dashboard_ui/app.js",
+      "symbol": "",
+      "loc": "packages/pipeline/dashboard_ui/app.js:1-1",
+      "score": 3.978430297835764,
+      "start_line": null,
+      "end_line": null
+    }
+  ]
+}

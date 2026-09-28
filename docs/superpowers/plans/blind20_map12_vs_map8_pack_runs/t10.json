@@ -1,0 +1,185 @@
+{
+  "id": "t10",
+  "family": "response-lean",
+  "task": "How are MCP pack responses slimmed for token savings (lean formatting)?",
+  "must_files": [
+    "packages/pipeline/mcp_response_lean.py",
+    "packages/pipeline/mcp_locate.py"
+  ],
+  "must_symbols": [],
+  "map_k12": {
+    "elapsed_s": 0.638,
+    "top_files": [
+      "packages/pipeline/session_store.py",
+      "tests/test_mcp_response_lean.py",
+      "packages/pipeline/locate_cli.py",
+      "packages/pipeline/mcp_locate.py",
+      "packages/pipeline/mcp_response_lean.py",
+      "docs/superpowers/plans/2026-09-04-pack-context-bakeoff.md",
+      "packages/pipeline/context_trace.py",
+      "packages/trace_lab/types.py"
+    ]
+  },
+  "map_k8": {
+    "elapsed_s": 0.487,
+    "top_files": [
+      "packages/pipeline/session_store.py",
+      "tests/test_mcp_response_lean.py",
+      "packages/pipeline/locate_cli.py",
+      "packages/pipeline/mcp_locate.py",
+      "packages/pipeline/mcp_response_lean.py"
+    ]
+  },
+  "chunks_k12": [
+    {
+      "file": "packages/pipeline/session_store.py",
+      "symbol": "token_mode",
+      "kind": "function",
+      "loc": "packages/pipeline/session_store.py:223-224",
+      "start_line": 223,
+      "end_line": 224,
+      "score": 9.85
+    },
+    {
+      "file": "packages/pipeline/context_trace.py",
+      "symbol": "heatmap_to_cards",
+      "kind": "function",
+      "loc": "packages/pipeline/context_trace.py:581-619",
+      "start_line": 581,
+      "end_line": 619,
+      "score": 9.85
+    },
+    {
+      "file": "packages/pipeline/mcp_response_lean.py",
+      "symbol": "slim_locate_payload",
+      "kind": "function",
+      "loc": "packages/pipeline/mcp_response_lean.py:148-291",
+      "start_line": 148,
+      "end_line": 291,
+      "score": 7.2
+    }
+  ],
+  "chunks_k8": [
+    {
+      "file": "packages/pipeline/session_store.py",
+      "symbol": "token_mode",
+      "kind": "function",
+      "loc": "packages/pipeline/session_store.py:223-224",
+      "start_line": 223,
+      "end_line": 224,
+      "score": 9.85
+    },
+    {
+      "file": "packages/pipeline/context_trace.py",
+      "symbol": "heatmap_to_cards",
+      "kind": "function",
+      "loc": "packages/pipeline/context_trace.py:581-619",
+      "start_line": 581,
+      "end_line": 619,
+      "score": 9.85
+    },
+    {
+      "file": "packages/pipeline/mcp_response_lean.py",
+      "symbol": "slim_locate_payload",
+      "kind": "function",
+      "loc": "packages/pipeline/mcp_response_lean.py:148-291",
+      "start_line": 148,
+      "end_line": 291,
+      "score": 7.2
+    }
+  ],
+  "pack": {
+    "ok": true,
+    "elapsed_s": 0.167,
+    "n_pack": 4,
+    "pack": [
+      {
+        "file": "packages/pipeline/session_store.py",
+        "symbol": "token_mode",
+        "loc": "packages/pipeline/session_store.py:223-224",
+        "id": "packages/pipeline/session_store.py::token_mode",
+        "chars": 99
+      },
+      {
+        "file": "packages/pipeline/context_trace.py",
+        "symbol": "heatmap_to_cards",
+        "loc": "packages/pipeline/context_trace.py:581-619",
+        "id": "packages/pipeline/context_trace.py::heatmap_to_cards",
+        "chars": 1198
+      },
+      {
+        "file": "packages/pipeline/context_trace.py",
+        "symbol": "_heat",
+        "loc": "packages/pipeline/context_trace.py:39-44",
+        "id": "packages/pipeline/context_trace.py::_heat",
+        "chars": 137
+      },
+      {
+        "file": "packages/pipeline/context_trace.py",
+        "symbol": "card_role",
+        "loc": "packages/pipeline/context_trace.py:372-395",
+        "id": "packages/pipeline/context_trace.py::card_role",
+        "chars": 702
+      }
+    ],
+    "chain": [
+      {
+        "id": "packages/pipeline/session_store.py::token_mode",
+        "loc": "packages/pipeline/session_store.py:223-224",
+        "edge": "seed",
+        "symbol": "token_mode"
+      },
+      {
+        "id": "packages/pipeline/context_trace.py::heatmap_to_cards",
+        "loc": "packages/pipeline/context_trace.py:581-619",
+        "edge": "seed",
+        "symbol": "heatmap_to_cards"
+      },
+      {
+        "id": "packages/pipeline/context_trace.py::_heat",
+        "loc": "packages/pipeline/context_trace.py:39-44",
+        "edge": "calls",
+        "symbol": "_heat"
+      },
+      {
+        "id": "packages/pipeline/context_trace.py::card_role",
+        "loc": "packages/pipeline/context_trace.py:372-395",
+        "edge": "calls",
+        "symbol": "card_role"
+      }
+    ],
+    "seed": {
+      "file": "packages/pipeline/session_store.py",
+      "symbol": "token_mode",
+      "id": "packages/pipeline/session_store.py::token_mode"
+    },
+    "error": null
+  },
+  "scores": {
+    "map_k12": {
+      "file": 1.0,
+      "symbol": 1.0,
+      "note": "raw map cards (symbols often empty)"
+    },
+    "map_k12_chunks": {
+      "file": 0.5,
+      "symbol": 1.0,
+      "chunks": [
+        "token_mode",
+        "heatmap_to_cards",
+        "slim_locate_payload"
+      ]
+    },
+    "map8_pack": {
+      "file": 0.5,
+      "symbol": 1.0,
+      "n_pack": 4,
+      "chunks": [
+        "token_mode",
+        "heatmap_to_cards",
+        "slim_locate_payload"
+      ],
+      "elapsed_s": 0.167
+    }
+  }
+}

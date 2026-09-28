@@ -3,11 +3,48 @@
 from __future__ import annotations
 
 import json
+import tempfile
 from pathlib import Path
 
 import pytest
 
 from pipeline.wipe import audit_scubiee_artifacts, wipe, wipe_all, wipe_repo
+
+_REAL_HOME = Path.home().resolve()
+
+
+@pytest.fixture(autouse=True)
+def _sandbox_model_caches(
+    monkeypatch: pytest.MonkeyPatch, tmp_path_factory: pytest.TempPathFactory
+) -> None:
+    """Keep wipe tests off the developer's real model cache and engine.
+
+    ``import pipeline`` pins FASTEMBED_CACHE_PATH to the real ~/.cache/fastembed,
+    so any ``models=True`` wipe that did not override it deleted the real
+    CodeRank weights (~275MB) and left the engine unable to embed.
+    """
+    import pipeline.wipe as wipe_mod
+
+    sandbox = tmp_path_factory.mktemp("model-cache-sandbox")
+    for key in ("FASTEMBED_CACHE", "FASTEMBED_CACHE_PATH", "HF_HOME", "HUGGINGFACE_HUB_CACHE"):
+        monkeypatch.setenv(key, str(sandbox / key.lower()))
+    monkeypatch.setenv("LOCALAPPDATA", str(sandbox / "localappdata"))
+    sandbox_tmp = sandbox / "tmp"
+    sandbox_tmp.mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(sandbox_tmp))
+
+    basetemp = tmp_path_factory.getbasetemp().resolve()
+    real_rm_tree = wipe_mod._rm_tree
+
+    def _guarded_rm_tree(path: Path) -> dict:
+        target = Path(path).resolve()
+        if target.is_relative_to(_REAL_HOME) and not target.is_relative_to(basetemp):
+            raise AssertionError(f"wipe test tried to delete a real user path: {target}")
+        return real_rm_tree(path)
+
+    monkeypatch.setattr(wipe_mod, "_rm_tree", _guarded_rm_tree)
+    monkeypatch.setattr("pipeline.daemon.start_daemon", lambda *a, **k: {"ok": True})
+    monkeypatch.setattr("pipeline.daemon.is_running", lambda *a, **k: True)
 
 
 @pytest.fixture(autouse=True)
@@ -72,9 +109,18 @@ def test_wipe_repo_halts_before_removal(tmp_path: Path, monkeypatch) -> None:
 
     monkeypatch.setattr("pipeline.wipe._halt_scubiee_before_wipe", _halt)
     monkeypatch.setattr("pipeline.repo_lifecycle.remove_repo", _remove_repo)
+    # This test opts out of the file's kill mocks, so the real post-wipe restart
+    # (stop_daemon + kill_all_scubiee_processes) used to run and killed the
+    # developer's live engine and every uv-tool Scubiee process, MCP bridges
+    # included (psutil exit code 15). That is why Cursor showed "Not connected"
+    # after the documented test loop (issues 2 and 7).
+    monkeypatch.setattr(
+        "pipeline.wipe._restart_engine_after_repo_wipe",
+        lambda _root: order.append("restart") or {"ok": True, "skipped": True},
+    )
 
     wipe_repo(repo)
-    assert order == ["halt", "remove"]
+    assert order == ["halt", "remove", "restart"]
 
 
 def test_wipe_repo_does_not_global_pause(tmp_path: Path, monkeypatch) -> None:

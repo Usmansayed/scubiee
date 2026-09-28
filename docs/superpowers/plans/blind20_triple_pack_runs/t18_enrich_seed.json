@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "elapsed_s": 0.053,
+  "seed_file": "packages/pipeline/wipe.py",
+  "seed": {
+    "file": "packages/pipeline/wipe.py",
+    "symbol": "_cursor_rule_paths",
+    "id": "packages/pipeline/wipe.py::_cursor_rule_paths",
+    "loc": null
+  },
+  "chunks": [
+    {
+      "file": "packages/pipeline/wipe.py",
+      "symbol": "_cursor_rule_paths",
+      "loc": "packages/pipeline/wipe.py:29-31",
+      "score": 1.0,
+      "kind": "function"
+    }
+  ],
+  "n_cards": 1,
+  "error": null
+}

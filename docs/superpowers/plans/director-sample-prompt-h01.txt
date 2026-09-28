@@ -1,0 +1,375 @@
+## TASK (agent request — follow this exactly)
+from authenticate, collect every hop that checks credentials and loads the user
+
+## SEED (trace starts here — always KEEP #1)
+id: app/middleware/auth.py::authenticate
+file: app/middleware/auth.py
+symbol: authenticate
+kind: function
+lines: 13-18
+
+### SEED SOURCE
+```
+def authenticate(request: dict) -> dict:
+    token = extract_bearer(request)
+    payload = JwtService().verify(token)
+    log("ok")
+    track("login")
+    return payload
+```
+
+## GRAPHIFY CALL GRAPH (among candidates)
+  #1 authenticate  --g:calls-->  #6 extract_bearer
+  #1 authenticate  --g:calls-->  #4 log
+  #1 authenticate  --g:calls-->  #2 track
+  #1 authenticate  --g:called_by-->  #5 login
+  #1 authenticate  --g:rev:called_by-->  #6 extract_bearer
+  #1 authenticate  --g:rev:called_by-->  #4 log
+  #1 authenticate  --g:rev:called_by-->  #2 track
+  #1 authenticate  --g:rev:calls-->  #5 login
+  #6 extract_bearer  --g:called_by-->  #1 authenticate
+  #6 extract_bearer  --g:rev:calls-->  #1 authenticate
+  #9 JwtService.verify  --g:calls-->  #13 decode
+  #9 JwtService.verify  --g:calls-->  #4 log
+  #9 JwtService.verify  --g:rev:called_by-->  #13 decode
+  #9 JwtService.verify  --g:rev:called_by-->  #4 log
+  #4 log  --g:called_by-->  #11 record
+  #4 log  --g:called_by-->  #17 begin
+  #4 log  --g:called_by-->  #8 handle
+  #4 log  --g:called_by-->  #15 send_digest
+  #4 log  --g:called_by-->  #1 authenticate
+  #4 log  --g:called_by-->  #16 refresh
+  #4 log  --g:called_by-->  #18 scan
+  #4 log  --g:called_by-->  #14 UserRepository.resolve
+  #4 log  --g:called_by-->  #9 JwtService.verify
+
+## AST / STRUCTURAL EDGES
+  #1 authenticate  --calls-->  #6 extract_bearer
+  #1 authenticate  --calls-->  #9 JwtService.verify
+  #1 authenticate  --calls-->  #4 log
+  #1 authenticate  --calls-->  #2 track
+  #1 authenticate  --imports-->  #4 log
+  #1 authenticate  --imports-->  #2 track
+  #1 authenticate  --imports-->  #9 JwtService.verify
+  #1 authenticate  --called_by-->  #5 login
+  #1 authenticate  --imported_by-->  #5 login
+  #1 authenticate  --rev:calls-->  #5 login
+  #1 authenticate  --rev:imports-->  #5 login
+  #1 authenticate  --rev:called_by-->  #6 extract_bearer
+  #1 authenticate  --rev:called_by-->  #9 JwtService.verify
+  #1 authenticate  --rev:called_by-->  #4 log
+  #1 authenticate  --rev:called_by-->  #2 track
+  #1 authenticate  --rev:imported_by-->  #4 log
+  #1 authenticate  --rev:imported_by-->  #2 track
+  #1 authenticate  --rev:imported_by-->  #9 JwtService.verify
+  #6 extract_bearer  --called_by-->  #1 authenticate
+  #6 extract_bearer  --rev:calls-->  #1 authenticate
+  #9 JwtService.verify  --calls-->  #13 decode
+  #9 JwtService.verify  --calls-->  #14 UserRepository.resolve
+  #9 JwtService.verify  --calls-->  #4 log
+  #9 JwtService.verify  --uses-->  #20 TOKEN_TTL
+  #9 JwtService.verify  --imports-->  #4 log
+  #9 JwtService.verify  --imports-->  #13 decode
+  #9 JwtService.verify  --imports-->  #14 UserRepository.resolve
+  #9 JwtService.verify  --called_by-->  #1 authenticate
+  #9 JwtService.verify  --imported_by-->  #1 authenticate
+  #9 JwtService.verify  --called_by-->  #16 refresh
+  #9 JwtService.verify  --imported_by-->  #16 refresh
+  #9 JwtService.verify  --rev:calls-->  #1 authenticate
+  #9 JwtService.verify  --rev:imports-->  #1 authenticate
+  #9 JwtService.verify  --rev:calls-->  #16 refresh
+  #9 JwtService.verify  --rev:imports-->  #16 refresh
+  #9 JwtService.verify  --rev:called_by-->  #13 decode
+  #9 JwtService.verify  --rev:called_by-->  #14 UserRepository.resolve
+  #9 JwtService.verify  --rev:called_by-->  #4 log
+  #9 JwtService.verify  --rev:imported_by-->  #4 log
+  #9 JwtService.verify  --rev:imported_by-->  #13 decode
+
+## HOW TO DECIDE
+1. Start at SEED (#1). Walk Graphify/AST edges that serve the TASK.
+2. KEEP nodes on that path (credentials/user-load/etc. as the TASK says).
+3. DROP nodes that are only BM25-similar or belong to other features.
+4. Shared hubs (http, log, track) → HUBS/DROP unless the TASK needs them.
+5. Output full TRACE PLAN.
+
+## CANDIDATES (numbered — use these ids in KEEP/DROP)
+
+### [SEED] #1  app/middleware/auth.py::authenticate  [function]
+struct=1.00  bm25=0.51  via=seed
+graph_links: -calls->#6, -calls->#9, -calls->#4, -calls->#2, -imports->#4, -imports->#2, -imports->#9, -called_by->#5
+```
+def authenticate(request: dict) -> dict:
+    token = extract_bearer(request)
+    payload = JwtService().verify(token)
+    log("ok")
+    track("login")
+    return payload
+```
+
+### [CAND] #2  app/analytics/tracker.py::track  [function]
+struct=0.95  bm25=1.00  via=bm25:1.00
+graph_links: <-calls-#1, <-imports-#1, <-rev:called_by-#1, <-rev:imported_by-#1, <-g:calls-#1, <-g:rev:called_by-#1, -calls->#12, -imports->#12
+```
+def track(event: str) -> None:
+    get("/events", {"e": event})
+```
+
+### [CAND] #3  app/services/session.py::start  [function]
+struct=0.93  bm25=0.96  via=bm25:0.96
+graph_links: none
+```
+def start(user_id: str) -> dict:
+    return {"user": user_id, "status": "active"}
+```
+
+### [CAND] #4  app/utils/logger.py::log  [function]
+struct=0.90  bm25=0.56  via=calls←authenticate
+graph_links: <-calls-#1, <-imports-#1, <-rev:called_by-#1, <-rev:imported_by-#1, <-g:calls-#1, <-g:rev:called_by-#1, <-calls-#9, <-imports-#9
+```
+def log(message: str) -> None:
+    return None
+```
+
+### [CAND] #5  app/routes/login.py::login  [function]
+struct=0.90  bm25=0.51  via=rev:calls←authenticate
+graph_links: <-called_by-#1, <-imported_by-#1, <-rev:calls-#1, <-rev:imports-#1, <-g:called_by-#1, <-g:rev:calls-#1, -calls->#1, -imports->#1
+```
+def login(request: dict) -> dict:
+    return authenticate(request)
+```
+
+### [CAND] #6  app/middleware/auth.py::extract_bearer  [function]
+struct=0.90  bm25=0.36  via=calls←authenticate
+graph_links: <-calls-#1, <-rev:called_by-#1, <-g:calls-#1, <-g:rev:called_by-#1, -called_by->#1, -rev:calls->#1, -g:called_by->#1, -g:rev:calls->#1
+```
+def extract_bearer(request: dict) -> str:
+    header = request.get("authorization") or ""
+    if header.lower().startswith("bearer "):
+        return header.split(" ", 1)[1]
+    raise ValueError("missing token")
+```
+
+### [CAND] #7  app/inventory/stock.py::available  [function]
+struct=0.79  bm25=0.61  via=bm25:0.61
+graph_links: none
+```
+def available(sku: str, qty: int) -> bool:
+    return levels(sku) >= qty
+```
+
+### [CAND] #8  app/handlers/welcome.py::handle  [function]
+struct=0.78  bm25=0.59  via=bm25:0.59
+graph_links: <-called_by-#4, <-imported_by-#4, <-rev:calls-#4, <-rev:imports-#4, <-g:called_by-#4, <-g:rev:calls-#4, <-called_by-#2, <-imported_by-#2
+```
+def handle(payload: dict) -> dict:
+    log("welcome")
+    track("welcome")
+    start(str(payload.get("user") or ""))
+    return {"user": payload.get("user")}
+```
+
+### [CAND] #9  app/services/jwt_service.py::JwtService.verify  [method]
+struct=0.90  bm25=0.20  via=calls←authenticate
+graph_links: <-calls-#1, <-imports-#1, <-rev:called_by-#1, <-rev:imported_by-#1, -calls->#13, -calls->#14, -calls->#4, -uses->#20
+```
+    def verify(self, value: str) -> dict:
+        claims = decode(value)
+        age = int(claims.get("age", 0))
+        if age > TOKEN_TTL:
+            raise ValueError("expired")
+        UserRepository().resolve(claims["sub"])
+        log("verified")
+        return claims
+```
+
+### [CAND] #10  app/webhooks/parse.py::parse  [function]
+struct=0.78  bm25=0.58  via=bm25:0.58
+graph_links: none
+```
+def parse(raw: bytes) -> dict:
+    return json.loads(raw.decode("utf-8") or "{}")
+```
+
+### [CAND] #11  app/audit/record.py::record  [function]
+struct=0.77  bm25=0.39  via=rev:calls←track
+graph_links: <-called_by-#4, <-imported_by-#4, <-rev:calls-#4, <-rev:imports-#4, <-g:called_by-#4, <-g:rev:calls-#4, <-called_by-#2, <-imported_by-#2
+```
+def record(action: str, user: str) -> dict:
+    log(action)
+    track(action)
+    db = connect()
+    return {"action": action, "user": user, "db": db}
+```
+
+### [CAND] #12  app/http/client.py::get  [function]
+struct=0.77  bm25=0.33  via=calls←track
+graph_links: <-calls-#2, <-imports-#2, <-rev:called_by-#2, <-rev:imported_by-#2, <-g:calls-#2, <-g:rev:called_by-#2
+```
+def get(url: str, params: dict | None = None) -> dict:
+    return {"url": url, "params": params or {}}
+```
+
+### [CAND] #13  app/utils/token.py::decode  [function]
+struct=0.73  bm25=0.26  via=calls←verify
+graph_links: <-calls-#9, <-imports-#9, <-rev:called_by-#9, <-rev:imported_by-#9, <-g:calls-#9, <-g:rev:called_by-#9, -called_by->#9, -imported_by->#9
+```
+def decode(value: str) -> dict:
+    parts = value.split(".", 2)
+    if len(parts) != 3:
+        return {"sub": value, "age": 0}
+    return {"sub": parts[0], "age": int(parts[1] or 0)}
+```
+
+### [CAND] #14  app/repositories/user_repo.py::UserRepository.resolve  [method]
+struct=0.73  bm25=0.23  via=calls←verify
+graph_links: <-calls-#9, <-imports-#9, <-rev:called_by-#9, <-rev:imported_by-#9, <-called_by-#4, <-imported_by-#4, <-rev:calls-#4, <-rev:imports-#4
+```
+    def resolve(self, key: str) -> dict:
+        log("lookup")
+        db = connect()
+        return User.lookup(db, key)
+```
+
+### [CAND] #15  app/jobs/digest.py::send_digest  [function]
+struct=0.77  bm25=0.00  via=rev:calls←track
+graph_links: <-called_by-#4, <-imported_by-#4, <-rev:calls-#4, <-rev:imports-#4, <-g:called_by-#4, <-g:rev:calls-#4, <-called_by-#2, <-imported_by-#2
+```
+def send_digest(job: dict) -> dict:
+    log("digest")
+    track("digest")
+    return {"sent": job.get("to")}
+```
+
+### [CAND] #16  app/oauth/refresh.py::refresh  [function]
+struct=0.73  bm25=0.00  via=rev:calls←verify
+graph_links: <-called_by-#9, <-imported_by-#9, <-rev:calls-#9, <-rev:imports-#9, <-called_by-#4, <-imported_by-#4, <-rev:calls-#4, <-rev:imports-#4
+```
+def refresh(token: str) -> dict:
+    rotated = rotate(token)
+    claims = JwtService().verify(rotated)
+    log("refreshed")
+    return claims
+```
+
+### [CAND] #17  app/checkout/begin.py::begin  [function]
+struct=0.73  bm25=0.00  via=rev:calls←log
+graph_links: <-called_by-#4, <-imported_by-#4, <-rev:calls-#4, <-rev:imports-#4, <-g:called_by-#4, <-g:rev:calls-#4, -calls->#24, -calls->#25
+```
+def begin(cart: dict, user_id: str) -> dict:
+    validate(cart)
+    priced = quote(cart)
+    for item in cart.get("items") or []:
+        reserve(item["sku"], int(item.get("qty") or 1))
+    ok = charge(user_id, int(priced["total"]))
+    if not ok:
+        raise ValueError("pay")
+    ship = schedule(cart.get("id") or "o1", cart.get("email") or "a@b.c")
+    log("checkout-ok")
+    return {"priced": priced, "ship": ship}
+```
+
+### [CAND] #18  app/uploads/scan.py::scan  [function]
+struct=0.73  bm25=0.00  via=rev:calls←log
+graph_links: <-called_by-#4, <-imported_by-#4, <-rev:calls-#4, <-rev:imports-#4, <-g:called_by-#4, <-g:rev:calls-#4
+```
+def scan(blob: bytes) -> None:
+    if b"EVIL" in blob:
+        raise ValueError("malware")
+    log("scan-ok")
+```
+
+### [CAND] #19  app/billing/invoices.py::charge  [function]
+struct=0.56  bm25=0.43  via=rev:calls←record
+graph_links: <-called_by-#11, <-imported_by-#11, <-rev:calls-#11, <-rev:imports-#11, <-g:called_by-#11, <-g:rev:calls-#11, <-calls-#17, <-imports-#17
+```
+def charge(user_id: str, cents: int) -> bool:
+    payload = get("/pay", {"user": user_id, "cents": cents})
+    record("charge", user_id)
+    return bool(payload)
+```
+
+### [CAND] #20  app/config/security.py::TOKEN_TTL  [const]
+struct=0.69  bm25=0.00  via=uses←verify
+graph_links: <-uses-#9, -rev:uses->#9, -rev:uses->#28
+```
+TOKEN_TTL = 3600
+```
+
+### [CAND] #21  app/config/database.py::connect  [function]
+struct=0.56  bm25=0.00  via=calls←record
+graph_links: <-calls-#14, <-imports-#14, <-rev:called_by-#14, <-rev:imported_by-#14, <-g:calls-#14, <-g:rev:called_by-#14, <-calls-#11, <-imports-#11
+```
+def connect() -> dict:
+    return {"users": {}}
+```
+
+### [CAND] #22  app/models/user.py::User.lookup  [method]
+struct=0.53  bm25=0.00  via=calls←resolve
+graph_links: <-calls-#14, <-imports-#14, <-rev:called_by-#14, <-rev:imported_by-#14, <-g:calls-#14, <-g:rev:called_by-#14
+```
+    def lookup(db: dict, key: str) -> dict:
+        rows = db.get("users") or {}
+        return rows.get(key) or {"id": key}
+```
+
+### [CAND] #23  app/oauth/rotate.py::rotate  [function]
+struct=0.53  bm25=0.00  via=calls←refresh
+graph_links: <-calls-#16, <-imports-#16, <-rev:called_by-#16, <-rev:imported_by-#16, <-g:calls-#16, <-g:rev:called_by-#16
+```
+def rotate(token: str) -> str:
+    return stamp(token) + "|rot"
+```
+
+### [CAND] #24  app/cart/validate.py::validate  [function]
+struct=0.53  bm25=0.00  via=calls←begin
+graph_links: <-calls-#17, <-imports-#17, <-rev:called_by-#17, <-rev:imported_by-#17, <-g:calls-#17, <-g:rev:called_by-#17
+```
+def validate(cart: dict) -> dict:
+    for item in cart.get("items") or []:
+        if not available(item["sku"], int(item.get("qty") or 1)):
+            raise ValueError("oos")
+    return cart
+```
+
+### [CAND] #25  app/pricing/quote.py::quote  [function]
+struct=0.53  bm25=0.00  via=calls←begin
+graph_links: <-calls-#17, <-imports-#17, <-rev:called_by-#17, <-rev:imported_by-#17, <-g:calls-#17, <-g:rev:called_by-#17
+```
+def quote(cart: dict) -> dict:
+    sub = 0
+    for item in cart.get("items") or []:
+        sub += unit_price(item["sku"]) * int(item.get("qty") or 1)
+    tax = compute(sub, cart.get("region") or "US")
+    return {"sub": sub, "tax": tax, "total": sub + tax}
+```
+
+### [CAND] #26  app/shipping/schedule.py::schedule  [function]
+struct=0.53  bm25=0.00  via=calls←begin
+graph_links: <-calls-#17, <-imports-#17, <-rev:called_by-#17, <-rev:imported_by-#17, <-g:calls-#17, <-g:rev:called_by-#17
+```
+def schedule(order_id: str, to: str) -> dict:
+    eta = get("/ship", {"order": order_id})
+    send(to, "shipped")
+    return eta
+```
+
+### [CAND] #27  app/inventory/reserve.py::reserve  [function]
+struct=0.53  bm25=0.00  via=calls←begin
+graph_links: <-calls-#17, <-imports-#17, <-rev:called_by-#17, <-rev:imported_by-#17, <-g:calls-#17, <-g:rev:called_by-#17
+```
+def reserve(sku: str, qty: int) -> bool:
+    if not available(sku, qty):
+        return False
+    _ = levels(sku)
+    return True
+```
+
+### [CAND] #28  app/webhooks/verify_sig.py::verify_sig  [function]
+struct=0.47  bm25=0.00  via=rev:uses←TOKEN_TTL
+graph_links: <-rev:uses-#20
+```
+def verify_sig(raw: bytes, sig: str) -> None:
+    if not sig or len(sig) < 4:
+        raise ValueError("bad sig")
+    _ = TOKEN_TTL
+```

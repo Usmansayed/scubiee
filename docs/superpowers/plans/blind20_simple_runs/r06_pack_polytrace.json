@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "engine": "polytrace",
+  "policy": "strict",
+  "elapsed_s": 0.001,
+  "n_pack": 1,
+  "pack": [
+    {
+      "file": "packages/pipeline/dashboard_server.py",
+      "symbol": "PublicAPIError.__init__",
+      "score": 1.0,
+      "loc": "packages/pipeline/dashboard_server.py:54-58",
+      "id": "packages/pipeline/dashboard_server.py::PublicAPIError.__init__"
+    }
+  ],
+  "error": null
+}

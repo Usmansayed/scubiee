@@ -1,0 +1,111 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 8.142,
+  "stdout_chars": 3825,
+  "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})",
+  "json": {
+    "ok": true,
+    "tool": "map",
+    "cards": [
+      {
+        "rank": 1,
+        "file": "tests/test_mcp_permissions.py",
+        "score": 15.586815173448443,
+        "why": "def test_write_project_tool_surface_includes_permissions(tmp_path: Path) -> None: repo = tmp_path / \"ws\" repo.mkdir() (repo / \".git\").mkdir() tool = TOOL_MAP[\"cline\"] report = writ",
+        "role": "test",
+        "loc": "tests/test_mcp_permissions.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 2,
+        "file": "packages/pipeline/rules_installer.py",
+        "score": 13.830195018165051,
+        "why": "def write_project_tool_surface( repo: Path | str, tool: ToolDef, *, dry_run: bool = False, ) -> dict[str, Any]: \"\"\"Write repo-local MCP pin + GATE rules for one connected tool.\"\"\" ",
+        "role": "function",
+        "loc": "packages/pipeline/rules_installer.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 3,
+        "file": "packages/pipeline/mcp_permissions.py",
+        "score": 8.396162775745083,
+        "why": "def merge_cursor_permissions( path: Path, *, profile: PermissionProfile = \"locate\", ) -> dict[str, Any]: \"\"\"Merge Scubiee entries into Cursor permissions.json without wiping user r",
+        "role": "function",
+        "loc": "packages/pipeline/mcp_permissions.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 4,
+        "file": "tests/test_mcp_config_merge.py",
+        "score": 5.410797360538431,
+        "why": "\"\"\"MCP config merge safety: preserve user servers, refuse corrupt files.\"\"\" from __future__ import annotations import json from pathlib import Path from unittest.mock import patch ",
+        "role": "test",
+        "loc": "tests/test_mcp_config_merge.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 5,
+        "file": "packages/pipeline/mcp_install.py",
+        "score": 4.885559179148791,
+        "why": "\"\"\"Cursor MCP entry for an installed Scubiee package (no source tree).\"\"\" from __future__ import annotations import json import os import sys from pathlib import Path from typing i",
+        "role": "function",
+        "loc": "packages/pipeline/mcp_install.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 6,
+        "file": "scripts/install_mcp_frontend.py",
+        "score": 4.85859014396568,
+        "why": "def main() -> int: repo = Path(sys.argv[1] if len(sys.argv) > 1 else DEFAULT_REPO).resolve() name = sys.argv[2] if len(sys.argv) > 2 else \"context-engine\" entry = server_entry(repo",
+        "role": "other",
+        "loc": "scripts/install_mcp_frontend.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 7,
+        "file": "scripts/kiro_mcp_ab_eval.py",
+        "score": 4.791956098391089,
+        "why": "def write_agents(*, model: str) -> dict[str, Path]: AGENTS_DIR.mkdir(parents=True, exist_ok=True) with_path = AGENTS_DIR / \"ab_with_scubiee.json\" without_path = AGENTS_DIR / \"ab_wi",
+        "role": "other",
+        "loc": "scripts/kiro_mcp_ab_eval.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 8,
+        "file": "scripts/kiro_mcp_ab_dev_eval.py",
+        "score": 4.713806150494625,
+        "why": "def assert_agent_surface(ws: Path, agent_path: Path, *, with_mcp: bool) -> list[str]: \"\"\"Fail-fast checks that harness wired tools/rules/permissions correctly. with_mcp=True means ",
+        "role": "other",
+        "loc": "scripts/kiro_mcp_ab_dev_eval.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 9,
+        "file": "packages/pipeline/mcp_restore.py",
+        "score": 4.567791406999481,
+        "why": "def _restore_cursor_project_mcp(project: Path | str | None) -> dict[str, Any]: \"\"\"Best-effort rewrite of project .cursor/mcp.json when no connected_tools yet.\"\"\" try: from pipeline",
+        "role": "function",
+        "loc": "packages/pipeline/mcp_restore.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 10,
+        "file": "docs/web-info/cursor-mcp.md",
+        "score": 4.149222690925679,
+        "why": "# Cursor & MCP Scubiee integrates with AI coding tools through the **Model Context Protocol (MCP)**. The MCP server name is **`scubiee`**. It talks to the local Scubiee daemon (def",
+        "role": "docs",
+        "loc": "docs/web-info/cursor-mcp.md:1-1",
+        "symbol": ""
+      }
+    ],
+    "suggested_seed": {
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": "",
+      "loc": "packages/pipeline/rules_installer.py:1-1",
+      "score": 13.830195018165051
+    },
+    "next": "scubiee pack \"mcp-permissions.json mcpAllowlist apply_permissions write_project_tool_surface install permissions merge allowlist\" --seed-file packages/pipeline/rules_installer.py --mode lean"
+  },
+  "stdout_preview": ""
+}

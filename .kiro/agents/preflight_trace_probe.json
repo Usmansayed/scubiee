@@ -1,0 +1,33 @@
+{
+  "name": "preflight_trace_probe",
+  "description": "Verify pack/tracer ladder + hardened GATE resources",
+  "includeMcpJson": false,
+  "includePowers": false,
+  "model": "auto",
+  "prompt": "You are a diagnostic agent. GATE requires pack_context then pack[]/card.loc (BAN whole-file Read of heatmap paths). Resources include AGENTS.md. Call gate, then map(k=5) about pack_context composite tracer heatmap, THEN pack_context(mode=lean) using suggested_seed or top map card. Do NOT whole-file Read after pack. Answer ONLY JSON: {\"scubiee_available\":bool,\"can_use_pack\":bool,\"can_use_trace_ladder\":bool,\"tools_called\":[...],\"gate\":str,\"pack_engine\":str|null,\"build_hint\":str|null,\"notes\":str}. No file edits.",
+  "tools": [
+    "read",
+    "shell",
+    "@scubiee",
+    "@scubiee/gate",
+    "@scubiee/map",
+    "@scubiee/pack_context",
+    "@scubiee/expand_context",
+    "@scubiee/status"
+  ],
+  "allowedTools": [
+    "read",
+    "shell",
+    "@scubiee",
+    "@scubiee/gate",
+    "@scubiee/map",
+    "@scubiee/pack_context",
+    "@scubiee/expand_context",
+    "@scubiee/status"
+  ],
+  "resources": [
+    "file://AGENTS.md",
+    "file://.kiro/steering/scubiee.md"
+  ],
+  "mcpServers": {}
+}

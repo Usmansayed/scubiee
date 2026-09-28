@@ -1,0 +1,350 @@
+{
+  "protocol": "pack_vs_composite_bakeoff_v1",
+  "n_cases": 8,
+  "include_bodies": false,
+  "note": "pack_context tool with engine=composite_v1 is the product default; other arms are alternate engines behind the same pack API",
+  "summary": {
+    "pack_context": {
+      "engine": "composite_v1",
+      "ok": "7/8",
+      "mean_wall_ms": 15068.1,
+      "median_wall_ms": 14415.9,
+      "mean_jaccard_vs_composite": 1.0,
+      "speedup_vs_slowest": null,
+      "ratio_vs_composite": 1.0,
+      "vs_slowest_speedup": 1.0
+    },
+    "pack_context_broad": {
+      "engine": "polytrace",
+      "ok": "7/8",
+      "mean_wall_ms": 14377.4,
+      "median_wall_ms": 14266.3,
+      "mean_jaccard_vs_composite": 0.929,
+      "speedup_vs_slowest": null,
+      "ratio_vs_composite": 0.95,
+      "vs_slowest_speedup": 1.05
+    }
+  },
+  "cases": [
+    {
+      "case": "t01",
+      "family": "faiss-publish",
+      "query": "publish FAISS index republish store checksum WarmSearchEngine serve hits after rebuild vector index publication usable",
+      "seed_file": "packages/pipeline/artifact_guard.py",
+      "seed_symbol": "",
+      "arms": {
+        "pack_context": {
+          "case": "t01",
+          "family": "faiss-publish",
+          "tool": "pack_context",
+          "engine_req": "composite_v1",
+          "engine_got": "composite_v1",
+          "ok": true,
+          "wall_ms": 18994.8,
+          "heatmap_n": 7,
+          "top_ids": [
+            "packages/pipeline/artifact_guard.py::atomic_write_text",
+            "packages/pipeline/artifact_guard.py::_atomic_write_text_unlocked",
+            "packages/pipeline/store_lock.py::store_write_lock",
+            "packages/pipeline/artifact_guard.py::_atomic_replace",
+            "packages/pipeline/store_lock.py::_held_dirs",
+            "packages/pipeline/store_lock.py::store_lock_file",
+            "packages/pipeline/store_lock.py::_release_fd"
+          ],
+          "jaccard_vs_composite": 1.0,
+          "error": null
+        },
+        "pack_context_broad": {
+          "case": "t01",
+          "family": "faiss-publish",
+          "tool": "pack_context_broad",
+          "engine_req": "polytrace",
+          "engine_got": "polytrace",
+          "ok": true,
+          "wall_ms": 14585.0,
+          "heatmap_n": 3,
+          "top_ids": [
+            "packages/pipeline/artifact_guard.py::atomic_write_text",
+            "packages/pipeline/store_lock.py::store_write_lock",
+            "packages/pipeline/store_lock.py::store_lock_file"
+          ],
+          "jaccard_vs_composite": 0.429,
+          "error": null
+        }
+      }
+    },
+    {
+      "case": "t02",
+      "family": "bm25-build",
+      "query": "BM25 index build tokenize corpus indexing conductor bm25_index lexical chunks",
+      "seed_file": "packages/conductor/bm25_index.py",
+      "seed_symbol": "",
+      "arms": {
+        "pack_context": {
+          "case": "t02",
+          "family": "bm25-build",
+          "tool": "pack_context",
+          "engine_req": "composite_v1",
+          "engine_got": "composite_v1",
+          "ok": true,
+          "wall_ms": 14368.0,
+          "heatmap_n": 1,
+          "top_ids": [
+            "packages/conductor/bm25_index.py::tokenize"
+          ],
+          "jaccard_vs_composite": 1.0,
+          "error": null
+        },
+        "pack_context_broad": {
+          "case": "t02",
+          "family": "bm25-build",
+          "tool": "pack_context_broad",
+          "engine_req": "polytrace",
+          "engine_got": "polytrace",
+          "ok": true,
+          "wall_ms": 14875.1,
+          "heatmap_n": 1,
+          "top_ids": [
+            "packages/conductor/bm25_index.py::tokenize"
+          ],
+          "jaccard_vs_composite": 1.0,
+          "error": null
+        }
+      }
+    },
+    {
+      "case": "t03",
+      "family": "chunk-pipeline",
+      "query": "indexer chunk pipeline parse source files into chunks merkle symbol spans index_manager",
+      "seed_file": "packages/enrich/__init__.py",
+      "seed_symbol": "",
+      "arms": {
+        "pack_context": {
+          "case": "t03",
+          "family": "chunk-pipeline",
+          "tool": "pack_context",
+          "engine_req": "composite_v1",
+          "engine_got": "composite_v1",
+          "ok": true,
+          "wall_ms": 14415.9,
+          "heatmap_n": 1,
+          "top_ids": [
+            "packages/enrich/__init__.py::EnrichedChunk.to_dict"
+          ],
+          "jaccard_vs_composite": 1.0,
+          "error": null
+        },
+        "pack_context_broad": {
+          "case": "t03",
+          "family": "chunk-pipeline",
+          "tool": "pack_context_broad",
+          "engine_req": "polytrace",
+          "engine_got": "polytrace",
+          "ok": true,
+          "wall_ms": 14266.3,
+          "heatmap_n": 1,
+          "top_ids": [
+            "packages/enrich/__init__.py::EnrichedChunk.to_dict"
+          ],
+          "jaccard_vs_composite": 1.0,
+          "error": null
+        }
+      }
+    },
+    {
+      "case": "t04",
+      "family": "gate-enroll",
+      "query": "gate enroll managed project_id .scubiee id.json GATE line AGENTS.md bind repo",
+      "seed_file": "packages/pipeline/project_id.py",
+      "seed_symbol": "",
+      "arms": {
+        "pack_context": {
+          "case": "t04",
+          "family": "gate-enroll",
+          "tool": "pack_context",
+          "engine_req": "composite_v1",
+          "engine_got": "composite_v1",
+          "ok": true,
+          "wall_ms": 14420.0,
+          "heatmap_n": 1,
+          "top_ids": [
+            "packages/pipeline/project_id.py::_lock_registry_file"
+          ],
+          "jaccard_vs_composite": 1.0,
+          "error": null
+        },
+        "pack_context_broad": {
+          "case": "t04",
+          "family": "gate-enroll",
+          "tool": "pack_context_broad",
+          "engine_req": "polytrace",
+          "engine_got": "polytrace",
+          "ok": true,
+          "wall_ms": 14060.5,
+          "heatmap_n": 1,
+          "top_ids": [
+            "packages/pipeline/project_id.py::_lock_registry_file"
+          ],
+          "jaccard_vs_composite": 1.0,
+          "error": null
+        }
+      }
+    },
+    {
+      "case": "t05",
+      "family": "engine-watchdog",
+      "query": "engine watchdog idle timeout restart CTX_ENGINE_URL port 8765 pipeline engine run",
+      "seed_file": "packages/pipeline/watchdog.py",
+      "seed_symbol": "",
+      "arms": {
+        "pack_context": {
+          "case": "t05",
+          "family": "engine-watchdog",
+          "tool": "pack_context",
+          "engine_req": "composite_v1",
+          "engine_got": "composite_v1",
+          "ok": true,
+          "wall_ms": 14215.4,
+          "heatmap_n": 3,
+          "top_ids": [
+            "packages/pipeline/watchdog.py::_home",
+            "packages/pipeline/project_id.py::context_engine_home",
+            "packages/pipeline/branding.py::migrate_home_dir"
+          ],
+          "jaccard_vs_composite": 1.0,
+          "error": null
+        },
+        "pack_context_broad": {
+          "case": "t05",
+          "family": "engine-watchdog",
+          "tool": "pack_context_broad",
+          "engine_req": "polytrace",
+          "engine_got": "polytrace",
+          "ok": true,
+          "wall_ms": 14525.0,
+          "heatmap_n": 3,
+          "top_ids": [
+            "packages/pipeline/watchdog.py::_home",
+            "packages/pipeline/project_id.py::context_engine_home",
+            "packages/pipeline/branding.py::migrate_home_dir"
+          ],
+          "jaccard_vs_composite": 1.0,
+          "error": null
+        }
+      }
+    },
+    {
+      "case": "t06",
+      "family": "mcp-bridge",
+      "query": "scubiee-mcp-bridge MCP bridge launch stdio tools forward hybrid experiment surface",
+      "seed_file": "packages/pipeline/templates/scubiee.md",
+      "seed_symbol": "",
+      "arms": {
+        "pack_context": {
+          "case": "t06",
+          "family": "mcp-bridge",
+          "tool": "pack_context",
+          "engine_req": "composite_v1",
+          "engine_got": null,
+          "ok": false,
+          "wall_ms": 14286.7,
+          "heatmap_n": 0,
+          "top_ids": [],
+          "jaccard_vs_composite": 1.0,
+          "error": "seed not found: file='packages/pipeline/templates/scubiee.md' symbol='' line=0"
+        },
+        "pack_context_broad": {
+          "case": "t06",
+          "family": "mcp-bridge",
+          "tool": "pack_context_broad",
+          "engine_req": "polytrace",
+          "engine_got": null,
+          "ok": false,
+          "wall_ms": 14357.5,
+          "heatmap_n": 0,
+          "top_ids": [],
+          "jaccard_vs_composite": 1.0,
+          "error": "seed not found: file='packages/pipeline/templates/scubiee.md' symbol='' line=0"
+        }
+      }
+    },
+    {
+      "case": "t07",
+      "family": "locate-cli",
+      "query": "scubiee map pack CLI locate_cli argparse seed-file mode lean enrich prompt",
+      "seed_file": "packages/pipeline/locate_cli.py",
+      "seed_symbol": "",
+      "arms": {
+        "pack_context": {
+          "case": "t07",
+          "family": "locate-cli",
+          "tool": "pack_context",
+          "engine_req": "composite_v1",
+          "engine_got": "composite_v1",
+          "ok": true,
+          "wall_ms": 14758.3,
+          "heatmap_n": 1,
+          "top_ids": [
+            "packages/pipeline/locate_cli.py::_root"
+          ],
+          "jaccard_vs_composite": 1.0,
+          "error": null
+        },
+        "pack_context_broad": {
+          "case": "t07",
+          "family": "locate-cli",
+          "tool": "pack_context_broad",
+          "engine_req": "polytrace",
+          "engine_got": "polytrace",
+          "ok": true,
+          "wall_ms": 14123.0,
+          "heatmap_n": 1,
+          "top_ids": [
+            "packages/pipeline/locate_cli.py::_root"
+          ],
+          "jaccard_vs_composite": 1.0,
+          "error": null
+        }
+      }
+    },
+    {
+      "case": "t08",
+      "family": "expand-hop",
+      "query": "expand_context direction callees callers effects with_bodies hop chain node id",
+      "seed_file": "packages/pipeline/context_trace.py",
+      "seed_symbol": "",
+      "arms": {
+        "pack_context": {
+          "case": "t08",
+          "family": "expand-hop",
+          "tool": "pack_context",
+          "engine_req": "composite_v1",
+          "engine_got": "composite_v1",
+          "ok": true,
+          "wall_ms": 14304.0,
+          "heatmap_n": 1,
+          "top_ids": [
+            "packages/pipeline/context_trace.py::_heat"
+          ],
+          "jaccard_vs_composite": 1.0,
+          "error": null
+        },
+        "pack_context_broad": {
+          "case": "t08",
+          "family": "expand-hop",
+          "tool": "pack_context_broad",
+          "engine_req": "polytrace",
+          "engine_got": "polytrace",
+          "ok": true,
+          "wall_ms": 14207.2,
+          "heatmap_n": 1,
+          "top_ids": [
+            "packages/pipeline/context_trace.py::_heat"
+          ],
+          "jaccard_vs_composite": 1.0,
+          "error": null
+        }
+      }
+    }
+  ]
+}

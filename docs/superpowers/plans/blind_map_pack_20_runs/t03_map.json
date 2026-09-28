@@ -1,0 +1,111 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 8.951,
+  "stdout_chars": 4102,
+  "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})",
+  "json": {
+    "ok": true,
+    "tool": "map",
+    "cards": [
+      {
+        "rank": 1,
+        "file": "docs/superpowers/plans/2026-09-04-pack-context-bakeoff.md",
+        "score": 15.200389818086327,
+        "why": "# Pack-context + few-call bakeoff **Date:** 2026-09-04 **Goal:** Full useful context in fewest agent calls; measure tokens vs guide+native. ## Spec ### `pack_context(query, seed\u2026, ",
+        "role": "docs",
+        "loc": "docs/superpowers/plans/2026-09-04-pack-context-bakeoff.md:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 2,
+        "file": "docs/superpowers/specs/2026-09-05-incremental-context-ladder-design.md",
+        "score": 14.683150335544427,
+        "why": "# Design: Incremental Context Ladder (\u22643 calls, lean tokens) **Date:** 2026-09-05 **Status:** approved \u2014 implementing ## Problem One fat `pack_context` wastes tokens when the seed ",
+        "role": "docs",
+        "loc": "docs/superpowers/specs/2026-09-05-incremental-context-ladder-design.md:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 3,
+        "file": "AGENTS.md",
+        "score": 14.62752786522249,
+        "why": "<!-- scubiee:start --> **GATE 1:ce_d9cb766c3820091ed9ffbc64ef33063c** - Managed repo. `project_id='ce_d9cb766c3820091ed9ffbc64ef33063c'`. **MUST Use Scubiee CLI for locate** (shell",
+        "role": "docs",
+        "loc": "AGENTS.md:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 4,
+        "file": "docs/superpowers/plans/2026-09-04-map-context-ship.md",
+        "score": 14.292706209275465,
+        "why": "# Live MCP smoke \u2014 Context Tracing tools ```powershell # Reload Scubiee MCP in Cursor after pull (or restart MCP server). # Tools: map_context | expand_context | collect_hot_contex",
+        "role": "docs",
+        "loc": "docs/superpowers/plans/2026-09-04-map-context-ship.md:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 5,
+        "file": "docs/superpowers/specs/2026-09-04-heatmap-first-routing-design.md",
+        "score": 14.20517554911188,
+        "why": "# GATE + MCP instructions \u2014 heatmap-first routing **Date:** 2026-09-04 **Status:** approved \u2014 applied 2026-09-04 (rules + card loc/rank/howto + hard-query + map soft split + local ",
+        "role": "docs",
+        "loc": "docs/superpowers/specs/2026-09-04-heatmap-first-routing-design.md:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 6,
+        "file": "tests/test_mcp_response_lean.py",
+        "score": 14.048342384338904,
+        "why": "def test_pack_context_slim_drops_heatmap_and_guide(monkeypatch: pytest.MonkeyPatch) -> None: monkeypatch.delenv(\"CTX_MCP_ECHO_GUIDANCE\", raising=False) monkeypatch.delenv(\"CTX_MCP_",
+        "role": "test",
+        "loc": "tests/test_mcp_response_lean.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 7,
+        "file": "scripts/ten_problem_map_pack_eval.py",
+        "score": 13.737879427778797,
+        "why": "\"\"\"10-problem real-life eval: detailed map \u2192 pick seed \u2192 pack_context \u2192 score. Mirrors agent GATE instructions: 1) descriptive soft map to find candidates 2) pick best seed chunk f",
+        "role": "other",
+        "loc": "scripts/ten_problem_map_pack_eval.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 8,
+        "file": "docs/superpowers/specs/2026-09-04-context-trace-mcp-tools-design.md",
+        "score": 13.513166843696974,
+        "why": "# Context Tracing MCP tools \u2014 design **Date:** 2026-09-04 **Status:** approved to ship (chat) **Product:** Guide-only heatmap; agent reads code itself (native Read). ## Tools ### 1",
+        "role": "docs",
+        "loc": "docs/superpowers/specs/2026-09-04-context-trace-mcp-tools-design.md:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 9,
+        "file": "packages/pipeline/context_trace.py",
+        "score": 13.313913301752605,
+        "why": "def _case(query: str, seed: TraceNode, *, case_id: str = \"mcp\") -> GoldCase: return GoldCase( id=case_id, title=case_id, query=query, seed=GoldRef(file=seed.file, symbol=seed.symbo",
+        "role": "function",
+        "loc": "packages/pipeline/context_trace.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 10,
+        "file": "packages/pipeline/locate_cli.py",
+        "score": 13.254201906580182,
+        "why": "\"latency_ms\": round((time.perf_counter() - t0) * 1000, 1), \"ladder\": \"scubiee map \u2192 scubiee pack --mode lean \u2192 scubiee expand\", \"next\": ( \"scubiee pack \\\"{q}\\\" --seed-file {f} --mo",
+        "role": "function",
+        "loc": "packages/pipeline/locate_cli.py:1-1",
+        "symbol": ""
+      }
+    ],
+    "suggested_seed": {
+      "file": "packages/pipeline/context_trace.py",
+      "symbol": "",
+      "loc": "packages/pipeline/context_trace.py:1-1",
+      "score": 13.313913301752605
+    },
+    "next": "scubiee pack \"map_context suggested_seed pack_context mode lean heatmap chain hot bodies cards loc rank expand_context collect_hot_context locate ladder\" --seed-file packages/pipeline/context_trace.py --mode lean"
+  },
+  "stdout_preview": ""
+}

@@ -405,13 +405,23 @@ def test_final_check_forces_held_publish(monkeypatch, tmp_path: Path):
         locate_streak_ms=60_000,
         on_refresh=published.append,
     )
-    monkeypatch.setattr(loop, "_sync_paths", lambda paths, **_: {"refreshed": True, "chunks_upserted": 1})
+    # Only a bulk-size publish is held during a locate streak (_publish_or_hold);
+    # a small save publishes inline so it reaches map within the 5s budget. A
+    # 1-chunk payload here was published by drain_due, leaving final_check
+    # nothing to force, so the test failed since 0.3.131 (issue 9).
+    big = loop.bulk_reindex_threshold + 1
+    monkeypatch.setattr(
+        loop, "_sync_paths", lambda paths, **_: {"refreshed": True, "chunks_upserted": big}
+    )
     monkeypatch.setattr(loop, "keeper_tick", lambda **_: {"refreshed": False, "strategy": "root_clean"})
+    monkeypatch.setattr(loop, "_invalidate_session_paths", lambda _paths: None)
     now = time.monotonic()
     # Queue first, then note locate so the streak is active during drain.
     loop.mark_dirty(["pkg/a.py"], reason="write")
     loop.note_locate(now=now)
     loop.drain_due(now=now + 0.01)
+    assert published == [], "held while the locate streak is active"
+    assert loop.status()["publish_pending"] is True
 
     out = loop.final_check(reason="test")
 
@@ -472,6 +482,8 @@ def test_disk_edit_clears_locate_streak_so_publish_can_proceed(monkeypatch, tmp_
     loop.note_locate(now=now)
     assert loop.status()["locate_streak_active"] is True
 
+    (tmp_path / "pkg").mkdir(exist_ok=True)
+    (tmp_path / "pkg" / "a.py").write_text("x = 1\n", encoding="utf-8")
     loop.mark_dirty(["pkg/a.py"], reason="disk_poll")
     assert loop.status()["locate_streak_active"] is False
     loop.drain_due(now=now + 0.01)
@@ -480,6 +492,8 @@ def test_disk_edit_clears_locate_streak_so_publish_can_proceed(monkeypatch, tmp_
     assert loop.status()["publish_pending"] is False
     from pipeline.sync_loop import BackgroundSyncLoop
 
+    # More changed files than a save touches: the bulk lane's full debounce.
+    monkeypatch.setenv("CTX_POLL_HOT_MAX", "1")
     loop = BackgroundSyncLoop(tmp_path, debounce_ms=1500, change_poll_ms=1000)
     sync_calls: list[list[str]] = []
     monkeypatch.setattr(loop, "_sync_paths", lambda paths, **_: sync_calls.append(paths) or {"refreshed": True})
@@ -507,6 +521,68 @@ def test_disk_edit_clears_locate_streak_so_publish_can_proceed(monkeypatch, tmp_
     assert sync_calls == []
     assert loop.dirty_ledger.due_paths(now=0.5) == []
     assert loop.dirty_ledger.due_paths(now=1.6) == ["pkg/a.py", "pkg/new.py"]
+
+
+def test_second_save_does_not_wait_behind_a_queued_graph_catchup(monkeypatch, tmp_path: Path):
+    from pipeline.sync_loop import BackgroundSyncLoop
+
+    monkeypatch.delenv("CTX_POLL_HOT_MAX", raising=False)
+    loop = BackgroundSyncLoop(tmp_path, debounce_ms=1500, hot_debounce_ms=250, change_poll_ms=1000)
+    loop.dirty_ledger.mark(["pkg/a.py", "pkg/gone.py"], reason="graph_catchup", now=0.0)
+    loop.dirty_ledger.mark(["pkg/gone.py"], reason="deletion_catchup", now=0.0)
+    loop.dirty_ledger.defer(["pkg/a.py"], now=30.0)
+    monkeypatch.setattr(
+        "pipeline.root_probe.root_probe",
+        lambda *_a, **_k: type(
+            "Probe",
+            (),
+            {
+                "clean": False,
+                "added": [],
+                "modified": ["pkg/a.py"],
+                "removed": ["pkg/gone.py"],
+                "ms": 1.0,
+                "files_checked": 2,
+                "changed_count": 2,
+                "to_dict": lambda self: {"clean": False},
+            },
+        )(),
+    )
+
+    assert loop.poll_repo_changes(now=1.0) == ["pkg/a.py"]
+    entries = loop.dirty_ledger.snapshot()["paths"]
+    assert entries["pkg/a.py"]["reason"] == "disk_save"
+    assert entries["pkg/gone.py"]["reason"] == "deletion_catchup"
+    assert loop.dirty_ledger.due_paths(now=1.3) == ["pkg/a.py"]
+
+
+def test_change_poll_sends_a_small_save_down_the_hot_lane(monkeypatch, tmp_path: Path):
+    from pipeline.sync_loop import BackgroundSyncLoop
+
+    monkeypatch.delenv("CTX_POLL_HOT_MAX", raising=False)
+    loop = BackgroundSyncLoop(tmp_path, debounce_ms=1500, hot_debounce_ms=250, change_poll_ms=1000)
+    monkeypatch.setattr(
+        "pipeline.root_probe.root_probe",
+        lambda *_a, **_k: type(
+            "Probe",
+            (),
+            {
+                "clean": False,
+                "added": ["pkg/new.py"],
+                "modified": ["pkg/a.py"],
+                "removed": [],
+                "ms": 1.0,
+                "files_checked": 2,
+                "changed_count": 2,
+                "to_dict": lambda self: {"clean": False},
+            },
+        )(),
+    )
+
+    assert loop.poll_repo_changes(now=0.0) == ["pkg/a.py", "pkg/new.py"]
+    entries = loop.dirty_ledger.snapshot()["paths"]
+    assert {e["reason"] for e in entries.values()} == {"disk_save"}
+    assert loop.dirty_ledger.due_paths(now=0.3) == ["pkg/a.py", "pkg/new.py"]
 
 
 def test_change_poll_does_not_starve_queued_debounce(monkeypatch, tmp_path: Path):
@@ -990,10 +1066,34 @@ def test_apply_chunk_delta_appends_every_channel_position():
     assert engine.conductor.graph._by_file["pkg/pipeline/sync_live_probe/f0.py"][0].index == n0
 
 
-def test_stale_bm25_does_not_break_a_search_over_patched_positions():
-    """BM25 stays one generation behind; _fit_channel pads, dense ranks the new chunk."""
+def test_hot_patch_keeps_bm25_in_step_for_exact_names():
+    """A just-saved function must be reachable by its exact name (BM25), not only dense."""
     engine, dim = _fake_binder(n_chunks=6, dim=8)
     n0 = len(engine.chunks)
+    new = ChunkRecord(
+        id=42,
+        file="pkg/new_probe.py",
+        start_line=1,
+        end_line=2,
+        symbol="probe",
+        text="def zzuniqueprobe_handler(): return 1",
+        enriched="def zzuniqueprobe_handler(): return 1",
+    )
+    vec = np.zeros((1, dim), dtype=np.float32)
+    vec[0, 0] = 1.0
+    engine.apply_chunk_delta([new], vec, base_chunk_count=n0)
+    scores = engine.conductor.bm25.score_all("zzuniqueprobe_handler")
+    assert len(scores) == n0 + 1
+    assert int(np.argmax(scores)) == n0 and scores[n0] > 0
+
+
+def test_stale_bm25_does_not_break_a_search_over_patched_positions():
+    """A BM25 not aligned with the binder is left behind; _fit_channel pads, dense ranks."""
+    from conductor.bm25_index import BM25Index
+
+    engine, dim = _fake_binder(n_chunks=6, dim=8)
+    n0 = len(engine.chunks)
+    engine.conductor.bm25 = BM25Index(engine.texts[:-1])  # one generation behind
     new = ChunkRecord(
         id=42,
         file="pkg/new_probe.py",
@@ -1009,8 +1109,8 @@ def test_stale_bm25_does_not_break_a_search_over_patched_positions():
 
     query_vec = np.zeros(dim, dtype=np.float32)
     query_vec[0] = 1.0
-    # BM25 still has n0 docs — this used to IndexError deep in _best_chunk.
-    assert len(engine.conductor.bm25.score_all("probe")) == n0
+    # Misaligned BM25 is not patched — this used to IndexError deep in _best_chunk.
+    assert len(engine.conductor.bm25.score_all("probe")) == n0 - 1
     hits = engine.conductor.retrieve_D_channel_best("probe function", query_vec, top_k=5)
     assert any(h.file == "pkg/new_probe.py" for h in hits), (
         "the appended chunk must be rankable through the dense channel"
@@ -1048,6 +1148,89 @@ def test_apply_chunk_delta_refuses_incoherent_deltas():
     assert len(engine.chunks) == n0
     assert engine.conductor.dense.matrix.shape[0] == n0
     assert engine.conductor._n == n0
+
+
+def test_apply_chunk_delta_patches_an_edit_in_place():
+    """Edit = one chunk re-embedded, one unchanged (moved lines), one removed."""
+    engine, dim = _fake_binder(n_chunks=6, dim=8)
+    n0 = len(engine.chunks)
+    # pkg/mod_1.py: chunk 1 unchanged but shifted, chunk 2 moved into it and removed,
+    # plus a re-embedded replacement with a fresh id.
+    engine.chunks[2].file = engine.files[2] = "pkg/mod_1.py"
+    engine.conductor._file_chunks = {}
+    for pos, f in enumerate(engine.files):
+        engine.conductor._file_chunks.setdefault(f, []).append(pos)
+    kept = ChunkRecord(
+        id=1, file="pkg/mod_1.py", start_line=5, end_line=8, symbol="sym_1",
+        text="def sym_1(): return 1", enriched="def sym_1(): return 1",
+    )
+    fresh = ChunkRecord(
+        id=77, file="pkg/mod_1.py", start_line=10, end_line=12, symbol="sym_new",
+        text="def sym_new(): return 'edited'", enriched="def sym_new(): return 'edited'",
+    )
+    vec = np.zeros((1, dim), dtype=np.float32)
+    vec[0, 1] = 1.0
+    # Disk before the edit held all 6; kept_lines excludes mod_1's two old chunks.
+    info = engine.apply_chunk_delta(
+        [kept, fresh], vec, base_chunk_count=n0 - 2, removed_ids=[2], embedded_ids=[77]
+    )
+
+    assert info["appended"] == 1 and info["removed"] == 1 and info["updated"] == 1
+    dense = engine.conductor.dense
+    assert 2 not in dense._chunk_row
+    assert float(np.linalg.norm(dense.matrix[2])) == 0.0
+    assert engine.chunks[1].start_line == 5
+    assert engine.chunks[2].file == "" and engine.files[2] == ""
+    assert engine.conductor._file_chunks["pkg/mod_1.py"] == [1, n0]
+    assert [s.index for s in engine.conductor.graph._by_file["pkg/mod_1.py"]] == [1, n0]
+
+    query_vec = np.zeros(dim, dtype=np.float32)
+    query_vec[1] = 1.0
+    hits = engine.conductor.retrieve_D_channel_best("sym_new edited", query_vec, top_k=6)
+    assert all(h.chunk_id != 2 for h in hits)
+    assert any(h.chunk_id == n0 for h in hits)
+
+    # Disk now holds n0 chunks again (4 kept + 2 for mod_1); the next append's
+    # base must match the live corpus net of the tombstone.
+    later = ChunkRecord(
+        id=88, file="pkg/other.py", start_line=1, end_line=2, symbol="o",
+        text="def o(): pass", enriched="def o(): pass",
+    )
+    engine.apply_chunk_delta(
+        [later], np.ones((1, dim), dtype=np.float32), base_chunk_count=n0
+    )
+
+
+def test_apply_chunk_delta_patches_a_deletion():
+    engine, dim = _fake_binder(n_chunks=5, dim=8)
+    n0 = len(engine.chunks)
+
+    info = engine.apply_chunk_delta(
+        [], None, base_chunk_count=n0 - 1, removed_ids=[3], embedded_ids=[]
+    )
+
+    assert info["removed"] == 1 and info["appended"] == 0
+    assert len(engine.chunks) == n0
+    assert "pkg/mod_3.py" not in engine.conductor._file_chunks
+    assert 3 not in engine.conductor.dense._chunk_row
+    query_vec = engine.conductor.dense.matrix[0].copy()
+    hits = engine.conductor.retrieve_D_channel_best("sym_3", query_vec, top_k=5)
+    assert all(h.file != "pkg/mod_3.py" for h in hits)
+
+
+def test_apply_chunk_delta_refuses_a_removal_it_cannot_find():
+    engine, dim = _fake_binder(n_chunks=4, dim=8)
+    n0 = len(engine.chunks)
+    with pytest.raises(RuntimeError):
+        engine.apply_chunk_delta(
+            [], None, base_chunk_count=n0 - 1, removed_ids=[999], embedded_ids=[]
+        )
+    with pytest.raises(RuntimeError):  # drift: base does not account for the removal
+        engine.apply_chunk_delta(
+            [], None, base_chunk_count=n0, removed_ids=[1], embedded_ids=[]
+        )
+    assert engine.conductor.dense._chunk_row[1] == 1
+    assert engine.files[1] == "pkg/mod_1.py"
 
 
 def _runtime_manager_with_binder(monkeypatch):

@@ -131,10 +131,21 @@ def _pick(d: dict[str, Any], keys: tuple[str, ...]) -> dict[str, Any]:
 
 
 def _slim_pack_item(item: dict[str, Any]) -> dict[str, Any]:
-    """Optional body escape hatch — keep id/loc/text only."""
+    """Optional body escape hatch — keep id/loc/text only.
+
+    The requested ``text`` body is left as-is (the agent asked for it), but the
+    ``loc`` pointer is clamped so a follow-up Native-Read of a huge class stays
+    bounded, with the original span kept as ``full_loc`` (BETA-10).
+    """
     out = _pick(item, ("id", "loc", "text"))
     if "text" not in out and item.get("body") is not None:
         out["text"] = item.get("body")
+    if out.get("loc"):
+        loc, full = _clamp_loc(str(out["loc"]))
+        out["loc"] = loc
+        full = full or (str(item.get("full_loc") or "") or None)
+        if full:
+            out["full_loc"] = full
     return out
 
 
@@ -143,7 +154,14 @@ def _slim_loc_item(item: dict[str, Any] | str) -> dict[str, Any] | str:
         return item
     if not isinstance(item, dict):
         return item
-    return _pick(item, ("id", "loc", "edge", "score", "symbol", "already_in_pack"))
+    out = _pick(item, ("id", "loc", "edge", "score", "symbol", "already_in_pack"))
+    if out.get("loc"):
+        loc, full = _clamp_loc(str(out["loc"]))
+        out["loc"] = loc
+        full = full or (str(item.get("full_loc") or "") or None)
+        if full:
+            out["full_loc"] = full
+    return out
 
 
 def _ensure_loc(item: dict[str, Any]) -> str:
@@ -198,6 +216,8 @@ def _heat_card(
     sym = str(item.get("symbol") or "")
     if not sym and "::" in iid:
         sym = iid.split("::", 1)[-1]
+    loc, full_loc = _clamp_loc(loc)
+    full_loc = full_loc or (str(item.get("full_loc") or "") or None)
     out: dict[str, Any] = {
         "r": rank,
         "heat": heat,
@@ -206,9 +226,49 @@ def _heat_card(
         "s": sym,
         "sc": round(_row_score(item), 4),
     }
+    if full_loc:
+        out["full_loc"] = full_loc
     if edge:
         out["e"] = edge
     return out
+
+
+def _loc_limits() -> tuple[int, int]:
+    """(max span before clamping, head lines kept). Env-tunable."""
+    import os
+
+    def _int(name: str, default: int) -> int:
+        try:
+            return max(1, int(os.environ.get(name) or default))
+        except ValueError:
+            return default
+
+    return _int("CTX_PACK_LOC_MAX_LINES", 250), _int("CTX_PACK_LOC_HEAD_LINES", 120)
+
+
+def _clamp_loc(loc: str) -> tuple[str, str | None]:
+    """Clamp whole-class / giant spans to a readable head (BETA-10).
+
+    A class seed resolved to ``sync_loop.py:105-1474`` told agents to
+    Native-Read 1,370 lines. Keep the head (class header, ``__init__``, first
+    methods) as ``loc`` and return the original span as ``full_loc`` so the
+    agent knows it was cut; methods further down show up as their own cards
+    or via expand_context.
+    """
+    if not loc or ":" not in loc:
+        return loc, None
+    path, _, span = loc.rpartition(":")
+    if "-" not in span:
+        return loc, None
+    a, _, b = span.partition("-")
+    try:
+        start, end = int(a), int(b)
+    except ValueError:
+        return loc, None
+    max_lines, head = _loc_limits()
+    if end - start + 1 <= max_lines:
+        return loc, None
+    return f"{path}:{start}-{start + head - 1}", loc
 
 
 _PACK_HEATMAP_NEXT = (
@@ -496,7 +556,8 @@ def slim_locate_payload(payload: dict[str, Any]) -> dict[str, Any]:
             }
             if slim_t:
                 out["timings"] = slim_t
-        for sig in ("unchanged", "truncated", "has_more", "weak_match", "elapsed_ms", "latency_ms"):
+        # ``cache`` (hit | last | session) tells a remap it did not re-query.
+        for sig in ("unchanged", "truncated", "has_more", "weak_match", "cache", "elapsed_ms", "latency_ms"):
             if sig in payload:
                 out[sig] = payload[sig]
         # Normalize CLI latency_ms → elapsed_ms for agents.
@@ -590,6 +651,10 @@ def slim_locate_payload(payload: dict[str, Any]) -> dict[str, Any]:
             "direction": payload.get("direction"),
             "delta": [_slim_loc_item(c) for c in (payload.get("delta") or [])],
         }
+        if payload.get("empty_reason"):
+            out["empty_reason"] = payload.get("empty_reason")
+        if payload.get("count") is not None:
+            out["count"] = payload.get("count")
         pack = payload.get("pack") or []
         if pack:
             out["pack"] = [
@@ -600,8 +665,9 @@ def slim_locate_payload(payload: dict[str, Any]) -> dict[str, Any]:
         # Keep hydrate/struct timings so hosts can see the 50MB AST pickle tax
         # vs the cheap script-neighbor walk (not semantic search).
         for key in ("hydrate_ms", "hydrate_source", "timings", "count"):
-            if key in payload:
+            if key in payload and key not in out:
                 out[key] = payload[key]
+        # empty_reason only when set above (truthy) — never leak None onto non-empty deltas
         return out
 
     if tool == "collect_hot_context":

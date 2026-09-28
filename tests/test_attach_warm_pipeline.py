@@ -42,13 +42,14 @@ def test_mark_warm_start_writes_stamp(tmp_path, monkeypatch):
 
     monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
     monkeypatch.setattr(wc, "_STARTED_AT", None)
+    monkeypatch.delenv("CTX_WARM_DEADLINE_MS", raising=False)
     started = wc.mark_warm_start(tmp_path)
     assert started > 0
     assert wc.warm_started_at() == started
     assert (tmp_path / "ce-home" / "warm_attach.json").is_file()
     fields = wc.warm_status_fields(engine_healthy=True, embedder_loaded=True)
     assert fields["warm_ready_map"] is True
-    assert fields["warm_deadline_ms"] == 30_000
+    assert fields["warm_deadline_ms"] == 90_000
 
 
 def test_start_attach_warm_pipeline_returns_immediately(monkeypatch, tmp_path):
@@ -181,6 +182,51 @@ def test_hydrate_prefers_bundle(monkeypatch, tmp_path):
     assert ct.ast_cache_ready(tmp_path) is True
 
 
+def test_hydrate_bake_on_miss_serves_stale_bundle_without_bake(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """BETA-02: a stale disk bundle is usable now; do not spawn a bake child for it."""
+    from pipeline import context_trace as ct
+    from trace_lab.ast_graph import AstTraceGraph
+    from trace_lab.lsp_index import LspIndex
+    from trace_lab.retrieve import LexicalIndex
+    from trace_lab.types import TraceNode
+
+    node = TraceNode(
+        id="pkg/a.py::b",
+        file="pkg/a.py",
+        symbol="b",
+        kind="function",
+        start_line=1,
+        end_line=2,
+        text="def b():\n    return 1\n",
+    )
+    fake_nodes = {node.id: node}
+    seen: dict[str, object] = {}
+
+    def fake_bundle(*_a, allow_stale: bool = False, **_k):
+        seen["allow_stale"] = allow_stale
+        if not allow_stale:
+            return None
+        graph = AstTraceGraph(fake_nodes, [])
+        return fake_nodes, graph, LspIndex(), LexicalIndex(fake_nodes, include_path=False), None, True
+
+    def no_bake(*_a, **_k):
+        raise AssertionError("stale bundle must not trigger a bake child")
+
+    monkeypatch.setattr(ct, "_try_load_repo_bundle", fake_bundle)
+    monkeypatch.setattr(ct, "_spawn_ast_bake", no_bake)
+    monkeypatch.setattr(ct, "corpus_fingerprint", lambda root: "fp-new")
+    monkeypatch.setattr(ct, "_bind_pack_tracer", lambda *a, **k: object())
+    monkeypatch.setenv("CTX_MCP_BRIDGE_CHILD", "1")
+    ct._CACHE.clear()
+    out = ct.hydrate_ast_bundle(tmp_path, bake_on_miss=True)
+    assert seen["allow_stale"] is True
+    assert out["ok"] is True
+    assert out["source"] == "bundle_stale"
+    assert ct.ast_cache_ready(tmp_path) is True
+
+
 def test_hydrate_bake_on_miss_fills_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """A cold repo bakes once, then the same process serves that cache."""
     from pipeline import context_trace as ct
@@ -282,9 +328,9 @@ def test_map_result_cache_hit_miss():
     hit = get_map_cached(repo="/r", query="hello world", fingerprint="fp1")
     assert hit is not None
     assert hit.get("cache") in {"hit", "last"}
-    # Identical-query remaps ignore fingerprint (soft_v1 / last-payload path).
-    assert get_map_cached(repo="/r", query="hello world", fingerprint="other") is not None
     assert get_map_cached(repo="/r", query="totally different", fingerprint="fp1") is None
+    # The fingerprint is the index token: a publish (new token) must miss.
+    assert get_map_cached(repo="/r", query="hello world", fingerprint="other") is None
 
 
 def test_bridge_holds_idle_for_hours(tmp_path, monkeypatch):

@@ -1,0 +1,5077 @@
+{
+  "fixture": "C:\\Users\\usman\\Downloads\\context-engine\\fixtures\\trace-lab",
+  "n_prompts": 28,
+  "dense_backend": "real:fastembed",
+  "dense_error": null,
+  "summary": [
+    {
+      "arm": "bm25",
+      "mean_f1": 0.7143,
+      "mean_recall_must": 0.7381,
+      "seed_ok": 22,
+      "seed_exact": 17,
+      "n": 28,
+      "sum_fn": 22,
+      "sum_forbidden_fp": 6
+    },
+    {
+      "arm": "bm25_multiseed",
+      "mean_f1": 0.6793,
+      "mean_recall_must": 1.0,
+      "seed_ok": 22,
+      "seed_exact": 17,
+      "n": 28,
+      "sum_fn": 0,
+      "sum_forbidden_fp": 17
+    },
+    {
+      "arm": "graph_boost",
+      "mean_f1": 0.6786,
+      "mean_recall_must": 0.7024,
+      "seed_ok": 21,
+      "seed_exact": 16,
+      "n": 28,
+      "sum_fn": 23,
+      "sum_forbidden_fp": 8
+    },
+    {
+      "arm": "hybrid",
+      "mean_f1": 0.6709,
+      "mean_recall_must": 0.6964,
+      "seed_ok": 21,
+      "seed_exact": 18,
+      "n": 28,
+      "sum_fn": 28,
+      "sum_forbidden_fp": 6
+    },
+    {
+      "arm": "dense_multiseed",
+      "mean_f1": 0.621,
+      "mean_recall_must": 0.8869,
+      "seed_ok": 19,
+      "seed_exact": 16,
+      "n": 28,
+      "sum_fn": 8,
+      "sum_forbidden_fp": 16
+    },
+    {
+      "arm": "graph_ppr_multiseed",
+      "mean_f1": 0.6191,
+      "mean_recall_must": 0.9167,
+      "seed_ok": 21,
+      "seed_exact": 14,
+      "n": 28,
+      "sum_fn": 5,
+      "sum_forbidden_fp": 22
+    },
+    {
+      "arm": "dense",
+      "mean_f1": 0.5995,
+      "mean_recall_must": 0.6131,
+      "seed_ok": 19,
+      "seed_exact": 16,
+      "n": 28,
+      "sum_fn": 34,
+      "sum_forbidden_fp": 6
+    },
+    {
+      "arm": "graph_ppr",
+      "mean_f1": 0.5893,
+      "mean_recall_must": 0.619,
+      "seed_ok": 21,
+      "seed_exact": 14,
+      "n": 28,
+      "sum_fn": 26,
+      "sum_forbidden_fp": 8
+    }
+  ],
+  "prompts": [
+    {
+      "id": "v01",
+      "family": "auth-flow",
+      "prompt": "im stuck figuring out how users actually get logged in around here",
+      "gold_seed": "app/middleware/auth.py::authenticate",
+      "arms": {
+        "bm25": {
+          "seed": "app/http/client.py::get",
+          "seeds": [
+            "app/http/client.py::get"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "false_positives_forbidden": [
+            "app/http/client.py::get"
+          ],
+          "hot": [
+            "app/http/client.py::get"
+          ]
+        },
+        "graph_boost": {
+          "seed": "app/http/client.py::get",
+          "seeds": [
+            "app/http/client.py::get"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "false_positives_forbidden": [
+            "app/http/client.py::get"
+          ],
+          "hot": [
+            "app/http/client.py::get"
+          ]
+        },
+        "graph_ppr": {
+          "seed": "app/http/client.py::get",
+          "seeds": [
+            "app/http/client.py::get"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "false_positives_forbidden": [
+            "app/http/client.py::get"
+          ],
+          "hot": [
+            "app/http/client.py::get"
+          ]
+        },
+        "bm25_multiseed": {
+          "seed": "app/http/client.py::get",
+          "seeds": [
+            "app/http/client.py::get",
+            "app/middleware/auth.py::authenticate",
+            "app/routes/login.py::login"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.9412,
+          "recall_must": 1.0,
+          "precision_hot": 0.8889,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/http/client.py::get"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/http/client.py::get",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_ppr_multiseed": {
+          "seed": "app/http/client.py::get",
+          "seeds": [
+            "app/http/client.py::get",
+            "app/utils/logger.py::log",
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.875,
+          "recall_must": 1.0,
+          "precision_hot": 0.7778,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/http/client.py::get",
+            "app/utils/logger.py::log"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/http/client.py::get",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/logger.py::log",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "dense": {
+          "seed": "app/http/client.py::get",
+          "seeds": [
+            "app/http/client.py::get"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "false_positives_forbidden": [
+            "app/http/client.py::get"
+          ],
+          "hot": [
+            "app/http/client.py::get"
+          ]
+        },
+        "hybrid": {
+          "seed": "app/http/client.py::get",
+          "seeds": [
+            "app/http/client.py::get"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "false_positives_forbidden": [
+            "app/http/client.py::get"
+          ],
+          "hot": [
+            "app/http/client.py::get"
+          ]
+        },
+        "dense_multiseed": {
+          "seed": "app/http/client.py::get",
+          "seeds": [
+            "app/http/client.py::get",
+            "app/utils/logger.py::log",
+            "app/routes/login.py::login"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.8889,
+          "recall_must": 1.0,
+          "precision_hot": 0.8,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/http/client.py::get",
+            "app/utils/logger.py::log"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/http/client.py::get",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/logger.py::log",
+            "app/utils/token.py::decode"
+          ]
+        }
+      }
+    },
+    {
+      "id": "v02",
+      "family": "auth-flow",
+      "prompt": "walk me through the credential check path please, i keep missing pieces",
+      "gold_seed": "app/middleware/auth.py::authenticate",
+      "arms": {
+        "bm25": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_boost": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_ppr": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "bm25_multiseed": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/routes/login.py::login"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.9333,
+          "recall_must": 1.0,
+          "precision_hot": 0.875,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_ppr_multiseed": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "dense": {
+          "seed": "app/services/jwt_service.py::JwtService.verify",
+          "seeds": [
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.8,
+          "recall_must": 0.6667,
+          "precision_hot": 1.0,
+          "false_negatives": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "hybrid": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "dense_multiseed": {
+          "seed": "app/services/jwt_service.py::JwtService.verify",
+          "seeds": [
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        }
+      }
+    },
+    {
+      "id": "v03",
+      "family": "auth-flow",
+      "prompt": "theres something with bearer headers and loading the account after claims, where is that?",
+      "gold_seed": "app/middleware/auth.py::authenticate",
+      "arms": {
+        "bm25": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_boost": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_ppr": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "bm25_multiseed": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_ppr_multiseed": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "dense": {
+          "seed": "app/middleware/auth.py::extract_bearer",
+          "seeds": [
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.2857,
+          "recall_must": 0.1667,
+          "precision_hot": 1.0,
+          "false_negatives": [
+            "app/middleware/auth.py::authenticate",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/auth.py::extract_bearer"
+          ]
+        },
+        "hybrid": {
+          "seed": "app/middleware/auth.py::extract_bearer",
+          "seeds": [
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.2857,
+          "recall_must": 0.1667,
+          "precision_hot": 1.0,
+          "false_negatives": [
+            "app/middleware/auth.py::authenticate",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/auth.py::extract_bearer"
+          ]
+        },
+        "dense_multiseed": {
+          "seed": "app/middleware/auth.py::extract_bearer",
+          "seeds": [
+            "app/middleware/auth.py::extract_bearer",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        }
+      }
+    },
+    {
+      "id": "v04",
+      "family": "token-expiry",
+      "prompt": "people get kicked out after a while, where is that timeout even set?",
+      "gold_seed": "app/services/jwt_service.py::JwtService.verify",
+      "arms": {
+        "bm25": {
+          "seed": "app/http/client.py::get",
+          "seeds": [
+            "app/http/client.py::get"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/http/client.py::get"
+          ]
+        },
+        "graph_boost": {
+          "seed": "app/http/client.py::get",
+          "seeds": [
+            "app/http/client.py::get"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/http/client.py::get"
+          ]
+        },
+        "graph_ppr": {
+          "seed": "app/http/client.py::get",
+          "seeds": [
+            "app/http/client.py::get"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/http/client.py::get"
+          ]
+        },
+        "bm25_multiseed": {
+          "seed": "app/http/client.py::get",
+          "seeds": [
+            "app/http/client.py::get",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/config/security.py::TOKEN_TTL"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.8571,
+          "recall_must": 1.0,
+          "precision_hot": 0.75,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/http/client.py::get",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_ppr_multiseed": {
+          "seed": "app/http/client.py::get",
+          "seeds": [
+            "app/http/client.py::get",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.75,
+          "recall_must": 1.0,
+          "precision_hot": 0.6,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/http/client.py::get",
+            "app/middleware/auth.py::authenticate",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "dense": {
+          "seed": "app/http/client.py::get",
+          "seeds": [
+            "app/http/client.py::get"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/http/client.py::get"
+          ]
+        },
+        "hybrid": {
+          "seed": "app/http/client.py::get",
+          "seeds": [
+            "app/http/client.py::get"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/http/client.py::get"
+          ]
+        },
+        "dense_multiseed": {
+          "seed": "app/http/client.py::get",
+          "seeds": [
+            "app/http/client.py::get",
+            "app/config/security.py::TOKEN_TTL",
+            "app/config/security.py::SIGNING_KEY"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.75,
+          "recall_must": 1.0,
+          "precision_hot": 0.6,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::SIGNING_KEY",
+            "app/config/security.py::TOKEN_TTL",
+            "app/http/client.py::get",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        }
+      }
+    },
+    {
+      "id": "v05",
+      "family": "token-expiry",
+      "prompt": "why do tokens stop working after roughly an hour?",
+      "gold_seed": "app/config/security.py::TOKEN_TTL",
+      "arms": {
+        "bm25": {
+          "seed": "app/services/jwt_service.py::JwtService.verify",
+          "seeds": [
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_boost": {
+          "seed": "app/services/jwt_service.py::JwtService.verify",
+          "seeds": [
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_ppr": {
+          "seed": "app/services/jwt_service.py::JwtService.verify",
+          "seeds": [
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "bm25_multiseed": {
+          "seed": "app/services/jwt_service.py::JwtService.verify",
+          "seeds": [
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/config/security.py::TOKEN_TTL",
+            "app/config/security.py::SIGNING_KEY"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.8571,
+          "recall_must": 1.0,
+          "precision_hot": 0.75,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::SIGNING_KEY",
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_ppr_multiseed": {
+          "seed": "app/services/jwt_service.py::JwtService.verify",
+          "seeds": [
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/config/security.py::TOKEN_TTL",
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.8571,
+          "recall_must": 1.0,
+          "precision_hot": 0.75,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/middleware/auth.py::authenticate",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "dense": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seeds": [
+            "app/config/security.py::TOKEN_TTL"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "hybrid": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seeds": [
+            "app/config/security.py::TOKEN_TTL"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "dense_multiseed": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seeds": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/config/security.py::SIGNING_KEY",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.8571,
+          "recall_must": 1.0,
+          "precision_hot": 0.75,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::SIGNING_KEY",
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        }
+      }
+    },
+    {
+      "id": "v06",
+      "family": "token-expiry",
+      "prompt": "wheres the expiry knob for the signed claims?",
+      "gold_seed": "app/config/security.py::TOKEN_TTL",
+      "arms": {
+        "bm25": {
+          "seed": "app/services/jwt_service.py::JwtService.verify",
+          "seeds": [
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.8,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_boost": {
+          "seed": "app/services/jwt_service.py::JwtService.verify",
+          "seeds": [
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.8,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_ppr": {
+          "seed": "app/services/jwt_service.py::JwtService.verify",
+          "seeds": [
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.8,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "bm25_multiseed": {
+          "seed": "app/services/jwt_service.py::JwtService.verify",
+          "seeds": [
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/config/security.py::TOKEN_TTL",
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.5714,
+          "recall_must": 1.0,
+          "precision_hot": 0.4,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_ppr_multiseed": {
+          "seed": "app/services/jwt_service.py::JwtService.verify",
+          "seeds": [
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/middleware/auth.py::authenticate",
+            "app/config/security.py::TOKEN_TTL"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.5714,
+          "recall_must": 1.0,
+          "precision_hot": 0.4,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "dense": {
+          "seed": "app/config/security.py::SIGNING_KEY",
+          "seeds": [
+            "app/config/security.py::SIGNING_KEY"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::SIGNING_KEY"
+          ]
+        },
+        "hybrid": {
+          "seed": "app/services/jwt_service.py::JwtService.verify",
+          "seeds": [
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.8,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "dense_multiseed": {
+          "seed": "app/config/security.py::SIGNING_KEY",
+          "seeds": [
+            "app/config/security.py::SIGNING_KEY",
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.6667,
+          "recall_must": 1.0,
+          "precision_hot": 0.5,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::SIGNING_KEY",
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        }
+      }
+    },
+    {
+      "id": "v07",
+      "family": "auth-log",
+      "prompt": "auth middleware is printing something somewhere, can you find that?",
+      "gold_seed": "app/middleware/auth.py::authenticate",
+      "arms": {
+        "bm25": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/utils/logger.py::log"
+          ]
+        },
+        "graph_boost": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/utils/logger.py::log"
+          ]
+        },
+        "graph_ppr": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/utils/logger.py::log"
+          ]
+        },
+        "bm25_multiseed": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/utils/logger.py::log"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.8,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/utils/logger.py::log"
+          ]
+        },
+        "graph_ppr_multiseed": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.6667,
+          "recall_must": 1.0,
+          "precision_hot": 0.5,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/logger.py::log"
+          ]
+        },
+        "dense": {
+          "seed": "app/middleware/auth.py::extract_bearer",
+          "seeds": [
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/middleware/auth.py::authenticate",
+            "app/utils/logger.py::log"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/auth.py::extract_bearer"
+          ]
+        },
+        "hybrid": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/utils/logger.py::log"
+          ]
+        },
+        "dense_multiseed": {
+          "seed": "app/middleware/auth.py::extract_bearer",
+          "seeds": [
+            "app/middleware/auth.py::extract_bearer",
+            "app/middleware/auth.py::authenticate",
+            "app/routes/login.py::login"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.6667,
+          "recall_must": 1.0,
+          "precision_hot": 0.5,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/routes/login.py::login",
+            "app/utils/logger.py::log"
+          ]
+        }
+      }
+    },
+    {
+      "id": "v08",
+      "family": "auth-log",
+      "prompt": "where does the login check write log output?",
+      "gold_seed": "app/middleware/auth.py::authenticate",
+      "arms": {
+        "bm25": {
+          "seed": "app/routes/login.py::login",
+          "seeds": [
+            "app/routes/login.py::login"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/middleware/auth.py::authenticate",
+            "app/utils/logger.py::log"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/routes/login.py::login"
+          ]
+        },
+        "graph_boost": {
+          "seed": "app/routes/login.py::login",
+          "seeds": [
+            "app/routes/login.py::login"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/middleware/auth.py::authenticate",
+            "app/utils/logger.py::log"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/routes/login.py::login"
+          ]
+        },
+        "graph_ppr": {
+          "seed": "app/routes/login.py::login",
+          "seeds": [
+            "app/routes/login.py::login"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/middleware/auth.py::authenticate",
+            "app/utils/logger.py::log"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/routes/login.py::login"
+          ]
+        },
+        "bm25_multiseed": {
+          "seed": "app/routes/login.py::login",
+          "seeds": [
+            "app/routes/login.py::login",
+            "app/utils/logger.py::log",
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.8,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/routes/login.py::login",
+            "app/utils/logger.py::log"
+          ]
+        },
+        "graph_ppr_multiseed": {
+          "seed": "app/routes/login.py::login",
+          "seeds": [
+            "app/routes/login.py::login",
+            "app/utils/logger.py::log",
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.8,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/routes/login.py::login",
+            "app/utils/logger.py::log"
+          ]
+        },
+        "dense": {
+          "seed": "app/routes/login.py::login",
+          "seeds": [
+            "app/routes/login.py::login"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/middleware/auth.py::authenticate",
+            "app/utils/logger.py::log"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/routes/login.py::login"
+          ]
+        },
+        "hybrid": {
+          "seed": "app/routes/login.py::login",
+          "seeds": [
+            "app/routes/login.py::login"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/middleware/auth.py::authenticate",
+            "app/utils/logger.py::log"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/routes/login.py::login"
+          ]
+        },
+        "dense_multiseed": {
+          "seed": "app/routes/login.py::login",
+          "seeds": [
+            "app/routes/login.py::login",
+            "app/utils/logger.py::log",
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.8,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/routes/login.py::login",
+            "app/utils/logger.py::log"
+          ]
+        }
+      }
+    },
+    {
+      "id": "v09",
+      "family": "charge",
+      "prompt": "how do we bill someone a few cents against the pay api?",
+      "gold_seed": "app/billing/invoices.py::charge",
+      "arms": {
+        "bm25": {
+          "seed": "app/billing/invoices.py::charge",
+          "seeds": [
+            "app/billing/invoices.py::charge"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ]
+        },
+        "graph_boost": {
+          "seed": "app/billing/invoices.py::charge",
+          "seeds": [
+            "app/billing/invoices.py::charge"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ]
+        },
+        "graph_ppr": {
+          "seed": "app/billing/invoices.py::charge",
+          "seeds": [
+            "app/billing/invoices.py::charge"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ]
+        },
+        "bm25_multiseed": {
+          "seed": "app/billing/invoices.py::charge",
+          "seeds": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get",
+            "app/jobs/runner.py::execute"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.6667,
+          "recall_must": 1.0,
+          "precision_hot": 0.5,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get",
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/runner.py::execute"
+          ]
+        },
+        "graph_ppr_multiseed": {
+          "seed": "app/billing/invoices.py::charge",
+          "seeds": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get",
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.3636,
+          "recall_must": 1.0,
+          "precision_hot": 0.2222,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate",
+            "app/utils/token.py::decode"
+          ],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/config/database.py::connect",
+            "app/http/client.py::get",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "dense": {
+          "seed": "app/billing/invoices.py::charge",
+          "seeds": [
+            "app/billing/invoices.py::charge"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ]
+        },
+        "hybrid": {
+          "seed": "app/billing/invoices.py::charge",
+          "seeds": [
+            "app/billing/invoices.py::charge"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ]
+        },
+        "dense_multiseed": {
+          "seed": "app/billing/invoices.py::charge",
+          "seeds": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get",
+            "app/routes/health.py::health"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.8,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get",
+            "app/routes/health.py::health"
+          ]
+        }
+      }
+    },
+    {
+      "id": "v10",
+      "family": "charge",
+      "prompt": "i need the outbound payment request path, not login",
+      "gold_seed": "app/billing/invoices.py::charge",
+      "arms": {
+        "bm25": {
+          "seed": "app/routes/login.py::login",
+          "seeds": [
+            "app/routes/login.py::login"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_boost": {
+          "seed": "app/routes/login.py::login",
+          "seeds": [
+            "app/routes/login.py::login"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_ppr": {
+          "seed": "app/routes/login.py::login",
+          "seeds": [
+            "app/routes/login.py::login"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "bm25_multiseed": {
+          "seed": "app/routes/login.py::login",
+          "seeds": [
+            "app/routes/login.py::login",
+            "app/billing/invoices.py::charge",
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.3333,
+          "recall_must": 1.0,
+          "precision_hot": 0.2,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/config/database.py::connect",
+            "app/http/client.py::get",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_ppr_multiseed": {
+          "seed": "app/routes/login.py::login",
+          "seeds": [
+            "app/routes/login.py::login",
+            "app/utils/logger.py::log",
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/logger.py::log",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "dense": {
+          "seed": "app/routes/login.py::login",
+          "seeds": [
+            "app/routes/login.py::login"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "hybrid": {
+          "seed": "app/routes/login.py::login",
+          "seeds": [
+            "app/routes/login.py::login"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "dense_multiseed": {
+          "seed": "app/routes/login.py::login",
+          "seeds": [
+            "app/routes/login.py::login",
+            "app/utils/logger.py::log",
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/logger.py::log",
+            "app/utils/token.py::decode"
+          ]
+        }
+      }
+    },
+    {
+      "id": "v11",
+      "family": "event-emit",
+      "prompt": "when we fire welcome what actually runs? feels like magic",
+      "gold_seed": "app/events/bus.py::emit",
+      "arms": {
+        "bm25": {
+          "seed": "app/handlers/welcome.py::handle",
+          "seeds": [
+            "app/handlers/welcome.py::handle"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.5,
+          "recall_must": 0.3333,
+          "precision_hot": 1.0,
+          "false_negatives": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/handlers/welcome.py::handle"
+          ]
+        },
+        "graph_boost": {
+          "seed": "app/handlers/welcome.py::handle",
+          "seeds": [
+            "app/handlers/welcome.py::handle"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.5,
+          "recall_must": 0.3333,
+          "precision_hot": 1.0,
+          "false_negatives": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/handlers/welcome.py::handle"
+          ]
+        },
+        "graph_ppr": {
+          "seed": "app/events/registry.py::bind",
+          "seeds": [
+            "app/events/registry.py::bind"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 1.0,
+          "false_negatives": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/events/registry.py::bind"
+          ]
+        },
+        "bm25_multiseed": {
+          "seed": "app/handlers/welcome.py::handle",
+          "seeds": [
+            "app/handlers/welcome.py::handle",
+            "app/events/bus.py::emit",
+            "app/bootstrap.py::start"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/bootstrap.py::start",
+            "app/events/bus.py::emit",
+            "app/events/registry.py::bind",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ]
+        },
+        "graph_ppr_multiseed": {
+          "seed": "app/events/registry.py::bind",
+          "seeds": [
+            "app/events/registry.py::bind",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.8,
+          "recall_must": 0.6667,
+          "precision_hot": 1.0,
+          "false_negatives": [
+            "app/events/bus.py::emit"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/events/registry.py::bind",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ]
+        },
+        "dense": {
+          "seed": "app/jobs/worker.py::run",
+          "seeds": [
+            "app/jobs/worker.py::run"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ]
+        },
+        "hybrid": {
+          "seed": "app/jobs/worker.py::run",
+          "seeds": [
+            "app/jobs/worker.py::run"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ]
+        },
+        "dense_multiseed": {
+          "seed": "app/jobs/worker.py::run",
+          "seeds": [
+            "app/jobs/worker.py::run",
+            "app/handlers/welcome.py::handle",
+            "app/bootstrap.py::start"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.375,
+          "recall_must": 0.3333,
+          "precision_hot": 0.4286,
+          "false_negatives": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/bootstrap.py::start",
+            "app/events/registry.py::bind",
+            "app/handlers/welcome.py::handle",
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ]
+        }
+      }
+    },
+    {
+      "id": "v12",
+      "family": "event-emit",
+      "prompt": "emit looks empty but something must handle the welcome event",
+      "gold_seed": "app/events/bus.py::emit",
+      "arms": {
+        "bm25": {
+          "seed": "app/handlers/welcome.py::handle",
+          "seeds": [
+            "app/handlers/welcome.py::handle"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.5,
+          "recall_must": 0.3333,
+          "precision_hot": 1.0,
+          "false_negatives": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/handlers/welcome.py::handle"
+          ]
+        },
+        "graph_boost": {
+          "seed": "app/handlers/welcome.py::handle",
+          "seeds": [
+            "app/handlers/welcome.py::handle"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.5,
+          "recall_must": 0.3333,
+          "precision_hot": 1.0,
+          "false_negatives": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/handlers/welcome.py::handle"
+          ]
+        },
+        "graph_ppr": {
+          "seed": "app/handlers/welcome.py::handle",
+          "seeds": [
+            "app/handlers/welcome.py::handle"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.5,
+          "recall_must": 0.3333,
+          "precision_hot": 1.0,
+          "false_negatives": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/handlers/welcome.py::handle"
+          ]
+        },
+        "bm25_multiseed": {
+          "seed": "app/handlers/welcome.py::handle",
+          "seeds": [
+            "app/handlers/welcome.py::handle",
+            "app/events/bus.py::emit",
+            "app/bootstrap.py::start"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.8889,
+          "recall_must": 1.0,
+          "precision_hot": 0.8,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/bootstrap.py::start",
+            "app/events/bus.py::emit",
+            "app/events/registry.py::bind",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ]
+        },
+        "graph_ppr_multiseed": {
+          "seed": "app/handlers/welcome.py::handle",
+          "seeds": [
+            "app/handlers/welcome.py::handle",
+            "app/events/bus.py::emit",
+            "app/bootstrap.py::start"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.8889,
+          "recall_must": 1.0,
+          "precision_hot": 0.8,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/bootstrap.py::start",
+            "app/events/bus.py::emit",
+            "app/events/registry.py::bind",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ]
+        },
+        "dense": {
+          "seed": "app/handlers/welcome.py::handle",
+          "seeds": [
+            "app/handlers/welcome.py::handle"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.5,
+          "recall_must": 0.3333,
+          "precision_hot": 1.0,
+          "false_negatives": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/handlers/welcome.py::handle"
+          ]
+        },
+        "hybrid": {
+          "seed": "app/handlers/welcome.py::handle",
+          "seeds": [
+            "app/handlers/welcome.py::handle"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.5,
+          "recall_must": 0.3333,
+          "precision_hot": 1.0,
+          "false_negatives": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/handlers/welcome.py::handle"
+          ]
+        },
+        "dense_multiseed": {
+          "seed": "app/handlers/welcome.py::handle",
+          "seeds": [
+            "app/handlers/welcome.py::handle",
+            "app/events/bus.py::emit",
+            "app/bootstrap.py::start"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.8889,
+          "recall_must": 1.0,
+          "precision_hot": 0.8,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/bootstrap.py::start",
+            "app/events/bus.py::emit",
+            "app/events/registry.py::bind",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ]
+        }
+      }
+    },
+    {
+      "id": "v13",
+      "family": "job-run",
+      "prompt": "the worker loop that pulls jobs off a queue, how does that go?",
+      "gold_seed": "app/jobs/worker.py::run",
+      "arms": {
+        "bm25": {
+          "seed": "app/jobs/worker.py::run",
+          "seeds": [
+            "app/jobs/worker.py::run"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ]
+        },
+        "graph_boost": {
+          "seed": "app/jobs/worker.py::run",
+          "seeds": [
+            "app/jobs/worker.py::run"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ]
+        },
+        "graph_ppr": {
+          "seed": "app/jobs/worker.py::run",
+          "seeds": [
+            "app/jobs/worker.py::run"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ]
+        },
+        "bm25_multiseed": {
+          "seed": "app/jobs/worker.py::run",
+          "seeds": [
+            "app/jobs/worker.py::run",
+            "app/jobs/runner.py::execute",
+            "app/jobs/queue.py::dequeue"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ]
+        },
+        "graph_ppr_multiseed": {
+          "seed": "app/jobs/worker.py::run",
+          "seeds": [
+            "app/jobs/worker.py::run",
+            "app/jobs/runner.py::execute",
+            "app/jobs/queue.py::dequeue"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ]
+        },
+        "dense": {
+          "seed": "app/jobs/worker.py::run",
+          "seeds": [
+            "app/jobs/worker.py::run"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ]
+        },
+        "hybrid": {
+          "seed": "app/jobs/worker.py::run",
+          "seeds": [
+            "app/jobs/worker.py::run"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ]
+        },
+        "dense_multiseed": {
+          "seed": "app/jobs/worker.py::run",
+          "seeds": [
+            "app/jobs/worker.py::run",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ]
+        }
+      }
+    },
+    {
+      "id": "v14",
+      "family": "job-run",
+      "prompt": "how does a digest email job actually get sent from the queue?",
+      "gold_seed": "app/jobs/worker.py::run",
+      "arms": {
+        "bm25": {
+          "seed": "app/http/client.py::get",
+          "seeds": [
+            "app/http/client.py::get"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/http/client.py::get"
+          ]
+        },
+        "graph_boost": {
+          "seed": "app/http/client.py::get",
+          "seeds": [
+            "app/http/client.py::get"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/http/client.py::get"
+          ]
+        },
+        "graph_ppr": {
+          "seed": "app/http/client.py::get",
+          "seeds": [
+            "app/http/client.py::get"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/http/client.py::get"
+          ]
+        },
+        "bm25_multiseed": {
+          "seed": "app/http/client.py::get",
+          "seeds": [
+            "app/http/client.py::get",
+            "app/jobs/worker.py::run",
+            "app/jobs/runner.py::execute"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.8889,
+          "recall_must": 1.0,
+          "precision_hot": 0.8,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/http/client.py::get",
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ]
+        },
+        "graph_ppr_multiseed": {
+          "seed": "app/http/client.py::get",
+          "seeds": [
+            "app/http/client.py::get",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.8889,
+          "recall_must": 1.0,
+          "precision_hot": 0.8,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/http/client.py::get",
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ]
+        },
+        "dense": {
+          "seed": "app/http/client.py::get",
+          "seeds": [
+            "app/http/client.py::get"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/http/client.py::get"
+          ]
+        },
+        "hybrid": {
+          "seed": "app/http/client.py::get",
+          "seeds": [
+            "app/http/client.py::get"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/http/client.py::get"
+          ]
+        },
+        "dense_multiseed": {
+          "seed": "app/http/client.py::get",
+          "seeds": [
+            "app/http/client.py::get",
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/runner.py::execute"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.5714,
+          "recall_must": 0.5,
+          "precision_hot": 0.6667,
+          "false_negatives": [
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/worker.py::run"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/http/client.py::get",
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/runner.py::execute"
+          ]
+        }
+      }
+    },
+    {
+      "id": "v15",
+      "family": "health",
+      "prompt": "just the health probe thing, nothing fancy",
+      "gold_seed": "app/routes/health.py::health",
+      "arms": {
+        "bm25": {
+          "seed": "app/routes/health.py::health",
+          "seeds": [
+            "app/routes/health.py::health"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/routes/health.py::health"
+          ]
+        },
+        "graph_boost": {
+          "seed": "app/routes/health.py::health",
+          "seeds": [
+            "app/routes/health.py::health"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/routes/health.py::health"
+          ]
+        },
+        "graph_ppr": {
+          "seed": "app/routes/health.py::health",
+          "seeds": [
+            "app/routes/health.py::health"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/routes/health.py::health"
+          ]
+        },
+        "bm25_multiseed": {
+          "seed": "app/routes/health.py::health",
+          "seeds": [
+            "app/routes/health.py::health",
+            "app/bootstrap.py::start",
+            "app/billing/invoices.py::charge"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.2857,
+          "recall_must": 1.0,
+          "precision_hot": 0.1667,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/bootstrap.py::start",
+            "app/events/registry.py::bind",
+            "app/handlers/welcome.py::handle",
+            "app/http/client.py::get",
+            "app/routes/health.py::health"
+          ]
+        },
+        "graph_ppr_multiseed": {
+          "seed": "app/routes/health.py::health",
+          "seeds": [
+            "app/routes/health.py::health",
+            "app/bootstrap.py::start",
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.1667,
+          "recall_must": 1.0,
+          "precision_hot": 0.0909,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "hot": [
+            "app/bootstrap.py::start",
+            "app/config/database.py::connect",
+            "app/events/registry.py::bind",
+            "app/handlers/welcome.py::handle",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/health.py::health",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "dense": {
+          "seed": "app/routes/health.py::health",
+          "seeds": [
+            "app/routes/health.py::health"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/routes/health.py::health"
+          ]
+        },
+        "hybrid": {
+          "seed": "app/routes/health.py::health",
+          "seeds": [
+            "app/routes/health.py::health"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/routes/health.py::health"
+          ]
+        },
+        "dense_multiseed": {
+          "seed": "app/routes/health.py::health",
+          "seeds": [
+            "app/routes/health.py::health",
+            "app/jobs/queue.py::enqueue",
+            "app/jobs/queue.py::_PENDING"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.5,
+          "recall_must": 1.0,
+          "precision_hot": 0.3333,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/queue.py::_PENDING",
+            "app/jobs/queue.py::enqueue",
+            "app/routes/health.py::health"
+          ]
+        }
+      }
+    },
+    {
+      "id": "v16",
+      "family": "cors",
+      "prompt": "cors headers middleware, leave auth alone",
+      "gold_seed": "app/middleware/cors.py::process",
+      "arms": {
+        "bm25": {
+          "seed": "app/middleware/cors.py::process",
+          "seeds": [
+            "app/middleware/cors.py::process"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/cors.py::process"
+          ]
+        },
+        "graph_boost": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/middleware/cors.py::process"
+          ],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_ppr": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/middleware/cors.py::process"
+          ],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "bm25_multiseed": {
+          "seed": "app/middleware/cors.py::process",
+          "seeds": [
+            "app/middleware/cors.py::process",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.2222,
+          "recall_must": 1.0,
+          "precision_hot": 0.125,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/middleware/cors.py::process",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_ppr_multiseed": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/cors.py::process",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.2222,
+          "recall_must": 1.0,
+          "precision_hot": 0.125,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/middleware/cors.py::process",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "dense": {
+          "seed": "app/middleware/cors.py::process",
+          "seeds": [
+            "app/middleware/cors.py::process"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/cors.py::process"
+          ]
+        },
+        "hybrid": {
+          "seed": "app/middleware/cors.py::process",
+          "seeds": [
+            "app/middleware/cors.py::process"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/cors.py::process"
+          ]
+        },
+        "dense_multiseed": {
+          "seed": "app/middleware/cors.py::process",
+          "seeds": [
+            "app/middleware/cors.py::process",
+            "app/middleware/auth.py::extract_bearer",
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.2222,
+          "recall_must": 1.0,
+          "precision_hot": 0.125,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/middleware/cors.py::process",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        }
+      }
+    },
+    {
+      "id": "v17",
+      "family": "session",
+      "prompt": "that little helper that starts a user session object",
+      "gold_seed": "app/services/session.py::start",
+      "arms": {
+        "bm25": {
+          "seed": "app/services/session.py::start",
+          "seeds": [
+            "app/services/session.py::start"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/services/session.py::start"
+          ]
+        },
+        "graph_boost": {
+          "seed": "app/services/session.py::start",
+          "seeds": [
+            "app/services/session.py::start"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/services/session.py::start"
+          ]
+        },
+        "graph_ppr": {
+          "seed": "app/services/session.py::start",
+          "seeds": [
+            "app/services/session.py::start"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/services/session.py::start"
+          ]
+        },
+        "bm25_multiseed": {
+          "seed": "app/services/session.py::start",
+          "seeds": [
+            "app/services/session.py::start",
+            "app/bootstrap.py::start",
+            "app/events/registry.py::HANDLERS"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.2857,
+          "recall_must": 1.0,
+          "precision_hot": 0.1667,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/bootstrap.py::start",
+            "app/events/registry.py::HANDLERS",
+            "app/events/registry.py::bind",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle",
+            "app/services/session.py::start"
+          ]
+        },
+        "graph_ppr_multiseed": {
+          "seed": "app/services/session.py::start",
+          "seeds": [
+            "app/services/session.py::start",
+            "app/bootstrap.py::start",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.25,
+          "recall_must": 1.0,
+          "precision_hot": 0.1429,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/bootstrap.py::start",
+            "app/config/security.py::TOKEN_TTL",
+            "app/handlers/welcome.py::handle",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/services/session.py::start"
+          ]
+        },
+        "dense": {
+          "seed": "app/services/session.py::start",
+          "seeds": [
+            "app/services/session.py::start"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/services/session.py::start"
+          ]
+        },
+        "hybrid": {
+          "seed": "app/services/session.py::start",
+          "seeds": [
+            "app/services/session.py::start"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/services/session.py::start"
+          ]
+        },
+        "dense_multiseed": {
+          "seed": "app/services/session.py::start",
+          "seeds": [
+            "app/services/session.py::start",
+            "app/bootstrap.py::start",
+            "app/config/security.py::SIGNING_KEY"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.4,
+          "recall_must": 1.0,
+          "precision_hot": 0.25,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/bootstrap.py::start",
+            "app/config/security.py::SIGNING_KEY",
+            "app/handlers/welcome.py::handle",
+            "app/services/session.py::start"
+          ]
+        }
+      }
+    },
+    {
+      "id": "v18",
+      "family": "ttl-refs",
+      "prompt": "who even reads that TOKEN_TTL constant?",
+      "gold_seed": "app/config/security.py::TOKEN_TTL",
+      "arms": {
+        "bm25": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seeds": [
+            "app/config/security.py::TOKEN_TTL"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ]
+        },
+        "graph_boost": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seeds": [
+            "app/config/security.py::TOKEN_TTL"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ]
+        },
+        "graph_ppr": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seeds": [
+            "app/config/security.py::TOKEN_TTL"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ]
+        },
+        "bm25_multiseed": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seeds": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/services/jwt_service.py::JwtService"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.6667,
+          "recall_must": 1.0,
+          "precision_hot": 0.5,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/middleware/auth.py::authenticate",
+            "app/services/jwt_service.py::JwtService",
+            "app/services/jwt_service.py::JwtService.verify"
+          ]
+        },
+        "graph_ppr_multiseed": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seeds": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.6667,
+          "recall_must": 1.0,
+          "precision_hot": 0.5,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/middleware/auth.py::authenticate",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify"
+          ]
+        },
+        "dense": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seeds": [
+            "app/config/security.py::TOKEN_TTL"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ]
+        },
+        "hybrid": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seeds": [
+            "app/config/security.py::TOKEN_TTL"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ]
+        },
+        "dense_multiseed": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seeds": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/config/security.py::SIGNING_KEY"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.6667,
+          "recall_must": 1.0,
+          "precision_hot": 0.5,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "hot": [
+            "app/config/security.py::SIGNING_KEY",
+            "app/config/security.py::TOKEN_TTL",
+            "app/middleware/auth.py::authenticate",
+            "app/services/jwt_service.py::JwtService.verify"
+          ]
+        }
+      }
+    },
+    {
+      "id": "v19",
+      "family": "store-fetch",
+      "prompt": "memory store fetch, i think it overrides something in base?",
+      "gold_seed": "app/stores/memory.py::MemoryStore.fetch",
+      "arms": {
+        "bm25": {
+          "seed": "app/stores/memory.py::MemoryStore.fetch",
+          "seeds": [
+            "app/stores/memory.py::MemoryStore.fetch"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ]
+        },
+        "graph_boost": {
+          "seed": "app/stores/memory.py::MemoryStore.fetch",
+          "seeds": [
+            "app/stores/memory.py::MemoryStore.fetch"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ]
+        },
+        "graph_ppr": {
+          "seed": "app/stores/base.py::Store.fetch",
+          "seeds": [
+            "app/stores/base.py::Store.fetch"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 1.0,
+          "false_negatives": [
+            "app/stores/memory.py::MemoryStore.fetch"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch"
+          ]
+        },
+        "bm25_multiseed": {
+          "seed": "app/stores/memory.py::MemoryStore.fetch",
+          "seeds": [
+            "app/stores/memory.py::MemoryStore.fetch",
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.__init__"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.8,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.__init__",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ]
+        },
+        "graph_ppr_multiseed": {
+          "seed": "app/stores/base.py::Store.fetch",
+          "seeds": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.fetch",
+            "app/stores/memory.py::MemoryStore.__init__"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.8,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.__init__",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ]
+        },
+        "dense": {
+          "seed": "app/stores/memory.py::MemoryStore.fetch",
+          "seeds": [
+            "app/stores/memory.py::MemoryStore.fetch"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ]
+        },
+        "hybrid": {
+          "seed": "app/stores/memory.py::MemoryStore.fetch",
+          "seeds": [
+            "app/stores/memory.py::MemoryStore.fetch"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ]
+        },
+        "dense_multiseed": {
+          "seed": "app/stores/memory.py::MemoryStore.fetch",
+          "seeds": [
+            "app/stores/memory.py::MemoryStore.fetch",
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.__init__"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.8,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.__init__",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ]
+        }
+      }
+    },
+    {
+      "id": "v20",
+      "family": "user-resolve",
+      "prompt": "how does resolve pull the user row out of the database?",
+      "gold_seed": "app/repositories/user_repo.py::UserRepository.resolve",
+      "arms": {
+        "bm25": {
+          "seed": "app/repositories/user_repo.py::UserRepository.resolve",
+          "seeds": [
+            "app/repositories/user_repo.py::UserRepository.resolve"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve"
+          ]
+        },
+        "graph_boost": {
+          "seed": "app/repositories/user_repo.py::UserRepository.resolve",
+          "seeds": [
+            "app/repositories/user_repo.py::UserRepository.resolve"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve"
+          ]
+        },
+        "graph_ppr": {
+          "seed": "app/repositories/user_repo.py::UserRepository.resolve",
+          "seeds": [
+            "app/repositories/user_repo.py::UserRepository.resolve"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve"
+          ]
+        },
+        "bm25_multiseed": {
+          "seed": "app/repositories/user_repo.py::UserRepository.resolve",
+          "seeds": [
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/config/database.py::connect",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.75,
+          "recall_must": 1.0,
+          "precision_hot": 0.6,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/utils/token.py::decode"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_ppr_multiseed": {
+          "seed": "app/repositories/user_repo.py::UserRepository.resolve",
+          "seeds": [
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.6,
+          "recall_must": 1.0,
+          "precision_hot": 0.4286,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate",
+            "app/utils/token.py::decode"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "dense": {
+          "seed": "app/repositories/user_repo.py::UserRepository.resolve",
+          "seeds": [
+            "app/repositories/user_repo.py::UserRepository.resolve"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve"
+          ]
+        },
+        "hybrid": {
+          "seed": "app/repositories/user_repo.py::UserRepository.resolve",
+          "seeds": [
+            "app/repositories/user_repo.py::UserRepository.resolve"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve"
+          ]
+        },
+        "dense_multiseed": {
+          "seed": "app/repositories/user_repo.py::UserRepository.resolve",
+          "seeds": [
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/models/user.py::User.lookup",
+            "app/handlers/welcome.py::handle"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.8571,
+          "recall_must": 1.0,
+          "precision_hot": 0.75,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/handlers/welcome.py::handle",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve"
+          ]
+        }
+      }
+    },
+    {
+      "id": "v21",
+      "family": "adversarial-pay-auth-words",
+      "prompt": "customer authentication tokens for the payment API \u2014 how do we charge?",
+      "gold_seed": "app/billing/invoices.py::charge",
+      "arms": {
+        "bm25": {
+          "seed": "app/billing/invoices.py::charge",
+          "seeds": [
+            "app/billing/invoices.py::charge"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ]
+        },
+        "graph_boost": {
+          "seed": "app/billing/invoices.py::charge",
+          "seeds": [
+            "app/billing/invoices.py::charge"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ]
+        },
+        "graph_ppr": {
+          "seed": "app/billing/invoices.py::charge",
+          "seeds": [
+            "app/billing/invoices.py::charge"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ]
+        },
+        "bm25_multiseed": {
+          "seed": "app/billing/invoices.py::charge",
+          "seeds": [
+            "app/billing/invoices.py::charge",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.3636,
+          "recall_must": 1.0,
+          "precision_hot": 0.2222,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/config/database.py::connect",
+            "app/http/client.py::get",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_ppr_multiseed": {
+          "seed": "app/billing/invoices.py::charge",
+          "seeds": [
+            "app/billing/invoices.py::charge",
+            "app/middleware/auth.py::authenticate",
+            "app/http/client.py::get"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.3636,
+          "recall_must": 1.0,
+          "precision_hot": 0.2222,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/config/database.py::connect",
+            "app/http/client.py::get",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "dense": {
+          "seed": "app/billing/invoices.py::charge",
+          "seeds": [
+            "app/billing/invoices.py::charge"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ]
+        },
+        "hybrid": {
+          "seed": "app/billing/invoices.py::charge",
+          "seeds": [
+            "app/billing/invoices.py::charge"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ]
+        },
+        "dense_multiseed": {
+          "seed": "app/billing/invoices.py::charge",
+          "seeds": [
+            "app/billing/invoices.py::charge",
+            "app/middleware/auth.py::authenticate",
+            "app/config/security.py::TOKEN_TTL"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.3333,
+          "recall_must": 1.0,
+          "precision_hot": 0.2,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/config/database.py::connect",
+            "app/config/security.py::TOKEN_TTL",
+            "app/http/client.py::get",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        }
+      }
+    },
+    {
+      "id": "v22",
+      "family": "negation-not-login",
+      "prompt": "not the login stuff \u2014 i need the outbound payment request path",
+      "gold_seed": "app/billing/invoices.py::charge",
+      "arms": {
+        "bm25": {
+          "seed": "app/routes/login.py::login",
+          "seeds": [
+            "app/routes/login.py::login"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate",
+            "app/routes/login.py::login"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_boost": {
+          "seed": "app/routes/login.py::login",
+          "seeds": [
+            "app/routes/login.py::login"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate",
+            "app/routes/login.py::login"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_ppr": {
+          "seed": "app/routes/login.py::login",
+          "seeds": [
+            "app/routes/login.py::login"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate",
+            "app/routes/login.py::login"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "bm25_multiseed": {
+          "seed": "app/routes/login.py::login",
+          "seeds": [
+            "app/routes/login.py::login",
+            "app/billing/invoices.py::charge",
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.3333,
+          "recall_must": 1.0,
+          "precision_hot": 0.2,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate",
+            "app/routes/login.py::login"
+          ],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/config/database.py::connect",
+            "app/http/client.py::get",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_ppr_multiseed": {
+          "seed": "app/routes/login.py::login",
+          "seeds": [
+            "app/routes/login.py::login",
+            "app/utils/logger.py::log",
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate",
+            "app/routes/login.py::login"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/logger.py::log",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "dense": {
+          "seed": "app/routes/login.py::login",
+          "seeds": [
+            "app/routes/login.py::login"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate",
+            "app/routes/login.py::login"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "hybrid": {
+          "seed": "app/routes/login.py::login",
+          "seeds": [
+            "app/routes/login.py::login"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate",
+            "app/routes/login.py::login"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "dense_multiseed": {
+          "seed": "app/routes/login.py::login",
+          "seeds": [
+            "app/routes/login.py::login",
+            "app/utils/logger.py::log",
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "seed_ok": false,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 0.0,
+          "false_negatives": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate",
+            "app/routes/login.py::login"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/logger.py::log",
+            "app/utils/token.py::decode"
+          ]
+        }
+      }
+    },
+    {
+      "id": "v23",
+      "family": "underspec-timeout",
+      "prompt": "the timeout thing",
+      "gold_seed": "app/config/security.py::TOKEN_TTL",
+      "arms": {
+        "bm25": {
+          "seed": "app/services/jwt_service.py::JwtService.verify",
+          "seeds": [
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.8,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_boost": {
+          "seed": "app/services/jwt_service.py::JwtService.verify",
+          "seeds": [
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.8,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_ppr": {
+          "seed": "app/services/jwt_service.py::JwtService.verify",
+          "seeds": [
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.8,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "bm25_multiseed": {
+          "seed": "app/services/jwt_service.py::JwtService.verify",
+          "seeds": [
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/config/security.py::TOKEN_TTL",
+            "app/config/security.py::SIGNING_KEY"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.6667,
+          "recall_must": 1.0,
+          "precision_hot": 0.5,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::SIGNING_KEY",
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_ppr_multiseed": {
+          "seed": "app/services/jwt_service.py::JwtService.verify",
+          "seeds": [
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/config/security.py::TOKEN_TTL",
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.6667,
+          "recall_must": 1.0,
+          "precision_hot": 0.5,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/middleware/auth.py::authenticate",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "dense": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seeds": [
+            "app/config/security.py::TOKEN_TTL"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.8,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "hybrid": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seeds": [
+            "app/config/security.py::TOKEN_TTL"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.8,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "dense_multiseed": {
+          "seed": "app/config/security.py::TOKEN_TTL",
+          "seeds": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/stores/base.py::Store.fetch",
+            "app/events/registry.py::lookup"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.5,
+          "recall_must": 1.0,
+          "precision_hot": 0.3333,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/events/registry.py::HANDLERS",
+            "app/events/registry.py::lookup",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/stores/base.py::Store.fetch",
+            "app/utils/token.py::decode"
+          ]
+        }
+      }
+    },
+    {
+      "id": "v24",
+      "family": "wrong-folder-cors",
+      "prompt": "middleware that only sets access-control headers",
+      "gold_seed": "app/middleware/cors.py::process",
+      "arms": {
+        "bm25": {
+          "seed": "app/middleware/cors.py::process",
+          "seeds": [
+            "app/middleware/cors.py::process"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/cors.py::process"
+          ]
+        },
+        "graph_boost": {
+          "seed": "app/middleware/cors.py::process",
+          "seeds": [
+            "app/middleware/cors.py::process"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/cors.py::process"
+          ]
+        },
+        "graph_ppr": {
+          "seed": "app/middleware/cors.py::process",
+          "seeds": [
+            "app/middleware/cors.py::process"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/cors.py::process"
+          ]
+        },
+        "bm25_multiseed": {
+          "seed": "app/middleware/cors.py::process",
+          "seeds": [
+            "app/middleware/cors.py::process",
+            "app/config/security.py::SIGNING_KEY",
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.2,
+          "recall_must": 1.0,
+          "precision_hot": 0.1111,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/config/security.py::SIGNING_KEY",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/middleware/cors.py::process",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_ppr_multiseed": {
+          "seed": "app/middleware/cors.py::process",
+          "seeds": [
+            "app/middleware/cors.py::process",
+            "app/middleware/auth.py::authenticate",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.2222,
+          "recall_must": 1.0,
+          "precision_hot": 0.125,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/middleware/cors.py::process",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "dense": {
+          "seed": "app/middleware/cors.py::process",
+          "seeds": [
+            "app/middleware/cors.py::process"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/cors.py::process"
+          ]
+        },
+        "hybrid": {
+          "seed": "app/middleware/cors.py::process",
+          "seeds": [
+            "app/middleware/cors.py::process"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/middleware/cors.py::process"
+          ]
+        },
+        "dense_multiseed": {
+          "seed": "app/middleware/cors.py::process",
+          "seeds": [
+            "app/middleware/cors.py::process",
+            "app/middleware/auth.py::extract_bearer",
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.2222,
+          "recall_must": 1.0,
+          "precision_hot": 0.125,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/middleware/cors.py::process",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ]
+        }
+      }
+    },
+    {
+      "id": "v25",
+      "family": "dynamic-welcome",
+      "prompt": "something registers welcome and later emit runs it somehow",
+      "gold_seed": "app/events/bus.py::emit",
+      "arms": {
+        "bm25": {
+          "seed": "app/events/bus.py::emit",
+          "seeds": [
+            "app/events/bus.py::emit"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ]
+        },
+        "graph_boost": {
+          "seed": "app/events/bus.py::emit",
+          "seeds": [
+            "app/events/bus.py::emit"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ]
+        },
+        "graph_ppr": {
+          "seed": "app/events/bus.py::emit",
+          "seeds": [
+            "app/events/bus.py::emit"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ]
+        },
+        "bm25_multiseed": {
+          "seed": "app/events/bus.py::emit",
+          "seeds": [
+            "app/events/bus.py::emit",
+            "app/handlers/welcome.py::handle",
+            "app/bootstrap.py::start"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.8889,
+          "recall_must": 1.0,
+          "precision_hot": 0.8,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/bootstrap.py::start",
+            "app/events/bus.py::emit",
+            "app/events/registry.py::bind",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ]
+        },
+        "graph_ppr_multiseed": {
+          "seed": "app/events/bus.py::emit",
+          "seeds": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup",
+            "app/events/registry.py::bind"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.8571,
+          "recall_must": 1.0,
+          "precision_hot": 0.75,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::bind",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ]
+        },
+        "dense": {
+          "seed": "app/events/bus.py::emit",
+          "seeds": [
+            "app/events/bus.py::emit"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ]
+        },
+        "hybrid": {
+          "seed": "app/events/bus.py::emit",
+          "seeds": [
+            "app/events/bus.py::emit"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ]
+        },
+        "dense_multiseed": {
+          "seed": "app/events/bus.py::emit",
+          "seeds": [
+            "app/events/bus.py::emit",
+            "app/jobs/worker.py::run",
+            "app/handlers/welcome.py::handle"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.6,
+          "recall_must": 1.0,
+          "precision_hot": 0.4286,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/jobs/worker.py::run"
+          ],
+          "hot": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle",
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ]
+        }
+      }
+    },
+    {
+      "id": "v26",
+      "family": "generic-execute",
+      "prompt": "whatever executes a dequeued job body",
+      "gold_seed": "app/jobs/runner.py::execute",
+      "arms": {
+        "bm25": {
+          "seed": "app/jobs/runner.py::execute",
+          "seeds": [
+            "app/jobs/runner.py::execute"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/runner.py::execute"
+          ]
+        },
+        "graph_boost": {
+          "seed": "app/jobs/runner.py::execute",
+          "seeds": [
+            "app/jobs/runner.py::execute"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/runner.py::execute"
+          ]
+        },
+        "graph_ppr": {
+          "seed": "app/jobs/runner.py::execute",
+          "seeds": [
+            "app/jobs/runner.py::execute"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/runner.py::execute"
+          ]
+        },
+        "bm25_multiseed": {
+          "seed": "app/jobs/runner.py::execute",
+          "seeds": [
+            "app/jobs/runner.py::execute",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/worker.py::run"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.8571,
+          "recall_must": 1.0,
+          "precision_hot": 0.75,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ]
+        },
+        "graph_ppr_multiseed": {
+          "seed": "app/jobs/runner.py::execute",
+          "seeds": [
+            "app/jobs/runner.py::execute",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/worker.py::run"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.8571,
+          "recall_must": 1.0,
+          "precision_hot": 0.75,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ]
+        },
+        "dense": {
+          "seed": "app/jobs/runner.py::execute",
+          "seeds": [
+            "app/jobs/runner.py::execute"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/runner.py::execute"
+          ]
+        },
+        "hybrid": {
+          "seed": "app/jobs/runner.py::execute",
+          "seeds": [
+            "app/jobs/runner.py::execute"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/runner.py::execute"
+          ]
+        },
+        "dense_multiseed": {
+          "seed": "app/jobs/runner.py::execute",
+          "seeds": [
+            "app/jobs/runner.py::execute",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/worker.py::run"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.8571,
+          "recall_must": 1.0,
+          "precision_hot": 0.75,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ]
+        }
+      }
+    },
+    {
+      "id": "v27",
+      "family": "side-effect-print",
+      "prompt": "i see ok printed when auth succeeds \u2014 where?",
+      "gold_seed": "app/middleware/auth.py::authenticate",
+      "arms": {
+        "bm25": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.4,
+          "recall_must": 1.0,
+          "precision_hot": 0.25,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/utils/token.py::decode"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/logger.py::log",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_boost": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.4,
+          "recall_must": 1.0,
+          "precision_hot": 0.25,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/utils/token.py::decode"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/logger.py::log",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_ppr": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.4,
+          "recall_must": 1.0,
+          "precision_hot": 0.25,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/utils/token.py::decode"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/logger.py::log",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "bm25_multiseed": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/routes/login.py::login"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.3636,
+          "recall_must": 1.0,
+          "precision_hot": 0.2222,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/utils/token.py::decode"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/logger.py::log",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "graph_ppr_multiseed": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.4,
+          "recall_must": 1.0,
+          "precision_hot": 0.25,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/utils/token.py::decode"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/logger.py::log",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "dense": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.4,
+          "recall_must": 1.0,
+          "precision_hot": 0.25,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/utils/token.py::decode"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/logger.py::log",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "hybrid": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.4,
+          "recall_must": 1.0,
+          "precision_hot": 0.25,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/utils/token.py::decode"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/logger.py::log",
+            "app/utils/token.py::decode"
+          ]
+        },
+        "dense_multiseed": {
+          "seed": "app/middleware/auth.py::authenticate",
+          "seeds": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/routes/login.py::login"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.3636,
+          "recall_must": 1.0,
+          "precision_hot": 0.2222,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/utils/token.py::decode"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/logger.py::log",
+            "app/utils/token.py::decode"
+          ]
+        }
+      }
+    },
+    {
+      "id": "v28",
+      "family": "inherit-fetch",
+      "prompt": "in-memory row fetch that overrides the abstract store",
+      "gold_seed": "app/stores/memory.py::MemoryStore.fetch",
+      "arms": {
+        "bm25": {
+          "seed": "app/stores/memory.py::MemoryStore.fetch",
+          "seeds": [
+            "app/stores/memory.py::MemoryStore.fetch"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ]
+        },
+        "graph_boost": {
+          "seed": "app/stores/memory.py::MemoryStore.fetch",
+          "seeds": [
+            "app/stores/memory.py::MemoryStore.fetch"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ]
+        },
+        "graph_ppr": {
+          "seed": "app/stores/base.py::Store.fetch",
+          "seeds": [
+            "app/stores/base.py::Store.fetch"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.0,
+          "recall_must": 0.0,
+          "precision_hot": 1.0,
+          "false_negatives": [
+            "app/stores/memory.py::MemoryStore.fetch"
+          ],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch"
+          ]
+        },
+        "bm25_multiseed": {
+          "seed": "app/stores/memory.py::MemoryStore.fetch",
+          "seeds": [
+            "app/stores/memory.py::MemoryStore.fetch",
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.__init__"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.8,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.__init__",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ]
+        },
+        "graph_ppr_multiseed": {
+          "seed": "app/stores/base.py::Store.fetch",
+          "seeds": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.fetch",
+            "app/stores/memory.py::MemoryStore.__init__"
+          ],
+          "seed_ok": true,
+          "seed_exact": false,
+          "f1": 0.8,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.__init__",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ]
+        },
+        "dense": {
+          "seed": "app/stores/memory.py::MemoryStore.fetch",
+          "seeds": [
+            "app/stores/memory.py::MemoryStore.fetch"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ]
+        },
+        "hybrid": {
+          "seed": "app/stores/memory.py::MemoryStore.fetch",
+          "seeds": [
+            "app/stores/memory.py::MemoryStore.fetch"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ]
+        },
+        "dense_multiseed": {
+          "seed": "app/stores/memory.py::MemoryStore.fetch",
+          "seeds": [
+            "app/stores/memory.py::MemoryStore.fetch",
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.__init__"
+          ],
+          "seed_ok": true,
+          "seed_exact": true,
+          "f1": 0.8,
+          "recall_must": 1.0,
+          "precision_hot": 0.6667,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.__init__",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ]
+        }
+      }
+    }
+  ]
+}

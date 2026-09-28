@@ -1,0 +1,101 @@
+{
+  "board": "verify_prod.json",
+  "n_cases": 10,
+  "elapsed_s": 14.05,
+  "embed_backend": "real:fastembed",
+  "summary": {
+    "composite_v1": {
+      "correct": 9,
+      "n": 10,
+      "accuracy": 0.9,
+      "mean_f1": 0.8732,
+      "mean_recall_must": 0.9667,
+      "mean_precision_hot": 0.8351,
+      "mean_must_at_10": 0.9227,
+      "mean_hot": 8.5,
+      "failed_ids": [
+        "p19"
+      ]
+    },
+    "semantic_tracer_v1": {
+      "correct": 9,
+      "n": 10,
+      "accuracy": 0.9,
+      "mean_f1": 0.8779,
+      "mean_recall_must": 0.9667,
+      "mean_precision_hot": 0.8424,
+      "mean_must_at_10": 0.9318,
+      "mean_hot": 8.4,
+      "failed_ids": [
+        "p19"
+      ]
+    },
+    "poly_embed": {
+      "correct": 5,
+      "n": 10,
+      "accuracy": 0.5,
+      "mean_f1": 0.7936,
+      "mean_recall_must": 0.9208,
+      "mean_precision_hot": 0.7482,
+      "mean_must_at_10": 0.866,
+      "mean_hot": 9.2,
+      "failed_ids": [
+        "p02",
+        "p10",
+        "p19",
+        "p20",
+        "p33"
+      ]
+    },
+    "hybrid_teleport": {
+      "correct": 4,
+      "n": 10,
+      "accuracy": 0.4,
+      "mean_f1": 0.4978,
+      "mean_recall_must": 0.9667,
+      "mean_precision_hot": 0.3644,
+      "mean_must_at_10": 0.9011,
+      "mean_hot": 23.4,
+      "failed_ids": [
+        "p02",
+        "p09",
+        "p12",
+        "p19",
+        "p20",
+        "p33"
+      ]
+    },
+    "vector_only": {
+      "correct": 0,
+      "n": 10,
+      "accuracy": 0.0,
+      "mean_f1": 0.3839,
+      "mean_recall_must": 0.2535,
+      "mean_precision_hot": 0.9167,
+      "mean_must_at_10": 0.615,
+      "mean_hot": 1.9,
+      "failed_ids": [
+        "p01",
+        "p02",
+        "p09",
+        "p10",
+        "p12",
+        "p13",
+        "p19",
+        "p20",
+        "p28",
+        "p33"
+      ]
+    }
+  },
+  "vs_composite_v1": {
+    "must_delta": 0.0,
+    "f1_delta": 0.0047,
+    "prec_delta": 0.0073,
+    "acc_delta": 0.0,
+    "must_at_10_delta": 0.0091,
+    "must10_up": true,
+    "ship_gate": false
+  },
+  "cycle2_recommendation": "Cycle 1 comparator helped ranking/must@10 \u2014 proceed to Cycle 2 (trace centroid + strict teleport)."
+}

@@ -1,0 +1,76 @@
+{
+  "id": "u17",
+  "family": "failure-report",
+  "task": "How does build_failure_report summarize false negatives on verify boards?",
+  "enrich_map_query": "build_failure_report failure_report false_negatives explored_nodes hot_count verify",
+  "map_ok": true,
+  "map_elapsed_s": 9.472,
+  "suggested_seed": {
+    "file": "packages/trace_lab/failure_report.py",
+    "symbol": "",
+    "source": "suggested_seed"
+  },
+  "map_top_cards": [
+    {
+      "file": "packages/trace_lab/failure_report.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/failure_report.py:1-1",
+      "score": 37.71380133813064
+    },
+    {
+      "file": "tests/test_polytrace.py",
+      "symbol": "",
+      "loc": "tests/test_polytrace.py:1-1",
+      "score": 12.538386545060385
+    },
+    {
+      "file": "packages/trace_lab/metrics.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/metrics.py:1-1",
+      "score": 12.022469712682135
+    },
+    {
+      "file": "tests/test_trace_lab.py",
+      "symbol": "",
+      "loc": "tests/test_trace_lab.py:1-1",
+      "score": 11.96341557197613
+    },
+    {
+      "file": "tests/test_trace_lab_novel.py",
+      "symbol": "",
+      "loc": "tests/test_trace_lab_novel.py:1-1",
+      "score": 11.923268186713514
+    },
+    {
+      "file": "packages/trace_lab/sim.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/sim.py:1-1",
+      "score": 5.5509170673069255
+    },
+    {
+      "file": "packages/trace_lab/types.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/types.py:1-1",
+      "score": 5.469750799911906
+    },
+    {
+      "file": "tests/test_verify_board.py",
+      "symbol": "",
+      "loc": "tests/test_verify_board.py:1-1",
+      "score": 5.306630948033589
+    },
+    {
+      "file": "tests/test_verify_hard.py",
+      "symbol": "",
+      "loc": "tests/test_verify_hard.py:1-1",
+      "score": 4.852681970596313
+    },
+    {
+      "file": "docs/publish-setup.md",
+      "symbol": "",
+      "loc": "docs/publish-setup.md:1-1",
+      "score": 3.7181782759158812
+    }
+  ],
+  "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+}

@@ -28,6 +28,9 @@ HOT_SYNC_REASONS: frozenset[str] = frozenset(
         "probe_write",
         "after_kiro_write",
         "watch",
+        # The 1s disk poll saw a handful of files change: that is a save, and no
+        # IDE reports saves to /v1/dirty, so this is how real edits get here.
+        "disk_save",
     }
 )
 

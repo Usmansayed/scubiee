@@ -1,0 +1,90 @@
+{
+  "ok": true,
+  "tool": "map",
+  "query": "never-index never_index deny paths skip files indexing exclude ignore globs managed",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "tests/test_repo_lifecycle.py",
+      "symbol": "",
+      "score": 12.75935574953337,
+      "loc": "tests/test_repo_lifecycle.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "tests/test_auto_sessions_observability.py",
+      "symbol": "",
+      "score": 12.165234283801212,
+      "loc": "tests/test_auto_sessions_observability.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "packages/pipeline/repo_lifecycle.py",
+      "symbol": "",
+      "score": 11.257554900004624,
+      "loc": "packages/pipeline/repo_lifecycle.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "packages/pipeline/paths.py",
+      "symbol": "",
+      "score": 5.595796381331023,
+      "loc": "packages/pipeline/paths.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "tests/test_index_coverage.py",
+      "symbol": "",
+      "score": 4.391210690991819,
+      "loc": "tests/test_index_coverage.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "docs/web-info/indexing-and-projects.md",
+      "symbol": "",
+      "score": 4.219376460964222,
+      "loc": "docs/web-info/indexing-and-projects.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "tests/test_scenario_backtracking.py",
+      "symbol": "",
+      "score": 3.764332092400039,
+      "loc": "tests/test_scenario_backtracking.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "packages/pipeline/index_manager.py",
+      "symbol": "",
+      "score": 3.474052727387434,
+      "loc": "packages/pipeline/index_manager.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "tests/test_prune_engine_state.py",
+      "symbol": "",
+      "score": 3.272464357926178,
+      "loc": "tests/test_prune_engine_state.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "packages/graphify/detect.py",
+      "symbol": "",
+      "score": 3.269144308384216,
+      "loc": "packages/graphify/detect.py:1-1",
+      "why": ""
+    }
+  ],
+  "suggested_seed": null,
+  "elapsed_s": 0.832,
+  "via": "search_repo(use_server=True)"
+}

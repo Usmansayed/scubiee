@@ -1,0 +1,102 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 8.03,
+  "stdout_chars": 3535,
+  "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})",
+  "json": {
+    "ok": true,
+    "tool": "map",
+    "cards": [
+      {
+        "rank": 1,
+        "file": "packages/trace_lab/semantic_tracer_fuse.py",
+        "score": 22.579760966451623,
+        "why": "\"\"\"semantic_tracer_fuse \u2014 composite of Cycle 1\u20133 mechanisms that held up. Fusion recipe (evidence-driven): 1. composite membership (ground truth) 2. comparator best-first (edge/nod",
+        "role": "function",
+        "loc": "packages/trace_lab/semantic_tracer_fuse.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 2,
+        "file": "packages/trace_lab/engine/semantic_best_first.py",
+        "score": 19.454690643121772,
+        "why": "def semantic_best_first_expand( seed_id: str, nodes: dict[str, TraceNode], frontier: dict[str, list[TypedEdge]], spec: TraceSpec, cmp: EdgeComparator, *, floor: float = 0.12, hop_d",
+        "role": "function",
+        "loc": "packages/trace_lab/engine/semantic_best_first.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 3,
+        "file": "tests/test_semantic_best_first.py",
+        "score": 16.616542521213688,
+        "why": "def test_does_not_invent_edges() -> None: seed = _n(\"a.py\", \"seed\") orphan = _n(\"b.py\", \"orphan\") nodes = {seed.id: seed, orphan.id: orphan} frontier = build_frontier([]) spec = Tr",
+        "role": "test",
+        "loc": "tests/test_semantic_best_first.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 4,
+        "file": "tests/test_semantic_tracer_fuse.py",
+        "score": 16.53933412131874,
+        "why": "def test_semantic_tracer_fuse_runs() -> None: root = default_fixture_root() nodes, graph, lex, tracers = compile_bundle( root, with_graphify=False, with_embed_power=True, require_r",
+        "role": "test",
+        "loc": "tests/test_semantic_tracer_fuse.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 5,
+        "file": "packages/trace_lab/semantic_compare.py",
+        "score": 10.338058308394023,
+        "why": "def edge_text(src_symbol: str, rel: str, dst_symbol: str) -> str: return f\"{src_symbol} --{rel}--> {dst_symbol}\" @dataclass class SemanticComparator: \"\"\"Caches query/seed vectors a",
+        "role": "function",
+        "loc": "packages/trace_lab/semantic_compare.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 6,
+        "file": "fixtures/trace-lab/app/oauth/refresh.py",
+        "score": 9.135806479463735,
+        "why": "def refresh(token: str) -> dict: rotated = rotate(token) claims = JwtService().verify(rotated) log(\"refreshed\") return claims",
+        "role": "other",
+        "loc": "fixtures/trace-lab/app/oauth/refresh.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 7,
+        "file": "fixtures/trace-lab/app/search/query.py",
+        "score": 8.854775076906007,
+        "why": "def query(text: str) -> list: toks = tokenize_q(text) ranked = rank(toks) return fetch_docs(ranked)",
+        "role": "other",
+        "loc": "fixtures/trace-lab/app/search/query.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 8,
+        "file": "packages/trace_lab/semantic_trace.py",
+        "score": 8.790983401231975,
+        "why": "\"\"\"SemanticTrace \u2014 structure proposes, embeddings decide (no faction/intent tables). Pipeline: 1) Bidirectional AST+LSP expansion from seed (topology only) 2) CodeRank affinities t",
+        "role": "function",
+        "loc": "packages/trace_lab/semantic_trace.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 9,
+        "file": "docs/superpowers/plans/2026-09-04-semantic-trace-spike.md",
+        "score": 8.598563510332893,
+        "why": "# SemanticTrace spike \u2014 hard-50 scoreboard **Goal:** structure + CodeRank semantics (no faction / keyword-intent tables). ## Pipeline (`packages/trace_lab/semantic_trace.py`) 1. Bi",
+        "role": "docs",
+        "loc": "docs/superpowers/plans/2026-09-04-semantic-trace-spike.md:1-1",
+        "symbol": ""
+      }
+    ],
+    "suggested_seed": {
+      "file": "packages/trace_lab/semantic_tracer_fuse.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/semantic_tracer_fuse.py:1-1",
+      "score": 22.579760966451623
+    },
+    "next": "scubiee pack \"SemanticComparator semantic_best_first_expand query seed affinity trace centroid refresh hub_penalty semantic_tracer_fuse edge_sim\" --seed-file packages/trace_lab/semantic_tracer_fuse.py --mode lean"
+  },
+  "stdout_preview": ""
+}

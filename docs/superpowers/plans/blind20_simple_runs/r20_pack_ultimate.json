@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "engine": "ultimate",
+  "policy": "strict",
+  "elapsed_s": 0.016,
+  "n_pack": 1,
+  "pack": [
+    {
+      "file": "packages/pipeline/chunk_merkle.py",
+      "symbol": "chunk_key",
+      "score": 1.0,
+      "loc": "packages/pipeline/chunk_merkle.py:16-20",
+      "id": "packages/pipeline/chunk_merkle.py::chunk_key"
+    }
+  ],
+  "error": null
+}

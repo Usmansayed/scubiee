@@ -1,0 +1,90 @@
+{
+  "ok": true,
+  "tool": "map",
+  "query": "fast index mode fast_roots embed schema meta fast=true index_repo skip depth",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/pipeline/indexer.py",
+      "symbol": "",
+      "score": 15.531530561613485,
+      "loc": "packages/pipeline/indexer.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "tests/test_index_confirm.py",
+      "symbol": "",
+      "score": 13.583697377941771,
+      "loc": "tests/test_index_confirm.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "packages/pipeline/paths.py",
+      "symbol": "",
+      "score": 13.250693248982262,
+      "loc": "packages/pipeline/paths.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "packages/pipeline/incremental.py",
+      "symbol": "",
+      "score": 12.846274505932808,
+      "loc": "packages/pipeline/incremental.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "packages/pipeline/repo_lifecycle.py",
+      "symbol": "",
+      "score": 12.612084385394626,
+      "loc": "packages/pipeline/repo_lifecycle.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "scripts/eval_mlx_fp16_fp32_retrieval.py",
+      "symbol": "",
+      "score": 12.317634299849328,
+      "loc": "scripts/eval_mlx_fp16_fp32_retrieval.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "tests/test_index_coverage.py",
+      "symbol": "",
+      "score": 7.387578779039549,
+      "loc": "tests/test_index_coverage.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "score": 4.434826560304147,
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "docs/freshness.md",
+      "symbol": "",
+      "score": 4.259720075172984,
+      "loc": "docs/freshness.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "docs/web-info/indexing-and-projects.md",
+      "symbol": "",
+      "score": 3.7280170499557403,
+      "loc": "docs/web-info/indexing-and-projects.md:1-1",
+      "why": ""
+    }
+  ],
+  "suggested_seed": null,
+  "elapsed_s": 0.8,
+  "via": "search_repo(use_server=True)"
+}

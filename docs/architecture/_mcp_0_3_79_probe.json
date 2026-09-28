@@ -1,0 +1,47 @@
+{
+  "version": "0.3.79",
+  "status_polls": [
+    {
+      "i": 0,
+      "wall_ms": 9977.1,
+      "warm_ready": false,
+      "warm_ready_map": false,
+      "warm_phase": "waiting_health",
+      "warm_elapsed_ms": 11713.0,
+      "embedder_loaded": null,
+      "agent_ready": "warming",
+      "warming": true,
+      "ok": false,
+      "error": true
+    },
+    {
+      "i": 1,
+      "wall_ms": 5704.8,
+      "warm_ready": true,
+      "warm_ready_map": true,
+      "warm_phase": "ready",
+      "warm_elapsed_ms": 21198.0,
+      "embedder_loaded": true,
+      "agent_ready": "yes",
+      "warming": false,
+      "ok": true,
+      "error": null
+    }
+  ],
+  "map1_summary": {
+    "wall_ms": 5851.7,
+    "ok": true,
+    "elapsed_ms": 5708.5,
+    "warming": null,
+    "error": null,
+    "count": null,
+    "top": "packages/pipeline/mcp_locate.py"
+  },
+  "map2_summary": {
+    "wall_ms": 672.6,
+    "ok": true,
+    "elapsed_ms": 491.8,
+    "cache": null,
+    "cached": null
+  }
+}

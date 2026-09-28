@@ -1,0 +1,646 @@
+{
+  "id": "u20",
+  "family": "unlock-tool",
+  "task": "How does unlock_tool clear a paused or locked MCP tool permission?",
+  "enrich_map_query": "cmd_unlock_tool unlock_tool permissions paused locked mcp allowlist",
+  "map_ok": true,
+  "suggested_seed": {
+    "file": "packages/pipeline/__main__.py",
+    "symbol": "",
+    "source": "suggested_seed"
+  },
+  "resolved_seed": {
+    "file": "packages/pipeline/__main__.py",
+    "symbol": "cmd_unlock_tool",
+    "how": "best_in_file"
+  },
+  "map_top_cards": [
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "score": 27.718958073991136
+    },
+    {
+      "file": "packages/pipeline/cli_ui.py",
+      "symbol": "",
+      "loc": "packages/pipeline/cli_ui.py:1-1",
+      "score": 11.869875440789471
+    },
+    {
+      "file": "packages/pipeline/mcp_permissions.py",
+      "symbol": "",
+      "loc": "packages/pipeline/mcp_permissions.py:1-1",
+      "score": 9.340991766776721
+    },
+    {
+      "file": "tests/test_mcp_permissions.py",
+      "symbol": "",
+      "loc": "tests/test_mcp_permissions.py:1-1",
+      "score": 8.126876063442918
+    },
+    {
+      "file": "packages/pipeline/accel.py",
+      "symbol": "",
+      "loc": "packages/pipeline/accel.py:1-1",
+      "score": 4.612670179931051
+    },
+    {
+      "file": "packages/pipeline/process_control.py",
+      "symbol": "",
+      "loc": "packages/pipeline/process_control.py:1-1",
+      "score": 4.0503953833856015
+    },
+    {
+      "file": "packages/pipeline/capability.py",
+      "symbol": "",
+      "loc": "packages/pipeline/capability.py:1-1",
+      "score": 3.701001393448135
+    },
+    {
+      "file": "packages/pipeline/client.py",
+      "symbol": "",
+      "loc": "packages/pipeline/client.py:1-1",
+      "score": 3.6033041354525297
+    },
+    {
+      "file": "packages/pipeline/pause_resume.py",
+      "symbol": "",
+      "loc": "packages/pipeline/pause_resume.py:1-1",
+      "score": 2.736153087137664
+    }
+  ],
+  "arms": {
+    "composite_v1": {
+      "ok": true,
+      "elapsed_s": 0.036,
+      "n_hot": 62,
+      "n_ranked": 95,
+      "hot_ids": [
+        "packages/pipeline/__main__.py::cmd_unlock_tool",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.isatty",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+        "packages/pipeline/cli_ui.py::_supports_color",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/cli_ui.py::init_terminal",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/cli_ui.py::success",
+        "packages/pipeline/cli_ui.py::warn",
+        "packages/pipeline/daemon.py::_pid_alive",
+        "packages/pipeline/daemon.py::_read_lock_pid",
+        "packages/pipeline/daemon.py::is_running",
+        "packages/pipeline/daemon.py::pid_path",
+        "packages/pipeline/daemon.py::release_lock",
+        "packages/pipeline/daemon.py::stop_daemon",
+        "packages/pipeline/lifecycle_runtime.py::load_policy",
+        "packages/pipeline/lifecycle_runtime.py::save_policy",
+        "packages/pipeline/lifecycle_runtime.py::set_desired_mode",
+        "packages/pipeline/managed_repos.py::managed_repo_paths",
+        "packages/pipeline/pause_resume.py::_disable_mcp_for_tool",
+        "packages/pipeline/pause_resume.py::_disable_mcp_json",
+        "packages/pipeline/process_control.py::_cmdline_matches_ce",
+        "packages/pipeline/process_control.py::_exe_matches_scubiee",
+        "packages/pipeline/process_control.py::_exe_under_root",
+        "packages/pipeline/process_control.py::_is_mcp_bridge_process",
+        "packages/pipeline/process_control.py::_mcp_config_roots",
+        "packages/pipeline/process_control.py::_pid_is_protected",
+        "packages/pipeline/process_control.py::_protected_process_tree_pids",
+        "packages/pipeline/process_control.py::_rmtree_with_retries",
+        "packages/pipeline/process_control.py::_running_from_uv_tool",
+        "packages/pipeline/process_control.py::_schedule_delete_after_exit",
+        "packages/pipeline/process_control.py::_stub_mcp_continue_yaml",
+        "packages/pipeline/process_control.py::_stub_mcp_json_file",
+        "packages/pipeline/process_control.py::_stub_mcp_toml_file",
+        "packages/pipeline/process_control.py::_terminate_pid_no_tree",
+        "packages/pipeline/process_control.py::disable_mcp_to_prevent_respawn",
+        "packages/pipeline/process_control.py::enumerate_scubiee_processes",
+        "packages/pipeline/process_control.py::force_remove_uv_tool_dir",
+        "packages/pipeline/process_control.py::is_context_engine_process"
+      ],
+      "top15_ids": [
+        "packages/pipeline/__main__.py::cmd_unlock_tool",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/process_control.py::unlock_uv_tool_env",
+        "packages/pipeline/cli_ui.py::success",
+        "packages/pipeline/cli_ui.py::warn",
+        "packages/pipeline/process_control.py::_cmdline_matches_ce",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/process_control.py::prepare_uv_tool_directory_for_swap",
+        "packages/pipeline/process_control.py::is_context_engine_process",
+        "packages/pipeline/process_control.py::stop_all_context_engine_processes",
+        "packages/pipeline/process_control.py::uv_tool_root",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/process_control.py::safe_terminate_pid",
+        "packages/pipeline/process_control.py::_exe_matches_scubiee"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/__main__.py::cmd_unlock_tool",
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_unlock_tool",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 1603
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::status_line",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "status_line",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 628
+        },
+        {
+          "id": "packages/pipeline/process_control.py::unlock_uv_tool_env",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "unlock_uv_tool_env",
+          "kind": "function",
+          "score": 0.9405,
+          "body_chars": 548
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::success",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "success",
+          "kind": "function",
+          "score": 0.9405,
+          "body_chars": 159
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::warn",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "warn",
+          "kind": "function",
+          "score": 0.855,
+          "body_chars": 158
+        },
+        {
+          "id": "packages/pipeline/process_control.py::_cmdline_matches_ce",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "_cmdline_matches_ce",
+          "kind": "function",
+          "score": 0.8258,
+          "body_chars": 661
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::colors",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "colors",
+          "kind": "function",
+          "score": 0.8215,
+          "body_chars": 114
+        },
+        {
+          "id": "packages/pipeline/process_control.py::prepare_uv_tool_directory_for_swap",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "prepare_uv_tool_directory_for_swap",
+          "kind": "function",
+          "score": 0.8168,
+          "body_chars": 1172
+        },
+        {
+          "id": "packages/pipeline/process_control.py::is_context_engine_process",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "is_context_engine_process",
+          "kind": "function",
+          "score": 0.8116,
+          "body_chars": 950
+        },
+        {
+          "id": "packages/pipeline/process_control.py::stop_all_context_engine_processes",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "stop_all_context_engine_processes",
+          "kind": "function",
+          "score": 0.7992,
+          "body_chars": 2651
+        },
+        {
+          "id": "packages/pipeline/process_control.py::uv_tool_root",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "uv_tool_root",
+          "kind": "function",
+          "score": 0.7981,
+          "body_chars": 360
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "_ScrubGraphifyStream.write",
+          "kind": "method",
+          "score": 0.7804,
+          "body_chars": 227
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "_ScrubGraphifyStream.flush",
+          "kind": "method",
+          "score": 0.7804,
+          "body_chars": 56
+        },
+        {
+          "id": "packages/pipeline/process_control.py::safe_terminate_pid",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "safe_terminate_pid",
+          "kind": "function",
+          "score": 0.7801,
+          "body_chars": 709
+        },
+        {
+          "id": "packages/pipeline/process_control.py::_exe_matches_scubiee",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "_exe_matches_scubiee",
+          "kind": "function",
+          "score": 0.685,
+          "body_chars": 278
+        }
+      ]
+    },
+    "semantic_tracer_fuse": {
+      "ok": true,
+      "elapsed_s": 0.385,
+      "n_hot": 28,
+      "n_ranked": 95,
+      "hot_ids": [
+        "packages/pipeline/__main__.py::cmd_unlock_tool",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+        "packages/pipeline/cli_ui.py::_supports_color",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/cli_ui.py::success",
+        "packages/pipeline/cli_ui.py::warn",
+        "packages/pipeline/lifecycle_runtime.py::set_desired_mode",
+        "packages/pipeline/process_control.py::_cmdline_matches_ce",
+        "packages/pipeline/process_control.py::_exe_matches_scubiee",
+        "packages/pipeline/process_control.py::_protected_process_tree_pids",
+        "packages/pipeline/process_control.py::_rmtree_with_retries",
+        "packages/pipeline/process_control.py::_running_from_uv_tool",
+        "packages/pipeline/process_control.py::_schedule_delete_after_exit",
+        "packages/pipeline/process_control.py::disable_mcp_to_prevent_respawn",
+        "packages/pipeline/process_control.py::force_remove_uv_tool_dir",
+        "packages/pipeline/process_control.py::is_context_engine_process",
+        "packages/pipeline/process_control.py::kill_all_scubiee_processes",
+        "packages/pipeline/process_control.py::prepare_uv_tool_directory_for_swap",
+        "packages/pipeline/process_control.py::release_scubiee_process_locks",
+        "packages/pipeline/process_control.py::remove_tool_shims",
+        "packages/pipeline/process_control.py::safe_terminate_pid",
+        "packages/pipeline/process_control.py::stop_all_context_engine_processes",
+        "packages/pipeline/process_control.py::stop_processes_under",
+        "packages/pipeline/process_control.py::stub_mcp_commands_to_noop",
+        "packages/pipeline/process_control.py::unlock_uv_tool_env",
+        "packages/pipeline/process_control.py::uv_tool_root"
+      ],
+      "top15_ids": [
+        "packages/pipeline/__main__.py::cmd_unlock_tool",
+        "packages/pipeline/process_control.py::unlock_uv_tool_env",
+        "packages/pipeline/cli_ui.py::success",
+        "packages/pipeline/cli_ui.py::warn",
+        "packages/pipeline/process_control.py::prepare_uv_tool_directory_for_swap",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/process_control.py::stop_all_context_engine_processes",
+        "packages/pipeline/process_control.py::uv_tool_root",
+        "packages/pipeline/process_control.py::force_remove_uv_tool_dir",
+        "packages/pipeline/process_control.py::release_scubiee_process_locks",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/process_control.py::_schedule_delete_after_exit",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+        "packages/pipeline/process_control.py::_cmdline_matches_ce"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/__main__.py::cmd_unlock_tool",
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_unlock_tool",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 1603
+        },
+        {
+          "id": "packages/pipeline/process_control.py::unlock_uv_tool_env",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "unlock_uv_tool_env",
+          "kind": "function",
+          "score": 0.8972,
+          "body_chars": 548
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::success",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "success",
+          "kind": "function",
+          "score": 0.8624,
+          "body_chars": 159
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::warn",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "warn",
+          "kind": "function",
+          "score": 0.7901,
+          "body_chars": 158
+        },
+        {
+          "id": "packages/pipeline/process_control.py::prepare_uv_tool_directory_for_swap",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "prepare_uv_tool_directory_for_swap",
+          "kind": "function",
+          "score": 0.7541,
+          "body_chars": 1172
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::status_line",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "status_line",
+          "kind": "function",
+          "score": 0.7196,
+          "body_chars": 628
+        },
+        {
+          "id": "packages/pipeline/process_control.py::stop_all_context_engine_processes",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "stop_all_context_engine_processes",
+          "kind": "function",
+          "score": 0.6817,
+          "body_chars": 2651
+        },
+        {
+          "id": "packages/pipeline/process_control.py::uv_tool_root",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "uv_tool_root",
+          "kind": "function",
+          "score": 0.6569,
+          "body_chars": 360
+        },
+        {
+          "id": "packages/pipeline/process_control.py::force_remove_uv_tool_dir",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "force_remove_uv_tool_dir",
+          "kind": "function",
+          "score": 0.6095,
+          "body_chars": 2186
+        },
+        {
+          "id": "packages/pipeline/process_control.py::release_scubiee_process_locks",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "release_scubiee_process_locks",
+          "kind": "function",
+          "score": 0.609,
+          "body_chars": 1353
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::colors",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "colors",
+          "kind": "function",
+          "score": 0.5735,
+          "body_chars": 114
+        },
+        {
+          "id": "packages/pipeline/process_control.py::_schedule_delete_after_exit",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "_schedule_delete_after_exit",
+          "kind": "function",
+          "score": 0.5689,
+          "body_chars": 2250
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "_ScrubGraphifyStream.flush",
+          "kind": "method",
+          "score": 0.5429,
+          "body_chars": 56
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "_ScrubGraphifyStream.write",
+          "kind": "method",
+          "score": 0.5428,
+          "body_chars": 227
+        },
+        {
+          "id": "packages/pipeline/process_control.py::_cmdline_matches_ce",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "_cmdline_matches_ce",
+          "kind": "function",
+          "score": 0.5089,
+          "body_chars": 661
+        }
+      ]
+    },
+    "hyb_fuse_demote_noise_plus": {
+      "ok": true,
+      "elapsed_s": 0.068,
+      "n_hot": 89,
+      "n_ranked": 95,
+      "hot_ids": [
+        "packages/pipeline/__main__.py::cmd_unlock_tool",
+        "packages/pipeline/artifact_guard.py::atomic_write_text",
+        "packages/pipeline/branding.py::migrate_home_dir",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.isatty",
+        "packages/pipeline/cli_ui.py::_init_windows_ansi",
+        "packages/pipeline/cli_ui.py::_init_windows_console",
+        "packages/pipeline/cli_ui.py::_supports_color",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/cli_ui.py::init_terminal",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/cli_ui.py::success",
+        "packages/pipeline/daemon.py::_pid_alive",
+        "packages/pipeline/daemon.py::_read_lock_pid",
+        "packages/pipeline/daemon.py::release_lock",
+        "packages/pipeline/daemon.py::stop_daemon",
+        "packages/pipeline/hw_track.py::resolve_moved_path",
+        "packages/pipeline/lifecycle_runtime.py::_home",
+        "packages/pipeline/lifecycle_runtime.py::idle_seconds",
+        "packages/pipeline/lifecycle_runtime.py::load_policy",
+        "packages/pipeline/lifecycle_runtime.py::note_engine_transition",
+        "packages/pipeline/lifecycle_runtime.py::policy_path",
+        "packages/pipeline/lifecycle_runtime.py::save_policy",
+        "packages/pipeline/lifecycle_runtime.py::set_desired_mode",
+        "packages/pipeline/managed_repos.py::_path_key",
+        "packages/pipeline/managed_repos.py::managed_repo_paths",
+        "packages/pipeline/mcp_locate.py::_is_enrolled",
+        "packages/pipeline/pause_resume.py::_disable_mcp_for_tool",
+        "packages/pipeline/pause_resume.py::_disable_mcp_json",
+        "packages/pipeline/process_control.py::_cmdline_matches_ce",
+        "packages/pipeline/process_control.py::_exe_matches_scubiee",
+        "packages/pipeline/process_control.py::_exe_under_root",
+        "packages/pipeline/process_control.py::_is_mcp_bridge_process",
+        "packages/pipeline/process_control.py::_mcp_config_roots",
+        "packages/pipeline/process_control.py::_pid_is_protected",
+        "packages/pipeline/process_control.py::_protected_process_tree_pids",
+        "packages/pipeline/process_control.py::_rmtree_with_retries",
+        "packages/pipeline/process_control.py::_running_from_uv_tool",
+        "packages/pipeline/process_control.py::_schedule_delete_after_exit",
+        "packages/pipeline/process_control.py::_servers_dict_from_json"
+      ],
+      "top15_ids": [
+        "packages/pipeline/__main__.py::cmd_unlock_tool",
+        "packages/pipeline/process_control.py::unlock_uv_tool_env",
+        "packages/pipeline/cli_ui.py::success",
+        "packages/pipeline/process_control.py::prepare_uv_tool_directory_for_swap",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/process_control.py::release_scubiee_process_locks",
+        "packages/pipeline/process_control.py::force_remove_uv_tool_dir",
+        "packages/pipeline/process_control.py::stop_all_context_engine_processes",
+        "packages/pipeline/process_control.py::uv_tool_root",
+        "packages/pipeline/process_control.py::_is_mcp_bridge_process",
+        "packages/pipeline/managed_repos.py::managed_repo_paths",
+        "packages/pipeline/tool_registry.py::resolve_mcp_project_paths",
+        "packages/pipeline/rules_installer.py::_remove_mcp_continue_yaml",
+        "packages/pipeline/process_control.py::_servers_dict_from_json",
+        "packages/pipeline/process_control.py::processes_under"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/__main__.py::cmd_unlock_tool",
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_unlock_tool",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 1603
+        },
+        {
+          "id": "packages/pipeline/process_control.py::unlock_uv_tool_env",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "unlock_uv_tool_env",
+          "kind": "function",
+          "score": 0.8168,
+          "body_chars": 548
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::success",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "success",
+          "kind": "function",
+          "score": 0.7087,
+          "body_chars": 159
+        },
+        {
+          "id": "packages/pipeline/process_control.py::prepare_uv_tool_directory_for_swap",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "prepare_uv_tool_directory_for_swap",
+          "kind": "function",
+          "score": 0.704,
+          "body_chars": 1172
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::status_line",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "status_line",
+          "kind": "function",
+          "score": 0.6087,
+          "body_chars": 628
+        },
+        {
+          "id": "packages/pipeline/process_control.py::release_scubiee_process_locks",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "release_scubiee_process_locks",
+          "kind": "function",
+          "score": 0.57,
+          "body_chars": 1353
+        },
+        {
+          "id": "packages/pipeline/process_control.py::force_remove_uv_tool_dir",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "force_remove_uv_tool_dir",
+          "kind": "function",
+          "score": 0.568,
+          "body_chars": 2186
+        },
+        {
+          "id": "packages/pipeline/process_control.py::stop_all_context_engine_processes",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "stop_all_context_engine_processes",
+          "kind": "function",
+          "score": 0.5662,
+          "body_chars": 2651
+        },
+        {
+          "id": "packages/pipeline/process_control.py::uv_tool_root",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "uv_tool_root",
+          "kind": "function",
+          "score": 0.5099,
+          "body_chars": 360
+        },
+        {
+          "id": "packages/pipeline/process_control.py::_is_mcp_bridge_process",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "_is_mcp_bridge_process",
+          "kind": "function",
+          "score": 0.48,
+          "body_chars": 278
+        },
+        {
+          "id": "packages/pipeline/managed_repos.py::managed_repo_paths",
+          "file": "packages/pipeline/managed_repos.py",
+          "symbol": "managed_repo_paths",
+          "kind": "function",
+          "score": 0.48,
+          "body_chars": 2086
+        },
+        {
+          "id": "packages/pipeline/tool_registry.py::resolve_mcp_project_paths",
+          "file": "packages/pipeline/tool_registry.py",
+          "symbol": "resolve_mcp_project_paths",
+          "kind": "function",
+          "score": 0.48,
+          "body_chars": 1273
+        },
+        {
+          "id": "packages/pipeline/rules_installer.py::_remove_mcp_continue_yaml",
+          "file": "packages/pipeline/rules_installer.py",
+          "symbol": "_remove_mcp_continue_yaml",
+          "kind": "function",
+          "score": 0.48,
+          "body_chars": 860
+        },
+        {
+          "id": "packages/pipeline/process_control.py::_servers_dict_from_json",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "_servers_dict_from_json",
+          "kind": "function",
+          "score": 0.48,
+          "body_chars": 428
+        },
+        {
+          "id": "packages/pipeline/process_control.py::processes_under",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "processes_under",
+          "kind": "function",
+          "score": 0.48,
+          "body_chars": 1586
+        }
+      ]
+    },
+    "poly_embed": {
+      "ok": true,
+      "elapsed_s": 0.002,
+      "n_hot": 1,
+      "n_ranked": 1,
+      "hot_ids": [
+        "packages/pipeline/__main__.py::cmd_unlock_tool"
+      ],
+      "top15_ids": [
+        "packages/pipeline/__main__.py::cmd_unlock_tool"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/__main__.py::cmd_unlock_tool",
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_unlock_tool",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 1603
+        }
+      ]
+    }
+  }
+}

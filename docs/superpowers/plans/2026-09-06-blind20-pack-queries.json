@@ -1,0 +1,140 @@
+{
+  "protocol": "blind20_pack_compare_v1",
+  "created": "2026-09-06",
+  "note": "20 NEW realistic dev-task queries authored WITHOUT codebase inspection. Map→pack all arms, freeze, THEN author GT.",
+  "arms": [
+    "composite_v1",
+    "semantic_tracer_fuse",
+    "hyb_fuse_demote_noise_plus",
+    "poly_embed",
+    "venture_propose_verify",
+    "venture_propose_path1",
+    "venture_multiview",
+    "venture_semantic_frontier",
+    "venture_trace_state",
+    "venture_learned_heat",
+    "venture_propose_plus_frontier"
+  ],
+  "cases": [
+    {
+      "id": "r01",
+      "family": "turboquant-search",
+      "task": "Where is TurboQuant / quantized FAISS used when serving search hits?",
+      "enrich_prompt": "TurboQuant faiss+turboquant quantized dense search serve WarmSearchEngine FaissDenseAdapter vector_backend bits compress"
+    },
+    {
+      "id": "r02",
+      "family": "capability-cards",
+      "task": "How are capability cards built and attached for locate/map ranking?",
+      "enrich_prompt": "capability_cards CapabilityCard build cards attach map ranking locate index capability_cards.json"
+    },
+    {
+      "id": "r03",
+      "family": "graphify-ir",
+      "task": "Trace graphify / Graph IR construction during index for call edges.",
+      "enrich_prompt": "graphify graph_ir.json build_graphify GraphifyChunkRetriever parse IR edges call graph index"
+    },
+    {
+      "id": "r04",
+      "family": "never-index",
+      "task": "How does never-index / path deny prevent files from entering the corpus?",
+      "enrich_prompt": "never-index never_index deny paths skip files indexing exclude ignore globs managed"
+    },
+    {
+      "id": "r05",
+      "family": "connect-host",
+      "task": "How does `scubiee connect` wire MCP config into a host (Cursor/Claude)?",
+      "enrich_prompt": "cmd_connect connect host MCP mcp.json cursor claude install surface permissions bridge"
+    },
+    {
+      "id": "r06",
+      "family": "dashboard-http",
+      "task": "Where are operator dashboard HTTP routes and status endpoints defined?",
+      "enrich_prompt": "dashboard HTTP routes status endpoints localhost operator serve cmd_dashboard uvicorn"
+    },
+    {
+      "id": "r07",
+      "family": "wipe-uninstall",
+      "task": "Trace wipe / uninstall removing store, MCP, and rules safely.",
+      "enrich_prompt": "cmd_wipe wipe uninstall remove store MCP rules halt confirm --all scubiee state"
+    },
+    {
+      "id": "r08",
+      "family": "upgrade-supervisor",
+      "task": "How does upgrade / supervisor refresh the uv tool install without locking?",
+      "enrich_prompt": "cmd_upgrade upgrade supervisor uv tool unlock-tool Access denied logon scubiee install"
+    },
+    {
+      "id": "r09",
+      "family": "rerank-coderankllm",
+      "task": "Where does CodeRankLLM rerank run at search time (not index)?",
+      "enrich_prompt": "CodeRankLLM rerank search-time D_rerank conductor reranker not index embed"
+    },
+    {
+      "id": "r10",
+      "family": "conductor-fusion",
+      "task": "How does MultiArchConductor fuse BM25, dense, and graph signals?",
+      "enrich_prompt": "MultiArchConductor BM25 dense graph fuse ConductorConfig search_repo rank hit_source"
+    },
+    {
+      "id": "r11",
+      "family": "fast-index-mode",
+      "task": "What does fast indexing mode change vs full index (roots, embed, depth)?",
+      "enrich_prompt": "fast index mode fast_roots embed schema meta fast=true index_repo skip depth"
+    },
+    {
+      "id": "r12",
+      "family": "resource-rss-cap",
+      "task": "How does resource manager / RSS cap throttle embed batch during index?",
+      "enrich_prompt": "ResourceManager RSS cap CTX_CE_RSS_CAP_MB embed batch ceiling pressure resources adaptive"
+    },
+    {
+      "id": "r13",
+      "family": "steering-rules",
+      "task": "How are steering / AGENTS.md / Cursor rules written when a repo is managed?",
+      "enrich_prompt": "steering AGENTS.md .cursor/rules scubiee.mdc write rules managed enroll inject GATE"
+    },
+    {
+      "id": "r14",
+      "family": "expand-directions",
+      "task": "Implement or debug expand callees vs callers vs effects heatmap deltas.",
+      "enrich_prompt": "expand_context direction callees callers effects broad with_bodies heatmap delta pack expand"
+    },
+    {
+      "id": "r15",
+      "family": "freshness-merkle",
+      "task": "How is freshness / clean vs dirty decided from merkle root_hash?",
+      "enrich_prompt": "freshness clean dirty merkle root_hash changed_count status sync reconcile files"
+    },
+    {
+      "id": "r16",
+      "family": "settings-reg-mode",
+      "task": "Where is registration mode automatic vs mcp_cli stored and applied?",
+      "enrich_prompt": "settings registration_mode automatic mcp_cli cmd_settings indexing prefs register consent"
+    },
+    {
+      "id": "r17",
+      "family": "mcp-permissions",
+      "task": "How does mcp-permissions.json gate which MCP tools the agent may call?",
+      "enrich_prompt": "mcp-permissions.json permissions allow deny unlock-tool MCP tools gate host"
+    },
+    {
+      "id": "r18",
+      "family": "polytrace-teleport",
+      "task": "Where does polytrace / PPR teleport jump outside the call island?",
+      "enrich_prompt": "polytrace teleport PPR personalized pageRank island hop callgraph bind_polytrace"
+    },
+    {
+      "id": "r19",
+      "family": "serve-warm-engine",
+      "task": "How does `scubiee serve` / engine keep a warm search engine in memory?",
+      "enrich_prompt": "scubiee serve engine run WarmSearchEngine load_engine daemon port 8765 warm cache"
+    },
+    {
+      "id": "r20",
+      "family": "chunk-vs-file-merkle",
+      "task": "Distinguish chunk_merkle vs file merkle roles in incremental updates.",
+      "enrich_prompt": "chunk_merkle.json merkle.json incremental chunk file hash patch re-embed dirty"
+    }
+  ]
+}

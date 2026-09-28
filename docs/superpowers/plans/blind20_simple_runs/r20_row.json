@@ -1,0 +1,74 @@
+{
+  "id": "r20",
+  "family": "chunk-vs-file-merkle",
+  "task": "Distinguish chunk_merkle vs file merkle roles in incremental updates.",
+  "enrich_prompt": "chunk_merkle.json merkle.json incremental chunk file hash patch re-embed dirty",
+  "map": {
+    "elapsed_s": 0.864,
+    "n_cards": 10,
+    "suggested_seed": {
+      "file": "packages/pipeline/chunk_merkle.py",
+      "symbol": ""
+    },
+    "top_files": [
+      "packages/pipeline/chunk_merkle.py",
+      "packages/pipeline/merkle.py",
+      "tests/test_chunk_merkle.py",
+      "packages/pipeline/incremental.py",
+      "docs/reindexing/chunk-level-incremental-indexing.md"
+    ]
+  },
+  "arms": {
+    "composite_v1": {
+      "ok": true,
+      "engine": "composite_v1",
+      "policy": "strict",
+      "elapsed_s": 0.037,
+      "n_pack": 1,
+      "pack": [
+        {
+          "file": "packages/pipeline/chunk_merkle.py",
+          "symbol": "chunk_key",
+          "score": 1.0,
+          "loc": "packages/pipeline/chunk_merkle.py:16-20",
+          "id": "packages/pipeline/chunk_merkle.py::chunk_key"
+        }
+      ],
+      "error": null
+    },
+    "polytrace": {
+      "ok": true,
+      "engine": "polytrace",
+      "policy": "strict",
+      "elapsed_s": 0.001,
+      "n_pack": 1,
+      "pack": [
+        {
+          "file": "packages/pipeline/chunk_merkle.py",
+          "symbol": "chunk_key",
+          "score": 1.0,
+          "loc": "packages/pipeline/chunk_merkle.py:16-20",
+          "id": "packages/pipeline/chunk_merkle.py::chunk_key"
+        }
+      ],
+      "error": null
+    },
+    "ultimate": {
+      "ok": true,
+      "engine": "ultimate",
+      "policy": "strict",
+      "elapsed_s": 0.016,
+      "n_pack": 1,
+      "pack": [
+        {
+          "file": "packages/pipeline/chunk_merkle.py",
+          "symbol": "chunk_key",
+          "score": 1.0,
+          "loc": "packages/pipeline/chunk_merkle.py:16-20",
+          "id": "packages/pipeline/chunk_merkle.py::chunk_key"
+        }
+      ],
+      "error": null
+    }
+  }
+}

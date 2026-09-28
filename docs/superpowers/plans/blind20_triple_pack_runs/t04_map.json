@@ -1,0 +1,110 @@
+{
+  "ok": true,
+  "tool": "map",
+  "query": "gate enroll managed project_id .scubiee id.json GATE line AGENTS.md bind repo",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/pipeline/project_id.py",
+      "symbol": "",
+      "score": 14.2599,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/project_id.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": "",
+      "score": 14.1842,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/rules_installer.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "tests/test_mcp_repo_resolution.py",
+      "symbol": "",
+      "score": 13.9606,
+      "start_line": null,
+      "end_line": null,
+      "loc": "tests/test_mcp_repo_resolution.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "packages/pipeline/gate_cli.py",
+      "symbol": "",
+      "score": 13.2779,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/gate_cli.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "tests/test_token_efficient_gating.py",
+      "symbol": "",
+      "score": 13.1078,
+      "start_line": null,
+      "end_line": null,
+      "loc": "tests/test_token_efficient_gating.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "tests/conftest.py",
+      "symbol": "",
+      "score": 13.0875,
+      "start_line": null,
+      "end_line": null,
+      "loc": "tests/conftest.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "packages/pipeline/managed_repos.py",
+      "symbol": "",
+      "score": 12.3964,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/managed_repos.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "tests/test_local_first_connect.py",
+      "symbol": "",
+      "score": 12.2917,
+      "start_line": null,
+      "end_line": null,
+      "loc": "tests/test_local_first_connect.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "packages/pipeline/mcp_locate.py",
+      "symbol": "",
+      "score": 12.2897,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/mcp_locate.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "scripts/kiro_mcp_ab_dev_eval.py",
+      "symbol": "",
+      "score": 12.2659,
+      "start_line": null,
+      "end_line": null,
+      "loc": "scripts/kiro_mcp_ab_dev_eval.py:1-1",
+      "why": ""
+    }
+  ],
+  "suggested_seed": null,
+  "elapsed_s": 0.769,
+  "via": "search_repo(use_server=True)"
+}

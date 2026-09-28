@@ -1,0 +1,60 @@
+{
+  "ok": true,
+  "bridge": "C:\\Users\\usman\\.local\\bin\\scubiee-mcp-bridge.EXE",
+  "kiro_mcp": "C:\\Users\\usman\\Downloads\\context-engine\\.kiro\\settings\\mcp.json",
+  "checks": {
+    "initialize": {
+      "ok": true,
+      "server": "scubiee",
+      "version": "1.29.1"
+    },
+    "tools_list": {
+      "ok": true,
+      "count": 13,
+      "missing": [],
+      "has_required": [
+        "collect_hot_context",
+        "expand_context",
+        "gate",
+        "map",
+        "pack_context",
+        "status"
+      ]
+    },
+    "gate": {
+      "ok": true,
+      "preview": "1:ce_d9cb766c3820091ed9ffbc64ef33063c sid:kiro@conn-265a90 shared\nSession 'kiro@conn-265a90' may be shared across parallel chats on kiro (one MCP process). For isolation: pass a distinct session_id pe"
+    },
+    "map": {
+      "ok": true,
+      "count": null,
+      "top_file": "packages/pipeline/context_trace.py"
+    },
+    "pack_context": {
+      "ok": true,
+      "engine": null,
+      "mode": null,
+      "policy": null,
+      "heatmap_n": 16,
+      "read_top": 5,
+      "packed": null,
+      "has_next_actions": false,
+      "seed": "packages/pipeline/context_trace.py::run_pack_context"
+    },
+    "expand_context": {
+      "ok": true,
+      "direction": "callees",
+      "delta": null,
+      "bodies": null
+    }
+  },
+  "errors": [],
+  "env": {
+    "CTX_TRACE_ENGINE": "composite_v1",
+    "CTX_MCP_CLIENT": "kiro",
+    "CTX_REPO": "C:/Users/usman/Downloads/context-engine",
+    "CTX_SCUBIEE_BUILD": "0.3.25-1788695412"
+  },
+  "stderr_tail": "[scubiee-bridge] ready (mode=auto, sessions<=8)\n[scubiee-bridge] spawned worker session=kiro@chat-7deb1043-a1f3-488a-8015-f0cb5de0118c gen=1 pid=6836\n[scubiee-bridge child kiro@chat-7deb1043-a1f3-488a-8015-f0cb5de0118c] [scubiee] surface=phase tools=gate,pack_context,pack_poly_embed,pack_semantic,map_context,expand_context,collect_hot_context,map,pinpoint,plate,workspace,expand,status repo=C:\\Users\\usman\\Downloads\\context-engine token_mode=savings\n[scubiee-bridge child kiro@chat-7deb1043-a1f3-488a-8015-f0cb5de0118c] Processing request of type ListToolsRequest\n[scubiee-bridge child kiro@chat-7deb1043-a1f3-488a-8015-f0cb5de0118c] Processing request of type CallToolRequest\n[scubiee-bridge child kiro@chat-7deb1043-a1f3-488a-8015-f0cb5de0118c] Processing request of type CallToolRequest\n[scubiee-bridge child kiro@chat-7deb1043-a1f3-488a-8015-f0cb5de0118c] Processing request of type CallToolRequest\n[scubiee-bridge child kiro@chat-7deb1043-a1f3-488a-8015-f0cb5de0118c] Warning: SyntaxWarning: invalid escape sequence '\\.'\n[scubiee-bridge child kiro@chat-7deb1043-a1f3-488a-8015-f0cb5de0118c] Warning: SyntaxWarning: invalid escape sequence '\\.'\n[scubiee-bridge child kiro@chat-7deb1043-a1f3-488a-8015-f0cb5de0118c] Warning: SyntaxWarning: invalid escape sequence '\\.'\n[scubiee-bridge child kiro@chat-7deb1043-a1f3-488a-8015-f0cb5de0118c] Warning: SyntaxWarning: invalid escape sequence '\\.'\n[scubiee-bridge child kiro@chat-7deb1043-a1f3-488a-8015-f0cb5de0118c] Processing request of type CallToolRequest\n",
+  "elapsed_ms": 32838.4
+}

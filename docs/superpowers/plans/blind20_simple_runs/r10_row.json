@@ -1,0 +1,88 @@
+{
+  "id": "r10",
+  "family": "conductor-fusion",
+  "task": "How does MultiArchConductor fuse BM25, dense, and graph signals?",
+  "enrich_prompt": "MultiArchConductor BM25 dense graph fuse ConductorConfig search_repo rank hit_source",
+  "map": {
+    "elapsed_s": 0.945,
+    "n_cards": 7,
+    "suggested_seed": {
+      "file": "packages/pipeline/searcher.py",
+      "symbol": ""
+    },
+    "top_files": [
+      "packages/pipeline/searcher.py",
+      "packages/conductor/conductor.py",
+      "fixtures/trace-lab/app/search/rank.py",
+      "packages/conductor/__init__.py",
+      "packages/conductor/architectures.py"
+    ]
+  },
+  "arms": {
+    "composite_v1": {
+      "ok": true,
+      "engine": "composite_v1",
+      "policy": "strict",
+      "elapsed_s": 0.036,
+      "n_pack": 3,
+      "pack": [
+        {
+          "file": "packages/pipeline/searcher.py",
+          "symbol": "FaissDenseAdapter.__init__",
+          "score": 1.0,
+          "loc": "packages/pipeline/searcher.py:33-38",
+          "id": "packages/pipeline/searcher.py::FaissDenseAdapter.__init__"
+        },
+        {
+          "file": "packages/pipeline/searcher.py",
+          "symbol": "SearchEngineError.__init__",
+          "score": 0.9405,
+          "loc": "packages/pipeline/searcher.py:58-60",
+          "id": "packages/pipeline/searcher.py::SearchEngineError.__init__"
+        },
+        {
+          "file": "packages/conductor/dense_index.py",
+          "symbol": "DenseIndex.__init__",
+          "score": 0.75,
+          "loc": "packages/conductor/dense_index.py:29-33",
+          "id": "packages/conductor/dense_index.py::DenseIndex.__init__"
+        }
+      ],
+      "error": null
+    },
+    "polytrace": {
+      "ok": true,
+      "engine": "polytrace",
+      "policy": "strict",
+      "elapsed_s": 0.001,
+      "n_pack": 1,
+      "pack": [
+        {
+          "file": "packages/pipeline/searcher.py",
+          "symbol": "FaissDenseAdapter.__init__",
+          "score": 1.0,
+          "loc": "packages/pipeline/searcher.py:33-38",
+          "id": "packages/pipeline/searcher.py::FaissDenseAdapter.__init__"
+        }
+      ],
+      "error": null
+    },
+    "ultimate": {
+      "ok": true,
+      "engine": "ultimate",
+      "policy": "strict",
+      "elapsed_s": 0.014,
+      "n_pack": 1,
+      "pack": [
+        {
+          "file": "packages/pipeline/searcher.py",
+          "symbol": "FaissDenseAdapter.__init__",
+          "score": 1.0,
+          "loc": "packages/pipeline/searcher.py:33-38",
+          "id": "packages/pipeline/searcher.py::FaissDenseAdapter.__init__"
+        }
+      ],
+      "error": null
+    }
+  }
+}

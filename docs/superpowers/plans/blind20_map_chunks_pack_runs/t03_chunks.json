@@ -1,0 +1,32 @@
+[
+  {
+    "file": "packages/enrich/__init__.py",
+    "symbol": "chunk_file_from_ir",
+    "kind": "function",
+    "loc": "packages/enrich/__init__.py:70-122",
+    "start_line": 70,
+    "end_line": 122,
+    "score": 7.05,
+    "excerpt": "def chunk_file_from_ir(ir: RepoIR, root: Path, file_path: str) -> list[CodeChunk]:\n    \"\"\"Slice one file into symbol-span chunks using RepoIR line anchors only.\"\"\"\n    lines = _rea"
+  },
+  {
+    "file": "packages/pipeline/chunk_merkle.py",
+    "symbol": "chunk_key",
+    "kind": "function",
+    "loc": "packages/pipeline/chunk_merkle.py:16-20",
+    "start_line": 16,
+    "end_line": 20,
+    "score": 7.35,
+    "excerpt": "def chunk_key(chunk: ChunkRecord) -> str:\n    \"\"\"Stable identity: symbols survive line shifts; anonymous chunks use range.\"\"\"\n    if chunk.symbol:\n        return str(chunk.symbol)\n"
+  },
+  {
+    "file": "packages/enrich/__init__.py",
+    "symbol": "chunk_repo_from_ir",
+    "kind": "function",
+    "loc": "packages/enrich/__init__.py:125-133",
+    "start_line": 125,
+    "end_line": 133,
+    "score": 6.7,
+    "excerpt": "def chunk_repo_from_ir(ir: RepoIR, root: Path | None = None) -> list[CodeChunk]:\n    root = Path(root or ir.root)\n    chunks: list[CodeChunk] = []\n    for file_path in sorted(ir.fi"
+  }
+]

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import threading
 import time
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -24,6 +25,9 @@ class RepoRuntime:
     last_activity_at: float = field(default_factory=time.time)
     error: str | None = None
     generation: int = 0
+    # Distinguishes this runtime's generation counter from a previous engine's
+    # (or a dropped runtime's) that restarted at 0: part of the cache token.
+    epoch: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     priority: str = "idle"
     warm_state: str = "idle"
     warming: bool = False

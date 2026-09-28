@@ -1,0 +1,4083 @@
+{
+  "protocol": "blind20_triple_pack_v1",
+  "created": "2026-09-06T09:45:13Z",
+  "scored": false,
+  "elapsed_s": 110.48,
+  "arms": [
+    "pack_context",
+    "pack_poly_embed",
+    "pack_semantic"
+  ],
+  "note": "FROZEN after enrich-map symbol resolve + triple pack. GT only after this.",
+  "phase1b": true,
+  "rows": [
+    {
+      "id": "t01",
+      "family": "faiss-publish",
+      "task": "How does a rebuilt FAISS index get published so warm search starts serving the new vectors?",
+      "enrich_prompt": "publish FAISS index republish store checksum WarmSearchEngine serve hits after rebuild vector index publication usable",
+      "map": {
+        "elapsed_s": 5.236,
+        "n_cards": 10,
+        "top_files": [
+          "packages/pipeline/artifact_guard.py",
+          "packages/pipeline/memory_governor.py",
+          "packages/pipeline/engine.py",
+          "packages/pipeline/ce_service.py",
+          "tests/test_runtime_publish.py"
+        ]
+      },
+      "enrich_seed": {
+        "ok": true,
+        "elapsed_s": 25.075,
+        "seed_file": "packages/pipeline/artifact_guard.py",
+        "seed": {
+          "file": "packages/pipeline/artifact_guard.py",
+          "symbol": "atomic_write_text",
+          "id": "packages/pipeline/artifact_guard.py::atomic_write_text",
+          "loc": null
+        },
+        "chunks": [
+          {
+            "file": "packages/pipeline/artifact_guard.py",
+            "symbol": "atomic_write_text",
+            "loc": "packages/pipeline/artifact_guard.py:17-30",
+            "score": 1.0,
+            "kind": "function"
+          },
+          {
+            "file": "packages/pipeline/artifact_guard.py",
+            "symbol": "_atomic_write_text_unlocked",
+            "loc": "packages/pipeline/artifact_guard.py:33-43",
+            "score": 0.99,
+            "kind": "function"
+          },
+          {
+            "file": "packages/pipeline/store_lock.py",
+            "symbol": "store_write_lock",
+            "loc": "packages/pipeline/store_lock.py:60-103",
+            "score": 0.9405,
+            "kind": "function"
+          },
+          {
+            "file": "packages/pipeline/artifact_guard.py",
+            "symbol": "_atomic_replace",
+            "loc": "packages/pipeline/artifact_guard.py:46-61",
+            "score": 0.8598,
+            "kind": "function"
+          },
+          {
+            "file": "packages/pipeline/store_lock.py",
+            "symbol": "_held_dirs",
+            "loc": "packages/pipeline/store_lock.py:21-26",
+            "score": 0.8168,
+            "kind": "function"
+          }
+        ],
+        "n_cards": 7,
+        "error": null
+      },
+      "arms": {
+        "pack_context": {
+          "ok": true,
+          "tool": "pack_context",
+          "engine": "composite_v1",
+          "elapsed_s": 0.879,
+          "n_pack": 4,
+          "seed": {
+            "file": "packages/pipeline/artifact_guard.py",
+            "symbol": "atomic_write_text",
+            "id": "packages/pipeline/artifact_guard.py::atomic_write_text"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/artifact_guard.py",
+              "symbol": "atomic_write_text",
+              "score": 1.0,
+              "loc": "packages/pipeline/artifact_guard.py:17-30",
+              "id": "packages/pipeline/artifact_guard.py::atomic_write_text",
+              "chars": 428
+            },
+            {
+              "file": "packages/pipeline/artifact_guard.py",
+              "symbol": "_atomic_write_text_unlocked",
+              "score": 0.99,
+              "loc": "packages/pipeline/artifact_guard.py:33-43",
+              "id": "packages/pipeline/artifact_guard.py::_atomic_write_text_unlocked",
+              "chars": 494
+            },
+            {
+              "file": "packages/pipeline/store_lock.py",
+              "symbol": "store_write_lock",
+              "score": 0.9405,
+              "loc": "packages/pipeline/store_lock.py:60-103",
+              "id": "packages/pipeline/store_lock.py::store_write_lock",
+              "chars": 1467
+            },
+            {
+              "file": "packages/pipeline/artifact_guard.py",
+              "symbol": "_atomic_replace",
+              "score": 0.8598,
+              "loc": "packages/pipeline/artifact_guard.py:46-61",
+              "id": "packages/pipeline/artifact_guard.py::_atomic_replace",
+              "chars": 603
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/artifact_guard.py::atomic_write_text",
+              "loc": "packages/pipeline/artifact_guard.py:17-30",
+              "edge": "seed",
+              "score": 1.0
+            },
+            {
+              "id": "packages/pipeline/artifact_guard.py::_atomic_write_text_unlocked",
+              "loc": "packages/pipeline/artifact_guard.py:33-43",
+              "edge": "calls",
+              "score": 0.99
+            },
+            {
+              "id": "packages/pipeline/store_lock.py::store_write_lock",
+              "loc": "packages/pipeline/store_lock.py:60-103",
+              "edge": "calls",
+              "score": 0.9405
+            },
+            {
+              "id": "packages/pipeline/artifact_guard.py::_atomic_replace",
+              "loc": "packages/pipeline/artifact_guard.py:46-61",
+              "edge": "calls",
+              "score": 0.8598
+            },
+            {
+              "id": "packages/pipeline/store_lock.py::_held_dirs",
+              "loc": "packages/pipeline/store_lock.py:21-26",
+              "edge": "calls",
+              "score": 0.8168
+            },
+            {
+              "id": "packages/pipeline/store_lock.py::store_lock_file",
+              "loc": "packages/pipeline/store_lock.py:17-18",
+              "edge": "calls",
+              "score": 0.8168
+            },
+            {
+              "id": "packages/pipeline/store_lock.py::_release_fd",
+              "loc": "packages/pipeline/store_lock.py:41-56",
+              "edge": "calls",
+              "score": 0.8168
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/artifact_guard.py",
+              "symbol": "atomic_write_text",
+              "loc": "packages/pipeline/artifact_guard.py:17-30",
+              "score": 1.0,
+              "kind": "function"
+            },
+            {
+              "file": "packages/pipeline/artifact_guard.py",
+              "symbol": "_atomic_write_text_unlocked",
+              "loc": "packages/pipeline/artifact_guard.py:33-43",
+              "score": 0.99,
+              "kind": "function"
+            },
+            {
+              "file": "packages/pipeline/store_lock.py",
+              "symbol": "store_write_lock",
+              "loc": "packages/pipeline/store_lock.py:60-103",
+              "score": 0.9405,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "publish FAISS index republish store checksum WarmSearchEngine serve hits after rebuild vector index publication usable | seeds: packages/pipeline/artifact_guard.py::atomic_write_text packages/pipeline/artifact_guard.py::_atomic_write_text_unlocked packages/pipeline/store_lock.py::store_write_lock packages/pipeline/artifact_guard.py::_atomic_replace packages/pipeline/store_lock.py::_held_dirs"
+        },
+        "pack_poly_embed": {
+          "ok": true,
+          "tool": "pack_poly_embed",
+          "engine": "poly_embed",
+          "elapsed_s": 37.49,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/artifact_guard.py",
+            "symbol": "atomic_write_text",
+            "id": "packages/pipeline/artifact_guard.py::atomic_write_text"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/artifact_guard.py",
+              "symbol": "atomic_write_text",
+              "score": 1.0,
+              "loc": "packages/pipeline/artifact_guard.py:17-30",
+              "id": "packages/pipeline/artifact_guard.py::atomic_write_text",
+              "chars": 428
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/artifact_guard.py::atomic_write_text",
+              "loc": "packages/pipeline/artifact_guard.py:17-30",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/artifact_guard.py",
+              "symbol": "atomic_write_text",
+              "loc": "packages/pipeline/artifact_guard.py:17-30",
+              "score": 1.0,
+              "kind": "function"
+            },
+            {
+              "file": "packages/pipeline/artifact_guard.py",
+              "symbol": "_atomic_write_text_unlocked",
+              "loc": "packages/pipeline/artifact_guard.py:33-43",
+              "score": 0.99,
+              "kind": "function"
+            },
+            {
+              "file": "packages/pipeline/store_lock.py",
+              "symbol": "store_write_lock",
+              "loc": "packages/pipeline/store_lock.py:60-103",
+              "score": 0.9405,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "publish FAISS index republish store checksum WarmSearchEngine serve hits after rebuild vector index publication usable | seeds: packages/pipeline/artifact_guard.py::atomic_write_text packages/pipeline/artifact_guard.py::_atomic_write_text_unlocked packages/pipeline/store_lock.py::store_write_lock packages/pipeline/artifact_guard.py::_atomic_replace packages/pipeline/store_lock.py::_held_dirs"
+        },
+        "pack_semantic": {
+          "ok": true,
+          "tool": "pack_semantic",
+          "engine": "semantic_tracer_fuse",
+          "elapsed_s": 36.75,
+          "n_pack": 4,
+          "seed": {
+            "file": "packages/pipeline/artifact_guard.py",
+            "symbol": "atomic_write_text",
+            "id": "packages/pipeline/artifact_guard.py::atomic_write_text"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/artifact_guard.py",
+              "symbol": "atomic_write_text",
+              "score": 1.0,
+              "loc": "packages/pipeline/artifact_guard.py:17-30",
+              "id": "packages/pipeline/artifact_guard.py::atomic_write_text",
+              "chars": 428
+            },
+            {
+              "file": "packages/pipeline/artifact_guard.py",
+              "symbol": "_atomic_write_text_unlocked",
+              "score": 0.9478,
+              "loc": "packages/pipeline/artifact_guard.py:33-43",
+              "id": "packages/pipeline/artifact_guard.py::_atomic_write_text_unlocked",
+              "chars": 494
+            },
+            {
+              "file": "packages/pipeline/store_lock.py",
+              "symbol": "store_write_lock",
+              "score": 0.8697,
+              "loc": "packages/pipeline/store_lock.py:60-103",
+              "id": "packages/pipeline/store_lock.py::store_write_lock",
+              "chars": 1467
+            },
+            {
+              "file": "packages/pipeline/artifact_guard.py",
+              "symbol": "_atomic_replace",
+              "score": 0.7843,
+              "loc": "packages/pipeline/artifact_guard.py:46-61",
+              "id": "packages/pipeline/artifact_guard.py::_atomic_replace",
+              "chars": 603
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/artifact_guard.py::atomic_write_text",
+              "loc": "packages/pipeline/artifact_guard.py:17-30",
+              "edge": "seed",
+              "score": 1.0
+            },
+            {
+              "id": "packages/pipeline/artifact_guard.py::_atomic_write_text_unlocked",
+              "loc": "packages/pipeline/artifact_guard.py:33-43",
+              "edge": "calls",
+              "score": 0.9478
+            },
+            {
+              "id": "packages/pipeline/store_lock.py::store_write_lock",
+              "loc": "packages/pipeline/store_lock.py:60-103",
+              "edge": "calls",
+              "score": 0.8697
+            },
+            {
+              "id": "packages/pipeline/artifact_guard.py::_atomic_replace",
+              "loc": "packages/pipeline/artifact_guard.py:46-61",
+              "edge": "calls",
+              "score": 0.7843
+            },
+            {
+              "id": "packages/pipeline/store_lock.py::store_lock_file",
+              "loc": "packages/pipeline/store_lock.py:17-18",
+              "edge": "calls",
+              "score": 0.7131
+            },
+            {
+              "id": "packages/pipeline/store_lock.py::_release_fd",
+              "loc": "packages/pipeline/store_lock.py:41-56",
+              "edge": "calls",
+              "score": 0.7098
+            },
+            {
+              "id": "packages/pipeline/store_lock.py::_held_dirs",
+              "loc": "packages/pipeline/store_lock.py:21-26",
+              "edge": "calls",
+              "score": 0.709
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/artifact_guard.py",
+              "symbol": "atomic_write_text",
+              "loc": "packages/pipeline/artifact_guard.py:17-30",
+              "score": 1.0,
+              "kind": "function"
+            },
+            {
+              "file": "packages/pipeline/artifact_guard.py",
+              "symbol": "_atomic_write_text_unlocked",
+              "loc": "packages/pipeline/artifact_guard.py:33-43",
+              "score": 0.99,
+              "kind": "function"
+            },
+            {
+              "file": "packages/pipeline/store_lock.py",
+              "symbol": "store_write_lock",
+              "loc": "packages/pipeline/store_lock.py:60-103",
+              "score": 0.9405,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "publish FAISS index republish store checksum WarmSearchEngine serve hits after rebuild vector index publication usable | seeds: packages/pipeline/artifact_guard.py::atomic_write_text packages/pipeline/artifact_guard.py::_atomic_write_text_unlocked packages/pipeline/store_lock.py::store_write_lock packages/pipeline/artifact_guard.py::_atomic_replace packages/pipeline/store_lock.py::_held_dirs"
+        }
+      }
+    },
+    {
+      "id": "t02",
+      "family": "bm25-build",
+      "task": "Where is the BM25 lexical index built and tokenized during repo indexing?",
+      "enrich_prompt": "BM25 index build tokenize corpus indexing conductor bm25_index lexical chunks",
+      "map": {
+        "elapsed_s": 0.371,
+        "n_cards": 10,
+        "top_files": [
+          "packages/conductor/bm25_index.py",
+          "packages/pipeline/__init__.py",
+          "packages/conductor/conductor.py",
+          "packages/pipeline/hot_patch.py",
+          "packages/trace_lab/retrieve.py"
+        ]
+      },
+      "enrich_seed": {
+        "ok": true,
+        "elapsed_s": 0.052,
+        "seed_file": "packages/conductor/bm25_index.py",
+        "seed": {
+          "file": "packages/conductor/bm25_index.py",
+          "symbol": "tokenize",
+          "id": "packages/conductor/bm25_index.py::tokenize",
+          "loc": null
+        },
+        "chunks": [
+          {
+            "file": "packages/conductor/bm25_index.py",
+            "symbol": "tokenize",
+            "loc": "packages/conductor/bm25_index.py:14-15",
+            "score": 1.0,
+            "kind": "function"
+          }
+        ],
+        "n_cards": 1,
+        "error": null
+      },
+      "arms": {
+        "pack_context": {
+          "ok": true,
+          "tool": "pack_context",
+          "engine": "composite_v1",
+          "elapsed_s": 0.041,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/conductor/bm25_index.py",
+            "symbol": "tokenize",
+            "id": "packages/conductor/bm25_index.py::tokenize"
+          },
+          "pack": [
+            {
+              "file": "packages/conductor/bm25_index.py",
+              "symbol": "tokenize",
+              "score": 1.0,
+              "loc": "packages/conductor/bm25_index.py:14-15",
+              "id": "packages/conductor/bm25_index.py::tokenize",
+              "chars": 90
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/conductor/bm25_index.py::tokenize",
+              "loc": "packages/conductor/bm25_index.py:14-15",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/conductor/bm25_index.py",
+              "symbol": "tokenize",
+              "loc": "packages/conductor/bm25_index.py:14-15",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "BM25 index build tokenize corpus indexing conductor bm25_index lexical chunks | seeds: packages/conductor/bm25_index.py::tokenize"
+        },
+        "pack_poly_embed": {
+          "ok": true,
+          "tool": "pack_poly_embed",
+          "engine": "poly_embed",
+          "elapsed_s": 0.201,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/conductor/bm25_index.py",
+            "symbol": "tokenize",
+            "id": "packages/conductor/bm25_index.py::tokenize"
+          },
+          "pack": [
+            {
+              "file": "packages/conductor/bm25_index.py",
+              "symbol": "tokenize",
+              "score": 1.0,
+              "loc": "packages/conductor/bm25_index.py:14-15",
+              "id": "packages/conductor/bm25_index.py::tokenize",
+              "chars": 90
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/conductor/bm25_index.py::tokenize",
+              "loc": "packages/conductor/bm25_index.py:14-15",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/conductor/bm25_index.py",
+              "symbol": "tokenize",
+              "loc": "packages/conductor/bm25_index.py:14-15",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "BM25 index build tokenize corpus indexing conductor bm25_index lexical chunks | seeds: packages/conductor/bm25_index.py::tokenize"
+        },
+        "pack_semantic": {
+          "ok": true,
+          "tool": "pack_semantic",
+          "engine": "semantic_tracer_fuse",
+          "elapsed_s": 0.461,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/conductor/bm25_index.py",
+            "symbol": "tokenize",
+            "id": "packages/conductor/bm25_index.py::tokenize"
+          },
+          "pack": [
+            {
+              "file": "packages/conductor/bm25_index.py",
+              "symbol": "tokenize",
+              "score": 1.0,
+              "loc": "packages/conductor/bm25_index.py:14-15",
+              "id": "packages/conductor/bm25_index.py::tokenize",
+              "chars": 90
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/conductor/bm25_index.py::tokenize",
+              "loc": "packages/conductor/bm25_index.py:14-15",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/conductor/bm25_index.py",
+              "symbol": "tokenize",
+              "loc": "packages/conductor/bm25_index.py:14-15",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "BM25 index build tokenize corpus indexing conductor bm25_index lexical chunks | seeds: packages/conductor/bm25_index.py::tokenize"
+        }
+      }
+    },
+    {
+      "id": "t03",
+      "family": "chunk-pipeline",
+      "task": "Trace how source files become searchable chunks in the indexer pipeline.",
+      "enrich_prompt": "indexer chunk pipeline parse source files into chunks merkle symbol spans index_manager",
+      "map": {
+        "elapsed_s": 0.503,
+        "n_cards": 10,
+        "top_files": [
+          "packages/enrich/__init__.py",
+          "packages/pipeline/chunk_merkle.py",
+          "tests/test_runtime_publish.py",
+          "packages/pipeline/index_manager.py",
+          "packages/pipeline/indexer.py"
+        ]
+      },
+      "enrich_seed": {
+        "ok": true,
+        "elapsed_s": 0.044,
+        "seed_file": "packages/enrich/__init__.py",
+        "seed": {
+          "file": "packages/enrich/__init__.py",
+          "symbol": "EnrichedChunk.to_dict",
+          "id": "packages/enrich/__init__.py::EnrichedChunk.to_dict",
+          "loc": null
+        },
+        "chunks": [
+          {
+            "file": "packages/enrich/__init__.py",
+            "symbol": "EnrichedChunk.to_dict",
+            "loc": "packages/enrich/__init__.py:38-48",
+            "score": 1.0,
+            "kind": "method"
+          }
+        ],
+        "n_cards": 1,
+        "error": null
+      },
+      "arms": {
+        "pack_context": {
+          "ok": true,
+          "tool": "pack_context",
+          "engine": "composite_v1",
+          "elapsed_s": 0.044,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/enrich/__init__.py",
+            "symbol": "EnrichedChunk.to_dict",
+            "id": "packages/enrich/__init__.py::EnrichedChunk.to_dict"
+          },
+          "pack": [
+            {
+              "file": "packages/enrich/__init__.py",
+              "symbol": "EnrichedChunk.to_dict",
+              "score": 1.0,
+              "loc": "packages/enrich/__init__.py:38-48",
+              "id": "packages/enrich/__init__.py::EnrichedChunk.to_dict",
+              "chars": 404
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/enrich/__init__.py::EnrichedChunk.to_dict",
+              "loc": "packages/enrich/__init__.py:38-48",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/enrich/__init__.py",
+              "symbol": "EnrichedChunk.to_dict",
+              "loc": "packages/enrich/__init__.py:38-48",
+              "score": 1.0,
+              "kind": "method"
+            }
+          ],
+          "pack_query": "indexer chunk pipeline parse source files into chunks merkle symbol spans index_manager | seeds: packages/enrich/__init__.py::EnrichedChunk.to_dict"
+        },
+        "pack_poly_embed": {
+          "ok": true,
+          "tool": "pack_poly_embed",
+          "engine": "poly_embed",
+          "elapsed_s": 0.138,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/enrich/__init__.py",
+            "symbol": "EnrichedChunk.to_dict",
+            "id": "packages/enrich/__init__.py::EnrichedChunk.to_dict"
+          },
+          "pack": [
+            {
+              "file": "packages/enrich/__init__.py",
+              "symbol": "EnrichedChunk.to_dict",
+              "score": 1.0,
+              "loc": "packages/enrich/__init__.py:38-48",
+              "id": "packages/enrich/__init__.py::EnrichedChunk.to_dict",
+              "chars": 404
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/enrich/__init__.py::EnrichedChunk.to_dict",
+              "loc": "packages/enrich/__init__.py:38-48",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/enrich/__init__.py",
+              "symbol": "EnrichedChunk.to_dict",
+              "loc": "packages/enrich/__init__.py:38-48",
+              "score": 1.0,
+              "kind": "method"
+            }
+          ],
+          "pack_query": "indexer chunk pipeline parse source files into chunks merkle symbol spans index_manager | seeds: packages/enrich/__init__.py::EnrichedChunk.to_dict"
+        },
+        "pack_semantic": {
+          "ok": true,
+          "tool": "pack_semantic",
+          "engine": "semantic_tracer_fuse",
+          "elapsed_s": 0.214,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/enrich/__init__.py",
+            "symbol": "EnrichedChunk.to_dict",
+            "id": "packages/enrich/__init__.py::EnrichedChunk.to_dict"
+          },
+          "pack": [
+            {
+              "file": "packages/enrich/__init__.py",
+              "symbol": "EnrichedChunk.to_dict",
+              "score": 1.0,
+              "loc": "packages/enrich/__init__.py:38-48",
+              "id": "packages/enrich/__init__.py::EnrichedChunk.to_dict",
+              "chars": 404
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/enrich/__init__.py::EnrichedChunk.to_dict",
+              "loc": "packages/enrich/__init__.py:38-48",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/enrich/__init__.py",
+              "symbol": "EnrichedChunk.to_dict",
+              "loc": "packages/enrich/__init__.py:38-48",
+              "score": 1.0,
+              "kind": "method"
+            }
+          ],
+          "pack_query": "indexer chunk pipeline parse source files into chunks merkle symbol spans index_manager | seeds: packages/enrich/__init__.py::EnrichedChunk.to_dict"
+        }
+      }
+    },
+    {
+      "id": "t04",
+      "family": "gate-enroll",
+      "task": "How does gate / project enrollment decide a repo is managed and bind project_id?",
+      "enrich_prompt": "gate enroll managed project_id .scubiee id.json GATE line AGENTS.md bind repo",
+      "map": {
+        "elapsed_s": 0.769,
+        "n_cards": 10,
+        "top_files": [
+          "packages/pipeline/project_id.py",
+          "packages/pipeline/rules_installer.py",
+          "tests/test_mcp_repo_resolution.py",
+          "packages/pipeline/gate_cli.py",
+          "tests/test_token_efficient_gating.py"
+        ]
+      },
+      "enrich_seed": {
+        "ok": true,
+        "elapsed_s": 0.038,
+        "seed_file": "packages/pipeline/project_id.py",
+        "seed": {
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "_lock_registry_file",
+          "id": "packages/pipeline/project_id.py::_lock_registry_file",
+          "loc": null
+        },
+        "chunks": [
+          {
+            "file": "packages/pipeline/project_id.py",
+            "symbol": "_lock_registry_file",
+            "loc": "packages/pipeline/project_id.py:51-65",
+            "score": 1.0,
+            "kind": "function"
+          }
+        ],
+        "n_cards": 1,
+        "error": null
+      },
+      "arms": {
+        "pack_context": {
+          "ok": true,
+          "tool": "pack_context",
+          "engine": "composite_v1",
+          "elapsed_s": 0.043,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/project_id.py",
+            "symbol": "_lock_registry_file",
+            "id": "packages/pipeline/project_id.py::_lock_registry_file"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/project_id.py",
+              "symbol": "_lock_registry_file",
+              "score": 1.0,
+              "loc": "packages/pipeline/project_id.py:51-65",
+              "id": "packages/pipeline/project_id.py::_lock_registry_file",
+              "chars": 384
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/project_id.py::_lock_registry_file",
+              "loc": "packages/pipeline/project_id.py:51-65",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/project_id.py",
+              "symbol": "_lock_registry_file",
+              "loc": "packages/pipeline/project_id.py:51-65",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "gate enroll managed project_id .scubiee id.json GATE line AGENTS.md bind repo | seeds: packages/pipeline/project_id.py::_lock_registry_file"
+        },
+        "pack_poly_embed": {
+          "ok": true,
+          "tool": "pack_poly_embed",
+          "engine": "poly_embed",
+          "elapsed_s": 0.134,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/project_id.py",
+            "symbol": "_lock_registry_file",
+            "id": "packages/pipeline/project_id.py::_lock_registry_file"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/project_id.py",
+              "symbol": "_lock_registry_file",
+              "score": 1.0,
+              "loc": "packages/pipeline/project_id.py:51-65",
+              "id": "packages/pipeline/project_id.py::_lock_registry_file",
+              "chars": 384
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/project_id.py::_lock_registry_file",
+              "loc": "packages/pipeline/project_id.py:51-65",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/project_id.py",
+              "symbol": "_lock_registry_file",
+              "loc": "packages/pipeline/project_id.py:51-65",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "gate enroll managed project_id .scubiee id.json GATE line AGENTS.md bind repo | seeds: packages/pipeline/project_id.py::_lock_registry_file"
+        },
+        "pack_semantic": {
+          "ok": true,
+          "tool": "pack_semantic",
+          "engine": "semantic_tracer_fuse",
+          "elapsed_s": 0.231,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/project_id.py",
+            "symbol": "_lock_registry_file",
+            "id": "packages/pipeline/project_id.py::_lock_registry_file"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/project_id.py",
+              "symbol": "_lock_registry_file",
+              "score": 1.0,
+              "loc": "packages/pipeline/project_id.py:51-65",
+              "id": "packages/pipeline/project_id.py::_lock_registry_file",
+              "chars": 384
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/project_id.py::_lock_registry_file",
+              "loc": "packages/pipeline/project_id.py:51-65",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/project_id.py",
+              "symbol": "_lock_registry_file",
+              "loc": "packages/pipeline/project_id.py:51-65",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "gate enroll managed project_id .scubiee id.json GATE line AGENTS.md bind repo | seeds: packages/pipeline/project_id.py::_lock_registry_file"
+        }
+      }
+    },
+    {
+      "id": "t05",
+      "family": "engine-watchdog",
+      "task": "How does the engine watchdog keep the warm HTTP daemon alive and restart on idle?",
+      "enrich_prompt": "engine watchdog idle timeout restart CTX_ENGINE_URL port 8765 pipeline engine run",
+      "map": {
+        "elapsed_s": 0.651,
+        "n_cards": 10,
+        "top_files": [
+          "scripts/blind20_simple_map_pack.py",
+          "packages/pipeline/watchdog.py",
+          "packages/pipeline/client.py",
+          "tests/_prod_post_restart.py",
+          "packages/pipeline/diagnose.py"
+        ]
+      },
+      "enrich_seed": {
+        "ok": true,
+        "elapsed_s": 0.041,
+        "seed_file": "packages/pipeline/watchdog.py",
+        "seed": {
+          "file": "packages/pipeline/watchdog.py",
+          "symbol": "_home",
+          "id": "packages/pipeline/watchdog.py::_home",
+          "loc": null
+        },
+        "chunks": [
+          {
+            "file": "packages/pipeline/watchdog.py",
+            "symbol": "_home",
+            "loc": "packages/pipeline/watchdog.py:27-30",
+            "score": 1.0,
+            "kind": "function"
+          },
+          {
+            "file": "packages/pipeline/project_id.py",
+            "symbol": "context_engine_home",
+            "loc": "packages/pipeline/project_id.py:108-113",
+            "score": 0.7994,
+            "kind": "function"
+          },
+          {
+            "file": "packages/pipeline/branding.py",
+            "symbol": "migrate_home_dir",
+            "loc": "packages/pipeline/branding.py:29-32",
+            "score": 0.5606,
+            "kind": "function"
+          }
+        ],
+        "n_cards": 3,
+        "error": null
+      },
+      "arms": {
+        "pack_context": {
+          "ok": true,
+          "tool": "pack_context",
+          "engine": "composite_v1",
+          "elapsed_s": 0.046,
+          "n_pack": 2,
+          "seed": {
+            "file": "packages/pipeline/watchdog.py",
+            "symbol": "_home",
+            "id": "packages/pipeline/watchdog.py::_home"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/watchdog.py",
+              "symbol": "_home",
+              "score": 1.0,
+              "loc": "packages/pipeline/watchdog.py:27-30",
+              "id": "packages/pipeline/watchdog.py::_home",
+              "chars": 110
+            },
+            {
+              "file": "packages/pipeline/project_id.py",
+              "symbol": "context_engine_home",
+              "score": 0.7994,
+              "loc": "packages/pipeline/project_id.py:108-113",
+              "id": "packages/pipeline/project_id.py::context_engine_home",
+              "chars": 235
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/watchdog.py::_home",
+              "loc": "packages/pipeline/watchdog.py:27-30",
+              "edge": "seed",
+              "score": 1.0
+            },
+            {
+              "id": "packages/pipeline/project_id.py::context_engine_home",
+              "loc": "packages/pipeline/project_id.py:108-113",
+              "edge": "calls",
+              "score": 0.7994
+            },
+            {
+              "id": "packages/pipeline/branding.py::migrate_home_dir",
+              "loc": "packages/pipeline/branding.py:29-32",
+              "edge": "calls",
+              "score": 0.5606
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/watchdog.py",
+              "symbol": "_home",
+              "loc": "packages/pipeline/watchdog.py:27-30",
+              "score": 1.0,
+              "kind": "function"
+            },
+            {
+              "file": "packages/pipeline/project_id.py",
+              "symbol": "context_engine_home",
+              "loc": "packages/pipeline/project_id.py:108-113",
+              "score": 0.7994,
+              "kind": "function"
+            },
+            {
+              "file": "packages/pipeline/branding.py",
+              "symbol": "migrate_home_dir",
+              "loc": "packages/pipeline/branding.py:29-32",
+              "score": 0.5606,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "engine watchdog idle timeout restart CTX_ENGINE_URL port 8765 pipeline engine run | seeds: packages/pipeline/watchdog.py::_home packages/pipeline/project_id.py::context_engine_home packages/pipeline/branding.py::migrate_home_dir"
+        },
+        "pack_poly_embed": {
+          "ok": true,
+          "tool": "pack_poly_embed",
+          "engine": "poly_embed",
+          "elapsed_s": 0.205,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/watchdog.py",
+            "symbol": "_home",
+            "id": "packages/pipeline/watchdog.py::_home"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/watchdog.py",
+              "symbol": "_home",
+              "score": 1.0,
+              "loc": "packages/pipeline/watchdog.py:27-30",
+              "id": "packages/pipeline/watchdog.py::_home",
+              "chars": 110
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/watchdog.py::_home",
+              "loc": "packages/pipeline/watchdog.py:27-30",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/watchdog.py",
+              "symbol": "_home",
+              "loc": "packages/pipeline/watchdog.py:27-30",
+              "score": 1.0,
+              "kind": "function"
+            },
+            {
+              "file": "packages/pipeline/project_id.py",
+              "symbol": "context_engine_home",
+              "loc": "packages/pipeline/project_id.py:108-113",
+              "score": 0.7994,
+              "kind": "function"
+            },
+            {
+              "file": "packages/pipeline/branding.py",
+              "symbol": "migrate_home_dir",
+              "loc": "packages/pipeline/branding.py:29-32",
+              "score": 0.5606,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "engine watchdog idle timeout restart CTX_ENGINE_URL port 8765 pipeline engine run | seeds: packages/pipeline/watchdog.py::_home packages/pipeline/project_id.py::context_engine_home packages/pipeline/branding.py::migrate_home_dir"
+        },
+        "pack_semantic": {
+          "ok": true,
+          "tool": "pack_semantic",
+          "engine": "semantic_tracer_fuse",
+          "elapsed_s": 0.246,
+          "n_pack": 2,
+          "seed": {
+            "file": "packages/pipeline/watchdog.py",
+            "symbol": "_home",
+            "id": "packages/pipeline/watchdog.py::_home"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/watchdog.py",
+              "symbol": "_home",
+              "score": 1.0,
+              "loc": "packages/pipeline/watchdog.py:27-30",
+              "id": "packages/pipeline/watchdog.py::_home",
+              "chars": 110
+            },
+            {
+              "file": "packages/pipeline/project_id.py",
+              "symbol": "context_engine_home",
+              "score": 0.7453,
+              "loc": "packages/pipeline/project_id.py:108-113",
+              "id": "packages/pipeline/project_id.py::context_engine_home",
+              "chars": 235
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/watchdog.py::_home",
+              "loc": "packages/pipeline/watchdog.py:27-30",
+              "edge": "seed",
+              "score": 1.0
+            },
+            {
+              "id": "packages/pipeline/project_id.py::context_engine_home",
+              "loc": "packages/pipeline/project_id.py:108-113",
+              "edge": "calls",
+              "score": 0.7453
+            },
+            {
+              "id": "packages/pipeline/branding.py::migrate_home_dir",
+              "loc": "packages/pipeline/branding.py:29-32",
+              "edge": "calls",
+              "score": 0.4934
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/watchdog.py",
+              "symbol": "_home",
+              "loc": "packages/pipeline/watchdog.py:27-30",
+              "score": 1.0,
+              "kind": "function"
+            },
+            {
+              "file": "packages/pipeline/project_id.py",
+              "symbol": "context_engine_home",
+              "loc": "packages/pipeline/project_id.py:108-113",
+              "score": 0.7994,
+              "kind": "function"
+            },
+            {
+              "file": "packages/pipeline/branding.py",
+              "symbol": "migrate_home_dir",
+              "loc": "packages/pipeline/branding.py:29-32",
+              "score": 0.5606,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "engine watchdog idle timeout restart CTX_ENGINE_URL port 8765 pipeline engine run | seeds: packages/pipeline/watchdog.py::_home packages/pipeline/project_id.py::context_engine_home packages/pipeline/branding.py::migrate_home_dir"
+        }
+      }
+    },
+    {
+      "id": "t06",
+      "family": "mcp-bridge",
+      "task": "How does the MCP bridge process launch and forward tools to the Scubiee MCP server?",
+      "enrich_prompt": "scubiee-mcp-bridge MCP bridge launch stdio tools forward hybrid experiment surface",
+      "map": {
+        "elapsed_s": 0.844,
+        "n_cards": 10,
+        "top_files": [
+          "packages/pipeline/templates/scubiee.md",
+          "packages/pipeline/mcp_bridge.py",
+          "packages/pipeline/mcp_bridge_session.py",
+          "tests/test_mcp_bridge.py",
+          "scripts/kiro_mcp_reliability_probe.py"
+        ]
+      },
+      "enrich_seed": {
+        "ok": true,
+        "elapsed_s": 0.04,
+        "seed_file": "packages/pipeline/mcp_bridge.py",
+        "seed": {
+          "file": "packages/pipeline/mcp_bridge.py",
+          "symbol": "_stderr",
+          "id": "packages/pipeline/mcp_bridge.py::_stderr",
+          "loc": null
+        },
+        "chunks": [
+          {
+            "file": "packages/pipeline/mcp_bridge.py",
+            "symbol": "_stderr",
+            "loc": "packages/pipeline/mcp_bridge.py:32-33",
+            "score": 1.0,
+            "kind": "function"
+          }
+        ],
+        "n_cards": 1,
+        "error": null
+      },
+      "arms": {
+        "pack_context": {
+          "ok": true,
+          "tool": "pack_context",
+          "engine": "composite_v1",
+          "elapsed_s": 0.041,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/mcp_bridge.py",
+            "symbol": "_stderr",
+            "id": "packages/pipeline/mcp_bridge.py::_stderr"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/mcp_bridge.py",
+              "symbol": "_stderr",
+              "score": 1.0,
+              "loc": "packages/pipeline/mcp_bridge.py:32-33",
+              "id": "packages/pipeline/mcp_bridge.py::_stderr",
+              "chars": 74
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/mcp_bridge.py::_stderr",
+              "loc": "packages/pipeline/mcp_bridge.py:32-33",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/mcp_bridge.py",
+              "symbol": "_stderr",
+              "loc": "packages/pipeline/mcp_bridge.py:32-33",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "scubiee-mcp-bridge MCP bridge launch stdio tools forward hybrid experiment surface | seeds: packages/pipeline/mcp_bridge.py::_stderr"
+        },
+        "pack_poly_embed": {
+          "ok": true,
+          "tool": "pack_poly_embed",
+          "engine": "poly_embed",
+          "elapsed_s": 0.142,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/mcp_bridge.py",
+            "symbol": "_stderr",
+            "id": "packages/pipeline/mcp_bridge.py::_stderr"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/mcp_bridge.py",
+              "symbol": "_stderr",
+              "score": 1.0,
+              "loc": "packages/pipeline/mcp_bridge.py:32-33",
+              "id": "packages/pipeline/mcp_bridge.py::_stderr",
+              "chars": 74
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/mcp_bridge.py::_stderr",
+              "loc": "packages/pipeline/mcp_bridge.py:32-33",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/mcp_bridge.py",
+              "symbol": "_stderr",
+              "loc": "packages/pipeline/mcp_bridge.py:32-33",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "scubiee-mcp-bridge MCP bridge launch stdio tools forward hybrid experiment surface | seeds: packages/pipeline/mcp_bridge.py::_stderr"
+        },
+        "pack_semantic": {
+          "ok": true,
+          "tool": "pack_semantic",
+          "engine": "semantic_tracer_fuse",
+          "elapsed_s": 0.209,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/mcp_bridge.py",
+            "symbol": "_stderr",
+            "id": "packages/pipeline/mcp_bridge.py::_stderr"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/mcp_bridge.py",
+              "symbol": "_stderr",
+              "score": 1.0,
+              "loc": "packages/pipeline/mcp_bridge.py:32-33",
+              "id": "packages/pipeline/mcp_bridge.py::_stderr",
+              "chars": 74
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/mcp_bridge.py::_stderr",
+              "loc": "packages/pipeline/mcp_bridge.py:32-33",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/mcp_bridge.py",
+              "symbol": "_stderr",
+              "loc": "packages/pipeline/mcp_bridge.py:32-33",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "scubiee-mcp-bridge MCP bridge launch stdio tools forward hybrid experiment surface | seeds: packages/pipeline/mcp_bridge.py::_stderr"
+        }
+      }
+    },
+    {
+      "id": "t07",
+      "family": "locate-cli",
+      "task": "How do `scubiee map` and `scubiee pack` CLI commands parse args and call locate?",
+      "enrich_prompt": "scubiee map pack CLI locate_cli argparse seed-file mode lean enrich prompt",
+      "map": {
+        "elapsed_s": 0.658,
+        "n_cards": 10,
+        "top_files": [
+          "packages/pipeline/locate_cli.py",
+          "scripts/blind_map_pack_20.py",
+          "tests/test_locate_cli.py",
+          "packages/pipeline/__main__.py",
+          "packages/pipeline/templates/scubiee.md"
+        ]
+      },
+      "enrich_seed": {
+        "ok": true,
+        "elapsed_s": 0.043,
+        "seed_file": "packages/pipeline/locate_cli.py",
+        "seed": {
+          "file": "packages/pipeline/locate_cli.py",
+          "symbol": "_root",
+          "id": "packages/pipeline/locate_cli.py::_root",
+          "loc": null
+        },
+        "chunks": [
+          {
+            "file": "packages/pipeline/locate_cli.py",
+            "symbol": "_root",
+            "loc": "packages/pipeline/locate_cli.py:14-15",
+            "score": 1.0,
+            "kind": "function"
+          }
+        ],
+        "n_cards": 1,
+        "error": null
+      },
+      "arms": {
+        "pack_context": {
+          "ok": true,
+          "tool": "pack_context",
+          "engine": "composite_v1",
+          "elapsed_s": 0.042,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/locate_cli.py",
+            "symbol": "_root",
+            "id": "packages/pipeline/locate_cli.py::_root"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/locate_cli.py",
+              "symbol": "_root",
+              "score": 1.0,
+              "loc": "packages/pipeline/locate_cli.py:14-15",
+              "id": "packages/pipeline/locate_cli.py::_root",
+              "chars": 95
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/locate_cli.py::_root",
+              "loc": "packages/pipeline/locate_cli.py:14-15",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/locate_cli.py",
+              "symbol": "_root",
+              "loc": "packages/pipeline/locate_cli.py:14-15",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "scubiee map pack CLI locate_cli argparse seed-file mode lean enrich prompt | seeds: packages/pipeline/locate_cli.py::_root"
+        },
+        "pack_poly_embed": {
+          "ok": true,
+          "tool": "pack_poly_embed",
+          "engine": "poly_embed",
+          "elapsed_s": 0.194,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/locate_cli.py",
+            "symbol": "_root",
+            "id": "packages/pipeline/locate_cli.py::_root"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/locate_cli.py",
+              "symbol": "_root",
+              "score": 1.0,
+              "loc": "packages/pipeline/locate_cli.py:14-15",
+              "id": "packages/pipeline/locate_cli.py::_root",
+              "chars": 95
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/locate_cli.py::_root",
+              "loc": "packages/pipeline/locate_cli.py:14-15",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/locate_cli.py",
+              "symbol": "_root",
+              "loc": "packages/pipeline/locate_cli.py:14-15",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "scubiee map pack CLI locate_cli argparse seed-file mode lean enrich prompt | seeds: packages/pipeline/locate_cli.py::_root"
+        },
+        "pack_semantic": {
+          "ok": true,
+          "tool": "pack_semantic",
+          "engine": "semantic_tracer_fuse",
+          "elapsed_s": 0.222,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/locate_cli.py",
+            "symbol": "_root",
+            "id": "packages/pipeline/locate_cli.py::_root"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/locate_cli.py",
+              "symbol": "_root",
+              "score": 1.0,
+              "loc": "packages/pipeline/locate_cli.py:14-15",
+              "id": "packages/pipeline/locate_cli.py::_root",
+              "chars": 95
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/locate_cli.py::_root",
+              "loc": "packages/pipeline/locate_cli.py:14-15",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/locate_cli.py",
+              "symbol": "_root",
+              "loc": "packages/pipeline/locate_cli.py:14-15",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "scubiee map pack CLI locate_cli argparse seed-file mode lean enrich prompt | seeds: packages/pipeline/locate_cli.py::_root"
+        }
+      }
+    },
+    {
+      "id": "t08",
+      "family": "expand-hop",
+      "task": "How does expand_context follow callees/callers/effects hops from a packed node?",
+      "enrich_prompt": "expand_context direction callees callers effects with_bodies hop chain node id",
+      "map": {
+        "elapsed_s": 0.515,
+        "n_cards": 10,
+        "top_files": [
+          "packages/pipeline/context_trace.py",
+          "packages/pipeline/locate_cli.py",
+          "docs/superpowers/plans/2026-09-05-ladder-followup-real-eval.md",
+          "tests/test_locate_cli.py",
+          "tests/test_incremental_context_ladder.py"
+        ]
+      },
+      "enrich_seed": {
+        "ok": true,
+        "elapsed_s": 0.041,
+        "seed_file": "packages/pipeline/context_trace.py",
+        "seed": {
+          "file": "packages/pipeline/context_trace.py",
+          "symbol": "_heat",
+          "id": "packages/pipeline/context_trace.py::_heat",
+          "loc": null
+        },
+        "chunks": [
+          {
+            "file": "packages/pipeline/context_trace.py",
+            "symbol": "_heat",
+            "loc": "packages/pipeline/context_trace.py:39-44",
+            "score": 1.0,
+            "kind": "function"
+          }
+        ],
+        "n_cards": 1,
+        "error": null
+      },
+      "arms": {
+        "pack_context": {
+          "ok": true,
+          "tool": "pack_context",
+          "engine": "composite_v1",
+          "elapsed_s": 0.04,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/context_trace.py",
+            "symbol": "_heat",
+            "id": "packages/pipeline/context_trace.py::_heat"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/context_trace.py",
+              "symbol": "_heat",
+              "score": 1.0,
+              "loc": "packages/pipeline/context_trace.py:39-44",
+              "id": "packages/pipeline/context_trace.py::_heat",
+              "chars": 137
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/context_trace.py::_heat",
+              "loc": "packages/pipeline/context_trace.py:39-44",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/context_trace.py",
+              "symbol": "_heat",
+              "loc": "packages/pipeline/context_trace.py:39-44",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "expand_context direction callees callers effects with_bodies hop chain node id | seeds: packages/pipeline/context_trace.py::_heat"
+        },
+        "pack_poly_embed": {
+          "ok": true,
+          "tool": "pack_poly_embed",
+          "engine": "poly_embed",
+          "elapsed_s": 0.144,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/context_trace.py",
+            "symbol": "_heat",
+            "id": "packages/pipeline/context_trace.py::_heat"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/context_trace.py",
+              "symbol": "_heat",
+              "score": 1.0,
+              "loc": "packages/pipeline/context_trace.py:39-44",
+              "id": "packages/pipeline/context_trace.py::_heat",
+              "chars": 137
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/context_trace.py::_heat",
+              "loc": "packages/pipeline/context_trace.py:39-44",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/context_trace.py",
+              "symbol": "_heat",
+              "loc": "packages/pipeline/context_trace.py:39-44",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "expand_context direction callees callers effects with_bodies hop chain node id | seeds: packages/pipeline/context_trace.py::_heat"
+        },
+        "pack_semantic": {
+          "ok": true,
+          "tool": "pack_semantic",
+          "engine": "semantic_tracer_fuse",
+          "elapsed_s": 0.24,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/context_trace.py",
+            "symbol": "_heat",
+            "id": "packages/pipeline/context_trace.py::_heat"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/context_trace.py",
+              "symbol": "_heat",
+              "score": 1.0,
+              "loc": "packages/pipeline/context_trace.py:39-44",
+              "id": "packages/pipeline/context_trace.py::_heat",
+              "chars": 137
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/context_trace.py::_heat",
+              "loc": "packages/pipeline/context_trace.py:39-44",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/context_trace.py",
+              "symbol": "_heat",
+              "loc": "packages/pipeline/context_trace.py:39-44",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "expand_context direction callees callers effects with_bodies hop chain node id | seeds: packages/pipeline/context_trace.py::_heat"
+        }
+      }
+    },
+    {
+      "id": "t09",
+      "family": "work-session",
+      "task": "Where does work_session touch/pins remember files the agent recently packed?",
+      "enrich_prompt": "work_session touch pins files role query session_id remember recent pack heatmap",
+      "map": {
+        "elapsed_s": 0.675,
+        "n_cards": 10,
+        "top_files": [
+          "packages/pipeline/work_session.py",
+          "tests/test_mcp_locate.py",
+          "tests/test_session_isolation.py",
+          "docs/superpowers/plans/2026-09-04-post-heatmap-next-tool.md",
+          "packages/pipeline/repo_runtime.py"
+        ]
+      },
+      "enrich_seed": {
+        "ok": true,
+        "elapsed_s": 0.048,
+        "seed_file": "packages/pipeline/work_session.py",
+        "seed": {
+          "file": "packages/pipeline/work_session.py",
+          "symbol": "_session_path",
+          "id": "packages/pipeline/work_session.py::_session_path",
+          "loc": null
+        },
+        "chunks": [
+          {
+            "file": "packages/pipeline/work_session.py",
+            "symbol": "_session_path",
+            "loc": "packages/pipeline/work_session.py:16-29",
+            "score": 1.0,
+            "kind": "function"
+          },
+          {
+            "file": "packages/pipeline/project_id.py",
+            "symbol": "repo_runtime_dir",
+            "loc": "packages/pipeline/project_id.py:121-142",
+            "score": 1.0,
+            "kind": "function"
+          },
+          {
+            "file": "packages/pipeline/session_isolation.py",
+            "symbol": "_session_isolate_enabled",
+            "loc": "packages/pipeline/session_isolation.py:382-387",
+            "score": 1.0,
+            "kind": "function"
+          },
+          {
+            "file": "packages/pipeline/session_isolation.py",
+            "symbol": "default_process_session_id",
+            "loc": "packages/pipeline/session_isolation.py:326-331",
+            "score": 1.0,
+            "kind": "function"
+          },
+          {
+            "file": "packages/pipeline/session_isolation.py",
+            "symbol": "sanitize_session_id",
+            "loc": "packages/pipeline/session_isolation.py:174-177",
+            "score": 1.0,
+            "kind": "function"
+          }
+        ],
+        "n_cards": 12,
+        "error": null
+      },
+      "arms": {
+        "pack_context": {
+          "ok": true,
+          "tool": "pack_context",
+          "engine": "composite_v1",
+          "elapsed_s": 0.054,
+          "n_pack": 4,
+          "seed": {
+            "file": "packages/pipeline/work_session.py",
+            "symbol": "_session_path",
+            "id": "packages/pipeline/work_session.py::_session_path"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/work_session.py",
+              "symbol": "_session_path",
+              "score": 1.0,
+              "loc": "packages/pipeline/work_session.py:16-29",
+              "id": "packages/pipeline/work_session.py::_session_path",
+              "chars": 587
+            },
+            {
+              "file": "packages/pipeline/project_id.py",
+              "symbol": "repo_runtime_dir",
+              "score": 1.0,
+              "loc": "packages/pipeline/project_id.py:121-142",
+              "id": "packages/pipeline/project_id.py::repo_runtime_dir",
+              "chars": 780
+            },
+            {
+              "file": "packages/pipeline/session_isolation.py",
+              "symbol": "_session_isolate_enabled",
+              "score": 1.0,
+              "loc": "packages/pipeline/session_isolation.py:382-387",
+              "id": "packages/pipeline/session_isolation.py::_session_isolate_enabled",
+              "chars": 171
+            },
+            {
+              "file": "packages/pipeline/session_isolation.py",
+              "symbol": "default_process_session_id",
+              "score": 1.0,
+              "loc": "packages/pipeline/session_isolation.py:326-331",
+              "id": "packages/pipeline/session_isolation.py::default_process_session_id",
+              "chars": 221
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/work_session.py::_session_path",
+              "loc": "packages/pipeline/work_session.py:16-29",
+              "edge": "seed",
+              "score": 1.0
+            },
+            {
+              "id": "packages/pipeline/project_id.py::repo_runtime_dir",
+              "loc": "packages/pipeline/project_id.py:121-142",
+              "edge": "calls",
+              "score": 1.0
+            },
+            {
+              "id": "packages/pipeline/session_isolation.py::_session_isolate_enabled",
+              "loc": "packages/pipeline/session_isolation.py:382-387",
+              "edge": "calls",
+              "score": 1.0
+            },
+            {
+              "id": "packages/pipeline/session_isolation.py::default_process_session_id",
+              "loc": "packages/pipeline/session_isolation.py:326-331",
+              "edge": "calls",
+              "score": 1.0
+            },
+            {
+              "id": "packages/pipeline/session_isolation.py::sanitize_session_id",
+              "loc": "packages/pipeline/session_isolation.py:174-177",
+              "edge": "calls",
+              "score": 1.0
+            },
+            {
+              "id": "packages/pipeline/session_isolation.py::detect_mcp_host",
+              "loc": "packages/pipeline/session_isolation.py:180-188",
+              "edge": "calls",
+              "score": 0.9967
+            },
+            {
+              "id": "packages/pipeline/session_isolation.py::effective_session_id",
+              "loc": "packages/pipeline/session_isolation.py:368-375",
+              "edge": "calls",
+              "score": 0.9405
+            },
+            {
+              "id": "packages/pipeline/session_isolation.py::session_data_dir",
+              "loc": "packages/pipeline/session_isolation.py:390-396",
+              "edge": "calls",
+              "score": 0.9405
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/work_session.py",
+              "symbol": "_session_path",
+              "loc": "packages/pipeline/work_session.py:16-29",
+              "score": 1.0,
+              "kind": "function"
+            },
+            {
+              "file": "packages/pipeline/project_id.py",
+              "symbol": "repo_runtime_dir",
+              "loc": "packages/pipeline/project_id.py:121-142",
+              "score": 1.0,
+              "kind": "function"
+            },
+            {
+              "file": "packages/pipeline/session_isolation.py",
+              "symbol": "_session_isolate_enabled",
+              "loc": "packages/pipeline/session_isolation.py:382-387",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "work_session touch pins files role query session_id remember recent pack heatmap | seeds: packages/pipeline/work_session.py::_session_path packages/pipeline/project_id.py::repo_runtime_dir packages/pipeline/session_isolation.py::_session_isolate_enabled packages/pipeline/session_isolation.py::default_process_session_id packages/pipeline/session_isolation.py::sanitize_session_id"
+        },
+        "pack_poly_embed": {
+          "ok": true,
+          "tool": "pack_poly_embed",
+          "engine": "poly_embed",
+          "elapsed_s": 0.258,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/work_session.py",
+            "symbol": "_session_path",
+            "id": "packages/pipeline/work_session.py::_session_path"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/work_session.py",
+              "symbol": "_session_path",
+              "score": 1.0,
+              "loc": "packages/pipeline/work_session.py:16-29",
+              "id": "packages/pipeline/work_session.py::_session_path",
+              "chars": 587
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/work_session.py::_session_path",
+              "loc": "packages/pipeline/work_session.py:16-29",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/work_session.py",
+              "symbol": "_session_path",
+              "loc": "packages/pipeline/work_session.py:16-29",
+              "score": 1.0,
+              "kind": "function"
+            },
+            {
+              "file": "packages/pipeline/project_id.py",
+              "symbol": "repo_runtime_dir",
+              "loc": "packages/pipeline/project_id.py:121-142",
+              "score": 1.0,
+              "kind": "function"
+            },
+            {
+              "file": "packages/pipeline/session_isolation.py",
+              "symbol": "_session_isolate_enabled",
+              "loc": "packages/pipeline/session_isolation.py:382-387",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "work_session touch pins files role query session_id remember recent pack heatmap | seeds: packages/pipeline/work_session.py::_session_path packages/pipeline/project_id.py::repo_runtime_dir packages/pipeline/session_isolation.py::_session_isolate_enabled packages/pipeline/session_isolation.py::default_process_session_id packages/pipeline/session_isolation.py::sanitize_session_id"
+        },
+        "pack_semantic": {
+          "ok": true,
+          "tool": "pack_semantic",
+          "engine": "semantic_tracer_fuse",
+          "elapsed_s": 0.247,
+          "n_pack": 4,
+          "seed": {
+            "file": "packages/pipeline/work_session.py",
+            "symbol": "_session_path",
+            "id": "packages/pipeline/work_session.py::_session_path"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/work_session.py",
+              "symbol": "_session_path",
+              "score": 1.0,
+              "loc": "packages/pipeline/work_session.py:16-29",
+              "id": "packages/pipeline/work_session.py::_session_path",
+              "chars": 587
+            },
+            {
+              "file": "packages/pipeline/project_id.py",
+              "symbol": "repo_runtime_dir",
+              "score": 1.0,
+              "loc": "packages/pipeline/project_id.py:121-142",
+              "id": "packages/pipeline/project_id.py::repo_runtime_dir",
+              "chars": 780
+            },
+            {
+              "file": "packages/pipeline/session_isolation.py",
+              "symbol": "sanitize_session_id",
+              "score": 1.0,
+              "loc": "packages/pipeline/session_isolation.py:174-177",
+              "id": "packages/pipeline/session_isolation.py::sanitize_session_id",
+              "chars": 156
+            },
+            {
+              "file": "packages/pipeline/session_isolation.py",
+              "symbol": "default_process_session_id",
+              "score": 0.8921,
+              "loc": "packages/pipeline/session_isolation.py:326-331",
+              "id": "packages/pipeline/session_isolation.py::default_process_session_id",
+              "chars": 221
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/work_session.py::_session_path",
+              "loc": "packages/pipeline/work_session.py:16-29",
+              "edge": "seed",
+              "score": 1.0
+            },
+            {
+              "id": "packages/pipeline/project_id.py::repo_runtime_dir",
+              "loc": "packages/pipeline/project_id.py:121-142",
+              "edge": "calls",
+              "score": 1.0
+            },
+            {
+              "id": "packages/pipeline/session_isolation.py::sanitize_session_id",
+              "loc": "packages/pipeline/session_isolation.py:174-177",
+              "edge": "calls",
+              "score": 1.0
+            },
+            {
+              "id": "packages/pipeline/session_isolation.py::default_process_session_id",
+              "loc": "packages/pipeline/session_isolation.py:326-331",
+              "edge": "calls",
+              "score": 0.8921
+            },
+            {
+              "id": "packages/pipeline/session_isolation.py::session_data_dir",
+              "loc": "packages/pipeline/session_isolation.py:390-396",
+              "edge": "calls",
+              "score": 0.8825
+            },
+            {
+              "id": "packages/pipeline/session_isolation.py::_session_isolate_enabled",
+              "loc": "packages/pipeline/session_isolation.py:382-387",
+              "edge": "calls",
+              "score": 0.8763
+            },
+            {
+              "id": "packages/pipeline/session_isolation.py::effective_session_id",
+              "loc": "packages/pipeline/session_isolation.py:368-375",
+              "edge": "calls",
+              "score": 0.8726
+            },
+            {
+              "id": "packages/pipeline/session_isolation.py::detect_mcp_host",
+              "loc": "packages/pipeline/session_isolation.py:180-188",
+              "edge": "calls",
+              "score": 0.8559
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/work_session.py",
+              "symbol": "_session_path",
+              "loc": "packages/pipeline/work_session.py:16-29",
+              "score": 1.0,
+              "kind": "function"
+            },
+            {
+              "file": "packages/pipeline/project_id.py",
+              "symbol": "repo_runtime_dir",
+              "loc": "packages/pipeline/project_id.py:121-142",
+              "score": 1.0,
+              "kind": "function"
+            },
+            {
+              "file": "packages/pipeline/session_isolation.py",
+              "symbol": "_session_isolate_enabled",
+              "loc": "packages/pipeline/session_isolation.py:382-387",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "work_session touch pins files role query session_id remember recent pack heatmap | seeds: packages/pipeline/work_session.py::_session_path packages/pipeline/project_id.py::repo_runtime_dir packages/pipeline/session_isolation.py::_session_isolate_enabled packages/pipeline/session_isolation.py::default_process_session_id packages/pipeline/session_isolation.py::sanitize_session_id"
+        }
+      }
+    },
+    {
+      "id": "t10",
+      "family": "response-lean",
+      "task": "How are MCP pack responses slimmed for token savings (lean formatting)?",
+      "enrich_prompt": "mcp_response_lean slim pack heatmap cold cards token savings CTX_TOKEN_MODE",
+      "map": {
+        "elapsed_s": 0.6,
+        "n_cards": 9,
+        "top_files": [
+          "packages/pipeline/session_store.py",
+          "tests/test_mcp_response_lean.py",
+          "packages/pipeline/locate_cli.py",
+          "packages/pipeline/mcp_locate.py",
+          "packages/pipeline/mcp_response_lean.py"
+        ]
+      },
+      "enrich_seed": {
+        "ok": true,
+        "elapsed_s": 0.04,
+        "seed_file": "packages/pipeline/session_store.py",
+        "seed": {
+          "file": "packages/pipeline/session_store.py",
+          "symbol": "_store_path",
+          "id": "packages/pipeline/session_store.py::_store_path",
+          "loc": null
+        },
+        "chunks": [
+          {
+            "file": "packages/pipeline/session_store.py",
+            "symbol": "_store_path",
+            "loc": "packages/pipeline/session_store.py:17-29",
+            "score": 1.0,
+            "kind": "function"
+          },
+          {
+            "file": "packages/pipeline/project_id.py",
+            "symbol": "repo_runtime_dir",
+            "loc": "packages/pipeline/project_id.py:121-142",
+            "score": 1.0,
+            "kind": "function"
+          },
+          {
+            "file": "packages/pipeline/session_isolation.py",
+            "symbol": "effective_session_id",
+            "loc": "packages/pipeline/session_isolation.py:368-375",
+            "score": 1.0,
+            "kind": "function"
+          },
+          {
+            "file": "packages/pipeline/session_isolation.py",
+            "symbol": "_session_isolate_enabled",
+            "loc": "packages/pipeline/session_isolation.py:382-387",
+            "score": 1.0,
+            "kind": "function"
+          },
+          {
+            "file": "packages/pipeline/session_isolation.py",
+            "symbol": "default_process_session_id",
+            "loc": "packages/pipeline/session_isolation.py:326-331",
+            "score": 1.0,
+            "kind": "function"
+          }
+        ],
+        "n_cards": 12,
+        "error": null
+      },
+      "arms": {
+        "pack_context": {
+          "ok": true,
+          "tool": "pack_context",
+          "engine": "composite_v1",
+          "elapsed_s": 0.056,
+          "n_pack": 4,
+          "seed": {
+            "file": "packages/pipeline/session_store.py",
+            "symbol": "_store_path",
+            "id": "packages/pipeline/session_store.py::_store_path"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/session_store.py",
+              "symbol": "_store_path",
+              "score": 1.0,
+              "loc": "packages/pipeline/session_store.py:17-29",
+              "id": "packages/pipeline/session_store.py::_store_path",
+              "chars": 535
+            },
+            {
+              "file": "packages/pipeline/project_id.py",
+              "symbol": "repo_runtime_dir",
+              "score": 1.0,
+              "loc": "packages/pipeline/project_id.py:121-142",
+              "id": "packages/pipeline/project_id.py::repo_runtime_dir",
+              "chars": 780
+            },
+            {
+              "file": "packages/pipeline/session_isolation.py",
+              "symbol": "effective_session_id",
+              "score": 1.0,
+              "loc": "packages/pipeline/session_isolation.py:368-375",
+              "id": "packages/pipeline/session_isolation.py::effective_session_id",
+              "chars": 333
+            },
+            {
+              "file": "packages/pipeline/session_isolation.py",
+              "symbol": "_session_isolate_enabled",
+              "score": 1.0,
+              "loc": "packages/pipeline/session_isolation.py:382-387",
+              "id": "packages/pipeline/session_isolation.py::_session_isolate_enabled",
+              "chars": 171
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/session_store.py::_store_path",
+              "loc": "packages/pipeline/session_store.py:17-29",
+              "edge": "seed",
+              "score": 1.0
+            },
+            {
+              "id": "packages/pipeline/project_id.py::repo_runtime_dir",
+              "loc": "packages/pipeline/project_id.py:121-142",
+              "edge": "calls",
+              "score": 1.0
+            },
+            {
+              "id": "packages/pipeline/session_isolation.py::effective_session_id",
+              "loc": "packages/pipeline/session_isolation.py:368-375",
+              "edge": "calls",
+              "score": 1.0
+            },
+            {
+              "id": "packages/pipeline/session_isolation.py::_session_isolate_enabled",
+              "loc": "packages/pipeline/session_isolation.py:382-387",
+              "edge": "calls",
+              "score": 1.0
+            },
+            {
+              "id": "packages/pipeline/session_isolation.py::default_process_session_id",
+              "loc": "packages/pipeline/session_isolation.py:326-331",
+              "edge": "calls",
+              "score": 1.0
+            },
+            {
+              "id": "packages/pipeline/session_isolation.py::detect_mcp_host",
+              "loc": "packages/pipeline/session_isolation.py:180-188",
+              "edge": "calls",
+              "score": 1.0
+            },
+            {
+              "id": "packages/pipeline/session_isolation.py::sanitize_session_id",
+              "loc": "packages/pipeline/session_isolation.py:174-177",
+              "edge": "calls",
+              "score": 1.0
+            },
+            {
+              "id": "packages/pipeline/session_store.py::effective_session_id",
+              "loc": "packages/pipeline/session_store.py:74-77",
+              "edge": "calls",
+              "score": 0.99
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/session_store.py",
+              "symbol": "_store_path",
+              "loc": "packages/pipeline/session_store.py:17-29",
+              "score": 1.0,
+              "kind": "function"
+            },
+            {
+              "file": "packages/pipeline/project_id.py",
+              "symbol": "repo_runtime_dir",
+              "loc": "packages/pipeline/project_id.py:121-142",
+              "score": 1.0,
+              "kind": "function"
+            },
+            {
+              "file": "packages/pipeline/session_isolation.py",
+              "symbol": "effective_session_id",
+              "loc": "packages/pipeline/session_isolation.py:368-375",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "mcp_response_lean slim pack heatmap cold cards token savings CTX_TOKEN_MODE | seeds: packages/pipeline/session_store.py::_store_path packages/pipeline/project_id.py::repo_runtime_dir packages/pipeline/session_isolation.py::effective_session_id packages/pipeline/session_isolation.py::_session_isolate_enabled packages/pipeline/session_isolation.py::default_process_session_id"
+        },
+        "pack_poly_embed": {
+          "ok": true,
+          "tool": "pack_poly_embed",
+          "engine": "poly_embed",
+          "elapsed_s": 0.17,
+          "n_pack": 2,
+          "seed": {
+            "file": "packages/pipeline/session_store.py",
+            "symbol": "_store_path",
+            "id": "packages/pipeline/session_store.py::_store_path"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/session_store.py",
+              "symbol": "_store_path",
+              "score": 1.0,
+              "loc": "packages/pipeline/session_store.py:17-29",
+              "id": "packages/pipeline/session_store.py::_store_path",
+              "chars": 535
+            },
+            {
+              "file": "packages/pipeline/session_store.py",
+              "symbol": "effective_session_id",
+              "score": 0.735,
+              "loc": "packages/pipeline/session_store.py:74-77",
+              "id": "packages/pipeline/session_store.py::effective_session_id",
+              "chars": 171
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/session_store.py::_store_path",
+              "loc": "packages/pipeline/session_store.py:17-29",
+              "edge": "seed",
+              "score": 1.0
+            },
+            {
+              "id": "packages/pipeline/session_store.py::effective_session_id",
+              "loc": "packages/pipeline/session_store.py:74-77",
+              "edge": "seed",
+              "score": 0.735
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/session_store.py",
+              "symbol": "_store_path",
+              "loc": "packages/pipeline/session_store.py:17-29",
+              "score": 1.0,
+              "kind": "function"
+            },
+            {
+              "file": "packages/pipeline/project_id.py",
+              "symbol": "repo_runtime_dir",
+              "loc": "packages/pipeline/project_id.py:121-142",
+              "score": 1.0,
+              "kind": "function"
+            },
+            {
+              "file": "packages/pipeline/session_isolation.py",
+              "symbol": "effective_session_id",
+              "loc": "packages/pipeline/session_isolation.py:368-375",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "mcp_response_lean slim pack heatmap cold cards token savings CTX_TOKEN_MODE | seeds: packages/pipeline/session_store.py::_store_path packages/pipeline/project_id.py::repo_runtime_dir packages/pipeline/session_isolation.py::effective_session_id packages/pipeline/session_isolation.py::_session_isolate_enabled packages/pipeline/session_isolation.py::default_process_session_id"
+        },
+        "pack_semantic": {
+          "ok": true,
+          "tool": "pack_semantic",
+          "engine": "semantic_tracer_fuse",
+          "elapsed_s": 0.258,
+          "n_pack": 4,
+          "seed": {
+            "file": "packages/pipeline/session_store.py",
+            "symbol": "_store_path",
+            "id": "packages/pipeline/session_store.py::_store_path"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/session_store.py",
+              "symbol": "_store_path",
+              "score": 1.0,
+              "loc": "packages/pipeline/session_store.py:17-29",
+              "id": "packages/pipeline/session_store.py::_store_path",
+              "chars": 535
+            },
+            {
+              "file": "packages/pipeline/project_id.py",
+              "symbol": "repo_runtime_dir",
+              "score": 1.0,
+              "loc": "packages/pipeline/project_id.py:121-142",
+              "id": "packages/pipeline/project_id.py::repo_runtime_dir",
+              "chars": 780
+            },
+            {
+              "file": "packages/pipeline/session_isolation.py",
+              "symbol": "effective_session_id",
+              "score": 1.0,
+              "loc": "packages/pipeline/session_isolation.py:368-375",
+              "id": "packages/pipeline/session_isolation.py::effective_session_id",
+              "chars": 333
+            },
+            {
+              "file": "packages/pipeline/session_isolation.py",
+              "symbol": "sanitize_session_id",
+              "score": 1.0,
+              "loc": "packages/pipeline/session_isolation.py:174-177",
+              "id": "packages/pipeline/session_isolation.py::sanitize_session_id",
+              "chars": 156
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/session_store.py::_store_path",
+              "loc": "packages/pipeline/session_store.py:17-29",
+              "edge": "seed",
+              "score": 1.0
+            },
+            {
+              "id": "packages/pipeline/project_id.py::repo_runtime_dir",
+              "loc": "packages/pipeline/project_id.py:121-142",
+              "edge": "calls",
+              "score": 1.0
+            },
+            {
+              "id": "packages/pipeline/session_isolation.py::effective_session_id",
+              "loc": "packages/pipeline/session_isolation.py:368-375",
+              "edge": "calls",
+              "score": 1.0
+            },
+            {
+              "id": "packages/pipeline/session_isolation.py::sanitize_session_id",
+              "loc": "packages/pipeline/session_isolation.py:174-177",
+              "edge": "calls",
+              "score": 1.0
+            },
+            {
+              "id": "packages/pipeline/session_isolation.py::_session_isolate_enabled",
+              "loc": "packages/pipeline/session_isolation.py:382-387",
+              "edge": "calls",
+              "score": 1.0
+            },
+            {
+              "id": "packages/pipeline/session_isolation.py::default_process_session_id",
+              "loc": "packages/pipeline/session_isolation.py:326-331",
+              "edge": "calls",
+              "score": 1.0
+            },
+            {
+              "id": "packages/pipeline/session_isolation.py::detect_mcp_host",
+              "loc": "packages/pipeline/session_isolation.py:180-188",
+              "edge": "calls",
+              "score": 1.0
+            },
+            {
+              "id": "packages/pipeline/session_store.py::effective_session_id",
+              "loc": "packages/pipeline/session_store.py:74-77",
+              "edge": "calls",
+              "score": 0.9364
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/session_store.py",
+              "symbol": "_store_path",
+              "loc": "packages/pipeline/session_store.py:17-29",
+              "score": 1.0,
+              "kind": "function"
+            },
+            {
+              "file": "packages/pipeline/project_id.py",
+              "symbol": "repo_runtime_dir",
+              "loc": "packages/pipeline/project_id.py:121-142",
+              "score": 1.0,
+              "kind": "function"
+            },
+            {
+              "file": "packages/pipeline/session_isolation.py",
+              "symbol": "effective_session_id",
+              "loc": "packages/pipeline/session_isolation.py:368-375",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "mcp_response_lean slim pack heatmap cold cards token savings CTX_TOKEN_MODE | seeds: packages/pipeline/session_store.py::_store_path packages/pipeline/project_id.py::repo_runtime_dir packages/pipeline/session_isolation.py::effective_session_id packages/pipeline/session_isolation.py::_session_isolate_enabled packages/pipeline/session_isolation.py::default_process_session_id"
+        }
+      }
+    },
+    {
+      "id": "t11",
+      "family": "permissions-allowlist",
+      "task": "How does connect write Cursor mcpAllowlist / permissions for Scubiee tools?",
+      "enrich_prompt": "mcp_permissions mcpAllowlist permissions.json autoApprove connect cursor install_tool surface",
+      "map": {
+        "elapsed_s": 0.45,
+        "n_cards": 9,
+        "top_files": [
+          "tests/test_mcp_permissions.py",
+          "tests/test_mcp_restore.py",
+          "packages/pipeline/mcp_permissions.py",
+          "packages/pipeline/rules_installer.py",
+          "tests/test_user_journey_scenarios.py"
+        ]
+      },
+      "enrich_seed": {
+        "ok": true,
+        "elapsed_s": 0.042,
+        "seed_file": "packages/pipeline/mcp_permissions.py",
+        "seed": {
+          "file": "packages/pipeline/mcp_permissions.py",
+          "symbol": "locate_tool_names",
+          "id": "packages/pipeline/mcp_permissions.py::locate_tool_names",
+          "loc": null
+        },
+        "chunks": [
+          {
+            "file": "packages/pipeline/mcp_permissions.py",
+            "symbol": "locate_tool_names",
+            "loc": "packages/pipeline/mcp_permissions.py:152-155",
+            "score": 1.0,
+            "kind": "function"
+          }
+        ],
+        "n_cards": 1,
+        "error": null
+      },
+      "arms": {
+        "pack_context": {
+          "ok": true,
+          "tool": "pack_context",
+          "engine": "composite_v1",
+          "elapsed_s": 0.044,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/mcp_permissions.py",
+            "symbol": "locate_tool_names",
+            "id": "packages/pipeline/mcp_permissions.py::locate_tool_names"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/mcp_permissions.py",
+              "symbol": "locate_tool_names",
+              "score": 1.0,
+              "loc": "packages/pipeline/mcp_permissions.py:152-155",
+              "id": "packages/pipeline/mcp_permissions.py::locate_tool_names",
+              "chars": 206
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/mcp_permissions.py::locate_tool_names",
+              "loc": "packages/pipeline/mcp_permissions.py:152-155",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/mcp_permissions.py",
+              "symbol": "locate_tool_names",
+              "loc": "packages/pipeline/mcp_permissions.py:152-155",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "mcp_permissions mcpAllowlist permissions.json autoApprove connect cursor install_tool surface | seeds: packages/pipeline/mcp_permissions.py::locate_tool_names"
+        },
+        "pack_poly_embed": {
+          "ok": true,
+          "tool": "pack_poly_embed",
+          "engine": "poly_embed",
+          "elapsed_s": 0.13,
+          "n_pack": 3,
+          "seed": {
+            "file": "packages/pipeline/mcp_permissions.py",
+            "symbol": "locate_tool_names",
+            "id": "packages/pipeline/mcp_permissions.py::locate_tool_names"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/mcp_permissions.py",
+              "symbol": "locate_tool_names",
+              "score": 1.0,
+              "loc": "packages/pipeline/mcp_permissions.py:152-155",
+              "id": "packages/pipeline/mcp_permissions.py::locate_tool_names",
+              "chars": 206
+            },
+            {
+              "file": "packages/pipeline/mcp_permissions.py",
+              "symbol": "PHASE_LOCATE_TOOLS",
+              "score": 0.7,
+              "loc": "packages/pipeline/mcp_permissions.py:29-46",
+              "id": "packages/pipeline/mcp_permissions.py::PHASE_LOCATE_TOOLS",
+              "chars": 307
+            },
+            {
+              "file": "packages/pipeline/mcp_permissions.py",
+              "symbol": "LEGACY_LOCATE_TOOLS",
+              "score": 0.7,
+              "loc": "packages/pipeline/mcp_permissions.py:49-57",
+              "id": "packages/pipeline/mcp_permissions.py::LEGACY_LOCATE_TOOLS",
+              "chars": 140
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/mcp_permissions.py::locate_tool_names",
+              "loc": "packages/pipeline/mcp_permissions.py:152-155",
+              "edge": "seed",
+              "score": 1.0
+            },
+            {
+              "id": "packages/pipeline/mcp_permissions.py::PHASE_LOCATE_TOOLS",
+              "loc": "packages/pipeline/mcp_permissions.py:29-46",
+              "edge": "seed",
+              "score": 0.7
+            },
+            {
+              "id": "packages/pipeline/mcp_permissions.py::LEGACY_LOCATE_TOOLS",
+              "loc": "packages/pipeline/mcp_permissions.py:49-57",
+              "edge": "seed",
+              "score": 0.7
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/mcp_permissions.py",
+              "symbol": "locate_tool_names",
+              "loc": "packages/pipeline/mcp_permissions.py:152-155",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "mcp_permissions mcpAllowlist permissions.json autoApprove connect cursor install_tool surface | seeds: packages/pipeline/mcp_permissions.py::locate_tool_names"
+        },
+        "pack_semantic": {
+          "ok": true,
+          "tool": "pack_semantic",
+          "engine": "semantic_tracer_fuse",
+          "elapsed_s": 0.199,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/mcp_permissions.py",
+            "symbol": "locate_tool_names",
+            "id": "packages/pipeline/mcp_permissions.py::locate_tool_names"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/mcp_permissions.py",
+              "symbol": "locate_tool_names",
+              "score": 1.0,
+              "loc": "packages/pipeline/mcp_permissions.py:152-155",
+              "id": "packages/pipeline/mcp_permissions.py::locate_tool_names",
+              "chars": 206
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/mcp_permissions.py::locate_tool_names",
+              "loc": "packages/pipeline/mcp_permissions.py:152-155",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/mcp_permissions.py",
+              "symbol": "locate_tool_names",
+              "loc": "packages/pipeline/mcp_permissions.py:152-155",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "mcp_permissions mcpAllowlist permissions.json autoApprove connect cursor install_tool surface | seeds: packages/pipeline/mcp_permissions.py::locate_tool_names"
+        }
+      }
+    },
+    {
+      "id": "t12",
+      "family": "rules-gate-text",
+      "task": "Where is the GATE 1 project rule text written into AGENTS.md / Cursor rules?",
+      "enrich_prompt": "write_project_gate_rules AGENTS.md GATE 1 project_id scubiee.mdc rules_installer",
+      "map": {
+        "elapsed_s": 0.82,
+        "n_cards": 10,
+        "top_files": [
+          "packages/pipeline/rules_installer.py",
+          "tests/test_token_efficient_gating.py",
+          "tests/test_mcp_locate.py",
+          "tests/test_user_journey_scenarios.py",
+          "tests/test_connect_formats.py"
+        ]
+      },
+      "enrich_seed": {
+        "ok": true,
+        "elapsed_s": 0.037,
+        "seed_file": "packages/pipeline/rules_installer.py",
+        "seed": {
+          "file": "packages/pipeline/rules_installer.py",
+          "symbol": "_templates_dir",
+          "id": "packages/pipeline/rules_installer.py::_templates_dir",
+          "loc": null
+        },
+        "chunks": [
+          {
+            "file": "packages/pipeline/rules_installer.py",
+            "symbol": "_templates_dir",
+            "loc": "packages/pipeline/rules_installer.py:40-41",
+            "score": 1.0,
+            "kind": "function"
+          }
+        ],
+        "n_cards": 1,
+        "error": null
+      },
+      "arms": {
+        "pack_context": {
+          "ok": true,
+          "tool": "pack_context",
+          "engine": "composite_v1",
+          "elapsed_s": 0.041,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/rules_installer.py",
+            "symbol": "_templates_dir",
+            "id": "packages/pipeline/rules_installer.py::_templates_dir"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/rules_installer.py",
+              "symbol": "_templates_dir",
+              "score": 1.0,
+              "loc": "packages/pipeline/rules_installer.py:40-41",
+              "id": "packages/pipeline/rules_installer.py::_templates_dir",
+              "chars": 86
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/rules_installer.py::_templates_dir",
+              "loc": "packages/pipeline/rules_installer.py:40-41",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/rules_installer.py",
+              "symbol": "_templates_dir",
+              "loc": "packages/pipeline/rules_installer.py:40-41",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "write_project_gate_rules AGENTS.md GATE 1 project_id scubiee.mdc rules_installer | seeds: packages/pipeline/rules_installer.py::_templates_dir"
+        },
+        "pack_poly_embed": {
+          "ok": true,
+          "tool": "pack_poly_embed",
+          "engine": "poly_embed",
+          "elapsed_s": 0.161,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/rules_installer.py",
+            "symbol": "_templates_dir",
+            "id": "packages/pipeline/rules_installer.py::_templates_dir"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/rules_installer.py",
+              "symbol": "_templates_dir",
+              "score": 1.0,
+              "loc": "packages/pipeline/rules_installer.py:40-41",
+              "id": "packages/pipeline/rules_installer.py::_templates_dir",
+              "chars": 86
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/rules_installer.py::_templates_dir",
+              "loc": "packages/pipeline/rules_installer.py:40-41",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/rules_installer.py",
+              "symbol": "_templates_dir",
+              "loc": "packages/pipeline/rules_installer.py:40-41",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "write_project_gate_rules AGENTS.md GATE 1 project_id scubiee.mdc rules_installer | seeds: packages/pipeline/rules_installer.py::_templates_dir"
+        },
+        "pack_semantic": {
+          "ok": true,
+          "tool": "pack_semantic",
+          "engine": "semantic_tracer_fuse",
+          "elapsed_s": 0.198,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/rules_installer.py",
+            "symbol": "_templates_dir",
+            "id": "packages/pipeline/rules_installer.py::_templates_dir"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/rules_installer.py",
+              "symbol": "_templates_dir",
+              "score": 1.0,
+              "loc": "packages/pipeline/rules_installer.py:40-41",
+              "id": "packages/pipeline/rules_installer.py::_templates_dir",
+              "chars": 86
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/rules_installer.py::_templates_dir",
+              "loc": "packages/pipeline/rules_installer.py:40-41",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/rules_installer.py",
+              "symbol": "_templates_dir",
+              "loc": "packages/pipeline/rules_installer.py:40-41",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "write_project_gate_rules AGENTS.md GATE 1 project_id scubiee.mdc rules_installer | seeds: packages/pipeline/rules_installer.py::_templates_dir"
+        }
+      }
+    },
+    {
+      "id": "t13",
+      "family": "freshness-sync",
+      "task": "How does background freshness / sync decide the index is stale and needs refresh?",
+      "enrich_prompt": "freshness sync background CTX_BACKGROUND_SYNC stale index checksum merkle refresh",
+      "map": {
+        "elapsed_s": 0.413,
+        "n_cards": 10,
+        "top_files": [
+          "packages/pipeline/sync_loop.py",
+          "docs/freshness.md",
+          "packages/pipeline/freshness.py",
+          "fixtures/trace-lab/app/oauth/refresh.py",
+          "docs/reindexing/index-freshness-agent-trajectory.md"
+        ]
+      },
+      "enrich_seed": {
+        "ok": true,
+        "elapsed_s": 0.039,
+        "seed_file": "packages/pipeline/sync_loop.py",
+        "seed": {
+          "file": "packages/pipeline/sync_loop.py",
+          "symbol": "enable_session_keeper_defaults",
+          "id": "packages/pipeline/sync_loop.py::enable_session_keeper_defaults",
+          "loc": null
+        },
+        "chunks": [
+          {
+            "file": "packages/pipeline/sync_loop.py",
+            "symbol": "enable_session_keeper_defaults",
+            "loc": "packages/pipeline/sync_loop.py:42-48",
+            "score": 1.0,
+            "kind": "function"
+          }
+        ],
+        "n_cards": 1,
+        "error": null
+      },
+      "arms": {
+        "pack_context": {
+          "ok": true,
+          "tool": "pack_context",
+          "engine": "composite_v1",
+          "elapsed_s": 0.047,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/sync_loop.py",
+            "symbol": "enable_session_keeper_defaults",
+            "id": "packages/pipeline/sync_loop.py::enable_session_keeper_defaults"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/sync_loop.py",
+              "symbol": "enable_session_keeper_defaults",
+              "score": 1.0,
+              "loc": "packages/pipeline/sync_loop.py:42-48",
+              "id": "packages/pipeline/sync_loop.py::enable_session_keeper_defaults",
+              "chars": 410
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/sync_loop.py::enable_session_keeper_defaults",
+              "loc": "packages/pipeline/sync_loop.py:42-48",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/sync_loop.py",
+              "symbol": "enable_session_keeper_defaults",
+              "loc": "packages/pipeline/sync_loop.py:42-48",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "freshness sync background CTX_BACKGROUND_SYNC stale index checksum merkle refresh | seeds: packages/pipeline/sync_loop.py::enable_session_keeper_defaults"
+        },
+        "pack_poly_embed": {
+          "ok": true,
+          "tool": "pack_poly_embed",
+          "engine": "poly_embed",
+          "elapsed_s": 0.145,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/sync_loop.py",
+            "symbol": "enable_session_keeper_defaults",
+            "id": "packages/pipeline/sync_loop.py::enable_session_keeper_defaults"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/sync_loop.py",
+              "symbol": "enable_session_keeper_defaults",
+              "score": 1.0,
+              "loc": "packages/pipeline/sync_loop.py:42-48",
+              "id": "packages/pipeline/sync_loop.py::enable_session_keeper_defaults",
+              "chars": 410
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/sync_loop.py::enable_session_keeper_defaults",
+              "loc": "packages/pipeline/sync_loop.py:42-48",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/sync_loop.py",
+              "symbol": "enable_session_keeper_defaults",
+              "loc": "packages/pipeline/sync_loop.py:42-48",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "freshness sync background CTX_BACKGROUND_SYNC stale index checksum merkle refresh | seeds: packages/pipeline/sync_loop.py::enable_session_keeper_defaults"
+        },
+        "pack_semantic": {
+          "ok": true,
+          "tool": "pack_semantic",
+          "engine": "semantic_tracer_fuse",
+          "elapsed_s": 0.238,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/sync_loop.py",
+            "symbol": "enable_session_keeper_defaults",
+            "id": "packages/pipeline/sync_loop.py::enable_session_keeper_defaults"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/sync_loop.py",
+              "symbol": "enable_session_keeper_defaults",
+              "score": 1.0,
+              "loc": "packages/pipeline/sync_loop.py:42-48",
+              "id": "packages/pipeline/sync_loop.py::enable_session_keeper_defaults",
+              "chars": 410
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/sync_loop.py::enable_session_keeper_defaults",
+              "loc": "packages/pipeline/sync_loop.py:42-48",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/sync_loop.py",
+              "symbol": "enable_session_keeper_defaults",
+              "loc": "packages/pipeline/sync_loop.py:42-48",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "freshness sync background CTX_BACKGROUND_SYNC stale index checksum merkle refresh | seeds: packages/pipeline/sync_loop.py::enable_session_keeper_defaults"
+        }
+      }
+    },
+    {
+      "id": "t14",
+      "family": "memory-budget",
+      "task": "Where is embed / search memory budget capped so DML batches stay safe?",
+      "enrich_prompt": "memory_budget embed batch DML VRAM cap search concurrent budget chars",
+      "map": {
+        "elapsed_s": 0.388,
+        "n_cards": 10,
+        "top_files": [
+          "scripts/bench_budget_alloc.py",
+          "scripts/bench_mix_seq_ab.py",
+          "tests/test_memory_budget.py",
+          "packages/pipeline/memory_governor.py",
+          "packages/pipeline/accel.py"
+        ]
+      },
+      "enrich_seed": {
+        "ok": true,
+        "elapsed_s": 0.047,
+        "seed_file": "packages/pipeline/memory_governor.py",
+        "seed": {
+          "file": "packages/pipeline/memory_governor.py",
+          "symbol": "_env_float",
+          "id": "packages/pipeline/memory_governor.py::_env_float",
+          "loc": null
+        },
+        "chunks": [
+          {
+            "file": "packages/pipeline/memory_governor.py",
+            "symbol": "_env_float",
+            "loc": "packages/pipeline/memory_governor.py:46-50",
+            "score": 1.0,
+            "kind": "function"
+          }
+        ],
+        "n_cards": 1,
+        "error": null
+      },
+      "arms": {
+        "pack_context": {
+          "ok": true,
+          "tool": "pack_context",
+          "engine": "composite_v1",
+          "elapsed_s": 0.055,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/memory_governor.py",
+            "symbol": "_env_float",
+            "id": "packages/pipeline/memory_governor.py::_env_float"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/memory_governor.py",
+              "symbol": "_env_float",
+              "score": 1.0,
+              "loc": "packages/pipeline/memory_governor.py:46-50",
+              "id": "packages/pipeline/memory_governor.py::_env_float",
+              "chars": 163
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/memory_governor.py::_env_float",
+              "loc": "packages/pipeline/memory_governor.py:46-50",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/memory_governor.py",
+              "symbol": "_env_float",
+              "loc": "packages/pipeline/memory_governor.py:46-50",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "memory_budget embed batch DML VRAM cap search concurrent budget chars | seeds: packages/pipeline/memory_governor.py::_env_float"
+        },
+        "pack_poly_embed": {
+          "ok": true,
+          "tool": "pack_poly_embed",
+          "engine": "poly_embed",
+          "elapsed_s": 0.145,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/memory_governor.py",
+            "symbol": "_env_float",
+            "id": "packages/pipeline/memory_governor.py::_env_float"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/memory_governor.py",
+              "symbol": "_env_float",
+              "score": 1.0,
+              "loc": "packages/pipeline/memory_governor.py:46-50",
+              "id": "packages/pipeline/memory_governor.py::_env_float",
+              "chars": 163
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/memory_governor.py::_env_float",
+              "loc": "packages/pipeline/memory_governor.py:46-50",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/memory_governor.py",
+              "symbol": "_env_float",
+              "loc": "packages/pipeline/memory_governor.py:46-50",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "memory_budget embed batch DML VRAM cap search concurrent budget chars | seeds: packages/pipeline/memory_governor.py::_env_float"
+        },
+        "pack_semantic": {
+          "ok": true,
+          "tool": "pack_semantic",
+          "engine": "semantic_tracer_fuse",
+          "elapsed_s": 0.2,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/memory_governor.py",
+            "symbol": "_env_float",
+            "id": "packages/pipeline/memory_governor.py::_env_float"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/memory_governor.py",
+              "symbol": "_env_float",
+              "score": 1.0,
+              "loc": "packages/pipeline/memory_governor.py:46-50",
+              "id": "packages/pipeline/memory_governor.py::_env_float",
+              "chars": 163
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/memory_governor.py::_env_float",
+              "loc": "packages/pipeline/memory_governor.py:46-50",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/memory_governor.py",
+              "symbol": "_env_float",
+              "loc": "packages/pipeline/memory_governor.py:46-50",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "memory_budget embed batch DML VRAM cap search concurrent budget chars | seeds: packages/pipeline/memory_governor.py::_env_float"
+        }
+      }
+    },
+    {
+      "id": "t15",
+      "family": "capability-attach",
+      "task": "How are capability cards attached to search hits for locate ranking?",
+      "enrich_prompt": "capability_cards attach CapabilityCard locate ranking search hits build cards json",
+      "map": {
+        "elapsed_s": 0.643,
+        "n_cards": 10,
+        "top_files": [
+          "packages/pipeline/capability.py",
+          "packages/pipeline/engine.py",
+          "docs/superpowers/specs/2026-08-03-capability-locate-design.md",
+          "packages/pipeline/locate.py",
+          "packages/pipeline/mcp_locate.py"
+        ]
+      },
+      "enrich_seed": {
+        "ok": true,
+        "elapsed_s": 0.042,
+        "seed_file": "packages/pipeline/capability.py",
+        "seed": {
+          "file": "packages/pipeline/capability.py",
+          "symbol": "CapabilityCard.blob",
+          "id": "packages/pipeline/capability.py::CapabilityCard.blob",
+          "loc": null
+        },
+        "chunks": [
+          {
+            "file": "packages/pipeline/capability.py",
+            "symbol": "CapabilityCard.blob",
+            "loc": "packages/pipeline/capability.py:38-46",
+            "score": 1.0,
+            "kind": "method"
+          }
+        ],
+        "n_cards": 1,
+        "error": null
+      },
+      "arms": {
+        "pack_context": {
+          "ok": true,
+          "tool": "pack_context",
+          "engine": "composite_v1",
+          "elapsed_s": 0.051,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/capability.py",
+            "symbol": "CapabilityCard.blob",
+            "id": "packages/pipeline/capability.py::CapabilityCard.blob"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/capability.py",
+              "symbol": "CapabilityCard.blob",
+              "score": 1.0,
+              "loc": "packages/pipeline/capability.py:38-46",
+              "id": "packages/pipeline/capability.py::CapabilityCard.blob",
+              "chars": 246
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/capability.py::CapabilityCard.blob",
+              "loc": "packages/pipeline/capability.py:38-46",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/capability.py",
+              "symbol": "CapabilityCard.blob",
+              "loc": "packages/pipeline/capability.py:38-46",
+              "score": 1.0,
+              "kind": "method"
+            }
+          ],
+          "pack_query": "capability_cards attach CapabilityCard locate ranking search hits build cards json | seeds: packages/pipeline/capability.py::CapabilityCard.blob"
+        },
+        "pack_poly_embed": {
+          "ok": true,
+          "tool": "pack_poly_embed",
+          "engine": "poly_embed",
+          "elapsed_s": 0.138,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/capability.py",
+            "symbol": "CapabilityCard.blob",
+            "id": "packages/pipeline/capability.py::CapabilityCard.blob"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/capability.py",
+              "symbol": "CapabilityCard.blob",
+              "score": 1.0,
+              "loc": "packages/pipeline/capability.py:38-46",
+              "id": "packages/pipeline/capability.py::CapabilityCard.blob",
+              "chars": 246
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/capability.py::CapabilityCard.blob",
+              "loc": "packages/pipeline/capability.py:38-46",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/capability.py",
+              "symbol": "CapabilityCard.blob",
+              "loc": "packages/pipeline/capability.py:38-46",
+              "score": 1.0,
+              "kind": "method"
+            }
+          ],
+          "pack_query": "capability_cards attach CapabilityCard locate ranking search hits build cards json | seeds: packages/pipeline/capability.py::CapabilityCard.blob"
+        },
+        "pack_semantic": {
+          "ok": true,
+          "tool": "pack_semantic",
+          "engine": "semantic_tracer_fuse",
+          "elapsed_s": 0.191,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/capability.py",
+            "symbol": "CapabilityCard.blob",
+            "id": "packages/pipeline/capability.py::CapabilityCard.blob"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/capability.py",
+              "symbol": "CapabilityCard.blob",
+              "score": 1.0,
+              "loc": "packages/pipeline/capability.py:38-46",
+              "id": "packages/pipeline/capability.py::CapabilityCard.blob",
+              "chars": 246
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/capability.py::CapabilityCard.blob",
+              "loc": "packages/pipeline/capability.py:38-46",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/capability.py",
+              "symbol": "CapabilityCard.blob",
+              "loc": "packages/pipeline/capability.py:38-46",
+              "score": 1.0,
+              "kind": "method"
+            }
+          ],
+          "pack_query": "capability_cards attach CapabilityCard locate ranking search hits build cards json | seeds: packages/pipeline/capability.py::CapabilityCard.blob"
+        }
+      }
+    },
+    {
+      "id": "t16",
+      "family": "graphify-edges",
+      "task": "How does Graphify IR supply call edges into the conductor / tracer graph?",
+      "enrich_prompt": "graphify graph_ir call edges GraphifyChunkRetriever conductor extra_graph build_graphify",
+      "map": {
+        "elapsed_s": 0.545,
+        "n_cards": 10,
+        "top_files": [
+          "packages/conductor/graphify_retriever.py",
+          "packages/conductor/conductor.py",
+          "packages/graphify/build.py",
+          "packages/conductor/__init__.py",
+          "packages/graphify/serve.py"
+        ]
+      },
+      "enrich_seed": {
+        "ok": true,
+        "elapsed_s": 0.041,
+        "seed_file": "packages/conductor/graphify_retriever.py",
+        "seed": {
+          "file": "packages/conductor/graphify_retriever.py",
+          "symbol": "normalize_file",
+          "id": "packages/conductor/graphify_retriever.py::normalize_file",
+          "loc": null
+        },
+        "chunks": [
+          {
+            "file": "packages/conductor/graphify_retriever.py",
+            "symbol": "normalize_file",
+            "loc": "packages/conductor/graphify_retriever.py:33-34",
+            "score": 1.0,
+            "kind": "function"
+          }
+        ],
+        "n_cards": 1,
+        "error": null
+      },
+      "arms": {
+        "pack_context": {
+          "ok": true,
+          "tool": "pack_context",
+          "engine": "composite_v1",
+          "elapsed_s": 0.045,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/conductor/graphify_retriever.py",
+            "symbol": "normalize_file",
+            "id": "packages/conductor/graphify_retriever.py::normalize_file"
+          },
+          "pack": [
+            {
+              "file": "packages/conductor/graphify_retriever.py",
+              "symbol": "normalize_file",
+              "score": 1.0,
+              "loc": "packages/conductor/graphify_retriever.py:33-34",
+              "id": "packages/conductor/graphify_retriever.py::normalize_file",
+              "chars": 85
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/conductor/graphify_retriever.py::normalize_file",
+              "loc": "packages/conductor/graphify_retriever.py:33-34",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/conductor/graphify_retriever.py",
+              "symbol": "normalize_file",
+              "loc": "packages/conductor/graphify_retriever.py:33-34",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "graphify graph_ir call edges GraphifyChunkRetriever conductor extra_graph build_graphify | seeds: packages/conductor/graphify_retriever.py::normalize_file"
+        },
+        "pack_poly_embed": {
+          "ok": true,
+          "tool": "pack_poly_embed",
+          "engine": "poly_embed",
+          "elapsed_s": 0.134,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/conductor/graphify_retriever.py",
+            "symbol": "normalize_file",
+            "id": "packages/conductor/graphify_retriever.py::normalize_file"
+          },
+          "pack": [
+            {
+              "file": "packages/conductor/graphify_retriever.py",
+              "symbol": "normalize_file",
+              "score": 1.0,
+              "loc": "packages/conductor/graphify_retriever.py:33-34",
+              "id": "packages/conductor/graphify_retriever.py::normalize_file",
+              "chars": 85
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/conductor/graphify_retriever.py::normalize_file",
+              "loc": "packages/conductor/graphify_retriever.py:33-34",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/conductor/graphify_retriever.py",
+              "symbol": "normalize_file",
+              "loc": "packages/conductor/graphify_retriever.py:33-34",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "graphify graph_ir call edges GraphifyChunkRetriever conductor extra_graph build_graphify | seeds: packages/conductor/graphify_retriever.py::normalize_file"
+        },
+        "pack_semantic": {
+          "ok": true,
+          "tool": "pack_semantic",
+          "engine": "semantic_tracer_fuse",
+          "elapsed_s": 0.191,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/conductor/graphify_retriever.py",
+            "symbol": "normalize_file",
+            "id": "packages/conductor/graphify_retriever.py::normalize_file"
+          },
+          "pack": [
+            {
+              "file": "packages/conductor/graphify_retriever.py",
+              "symbol": "normalize_file",
+              "score": 1.0,
+              "loc": "packages/conductor/graphify_retriever.py:33-34",
+              "id": "packages/conductor/graphify_retriever.py::normalize_file",
+              "chars": 85
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/conductor/graphify_retriever.py::normalize_file",
+              "loc": "packages/conductor/graphify_retriever.py:33-34",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/conductor/graphify_retriever.py",
+              "symbol": "normalize_file",
+              "loc": "packages/conductor/graphify_retriever.py:33-34",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "graphify graph_ir call edges GraphifyChunkRetriever conductor extra_graph build_graphify | seeds: packages/conductor/graphify_retriever.py::normalize_file"
+        }
+      }
+    },
+    {
+      "id": "t17",
+      "family": "never-index",
+      "task": "How do never-index path denies keep fixture/tmp paths out of the product corpus?",
+      "enrich_prompt": "never_index deny path globs skip fixtures tmp out ab_workspaces indexing exclude",
+      "map": {
+        "elapsed_s": 0.493,
+        "n_cards": 10,
+        "top_files": [
+          "tests/test_repo_lifecycle.py",
+          "tests/test_auto_sessions_observability.py",
+          "packages/pipeline/repo_lifecycle.py",
+          "tests/test_index_coverage.py",
+          "tests/test_connect_formats.py"
+        ]
+      },
+      "enrich_seed": {
+        "ok": true,
+        "elapsed_s": 0.044,
+        "seed_file": "packages/pipeline/repo_lifecycle.py",
+        "seed": {
+          "file": "packages/pipeline/repo_lifecycle.py",
+          "symbol": "_root",
+          "id": "packages/pipeline/repo_lifecycle.py::_root",
+          "loc": null
+        },
+        "chunks": [
+          {
+            "file": "packages/pipeline/repo_lifecycle.py",
+            "symbol": "_root",
+            "loc": "packages/pipeline/repo_lifecycle.py:34-35",
+            "score": 1.0,
+            "kind": "function"
+          }
+        ],
+        "n_cards": 1,
+        "error": null
+      },
+      "arms": {
+        "pack_context": {
+          "ok": true,
+          "tool": "pack_context",
+          "engine": "composite_v1",
+          "elapsed_s": 0.046,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/repo_lifecycle.py",
+            "symbol": "_root",
+            "id": "packages/pipeline/repo_lifecycle.py::_root"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/repo_lifecycle.py",
+              "symbol": "_root",
+              "score": 1.0,
+              "loc": "packages/pipeline/repo_lifecycle.py:34-35",
+              "id": "packages/pipeline/repo_lifecycle.py::_root",
+              "chars": 68
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/repo_lifecycle.py::_root",
+              "loc": "packages/pipeline/repo_lifecycle.py:34-35",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/repo_lifecycle.py",
+              "symbol": "_root",
+              "loc": "packages/pipeline/repo_lifecycle.py:34-35",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "never_index deny path globs skip fixtures tmp out ab_workspaces indexing exclude | seeds: packages/pipeline/repo_lifecycle.py::_root"
+        },
+        "pack_poly_embed": {
+          "ok": true,
+          "tool": "pack_poly_embed",
+          "engine": "poly_embed",
+          "elapsed_s": 0.132,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/repo_lifecycle.py",
+            "symbol": "_root",
+            "id": "packages/pipeline/repo_lifecycle.py::_root"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/repo_lifecycle.py",
+              "symbol": "_root",
+              "score": 1.0,
+              "loc": "packages/pipeline/repo_lifecycle.py:34-35",
+              "id": "packages/pipeline/repo_lifecycle.py::_root",
+              "chars": 68
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/repo_lifecycle.py::_root",
+              "loc": "packages/pipeline/repo_lifecycle.py:34-35",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/repo_lifecycle.py",
+              "symbol": "_root",
+              "loc": "packages/pipeline/repo_lifecycle.py:34-35",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "never_index deny path globs skip fixtures tmp out ab_workspaces indexing exclude | seeds: packages/pipeline/repo_lifecycle.py::_root"
+        },
+        "pack_semantic": {
+          "ok": true,
+          "tool": "pack_semantic",
+          "engine": "semantic_tracer_fuse",
+          "elapsed_s": 0.218,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/repo_lifecycle.py",
+            "symbol": "_root",
+            "id": "packages/pipeline/repo_lifecycle.py::_root"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/repo_lifecycle.py",
+              "symbol": "_root",
+              "score": 1.0,
+              "loc": "packages/pipeline/repo_lifecycle.py:34-35",
+              "id": "packages/pipeline/repo_lifecycle.py::_root",
+              "chars": 68
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/repo_lifecycle.py::_root",
+              "loc": "packages/pipeline/repo_lifecycle.py:34-35",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/repo_lifecycle.py",
+              "symbol": "_root",
+              "loc": "packages/pipeline/repo_lifecycle.py:34-35",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "never_index deny path globs skip fixtures tmp out ab_workspaces indexing exclude | seeds: packages/pipeline/repo_lifecycle.py::_root"
+        }
+      }
+    },
+    {
+      "id": "t18",
+      "family": "wipe-safe",
+      "task": "Trace safe wipe / uninstall removing MCP config, rules, and local store.",
+      "enrich_prompt": "cmd_wipe wipe uninstall remove MCP rules store halt confirm scubiee state cleanup",
+      "map": {
+        "elapsed_s": 0.514,
+        "n_cards": 10,
+        "top_files": [
+          "packages/pipeline/wipe.py",
+          "tests/test_stop_all_tools.py",
+          "packages/pipeline/__main__.py",
+          "docs/web-info/uninstall-mac-linux.md",
+          "tests/test_wipe.py"
+        ]
+      },
+      "enrich_seed": {
+        "ok": true,
+        "elapsed_s": 0.053,
+        "seed_file": "packages/pipeline/wipe.py",
+        "seed": {
+          "file": "packages/pipeline/wipe.py",
+          "symbol": "_cursor_rule_paths",
+          "id": "packages/pipeline/wipe.py::_cursor_rule_paths",
+          "loc": null
+        },
+        "chunks": [
+          {
+            "file": "packages/pipeline/wipe.py",
+            "symbol": "_cursor_rule_paths",
+            "loc": "packages/pipeline/wipe.py:29-31",
+            "score": 1.0,
+            "kind": "function"
+          }
+        ],
+        "n_cards": 1,
+        "error": null
+      },
+      "arms": {
+        "pack_context": {
+          "ok": true,
+          "tool": "pack_context",
+          "engine": "composite_v1",
+          "elapsed_s": 0.044,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/wipe.py",
+            "symbol": "_cursor_rule_paths",
+            "id": "packages/pipeline/wipe.py::_cursor_rule_paths"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/wipe.py",
+              "symbol": "_cursor_rule_paths",
+              "score": 1.0,
+              "loc": "packages/pipeline/wipe.py:29-31",
+              "id": "packages/pipeline/wipe.py::_cursor_rule_paths",
+              "chars": 145
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/wipe.py::_cursor_rule_paths",
+              "loc": "packages/pipeline/wipe.py:29-31",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/wipe.py",
+              "symbol": "_cursor_rule_paths",
+              "loc": "packages/pipeline/wipe.py:29-31",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "cmd_wipe wipe uninstall remove MCP rules store halt confirm scubiee state cleanup | seeds: packages/pipeline/wipe.py::_cursor_rule_paths"
+        },
+        "pack_poly_embed": {
+          "ok": true,
+          "tool": "pack_poly_embed",
+          "engine": "poly_embed",
+          "elapsed_s": 0.132,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/wipe.py",
+            "symbol": "_cursor_rule_paths",
+            "id": "packages/pipeline/wipe.py::_cursor_rule_paths"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/wipe.py",
+              "symbol": "_cursor_rule_paths",
+              "score": 1.0,
+              "loc": "packages/pipeline/wipe.py:29-31",
+              "id": "packages/pipeline/wipe.py::_cursor_rule_paths",
+              "chars": 145
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/wipe.py::_cursor_rule_paths",
+              "loc": "packages/pipeline/wipe.py:29-31",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/wipe.py",
+              "symbol": "_cursor_rule_paths",
+              "loc": "packages/pipeline/wipe.py:29-31",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "cmd_wipe wipe uninstall remove MCP rules store halt confirm scubiee state cleanup | seeds: packages/pipeline/wipe.py::_cursor_rule_paths"
+        },
+        "pack_semantic": {
+          "ok": true,
+          "tool": "pack_semantic",
+          "engine": "semantic_tracer_fuse",
+          "elapsed_s": 0.203,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/wipe.py",
+            "symbol": "_cursor_rule_paths",
+            "id": "packages/pipeline/wipe.py::_cursor_rule_paths"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/wipe.py",
+              "symbol": "_cursor_rule_paths",
+              "score": 1.0,
+              "loc": "packages/pipeline/wipe.py:29-31",
+              "id": "packages/pipeline/wipe.py::_cursor_rule_paths",
+              "chars": 145
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/wipe.py::_cursor_rule_paths",
+              "loc": "packages/pipeline/wipe.py:29-31",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/wipe.py",
+              "symbol": "_cursor_rule_paths",
+              "loc": "packages/pipeline/wipe.py:29-31",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "cmd_wipe wipe uninstall remove MCP rules store halt confirm scubiee state cleanup | seeds: packages/pipeline/wipe.py::_cursor_rule_paths"
+        }
+      }
+    },
+    {
+      "id": "t19",
+      "family": "dashboard-status",
+      "task": "Where are operator dashboard status and health HTTP endpoints defined?",
+      "enrich_prompt": "dashboard_server HTTP status health endpoints operator uvicorn cmd_dashboard",
+      "map": {
+        "elapsed_s": 0.299,
+        "n_cards": 9,
+        "top_files": [
+          "packages/pipeline/__main__.py",
+          "tests/test_dashboard_api.py",
+          "tests/test_dashboard_ui_contract.py",
+          "packages/pipeline/dashboard_server.py",
+          "docs/superpowers/specs/2026-08-17-ce-operator-dashboard-design.md"
+        ]
+      },
+      "enrich_seed": {
+        "ok": true,
+        "elapsed_s": 0.054,
+        "seed_file": "packages/pipeline/__main__.py",
+        "seed": {
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "_version_only",
+          "id": "packages/pipeline/__main__.py::_version_only",
+          "loc": null
+        },
+        "chunks": [
+          {
+            "file": "packages/pipeline/__main__.py",
+            "symbol": "_version_only",
+            "loc": "packages/pipeline/__main__.py:19-21",
+            "score": 1.0,
+            "kind": "function"
+          }
+        ],
+        "n_cards": 1,
+        "error": null
+      },
+      "arms": {
+        "pack_context": {
+          "ok": true,
+          "tool": "pack_context",
+          "engine": "composite_v1",
+          "elapsed_s": 0.042,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/__main__.py",
+            "symbol": "_version_only",
+            "id": "packages/pipeline/__main__.py::_version_only"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/__main__.py",
+              "symbol": "_version_only",
+              "score": 1.0,
+              "loc": "packages/pipeline/__main__.py:19-21",
+              "id": "packages/pipeline/__main__.py::_version_only",
+              "chars": 180
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/__main__.py::_version_only",
+              "loc": "packages/pipeline/__main__.py:19-21",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/__main__.py",
+              "symbol": "_version_only",
+              "loc": "packages/pipeline/__main__.py:19-21",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "dashboard_server HTTP status health endpoints operator uvicorn cmd_dashboard | seeds: packages/pipeline/__main__.py::_version_only"
+        },
+        "pack_poly_embed": {
+          "ok": true,
+          "tool": "pack_poly_embed",
+          "engine": "poly_embed",
+          "elapsed_s": 0.134,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/__main__.py",
+            "symbol": "_version_only",
+            "id": "packages/pipeline/__main__.py::_version_only"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/__main__.py",
+              "symbol": "_version_only",
+              "score": 1.0,
+              "loc": "packages/pipeline/__main__.py:19-21",
+              "id": "packages/pipeline/__main__.py::_version_only",
+              "chars": 180
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/__main__.py::_version_only",
+              "loc": "packages/pipeline/__main__.py:19-21",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/__main__.py",
+              "symbol": "_version_only",
+              "loc": "packages/pipeline/__main__.py:19-21",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "dashboard_server HTTP status health endpoints operator uvicorn cmd_dashboard | seeds: packages/pipeline/__main__.py::_version_only"
+        },
+        "pack_semantic": {
+          "ok": true,
+          "tool": "pack_semantic",
+          "engine": "semantic_tracer_fuse",
+          "elapsed_s": 0.206,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/pipeline/__main__.py",
+            "symbol": "_version_only",
+            "id": "packages/pipeline/__main__.py::_version_only"
+          },
+          "pack": [
+            {
+              "file": "packages/pipeline/__main__.py",
+              "symbol": "_version_only",
+              "score": 1.0,
+              "loc": "packages/pipeline/__main__.py:19-21",
+              "id": "packages/pipeline/__main__.py::_version_only",
+              "chars": 180
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/pipeline/__main__.py::_version_only",
+              "loc": "packages/pipeline/__main__.py:19-21",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/pipeline/__main__.py",
+              "symbol": "_version_only",
+              "loc": "packages/pipeline/__main__.py:19-21",
+              "score": 1.0,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "dashboard_server HTTP status health endpoints operator uvicorn cmd_dashboard | seeds: packages/pipeline/__main__.py::_version_only"
+        }
+      }
+    },
+    {
+      "id": "t20",
+      "family": "dense-rerank",
+      "task": "How does search-time CodeRankLLM / dense rerank reorder conductor hits?",
+      "enrich_prompt": "CodeRankLLM rerank search-time dense conductor D_rerank hits reorder not index",
+      "map": {
+        "elapsed_s": 0.408,
+        "n_cards": 10,
+        "top_files": [
+          "packages/conductor/architectures.py",
+          "packages/conductor/service.py",
+          "packages/conductor/top3.py",
+          "packages/conductor/query_router.py",
+          "packages/pipeline/searcher.py"
+        ]
+      },
+      "enrich_seed": {
+        "ok": true,
+        "elapsed_s": 0.055,
+        "seed_file": "packages/conductor/architectures.py",
+        "seed": {
+          "file": "packages/conductor/architectures.py",
+          "symbol": "_path_tokens",
+          "id": "packages/conductor/architectures.py::_path_tokens",
+          "loc": null
+        },
+        "chunks": [
+          {
+            "file": "packages/conductor/architectures.py",
+            "symbol": "_path_tokens",
+            "loc": "packages/conductor/architectures.py:43-44",
+            "score": 1.0,
+            "kind": "function"
+          },
+          {
+            "file": "packages/conductor/f95.py",
+            "symbol": "path_tokens",
+            "loc": "packages/conductor/f95.py:111-120",
+            "score": 0.9405,
+            "kind": "function"
+          }
+        ],
+        "n_cards": 2,
+        "error": null
+      },
+      "arms": {
+        "pack_context": {
+          "ok": true,
+          "tool": "pack_context",
+          "engine": "composite_v1",
+          "elapsed_s": 0.047,
+          "n_pack": 2,
+          "seed": {
+            "file": "packages/conductor/architectures.py",
+            "symbol": "_path_tokens",
+            "id": "packages/conductor/architectures.py::_path_tokens"
+          },
+          "pack": [
+            {
+              "file": "packages/conductor/architectures.py",
+              "symbol": "_path_tokens",
+              "score": 1.0,
+              "loc": "packages/conductor/architectures.py:43-44",
+              "id": "packages/conductor/architectures.py::_path_tokens",
+              "chars": 76
+            },
+            {
+              "file": "packages/conductor/f95.py",
+              "symbol": "path_tokens",
+              "score": 0.9405,
+              "loc": "packages/conductor/f95.py:111-120",
+              "id": "packages/conductor/f95.py::path_tokens",
+              "chars": 323
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/conductor/architectures.py::_path_tokens",
+              "loc": "packages/conductor/architectures.py:43-44",
+              "edge": "seed",
+              "score": 1.0
+            },
+            {
+              "id": "packages/conductor/f95.py::path_tokens",
+              "loc": "packages/conductor/f95.py:111-120",
+              "edge": "calls",
+              "score": 0.9405
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/conductor/architectures.py",
+              "symbol": "_path_tokens",
+              "loc": "packages/conductor/architectures.py:43-44",
+              "score": 1.0,
+              "kind": "function"
+            },
+            {
+              "file": "packages/conductor/f95.py",
+              "symbol": "path_tokens",
+              "loc": "packages/conductor/f95.py:111-120",
+              "score": 0.9405,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "CodeRankLLM rerank search-time dense conductor D_rerank hits reorder not index | seeds: packages/conductor/architectures.py::_path_tokens packages/conductor/f95.py::path_tokens"
+        },
+        "pack_poly_embed": {
+          "ok": true,
+          "tool": "pack_poly_embed",
+          "engine": "poly_embed",
+          "elapsed_s": 0.142,
+          "n_pack": 1,
+          "seed": {
+            "file": "packages/conductor/architectures.py",
+            "symbol": "_path_tokens",
+            "id": "packages/conductor/architectures.py::_path_tokens"
+          },
+          "pack": [
+            {
+              "file": "packages/conductor/architectures.py",
+              "symbol": "_path_tokens",
+              "score": 1.0,
+              "loc": "packages/conductor/architectures.py:43-44",
+              "id": "packages/conductor/architectures.py::_path_tokens",
+              "chars": 76
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/conductor/architectures.py::_path_tokens",
+              "loc": "packages/conductor/architectures.py:43-44",
+              "edge": "seed",
+              "score": 1.0
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/conductor/architectures.py",
+              "symbol": "_path_tokens",
+              "loc": "packages/conductor/architectures.py:43-44",
+              "score": 1.0,
+              "kind": "function"
+            },
+            {
+              "file": "packages/conductor/f95.py",
+              "symbol": "path_tokens",
+              "loc": "packages/conductor/f95.py:111-120",
+              "score": 0.9405,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "CodeRankLLM rerank search-time dense conductor D_rerank hits reorder not index | seeds: packages/conductor/architectures.py::_path_tokens packages/conductor/f95.py::path_tokens"
+        },
+        "pack_semantic": {
+          "ok": true,
+          "tool": "pack_semantic",
+          "engine": "semantic_tracer_fuse",
+          "elapsed_s": 0.212,
+          "n_pack": 2,
+          "seed": {
+            "file": "packages/conductor/architectures.py",
+            "symbol": "_path_tokens",
+            "id": "packages/conductor/architectures.py::_path_tokens"
+          },
+          "pack": [
+            {
+              "file": "packages/conductor/architectures.py",
+              "symbol": "_path_tokens",
+              "score": 1.0,
+              "loc": "packages/conductor/architectures.py:43-44",
+              "id": "packages/conductor/architectures.py::_path_tokens",
+              "chars": 76
+            },
+            {
+              "file": "packages/conductor/f95.py",
+              "symbol": "path_tokens",
+              "score": 0.8885,
+              "loc": "packages/conductor/f95.py:111-120",
+              "id": "packages/conductor/f95.py::path_tokens",
+              "chars": 323
+            }
+          ],
+          "chain": [
+            {
+              "id": "packages/conductor/architectures.py::_path_tokens",
+              "loc": "packages/conductor/architectures.py:43-44",
+              "edge": "seed",
+              "score": 1.0
+            },
+            {
+              "id": "packages/conductor/f95.py::path_tokens",
+              "loc": "packages/conductor/f95.py:111-120",
+              "edge": "calls",
+              "score": 0.8885
+            }
+          ],
+          "error": null,
+          "seed_chunks": [
+            {
+              "file": "packages/conductor/architectures.py",
+              "symbol": "_path_tokens",
+              "loc": "packages/conductor/architectures.py:43-44",
+              "score": 1.0,
+              "kind": "function"
+            },
+            {
+              "file": "packages/conductor/f95.py",
+              "symbol": "path_tokens",
+              "loc": "packages/conductor/f95.py:111-120",
+              "score": 0.9405,
+              "kind": "function"
+            }
+          ],
+          "pack_query": "CodeRankLLM rerank search-time dense conductor D_rerank hits reorder not index | seeds: packages/conductor/architectures.py::_path_tokens packages/conductor/f95.py::path_tokens"
+        }
+      }
+    }
+  ]
+}

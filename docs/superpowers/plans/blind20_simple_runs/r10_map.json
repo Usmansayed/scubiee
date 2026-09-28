@@ -1,0 +1,66 @@
+{
+  "ok": true,
+  "tool": "map",
+  "query": "MultiArchConductor BM25 dense graph fuse ConductorConfig search_repo rank hit_source",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/pipeline/searcher.py",
+      "symbol": "",
+      "score": 13.370419589426293,
+      "loc": "packages/pipeline/searcher.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "packages/conductor/conductor.py",
+      "symbol": "",
+      "score": 11.103431096201723,
+      "loc": "packages/conductor/conductor.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "fixtures/trace-lab/app/search/rank.py",
+      "symbol": "",
+      "score": 8.969417606224727,
+      "loc": "fixtures/trace-lab/app/search/rank.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "packages/conductor/__init__.py",
+      "symbol": "",
+      "score": 7.832518766200461,
+      "loc": "packages/conductor/__init__.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "packages/conductor/architectures.py",
+      "symbol": "",
+      "score": 5.779484296199943,
+      "loc": "packages/conductor/architectures.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "tests/test_faiss_dense_adapter.py",
+      "symbol": "",
+      "score": 5.330390531437683,
+      "loc": "tests/test_faiss_dense_adapter.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "packages/conductor/fusion_math.py",
+      "symbol": "",
+      "score": 4.626147316955665,
+      "loc": "packages/conductor/fusion_math.py:1-1",
+      "why": ""
+    }
+  ],
+  "suggested_seed": null,
+  "elapsed_s": 0.945,
+  "via": "search_repo(use_server=True)"
+}

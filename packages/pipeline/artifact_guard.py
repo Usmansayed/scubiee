@@ -65,21 +65,56 @@ def _checksum(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def publish_manifest(store: Path, files: Iterable[Path]) -> dict[str, object]:
+def read_manifest(store: Path) -> dict[str, object] | None:
+    """Current manifest payload, or None (missing / unreadable)."""
+    try:
+        payload = json.loads((Path(store) / MANIFEST_NAME).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _stat_key(path: Path) -> list[int]:
+    st = path.stat()
+    return [int(st.st_size), int(st.st_mtime_ns)]
+
+
+def publish_manifest(
+    store: Path,
+    files: Iterable[Path],
+    *,
+    previous: dict[str, object] | None = None,
+) -> dict[str, object]:
     """Publish checksums for an already-written coherent set of artifacts.
 
     Holds the store write lock for the whole checksum+rename so readers never
     observe a mid-window mismatch between mutated files and a stale manifest.
+
+    ``previous``: the manifest being replaced. A file whose size and mtime_ns
+    match what it recorded keeps its checksum instead of being re-hashed — a
+    hot save rewrites chunks.jsonl/merkle/meta but not the 34MB of graph files,
+    which were re-hashed on every save (issue 4, publication_ms up to 2s).
     """
     from pipeline.store_lock import store_write_lock
 
     store = store.resolve()
+    prev_sums = (previous or {}).get("artifacts") if isinstance(previous, dict) else None
+    prev_stats = (previous or {}).get("stats") if isinstance(previous, dict) else None
+    prev_sums = prev_sums if isinstance(prev_sums, dict) else {}
+    prev_stats = prev_stats if isinstance(prev_stats, dict) else {}
     with store_write_lock(store):
         artifacts = {}
+        stats: dict[str, list[int]] = {}
         for path in files:
             resolved = path.resolve()
-            artifacts[resolved.relative_to(store).as_posix()] = _checksum(resolved)
-        payload = {"version": 1, "artifacts": artifacts}
+            rel = resolved.relative_to(store).as_posix()
+            key = _stat_key(resolved)
+            if prev_stats.get(rel) == key and rel in prev_sums:
+                artifacts[rel] = str(prev_sums[rel])
+            else:
+                artifacts[rel] = _checksum(resolved)
+            stats[rel] = key
+        payload = {"version": 1, "artifacts": artifacts, "stats": stats}
         # Already under lock — skip nested lock in atomic_write_text.
         atomic_write_text(
             store / MANIFEST_NAME,

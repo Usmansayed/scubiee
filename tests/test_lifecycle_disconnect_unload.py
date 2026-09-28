@@ -102,6 +102,8 @@ def test_enforce_mcp_warm_contract_holds_then_standbys(tmp_path, monkeypatch) ->
         lambda **kwargs: standby_calls.append(kwargs) or {"ok": True, "action": "standby"},
     )
     monkeypatch.setattr(life, "_idle_busy_reason", lambda: None)
+    # Isolate from real IDE bridges running on the dev machine.
+    monkeypatch.setattr("pipeline.warm_autoload.mcp_frontend_present", lambda: False)
 
     life.register_client("mcp:1", pid=1, now=100.0)
     hold = life.enforce_mcp_warm_contract(now=105.0)
@@ -118,3 +120,28 @@ def test_enforce_mcp_warm_contract_holds_then_standbys(tmp_path, monkeypatch) ->
     late = life.enforce_mcp_warm_contract(now=121.0)
     assert late["action"] == "standby"
     assert standby_calls
+
+
+def test_enforce_mcp_warm_contract_holds_for_live_bridge(tmp_path, monkeypatch) -> None:
+    """BETA-08: a live (non-orphan) bridge with clients=0 must not unload the engine."""
+    from pipeline import lifecycle_runtime as life
+
+    monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
+    monkeypatch.setenv("CTX_DISCONNECT_DEBOUNCE_S", "0")
+    monkeypatch.setattr(
+        "pipeline.process_control.reap_orphaned_mcp_processes", lambda: {"reaped": 0}
+    )
+    monkeypatch.setattr(
+        "pipeline.process_control.sweep_orphan_scubiee_frontends", lambda: {"swept": 0}
+    )
+    monkeypatch.setattr("pipeline.warm_autoload.mcp_frontend_present", lambda: True)
+    standby_calls: list[dict] = []
+    monkeypatch.setattr(
+        life,
+        "enter_standby",
+        lambda **kwargs: standby_calls.append(kwargs) or {"ok": True, "action": "standby"},
+    )
+    out = life.enforce_mcp_warm_contract(now=500.0)
+    assert out["action"] == "hold_bridge"
+    assert standby_calls == []
+    assert life.engine_should_be_running() is True

@@ -1,0 +1,110 @@
+{
+  "ok": true,
+  "tool": "map",
+  "query": "never_index deny path globs skip fixtures tmp out ab_workspaces indexing exclude",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "tests/test_repo_lifecycle.py",
+      "symbol": "",
+      "score": 12.8416,
+      "start_line": null,
+      "end_line": null,
+      "loc": "tests/test_repo_lifecycle.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "tests/test_auto_sessions_observability.py",
+      "symbol": "",
+      "score": 12.5458,
+      "start_line": null,
+      "end_line": null,
+      "loc": "tests/test_auto_sessions_observability.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "packages/pipeline/repo_lifecycle.py",
+      "symbol": "",
+      "score": 10.9112,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/pipeline/repo_lifecycle.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "tests/test_index_coverage.py",
+      "symbol": "",
+      "score": 4.5277,
+      "start_line": null,
+      "end_line": null,
+      "loc": "tests/test_index_coverage.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "tests/test_connect_formats.py",
+      "symbol": "",
+      "score": 3.5074,
+      "start_line": null,
+      "end_line": null,
+      "loc": "tests/test_connect_formats.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "packages/graphify/extractors/resolution.py",
+      "symbol": "",
+      "score": 3.46,
+      "start_line": null,
+      "end_line": null,
+      "loc": "packages/graphify/extractors/resolution.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "tests/test_progress_ui.py",
+      "symbol": "",
+      "score": 3.3348,
+      "start_line": null,
+      "end_line": null,
+      "loc": "tests/test_progress_ui.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "tests/test_scenario_backtracking.py",
+      "symbol": "",
+      "score": 3.3199,
+      "start_line": null,
+      "end_line": null,
+      "loc": "tests/test_scenario_backtracking.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "tests/test_mcp_agent_eval_regressions.py",
+      "symbol": "",
+      "score": 3.3193,
+      "start_line": null,
+      "end_line": null,
+      "loc": "tests/test_mcp_agent_eval_regressions.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "tests/test_resources.py",
+      "symbol": "",
+      "score": 3.2852,
+      "start_line": null,
+      "end_line": null,
+      "loc": "tests/test_resources.py:1-1",
+      "why": ""
+    }
+  ],
+  "suggested_seed": null,
+  "elapsed_s": 0.493,
+  "via": "search_repo(use_server=True)"
+}

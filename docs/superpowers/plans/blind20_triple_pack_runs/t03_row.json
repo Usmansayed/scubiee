@@ -1,0 +1,164 @@
+{
+  "id": "t03",
+  "family": "chunk-pipeline",
+  "task": "Trace how source files become searchable chunks in the indexer pipeline.",
+  "enrich_prompt": "indexer chunk pipeline parse source files into chunks merkle symbol spans index_manager",
+  "map": {
+    "elapsed_s": 0.503,
+    "n_cards": 10,
+    "top_files": [
+      "packages/enrich/__init__.py",
+      "packages/pipeline/chunk_merkle.py",
+      "tests/test_runtime_publish.py",
+      "packages/pipeline/index_manager.py",
+      "packages/pipeline/indexer.py"
+    ]
+  },
+  "enrich_seed": {
+    "ok": true,
+    "elapsed_s": 0.044,
+    "seed_file": "packages/enrich/__init__.py",
+    "seed": {
+      "file": "packages/enrich/__init__.py",
+      "symbol": "EnrichedChunk.to_dict",
+      "id": "packages/enrich/__init__.py::EnrichedChunk.to_dict",
+      "loc": null
+    },
+    "chunks": [
+      {
+        "file": "packages/enrich/__init__.py",
+        "symbol": "EnrichedChunk.to_dict",
+        "loc": "packages/enrich/__init__.py:38-48",
+        "score": 1.0,
+        "kind": "method"
+      }
+    ],
+    "n_cards": 1,
+    "error": null
+  },
+  "arms": {
+    "pack_context": {
+      "ok": true,
+      "tool": "pack_context",
+      "engine": "composite_v1",
+      "elapsed_s": 0.044,
+      "n_pack": 1,
+      "seed": {
+        "file": "packages/enrich/__init__.py",
+        "symbol": "EnrichedChunk.to_dict",
+        "id": "packages/enrich/__init__.py::EnrichedChunk.to_dict"
+      },
+      "pack": [
+        {
+          "file": "packages/enrich/__init__.py",
+          "symbol": "EnrichedChunk.to_dict",
+          "score": 1.0,
+          "loc": "packages/enrich/__init__.py:38-48",
+          "id": "packages/enrich/__init__.py::EnrichedChunk.to_dict",
+          "chars": 404
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/enrich/__init__.py::EnrichedChunk.to_dict",
+          "loc": "packages/enrich/__init__.py:38-48",
+          "edge": "seed",
+          "score": 1.0
+        }
+      ],
+      "error": null,
+      "seed_chunks": [
+        {
+          "file": "packages/enrich/__init__.py",
+          "symbol": "EnrichedChunk.to_dict",
+          "loc": "packages/enrich/__init__.py:38-48",
+          "score": 1.0,
+          "kind": "method"
+        }
+      ],
+      "pack_query": "indexer chunk pipeline parse source files into chunks merkle symbol spans index_manager | seeds: packages/enrich/__init__.py::EnrichedChunk.to_dict"
+    },
+    "pack_poly_embed": {
+      "ok": true,
+      "tool": "pack_poly_embed",
+      "engine": "poly_embed",
+      "elapsed_s": 0.138,
+      "n_pack": 1,
+      "seed": {
+        "file": "packages/enrich/__init__.py",
+        "symbol": "EnrichedChunk.to_dict",
+        "id": "packages/enrich/__init__.py::EnrichedChunk.to_dict"
+      },
+      "pack": [
+        {
+          "file": "packages/enrich/__init__.py",
+          "symbol": "EnrichedChunk.to_dict",
+          "score": 1.0,
+          "loc": "packages/enrich/__init__.py:38-48",
+          "id": "packages/enrich/__init__.py::EnrichedChunk.to_dict",
+          "chars": 404
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/enrich/__init__.py::EnrichedChunk.to_dict",
+          "loc": "packages/enrich/__init__.py:38-48",
+          "edge": "seed",
+          "score": 1.0
+        }
+      ],
+      "error": null,
+      "seed_chunks": [
+        {
+          "file": "packages/enrich/__init__.py",
+          "symbol": "EnrichedChunk.to_dict",
+          "loc": "packages/enrich/__init__.py:38-48",
+          "score": 1.0,
+          "kind": "method"
+        }
+      ],
+      "pack_query": "indexer chunk pipeline parse source files into chunks merkle symbol spans index_manager | seeds: packages/enrich/__init__.py::EnrichedChunk.to_dict"
+    },
+    "pack_semantic": {
+      "ok": true,
+      "tool": "pack_semantic",
+      "engine": "semantic_tracer_fuse",
+      "elapsed_s": 0.214,
+      "n_pack": 1,
+      "seed": {
+        "file": "packages/enrich/__init__.py",
+        "symbol": "EnrichedChunk.to_dict",
+        "id": "packages/enrich/__init__.py::EnrichedChunk.to_dict"
+      },
+      "pack": [
+        {
+          "file": "packages/enrich/__init__.py",
+          "symbol": "EnrichedChunk.to_dict",
+          "score": 1.0,
+          "loc": "packages/enrich/__init__.py:38-48",
+          "id": "packages/enrich/__init__.py::EnrichedChunk.to_dict",
+          "chars": 404
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/enrich/__init__.py::EnrichedChunk.to_dict",
+          "loc": "packages/enrich/__init__.py:38-48",
+          "edge": "seed",
+          "score": 1.0
+        }
+      ],
+      "error": null,
+      "seed_chunks": [
+        {
+          "file": "packages/enrich/__init__.py",
+          "symbol": "EnrichedChunk.to_dict",
+          "loc": "packages/enrich/__init__.py:38-48",
+          "score": 1.0,
+          "kind": "method"
+        }
+      ],
+      "pack_query": "indexer chunk pipeline parse source files into chunks merkle symbol spans index_manager | seeds: packages/enrich/__init__.py::EnrichedChunk.to_dict"
+    }
+  }
+}

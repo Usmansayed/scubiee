@@ -1,0 +1,164 @@
+{
+  "id": "t13",
+  "family": "freshness-sync",
+  "task": "How does background freshness / sync decide the index is stale and needs refresh?",
+  "enrich_prompt": "freshness sync background CTX_BACKGROUND_SYNC stale index checksum merkle refresh",
+  "map": {
+    "elapsed_s": 0.413,
+    "n_cards": 10,
+    "top_files": [
+      "packages/pipeline/sync_loop.py",
+      "docs/freshness.md",
+      "packages/pipeline/freshness.py",
+      "fixtures/trace-lab/app/oauth/refresh.py",
+      "docs/reindexing/index-freshness-agent-trajectory.md"
+    ]
+  },
+  "enrich_seed": {
+    "ok": true,
+    "elapsed_s": 0.039,
+    "seed_file": "packages/pipeline/sync_loop.py",
+    "seed": {
+      "file": "packages/pipeline/sync_loop.py",
+      "symbol": "enable_session_keeper_defaults",
+      "id": "packages/pipeline/sync_loop.py::enable_session_keeper_defaults",
+      "loc": null
+    },
+    "chunks": [
+      {
+        "file": "packages/pipeline/sync_loop.py",
+        "symbol": "enable_session_keeper_defaults",
+        "loc": "packages/pipeline/sync_loop.py:42-48",
+        "score": 1.0,
+        "kind": "function"
+      }
+    ],
+    "n_cards": 1,
+    "error": null
+  },
+  "arms": {
+    "pack_context": {
+      "ok": true,
+      "tool": "pack_context",
+      "engine": "composite_v1",
+      "elapsed_s": 0.047,
+      "n_pack": 1,
+      "seed": {
+        "file": "packages/pipeline/sync_loop.py",
+        "symbol": "enable_session_keeper_defaults",
+        "id": "packages/pipeline/sync_loop.py::enable_session_keeper_defaults"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/sync_loop.py",
+          "symbol": "enable_session_keeper_defaults",
+          "score": 1.0,
+          "loc": "packages/pipeline/sync_loop.py:42-48",
+          "id": "packages/pipeline/sync_loop.py::enable_session_keeper_defaults",
+          "chars": 410
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/sync_loop.py::enable_session_keeper_defaults",
+          "loc": "packages/pipeline/sync_loop.py:42-48",
+          "edge": "seed",
+          "score": 1.0
+        }
+      ],
+      "error": null,
+      "seed_chunks": [
+        {
+          "file": "packages/pipeline/sync_loop.py",
+          "symbol": "enable_session_keeper_defaults",
+          "loc": "packages/pipeline/sync_loop.py:42-48",
+          "score": 1.0,
+          "kind": "function"
+        }
+      ],
+      "pack_query": "freshness sync background CTX_BACKGROUND_SYNC stale index checksum merkle refresh | seeds: packages/pipeline/sync_loop.py::enable_session_keeper_defaults"
+    },
+    "pack_poly_embed": {
+      "ok": true,
+      "tool": "pack_poly_embed",
+      "engine": "poly_embed",
+      "elapsed_s": 0.145,
+      "n_pack": 1,
+      "seed": {
+        "file": "packages/pipeline/sync_loop.py",
+        "symbol": "enable_session_keeper_defaults",
+        "id": "packages/pipeline/sync_loop.py::enable_session_keeper_defaults"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/sync_loop.py",
+          "symbol": "enable_session_keeper_defaults",
+          "score": 1.0,
+          "loc": "packages/pipeline/sync_loop.py:42-48",
+          "id": "packages/pipeline/sync_loop.py::enable_session_keeper_defaults",
+          "chars": 410
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/sync_loop.py::enable_session_keeper_defaults",
+          "loc": "packages/pipeline/sync_loop.py:42-48",
+          "edge": "seed",
+          "score": 1.0
+        }
+      ],
+      "error": null,
+      "seed_chunks": [
+        {
+          "file": "packages/pipeline/sync_loop.py",
+          "symbol": "enable_session_keeper_defaults",
+          "loc": "packages/pipeline/sync_loop.py:42-48",
+          "score": 1.0,
+          "kind": "function"
+        }
+      ],
+      "pack_query": "freshness sync background CTX_BACKGROUND_SYNC stale index checksum merkle refresh | seeds: packages/pipeline/sync_loop.py::enable_session_keeper_defaults"
+    },
+    "pack_semantic": {
+      "ok": true,
+      "tool": "pack_semantic",
+      "engine": "semantic_tracer_fuse",
+      "elapsed_s": 0.238,
+      "n_pack": 1,
+      "seed": {
+        "file": "packages/pipeline/sync_loop.py",
+        "symbol": "enable_session_keeper_defaults",
+        "id": "packages/pipeline/sync_loop.py::enable_session_keeper_defaults"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/sync_loop.py",
+          "symbol": "enable_session_keeper_defaults",
+          "score": 1.0,
+          "loc": "packages/pipeline/sync_loop.py:42-48",
+          "id": "packages/pipeline/sync_loop.py::enable_session_keeper_defaults",
+          "chars": 410
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/sync_loop.py::enable_session_keeper_defaults",
+          "loc": "packages/pipeline/sync_loop.py:42-48",
+          "edge": "seed",
+          "score": 1.0
+        }
+      ],
+      "error": null,
+      "seed_chunks": [
+        {
+          "file": "packages/pipeline/sync_loop.py",
+          "symbol": "enable_session_keeper_defaults",
+          "loc": "packages/pipeline/sync_loop.py:42-48",
+          "score": 1.0,
+          "kind": "function"
+        }
+      ],
+      "pack_query": "freshness sync background CTX_BACKGROUND_SYNC stale index checksum merkle refresh | seeds: packages/pipeline/sync_loop.py::enable_session_keeper_defaults"
+    }
+  }
+}

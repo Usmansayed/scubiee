@@ -1,0 +1,160 @@
+{
+  "ok": false,
+  "scenario": "kiro_cold_attach_steady_leave",
+  "lane": "a",
+  "live": true,
+  "repo": "C:\\Users\\usman\\Downloads\\context-engine",
+  "project_id": "ce_50dc7657eb8a657426a6f6679092a54a",
+  "engine_url": "http://127.0.0.1:8765",
+  "phases": [
+    {
+      "name": "clean_slate",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 2824.6,
+      "budget_ms": null,
+      "evidence": {
+        "ok": true,
+        "tick": {
+          "engine": {
+            "running": false,
+            "pid": 22508,
+            "rss_mb": null,
+            "health_ok": false,
+            "warm_ready": false,
+            "embedder_loaded": false,
+            "soft_search_ready": false,
+            "at": 1789405107.698344
+          },
+          "clients": {
+            "active_clients": 0,
+            "client_ids": [],
+            "desired_mode": "run",
+            "last_client_left_at": null,
+            "last_activity": 1789405104.3089285,
+            "raw_clients": {}
+          },
+          "ctx_home": "C:\\Users\\usman\\.scubiee"
+        },
+        "engine_still_up": false
+      }
+    },
+    {
+      "name": "host_start",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 3546.0,
+      "budget_ms": null,
+      "evidence": {
+        "ok": true,
+        "pid": 17060,
+        "server": {
+          "name": "scubiee",
+          "version": "0.3.89"
+        }
+      }
+    },
+    {
+      "name": "auto_warm",
+      "ok": false,
+      "code": "WARM_TIMEOUT",
+      "elapsed_ms": 30871.4,
+      "budget_ms": 30000.0,
+      "evidence": {
+        "ok": false,
+        "code": "WARM_TIMEOUT",
+        "last": {
+          "tick": {
+            "engine": {
+              "running": true,
+              "pid": 23096,
+              "rss_mb": 5.5,
+              "health_ok": false,
+              "warm_ready": false,
+              "embedder_loaded": false,
+              "soft_search_ready": false,
+              "at": 1789405139.2673633
+            },
+            "clients": {
+              "active_clients": 2,
+              "client_ids": [
+                "mcp:kiro@bridge-6936",
+                "mcp:kiro@proc-8740"
+              ],
+              "desired_mode": "run",
+              "last_client_left_at": null,
+              "last_activity": 1789405138.3671138,
+              "raw_clients": {
+                "mcp:kiro@bridge-6936": {
+                  "client_id": "mcp:kiro@bridge-6936",
+                  "host": "kiro",
+                  "kind": "bridge",
+                  "last_seen_at": 1789405109.9654753,
+                  "pid": 6936,
+                  "registered_at": 1789405109.9654753
+                },
+                "mcp:kiro@proc-8740": {
+                  "client_id": "mcp:kiro@proc-8740",
+                  "host": "kiro",
+                  "kind": "mcp",
+                  "last_seen_at": 1789405130.823777,
+                  "pid": 8740,
+                  "registered_at": 1789405122.8883562
+                }
+              }
+            },
+            "ctx_home": "C:\\Users\\usman\\.scubiee"
+          }
+        },
+        "soft_first_from_host_s": null,
+        "log_tail": [
+          "    _json(self, 200, ce.health())",
+          "    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^",
+          "  File \"C:\\Users\\usman\\Downloads\\context-engine\\packages\\pipeline\\server.py\", line 61, in _json",
+          "    handler.wfile.write(body)",
+          "    ~~~~~~~~~~~~~~~~~~~^^^^^^",
+          "  File \"C:\\Users\\usman\\Miniconda3\\Lib\\socketserver.py\", line 845, in write",
+          "    self._sock.sendall(b)",
+          "    ~~~~~~~~~~~~~~~~~~^^^",
+          "ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine",
+          "----------------------------------------",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "----------------------------------------",
+          "Exception occurred during processing of request from ('127.0.0.1', 55643)",
+          "Traceback (most recent call last):",
+          "  File \"C:\\Users\\usman\\Miniconda3\\Lib\\socketserver.py\", line 697, in process_request_thread",
+          "    self.finish_request(request, client_address)",
+          "    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^",
+          "  File \"C:\\Users\\usman\\Miniconda3\\Lib\\socketserver.py\", line 362, in finish_request",
+          "    self.RequestHandlerClass(request, client_address, self)",
+          "    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+          "  File \"C:\\Users\\usman\\Miniconda3\\Lib\\socketserver.py\", line 766, in __init__",
+          "    self.handle()",
+          "    ~~~~~~~~~~~^^",
+          "  File \"C:\\Users\\usman\\Miniconda3\\Lib\\http\\server.py\", line 436, in handle",
+          "    self.handle_one_request()",
+          "    ~~~~~~~~~~~~~~~~~~~~~~~^^",
+          "  File \"C:\\Users\\usman\\Miniconda3\\Lib\\http\\server.py\", line 424, in handle_one_request",
+          "    method()",
+          "    ~~~~~~^^",
+          "  File \"C:\\Users\\usman\\Downloads\\context-engine\\packages\\pipeline\\server.py\", line 90, in do_GET",
+          "    _json(self, 200, ce.health())",
+          "    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^",
+          "  File \"C:\\Users\\usman\\Downloads\\context-engine\\packages\\pipeline\\server.py\", line 61, in _json",
+          "    handler.wfile.write(body)",
+          "    ~~~~~~~~~~~~~~~~~~~^^^^^^",
+          "  File \"C:\\Users\\usman\\Miniconda3\\Lib\\socketserver.py\", line 845, in write",
+          "    self._sock.sendall(b)",
+          "    ~~~~~~~~~~~~~~~~~~^^^",
+          "ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine",
+          "----------------------------------------"
+        ]
+      }
+    }
+  ],
+  "errors": [
+    "auto_warm: WARM_TIMEOUT \u2014 {'ok': False, 'code': 'WARM_TIMEOUT', 'last': {'tick': {'engine': {'running': True, 'pid': 23096, 'rss_mb': 5.5, 'health_ok': False, 'warm_ready': False, 'embedder_loaded': False, 'soft_search_ready': False, 'at': 1789405139.2673633}, 'clients': {'active_clients': 2, 'client_ids': ['mcp:kiro@bridge-6936', 'mcp:kiro@proc-8740'], 'desired_mode': 'run', 'last_client_left_at': None, 'last_activity': 1789405138.3671138, 'raw_clients': {'mcp:kiro@bridge-6936': {'client_id': 'mcp:kiro@bridge-6936', 'host': 'kiro', 'kind': 'bridge', 'last_seen_at': 1789405109.9654753, 'pid': 6936, 'registered_at': 1789405109.9654753}, 'mcp:kiro@proc-8740': {'client_id': 'mcp:kiro@proc-8740', 'host': 'kiro', 'kind': 'mcp', 'last_seen_at': 1789405130.823777, 'pid': 8740, 'registered_at': 1789405122.8883562}}}, 'ctx_home': 'C:\\\\Users\\\\usman\\\\.scubiee'}}, 'soft_first_from_host_s': None, 'log_tail': ['    _json(self, 200, ce.health())', '    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^', '  File \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\\\\packages\\\\pipeline\\\\server.py\", line 61, in _json', '    handler.wfile.write(body)', '    ~~~~~~~~~~~~~~~~~~~^^^^^^', '  File \"C:\\\\Users\\\\usman\\\\Miniconda3\\\\Lib\\\\socketserver.py\", line 845, in write', '    self._sock.sendall(b)', '    ~~~~~~~~~~~~~~~~~~^^^', 'ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine', '----------------------------------------', '127.0.0.1 - \"GET /health HTTP/1.1\" 200 -', '----------------------------------------', \"Exception occurred during processing of request from ('127.0.0.1', 55643)\", 'Traceback (most recent call last):', '  File \"C:\\\\Users\\\\usman\\\\Miniconda3\\\\Lib\\\\socketserver.py\", line 697, in process_request_thread', '    self.finish_request(request, client_address)', '    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^', '  File \"C:\\\\Users\\\\usman\\\\Miniconda3\\\\Lib\\\\socketserver.py\", line 362, in finish_request', '    self.RequestHandlerClass(request, client_address, self)', '    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^', '  File \"C:\\\\Users\\\\usman\\\\Miniconda3\\\\Lib\\\\socketserver.py\", line 766, in __init__', '    self.handle()', '    ~~~~~~~~~~~^^', '  File \"C:\\\\Users\\\\usman\\\\Miniconda3\\\\Lib\\\\http\\\\server.py\", line 436, in handle', '    self.handle_one_request()', '    ~~~~~~~~~~~~~~~~~~~~~~~^^', '  File \"C:\\\\Users\\\\usman\\\\Miniconda3\\\\Lib\\\\http\\\\server.py\", line 424, in handle_one_request', '    method()', '    ~~~~~~^^', '  File \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\\\\packages\\\\pipeline\\\\server.py\", line 90, in do_GET', '    _json(self, 200, ce.health())', '    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^', '  File \"C:\\\\Users\\\\usman\\\\Downloads\\\\context-engine\\\\packages\\\\pipeline\\\\server.py\", line 61, in _json', '    handler.wfile.write(body)', '    ~~~~~~~~~~~~~~~~~~~^^^^^^', '  File \"C:\\\\Users\\\\usman\\\\Miniconda3\\\\Lib\\\\socketserver.py\", line 845, in write', '    self._sock.sendall(b)', '    ~~~~~~~~~~~~~~~~~~^^^', 'ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine', '----------------------------------------']}"
+  ],
+  "idle_s": 0,
+  "elapsed_ms": 37244.4
+}

@@ -1,0 +1,64 @@
+{
+  "id": "u19",
+  "family": "dfg-edges",
+  "task": "Where are DFG PASSES_DATA_TO edges built and consumed in ranking?",
+  "enrich_map_query": "build_dfg_edges PASSES_DATA_TO dfg_pairs apply_rank_composite dataflow",
+  "map_ok": true,
+  "map_elapsed_s": 9.097,
+  "suggested_seed": {
+    "file": "packages/trace_lab/facts/dfg.py",
+    "symbol": "",
+    "source": "suggested_seed"
+  },
+  "map_top_cards": [
+    {
+      "file": "packages/trace_lab/facts/dfg.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/facts/dfg.py:1-1",
+      "score": 23.801738620007093
+    },
+    {
+      "file": "packages/trace_lab/composite_v1.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/composite_v1.py:1-1",
+      "score": 22.009712153386783
+    },
+    {
+      "file": "packages/trace_lab/engine/best_first.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/engine/best_first.py:1-1",
+      "score": 10.444648883384321
+    },
+    {
+      "file": "packages/trace_lab/semantic_tracer_v1.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/semantic_tracer_v1.py:1-1",
+      "score": 10.253072618661793
+    },
+    {
+      "file": "packages/trace_lab/semantic_novel.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/semantic_novel.py:1-1",
+      "score": 2.8998870849609375
+    },
+    {
+      "file": "docs/conductor-final-architecture.md",
+      "symbol": "",
+      "loc": "docs/conductor-final-architecture.md:1-1",
+      "score": 2.7468531131744385
+    },
+    {
+      "file": "packages/trace_lab/policy/slice_mask.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/policy/slice_mask.py:1-1",
+      "score": 2.282332148110809
+    },
+    {
+      "file": "packages/trace_lab/corpus.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/corpus.py:1-1",
+      "score": 1.8947576542257687
+    }
+  ],
+  "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+}

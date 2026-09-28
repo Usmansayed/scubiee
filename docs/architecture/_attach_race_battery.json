@@ -1,0 +1,131 @@
+{
+  "ok": true,
+  "sessions": [
+    {
+      "label": "A",
+      "init_ms": 6049.8,
+      "first_pack_ok": true,
+      "results": [
+        {
+          "tool": "gate",
+          "ms": 9579.7,
+          "index_skip": "index_skip: builtins+scubieeignore(n=7)",
+          "index_write_hint": true
+        },
+        {
+          "tool": "map",
+          "ms": 20134.3,
+          "ok": false,
+          "n": 0,
+          "dense": null,
+          "seed": "None::None"
+        },
+        {
+          "tool": "pack_0",
+          "ms": 8571.4,
+          "ok": true,
+          "n_heat": 16,
+          "thin": false,
+          "err": null,
+          "should_retry": null,
+          "retry_after_s": null,
+          "ast_wait_ms": null
+        },
+        {
+          "tool": "pack_1",
+          "ms": 6251.2,
+          "ok": true,
+          "n_heat": 16,
+          "thin": false,
+          "err": null,
+          "should_retry": null,
+          "retry_after_s": null,
+          "ast_wait_ms": null
+        },
+        {
+          "tool": "status",
+          "ms": 12926.8,
+          "agent_ready": "warming",
+          "pack_ready": false,
+          "ast_hydrated": true,
+          "embedder_loaded": false,
+          "warm_elapsed_ms": 59511.6,
+          "warm_wait": {
+            "done": false,
+            "stage": "engine_down",
+            "wait_for": "agent_ready=yes AND embedder_loaded=true AND pack_ready=true",
+            "soft_ready": false,
+            "dense_ready": false,
+            "pack_ready": false,
+            "elapsed_s": 59.5,
+            "retry_after_s": 5,
+            "note": "Soft != dense. Re-check status after retry_after_s until warm_wait.done=true (cold dense load is often 60-110s on Windows DirectML; a fixed 30s wait is not enough)."
+          }
+        }
+      ]
+    },
+    {
+      "label": "B",
+      "init_ms": 4345.8,
+      "first_pack_ok": true,
+      "results": [
+        {
+          "tool": "gate",
+          "ms": 9309.2,
+          "index_skip": "index_skip: builtins+scubieeignore(n=7)",
+          "index_write_hint": true
+        },
+        {
+          "tool": "map",
+          "ms": 6531.6,
+          "ok": false,
+          "n": 0,
+          "dense": null,
+          "seed": "None::None"
+        },
+        {
+          "tool": "pack_0",
+          "ms": 4449.7,
+          "ok": true,
+          "n_heat": 16,
+          "thin": false,
+          "err": null,
+          "should_retry": null,
+          "retry_after_s": null,
+          "ast_wait_ms": null
+        },
+        {
+          "tool": "pack_1",
+          "ms": 6650.9,
+          "ok": true,
+          "n_heat": 16,
+          "thin": false,
+          "err": null,
+          "should_retry": null,
+          "retry_after_s": null,
+          "ast_wait_ms": null
+        },
+        {
+          "tool": "status",
+          "ms": 14598.0,
+          "agent_ready": "warming",
+          "pack_ready": false,
+          "ast_hydrated": true,
+          "embedder_loaded": false,
+          "warm_elapsed_ms": 41969.7,
+          "warm_wait": {
+            "done": false,
+            "stage": "engine_down",
+            "wait_for": "agent_ready=yes AND embedder_loaded=true AND pack_ready=true",
+            "soft_ready": false,
+            "dense_ready": false,
+            "pack_ready": false,
+            "elapsed_s": 42.0,
+            "retry_after_s": 5,
+            "note": "Soft != dense. Re-check status after retry_after_s until warm_wait.done=true (cold dense load is often 60-110s on Windows DirectML; a fixed 30s wait is not enough)."
+          }
+        }
+      ]
+    }
+  ]
+}

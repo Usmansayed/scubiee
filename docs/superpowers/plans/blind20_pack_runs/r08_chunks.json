@@ -1,0 +1,92 @@
+{
+  "id": "r08",
+  "enrich_prompt": "cmd_upgrade upgrade supervisor uv tool unlock-tool Access denied logon scubiee install",
+  "suggested_seed": {
+    "file": "packages/pipeline/__main__.py",
+    "symbol": "",
+    "loc": "packages/pipeline/__main__.py:1-1",
+    "score": 13.300815487499865
+  },
+  "chunks": [
+    {
+      "file": "scripts/smoke_hot_reload.py",
+      "symbol": "",
+      "loc": "scripts/smoke_hot_reload.py:1-1",
+      "score": 25.879141195510105,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "tests/mac_production_test.py",
+      "symbol": "",
+      "loc": "tests/mac_production_test.py:1-1",
+      "score": 20.403852801196205,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "score": 13.300815487499865,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "docs/windows-uv-tool-access-denied-deferred.md",
+      "symbol": "",
+      "loc": "docs/windows-uv-tool-access-denied-deferred.md:1-1",
+      "score": 6.967082467619218,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/pipeline/upgrade.py",
+      "symbol": "",
+      "loc": "packages/pipeline/upgrade.py:1-1",
+      "score": 6.463598513635532,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "docs/web-info/windows.md",
+      "symbol": "",
+      "loc": "docs/web-info/windows.md:1-1",
+      "score": 6.1181075313513915,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/pipeline/upgrade_supervisor.py",
+      "symbol": "",
+      "loc": "packages/pipeline/upgrade_supervisor.py:1-1",
+      "score": 5.245504551149946,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/pipeline/process_control.py",
+      "symbol": "",
+      "loc": "packages/pipeline/process_control.py:1-1",
+      "score": 5.184345408157945,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "docs/web-info/uninstall-windows.md",
+      "symbol": "",
+      "loc": "docs/web-info/uninstall-windows.md:1-1",
+      "score": 4.738494257358563,
+      "start_line": null,
+      "end_line": null
+    },
+    {
+      "file": "packages/pipeline/env_guard.py",
+      "symbol": "",
+      "loc": "packages/pipeline/env_guard.py:1-1",
+      "score": 4.593511168328958,
+      "start_line": null,
+      "end_line": null
+    }
+  ]
+}

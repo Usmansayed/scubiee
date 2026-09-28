@@ -1,0 +1,87 @@
+{
+  "ok": true,
+  "query": "cmd_wipe wipe uninstall remove MCP rules store halt confirm scubiee state cleanup",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/pipeline/wipe.py",
+      "symbol": "",
+      "score": 37.5147,
+      "loc": "packages/pipeline/wipe.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "tests/test_stop_all_tools.py",
+      "symbol": "",
+      "score": 22.979,
+      "loc": "tests/test_stop_all_tools.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "score": 15.6635,
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "docs/web-info/uninstall-mac-linux.md",
+      "symbol": "",
+      "score": 5.4735,
+      "loc": "docs/web-info/uninstall-mac-linux.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "tests/test_wipe.py",
+      "symbol": "",
+      "score": 5.4298,
+      "loc": "tests/test_wipe.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "tests/test_mcp_no_repo_scubiee_after_wipe.py",
+      "symbol": "",
+      "score": 5.2094,
+      "loc": "tests/test_mcp_no_repo_scubiee_after_wipe.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "docs/web-info/uninstall-windows.md",
+      "symbol": "",
+      "score": 4.4711,
+      "loc": "docs/web-info/uninstall-windows.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "docs/web-info/faq.md",
+      "symbol": "",
+      "score": 4.4476,
+      "loc": "docs/web-info/faq.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "packages/pipeline/lifecycle_guard.py",
+      "symbol": "",
+      "score": 4.3488,
+      "loc": "packages/pipeline/lifecycle_guard.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": "",
+      "score": 4.312,
+      "loc": "packages/pipeline/rules_installer.py:1-1",
+      "why": ""
+    }
+  ],
+  "elapsed_s": 0.553
+}

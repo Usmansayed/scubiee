@@ -1,0 +1,55 @@
+{
+  "results": [
+    {
+      "trial": 0,
+      "ok": true,
+      "seconds": 2.448,
+      "within_5s": true,
+      "search_ms": 418.6,
+      "dirty_ok": true,
+      "dropped": [],
+      "pid_flap": false
+    },
+    {
+      "trial": 1,
+      "ok": true,
+      "seconds": 1.408,
+      "within_5s": true,
+      "search_ms": 698.6,
+      "dirty_ok": true,
+      "dropped": [],
+      "pid_flap": false
+    },
+    {
+      "trial": 2,
+      "ok": true,
+      "seconds": 0.806,
+      "within_5s": true,
+      "search_ms": 282.9,
+      "dirty_ok": true,
+      "dropped": [],
+      "pid_flap": false
+    },
+    {
+      "trial": 3,
+      "ok": true,
+      "seconds": 0.819,
+      "within_5s": true,
+      "search_ms": 312.2,
+      "dirty_ok": true,
+      "dropped": [],
+      "pid_flap": false
+    },
+    {
+      "trial": 4,
+      "ok": true,
+      "seconds": 3.131,
+      "within_5s": true,
+      "search_ms": 2621.5,
+      "dirty_ok": true,
+      "dropped": [],
+      "pid_flap": false
+    }
+  ],
+  "within_5s": 5
+}

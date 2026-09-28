@@ -1,0 +1,528 @@
+{
+  "id": "u04",
+  "family": "fair-schedule",
+  "task": "Debug fair scheduling / fairness when multiple locate jobs compete.",
+  "enrich_map_query": "fair_schedule FairSchedule queue fairness locate jobs throttle resources",
+  "map_ok": true,
+  "suggested_seed": {
+    "file": "packages/pipeline/resources.py",
+    "symbol": "",
+    "source": "suggested_seed"
+  },
+  "resolved_seed": {
+    "file": "packages/pipeline/resources.py",
+    "symbol": "ResourceManager.throttle",
+    "how": "best_in_file"
+  },
+  "map_top_cards": [
+    {
+      "file": "tests/test_multi_repo_runtime.py",
+      "symbol": "",
+      "loc": "tests/test_multi_repo_runtime.py:1-1",
+      "score": 11.843640834476126
+    },
+    {
+      "file": "fixtures/trace-lab/app/jobs/queue.py",
+      "symbol": "",
+      "loc": "fixtures/trace-lab/app/jobs/queue.py:1-1",
+      "score": 9.21647918841773
+    },
+    {
+      "file": "packages/pipeline/resources.py",
+      "symbol": "",
+      "loc": "packages/pipeline/resources.py:1-1",
+      "score": 8.119316717559798
+    },
+    {
+      "file": "packages/pipeline/fair_schedule.py",
+      "symbol": "",
+      "loc": "packages/pipeline/fair_schedule.py:1-1",
+      "score": 7.8193582415983975
+    },
+    {
+      "file": "packages/pipeline/locate.py",
+      "symbol": "",
+      "loc": "packages/pipeline/locate.py:1-1",
+      "score": 7.056316339324002
+    },
+    {
+      "file": "fixtures/trace-lab/app/jobs/worker.py",
+      "symbol": "",
+      "loc": "fixtures/trace-lab/app/jobs/worker.py:1-1",
+      "score": 6.025797124911788
+    },
+    {
+      "file": "tests/test_resources.py",
+      "symbol": "",
+      "loc": "tests/test_resources.py:1-1",
+      "score": 5.301456550820052
+    },
+    {
+      "file": "docs/superpowers/plans/2026-09-05-kiro-cli-ab-dev3-session.md",
+      "symbol": "",
+      "loc": "docs/superpowers/plans/2026-09-05-kiro-cli-ab-dev3-session.md:1-1",
+      "score": 3.7871993166565296
+    },
+    {
+      "file": "docs/superpowers/plans/2026-09-05-kiro-mcp-ab-complex.md",
+      "symbol": "",
+      "loc": "docs/superpowers/plans/2026-09-05-kiro-mcp-ab-complex.md:1-1",
+      "score": 2.775534549720384
+    },
+    {
+      "file": "docs/superpowers/plans/2026-09-05-kiro-mcp-ab.md",
+      "symbol": "",
+      "loc": "docs/superpowers/plans/2026-09-05-kiro-mcp-ab.md:1-1",
+      "score": 2.5410369592879074
+    }
+  ],
+  "arms": {
+    "composite_v1": {
+      "ok": true,
+      "elapsed_s": 0.039,
+      "n_hot": 13,
+      "n_ranked": 13,
+      "hot_ids": [
+        "packages/pipeline/memory_budget.py::process_rss_mb",
+        "packages/pipeline/memory_budget.py::rss_cap_mb",
+        "packages/pipeline/resources.py::AdaptiveBudget.to_dict",
+        "packages/pipeline/resources.py::ResourceManager._update_envelope",
+        "packages/pipeline/resources.py::ResourceManager.apply_pause",
+        "packages/pipeline/resources.py::ResourceManager.budget",
+        "packages/pipeline/resources.py::ResourceManager.classify",
+        "packages/pipeline/resources.py::ResourceManager.is_disabled",
+        "packages/pipeline/resources.py::ResourceManager.sample",
+        "packages/pipeline/resources.py::ResourceManager.throttle",
+        "packages/pipeline/resources.py::ResourceManager.wait_for_capacity",
+        "packages/pipeline/resources.py::_env_int",
+        "packages/pipeline/resources.py::resources_disabled"
+      ],
+      "top15_ids": [
+        "packages/pipeline/resources.py::ResourceManager.throttle",
+        "packages/pipeline/resources.py::ResourceManager.sample",
+        "packages/pipeline/resources.py::ResourceManager.budget",
+        "packages/pipeline/resources.py::ResourceManager.wait_for_capacity",
+        "packages/pipeline/resources.py::ResourceManager.apply_pause",
+        "packages/pipeline/resources.py::ResourceManager.is_disabled",
+        "packages/pipeline/resources.py::_env_int",
+        "packages/pipeline/resources.py::ResourceManager.classify",
+        "packages/pipeline/resources.py::ResourceManager._update_envelope",
+        "packages/pipeline/resources.py::AdaptiveBudget.to_dict",
+        "packages/pipeline/memory_budget.py::rss_cap_mb",
+        "packages/pipeline/memory_budget.py::process_rss_mb",
+        "packages/pipeline/resources.py::resources_disabled"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/resources.py::ResourceManager.throttle",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "ResourceManager.throttle",
+          "kind": "method",
+          "score": 1.0,
+          "body_chars": 286
+        },
+        {
+          "id": "packages/pipeline/resources.py::ResourceManager.sample",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "ResourceManager.sample",
+          "kind": "method",
+          "score": 0.9575,
+          "body_chars": 1814
+        },
+        {
+          "id": "packages/pipeline/resources.py::ResourceManager.budget",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "ResourceManager.budget",
+          "kind": "method",
+          "score": 0.8268,
+          "body_chars": 2316
+        },
+        {
+          "id": "packages/pipeline/resources.py::ResourceManager.wait_for_capacity",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "ResourceManager.wait_for_capacity",
+          "kind": "method",
+          "score": 0.7994,
+          "body_chars": 1369
+        },
+        {
+          "id": "packages/pipeline/resources.py::ResourceManager.apply_pause",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "ResourceManager.apply_pause",
+          "kind": "method",
+          "score": 0.7994,
+          "body_chars": 155
+        },
+        {
+          "id": "packages/pipeline/resources.py::ResourceManager.is_disabled",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "ResourceManager.is_disabled",
+          "kind": "method",
+          "score": 0.7064,
+          "body_chars": 97
+        },
+        {
+          "id": "packages/pipeline/resources.py::_env_int",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "_env_int",
+          "kind": "function",
+          "score": 0.6171,
+          "body_chars": 155
+        },
+        {
+          "id": "packages/pipeline/resources.py::ResourceManager.classify",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "ResourceManager.classify",
+          "kind": "method",
+          "score": 0.5862,
+          "body_chars": 614
+        },
+        {
+          "id": "packages/pipeline/resources.py::ResourceManager._update_envelope",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "ResourceManager._update_envelope",
+          "kind": "method",
+          "score": 0.5862,
+          "body_chars": 1233
+        },
+        {
+          "id": "packages/pipeline/resources.py::AdaptiveBudget.to_dict",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "AdaptiveBudget.to_dict",
+          "kind": "method",
+          "score": 0.5862,
+          "body_chars": 68
+        },
+        {
+          "id": "packages/pipeline/memory_budget.py::rss_cap_mb",
+          "file": "packages/pipeline/memory_budget.py",
+          "symbol": "rss_cap_mb",
+          "kind": "function",
+          "score": 0.5862,
+          "body_chars": 209
+        },
+        {
+          "id": "packages/pipeline/memory_budget.py::process_rss_mb",
+          "file": "packages/pipeline/memory_budget.py",
+          "symbol": "process_rss_mb",
+          "kind": "function",
+          "score": 0.5862,
+          "body_chars": 237
+        },
+        {
+          "id": "packages/pipeline/resources.py::resources_disabled",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "resources_disabled",
+          "kind": "function",
+          "score": 0.4793,
+          "body_chars": 166
+        }
+      ]
+    },
+    "semantic_tracer_fuse": {
+      "ok": true,
+      "elapsed_s": 0.236,
+      "n_hot": 12,
+      "n_ranked": 13,
+      "hot_ids": [
+        "packages/pipeline/memory_budget.py::process_rss_mb",
+        "packages/pipeline/memory_budget.py::rss_cap_mb",
+        "packages/pipeline/resources.py::AdaptiveBudget.to_dict",
+        "packages/pipeline/resources.py::ResourceManager._update_envelope",
+        "packages/pipeline/resources.py::ResourceManager.apply_pause",
+        "packages/pipeline/resources.py::ResourceManager.budget",
+        "packages/pipeline/resources.py::ResourceManager.classify",
+        "packages/pipeline/resources.py::ResourceManager.is_disabled",
+        "packages/pipeline/resources.py::ResourceManager.sample",
+        "packages/pipeline/resources.py::ResourceManager.throttle",
+        "packages/pipeline/resources.py::ResourceManager.wait_for_capacity",
+        "packages/pipeline/resources.py::_env_int"
+      ],
+      "top15_ids": [
+        "packages/pipeline/resources.py::ResourceManager.throttle",
+        "packages/pipeline/resources.py::ResourceManager.wait_for_capacity",
+        "packages/pipeline/resources.py::ResourceManager.apply_pause",
+        "packages/pipeline/resources.py::ResourceManager.sample",
+        "packages/pipeline/resources.py::ResourceManager.budget",
+        "packages/pipeline/resources.py::ResourceManager.is_disabled",
+        "packages/pipeline/resources.py::_env_int",
+        "packages/pipeline/resources.py::ResourceManager.classify",
+        "packages/pipeline/resources.py::ResourceManager._update_envelope",
+        "packages/pipeline/resources.py::AdaptiveBudget.to_dict",
+        "packages/pipeline/memory_budget.py::rss_cap_mb",
+        "packages/pipeline/memory_budget.py::process_rss_mb",
+        "packages/pipeline/resources.py::resources_disabled"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/resources.py::ResourceManager.throttle",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "ResourceManager.throttle",
+          "kind": "method",
+          "score": 1.0,
+          "body_chars": 286
+        },
+        {
+          "id": "packages/pipeline/resources.py::ResourceManager.wait_for_capacity",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "ResourceManager.wait_for_capacity",
+          "kind": "method",
+          "score": 0.7661,
+          "body_chars": 1369
+        },
+        {
+          "id": "packages/pipeline/resources.py::ResourceManager.apply_pause",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "ResourceManager.apply_pause",
+          "kind": "method",
+          "score": 0.7596,
+          "body_chars": 155
+        },
+        {
+          "id": "packages/pipeline/resources.py::ResourceManager.sample",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "ResourceManager.sample",
+          "kind": "method",
+          "score": 0.7391,
+          "body_chars": 1814
+        },
+        {
+          "id": "packages/pipeline/resources.py::ResourceManager.budget",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "ResourceManager.budget",
+          "kind": "method",
+          "score": 0.634,
+          "body_chars": 2316
+        },
+        {
+          "id": "packages/pipeline/resources.py::ResourceManager.is_disabled",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "ResourceManager.is_disabled",
+          "kind": "method",
+          "score": 0.5082,
+          "body_chars": 97
+        },
+        {
+          "id": "packages/pipeline/resources.py::_env_int",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "_env_int",
+          "kind": "function",
+          "score": 0.4715,
+          "body_chars": 155
+        },
+        {
+          "id": "packages/pipeline/resources.py::ResourceManager.classify",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "ResourceManager.classify",
+          "kind": "method",
+          "score": 0.46,
+          "body_chars": 614
+        },
+        {
+          "id": "packages/pipeline/resources.py::ResourceManager._update_envelope",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "ResourceManager._update_envelope",
+          "kind": "method",
+          "score": 0.46,
+          "body_chars": 1233
+        },
+        {
+          "id": "packages/pipeline/resources.py::AdaptiveBudget.to_dict",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "AdaptiveBudget.to_dict",
+          "kind": "method",
+          "score": 0.46,
+          "body_chars": 68
+        },
+        {
+          "id": "packages/pipeline/memory_budget.py::rss_cap_mb",
+          "file": "packages/pipeline/memory_budget.py",
+          "symbol": "rss_cap_mb",
+          "kind": "function",
+          "score": 0.46,
+          "body_chars": 209
+        },
+        {
+          "id": "packages/pipeline/memory_budget.py::process_rss_mb",
+          "file": "packages/pipeline/memory_budget.py",
+          "symbol": "process_rss_mb",
+          "kind": "function",
+          "score": 0.46,
+          "body_chars": 237
+        },
+        {
+          "id": "packages/pipeline/resources.py::resources_disabled",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "resources_disabled",
+          "kind": "function",
+          "score": 0.3455,
+          "body_chars": 166
+        }
+      ]
+    },
+    "hyb_fuse_demote_noise_plus": {
+      "ok": true,
+      "elapsed_s": 0.064,
+      "n_hot": 13,
+      "n_ranked": 13,
+      "hot_ids": [
+        "packages/pipeline/memory_budget.py::process_rss_mb",
+        "packages/pipeline/memory_budget.py::rss_cap_mb",
+        "packages/pipeline/resources.py::AdaptiveBudget.to_dict",
+        "packages/pipeline/resources.py::ResourceManager._update_envelope",
+        "packages/pipeline/resources.py::ResourceManager.apply_pause",
+        "packages/pipeline/resources.py::ResourceManager.budget",
+        "packages/pipeline/resources.py::ResourceManager.classify",
+        "packages/pipeline/resources.py::ResourceManager.is_disabled",
+        "packages/pipeline/resources.py::ResourceManager.sample",
+        "packages/pipeline/resources.py::ResourceManager.throttle",
+        "packages/pipeline/resources.py::ResourceManager.wait_for_capacity",
+        "packages/pipeline/resources.py::_env_int",
+        "packages/pipeline/resources.py::resources_disabled"
+      ],
+      "top15_ids": [
+        "packages/pipeline/resources.py::ResourceManager.throttle",
+        "packages/pipeline/resources.py::ResourceManager.wait_for_capacity",
+        "packages/pipeline/resources.py::ResourceManager.apply_pause",
+        "packages/pipeline/resources.py::ResourceManager.budget",
+        "packages/pipeline/resources.py::ResourceManager.sample",
+        "packages/pipeline/memory_budget.py::rss_cap_mb",
+        "packages/pipeline/resources.py::resources_disabled",
+        "packages/pipeline/resources.py::AdaptiveBudget.to_dict",
+        "packages/pipeline/resources.py::_env_int",
+        "packages/pipeline/resources.py::ResourceManager.is_disabled",
+        "packages/pipeline/resources.py::ResourceManager._update_envelope",
+        "packages/pipeline/resources.py::ResourceManager.classify",
+        "packages/pipeline/memory_budget.py::process_rss_mb"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/resources.py::ResourceManager.throttle",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "ResourceManager.throttle",
+          "kind": "method",
+          "score": 1.0,
+          "body_chars": 286
+        },
+        {
+          "id": "packages/pipeline/resources.py::ResourceManager.wait_for_capacity",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "ResourceManager.wait_for_capacity",
+          "kind": "method",
+          "score": 0.7232,
+          "body_chars": 1369
+        },
+        {
+          "id": "packages/pipeline/resources.py::ResourceManager.apply_pause",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "ResourceManager.apply_pause",
+          "kind": "method",
+          "score": 0.6882,
+          "body_chars": 155
+        },
+        {
+          "id": "packages/pipeline/resources.py::ResourceManager.budget",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "ResourceManager.budget",
+          "kind": "method",
+          "score": 0.5995,
+          "body_chars": 2316
+        },
+        {
+          "id": "packages/pipeline/resources.py::ResourceManager.sample",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "ResourceManager.sample",
+          "kind": "method",
+          "score": 0.5415,
+          "body_chars": 1814
+        },
+        {
+          "id": "packages/pipeline/memory_budget.py::rss_cap_mb",
+          "file": "packages/pipeline/memory_budget.py",
+          "symbol": "rss_cap_mb",
+          "kind": "function",
+          "score": 0.48,
+          "body_chars": 209
+        },
+        {
+          "id": "packages/pipeline/resources.py::resources_disabled",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "resources_disabled",
+          "kind": "function",
+          "score": 0.48,
+          "body_chars": 166
+        },
+        {
+          "id": "packages/pipeline/resources.py::AdaptiveBudget.to_dict",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "AdaptiveBudget.to_dict",
+          "kind": "method",
+          "score": 0.48,
+          "body_chars": 68
+        },
+        {
+          "id": "packages/pipeline/resources.py::_env_int",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "_env_int",
+          "kind": "function",
+          "score": 0.48,
+          "body_chars": 155
+        },
+        {
+          "id": "packages/pipeline/resources.py::ResourceManager.is_disabled",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "ResourceManager.is_disabled",
+          "kind": "method",
+          "score": 0.48,
+          "body_chars": 97
+        },
+        {
+          "id": "packages/pipeline/resources.py::ResourceManager._update_envelope",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "ResourceManager._update_envelope",
+          "kind": "method",
+          "score": 0.48,
+          "body_chars": 1233
+        },
+        {
+          "id": "packages/pipeline/resources.py::ResourceManager.classify",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "ResourceManager.classify",
+          "kind": "method",
+          "score": 0.48,
+          "body_chars": 614
+        },
+        {
+          "id": "packages/pipeline/memory_budget.py::process_rss_mb",
+          "file": "packages/pipeline/memory_budget.py",
+          "symbol": "process_rss_mb",
+          "kind": "function",
+          "score": 0.48,
+          "body_chars": 237
+        }
+      ]
+    },
+    "poly_embed": {
+      "ok": true,
+      "elapsed_s": 0.068,
+      "n_hot": 1,
+      "n_ranked": 1,
+      "hot_ids": [
+        "packages/pipeline/resources.py::ResourceManager.throttle"
+      ],
+      "top15_ids": [
+        "packages/pipeline/resources.py::ResourceManager.throttle"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/resources.py::ResourceManager.throttle",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "ResourceManager.throttle",
+          "kind": "method",
+          "score": 1.0,
+          "body_chars": 286
+        }
+      ]
+    }
+  }
+}

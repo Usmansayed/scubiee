@@ -104,6 +104,40 @@ def read_phase(*, max_age_s: float | None = None) -> dict[str, Any]:
     return chosen
 
 
+def _write_phase_file(path: Path, body: str) -> bool:
+    """Atomic replace, retried; plain overwrite as the last resort.
+
+    The watchdog and MCP bridges read this file from other processes. On
+    Windows ``os.replace`` onto a file another process has open fails with
+    WinError 5/32; that error used to be swallowed, so disk kept saying
+    "prewarm" after the embedder loaded and the watchdog restarted a healthy
+    engine as hung (issue 2). Readers open with share-write, so an in-place
+    overwrite still lands when the rename cannot.
+    """
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(f".{os.getpid()}.tmp")
+        tmp.write_text(body, encoding="utf-8")
+    except OSError:
+        return False
+    for attempt in range(5):
+        try:
+            tmp.replace(path)
+            return True
+        except OSError:
+            time.sleep(0.02 * (attempt + 1))
+    try:
+        path.write_text(body, encoding="utf-8")
+        return True
+    except OSError:
+        return False
+    finally:
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
 def set_phase(phase: str, *, error: str | None = None) -> dict[str, Any]:
     """Publish phase to memory + disk (best-effort)."""
     global _PHASE, _UPDATED_AT, _ERROR
@@ -119,14 +153,7 @@ def set_phase(phase: str, *, error: str | None = None) -> dict[str, Any]:
             "error": _ERROR,
             "pid": os.getpid(),
         }
-    path = phase_path()
-    try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(snap) + "\n", encoding="utf-8")
-        tmp.replace(path)
-    except OSError:
-        pass
+    _write_phase_file(phase_path(), json.dumps(snap) + "\n")
     # Keep legacy busy stamp in sync for older watchdog paths.
     try:
         from pipeline.engine import _mark_prewarm_busy
@@ -213,7 +240,9 @@ def hung_prewarm_should_abort(*, max_age_s: float = DEFAULT_PREWARM_MAX_AGE_S) -
             if len(parts) > 1:
                 from pipeline.daemon import _pid_alive
 
-                if not _pid_alive(int(parts[1])):
+                writer = int(float(parts[1] or 0))
+                # pid 0 = stamp neutralised by _mark_prewarm_busy(False).
+                if writer <= 0 or not _pid_alive(writer):
                     return False
             elif age > float(max_age_s):
                 # Old stamp with no pid. It outlived the process that wrote it.
@@ -257,7 +286,13 @@ def mcp_frontend_present() -> bool:
             enumerate_scubiee_processes,
         )
 
-        for proc in enumerate_scubiee_processes(exclude_self=True):
+        # exclude_self=False: the per-candidate process-tree walk is the slow
+        # part (~1s/tick on Windows), and a bridge that is our own ancestor
+        # (engine spawned under a bridge) is still real demand.
+        me = os.getpid()
+        for proc in enumerate_scubiee_processes(exclude_self=False):
+            if int(proc.get("pid") or 0) == me:
+                continue
             if _is_mcp_bridge_process(proc):
                 return True
     except Exception:  # noqa: BLE001

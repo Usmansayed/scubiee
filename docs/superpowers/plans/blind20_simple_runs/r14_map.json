@@ -1,0 +1,90 @@
+{
+  "ok": true,
+  "tool": "map",
+  "query": "expand_context direction callees callers effects broad with_bodies heatmap delta pack expand",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/pipeline/locate_cli.py",
+      "symbol": "",
+      "score": 14.773202699010602,
+      "loc": "packages/pipeline/locate_cli.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "packages/pipeline/context_trace.py",
+      "symbol": "",
+      "score": 14.484667766728162,
+      "loc": "packages/pipeline/context_trace.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "tests/test_locate_cli.py",
+      "symbol": "",
+      "score": 12.938696483234342,
+      "loc": "tests/test_locate_cli.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "docs/superpowers/plans/2026-09-05-ladder-followup-real-eval.md",
+      "symbol": "",
+      "score": 12.867525652786213,
+      "loc": "docs/superpowers/plans/2026-09-05-ladder-followup-real-eval.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "score": 6.2938136098228945,
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "docs/superpowers/specs/2026-09-04-pack-context-few-calls-design.md",
+      "symbol": "",
+      "score": 4.826300473408189,
+      "loc": "docs/superpowers/specs/2026-09-04-pack-context-few-calls-design.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "docs/superpowers/plans/2026-09-04-post-heatmap-next-tool.md",
+      "symbol": "",
+      "score": 4.0866787087345315,
+      "loc": "docs/superpowers/plans/2026-09-04-post-heatmap-next-tool.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "scripts/blind20_simple_map_pack.py",
+      "symbol": "",
+      "score": 3.9619831157632763,
+      "loc": "scripts/blind20_simple_map_pack.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "docs/superpowers/specs/2026-09-04-heatmap-first-routing-design.md",
+      "symbol": "",
+      "score": 3.956365533002139,
+      "loc": "docs/superpowers/specs/2026-09-04-heatmap-first-routing-design.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "docs/superpowers/plans/2026-09-05-kiro-cli-ab-dev3-session.md",
+      "symbol": "",
+      "score": 3.6119687239031024,
+      "loc": "docs/superpowers/plans/2026-09-05-kiro-cli-ab-dev3-session.md:1-1",
+      "why": ""
+    }
+  ],
+  "suggested_seed": null,
+  "elapsed_s": 1.019,
+  "via": "search_repo(use_server=True)"
+}

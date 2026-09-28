@@ -1,0 +1,218 @@
+{
+  "id": "t02",
+  "family": "bm25-build",
+  "task": "Where is the BM25 lexical index built and tokenized during repo indexing?",
+  "enrich_prompt": "BM25 index build tokenize corpus indexing conductor bm25_index lexical chunks",
+  "map": {
+    "elapsed_s": 0.531,
+    "top_files": [
+      "packages/conductor/bm25_index.py",
+      "packages/pipeline/__init__.py",
+      "packages/conductor/conductor.py",
+      "packages/pipeline/hot_patch.py",
+      "packages/trace_lab/retrieve.py"
+    ]
+  },
+  "selected_chunks": [
+    {
+      "file": "packages/conductor/bm25_index.py",
+      "symbol": "BM25Index",
+      "kind": "class",
+      "loc": "packages/conductor/bm25_index.py:18-64",
+      "start_line": 18,
+      "end_line": 64,
+      "score": 7.7,
+      "excerpt": "class BM25Index:\n    def __init__(self, corpus: list[str], *, k1: float = 1.5, b: float = 0.75):\n        self.k1 = k1\n        self.b = b\n        self.docs = [tokenize(t) for t in c"
+    },
+    {
+      "file": "packages/pipeline/hot_patch.py",
+      "symbol": "rebuild_bm25",
+      "kind": "function",
+      "loc": "packages/pipeline/hot_patch.py:62-63",
+      "start_line": 62,
+      "end_line": 63,
+      "score": 9.0,
+      "excerpt": "def rebuild_bm25(texts: list[str]) -> BM25Index:\n    return BM25Index(texts)"
+    },
+    {
+      "file": "packages/trace_lab/retrieve.py",
+      "symbol": "LexicalIndex.bm25_scores",
+      "kind": "method",
+      "loc": "packages/trace_lab/retrieve.py:94-96",
+      "start_line": 94,
+      "end_line": 96,
+      "score": 8.85,
+      "excerpt": "    def bm25_scores(self, query: str) -> dict[str, float]:\n        raw = self.bm25.score_all(query)\n        return {self.ids[i]: float(raw[i]) for i in range(len(self.ids))}"
+    }
+  ],
+  "arms": {
+    "pack_context": {
+      "ok": true,
+      "tool": "pack_context",
+      "engine": "composite_v1",
+      "elapsed_s": 0.12,
+      "n_pack": 2,
+      "seed": {
+        "file": "packages/conductor/bm25_index.py",
+        "symbol": "BM25Index",
+        "id": "packages/conductor/bm25_index.py::BM25Index"
+      },
+      "pack": [
+        {
+          "file": "packages/conductor/bm25_index.py",
+          "symbol": "BM25Index",
+          "score": 1.0,
+          "loc": "packages/conductor/bm25_index.py:18-64",
+          "id": "packages/conductor/bm25_index.py::BM25Index",
+          "chars": 1731
+        },
+        {
+          "file": "packages/pipeline/hot_patch.py",
+          "symbol": "rebuild_bm25",
+          "score": 1.0,
+          "loc": "packages/pipeline/hot_patch.py:62-63",
+          "id": "packages/pipeline/hot_patch.py::rebuild_bm25",
+          "chars": 76
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/conductor/bm25_index.py::BM25Index",
+          "loc": "packages/conductor/bm25_index.py:18-64",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/hot_patch.py::rebuild_bm25",
+          "loc": "packages/pipeline/hot_patch.py:62-63",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/conductor/bm25_index.py::BM25Index.score_all",
+          "loc": "packages/conductor/bm25_index.py:35-52",
+          "edge": "contains",
+          "score": 0.46
+        },
+        {
+          "id": "packages/conductor/bm25_index.py::tokenize",
+          "loc": "packages/conductor/bm25_index.py:14-15",
+          "edge": "calls",
+          "score": 0.46
+        }
+      ],
+      "pack_query": "BM25 index build tokenize corpus indexing conductor bm25_index lexical chunks\nrelevant_chunks: packages/conductor/bm25_index.py::BM25Index@packages/conductor/bm25_index.py:18-64 | packages/pipeline/hot_patch.py::rebuild_bm25@packages/pipeline/hot_patch.py:62-63 | packages/trace_lab/retrieve.py::LexicalIndex.bm25_scores@packages/trace_lab/retrieve.py:94-96",
+      "error": null
+    },
+    "pack_poly_embed": {
+      "ok": true,
+      "tool": "pack_poly_embed",
+      "engine": "poly_embed",
+      "elapsed_s": 0.208,
+      "n_pack": 2,
+      "seed": {
+        "file": "packages/conductor/bm25_index.py",
+        "symbol": "BM25Index",
+        "id": "packages/conductor/bm25_index.py::BM25Index"
+      },
+      "pack": [
+        {
+          "file": "packages/conductor/bm25_index.py",
+          "symbol": "BM25Index",
+          "score": 1.0,
+          "loc": "packages/conductor/bm25_index.py:18-64",
+          "id": "packages/conductor/bm25_index.py::BM25Index",
+          "chars": 1731
+        },
+        {
+          "file": "packages/pipeline/hot_patch.py",
+          "symbol": "rebuild_bm25",
+          "score": 1.0,
+          "loc": "packages/pipeline/hot_patch.py:62-63",
+          "id": "packages/pipeline/hot_patch.py::rebuild_bm25",
+          "chars": 76
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/conductor/bm25_index.py::BM25Index",
+          "loc": "packages/conductor/bm25_index.py:18-64",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/hot_patch.py::rebuild_bm25",
+          "loc": "packages/pipeline/hot_patch.py:62-63",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/conductor/bm25_index.py::BM25Index.score_all",
+          "loc": "packages/conductor/bm25_index.py:35-52",
+          "edge": "seed",
+          "score": 0.48
+        },
+        {
+          "id": "packages/conductor/bm25_index.py::tokenize",
+          "loc": "packages/conductor/bm25_index.py:14-15",
+          "edge": "seed",
+          "score": 0.48
+        },
+        {
+          "id": "packages/conductor/bm25_index.py::BM25Index.search",
+          "loc": "packages/conductor/bm25_index.py:54-64",
+          "edge": "seed",
+          "score": 0.48
+        }
+      ],
+      "pack_query": "BM25 index build tokenize corpus indexing conductor bm25_index lexical chunks\nrelevant_chunks: packages/conductor/bm25_index.py::BM25Index@packages/conductor/bm25_index.py:18-64 | packages/pipeline/hot_patch.py::rebuild_bm25@packages/pipeline/hot_patch.py:62-63 | packages/trace_lab/retrieve.py::LexicalIndex.bm25_scores@packages/trace_lab/retrieve.py:94-96",
+      "error": null
+    },
+    "pack_semantic": {
+      "ok": true,
+      "tool": "pack_semantic",
+      "engine": "semantic_tracer_fuse",
+      "elapsed_s": 0.374,
+      "n_pack": 2,
+      "seed": {
+        "file": "packages/conductor/bm25_index.py",
+        "symbol": "BM25Index",
+        "id": "packages/conductor/bm25_index.py::BM25Index"
+      },
+      "pack": [
+        {
+          "file": "packages/conductor/bm25_index.py",
+          "symbol": "BM25Index",
+          "score": 1.0,
+          "loc": "packages/conductor/bm25_index.py:18-64",
+          "id": "packages/conductor/bm25_index.py::BM25Index",
+          "chars": 1731
+        },
+        {
+          "file": "packages/pipeline/hot_patch.py",
+          "symbol": "rebuild_bm25",
+          "score": 1.0,
+          "loc": "packages/pipeline/hot_patch.py:62-63",
+          "id": "packages/pipeline/hot_patch.py::rebuild_bm25",
+          "chars": 76
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/conductor/bm25_index.py::BM25Index",
+          "loc": "packages/conductor/bm25_index.py:18-64",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/hot_patch.py::rebuild_bm25",
+          "loc": "packages/pipeline/hot_patch.py:62-63",
+          "edge": "seed",
+          "score": 1.0
+        }
+      ],
+      "pack_query": "BM25 index build tokenize corpus indexing conductor bm25_index lexical chunks\nrelevant_chunks: packages/conductor/bm25_index.py::BM25Index@packages/conductor/bm25_index.py:18-64 | packages/pipeline/hot_patch.py::rebuild_bm25@packages/pipeline/hot_patch.py:62-63 | packages/trace_lab/retrieve.py::LexicalIndex.bm25_scores@packages/trace_lab/retrieve.py:94-96",
+      "error": null
+    }
+  }
+}

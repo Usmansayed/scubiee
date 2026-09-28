@@ -1,0 +1,87 @@
+{
+  "ok": true,
+  "query": "freshness sync background CTX_BACKGROUND_SYNC stale index checksum merkle refresh",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/pipeline/sync_loop.py",
+      "symbol": "",
+      "score": 13.2916,
+      "loc": "packages/pipeline/sync_loop.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "docs/freshness.md",
+      "symbol": "",
+      "score": 7.5815,
+      "loc": "docs/freshness.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "packages/pipeline/freshness.py",
+      "symbol": "",
+      "score": 6.3978,
+      "loc": "packages/pipeline/freshness.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "fixtures/trace-lab/app/oauth/refresh.py",
+      "symbol": "",
+      "score": 5.6446,
+      "loc": "fixtures/trace-lab/app/oauth/refresh.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "docs/reindexing/index-freshness-agent-trajectory.md",
+      "symbol": "",
+      "score": 5.392,
+      "loc": "docs/reindexing/index-freshness-agent-trajectory.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "docs/research-freshness.md",
+      "symbol": "",
+      "score": 4.796,
+      "loc": "docs/research-freshness.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "tests/test_freshness.py",
+      "symbol": "",
+      "score": 4.6192,
+      "loc": "tests/test_freshness.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "docs/superpowers/specs/2026-08-03-keeper-sync-lifecycle-design.md",
+      "symbol": "",
+      "score": 4.3433,
+      "loc": "docs/superpowers/specs/2026-08-03-keeper-sync-lifecycle-design.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "docs/reindexing/live-reindexing-system-design.md",
+      "symbol": "",
+      "score": 4.2811,
+      "loc": "docs/reindexing/live-reindexing-system-design.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "packages/pipeline/memory_budget.py",
+      "symbol": "",
+      "score": 3.7443,
+      "loc": "packages/pipeline/memory_budget.py:1-1",
+      "why": ""
+    }
+  ],
+  "elapsed_s": 0.383
+}

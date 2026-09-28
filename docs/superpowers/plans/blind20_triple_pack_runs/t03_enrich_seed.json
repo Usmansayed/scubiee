@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "elapsed_s": 0.044,
+  "seed_file": "packages/enrich/__init__.py",
+  "seed": {
+    "file": "packages/enrich/__init__.py",
+    "symbol": "EnrichedChunk.to_dict",
+    "id": "packages/enrich/__init__.py::EnrichedChunk.to_dict",
+    "loc": null
+  },
+  "chunks": [
+    {
+      "file": "packages/enrich/__init__.py",
+      "symbol": "EnrichedChunk.to_dict",
+      "loc": "packages/enrich/__init__.py:38-48",
+      "score": 1.0,
+      "kind": "method"
+    }
+  ],
+  "n_cards": 1,
+  "error": null
+}

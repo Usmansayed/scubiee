@@ -1,0 +1,64 @@
+{
+  "id": "u18",
+  "family": "jedi-callgraph",
+  "task": "How does Jedi enrich the call graph used by composite membership?",
+  "enrich_map_query": "build_enriched_call_graph with_jedi Jedi call_graph TypedEdge composite membership",
+  "map_ok": true,
+  "map_elapsed_s": 9.523,
+  "suggested_seed": {
+    "file": "packages/trace_lab/facts/call_graph.py",
+    "symbol": "",
+    "source": "suggested_seed"
+  },
+  "map_top_cards": [
+    {
+      "file": "packages/trace_lab/facts/call_graph.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/facts/call_graph.py:1-1",
+      "score": 33.28730855997905
+    },
+    {
+      "file": "packages/trace_lab/composite_v1.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/composite_v1.py:1-1",
+      "score": 17.424806066854458
+    },
+    {
+      "file": "packages/trace_lab/system_trace.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/system_trace.py:1-1",
+      "score": 14.023495380564963
+    },
+    {
+      "file": "packages/trace_lab/facts/__init__.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/facts/__init__.py:1-1",
+      "score": 7.231354882243393
+    },
+    {
+      "file": "packages/trace_lab/facts/dfg.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/facts/dfg.py:1-1",
+      "score": 6.48655072754002
+    },
+    {
+      "file": "packages/trace_lab/semantic_novel.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/semantic_novel.py:1-1",
+      "score": 5.056787071747017
+    },
+    {
+      "file": "packages/trace_lab/types.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/types.py:1-1",
+      "score": 4.064975201003856
+    },
+    {
+      "file": "packages/trace_lab/semantic_tracer_fuse.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/semantic_tracer_fuse.py:1-1",
+      "score": 3.5625965187103947
+    }
+  ],
+  "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+}

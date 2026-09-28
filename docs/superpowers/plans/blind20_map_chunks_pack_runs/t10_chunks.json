@@ -1,0 +1,32 @@
+[
+  {
+    "file": "packages/pipeline/session_store.py",
+    "symbol": "token_mode",
+    "kind": "function",
+    "loc": "packages/pipeline/session_store.py:223-224",
+    "start_line": 223,
+    "end_line": 224,
+    "score": 9.85,
+    "excerpt": "def token_mode() -> str:\n    return (os.environ.get(\"CTX_TOKEN_MODE\") or \"savings\").strip().lower()"
+  },
+  {
+    "file": "packages/pipeline/context_trace.py",
+    "symbol": "heatmap_to_cards",
+    "kind": "function",
+    "loc": "packages/pipeline/context_trace.py:581-619",
+    "start_line": 581,
+    "end_line": 619,
+    "score": 9.85,
+    "excerpt": "def heatmap_to_cards(\n    hm: Heatmap,\n    nodes: dict[str, TraceNode],\n    *,\n    k: int = 24,\n    min_score: float = _WARM,\n) -> list[dict[str, Any]]:\n    cards: list[dict[str, A"
+  },
+  {
+    "file": "packages/pipeline/mcp_response_lean.py",
+    "symbol": "slim_locate_payload",
+    "kind": "function",
+    "loc": "packages/pipeline/mcp_response_lean.py:148-291",
+    "start_line": 148,
+    "end_line": 291,
+    "score": 7.2,
+    "excerpt": "def slim_locate_payload(payload: dict[str, Any]) -> dict[str, Any]:\n    \"\"\"Agent locate view: bodies + chain + cold locs (no per-call howto/heatmap dump).\n\n    Used by MCP (via ``a"
+  }
+]

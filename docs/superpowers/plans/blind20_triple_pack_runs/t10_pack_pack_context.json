@@ -1,0 +1,121 @@
+{
+  "ok": true,
+  "tool": "pack_context",
+  "engine": "composite_v1",
+  "elapsed_s": 0.056,
+  "n_pack": 4,
+  "seed": {
+    "file": "packages/pipeline/session_store.py",
+    "symbol": "_store_path",
+    "id": "packages/pipeline/session_store.py::_store_path"
+  },
+  "pack": [
+    {
+      "file": "packages/pipeline/session_store.py",
+      "symbol": "_store_path",
+      "score": 1.0,
+      "loc": "packages/pipeline/session_store.py:17-29",
+      "id": "packages/pipeline/session_store.py::_store_path",
+      "chars": 535
+    },
+    {
+      "file": "packages/pipeline/project_id.py",
+      "symbol": "repo_runtime_dir",
+      "score": 1.0,
+      "loc": "packages/pipeline/project_id.py:121-142",
+      "id": "packages/pipeline/project_id.py::repo_runtime_dir",
+      "chars": 780
+    },
+    {
+      "file": "packages/pipeline/session_isolation.py",
+      "symbol": "effective_session_id",
+      "score": 1.0,
+      "loc": "packages/pipeline/session_isolation.py:368-375",
+      "id": "packages/pipeline/session_isolation.py::effective_session_id",
+      "chars": 333
+    },
+    {
+      "file": "packages/pipeline/session_isolation.py",
+      "symbol": "_session_isolate_enabled",
+      "score": 1.0,
+      "loc": "packages/pipeline/session_isolation.py:382-387",
+      "id": "packages/pipeline/session_isolation.py::_session_isolate_enabled",
+      "chars": 171
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/pipeline/session_store.py::_store_path",
+      "loc": "packages/pipeline/session_store.py:17-29",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/project_id.py::repo_runtime_dir",
+      "loc": "packages/pipeline/project_id.py:121-142",
+      "edge": "calls",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/session_isolation.py::effective_session_id",
+      "loc": "packages/pipeline/session_isolation.py:368-375",
+      "edge": "calls",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/session_isolation.py::_session_isolate_enabled",
+      "loc": "packages/pipeline/session_isolation.py:382-387",
+      "edge": "calls",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/session_isolation.py::default_process_session_id",
+      "loc": "packages/pipeline/session_isolation.py:326-331",
+      "edge": "calls",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/session_isolation.py::detect_mcp_host",
+      "loc": "packages/pipeline/session_isolation.py:180-188",
+      "edge": "calls",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/session_isolation.py::sanitize_session_id",
+      "loc": "packages/pipeline/session_isolation.py:174-177",
+      "edge": "calls",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/session_store.py::effective_session_id",
+      "loc": "packages/pipeline/session_store.py:74-77",
+      "edge": "calls",
+      "score": 0.99
+    }
+  ],
+  "error": null,
+  "seed_chunks": [
+    {
+      "file": "packages/pipeline/session_store.py",
+      "symbol": "_store_path",
+      "loc": "packages/pipeline/session_store.py:17-29",
+      "score": 1.0,
+      "kind": "function"
+    },
+    {
+      "file": "packages/pipeline/project_id.py",
+      "symbol": "repo_runtime_dir",
+      "loc": "packages/pipeline/project_id.py:121-142",
+      "score": 1.0,
+      "kind": "function"
+    },
+    {
+      "file": "packages/pipeline/session_isolation.py",
+      "symbol": "effective_session_id",
+      "loc": "packages/pipeline/session_isolation.py:368-375",
+      "score": 1.0,
+      "kind": "function"
+    }
+  ],
+  "pack_query": "mcp_response_lean slim pack heatmap cold cards token savings CTX_TOKEN_MODE | seeds: packages/pipeline/session_store.py::_store_path packages/pipeline/project_id.py::repo_runtime_dir packages/pipeline/session_isolation.py::effective_session_id packages/pipeline/session_isolation.py::_session_isolate_enabled packages/pipeline/session_isolation.py::default_process_session_id"
+}

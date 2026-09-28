@@ -1,0 +1,64 @@
+{
+  "ok": true,
+  "tool": "pack_poly_embed",
+  "engine": "poly_embed",
+  "elapsed_s": 0.187,
+  "n_pack": 2,
+  "seed": {
+    "file": "packages/pipeline/mcp_bridge.py",
+    "symbol": "McpBridge",
+    "id": "packages/pipeline/mcp_bridge.py::McpBridge"
+  },
+  "pack": [
+    {
+      "file": "packages/pipeline/mcp_bridge.py",
+      "symbol": "McpBridge",
+      "score": 1.0,
+      "loc": "packages/pipeline/mcp_bridge.py:77-222",
+      "id": "packages/pipeline/mcp_bridge.py::McpBridge",
+      "chars": 5737
+    },
+    {
+      "file": "packages/pipeline/mcp_bridge.py",
+      "symbol": "McpBridge.run",
+      "score": 1.0,
+      "loc": "packages/pipeline/mcp_bridge.py:205-222",
+      "id": "packages/pipeline/mcp_bridge.py::McpBridge.run",
+      "chars": 263
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/pipeline/mcp_bridge.py::McpBridge",
+      "loc": "packages/pipeline/mcp_bridge.py:77-222",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/mcp_bridge.py::McpBridge.run",
+      "loc": "packages/pipeline/mcp_bridge.py:205-222",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/mcp_bridge.py::McpBridge.kill_child",
+      "loc": "packages/pipeline/mcp_bridge.py:114-115",
+      "edge": "seed",
+      "score": 0.48
+    },
+    {
+      "id": "packages/pipeline/mcp_bridge.py::McpBridge.handle_client_message",
+      "loc": "packages/pipeline/mcp_bridge.py:156-188",
+      "edge": "seed",
+      "score": 0.48
+    },
+    {
+      "id": "packages/pipeline/mcp_bridge.py::McpBridge.needs_respawn",
+      "loc": "packages/pipeline/mcp_bridge.py:111-112",
+      "edge": "seed",
+      "score": 0.48
+    }
+  ],
+  "pack_query": "scubiee-mcp-bridge MCP bridge launch stdio tools forward hybrid experiment surface\nrelevant_chunks: packages/pipeline/mcp_bridge.py::McpBridge@packages/pipeline/mcp_bridge.py:77-222 | packages/pipeline/mcp_bridge.py::McpBridge.run@packages/pipeline/mcp_bridge.py:205-222 | packages/pipeline/mcp_bridge_session.py::bridge_mode@packages/pipeline/mcp_bridge_session.py:23-27",
+  "error": null
+}

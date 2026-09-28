@@ -1,0 +1,32 @@
+[
+  {
+    "file": "packages/pipeline/work_session.py",
+    "symbol": "touch",
+    "kind": "function",
+    "loc": "packages/pipeline/work_session.py:80-116",
+    "start_line": 80,
+    "end_line": 116,
+    "score": 7.9,
+    "excerpt": "def touch(\n    repo: Path | str,\n    files: list[str] | list[dict[str, Any]],\n    *,\n    query: str = \"\",\n    weight: int = 1,\n    session_id: str | None = None,\n) -> dict[str, Any"
+  },
+  {
+    "file": "packages/pipeline/work_session.py",
+    "symbol": "heatmap",
+    "kind": "function",
+    "loc": "packages/pipeline/work_session.py:142-165",
+    "start_line": 142,
+    "end_line": 165,
+    "score": 7.55,
+    "excerpt": "def heatmap(repo: Path | str, *, top_n: int = 20, session_id: str | None = None) -> list[dict[str, Any]]:\n    sess = load_session(repo, session_id=session_id)\n    rows = []\n    now"
+  },
+  {
+    "file": "packages/pipeline/repo_runtime.py",
+    "symbol": "RepoRuntime.touch",
+    "kind": "method",
+    "loc": "packages/pipeline/repo_runtime.py:35-59",
+    "start_line": 35,
+    "end_line": 59,
+    "score": 6.35,
+    "excerpt": "    def touch(\n        self,\n        session_id: str | None = None,\n        *,\n        client: str | None = None,\n        metadata: dict[str, Any] | None = None,\n        priority: "
+  }
+]

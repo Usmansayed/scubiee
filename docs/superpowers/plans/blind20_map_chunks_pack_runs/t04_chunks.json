@@ -1,0 +1,32 @@
+[
+  {
+    "file": "packages/pipeline/project_id.py",
+    "symbol": "repo_runtime_dir",
+    "kind": "function",
+    "loc": "packages/pipeline/project_id.py:121-142",
+    "start_line": 121,
+    "end_line": 142,
+    "score": 6.85,
+    "excerpt": "def repo_runtime_dir(root: Path) -> Path:\n    \"\"\"Writable per-repo runtime dir (enrollment vs MCP scratch).\n\n    Enrolled checkouts use ``<repo>/.scubiee``. Unenrolled repos (inclu"
+  },
+  {
+    "file": "packages/pipeline/rules_installer.py",
+    "symbol": "gate_line_for_repo",
+    "kind": "function",
+    "loc": "packages/pipeline/rules_installer.py:266-280",
+    "start_line": 266,
+    "end_line": 280,
+    "score": 14.1,
+    "excerpt": "def gate_line_for_repo(repo: Path | str) -> str:\n    \"\"\"Gate line from repo ``.scubiee/id.json`` (for project rules, no daemon).\"\"\"\n    from pipeline.pause_resume import is_paused\n"
+  },
+  {
+    "file": "packages/pipeline/managed_repos.py",
+    "symbol": "managed_repo_paths",
+    "kind": "function",
+    "loc": "packages/pipeline/managed_repos.py:213-275",
+    "start_line": 213,
+    "end_line": 275,
+    "score": 10.9,
+    "excerpt": "def managed_repo_paths(*, enrolled_only: bool = False) -> list[Path]:\n    \"\"\"Existing checkout directories for managed registry projects.\n\n    Parameters\n    ----------\n    enrolle"
+  }
+]

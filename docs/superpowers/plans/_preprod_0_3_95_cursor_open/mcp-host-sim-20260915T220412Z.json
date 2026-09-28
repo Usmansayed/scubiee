@@ -1,0 +1,106 @@
+{
+  "ok": false,
+  "scenario": "cursor_cold_attach_steady_leave",
+  "lane": "a",
+  "live": true,
+  "mcp_client": "cursor",
+  "repo": "C:\\Users\\usman\\Downloads\\context-engine",
+  "project_id": "ce_0a779347a9061995489923aad707cb0b",
+  "engine_url": "http://127.0.0.1:8765",
+  "phases": [
+    {
+      "name": "clean_slate",
+      "ok": true,
+      "code": null,
+      "elapsed_ms": 4299.2,
+      "budget_ms": null,
+      "evidence": {
+        "ok": true,
+        "tick": {
+          "engine": {
+            "running": false,
+            "pid": 16496,
+            "rss_mb": null,
+            "health_ok": false,
+            "warm_ready": false,
+            "embedder_loaded": false,
+            "soft_search_ready": false,
+            "at": 1789509731.1190803,
+            "health_error": "listener_absent"
+          },
+          "clients": {
+            "active_clients": 0,
+            "client_ids": [],
+            "desired_mode": "run",
+            "last_client_left_at": null,
+            "last_activity": 1789509687.1064026,
+            "raw_clients": {}
+          },
+          "ctx_home": "C:\\Users\\usman\\.scubiee"
+        },
+        "engine_still_up": false,
+        "kill": {
+          "ok": false,
+          "error": "[WinError 2] The system cannot find the file specified"
+        }
+      }
+    },
+    {
+      "name": "host_start",
+      "ok": false,
+      "code": "FAIL",
+      "elapsed_ms": 120653.0,
+      "budget_ms": null,
+      "evidence": {
+        "error": "initialize error: {'code': -32603, 'message': 'Empty: Empty()'}",
+        "log_tail": [
+          "--- start 2026-09-16 03:31:19 ---",
+          "[engine] Scubiee starting on http://127.0.0.1:8765",
+          "[engine] CTX_HOME=(default)",
+          "[engine] dashboard http://127.0.0.1:8765/dashboard",
+          "[engine] listening +0.02s \u2014 MCP/CLI should use CTX_ENGINE_URL=http://127.0.0.1:8765",
+          "[engine] job joined Local\\ContextEngineCpuJob",
+          "[engine] opening C:\\Users\\usman\\Downloads\\context-engine \u2026",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "[keeper] WARNING: root-probe every 300000ms for C:\\Users\\usman\\Downloads\\context-engine",
+          "127.0.0.1 - \"POST /v1/open HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "127.0.0.1 - \"GET /health HTTP/1.1\" 200 -",
+          "[keeper] skip tick \u2014 clients_active",
+          "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s",
+          "",
+          "--- start 2026-09-16 03:32:12 ---",
+          "Traceback (most recent call last):",
+          "  File \"<frozen runpy>\", line 198, in _run_module_as_main",
+          "  File \"<frozen runpy>\", line 88, in _run_code",
+          "  File \"C:\\Users\\usman\\Downloads\\context-engine\\packages\\pipeline\\__main__.py\", line 2901, in <module>",
+          "    raise SystemExit(main())",
+          "                     ~~~~^^",
+          "  File \"C:\\Users\\usman\\Downloads\\context-engine\\packages\\pipeline\\__main__.py\", line 2134, in main",
+          "    return _engine_run_fast(raw[2:])",
+          "  File \"C:\\Users\\usman\\Downloads\\context-engine\\packages\\pipeline\\__main__.py\", line 2120, in _engine_run_fast",
+          "    from pipeline.server import run_server",
+          "  File \"C:\\Users\\usman\\Downloads\\context-engine\\packages\\pipeline\\server.py\", line 18, in <module>",
+          "    from pipeline.ce_service import get_context_engine",
+          "  File \"C:\\Users\\usman\\Downloads\\context-engine\\packages\\pipeline\\ce_service.py\", line 19, in <module>",
+          "    from pipeline.engine import clear_engines, drop_engine, load_engine",
+          "  File \"C:\\Users\\usman\\Downloads\\context-engine\\packages\\pipeline\\engine.py\", line 15, in <module>",
+          "    from conductor.architectures import MultiArchConductor",
+          "  File \"C:\\Users\\usman\\Downloads\\context-engine\\packages\\conductor\\__init__.py\", line 3, in <module>",
+          "    from conductor.conductor import Conductor, ConductorConfig, Hit",
+          "  File \"C:\\Users\\usman\\Downloads\\context-engine\\packages\\conductor\\conductor.py\", line 16, in <module>",
+          "    from conductor.graphify_retriever import GraphifyChunkRetriever",
+          "  File \"C:\\Users\\usman\\Downloads\\context-engine\\packages\\conductor\\graphify_retriever.py\", line 10, in <module>",
+          "    import networkx as nx",
+          "ModuleNotFoundError: No module named 'networkx'"
+        ]
+      }
+    }
+  ],
+  "errors": [
+    "host_start: FAIL \u2014 initialize error: {'code': -32603, 'message': 'Empty: Empty()'}"
+  ],
+  "idle_s": 0,
+  "elapsed_ms": 124954.3
+}

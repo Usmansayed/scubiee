@@ -1,0 +1,111 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 8.263,
+  "stdout_chars": 3835,
+  "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})",
+  "json": {
+    "ok": true,
+    "tool": "map",
+    "cards": [
+      {
+        "rank": 1,
+        "file": "packages/pipeline/rules_installer.py",
+        "score": 18.512456422846874,
+        "why": "def write_project_gate_rules( repo: Path | str, *, dry_run: bool = False, slugs: list[str] | None = None, ) -> dict[str, Any]: \"\"\"Write compact GATE prefer+escape rules under the r",
+        "role": "function",
+        "loc": "packages/pipeline/rules_installer.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 2,
+        "file": "tests/test_token_efficient_gating.py",
+        "score": 13.517562166071945,
+        "why": "def test_init_writes_project_gate_rules(tmp_path: Path) -> None: repo = _git_repo(tmp_path / \"proj\") ce = repo / \".scubiee\" ce.mkdir() pid = \"ce_test1234567890abcdef12345678\" (ce /",
+        "role": "test",
+        "loc": "tests/test_token_efficient_gating.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 3,
+        "file": "tests/test_user_journey_scenarios.py",
+        "score": 12.856897536275916,
+        "why": "def test_s15_init_writes_agents_md_ban_section(tmp_path: Path, monkeypatch) -> None: repo = _git_repo(tmp_path / \"agents\") pid = \"ce_scenario_agents1234567890abcd\" _enroll(repo, pi",
+        "role": "test",
+        "loc": "tests/test_user_journey_scenarios.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 4,
+        "file": "packages/pipeline/gate_cli.py",
+        "score": 12.459553413520592,
+        "why": "def gate_line_for_root(root: str | Path = \"\", *, project_id: str = \"\") -> str: \"\"\"Return compact gate: ``0``, ``0:r``, ``1:ce_\u2026``, or ``p``.\"\"\" from pipeline.mcp_locate import _bin",
+        "role": "function",
+        "loc": "packages/pipeline/gate_cli.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 5,
+        "file": "tests/test_connect_formats.py",
+        "score": 11.888420370622125,
+        "why": "def _enroll(repo: Path, pid: str, monkeypatch, tmp_path: Path) -> None: ce = repo / \".scubiee\" ce.mkdir(exist_ok=True) (ce / \"id.json\").write_text(json.dumps({\"project_id\": pid}), ",
+        "role": "test",
+        "loc": "tests/test_connect_formats.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 6,
+        "file": "tests/test_global_mcp_hosts.py",
+        "score": 11.671197918458429,
+        "why": "def _enroll(repo: Path, pid: str, monkeypatch, tmp_path: Path) -> None: ce = repo / \".scubiee\" ce.mkdir(exist_ok=True) (ce / \"id.json\").write_text(json.dumps({\"project_id\": pid}), ",
+        "role": "test",
+        "loc": "tests/test_global_mcp_hosts.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 7,
+        "file": "scripts/kiro_mcp_ab_dev_eval.py",
+        "score": 11.549325023219332,
+        "why": "def _gate_body() -> str: \"\"\"Load strengthened GATE text from rules_installer (same source as product).\"\"\" sys.path.insert(0, str(ROOT / \"packages\")) from pipeline.rules_installer i",
+        "role": "other",
+        "loc": "scripts/kiro_mcp_ab_dev_eval.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 8,
+        "file": "tests/conftest.py",
+        "score": 11.507838677414316,
+        "why": "def enroll_test_repo( repo: Path, *, home: Path, project_id: str = \"ce_test1234567890abcdef12345678\", ) -> str: \"\"\"Register *repo* as managed without implicit bind side effects.\"\"\"",
+        "role": "test",
+        "loc": "tests/conftest.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 9,
+        "file": "packages/pipeline/upgrade_scenarios.py",
+        "score": 10.8373327621637,
+        "why": "def _apply_combined_surface(repo: Path, *, project_id: str, version: str) -> dict[str, Any]: from pipeline.upgrade_manifest import GATE_RULES_FORMAT, MCP_PIN_FORMAT parts = [ _appl",
+        "role": "function",
+        "loc": "packages/pipeline/upgrade_scenarios.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 10,
+        "file": "packages/pipeline/checkout_identity.py",
+        "score": 10.809336654826538,
+        "why": "def _is_copy_of_registry_checkout(root: Path, project_id: str) -> bool: \"\"\"True when ``id.json`` matches registry but this folder is a filesystem copy.\"\"\" entry = _registry_entry(p",
+        "role": "function",
+        "loc": "packages/pipeline/checkout_identity.py:1-1",
+        "symbol": ""
+      }
+    ],
+    "suggested_seed": {
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": "",
+      "loc": "packages/pipeline/rules_installer.py:1-1",
+      "score": 18.512456422846874
+    },
+    "next": "scubiee pack \"write_project_gate_rules GATE 1 project_id AGENTS.md scubiee.md steering managed enroll\" --seed-file packages/pipeline/rules_installer.py --mode lean"
+  },
+  "stdout_preview": ""
+}

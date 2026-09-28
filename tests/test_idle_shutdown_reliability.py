@@ -240,6 +240,11 @@ def _quiet_governor(monkeypatch) -> None:
     monkeypatch.setattr(
         ce_service, "get_context_engine", MagicMock(side_effect=RuntimeError("no engine"))
     )
+    # A live IDE's Scubiee bridge on the test machine would otherwise hold warm.
+    monkeypatch.setattr("pipeline.warm_autoload.mcp_frontend_present", lambda *a, **k: False)
+    # Whole-machine process scans take seconds here and are not under test.
+    monkeypatch.setattr("pipeline.process_control.reap_orphaned_mcp_processes", lambda **k: {})
+    monkeypatch.setattr("pipeline.process_control.sweep_orphan_scubiee_frontends", lambda **k: {})
 
 
 def test_retire_self_schedules_hard_exit(monkeypatch) -> None:

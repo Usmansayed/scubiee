@@ -1,0 +1,87 @@
+{
+  "ok": true,
+  "query": "graphify graph_ir call edges GraphifyChunkRetriever conductor extra_graph build_graphify",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/conductor/graphify_retriever.py",
+      "symbol": "",
+      "score": 21.2127,
+      "loc": "packages/conductor/graphify_retriever.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "packages/conductor/conductor.py",
+      "symbol": "",
+      "score": 10.6593,
+      "loc": "packages/conductor/conductor.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "packages/graphify/build.py",
+      "symbol": "",
+      "score": 8.9551,
+      "loc": "packages/graphify/build.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "packages/conductor/__init__.py",
+      "symbol": "",
+      "score": 6.6144,
+      "loc": "packages/conductor/__init__.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "packages/graphify/serve.py",
+      "symbol": "",
+      "score": 5.7885,
+      "loc": "packages/graphify/serve.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "packages/trace_lab/facts/__init__.py",
+      "symbol": "",
+      "score": 5.2065,
+      "loc": "packages/trace_lab/facts/__init__.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "tests/test_faiss_dense_adapter.py",
+      "symbol": "",
+      "score": 4.6447,
+      "loc": "tests/test_faiss_dense_adapter.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "packages/pipeline/engine.py",
+      "symbol": "",
+      "score": 4.4462,
+      "loc": "packages/pipeline/engine.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "packages/trace_lab/types.py",
+      "symbol": "",
+      "score": 3.156,
+      "loc": "packages/trace_lab/types.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "tests/_mcp_break_it_suite.py",
+      "symbol": "",
+      "score": 3.1175,
+      "loc": "tests/_mcp_break_it_suite.py:1-1",
+      "why": ""
+    }
+  ],
+  "elapsed_s": 0.524
+}

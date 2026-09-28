@@ -116,6 +116,18 @@ class RuntimeManager:
         self.generation = runtime.generation
         self.last_sync_at = runtime.last_sync_at
 
+    @staticmethod
+    def _stamp_generation(runtime: RepoRuntime | None) -> None:
+        """Tell MCP map caches (separate processes) that the served index moved."""
+        if runtime is None:
+            return
+        try:
+            from pipeline.index_generation import write_stamp
+
+            write_stamp(runtime.project_id, runtime.generation, epoch=runtime.epoch)
+        except Exception:  # noqa: BLE001
+            pass
+
     def _activate_runtime(
         self,
         root: Path | str,
@@ -395,6 +407,7 @@ class RuntimeManager:
                 self.warm_state = "ready"
                 self.warm_error = None
                 self._save_active_runtime()
+                self._stamp_generation(self._active_runtime)
                 try:
                     from pipeline.memory_governor import get_governor
 
@@ -504,12 +517,22 @@ class RuntimeManager:
 
     def mark_dirty(self, paths: list[str], *, reason: str = "write") -> dict[str, Any]:
         """Queue changed files for the active keeper's debounced sync path."""
+        from pipeline.ignore import filter_dirty_paths
+
         normalized = sorted({str(path).replace("\\", "/") for path in paths if str(path)})
+        root = self.repo
+        kept, dropped = filter_dirty_paths(root, normalized)
         loop = self.sync_loop
         if loop is None:
-            return {"ok": False, "error": "keeper not running", "paths": normalized}
-        loop.mark_dirty(normalized, reason=reason)
-        return {"ok": True, "paths": normalized, "reason": reason}
+            return {
+                "ok": False,
+                "error": "keeper not running",
+                "paths": kept,
+                "dropped": dropped,
+            }
+        if kept:
+            loop.mark_dirty(kept, reason=reason)
+        return {"ok": True, "paths": kept, "dropped": dropped, "reason": reason}
 
     def note_locate(self) -> dict[str, Any]:
         """Keep publication stable while CE locate tools are in active use."""
@@ -609,6 +632,7 @@ class RuntimeManager:
             runtime.error = None
             if self._active_runtime is runtime:
                 self._load_runtime_facade(runtime)
+            self._stamp_generation(runtime)
             try:
                 from pipeline.storage_policy import compact_collection
 
@@ -660,29 +684,34 @@ class RuntimeManager:
         engine = runtime.engine
         if engine is None or not hasattr(engine, "apply_chunk_delta"):
             return None
-        if not getattr(delta, "append_only", False):
+        append_only = bool(getattr(delta, "append_only", False))
+        if not append_only and not getattr(delta, "patchable", False):
             return None
         records = list(getattr(delta, "records", None) or [])
         matrix = getattr(delta, "matrix", None)
-        if not records or matrix is None:
+        removed_ids = [int(i) for i in (getattr(delta, "removed_ids", None) or [])]
+        if append_only and (not records or matrix is None):
             return None
         cap = max(1, int(os.environ.get("CTX_LIVE_MAX_CHUNKS", "300") or "300"))
-        if len(records) > cap:
+        if len(records) + len(removed_ids) > cap:
             return None
+        kwargs: dict[str, Any] = {"base_chunk_count": int(getattr(delta, "base_chunk_count", -1))}
+        if not append_only:
+            # Edits and deletions: tombstone removed chunks, update moved ones.
+            kwargs["removed_ids"] = removed_ids
+            kwargs["embedded_ids"] = list(getattr(delta, "embedded_ids", None) or [])
         t0 = time.perf_counter()
         try:
             with self._lock:
-                info = engine.apply_chunk_delta(
-                    records,
-                    matrix,
-                    base_chunk_count=int(getattr(delta, "base_chunk_count", -1)),
-                )
+                info = engine.apply_chunk_delta(records, matrix, **kwargs)
                 runtime.generation += 1
                 runtime.last_sync_at = time.time()
                 runtime.warm_state = "ready"
                 runtime.error = None
                 if self._active_runtime is runtime:
                     self._load_runtime_facade(runtime)
+            # Outside the lock: a file write must not stall concurrent search.
+            self._stamp_generation(runtime)
         except Exception as exc:  # noqa: BLE001
             # Never poison the live generation on a patch failure: the binder is
             # only mutated inside apply_chunk_delta, which raises before it
@@ -1634,9 +1663,11 @@ class RuntimeManager:
                 return runtime.engine
             runtime.engine = eng
             runtime.warm_state = "ready"
-            if runtime.generation == 0:
-                runtime.generation = 1
+            # A binder freshly loaded from disk is a new publication (the store
+            # may have moved while the runtime was unloaded): 0 -> 1, N -> N+1.
+            runtime.generation += 1
             self._load_runtime_facade(runtime)
+            self._stamp_generation(runtime)
             return runtime.engine
 
 

@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "engine": "composite_v1",
+  "policy": "strict",
+  "elapsed_s": 0.037,
+  "n_pack": 1,
+  "pack": [
+    {
+      "file": "packages/pipeline/__init__.py",
+      "symbol": "__getattr__",
+      "score": 1.0,
+      "loc": "packages/pipeline/__init__.py:21-38",
+      "id": "packages/pipeline/__init__.py::__getattr__"
+    }
+  ],
+  "error": null
+}

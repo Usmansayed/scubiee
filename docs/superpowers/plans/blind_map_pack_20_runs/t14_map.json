@@ -1,0 +1,102 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 7.917,
+  "stdout_chars": 3646,
+  "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})",
+  "json": {
+    "ok": true,
+    "tool": "map",
+    "cards": [
+      {
+        "rank": 1,
+        "file": "packages/trace_lab/graphify_layer.py",
+        "score": 41.45081419621302,
+        "why": "def build_graphify_graph( root: Path, nodes: dict[str, TraceNode], *, cache_root: Path | None = None, ) -> AstTraceGraph: \"\"\"Parse with Graphify and project edges onto the AST Trac",
+        "role": "function",
+        "loc": "packages/trace_lab/graphify_layer.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 2,
+        "file": "packages/trace_lab/facts/graphify_adapter.py",
+        "score": 40.914323088631384,
+        "why": "def edges_from_graphify(gfy: AstTraceGraph | None) -> list[TypedEdge]: if gfy is None: return [] out: list[TypedEdge] = [] for e in gfy.edges: if e.relation not in _KEEP: continue ",
+        "role": "function",
+        "loc": "packages/trace_lab/facts/graphify_adapter.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 3,
+        "file": "packages/trace_lab/facts/pdg.py",
+        "score": 19.269752626964102,
+        "why": "def compose_pdg(*edge_groups: list[TypedEdge]) -> list[TypedEdge]: best: dict[tuple[str, str, str], TypedEdge] = {} for group in edge_groups: for e in group: key = (e.source, e.tar",
+        "role": "function",
+        "loc": "packages/trace_lab/facts/pdg.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 4,
+        "file": "packages/trace_lab/ast_graph.py",
+        "score": 16.764202078487145,
+        "why": "\"\"\"Python AST call / import / name-use graph at TraceNode granularity.\"\"\" from __future__ import annotations import ast import textwrap from collections import defaultdict from pat",
+        "role": "function",
+        "loc": "packages/trace_lab/ast_graph.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 5,
+        "file": "packages/trace_lab/composite_v1.py",
+        "score": 15.866248097728384,
+        "why": "scores, why, paths, extra={ \"mode\": spec.mode, \"excludes\": sorted(spec.exclude_names), \"n_edges\": len(edged), \"engine\": \"composite_v1\", \"dfg_boost_pairs\": len(dfg_pairs), }, ) def ",
+        "role": "function",
+        "loc": "packages/trace_lab/composite_v1.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 6,
+        "file": "packages/trace_lab/strategies.py",
+        "score": 13.23007884374315,
+        "why": "\"\"\"Pluggable tracing strategies. Add a function here to try a new idea.\"\"\" from __future__ import annotations from collections.abc import Callable from pathlib import Path from tra",
+        "role": "function",
+        "loc": "packages/trace_lab/strategies.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 7,
+        "file": "docs/superpowers/specs/2026-08-08-natural-sdk-context-engine-vs-graphify-smoke-design.md",
+        "score": 10.33298308030895,
+        "why": "# Natural Cursor SDK smoke A/B: Context Engine vs Graphify **Date:** 2026-08-08 **Status:** approved for implementation ## Goal Verify that a normal local Cursor SDK agent discover",
+        "role": "docs",
+        "loc": "docs/superpowers/specs/2026-08-08-natural-sdk-context-engine-vs-graphify-smoke-design.md:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 8,
+        "file": "packages/trace_lab/facts/call_graph.py",
+        "score": 10.234243636212126,
+        "why": "\"\"\"Call graph facts: AST + optional Jedi + Graphify.\"\"\" from __future__ import annotations from pathlib import Path from trace_lab.ast_graph import AstTraceGraph from trace_lab.fac",
+        "role": "function",
+        "loc": "packages/trace_lab/facts/call_graph.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 9,
+        "file": "packages/trace_lab/polytrace.py",
+        "score": 10.028304859009358,
+        "why": "def bind_polytrace( lsp: LspIndex, extra_graph: AstTraceGraph | None = None ): def polytrace(case, nodes, graph, lex): return poly_trace( case, nodes, graph, lex, lsp=lsp, extra_gr",
+        "role": "function",
+        "loc": "packages/trace_lab/polytrace.py:1-1",
+        "symbol": ""
+      }
+    ],
+    "suggested_seed": {
+      "file": "packages/trace_lab/graphify_layer.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/graphify_layer.py:1-1",
+      "score": 41.45081419621302
+    },
+    "next": "scubiee pack \"graphify build_graphify_graph AstTraceGraph polytrace compose_pdg edges_from_graphify call graph\" --seed-file packages/trace_lab/graphify_layer.py --mode lean"
+  },
+  "stdout_preview": ""
+}

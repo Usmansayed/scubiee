@@ -1,0 +1,46 @@
+{
+  "ok": true,
+  "tool": "pack_poly_embed",
+  "engine": "poly_embed",
+  "elapsed_s": 0.207,
+  "n_pack": 2,
+  "seed": {
+    "file": "packages/conductor/architectures.py",
+    "symbol": "MultiArchConductor.retrieve_D_rerank",
+    "id": "packages/conductor/architectures.py::MultiArchConductor.retrieve_D_rerank"
+  },
+  "pack": [
+    {
+      "file": "packages/conductor/architectures.py",
+      "symbol": "MultiArchConductor.retrieve_D_rerank",
+      "score": 1.0,
+      "loc": "packages/conductor/architectures.py:437-439",
+      "id": "packages/conductor/architectures.py::MultiArchConductor.retrieve_D_rerank",
+      "chars": 247
+    },
+    {
+      "file": "packages/conductor/service.py",
+      "symbol": "ConductorEngine.search",
+      "score": 1.0,
+      "loc": "packages/conductor/service.py:209-281",
+      "id": "packages/conductor/service.py::ConductorEngine.search",
+      "chars": 3692
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/conductor/architectures.py::MultiArchConductor.retrieve_D_rerank",
+      "loc": "packages/conductor/architectures.py:437-439",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/conductor/service.py::ConductorEngine.search",
+      "loc": "packages/conductor/service.py:209-281",
+      "edge": "seed",
+      "score": 1.0
+    }
+  ],
+  "pack_query": "CodeRankLLM rerank search-time dense conductor D_rerank hits reorder not index\nrelevant_chunks: packages/conductor/architectures.py::MultiArchConductor.retrieve_D_rerank@packages/conductor/architectures.py:437-439 | packages/conductor/service.py::ConductorEngine.search@packages/conductor/service.py:209-281 | packages/pipeline/searcher.py::FaissDenseAdapter.search@packages/pipeline/searcher.py:40-52",
+  "error": null
+}

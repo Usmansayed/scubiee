@@ -1,0 +1,40 @@
+{
+  "gate": {
+    "agents_md": "gate_with_scubiee_mcp",
+    "steering": "gate_with_scubiee_mcp",
+    "cursor_rule": "gate_with_scubiee_mcp"
+  },
+  "tools": [
+    "read",
+    "write",
+    "shell",
+    "@scubiee",
+    "@scubiee/gate",
+    "@scubiee/map",
+    "@scubiee/pack_context",
+    "@scubiee/expand_context",
+    "@scubiee/collect_hot_context",
+    "@scubiee/workspace",
+    "@scubiee/expand",
+    "@scubiee/status"
+  ],
+  "autoApprove": [
+    "gate",
+    "map",
+    "pack_context",
+    "expand_context",
+    "collect_hot_context",
+    "workspace",
+    "expand",
+    "status",
+    "*"
+  ],
+  "resources": [
+    "file://AGENTS.md",
+    "file://.kiro/steering/scubiee.md"
+  ],
+  "includeMcpJson": false,
+  "mcp": true,
+  "locate": "mcp",
+  "shell_scubiee": false
+}

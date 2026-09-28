@@ -1,0 +1,90 @@
+{
+  "ok": true,
+  "tool": "map",
+  "query": "graphify graph_ir.json build_graphify GraphifyChunkRetriever parse IR edges call graph index",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/conductor/graphify_retriever.py",
+      "symbol": "",
+      "score": 25.496138061960522,
+      "loc": "packages/conductor/graphify_retriever.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "scripts/bench_size_ladder.py",
+      "symbol": "",
+      "score": 13.80223366871021,
+      "loc": "scripts/bench_size_ladder.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "scripts/bench_budget_alloc.py",
+      "symbol": "",
+      "score": 13.54767716810414,
+      "loc": "scripts/bench_budget_alloc.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "docs/superpowers/specs/2026-08-08-natural-sdk-context-engine-vs-graphify-smoke-design.md",
+      "symbol": "",
+      "score": 7.893845573573721,
+      "loc": "docs/superpowers/specs/2026-08-08-natural-sdk-context-engine-vs-graphify-smoke-design.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "packages/parse_harness/bakeoff.py",
+      "symbol": "",
+      "score": 6.980628935082723,
+      "loc": "packages/parse_harness/bakeoff.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "packages/graphify/paths.py",
+      "symbol": "",
+      "score": 6.884371429854795,
+      "loc": "packages/graphify/paths.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "docs/mlx-index-compute-and-memory.md",
+      "symbol": "",
+      "score": 5.525660282545461,
+      "loc": "docs/mlx-index-compute-and-memory.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "packages/conductor/conductor.py",
+      "symbol": "",
+      "score": 4.561689627128805,
+      "loc": "packages/conductor/conductor.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "packages/enrich/__main__.py",
+      "symbol": "",
+      "score": 4.5129084880235215,
+      "loc": "packages/enrich/__main__.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "tests/_mcp_break_it_suite.py",
+      "symbol": "",
+      "score": 4.453710275074244,
+      "loc": "tests/_mcp_break_it_suite.py:1-1",
+      "why": ""
+    }
+  ],
+  "suggested_seed": null,
+  "elapsed_s": 0.997,
+  "via": "search_repo(use_server=True)"
+}

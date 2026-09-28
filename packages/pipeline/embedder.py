@@ -800,16 +800,26 @@ class Embedder:
         gpu_tok_total = 0
         n_forwards = 0
         self._mlx_timings = {}
+        # A hot save embeds 1-64 chunks (a few MB): it must not sit on the
+        # near-OOM guard for minutes, one-chunk batches, or spam the log.
+        # Bulk indexing keeps the original wait/shrink behaviour (issue 3).
+        try:
+            from pipeline.resources import hot_lane_max_chunks, hot_lane_wait_s
+
+            small = len(pending_text) <= hot_lane_max_chunks()
+            small_wait = hot_lane_wait_s()
+        except Exception:  # noqa: BLE001
+            small, small_wait = False, 0.0
         while start < len(pending_text):
             if rm is not None:
                 budget = rm.wait_for_capacity(
                     "embed",
-                    timeout_s=180.0,
-                    on_wait=lambda b: print(
+                    timeout_s=small_wait if small else 180.0,
+                    on_wait=None if small else (lambda b: print(
                         f"[resources] embed waiting pressure={b.pressure} {b.reason}",
                         file=sys.stderr,
                         flush=True,
-                    ),
+                    )),
                 )
                 if budget.pressure in {"idle", "normal"}:
                     bs = max(configured_bs, int(budget.batch_size))
@@ -819,12 +829,23 @@ class Embedder:
                     bs = 1 if not budget.allow else max(1, min(int(budget.batch_size), configured_bs))
                 bs = max(1, min(bs, len(pending_text) - start))
                 if not budget.allow and budget.pressure == "critical":
-                    bs = 1
-                    print(
-                        f"[resources] embed proceeding minimally: {budget.reason}",
-                        file=sys.stderr,
-                        flush=True,
-                    )
+                    if small:
+                        bs = max(1, min(configured_bs, len(pending_text) - start))
+                        avail = (budget.sample or {}).get("ram_available_mb")
+                        print(
+                            f"[resources] hot save embed {len(pending_text)} chunk(s) under low RAM "
+                            f"(available={avail}MB) — proceeding after {small_wait:.1f}s",
+                            file=sys.stderr,
+                            flush=True,
+                        )
+                        rm = None  # one short wait per save, not one per batch
+                    else:
+                        bs = 1
+                        print(
+                            f"[resources] embed proceeding minimally: {budget.reason}",
+                            file=sys.stderr,
+                            flush=True,
+                        )
             else:
                 bs = max(1, min(configured_bs, len(pending_text) - start))
             t_batch = time.perf_counter()

@@ -38,6 +38,13 @@ def test_align_profile_marks_dml_pending_on_windows(monkeypatch):
 
 
 def test_requirement_satisfied_for_installed_pip():
+    import importlib.util
+
+    import pytest
+
+    if importlib.util.find_spec("pip") is None:
+        # uv-created venvs ship without pip (the repo .venv included).
+        pytest.skip("pip is not installed in this interpreter")
     assert _requirement_satisfied("pip>=1")
     assert not _requirement_satisfied("definitely-not-a-real-pkg-xyz>=1")
 

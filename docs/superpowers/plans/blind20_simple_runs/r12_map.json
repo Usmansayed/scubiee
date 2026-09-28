@@ -1,0 +1,90 @@
+{
+  "ok": true,
+  "tool": "map",
+  "query": "ResourceManager RSS cap CTX_CE_RSS_CAP_MB embed batch ceiling pressure resources adaptive",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/pipeline/memory_budget.py",
+      "symbol": "",
+      "score": 13.416893664369432,
+      "loc": "packages/pipeline/memory_budget.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "packages/pipeline/memory_governor.py",
+      "symbol": "",
+      "score": 11.80557995618836,
+      "loc": "packages/pipeline/memory_governor.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "packages/pipeline/resources.py",
+      "symbol": "",
+      "score": 6.05132369080455,
+      "loc": "packages/pipeline/resources.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "packages/pipeline/embedder.py",
+      "symbol": "",
+      "score": 4.3407425263015815,
+      "loc": "packages/pipeline/embedder.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "tests/test_resources.py",
+      "symbol": "",
+      "score": 4.083274852326173,
+      "loc": "tests/test_resources.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "docs/superpowers/specs/2026-08-05-resource-management-design.md",
+      "symbol": "",
+      "score": 3.858124220259005,
+      "loc": "docs/superpowers/specs/2026-08-05-resource-management-design.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "docs/mlx-index-compute-and-memory.md",
+      "symbol": "",
+      "score": 3.531407916877193,
+      "loc": "docs/mlx-index-compute-and-memory.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "scripts/bench_mlx_memory.py",
+      "symbol": "",
+      "score": 3.3749769333955713,
+      "loc": "scripts/bench_mlx_memory.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "fixtures/ce-sim-repo/auth.py",
+      "symbol": "",
+      "score": 3.3599394314154702,
+      "loc": "fixtures/ce-sim-repo/auth.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "packages/pipeline/mlx_mac.py",
+      "symbol": "",
+      "score": 3.087137425094379,
+      "loc": "packages/pipeline/mlx_mac.py:1-1",
+      "why": ""
+    }
+  ],
+  "suggested_seed": null,
+  "elapsed_s": 0.803,
+  "via": "search_repo(use_server=True)"
+}

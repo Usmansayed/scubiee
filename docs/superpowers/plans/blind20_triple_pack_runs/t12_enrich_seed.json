@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "elapsed_s": 0.037,
+  "seed_file": "packages/pipeline/rules_installer.py",
+  "seed": {
+    "file": "packages/pipeline/rules_installer.py",
+    "symbol": "_templates_dir",
+    "id": "packages/pipeline/rules_installer.py::_templates_dir",
+    "loc": null
+  },
+  "chunks": [
+    {
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": "_templates_dir",
+      "loc": "packages/pipeline/rules_installer.py:40-41",
+      "score": 1.0,
+      "kind": "function"
+    }
+  ],
+  "n_cards": 1,
+  "error": null
+}

@@ -1,0 +1,103 @@
+{
+  "ok": true,
+  "tool": "map",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "scripts/smoke_hot_reload.py",
+      "score": 25.879141195510105,
+      "why": "Production smoke: uv tool install + upgrade --check + bridge entrypoints.",
+      "role": "other",
+      "loc": "scripts/smoke_hot_reload.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 2,
+      "file": "tests/mac_production_test.py",
+      "score": 20.403852801196205,
+      "why": "Mac production test suite for scubiee 0.",
+      "role": "test",
+      "loc": "tests/mac_production_test.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 3,
+      "file": "packages/pipeline/__main__.py",
+      "score": 13.300815487499865,
+      "why": "def cmd_upgrade(args: argparse.Namespace) -> int: \"\"\"One-command upgrade: swap package, migrate, rebind MCP/rules, health-check.\"\"\" from pipeline.upgrade import check_pypi_version,",
+      "role": "function",
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 4,
+      "file": "docs/windows-uv-tool-access-denied-deferred.md",
+      "score": 6.967082467619218,
+      "why": "# Done: Windows uv tool Access denied (no reboot) **Date:** 2026-08-26 (designed) \u2192 implemented 2026-08-26 **Status:** Done **Reporter context:** Friend laptop (UMAIR), Windows; al",
+      "role": "docs",
+      "loc": "docs/windows-uv-tool-access-denied-deferred.md:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 5,
+      "file": "packages/pipeline/upgrade.py",
+      "score": 6.463598513635532,
+      "why": "def do_upgrade( *, pre_release: bool = False, check_only: bool = False, connect: bool = True, repair: bool = False, reindex: bool = False, skip_package: bool = False, ) -> dict[str",
+      "role": "function",
+      "loc": "packages/pipeline/upgrade.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 6,
+      "file": "docs/web-info/windows.md",
+      "score": 6.1181075313513915,
+      "why": "# Windows guide Windows-specific install, DirectML vs CPU-only laptops, uv tool locks, and repair. **Docs assume [scubiee 0.3.13](https://pypi.org/project/scubiee/0.3.13/).** Full ",
+      "role": "docs",
+      "loc": "docs/web-info/windows.md:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 7,
+      "file": "packages/pipeline/upgrade_supervisor.py",
+      "score": 5.245504551149946,
+      "why": "\"\"\"Version-aware Upgrade Supervisor for Scubiee. Phases: DETECT \u2192 PLAN \u2192 SNAPSHOT \u2192 QUIESCE \u2192 SWAP \u2192 MIGRATE \u2192 REBIND \u2192 HEALTH \u2192 COMMIT|ROLLBACK \"\"\" from __future__ import annotati",
+      "role": "function",
+      "loc": "packages/pipeline/upgrade_supervisor.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 8,
+      "file": "packages/pipeline/process_control.py",
+      "score": 5.184345408157945,
+      "why": "def unlock_uv_tool_env(*, python: Path | None = None, project: Path | None = None) -> dict[str, Any]: \"\"\"Public API for ``scubiee unlock-tool`` \u2014 free the uv tool dir without unins",
+      "role": "function",
+      "loc": "packages/pipeline/process_control.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 9,
+      "file": "docs/web-info/uninstall-windows.md",
+      "score": 4.738494257358563,
+      "why": "# Uninstall on Windows (uv tool install) Complete guide for removing Scubiee on Windows when MCP, the engine daemon, or uv file locks get in the way. **Docs assume [scubiee 0.3.13]",
+      "role": "docs",
+      "loc": "docs/web-info/uninstall-windows.md:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 10,
+      "file": "packages/pipeline/env_guard.py",
+      "score": 4.593511168328958,
+      "why": "def format_install_identity() -> str: try: from importlib.metadata import version as pkg_version ver = pkg_version(\"scubiee\") except Exception: # noqa: BLE001 ver = \"unknown\" py = ",
+      "role": "function",
+      "loc": "packages/pipeline/env_guard.py:1-1",
+      "symbol": ""
+    }
+  ],
+  "suggested_seed": {
+    "file": "packages/pipeline/__main__.py",
+    "symbol": "",
+    "loc": "packages/pipeline/__main__.py:1-1",
+    "score": 13.300815487499865
+  },
+  "next": "scubiee pack \"cmd_upgrade upgrade supervisor uv tool unlock-tool Access denied logon scubiee install\" --seed-file packages/pipeline/__main__.py --mode lean"
+}

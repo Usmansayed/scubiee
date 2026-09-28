@@ -1,0 +1,27 @@
+{
+  "protocol": "blind20_simple_gt_v1",
+  "authored_after_freeze": true,
+  "note": "Must-files authored AFTER Phase1 freeze by independent code inspection. Prefer primary implementation files over docs/tests.",
+  "cases": [
+    {"id": "r01", "must_files": ["packages/pipeline/turbo_quant.py", "packages/pipeline/vectordb.py", "packages/pipeline/searcher.py", "packages/pipeline/engine.py"]},
+    {"id": "r02", "must_files": ["packages/pipeline/capability.py"]},
+    {"id": "r03", "must_files": ["packages/conductor/graphify_retriever.py", "packages/pipeline/indexer.py"]},
+    {"id": "r04", "must_files": ["packages/pipeline/repo_lifecycle.py"]},
+    {"id": "r05", "must_files": ["packages/pipeline/tool_registry.py", "packages/pipeline/mcp_install.py", "packages/pipeline/__main__.py"]},
+    {"id": "r06", "must_files": ["packages/pipeline/dashboard_server.py"]},
+    {"id": "r07", "must_files": ["packages/pipeline/wipe.py"]},
+    {"id": "r08", "must_files": ["packages/pipeline/lifecycle_runtime.py", "packages/pipeline/__main__.py"]},
+    {"id": "r09", "must_files": ["packages/conductor/top3.py", "packages/conductor/service.py", "packages/pipeline/searcher.py"]},
+    {"id": "r10", "must_files": ["packages/conductor/conductor.py", "packages/pipeline/searcher.py"]},
+    {"id": "r11", "must_files": ["packages/pipeline/indexer.py"]},
+    {"id": "r12", "must_files": ["packages/pipeline/memory_budget.py", "packages/pipeline/embedder.py"]},
+    {"id": "r13", "must_files": ["packages/pipeline/rules_installer.py"]},
+    {"id": "r14", "must_files": ["packages/pipeline/context_trace.py", "packages/pipeline/mcp_locate.py", "packages/pipeline/locate_cli.py"]},
+    {"id": "r15", "must_files": ["packages/pipeline/freshness.py"]},
+    {"id": "r16", "must_files": ["packages/pipeline/__main__.py", "packages/pipeline/ce_service.py"]},
+    {"id": "r17", "must_files": ["packages/pipeline/mcp_permissions.py"]},
+    {"id": "r18", "must_files": ["packages/trace_lab/polytrace.py"]},
+    {"id": "r19", "must_files": ["packages/pipeline/engine.py", "packages/pipeline/daemon.py"]},
+    {"id": "r20", "must_files": ["packages/pipeline/chunk_merkle.py", "packages/pipeline/incremental.py", "packages/pipeline/store.py"]}
+  ]
+}

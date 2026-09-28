@@ -1,0 +1,33 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 1.702,
+  "stdout_chars": 557,
+  "stderr_tail": "",
+  "json": {
+    "ok": true,
+    "tool": "pack",
+    "seed": {
+      "id": "packages/pipeline/context_trace.py::_heat",
+      "file": "packages/pipeline/context_trace.py",
+      "symbol": "_heat"
+    },
+    "chain": [
+      {
+        "id": "packages/pipeline/context_trace.py::_heat",
+        "loc": "packages/pipeline/context_trace.py:39-44",
+        "edge": "seed",
+        "score": 1.0
+      }
+    ],
+    "pack": [
+      {
+        "id": "packages/pipeline/context_trace.py::_heat",
+        "loc": "packages/pipeline/context_trace.py:39-44",
+        "text": "def _heat(score: float) -> str:\n    if score >= _HOT:\n        return \"hot\"\n    if score >= _WARM:\n        return \"warm\"\n    return \"cool\""
+      }
+    ],
+    "cold": []
+  },
+  "stdout_preview": ""
+}

@@ -1,0 +1,33 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 1.893,
+  "stdout_chars": 822,
+  "stderr_tail": "",
+  "json": {
+    "ok": true,
+    "tool": "pack",
+    "seed": {
+      "id": "packages/trace_lab/semantic_tracer_fuse.py::_graph_degree",
+      "file": "packages/trace_lab/semantic_tracer_fuse.py",
+      "symbol": "_graph_degree"
+    },
+    "chain": [
+      {
+        "id": "packages/trace_lab/semantic_tracer_fuse.py::_graph_degree",
+        "loc": "packages/trace_lab/semantic_tracer_fuse.py:45-52",
+        "edge": "seed",
+        "score": 1.0
+      }
+    ],
+    "pack": [
+      {
+        "id": "packages/trace_lab/semantic_tracer_fuse.py::_graph_degree",
+        "loc": "packages/trace_lab/semantic_tracer_fuse.py:45-52",
+        "text": "def _graph_degree(graph: AstTraceGraph, nodes: dict[str, TraceNode]) -> dict[str, int]:\n    deg: dict[str, int] = {nid: 0 for nid in nodes}\n    for nid in nodes:\n        try:\n            deg[nid] = len(list(graph.neighbors(nid, directed=True)))\n        except Exception:  # noqa: BLE001\n            deg[nid] = 0\n    return deg"
+      }
+    ],
+    "cold": []
+  },
+  "stdout_preview": ""
+}

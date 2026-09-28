@@ -1,0 +1,170 @@
+{
+  "board": "verify_prod.json",
+  "n_cases": 10,
+  "elapsed_s": 9.32,
+  "embed_backend": "real:fastembed",
+  "summary": {
+    "composite_v1": {
+      "correct": 9,
+      "n": 10,
+      "accuracy": 0.9,
+      "mean_f1": 0.8732,
+      "mean_recall_must": 0.9667,
+      "mean_precision_hot": 0.8351,
+      "mean_must_at_10": 0.9227,
+      "mean_hot": 8.5,
+      "failed_ids": [
+        "p19"
+      ]
+    },
+    "semantic_tracer_v1": {
+      "correct": 9,
+      "n": 10,
+      "accuracy": 0.9,
+      "mean_f1": 0.8779,
+      "mean_recall_must": 0.9667,
+      "mean_precision_hot": 0.8424,
+      "mean_must_at_10": 0.9318,
+      "mean_hot": 8.4,
+      "failed_ids": [
+        "p19"
+      ]
+    },
+    "semantic_tracer_fuse": {
+      "correct": 9,
+      "n": 10,
+      "accuracy": 0.9,
+      "mean_f1": 0.835,
+      "mean_recall_must": 0.9667,
+      "mean_precision_hot": 0.7563,
+      "mean_must_at_10": 0.9318,
+      "mean_hot": 9.0,
+      "failed_ids": [
+        "p19"
+      ]
+    },
+    "semantic_tracer_fuse_no_teleport": {
+      "correct": 9,
+      "n": 10,
+      "accuracy": 0.9,
+      "mean_f1": 0.8779,
+      "mean_recall_must": 0.9667,
+      "mean_precision_hot": 0.8424,
+      "mean_must_at_10": 0.9318,
+      "mean_hot": 8.4,
+      "failed_ids": [
+        "p19"
+      ]
+    },
+    "poly_embed": {
+      "correct": 5,
+      "n": 10,
+      "accuracy": 0.5,
+      "mean_f1": 0.7936,
+      "mean_recall_must": 0.9208,
+      "mean_precision_hot": 0.7482,
+      "mean_must_at_10": 0.866,
+      "mean_hot": 9.2,
+      "failed_ids": [
+        "p02",
+        "p10",
+        "p19",
+        "p20",
+        "p33"
+      ]
+    },
+    "hybrid_teleport": {
+      "correct": 4,
+      "n": 10,
+      "accuracy": 0.4,
+      "mean_f1": 0.4978,
+      "mean_recall_must": 0.9667,
+      "mean_precision_hot": 0.3644,
+      "mean_must_at_10": 0.9011,
+      "mean_hot": 23.4,
+      "failed_ids": [
+        "p02",
+        "p09",
+        "p12",
+        "p19",
+        "p20",
+        "p33"
+      ]
+    },
+    "vector_only": {
+      "correct": 0,
+      "n": 10,
+      "accuracy": 0.0,
+      "mean_f1": 0.3839,
+      "mean_recall_must": 0.2535,
+      "mean_precision_hot": 0.9167,
+      "mean_must_at_10": 0.615,
+      "mean_hot": 1.9,
+      "failed_ids": [
+        "p01",
+        "p02",
+        "p09",
+        "p10",
+        "p12",
+        "p13",
+        "p19",
+        "p20",
+        "p28",
+        "p33"
+      ]
+    }
+  },
+  "vs_composite": {
+    "semantic_tracer_v1": {
+      "must_delta": 0.0,
+      "f1_delta": 0.0047,
+      "prec_delta": 0.0073,
+      "acc_delta": 0.0,
+      "must_at_10_delta": 0.0091,
+      "ship_gate": false
+    },
+    "semantic_tracer_fuse": {
+      "must_delta": 0.0,
+      "f1_delta": -0.0382,
+      "prec_delta": -0.0788,
+      "acc_delta": 0.0,
+      "must_at_10_delta": 0.0091,
+      "ship_gate": false
+    },
+    "semantic_tracer_fuse_no_teleport": {
+      "must_delta": 0.0,
+      "f1_delta": 0.0047,
+      "prec_delta": 0.0073,
+      "acc_delta": 0.0,
+      "must_at_10_delta": 0.0091,
+      "ship_gate": false
+    },
+    "poly_embed": {
+      "must_delta": -0.0459,
+      "f1_delta": -0.0796,
+      "prec_delta": -0.0869,
+      "acc_delta": -0.4,
+      "must_at_10_delta": -0.0567,
+      "ship_gate": false
+    },
+    "hybrid_teleport": {
+      "must_delta": 0.0,
+      "f1_delta": -0.3754,
+      "prec_delta": -0.4707,
+      "acc_delta": -0.5,
+      "must_at_10_delta": -0.0216,
+      "ship_gate": false
+    },
+    "vector_only": {
+      "must_delta": -0.7132,
+      "f1_delta": -0.4893,
+      "prec_delta": 0.0816,
+      "acc_delta": -0.9,
+      "must_at_10_delta": -0.3077,
+      "ship_gate": false
+    }
+  },
+  "ship_winners": [],
+  "best_balanced": "semantic_tracer_v1",
+  "recommendation": "Fuse did not beat composite_v1 on balanced metrics \u2014 keep composite_v1; retain fuse for ablation research."
+}

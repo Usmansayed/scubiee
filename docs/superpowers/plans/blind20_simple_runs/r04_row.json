@@ -1,0 +1,74 @@
+{
+  "id": "r04",
+  "family": "never-index",
+  "task": "How does never-index / path deny prevent files from entering the corpus?",
+  "enrich_prompt": "never-index never_index deny paths skip files indexing exclude ignore globs managed",
+  "map": {
+    "elapsed_s": 0.832,
+    "n_cards": 10,
+    "suggested_seed": {
+      "file": "packages/pipeline/repo_lifecycle.py",
+      "symbol": ""
+    },
+    "top_files": [
+      "tests/test_repo_lifecycle.py",
+      "tests/test_auto_sessions_observability.py",
+      "packages/pipeline/repo_lifecycle.py",
+      "packages/pipeline/paths.py",
+      "tests/test_index_coverage.py"
+    ]
+  },
+  "arms": {
+    "composite_v1": {
+      "ok": true,
+      "engine": "composite_v1",
+      "policy": "strict",
+      "elapsed_s": 0.036,
+      "n_pack": 1,
+      "pack": [
+        {
+          "file": "packages/pipeline/repo_lifecycle.py",
+          "symbol": "_root",
+          "score": 1.0,
+          "loc": "packages/pipeline/repo_lifecycle.py:34-35",
+          "id": "packages/pipeline/repo_lifecycle.py::_root"
+        }
+      ],
+      "error": null
+    },
+    "polytrace": {
+      "ok": true,
+      "engine": "polytrace",
+      "policy": "strict",
+      "elapsed_s": 0.001,
+      "n_pack": 1,
+      "pack": [
+        {
+          "file": "packages/pipeline/repo_lifecycle.py",
+          "symbol": "_root",
+          "score": 1.0,
+          "loc": "packages/pipeline/repo_lifecycle.py:34-35",
+          "id": "packages/pipeline/repo_lifecycle.py::_root"
+        }
+      ],
+      "error": null
+    },
+    "ultimate": {
+      "ok": true,
+      "engine": "ultimate",
+      "policy": "strict",
+      "elapsed_s": 0.015,
+      "n_pack": 1,
+      "pack": [
+        {
+          "file": "packages/pipeline/repo_lifecycle.py",
+          "symbol": "_root",
+          "score": 1.0,
+          "loc": "packages/pipeline/repo_lifecycle.py:34-35",
+          "id": "packages/pipeline/repo_lifecycle.py::_root"
+        }
+      ],
+      "error": null
+    }
+  }
+}

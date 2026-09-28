@@ -6,64 +6,21 @@ import os
 from pathlib import Path
 
 from graphify.extract import collect_files
+from pipeline.ignore import (
+    INDEX_WRITE_HINT_ROOTS,
+    IgnoreRules,
+    load_scubiee_ignore,
+    should_index_rel,
+)
 from pipeline.merkle import DEFAULT_EXTENSIONS
 
 # Optional scope when --roots / CTX_INDEX_ROOTS / legacy CTX_FAST_ROOTS is set.
-# Do NOT include testdata/ — fixture trees flood the index with duplicates.
-_DEFAULT_SCOPE_ROOTS = (
-    "src/",
-    "lib/",
-    "app/",
-    "apps/",
-    "server/",
-    "client/",
-    "backend/",
-    "frontend/",
-    "packages/",
+# Do NOT include testdata/ — fixture trees flood the index with duplicates
+# (list them in ``.scubieeignore`` instead; they are not builtin ignores).
+_DEFAULT_SCOPE_ROOTS = INDEX_WRITE_HINT_ROOTS + (
     "execution_layer/",
     "coordination_layer/",
-    "pipeline/",
     "conductor/",
-    "scripts/",
-    "tools/",
-    "tests/",
-    "test/",
-)
-
-_SKIP_SUBSTRINGS = (
-    "/vendor/",
-    "node_modules",
-    "/dist/",
-    "__pycache__",
-    ".venv",
-    "venv-proof",
-    ".venv-proof",
-    "site-packages",
-    "graphify-out",
-    "/sandbox/",
-    "/references/",
-    "/research/",
-    "/experiments/",
-    "/testdata/",
-    "/design_benchmarks/",
-    "/.git/",
-    "/out/",
-    "/.ab_workspaces/",
-    # IDE / agent tooling trees — merkle already skips dotdirs; indexer must
-    # match or root_probe treats every *.md under these as permanent "added"
-    # and the keeper never converges (same class as #3182).
-    "/.cursor/",
-    "/.kiro/",
-    "/.codex/",
-    "/.cline/",
-    "/.roo/",
-    "/.amp/",
-    "/.continue/",
-    "/.claude/",
-    "/.config/",
-    "/.copilot/",
-    "/.pi/",
-    "/scubiee-0.",
 )
 
 # Back-compat alias for older call sites / env docs.
@@ -84,37 +41,48 @@ def fast_roots_from_env(meta_roots: list[str] | None = None) -> tuple[str, ...]:
     return _DEFAULT_SCOPE_ROOTS
 
 
+def index_rel_ok(
+    root: Path,
+    rel: str,
+    *,
+    rules: IgnoreRules,
+    fast: bool = False,
+    roots: tuple[str, ...] = (),
+) -> bool:
+    """True if the file at posix *rel* belongs in the index."""
+    if Path(rel).suffix.lower() not in DEFAULT_EXTENSIONS:
+        return False
+    if not should_index_rel(root, rel, rules=rules):
+        return False
+    # Prefix-anchored: matching a root anywhere in the path pulls in
+    # vendored or copied trees (e.g. testdata/<copy>/packages/...).
+    return not fast or any(rel.lower().startswith(fr) for fr in roots)
+
+
 def collect_index_paths(
     root: Path,
     *,
     fast: bool = False,
     fast_roots: list[str] | tuple[str, ...] | None = None,
+    under: Path | None = None,
+    rules: IgnoreRules | None = None,
 ) -> list[Path]:
-    """Collect indexable source files under *root*.
+    """Collect indexable source files under *root* (or only its *under* subtree).
 
     Always includes every language in ``DEFAULT_EXTENSIONS`` (``.py``, ``.ts``,
     ``.go``, …). When ``fast`` is true (legacy name = scoped), only paths under
     ``fast_roots`` / default scope roots are kept — never Python-only.
     """
     root = root.resolve()
-    paths = collect_files(root, root=root)
+    if rules is None:
+        rules = load_scubiee_ignore(root)
+    paths = collect_files(under if under is not None else root, root=root)
     roots = fast_roots_from_env(list(fast_roots) if fast_roots else None)
-    out: list[Path] = []
-    for p in paths:
-        rel = p.relative_to(root).as_posix().lower()
-        # Compare against "/rel" so patterns written as "/out/" also match a
-        # top-level out/ directory, not just a nested one.
-        if any(x in f"/{rel}" for x in _SKIP_SUBSTRINGS):
-            continue
-        if p.suffix.lower() not in DEFAULT_EXTENSIONS:
-            continue
-        if fast:
-            # Prefix-anchored: matching a root anywhere in the path pulls in
-            # vendored or copied trees (e.g. testdata/<copy>/packages/...).
-            if not any(rel.startswith(fr) for fr in roots):
-                continue
-        out.append(p)
-    return out
+    return [
+        p
+        for p in paths
+        if index_rel_ok(root, p.relative_to(root).as_posix(), rules=rules, fast=fast, roots=roots)
+    ]
 
 
 def collect_index_relpaths(

@@ -1,0 +1,199 @@
+{
+  "id": "u16",
+  "family": "corpus-fingerprint",
+  "task": "Where is corpus fingerprint computed for composite edge cache invalidation?",
+  "enrich_map_query": "corpus_fingerprint composite edges cache invalidation trace_lab extract_nodes",
+  "map_ok": true,
+  "suggested_seed": {
+    "file": "packages/trace_lab/corpus.py",
+    "symbol": "",
+    "source": "suggested_seed"
+  },
+  "resolved_seed": {
+    "file": "packages/trace_lab/corpus.py",
+    "symbol": "_load_cached_nodes",
+    "how": "best_in_file"
+  },
+  "map_top_cards": [
+    {
+      "file": "packages/trace_lab/corpus.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/corpus.py:1-1",
+      "score": 21.53630716281966
+    },
+    {
+      "file": "packages/trace_lab/semantic_novel.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/semantic_novel.py:1-1",
+      "score": 16.332245488173363
+    },
+    {
+      "file": "packages/trace_lab/composite_v1.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/composite_v1.py:1-1",
+      "score": 16.10495502762147
+    },
+    {
+      "file": "packages/trace_lab/semantic_tracer_v1.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/semantic_tracer_v1.py:1-1",
+      "score": 14.731109045710351
+    },
+    {
+      "file": "packages/trace_lab/ast_graph.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/ast_graph.py:1-1",
+      "score": 14.690377337866227
+    },
+    {
+      "file": "packages/pipeline/context_trace.py",
+      "symbol": "",
+      "loc": "packages/pipeline/context_trace.py:1-1",
+      "score": 14.165799117337686
+    },
+    {
+      "file": "tests/test_semantic_sensor.py",
+      "symbol": "",
+      "loc": "tests/test_semantic_sensor.py:1-1",
+      "score": 12.252429522089624
+    },
+    {
+      "file": "packages/graphify/paths.py",
+      "symbol": "",
+      "loc": "packages/graphify/paths.py:1-1",
+      "score": 1.9639769899845843
+    },
+    {
+      "file": "packages/conductor/bm25_index.py",
+      "symbol": "",
+      "loc": "packages/conductor/bm25_index.py:1-1",
+      "score": 1.6460824826801055
+    },
+    {
+      "file": "packages/graphify/ids.py",
+      "symbol": "",
+      "loc": "packages/graphify/ids.py:1-1",
+      "score": 1.2069547990405791
+    }
+  ],
+  "arms": {
+    "composite_v1": {
+      "ok": true,
+      "elapsed_s": 0.039,
+      "n_hot": 2,
+      "n_ranked": 2,
+      "hot_ids": [
+        "packages/trace_lab/corpus.py::_cache_path",
+        "packages/trace_lab/corpus.py::_load_cached_nodes"
+      ],
+      "top15_ids": [
+        "packages/trace_lab/corpus.py::_load_cached_nodes",
+        "packages/trace_lab/corpus.py::_cache_path"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/trace_lab/corpus.py::_load_cached_nodes",
+          "file": "packages/trace_lab/corpus.py",
+          "symbol": "_load_cached_nodes",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 476
+        },
+        {
+          "id": "packages/trace_lab/corpus.py::_cache_path",
+          "file": "packages/trace_lab/corpus.py",
+          "symbol": "_cache_path",
+          "kind": "function",
+          "score": 0.99,
+          "body_chars": 114
+        }
+      ]
+    },
+    "semantic_tracer_fuse": {
+      "ok": true,
+      "elapsed_s": 0.276,
+      "n_hot": 2,
+      "n_ranked": 2,
+      "hot_ids": [
+        "packages/trace_lab/corpus.py::_cache_path",
+        "packages/trace_lab/corpus.py::_load_cached_nodes"
+      ],
+      "top15_ids": [
+        "packages/trace_lab/corpus.py::_load_cached_nodes",
+        "packages/trace_lab/corpus.py::_cache_path"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/trace_lab/corpus.py::_load_cached_nodes",
+          "file": "packages/trace_lab/corpus.py",
+          "symbol": "_load_cached_nodes",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 476
+        },
+        {
+          "id": "packages/trace_lab/corpus.py::_cache_path",
+          "file": "packages/trace_lab/corpus.py",
+          "symbol": "_cache_path",
+          "kind": "function",
+          "score": 0.9222,
+          "body_chars": 114
+        }
+      ]
+    },
+    "hyb_fuse_demote_noise_plus": {
+      "ok": true,
+      "elapsed_s": 0.063,
+      "n_hot": 2,
+      "n_ranked": 2,
+      "hot_ids": [
+        "packages/trace_lab/corpus.py::_cache_path",
+        "packages/trace_lab/corpus.py::_load_cached_nodes"
+      ],
+      "top15_ids": [
+        "packages/trace_lab/corpus.py::_load_cached_nodes",
+        "packages/trace_lab/corpus.py::_cache_path"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/trace_lab/corpus.py::_load_cached_nodes",
+          "file": "packages/trace_lab/corpus.py",
+          "symbol": "_load_cached_nodes",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 476
+        },
+        {
+          "id": "packages/trace_lab/corpus.py::_cache_path",
+          "file": "packages/trace_lab/corpus.py",
+          "symbol": "_cache_path",
+          "kind": "function",
+          "score": 0.7505,
+          "body_chars": 114
+        }
+      ]
+    },
+    "poly_embed": {
+      "ok": true,
+      "elapsed_s": 0.002,
+      "n_hot": 1,
+      "n_ranked": 1,
+      "hot_ids": [
+        "packages/trace_lab/corpus.py::_load_cached_nodes"
+      ],
+      "top15_ids": [
+        "packages/trace_lab/corpus.py::_load_cached_nodes"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/trace_lab/corpus.py::_load_cached_nodes",
+          "file": "packages/trace_lab/corpus.py",
+          "symbol": "_load_cached_nodes",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 476
+        }
+      ]
+    }
+  }
+}

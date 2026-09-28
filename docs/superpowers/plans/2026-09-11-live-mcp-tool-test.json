@@ -1,0 +1,88 @@
+{
+  "ok": false,
+  "steps": [
+    {
+      "name": "gate",
+      "ms": 8,
+      "ok": true,
+      "preview": "1:ce_a51fc10ef7a48a6c95a865e373f64c50 sid:copilot@chat-7deb1043-a1f3-488a-8015-f0cb5de0118c"
+    },
+    {
+      "name": "status",
+      "ms": 3533,
+      "ok": false,
+      "preview": "{\"ok\":false,\"tool\":\"status\",\"server\":\"scubiee\",\"surface\":\"phase\",\"managed\":true,\"should_use_mcp\":true,\"should_retry_status\":false,\"warming\":true,\"agent_ready\":\"warming\",\"agent_ready_note\":\"Engine starting \u2014 retry locate shortly (not a RAM w",
+      "engine": {
+        "healthy": false,
+        "soft_search_ready": false,
+        "warm_state": null,
+        "warm_error": "Scubiee unreachable at http://127.0.0.1:8765",
+        "project_id": null
+      }
+    },
+    {
+      "name": "map",
+      "ms": 267363,
+      "ok": true,
+      "preview": "{\"ok\":true,\"tool\":\"map\",\"cards\":[{\"rank\":1,\"file\":\"packages/pipeline/mcp_locate.py\",\"score\":27.0744,\"why\":\"def create_mcp(name: str = \\\"scubiee\\\") -> \\\"FastMCP\\\": if FastMCP is None: raise RuntimeError(\\\"pip install mcp\\\") surface = _active",
+      "seed": {
+        "file": "packages/pipeline/mcp_locate.py",
+        "symbol": "create_mcp",
+        "loc": "packages/pipeline/mcp_locate.py:2351-5074",
+        "score": 27.0744,
+        "kind": "function"
+      }
+    },
+    {
+      "name": "pack_context",
+      "ms": 44498,
+      "ok": true,
+      "preview": "{\"ok\":true,\"tool\":\"pack_context\",\"seed\":{\"id\":\"packages/pipeline/mcp_locate.py::create_mcp\",\"file\":\"packages/pipeline/mcp_locate.py\",\"symbol\":\"create_mcp\"},\"heatmap\":[{\"r\":1,\"heat\":\"hot\",\"id\":\"packages/pipeline/mcp_locate.py::create_mcp\",\"l",
+      "heatmap_n": 16,
+      "thin": false
+    },
+    {
+      "name": "expand_context",
+      "ms": 1102,
+      "ok": true,
+      "preview": "{\"ok\":true,\"tool\":\"expand_context\",\"from\":\"packages/pipeline/mcp_locate.py::create_mcp\",\"direction\":\"callees\",\"delta\":[{\"id\":\"packages/pipeline/context_trace.py::pick_suggested_seed\",\"loc\":\"packages/pipeline/context_trace.py:1441-1583\",\"sco"
+    },
+    {
+      "name": "workspace",
+      "ms": 47,
+      "ok": true,
+      "preview": "{\"ok\":true,\"tool\":\"workspace\",\"action\":\"show\",\"session_id\":\"copilot@chat-7deb1043-a1f3-488a-8015-f0cb5de0118c\",\"topic\":\"MCP pack_context map expand_context composite_v1 D_channel_best packages/pipeline/mcp_locate.py create_mcp run_pack_cont",
+      "heatmap_n": 8
+    },
+    {
+      "name": "collect_hot_context",
+      "ms": 27,
+      "ok": true,
+      "preview": "{\"ok\":true,\"tool\":\"collect_hot_context\",\"pack\":[{\"id\":\"packages/pipeline/mcp_locate.py::_active_surface\",\"loc\":\"packages/pipeline/mcp_locate.py:61-70\",\"text\":\"def _active_surface() -> str:\\n    # Product default is phase/ship (map\u2192pack_cont"
+    },
+    {
+      "name": "map_repeat",
+      "ms": 30,
+      "ok": true,
+      "preview": "{\"ok\":true,\"tool\":\"map\",\"cards\":[{\"rank\":1,\"file\":\"packages/pipeline/mcp_locate.py\",\"score\":27.0744,\"why\":\"def create_mcp(name: str = \\\"scubiee\\\") -> \\\"FastMCP\\\": if FastMCP is None: raise RuntimeError(\\\"pip install mcp\\\") surface = _active",
+      "seed": {
+        "file": "packages/pipeline/mcp_locate.py",
+        "symbol": "create_mcp",
+        "loc": "packages/pipeline/mcp_locate.py:2351-5074",
+        "score": 27.0744,
+        "kind": "function"
+      }
+    }
+  ],
+  "tools": [
+    "collect_hot_context",
+    "expand",
+    "expand_context",
+    "gate",
+    "map",
+    "pack_context",
+    "status",
+    "workspace"
+  ],
+  "elapsed_ms": 316679
+}

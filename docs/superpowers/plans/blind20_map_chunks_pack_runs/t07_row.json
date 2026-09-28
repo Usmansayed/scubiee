@@ -1,0 +1,276 @@
+{
+  "id": "t07",
+  "family": "locate-cli",
+  "task": "How do `scubiee map` and `scubiee pack` CLI commands parse args and call locate?",
+  "enrich_prompt": "scubiee map pack CLI locate_cli argparse seed-file mode lean enrich prompt",
+  "map": {
+    "elapsed_s": 0.521,
+    "top_files": [
+      "packages/pipeline/locate_cli.py",
+      "scripts/blind_map_pack_20.py",
+      "tests/test_locate_cli.py",
+      "packages/pipeline/__main__.py",
+      "packages/pipeline/templates/scubiee.md"
+    ]
+  },
+  "selected_chunks": [
+    {
+      "file": "packages/pipeline/locate_cli.py",
+      "symbol": "cli_pack",
+      "kind": "function",
+      "loc": "packages/pipeline/locate_cli.py:179-227",
+      "start_line": 179,
+      "end_line": 227,
+      "score": 11.45,
+      "excerpt": "def cli_pack(\n    query: str,\n    *,\n    seed_file: str,\n    path: str | Path = \".\",\n    seed_symbol: str = \"\",\n    seed_line: int = 0,\n    mode: str = \"lean\",\n    policy: str = \"s"
+    },
+    {
+      "file": "packages/pipeline/locate_cli.py",
+      "symbol": "cli_map",
+      "kind": "function",
+      "loc": "packages/pipeline/locate_cli.py:60-176",
+      "start_line": 60,
+      "end_line": 176,
+      "score": 10.2,
+      "excerpt": "def cli_map(\n    query: str,\n    *,\n    path: str | Path = \".\",\n    k: int = 10,\n    local: bool = False,\n) -> dict[str, Any]:\n    \"\"\"Soft locate cards + suggested_seed (no bodies)"
+    },
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "cmd_pack",
+      "kind": "function",
+      "loc": "packages/pipeline/__main__.py:1655-1679",
+      "start_line": 1655,
+      "end_line": 1679,
+      "score": 8.8,
+      "excerpt": "def cmd_pack(args: argparse.Namespace) -> int:\n    \"\"\"Tracer/heatmap pack via CLI (JSON). Same expanded query as map; seed from map.\"\"\"\n    from pipeline.locate_cli import cli_pack"
+    }
+  ],
+  "arms": {
+    "pack_context": {
+      "ok": true,
+      "tool": "pack_context",
+      "engine": "composite_v1",
+      "elapsed_s": 0.135,
+      "n_pack": 3,
+      "seed": {
+        "file": "packages/pipeline/locate_cli.py",
+        "symbol": "cli_pack",
+        "id": "packages/pipeline/locate_cli.py::cli_pack"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/locate_cli.py",
+          "symbol": "cli_pack",
+          "score": 1.0,
+          "loc": "packages/pipeline/locate_cli.py:179-227",
+          "id": "packages/pipeline/locate_cli.py::cli_pack",
+          "chars": 1627
+        },
+        {
+          "file": "packages/pipeline/context_trace.py",
+          "symbol": "_trace_engine",
+          "score": 1.0,
+          "loc": "packages/pipeline/context_trace.py:57-93",
+          "id": "packages/pipeline/context_trace.py::_trace_engine",
+          "chars": 1050
+        },
+        {
+          "file": "packages/pipeline/locate_cli.py",
+          "symbol": "cli_map",
+          "score": 1.0,
+          "loc": "packages/pipeline/locate_cli.py:60-176",
+          "id": "packages/pipeline/locate_cli.py::cli_map",
+          "chars": 3323
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/locate_cli.py::cli_pack",
+          "loc": "packages/pipeline/locate_cli.py:179-227",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/context_trace.py::_trace_engine",
+          "loc": "packages/pipeline/context_trace.py:57-93",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/locate_cli.py::cli_map",
+          "loc": "packages/pipeline/locate_cli.py:60-176",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/locate_cli.py::_root",
+          "loc": "packages/pipeline/locate_cli.py:14-15",
+          "edge": "calls",
+          "score": 0.99
+        },
+        {
+          "id": "packages/pipeline/context_trace.py::run_pack_context",
+          "loc": "packages/pipeline/context_trace.py:1100-1315",
+          "edge": "calls",
+          "score": 0.9405
+        },
+        {
+          "id": "packages/pipeline/context_trace.py::pick_suggested_seed",
+          "loc": "packages/pipeline/context_trace.py:398-432",
+          "edge": "calls",
+          "score": 0.9405
+        },
+        {
+          "id": "packages/pipeline/searcher.py::search_repo",
+          "loc": "packages/pipeline/searcher.py:115-145",
+          "edge": "calls",
+          "score": 0.9405
+        },
+        {
+          "id": "packages/pipeline/context_trace.py::_load_repo",
+          "loc": "packages/pipeline/context_trace.py:276-355",
+          "edge": "calls",
+          "score": 0.8626
+        }
+      ],
+      "pack_query": "scubiee map pack CLI locate_cli argparse seed-file mode lean enrich prompt\nrelevant_chunks: packages/pipeline/locate_cli.py::cli_pack@packages/pipeline/locate_cli.py:179-227 | packages/pipeline/locate_cli.py::cli_map@packages/pipeline/locate_cli.py:60-176 | packages/pipeline/__main__.py::cmd_pack@packages/pipeline/__main__.py:1655-1679",
+      "error": null
+    },
+    "pack_poly_embed": {
+      "ok": true,
+      "tool": "pack_poly_embed",
+      "engine": "poly_embed",
+      "elapsed_s": 0.19,
+      "n_pack": 2,
+      "seed": {
+        "file": "packages/pipeline/locate_cli.py",
+        "symbol": "cli_pack",
+        "id": "packages/pipeline/locate_cli.py::cli_pack"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/locate_cli.py",
+          "symbol": "cli_pack",
+          "score": 1.0,
+          "loc": "packages/pipeline/locate_cli.py:179-227",
+          "id": "packages/pipeline/locate_cli.py::cli_pack",
+          "chars": 1627
+        },
+        {
+          "file": "packages/pipeline/locate_cli.py",
+          "symbol": "cli_map",
+          "score": 1.0,
+          "loc": "packages/pipeline/locate_cli.py:60-176",
+          "id": "packages/pipeline/locate_cli.py::cli_map",
+          "chars": 4188
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/locate_cli.py::cli_pack",
+          "loc": "packages/pipeline/locate_cli.py:179-227",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/locate_cli.py::cli_map",
+          "loc": "packages/pipeline/locate_cli.py:60-176",
+          "edge": "seed",
+          "score": 1.0
+        }
+      ],
+      "pack_query": "scubiee map pack CLI locate_cli argparse seed-file mode lean enrich prompt\nrelevant_chunks: packages/pipeline/locate_cli.py::cli_pack@packages/pipeline/locate_cli.py:179-227 | packages/pipeline/locate_cli.py::cli_map@packages/pipeline/locate_cli.py:60-176 | packages/pipeline/__main__.py::cmd_pack@packages/pipeline/__main__.py:1655-1679",
+      "error": null
+    },
+    "pack_semantic": {
+      "ok": true,
+      "tool": "pack_semantic",
+      "engine": "semantic_tracer_fuse",
+      "elapsed_s": 0.364,
+      "n_pack": 3,
+      "seed": {
+        "file": "packages/pipeline/locate_cli.py",
+        "symbol": "cli_pack",
+        "id": "packages/pipeline/locate_cli.py::cli_pack"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/locate_cli.py",
+          "symbol": "cli_pack",
+          "score": 1.0,
+          "loc": "packages/pipeline/locate_cli.py:179-227",
+          "id": "packages/pipeline/locate_cli.py::cli_pack",
+          "chars": 1627
+        },
+        {
+          "file": "packages/pipeline/context_trace.py",
+          "symbol": "_trace_engine",
+          "score": 1.0,
+          "loc": "packages/pipeline/context_trace.py:57-93",
+          "id": "packages/pipeline/context_trace.py::_trace_engine",
+          "chars": 1050
+        },
+        {
+          "file": "packages/pipeline/locate_cli.py",
+          "symbol": "cli_map",
+          "score": 1.0,
+          "loc": "packages/pipeline/locate_cli.py:60-176",
+          "id": "packages/pipeline/locate_cli.py::cli_map",
+          "chars": 3323
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/locate_cli.py::cli_pack",
+          "loc": "packages/pipeline/locate_cli.py:179-227",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/context_trace.py::_trace_engine",
+          "loc": "packages/pipeline/context_trace.py:57-93",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/locate_cli.py::cli_map",
+          "loc": "packages/pipeline/locate_cli.py:60-176",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/locate_cli.py::_root",
+          "loc": "packages/pipeline/locate_cli.py:14-15",
+          "edge": "calls",
+          "score": 0.9269
+        },
+        {
+          "id": "packages/pipeline/context_trace.py::run_pack_context",
+          "loc": "packages/pipeline/context_trace.py:1100-1315",
+          "edge": "calls",
+          "score": 0.8863
+        },
+        {
+          "id": "packages/pipeline/context_trace.py::pick_suggested_seed",
+          "loc": "packages/pipeline/context_trace.py:398-432",
+          "edge": "calls",
+          "score": 0.8679
+        },
+        {
+          "id": "packages/pipeline/searcher.py::search_repo",
+          "loc": "packages/pipeline/searcher.py:115-145",
+          "edge": "calls",
+          "score": 0.8678
+        },
+        {
+          "id": "packages/pipeline/context_trace.py::run_map_context",
+          "loc": "packages/pipeline/context_trace.py:622-694",
+          "edge": "calls",
+          "score": 0.7376
+        }
+      ],
+      "pack_query": "scubiee map pack CLI locate_cli argparse seed-file mode lean enrich prompt\nrelevant_chunks: packages/pipeline/locate_cli.py::cli_pack@packages/pipeline/locate_cli.py:179-227 | packages/pipeline/locate_cli.py::cli_map@packages/pipeline/locate_cli.py:60-176 | packages/pipeline/__main__.py::cmd_pack@packages/pipeline/__main__.py:1655-1679",
+      "error": null
+    }
+  }
+}

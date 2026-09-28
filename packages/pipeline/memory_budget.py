@@ -228,8 +228,29 @@ def process_rss_mb() -> float | None:
     return _rusage_rss_mb()
 
 
+_TREE_RSS_CACHE: tuple[float, dict[str, Any]] | None = None
+_TREE_RSS_TTL_S = 5.0
+
+
 def scubiee_tree_rss_mb() -> dict[str, Any]:
-    """Sum RSS for engine / bridge / locate / watchdog processes (best-effort)."""
+    """Sum RSS for engine / bridge / locate / watchdog processes (best-effort).
+
+    Cached briefly: ``/v1/status`` is polled every few seconds by every client,
+    and a whole-machine process scan holds the engine's GIL.
+    """
+    global _TREE_RSS_CACHE
+    import time
+
+    now = time.monotonic()
+    cached = _TREE_RSS_CACHE
+    if cached is not None and now - cached[0] < _TREE_RSS_TTL_S:
+        return cached[1]
+    out = _scan_tree_rss_mb()
+    _TREE_RSS_CACHE = (now, out)
+    return out
+
+
+def _scan_tree_rss_mb() -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
     total = 0.0
     try:
@@ -244,13 +265,16 @@ def scubiee_tree_rss_mb() -> dict[str, Any]:
             "engine watchdog",
             "engine run",
         )
-        for proc in psutil.process_iter(["pid", "name", "memory_info", "cmdline"]):
+        for proc in psutil.process_iter(["pid", "name"]):
             try:
-                cmd = " ".join(str(x) for x in (proc.info.get("cmdline") or []))
+                name = str(proc.info.get("name") or "").lower()
+                if not any(tok in name for tok in ("python", "scubiee", "uv")):
+                    continue
+                cmd = " ".join(str(x) for x in (proc.cmdline() or []))
                 blob = cmd.lower()
                 if not any(m in blob for m in markers):
                     continue
-                rss = float(proc.info["memory_info"].rss) / (1024 * 1024)
+                rss = float(proc.memory_info().rss) / (1024 * 1024)
                 role = "other"
                 if "mcp_bridge" in blob or "pipeline.mcp_bridge" in blob:
                     role = "bridge"

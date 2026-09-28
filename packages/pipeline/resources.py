@@ -23,6 +23,16 @@ from pipeline.fair_schedule import EmbedPriority, get_embed_scheduler
 from pipeline.resource_envelope import EnvelopeConfig, derive_envelope
 
 Pressure = Literal["idle", "normal", "busy", "critical"]
+
+
+def hot_lane_max_chunks() -> int:
+    """Embeds this small are a save, not an index: a few MB (issue 3)."""
+    return max(1, _env_int("CTX_RM_HOT_LANE_CHUNKS", 64))
+
+
+def hot_lane_wait_s() -> float:
+    """Longest a save waits on the low-RAM guard before proceeding anyway."""
+    return max(0.0, _env_float("CTX_RM_HOT_LANE_WAIT_S", 1.0))
 JobKind = Literal["embed", "index", "sync", "graph", "generic"]
 
 T = TypeVar("T")
@@ -97,7 +107,11 @@ class ResourceManager:
         # thresholds (overridable)
         self.max_cpu_busy = _env_float("CTX_RM_MAX_CPU", 70.0)
         self.max_cpu_critical = _env_float("CTX_RM_CRITICAL_CPU", 90.0)
-        self.min_free_ram_mb = _env_float("CTX_RM_MIN_FREE_RAM_MB", 256.0)
+        # One default for code and prefs (settings.py said 512, this said 256,
+        # and the prefs default silently overrode the env var).
+        from pipeline.settings import DEFAULT_MIN_FREE_RAM_MB
+
+        self.min_free_ram_mb = _env_float("CTX_RM_MIN_FREE_RAM_MB", float(DEFAULT_MIN_FREE_RAM_MB))
         self.max_ram_percent = _env_float("CTX_RM_MAX_RAM_PCT", 99.5)
         self.poll_s = max(0.05, _env_float("CTX_RM_POLL_MS", 250.0) / 1000.0)
         self._load_prefs()
@@ -114,7 +128,8 @@ class ResourceManager:
                     self.max_cpu_busy = float(rm["max_cpu_busy"])
                 if "max_cpu_critical" in rm:
                     self.max_cpu_critical = float(rm["max_cpu_critical"])
-                if "min_free_ram_mb" in rm:
+                # Env beats prefs.json (which always carries the default).
+                if "min_free_ram_mb" in rm and not os.environ.get("CTX_RM_MIN_FREE_RAM_MB"):
                     self.min_free_ram_mb = float(rm["min_free_ram_mb"])
         except Exception:  # noqa: BLE001
             pass
@@ -338,11 +353,13 @@ class ResourceManager:
                     on_wait(last)
                 except Exception:  # noqa: BLE001
                     pass
-            if time.time() >= deadline:
+            remaining = deadline - time.time()
+            if remaining <= 0:
                 # Timed out: return last (allow may be False) — caller decides
                 last.reason = f"{last.reason} (wait timeout)"
                 return last
-            time.sleep(min(2.0, max(0.2, last.pause_s or 0.5)))
+            # Never oversleep a short (hot-lane) deadline.
+            time.sleep(min(remaining, 2.0, max(0.2, last.pause_s or 0.5)))
 
     def apply_pause(self, budget: AdaptiveBudget) -> None:
         if budget.pause_s > 0 and not self.is_disabled():

@@ -198,6 +198,9 @@ def test_watchdog_skips_auto_start_by_default(
         "pipeline.daemon.start_daemon",
         lambda repo=None: calls.append(str(repo)) or {"ok": True},
     )
+    # No MCP demand. Without this, any real mcp_bridge on the developer's
+    # machine counts as demand and the watchdog (correctly) starts the engine.
+    monkeypatch.setattr(wd, "mcp_or_client_demand", lambda: (0, False))
     wd.watchdog_loop(stop_after=0.25)
     assert calls == [], "watchdog must not cold-start; agent start_daemon owns warm"
     assert not start_request_path().is_file()

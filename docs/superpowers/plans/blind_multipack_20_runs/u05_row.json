@@ -1,0 +1,169 @@
+{
+  "id": "u05",
+  "family": "memory-governor",
+  "task": "How does the memory governor decide to pause or limit heavy embed work?",
+  "enrich_map_query": "memory_governor pause limit embed RSS pressure resources status halt",
+  "map_ok": true,
+  "suggested_seed": {
+    "file": "packages/pipeline/memory_governor.py",
+    "symbol": "",
+    "source": "suggested_seed"
+  },
+  "resolved_seed": {
+    "file": "packages/pipeline/memory_governor.py",
+    "symbol": "MemoryGovernor.note_embedder_unloaded",
+    "how": "best_in_file"
+  },
+  "map_top_cards": [
+    {
+      "file": "tests/test_memory_governor.py",
+      "symbol": "",
+      "loc": "tests/test_memory_governor.py:1-1",
+      "score": 13.068377994874492
+    },
+    {
+      "file": "packages/pipeline/memory_governor.py",
+      "symbol": "",
+      "loc": "packages/pipeline/memory_governor.py:1-1",
+      "score": 7.615258844829173
+    },
+    {
+      "file": "packages/pipeline/resources.py",
+      "symbol": "",
+      "loc": "packages/pipeline/resources.py:1-1",
+      "score": 6.926920177641429
+    },
+    {
+      "file": "tests/test_memory_budget.py",
+      "symbol": "",
+      "loc": "tests/test_memory_budget.py:1-1",
+      "score": 4.458014851550173
+    },
+    {
+      "file": "docs/mlx-index-compute-and-memory.md",
+      "symbol": "",
+      "loc": "docs/mlx-index-compute-and-memory.md:1-1",
+      "score": 4.127858491149587
+    },
+    {
+      "file": "scripts/sim_install_forget.py",
+      "symbol": "",
+      "loc": "scripts/sim_install_forget.py:1-1",
+      "score": 3.6866071932643116
+    },
+    {
+      "file": "scripts/bench_mlx_memory.py",
+      "symbol": "",
+      "loc": "scripts/bench_mlx_memory.py:1-1",
+      "score": 3.558417787753162
+    },
+    {
+      "file": "packages/pipeline/memory_budget.py",
+      "symbol": "",
+      "loc": "packages/pipeline/memory_budget.py:1-1",
+      "score": 3.5492928264620263
+    },
+    {
+      "file": "packages/pipeline/cli_ui.py",
+      "symbol": "",
+      "loc": "packages/pipeline/cli_ui.py:1-1",
+      "score": 3.4225925901422167
+    },
+    {
+      "file": "tests/test_multi_repo_runtime.py",
+      "symbol": "",
+      "loc": "tests/test_multi_repo_runtime.py:1-1",
+      "score": 3.3636988358683326
+    }
+  ],
+  "arms": {
+    "composite_v1": {
+      "ok": true,
+      "elapsed_s": 0.04,
+      "n_hot": 1,
+      "n_ranked": 1,
+      "hot_ids": [
+        "packages/pipeline/memory_governor.py::MemoryGovernor.note_embedder_unloaded"
+      ],
+      "top15_ids": [
+        "packages/pipeline/memory_governor.py::MemoryGovernor.note_embedder_unloaded"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/memory_governor.py::MemoryGovernor.note_embedder_unloaded",
+          "file": "packages/pipeline/memory_governor.py",
+          "symbol": "MemoryGovernor.note_embedder_unloaded",
+          "kind": "method",
+          "score": 1.0,
+          "body_chars": 111
+        }
+      ]
+    },
+    "semantic_tracer_fuse": {
+      "ok": true,
+      "elapsed_s": 0.402,
+      "n_hot": 1,
+      "n_ranked": 1,
+      "hot_ids": [
+        "packages/pipeline/memory_governor.py::MemoryGovernor.note_embedder_unloaded"
+      ],
+      "top15_ids": [
+        "packages/pipeline/memory_governor.py::MemoryGovernor.note_embedder_unloaded"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/memory_governor.py::MemoryGovernor.note_embedder_unloaded",
+          "file": "packages/pipeline/memory_governor.py",
+          "symbol": "MemoryGovernor.note_embedder_unloaded",
+          "kind": "method",
+          "score": 1.0,
+          "body_chars": 111
+        }
+      ]
+    },
+    "hyb_fuse_demote_noise_plus": {
+      "ok": true,
+      "elapsed_s": 0.059,
+      "n_hot": 1,
+      "n_ranked": 1,
+      "hot_ids": [
+        "packages/pipeline/memory_governor.py::MemoryGovernor.note_embedder_unloaded"
+      ],
+      "top15_ids": [
+        "packages/pipeline/memory_governor.py::MemoryGovernor.note_embedder_unloaded"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/memory_governor.py::MemoryGovernor.note_embedder_unloaded",
+          "file": "packages/pipeline/memory_governor.py",
+          "symbol": "MemoryGovernor.note_embedder_unloaded",
+          "kind": "method",
+          "score": 1.0,
+          "body_chars": 111
+        }
+      ]
+    },
+    "poly_embed": {
+      "ok": true,
+      "elapsed_s": 0.002,
+      "n_hot": 1,
+      "n_ranked": 1,
+      "hot_ids": [
+        "packages/pipeline/memory_governor.py::MemoryGovernor.note_embedder_unloaded"
+      ],
+      "top15_ids": [
+        "packages/pipeline/memory_governor.py::MemoryGovernor.note_embedder_unloaded"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/memory_governor.py::MemoryGovernor.note_embedder_unloaded",
+          "file": "packages/pipeline/memory_governor.py",
+          "symbol": "MemoryGovernor.note_embedder_unloaded",
+          "kind": "method",
+          "score": 1.0,
+          "body_chars": 111
+        }
+      ]
+    }
+  }
+}

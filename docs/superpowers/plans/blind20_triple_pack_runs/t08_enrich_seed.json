@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "elapsed_s": 0.041,
+  "seed_file": "packages/pipeline/context_trace.py",
+  "seed": {
+    "file": "packages/pipeline/context_trace.py",
+    "symbol": "_heat",
+    "id": "packages/pipeline/context_trace.py::_heat",
+    "loc": null
+  },
+  "chunks": [
+    {
+      "file": "packages/pipeline/context_trace.py",
+      "symbol": "_heat",
+      "loc": "packages/pipeline/context_trace.py:39-44",
+      "score": 1.0,
+      "kind": "function"
+    }
+  ],
+  "n_cards": 1,
+  "error": null
+}

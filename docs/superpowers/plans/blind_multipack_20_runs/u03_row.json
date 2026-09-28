@@ -1,0 +1,157 @@
+{
+  "id": "u03",
+  "family": "mcp-bridge",
+  "task": "How does the MCP bridge attach a session id for host connections?",
+  "enrich_map_query": "mcp_bridge_session bridge host connection session_id CTX_MCP_SESSION_ID attach isolate",
+  "map_ok": true,
+  "suggested_seed": {
+    "file": "packages/pipeline/mcp_bridge_session.py",
+    "symbol": "",
+    "source": "suggested_seed"
+  },
+  "resolved_seed": {
+    "file": "packages/pipeline/mcp_bridge_session.py",
+    "symbol": "max_bridge_sessions",
+    "how": "best_in_file"
+  },
+  "map_top_cards": [
+    {
+      "file": "packages/pipeline/mcp_bridge_session.py",
+      "symbol": "",
+      "loc": "packages/pipeline/mcp_bridge_session.py:1-1",
+      "score": 18.327484118747762
+    },
+    {
+      "file": "tests/test_mcp_bridge_concurrency.py",
+      "symbol": "",
+      "loc": "tests/test_mcp_bridge_concurrency.py:1-1",
+      "score": 15.824018555613925
+    },
+    {
+      "file": "packages/pipeline/session_isolation.py",
+      "symbol": "",
+      "loc": "packages/pipeline/session_isolation.py:1-1",
+      "score": 15.568703560775816
+    },
+    {
+      "file": "tests/test_mcp_response_lean.py",
+      "symbol": "",
+      "loc": "tests/test_mcp_response_lean.py:1-1",
+      "score": 13.161746639520207
+    },
+    {
+      "file": "tests/test_session_isolation.py",
+      "symbol": "",
+      "loc": "tests/test_session_isolation.py:1-1",
+      "score": 12.776436214815178
+    },
+    {
+      "file": "packages/pipeline/session_store.py",
+      "symbol": "",
+      "loc": "packages/pipeline/session_store.py:1-1",
+      "score": 12.064304093674895
+    },
+    {
+      "file": "packages/pipeline/mcp_hot_reload.py",
+      "symbol": "",
+      "loc": "packages/pipeline/mcp_hot_reload.py:1-1",
+      "score": 3.6907728002765445
+    },
+    {
+      "file": "tests/seir_exp/test_spans.py",
+      "symbol": "",
+      "loc": "tests/seir_exp/test_spans.py:1-1",
+      "score": 1.1753839257514422
+    }
+  ],
+  "arms": {
+    "composite_v1": {
+      "ok": true,
+      "elapsed_s": 0.039,
+      "n_hot": 1,
+      "n_ranked": 1,
+      "hot_ids": [
+        "packages/pipeline/mcp_bridge_session.py::max_bridge_sessions"
+      ],
+      "top15_ids": [
+        "packages/pipeline/mcp_bridge_session.py::max_bridge_sessions"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/mcp_bridge_session.py::max_bridge_sessions",
+          "file": "packages/pipeline/mcp_bridge_session.py",
+          "symbol": "max_bridge_sessions",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 196
+        }
+      ]
+    },
+    "semantic_tracer_fuse": {
+      "ok": true,
+      "elapsed_s": 0.365,
+      "n_hot": 1,
+      "n_ranked": 1,
+      "hot_ids": [
+        "packages/pipeline/mcp_bridge_session.py::max_bridge_sessions"
+      ],
+      "top15_ids": [
+        "packages/pipeline/mcp_bridge_session.py::max_bridge_sessions"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/mcp_bridge_session.py::max_bridge_sessions",
+          "file": "packages/pipeline/mcp_bridge_session.py",
+          "symbol": "max_bridge_sessions",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 196
+        }
+      ]
+    },
+    "hyb_fuse_demote_noise_plus": {
+      "ok": true,
+      "elapsed_s": 0.059,
+      "n_hot": 1,
+      "n_ranked": 1,
+      "hot_ids": [
+        "packages/pipeline/mcp_bridge_session.py::max_bridge_sessions"
+      ],
+      "top15_ids": [
+        "packages/pipeline/mcp_bridge_session.py::max_bridge_sessions"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/mcp_bridge_session.py::max_bridge_sessions",
+          "file": "packages/pipeline/mcp_bridge_session.py",
+          "symbol": "max_bridge_sessions",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 196
+        }
+      ]
+    },
+    "poly_embed": {
+      "ok": true,
+      "elapsed_s": 0.002,
+      "n_hot": 1,
+      "n_ranked": 1,
+      "hot_ids": [
+        "packages/pipeline/mcp_bridge_session.py::max_bridge_sessions"
+      ],
+      "top15_ids": [
+        "packages/pipeline/mcp_bridge_session.py::max_bridge_sessions"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/mcp_bridge_session.py::max_bridge_sessions",
+          "file": "packages/pipeline/mcp_bridge_session.py",
+          "symbol": "max_bridge_sessions",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 196
+        }
+      ]
+    }
+  }
+}

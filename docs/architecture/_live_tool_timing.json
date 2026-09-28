@@ -1,0 +1,144 @@
+{
+  "repo": "C:\\Users\\usman\\Downloads\\context-engine",
+  "checks": [
+    {
+      "name": "health",
+      "wall_ms": 870.4,
+      "ok": true,
+      "warm_state": "ready",
+      "embedder_loaded": true,
+      "running": true
+    },
+    {
+      "name": "open_repo_wait_false",
+      "wall_ms": 3539.0,
+      "ok": true,
+      "warm_state": "activated"
+    },
+    {
+      "name": "search_1",
+      "wall_ms": 385.9,
+      "ok": true,
+      "warming": false,
+      "n": 4,
+      "elapsed_ms": null
+    },
+    {
+      "name": "search_2",
+      "wall_ms": 447.5,
+      "ok": true,
+      "warming": false,
+      "n": 4,
+      "elapsed_ms": null
+    },
+    {
+      "name": "search_3",
+      "wall_ms": 372.0,
+      "ok": true,
+      "warming": false,
+      "n": 4,
+      "elapsed_ms": null
+    },
+    {
+      "name": "search_4",
+      "wall_ms": 735.9,
+      "ok": true,
+      "warming": false,
+      "n": 4,
+      "elapsed_ms": null
+    },
+    {
+      "name": "search_5",
+      "wall_ms": 651.3,
+      "ok": true,
+      "warming": false,
+      "n": 4,
+      "elapsed_ms": null
+    },
+    {
+      "name": "search_consistency",
+      "first_ms": 385.9,
+      "warm_mean_ms": 551.7,
+      "warm_stdev_ms": 147.5,
+      "warm_min_ms": 372.0,
+      "warm_max_ms": 735.9,
+      "p95ish_ms": 651.3
+    },
+    {
+      "name": "search_after_note_1",
+      "wall_ms": 222.8,
+      "ok": true
+    },
+    {
+      "name": "search_after_note_2",
+      "wall_ms": 206.4,
+      "ok": true
+    },
+    {
+      "name": "search_after_note_3",
+      "wall_ms": 221.0,
+      "ok": true
+    },
+    {
+      "name": "streak_consistency",
+      "mean_ms": 216.7,
+      "stdev_ms": 7.3,
+      "min_ms": 206.4,
+      "max_ms": 222.8
+    },
+    {
+      "name": "pack_1seed",
+      "wall_ms": 7688.2,
+      "ok": true,
+      "elapsed_ms": 7688.0,
+      "sla": {
+        "target_ms": 5000,
+        "elapsed_ms": 7688.0,
+        "lean_single_seed": true,
+        "profile": "lean_single_seed_warm"
+      },
+      "timing": {
+        "load_repo_ms": 1355.4,
+        "poly_ms": [
+          5798.6
+        ],
+        "merge_ms": 0.0,
+        "cards_ms": 145.7,
+        "adaptive_skips": []
+      },
+      "engine": "composite_v1",
+      "n_seeds": 1,
+      "adaptive_skips": []
+    },
+    {
+      "name": "pack_3seed",
+      "wall_ms": 498.4,
+      "ok": true,
+      "elapsed_ms": 498.4,
+      "sla": {
+        "target_ms": 8000,
+        "elapsed_ms": 498.4,
+        "lean_single_seed": false,
+        "profile": "pack_multi_seed_warm"
+      },
+      "timing": {
+        "load_repo_ms": 0.2,
+        "poly_ms": [
+          18.4,
+          0.0,
+          17.9
+        ],
+        "merge_ms": 0.8,
+        "cards_ms": 46.4,
+        "adaptive_skips": [
+          "packages/trace_lab/multi_seed.py::merge_seed_heatmaps"
+        ]
+      },
+      "engine": "composite_v1",
+      "n_seeds": 3,
+      "adaptive_skips": [
+        "packages/trace_lab/multi_seed.py::merge_seed_heatmaps"
+      ]
+    }
+  ]
+}

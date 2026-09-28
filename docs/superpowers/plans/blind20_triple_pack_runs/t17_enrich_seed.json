@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "elapsed_s": 0.044,
+  "seed_file": "packages/pipeline/repo_lifecycle.py",
+  "seed": {
+    "file": "packages/pipeline/repo_lifecycle.py",
+    "symbol": "_root",
+    "id": "packages/pipeline/repo_lifecycle.py::_root",
+    "loc": null
+  },
+  "chunks": [
+    {
+      "file": "packages/pipeline/repo_lifecycle.py",
+      "symbol": "_root",
+      "loc": "packages/pipeline/repo_lifecycle.py:34-35",
+      "score": 1.0,
+      "kind": "function"
+    }
+  ],
+  "n_cards": 1,
+  "error": null
+}

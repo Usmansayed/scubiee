@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "elapsed_s": 0.055,
+  "seed_file": "packages/conductor/architectures.py",
+  "seed": {
+    "file": "packages/conductor/architectures.py",
+    "symbol": "_path_tokens",
+    "id": "packages/conductor/architectures.py::_path_tokens",
+    "loc": null
+  },
+  "chunks": [
+    {
+      "file": "packages/conductor/architectures.py",
+      "symbol": "_path_tokens",
+      "loc": "packages/conductor/architectures.py:43-44",
+      "score": 1.0,
+      "kind": "function"
+    },
+    {
+      "file": "packages/conductor/f95.py",
+      "symbol": "path_tokens",
+      "loc": "packages/conductor/f95.py:111-120",
+      "score": 0.9405,
+      "kind": "function"
+    }
+  ],
+  "n_cards": 2,
+  "error": null
+}

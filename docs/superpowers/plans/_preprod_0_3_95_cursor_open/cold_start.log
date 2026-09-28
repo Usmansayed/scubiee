@@ -1,0 +1,15 @@
+== stop engine ==
+[PASS] engine_stopped — running=False
+== non-blocking ensure_mcp_runtime ==
+[PASS] ensure_nonblocking — ms=1553 ok=True warm_state=warming
+== first EngineClient /health + open_repo(wait=False) ==
+[PASS] first_call_under_budget — s=0.36 health_ok=False open_ok=False warming=True embedder=None
+[PASS] no_cursor_timeout_window — s=0.36 (must never approach 60s)
+{
+  "passed": true,
+  "n": 4
+}
+
+[scubiee] mcp attached host-agnostic client_id=mcp:copilot@proc-23196 warm_started=1 deferred=True auto_warm=0 open=None
+[lifecycle] debounce_arm last_client_left_at=1789512832.802 wait_s=10.0
+[scubiee] mcp leave client_id=mcp:copilot@proc-23196 remaining=1 idle={'ok': True, 'action': 'busy', 'reason': 'warm_state:warming'}

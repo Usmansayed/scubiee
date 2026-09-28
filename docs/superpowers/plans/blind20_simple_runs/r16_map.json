@@ -1,0 +1,66 @@
+{
+  "ok": true,
+  "tool": "map",
+  "query": "settings registration_mode automatic mcp_cli cmd_settings indexing prefs register consent",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "score": 24.06793415303854,
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "packages/pipeline/settings.py",
+      "symbol": "",
+      "score": 20.53208765586794,
+      "loc": "packages/pipeline/settings.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "tests/test_registration_modes.py",
+      "symbol": "",
+      "score": 18.58573850409431,
+      "loc": "tests/test_registration_modes.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "packages/pipeline/registration.py",
+      "symbol": "",
+      "score": 17.523532502825514,
+      "loc": "packages/pipeline/registration.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "tests/test_dashboard_api.py",
+      "symbol": "",
+      "score": 15.690344938780218,
+      "loc": "tests/test_dashboard_api.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "packages/pipeline/session_isolation.py",
+      "symbol": "",
+      "score": 3.501839300038278,
+      "loc": "packages/pipeline/session_isolation.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "docs/superpowers/specs/2026-08-17-ce-operator-dashboard-design.md",
+      "symbol": "",
+      "score": 2.552749263390477,
+      "loc": "docs/superpowers/specs/2026-08-17-ce-operator-dashboard-design.md:1-1",
+      "why": ""
+    }
+  ],
+  "suggested_seed": null,
+  "elapsed_s": 0.803,
+  "via": "search_repo(use_server=True)"
+}

@@ -1,0 +1,98 @@
+{
+  "ok": true,
+  "tool": "pack_semantic",
+  "engine": "semantic_tracer_fuse",
+  "elapsed_s": 39.698,
+  "n_pack": 4,
+  "seed": {
+    "file": "packages/pipeline/artifact_guard.py",
+    "symbol": "publish_manifest",
+    "id": "packages/pipeline/artifact_guard.py::publish_manifest"
+  },
+  "pack": [
+    {
+      "file": "packages/pipeline/artifact_guard.py",
+      "symbol": "publish_manifest",
+      "score": 1.0,
+      "loc": "packages/pipeline/artifact_guard.py:68-81",
+      "id": "packages/pipeline/artifact_guard.py::publish_manifest",
+      "chars": 558
+    },
+    {
+      "file": "packages/pipeline/memory_governor.py",
+      "symbol": "MemoryGovernor.demote_after_index",
+      "score": 1.0,
+      "loc": "packages/pipeline/memory_governor.py:320-334",
+      "id": "packages/pipeline/memory_governor.py::MemoryGovernor.demote_after_index",
+      "chars": 672
+    },
+    {
+      "file": "packages/pipeline/memory_governor.py",
+      "symbol": "embed_idle_demote_s",
+      "score": 0.944,
+      "loc": "packages/pipeline/memory_governor.py:53-63",
+      "id": "packages/pipeline/memory_governor.py::embed_idle_demote_s",
+      "chars": 401
+    },
+    {
+      "file": "packages/pipeline/artifact_guard.py",
+      "symbol": "_checksum",
+      "score": 0.9241,
+      "loc": "packages/pipeline/artifact_guard.py:64-65",
+      "id": "packages/pipeline/artifact_guard.py::_checksum",
+      "chars": 90
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/pipeline/artifact_guard.py::publish_manifest",
+      "loc": "packages/pipeline/artifact_guard.py:68-81",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/memory_governor.py::MemoryGovernor.demote_after_index",
+      "loc": "packages/pipeline/memory_governor.py:320-334",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/memory_governor.py::embed_idle_demote_s",
+      "loc": "packages/pipeline/memory_governor.py:53-63",
+      "edge": "calls",
+      "score": 0.944
+    },
+    {
+      "id": "packages/pipeline/artifact_guard.py::_checksum",
+      "loc": "packages/pipeline/artifact_guard.py:64-65",
+      "edge": "calls",
+      "score": 0.9241
+    },
+    {
+      "id": "packages/pipeline/artifact_guard.py::atomic_write_text",
+      "loc": "packages/pipeline/artifact_guard.py:17-30",
+      "edge": "calls",
+      "score": 0.922
+    },
+    {
+      "id": "packages/pipeline/memory_governor.py::MemoryGovernor._demote_embedder_locked",
+      "loc": "packages/pipeline/memory_governor.py:404-426",
+      "edge": "calls",
+      "score": 0.9017
+    },
+    {
+      "id": "packages/pipeline/memory_governor.py::MemoryGovernor._recompute_desired_locked",
+      "loc": "packages/pipeline/memory_governor.py:370-376",
+      "edge": "calls",
+      "score": 0.8938
+    },
+    {
+      "id": "packages/pipeline/memory_governor.py::MemoryGovernor._apply_locked",
+      "loc": "packages/pipeline/memory_governor.py:393-402",
+      "edge": "calls",
+      "score": 0.889
+    }
+  ],
+  "pack_query": "publish FAISS index republish store checksum WarmSearchEngine serve hits after rebuild vector index publication usable\nrelevant_chunks: packages/pipeline/artifact_guard.py::publish_manifest@packages/pipeline/artifact_guard.py:68-81 | packages/pipeline/memory_governor.py::MemoryGovernor.demote_after_index@packages/pipeline/memory_governor.py:320-334 | packages/pipeline/ce_service.py::RuntimeManager.publish@packages/pipeline/ce_service.py:907-914",
+  "error": null
+}

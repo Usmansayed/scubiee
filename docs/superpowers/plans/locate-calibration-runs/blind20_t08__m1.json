@@ -1,0 +1,81 @@
+{
+  "case": {
+    "id": "blind20_t08",
+    "source": "blind_map_pack_20",
+    "family": "index-publish",
+    "task": "Index publication missing or checksum invalid \u2014 find refuse-mixed-generation and republish path.",
+    "enrich_query": "Index publication missing checksum-invalid refusing mixed generation publish merkle chunks sync init scubiee index",
+    "taxonomy": "soft_understand",
+    "taxonomy_confidence": "heuristic",
+    "hypothesis_policy": {
+      "lead": "scubiee_map",
+      "next": "conditional_pack",
+      "native": "span_read_after_heatmap"
+    },
+    "must_files": [
+      "packages/pipeline/engine.py",
+      "packages/pipeline/artifact_guard.py"
+    ],
+    "must_symbols": [],
+    "should_files": [
+      "packages/pipeline/ce_service.py"
+    ],
+    "gold_status": "has_gold",
+    "notes": "",
+    "baseline_frozen": true
+  },
+  "M1a": {
+    "arm": "M1a_map_read",
+    "ok": true,
+    "elapsed_s": 1.066,
+    "seed": {
+      "file": "packages/pipeline/indexer.py",
+      "symbol": "_schema_version",
+      "start_line": 29,
+      "loc": "packages/pipeline/indexer.py:29-51",
+      "kind": "function",
+      "role": "function",
+      "score": 4.019309729541551
+    },
+    "map_source": "cli_map",
+    "n_cards": 10,
+    "read_chars": 9636,
+    "rounds": 6,
+    "result_tokens": 4106,
+    "round_trip_tax": 15000,
+    "total_proxy": 19106,
+    "round_trip_tax_per_call": 2500,
+    "must_file": 0.5,
+    "must_sym": null,
+    "file_hits": 1,
+    "file_n": 2,
+    "sym_hits": 0,
+    "sym_n": 0,
+    "case_id": "blind20_t08",
+    "taxonomy": "soft_understand"
+  },
+  "M1b": {
+    "arm": "M1b_map_pack",
+    "ok": true,
+    "elapsed_s": 1.015,
+    "seed_file": "packages/pipeline/indexer.py",
+    "seed_symbol": "_schema_version",
+    "seed_ok": false,
+    "map_source": "cli_map",
+    "heatmap_n": 1,
+    "read_chars": 1237,
+    "rounds": 3,
+    "result_tokens": 2727,
+    "round_trip_tax": 7500,
+    "total_proxy": 10227,
+    "round_trip_tax_per_call": 2500,
+    "must_file": 0.5,
+    "must_sym": null,
+    "file_hits": 1,
+    "file_n": 2,
+    "sym_hits": 0,
+    "sym_n": 0,
+    "case_id": "blind20_t08",
+    "taxonomy": "soft_understand"
+  }
+}

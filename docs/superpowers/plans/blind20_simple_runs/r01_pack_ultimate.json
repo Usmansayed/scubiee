@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "engine": "ultimate",
+  "policy": "strict",
+  "elapsed_s": 14.394,
+  "n_pack": 1,
+  "pack": [
+    {
+      "file": "packages/pipeline/searcher.py",
+      "symbol": "FaissDenseAdapter.__init__",
+      "score": 1.0,
+      "loc": "packages/pipeline/searcher.py:33-38",
+      "id": "packages/pipeline/searcher.py::FaissDenseAdapter.__init__"
+    }
+  ],
+  "error": null
+}

@@ -1,0 +1,1876 @@
+{
+  "fixture": "C:\\Users\\usman\\Downloads\\context-engine\\fixtures\\trace-lab",
+  "n_cases": 20,
+  "definition": "correct <=> all must are hot AND no must_not is hot",
+  "summary": {
+    "polytrace": {
+      "correct": 20,
+      "n": 20,
+      "accuracy": 1.0,
+      "mean_f1": 0.9955,
+      "failed_ids": []
+    },
+    "poly_embed": {
+      "correct": 20,
+      "n": 20,
+      "accuracy": 1.0,
+      "mean_f1": 0.9955,
+      "failed_ids": []
+    },
+    "embed_power_oracle": {
+      "correct": 16,
+      "n": 20,
+      "accuracy": 0.8,
+      "mean_f1": 0.93,
+      "failed_ids": [
+        "d01",
+        "d02",
+        "d03",
+        "d14"
+      ]
+    }
+  },
+  "cases": [
+    {
+      "id": "d01",
+      "family": "auth-flow",
+      "prompt": "from authenticate, collect the credential checking path",
+      "seed": "app/middleware/auth.py::authenticate",
+      "arms": {
+        "polytrace": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "heatmap": [
+            {
+              "id": "app/middleware/auth.py::authenticate",
+              "score": 1.0,
+              "why": "seed/flow"
+            },
+            {
+              "id": "app/middleware/auth.py::extract_bearer",
+              "score": 0.9,
+              "why": "calls authenticate->extract_bearer"
+            },
+            {
+              "id": "app/services/jwt_service.py::JwtService.verify",
+              "score": 0.9,
+              "why": "calls authenticate->JwtService.verify"
+            },
+            {
+              "id": "app/utils/token.py::decode",
+              "score": 0.7857,
+              "why": "calls JwtService.verify->decode"
+            },
+            {
+              "id": "app/repositories/user_repo.py::UserRepository.resolve",
+              "score": 0.7857,
+              "why": "calls JwtService.verify->UserRepository.resolve"
+            },
+            {
+              "id": "app/config/database.py::connect",
+              "score": 0.6653,
+              "why": "calls UserRepository.resolve->connect"
+            },
+            {
+              "id": "app/models/user.py::User.lookup",
+              "score": 0.6653,
+              "why": "calls UserRepository.resolve->User.lookup"
+            }
+          ]
+        },
+        "poly_embed": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "heatmap": [
+            {
+              "id": "app/middleware/auth.py::authenticate",
+              "score": 1.0,
+              "why": "seed/flow"
+            },
+            {
+              "id": "app/middleware/auth.py::extract_bearer",
+              "score": 0.93,
+              "why": "embed-anchor a=0.301"
+            },
+            {
+              "id": "app/services/jwt_service.py::JwtService.verify",
+              "score": 0.8657,
+              "why": "embed-anchor a=0.233"
+            },
+            {
+              "id": "app/repositories/user_repo.py::UserRepository.resolve",
+              "score": 0.655,
+              "why": "embed-near/calls JwtService.verify->UserRepository.resolve"
+            },
+            {
+              "id": "app/utils/token.py::decode",
+              "score": 0.655,
+              "why": "embed-near/calls JwtService.verify->decode"
+            },
+            {
+              "id": "app/config/database.py::connect",
+              "score": 0.5335,
+              "why": "calls UserRepository.resolve->connect"
+            },
+            {
+              "id": "app/models/user.py::User.lookup",
+              "score": 0.5009,
+              "why": "calls UserRepository.resolve->User.lookup"
+            }
+          ]
+        },
+        "embed_power_oracle": {
+          "correct": false,
+          "missing_must": [
+            "app/models/user.py::User.lookup"
+          ],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 0.9091,
+          "recall_must": 0.8333,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "heatmap": [
+            {
+              "id": "app/middleware/auth.py::authenticate",
+              "score": 1.0,
+              "why": "oracle-seed"
+            },
+            {
+              "id": "app/middleware/auth.py::extract_bearer",
+              "score": 0.8115,
+              "why": "embed-calls a=0.301 cap=0.81"
+            },
+            {
+              "id": "app/services/jwt_service.py::JwtService.verify",
+              "score": 0.7684,
+              "why": "embed-calls a=0.233 cap=0.77"
+            },
+            {
+              "id": "app/utils/token.py::decode",
+              "score": 0.5225,
+              "why": "embed-calls a=0.062 cap=0.69"
+            },
+            {
+              "id": "app/repositories/user_repo.py::UserRepository.resolve",
+              "score": 0.4876,
+              "why": "embed-calls a=0.014 cap=0.64"
+            },
+            {
+              "id": "app/config/security.py::TOKEN_TTL",
+              "score": 0.4802,
+              "why": "embed-uses a=0.100 cap=0.63"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d02",
+      "family": "config-ttl",
+      "prompt": "i only care how long tokens live",
+      "seed": "app/services/jwt_service.py::JwtService.verify",
+      "arms": {
+        "polytrace": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "heatmap": [
+            {
+              "id": "app/services/jwt_service.py::JwtService.verify",
+              "score": 1.0,
+              "why": "seed/config"
+            },
+            {
+              "id": "app/config/security.py::TOKEN_TTL",
+              "score": 0.85,
+              "why": "uses JwtService.verify->TOKEN_TTL"
+            }
+          ]
+        },
+        "poly_embed": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "heatmap": [
+            {
+              "id": "app/services/jwt_service.py::JwtService.verify",
+              "score": 1.0,
+              "why": "seed/config"
+            },
+            {
+              "id": "app/config/security.py::TOKEN_TTL",
+              "score": 0.895,
+              "why": "embed-anchor a=0.337"
+            }
+          ]
+        },
+        "embed_power_oracle": {
+          "correct": false,
+          "missing_must": [],
+          "forbidden_hot": [
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve"
+          ],
+          "extra_hot": [
+            "app/middleware/auth.py::authenticate"
+          ],
+          "f1": 0.6667,
+          "recall_must": 1.0,
+          "precision_hot": 0.5,
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/middleware/auth.py::authenticate",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "heatmap": [
+            {
+              "id": "app/services/jwt_service.py::JwtService.verify",
+              "score": 1.0,
+              "why": "oracle-seed"
+            },
+            {
+              "id": "app/middleware/auth.py::authenticate",
+              "score": 0.88,
+              "why": "embed-usedby JwtService.verify"
+            },
+            {
+              "id": "app/utils/token.py::decode",
+              "score": 0.7444,
+              "why": "embed-calls a=0.252 cap=0.74"
+            },
+            {
+              "id": "app/config/security.py::TOKEN_TTL",
+              "score": 0.6837,
+              "why": "embed-uses a=0.337 cap=0.68"
+            },
+            {
+              "id": "app/repositories/user_repo.py::UserRepository.resolve",
+              "score": 0.6475,
+              "why": "embed-calls a=0.036 cap=0.65"
+            },
+            {
+              "id": "app/models/user.py::User.lookup",
+              "score": 0.4512,
+              "why": "embed-calls a=0.022 cap=0.71"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d03",
+      "family": "site-log",
+      "prompt": "where does authenticate write the ok log?",
+      "seed": "app/middleware/auth.py::authenticate",
+      "arms": {
+        "polytrace": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/utils/logger.py::log"
+          ],
+          "heatmap": [
+            {
+              "id": "app/middleware/auth.py::authenticate",
+              "score": 1.0,
+              "why": "seed/site"
+            },
+            {
+              "id": "app/utils/logger.py::log",
+              "score": 0.9,
+              "why": "calls authenticate->log"
+            }
+          ]
+        },
+        "poly_embed": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/utils/logger.py::log"
+          ],
+          "heatmap": [
+            {
+              "id": "app/middleware/auth.py::authenticate",
+              "score": 1.0,
+              "why": "seed/site"
+            },
+            {
+              "id": "app/utils/logger.py::log",
+              "score": 0.735,
+              "why": "embed-near/calls authenticate->log"
+            }
+          ]
+        },
+        "embed_power_oracle": {
+          "correct": false,
+          "missing_must": [
+            "app/utils/logger.py::log"
+          ],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "f1": 0.5,
+          "recall_must": 0.5,
+          "precision_hot": 0.5,
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer"
+          ],
+          "heatmap": [
+            {
+              "id": "app/middleware/auth.py::authenticate",
+              "score": 1.0,
+              "why": "oracle-seed"
+            },
+            {
+              "id": "app/middleware/auth.py::extract_bearer",
+              "score": 0.6986,
+              "why": "embed-calls a=0.202 cap=0.70"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d04",
+      "family": "pay",
+      "prompt": "collect context for charging cents on the pay api",
+      "seed": "app/billing/invoices.py::charge",
+      "arms": {
+        "polytrace": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "heatmap": [
+            {
+              "id": "app/billing/invoices.py::charge",
+              "score": 1.0,
+              "why": "seed/flow"
+            },
+            {
+              "id": "app/http/client.py::get",
+              "score": 0.9,
+              "why": "calls charge->get"
+            }
+          ]
+        },
+        "poly_embed": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "heatmap": [
+            {
+              "id": "app/billing/invoices.py::charge",
+              "score": 1.0,
+              "why": "seed/flow"
+            },
+            {
+              "id": "app/http/client.py::get",
+              "score": 0.735,
+              "why": "embed-near/calls charge->get"
+            }
+          ]
+        },
+        "embed_power_oracle": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "heatmap": [
+            {
+              "id": "app/billing/invoices.py::charge",
+              "score": 1.0,
+              "why": "oracle-seed"
+            },
+            {
+              "id": "app/http/client.py::get",
+              "score": 0.6519,
+              "why": "embed-calls a=0.114 cap=0.65"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d05",
+      "family": "events",
+      "prompt": "from emit, what runs for welcome?",
+      "seed": "app/events/bus.py::emit",
+      "arms": {
+        "polytrace": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ],
+          "heatmap": [
+            {
+              "id": "app/events/bus.py::emit",
+              "score": 1.0,
+              "why": "seed/flow"
+            },
+            {
+              "id": "app/events/registry.py::lookup",
+              "score": 0.9,
+              "why": "calls emit->lookup"
+            },
+            {
+              "id": "app/handlers/welcome.py::handle",
+              "score": 0.88,
+              "why": "dispatches emit->handle"
+            }
+          ]
+        },
+        "poly_embed": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ],
+          "heatmap": [
+            {
+              "id": "app/events/bus.py::emit",
+              "score": 1.0,
+              "why": "seed/flow"
+            },
+            {
+              "id": "app/handlers/welcome.py::handle",
+              "score": 0.916,
+              "why": "embed-anchor a=0.399"
+            },
+            {
+              "id": "app/events/registry.py::lookup",
+              "score": 0.735,
+              "why": "embed-near/calls emit->lookup"
+            }
+          ]
+        },
+        "embed_power_oracle": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/events/registry.py::HANDLERS"
+          ],
+          "f1": 0.8571,
+          "recall_must": 1.0,
+          "precision_hot": 0.75,
+          "hot": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::HANDLERS",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ],
+          "heatmap": [
+            {
+              "id": "app/events/bus.py::emit",
+              "score": 1.0,
+              "why": "oracle-seed"
+            },
+            {
+              "id": "app/handlers/welcome.py::handle",
+              "score": 0.7447,
+              "why": "embed-dispatches a=0.399 cap=0.74"
+            },
+            {
+              "id": "app/events/registry.py::lookup",
+              "score": 0.6982,
+              "why": "embed-calls a=0.125 cap=0.70"
+            },
+            {
+              "id": "app/events/registry.py::HANDLERS",
+              "score": 0.5053,
+              "why": "embed-uses a=0.141 cap=0.73"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d06",
+      "family": "jobs",
+      "prompt": "trace run until digest is sent",
+      "seed": "app/jobs/worker.py::run",
+      "arms": {
+        "polytrace": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ],
+          "heatmap": [
+            {
+              "id": "app/jobs/worker.py::run",
+              "score": 1.0,
+              "why": "seed/flow"
+            },
+            {
+              "id": "app/jobs/queue.py::dequeue",
+              "score": 0.9,
+              "why": "calls run->dequeue"
+            },
+            {
+              "id": "app/jobs/runner.py::execute",
+              "score": 0.9,
+              "why": "calls run->execute"
+            },
+            {
+              "id": "app/jobs/digest.py::send_digest",
+              "score": 0.7857,
+              "why": "calls execute->send_digest"
+            }
+          ]
+        },
+        "poly_embed": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ],
+          "heatmap": [
+            {
+              "id": "app/jobs/worker.py::run",
+              "score": 1.0,
+              "why": "seed/flow"
+            },
+            {
+              "id": "app/jobs/runner.py::execute",
+              "score": 0.9144,
+              "why": "embed-anchor a=0.340"
+            },
+            {
+              "id": "app/jobs/digest.py::send_digest",
+              "score": 0.85,
+              "why": "embed-anchor a=0.356"
+            },
+            {
+              "id": "app/jobs/queue.py::dequeue",
+              "score": 0.735,
+              "why": "embed-near/calls run->dequeue"
+            }
+          ]
+        },
+        "embed_power_oracle": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ],
+          "heatmap": [
+            {
+              "id": "app/jobs/worker.py::run",
+              "score": 1.0,
+              "why": "oracle-seed"
+            },
+            {
+              "id": "app/jobs/runner.py::execute",
+              "score": 0.7874,
+              "why": "embed-calls a=0.340 cap=0.79"
+            },
+            {
+              "id": "app/jobs/queue.py::dequeue",
+              "score": 0.7039,
+              "why": "embed-calls a=0.050 cap=0.70"
+            },
+            {
+              "id": "app/jobs/digest.py::send_digest",
+              "score": 0.6283,
+              "why": "embed-calls a=0.356 cap=0.81"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d07",
+      "family": "ttl-refs",
+      "prompt": "who reads TOKEN_TTL?",
+      "seed": "app/config/security.py::TOKEN_TTL",
+      "arms": {
+        "polytrace": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "heatmap": [
+            {
+              "id": "app/config/security.py::TOKEN_TTL",
+              "score": 1.0,
+              "why": "seed/refs"
+            },
+            {
+              "id": "app/services/jwt_service.py::JwtService.verify",
+              "score": 0.92,
+              "why": "lsp-refs TOKEN_TTL"
+            }
+          ]
+        },
+        "poly_embed": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "heatmap": [
+            {
+              "id": "app/config/security.py::TOKEN_TTL",
+              "score": 1.0,
+              "why": "seed/refs"
+            },
+            {
+              "id": "app/services/jwt_service.py::JwtService.verify",
+              "score": 0.749,
+              "why": "embed-near/lsp-refs TOKEN_TTL"
+            }
+          ]
+        },
+        "embed_power_oracle": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "heatmap": [
+            {
+              "id": "app/config/security.py::TOKEN_TTL",
+              "score": 1.0,
+              "why": "oracle-seed"
+            },
+            {
+              "id": "app/services/jwt_service.py::JwtService.verify",
+              "score": 0.88,
+              "why": "embed-usedby TOKEN_TTL"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d08",
+      "family": "inherit",
+      "prompt": "how does MemoryStore fetch override the base?",
+      "seed": "app/stores/memory.py::MemoryStore.fetch",
+      "arms": {
+        "polytrace": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ],
+          "heatmap": [
+            {
+              "id": "app/stores/memory.py::MemoryStore.fetch",
+              "score": 1.0,
+              "why": "seed/flow"
+            },
+            {
+              "id": "app/stores/base.py::Store.fetch",
+              "score": 0.75,
+              "why": "overrides MemoryStore.fetch->Store.fetch"
+            }
+          ]
+        },
+        "poly_embed": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ],
+          "heatmap": [
+            {
+              "id": "app/stores/memory.py::MemoryStore.fetch",
+              "score": 1.0,
+              "why": "seed/flow"
+            },
+            {
+              "id": "app/stores/base.py::Store.fetch",
+              "score": 0.63,
+              "why": "embed-anchor a=0.544"
+            }
+          ]
+        },
+        "embed_power_oracle": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ],
+          "heatmap": [
+            {
+              "id": "app/stores/memory.py::MemoryStore.fetch",
+              "score": 1.0,
+              "why": "oracle-seed"
+            },
+            {
+              "id": "app/stores/base.py::Store.fetch",
+              "score": 0.7342,
+              "why": "embed-overrides a=0.544 cap=0.73"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d09",
+      "family": "cors",
+      "prompt": "cors header middleware only",
+      "seed": "app/middleware/cors.py::process",
+      "arms": {
+        "polytrace": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/middleware/cors.py::process"
+          ],
+          "heatmap": [
+            {
+              "id": "app/middleware/cors.py::process",
+              "score": 1.0,
+              "why": "seed/flow"
+            }
+          ]
+        },
+        "poly_embed": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/middleware/cors.py::process"
+          ],
+          "heatmap": [
+            {
+              "id": "app/middleware/cors.py::process",
+              "score": 1.0,
+              "why": "seed/flow"
+            }
+          ]
+        },
+        "embed_power_oracle": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/middleware/cors.py::process"
+          ],
+          "heatmap": [
+            {
+              "id": "app/middleware/cors.py::process",
+              "score": 1.0,
+              "why": "oracle-seed"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d10",
+      "family": "health",
+      "prompt": "just the health probe",
+      "seed": "app/routes/health.py::health",
+      "arms": {
+        "polytrace": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/routes/health.py::health"
+          ],
+          "heatmap": [
+            {
+              "id": "app/routes/health.py::health",
+              "score": 1.0,
+              "why": "seed/flow"
+            }
+          ]
+        },
+        "poly_embed": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/routes/health.py::health"
+          ],
+          "heatmap": [
+            {
+              "id": "app/routes/health.py::health",
+              "score": 1.0,
+              "why": "seed/flow"
+            }
+          ]
+        },
+        "embed_power_oracle": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/routes/health.py::health"
+          ],
+          "heatmap": [
+            {
+              "id": "app/routes/health.py::health",
+              "score": 1.0,
+              "why": "oracle-seed"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d11",
+      "family": "session",
+      "prompt": "session start helper, not login",
+      "seed": "app/services/session.py::start",
+      "arms": {
+        "polytrace": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/services/session.py::start"
+          ],
+          "heatmap": [
+            {
+              "id": "app/services/session.py::start",
+              "score": 1.0,
+              "why": "seed/flow"
+            }
+          ]
+        },
+        "poly_embed": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/services/session.py::start"
+          ],
+          "heatmap": [
+            {
+              "id": "app/services/session.py::start",
+              "score": 1.0,
+              "why": "seed/flow"
+            }
+          ]
+        },
+        "embed_power_oracle": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/services/session.py::start"
+          ],
+          "heatmap": [
+            {
+              "id": "app/services/session.py::start",
+              "score": 1.0,
+              "why": "oracle-seed"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d12",
+      "family": "resolve",
+      "prompt": "how resolve loads the user row",
+      "seed": "app/repositories/user_repo.py::UserRepository.resolve",
+      "arms": {
+        "polytrace": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/config/database.py::connect",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve"
+          ],
+          "heatmap": [
+            {
+              "id": "app/repositories/user_repo.py::UserRepository.resolve",
+              "score": 1.0,
+              "why": "seed/flow"
+            },
+            {
+              "id": "app/config/database.py::connect",
+              "score": 0.9,
+              "why": "calls UserRepository.resolve->connect"
+            },
+            {
+              "id": "app/models/user.py::User.lookup",
+              "score": 0.9,
+              "why": "calls UserRepository.resolve->User.lookup"
+            }
+          ]
+        },
+        "poly_embed": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/config/database.py::connect",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve"
+          ],
+          "heatmap": [
+            {
+              "id": "app/repositories/user_repo.py::UserRepository.resolve",
+              "score": 1.0,
+              "why": "seed/flow"
+            },
+            {
+              "id": "app/config/database.py::connect",
+              "score": 0.735,
+              "why": "embed-near/calls UserRepository.resolve->connect"
+            },
+            {
+              "id": "app/models/user.py::User.lookup",
+              "score": 0.735,
+              "why": "embed-near/calls UserRepository.resolve->User.lookup"
+            }
+          ]
+        },
+        "embed_power_oracle": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/config/database.py::connect",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve"
+          ],
+          "heatmap": [
+            {
+              "id": "app/repositories/user_repo.py::UserRepository.resolve",
+              "score": 1.0,
+              "why": "oracle-seed"
+            },
+            {
+              "id": "app/models/user.py::User.lookup",
+              "score": 0.7666,
+              "why": "embed-calls a=0.256 cap=0.77"
+            },
+            {
+              "id": "app/config/database.py::connect",
+              "score": 0.6506,
+              "why": "embed-calls a=0.110 cap=0.65"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d13",
+      "family": "cache",
+      "prompt": "how does the memo cache put a value?",
+      "seed": "app/cache/memo.py::put",
+      "arms": {
+        "polytrace": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/cache/memo.py::put"
+          ],
+          "heatmap": [
+            {
+              "id": "app/cache/memo.py::put",
+              "score": 1.0,
+              "why": "seed/flow"
+            }
+          ]
+        },
+        "poly_embed": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/cache/memo.py::put"
+          ],
+          "heatmap": [
+            {
+              "id": "app/cache/memo.py::put",
+              "score": 1.0,
+              "why": "seed/flow"
+            }
+          ]
+        },
+        "embed_power_oracle": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/cache/memo.py::put"
+          ],
+          "heatmap": [
+            {
+              "id": "app/cache/memo.py::put",
+              "score": 1.0,
+              "why": "oracle-seed"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d14",
+      "family": "notify",
+      "prompt": "how does mailer send a notification?",
+      "seed": "app/notify/mailer.py::send",
+      "arms": {
+        "polytrace": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/http/client.py::get",
+            "app/notify/mailer.py::send"
+          ],
+          "heatmap": [
+            {
+              "id": "app/notify/mailer.py::send",
+              "score": 1.0,
+              "why": "seed/flow"
+            },
+            {
+              "id": "app/http/client.py::get",
+              "score": 0.9,
+              "why": "calls send->get"
+            }
+          ]
+        },
+        "poly_embed": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/http/client.py::get",
+            "app/notify/mailer.py::send"
+          ],
+          "heatmap": [
+            {
+              "id": "app/notify/mailer.py::send",
+              "score": 1.0,
+              "why": "seed/flow"
+            },
+            {
+              "id": "app/http/client.py::get",
+              "score": 0.735,
+              "why": "embed-near/calls send->get"
+            }
+          ]
+        },
+        "embed_power_oracle": {
+          "correct": false,
+          "missing_must": [
+            "app/http/client.py::get"
+          ],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 0.6667,
+          "recall_must": 0.5,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/notify/mailer.py::send"
+          ],
+          "heatmap": [
+            {
+              "id": "app/notify/mailer.py::send",
+              "score": 1.0,
+              "why": "oracle-seed"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d15",
+      "family": "limits",
+      "prompt": "how does throttle decide allow?",
+      "seed": "app/limits/throttle.py::allow",
+      "arms": {
+        "polytrace": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/limits/throttle.py::allow"
+          ],
+          "heatmap": [
+            {
+              "id": "app/limits/throttle.py::allow",
+              "score": 1.0,
+              "why": "seed/config"
+            }
+          ]
+        },
+        "poly_embed": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/limits/throttle.py::allow"
+          ],
+          "heatmap": [
+            {
+              "id": "app/limits/throttle.py::allow",
+              "score": 1.0,
+              "why": "seed/config"
+            }
+          ]
+        },
+        "embed_power_oracle": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/limits/throttle.py::allow"
+          ],
+          "heatmap": [
+            {
+              "id": "app/limits/throttle.py::allow",
+              "score": 1.0,
+              "why": "oracle-seed"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d16",
+      "family": "job-notify",
+      "prompt": "deliver a digest job and notify the user",
+      "seed": "app/jobs/deliver.py::deliver",
+      "arms": {
+        "polytrace": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/http/client.py::get",
+            "app/jobs/deliver.py::deliver",
+            "app/jobs/digest.py::send_digest",
+            "app/notify/mailer.py::send"
+          ],
+          "heatmap": [
+            {
+              "id": "app/jobs/deliver.py::deliver",
+              "score": 1.0,
+              "why": "seed/flow"
+            },
+            {
+              "id": "app/jobs/digest.py::send_digest",
+              "score": 0.9,
+              "why": "calls deliver->send_digest"
+            },
+            {
+              "id": "app/notify/mailer.py::send",
+              "score": 0.9,
+              "why": "calls deliver->send"
+            },
+            {
+              "id": "app/http/client.py::get",
+              "score": 0.7857,
+              "why": "calls send->get"
+            }
+          ]
+        },
+        "poly_embed": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/http/client.py::get",
+            "app/jobs/deliver.py::deliver",
+            "app/jobs/digest.py::send_digest",
+            "app/notify/mailer.py::send"
+          ],
+          "heatmap": [
+            {
+              "id": "app/jobs/deliver.py::deliver",
+              "score": 1.0,
+              "why": "seed/flow"
+            },
+            {
+              "id": "app/jobs/digest.py::send_digest",
+              "score": 0.8479,
+              "why": "embed-anchor a=0.510"
+            },
+            {
+              "id": "app/notify/mailer.py::send",
+              "score": 0.7429,
+              "why": "embed-near/calls deliver->send"
+            },
+            {
+              "id": "app/http/client.py::get",
+              "score": 0.655,
+              "why": "embed-near/calls send->get"
+            }
+          ]
+        },
+        "embed_power_oracle": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/jobs/deliver.py::deliver",
+            "app/jobs/digest.py::send_digest",
+            "app/notify/mailer.py::send"
+          ],
+          "heatmap": [
+            {
+              "id": "app/jobs/deliver.py::deliver",
+              "score": 1.0,
+              "why": "oracle-seed"
+            },
+            {
+              "id": "app/jobs/digest.py::send_digest",
+              "score": 0.8316,
+              "why": "embed-calls a=0.510 cap=0.83"
+            },
+            {
+              "id": "app/notify/mailer.py::send",
+              "score": 0.7186,
+              "why": "embed-calls a=0.257 cap=0.72"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d17",
+      "family": "adversarial-pay",
+      "prompt": "customer authentication tokens for payment \u2014 how do we charge?",
+      "seed": "app/billing/invoices.py::charge",
+      "arms": {
+        "polytrace": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "heatmap": [
+            {
+              "id": "app/billing/invoices.py::charge",
+              "score": 1.0,
+              "why": "seed/flow"
+            },
+            {
+              "id": "app/http/client.py::get",
+              "score": 0.9,
+              "why": "calls charge->get"
+            }
+          ]
+        },
+        "poly_embed": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "heatmap": [
+            {
+              "id": "app/billing/invoices.py::charge",
+              "score": 1.0,
+              "why": "seed/flow"
+            },
+            {
+              "id": "app/http/client.py::get",
+              "score": 0.735,
+              "why": "embed-near/calls charge->get"
+            }
+          ]
+        },
+        "embed_power_oracle": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "heatmap": [
+            {
+              "id": "app/billing/invoices.py::charge",
+              "score": 1.0,
+              "why": "oracle-seed"
+            },
+            {
+              "id": "app/http/client.py::get",
+              "score": 0.6248,
+              "why": "embed-calls a=0.031 cap=0.62"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d18",
+      "family": "login-entry",
+      "prompt": "from the login route, how does auth happen?",
+      "seed": "app/routes/login.py::login",
+      "arms": {
+        "polytrace": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/repositories/user_repo.py::UserRepository.resolve"
+          ],
+          "f1": 0.9091,
+          "recall_must": 1.0,
+          "precision_hot": 0.8333,
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "heatmap": [
+            {
+              "id": "app/routes/login.py::login",
+              "score": 1.0,
+              "why": "seed/entry"
+            },
+            {
+              "id": "app/middleware/auth.py::authenticate",
+              "score": 0.9,
+              "why": "calls login->authenticate"
+            },
+            {
+              "id": "app/middleware/auth.py::extract_bearer",
+              "score": 0.7857,
+              "why": "calls authenticate->extract_bearer"
+            },
+            {
+              "id": "app/services/jwt_service.py::JwtService.verify",
+              "score": 0.7857,
+              "why": "calls authenticate->JwtService.verify"
+            },
+            {
+              "id": "app/utils/token.py::decode",
+              "score": 0.6653,
+              "why": "calls JwtService.verify->decode"
+            },
+            {
+              "id": "app/repositories/user_repo.py::UserRepository.resolve",
+              "score": 0.6653,
+              "why": "calls JwtService.verify->UserRepository.resolve"
+            }
+          ]
+        },
+        "poly_embed": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [
+            "app/repositories/user_repo.py::UserRepository.resolve"
+          ],
+          "f1": 0.9091,
+          "recall_must": 1.0,
+          "precision_hot": 0.8333,
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "heatmap": [
+            {
+              "id": "app/routes/login.py::login",
+              "score": 1.0,
+              "why": "seed/entry"
+            },
+            {
+              "id": "app/middleware/auth.py::authenticate",
+              "score": 0.8641,
+              "why": "embed-anchor a=0.412"
+            },
+            {
+              "id": "app/middleware/auth.py::extract_bearer",
+              "score": 0.7324,
+              "why": "embed-anchor a=0.337"
+            },
+            {
+              "id": "app/services/jwt_service.py::JwtService.verify",
+              "score": 0.655,
+              "why": "embed-near/calls authenticate->JwtService.verify"
+            },
+            {
+              "id": "app/repositories/user_repo.py::UserRepository.resolve",
+              "score": 0.5009,
+              "why": "calls JwtService.verify->UserRepository.resolve"
+            },
+            {
+              "id": "app/utils/token.py::decode",
+              "score": 0.5009,
+              "why": "calls JwtService.verify->decode"
+            }
+          ]
+        },
+        "embed_power_oracle": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/routes/login.py::login",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "heatmap": [
+            {
+              "id": "app/routes/login.py::login",
+              "score": 1.0,
+              "why": "oracle-seed"
+            },
+            {
+              "id": "app/middleware/auth.py::authenticate",
+              "score": 0.8129,
+              "why": "embed-calls a=0.412 cap=0.81"
+            },
+            {
+              "id": "app/middleware/auth.py::extract_bearer",
+              "score": 0.646,
+              "why": "embed-calls a=0.337 cap=0.81"
+            },
+            {
+              "id": "app/services/jwt_service.py::JwtService.verify",
+              "score": 0.5786,
+              "why": "embed-calls a=0.151 cap=0.72"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d19",
+      "family": "mid-execute",
+      "prompt": "what does execute do with a dequeued job?",
+      "seed": "app/jobs/runner.py::execute",
+      "arms": {
+        "polytrace": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/runner.py::execute"
+          ],
+          "heatmap": [
+            {
+              "id": "app/jobs/runner.py::execute",
+              "score": 1.0,
+              "why": "seed/flow"
+            },
+            {
+              "id": "app/jobs/digest.py::send_digest",
+              "score": 0.9,
+              "why": "calls execute->send_digest"
+            }
+          ]
+        },
+        "poly_embed": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/runner.py::execute"
+          ],
+          "heatmap": [
+            {
+              "id": "app/jobs/runner.py::execute",
+              "score": 1.0,
+              "why": "seed/flow"
+            },
+            {
+              "id": "app/jobs/digest.py::send_digest",
+              "score": 0.735,
+              "why": "embed-near/calls execute->send_digest"
+            }
+          ]
+        },
+        "embed_power_oracle": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/runner.py::execute"
+          ],
+          "heatmap": [
+            {
+              "id": "app/jobs/runner.py::execute",
+              "score": 1.0,
+              "why": "oracle-seed"
+            },
+            {
+              "id": "app/jobs/digest.py::send_digest",
+              "score": 0.747,
+              "why": "embed-calls a=0.172 cap=0.75"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d20",
+      "family": "cache-get",
+      "prompt": "read a value from the memo cache",
+      "seed": "app/cache/memo.py::get",
+      "arms": {
+        "polytrace": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/cache/memo.py::get"
+          ],
+          "heatmap": [
+            {
+              "id": "app/cache/memo.py::get",
+              "score": 1.0,
+              "why": "seed/flow"
+            }
+          ]
+        },
+        "poly_embed": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/cache/memo.py::get"
+          ],
+          "heatmap": [
+            {
+              "id": "app/cache/memo.py::get",
+              "score": 1.0,
+              "why": "seed/flow"
+            }
+          ]
+        },
+        "embed_power_oracle": {
+          "correct": true,
+          "missing_must": [],
+          "forbidden_hot": [],
+          "extra_hot": [],
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "hot": [
+            "app/cache/memo.py::get"
+          ],
+          "heatmap": [
+            {
+              "id": "app/cache/memo.py::get",
+              "score": 1.0,
+              "why": "oracle-seed"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

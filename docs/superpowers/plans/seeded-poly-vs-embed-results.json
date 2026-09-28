@@ -1,0 +1,751 @@
+{
+  "fixture": "C:\\Users\\usman\\Downloads\\context-engine\\fixtures\\trace-lab",
+  "n_prompts": 8,
+  "hot_threshold": 0.45,
+  "note": "Both arms receive the same gold seed + prompt.",
+  "summary": {
+    "polytrace": {
+      "mean_f1": 0.9583,
+      "mean_recall_must": 1.0,
+      "sum_fn": 0,
+      "sum_forbidden_fp": 2,
+      "wins": 2
+    },
+    "embed_power": {
+      "mean_f1": 0.9291,
+      "mean_recall_must": 0.9792,
+      "sum_fn": 1,
+      "sum_forbidden_fp": 2,
+      "wins": 0
+    },
+    "ties": 6,
+    "mean_heatmap_jaccard": 0.9219
+  },
+  "prompts": [
+    {
+      "id": "s01",
+      "title": "login credential path from middleware",
+      "prompt": "from here, what else do i need to read to understand how the credential is checked?",
+      "seed": "app/middleware/auth.py::authenticate",
+      "context_notes": "Collected from auth.py -> extract_bearer, JwtService.verify -> decode, TOKEN_TTL, UserRepository.resolve -> connect, User.lookup. log/track are callees but not needed to understand credential checking.",
+      "gold_must": [
+        "app/middleware/auth.py::authenticate",
+        "app/middleware/auth.py::extract_bearer",
+        "app/models/user.py::User.lookup",
+        "app/repositories/user_repo.py::UserRepository.resolve",
+        "app/services/jwt_service.py::JwtService.verify",
+        "app/utils/token.py::decode"
+      ],
+      "gold_should": [
+        "app/config/database.py::connect",
+        "app/config/security.py::TOKEN_TTL"
+      ],
+      "gold_must_not": [
+        "app/analytics/tracker.py::track",
+        "app/billing/invoices.py::charge",
+        "app/http/client.py::get",
+        "app/utils/logger.py::log"
+      ],
+      "arms": {
+        "polytrace": {
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "extra_hot": [],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "heatmap": [
+            {
+              "id": "app/middleware/auth.py::authenticate",
+              "score": 1.0,
+              "why": "seed/flow"
+            },
+            {
+              "id": "app/middleware/auth.py::extract_bearer",
+              "score": 0.9,
+              "why": "calls authenticate->extract_bearer"
+            },
+            {
+              "id": "app/services/jwt_service.py::JwtService.verify",
+              "score": 0.9,
+              "why": "calls authenticate->JwtService.verify"
+            },
+            {
+              "id": "app/utils/token.py::decode",
+              "score": 0.7857,
+              "why": "calls JwtService.verify->decode"
+            },
+            {
+              "id": "app/repositories/user_repo.py::UserRepository.resolve",
+              "score": 0.7857,
+              "why": "calls JwtService.verify->UserRepository.resolve"
+            },
+            {
+              "id": "app/config/database.py::connect",
+              "score": 0.6653,
+              "why": "calls UserRepository.resolve->connect"
+            },
+            {
+              "id": "app/models/user.py::User.lookup",
+              "score": 0.6653,
+              "why": "calls UserRepository.resolve->User.lookup"
+            }
+          ]
+        },
+        "embed_power": {
+          "f1": 0.9091,
+          "recall_must": 0.8333,
+          "precision_hot": 1.0,
+          "false_negatives": [
+            "app/models/user.py::User.lookup"
+          ],
+          "false_positives_forbidden": [],
+          "extra_hot": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/middleware/auth.py::authenticate",
+            "app/middleware/auth.py::extract_bearer",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "heatmap": [
+            {
+              "id": "app/middleware/auth.py::authenticate",
+              "score": 1.0,
+              "why": "oracle-seed"
+            },
+            {
+              "id": "app/middleware/auth.py::extract_bearer",
+              "score": 0.7827,
+              "why": "embed-calls a=0.137 cap=0.78"
+            },
+            {
+              "id": "app/services/jwt_service.py::JwtService.verify",
+              "score": 0.7592,
+              "why": "embed-calls a=0.158 cap=0.76"
+            },
+            {
+              "id": "app/utils/token.py::decode",
+              "score": 0.5258,
+              "why": "embed-calls a=0.061 cap=0.70"
+            },
+            {
+              "id": "app/repositories/user_repo.py::UserRepository.resolve",
+              "score": 0.5031,
+              "why": "embed-calls a=0.065 cap=0.67"
+            },
+            {
+              "id": "app/config/security.py::TOKEN_TTL",
+              "score": 0.474,
+              "why": "embed-uses a=0.059 cap=0.63"
+            }
+          ]
+        }
+      },
+      "heatmap_jaccard": 0.625,
+      "winner": "polytrace"
+    },
+    {
+      "id": "s02",
+      "title": "token lifetime from verify",
+      "prompt": "i only care about how long a token lives \u2014 collect that context",
+      "seed": "app/services/jwt_service.py::JwtService.verify",
+      "context_notes": "verify reads TOKEN_TTL and decode(age). resolve/lookup are on the broader path but not required for lifetime.",
+      "gold_must": [
+        "app/config/security.py::TOKEN_TTL",
+        "app/services/jwt_service.py::JwtService.verify"
+      ],
+      "gold_should": [
+        "app/utils/token.py::decode"
+      ],
+      "gold_must_not": [
+        "app/billing/invoices.py::charge",
+        "app/models/user.py::User.lookup",
+        "app/repositories/user_repo.py::UserRepository.resolve",
+        "app/utils/logger.py::log"
+      ],
+      "arms": {
+        "polytrace": {
+          "f1": 0.6667,
+          "recall_must": 1.0,
+          "precision_hot": 0.5,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve"
+          ],
+          "extra_hot": [
+            "app/config/database.py::connect"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/config/security.py::TOKEN_TTL",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "heatmap": [
+            {
+              "id": "app/services/jwt_service.py::JwtService.verify",
+              "score": 1.0,
+              "why": "seed/flow"
+            },
+            {
+              "id": "app/utils/token.py::decode",
+              "score": 0.9,
+              "why": "calls JwtService.verify->decode"
+            },
+            {
+              "id": "app/repositories/user_repo.py::UserRepository.resolve",
+              "score": 0.9,
+              "why": "calls JwtService.verify->UserRepository.resolve"
+            },
+            {
+              "id": "app/config/security.py::TOKEN_TTL",
+              "score": 0.85,
+              "why": "uses JwtService.verify->TOKEN_TTL"
+            },
+            {
+              "id": "app/config/database.py::connect",
+              "score": 0.7857,
+              "why": "calls UserRepository.resolve->connect"
+            },
+            {
+              "id": "app/models/user.py::User.lookup",
+              "score": 0.7857,
+              "why": "calls UserRepository.resolve->User.lookup"
+            }
+          ]
+        },
+        "embed_power": {
+          "f1": 0.6667,
+          "recall_must": 1.0,
+          "precision_hot": 0.5,
+          "false_negatives": [],
+          "false_positives_forbidden": [
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve"
+          ],
+          "extra_hot": [
+            "app/config/database.py::connect"
+          ],
+          "hot": [
+            "app/config/database.py::connect",
+            "app/config/security.py::TOKEN_TTL",
+            "app/models/user.py::User.lookup",
+            "app/repositories/user_repo.py::UserRepository.resolve",
+            "app/services/jwt_service.py::JwtService.verify",
+            "app/utils/token.py::decode"
+          ],
+          "heatmap": [
+            {
+              "id": "app/services/jwt_service.py::JwtService.verify",
+              "score": 1.0,
+              "why": "oracle-seed"
+            },
+            {
+              "id": "app/utils/token.py::decode",
+              "score": 0.7416,
+              "why": "embed-calls a=0.213 cap=0.74"
+            },
+            {
+              "id": "app/config/security.py::TOKEN_TTL",
+              "score": 0.6763,
+              "why": "embed-uses a=0.254 cap=0.68"
+            },
+            {
+              "id": "app/repositories/user_repo.py::UserRepository.resolve",
+              "score": 0.6662,
+              "why": "embed-calls a=0.070 cap=0.67"
+            },
+            {
+              "id": "app/models/user.py::User.lookup",
+              "score": 0.4804,
+              "why": "embed-calls a=0.068 cap=0.73"
+            },
+            {
+              "id": "app/config/database.py::connect",
+              "score": 0.4528,
+              "why": "embed-calls a=0.146 cap=0.69"
+            }
+          ]
+        }
+      },
+      "heatmap_jaccard": 1.0,
+      "winner": "tie"
+    },
+    {
+      "id": "s03",
+      "title": "payment charge slice",
+      "prompt": "collect everything for sending cents to the pay endpoint",
+      "seed": "app/billing/invoices.py::charge",
+      "context_notes": "charge -> get('/pay', ...). Docstring mentions authentication tokens; must stay on payment.",
+      "gold_must": [
+        "app/billing/invoices.py::charge",
+        "app/http/client.py::get"
+      ],
+      "gold_should": [],
+      "gold_must_not": [
+        "app/analytics/tracker.py::track",
+        "app/middleware/auth.py::authenticate",
+        "app/utils/token.py::decode"
+      ],
+      "arms": {
+        "polytrace": {
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "extra_hot": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "heatmap": [
+            {
+              "id": "app/billing/invoices.py::charge",
+              "score": 1.0,
+              "why": "seed/flow"
+            },
+            {
+              "id": "app/http/client.py::get",
+              "score": 0.9,
+              "why": "calls charge->get"
+            }
+          ]
+        },
+        "embed_power": {
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "extra_hot": [],
+          "hot": [
+            "app/billing/invoices.py::charge",
+            "app/http/client.py::get"
+          ],
+          "heatmap": [
+            {
+              "id": "app/billing/invoices.py::charge",
+              "score": 1.0,
+              "why": "oracle-seed"
+            },
+            {
+              "id": "app/http/client.py::get",
+              "score": 0.6853,
+              "why": "embed-calls a=0.187 cap=0.69"
+            }
+          ]
+        }
+      },
+      "heatmap_jaccard": 1.0,
+      "winner": "tie"
+    },
+    {
+      "id": "s04",
+      "title": "welcome event dispatch",
+      "prompt": "from emit, what actually runs for welcome?",
+      "seed": "app/events/bus.py::emit",
+      "context_notes": "emit -> lookup(name); fn(payload). handle only via bind in bootstrap.start. AST alone cannot see handle.",
+      "gold_must": [
+        "app/events/bus.py::emit",
+        "app/events/registry.py::lookup",
+        "app/handlers/welcome.py::handle"
+      ],
+      "gold_should": [
+        "app/bootstrap.py::start",
+        "app/events/registry.py::bind"
+      ],
+      "gold_must_not": [
+        "app/jobs/digest.py::send_digest",
+        "app/middleware/auth.py::authenticate"
+      ],
+      "arms": {
+        "polytrace": {
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "extra_hot": [],
+          "hot": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ],
+          "heatmap": [
+            {
+              "id": "app/events/bus.py::emit",
+              "score": 1.0,
+              "why": "seed/flow"
+            },
+            {
+              "id": "app/events/registry.py::lookup",
+              "score": 0.9,
+              "why": "calls emit->lookup"
+            },
+            {
+              "id": "app/handlers/welcome.py::handle",
+              "score": 0.88,
+              "why": "dispatches emit->handle"
+            }
+          ]
+        },
+        "embed_power": {
+          "f1": 0.8571,
+          "recall_must": 1.0,
+          "precision_hot": 0.75,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "extra_hot": [
+            "app/events/registry.py::HANDLERS"
+          ],
+          "hot": [
+            "app/events/bus.py::emit",
+            "app/events/registry.py::HANDLERS",
+            "app/events/registry.py::lookup",
+            "app/handlers/welcome.py::handle"
+          ],
+          "heatmap": [
+            {
+              "id": "app/events/bus.py::emit",
+              "score": 1.0,
+              "why": "oracle-seed"
+            },
+            {
+              "id": "app/handlers/welcome.py::handle",
+              "score": 0.7448,
+              "why": "embed-dispatches a=0.396 cap=0.74"
+            },
+            {
+              "id": "app/events/registry.py::lookup",
+              "score": 0.6967,
+              "why": "embed-calls a=0.115 cap=0.70"
+            },
+            {
+              "id": "app/events/registry.py::HANDLERS",
+              "score": 0.506,
+              "why": "embed-uses a=0.143 cap=0.74"
+            }
+          ]
+        }
+      },
+      "heatmap_jaccard": 0.75,
+      "winner": "polytrace"
+    },
+    {
+      "id": "s05",
+      "title": "job worker chain",
+      "prompt": "trace the worker until the digest is sent",
+      "seed": "app/jobs/worker.py::run",
+      "context_notes": "run -> dequeue -> execute -> send_digest. Generic names throughout.",
+      "gold_must": [
+        "app/jobs/digest.py::send_digest",
+        "app/jobs/queue.py::dequeue",
+        "app/jobs/runner.py::execute",
+        "app/jobs/worker.py::run"
+      ],
+      "gold_should": [],
+      "gold_must_not": [
+        "app/events/bus.py::emit",
+        "app/http/client.py::get",
+        "app/middleware/auth.py::authenticate"
+      ],
+      "arms": {
+        "polytrace": {
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "extra_hot": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ],
+          "heatmap": [
+            {
+              "id": "app/jobs/worker.py::run",
+              "score": 1.0,
+              "why": "seed/flow"
+            },
+            {
+              "id": "app/jobs/queue.py::dequeue",
+              "score": 0.9,
+              "why": "calls run->dequeue"
+            },
+            {
+              "id": "app/jobs/runner.py::execute",
+              "score": 0.9,
+              "why": "calls run->execute"
+            },
+            {
+              "id": "app/jobs/digest.py::send_digest",
+              "score": 0.7857,
+              "why": "calls execute->send_digest"
+            }
+          ]
+        },
+        "embed_power": {
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "extra_hot": [],
+          "hot": [
+            "app/jobs/digest.py::send_digest",
+            "app/jobs/queue.py::dequeue",
+            "app/jobs/runner.py::execute",
+            "app/jobs/worker.py::run"
+          ],
+          "heatmap": [
+            {
+              "id": "app/jobs/worker.py::run",
+              "score": 1.0,
+              "why": "oracle-seed"
+            },
+            {
+              "id": "app/jobs/runner.py::execute",
+              "score": 0.7868,
+              "why": "embed-calls a=0.338 cap=0.79"
+            },
+            {
+              "id": "app/jobs/queue.py::dequeue",
+              "score": 0.6964,
+              "why": "embed-calls a=0.029 cap=0.70"
+            },
+            {
+              "id": "app/jobs/digest.py::send_digest",
+              "score": 0.6283,
+              "why": "embed-calls a=0.363 cap=0.81"
+            }
+          ]
+        }
+      },
+      "heatmap_jaccard": 1.0,
+      "winner": "tie"
+    },
+    {
+      "id": "s06",
+      "title": "auth log side effect only",
+      "prompt": "where does this write the ok log line?",
+      "seed": "app/middleware/auth.py::authenticate",
+      "context_notes": "authenticate calls log('ok'). Query is a site/side-effect question; JWT path should stay cold.",
+      "gold_must": [
+        "app/middleware/auth.py::authenticate",
+        "app/utils/logger.py::log"
+      ],
+      "gold_should": [],
+      "gold_must_not": [
+        "app/repositories/user_repo.py::UserRepository.resolve",
+        "app/services/jwt_service.py::JwtService.verify",
+        "app/utils/token.py::decode"
+      ],
+      "arms": {
+        "polytrace": {
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "extra_hot": [],
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/utils/logger.py::log"
+          ],
+          "heatmap": [
+            {
+              "id": "app/middleware/auth.py::authenticate",
+              "score": 1.0,
+              "why": "seed/site"
+            },
+            {
+              "id": "app/utils/logger.py::log",
+              "score": 0.9,
+              "why": "calls authenticate->log"
+            }
+          ]
+        },
+        "embed_power": {
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "extra_hot": [],
+          "hot": [
+            "app/middleware/auth.py::authenticate",
+            "app/utils/logger.py::log"
+          ],
+          "heatmap": [
+            {
+              "id": "app/middleware/auth.py::authenticate",
+              "score": 1.0,
+              "why": "oracle-seed"
+            },
+            {
+              "id": "app/utils/logger.py::log",
+              "score": 0.6212,
+              "why": "embed-calls a=0.166 cap=0.62"
+            }
+          ]
+        }
+      },
+      "heatmap_jaccard": 1.0,
+      "winner": "tie"
+    },
+    {
+      "id": "s07",
+      "title": "who reads TOKEN_TTL",
+      "prompt": "who reads this constant?",
+      "seed": "app/config/security.py::TOKEN_TTL",
+      "context_notes": "LSP used-by: only JwtService.verify imports/uses TOKEN_TTL. Must not forward-slice.",
+      "gold_must": [
+        "app/config/security.py::TOKEN_TTL",
+        "app/services/jwt_service.py::JwtService.verify"
+      ],
+      "gold_should": [],
+      "gold_must_not": [
+        "app/middleware/auth.py::authenticate",
+        "app/models/user.py::User.lookup"
+      ],
+      "arms": {
+        "polytrace": {
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "extra_hot": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "heatmap": [
+            {
+              "id": "app/config/security.py::TOKEN_TTL",
+              "score": 1.0,
+              "why": "seed/refs"
+            },
+            {
+              "id": "app/services/jwt_service.py::JwtService.verify",
+              "score": 0.92,
+              "why": "lsp-refs TOKEN_TTL"
+            }
+          ]
+        },
+        "embed_power": {
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "extra_hot": [],
+          "hot": [
+            "app/config/security.py::TOKEN_TTL",
+            "app/services/jwt_service.py::JwtService.verify"
+          ],
+          "heatmap": [
+            {
+              "id": "app/config/security.py::TOKEN_TTL",
+              "score": 1.0,
+              "why": "oracle-seed"
+            },
+            {
+              "id": "app/services/jwt_service.py::JwtService.verify",
+              "score": 0.88,
+              "why": "embed-usedby TOKEN_TTL"
+            }
+          ]
+        }
+      },
+      "heatmap_jaccard": 1.0,
+      "winner": "tie"
+    },
+    {
+      "id": "s08",
+      "title": "memory store override",
+      "prompt": "how does this fetch override the base store?",
+      "seed": "app/stores/memory.py::MemoryStore.fetch",
+      "context_notes": "MemoryStore(Store) overrides fetch. Inheritance/override channel.",
+      "gold_must": [
+        "app/stores/memory.py::MemoryStore.fetch"
+      ],
+      "gold_should": [
+        "app/stores/base.py::Store.fetch"
+      ],
+      "gold_must_not": [
+        "app/middleware/auth.py::authenticate",
+        "app/models/user.py::User.lookup"
+      ],
+      "arms": {
+        "polytrace": {
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "extra_hot": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ],
+          "heatmap": [
+            {
+              "id": "app/stores/memory.py::MemoryStore.fetch",
+              "score": 1.0,
+              "why": "seed/flow"
+            },
+            {
+              "id": "app/stores/base.py::Store.fetch",
+              "score": 0.75,
+              "why": "overrides MemoryStore.fetch->Store.fetch"
+            }
+          ]
+        },
+        "embed_power": {
+          "f1": 1.0,
+          "recall_must": 1.0,
+          "precision_hot": 1.0,
+          "false_negatives": [],
+          "false_positives_forbidden": [],
+          "extra_hot": [],
+          "hot": [
+            "app/stores/base.py::Store.fetch",
+            "app/stores/memory.py::MemoryStore.fetch"
+          ],
+          "heatmap": [
+            {
+              "id": "app/stores/memory.py::MemoryStore.fetch",
+              "score": 1.0,
+              "why": "oracle-seed"
+            },
+            {
+              "id": "app/stores/base.py::Store.fetch",
+              "score": 0.7357,
+              "why": "embed-overrides a=0.622 cap=0.74"
+            }
+          ]
+        }
+      },
+      "heatmap_jaccard": 1.0,
+      "winner": "tie"
+    }
+  ]
+}

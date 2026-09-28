@@ -1,0 +1,89 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 1.694,
+  "stdout_chars": 3511,
+  "stderr_tail": "",
+  "json": {
+    "ok": true,
+    "tool": "pack",
+    "seed": {
+      "id": "packages/trace_lab/composite_v1.py::_membership_edges",
+      "file": "packages/trace_lab/composite_v1.py",
+      "symbol": "_membership_edges"
+    },
+    "chain": [
+      {
+        "id": "packages/trace_lab/composite_v1.py::_membership_edges",
+        "loc": "packages/trace_lab/composite_v1.py:48-82",
+        "edge": "seed",
+        "score": 1.0
+      },
+      {
+        "id": "packages/conductor/bm25_index.py::tokenize",
+        "loc": "packages/conductor/bm25_index.py:14-15",
+        "edge": "calls",
+        "score": 1.0
+      },
+      {
+        "id": "packages/trace_lab/policy/slice_mask.py::short_name",
+        "loc": "packages/trace_lab/policy/slice_mask.py:18-19",
+        "edge": "calls",
+        "score": 1.0
+      },
+      {
+        "id": "packages/trace_lab/polytrace.py::faction_of",
+        "loc": "packages/trace_lab/polytrace.py:97-102",
+        "edge": "calls",
+        "score": 1.0
+      },
+      {
+        "id": "packages/trace_lab/policy/slice_mask.py::filter_edges",
+        "loc": "packages/trace_lab/policy/slice_mask.py:28-42",
+        "edge": "calls",
+        "score": 0.9405
+      },
+      {
+        "id": "packages/trace_lab/polytrace.py::is_foreign",
+        "loc": "packages/trace_lab/polytrace.py:105-119",
+        "edge": "calls",
+        "score": 0.9405
+      }
+    ],
+    "pack": [
+      {
+        "id": "packages/trace_lab/composite_v1.py::_membership_edges",
+        "loc": "packages/trace_lab/composite_v1.py:48-82",
+        "text": "def _membership_edges(\n    edges: list[TypedEdge],\n    nodes: dict[str, TraceNode],\n    spec: TraceSpec,\n    seed_file: str,\n) -> list[TypedEdge]:\n    \"\"\"Forward-only, class-skipping, poly-foreign-filtered call membership.\"\"\"\n    edged = filter_edges(list(edges), nodes, spec)\n    out: list[TypedEdge] = []\n    for e in edged:\n        if spec.mode != \"refs\" and e.relation not in _FORWARD:\n            continue\n        dst = nodes.get(e.target)\n        if dst is None:\n            continue\n        if dst.kind == \"class\":\n            continue\n        if dst.kind == \"const\" and short_name(dst) not in {\n            t.lower() for t in spec.include_names\n        }:\n            # Keep consts only when query/include names them (poly flow rule).\n            qtoks = set(tokenize(spec.user_query.lower()))\n            if short_name(dst) not in qtoks and dst.symbol.lower() not in qtoks:\n                continue\n        if is_foreign(dst, spec.user_query, seed_file):\n            # Allow data-plane leaves (connect/get) across factions; never plat/tele sinks.\n            fac = faction_of(dst.file)\n            if not (\n                e.relation in {\"CALLS\", \"calls\", \"PASSES_DATA_TO\"}\n                and short_name(dst) in _DATA_PLANE_LEAVES\n                and fac not in _BLOCK_FOREIGN_FAC\n            ):\n                continue\n        out.append(e)\n    return out"
+      },
+      {
+        "id": "packages/conductor/bm25_index.py::tokenize",
+        "loc": "packages/conductor/bm25_index.py:14-15",
+        "text": "def tokenize(text: str) -> list[str]:\n    return [t.lower() for t in _TOKEN.findall(text)]"
+      },
+      {
+        "id": "packages/trace_lab/policy/slice_mask.py::short_name",
+        "loc": "packages/trace_lab/policy/slice_mask.py:18-19",
+        "text": "def short_name(node: TraceNode) -> str:\n    return node.symbol.split(\".\")[-1].lower()"
+      },
+      {
+        "id": "packages/trace_lab/polytrace.py::faction_of",
+        "loc": "packages/trace_lab/polytrace.py:97-102",
+        "text": "def faction_of(path: str) -> str:\n    p = \"/\" + path.replace(\"\\\\\", \"/\")\n    for needle, fac in _FACTION_MARKERS:\n        if needle in p:\n            return fac\n    return \"auth\""
+      }
+    ],
+    "cold": [
+      {
+        "id": "packages/trace_lab/policy/slice_mask.py::filter_edges",
+        "loc": "packages/trace_lab/policy/slice_mask.py:28-42",
+        "score": 0.9405
+      },
+      {
+        "id": "packages/trace_lab/polytrace.py::is_foreign",
+        "loc": "packages/trace_lab/polytrace.py:105-119",
+        "score": 0.9405
+      }
+    ]
+  },
+  "stdout_preview": ""
+}

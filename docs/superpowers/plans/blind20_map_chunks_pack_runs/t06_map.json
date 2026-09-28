@@ -1,0 +1,87 @@
+{
+  "ok": true,
+  "query": "scubiee-mcp-bridge MCP bridge launch stdio tools forward hybrid experiment surface",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/pipeline/templates/scubiee.md",
+      "symbol": "",
+      "score": 6.5815,
+      "loc": "packages/pipeline/templates/scubiee.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "packages/pipeline/mcp_bridge.py",
+      "symbol": "",
+      "score": 6.53,
+      "loc": "packages/pipeline/mcp_bridge.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "packages/pipeline/mcp_bridge_session.py",
+      "symbol": "",
+      "score": 5.9319,
+      "loc": "packages/pipeline/mcp_bridge_session.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "tests/test_mcp_bridge.py",
+      "symbol": "",
+      "score": 5.8878,
+      "loc": "tests/test_mcp_bridge.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "scripts/kiro_mcp_reliability_probe.py",
+      "symbol": "",
+      "score": 5.6107,
+      "loc": "scripts/kiro_mcp_reliability_probe.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "tests/test_mcp_bridge_concurrency.py",
+      "symbol": "",
+      "score": 5.5081,
+      "loc": "tests/test_mcp_bridge_concurrency.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "_live_mcp_payload_smoke.py",
+      "symbol": "",
+      "score": 5.2569,
+      "loc": "_live_mcp_payload_smoke.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "tests/test_hybrid_cbm.py",
+      "symbol": "",
+      "score": 5.199,
+      "loc": "tests/test_hybrid_cbm.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "docs/web-info/cursor-mcp.md",
+      "symbol": "",
+      "score": 4.8913,
+      "loc": "docs/web-info/cursor-mcp.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "tests/_mcp_break_it_suite.py",
+      "symbol": "",
+      "score": 4.7282,
+      "loc": "tests/_mcp_break_it_suite.py:1-1",
+      "why": ""
+    }
+  ],
+  "elapsed_s": 0.465
+}

@@ -1,0 +1,1210 @@
+{
+  "protocol": "blind20_map_chunks_pack_phase2",
+  "n": 20,
+  "mean_must_file_recall": {
+    "pack_context": 0.767,
+    "pack_poly_embed": 0.75,
+    "pack_semantic": 0.767,
+    "chunks": 0.75,
+    "map_top5": 0.863
+  },
+  "mean_must_symbol_recall": {
+    "pack_context": 0.696,
+    "pack_poly_embed": 0.696,
+    "pack_semantic": 0.679,
+    "chunks": 0.679
+  },
+  "thin_packs_n_le_1": {
+    "pack_context": 1,
+    "pack_poly_embed": 1,
+    "pack_semantic": 1
+  },
+  "pack_winner": "pack_context",
+  "per_case": [
+    {
+      "id": "t01",
+      "must_files": [
+        "packages/pipeline/artifact_guard.py",
+        "packages/pipeline/project_id.py",
+        "packages/pipeline/engine.py",
+        "packages/pipeline/ce_service.py"
+      ],
+      "must_symbols": [
+        "publish_manifest",
+        "index_is_usable",
+        "WarmSearchEngine",
+        "publish_engine"
+      ],
+      "chunks": [
+        "publish_manifest",
+        "MemoryGovernor.demote_after_index",
+        "RuntimeManager.publish"
+      ],
+      "arms": {
+        "pack_context": {
+          "file_recall": 0.5,
+          "symbol_recall": 0.25,
+          "n_pack": 4,
+          "pack_syms": [
+            "MemoryGovernor._apply_locked",
+            "MemoryGovernor._demote_embedder_locked",
+            "MemoryGovernor._recompute_desired_locked",
+            "MemoryGovernor.demote_after_index",
+            "_apply_locked",
+            "_checksum",
+            "_demote_embedder_locked",
+            "_recompute_desired_locked",
+            "atomic_write_text",
+            "demote_after_index",
+            "embed_idle_demote_s",
+            "publish_manifest"
+          ]
+        },
+        "pack_poly_embed": {
+          "file_recall": 0.5,
+          "symbol_recall": 0.25,
+          "n_pack": 4,
+          "pack_syms": [
+            "MANIFEST_NAME",
+            "MemoryGovernor.demote_after_index",
+            "atomic_write_text",
+            "demote_after_index",
+            "embed_idle_demote_s",
+            "publish_manifest"
+          ]
+        },
+        "pack_semantic": {
+          "file_recall": 0.5,
+          "symbol_recall": 0.25,
+          "n_pack": 4,
+          "pack_syms": [
+            "MemoryGovernor._apply_locked",
+            "MemoryGovernor._demote_embedder_locked",
+            "MemoryGovernor._recompute_desired_locked",
+            "MemoryGovernor.demote_after_index",
+            "_apply_locked",
+            "_checksum",
+            "_demote_embedder_locked",
+            "_recompute_desired_locked",
+            "atomic_write_text",
+            "demote_after_index",
+            "embed_idle_demote_s",
+            "publish_manifest"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t02",
+      "must_files": [
+        "packages/conductor/bm25_index.py"
+      ],
+      "must_symbols": [
+        "BM25Index",
+        "tokenize",
+        "build"
+      ],
+      "chunks": [
+        "BM25Index",
+        "rebuild_bm25",
+        "LexicalIndex.bm25_scores"
+      ],
+      "arms": {
+        "pack_context": {
+          "file_recall": 1.0,
+          "symbol_recall": 0.667,
+          "n_pack": 2,
+          "pack_syms": [
+            "BM25Index",
+            "BM25Index.score_all",
+            "rebuild_bm25",
+            "score_all",
+            "tokenize"
+          ]
+        },
+        "pack_poly_embed": {
+          "file_recall": 1.0,
+          "symbol_recall": 0.667,
+          "n_pack": 2,
+          "pack_syms": [
+            "BM25Index",
+            "BM25Index.score_all",
+            "BM25Index.search",
+            "rebuild_bm25",
+            "score_all",
+            "search",
+            "tokenize"
+          ]
+        },
+        "pack_semantic": {
+          "file_recall": 1.0,
+          "symbol_recall": 0.333,
+          "n_pack": 2,
+          "pack_syms": [
+            "BM25Index",
+            "rebuild_bm25"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t03",
+      "must_files": [
+        "packages/pipeline/index_manager.py",
+        "packages/pipeline/indexer.py",
+        "packages/pipeline/chunk_merkle.py"
+      ],
+      "must_symbols": [],
+      "chunks": [
+        "chunk_file_from_ir",
+        "chunk_key",
+        "chunk_repo_from_ir"
+      ],
+      "arms": {
+        "pack_context": {
+          "file_recall": 0.333,
+          "symbol_recall": 1.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "_callable_symbols_for_file",
+            "_read_lines",
+            "chunk_file_from_ir",
+            "chunk_key"
+          ]
+        },
+        "pack_poly_embed": {
+          "file_recall": 0.333,
+          "symbol_recall": 1.0,
+          "n_pack": 2,
+          "pack_syms": [
+            "chunk_file_from_ir",
+            "chunk_key"
+          ]
+        },
+        "pack_semantic": {
+          "file_recall": 0.333,
+          "symbol_recall": 1.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "_callable_symbols_for_file",
+            "_read_lines",
+            "chunk_file_from_ir",
+            "chunk_key"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t04",
+      "must_files": [
+        "packages/pipeline/project_id.py",
+        "packages/pipeline/repo_lifecycle.py",
+        "packages/pipeline/rules_installer.py"
+      ],
+      "must_symbols": [
+        "write_project_gate_rules"
+      ],
+      "chunks": [
+        "repo_runtime_dir",
+        "gate_line_for_repo",
+        "managed_repo_paths"
+      ],
+      "arms": {
+        "pack_context": {
+          "file_recall": 0.667,
+          "symbol_recall": 0.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "_is_enrolled",
+            "context_engine_home",
+            "gate_line_for_repo",
+            "id_dir_path",
+            "is_paused",
+            "legacy_repo_key",
+            "read_id_file",
+            "repo_runtime_dir"
+          ]
+        },
+        "pack_poly_embed": {
+          "file_recall": 0.667,
+          "symbol_recall": 0.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "context_engine_home",
+            "gate_line_for_repo",
+            "id_dir_path",
+            "legacy_repo_key",
+            "repo_runtime_dir"
+          ]
+        },
+        "pack_semantic": {
+          "file_recall": 0.667,
+          "symbol_recall": 0.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "_is_enrolled",
+            "context_engine_home",
+            "gate_line_for_repo",
+            "id_dir_path",
+            "is_paused",
+            "legacy_repo_key",
+            "read_id_file",
+            "repo_runtime_dir"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t05",
+      "must_files": [
+        "packages/pipeline/watchdog.py",
+        "packages/pipeline/engine.py"
+      ],
+      "must_symbols": [
+        "watchdog_loop",
+        "WarmSearchEngine"
+      ],
+      "chunks": [
+        "is_watchdog_running",
+        "engine_url",
+        "cmd_engine"
+      ],
+      "arms": {
+        "pack_context": {
+          "file_recall": 0.5,
+          "symbol_recall": 0.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "EngineClient._request",
+            "EngineClient.get",
+            "_home",
+            "_pid_alive",
+            "_request",
+            "context_engine_home",
+            "engine_url",
+            "get",
+            "is_watchdog_running",
+            "watchdog_pid_path"
+          ]
+        },
+        "pack_poly_embed": {
+          "file_recall": 0.5,
+          "symbol_recall": 0.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "DEFAULT_URL",
+            "engine_url",
+            "is_watchdog_running",
+            "watchdog_pid_path"
+          ]
+        },
+        "pack_semantic": {
+          "file_recall": 0.5,
+          "symbol_recall": 0.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "EngineClient._request",
+            "EngineClient.get",
+            "_home",
+            "_pid_alive",
+            "_request",
+            "engine_url",
+            "get",
+            "is_watchdog_running",
+            "watchdog_pid_path"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t06",
+      "must_files": [
+        "packages/pipeline/mcp_bridge.py",
+        "packages/pipeline/mcp_bridge_session.py"
+      ],
+      "must_symbols": [],
+      "chunks": [
+        "McpBridge",
+        "McpBridge.run",
+        "bridge_mode"
+      ],
+      "arms": {
+        "pack_context": {
+          "file_recall": 1.0,
+          "symbol_recall": 1.0,
+          "n_pack": 2,
+          "pack_syms": [
+            "McpBridge",
+            "McpBridge._emit_client",
+            "McpBridge._emit_tools_list_changed",
+            "McpBridge._shared_worker",
+            "McpBridge.run",
+            "_emit_client",
+            "_emit_tools_list_changed",
+            "_shared_worker",
+            "_stderr",
+            "bridge_mode",
+            "max_bridge_sessions",
+            "run"
+          ]
+        },
+        "pack_poly_embed": {
+          "file_recall": 1.0,
+          "symbol_recall": 1.0,
+          "n_pack": 2,
+          "pack_syms": [
+            "McpBridge",
+            "McpBridge.handle_client_message",
+            "McpBridge.kill_child",
+            "McpBridge.needs_respawn",
+            "McpBridge.run",
+            "handle_client_message",
+            "kill_child",
+            "needs_respawn",
+            "run"
+          ]
+        },
+        "pack_semantic": {
+          "file_recall": 1.0,
+          "symbol_recall": 1.0,
+          "n_pack": 2,
+          "pack_syms": [
+            "McpBridge",
+            "McpBridge._emit_client",
+            "McpBridge._shared_worker",
+            "McpBridge.run",
+            "_emit_client",
+            "_shared_worker",
+            "_stderr",
+            "bridge_mode",
+            "max_bridge_sessions",
+            "run"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t07",
+      "must_files": [
+        "packages/pipeline/__main__.py",
+        "packages/pipeline/locate_cli.py"
+      ],
+      "must_symbols": [
+        "cmd_map",
+        "cmd_pack"
+      ],
+      "chunks": [
+        "cli_pack",
+        "cli_map",
+        "cmd_pack"
+      ],
+      "arms": {
+        "pack_context": {
+          "file_recall": 1.0,
+          "symbol_recall": 0.5,
+          "n_pack": 3,
+          "pack_syms": [
+            "_load_repo",
+            "_root",
+            "_trace_engine",
+            "cli_map",
+            "cli_pack",
+            "pick_suggested_seed",
+            "run_pack_context",
+            "search_repo"
+          ]
+        },
+        "pack_poly_embed": {
+          "file_recall": 1.0,
+          "symbol_recall": 0.5,
+          "n_pack": 2,
+          "pack_syms": [
+            "cli_map",
+            "cli_pack"
+          ]
+        },
+        "pack_semantic": {
+          "file_recall": 1.0,
+          "symbol_recall": 0.5,
+          "n_pack": 3,
+          "pack_syms": [
+            "_root",
+            "_trace_engine",
+            "cli_map",
+            "cli_pack",
+            "pick_suggested_seed",
+            "run_map_context",
+            "run_pack_context",
+            "search_repo"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t08",
+      "must_files": [
+        "packages/pipeline/context_trace.py",
+        "packages/pipeline/mcp_locate.py"
+      ],
+      "must_symbols": [
+        "run_expand_context"
+      ],
+      "chunks": [
+        "run_expand_context",
+        "build_call_chain",
+        "cli_expand"
+      ],
+      "arms": {
+        "pack_context": {
+          "file_recall": 0.5,
+          "symbol_recall": 1.0,
+          "n_pack": 2,
+          "pack_syms": [
+            "_heat",
+            "_kind_pref",
+            "_load_repo",
+            "_neighbor_cards",
+            "_resolve_node_id",
+            "build_call_chain",
+            "card_role",
+            "run_expand_context"
+          ]
+        },
+        "pack_poly_embed": {
+          "file_recall": 0.5,
+          "symbol_recall": 1.0,
+          "n_pack": 2,
+          "pack_syms": [
+            "build_call_chain",
+            "card_role",
+            "heatmap_to_cards",
+            "run_collect_hot",
+            "run_expand_context"
+          ]
+        },
+        "pack_semantic": {
+          "file_recall": 0.5,
+          "symbol_recall": 1.0,
+          "n_pack": 2,
+          "pack_syms": [
+            "_case",
+            "_kind_pref",
+            "_load_repo",
+            "_neighbor_cards",
+            "_resolve_node_id",
+            "build_call_chain",
+            "run_collect_hot",
+            "run_expand_context"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t09",
+      "must_files": [
+        "packages/pipeline/work_session.py"
+      ],
+      "must_symbols": [
+        "touch"
+      ],
+      "chunks": [
+        "touch",
+        "heatmap",
+        "RepoRuntime.touch"
+      ],
+      "arms": {
+        "pack_context": {
+          "file_recall": 1.0,
+          "symbol_recall": 1.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "_session_path",
+            "heatmap",
+            "load_session",
+            "repo_runtime_dir",
+            "sanitize_session_id",
+            "save_session",
+            "session_json_lock",
+            "touch"
+          ]
+        },
+        "pack_poly_embed": {
+          "file_recall": 1.0,
+          "symbol_recall": 1.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "heatmap",
+            "load_session",
+            "save_session",
+            "touch"
+          ]
+        },
+        "pack_semantic": {
+          "file_recall": 1.0,
+          "symbol_recall": 1.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "default_process_session_id",
+            "detect_mcp_host",
+            "effective_session_id",
+            "heatmap",
+            "load_session",
+            "sanitize_session_id",
+            "save_session",
+            "touch"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t10",
+      "must_files": [
+        "packages/pipeline/mcp_response_lean.py",
+        "packages/pipeline/mcp_locate.py"
+      ],
+      "must_symbols": [],
+      "chunks": [
+        "token_mode",
+        "heatmap_to_cards",
+        "slim_locate_payload"
+      ],
+      "arms": {
+        "pack_context": {
+          "file_recall": 0.5,
+          "symbol_recall": 1.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "_heat",
+            "card_role",
+            "heatmap_to_cards",
+            "token_mode"
+          ]
+        },
+        "pack_poly_embed": {
+          "file_recall": 0.5,
+          "symbol_recall": 1.0,
+          "n_pack": 3,
+          "pack_syms": [
+            "card_role",
+            "heatmap_to_cards",
+            "token_mode"
+          ]
+        },
+        "pack_semantic": {
+          "file_recall": 0.5,
+          "symbol_recall": 1.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "_heat",
+            "card_role",
+            "heatmap_to_cards",
+            "token_mode"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t11",
+      "must_files": [
+        "packages/pipeline/mcp_permissions.py",
+        "packages/pipeline/rules_installer.py"
+      ],
+      "must_symbols": [
+        "apply_permissions_to_repo_tool_surface"
+      ],
+      "chunks": [
+        "merge_cursor_permissions",
+        "apply_permissions_to_repo_tool_surface",
+        "write_cursor_mcp"
+      ],
+      "arms": {
+        "pack_context": {
+          "file_recall": 0.5,
+          "symbol_recall": 1.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "_cursor_mcp_allowlist",
+            "_load_json_object",
+            "_merge_unique_strings",
+            "_write_json_object",
+            "apply_permissions_to_repo_tool_surface",
+            "merge_cursor_permissions",
+            "tool_permission_plan",
+            "write_tool_permission_artifacts"
+          ]
+        },
+        "pack_poly_embed": {
+          "file_recall": 0.5,
+          "symbol_recall": 1.0,
+          "n_pack": 3,
+          "pack_syms": [
+            "apply_permissions_to_repo_tool_surface",
+            "merge_claude_settings_permissions",
+            "merge_cursor_permissions",
+            "tool_permission_plan",
+            "write_tool_permission_artifacts"
+          ]
+        },
+        "pack_semantic": {
+          "file_recall": 0.5,
+          "symbol_recall": 1.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "_cursor_mcp_allowlist",
+            "_load_json_object",
+            "_merge_unique_strings",
+            "_write_json_object",
+            "apply_permissions_to_repo_tool_surface",
+            "merge_cursor_permissions",
+            "tool_permission_plan",
+            "write_tool_permission_artifacts"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t12",
+      "must_files": [
+        "packages/pipeline/rules_installer.py"
+      ],
+      "must_symbols": [
+        "write_project_gate_rules"
+      ],
+      "chunks": [
+        "gate_overview_mdc",
+        "write_project_gate_rules",
+        "create_mcp"
+      ],
+      "arms": {
+        "pack_context": {
+          "file_recall": 1.0,
+          "symbol_recall": 1.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "_project_rules_eligible",
+            "_write_rule_append_md",
+            "gate_line_for_repo",
+            "gate_overview_mdc",
+            "managed_gate_overview_bullet",
+            "paused_gate_rule_body",
+            "unmanaged_gate_rule_body",
+            "write_project_gate_rules"
+          ]
+        },
+        "pack_poly_embed": {
+          "file_recall": 1.0,
+          "symbol_recall": 1.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "PAUSED_AGENT_BAN",
+            "gate_line_for_repo",
+            "gate_overview_mdc",
+            "managed_gate_overview_bullet",
+            "paused_gate_rule_body",
+            "unmanaged_gate_rule_body",
+            "write_project_gate_rules"
+          ]
+        },
+        "pack_semantic": {
+          "file_recall": 1.0,
+          "symbol_recall": 1.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "_write_rule",
+            "_write_rule_append_md",
+            "gate_line_for_repo",
+            "gate_overview_mdc",
+            "managed_gate_overview_bullet",
+            "paused_gate_rule_body",
+            "unmanaged_gate_rule_body",
+            "write_project_gate_rules"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t13",
+      "must_files": [
+        "packages/pipeline/sync_loop.py",
+        "packages/pipeline/freshness.py"
+      ],
+      "must_symbols": [],
+      "chunks": [
+        "BackgroundSyncLoop.sync_once",
+        "BackgroundSyncLoop.start",
+        "check_freshness"
+      ],
+      "arms": {
+        "pack_context": {
+          "file_recall": 1.0,
+          "symbol_recall": 1.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "BackgroundSyncLoop.keeper_tick",
+            "BackgroundSyncLoop.start",
+            "BackgroundSyncLoop.sync_once",
+            "_make_id",
+            "_register_atexit",
+            "file_sha256",
+            "is_junk_rel",
+            "keeper_tick",
+            "root_hash",
+            "start",
+            "sync_once"
+          ]
+        },
+        "pack_poly_embed": {
+          "file_recall": 1.0,
+          "symbol_recall": 1.0,
+          "n_pack": 2,
+          "pack_syms": [
+            "BackgroundSyncLoop.start",
+            "BackgroundSyncLoop.sync_once",
+            "start",
+            "sync_once"
+          ]
+        },
+        "pack_semantic": {
+          "file_recall": 1.0,
+          "symbol_recall": 1.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "BackgroundSyncLoop._start_trigger_watcher",
+            "BackgroundSyncLoop.keeper_tick",
+            "BackgroundSyncLoop.start",
+            "BackgroundSyncLoop.sync_once",
+            "_register_atexit",
+            "_start_trigger_watcher",
+            "file_sha256",
+            "is_junk_rel",
+            "keeper_tick",
+            "root_hash",
+            "start",
+            "sync_once"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t14",
+      "must_files": [
+        "packages/pipeline/memory_governor.py",
+        "packages/pipeline/embedder.py",
+        "packages/pipeline/accel.py"
+      ],
+      "must_symbols": [],
+      "chunks": [
+        "embed_idle_demote_s",
+        "apply_index_memory_budget",
+        "force_apply_memory_budget"
+      ],
+      "arms": {
+        "pack_context": {
+          "file_recall": 0.667,
+          "symbol_recall": 1.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "_env_float",
+            "accel_path",
+            "apply_index_memory_budget",
+            "context_engine_home",
+            "embed_idle_demote_s",
+            "idle_seconds",
+            "load_accel",
+            "migrate_home_dir"
+          ]
+        },
+        "pack_poly_embed": {
+          "file_recall": 0.333,
+          "symbol_recall": 1.0,
+          "n_pack": 2,
+          "pack_syms": [
+            "apply_index_memory_budget",
+            "embed_idle_demote_s"
+          ]
+        },
+        "pack_semantic": {
+          "file_recall": 0.667,
+          "symbol_recall": 1.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "_env_float",
+            "accel_path",
+            "apply_index_memory_budget",
+            "context_engine_home",
+            "embed_idle_demote_s",
+            "idle_seconds",
+            "load_accel"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t15",
+      "must_files": [
+        "packages/pipeline/capability.py"
+      ],
+      "must_symbols": [
+        "CapabilityCard"
+      ],
+      "chunks": [
+        "build_cards",
+        "build_from_json",
+        "WarmSearchEngine.locate_capability"
+      ],
+      "arms": {
+        "pack_context": {
+          "file_recall": 1.0,
+          "symbol_recall": 0.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "_file_stem",
+            "_norm_path",
+            "_norm_source_file",
+            "_old_file_stems",
+            "build_cards",
+            "build_from_json",
+            "is_junk_rel",
+            "make_id"
+          ]
+        },
+        "pack_poly_embed": {
+          "file_recall": 1.0,
+          "symbol_recall": 0.0,
+          "n_pack": 2,
+          "pack_syms": [
+            "build_cards",
+            "build_from_json",
+            "card_from_source",
+            "edge_data",
+            "iter_py_files",
+            "os_walk_safe"
+          ]
+        },
+        "pack_semantic": {
+          "file_recall": 1.0,
+          "symbol_recall": 0.0,
+          "n_pack": 2,
+          "pack_syms": [
+            "_file_stem",
+            "_norm_source_file",
+            "_old_file_stems",
+            "build_cards",
+            "build_from_json",
+            "card_from_source",
+            "make_id",
+            "normalize_id"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t16",
+      "must_files": [
+        "packages/conductor/graphify_retriever.py",
+        "packages/trace_lab/graphify_layer.py",
+        "packages/conductor/conductor.py"
+      ],
+      "must_symbols": [
+        "GraphifyChunkRetriever",
+        "build_graphify_graph"
+      ],
+      "chunks": [
+        "GraphifyChunkRetriever",
+        "Conductor.retrieve_graphify",
+        "dedupe_edges"
+      ],
+      "arms": {
+        "pack_context": {
+          "file_recall": 0.667,
+          "symbol_recall": 0.5,
+          "n_pack": 1,
+          "pack_syms": [
+            "Conductor._file_of",
+            "Conductor.retrieve_graphify",
+            "GraphifyChunkRetriever",
+            "GraphifyChunkRetriever._chunks_for_node",
+            "GraphifyChunkRetriever.affinity_scores",
+            "GraphifyChunkRetriever.seed_files",
+            "_chunks_for_node",
+            "_file_of",
+            "_strip_diacritics",
+            "affinity_scores",
+            "normalize_file",
+            "retrieve_graphify"
+          ]
+        },
+        "pack_poly_embed": {
+          "file_recall": 0.667,
+          "symbol_recall": 0.5,
+          "n_pack": 1,
+          "pack_syms": [
+            "Conductor.retrieve_graphify",
+            "GraphifyChunkRetriever",
+            "GraphifyChunkRetriever.affinity_scores",
+            "GraphifyChunkRetriever.chunks_for_files",
+            "GraphifyChunkRetriever.neighbor_files",
+            "GraphifyChunkRetriever.query_ranked_chunks",
+            "GraphifyChunkRetriever.seed_files",
+            "affinity_scores",
+            "chunks_for_files",
+            "neighbor_files",
+            "normalize_file",
+            "query_ranked_chunks"
+          ]
+        },
+        "pack_semantic": {
+          "file_recall": 0.667,
+          "symbol_recall": 0.5,
+          "n_pack": 1,
+          "pack_syms": [
+            "Conductor._file_of",
+            "Conductor.retrieve_graphify",
+            "GraphifyChunkRetriever",
+            "GraphifyChunkRetriever.seed_files",
+            "_file_of",
+            "normalize_file",
+            "retrieve_graphify",
+            "seed_files"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t17",
+      "must_files": [
+        "packages/pipeline/repo_lifecycle.py"
+      ],
+      "must_symbols": [
+        "never_index_repo"
+      ],
+      "chunks": [
+        "never_index_repo",
+        "activate_repo",
+        "_pnpm_workspace_globs"
+      ],
+      "arms": {
+        "pack_context": {
+          "file_recall": 1.0,
+          "symbol_recall": 1.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "_norm_path",
+            "_read_json",
+            "git_common_dir",
+            "load_registry",
+            "mutate_registry",
+            "never_index_repo",
+            "projects_root",
+            "read_id_file"
+          ]
+        },
+        "pack_poly_embed": {
+          "file_recall": 1.0,
+          "symbol_recall": 1.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "ACTIVE",
+            "NEVER_INDEX",
+            "PAUSED",
+            "UNMANAGED",
+            "activate_repo",
+            "never_index_repo"
+          ]
+        },
+        "pack_semantic": {
+          "file_recall": 1.0,
+          "symbol_recall": 1.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "_norm_path",
+            "git_common_dir",
+            "load_registry",
+            "mutate_registry",
+            "never_index_repo",
+            "projects_root",
+            "read_id_file",
+            "write_id_file"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t18",
+      "must_files": [
+        "packages/pipeline/wipe.py",
+        "packages/pipeline/__main__.py"
+      ],
+      "must_symbols": [
+        "cmd_wipe"
+      ],
+      "chunks": [
+        "wipe",
+        "cmd_wipe",
+        "remove_mcp_config"
+      ],
+      "arms": {
+        "pack_context": {
+          "file_recall": 1.0,
+          "symbol_recall": 1.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "_context_engine_homes",
+            "_cursor_rule_paths",
+            "_kiro_mcp_paths",
+            "_kiro_steering_paths",
+            "_registered_repo_roots",
+            "_vectordb_roots",
+            "wipe",
+            "wipe_repo"
+          ]
+        },
+        "pack_poly_embed": {
+          "file_recall": 1.0,
+          "symbol_recall": 1.0,
+          "n_pack": 3,
+          "pack_syms": [
+            "audit_scubiee_artifacts",
+            "cmd_wipe",
+            "wipe",
+            "wipe_all",
+            "wipe_repo"
+          ]
+        },
+        "pack_semantic": {
+          "file_recall": 1.0,
+          "symbol_recall": 1.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "_context_engine_homes",
+            "_rm_tree",
+            "force_remove_uv_tool_dir",
+            "kill_all_scubiee_processes",
+            "remove_tool_shims",
+            "uv_tool_root",
+            "wipe",
+            "wipe_repo"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t19",
+      "must_files": [
+        "packages/pipeline/dashboard_server.py",
+        "packages/pipeline/__main__.py"
+      ],
+      "must_symbols": [
+        "cmd_dashboard"
+      ],
+      "chunks": [
+        "cmd_dashboard",
+        "dashboard_status",
+        "cmd_status"
+      ],
+      "arms": {
+        "pack_context": {
+          "file_recall": 1.0,
+          "symbol_recall": 1.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "_clear_stale_state",
+            "_fetch_health",
+            "_pid_alive",
+            "_validated_dashboard_state",
+            "cmd_dashboard",
+            "dashboard_status",
+            "start_dashboard",
+            "stop_dashboard"
+          ]
+        },
+        "pack_poly_embed": {
+          "file_recall": 1.0,
+          "symbol_recall": 1.0,
+          "n_pack": 2,
+          "pack_syms": [
+            "cmd_dashboard",
+            "dashboard_status"
+          ]
+        },
+        "pack_semantic": {
+          "file_recall": 1.0,
+          "symbol_recall": 1.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "_clear_stale_state",
+            "_fetch_health",
+            "_pid_alive",
+            "_validated_dashboard_state",
+            "cmd_dashboard",
+            "dashboard_status",
+            "start_dashboard",
+            "stop_dashboard"
+          ]
+        }
+      }
+    },
+    {
+      "id": "t20",
+      "must_files": [
+        "packages/conductor/architectures.py",
+        "packages/pipeline/indexer.py"
+      ],
+      "must_symbols": [
+        "rerank_score"
+      ],
+      "chunks": [
+        "MultiArchConductor.retrieve_D_rerank",
+        "ConductorEngine.search",
+        "FaissDenseAdapter.search"
+      ],
+      "arms": {
+        "pack_context": {
+          "file_recall": 0.5,
+          "symbol_recall": 0.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "ConductorEngine.search",
+            "MultiArchConductor.retrieve_D_rerank",
+            "_file_stem",
+            "_make_id",
+            "_path_tokens",
+            "_query_key_tokens",
+            "_read_text",
+            "make_id",
+            "retrieve_D_rerank",
+            "search"
+          ]
+        },
+        "pack_poly_embed": {
+          "file_recall": 0.5,
+          "symbol_recall": 0.0,
+          "n_pack": 2,
+          "pack_syms": [
+            "ConductorEngine.search",
+            "MultiArchConductor.retrieve_D_rerank",
+            "retrieve_D_rerank",
+            "search"
+          ]
+        },
+        "pack_semantic": {
+          "file_recall": 0.5,
+          "symbol_recall": 0.0,
+          "n_pack": 4,
+          "pack_syms": [
+            "ConductorEngine.search",
+            "MultiArchConductor.retrieve_D_rerank",
+            "_file_stem",
+            "_make_id",
+            "_path_tokens",
+            "_query_key_tokens",
+            "_read_text",
+            "_unique_file_hits",
+            "retrieve_D_rerank",
+            "search"
+          ]
+        }
+      }
+    }
+  ]
+}

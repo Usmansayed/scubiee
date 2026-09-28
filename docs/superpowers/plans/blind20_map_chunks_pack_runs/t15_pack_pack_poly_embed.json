@@ -1,0 +1,70 @@
+{
+  "ok": true,
+  "tool": "pack_poly_embed",
+  "engine": "poly_embed",
+  "elapsed_s": 0.199,
+  "n_pack": 2,
+  "seed": {
+    "file": "packages/pipeline/capability.py",
+    "symbol": "build_cards",
+    "id": "packages/pipeline/capability.py::build_cards"
+  },
+  "pack": [
+    {
+      "file": "packages/pipeline/capability.py",
+      "symbol": "build_cards",
+      "score": 1.0,
+      "loc": "packages/pipeline/capability.py:367-381",
+      "id": "packages/pipeline/capability.py::build_cards",
+      "chars": 440
+    },
+    {
+      "file": "packages/graphify/build.py",
+      "symbol": "build_from_json",
+      "score": 1.0,
+      "loc": "packages/graphify/build.py:539-1016",
+      "id": "packages/graphify/build.py::build_from_json",
+      "chars": 5560
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/pipeline/capability.py::build_cards",
+      "loc": "packages/pipeline/capability.py:367-381",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/graphify/build.py::build_from_json",
+      "loc": "packages/graphify/build.py:539-1016",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/capability.py::card_from_source",
+      "loc": "packages/pipeline/capability.py:291-338",
+      "edge": "seed",
+      "score": 0.8767
+    },
+    {
+      "id": "packages/pipeline/capability.py::iter_py_files",
+      "loc": "packages/pipeline/capability.py:341-358",
+      "edge": "seed",
+      "score": 0.735
+    },
+    {
+      "id": "packages/graphify/build.py::edge_data",
+      "loc": "packages/graphify/build.py:307-317",
+      "edge": "seed",
+      "score": 0.735
+    },
+    {
+      "id": "packages/pipeline/capability.py::os_walk_safe",
+      "loc": "packages/pipeline/capability.py:361-364",
+      "edge": "seed",
+      "score": 0.686
+    }
+  ],
+  "pack_query": "capability_cards attach CapabilityCard locate ranking search hits build cards json\nrelevant_chunks: packages/pipeline/capability.py::build_cards@packages/pipeline/capability.py:367-381 | packages/graphify/build.py::build_from_json@packages/graphify/build.py:539-1016 | packages/pipeline/engine.py::WarmSearchEngine.locate_capability@packages/pipeline/engine.py:211-215",
+  "error": null
+}

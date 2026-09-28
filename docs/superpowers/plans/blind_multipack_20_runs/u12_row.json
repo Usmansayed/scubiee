@@ -1,0 +1,627 @@
+{
+  "id": "u12",
+  "family": "dashboard-serve",
+  "task": "How does scubiee dashboard / serve start the local UI and engine?",
+  "enrich_map_query": "cmd_dashboard cmd_serve dashboard serve local UI engine HTTP",
+  "map_ok": true,
+  "suggested_seed": {
+    "file": "packages/pipeline/__main__.py",
+    "symbol": "",
+    "source": "suggested_seed"
+  },
+  "resolved_seed": {
+    "file": "packages/pipeline/__main__.py",
+    "symbol": "cmd_dashboard",
+    "how": "best_in_file"
+  },
+  "map_top_cards": [
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "score": 27.435201088124195
+    },
+    {
+      "file": "docs/web-info/dashboard-and-engine.md",
+      "symbol": "",
+      "loc": "docs/web-info/dashboard-and-engine.md:1-1",
+      "score": 8.41471936751395
+    },
+    {
+      "file": "tests/test_dashboard_ui_contract.py",
+      "symbol": "",
+      "loc": "tests/test_dashboard_ui_contract.py:1-1",
+      "score": 7.474896917979996
+    },
+    {
+      "file": "packages/pipeline/dashboard_server.py",
+      "symbol": "",
+      "loc": "packages/pipeline/dashboard_server.py:1-1",
+      "score": 6.805466356781165
+    },
+    {
+      "file": "docs/superpowers/plans/2026-08-17-ce-operator-dashboard.md",
+      "symbol": "",
+      "loc": "docs/superpowers/plans/2026-08-17-ce-operator-dashboard.md:1-1",
+      "score": 6.368331602540188
+    },
+    {
+      "file": "tests/test_dashboard_port.py",
+      "symbol": "",
+      "loc": "tests/test_dashboard_port.py:1-1",
+      "score": 5.3904256697776916
+    },
+    {
+      "file": "tests/test_dashboard_api.py",
+      "symbol": "",
+      "loc": "tests/test_dashboard_api.py:1-1",
+      "score": 5.373685087593512
+    },
+    {
+      "file": "docs/superpowers/specs/2026-08-17-ce-production-hardening-release-design.md",
+      "symbol": "",
+      "loc": "docs/superpowers/specs/2026-08-17-ce-production-hardening-release-design.md:1-1",
+      "score": 4.4722744749004635
+    },
+    {
+      "file": "packages/trace_lab/retrieve.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/retrieve.py:1-1",
+      "score": 3.2577731961701435
+    },
+    {
+      "file": "packages/pipeline/settings.py",
+      "symbol": "",
+      "loc": "packages/pipeline/settings.py:1-1",
+      "score": 3.029267525145821
+    }
+  ],
+  "arms": {
+    "composite_v1": {
+      "ok": true,
+      "elapsed_s": 0.04,
+      "n_hot": 28,
+      "n_ranked": 30,
+      "hot_ids": [
+        "packages/pipeline/__main__.py::cmd_dashboard",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+        "packages/pipeline/cli_ui.py::_supports_color",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/cli_ui.py::error",
+        "packages/pipeline/cli_ui.py::print_dashboard_summary",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/cli_ui.py::success",
+        "packages/pipeline/dashboard_port.py::_port_free",
+        "packages/pipeline/dashboard_port.py::allocate_dashboard_port",
+        "packages/pipeline/dashboard_port.py::preferred_dashboard_port",
+        "packages/pipeline/dashboard_server.py::PublicAPIError.payload",
+        "packages/pipeline/dashboard_server.py::_clear_stale_state",
+        "packages/pipeline/dashboard_server.py::_dashboard_pid_from_health",
+        "packages/pipeline/dashboard_server.py::_expected_dashboard_url",
+        "packages/pipeline/dashboard_server.py::_fetch_health",
+        "packages/pipeline/dashboard_server.py::_health_matches_process",
+        "packages/pipeline/dashboard_server.py::_launch_guard",
+        "packages/pipeline/dashboard_server.py::_pid_alive",
+        "packages/pipeline/dashboard_server.py::_resolve_spawn_dashboard_pid",
+        "packages/pipeline/dashboard_server.py::_seed",
+        "packages/pipeline/dashboard_server.py::_validated_dashboard_state",
+        "packages/pipeline/dashboard_server.py::dashboard_status",
+        "packages/pipeline/dashboard_server.py::start_dashboard",
+        "packages/pipeline/dashboard_server.py::stop_dashboard",
+        "packages/pipeline/process_job.py::hidden_popen_kwargs",
+        "packages/pipeline/process_job.py::windows_hidden_creationflags"
+      ],
+      "top15_ids": [
+        "packages/pipeline/__main__.py::cmd_dashboard",
+        "packages/pipeline/dashboard_server.py::dashboard_status",
+        "packages/pipeline/dashboard_server.py::_validated_dashboard_state",
+        "packages/pipeline/dashboard_server.py::_clear_stale_state",
+        "packages/pipeline/dashboard_server.py::_pid_alive",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/dashboard_server.py::stop_dashboard",
+        "packages/pipeline/dashboard_server.py::start_dashboard",
+        "packages/pipeline/cli_ui.py::print_dashboard_summary",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/dashboard_server.py::_dashboard_pid_from_health",
+        "packages/pipeline/dashboard_server.py::_fetch_health",
+        "packages/pipeline/dashboard_server.py::_expected_dashboard_url",
+        "packages/pipeline/dashboard_server.py::_health_matches_process"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/__main__.py::cmd_dashboard",
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_dashboard",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 668
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::dashboard_status",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "dashboard_status",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 525
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::_validated_dashboard_state",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "_validated_dashboard_state",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 455
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::_clear_stale_state",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "_clear_stale_state",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 145
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::_pid_alive",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "_pid_alive",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 854
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "_ScrubGraphifyStream.write",
+          "kind": "method",
+          "score": 0.9473,
+          "body_chars": 227
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "_ScrubGraphifyStream.flush",
+          "kind": "method",
+          "score": 0.9473,
+          "body_chars": 56
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::stop_dashboard",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "stop_dashboard",
+          "kind": "function",
+          "score": 0.9405,
+          "body_chars": 1632
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::start_dashboard",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "start_dashboard",
+          "kind": "function",
+          "score": 0.9405,
+          "body_chars": 2625
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::print_dashboard_summary",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "print_dashboard_summary",
+          "kind": "function",
+          "score": 0.9405,
+          "body_chars": 602
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::status_line",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "status_line",
+          "kind": "function",
+          "score": 0.8626,
+          "body_chars": 628
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::_dashboard_pid_from_health",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "_dashboard_pid_from_health",
+          "kind": "function",
+          "score": 0.8583,
+          "body_chars": 297
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::_fetch_health",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "_fetch_health",
+          "kind": "function",
+          "score": 0.8215,
+          "body_chars": 441
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::_expected_dashboard_url",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "_expected_dashboard_url",
+          "kind": "function",
+          "score": 0.8215,
+          "body_chars": 605
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::_health_matches_process",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "_health_matches_process",
+          "kind": "function",
+          "score": 0.8215,
+          "body_chars": 179
+        }
+      ]
+    },
+    "semantic_tracer_fuse": {
+      "ok": true,
+      "elapsed_s": 0.3,
+      "n_hot": 27,
+      "n_ranked": 30,
+      "hot_ids": [
+        "packages/pipeline/__main__.py::cmd_dashboard",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/cli_ui.py::error",
+        "packages/pipeline/cli_ui.py::print_dashboard_summary",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/cli_ui.py::success",
+        "packages/pipeline/dashboard_port.py::_port_free",
+        "packages/pipeline/dashboard_port.py::allocate_dashboard_port",
+        "packages/pipeline/dashboard_port.py::preferred_dashboard_port",
+        "packages/pipeline/dashboard_server.py::PublicAPIError.payload",
+        "packages/pipeline/dashboard_server.py::_clear_stale_state",
+        "packages/pipeline/dashboard_server.py::_dashboard_pid_from_health",
+        "packages/pipeline/dashboard_server.py::_expected_dashboard_url",
+        "packages/pipeline/dashboard_server.py::_fetch_health",
+        "packages/pipeline/dashboard_server.py::_health_matches_process",
+        "packages/pipeline/dashboard_server.py::_launch_guard",
+        "packages/pipeline/dashboard_server.py::_pid_alive",
+        "packages/pipeline/dashboard_server.py::_resolve_spawn_dashboard_pid",
+        "packages/pipeline/dashboard_server.py::_seed",
+        "packages/pipeline/dashboard_server.py::_validated_dashboard_state",
+        "packages/pipeline/dashboard_server.py::dashboard_status",
+        "packages/pipeline/dashboard_server.py::start_dashboard",
+        "packages/pipeline/dashboard_server.py::stop_dashboard",
+        "packages/pipeline/process_job.py::hidden_popen_kwargs",
+        "packages/pipeline/process_job.py::windows_hidden_creationflags"
+      ],
+      "top15_ids": [
+        "packages/pipeline/__main__.py::cmd_dashboard",
+        "packages/pipeline/dashboard_server.py::dashboard_status",
+        "packages/pipeline/dashboard_server.py::_validated_dashboard_state",
+        "packages/pipeline/dashboard_server.py::_clear_stale_state",
+        "packages/pipeline/dashboard_server.py::_pid_alive",
+        "packages/pipeline/cli_ui.py::print_dashboard_summary",
+        "packages/pipeline/dashboard_server.py::start_dashboard",
+        "packages/pipeline/dashboard_server.py::stop_dashboard",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/dashboard_server.py::_expected_dashboard_url",
+        "packages/pipeline/dashboard_server.py::_fetch_health",
+        "packages/pipeline/dashboard_server.py::_health_matches_process",
+        "packages/pipeline/dashboard_server.py::_dashboard_pid_from_health",
+        "packages/pipeline/dashboard_server.py::_resolve_spawn_dashboard_pid"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/__main__.py::cmd_dashboard",
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_dashboard",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 668
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::dashboard_status",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "dashboard_status",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 525
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::_validated_dashboard_state",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "_validated_dashboard_state",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 455
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::_clear_stale_state",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "_clear_stale_state",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 145
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::_pid_alive",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "_pid_alive",
+          "kind": "function",
+          "score": 0.9527,
+          "body_chars": 854
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::print_dashboard_summary",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "print_dashboard_summary",
+          "kind": "function",
+          "score": 0.8887,
+          "body_chars": 602
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::start_dashboard",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "start_dashboard",
+          "kind": "function",
+          "score": 0.8871,
+          "body_chars": 2625
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::stop_dashboard",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "stop_dashboard",
+          "kind": "function",
+          "score": 0.87,
+          "body_chars": 1632
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "_ScrubGraphifyStream.write",
+          "kind": "method",
+          "score": 0.8135,
+          "body_chars": 227
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "_ScrubGraphifyStream.flush",
+          "kind": "method",
+          "score": 0.8131,
+          "body_chars": 56
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::_expected_dashboard_url",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "_expected_dashboard_url",
+          "kind": "function",
+          "score": 0.7913,
+          "body_chars": 605
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::_fetch_health",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "_fetch_health",
+          "kind": "function",
+          "score": 0.791,
+          "body_chars": 441
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::_health_matches_process",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "_health_matches_process",
+          "kind": "function",
+          "score": 0.7902,
+          "body_chars": 179
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::_dashboard_pid_from_health",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "_dashboard_pid_from_health",
+          "kind": "function",
+          "score": 0.7686,
+          "body_chars": 297
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::_resolve_spawn_dashboard_pid",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "_resolve_spawn_dashboard_pid",
+          "kind": "function",
+          "score": 0.7275,
+          "body_chars": 519
+        }
+      ]
+    },
+    "hyb_fuse_demote_noise_plus": {
+      "ok": true,
+      "elapsed_s": 0.061,
+      "n_hot": 28,
+      "n_ranked": 30,
+      "hot_ids": [
+        "packages/pipeline/__main__.py::cmd_dashboard",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.isatty",
+        "packages/pipeline/cli_ui.py::_supports_color",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/cli_ui.py::init_terminal",
+        "packages/pipeline/cli_ui.py::print_dashboard_summary",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/cli_ui.py::success",
+        "packages/pipeline/dashboard_port.py::_port_free",
+        "packages/pipeline/dashboard_port.py::allocate_dashboard_port",
+        "packages/pipeline/dashboard_port.py::preferred_dashboard_port",
+        "packages/pipeline/dashboard_server.py::PublicAPIError.payload",
+        "packages/pipeline/dashboard_server.py::_clear_stale_state",
+        "packages/pipeline/dashboard_server.py::_dashboard_pid_from_health",
+        "packages/pipeline/dashboard_server.py::_expected_dashboard_url",
+        "packages/pipeline/dashboard_server.py::_fetch_health",
+        "packages/pipeline/dashboard_server.py::_health_matches_process",
+        "packages/pipeline/dashboard_server.py::_launch_guard",
+        "packages/pipeline/dashboard_server.py::_pid_alive",
+        "packages/pipeline/dashboard_server.py::_resolve_spawn_dashboard_pid",
+        "packages/pipeline/dashboard_server.py::_seed",
+        "packages/pipeline/dashboard_server.py::_validated_dashboard_state",
+        "packages/pipeline/dashboard_server.py::dashboard_status",
+        "packages/pipeline/dashboard_server.py::start_dashboard",
+        "packages/pipeline/dashboard_server.py::stop_dashboard",
+        "packages/pipeline/process_job.py::hidden_popen_kwargs",
+        "packages/pipeline/process_job.py::windows_hidden_creationflags"
+      ],
+      "top15_ids": [
+        "packages/pipeline/__main__.py::cmd_dashboard",
+        "packages/pipeline/dashboard_server.py::dashboard_status",
+        "packages/pipeline/dashboard_server.py::_clear_stale_state",
+        "packages/pipeline/dashboard_server.py::_validated_dashboard_state",
+        "packages/pipeline/cli_ui.py::print_dashboard_summary",
+        "packages/pipeline/dashboard_server.py::start_dashboard",
+        "packages/pipeline/dashboard_server.py::stop_dashboard",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/dashboard_server.py::_pid_alive",
+        "packages/pipeline/dashboard_server.py::_resolve_spawn_dashboard_pid",
+        "packages/pipeline/dashboard_server.py::_seed",
+        "packages/pipeline/cli_ui.py::success",
+        "packages/pipeline/dashboard_server.py::_launch_guard",
+        "packages/pipeline/dashboard_port.py::allocate_dashboard_port",
+        "packages/pipeline/process_job.py::hidden_popen_kwargs"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/__main__.py::cmd_dashboard",
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_dashboard",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 668
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::dashboard_status",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "dashboard_status",
+          "kind": "function",
+          "score": 0.8096,
+          "body_chars": 525
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::_clear_stale_state",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "_clear_stale_state",
+          "kind": "function",
+          "score": 0.805,
+          "body_chars": 145
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::_validated_dashboard_state",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "_validated_dashboard_state",
+          "kind": "function",
+          "score": 0.805,
+          "body_chars": 455
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::print_dashboard_summary",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "print_dashboard_summary",
+          "kind": "function",
+          "score": 0.7911,
+          "body_chars": 602
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::start_dashboard",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "start_dashboard",
+          "kind": "function",
+          "score": 0.7765,
+          "body_chars": 2625
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::stop_dashboard",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "stop_dashboard",
+          "kind": "function",
+          "score": 0.714,
+          "body_chars": 1632
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "_ScrubGraphifyStream.flush",
+          "kind": "method",
+          "score": 0.6742,
+          "body_chars": 56
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::_pid_alive",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "_pid_alive",
+          "kind": "function",
+          "score": 0.659,
+          "body_chars": 854
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::_resolve_spawn_dashboard_pid",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "_resolve_spawn_dashboard_pid",
+          "kind": "function",
+          "score": 0.6142,
+          "body_chars": 519
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::_seed",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "_seed",
+          "kind": "function",
+          "score": 0.6141,
+          "body_chars": 104
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::success",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "success",
+          "kind": "function",
+          "score": 0.6107,
+          "body_chars": 159
+        },
+        {
+          "id": "packages/pipeline/dashboard_server.py::_launch_guard",
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "_launch_guard",
+          "kind": "function",
+          "score": 0.6089,
+          "body_chars": 948
+        },
+        {
+          "id": "packages/pipeline/dashboard_port.py::allocate_dashboard_port",
+          "file": "packages/pipeline/dashboard_port.py",
+          "symbol": "allocate_dashboard_port",
+          "kind": "function",
+          "score": 0.5848,
+          "body_chars": 708
+        },
+        {
+          "id": "packages/pipeline/process_job.py::hidden_popen_kwargs",
+          "file": "packages/pipeline/process_job.py",
+          "symbol": "hidden_popen_kwargs",
+          "kind": "function",
+          "score": 0.5797,
+          "body_chars": 341
+        }
+      ]
+    },
+    "poly_embed": {
+      "ok": true,
+      "elapsed_s": 0.002,
+      "n_hot": 1,
+      "n_ranked": 1,
+      "hot_ids": [
+        "packages/pipeline/__main__.py::cmd_dashboard"
+      ],
+      "top15_ids": [
+        "packages/pipeline/__main__.py::cmd_dashboard"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/__main__.py::cmd_dashboard",
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_dashboard",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 668
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "id": "r13",
+  "family": "steering-rules",
+  "task": "How are steering / AGENTS.md / Cursor rules written when a repo is managed?",
+  "enrich_prompt": "steering AGENTS.md .cursor/rules scubiee.mdc write rules managed enroll inject GATE",
+  "map": {
+    "elapsed_s": 1.021,
+    "n_cards": 10,
+    "suggested_seed": {
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": ""
+    },
+    "top_files": [
+      "scripts/kiro_mcp_ab_dev_eval.py",
+      "docs/mcp-legacy-design.md",
+      "packages/pipeline/rules_installer.py",
+      "packages/pipeline/mcp_install.py",
+      "docs/connect-global-mcp-research.md"
+    ]
+  },
+  "arms": {
+    "composite_v1": {
+      "ok": true,
+      "engine": "composite_v1",
+      "policy": "strict",
+      "elapsed_s": 0.199,
+      "n_pack": 1,
+      "pack": [
+        {
+          "file": "packages/pipeline/rules_installer.py",
+          "symbol": "_templates_dir",
+          "score": 1.0,
+          "loc": "packages/pipeline/rules_installer.py:40-41",
+          "id": "packages/pipeline/rules_installer.py::_templates_dir"
+        }
+      ],
+      "error": null
+    },
+    "polytrace": {
+      "ok": true,
+      "engine": "polytrace",
+      "policy": "strict",
+      "elapsed_s": 0.001,
+      "n_pack": 1,
+      "pack": [
+        {
+          "file": "packages/pipeline/rules_installer.py",
+          "symbol": "_templates_dir",
+          "score": 1.0,
+          "loc": "packages/pipeline/rules_installer.py:40-41",
+          "id": "packages/pipeline/rules_installer.py::_templates_dir"
+        }
+      ],
+      "error": null
+    },
+    "ultimate": {
+      "ok": true,
+      "engine": "ultimate",
+      "policy": "strict",
+      "elapsed_s": 0.015,
+      "n_pack": 1,
+      "pack": [
+        {
+          "file": "packages/pipeline/rules_installer.py",
+          "symbol": "_templates_dir",
+          "score": 1.0,
+          "loc": "packages/pipeline/rules_installer.py:40-41",
+          "id": "packages/pipeline/rules_installer.py::_templates_dir"
+        }
+      ],
+      "error": null
+    }
+  }
+}

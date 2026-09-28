@@ -1,0 +1,103 @@
+{
+  "ok": true,
+  "tool": "map",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/pipeline/session_store.py",
+      "score": 15.068157267262922,
+      "why": "def put_span( repo: Path | str, *, path: str, start_line: int = 0, end_line: int = 0, text: str = \"\", why: str = \"\", source: str = \"\", role: str = \"\", topic: str = \"\", excerpt_char",
+      "role": "function",
+      "loc": "packages/pipeline/session_store.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 2,
+      "file": "tests/test_session_store.py",
+      "score": 14.954598701705567,
+      "why": "def test_session_ids_use_isolated_store_paths(repo: Path): from pipeline.session_store import put_span a = put_span( repo, path=\"pkg/mod.py\", start_line=1, end_line=2, text=\"sessio",
+      "role": "test",
+      "loc": "tests/test_session_store.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 3,
+      "file": "packages/pipeline/session_isolation.py",
+      "score": 14.687060687460544,
+      "why": "def _session_hint_shared_process(host: str, session_id: str) -> str: return ( f\"Session {session_id!r} may be shared across parallel chats on {host} \" \"(one MCP process). For isola",
+      "role": "function",
+      "loc": "packages/pipeline/session_isolation.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 4,
+      "file": "tests/test_session_isolation.py",
+      "score": 14.086796733935202,
+      "why": "def test_concurrent_session_writes(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None: monkeypatch.setenv(\"CTX_MCP_SESSION_ISOLATE\", \"1\") from pipeline.session_store import put_s",
+      "role": "test",
+      "loc": "tests/test_session_isolation.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 5,
+      "file": "packages/pipeline/mcp_locate.py",
+      "score": 13.18080499771311,
+      "why": "def _bind_request_repo( *, root: str = \"\", project_id: str = \"\", session_id: str = \"\", ) -> Iterator[Path | None]: \"\"\"Bind this MCP call to repo + session (shared process safe).\"\"\"",
+      "role": "function",
+      "loc": "packages/pipeline/mcp_locate.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 6,
+      "file": "scripts/bench_mcp_lean_response.py",
+      "score": 13.177065018521738,
+      "why": "\"\"\"Quick benchmark: compact MCP dumps vs pretty JSON; budget echo off by default.\"\"\" from __future__ import annotations import json import os from pipeline.mcp_response_lean import",
+      "role": "other",
+      "loc": "scripts/bench_mcp_lean_response.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 7,
+      "file": "docs/superpowers/plans/2026-09-06-blind-map-pack-20-results.md",
+      "score": 12.909210220641894,
+      "why": "# Blind map\u2192pack 20 (no correctness eval) Elapsed 209.16s \u00b7 map_ok 20/20 \u00b7 pack_ok 20/20 Phase 1 only: enrich query \u2192 map seed \u2192 pack. Ground-truth comparison is deferred. | ID | F",
+      "role": "docs",
+      "loc": "docs/superpowers/plans/2026-09-06-blind-map-pack-20-results.md:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 8,
+      "file": "tests/test_mcp_no_repo_scubiee_after_wipe.py",
+      "score": 12.65157018115612,
+      "why": "\"\"\"MCP session I/O must not recreate repo ``.scubiee`` before ``init``.\"\"\" from __future__ import annotations from pathlib import Path import pytest from pipeline.session_isolation",
+      "role": "test",
+      "loc": "tests/test_mcp_no_repo_scubiee_after_wipe.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 9,
+      "file": "docs/superpowers/plans/2026-09-05-kiro-mcp-ab-dev3-session.md",
+      "score": 7.553162681301799,
+      "why": "# Kiro auto \u2014 real development A/B (with vs without Scubiee) **Date:** 2026-09-05T11:36:31.255363+00:00 **Model:** `auto` \u00b7 **Effort:** `medium` **Task:** `session_isolation` \u2014 sha",
+      "role": "docs",
+      "loc": "docs/superpowers/plans/2026-09-05-kiro-mcp-ab-dev3-session.md:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 10,
+      "file": "docs/superpowers/plans/2026-09-05-kiro-cli-ab-dev3-session.md",
+      "score": 5.374298991998401,
+      "why": "# Kiro auto \u2014 real development A/B (with vs without Scubiee) **Date:** 2026-09-05T19:29:42.627116+00:00 **Model:** `auto` \u00b7 **Effort:** `medium` **Task:** `session_isolation` \u2014 sha",
+      "role": "docs",
+      "loc": "docs/superpowers/plans/2026-09-05-kiro-cli-ab-dev3-session.md:1-1",
+      "symbol": ""
+    }
+  ],
+  "suggested_seed": {
+    "file": "packages/pipeline/session_store.py",
+    "symbol": "",
+    "loc": "packages/pipeline/session_store.py:1-1",
+    "score": 15.068157267262922
+  },
+  "next": "scubiee pack \"session isolation require_session_id fail closed locate pack persistence session_store put_span shared MCP process bucket missing session_id\" --seed-file packages/pipeline/session_store.py --mode lean"
+}

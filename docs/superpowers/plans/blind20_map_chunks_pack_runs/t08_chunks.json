@@ -1,0 +1,32 @@
+[
+  {
+    "file": "packages/pipeline/context_trace.py",
+    "symbol": "run_expand_context",
+    "kind": "function",
+    "loc": "packages/pipeline/context_trace.py:807-952",
+    "start_line": 807,
+    "end_line": 952,
+    "score": 8.45,
+    "excerpt": "def run_expand_context(\n    root: Path,\n    node: str,\n    *,\n    query: str = \"\",\n    direction: str = \"all\",\n    intent: str = \"\",\n    k: int = 12,\n    prior_ids: set[str] | None"
+  },
+  {
+    "file": "packages/pipeline/context_trace.py",
+    "symbol": "build_call_chain",
+    "kind": "function",
+    "loc": "packages/pipeline/context_trace.py:528-551",
+    "start_line": 528,
+    "end_line": 551,
+    "score": 6.35,
+    "excerpt": "def build_call_chain(cards: list[dict[str, Any]], *, limit: int = 8) -> list[dict[str, Any]]:\n    \"\"\"Compact programming-aware outline (no bodies) for lean packs.\"\"\"\n    chain: lis"
+  },
+  {
+    "file": "packages/pipeline/locate_cli.py",
+    "symbol": "cli_expand",
+    "kind": "function",
+    "loc": "packages/pipeline/locate_cli.py:230-258",
+    "start_line": 230,
+    "end_line": 258,
+    "score": 4.75,
+    "excerpt": "def cli_expand(\n    *,\n    node: str,\n    path: str | Path = \".\",\n    query: str = \"\",\n    direction: str = \"callees\",\n    with_bodies: bool = False,\n    k: int = 12,\n) -> dict[str"
+  }
+]

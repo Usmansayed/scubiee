@@ -1,0 +1,1363 @@
+{
+  "protocol": "maps_only",
+  "rows": [
+    {
+      "id": "u01",
+      "family": "merkle-incremental",
+      "task": "How does incremental sync detect dirty paths via merkle and patch the graph?",
+      "enrich_map_query": "incremental sync merkle dirty paths patch_and_save_graph re-embed changed chunks IndexConfirmRequired sync_loop chunk_merkle",
+      "map_ok": true,
+      "map_elapsed_s": 9.703,
+      "suggested_seed": {
+        "file": "packages/pipeline/incremental.py",
+        "symbol": "",
+        "source": "suggested_seed"
+      },
+      "map_top_cards": [
+        {
+          "file": "packages/pipeline/incremental.py",
+          "symbol": "",
+          "loc": "packages/pipeline/incremental.py:1-1",
+          "score": 21.15449254088071
+        },
+        {
+          "file": "packages/conductor/graphify_retriever.py",
+          "symbol": "",
+          "loc": "packages/conductor/graphify_retriever.py:1-1",
+          "score": 15.220149961823829
+        },
+        {
+          "file": "tests/test_hardening.py",
+          "symbol": "",
+          "loc": "tests/test_hardening.py:1-1",
+          "score": 12.448676539413345
+        },
+        {
+          "file": "packages/pipeline/sync_loop.py",
+          "symbol": "",
+          "loc": "packages/pipeline/sync_loop.py:1-1",
+          "score": 10.982302283936217
+        },
+        {
+          "file": "docs/reindexing/chunk-level-incremental-indexing.md",
+          "symbol": "",
+          "loc": "docs/reindexing/chunk-level-incremental-indexing.md:1-1",
+          "score": 9.498848165692898
+        },
+        {
+          "file": "packages/pipeline/index_manager.py",
+          "symbol": "",
+          "loc": "packages/pipeline/index_manager.py:1-1",
+          "score": 6.049460334162867
+        },
+        {
+          "file": "packages/pipeline/__init__.py",
+          "symbol": "",
+          "loc": "packages/pipeline/__init__.py:1-1",
+          "score": 5.316196931389527
+        },
+        {
+          "file": "web-info/context-engine-internals.md",
+          "symbol": "",
+          "loc": "web-info/context-engine-internals.md:1-1",
+          "score": 2.6894407782760954
+        }
+      ],
+      "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+    },
+    {
+      "id": "u02",
+      "family": "chunk-compress",
+      "task": "Where is chunk compression applied before embedding storage?",
+      "enrich_map_query": "chunk_compress compress chunks embed pipeline token budget pack slices file_slice",
+      "map_ok": true,
+      "map_elapsed_s": null,
+      "suggested_seed": {
+        "file": "packages/pipeline/chunk_compress.py",
+        "symbol": "",
+        "source": "suggested_seed"
+      },
+      "map_top_cards": [
+        {
+          "file": "packages/pipeline/chunk_compress.py",
+          "symbol": "",
+          "loc": "packages/pipeline/chunk_compress.py:1-1",
+          "score": 9.712701160003585
+        },
+        {
+          "file": "packages/graphify/file_slice.py",
+          "symbol": "",
+          "loc": "packages/graphify/file_slice.py:1-1",
+          "score": 6.836755661368068
+        },
+        {
+          "file": "packages/pipeline/chunk_merkle.py",
+          "symbol": "",
+          "loc": "packages/pipeline/chunk_merkle.py:1-1",
+          "score": 4.847313998494306
+        },
+        {
+          "file": "tests/test_memory_budget.py",
+          "symbol": "",
+          "loc": "tests/test_memory_budget.py:1-1",
+          "score": 4.490378117550444
+        },
+        {
+          "file": "scripts/bench_apple_silicon_embed.py",
+          "symbol": "",
+          "loc": "scripts/bench_apple_silicon_embed.py:1-1",
+          "score": 4.255366656710071
+        },
+        {
+          "file": "packages/pipeline/context_nav.py",
+          "symbol": "",
+          "loc": "packages/pipeline/context_nav.py:1-1",
+          "score": 4.2546952174122525
+        },
+        {
+          "file": "tests/test_chunk_merkle.py",
+          "symbol": "",
+          "loc": "tests/test_chunk_merkle.py:1-1",
+          "score": 4.198597354500254
+        },
+        {
+          "file": "docs/budget-allocation-experiment.md",
+          "symbol": "",
+          "loc": "docs/budget-allocation-experiment.md:1-1",
+          "score": 4.0924481466990335
+        },
+        {
+          "file": "scripts/bench_budget_alloc.py",
+          "symbol": "",
+          "loc": "scripts/bench_budget_alloc.py:1-1",
+          "score": 3.9100476714363
+        },
+        {
+          "file": "scripts/bench_mix_seq_ab.py",
+          "symbol": "",
+          "loc": "scripts/bench_mix_seq_ab.py:1-1",
+          "score": 3.771977126598358
+        }
+      ],
+      "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+    },
+    {
+      "id": "u03",
+      "family": "mcp-bridge",
+      "task": "How does the MCP bridge attach a session id for host connections?",
+      "enrich_map_query": "mcp_bridge_session bridge host connection session_id CTX_MCP_SESSION_ID attach isolate",
+      "map_ok": true,
+      "map_elapsed_s": null,
+      "suggested_seed": {
+        "file": "packages/pipeline/mcp_bridge_session.py",
+        "symbol": "",
+        "source": "suggested_seed"
+      },
+      "map_top_cards": [
+        {
+          "file": "packages/pipeline/mcp_bridge_session.py",
+          "symbol": "",
+          "loc": "packages/pipeline/mcp_bridge_session.py:1-1",
+          "score": 18.327484118747762
+        },
+        {
+          "file": "tests/test_mcp_bridge_concurrency.py",
+          "symbol": "",
+          "loc": "tests/test_mcp_bridge_concurrency.py:1-1",
+          "score": 15.824018555613925
+        },
+        {
+          "file": "packages/pipeline/session_isolation.py",
+          "symbol": "",
+          "loc": "packages/pipeline/session_isolation.py:1-1",
+          "score": 15.568703560775816
+        },
+        {
+          "file": "tests/test_mcp_response_lean.py",
+          "symbol": "",
+          "loc": "tests/test_mcp_response_lean.py:1-1",
+          "score": 13.161746639520207
+        },
+        {
+          "file": "tests/test_session_isolation.py",
+          "symbol": "",
+          "loc": "tests/test_session_isolation.py:1-1",
+          "score": 12.776436214815178
+        },
+        {
+          "file": "packages/pipeline/session_store.py",
+          "symbol": "",
+          "loc": "packages/pipeline/session_store.py:1-1",
+          "score": 12.064304093674895
+        },
+        {
+          "file": "packages/pipeline/mcp_hot_reload.py",
+          "symbol": "",
+          "loc": "packages/pipeline/mcp_hot_reload.py:1-1",
+          "score": 3.6907728002765445
+        },
+        {
+          "file": "tests/seir_exp/test_spans.py",
+          "symbol": "",
+          "loc": "tests/seir_exp/test_spans.py:1-1",
+          "score": 1.1753839257514422
+        }
+      ],
+      "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+    },
+    {
+      "id": "u04",
+      "family": "fair-schedule",
+      "task": "Debug fair scheduling / fairness when multiple locate jobs compete.",
+      "enrich_map_query": "fair_schedule FairSchedule queue fairness locate jobs throttle resources",
+      "map_ok": true,
+      "map_elapsed_s": null,
+      "suggested_seed": {
+        "file": "packages/pipeline/resources.py",
+        "symbol": "",
+        "source": "suggested_seed"
+      },
+      "map_top_cards": [
+        {
+          "file": "tests/test_multi_repo_runtime.py",
+          "symbol": "",
+          "loc": "tests/test_multi_repo_runtime.py:1-1",
+          "score": 11.843640834476126
+        },
+        {
+          "file": "fixtures/trace-lab/app/jobs/queue.py",
+          "symbol": "",
+          "loc": "fixtures/trace-lab/app/jobs/queue.py:1-1",
+          "score": 9.21647918841773
+        },
+        {
+          "file": "packages/pipeline/resources.py",
+          "symbol": "",
+          "loc": "packages/pipeline/resources.py:1-1",
+          "score": 8.119316717559798
+        },
+        {
+          "file": "packages/pipeline/fair_schedule.py",
+          "symbol": "",
+          "loc": "packages/pipeline/fair_schedule.py:1-1",
+          "score": 7.8193582415983975
+        },
+        {
+          "file": "packages/pipeline/locate.py",
+          "symbol": "",
+          "loc": "packages/pipeline/locate.py:1-1",
+          "score": 7.056316339324002
+        },
+        {
+          "file": "fixtures/trace-lab/app/jobs/worker.py",
+          "symbol": "",
+          "loc": "fixtures/trace-lab/app/jobs/worker.py:1-1",
+          "score": 6.025797124911788
+        },
+        {
+          "file": "tests/test_resources.py",
+          "symbol": "",
+          "loc": "tests/test_resources.py:1-1",
+          "score": 5.301456550820052
+        },
+        {
+          "file": "docs/superpowers/plans/2026-09-05-kiro-cli-ab-dev3-session.md",
+          "symbol": "",
+          "loc": "docs/superpowers/plans/2026-09-05-kiro-cli-ab-dev3-session.md:1-1",
+          "score": 3.7871993166565296
+        },
+        {
+          "file": "docs/superpowers/plans/2026-09-05-kiro-mcp-ab-complex.md",
+          "symbol": "",
+          "loc": "docs/superpowers/plans/2026-09-05-kiro-mcp-ab-complex.md:1-1",
+          "score": 2.775534549720384
+        },
+        {
+          "file": "docs/superpowers/plans/2026-09-05-kiro-mcp-ab.md",
+          "symbol": "",
+          "loc": "docs/superpowers/plans/2026-09-05-kiro-mcp-ab.md:1-1",
+          "score": 2.5410369592879074
+        }
+      ],
+      "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+    },
+    {
+      "id": "u05",
+      "family": "memory-governor",
+      "task": "How does the memory governor decide to pause or limit heavy embed work?",
+      "enrich_map_query": "memory_governor pause limit embed RSS pressure resources status halt",
+      "map_ok": true,
+      "map_elapsed_s": null,
+      "suggested_seed": {
+        "file": "packages/pipeline/memory_governor.py",
+        "symbol": "",
+        "source": "suggested_seed"
+      },
+      "map_top_cards": [
+        {
+          "file": "tests/test_memory_governor.py",
+          "symbol": "",
+          "loc": "tests/test_memory_governor.py:1-1",
+          "score": 13.068377994874492
+        },
+        {
+          "file": "packages/pipeline/memory_governor.py",
+          "symbol": "",
+          "loc": "packages/pipeline/memory_governor.py:1-1",
+          "score": 7.615258844829173
+        },
+        {
+          "file": "packages/pipeline/resources.py",
+          "symbol": "",
+          "loc": "packages/pipeline/resources.py:1-1",
+          "score": 6.926920177641429
+        },
+        {
+          "file": "tests/test_memory_budget.py",
+          "symbol": "",
+          "loc": "tests/test_memory_budget.py:1-1",
+          "score": 4.458014851550173
+        },
+        {
+          "file": "docs/mlx-index-compute-and-memory.md",
+          "symbol": "",
+          "loc": "docs/mlx-index-compute-and-memory.md:1-1",
+          "score": 4.127858491149587
+        },
+        {
+          "file": "scripts/sim_install_forget.py",
+          "symbol": "",
+          "loc": "scripts/sim_install_forget.py:1-1",
+          "score": 3.6866071932643116
+        },
+        {
+          "file": "scripts/bench_mlx_memory.py",
+          "symbol": "",
+          "loc": "scripts/bench_mlx_memory.py:1-1",
+          "score": 3.558417787753162
+        },
+        {
+          "file": "packages/pipeline/memory_budget.py",
+          "symbol": "",
+          "loc": "packages/pipeline/memory_budget.py:1-1",
+          "score": 3.5492928264620263
+        },
+        {
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "",
+          "loc": "packages/pipeline/cli_ui.py:1-1",
+          "score": 3.4225925901422167
+        },
+        {
+          "file": "tests/test_multi_repo_runtime.py",
+          "symbol": "",
+          "loc": "tests/test_multi_repo_runtime.py:1-1",
+          "score": 3.3636988358683326
+        }
+      ],
+      "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+    },
+    {
+      "id": "u06",
+      "family": "doctor-certify",
+      "task": "What does scubiee doctor / certify check for install health?",
+      "enrich_map_query": "cmd_doctor cmd_certify doctor certify health package accel providers install",
+      "map_ok": true,
+      "map_elapsed_s": null,
+      "suggested_seed": {
+        "file": "packages/pipeline/__main__.py",
+        "symbol": "",
+        "source": "suggested_seed"
+      },
+      "map_top_cards": [
+        {
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "",
+          "loc": "packages/pipeline/__main__.py:1-1",
+          "score": 22.639313686512555
+        },
+        {
+          "file": "packages/pipeline/certify.py",
+          "symbol": "",
+          "loc": "packages/pipeline/certify.py:1-1",
+          "score": 9.755887823433934
+        },
+        {
+          "file": "tests/test_doctor_certify.py",
+          "symbol": "",
+          "loc": "tests/test_doctor_certify.py:1-1",
+          "score": 8.591048350543074
+        },
+        {
+          "file": "fixtures/trace-lab/app/routes/health.py",
+          "symbol": "",
+          "loc": "fixtures/trace-lab/app/routes/health.py:1-1",
+          "score": 7.371014541724115
+        },
+        {
+          "file": "tests/test_cross_platform_profiles.py",
+          "symbol": "",
+          "loc": "tests/test_cross_platform_profiles.py:1-1",
+          "score": 4.879151478613872
+        },
+        {
+          "file": "packages/pipeline/dashboard_ui/app.js",
+          "symbol": "",
+          "loc": "packages/pipeline/dashboard_ui/app.js:1-1",
+          "score": 3.6127027395737885
+        },
+        {
+          "file": "docs/web-info/faq.md",
+          "symbol": "",
+          "loc": "docs/web-info/faq.md:1-1",
+          "score": 2.968568040129145
+        }
+      ],
+      "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+    },
+    {
+      "id": "u07",
+      "family": "disconnect-tool",
+      "task": "How does disconnect remove a host tool surface and permissions?",
+      "enrich_map_query": "cmd_disconnect disconnect_tool remove mcp.json permissions surface uninstall host",
+      "map_ok": true,
+      "map_elapsed_s": null,
+      "suggested_seed": {
+        "file": "packages/pipeline/__main__.py",
+        "symbol": "",
+        "source": "suggested_seed"
+      },
+      "map_top_cards": [
+        {
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "",
+          "loc": "packages/pipeline/__main__.py:1-1",
+          "score": 15.37245802202235
+        },
+        {
+          "file": "packages/pipeline/mcp_permissions.py",
+          "symbol": "",
+          "loc": "packages/pipeline/mcp_permissions.py:1-1",
+          "score": 9.302869317679178
+        },
+        {
+          "file": "tests/test_mcp_permissions.py",
+          "symbol": "",
+          "loc": "tests/test_mcp_permissions.py:1-1",
+          "score": 8.025822041709523
+        },
+        {
+          "file": "docs/web-info/uninstall-mac-linux.md",
+          "symbol": "",
+          "loc": "docs/web-info/uninstall-mac-linux.md:1-1",
+          "score": 7.494013753564047
+        },
+        {
+          "file": "tests/test_connect_formats.py",
+          "symbol": "",
+          "loc": "tests/test_connect_formats.py:1-1",
+          "score": 5.293504202795619
+        },
+        {
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "",
+          "loc": "packages/pipeline/process_control.py:1-1",
+          "score": 4.830424981583536
+        },
+        {
+          "file": "docs/web-info/mac-and-linux.md",
+          "symbol": "",
+          "loc": "docs/web-info/mac-and-linux.md:1-1",
+          "score": 4.331162451810709
+        },
+        {
+          "file": "packages/pipeline/rules_installer.py",
+          "symbol": "",
+          "loc": "packages/pipeline/rules_installer.py:1-1",
+          "score": 4.213036521485137
+        },
+        {
+          "file": "tests/test_package_install_entry.py",
+          "symbol": "",
+          "loc": "tests/test_package_install_entry.py:1-1",
+          "score": 4.165376679940641
+        }
+      ],
+      "stderr_tail": "cap=500MB mlx_batch=24 cache=128MB\n[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\nAST extraction: 11/11 uncached files (100%)\n"
+    },
+    {
+      "id": "u08",
+      "family": "vector-index",
+      "task": "How does VectorIndex retrieve neighbors for vague map ranking?",
+      "enrich_map_query": "VectorIndex retrieve neighbors vague_eval map ranking dense embed affinities",
+      "map_ok": true,
+      "map_elapsed_s": 9.815,
+      "suggested_seed": {
+        "file": "packages/trace_lab/vector_index.py",
+        "symbol": "",
+        "source": "suggested_seed"
+      },
+      "map_top_cards": [
+        {
+          "file": "tests/test_vague_prompts.py",
+          "symbol": "",
+          "loc": "tests/test_vague_prompts.py:1-1",
+          "score": 13.064834003205744
+        },
+        {
+          "file": "packages/trace_lab/vector_index.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/vector_index.py:1-1",
+          "score": 8.172890254752495
+        },
+        {
+          "file": "packages/trace_lab/vague_eval.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/vague_eval.py:1-1",
+          "score": 7.66033694154559
+        },
+        {
+          "file": "packages/trace_lab/embed_field.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/embed_field.py:1-1",
+          "score": 6.875548691337574
+        },
+        {
+          "file": "packages/conductor/dense_index.py",
+          "symbol": "",
+          "loc": "packages/conductor/dense_index.py:1-1",
+          "score": 6.687187762556267
+        },
+        {
+          "file": "docs/superpowers/plans/2026-09-04-vague-prompt-vector-eval.md",
+          "symbol": "",
+          "loc": "docs/superpowers/plans/2026-09-04-vague-prompt-vector-eval.md:1-1",
+          "score": 6.656994663984877
+        },
+        {
+          "file": "docs/superpowers/plans/2026-09-04-map-bakeoff-and-embeddings.md",
+          "symbol": "",
+          "loc": "docs/superpowers/plans/2026-09-04-map-bakeoff-and-embeddings.md:1-1",
+          "score": 6.112569290674248
+        },
+        {
+          "file": "tests/test_map_bakeoff.py",
+          "symbol": "",
+          "loc": "tests/test_map_bakeoff.py:1-1",
+          "score": 4.892226424673916
+        },
+        {
+          "file": "packages/trace_lab/semantic_trace.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/semantic_trace.py:1-1",
+          "score": 3.5288758430060083
+        },
+        {
+          "file": "packages/trace_lab/strategies.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/strategies.py:1-1",
+          "score": 1.9091691792857322
+        }
+      ],
+      "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+    },
+    {
+      "id": "u09",
+      "family": "recall-belt",
+      "task": "Where is recall_belt / recall_fuse wired as a non-LLM tracer arm?",
+      "enrich_map_query": "recall_belt recall_fuse bind_recall_belt prod_eval tracers non-LLM heatmap",
+      "map_ok": true,
+      "map_elapsed_s": 9.997,
+      "suggested_seed": {
+        "file": "packages/trace_lab/recall_belt.py",
+        "symbol": "",
+        "source": "suggested_seed"
+      },
+      "map_top_cards": [
+        {
+          "file": "packages/trace_lab/recall_belt.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/recall_belt.py:1-1",
+          "score": 29.254581200150177
+        },
+        {
+          "file": "docs/superpowers/plans/2026-09-04-recall-belt-no-llm.md",
+          "symbol": "",
+          "loc": "docs/superpowers/plans/2026-09-04-recall-belt-no-llm.md:1-1",
+          "score": 17.14355217319862
+        },
+        {
+          "file": "packages/trace_lab/prod_eval.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/prod_eval.py:1-1",
+          "score": 8.876927236763143
+        },
+        {
+          "file": "packages/trace_lab/vague_eval.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/vague_eval.py:1-1",
+          "score": 6.919444120658573
+        },
+        {
+          "file": "packages/trace_lab/arms/__init__.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/arms/__init__.py:1-1",
+          "score": 5.441352698936715
+        },
+        {
+          "file": "packages/trace_lab/strategies.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/strategies.py:1-1",
+          "score": 4.994401603999662
+        },
+        {
+          "file": "packages/trace_lab/verify_board.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/verify_board.py:1-1",
+          "score": 4.350729726392301
+        },
+        {
+          "file": "packages/trace_lab/semantic_sensor.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/semantic_sensor.py:1-1",
+          "score": 4.183592685253807
+        },
+        {
+          "file": "docs/superpowers/specs/2026-09-05-ultimate-tracer-v1-design.md",
+          "symbol": "",
+          "loc": "docs/superpowers/specs/2026-09-05-ultimate-tracer-v1-design.md:1-1",
+          "score": 3.2862899340299316
+        }
+      ],
+      "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+    },
+    {
+      "id": "u10",
+      "family": "metadata-inject",
+      "task": "How does metadata injection enrich chunks before indexing?",
+      "enrich_map_query": "inject_metadata build_chunk_meta ChunkMeta render enrich_repo chunk_repo_from_ir",
+      "map_ok": true,
+      "map_elapsed_s": 10.319,
+      "suggested_seed": {
+        "file": "packages/enrich/__init__.py",
+        "symbol": "",
+        "source": "suggested_seed"
+      },
+      "map_top_cards": [
+        {
+          "file": "packages/enrich/__init__.py",
+          "symbol": "",
+          "loc": "packages/enrich/__init__.py:1-1",
+          "score": 21.87734748671447
+        },
+        {
+          "file": "packages/metadata/__init__.py",
+          "symbol": "",
+          "loc": "packages/metadata/__init__.py:1-1",
+          "score": 20.253439779984575
+        },
+        {
+          "file": "tests/test_enrich.py",
+          "symbol": "",
+          "loc": "tests/test_enrich.py:1-1",
+          "score": 16.82806000934047
+        },
+        {
+          "file": "scripts/bench_budget_alloc.py",
+          "symbol": "",
+          "loc": "scripts/bench_budget_alloc.py:1-1",
+          "score": 13.713146547353347
+        },
+        {
+          "file": "packages/seir/render.py",
+          "symbol": "",
+          "loc": "packages/seir/render.py:1-1",
+          "score": 9.130456181141286
+        },
+        {
+          "file": "packages/seir/types.py",
+          "symbol": "",
+          "loc": "packages/seir/types.py:1-1",
+          "score": 2.0389437275048357
+        }
+      ],
+      "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+    },
+    {
+      "id": "u11",
+      "family": "host-env-signals",
+      "task": "Trace loadhost_env_signals / host_env_signals used by pack or locate.",
+      "enrich_map_query": "host_env_signals loadhost_env_signals pack locate environment host signals",
+      "map_ok": true,
+      "map_elapsed_s": 9.844,
+      "suggested_seed": {
+        "file": "packages/pipeline/host_workspace.py",
+        "symbol": "",
+        "source": "suggested_seed"
+      },
+      "map_top_cards": [
+        {
+          "file": "packages/pipeline/host_workspace.py",
+          "symbol": "",
+          "loc": "packages/pipeline/host_workspace.py:1-1",
+          "score": 45.85082677741386
+        },
+        {
+          "file": "packages/pipeline/session_isolation.py",
+          "symbol": "",
+          "loc": "packages/pipeline/session_isolation.py:1-1",
+          "score": 15.055296117082392
+        },
+        {
+          "file": "tests/test_session_isolation.py",
+          "symbol": "",
+          "loc": "tests/test_session_isolation.py:1-1",
+          "score": 12.70796442023946
+        },
+        {
+          "file": "packages/pipeline/locate.py",
+          "symbol": "",
+          "loc": "packages/pipeline/locate.py:1-1",
+          "score": 7.802488647058175
+        },
+        {
+          "file": "packages/pipeline/rules_installer.py",
+          "symbol": "",
+          "loc": "packages/pipeline/rules_installer.py:1-1",
+          "score": 2.9507616863398747
+        },
+        {
+          "file": "packages/pipeline/resources.py",
+          "symbol": "",
+          "loc": "packages/pipeline/resources.py:1-1",
+          "score": 2.801342248916626
+        },
+        {
+          "file": "packages/pipeline/mcp_permissions.py",
+          "symbol": "",
+          "loc": "packages/pipeline/mcp_permissions.py:1-1",
+          "score": 2.4943724831233416
+        },
+        {
+          "file": "packages/pipeline/context_nav.py",
+          "symbol": "",
+          "loc": "packages/pipeline/context_nav.py:1-1",
+          "score": 1.981544269582783
+        },
+        {
+          "file": "docs/web-info/daily-use.md",
+          "symbol": "",
+          "loc": "docs/web-info/daily-use.md:1-1",
+          "score": 0.9187117820756513
+        }
+      ],
+      "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+    },
+    {
+      "id": "u12",
+      "family": "dashboard-serve",
+      "task": "How does scubiee dashboard / serve start the local UI and engine?",
+      "enrich_map_query": "cmd_dashboard cmd_serve dashboard serve local UI engine HTTP",
+      "map_ok": true,
+      "map_elapsed_s": 9.828,
+      "suggested_seed": {
+        "file": "packages/pipeline/__main__.py",
+        "symbol": "",
+        "source": "suggested_seed"
+      },
+      "map_top_cards": [
+        {
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "",
+          "loc": "packages/pipeline/__main__.py:1-1",
+          "score": 27.435201088124195
+        },
+        {
+          "file": "docs/web-info/dashboard-and-engine.md",
+          "symbol": "",
+          "loc": "docs/web-info/dashboard-and-engine.md:1-1",
+          "score": 8.41471936751395
+        },
+        {
+          "file": "tests/test_dashboard_ui_contract.py",
+          "symbol": "",
+          "loc": "tests/test_dashboard_ui_contract.py:1-1",
+          "score": 7.474896917979996
+        },
+        {
+          "file": "packages/pipeline/dashboard_server.py",
+          "symbol": "",
+          "loc": "packages/pipeline/dashboard_server.py:1-1",
+          "score": 6.805466356781165
+        },
+        {
+          "file": "docs/superpowers/plans/2026-08-17-ce-operator-dashboard.md",
+          "symbol": "",
+          "loc": "docs/superpowers/plans/2026-08-17-ce-operator-dashboard.md:1-1",
+          "score": 6.368331602540188
+        },
+        {
+          "file": "tests/test_dashboard_port.py",
+          "symbol": "",
+          "loc": "tests/test_dashboard_port.py:1-1",
+          "score": 5.3904256697776916
+        },
+        {
+          "file": "tests/test_dashboard_api.py",
+          "symbol": "",
+          "loc": "tests/test_dashboard_api.py:1-1",
+          "score": 5.373685087593512
+        },
+        {
+          "file": "docs/superpowers/specs/2026-08-17-ce-production-hardening-release-design.md",
+          "symbol": "",
+          "loc": "docs/superpowers/specs/2026-08-17-ce-production-hardening-release-design.md:1-1",
+          "score": 4.4722744749004635
+        },
+        {
+          "file": "packages/trace_lab/retrieve.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/retrieve.py:1-1",
+          "score": 3.2577731961701435
+        },
+        {
+          "file": "packages/pipeline/settings.py",
+          "symbol": "",
+          "loc": "packages/pipeline/settings.py:1-1",
+          "score": 3.029267525145821
+        }
+      ],
+      "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+    },
+    {
+      "id": "u13",
+      "family": "wipe-halt",
+      "task": "What does wipe vs halt do to runtime state and indexes?",
+      "enrich_map_query": "cmd_wipe cmd_halt wipe halt runtime index unlock stop resources",
+      "map_ok": true,
+      "map_elapsed_s": 9.305,
+      "suggested_seed": {
+        "file": "packages/pipeline/__main__.py",
+        "symbol": "",
+        "source": "suggested_seed"
+      },
+      "map_top_cards": [
+        {
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "",
+          "loc": "packages/pipeline/__main__.py:1-1",
+          "score": 22.207208209313706
+        },
+        {
+          "file": "packages/pipeline/wipe.py",
+          "symbol": "",
+          "loc": "packages/pipeline/wipe.py:1-1",
+          "score": 8.293710934955186
+        },
+        {
+          "file": "tests/test_wipe.py",
+          "symbol": "",
+          "loc": "tests/test_wipe.py:1-1",
+          "score": 7.493879893614908
+        },
+        {
+          "file": "tests/test_process_release.py",
+          "symbol": "",
+          "loc": "tests/test_process_release.py:1-1",
+          "score": 5.1203449496128055
+        },
+        {
+          "file": "tests/test_lifecycle_guard.py",
+          "symbol": "",
+          "loc": "tests/test_lifecycle_guard.py:1-1",
+          "score": 4.14971314561026
+        },
+        {
+          "file": "packages/enrich/__init__.py",
+          "symbol": "",
+          "loc": "packages/enrich/__init__.py:1-1",
+          "score": 2.6704268035297627
+        },
+        {
+          "file": "packages/graphify/extract.py",
+          "symbol": "",
+          "loc": "packages/graphify/extract.py:1-1",
+          "score": 2.501338320673012
+        },
+        {
+          "file": "packages/parse_harness/graphify_adapter.py",
+          "symbol": "",
+          "loc": "packages/parse_harness/graphify_adapter.py:1-1",
+          "score": 2.282776313722634
+        }
+      ],
+      "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+    },
+    {
+      "id": "u14",
+      "family": "upgrade-flow",
+      "task": "Walk the one-command upgrade: package swap, migrate, MCP rebind.",
+      "enrich_map_query": "cmd_upgrade upgrade package swap migrate MCP rebind DiffPlan already_latest",
+      "map_ok": true,
+      "map_elapsed_s": 9.798,
+      "suggested_seed": {
+        "file": "packages/pipeline/__main__.py",
+        "symbol": "",
+        "source": "suggested_seed"
+      },
+      "map_top_cards": [
+        {
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "",
+          "loc": "packages/pipeline/__main__.py:1-1",
+          "score": 26.22894571741307
+        },
+        {
+          "file": "packages/pipeline/upgrade.py",
+          "symbol": "",
+          "loc": "packages/pipeline/upgrade.py:1-1",
+          "score": 10.137279236908828
+        },
+        {
+          "file": "packages/pipeline/upgrade_manifest.py",
+          "symbol": "",
+          "loc": "packages/pipeline/upgrade_manifest.py:1-1",
+          "score": 8.671937578493761
+        },
+        {
+          "file": "packages/pipeline/upgrade_supervisor.py",
+          "symbol": "",
+          "loc": "packages/pipeline/upgrade_supervisor.py:1-1",
+          "score": 8.561748311382708
+        },
+        {
+          "file": "tests/test_mcp_hot_reload_reliability.py",
+          "symbol": "",
+          "loc": "tests/test_mcp_hot_reload_reliability.py:1-1",
+          "score": 7.40483130409657
+        },
+        {
+          "file": "tests/test_upgrade_supervisor.py",
+          "symbol": "",
+          "loc": "tests/test_upgrade_supervisor.py:1-1",
+          "score": 7.320108848920123
+        },
+        {
+          "file": "packages/pipeline/upgrade_platform.py",
+          "symbol": "",
+          "loc": "packages/pipeline/upgrade_platform.py:1-1",
+          "score": 5.007299561610031
+        }
+      ],
+      "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+    },
+    {
+      "id": "u15",
+      "family": "locate-cli-expand",
+      "task": "Implement or debug scubiee expand CLI after lean pack missing hop.",
+      "enrich_map_query": "cli_expand cmd_expand locate_cli direction callees with_bodies expand after pack",
+      "map_ok": true,
+      "map_elapsed_s": 9.711,
+      "suggested_seed": {
+        "file": "packages/pipeline/locate_cli.py",
+        "symbol": "",
+        "source": "suggested_seed"
+      },
+      "map_top_cards": [
+        {
+          "file": "packages/pipeline/locate_cli.py",
+          "symbol": "",
+          "loc": "packages/pipeline/locate_cli.py:1-1",
+          "score": 30.18636776358242
+        },
+        {
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "",
+          "loc": "packages/pipeline/__main__.py:1-1",
+          "score": 27.48306244678734
+        },
+        {
+          "file": "tests/test_locate_cli.py",
+          "symbol": "",
+          "loc": "tests/test_locate_cli.py:1-1",
+          "score": 14.843215331738477
+        },
+        {
+          "file": "docs/superpowers/plans/2026-09-05-ladder-followup-real-eval.md",
+          "symbol": "",
+          "loc": "docs/superpowers/plans/2026-09-05-ladder-followup-real-eval.md:1-1",
+          "score": 13.815937380965691
+        },
+        {
+          "file": ".devin/rules/scubiee.md",
+          "symbol": "",
+          "loc": ".devin/rules/scubiee.md:1-1",
+          "score": 4.703996035608413
+        },
+        {
+          "file": "packages/pipeline/session_store.py",
+          "symbol": "",
+          "loc": "packages/pipeline/session_store.py:1-1",
+          "score": 3.980819933085416
+        },
+        {
+          "file": "packages/trace_lab/strategies.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/strategies.py:1-1",
+          "score": 2.4497188564199366
+        }
+      ],
+      "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+    },
+    {
+      "id": "u16",
+      "family": "corpus-fingerprint",
+      "task": "Where is corpus fingerprint computed for composite edge cache invalidation?",
+      "enrich_map_query": "corpus_fingerprint composite edges cache invalidation trace_lab extract_nodes",
+      "map_ok": true,
+      "map_elapsed_s": 10.021,
+      "suggested_seed": {
+        "file": "packages/trace_lab/corpus.py",
+        "symbol": "",
+        "source": "suggested_seed"
+      },
+      "map_top_cards": [
+        {
+          "file": "packages/trace_lab/corpus.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/corpus.py:1-1",
+          "score": 21.53630716281966
+        },
+        {
+          "file": "packages/trace_lab/semantic_novel.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/semantic_novel.py:1-1",
+          "score": 16.332245488173363
+        },
+        {
+          "file": "packages/trace_lab/composite_v1.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/composite_v1.py:1-1",
+          "score": 16.10495502762147
+        },
+        {
+          "file": "packages/trace_lab/semantic_tracer_v1.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/semantic_tracer_v1.py:1-1",
+          "score": 14.731109045710351
+        },
+        {
+          "file": "packages/trace_lab/ast_graph.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/ast_graph.py:1-1",
+          "score": 14.690377337866227
+        },
+        {
+          "file": "packages/pipeline/context_trace.py",
+          "symbol": "",
+          "loc": "packages/pipeline/context_trace.py:1-1",
+          "score": 14.165799117337686
+        },
+        {
+          "file": "tests/test_semantic_sensor.py",
+          "symbol": "",
+          "loc": "tests/test_semantic_sensor.py:1-1",
+          "score": 12.252429522089624
+        },
+        {
+          "file": "packages/graphify/paths.py",
+          "symbol": "",
+          "loc": "packages/graphify/paths.py:1-1",
+          "score": 1.9639769899845843
+        },
+        {
+          "file": "packages/conductor/bm25_index.py",
+          "symbol": "",
+          "loc": "packages/conductor/bm25_index.py:1-1",
+          "score": 1.6460824826801055
+        },
+        {
+          "file": "packages/graphify/ids.py",
+          "symbol": "",
+          "loc": "packages/graphify/ids.py:1-1",
+          "score": 1.2069547990405791
+        }
+      ],
+      "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+    },
+    {
+      "id": "u17",
+      "family": "failure-report",
+      "task": "How does build_failure_report summarize false negatives on verify boards?",
+      "enrich_map_query": "build_failure_report failure_report false_negatives explored_nodes hot_count verify",
+      "map_ok": true,
+      "map_elapsed_s": 9.472,
+      "suggested_seed": {
+        "file": "packages/trace_lab/failure_report.py",
+        "symbol": "",
+        "source": "suggested_seed"
+      },
+      "map_top_cards": [
+        {
+          "file": "packages/trace_lab/failure_report.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/failure_report.py:1-1",
+          "score": 37.71380133813064
+        },
+        {
+          "file": "tests/test_polytrace.py",
+          "symbol": "",
+          "loc": "tests/test_polytrace.py:1-1",
+          "score": 12.538386545060385
+        },
+        {
+          "file": "packages/trace_lab/metrics.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/metrics.py:1-1",
+          "score": 12.022469712682135
+        },
+        {
+          "file": "tests/test_trace_lab.py",
+          "symbol": "",
+          "loc": "tests/test_trace_lab.py:1-1",
+          "score": 11.96341557197613
+        },
+        {
+          "file": "tests/test_trace_lab_novel.py",
+          "symbol": "",
+          "loc": "tests/test_trace_lab_novel.py:1-1",
+          "score": 11.923268186713514
+        },
+        {
+          "file": "packages/trace_lab/sim.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/sim.py:1-1",
+          "score": 5.5509170673069255
+        },
+        {
+          "file": "packages/trace_lab/types.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/types.py:1-1",
+          "score": 5.469750799911906
+        },
+        {
+          "file": "tests/test_verify_board.py",
+          "symbol": "",
+          "loc": "tests/test_verify_board.py:1-1",
+          "score": 5.306630948033589
+        },
+        {
+          "file": "tests/test_verify_hard.py",
+          "symbol": "",
+          "loc": "tests/test_verify_hard.py:1-1",
+          "score": 4.852681970596313
+        },
+        {
+          "file": "docs/publish-setup.md",
+          "symbol": "",
+          "loc": "docs/publish-setup.md:1-1",
+          "score": 3.7181782759158812
+        }
+      ],
+      "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+    },
+    {
+      "id": "u18",
+      "family": "jedi-callgraph",
+      "task": "How does Jedi enrich the call graph used by composite membership?",
+      "enrich_map_query": "build_enriched_call_graph with_jedi Jedi call_graph TypedEdge composite membership",
+      "map_ok": true,
+      "map_elapsed_s": 9.523,
+      "suggested_seed": {
+        "file": "packages/trace_lab/facts/call_graph.py",
+        "symbol": "",
+        "source": "suggested_seed"
+      },
+      "map_top_cards": [
+        {
+          "file": "packages/trace_lab/facts/call_graph.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/facts/call_graph.py:1-1",
+          "score": 33.28730855997905
+        },
+        {
+          "file": "packages/trace_lab/composite_v1.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/composite_v1.py:1-1",
+          "score": 17.424806066854458
+        },
+        {
+          "file": "packages/trace_lab/system_trace.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/system_trace.py:1-1",
+          "score": 14.023495380564963
+        },
+        {
+          "file": "packages/trace_lab/facts/__init__.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/facts/__init__.py:1-1",
+          "score": 7.231354882243393
+        },
+        {
+          "file": "packages/trace_lab/facts/dfg.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/facts/dfg.py:1-1",
+          "score": 6.48655072754002
+        },
+        {
+          "file": "packages/trace_lab/semantic_novel.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/semantic_novel.py:1-1",
+          "score": 5.056787071747017
+        },
+        {
+          "file": "packages/trace_lab/types.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/types.py:1-1",
+          "score": 4.064975201003856
+        },
+        {
+          "file": "packages/trace_lab/semantic_tracer_fuse.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/semantic_tracer_fuse.py:1-1",
+          "score": 3.5625965187103947
+        }
+      ],
+      "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+    },
+    {
+      "id": "u19",
+      "family": "dfg-edges",
+      "task": "Where are DFG PASSES_DATA_TO edges built and consumed in ranking?",
+      "enrich_map_query": "build_dfg_edges PASSES_DATA_TO dfg_pairs apply_rank_composite dataflow",
+      "map_ok": true,
+      "map_elapsed_s": 9.097,
+      "suggested_seed": {
+        "file": "packages/trace_lab/facts/dfg.py",
+        "symbol": "",
+        "source": "suggested_seed"
+      },
+      "map_top_cards": [
+        {
+          "file": "packages/trace_lab/facts/dfg.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/facts/dfg.py:1-1",
+          "score": 23.801738620007093
+        },
+        {
+          "file": "packages/trace_lab/composite_v1.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/composite_v1.py:1-1",
+          "score": 22.009712153386783
+        },
+        {
+          "file": "packages/trace_lab/engine/best_first.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/engine/best_first.py:1-1",
+          "score": 10.444648883384321
+        },
+        {
+          "file": "packages/trace_lab/semantic_tracer_v1.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/semantic_tracer_v1.py:1-1",
+          "score": 10.253072618661793
+        },
+        {
+          "file": "packages/trace_lab/semantic_novel.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/semantic_novel.py:1-1",
+          "score": 2.8998870849609375
+        },
+        {
+          "file": "docs/conductor-final-architecture.md",
+          "symbol": "",
+          "loc": "docs/conductor-final-architecture.md:1-1",
+          "score": 2.7468531131744385
+        },
+        {
+          "file": "packages/trace_lab/policy/slice_mask.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/policy/slice_mask.py:1-1",
+          "score": 2.282332148110809
+        },
+        {
+          "file": "packages/trace_lab/corpus.py",
+          "symbol": "",
+          "loc": "packages/trace_lab/corpus.py:1-1",
+          "score": 1.8947576542257687
+        }
+      ],
+      "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+    },
+    {
+      "id": "u20",
+      "family": "unlock-tool",
+      "task": "How does unlock_tool clear a paused or locked MCP tool permission?",
+      "enrich_map_query": "cmd_unlock_tool unlock_tool permissions paused locked mcp allowlist",
+      "map_ok": true,
+      "map_elapsed_s": 9.007,
+      "suggested_seed": {
+        "file": "packages/pipeline/__main__.py",
+        "symbol": "",
+        "source": "suggested_seed"
+      },
+      "map_top_cards": [
+        {
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "",
+          "loc": "packages/pipeline/__main__.py:1-1",
+          "score": 27.718958073991136
+        },
+        {
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "",
+          "loc": "packages/pipeline/cli_ui.py:1-1",
+          "score": 11.869875440789471
+        },
+        {
+          "file": "packages/pipeline/mcp_permissions.py",
+          "symbol": "",
+          "loc": "packages/pipeline/mcp_permissions.py:1-1",
+          "score": 9.340991766776721
+        },
+        {
+          "file": "tests/test_mcp_permissions.py",
+          "symbol": "",
+          "loc": "tests/test_mcp_permissions.py:1-1",
+          "score": 8.126876063442918
+        },
+        {
+          "file": "packages/pipeline/accel.py",
+          "symbol": "",
+          "loc": "packages/pipeline/accel.py:1-1",
+          "score": 4.612670179931051
+        },
+        {
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "",
+          "loc": "packages/pipeline/process_control.py:1-1",
+          "score": 4.0503953833856015
+        },
+        {
+          "file": "packages/pipeline/capability.py",
+          "symbol": "",
+          "loc": "packages/pipeline/capability.py:1-1",
+          "score": 3.701001393448135
+        },
+        {
+          "file": "packages/pipeline/client.py",
+          "symbol": "",
+          "loc": "packages/pipeline/client.py:1-1",
+          "score": 3.6033041354525297
+        },
+        {
+          "file": "packages/pipeline/pause_resume.py",
+          "symbol": "",
+          "loc": "packages/pipeline/pause_resume.py:1-1",
+          "score": 2.736153087137664
+        }
+      ],
+      "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+    }
+  ]
+}

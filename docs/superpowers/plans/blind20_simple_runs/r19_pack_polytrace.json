@@ -1,0 +1,38 @@
+{
+  "ok": true,
+  "engine": "polytrace",
+  "policy": "strict",
+  "elapsed_s": 0.001,
+  "n_pack": 4,
+  "pack": [
+    {
+      "file": "packages/pipeline/engine.py",
+      "symbol": "_verify_gpu_provider",
+      "score": 1.0,
+      "loc": "packages/pipeline/engine.py:29-63",
+      "id": "packages/pipeline/engine.py::_verify_gpu_provider"
+    },
+    {
+      "file": "packages/pipeline/accel.py",
+      "symbol": "load_accel",
+      "score": 0.9,
+      "loc": "packages/pipeline/accel.py:132-146",
+      "id": "packages/pipeline/accel.py::load_accel"
+    },
+    {
+      "file": "packages/pipeline/accel.py",
+      "symbol": "ort_available_providers",
+      "score": 0.9,
+      "loc": "packages/pipeline/accel.py:1348-1357",
+      "id": "packages/pipeline/accel.py::ort_available_providers"
+    },
+    {
+      "file": "packages/pipeline/accel.py",
+      "symbol": "accel_path",
+      "score": 0.7857,
+      "loc": "packages/pipeline/accel.py:53-67",
+      "id": "packages/pipeline/accel.py::accel_path"
+    }
+  ],
+  "error": null
+}

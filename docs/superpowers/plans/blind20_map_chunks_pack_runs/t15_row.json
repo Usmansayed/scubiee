@@ -1,0 +1,300 @@
+{
+  "id": "t15",
+  "family": "capability-attach",
+  "task": "How are capability cards attached to search hits for locate ranking?",
+  "enrich_prompt": "capability_cards attach CapabilityCard locate ranking search hits build cards json",
+  "map": {
+    "elapsed_s": 0.368,
+    "top_files": [
+      "packages/pipeline/capability.py",
+      "packages/pipeline/engine.py",
+      "docs/superpowers/specs/2026-08-03-capability-locate-design.md",
+      "packages/pipeline/locate.py",
+      "packages/pipeline/mcp_locate.py"
+    ]
+  },
+  "selected_chunks": [
+    {
+      "file": "packages/pipeline/capability.py",
+      "symbol": "build_cards",
+      "kind": "function",
+      "loc": "packages/pipeline/capability.py:367-381",
+      "start_line": 367,
+      "end_line": 381,
+      "score": 9.7,
+      "excerpt": "def build_cards(\n    root: Path,\n    *,\n    rels: Iterable[str] | None = None,\n) -> list[CapabilityCard]:\n    root = root.resolve()\n    cards: list[CapabilityCard] = []\n    for rel"
+    },
+    {
+      "file": "packages/graphify/build.py",
+      "symbol": "build_from_json",
+      "kind": "function",
+      "loc": "packages/graphify/build.py:539-1016",
+      "start_line": 539,
+      "end_line": 1016,
+      "score": 9.35,
+      "excerpt": "def build_from_json(extraction: dict, *, directed: bool = False, root: str | Path | None = None) -> nx.Graph:\n    \"\"\"Build a NetworkX graph from an extraction dict.\n\n    directed=T"
+    },
+    {
+      "file": "packages/pipeline/engine.py",
+      "symbol": "WarmSearchEngine.locate_capability",
+      "kind": "method",
+      "loc": "packages/pipeline/engine.py:211-215",
+      "start_line": 211,
+      "end_line": 215,
+      "score": 7.35,
+      "excerpt": "    def locate_capability(self, query: str, top_k: int = 5) -> list[LocateHit]:\n        idx = self.capability\n        if idx is None:\n            return []\n        return idx.locat"
+    }
+  ],
+  "arms": {
+    "pack_context": {
+      "ok": true,
+      "tool": "pack_context",
+      "engine": "composite_v1",
+      "elapsed_s": 0.151,
+      "n_pack": 4,
+      "seed": {
+        "file": "packages/pipeline/capability.py",
+        "symbol": "build_cards",
+        "id": "packages/pipeline/capability.py::build_cards"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/capability.py",
+          "symbol": "build_cards",
+          "score": 1.0,
+          "loc": "packages/pipeline/capability.py:367-381",
+          "id": "packages/pipeline/capability.py::build_cards",
+          "chars": 440
+        },
+        {
+          "file": "packages/pipeline/capability.py",
+          "symbol": "_norm_path",
+          "score": 1.0,
+          "loc": "packages/pipeline/capability.py:59-64",
+          "id": "packages/pipeline/capability.py::_norm_path",
+          "chars": 220
+        },
+        {
+          "file": "packages/pipeline/merkle.py",
+          "symbol": "is_junk_rel",
+          "score": 1.0,
+          "loc": "packages/pipeline/merkle.py:118-126",
+          "id": "packages/pipeline/merkle.py::is_junk_rel",
+          "chars": 400
+        },
+        {
+          "file": "packages/graphify/build.py",
+          "symbol": "build_from_json",
+          "score": 1.0,
+          "loc": "packages/graphify/build.py:539-1016",
+          "id": "packages/graphify/build.py::build_from_json",
+          "chars": 4940
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/capability.py::build_cards",
+          "loc": "packages/pipeline/capability.py:367-381",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/capability.py::_norm_path",
+          "loc": "packages/pipeline/capability.py:59-64",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/merkle.py::is_junk_rel",
+          "loc": "packages/pipeline/merkle.py:118-126",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/graphify/build.py::build_from_json",
+          "loc": "packages/graphify/build.py:539-1016",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/graphify/build.py::_old_file_stems",
+          "loc": "packages/graphify/build.py:370-384",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/graphify/build.py::_norm_source_file",
+          "loc": "packages/graphify/build.py:160-184",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/graphify/extractors/base.py::_file_stem",
+          "loc": "packages/graphify/extractors/base.py:58-81",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/graphify/ids.py::make_id",
+          "loc": "packages/graphify/ids.py:43-50",
+          "edge": "calls",
+          "score": 1.0
+        }
+      ],
+      "pack_query": "capability_cards attach CapabilityCard locate ranking search hits build cards json\nrelevant_chunks: packages/pipeline/capability.py::build_cards@packages/pipeline/capability.py:367-381 | packages/graphify/build.py::build_from_json@packages/graphify/build.py:539-1016 | packages/pipeline/engine.py::WarmSearchEngine.locate_capability@packages/pipeline/engine.py:211-215",
+      "error": null
+    },
+    "pack_poly_embed": {
+      "ok": true,
+      "tool": "pack_poly_embed",
+      "engine": "poly_embed",
+      "elapsed_s": 0.199,
+      "n_pack": 2,
+      "seed": {
+        "file": "packages/pipeline/capability.py",
+        "symbol": "build_cards",
+        "id": "packages/pipeline/capability.py::build_cards"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/capability.py",
+          "symbol": "build_cards",
+          "score": 1.0,
+          "loc": "packages/pipeline/capability.py:367-381",
+          "id": "packages/pipeline/capability.py::build_cards",
+          "chars": 440
+        },
+        {
+          "file": "packages/graphify/build.py",
+          "symbol": "build_from_json",
+          "score": 1.0,
+          "loc": "packages/graphify/build.py:539-1016",
+          "id": "packages/graphify/build.py::build_from_json",
+          "chars": 5560
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/capability.py::build_cards",
+          "loc": "packages/pipeline/capability.py:367-381",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/graphify/build.py::build_from_json",
+          "loc": "packages/graphify/build.py:539-1016",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/capability.py::card_from_source",
+          "loc": "packages/pipeline/capability.py:291-338",
+          "edge": "seed",
+          "score": 0.8767
+        },
+        {
+          "id": "packages/pipeline/capability.py::iter_py_files",
+          "loc": "packages/pipeline/capability.py:341-358",
+          "edge": "seed",
+          "score": 0.735
+        },
+        {
+          "id": "packages/graphify/build.py::edge_data",
+          "loc": "packages/graphify/build.py:307-317",
+          "edge": "seed",
+          "score": 0.735
+        },
+        {
+          "id": "packages/pipeline/capability.py::os_walk_safe",
+          "loc": "packages/pipeline/capability.py:361-364",
+          "edge": "seed",
+          "score": 0.686
+        }
+      ],
+      "pack_query": "capability_cards attach CapabilityCard locate ranking search hits build cards json\nrelevant_chunks: packages/pipeline/capability.py::build_cards@packages/pipeline/capability.py:367-381 | packages/graphify/build.py::build_from_json@packages/graphify/build.py:539-1016 | packages/pipeline/engine.py::WarmSearchEngine.locate_capability@packages/pipeline/engine.py:211-215",
+      "error": null
+    },
+    "pack_semantic": {
+      "ok": true,
+      "tool": "pack_semantic",
+      "engine": "semantic_tracer_fuse",
+      "elapsed_s": 0.437,
+      "n_pack": 2,
+      "seed": {
+        "file": "packages/pipeline/capability.py",
+        "symbol": "build_cards",
+        "id": "packages/pipeline/capability.py::build_cards"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/capability.py",
+          "symbol": "build_cards",
+          "score": 1.0,
+          "loc": "packages/pipeline/capability.py:367-381",
+          "id": "packages/pipeline/capability.py::build_cards",
+          "chars": 440
+        },
+        {
+          "file": "packages/graphify/build.py",
+          "symbol": "build_from_json",
+          "score": 1.0,
+          "loc": "packages/graphify/build.py:539-1016",
+          "id": "packages/graphify/build.py::build_from_json",
+          "chars": 5560
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/capability.py::build_cards",
+          "loc": "packages/pipeline/capability.py:367-381",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/graphify/build.py::build_from_json",
+          "loc": "packages/graphify/build.py:539-1016",
+          "edge": "seed",
+          "score": 1.0
+        },
+        {
+          "id": "packages/graphify/build.py::_old_file_stems",
+          "loc": "packages/graphify/build.py:370-384",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/graphify/build.py::_norm_source_file",
+          "loc": "packages/graphify/build.py:160-184",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/graphify/extractors/base.py::_file_stem",
+          "loc": "packages/graphify/extractors/base.py:58-81",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/graphify/ids.py::make_id",
+          "loc": "packages/graphify/ids.py:43-50",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/graphify/ids.py::normalize_id",
+          "loc": "packages/graphify/ids.py:32-40",
+          "edge": "calls",
+          "score": 1.0
+        },
+        {
+          "id": "packages/pipeline/capability.py::card_from_source",
+          "loc": "packages/pipeline/capability.py:291-338",
+          "edge": "calls",
+          "score": 0.9465
+        }
+      ],
+      "pack_query": "capability_cards attach CapabilityCard locate ranking search hits build cards json\nrelevant_chunks: packages/pipeline/capability.py::build_cards@packages/pipeline/capability.py:367-381 | packages/graphify/build.py::build_from_json@packages/graphify/build.py:539-1016 | packages/pipeline/engine.py::WarmSearchEngine.locate_capability@packages/pipeline/engine.py:211-215",
+      "error": null
+    }
+  }
+}

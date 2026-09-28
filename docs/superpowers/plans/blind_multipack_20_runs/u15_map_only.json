@@ -1,0 +1,58 @@
+{
+  "id": "u15",
+  "family": "locate-cli-expand",
+  "task": "Implement or debug scubiee expand CLI after lean pack missing hop.",
+  "enrich_map_query": "cli_expand cmd_expand locate_cli direction callees with_bodies expand after pack",
+  "map_ok": true,
+  "map_elapsed_s": 9.711,
+  "suggested_seed": {
+    "file": "packages/pipeline/locate_cli.py",
+    "symbol": "",
+    "source": "suggested_seed"
+  },
+  "map_top_cards": [
+    {
+      "file": "packages/pipeline/locate_cli.py",
+      "symbol": "",
+      "loc": "packages/pipeline/locate_cli.py:1-1",
+      "score": 30.18636776358242
+    },
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "score": 27.48306244678734
+    },
+    {
+      "file": "tests/test_locate_cli.py",
+      "symbol": "",
+      "loc": "tests/test_locate_cli.py:1-1",
+      "score": 14.843215331738477
+    },
+    {
+      "file": "docs/superpowers/plans/2026-09-05-ladder-followup-real-eval.md",
+      "symbol": "",
+      "loc": "docs/superpowers/plans/2026-09-05-ladder-followup-real-eval.md:1-1",
+      "score": 13.815937380965691
+    },
+    {
+      "file": ".devin/rules/scubiee.md",
+      "symbol": "",
+      "loc": ".devin/rules/scubiee.md:1-1",
+      "score": 4.703996035608413
+    },
+    {
+      "file": "packages/pipeline/session_store.py",
+      "symbol": "",
+      "loc": "packages/pipeline/session_store.py:1-1",
+      "score": 3.980819933085416
+    },
+    {
+      "file": "packages/trace_lab/strategies.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/strategies.py:1-1",
+      "score": 2.4497188564199366
+    }
+  ],
+  "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+}

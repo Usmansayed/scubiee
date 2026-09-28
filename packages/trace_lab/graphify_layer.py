@@ -31,14 +31,27 @@ _REL_W = {
 }
 
 
+def _nodes_by_file(nodes: dict[str, TraceNode]) -> dict[str, list[TraceNode]]:
+    """Group nodes by file once. ``_map_symbol`` used to rescan all nodes per
+    call — O(nodes × calls), ~4.3s / 132M comparisons on this repo (PERF-1)."""
+    by_file: dict[str, list[TraceNode]] = {}
+    for n in nodes.values():
+        by_file.setdefault(n.file, []).append(n)
+    return by_file
+
+
 def _map_symbol(
     file: str,
     name: str,
     line: int | None,
     nodes: dict[str, TraceNode],
+    by_file: dict[str, list[TraceNode]] | None = None,
 ) -> str | None:
     file = file.replace("\\", "/")
-    in_file = [n for n in nodes.values() if n.file == file]
+    if by_file is not None:
+        in_file = by_file.get(file, [])
+    else:
+        in_file = [n for n in nodes.values() if n.file == file]
     if not in_file:
         return None
     exact = [n for n in in_file if n.symbol == name]
@@ -138,6 +151,7 @@ def load_store_graphify_graph(
         link_iter = raw.get("links") or []
 
     gfy_to_nid: dict[str, str] = {}
+    by_file = _nodes_by_file(nodes)
     for gid, data in node_iter:
         if not gid:
             continue
@@ -154,9 +168,9 @@ def load_store_graphify_graph(
         if loc.upper().startswith("L") and loc[1:].isdigit():
             line = int(loc[1:])
         name = _clean_label(str(data.get("label") or ""))
-        mapped = _map_symbol(src, name, line, nodes) if name else None
+        mapped = _map_symbol(src, name, line, nodes, by_file) if name else None
         if mapped is None and line is not None:
-            mapped = _map_symbol(src, "", line, nodes)
+            mapped = _map_symbol(src, "", line, nodes, by_file)
         if mapped:
             gfy_to_nid[str(gid)] = mapped
 
@@ -226,8 +240,9 @@ def build_graphify_graph(
             own_tmp.cleanup()
 
     sid_to_nid: dict[str, str] = {}
+    by_file = _nodes_by_file(nodes)
     for sid, sym in ir.symbols.items():
-        mapped = _map_symbol(sym.file, sym.name, sym.line, nodes)
+        mapped = _map_symbol(sym.file, sym.name, sym.line, nodes, by_file)
         if mapped:
             sid_to_nid[sid] = mapped
 

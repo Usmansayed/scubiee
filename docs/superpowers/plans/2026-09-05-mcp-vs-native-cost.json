@@ -1,0 +1,428 @@
+{
+  "ok": true,
+  "protocol": "same 5 problems; mcp uses composite_v1; native=rg+read hits; native_gold=read gold files",
+  "token_estimate": "chars/4",
+  "summary": {
+    "warm_ms": 20111.2,
+    "n": 5,
+    "means": {
+      "native": {
+        "wall_ms": 373.3,
+        "out_tokens": 7619.4,
+        "tool_calls": 8.0,
+        "file_rec": 0.0,
+        "symbol_rec": 0.0
+      },
+      "native_gold": {
+        "wall_ms": 2.3,
+        "out_tokens": 6766.2,
+        "tool_calls": 2.0,
+        "file_rec": 1.0,
+        "symbol_rec": 0.4
+      },
+      "mcp_lean": {
+        "wall_ms": 12285.0,
+        "out_tokens": 5980.8,
+        "tool_calls": 3.0,
+        "file_rec": 0.5,
+        "symbol_rec": 0.3
+      },
+      "mcp_full": {
+        "wall_ms": 4448.5,
+        "out_tokens": 5040.0,
+        "tool_calls": 2.2,
+        "file_rec": 0.5,
+        "symbol_rec": 0.2
+      }
+    },
+    "token_ratio_native_over_mcp_lean": 1.27,
+    "time_ratio_native_over_mcp_lean": 0.03
+  },
+  "rows": [
+    {
+      "id": "P01_connect_permissions",
+      "problem": "Change which tools Cursor auto-approves when running scubiee connect.",
+      "native": {
+        "path": "native",
+        "wall_ms": 597.6,
+        "rg_ms": 597.0,
+        "read_ms": 0.0,
+        "tool_calls": 8,
+        "out_chars": 32925,
+        "out_tokens": 8232,
+        "keywords": [
+          "scubiee",
+          "connect",
+          "Cursor",
+          "mcp.json",
+          "autoApprove",
+          "alwaysAllow",
+          "permissions.json",
+          "mcpAllowlist"
+        ],
+        "files_touched": [
+          "C"
+        ],
+        "n_files_touched": 1,
+        "file_rec": 0.0,
+        "symbol_rec": 0.0
+      },
+      "native_gold": {
+        "path": "native_gold",
+        "wall_ms": 3.4,
+        "tool_calls": 3,
+        "out_chars": 39788,
+        "out_tokens": 9947,
+        "n_files_touched": 3,
+        "file_rec": 1.0,
+        "symbol_rec": 0.0
+      },
+      "mcp_lean": {
+        "path": "mcp_lean",
+        "wall_ms": 43473.7,
+        "tool_calls": 3,
+        "out_chars": 26962,
+        "out_tokens": 6741,
+        "body_chars_declared": 3963,
+        "body_tokens_declared": 991,
+        "seed_source": "gold_fallback",
+        "seed_file": "packages/pipeline/__main__.py",
+        "engine": "composite_v1",
+        "packed": 4,
+        "heatmap_n": 8,
+        "expand_delta": 8,
+        "file_rec": 0.667,
+        "symbol_rec": 0.25,
+        "pack_only_file_rec": 0.667,
+        "pack_only_symbol_rec": 0.25
+      },
+      "mcp_full": {
+        "path": "mcp_full",
+        "wall_ms": 4466.0,
+        "tool_calls": 2,
+        "out_chars": 21446,
+        "out_tokens": 5362,
+        "body_chars_declared": 5981,
+        "body_tokens_declared": 1496,
+        "seed_source": "gold_fallback",
+        "seed_file": "packages/pipeline/__main__.py",
+        "engine": "composite_v1",
+        "packed": 8,
+        "heatmap_n": 8,
+        "expand_delta": null,
+        "file_rec": 0.667,
+        "symbol_rec": 0.25,
+        "pack_only_file_rec": 0.667,
+        "pack_only_symbol_rec": 0.25
+      }
+    },
+    {
+      "id": "P02_pack_context",
+      "problem": "Understand how pack_context builds one-call heatmap + hot bodies.",
+      "native": {
+        "path": "native",
+        "wall_ms": 313.5,
+        "rg_ms": 313.1,
+        "read_ms": 0.0,
+        "tool_calls": 8,
+        "out_chars": 22312,
+        "out_tokens": 5578,
+        "keywords": [
+          "pack_context",
+          "run_pack_context",
+          "heatmap_to_cards",
+          "run_collect_hot",
+          "hot_threshold",
+          "budget_chars",
+          "drop_noise",
+          "context_trace"
+        ],
+        "files_touched": [
+          "C"
+        ],
+        "n_files_touched": 1,
+        "file_rec": 0.0,
+        "symbol_rec": 0.0
+      },
+      "native_gold": {
+        "path": "native_gold",
+        "wall_ms": 3.6,
+        "tool_calls": 2,
+        "out_chars": 30472,
+        "out_tokens": 7618,
+        "n_files_touched": 2,
+        "file_rec": 1.0,
+        "symbol_rec": 0.25
+      },
+      "mcp_lean": {
+        "path": "mcp_lean",
+        "wall_ms": 4540.6,
+        "tool_calls": 3,
+        "out_chars": 44572,
+        "out_tokens": 11143,
+        "body_chars_declared": 10000,
+        "body_tokens_declared": 2500,
+        "seed_source": "gold_fallback",
+        "seed_file": "packages/pipeline/context_trace.py",
+        "engine": "composite_v1",
+        "packed": 1,
+        "heatmap_n": 16,
+        "expand_delta": 8,
+        "file_rec": 0.5,
+        "symbol_rec": 0.5,
+        "pack_only_file_rec": 0.5,
+        "pack_only_symbol_rec": 0.5
+      },
+      "mcp_full": {
+        "path": "mcp_full",
+        "wall_ms": 4442.0,
+        "tool_calls": 2,
+        "out_chars": 39156,
+        "out_tokens": 9789,
+        "body_chars_declared": 12000,
+        "body_tokens_declared": 3000,
+        "seed_source": "gold_fallback",
+        "seed_file": "packages/pipeline/context_trace.py",
+        "engine": "composite_v1",
+        "packed": 11,
+        "heatmap_n": 16,
+        "expand_delta": null,
+        "file_rec": 0.5,
+        "symbol_rec": 0.5,
+        "pack_only_file_rec": 0.5,
+        "pack_only_symbol_rec": 0.5
+      }
+    },
+    {
+      "id": "P03_graphify_store_load",
+      "problem": "How does context tracing load init graph.json instead of rebuilding Graphify?",
+      "native": {
+        "path": "native",
+        "wall_ms": 308.7,
+        "rg_ms": 308.3,
+        "read_ms": 0.0,
+        "tool_calls": 8,
+        "out_chars": 21806,
+        "out_tokens": 5452,
+        "keywords": [
+          "load_store_graphify_graph",
+          "graph.json",
+          "CTX_TRACE_GRAPHIFY",
+          "bind_polytrace",
+          "build_graphify_graph",
+          "project",
+          "store",
+          "_load_repo"
+        ],
+        "files_touched": [
+          "C"
+        ],
+        "n_files_touched": 1,
+        "file_rec": 0.0,
+        "symbol_rec": 0.0
+      },
+      "native_gold": {
+        "path": "native_gold",
+        "wall_ms": 1.5,
+        "tool_calls": 2,
+        "out_chars": 20944,
+        "out_tokens": 5236,
+        "n_files_touched": 2,
+        "file_rec": 1.0,
+        "symbol_rec": 1.0
+      },
+      "mcp_lean": {
+        "path": "mcp_lean",
+        "wall_ms": 4488.5,
+        "tool_calls": 3,
+        "out_chars": 7021,
+        "out_tokens": 1756,
+        "body_chars_declared": 160,
+        "body_tokens_declared": 40,
+        "seed_source": "gold_fallback",
+        "seed_file": "packages/pipeline/context_trace.py",
+        "engine": "composite_v1",
+        "packed": 1,
+        "heatmap_n": 1,
+        "expand_delta": 2,
+        "file_rec": 0.5,
+        "symbol_rec": 0.0,
+        "pack_only_file_rec": 0.5,
+        "pack_only_symbol_rec": 0.0
+      },
+      "mcp_full": {
+        "path": "mcp_full",
+        "wall_ms": 4471.7,
+        "tool_calls": 2,
+        "out_chars": 3537,
+        "out_tokens": 885,
+        "body_chars_declared": 137,
+        "body_tokens_declared": 35,
+        "seed_source": "gold_fallback",
+        "seed_file": "packages/pipeline/context_trace.py",
+        "engine": "composite_v1",
+        "packed": 1,
+        "heatmap_n": 1,
+        "expand_delta": null,
+        "file_rec": 0.5,
+        "symbol_rec": 0.0,
+        "pack_only_file_rec": 0.5,
+        "pack_only_symbol_rec": 0.0
+      }
+    },
+    {
+      "id": "P04_incremental_index",
+      "problem": "How does incremental sync patch the index when files change?",
+      "native": {
+        "path": "native",
+        "wall_ms": 333.7,
+        "rg_ms": 333.2,
+        "read_ms": 0.0,
+        "tool_calls": 8,
+        "out_chars": 38191,
+        "out_tokens": 9548,
+        "keywords": [
+          "incremental",
+          "sync",
+          "dirty",
+          "merkle",
+          "patch_and_save_graph",
+          "embed",
+          "chunks",
+          "IndexConfirmRequired"
+        ],
+        "files_touched": [
+          "C"
+        ],
+        "n_files_touched": 1,
+        "file_rec": 0.0,
+        "symbol_rec": 0.0
+      },
+      "native_gold": {
+        "path": "native_gold",
+        "wall_ms": 2.0,
+        "tool_calls": 2,
+        "out_chars": 30045,
+        "out_tokens": 7512,
+        "n_files_touched": 2,
+        "file_rec": 1.0,
+        "symbol_rec": 0.5
+      },
+      "mcp_lean": {
+        "path": "mcp_lean",
+        "wall_ms": 4403.5,
+        "tool_calls": 3,
+        "out_chars": 608,
+        "out_tokens": 152,
+        "body_chars_declared": 0,
+        "body_tokens_declared": 0,
+        "seed_source": "gold_retry",
+        "seed_file": "packages/pipeline/incremental.py",
+        "engine": null,
+        "packed": null,
+        "heatmap_n": null,
+        "expand_delta": null,
+        "file_rec": 0.0,
+        "symbol_rec": 0.0,
+        "pack_only_file_rec": 0.0,
+        "pack_only_symbol_rec": 0.0
+      },
+      "mcp_full": {
+        "path": "mcp_full",
+        "wall_ms": 4411.9,
+        "tool_calls": 3,
+        "out_chars": 608,
+        "out_tokens": 152,
+        "body_chars_declared": 0,
+        "body_tokens_declared": 0,
+        "seed_source": "gold_retry",
+        "seed_file": "packages/pipeline/incremental.py",
+        "engine": null,
+        "packed": null,
+        "heatmap_n": null,
+        "expand_delta": null,
+        "file_rec": 0.0,
+        "symbol_rec": 0.0,
+        "pack_only_file_rec": 0.0,
+        "pack_only_symbol_rec": 0.0
+      }
+    },
+    {
+      "id": "P05_gate_rules_install",
+      "problem": "Where does connect write AGENTS.md and .cursor/rules GATE text?",
+      "native": {
+        "path": "native",
+        "wall_ms": 313.1,
+        "rg_ms": 312.7,
+        "read_ms": 0.0,
+        "tool_calls": 8,
+        "out_chars": 37146,
+        "out_tokens": 9287,
+        "keywords": [
+          "write_project_gate_rules",
+          "managed_gate_usage_short",
+          "AGENTS.md",
+          "scubiee.mdc",
+          "rules_installer",
+          "GATE",
+          "pack_context",
+          "write_project_tool_surface"
+        ],
+        "files_touched": [
+          "C"
+        ],
+        "n_files_touched": 1,
+        "file_rec": 0.0,
+        "symbol_rec": 0.0
+      },
+      "native_gold": {
+        "path": "native_gold",
+        "wall_ms": 0.8,
+        "tool_calls": 1,
+        "out_chars": 14070,
+        "out_tokens": 3518,
+        "n_files_touched": 1,
+        "file_rec": 1.0,
+        "symbol_rec": 0.333
+      },
+      "mcp_lean": {
+        "path": "mcp_lean",
+        "wall_ms": 4518.8,
+        "tool_calls": 3,
+        "out_chars": 40447,
+        "out_tokens": 10112,
+        "body_chars_declared": 4343,
+        "body_tokens_declared": 1086,
+        "seed_source": "gold_fallback",
+        "seed_file": "packages/pipeline/rules_installer.py",
+        "engine": "composite_v1",
+        "packed": 4,
+        "heatmap_n": 16,
+        "expand_delta": 7,
+        "file_rec": 1.0,
+        "symbol_rec": 0.667,
+        "pack_only_file_rec": 1.0,
+        "pack_only_symbol_rec": 0.333
+      },
+      "mcp_full": {
+        "path": "mcp_full",
+        "wall_ms": 4450.7,
+        "tool_calls": 2,
+        "out_chars": 36046,
+        "out_tokens": 9012,
+        "body_chars_declared": 7237,
+        "body_tokens_declared": 1810,
+        "seed_source": "gold_fallback",
+        "seed_file": "packages/pipeline/rules_installer.py",
+        "engine": "composite_v1",
+        "packed": 16,
+        "heatmap_n": 16,
+        "expand_delta": null,
+        "file_rec": 1.0,
+        "symbol_rec": 0.333,
+        "pack_only_file_rec": 1.0,
+        "pack_only_symbol_rec": 0.333
+      }
+    }
+  ]
+}

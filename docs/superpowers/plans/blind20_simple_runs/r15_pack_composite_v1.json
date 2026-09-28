@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "engine": "composite_v1",
+  "policy": "strict",
+  "elapsed_s": 0.037,
+  "n_pack": 1,
+  "pack": [
+    {
+      "file": "packages/pipeline/freshness.py",
+      "symbol": "FreshnessReport.changed_count",
+      "score": 1.0,
+      "loc": "packages/pipeline/freshness.py:47-48",
+      "id": "packages/pipeline/freshness.py::FreshnessReport.changed_count"
+    }
+  ],
+  "error": null
+}

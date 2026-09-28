@@ -1,0 +1,4550 @@
+{
+  "elapsed_s": 1187.52,
+  "boards": [
+    "verify_hard.json",
+    "verify_ood_v2.json",
+    "verify_prod.json",
+    "verify_ood_v10_realistic.json"
+  ],
+  "arms": [
+    "composite_v1",
+    "venture_propose_verify",
+    "venture_propose_path1",
+    "venture_semantic_frontier",
+    "venture_multiview",
+    "venture_trace_state",
+    "venture_learned_heat",
+    "venture_propose_plus_frontier",
+    "semantic_tracer_fuse",
+    "poly_embed",
+    "hyb_fuse_demote_noise_plus"
+  ],
+  "n_cases": 86,
+  "n_seed_hard": 29,
+  "seed_hard_ids": [
+    "verify_hard.json:h05",
+    "verify_hard.json:h06",
+    "verify_hard.json:h08",
+    "verify_hard.json:h16",
+    "verify_hard.json:h17",
+    "verify_hard.json:h19",
+    "verify_hard.json:h21",
+    "verify_hard.json:h22",
+    "verify_hard.json:h23",
+    "verify_hard.json:h24",
+    "verify_hard.json:h25",
+    "verify_hard.json:h27",
+    "verify_hard.json:h29",
+    "verify_hard.json:h31",
+    "verify_hard.json:h32",
+    "verify_hard.json:h35",
+    "verify_hard.json:h37",
+    "verify_hard.json:h38",
+    "verify_hard.json:h39",
+    "verify_hard.json:h43",
+    "verify_hard.json:h44",
+    "verify_hard.json:h45",
+    "verify_hard.json:h46",
+    "verify_hard.json:h47",
+    "verify_hard.json:h49",
+    "verify_ood_v2.json:o17",
+    "verify_prod.json:p19",
+    "verify_ood_v10_realistic.json:real02",
+    "verify_ood_v10_realistic.json:real04"
+  ],
+  "summary_all": {
+    "composite_v1": {
+      "n": 86,
+      "accuracy": 0.5581,
+      "mean_f1": 0.7893,
+      "mean_recall_must": 0.8656,
+      "mean_precision_hot": 0.8137,
+      "mean_must_at_10": 0.8588,
+      "mean_n_hot": 6.4419,
+      "delta_must_vs_composite": 0.0,
+      "failed": [
+        "verify_hard.json:h05",
+        "verify_hard.json:h06",
+        "verify_hard.json:h08",
+        "verify_hard.json:h10",
+        "verify_hard.json:h11",
+        "verify_hard.json:h16",
+        "verify_hard.json:h17",
+        "verify_hard.json:h19",
+        "verify_hard.json:h21",
+        "verify_hard.json:h22",
+        "verify_hard.json:h23",
+        "verify_hard.json:h24",
+        "verify_hard.json:h25",
+        "verify_hard.json:h27",
+        "verify_hard.json:h29",
+        "verify_hard.json:h30",
+        "verify_hard.json:h31",
+        "verify_hard.json:h32",
+        "verify_hard.json:h35",
+        "verify_hard.json:h37",
+        "verify_hard.json:h38",
+        "verify_hard.json:h39",
+        "verify_hard.json:h41",
+        "verify_hard.json:h43",
+        "verify_hard.json:h44",
+        "verify_hard.json:h45",
+        "verify_hard.json:h46",
+        "verify_hard.json:h47",
+        "verify_hard.json:h49",
+        "verify_ood_v2.json:o11",
+        "verify_ood_v2.json:o12",
+        "verify_ood_v2.json:o15",
+        "verify_ood_v2.json:o17",
+        "verify_ood_v2.json:o18",
+        "verify_prod.json:p19",
+        "verify_ood_v10_realistic.json:real02",
+        "verify_ood_v10_realistic.json:real04",
+        "verify_ood_v10_realistic.json:real05"
+      ]
+    },
+    "venture_propose_verify": {
+      "n": 86,
+      "accuracy": 0.5349,
+      "mean_f1": 0.7825,
+      "mean_recall_must": 0.8723,
+      "mean_precision_hot": 0.7872,
+      "mean_must_at_10": 0.8656,
+      "mean_n_hot": 6.593,
+      "delta_must_vs_composite": 0.0067,
+      "failed": [
+        "verify_hard.json:h05",
+        "verify_hard.json:h06",
+        "verify_hard.json:h08",
+        "verify_hard.json:h10",
+        "verify_hard.json:h11",
+        "verify_hard.json:h16",
+        "verify_hard.json:h17",
+        "verify_hard.json:h19",
+        "verify_hard.json:h21",
+        "verify_hard.json:h22",
+        "verify_hard.json:h23",
+        "verify_hard.json:h24",
+        "verify_hard.json:h25",
+        "verify_hard.json:h27",
+        "verify_hard.json:h29",
+        "verify_hard.json:h30",
+        "verify_hard.json:h31",
+        "verify_hard.json:h32",
+        "verify_hard.json:h34",
+        "verify_hard.json:h35",
+        "verify_hard.json:h37",
+        "verify_hard.json:h38",
+        "verify_hard.json:h39",
+        "verify_hard.json:h41",
+        "verify_hard.json:h43",
+        "verify_hard.json:h44",
+        "verify_hard.json:h45",
+        "verify_hard.json:h46",
+        "verify_hard.json:h47",
+        "verify_hard.json:h49",
+        "verify_ood_v2.json:o10",
+        "verify_ood_v2.json:o11",
+        "verify_ood_v2.json:o12",
+        "verify_ood_v2.json:o15",
+        "verify_ood_v2.json:o17",
+        "verify_ood_v2.json:o18",
+        "verify_prod.json:p19",
+        "verify_ood_v10_realistic.json:real02",
+        "verify_ood_v10_realistic.json:real04",
+        "verify_ood_v10_realistic.json:real05"
+      ]
+    },
+    "venture_propose_path1": {
+      "n": 86,
+      "accuracy": 0.5465,
+      "mean_f1": 0.7881,
+      "mean_recall_must": 0.8723,
+      "mean_precision_hot": 0.798,
+      "mean_must_at_10": 0.8656,
+      "mean_n_hot": 6.5465,
+      "delta_must_vs_composite": 0.0067,
+      "failed": [
+        "verify_hard.json:h05",
+        "verify_hard.json:h06",
+        "verify_hard.json:h08",
+        "verify_hard.json:h10",
+        "verify_hard.json:h11",
+        "verify_hard.json:h16",
+        "verify_hard.json:h17",
+        "verify_hard.json:h19",
+        "verify_hard.json:h21",
+        "verify_hard.json:h22",
+        "verify_hard.json:h23",
+        "verify_hard.json:h24",
+        "verify_hard.json:h25",
+        "verify_hard.json:h27",
+        "verify_hard.json:h29",
+        "verify_hard.json:h30",
+        "verify_hard.json:h31",
+        "verify_hard.json:h32",
+        "verify_hard.json:h35",
+        "verify_hard.json:h37",
+        "verify_hard.json:h38",
+        "verify_hard.json:h39",
+        "verify_hard.json:h41",
+        "verify_hard.json:h43",
+        "verify_hard.json:h44",
+        "verify_hard.json:h45",
+        "verify_hard.json:h46",
+        "verify_hard.json:h47",
+        "verify_hard.json:h49",
+        "verify_ood_v2.json:o10",
+        "verify_ood_v2.json:o11",
+        "verify_ood_v2.json:o12",
+        "verify_ood_v2.json:o15",
+        "verify_ood_v2.json:o17",
+        "verify_ood_v2.json:o18",
+        "verify_prod.json:p19",
+        "verify_ood_v10_realistic.json:real02",
+        "verify_ood_v10_realistic.json:real04",
+        "verify_ood_v10_realistic.json:real05"
+      ]
+    },
+    "venture_semantic_frontier": {
+      "n": 86,
+      "accuracy": 0.5581,
+      "mean_f1": 0.7911,
+      "mean_recall_must": 0.8656,
+      "mean_precision_hot": 0.8158,
+      "mean_must_at_10": 0.8613,
+      "mean_n_hot": 6.3953,
+      "delta_must_vs_composite": 0.0,
+      "failed": [
+        "verify_hard.json:h05",
+        "verify_hard.json:h06",
+        "verify_hard.json:h08",
+        "verify_hard.json:h10",
+        "verify_hard.json:h11",
+        "verify_hard.json:h16",
+        "verify_hard.json:h17",
+        "verify_hard.json:h19",
+        "verify_hard.json:h21",
+        "verify_hard.json:h22",
+        "verify_hard.json:h23",
+        "verify_hard.json:h24",
+        "verify_hard.json:h25",
+        "verify_hard.json:h27",
+        "verify_hard.json:h29",
+        "verify_hard.json:h30",
+        "verify_hard.json:h31",
+        "verify_hard.json:h32",
+        "verify_hard.json:h35",
+        "verify_hard.json:h37",
+        "verify_hard.json:h38",
+        "verify_hard.json:h39",
+        "verify_hard.json:h41",
+        "verify_hard.json:h43",
+        "verify_hard.json:h44",
+        "verify_hard.json:h45",
+        "verify_hard.json:h46",
+        "verify_hard.json:h47",
+        "verify_hard.json:h49",
+        "verify_ood_v2.json:o11",
+        "verify_ood_v2.json:o12",
+        "verify_ood_v2.json:o15",
+        "verify_ood_v2.json:o17",
+        "verify_ood_v2.json:o18",
+        "verify_prod.json:p19",
+        "verify_ood_v10_realistic.json:real02",
+        "verify_ood_v10_realistic.json:real04",
+        "verify_ood_v10_realistic.json:real05"
+      ]
+    },
+    "venture_multiview": {
+      "n": 86,
+      "accuracy": 0.4651,
+      "mean_f1": 0.7755,
+      "mean_recall_must": 0.8924,
+      "mean_precision_hot": 0.7373,
+      "mean_must_at_10": 0.8857,
+      "mean_n_hot": 7.0116,
+      "delta_must_vs_composite": 0.0268,
+      "failed": [
+        "verify_hard.json:h05",
+        "verify_hard.json:h06",
+        "verify_hard.json:h08",
+        "verify_hard.json:h10",
+        "verify_hard.json:h11",
+        "verify_hard.json:h16",
+        "verify_hard.json:h17",
+        "verify_hard.json:h19",
+        "verify_hard.json:h21",
+        "verify_hard.json:h22",
+        "verify_hard.json:h23",
+        "verify_hard.json:h24",
+        "verify_hard.json:h25",
+        "verify_hard.json:h27",
+        "verify_hard.json:h28",
+        "verify_hard.json:h29",
+        "verify_hard.json:h30",
+        "verify_hard.json:h31",
+        "verify_hard.json:h32",
+        "verify_hard.json:h34",
+        "verify_hard.json:h35",
+        "verify_hard.json:h37",
+        "verify_hard.json:h38",
+        "verify_hard.json:h39",
+        "verify_hard.json:h41",
+        "verify_hard.json:h43",
+        "verify_hard.json:h44",
+        "verify_hard.json:h45",
+        "verify_hard.json:h46",
+        "verify_hard.json:h49",
+        "verify_ood_v2.json:o09",
+        "verify_ood_v2.json:o10",
+        "verify_ood_v2.json:o11",
+        "verify_ood_v2.json:o12",
+        "verify_ood_v2.json:o15",
+        "verify_ood_v2.json:o17",
+        "verify_ood_v2.json:o18",
+        "verify_prod.json:p10",
+        "verify_prod.json:p19",
+        "verify_prod.json:p28",
+        "verify_ood_v10_realistic.json:real01",
+        "verify_ood_v10_realistic.json:real02",
+        "verify_ood_v10_realistic.json:real04",
+        "verify_ood_v10_realistic.json:real05",
+        "verify_ood_v10_realistic.json:real06",
+        "verify_ood_v10_realistic.json:real07"
+      ]
+    },
+    "venture_trace_state": {
+      "n": 86,
+      "accuracy": 0.4651,
+      "mean_f1": 0.731,
+      "mean_recall_must": 0.8849,
+      "mean_precision_hot": 0.6677,
+      "mean_must_at_10": 0.8782,
+      "mean_n_hot": 7.5465,
+      "delta_must_vs_composite": 0.0193,
+      "failed": [
+        "verify_hard.json:h05",
+        "verify_hard.json:h06",
+        "verify_hard.json:h07",
+        "verify_hard.json:h08",
+        "verify_hard.json:h10",
+        "verify_hard.json:h11",
+        "verify_hard.json:h13",
+        "verify_hard.json:h16",
+        "verify_hard.json:h17",
+        "verify_hard.json:h18",
+        "verify_hard.json:h19",
+        "verify_hard.json:h21",
+        "verify_hard.json:h22",
+        "verify_hard.json:h23",
+        "verify_hard.json:h24",
+        "verify_hard.json:h25",
+        "verify_hard.json:h27",
+        "verify_hard.json:h29",
+        "verify_hard.json:h30",
+        "verify_hard.json:h31",
+        "verify_hard.json:h32",
+        "verify_hard.json:h34",
+        "verify_hard.json:h35",
+        "verify_hard.json:h37",
+        "verify_hard.json:h38",
+        "verify_hard.json:h39",
+        "verify_hard.json:h41",
+        "verify_hard.json:h44",
+        "verify_hard.json:h45",
+        "verify_hard.json:h46",
+        "verify_hard.json:h47",
+        "verify_hard.json:h49",
+        "verify_hard.json:h50",
+        "verify_ood_v2.json:o09",
+        "verify_ood_v2.json:o10",
+        "verify_ood_v2.json:o11",
+        "verify_ood_v2.json:o12",
+        "verify_ood_v2.json:o15",
+        "verify_ood_v2.json:o17",
+        "verify_ood_v2.json:o18",
+        "verify_prod.json:p13",
+        "verify_prod.json:p19",
+        "verify_prod.json:p28",
+        "verify_ood_v10_realistic.json:real02",
+        "verify_ood_v10_realistic.json:real04",
+        "verify_ood_v10_realistic.json:real05"
+      ]
+    },
+    "venture_learned_heat": {
+      "n": 86,
+      "accuracy": 0.5349,
+      "mean_f1": 0.784,
+      "mean_recall_must": 0.8694,
+      "mean_precision_hot": 0.7957,
+      "mean_must_at_10": 0.871,
+      "mean_n_hot": 6.5349,
+      "delta_must_vs_composite": 0.0038,
+      "failed": [
+        "verify_hard.json:h05",
+        "verify_hard.json:h06",
+        "verify_hard.json:h08",
+        "verify_hard.json:h10",
+        "verify_hard.json:h11",
+        "verify_hard.json:h16",
+        "verify_hard.json:h17",
+        "verify_hard.json:h19",
+        "verify_hard.json:h21",
+        "verify_hard.json:h22",
+        "verify_hard.json:h23",
+        "verify_hard.json:h24",
+        "verify_hard.json:h25",
+        "verify_hard.json:h27",
+        "verify_hard.json:h29",
+        "verify_hard.json:h30",
+        "verify_hard.json:h31",
+        "verify_hard.json:h32",
+        "verify_hard.json:h34",
+        "verify_hard.json:h35",
+        "verify_hard.json:h37",
+        "verify_hard.json:h38",
+        "verify_hard.json:h39",
+        "verify_hard.json:h41",
+        "verify_hard.json:h43",
+        "verify_hard.json:h44",
+        "verify_hard.json:h45",
+        "verify_hard.json:h46",
+        "verify_hard.json:h47",
+        "verify_hard.json:h49",
+        "verify_ood_v2.json:o10",
+        "verify_ood_v2.json:o11",
+        "verify_ood_v2.json:o12",
+        "verify_ood_v2.json:o15",
+        "verify_ood_v2.json:o17",
+        "verify_ood_v2.json:o18",
+        "verify_prod.json:p19",
+        "verify_ood_v10_realistic.json:real02",
+        "verify_ood_v10_realistic.json:real04",
+        "verify_ood_v10_realistic.json:real05"
+      ]
+    },
+    "venture_propose_plus_frontier": {
+      "n": 86,
+      "accuracy": 0.5349,
+      "mean_f1": 0.7842,
+      "mean_recall_must": 0.8723,
+      "mean_precision_hot": 0.7893,
+      "mean_must_at_10": 0.8681,
+      "mean_n_hot": 6.5465,
+      "delta_must_vs_composite": 0.0067,
+      "failed": [
+        "verify_hard.json:h05",
+        "verify_hard.json:h06",
+        "verify_hard.json:h08",
+        "verify_hard.json:h10",
+        "verify_hard.json:h11",
+        "verify_hard.json:h16",
+        "verify_hard.json:h17",
+        "verify_hard.json:h19",
+        "verify_hard.json:h21",
+        "verify_hard.json:h22",
+        "verify_hard.json:h23",
+        "verify_hard.json:h24",
+        "verify_hard.json:h25",
+        "verify_hard.json:h27",
+        "verify_hard.json:h29",
+        "verify_hard.json:h30",
+        "verify_hard.json:h31",
+        "verify_hard.json:h32",
+        "verify_hard.json:h34",
+        "verify_hard.json:h35",
+        "verify_hard.json:h37",
+        "verify_hard.json:h38",
+        "verify_hard.json:h39",
+        "verify_hard.json:h41",
+        "verify_hard.json:h43",
+        "verify_hard.json:h44",
+        "verify_hard.json:h45",
+        "verify_hard.json:h46",
+        "verify_hard.json:h47",
+        "verify_hard.json:h49",
+        "verify_ood_v2.json:o10",
+        "verify_ood_v2.json:o11",
+        "verify_ood_v2.json:o12",
+        "verify_ood_v2.json:o15",
+        "verify_ood_v2.json:o17",
+        "verify_ood_v2.json:o18",
+        "verify_prod.json:p19",
+        "verify_ood_v10_realistic.json:real02",
+        "verify_ood_v10_realistic.json:real04",
+        "verify_ood_v10_realistic.json:real05"
+      ]
+    },
+    "semantic_tracer_fuse": {
+      "n": 86,
+      "accuracy": 0.5581,
+      "mean_f1": 0.7911,
+      "mean_recall_must": 0.8656,
+      "mean_precision_hot": 0.8158,
+      "mean_must_at_10": 0.8613,
+      "mean_n_hot": 6.3953,
+      "delta_must_vs_composite": 0.0,
+      "failed": [
+        "verify_hard.json:h05",
+        "verify_hard.json:h06",
+        "verify_hard.json:h08",
+        "verify_hard.json:h10",
+        "verify_hard.json:h11",
+        "verify_hard.json:h16",
+        "verify_hard.json:h17",
+        "verify_hard.json:h19",
+        "verify_hard.json:h21",
+        "verify_hard.json:h22",
+        "verify_hard.json:h23",
+        "verify_hard.json:h24",
+        "verify_hard.json:h25",
+        "verify_hard.json:h27",
+        "verify_hard.json:h29",
+        "verify_hard.json:h30",
+        "verify_hard.json:h31",
+        "verify_hard.json:h32",
+        "verify_hard.json:h35",
+        "verify_hard.json:h37",
+        "verify_hard.json:h38",
+        "verify_hard.json:h39",
+        "verify_hard.json:h41",
+        "verify_hard.json:h43",
+        "verify_hard.json:h44",
+        "verify_hard.json:h45",
+        "verify_hard.json:h46",
+        "verify_hard.json:h47",
+        "verify_hard.json:h49",
+        "verify_ood_v2.json:o11",
+        "verify_ood_v2.json:o12",
+        "verify_ood_v2.json:o15",
+        "verify_ood_v2.json:o17",
+        "verify_ood_v2.json:o18",
+        "verify_prod.json:p19",
+        "verify_ood_v10_realistic.json:real02",
+        "verify_ood_v10_realistic.json:real04",
+        "verify_ood_v10_realistic.json:real05"
+      ]
+    },
+    "poly_embed": {
+      "n": 86,
+      "accuracy": 0.4767,
+      "mean_f1": 0.7852,
+      "mean_recall_must": 0.8315,
+      "mean_precision_hot": 0.8234,
+      "mean_must_at_10": 0.8571,
+      "mean_n_hot": 6.0,
+      "delta_must_vs_composite": -0.0341,
+      "failed": [
+        "verify_hard.json:h03",
+        "verify_hard.json:h06",
+        "verify_hard.json:h08",
+        "verify_hard.json:h10",
+        "verify_hard.json:h11",
+        "verify_hard.json:h14",
+        "verify_hard.json:h16",
+        "verify_hard.json:h17",
+        "verify_hard.json:h18",
+        "verify_hard.json:h19",
+        "verify_hard.json:h21",
+        "verify_hard.json:h22",
+        "verify_hard.json:h23",
+        "verify_hard.json:h24",
+        "verify_hard.json:h25",
+        "verify_hard.json:h27",
+        "verify_hard.json:h28",
+        "verify_hard.json:h29",
+        "verify_hard.json:h30",
+        "verify_hard.json:h31",
+        "verify_hard.json:h32",
+        "verify_hard.json:h33",
+        "verify_hard.json:h35",
+        "verify_hard.json:h36",
+        "verify_hard.json:h37",
+        "verify_hard.json:h38",
+        "verify_hard.json:h39",
+        "verify_hard.json:h41",
+        "verify_hard.json:h42",
+        "verify_hard.json:h43",
+        "verify_hard.json:h44",
+        "verify_hard.json:h45",
+        "verify_hard.json:h46",
+        "verify_hard.json:h47",
+        "verify_hard.json:h49",
+        "verify_hard.json:h50",
+        "verify_ood_v2.json:o11",
+        "verify_ood_v2.json:o17",
+        "verify_ood_v2.json:o18",
+        "verify_prod.json:p02",
+        "verify_prod.json:p10",
+        "verify_prod.json:p19",
+        "verify_prod.json:p33",
+        "verify_ood_v10_realistic.json:real03",
+        "verify_ood_v10_realistic.json:real06"
+      ]
+    },
+    "hyb_fuse_demote_noise_plus": {
+      "n": 86,
+      "accuracy": 0.5465,
+      "mean_f1": 0.7793,
+      "mean_recall_must": 0.8491,
+      "mean_precision_hot": 0.8072,
+      "mean_must_at_10": 0.8613,
+      "mean_n_hot": 6.3605,
+      "delta_must_vs_composite": -0.0165,
+      "failed": [
+        "verify_hard.json:h05",
+        "verify_hard.json:h06",
+        "verify_hard.json:h08",
+        "verify_hard.json:h10",
+        "verify_hard.json:h11",
+        "verify_hard.json:h16",
+        "verify_hard.json:h17",
+        "verify_hard.json:h19",
+        "verify_hard.json:h21",
+        "verify_hard.json:h22",
+        "verify_hard.json:h23",
+        "verify_hard.json:h24",
+        "verify_hard.json:h25",
+        "verify_hard.json:h27",
+        "verify_hard.json:h29",
+        "verify_hard.json:h30",
+        "verify_hard.json:h31",
+        "verify_hard.json:h32",
+        "verify_hard.json:h35",
+        "verify_hard.json:h37",
+        "verify_hard.json:h38",
+        "verify_hard.json:h39",
+        "verify_hard.json:h41",
+        "verify_hard.json:h42",
+        "verify_hard.json:h43",
+        "verify_hard.json:h44",
+        "verify_hard.json:h45",
+        "verify_hard.json:h46",
+        "verify_hard.json:h47",
+        "verify_hard.json:h49",
+        "verify_hard.json:h50",
+        "verify_ood_v2.json:o11",
+        "verify_ood_v2.json:o12",
+        "verify_ood_v2.json:o15",
+        "verify_ood_v2.json:o17",
+        "verify_ood_v2.json:o18",
+        "verify_prod.json:p19",
+        "verify_ood_v10_realistic.json:real02",
+        "verify_ood_v10_realistic.json:real04"
+      ]
+    }
+  },
+  "summary_seed_hard": {
+    "composite_v1": {
+      "n": 29,
+      "accuracy": 0.0,
+      "mean_f1": 0.6748,
+      "mean_recall_must": 0.6013,
+      "mean_precision_hot": 0.8913,
+      "mean_must_at_10": 0.6553,
+      "mean_n_hot": 3.931,
+      "delta_must_vs_composite": -0.0,
+      "failed": [
+        "verify_hard.json:h05",
+        "verify_hard.json:h06",
+        "verify_hard.json:h08",
+        "verify_hard.json:h16",
+        "verify_hard.json:h17",
+        "verify_hard.json:h19",
+        "verify_hard.json:h21",
+        "verify_hard.json:h22",
+        "verify_hard.json:h23",
+        "verify_hard.json:h24",
+        "verify_hard.json:h25",
+        "verify_hard.json:h27",
+        "verify_hard.json:h29",
+        "verify_hard.json:h31",
+        "verify_hard.json:h32",
+        "verify_hard.json:h35",
+        "verify_hard.json:h37",
+        "verify_hard.json:h38",
+        "verify_hard.json:h39",
+        "verify_hard.json:h43",
+        "verify_hard.json:h44",
+        "verify_hard.json:h45",
+        "verify_hard.json:h46",
+        "verify_hard.json:h47",
+        "verify_hard.json:h49",
+        "verify_ood_v2.json:o17",
+        "verify_prod.json:p19",
+        "verify_ood_v10_realistic.json:real02",
+        "verify_ood_v10_realistic.json:real04"
+      ]
+    },
+    "venture_propose_verify": {
+      "n": 29,
+      "accuracy": 0.0,
+      "mean_f1": 0.6746,
+      "mean_recall_must": 0.6214,
+      "mean_precision_hot": 0.8436,
+      "mean_must_at_10": 0.6755,
+      "mean_n_hot": 4.2069,
+      "delta_must_vs_composite": 0.0201,
+      "failed": [
+        "verify_hard.json:h05",
+        "verify_hard.json:h06",
+        "verify_hard.json:h08",
+        "verify_hard.json:h16",
+        "verify_hard.json:h17",
+        "verify_hard.json:h19",
+        "verify_hard.json:h21",
+        "verify_hard.json:h22",
+        "verify_hard.json:h23",
+        "verify_hard.json:h24",
+        "verify_hard.json:h25",
+        "verify_hard.json:h27",
+        "verify_hard.json:h29",
+        "verify_hard.json:h31",
+        "verify_hard.json:h32",
+        "verify_hard.json:h35",
+        "verify_hard.json:h37",
+        "verify_hard.json:h38",
+        "verify_hard.json:h39",
+        "verify_hard.json:h43",
+        "verify_hard.json:h44",
+        "verify_hard.json:h45",
+        "verify_hard.json:h46",
+        "verify_hard.json:h47",
+        "verify_hard.json:h49",
+        "verify_ood_v2.json:o17",
+        "verify_prod.json:p19",
+        "verify_ood_v10_realistic.json:real02",
+        "verify_ood_v10_realistic.json:real04"
+      ]
+    },
+    "venture_propose_path1": {
+      "n": 29,
+      "accuracy": 0.0,
+      "mean_f1": 0.6794,
+      "mean_recall_must": 0.6214,
+      "mean_precision_hot": 0.8557,
+      "mean_must_at_10": 0.6755,
+      "mean_n_hot": 4.1379,
+      "delta_must_vs_composite": 0.0201,
+      "failed": [
+        "verify_hard.json:h05",
+        "verify_hard.json:h06",
+        "verify_hard.json:h08",
+        "verify_hard.json:h16",
+        "verify_hard.json:h17",
+        "verify_hard.json:h19",
+        "verify_hard.json:h21",
+        "verify_hard.json:h22",
+        "verify_hard.json:h23",
+        "verify_hard.json:h24",
+        "verify_hard.json:h25",
+        "verify_hard.json:h27",
+        "verify_hard.json:h29",
+        "verify_hard.json:h31",
+        "verify_hard.json:h32",
+        "verify_hard.json:h35",
+        "verify_hard.json:h37",
+        "verify_hard.json:h38",
+        "verify_hard.json:h39",
+        "verify_hard.json:h43",
+        "verify_hard.json:h44",
+        "verify_hard.json:h45",
+        "verify_hard.json:h46",
+        "verify_hard.json:h47",
+        "verify_hard.json:h49",
+        "verify_ood_v2.json:o17",
+        "verify_prod.json:p19",
+        "verify_ood_v10_realistic.json:real02",
+        "verify_ood_v10_realistic.json:real04"
+      ]
+    },
+    "venture_semantic_frontier": {
+      "n": 29,
+      "accuracy": 0.0,
+      "mean_f1": 0.6756,
+      "mean_recall_must": 0.6013,
+      "mean_precision_hot": 0.892,
+      "mean_must_at_10": 0.6484,
+      "mean_n_hot": 3.8966,
+      "delta_must_vs_composite": -0.0,
+      "failed": [
+        "verify_hard.json:h05",
+        "verify_hard.json:h06",
+        "verify_hard.json:h08",
+        "verify_hard.json:h16",
+        "verify_hard.json:h17",
+        "verify_hard.json:h19",
+        "verify_hard.json:h21",
+        "verify_hard.json:h22",
+        "verify_hard.json:h23",
+        "verify_hard.json:h24",
+        "verify_hard.json:h25",
+        "verify_hard.json:h27",
+        "verify_hard.json:h29",
+        "verify_hard.json:h31",
+        "verify_hard.json:h32",
+        "verify_hard.json:h35",
+        "verify_hard.json:h37",
+        "verify_hard.json:h38",
+        "verify_hard.json:h39",
+        "verify_hard.json:h43",
+        "verify_hard.json:h44",
+        "verify_hard.json:h45",
+        "verify_hard.json:h46",
+        "verify_hard.json:h47",
+        "verify_hard.json:h49",
+        "verify_ood_v2.json:o17",
+        "verify_prod.json:p19",
+        "verify_ood_v10_realistic.json:real02",
+        "verify_ood_v10_realistic.json:real04"
+      ]
+    },
+    "venture_multiview": {
+      "n": 29,
+      "accuracy": 0.0345,
+      "mean_f1": 0.6937,
+      "mean_recall_must": 0.681,
+      "mean_precision_hot": 0.7625,
+      "mean_must_at_10": 0.735,
+      "mean_n_hot": 4.8621,
+      "delta_must_vs_composite": 0.0797,
+      "failed": [
+        "verify_hard.json:h05",
+        "verify_hard.json:h06",
+        "verify_hard.json:h08",
+        "verify_hard.json:h16",
+        "verify_hard.json:h17",
+        "verify_hard.json:h19",
+        "verify_hard.json:h21",
+        "verify_hard.json:h22",
+        "verify_hard.json:h23",
+        "verify_hard.json:h24",
+        "verify_hard.json:h25",
+        "verify_hard.json:h27",
+        "verify_hard.json:h29",
+        "verify_hard.json:h31",
+        "verify_hard.json:h32",
+        "verify_hard.json:h35",
+        "verify_hard.json:h37",
+        "verify_hard.json:h38",
+        "verify_hard.json:h39",
+        "verify_hard.json:h43",
+        "verify_hard.json:h44",
+        "verify_hard.json:h45",
+        "verify_hard.json:h46",
+        "verify_hard.json:h49",
+        "verify_ood_v2.json:o17",
+        "verify_prod.json:p19",
+        "verify_ood_v10_realistic.json:real02",
+        "verify_ood_v10_realistic.json:real04"
+      ]
+    },
+    "venture_trace_state": {
+      "n": 29,
+      "accuracy": 0.0345,
+      "mean_f1": 0.6236,
+      "mean_recall_must": 0.6588,
+      "mean_precision_hot": 0.6479,
+      "mean_must_at_10": 0.7128,
+      "mean_n_hot": 5.6552,
+      "delta_must_vs_composite": 0.0575,
+      "failed": [
+        "verify_hard.json:h05",
+        "verify_hard.json:h06",
+        "verify_hard.json:h08",
+        "verify_hard.json:h16",
+        "verify_hard.json:h17",
+        "verify_hard.json:h19",
+        "verify_hard.json:h21",
+        "verify_hard.json:h22",
+        "verify_hard.json:h23",
+        "verify_hard.json:h24",
+        "verify_hard.json:h25",
+        "verify_hard.json:h27",
+        "verify_hard.json:h29",
+        "verify_hard.json:h31",
+        "verify_hard.json:h32",
+        "verify_hard.json:h35",
+        "verify_hard.json:h37",
+        "verify_hard.json:h38",
+        "verify_hard.json:h39",
+        "verify_hard.json:h44",
+        "verify_hard.json:h45",
+        "verify_hard.json:h46",
+        "verify_hard.json:h47",
+        "verify_hard.json:h49",
+        "verify_ood_v2.json:o17",
+        "verify_prod.json:p19",
+        "verify_ood_v10_realistic.json:real02",
+        "verify_ood_v10_realistic.json:real04"
+      ]
+    },
+    "venture_learned_heat": {
+      "n": 29,
+      "accuracy": 0.0,
+      "mean_f1": 0.6702,
+      "mean_recall_must": 0.6128,
+      "mean_precision_hot": 0.8557,
+      "mean_must_at_10": 0.6668,
+      "mean_n_hot": 4.1034,
+      "delta_must_vs_composite": 0.0115,
+      "failed": [
+        "verify_hard.json:h05",
+        "verify_hard.json:h06",
+        "verify_hard.json:h08",
+        "verify_hard.json:h16",
+        "verify_hard.json:h17",
+        "verify_hard.json:h19",
+        "verify_hard.json:h21",
+        "verify_hard.json:h22",
+        "verify_hard.json:h23",
+        "verify_hard.json:h24",
+        "verify_hard.json:h25",
+        "verify_hard.json:h27",
+        "verify_hard.json:h29",
+        "verify_hard.json:h31",
+        "verify_hard.json:h32",
+        "verify_hard.json:h35",
+        "verify_hard.json:h37",
+        "verify_hard.json:h38",
+        "verify_hard.json:h39",
+        "verify_hard.json:h43",
+        "verify_hard.json:h44",
+        "verify_hard.json:h45",
+        "verify_hard.json:h46",
+        "verify_hard.json:h47",
+        "verify_hard.json:h49",
+        "verify_ood_v2.json:o17",
+        "verify_prod.json:p19",
+        "verify_ood_v10_realistic.json:real02",
+        "verify_ood_v10_realistic.json:real04"
+      ]
+    },
+    "venture_propose_plus_frontier": {
+      "n": 29,
+      "accuracy": 0.0,
+      "mean_f1": 0.6753,
+      "mean_recall_must": 0.6214,
+      "mean_precision_hot": 0.8443,
+      "mean_must_at_10": 0.6686,
+      "mean_n_hot": 4.1724,
+      "delta_must_vs_composite": 0.0201,
+      "failed": [
+        "verify_hard.json:h05",
+        "verify_hard.json:h06",
+        "verify_hard.json:h08",
+        "verify_hard.json:h16",
+        "verify_hard.json:h17",
+        "verify_hard.json:h19",
+        "verify_hard.json:h21",
+        "verify_hard.json:h22",
+        "verify_hard.json:h23",
+        "verify_hard.json:h24",
+        "verify_hard.json:h25",
+        "verify_hard.json:h27",
+        "verify_hard.json:h29",
+        "verify_hard.json:h31",
+        "verify_hard.json:h32",
+        "verify_hard.json:h35",
+        "verify_hard.json:h37",
+        "verify_hard.json:h38",
+        "verify_hard.json:h39",
+        "verify_hard.json:h43",
+        "verify_hard.json:h44",
+        "verify_hard.json:h45",
+        "verify_hard.json:h46",
+        "verify_hard.json:h47",
+        "verify_hard.json:h49",
+        "verify_ood_v2.json:o17",
+        "verify_prod.json:p19",
+        "verify_ood_v10_realistic.json:real02",
+        "verify_ood_v10_realistic.json:real04"
+      ]
+    },
+    "semantic_tracer_fuse": {
+      "n": 29,
+      "accuracy": 0.0,
+      "mean_f1": 0.6756,
+      "mean_recall_must": 0.6013,
+      "mean_precision_hot": 0.892,
+      "mean_must_at_10": 0.6484,
+      "mean_n_hot": 3.8966,
+      "delta_must_vs_composite": -0.0,
+      "failed": [
+        "verify_hard.json:h05",
+        "verify_hard.json:h06",
+        "verify_hard.json:h08",
+        "verify_hard.json:h16",
+        "verify_hard.json:h17",
+        "verify_hard.json:h19",
+        "verify_hard.json:h21",
+        "verify_hard.json:h22",
+        "verify_hard.json:h23",
+        "verify_hard.json:h24",
+        "verify_hard.json:h25",
+        "verify_hard.json:h27",
+        "verify_hard.json:h29",
+        "verify_hard.json:h31",
+        "verify_hard.json:h32",
+        "verify_hard.json:h35",
+        "verify_hard.json:h37",
+        "verify_hard.json:h38",
+        "verify_hard.json:h39",
+        "verify_hard.json:h43",
+        "verify_hard.json:h44",
+        "verify_hard.json:h45",
+        "verify_hard.json:h46",
+        "verify_hard.json:h47",
+        "verify_hard.json:h49",
+        "verify_ood_v2.json:o17",
+        "verify_prod.json:p19",
+        "verify_ood_v10_realistic.json:real02",
+        "verify_ood_v10_realistic.json:real04"
+      ]
+    },
+    "poly_embed": {
+      "n": 29,
+      "accuracy": 0.1034,
+      "mean_f1": 0.6927,
+      "mean_recall_must": 0.6082,
+      "mean_precision_hot": 0.8947,
+      "mean_must_at_10": 0.7179,
+      "mean_n_hot": 3.931,
+      "delta_must_vs_composite": 0.0069,
+      "failed": [
+        "verify_hard.json:h06",
+        "verify_hard.json:h08",
+        "verify_hard.json:h16",
+        "verify_hard.json:h17",
+        "verify_hard.json:h19",
+        "verify_hard.json:h21",
+        "verify_hard.json:h22",
+        "verify_hard.json:h23",
+        "verify_hard.json:h24",
+        "verify_hard.json:h25",
+        "verify_hard.json:h27",
+        "verify_hard.json:h29",
+        "verify_hard.json:h31",
+        "verify_hard.json:h32",
+        "verify_hard.json:h35",
+        "verify_hard.json:h37",
+        "verify_hard.json:h38",
+        "verify_hard.json:h39",
+        "verify_hard.json:h43",
+        "verify_hard.json:h44",
+        "verify_hard.json:h45",
+        "verify_hard.json:h46",
+        "verify_hard.json:h47",
+        "verify_hard.json:h49",
+        "verify_ood_v2.json:o17",
+        "verify_prod.json:p19"
+      ]
+    },
+    "hyb_fuse_demote_noise_plus": {
+      "n": 29,
+      "accuracy": 0.0,
+      "mean_f1": 0.6608,
+      "mean_recall_must": 0.5812,
+      "mean_precision_hot": 0.8733,
+      "mean_must_at_10": 0.6484,
+      "mean_n_hot": 3.8621,
+      "delta_must_vs_composite": -0.0201,
+      "failed": [
+        "verify_hard.json:h05",
+        "verify_hard.json:h06",
+        "verify_hard.json:h08",
+        "verify_hard.json:h16",
+        "verify_hard.json:h17",
+        "verify_hard.json:h19",
+        "verify_hard.json:h21",
+        "verify_hard.json:h22",
+        "verify_hard.json:h23",
+        "verify_hard.json:h24",
+        "verify_hard.json:h25",
+        "verify_hard.json:h27",
+        "verify_hard.json:h29",
+        "verify_hard.json:h31",
+        "verify_hard.json:h32",
+        "verify_hard.json:h35",
+        "verify_hard.json:h37",
+        "verify_hard.json:h38",
+        "verify_hard.json:h39",
+        "verify_hard.json:h43",
+        "verify_hard.json:h44",
+        "verify_hard.json:h45",
+        "verify_hard.json:h46",
+        "verify_hard.json:h47",
+        "verify_hard.json:h49",
+        "verify_ood_v2.json:o17",
+        "verify_prod.json:p19",
+        "verify_ood_v10_realistic.json:real02",
+        "verify_ood_v10_realistic.json:real04"
+      ]
+    }
+  },
+  "ranked_seed_hard": [
+    "venture_multiview",
+    "venture_trace_state",
+    "venture_propose_path1",
+    "venture_propose_plus_frontier",
+    "venture_propose_verify",
+    "venture_learned_heat",
+    "poly_embed",
+    "venture_semantic_frontier",
+    "semantic_tracer_fuse",
+    "composite_v1",
+    "hyb_fuse_demote_noise_plus"
+  ],
+  "winner_seed_hard": "venture_multiview",
+  "stack": {
+    "preflight_ok": true,
+    "field_backend": "real:fastembed",
+    "field_dim": 768,
+    "embed_device": "dml",
+    "dml_live": true,
+    "faiss_product_hits": 8,
+    "require_real_embeds": true,
+    "prior_run_invalid": "2026-09-06-top5-semantic-venture.md before stack gate \u2014 FAISS helper was broken (mode= keyword swallowed all hits)"
+  },
+  "per_case_hard": [
+    {
+      "id": "verify_hard.json:h05",
+      "composite_miss": [
+        "TOKEN_TTL"
+      ],
+      "arms": {
+        "composite_v1": {
+          "must": 0.8333,
+          "f1": 0.9091,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL"
+          ],
+          "n_hot": 5
+        },
+        "venture_propose_verify": {
+          "must": 0.8333,
+          "f1": 0.9091,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL"
+          ],
+          "n_hot": 5
+        },
+        "venture_propose_path1": {
+          "must": 0.8333,
+          "f1": 0.9091,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL"
+          ],
+          "n_hot": 5
+        },
+        "venture_semantic_frontier": {
+          "must": 0.8333,
+          "f1": 0.9091,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL"
+          ],
+          "n_hot": 5
+        },
+        "venture_multiview": {
+          "must": 0.8333,
+          "f1": 0.9091,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL"
+          ],
+          "n_hot": 5
+        },
+        "venture_trace_state": {
+          "must": 0.8333,
+          "f1": 0.8333,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL"
+          ],
+          "n_hot": 6
+        },
+        "venture_learned_heat": {
+          "must": 0.8333,
+          "f1": 0.9091,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL"
+          ],
+          "n_hot": 5
+        },
+        "venture_propose_plus_frontier": {
+          "must": 0.8333,
+          "f1": 0.9091,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL"
+          ],
+          "n_hot": 5
+        },
+        "semantic_tracer_fuse": {
+          "must": 0.8333,
+          "f1": 0.9091,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL"
+          ],
+          "n_hot": 5
+        },
+        "poly_embed": {
+          "must": 1.0,
+          "f1": 1.0,
+          "recovered": [
+            "TOKEN_TTL"
+          ],
+          "missing": [],
+          "n_hot": 6
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "must": 0.8333,
+          "f1": 0.9091,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL"
+          ],
+          "n_hot": 5
+        }
+      }
+    },
+    {
+      "id": "verify_hard.json:h06",
+      "composite_miss": [
+        "log"
+      ],
+      "arms": {
+        "composite_v1": {
+          "must": 0.75,
+          "f1": 0.8571,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 3
+        },
+        "venture_propose_verify": {
+          "must": 0.75,
+          "f1": 0.8571,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 3
+        },
+        "venture_propose_path1": {
+          "must": 0.75,
+          "f1": 0.8571,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 3
+        },
+        "venture_semantic_frontier": {
+          "must": 0.75,
+          "f1": 0.8571,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 3
+        },
+        "venture_multiview": {
+          "must": 0.75,
+          "f1": 0.8571,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 3
+        },
+        "venture_trace_state": {
+          "must": 0.75,
+          "f1": 0.8571,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 3
+        },
+        "venture_learned_heat": {
+          "must": 0.75,
+          "f1": 0.8571,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 3
+        },
+        "venture_propose_plus_frontier": {
+          "must": 0.75,
+          "f1": 0.8571,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 3
+        },
+        "semantic_tracer_fuse": {
+          "must": 0.75,
+          "f1": 0.8571,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 3
+        },
+        "poly_embed": {
+          "must": 0.75,
+          "f1": 0.8571,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 3
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "must": 0.75,
+          "f1": 0.8571,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 3
+        }
+      }
+    },
+    {
+      "id": "verify_hard.json:h08",
+      "composite_miss": [
+        "connect",
+        "TOKEN_TTL",
+        "User.lookup",
+        "UserRepository.resolve",
+        "JwtService.verify"
+      ],
+      "arms": {
+        "composite_v1": {
+          "must": 0.1667,
+          "f1": 0.2857,
+          "recovered": [],
+          "missing": [
+            "connect",
+            "TOKEN_TTL",
+            "User.lookup",
+            "UserRepository.resolve",
+            "JwtService.verify"
+          ],
+          "n_hot": 1
+        },
+        "venture_propose_verify": {
+          "must": 0.1667,
+          "f1": 0.2857,
+          "recovered": [],
+          "missing": [
+            "connect",
+            "TOKEN_TTL",
+            "User.lookup",
+            "UserRepository.resolve",
+            "JwtService.verify"
+          ],
+          "n_hot": 1
+        },
+        "venture_propose_path1": {
+          "must": 0.1667,
+          "f1": 0.2857,
+          "recovered": [],
+          "missing": [
+            "connect",
+            "TOKEN_TTL",
+            "User.lookup",
+            "UserRepository.resolve",
+            "JwtService.verify"
+          ],
+          "n_hot": 1
+        },
+        "venture_semantic_frontier": {
+          "must": 0.1667,
+          "f1": 0.2857,
+          "recovered": [],
+          "missing": [
+            "connect",
+            "TOKEN_TTL",
+            "User.lookup",
+            "UserRepository.resolve",
+            "JwtService.verify"
+          ],
+          "n_hot": 1
+        },
+        "venture_multiview": {
+          "must": 0.3333,
+          "f1": 0.5,
+          "recovered": [
+            "JwtService.verify"
+          ],
+          "missing": [
+            "connect",
+            "TOKEN_TTL",
+            "User.lookup",
+            "UserRepository.resolve"
+          ],
+          "n_hot": 2
+        },
+        "venture_trace_state": {
+          "must": 0.3333,
+          "f1": 0.5,
+          "recovered": [
+            "JwtService.verify"
+          ],
+          "missing": [
+            "connect",
+            "TOKEN_TTL",
+            "User.lookup",
+            "UserRepository.resolve"
+          ],
+          "n_hot": 2
+        },
+        "venture_learned_heat": {
+          "must": 0.1667,
+          "f1": 0.2857,
+          "recovered": [],
+          "missing": [
+            "connect",
+            "TOKEN_TTL",
+            "User.lookup",
+            "UserRepository.resolve",
+            "JwtService.verify"
+          ],
+          "n_hot": 1
+        },
+        "venture_propose_plus_frontier": {
+          "must": 0.1667,
+          "f1": 0.2857,
+          "recovered": [],
+          "missing": [
+            "connect",
+            "TOKEN_TTL",
+            "User.lookup",
+            "UserRepository.resolve",
+            "JwtService.verify"
+          ],
+          "n_hot": 1
+        },
+        "semantic_tracer_fuse": {
+          "must": 0.1667,
+          "f1": 0.2857,
+          "recovered": [],
+          "missing": [
+            "connect",
+            "TOKEN_TTL",
+            "User.lookup",
+            "UserRepository.resolve",
+            "JwtService.verify"
+          ],
+          "n_hot": 1
+        },
+        "poly_embed": {
+          "must": 0.1667,
+          "f1": 0.2857,
+          "recovered": [],
+          "missing": [
+            "connect",
+            "TOKEN_TTL",
+            "User.lookup",
+            "UserRepository.resolve",
+            "JwtService.verify"
+          ],
+          "n_hot": 1
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "must": 0.1667,
+          "f1": 0.2857,
+          "recovered": [],
+          "missing": [
+            "connect",
+            "TOKEN_TTL",
+            "User.lookup",
+            "UserRepository.resolve",
+            "JwtService.verify"
+          ],
+          "n_hot": 1
+        }
+      }
+    },
+    {
+      "id": "verify_hard.json:h16",
+      "composite_miss": [
+        "track",
+        "log"
+      ],
+      "arms": {
+        "composite_v1": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_propose_verify": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_propose_path1": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_semantic_frontier": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_multiview": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_trace_state": {
+          "must": 0.6667,
+          "f1": 0.6154,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 7
+        },
+        "venture_learned_heat": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_propose_plus_frontier": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "semantic_tracer_fuse": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "poly_embed": {
+          "must": 0.5,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "track",
+            "connect",
+            "log"
+          ],
+          "n_hot": 3
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        }
+      }
+    },
+    {
+      "id": "verify_hard.json:h17",
+      "composite_miss": [
+        "track",
+        "log"
+      ],
+      "arms": {
+        "composite_v1": {
+          "must": 0.6,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_propose_verify": {
+          "must": 0.6,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_propose_path1": {
+          "must": 0.6,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_semantic_frontier": {
+          "must": 0.6,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_multiview": {
+          "must": 0.6,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_trace_state": {
+          "must": 0.6,
+          "f1": 0.5,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 7
+        },
+        "venture_learned_heat": {
+          "must": 0.6,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_propose_plus_frontier": {
+          "must": 0.6,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "semantic_tracer_fuse": {
+          "must": 0.6,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "poly_embed": {
+          "must": 0.6,
+          "f1": 0.75,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 3
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "must": 0.6,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        }
+      }
+    },
+    {
+      "id": "verify_hard.json:h19",
+      "composite_miss": [
+        "track",
+        "log"
+      ],
+      "arms": {
+        "composite_v1": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_propose_verify": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_propose_path1": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_semantic_frontier": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_multiview": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_trace_state": {
+          "must": 0.6667,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 6
+        },
+        "venture_learned_heat": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_propose_plus_frontier": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "semantic_tracer_fuse": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "poly_embed": {
+          "must": 0.6667,
+          "f1": 0.7273,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 5
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        }
+      }
+    },
+    {
+      "id": "verify_hard.json:h21",
+      "composite_miss": [
+        "track",
+        "log"
+      ],
+      "arms": {
+        "composite_v1": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_propose_verify": {
+          "must": 0.6667,
+          "f1": 0.7273,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 5
+        },
+        "venture_propose_path1": {
+          "must": 0.6667,
+          "f1": 0.7273,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 5
+        },
+        "venture_semantic_frontier": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_multiview": {
+          "must": 0.6667,
+          "f1": 0.7273,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 5
+        },
+        "venture_trace_state": {
+          "must": 0.6667,
+          "f1": 0.7273,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 5
+        },
+        "venture_learned_heat": {
+          "must": 0.6667,
+          "f1": 0.7273,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 5
+        },
+        "venture_propose_plus_frontier": {
+          "must": 0.6667,
+          "f1": 0.7273,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 5
+        },
+        "semantic_tracer_fuse": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "poly_embed": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        }
+      }
+    },
+    {
+      "id": "verify_hard.json:h22",
+      "composite_miss": [
+        "log"
+      ],
+      "arms": {
+        "composite_v1": {
+          "must": 0.75,
+          "f1": 0.75,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_propose_verify": {
+          "must": 0.75,
+          "f1": 0.75,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_propose_path1": {
+          "must": 0.75,
+          "f1": 0.75,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_semantic_frontier": {
+          "must": 0.75,
+          "f1": 0.75,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_multiview": {
+          "must": 0.75,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 5
+        },
+        "venture_trace_state": {
+          "must": 0.75,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 5
+        },
+        "venture_learned_heat": {
+          "must": 0.75,
+          "f1": 0.75,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_propose_plus_frontier": {
+          "must": 0.75,
+          "f1": 0.75,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "semantic_tracer_fuse": {
+          "must": 0.75,
+          "f1": 0.75,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "poly_embed": {
+          "must": 0.5,
+          "f1": 0.5714,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 3
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "must": 0.5,
+          "f1": 0.5714,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 3
+        }
+      }
+    },
+    {
+      "id": "verify_hard.json:h23",
+      "composite_miss": [
+        "track",
+        "log"
+      ],
+      "arms": {
+        "composite_v1": {
+          "must": 0.3333,
+          "f1": 0.5,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 1
+        },
+        "venture_propose_verify": {
+          "must": 0.3333,
+          "f1": 0.5,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 1
+        },
+        "venture_propose_path1": {
+          "must": 0.3333,
+          "f1": 0.5,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 1
+        },
+        "venture_semantic_frontier": {
+          "must": 0.3333,
+          "f1": 0.5,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 1
+        },
+        "venture_multiview": {
+          "must": 0.3333,
+          "f1": 0.4,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 2
+        },
+        "venture_trace_state": {
+          "must": 0.3333,
+          "f1": 0.2857,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_learned_heat": {
+          "must": 0.3333,
+          "f1": 0.5,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 1
+        },
+        "venture_propose_plus_frontier": {
+          "must": 0.3333,
+          "f1": 0.5,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 1
+        },
+        "semantic_tracer_fuse": {
+          "must": 0.3333,
+          "f1": 0.5,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 1
+        },
+        "poly_embed": {
+          "must": 0.3333,
+          "f1": 0.4,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 2
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "must": 0.3333,
+          "f1": 0.4,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 2
+        }
+      }
+    },
+    {
+      "id": "verify_hard.json:h24",
+      "composite_miss": [
+        "track",
+        "log"
+      ],
+      "arms": {
+        "composite_v1": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_propose_verify": {
+          "must": 0.6667,
+          "f1": 0.7273,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 5
+        },
+        "venture_propose_path1": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_semantic_frontier": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_multiview": {
+          "must": 0.6667,
+          "f1": 0.7273,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 5
+        },
+        "venture_trace_state": {
+          "must": 0.6667,
+          "f1": 0.5714,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 8
+        },
+        "venture_learned_heat": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_propose_plus_frontier": {
+          "must": 0.6667,
+          "f1": 0.7273,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 5
+        },
+        "semantic_tracer_fuse": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "poly_embed": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        }
+      }
+    },
+    {
+      "id": "verify_hard.json:h25",
+      "composite_miss": [
+        "track",
+        "log"
+      ],
+      "arms": {
+        "composite_v1": {
+          "must": 0.6,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_propose_verify": {
+          "must": 0.6,
+          "f1": 0.6,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 5
+        },
+        "venture_propose_path1": {
+          "must": 0.6,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_semantic_frontier": {
+          "must": 0.6,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_multiview": {
+          "must": 0.6,
+          "f1": 0.6,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 5
+        },
+        "venture_trace_state": {
+          "must": 0.6,
+          "f1": 0.4615,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 8
+        },
+        "venture_learned_heat": {
+          "must": 0.6,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_propose_plus_frontier": {
+          "must": 0.6,
+          "f1": 0.6,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 5
+        },
+        "semantic_tracer_fuse": {
+          "must": 0.6,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "poly_embed": {
+          "must": 0.6,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "must": 0.6,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        }
+      }
+    },
+    {
+      "id": "verify_hard.json:h27",
+      "composite_miss": [
+        "track",
+        "log"
+      ],
+      "arms": {
+        "composite_v1": {
+          "must": 0.5,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 2
+        },
+        "venture_propose_verify": {
+          "must": 0.5,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 2
+        },
+        "venture_propose_path1": {
+          "must": 0.5,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 2
+        },
+        "venture_semantic_frontier": {
+          "must": 0.5,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 2
+        },
+        "venture_multiview": {
+          "must": 0.5,
+          "f1": 0.5714,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 3
+        },
+        "venture_trace_state": {
+          "must": 0.5,
+          "f1": 0.5,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_learned_heat": {
+          "must": 0.5,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 2
+        },
+        "venture_propose_plus_frontier": {
+          "must": 0.5,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 2
+        },
+        "semantic_tracer_fuse": {
+          "must": 0.5,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 2
+        },
+        "poly_embed": {
+          "must": 0.5,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 2
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "must": 0.5,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 2
+        }
+      }
+    },
+    {
+      "id": "verify_hard.json:h29",
+      "composite_miss": [
+        "TOKEN_TTL"
+      ],
+      "arms": {
+        "composite_v1": {
+          "must": 0.6667,
+          "f1": 0.2857,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL"
+          ],
+          "n_hot": 11
+        },
+        "venture_propose_verify": {
+          "must": 0.6667,
+          "f1": 0.2857,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL"
+          ],
+          "n_hot": 11
+        },
+        "venture_propose_path1": {
+          "must": 0.6667,
+          "f1": 0.2857,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL"
+          ],
+          "n_hot": 11
+        },
+        "venture_semantic_frontier": {
+          "must": 0.6667,
+          "f1": 0.3077,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL"
+          ],
+          "n_hot": 10
+        },
+        "venture_multiview": {
+          "must": 0.6667,
+          "f1": 0.2857,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL"
+          ],
+          "n_hot": 11
+        },
+        "venture_trace_state": {
+          "must": 0.6667,
+          "f1": 0.2667,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL"
+          ],
+          "n_hot": 12
+        },
+        "venture_learned_heat": {
+          "must": 0.6667,
+          "f1": 0.2857,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL"
+          ],
+          "n_hot": 11
+        },
+        "venture_propose_plus_frontier": {
+          "must": 0.6667,
+          "f1": 0.3077,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL"
+          ],
+          "n_hot": 10
+        },
+        "semantic_tracer_fuse": {
+          "must": 0.6667,
+          "f1": 0.3077,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL"
+          ],
+          "n_hot": 10
+        },
+        "poly_embed": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL"
+          ],
+          "n_hot": 2
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "must": 0.6667,
+          "f1": 0.2857,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL"
+          ],
+          "n_hot": 11
+        }
+      }
+    },
+    {
+      "id": "verify_hard.json:h31",
+      "composite_miss": [
+        "track",
+        "log"
+      ],
+      "arms": {
+        "composite_v1": {
+          "must": 0.7143,
+          "f1": 0.7692,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 6
+        },
+        "venture_propose_verify": {
+          "must": 0.7143,
+          "f1": 0.7692,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 6
+        },
+        "venture_propose_path1": {
+          "must": 0.7143,
+          "f1": 0.7692,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 6
+        },
+        "venture_semantic_frontier": {
+          "must": 0.7143,
+          "f1": 0.7692,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 6
+        },
+        "venture_multiview": {
+          "must": 0.7143,
+          "f1": 0.7692,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 6
+        },
+        "venture_trace_state": {
+          "must": 0.7143,
+          "f1": 0.5882,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 10
+        },
+        "venture_learned_heat": {
+          "must": 0.7143,
+          "f1": 0.7692,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 6
+        },
+        "venture_propose_plus_frontier": {
+          "must": 0.7143,
+          "f1": 0.7692,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 6
+        },
+        "semantic_tracer_fuse": {
+          "must": 0.7143,
+          "f1": 0.7692,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 6
+        },
+        "poly_embed": {
+          "must": 0.7143,
+          "f1": 0.8333,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 5
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "must": 0.7143,
+          "f1": 0.7692,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 6
+        }
+      }
+    },
+    {
+      "id": "verify_hard.json:h32",
+      "composite_miss": [
+        "TOKEN_TTL",
+        "ingest"
+      ],
+      "arms": {
+        "composite_v1": {
+          "must": 0.3333,
+          "f1": 0.5,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL",
+            "ingest"
+          ],
+          "n_hot": 1
+        },
+        "venture_propose_verify": {
+          "must": 0.3333,
+          "f1": 0.5,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL",
+            "ingest"
+          ],
+          "n_hot": 1
+        },
+        "venture_propose_path1": {
+          "must": 0.3333,
+          "f1": 0.5,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL",
+            "ingest"
+          ],
+          "n_hot": 1
+        },
+        "venture_semantic_frontier": {
+          "must": 0.3333,
+          "f1": 0.5,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL",
+            "ingest"
+          ],
+          "n_hot": 1
+        },
+        "venture_multiview": {
+          "must": 0.6667,
+          "f1": 0.6667,
+          "recovered": [
+            "TOKEN_TTL"
+          ],
+          "missing": [
+            "ingest"
+          ],
+          "n_hot": 3
+        },
+        "venture_trace_state": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [
+            "ingest"
+          ],
+          "missing": [
+            "TOKEN_TTL"
+          ],
+          "n_hot": 2
+        },
+        "venture_learned_heat": {
+          "must": 0.3333,
+          "f1": 0.5,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL",
+            "ingest"
+          ],
+          "n_hot": 1
+        },
+        "venture_propose_plus_frontier": {
+          "must": 0.3333,
+          "f1": 0.5,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL",
+            "ingest"
+          ],
+          "n_hot": 1
+        },
+        "semantic_tracer_fuse": {
+          "must": 0.3333,
+          "f1": 0.5,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL",
+            "ingest"
+          ],
+          "n_hot": 1
+        },
+        "poly_embed": {
+          "must": 0.3333,
+          "f1": 0.5,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL",
+            "ingest"
+          ],
+          "n_hot": 1
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "must": 0.3333,
+          "f1": 0.5,
+          "recovered": [],
+          "missing": [
+            "TOKEN_TTL",
+            "ingest"
+          ],
+          "n_hot": 1
+        }
+      }
+    },
+    {
+      "id": "verify_hard.json:h35",
+      "composite_miss": [
+        "query"
+      ],
+      "arms": {
+        "composite_v1": {
+          "must": 0.75,
+          "f1": 0.8571,
+          "recovered": [],
+          "missing": [
+            "query"
+          ],
+          "n_hot": 3
+        },
+        "venture_propose_verify": {
+          "must": 0.75,
+          "f1": 0.8571,
+          "recovered": [],
+          "missing": [
+            "query"
+          ],
+          "n_hot": 3
+        },
+        "venture_propose_path1": {
+          "must": 0.75,
+          "f1": 0.8571,
+          "recovered": [],
+          "missing": [
+            "query"
+          ],
+          "n_hot": 3
+        },
+        "venture_semantic_frontier": {
+          "must": 0.75,
+          "f1": 0.8571,
+          "recovered": [],
+          "missing": [
+            "query"
+          ],
+          "n_hot": 3
+        },
+        "venture_multiview": {
+          "must": 0.75,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "query"
+          ],
+          "n_hot": 5
+        },
+        "venture_trace_state": {
+          "must": 0.75,
+          "f1": 0.75,
+          "recovered": [],
+          "missing": [
+            "query"
+          ],
+          "n_hot": 4
+        },
+        "venture_learned_heat": {
+          "must": 0.75,
+          "f1": 0.8571,
+          "recovered": [],
+          "missing": [
+            "query"
+          ],
+          "n_hot": 3
+        },
+        "venture_propose_plus_frontier": {
+          "must": 0.75,
+          "f1": 0.8571,
+          "recovered": [],
+          "missing": [
+            "query"
+          ],
+          "n_hot": 3
+        },
+        "semantic_tracer_fuse": {
+          "must": 0.75,
+          "f1": 0.8571,
+          "recovered": [],
+          "missing": [
+            "query"
+          ],
+          "n_hot": 3
+        },
+        "poly_embed": {
+          "must": 0.5,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "connect",
+            "query"
+          ],
+          "n_hot": 2
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "must": 0.75,
+          "f1": 0.8571,
+          "recovered": [],
+          "missing": [
+            "query"
+          ],
+          "n_hot": 3
+        }
+      }
+    },
+    {
+      "id": "verify_hard.json:h37",
+      "composite_miss": [
+        "log"
+      ],
+      "arms": {
+        "composite_v1": {
+          "must": 0.8889,
+          "f1": 0.9412,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 8
+        },
+        "venture_propose_verify": {
+          "must": 0.8889,
+          "f1": 0.9412,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 8
+        },
+        "venture_propose_path1": {
+          "must": 0.8889,
+          "f1": 0.9412,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 8
+        },
+        "venture_semantic_frontier": {
+          "must": 0.8889,
+          "f1": 0.9412,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 8
+        },
+        "venture_multiview": {
+          "must": 0.8889,
+          "f1": 0.9412,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 8
+        },
+        "venture_trace_state": {
+          "must": 0.8889,
+          "f1": 0.8889,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 9
+        },
+        "venture_learned_heat": {
+          "must": 0.8889,
+          "f1": 0.9412,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 8
+        },
+        "venture_propose_plus_frontier": {
+          "must": 0.8889,
+          "f1": 0.9412,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 8
+        },
+        "semantic_tracer_fuse": {
+          "must": 0.8889,
+          "f1": 0.9412,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 8
+        },
+        "poly_embed": {
+          "must": 0.8889,
+          "f1": 0.9412,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 8
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "must": 0.8889,
+          "f1": 0.9412,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 8
+        }
+      }
+    },
+    {
+      "id": "verify_hard.json:h38",
+      "composite_miss": [
+        "log"
+      ],
+      "arms": {
+        "composite_v1": {
+          "must": 0.8,
+          "f1": 0.6154,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 8
+        },
+        "venture_propose_verify": {
+          "must": 0.8,
+          "f1": 0.6154,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 8
+        },
+        "venture_propose_path1": {
+          "must": 0.8,
+          "f1": 0.6154,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 8
+        },
+        "venture_semantic_frontier": {
+          "must": 0.8,
+          "f1": 0.6154,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 8
+        },
+        "venture_multiview": {
+          "must": 0.8,
+          "f1": 0.6154,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 8
+        },
+        "venture_trace_state": {
+          "must": 0.8,
+          "f1": 0.5714,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 9
+        },
+        "venture_learned_heat": {
+          "must": 0.8,
+          "f1": 0.6154,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 8
+        },
+        "venture_propose_plus_frontier": {
+          "must": 0.8,
+          "f1": 0.6154,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 8
+        },
+        "semantic_tracer_fuse": {
+          "must": 0.8,
+          "f1": 0.6154,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 8
+        },
+        "poly_embed": {
+          "must": 0.8,
+          "f1": 0.6154,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 8
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "must": 0.8,
+          "f1": 0.6154,
+          "recovered": [],
+          "missing": [
+            "log"
+          ],
+          "n_hot": 8
+        }
+      }
+    },
+    {
+      "id": "verify_hard.json:h39",
+      "composite_miss": [
+        "store"
+      ],
+      "arms": {
+        "composite_v1": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "store"
+          ],
+          "n_hot": 2
+        },
+        "venture_propose_verify": {
+          "must": 0.6667,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "store"
+          ],
+          "n_hot": 3
+        },
+        "venture_propose_path1": {
+          "must": 0.6667,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "store"
+          ],
+          "n_hot": 3
+        },
+        "venture_semantic_frontier": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "store"
+          ],
+          "n_hot": 2
+        },
+        "venture_multiview": {
+          "must": 0.6667,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "store"
+          ],
+          "n_hot": 3
+        },
+        "venture_trace_state": {
+          "must": 0.6667,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "store"
+          ],
+          "n_hot": 3
+        },
+        "venture_learned_heat": {
+          "must": 0.6667,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "store"
+          ],
+          "n_hot": 3
+        },
+        "venture_propose_plus_frontier": {
+          "must": 0.6667,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "store"
+          ],
+          "n_hot": 3
+        },
+        "semantic_tracer_fuse": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "store"
+          ],
+          "n_hot": 2
+        },
+        "poly_embed": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "store"
+          ],
+          "n_hot": 2
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "store"
+          ],
+          "n_hot": 2
+        }
+      }
+    },
+    {
+      "id": "verify_hard.json:h43",
+      "composite_miss": [
+        "receive"
+      ],
+      "arms": {
+        "composite_v1": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "receive"
+          ],
+          "n_hot": 2
+        },
+        "venture_propose_verify": {
+          "must": 0.6667,
+          "f1": 0.5714,
+          "recovered": [],
+          "missing": [
+            "receive"
+          ],
+          "n_hot": 4
+        },
+        "venture_propose_path1": {
+          "must": 0.6667,
+          "f1": 0.5714,
+          "recovered": [],
+          "missing": [
+            "receive"
+          ],
+          "n_hot": 4
+        },
+        "venture_semantic_frontier": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "receive"
+          ],
+          "n_hot": 2
+        },
+        "venture_multiview": {
+          "must": 0.6667,
+          "f1": 0.5714,
+          "recovered": [],
+          "missing": [
+            "receive"
+          ],
+          "n_hot": 4
+        },
+        "venture_trace_state": {
+          "must": 1.0,
+          "f1": 0.75,
+          "recovered": [
+            "receive"
+          ],
+          "missing": [],
+          "n_hot": 5
+        },
+        "venture_learned_heat": {
+          "must": 0.6667,
+          "f1": 0.5714,
+          "recovered": [],
+          "missing": [
+            "receive"
+          ],
+          "n_hot": 4
+        },
+        "venture_propose_plus_frontier": {
+          "must": 0.6667,
+          "f1": 0.5714,
+          "recovered": [],
+          "missing": [
+            "receive"
+          ],
+          "n_hot": 4
+        },
+        "semantic_tracer_fuse": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "receive"
+          ],
+          "n_hot": 2
+        },
+        "poly_embed": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "receive"
+          ],
+          "n_hot": 2
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "receive"
+          ],
+          "n_hot": 2
+        }
+      }
+    },
+    {
+      "id": "verify_hard.json:h44",
+      "composite_miss": [
+        "schedule"
+      ],
+      "arms": {
+        "composite_v1": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "schedule"
+          ],
+          "n_hot": 2
+        },
+        "venture_propose_verify": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "schedule"
+          ],
+          "n_hot": 2
+        },
+        "venture_propose_path1": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "schedule"
+          ],
+          "n_hot": 2
+        },
+        "venture_semantic_frontier": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "schedule"
+          ],
+          "n_hot": 2
+        },
+        "venture_multiview": {
+          "must": 0.6667,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "schedule"
+          ],
+          "n_hot": 3
+        },
+        "venture_trace_state": {
+          "must": 0.6667,
+          "f1": 0.5714,
+          "recovered": [],
+          "missing": [
+            "schedule"
+          ],
+          "n_hot": 4
+        },
+        "venture_learned_heat": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "schedule"
+          ],
+          "n_hot": 2
+        },
+        "venture_propose_plus_frontier": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "schedule"
+          ],
+          "n_hot": 2
+        },
+        "semantic_tracer_fuse": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "schedule"
+          ],
+          "n_hot": 2
+        },
+        "poly_embed": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "schedule"
+          ],
+          "n_hot": 2
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "schedule"
+          ],
+          "n_hot": 2
+        }
+      }
+    },
+    {
+      "id": "verify_hard.json:h45",
+      "composite_miss": [
+        "track",
+        "record",
+        "charge",
+        "log"
+      ],
+      "arms": {
+        "composite_v1": {
+          "must": 0.2,
+          "f1": 0.3333,
+          "recovered": [],
+          "missing": [
+            "track",
+            "record",
+            "charge",
+            "log"
+          ],
+          "n_hot": 1
+        },
+        "venture_propose_verify": {
+          "must": 0.2,
+          "f1": 0.3333,
+          "recovered": [],
+          "missing": [
+            "track",
+            "record",
+            "charge",
+            "log"
+          ],
+          "n_hot": 1
+        },
+        "venture_propose_path1": {
+          "must": 0.2,
+          "f1": 0.3333,
+          "recovered": [],
+          "missing": [
+            "track",
+            "record",
+            "charge",
+            "log"
+          ],
+          "n_hot": 1
+        },
+        "venture_semantic_frontier": {
+          "must": 0.2,
+          "f1": 0.3333,
+          "recovered": [],
+          "missing": [
+            "track",
+            "record",
+            "charge",
+            "log"
+          ],
+          "n_hot": 1
+        },
+        "venture_multiview": {
+          "must": 0.4,
+          "f1": 0.5714,
+          "recovered": [
+            "charge"
+          ],
+          "missing": [
+            "track",
+            "record",
+            "log"
+          ],
+          "n_hot": 2
+        },
+        "venture_trace_state": {
+          "must": 0.2,
+          "f1": 0.2857,
+          "recovered": [],
+          "missing": [
+            "track",
+            "record",
+            "charge",
+            "log"
+          ],
+          "n_hot": 2
+        },
+        "venture_learned_heat": {
+          "must": 0.2,
+          "f1": 0.3333,
+          "recovered": [],
+          "missing": [
+            "track",
+            "record",
+            "charge",
+            "log"
+          ],
+          "n_hot": 1
+        },
+        "venture_propose_plus_frontier": {
+          "must": 0.2,
+          "f1": 0.3333,
+          "recovered": [],
+          "missing": [
+            "track",
+            "record",
+            "charge",
+            "log"
+          ],
+          "n_hot": 1
+        },
+        "semantic_tracer_fuse": {
+          "must": 0.2,
+          "f1": 0.3333,
+          "recovered": [],
+          "missing": [
+            "track",
+            "record",
+            "charge",
+            "log"
+          ],
+          "n_hot": 1
+        },
+        "poly_embed": {
+          "must": 0.2,
+          "f1": 0.3333,
+          "recovered": [],
+          "missing": [
+            "track",
+            "record",
+            "charge",
+            "log"
+          ],
+          "n_hot": 1
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "must": 0.2,
+          "f1": 0.3333,
+          "recovered": [],
+          "missing": [
+            "track",
+            "record",
+            "charge",
+            "log"
+          ],
+          "n_hot": 1
+        }
+      }
+    },
+    {
+      "id": "verify_hard.json:h46",
+      "composite_miss": [
+        "track"
+      ],
+      "arms": {
+        "composite_v1": {
+          "must": 0.6667,
+          "f1": 0.3636,
+          "recovered": [],
+          "missing": [
+            "track"
+          ],
+          "n_hot": 8
+        },
+        "venture_propose_verify": {
+          "must": 0.6667,
+          "f1": 0.3636,
+          "recovered": [],
+          "missing": [
+            "track"
+          ],
+          "n_hot": 8
+        },
+        "venture_propose_path1": {
+          "must": 0.6667,
+          "f1": 0.3636,
+          "recovered": [],
+          "missing": [
+            "track"
+          ],
+          "n_hot": 8
+        },
+        "venture_semantic_frontier": {
+          "must": 0.6667,
+          "f1": 0.3636,
+          "recovered": [],
+          "missing": [
+            "track"
+          ],
+          "n_hot": 8
+        },
+        "venture_multiview": {
+          "must": 0.6667,
+          "f1": 0.3333,
+          "recovered": [],
+          "missing": [
+            "track"
+          ],
+          "n_hot": 9
+        },
+        "venture_trace_state": {
+          "must": 0.6667,
+          "f1": 0.3333,
+          "recovered": [],
+          "missing": [
+            "track"
+          ],
+          "n_hot": 9
+        },
+        "venture_learned_heat": {
+          "must": 0.6667,
+          "f1": 0.3636,
+          "recovered": [],
+          "missing": [
+            "track"
+          ],
+          "n_hot": 8
+        },
+        "venture_propose_plus_frontier": {
+          "must": 0.6667,
+          "f1": 0.3636,
+          "recovered": [],
+          "missing": [
+            "track"
+          ],
+          "n_hot": 8
+        },
+        "semantic_tracer_fuse": {
+          "must": 0.6667,
+          "f1": 0.3636,
+          "recovered": [],
+          "missing": [
+            "track"
+          ],
+          "n_hot": 8
+        },
+        "poly_embed": {
+          "must": 0.3333,
+          "f1": 0.2,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 7
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "must": 0.3333,
+          "f1": 0.2,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 7
+        }
+      }
+    },
+    {
+      "id": "verify_hard.json:h47",
+      "composite_miss": [
+        "JwtService.verify",
+        "verify_sig"
+      ],
+      "arms": {
+        "composite_v1": {
+          "must": 0.3333,
+          "f1": 0.5,
+          "recovered": [],
+          "missing": [
+            "JwtService.verify",
+            "verify_sig"
+          ],
+          "n_hot": 1
+        },
+        "venture_propose_verify": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [
+            "verify_sig"
+          ],
+          "missing": [
+            "JwtService.verify"
+          ],
+          "n_hot": 2
+        },
+        "venture_propose_path1": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [
+            "verify_sig"
+          ],
+          "missing": [
+            "JwtService.verify"
+          ],
+          "n_hot": 2
+        },
+        "venture_semantic_frontier": {
+          "must": 0.3333,
+          "f1": 0.5,
+          "recovered": [],
+          "missing": [
+            "JwtService.verify",
+            "verify_sig"
+          ],
+          "n_hot": 1
+        },
+        "venture_multiview": {
+          "must": 1.0,
+          "f1": 1.0,
+          "recovered": [
+            "JwtService.verify",
+            "verify_sig"
+          ],
+          "missing": [],
+          "n_hot": 3
+        },
+        "venture_trace_state": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [
+            "verify_sig"
+          ],
+          "missing": [
+            "JwtService.verify"
+          ],
+          "n_hot": 2
+        },
+        "venture_learned_heat": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [
+            "verify_sig"
+          ],
+          "missing": [
+            "JwtService.verify"
+          ],
+          "n_hot": 2
+        },
+        "venture_propose_plus_frontier": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [
+            "verify_sig"
+          ],
+          "missing": [
+            "JwtService.verify"
+          ],
+          "n_hot": 2
+        },
+        "semantic_tracer_fuse": {
+          "must": 0.3333,
+          "f1": 0.5,
+          "recovered": [],
+          "missing": [
+            "JwtService.verify",
+            "verify_sig"
+          ],
+          "n_hot": 1
+        },
+        "poly_embed": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [
+            "JwtService.verify"
+          ],
+          "missing": [
+            "verify_sig"
+          ],
+          "n_hot": 2
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "must": 0.3333,
+          "f1": 0.5,
+          "recovered": [],
+          "missing": [
+            "JwtService.verify",
+            "verify_sig"
+          ],
+          "n_hot": 1
+        }
+      }
+    },
+    {
+      "id": "verify_hard.json:h49",
+      "composite_miss": [
+        "track",
+        "log"
+      ],
+      "arms": {
+        "composite_v1": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_propose_verify": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_propose_path1": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_semantic_frontier": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_multiview": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_trace_state": {
+          "must": 0.6667,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 6
+        },
+        "venture_learned_heat": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_propose_plus_frontier": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "semantic_tracer_fuse": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "poly_embed": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        }
+      }
+    },
+    {
+      "id": "verify_ood_v2.json:o17",
+      "composite_miss": [
+        "fetch_docs",
+        "query",
+        "rank"
+      ],
+      "arms": {
+        "composite_v1": {
+          "must": 0.25,
+          "f1": 0.4,
+          "recovered": [],
+          "missing": [
+            "fetch_docs",
+            "query",
+            "rank"
+          ],
+          "n_hot": 1
+        },
+        "venture_propose_verify": {
+          "must": 0.5,
+          "f1": 0.6667,
+          "recovered": [
+            "query"
+          ],
+          "missing": [
+            "fetch_docs",
+            "rank"
+          ],
+          "n_hot": 2
+        },
+        "venture_propose_path1": {
+          "must": 0.5,
+          "f1": 0.6667,
+          "recovered": [
+            "query"
+          ],
+          "missing": [
+            "fetch_docs",
+            "rank"
+          ],
+          "n_hot": 2
+        },
+        "venture_semantic_frontier": {
+          "must": 0.25,
+          "f1": 0.4,
+          "recovered": [],
+          "missing": [
+            "fetch_docs",
+            "query",
+            "rank"
+          ],
+          "n_hot": 1
+        },
+        "venture_multiview": {
+          "must": 0.75,
+          "f1": 0.8571,
+          "recovered": [
+            "query",
+            "rank"
+          ],
+          "missing": [
+            "fetch_docs"
+          ],
+          "n_hot": 3
+        },
+        "venture_trace_state": {
+          "must": 0.75,
+          "f1": 0.8571,
+          "recovered": [
+            "query",
+            "rank"
+          ],
+          "missing": [
+            "fetch_docs"
+          ],
+          "n_hot": 3
+        },
+        "venture_learned_heat": {
+          "must": 0.25,
+          "f1": 0.4,
+          "recovered": [],
+          "missing": [
+            "fetch_docs",
+            "query",
+            "rank"
+          ],
+          "n_hot": 1
+        },
+        "venture_propose_plus_frontier": {
+          "must": 0.5,
+          "f1": 0.6667,
+          "recovered": [
+            "query"
+          ],
+          "missing": [
+            "fetch_docs",
+            "rank"
+          ],
+          "n_hot": 2
+        },
+        "semantic_tracer_fuse": {
+          "must": 0.25,
+          "f1": 0.4,
+          "recovered": [],
+          "missing": [
+            "fetch_docs",
+            "query",
+            "rank"
+          ],
+          "n_hot": 1
+        },
+        "poly_embed": {
+          "must": 0.25,
+          "f1": 0.4,
+          "recovered": [],
+          "missing": [
+            "fetch_docs",
+            "query",
+            "rank"
+          ],
+          "n_hot": 1
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "must": 0.25,
+          "f1": 0.4,
+          "recovered": [],
+          "missing": [
+            "fetch_docs",
+            "query",
+            "rank"
+          ],
+          "n_hot": 1
+        }
+      }
+    },
+    {
+      "id": "verify_prod.json:p19",
+      "composite_miss": [
+        "track",
+        "log"
+      ],
+      "arms": {
+        "composite_v1": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_propose_verify": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_propose_path1": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_semantic_frontier": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_multiview": {
+          "must": 0.6667,
+          "f1": 0.7273,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 5
+        },
+        "venture_trace_state": {
+          "must": 0.6667,
+          "f1": 0.6667,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 6
+        },
+        "venture_learned_heat": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "venture_propose_plus_frontier": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "semantic_tracer_fuse": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        },
+        "poly_embed": {
+          "must": 0.6667,
+          "f1": 0.7273,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 5
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "must": 0.6667,
+          "f1": 0.8,
+          "recovered": [],
+          "missing": [
+            "track",
+            "log"
+          ],
+          "n_hot": 4
+        }
+      }
+    },
+    {
+      "id": "verify_ood_v10_realistic.json:real02",
+      "composite_miss": [
+        "charge",
+        "validate",
+        "reserve",
+        "send",
+        "schedule"
+      ],
+      "arms": {
+        "composite_v1": {
+          "must": 0.4444,
+          "f1": 0.5797,
+          "recovered": [],
+          "missing": [
+            "charge",
+            "validate",
+            "reserve",
+            "send",
+            "schedule"
+          ],
+          "n_hot": 6
+        },
+        "venture_propose_verify": {
+          "must": 0.4444,
+          "f1": 0.5797,
+          "recovered": [],
+          "missing": [
+            "charge",
+            "validate",
+            "reserve",
+            "send",
+            "schedule"
+          ],
+          "n_hot": 6
+        },
+        "venture_propose_path1": {
+          "must": 0.4444,
+          "f1": 0.5797,
+          "recovered": [],
+          "missing": [
+            "charge",
+            "validate",
+            "reserve",
+            "send",
+            "schedule"
+          ],
+          "n_hot": 6
+        },
+        "venture_semantic_frontier": {
+          "must": 0.4444,
+          "f1": 0.5797,
+          "recovered": [],
+          "missing": [
+            "charge",
+            "validate",
+            "reserve",
+            "send",
+            "schedule"
+          ],
+          "n_hot": 6
+        },
+        "venture_multiview": {
+          "must": 0.8889,
+          "f1": 0.8944,
+          "recovered": [
+            "charge",
+            "validate",
+            "reserve",
+            "schedule"
+          ],
+          "missing": [
+            "send"
+          ],
+          "n_hot": 10
+        },
+        "venture_trace_state": {
+          "must": 0.4444,
+          "f1": 0.5797,
+          "recovered": [],
+          "missing": [
+            "charge",
+            "validate",
+            "reserve",
+            "send",
+            "schedule"
+          ],
+          "n_hot": 6
+        },
+        "venture_learned_heat": {
+          "must": 0.4444,
+          "f1": 0.5797,
+          "recovered": [],
+          "missing": [
+            "charge",
+            "validate",
+            "reserve",
+            "send",
+            "schedule"
+          ],
+          "n_hot": 6
+        },
+        "venture_propose_plus_frontier": {
+          "must": 0.4444,
+          "f1": 0.5797,
+          "recovered": [],
+          "missing": [
+            "charge",
+            "validate",
+            "reserve",
+            "send",
+            "schedule"
+          ],
+          "n_hot": 6
+        },
+        "semantic_tracer_fuse": {
+          "must": 0.4444,
+          "f1": 0.5797,
+          "recovered": [],
+          "missing": [
+            "charge",
+            "validate",
+            "reserve",
+            "send",
+            "schedule"
+          ],
+          "n_hot": 6
+        },
+        "poly_embed": {
+          "must": 1.0,
+          "f1": 0.88,
+          "recovered": [
+            "charge",
+            "validate",
+            "reserve",
+            "send",
+            "schedule"
+          ],
+          "missing": [],
+          "n_hot": 14
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "must": 0.4444,
+          "f1": 0.6154,
+          "recovered": [],
+          "missing": [
+            "charge",
+            "validate",
+            "reserve",
+            "send",
+            "schedule"
+          ],
+          "n_hot": 5
+        }
+      }
+    },
+    {
+      "id": "verify_ood_v10_realistic.json:real04",
+      "composite_miss": [
+        "send"
+      ],
+      "arms": {
+        "composite_v1": {
+          "must": 0.8571,
+          "f1": 0.9231,
+          "recovered": [],
+          "missing": [
+            "send"
+          ],
+          "n_hot": 6
+        },
+        "venture_propose_verify": {
+          "must": 0.8571,
+          "f1": 0.9231,
+          "recovered": [],
+          "missing": [
+            "send"
+          ],
+          "n_hot": 6
+        },
+        "venture_propose_path1": {
+          "must": 0.8571,
+          "f1": 0.9231,
+          "recovered": [],
+          "missing": [
+            "send"
+          ],
+          "n_hot": 6
+        },
+        "venture_semantic_frontier": {
+          "must": 0.8571,
+          "f1": 0.9231,
+          "recovered": [],
+          "missing": [
+            "send"
+          ],
+          "n_hot": 6
+        },
+        "venture_multiview": {
+          "must": 0.8571,
+          "f1": 0.8571,
+          "recovered": [],
+          "missing": [
+            "send"
+          ],
+          "n_hot": 7
+        },
+        "venture_trace_state": {
+          "must": 0.8571,
+          "f1": 0.8571,
+          "recovered": [],
+          "missing": [
+            "send"
+          ],
+          "n_hot": 7
+        },
+        "venture_learned_heat": {
+          "must": 0.8571,
+          "f1": 0.9231,
+          "recovered": [],
+          "missing": [
+            "send"
+          ],
+          "n_hot": 6
+        },
+        "venture_propose_plus_frontier": {
+          "must": 0.8571,
+          "f1": 0.9231,
+          "recovered": [],
+          "missing": [
+            "send"
+          ],
+          "n_hot": 6
+        },
+        "semantic_tracer_fuse": {
+          "must": 0.8571,
+          "f1": 0.9231,
+          "recovered": [],
+          "missing": [
+            "send"
+          ],
+          "n_hot": 6
+        },
+        "poly_embed": {
+          "must": 1.0,
+          "f1": 1.0,
+          "recovered": [
+            "send"
+          ],
+          "missing": [],
+          "n_hot": 8
+        },
+        "hyb_fuse_demote_noise_plus": {
+          "must": 0.8571,
+          "f1": 0.9231,
+          "recovered": [],
+          "missing": [
+            "send"
+          ],
+          "n_hot": 6
+        }
+      }
+    }
+  ]
+}

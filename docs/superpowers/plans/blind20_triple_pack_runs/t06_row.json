@@ -1,0 +1,164 @@
+{
+  "id": "t06",
+  "family": "mcp-bridge",
+  "task": "How does the MCP bridge process launch and forward tools to the Scubiee MCP server?",
+  "enrich_prompt": "scubiee-mcp-bridge MCP bridge launch stdio tools forward hybrid experiment surface",
+  "map": {
+    "elapsed_s": 0.844,
+    "n_cards": 10,
+    "top_files": [
+      "packages/pipeline/templates/scubiee.md",
+      "packages/pipeline/mcp_bridge.py",
+      "packages/pipeline/mcp_bridge_session.py",
+      "tests/test_mcp_bridge.py",
+      "scripts/kiro_mcp_reliability_probe.py"
+    ]
+  },
+  "enrich_seed": {
+    "ok": true,
+    "elapsed_s": 0.04,
+    "seed_file": "packages/pipeline/mcp_bridge.py",
+    "seed": {
+      "file": "packages/pipeline/mcp_bridge.py",
+      "symbol": "_stderr",
+      "id": "packages/pipeline/mcp_bridge.py::_stderr",
+      "loc": null
+    },
+    "chunks": [
+      {
+        "file": "packages/pipeline/mcp_bridge.py",
+        "symbol": "_stderr",
+        "loc": "packages/pipeline/mcp_bridge.py:32-33",
+        "score": 1.0,
+        "kind": "function"
+      }
+    ],
+    "n_cards": 1,
+    "error": null
+  },
+  "arms": {
+    "pack_context": {
+      "ok": true,
+      "tool": "pack_context",
+      "engine": "composite_v1",
+      "elapsed_s": 0.041,
+      "n_pack": 1,
+      "seed": {
+        "file": "packages/pipeline/mcp_bridge.py",
+        "symbol": "_stderr",
+        "id": "packages/pipeline/mcp_bridge.py::_stderr"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/mcp_bridge.py",
+          "symbol": "_stderr",
+          "score": 1.0,
+          "loc": "packages/pipeline/mcp_bridge.py:32-33",
+          "id": "packages/pipeline/mcp_bridge.py::_stderr",
+          "chars": 74
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/mcp_bridge.py::_stderr",
+          "loc": "packages/pipeline/mcp_bridge.py:32-33",
+          "edge": "seed",
+          "score": 1.0
+        }
+      ],
+      "error": null,
+      "seed_chunks": [
+        {
+          "file": "packages/pipeline/mcp_bridge.py",
+          "symbol": "_stderr",
+          "loc": "packages/pipeline/mcp_bridge.py:32-33",
+          "score": 1.0,
+          "kind": "function"
+        }
+      ],
+      "pack_query": "scubiee-mcp-bridge MCP bridge launch stdio tools forward hybrid experiment surface | seeds: packages/pipeline/mcp_bridge.py::_stderr"
+    },
+    "pack_poly_embed": {
+      "ok": true,
+      "tool": "pack_poly_embed",
+      "engine": "poly_embed",
+      "elapsed_s": 0.142,
+      "n_pack": 1,
+      "seed": {
+        "file": "packages/pipeline/mcp_bridge.py",
+        "symbol": "_stderr",
+        "id": "packages/pipeline/mcp_bridge.py::_stderr"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/mcp_bridge.py",
+          "symbol": "_stderr",
+          "score": 1.0,
+          "loc": "packages/pipeline/mcp_bridge.py:32-33",
+          "id": "packages/pipeline/mcp_bridge.py::_stderr",
+          "chars": 74
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/mcp_bridge.py::_stderr",
+          "loc": "packages/pipeline/mcp_bridge.py:32-33",
+          "edge": "seed",
+          "score": 1.0
+        }
+      ],
+      "error": null,
+      "seed_chunks": [
+        {
+          "file": "packages/pipeline/mcp_bridge.py",
+          "symbol": "_stderr",
+          "loc": "packages/pipeline/mcp_bridge.py:32-33",
+          "score": 1.0,
+          "kind": "function"
+        }
+      ],
+      "pack_query": "scubiee-mcp-bridge MCP bridge launch stdio tools forward hybrid experiment surface | seeds: packages/pipeline/mcp_bridge.py::_stderr"
+    },
+    "pack_semantic": {
+      "ok": true,
+      "tool": "pack_semantic",
+      "engine": "semantic_tracer_fuse",
+      "elapsed_s": 0.209,
+      "n_pack": 1,
+      "seed": {
+        "file": "packages/pipeline/mcp_bridge.py",
+        "symbol": "_stderr",
+        "id": "packages/pipeline/mcp_bridge.py::_stderr"
+      },
+      "pack": [
+        {
+          "file": "packages/pipeline/mcp_bridge.py",
+          "symbol": "_stderr",
+          "score": 1.0,
+          "loc": "packages/pipeline/mcp_bridge.py:32-33",
+          "id": "packages/pipeline/mcp_bridge.py::_stderr",
+          "chars": 74
+        }
+      ],
+      "chain": [
+        {
+          "id": "packages/pipeline/mcp_bridge.py::_stderr",
+          "loc": "packages/pipeline/mcp_bridge.py:32-33",
+          "edge": "seed",
+          "score": 1.0
+        }
+      ],
+      "error": null,
+      "seed_chunks": [
+        {
+          "file": "packages/pipeline/mcp_bridge.py",
+          "symbol": "_stderr",
+          "loc": "packages/pipeline/mcp_bridge.py:32-33",
+          "score": 1.0,
+          "kind": "function"
+        }
+      ],
+      "pack_query": "scubiee-mcp-bridge MCP bridge launch stdio tools forward hybrid experiment surface | seeds: packages/pipeline/mcp_bridge.py::_stderr"
+    }
+  }
+}

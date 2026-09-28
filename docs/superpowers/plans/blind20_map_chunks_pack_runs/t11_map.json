@@ -1,0 +1,79 @@
+{
+  "ok": true,
+  "query": "mcp_permissions mcpAllowlist permissions.json autoApprove connect cursor install_tool surface",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "tests/test_mcp_permissions.py",
+      "symbol": "",
+      "score": 16.1019,
+      "loc": "tests/test_mcp_permissions.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "tests/test_mcp_restore.py",
+      "symbol": "",
+      "score": 15.3256,
+      "loc": "tests/test_mcp_restore.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "packages/pipeline/mcp_permissions.py",
+      "symbol": "",
+      "score": 13.5939,
+      "loc": "packages/pipeline/mcp_permissions.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": "",
+      "score": 13.2441,
+      "loc": "packages/pipeline/rules_installer.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "tests/test_user_journey_scenarios.py",
+      "symbol": "",
+      "score": 12.8372,
+      "loc": "tests/test_user_journey_scenarios.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "docs/connect-global-mcp-research.md",
+      "symbol": "",
+      "score": 7.6748,
+      "loc": "docs/connect-global-mcp-research.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "packages/pipeline/mcp_install.py",
+      "symbol": "",
+      "score": 6.3665,
+      "loc": "packages/pipeline/mcp_install.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "scripts/kiro_mcp_ab_dev_eval.py",
+      "symbol": "",
+      "score": 5.2981,
+      "loc": "scripts/kiro_mcp_ab_dev_eval.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "fixtures/trace-lab/app/config/database.py",
+      "symbol": "",
+      "score": 3.1023,
+      "loc": "fixtures/trace-lab/app/config/database.py:1-1",
+      "why": ""
+    }
+  ],
+  "elapsed_s": 0.329
+}

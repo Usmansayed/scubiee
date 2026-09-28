@@ -1,0 +1,1549 @@
+{
+ "collect.bodies.only_ids": [
+  [
+   "pkg/service.py::handle_put",
+   "pkg/service.py:435-437",
+   "4baba9e648e476360133c496f41c52cc3d93e81e9721f699d2e7f3e614aa23f3"
+  ],
+  [
+   "pkg/store.py::save_record",
+   "pkg/store.py:4-7",
+   "67d4cb80f626be1d2c70c6acbf56a30a6a6f5f568e77c54b2ed109ddd9f59679"
+  ]
+ ],
+ "expand.bodies.save_record.callers": [
+  [
+   "pkg/service.py::RecordService.put",
+   "d9ec8a4797c1b451b021ecfeda02719fc230a71f2a84e0f0f1064d9faa94eea6"
+  ]
+ ],
+ "expand.pkg/cli.py::main.all": [
+  [
+   "pkg/service.py::RecordService.put",
+   "expand:calls main->RecordService.put"
+  ],
+  [
+   "pkg/service.py::RecordService.get",
+   "expand:calls main->RecordService.get"
+  ],
+  [
+   "pkg/service.py::RecordService.m0",
+   "expand:calls main->RecordService.m0"
+  ],
+  [
+   "pkg/service.py::RecordService.m1",
+   "expand:calls main->RecordService.m1"
+  ],
+  [
+   "pkg/service.py::RecordService.m2",
+   "expand:calls main->RecordService.m2"
+  ],
+  [
+   "pkg/service.py::RecordService.m3",
+   "expand:calls main->RecordService.m3"
+  ],
+  [
+   "pkg/service.py::RecordService.m4",
+   "expand:calls main->RecordService.m4"
+  ],
+  [
+   "pkg/service.py::RecordService.m5",
+   "expand:calls main->RecordService.m5"
+  ],
+  [
+   "pkg/service.py::RecordService.m6",
+   "expand:calls main->RecordService.m6"
+  ],
+  [
+   "pkg/service.py::RecordService.m7",
+   "expand:calls main->RecordService.m7"
+  ]
+ ],
+ "expand.pkg/cli.py::main.callees": [
+  [
+   "pkg/service.py::RecordService.put",
+   "expand:calls main->RecordService.put"
+  ],
+  [
+   "pkg/service.py::RecordService.get",
+   "expand:calls main->RecordService.get"
+  ],
+  [
+   "pkg/service.py::RecordService.m0",
+   "expand:calls main->RecordService.m0"
+  ],
+  [
+   "pkg/service.py::RecordService.m1",
+   "expand:calls main->RecordService.m1"
+  ],
+  [
+   "pkg/service.py::RecordService.m2",
+   "expand:calls main->RecordService.m2"
+  ],
+  [
+   "pkg/service.py::RecordService.m3",
+   "expand:calls main->RecordService.m3"
+  ],
+  [
+   "pkg/service.py::RecordService.m4",
+   "expand:calls main->RecordService.m4"
+  ],
+  [
+   "pkg/service.py::RecordService.m5",
+   "expand:calls main->RecordService.m5"
+  ],
+  [
+   "pkg/service.py::RecordService.m6",
+   "expand:calls main->RecordService.m6"
+  ],
+  [
+   "pkg/service.py::RecordService.m7",
+   "expand:calls main->RecordService.m7"
+  ]
+ ],
+ "expand.pkg/cli.py::main.callers": [],
+ "expand.pkg/cli.py::main.effects": [],
+ "expand.pkg/service.py::RecordService.get.all": [
+  [
+   "pkg/cli.py::main",
+   "expand:called_by RecordService.get->main"
+  ],
+  [
+   "pkg/service.py::RecordService.put",
+   "same_file_sibling_rescue"
+  ],
+  [
+   "pkg/service.py::RecordService",
+   "same_file_sibling_rescue"
+  ],
+  [
+   "pkg/service.py::RecordService.m0",
+   "same_file_sibling_rescue"
+  ],
+  [
+   "pkg/service.py::RecordService.m1",
+   "same_file_sibling_rescue"
+  ],
+  [
+   "pkg/service.py::RecordService.m2",
+   "same_file_sibling_rescue"
+  ],
+  [
+   "pkg/service.py::RecordService.m3",
+   "same_file_sibling_rescue"
+  ],
+  [
+   "pkg/service.py::RecordService.m4",
+   "same_file_sibling_rescue"
+  ],
+  [
+   "pkg/service.py::RecordService.m5",
+   "same_file_sibling_rescue"
+  ],
+  [
+   "pkg/store.py::load_record",
+   "expand:calls RecordService.get->load_record"
+  ]
+ ],
+ "expand.pkg/service.py::RecordService.get.callees": [
+  [
+   "pkg/store.py::load_record",
+   "expand:calls RecordService.get->load_record"
+  ]
+ ],
+ "expand.pkg/service.py::RecordService.get.callers": [
+  [
+   "pkg/cli.py::main",
+   "expand:called_by RecordService.get->main"
+  ],
+  [
+   "pkg/service.py::RecordService.m0",
+   "expand:text_call RecordService.get<-RecordService.m0"
+  ],
+  [
+   "pkg/service.py::RecordService.m1",
+   "expand:text_call RecordService.get<-RecordService.m1"
+  ],
+  [
+   "pkg/service.py::RecordService.m2",
+   "expand:text_call RecordService.get<-RecordService.m2"
+  ],
+  [
+   "pkg/service.py::RecordService.m3",
+   "expand:text_call RecordService.get<-RecordService.m3"
+  ],
+  [
+   "pkg/service.py::RecordService.m4",
+   "expand:text_call RecordService.get<-RecordService.m4"
+  ],
+  [
+   "pkg/service.py::RecordService.m5",
+   "expand:text_call RecordService.get<-RecordService.m5"
+  ],
+  [
+   "pkg/service.py::RecordService.m6",
+   "expand:text_call RecordService.get<-RecordService.m6"
+  ],
+  [
+   "pkg/service.py::RecordService.m7",
+   "expand:text_call RecordService.get<-RecordService.m7"
+  ],
+  [
+   "pkg/service.py::RecordService.m8",
+   "expand:text_call RecordService.get<-RecordService.m8"
+  ]
+ ],
+ "expand.pkg/service.py::RecordService.get.effects": [],
+ "expand.pkg/service.py::RecordService.put.all": [
+  [
+   "pkg/cli.py::main",
+   "expand:called_by RecordService.put->main"
+  ],
+  [
+   "pkg/store.py::save_record",
+   "expand:calls RecordService.put->save_record"
+  ]
+ ],
+ "expand.pkg/service.py::RecordService.put.callees": [
+  [
+   "pkg/store.py::save_record",
+   "expand:calls RecordService.put->save_record"
+  ]
+ ],
+ "expand.pkg/service.py::RecordService.put.callers": [
+  [
+   "pkg/cli.py::main",
+   "expand:called_by RecordService.put->main"
+  ],
+  [
+   "pkg/service.py::handle_put",
+   "expand:text_call RecordService.put<-handle_put"
+  ]
+ ],
+ "expand.pkg/service.py::RecordService.put.effects": [],
+ "expand.pkg/service.py::handle_put.all": [
+  [
+   "pkg/cli.py::main",
+   "expand:called_by handle_put->main"
+  ]
+ ],
+ "expand.pkg/service.py::handle_put.callees": [],
+ "expand.pkg/service.py::handle_put.callers": [
+  [
+   "pkg/cli.py::main",
+   "expand:text_call handle_put<-main"
+  ]
+ ],
+ "expand.pkg/service.py::handle_put.effects": [],
+ "expand.pkg/store.py::load_record.all": [
+  [
+   "pkg/service.py::RecordService.get",
+   "expand:called_by load_record->RecordService.get"
+  ]
+ ],
+ "expand.pkg/store.py::load_record.callees": [],
+ "expand.pkg/store.py::load_record.callers": [
+  [
+   "pkg/service.py::RecordService.get",
+   "expand:text_call load_record<-RecordService.get"
+  ]
+ ],
+ "expand.pkg/store.py::load_record.effects": [],
+ "expand.pkg/store.py::save_record.all": [
+  [
+   "pkg/service.py::RecordService.put",
+   "expand:called_by save_record->RecordService.put"
+  ]
+ ],
+ "expand.pkg/store.py::save_record.callees": [],
+ "expand.pkg/store.py::save_record.callers": [
+  [
+   "pkg/service.py::RecordService.put",
+   "expand:text_call save_record<-RecordService.put"
+  ]
+ ],
+ "expand.pkg/store.py::save_record.effects": [],
+ "http.activated.get_health": {
+  "body": {
+   "chunks": 3,
+   "embedder_loaded": true,
+   "ok": true,
+   "project_id": "ce_fakehttp",
+   "soft_search_ready": true,
+   "status": "ok",
+   "warm_state": "ready"
+  },
+  "code": 200
+ },
+ "http.activated.post_dirty": {
+  "body": {
+   "client": null,
+   "ok": true,
+   "paths": [
+    "pkg/a.py"
+   ],
+   "queued": 1,
+   "reason": "probe_write",
+   "session_authored": false,
+   "session_id": null
+  },
+  "code": 200
+ },
+ "http.activated.post_dirty_no_paths": {
+  "body": {
+   "client": null,
+   "error": "paths list required",
+   "ok": false,
+   "session_authored": false,
+   "session_id": null
+  },
+  "code": 400
+ },
+ "http.activated.post_dirty_no_root": {
+  "body": {
+   "error": "workspace path required",
+   "ok": false
+  },
+  "code": 400
+ },
+ "http.activated.post_pack": {
+  "body": {
+   "error": "not found"
+  },
+  "code": 404
+ },
+ "http.activated.post_search": {
+  "body": {
+   "client": null,
+   "ok": true,
+   "query": "save record",
+   "results": [
+    {
+     "file": "a.py",
+     "score": 1.0
+    }
+   ],
+   "session_authored": false,
+   "session_id": null,
+   "top_k": 3
+  },
+  "code": 200
+ },
+ "http.activated.post_search_no_query": {
+  "body": {
+   "client": null,
+   "error": "query required",
+   "session_authored": false,
+   "session_id": null
+  },
+  "code": 400
+ },
+ "http.paused.get_health": {
+  "body": {
+   "chunks": 3,
+   "embedder_loaded": true,
+   "ok": true,
+   "project_id": "ce_fakehttp",
+   "soft_search_ready": true,
+   "status": "ok",
+   "warm_state": "ready"
+  },
+  "code": 200
+ },
+ "http.paused.post_dirty": {
+  "body": {
+   "client": null,
+   "ok": false,
+   "session_authored": false,
+   "session_id": null,
+   "status": "paused"
+  },
+  "code": 409
+ },
+ "http.paused.post_dirty_no_paths": {
+  "body": {
+   "client": null,
+   "ok": false,
+   "session_authored": false,
+   "session_id": null,
+   "status": "paused"
+  },
+  "code": 409
+ },
+ "http.paused.post_dirty_no_root": {
+  "body": {
+   "error": "workspace path required",
+   "ok": false
+  },
+  "code": 400
+ },
+ "http.paused.post_pack": {
+  "body": {
+   "error": "not found"
+  },
+  "code": 404
+ },
+ "http.paused.post_search": {
+  "body": {
+   "client": null,
+   "ok": false,
+   "session_authored": false,
+   "session_id": null,
+   "status": "paused"
+  },
+  "code": 409
+ },
+ "http.paused.post_search_no_query": {
+  "body": {
+   "client": null,
+   "ok": false,
+   "session_authored": false,
+   "session_id": null,
+   "status": "paused"
+  },
+  "code": 409
+ },
+ "mcp.error.expand_bad_direction.keys": [
+  "error",
+  "g",
+  "hint",
+  "index_skip",
+  "index_write_hint",
+  "managed",
+  "ok",
+  "should_retry_status",
+  "should_use_mcp",
+  "stale_ctx_repo",
+  "status_age_s",
+  "status_ttl_s",
+  "tool"
+ ],
+ "mcp.error.expand_bad_direction.values": {
+  "error": "unknown direction: 'sideways'",
+  "ok": false,
+  "tool": "expand_context"
+ },
+ "mcp.error.nav_expand_unknown_handle.keys": [
+  "error",
+  "g",
+  "handle",
+  "hint",
+  "index_skip",
+  "index_write_hint",
+  "managed",
+  "ok",
+  "should_retry_status",
+  "should_use_mcp",
+  "stale_ctx_repo",
+  "status_age_s",
+  "status_ttl_s",
+  "tool"
+ ],
+ "mcp.error.nav_expand_unknown_handle.values": {
+  "error": "unknown handle h_does_not_exist",
+  "ok": false,
+  "tool": "expand"
+ },
+ "mcp.error.pack_empty_seed.keys": [
+  "error",
+  "g",
+  "hint",
+  "index_skip",
+  "index_write_hint",
+  "managed",
+  "ok",
+  "should_retry_status",
+  "should_use_mcp",
+  "stale_ctx_repo",
+  "status_age_s",
+  "status_ttl_s",
+  "tool"
+ ],
+ "mcp.error.pack_empty_seed.values": {
+  "error": "seed_file required",
+  "ok": false,
+  "tool": "pack_context"
+ },
+ "mcp.error.pack_k0.keys": [
+  "error",
+  "g",
+  "index_skip",
+  "index_write_hint",
+  "managed",
+  "ok",
+  "should_retry_status",
+  "should_use_mcp",
+  "stale_ctx_repo",
+  "status_age_s",
+  "status_ttl_s",
+  "tool"
+ ],
+ "mcp.error.pack_k0.values": {
+  "error": "k must be >= 1",
+  "ok": false,
+  "tool": "pack_context"
+ },
+ "mcp.pack.ast_warming.keys": [
+  "ast_wait_ms",
+  "error",
+  "g",
+  "hint",
+  "index_skip",
+  "index_write_hint",
+  "managed",
+  "ok",
+  "retry_after_s",
+  "should_retry",
+  "should_retry_status",
+  "should_use_mcp",
+  "stale_ctx_repo",
+  "status",
+  "status_age_s",
+  "status_ttl_s",
+  "tool"
+ ],
+ "mcp.pack.ast_warming.values": {
+  "error": "ast_warming",
+  "ok": false,
+  "retry_after_s": 3,
+  "should_retry": true,
+  "status": "warming",
+  "tool": "pack_context"
+ },
+ "pack.include_bodies.class_item": {
+  "full_loc": "pkg/service.py:4-432",
+  "loc": "pkg/service.py:4-123",
+  "text_lines": 294,
+  "text_sha": "d9f050a35ff41358fca9fc4025d351cc2706ebea5f1d5a0f7aac9fc803525b08"
+ },
+ "status.as_status_fields.keys": [
+  "ast_hydrated",
+  "attach_warm",
+  "embedder_loaded",
+  "runtime_state",
+  "soft_search_ready",
+  "warm_deadline_ms",
+  "warm_elapsed_ms",
+  "warm_error",
+  "warm_phase",
+  "warm_ready",
+  "warm_ready_map"
+ ],
+ "status.keys.h0s0d0a0": [
+  "agent_ready",
+  "agent_ready_note",
+  "ast_hydrated",
+  "embedder_loaded",
+  "engine",
+  "error",
+  "g",
+  "hint",
+  "index_available",
+  "index_fresh",
+  "index_skip",
+  "index_write_hint",
+  "lifecycle_hint",
+  "lifecycle_state",
+  "managed",
+  "n_spans",
+  "needs_full",
+  "next_action",
+  "ok",
+  "overlay_ready",
+  "pack_ready",
+  "ready",
+  "repo",
+  "search_usable",
+  "semantic_ready",
+  "server",
+  "session_id",
+  "should_retry_status",
+  "should_use_mcp",
+  "stale_ctx_repo",
+  "status_age_s",
+  "status_ttl_s",
+  "surface",
+  "sync_state",
+  "syncing",
+  "token_mode",
+  "tool",
+  "tools",
+  "warm_elapsed_ms",
+  "warm_phase",
+  "warm_ready",
+  "warm_ready_map",
+  "warm_wait",
+  "warming"
+ ],
+ "status.keys.h0s0d0a1": [
+  "agent_ready",
+  "agent_ready_note",
+  "ast_hydrated",
+  "embedder_loaded",
+  "engine",
+  "error",
+  "g",
+  "hint",
+  "index_available",
+  "index_fresh",
+  "index_skip",
+  "index_write_hint",
+  "lifecycle_hint",
+  "lifecycle_state",
+  "managed",
+  "n_spans",
+  "needs_full",
+  "next_action",
+  "ok",
+  "overlay_ready",
+  "pack_ready",
+  "ready",
+  "repo",
+  "search_usable",
+  "semantic_ready",
+  "server",
+  "session_id",
+  "should_retry_status",
+  "should_use_mcp",
+  "stale_ctx_repo",
+  "status_age_s",
+  "status_ttl_s",
+  "surface",
+  "sync_state",
+  "syncing",
+  "token_mode",
+  "tool",
+  "tools",
+  "warm_elapsed_ms",
+  "warm_phase",
+  "warm_ready",
+  "warm_ready_map",
+  "warm_wait",
+  "warming"
+ ],
+ "status.keys.h0s0d1a0": [
+  "agent_ready",
+  "agent_ready_note",
+  "ast_hydrated",
+  "embedder_loaded",
+  "engine",
+  "error",
+  "g",
+  "hint",
+  "index_available",
+  "index_fresh",
+  "index_skip",
+  "index_write_hint",
+  "lifecycle_hint",
+  "lifecycle_state",
+  "managed",
+  "n_spans",
+  "needs_full",
+  "next_action",
+  "ok",
+  "overlay_ready",
+  "pack_ready",
+  "ready",
+  "repo",
+  "search_usable",
+  "semantic_ready",
+  "server",
+  "session_id",
+  "should_retry_status",
+  "should_use_mcp",
+  "stale_ctx_repo",
+  "status_age_s",
+  "status_ttl_s",
+  "surface",
+  "sync_state",
+  "syncing",
+  "token_mode",
+  "tool",
+  "tools",
+  "warm_elapsed_ms",
+  "warm_phase",
+  "warm_ready",
+  "warm_ready_map",
+  "warm_wait",
+  "warming"
+ ],
+ "status.keys.h0s0d1a1": [
+  "agent_ready",
+  "agent_ready_note",
+  "ast_hydrated",
+  "embedder_loaded",
+  "engine",
+  "error",
+  "g",
+  "hint",
+  "index_available",
+  "index_fresh",
+  "index_skip",
+  "index_write_hint",
+  "lifecycle_hint",
+  "lifecycle_state",
+  "managed",
+  "n_spans",
+  "needs_full",
+  "next_action",
+  "ok",
+  "overlay_ready",
+  "pack_ready",
+  "ready",
+  "repo",
+  "search_usable",
+  "semantic_ready",
+  "server",
+  "session_id",
+  "should_retry_status",
+  "should_use_mcp",
+  "stale_ctx_repo",
+  "status_age_s",
+  "status_ttl_s",
+  "surface",
+  "sync_state",
+  "syncing",
+  "token_mode",
+  "tool",
+  "tools",
+  "warm_elapsed_ms",
+  "warm_phase",
+  "warm_ready",
+  "warm_ready_map",
+  "warm_wait",
+  "warming"
+ ],
+ "status.keys.h0s1d0a0": [
+  "agent_ready",
+  "agent_ready_note",
+  "ast_hydrated",
+  "embedder_loaded",
+  "engine",
+  "error",
+  "g",
+  "hint",
+  "index_available",
+  "index_fresh",
+  "index_skip",
+  "index_write_hint",
+  "lifecycle_hint",
+  "lifecycle_state",
+  "managed",
+  "n_spans",
+  "needs_full",
+  "next_action",
+  "ok",
+  "overlay_ready",
+  "pack_ready",
+  "ready",
+  "repo",
+  "search_usable",
+  "semantic_ready",
+  "server",
+  "session_id",
+  "should_retry_status",
+  "should_use_mcp",
+  "stale_ctx_repo",
+  "status_age_s",
+  "status_ttl_s",
+  "surface",
+  "sync_state",
+  "syncing",
+  "token_mode",
+  "tool",
+  "tools",
+  "warm_elapsed_ms",
+  "warm_phase",
+  "warm_ready",
+  "warm_ready_map",
+  "warm_wait",
+  "warming"
+ ],
+ "status.keys.h0s1d0a1": [
+  "agent_ready",
+  "agent_ready_note",
+  "ast_hydrated",
+  "embedder_loaded",
+  "engine",
+  "error",
+  "g",
+  "hint",
+  "index_available",
+  "index_fresh",
+  "index_skip",
+  "index_write_hint",
+  "lifecycle_hint",
+  "lifecycle_state",
+  "managed",
+  "n_spans",
+  "needs_full",
+  "next_action",
+  "ok",
+  "overlay_ready",
+  "pack_ready",
+  "ready",
+  "repo",
+  "search_usable",
+  "semantic_ready",
+  "server",
+  "session_id",
+  "should_retry_status",
+  "should_use_mcp",
+  "stale_ctx_repo",
+  "status_age_s",
+  "status_ttl_s",
+  "surface",
+  "sync_state",
+  "syncing",
+  "token_mode",
+  "tool",
+  "tools",
+  "warm_elapsed_ms",
+  "warm_phase",
+  "warm_ready",
+  "warm_ready_map",
+  "warm_wait",
+  "warming"
+ ],
+ "status.keys.h0s1d1a0": [
+  "agent_ready",
+  "agent_ready_note",
+  "ast_hydrated",
+  "embedder_loaded",
+  "engine",
+  "error",
+  "g",
+  "hint",
+  "index_available",
+  "index_fresh",
+  "index_skip",
+  "index_write_hint",
+  "lifecycle_hint",
+  "lifecycle_state",
+  "managed",
+  "n_spans",
+  "needs_full",
+  "next_action",
+  "ok",
+  "overlay_ready",
+  "pack_ready",
+  "ready",
+  "repo",
+  "search_usable",
+  "semantic_ready",
+  "server",
+  "session_id",
+  "should_retry_status",
+  "should_use_mcp",
+  "stale_ctx_repo",
+  "status_age_s",
+  "status_ttl_s",
+  "surface",
+  "sync_state",
+  "syncing",
+  "token_mode",
+  "tool",
+  "tools",
+  "warm_elapsed_ms",
+  "warm_phase",
+  "warm_ready",
+  "warm_ready_map",
+  "warm_wait",
+  "warming"
+ ],
+ "status.keys.h0s1d1a1": [
+  "agent_ready",
+  "agent_ready_note",
+  "ast_hydrated",
+  "embedder_loaded",
+  "engine",
+  "error",
+  "g",
+  "hint",
+  "index_available",
+  "index_fresh",
+  "index_skip",
+  "index_write_hint",
+  "lifecycle_hint",
+  "lifecycle_state",
+  "managed",
+  "n_spans",
+  "needs_full",
+  "next_action",
+  "ok",
+  "overlay_ready",
+  "pack_ready",
+  "ready",
+  "repo",
+  "search_usable",
+  "semantic_ready",
+  "server",
+  "session_id",
+  "should_retry_status",
+  "should_use_mcp",
+  "stale_ctx_repo",
+  "status_age_s",
+  "status_ttl_s",
+  "surface",
+  "sync_state",
+  "syncing",
+  "token_mode",
+  "tool",
+  "tools",
+  "warm_elapsed_ms",
+  "warm_phase",
+  "warm_ready",
+  "warm_ready_map",
+  "warm_wait",
+  "warming"
+ ],
+ "status.keys.h1s0d0a0": [
+  "agent_ready",
+  "agent_ready_note",
+  "ast_hydrated",
+  "embedder_loaded",
+  "engine",
+  "error",
+  "g",
+  "hint",
+  "index_available",
+  "index_fresh",
+  "index_skip",
+  "index_write_hint",
+  "lifecycle_hint",
+  "lifecycle_state",
+  "managed",
+  "n_spans",
+  "needs_full",
+  "next_action",
+  "ok",
+  "overlay_ready",
+  "pack_ready",
+  "ready",
+  "repo",
+  "search_usable",
+  "semantic_ready",
+  "server",
+  "session_id",
+  "should_retry_status",
+  "should_use_mcp",
+  "stale_ctx_repo",
+  "status_age_s",
+  "status_ttl_s",
+  "surface",
+  "sync_state",
+  "syncing",
+  "token_mode",
+  "tool",
+  "tools",
+  "warm_elapsed_ms",
+  "warm_phase",
+  "warm_ready",
+  "warm_ready_map",
+  "warm_wait",
+  "warming"
+ ],
+ "status.keys.h1s0d0a1": [
+  "agent_ready",
+  "agent_ready_note",
+  "ast_hydrated",
+  "embedder_loaded",
+  "engine",
+  "error",
+  "g",
+  "hint",
+  "index_available",
+  "index_fresh",
+  "index_skip",
+  "index_write_hint",
+  "lifecycle_hint",
+  "lifecycle_state",
+  "managed",
+  "n_spans",
+  "needs_full",
+  "next_action",
+  "ok",
+  "overlay_ready",
+  "pack_ready",
+  "ready",
+  "repo",
+  "search_usable",
+  "semantic_ready",
+  "server",
+  "session_id",
+  "should_retry_status",
+  "should_use_mcp",
+  "stale_ctx_repo",
+  "status_age_s",
+  "status_ttl_s",
+  "surface",
+  "sync_state",
+  "syncing",
+  "token_mode",
+  "tool",
+  "tools",
+  "warm_elapsed_ms",
+  "warm_phase",
+  "warm_ready",
+  "warm_ready_map",
+  "warm_wait",
+  "warming"
+ ],
+ "status.keys.h1s0d1a0": [
+  "agent_ready",
+  "agent_ready_note",
+  "ast_hydrated",
+  "embedder_loaded",
+  "engine",
+  "error",
+  "g",
+  "index_available",
+  "index_fresh",
+  "index_skip",
+  "index_write_hint",
+  "lifecycle_hint",
+  "lifecycle_state",
+  "managed",
+  "n_spans",
+  "needs_full",
+  "next_action",
+  "ok",
+  "overlay_ready",
+  "pack_ready",
+  "ready",
+  "repo",
+  "search_usable",
+  "semantic_ready",
+  "server",
+  "session_id",
+  "should_retry_status",
+  "should_use_mcp",
+  "stale_ctx_repo",
+  "status_age_s",
+  "status_ttl_s",
+  "surface",
+  "sync_state",
+  "syncing",
+  "token_mode",
+  "tool",
+  "tools",
+  "warm_elapsed_ms",
+  "warm_phase",
+  "warm_ready",
+  "warm_ready_map",
+  "warm_wait",
+  "warming"
+ ],
+ "status.keys.h1s0d1a1": [
+  "agent_ready",
+  "agent_ready_note",
+  "ast_hydrated",
+  "embedder_loaded",
+  "engine",
+  "error",
+  "g",
+  "index_available",
+  "index_fresh",
+  "index_skip",
+  "index_write_hint",
+  "lifecycle_hint",
+  "lifecycle_state",
+  "managed",
+  "n_spans",
+  "needs_full",
+  "next_action",
+  "ok",
+  "overlay_ready",
+  "pack_ready",
+  "ready",
+  "repo",
+  "search_usable",
+  "semantic_ready",
+  "server",
+  "session_id",
+  "should_retry_status",
+  "should_use_mcp",
+  "stale_ctx_repo",
+  "status_age_s",
+  "status_ttl_s",
+  "surface",
+  "sync_state",
+  "syncing",
+  "token_mode",
+  "tool",
+  "tools",
+  "warm_elapsed_ms",
+  "warm_phase",
+  "warm_ready",
+  "warm_ready_map",
+  "warm_wait",
+  "warming"
+ ],
+ "status.keys.h1s1d0a0": [
+  "agent_ready",
+  "agent_ready_note",
+  "ast_hydrated",
+  "embedder_loaded",
+  "engine",
+  "error",
+  "g",
+  "hint",
+  "index_available",
+  "index_fresh",
+  "index_skip",
+  "index_write_hint",
+  "lifecycle_hint",
+  "lifecycle_state",
+  "managed",
+  "n_spans",
+  "needs_full",
+  "next_action",
+  "ok",
+  "overlay_ready",
+  "pack_ready",
+  "ready",
+  "repo",
+  "search_usable",
+  "semantic_ready",
+  "server",
+  "session_id",
+  "should_retry_status",
+  "should_use_mcp",
+  "stale_ctx_repo",
+  "status_age_s",
+  "status_ttl_s",
+  "surface",
+  "sync_state",
+  "syncing",
+  "token_mode",
+  "tool",
+  "tools",
+  "warm_elapsed_ms",
+  "warm_phase",
+  "warm_ready",
+  "warm_ready_map",
+  "warm_wait",
+  "warming"
+ ],
+ "status.keys.h1s1d0a1": [
+  "agent_ready",
+  "agent_ready_note",
+  "ast_hydrated",
+  "embedder_loaded",
+  "engine",
+  "error",
+  "g",
+  "hint",
+  "index_available",
+  "index_fresh",
+  "index_skip",
+  "index_write_hint",
+  "lifecycle_hint",
+  "lifecycle_state",
+  "managed",
+  "n_spans",
+  "needs_full",
+  "next_action",
+  "ok",
+  "overlay_ready",
+  "pack_ready",
+  "ready",
+  "repo",
+  "search_usable",
+  "semantic_ready",
+  "server",
+  "session_id",
+  "should_retry_status",
+  "should_use_mcp",
+  "stale_ctx_repo",
+  "status_age_s",
+  "status_ttl_s",
+  "surface",
+  "sync_state",
+  "syncing",
+  "token_mode",
+  "tool",
+  "tools",
+  "warm_elapsed_ms",
+  "warm_phase",
+  "warm_ready",
+  "warm_ready_map",
+  "warm_wait",
+  "warming"
+ ],
+ "status.keys.h1s1d1a0": [
+  "agent_ready",
+  "agent_ready_note",
+  "ast_hydrated",
+  "embedder_loaded",
+  "engine",
+  "error",
+  "g",
+  "index_available",
+  "index_fresh",
+  "index_skip",
+  "index_write_hint",
+  "lifecycle_hint",
+  "lifecycle_state",
+  "managed",
+  "n_spans",
+  "needs_full",
+  "next_action",
+  "ok",
+  "overlay_ready",
+  "pack_ready",
+  "ready",
+  "repo",
+  "search_usable",
+  "semantic_ready",
+  "server",
+  "session_id",
+  "should_retry_status",
+  "should_use_mcp",
+  "stale_ctx_repo",
+  "status_age_s",
+  "status_ttl_s",
+  "surface",
+  "sync_state",
+  "syncing",
+  "token_mode",
+  "tool",
+  "tools",
+  "warm_elapsed_ms",
+  "warm_phase",
+  "warm_ready",
+  "warm_ready_map",
+  "warm_wait",
+  "warming"
+ ],
+ "status.keys.h1s1d1a1": [
+  "agent_ready",
+  "agent_ready_note",
+  "ast_hydrated",
+  "embedder_loaded",
+  "engine",
+  "error",
+  "g",
+  "index_available",
+  "index_fresh",
+  "index_skip",
+  "index_write_hint",
+  "lifecycle_hint",
+  "lifecycle_state",
+  "managed",
+  "n_spans",
+  "needs_full",
+  "next_action",
+  "ok",
+  "overlay_ready",
+  "pack_ready",
+  "ready",
+  "repo",
+  "search_usable",
+  "semantic_ready",
+  "server",
+  "session_id",
+  "should_retry_status",
+  "should_use_mcp",
+  "stale_ctx_repo",
+  "status_age_s",
+  "status_ttl_s",
+  "surface",
+  "sync_state",
+  "syncing",
+  "token_mode",
+  "tool",
+  "tools",
+  "warm_elapsed_ms",
+  "warm_phase",
+  "warm_ready",
+  "warm_ready_map",
+  "warm_wait",
+  "warming"
+ ],
+ "status.warm_status_fields.keys": [
+  "ast_hydrate_source",
+  "ast_hydrated",
+  "attach_warm",
+  "warm_deadline_ms",
+  "warm_elapsed_ms",
+  "warm_error",
+  "warm_phase",
+  "warm_ready",
+  "warm_ready_map",
+  "warm_remaining_s"
+ ],
+ "status.warm_wait.h0s0d0a0": {
+  "dense_ready": false,
+  "done": false,
+  "pack_ready": false,
+  "retry_after_s": 5,
+  "soft_ready": false,
+  "stage": "engine_down",
+  "top_ast_hydrated": false,
+  "top_pack_ready": false
+ },
+ "status.warm_wait.h0s0d0a1": {
+  "dense_ready": false,
+  "done": false,
+  "pack_ready": false,
+  "retry_after_s": 5,
+  "soft_ready": false,
+  "stage": "engine_down",
+  "top_ast_hydrated": true,
+  "top_pack_ready": false
+ },
+ "status.warm_wait.h0s0d1a0": {
+  "dense_ready": true,
+  "done": false,
+  "pack_ready": false,
+  "retry_after_s": 5,
+  "soft_ready": false,
+  "stage": "engine_down",
+  "top_ast_hydrated": false,
+  "top_pack_ready": false
+ },
+ "status.warm_wait.h0s0d1a1": {
+  "dense_ready": true,
+  "done": false,
+  "pack_ready": false,
+  "retry_after_s": 5,
+  "soft_ready": false,
+  "stage": "engine_down",
+  "top_ast_hydrated": true,
+  "top_pack_ready": false
+ },
+ "status.warm_wait.h0s1d0a0": {
+  "dense_ready": false,
+  "done": false,
+  "pack_ready": false,
+  "retry_after_s": 5,
+  "soft_ready": false,
+  "stage": "engine_down",
+  "top_ast_hydrated": false,
+  "top_pack_ready": false
+ },
+ "status.warm_wait.h0s1d0a1": {
+  "dense_ready": false,
+  "done": false,
+  "pack_ready": false,
+  "retry_after_s": 5,
+  "soft_ready": false,
+  "stage": "engine_down",
+  "top_ast_hydrated": true,
+  "top_pack_ready": false
+ },
+ "status.warm_wait.h0s1d1a0": {
+  "dense_ready": true,
+  "done": false,
+  "pack_ready": false,
+  "retry_after_s": 5,
+  "soft_ready": false,
+  "stage": "engine_down",
+  "top_ast_hydrated": false,
+  "top_pack_ready": false
+ },
+ "status.warm_wait.h0s1d1a1": {
+  "dense_ready": true,
+  "done": false,
+  "pack_ready": false,
+  "retry_after_s": 5,
+  "soft_ready": false,
+  "stage": "engine_down",
+  "top_ast_hydrated": true,
+  "top_pack_ready": false
+ },
+ "status.warm_wait.h1s0d0a0": {
+  "dense_ready": false,
+  "done": false,
+  "pack_ready": false,
+  "retry_after_s": 5,
+  "soft_ready": false,
+  "stage": "soft_loading",
+  "top_ast_hydrated": false,
+  "top_pack_ready": false
+ },
+ "status.warm_wait.h1s0d0a1": {
+  "dense_ready": false,
+  "done": false,
+  "pack_ready": false,
+  "retry_after_s": 5,
+  "soft_ready": false,
+  "stage": "soft_loading",
+  "top_ast_hydrated": true,
+  "top_pack_ready": false
+ },
+ "status.warm_wait.h1s0d1a0": {
+  "dense_ready": true,
+  "done": false,
+  "pack_ready": false,
+  "retry_after_s": 5,
+  "soft_ready": false,
+  "stage": "soft_loading",
+  "top_ast_hydrated": false,
+  "top_pack_ready": false
+ },
+ "status.warm_wait.h1s0d1a1": {
+  "dense_ready": true,
+  "done": false,
+  "pack_ready": false,
+  "retry_after_s": 5,
+  "soft_ready": false,
+  "stage": "soft_loading",
+  "top_ast_hydrated": true,
+  "top_pack_ready": false
+ },
+ "status.warm_wait.h1s1d0a0": {
+  "dense_ready": false,
+  "done": false,
+  "pack_ready": false,
+  "retry_after_s": 5,
+  "soft_ready": true,
+  "stage": "dense_loading",
+  "top_ast_hydrated": false,
+  "top_pack_ready": false
+ },
+ "status.warm_wait.h1s1d0a1": {
+  "dense_ready": false,
+  "done": false,
+  "pack_ready": true,
+  "retry_after_s": 5,
+  "soft_ready": true,
+  "stage": "dense_loading",
+  "top_ast_hydrated": true,
+  "top_pack_ready": true
+ },
+ "status.warm_wait.h1s1d1a0": {
+  "dense_ready": true,
+  "done": false,
+  "pack_ready": false,
+  "retry_after_s": 5,
+  "soft_ready": true,
+  "stage": "pack_ast_loading",
+  "top_ast_hydrated": false,
+  "top_pack_ready": false
+ },
+ "status.warm_wait.h1s1d1a1": {
+  "dense_ready": true,
+  "done": true,
+  "pack_ready": true,
+  "retry_after_s": 0,
+  "soft_ready": true,
+  "stage": "ready",
+  "top_ast_hydrated": true,
+  "top_pack_ready": true
+ },
+ "sync.idle_hot_save": {
+  "applied": [
+   1
+  ],
+  "cache_kept_after_flush": true,
+  "flushed": 1,
+  "fresh_vdb_opened": 0,
+  "hot_lines": 1,
+  "loads": 0,
+  "n_sync": 1,
+  "publish": "patch",
+  "state": "published",
+  "vdb_reused": true
+ },
+ "sync.kill_switch.CTX_HOT_DELETE_MASK=0": {
+  "applied": [
+   1
+  ],
+  "cache_kept_after_flush": true,
+  "flushed": 1,
+  "fresh_vdb_opened": 0,
+  "hot_lines": 1,
+  "loads": 0,
+  "n_sync": 1,
+  "publish": "patch",
+  "state": "published",
+  "vdb_reused": true
+ },
+ "sync.kill_switch.CTX_HOT_PUBLISH=0": {
+  "applied": [],
+  "cache_kept_after_flush": true,
+  "flushed": 1,
+  "fresh_vdb_opened": 0,
+  "hot_lines": 1,
+  "loads": 1,
+  "n_sync": 1,
+  "publish": "full",
+  "state": "published",
+  "vdb_reused": true
+ },
+ "sync.kill_switch.CTX_HOT_PUBLISH=0,CTX_HOT_VDB_CACHE=0": {
+  "applied": [],
+  "cache_kept_after_flush": true,
+  "flushed": 1,
+  "fresh_vdb_opened": 1,
+  "hot_lines": 1,
+  "loads": 1,
+  "n_sync": 1,
+  "publish": "full",
+  "state": "published",
+  "vdb_reused": false
+ },
+ "sync.kill_switch.CTX_HOT_VDB_CACHE=0": {
+  "applied": [
+   1
+  ],
+  "cache_kept_after_flush": true,
+  "flushed": 1,
+  "fresh_vdb_opened": 1,
+  "hot_lines": 1,
+  "loads": 0,
+  "n_sync": 1,
+  "publish": "patch",
+  "state": "published",
+  "vdb_reused": false
+ },
+ "sync.newcomer_enqueue": {
+  "pkg/fresh.py": [
+   "disk_poll",
+   "queued"
+  ]
+ },
+ "trace.error.expand_unknown_node.keys": [
+  "error",
+  "ok"
+ ],
+ "trace.error.expand_unknown_node.values": {
+  "error": "unknown node 'pkg/nope.py::zzz'",
+  "ok": false
+ },
+ "trace.error.pack_empty_seed.keys": [
+  "error",
+  "hint",
+  "ok",
+  "timing",
+  "tool"
+ ],
+ "trace.error.pack_empty_seed.values": {
+  "error": "seed not found: file='' symbol='' line=0",
+  "ok": false
+ },
+ "trace.error.pack_underscore_seed.keys": [
+  "error",
+  "hint",
+  "ok",
+  "timing",
+  "tool"
+ ],
+ "trace.error.pack_underscore_seed.values": {
+  "error": "seed not found: file='_' symbol='_' line=0",
+  "ok": false
+ },
+ "trace.error.pack_unknown_seed.keys": [
+  "error",
+  "hint",
+  "ok",
+  "timing",
+  "tool"
+ ],
+ "trace.error.pack_unknown_seed.values": {
+  "error": "seed not found: file='pkg/nope.py' symbol='zzz' line=0",
+  "ok": false
+ }
+}

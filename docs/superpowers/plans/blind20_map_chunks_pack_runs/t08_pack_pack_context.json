@@ -1,0 +1,82 @@
+{
+  "ok": true,
+  "tool": "pack_context",
+  "engine": "composite_v1",
+  "elapsed_s": 0.123,
+  "n_pack": 2,
+  "seed": {
+    "file": "packages/pipeline/context_trace.py",
+    "symbol": "run_expand_context",
+    "id": "packages/pipeline/context_trace.py::run_expand_context"
+  },
+  "pack": [
+    {
+      "file": "packages/pipeline/context_trace.py",
+      "symbol": "run_expand_context",
+      "score": 1.0,
+      "loc": "packages/pipeline/context_trace.py:807-952",
+      "id": "packages/pipeline/context_trace.py::run_expand_context",
+      "chars": 5061
+    },
+    {
+      "file": "packages/pipeline/context_trace.py",
+      "symbol": "_load_repo",
+      "score": 1.0,
+      "loc": "packages/pipeline/context_trace.py:276-355",
+      "id": "packages/pipeline/context_trace.py::_load_repo",
+      "chars": 939
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/pipeline/context_trace.py::run_expand_context",
+      "loc": "packages/pipeline/context_trace.py:807-952",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/context_trace.py::_load_repo",
+      "loc": "packages/pipeline/context_trace.py:276-355",
+      "edge": "calls",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/context_trace.py::_heat",
+      "loc": "packages/pipeline/context_trace.py:39-44",
+      "edge": "calls",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/context_trace.py::card_role",
+      "loc": "packages/pipeline/context_trace.py:372-395",
+      "edge": "calls",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/context_trace.py::_kind_pref",
+      "loc": "packages/pipeline/context_trace.py:361-369",
+      "edge": "calls",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/context_trace.py::build_call_chain",
+      "loc": "packages/pipeline/context_trace.py:528-551",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/context_trace.py::_resolve_node_id",
+      "loc": "packages/pipeline/context_trace.py:697-710",
+      "edge": "calls",
+      "score": 0.99
+    },
+    {
+      "id": "packages/pipeline/context_trace.py::_neighbor_cards",
+      "loc": "packages/pipeline/context_trace.py:713-804",
+      "edge": "calls",
+      "score": 0.99
+    }
+  ],
+  "pack_query": "expand_context direction callees callers effects with_bodies hop chain node id\nrelevant_chunks: packages/pipeline/context_trace.py::run_expand_context@packages/pipeline/context_trace.py:807-952 | packages/pipeline/context_trace.py::build_call_chain@packages/pipeline/context_trace.py:528-551 | packages/pipeline/locate_cli.py::cli_expand@packages/pipeline/locate_cli.py:230-258",
+  "error": null
+}

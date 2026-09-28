@@ -9,6 +9,7 @@ only when dirty. On cwd switch or process exit: one final check, then stop.
 from __future__ import annotations
 
 import atexit
+import json
 import os
 import sys
 import threading
@@ -102,6 +103,56 @@ def _vdb_fingerprint(vdb) -> tuple | None:
         return None
 
 
+_FILE_KEY = b'"file": "'
+
+
+def count_chunks_per_file(chunks_path: Path) -> dict[str, int]:
+    """Chunks per file in chunks.jsonl without decoding each row.
+
+    Rows are ``json.dumps(asdict(ChunkRecord))``: ``"file"`` is the second key,
+    ahead of any text, and a quote inside a JSON string is always escaped, so
+    the first ``"file": "`` on a line is the key. Rows that do not match fall
+    back to ``json.loads``.
+    """
+    counts: dict[str, int] = {}
+    try:
+        data = chunks_path.read_bytes()
+    except OSError:
+        return counts
+    for line in data.splitlines():
+        if not line.strip():
+            continue
+        rel: str | None = None
+        i = line.find(_FILE_KEY)
+        if i >= 0:
+            j = i + len(_FILE_KEY)
+            k = j
+            while True:
+                k = line.find(b'"', k)
+                if k < 0:
+                    break
+                # Count the backslashes in front: an odd number escapes it.
+                n = 0
+                while line[k - 1 - n] == 0x5C:
+                    n += 1
+                if n % 2 == 0:
+                    break
+                k += 1
+            if k > 0:
+                try:
+                    rel = json.loads(b'"' + line[j:k] + b'"')
+                except ValueError:
+                    rel = None
+        if rel is None:
+            try:
+                rel = str(json.loads(line).get("file") or "")
+            except ValueError:
+                continue
+        rel = rel.replace("\\", "/")
+        counts[rel] = counts.get(rel, 0) + 1
+    return counts
+
+
 class BackgroundSyncLoop:
     """Periodic root-probe + incremental_sync; final_check on stop/cwd/exit."""
 
@@ -150,6 +201,8 @@ class BackgroundSyncLoop:
         self._stop = threading.Event()
         self._poll_now = False
         self._last_newcomer_scan = 0.0
+        self._last_ast_revalidate = 0.0
+        self._ast_revalidate_thread: threading.Thread | None = None
         self._thread: threading.Thread | None = None
         self._syncing = False
         self._lock = threading.Lock()
@@ -167,6 +220,11 @@ class BackgroundSyncLoop:
         # after it so their ~8s whole-graph merge never lands mid-burst.
         self._last_hot_mark_at: float | None = None
         self.graph_catchup_quiet_s = DEFAULT_GRAPH_CATCHUP_QUIET_S
+        # Issue 6: one in-flight child-process graph merge (graph_merge_worker).
+        # The keeper keeps serving saves while it runs and only commits it.
+        self._graph_job: Any | None = None
+        self._graph_job_failures = 0
+        self.graph_job_timeout_s = float(os.environ.get("CTX_GRAPH_CATCHUP_TIMEOUT_S", "80"))
         self._newcomer_thread: threading.Thread | None = None
         # (VectorDatabase, on-disk fingerprint) kept across hot syncs; see _hot_vdb.
         self._hot_vdb_cache: tuple[Any, Any] | None = None
@@ -188,6 +246,9 @@ class BackgroundSyncLoop:
         self._probe_durations: list[float] = []  # last N probe durations in seconds
         self._original_change_poll_ms = self.change_poll_ms
         self._backoff_active = False
+        from pipeline.root_probe import DirWatch
+
+        self._dir_watch = DirWatch()
 
     def status(self) -> dict:
         dirty = self.dirty_ledger.snapshot()
@@ -239,20 +300,23 @@ class BackgroundSyncLoop:
         """
         counts: dict[str, int] = {}
         try:
-            from pipeline.store import PipelineStore
-
             ref = peek_project(self.repo)
             if ref is None:
                 return 0, {}
-            store = PipelineStore(
-                self.repo,
-                base_dir=ref.store_dir,
-                project_id=ref.project_id,
-                resolve=False,
-            )
-            for chunk in store.load_chunks():
-                rel = chunk.file.replace("\\", "/")
-                counts[rel] = counts.get(rel, 0) + 1
+            # Byte-level count, cached on the file stamp. Parsing every chunk
+            # (text + enriched) of chunks.jsonl on every drain sat in front of
+            # each hot save (issue 4); only the per-file counts are needed.
+            chunks_path = ref.store_dir / "chunks.jsonl"
+            from pipeline.fast_stat import fast_stat
+
+            st = fast_stat(chunks_path)
+            stamp = (st.st_mtime_ns, st.st_size) if st is not None else None
+            cached = getattr(self, "_chunk_count_cache", None)
+            if stamp is not None and cached is not None and cached[0] == stamp:
+                counts = cached[1]
+            elif stamp is not None:
+                counts = count_chunks_per_file(chunks_path)
+                self._chunk_count_cache = (stamp, counts)
         except Exception:
             counts = {}
 
@@ -273,6 +337,52 @@ class BackgroundSyncLoop:
             estimates[path] = estimate
         return sum(estimates.values()), estimates
 
+    def _indexed_subset(self, paths: list[str]) -> set[str]:
+        """Paths that own chunks in the index. Unreadable store → all of them."""
+        wanted = {str(p).replace("\\", "/") for p in paths}
+        try:
+            from pipeline.store import PipelineStore
+
+            ref = peek_project(self.repo)
+            if ref is None:
+                return wanted
+            store = PipelineStore(
+                self.repo,
+                base_dir=ref.store_dir,
+                project_id=ref.project_id,
+                resolve=False,
+            )
+            if not store.chunk_merkle_path.is_file():
+                return wanted
+            merkle = store.load_chunk_merkle()
+            found = {p for p in wanted if merkle.get(p)}
+            rest = wanted - found
+            if rest:
+                # The chunk merkle is not the only record. A path the file
+                # merkle still lists is re-reported as removed by every 1s poll
+                # until a sync patches it, and a chunk-only "ghost" keeps
+                # showing up in search: both still need their sync. Completing
+                # them unsynced made the poll mark a hot save every second,
+                # which held all graph catch-ups forever (issue 6).
+                from pipeline.merkle import canonical_relpath
+
+                file_merkle = store.load_merkle()
+                found |= {p for p in rest if canonical_relpath(p) in file_merkle or p in file_merkle}
+                rest = wanted - found
+            if rest and store.chunks_path.is_file():
+                needles = {p: f'"file": "{p}"' for p in rest}
+                with store.chunks_path.open("r", encoding="utf-8", errors="replace") as fh:
+                    for line in fh:
+                        for p, needle in list(needles.items()):
+                            if needle in line:
+                                found.add(p)
+                                needles.pop(p, None)
+                        if not needles:
+                            break
+        except Exception:  # noqa: BLE001
+            return wanted
+        return found
+
     def mark_dirty(
         self,
         paths: Iterable[str],
@@ -283,12 +393,17 @@ class BackgroundSyncLoop:
         # An edit ends the locate streak: process+publish freshness beats mid-thought
         # stability once the agent has changed disk.
         from pipeline.dirty_ledger import HOT_SYNC_REASONS
+        from pipeline.ignore import filter_dirty_paths
 
+        kept, _dropped = filter_dirty_paths(self.repo, paths)
+        if not kept:
+            return
         if str(reason) in HOT_SYNC_REASONS or str(reason) == "disk_poll":
             self._last_locate_at = None
         if str(reason) in HOT_SYNC_REASONS:
             self._last_hot_mark_at = time.monotonic() if now is None else now
-        self.dirty_ledger.mark(paths, reason=reason, now=now)
+            self._last_hot_mark_info = (str(reason), list(kept)[:3])
+        self.dirty_ledger.mark(kept, reason=reason, now=now)
 
     def note_locate(self, *, now: float | None = None) -> None:
         self._last_locate_at = time.monotonic() if now is None else now
@@ -306,11 +421,17 @@ class BackgroundSyncLoop:
         from pipeline.root_probe import root_probe
 
         current_time = time.monotonic() if now is None else now
-        # Indexed-file probe only. The newcomer walk was the 7–9s stall.
-        # Skipping the poll while a client is registered hid every save.
+        # Indexed files plus folders whose mtime moved; the full newcomer walk
+        # was the 7–9s stall. Skipping the poll while a client is registered
+        # hid every save.
         t_probe_start = time.perf_counter()
         try:
-            probe = root_probe(self.repo, discover_newcomers=False)
+            probe = root_probe(
+                self.repo,
+                discover_newcomers=False,
+                dir_watch=self._dir_watch,
+                store=self._poll_store(),
+            )
         except Exception as exc:  # noqa: BLE001
             print(f"[keeper] change poll failed: {exc}", file=sys.stderr, flush=True)
             return []
@@ -337,25 +458,94 @@ class BackgroundSyncLoop:
         # Do not re-mark already queued/processing paths — that would slide the
         # rewrite debounce forever while the file remains dirty on disk.
         snap = self.dirty_ledger.snapshot().get("paths") or {}
-        fresh = [
-            path
-            for path in paths
-            if str((snap.get(path) or {}).get("state") or "")
-            not in {"queued", "due", "processing", "overlay_ready"}
-        ]
+
+        def _fresh(path: str) -> bool:
+            entry = snap.get(path) or {}
+            state = str(entry.get("state") or "")
+            if state not in {"queued", "due", "processing", "overlay_ready"}:
+                return True
+            # A graph catch-up waits 30s+ for quiet; a second save to the same
+            # file must not wait behind it. The hot sync already recorded the
+            # file, so the poll only reports it again after a new edit.
+            return state == "queued" and str(entry.get("reason") or "") == "graph_catchup"
+
+        fresh = [path for path in paths if _fresh(path)]
         if not fresh:
             self.last_probe = {**probe.to_dict(), "reason": "change_poll"}
             return []
-        self.mark_dirty(fresh, reason="disk_poll", now=current_time)
+        try:
+            hot_max = int(os.environ.get("CTX_POLL_HOT_MAX") or "5")
+        except ValueError:
+            hot_max = 5
+        # A few changed files is a save; a checkout or bulk rewrite stays on the
+        # background lane.
+        reason = "disk_save" if len(fresh) <= hot_max else "disk_poll"
+        self.mark_dirty(fresh, reason=reason, now=current_time)
         self.last_probe = {**probe.to_dict(), "reason": "change_poll"}
         return fresh
+
+    def _poll_store(self):
+        """One PipelineStore for the once-a-second change poll (None = let it build one).
+
+        Building a store resolves the project (id file, registry, ~19 path
+        resolves): 1.8s of a 3.1s poll while a search held the GIL (issue 4).
+        Rebuilt only when the store directory disappears (wipe / re-enroll).
+        """
+        from pipeline.fast_stat import fast_stat
+
+        cached = getattr(self, "_poll_store_cache", None)
+        if cached is not None:
+            st = fast_stat(cached.base)
+            if st is not None and st.is_dir:
+                return cached
+        try:
+            from pipeline.store import PipelineStore
+
+            ref = peek_project(self.repo)
+            if ref is None:
+                return None
+            store = PipelineStore(
+                self.repo, base_dir=ref.store_dir, project_id=ref.project_id, resolve=False
+            )
+        except Exception:  # noqa: BLE001
+            return None
+        self._poll_store_cache = store
+        return store
 
     def request_poll(self) -> None:
         """Ask the keeper thread to probe on its next tick. Does not touch disk."""
         self._poll_now = True
 
+    def _hot_work_pending(self, *, now: float | None = None) -> bool:
+        """True when a hot save is in flight or was marked very recently.
+
+        Used to keep the newcomer walk (and other slow producers) off the hot
+        critical path — a naive fix of the ``now=`` bug alone re-marked in-flight
+        saves as ``disk_poll`` and starved hot sync (OPEN-D).
+        """
+        from pipeline.dirty_ledger import is_hot_reason, normalize_dirty_path
+
+        current = time.monotonic() if now is None else now
+        try:
+            quiet_s = float(os.environ.get("CTX_NEWCOMER_QUIET_S") or "10")
+        except ValueError:
+            quiet_s = 10.0
+        last = self._last_hot_mark_at
+        if last is not None and (current - last) < max(0.0, quiet_s):
+            return True
+        snap = self.dirty_ledger.snapshot().get("paths") or {}
+        for entry in snap.values():
+            if not isinstance(entry, dict):
+                continue
+            if not is_hot_reason(entry.get("reason")):
+                continue
+            if str(entry.get("state") or "") in {"queued", "due", "processing"}:
+                return True
+        return False
+
     def _enqueue_newcomers(self, *, now: float) -> list[str]:
         """Slow path for files that are not in the merkle yet. Not the 1s poll."""
+        from pipeline.dirty_ledger import is_hot_reason, normalize_dirty_path
         from pipeline.root_probe import root_probe
 
         try:
@@ -363,11 +553,68 @@ class BackgroundSyncLoop:
         except Exception as exc:  # noqa: BLE001
             print(f"[keeper] newcomer scan failed: {exc}", file=sys.stderr, flush=True)
             return []
-        fresh = [str(p).replace("\\", "/") for p in probe.added if str(p).strip()]
+        added = [str(p).replace("\\", "/") for p in probe.added if str(p).strip()]
+        ghosts = self._corpus_ghosts()
+        if ghosts:
+            print(
+                f"[keeper] {len(ghosts)} file(s) in the corpus are gone from disk — queued for removal: "
+                f"{', '.join(ghosts[:5])}{' …' if len(ghosts) > 5 else ''}",
+                file=sys.stderr,
+                flush=True,
+            )
+            added.extend(g for g in ghosts if g not in added)
+        if not added:
+            return []
+        # Same in-flight filter as poll_repo_changes — never downgrade a hot
+        # save to disk_poll or slide its debounce (OPEN-D).
+        snap = self.dirty_ledger.snapshot().get("paths") or {}
+        fresh: list[str] = []
+        for path in added:
+            entry = snap.get(normalize_dirty_path(path)) or {}
+            state = str(entry.get("state") or "")
+            if state in {"queued", "due", "processing", "overlay_ready"}:
+                continue
+            if is_hot_reason(entry.get("reason")):
+                continue
+            fresh.append(path)
         if not fresh:
             return []
         self.mark_dirty(fresh, reason="disk_poll", now=now)
         return fresh
+
+    def _corpus_ghosts(self) -> list[str]:
+        """Files chunks.jsonl still serves that no longer exist on disk.
+
+        The poll and the newcomer walk both diff disk against merkle.json. A file
+        deleted while the engine was down (killed probe), or deleted between a
+        full index's chunking and its merkle scan, is in chunks.jsonl but not in
+        the merkle, so neither diff ever reports it and search keeps returning a
+        file that is gone. Marking it dirty lets the normal slice drop its chunks.
+        """
+        try:
+            from pipeline.project_id import peek_project
+
+            ref = peek_project(self.repo)
+            if ref is None:
+                return []
+            path = ref.store_dir / "chunks.jsonl"
+            if not path.is_file():
+                return []
+            seen: set[str] = set()
+            with path.open("r", encoding="utf-8", errors="replace") as fh:
+                for line in fh:
+                    if '"file"' not in line:
+                        continue
+                    try:
+                        rel = str(json.loads(line).get("file") or "").replace("\\", "/")
+                    except ValueError:
+                        continue
+                    if rel:
+                        seen.add(rel)
+            return sorted(rel for rel in seen if not (self.repo / rel).exists())
+        except Exception as exc:  # noqa: BLE001
+            print(f"[keeper] ghost scan failed: {exc}", file=sys.stderr, flush=True)
+            return []
 
     def _start_newcomer_scan(self, *, now: float | None = None) -> bool:
         """Run the newcomer scan on its own thread. False if one is still running.
@@ -380,15 +627,51 @@ class BackgroundSyncLoop:
         existing = self._newcomer_thread
         if existing is not None and existing.is_alive():
             return False
+        current = time.monotonic() if now is None else now
+        if self._hot_work_pending(now=current):
+            return False
 
         def _scan() -> None:
             try:
-                self._enqueue_newcomers()
+                # Fresh clock at enqueue time — caller's ``now`` is stale after the walk.
+                self._enqueue_newcomers(now=time.monotonic())
             except Exception as exc:  # noqa: BLE001
                 print(f"[keeper] newcomer scan failed: {exc}", file=sys.stderr, flush=True)
 
         thread = threading.Thread(target=_scan, name="ctx-newcomer-scan", daemon=True)
         self._newcomer_thread = thread
+        thread.start()
+        return True
+
+    def _start_ast_revalidate(self) -> bool:
+        """Background rebake of the pack AST bundle when the corpus changed (BUG-A).
+
+        Off the keeper thread (the extraction is ~20s and runs in a fresh
+        interpreter). Single-flight here and inside
+        ``refresh_ast_bundle_if_stale``; it self-skips when the bundle is already
+        fresh, so this is cheap on a quiet repo.
+        """
+        existing = self._ast_revalidate_thread
+        if existing is not None and existing.is_alive():
+            return False
+
+        def _revalidate() -> None:
+            try:
+                from pipeline.context_trace import refresh_ast_bundle_if_stale
+
+                out = refresh_ast_bundle_if_stale(self.repo, block=True)
+                if out.get("ok") and not out.get("skipped"):
+                    print(
+                        f"[keeper] ast bundle revalidated source={out.get('source')} "
+                        f"ms={out.get('ms')}",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+            except Exception as exc:  # noqa: BLE001
+                print(f"[keeper] ast revalidate failed: {exc}", file=sys.stderr, flush=True)
+
+        thread = threading.Thread(target=_revalidate, name="ctx-ast-revalidate", daemon=True)
+        self._ast_revalidate_thread = thread
         thread.start()
         return True
 
@@ -481,14 +764,14 @@ class BackgroundSyncLoop:
                 file=sys.stderr,
                 flush=True,
             )
+        committed = self._poll_graph_job(now=current_time)
         paths = self._additions_before_deletions(self.dirty_ledger.due_paths(now=current_time))
         if not paths:
             self.drain_publish(now=current_time)
-            return []
+            return [committed] if committed else []
         if self._defer_cold_embedder(paths, now=current_time):
             return [{"refreshed": False, "strategy": "embedder_cold", "files": paths[:50]}]
 
-        estimated_total, estimates = self._estimate_dirty_chunks(paths)
         # A file the editor just saved must be embedded even when a large
         # backlog is also due. Otherwise map searches a chunk list that never
         # received the new path (the backlog slice keeps taking the first 50).
@@ -496,6 +779,7 @@ class BackgroundSyncLoop:
         if not paths:
             self.drain_publish(now=current_time)
             return []
+        estimated_total, estimates = self._estimate_dirty_chunks(paths)
         writes, backlog = self._split_explicit_writes(paths)
         if writes and backlog:
             # Unconditional, not just above the bulk threshold: a single non-hot
@@ -503,6 +787,30 @@ class BackgroundSyncLoop:
             # blows the save→map budget for anything queued behind it.
             self.dirty_ledger.defer(backlog, now=current_time + 2.0)
             paths = writes
+            estimated_total, estimates = self._estimate_dirty_chunks(paths)
+        elif not writes and backlog:
+            # Hot save marked but not yet due — don't start a non-hot backlog ahead
+            # of it (OPEN-C hot-first deferral).
+            from pipeline.dirty_ledger import is_hot_reason, normalize_dirty_path
+
+            snap = self.dirty_ledger.snapshot().get("paths") or {}
+            hot_queued = any(
+                is_hot_reason((e or {}).get("reason"))
+                and str((e or {}).get("state") or "") == "queued"
+                for e in snap.values()
+                if isinstance(e, dict)
+            )
+            if hot_queued:
+                try:
+                    from pipeline.dirty_ledger import hot_debounce_ms_default
+
+                    defer_s = (hot_debounce_ms_default() + 250) / 1000.0
+                except Exception:  # noqa: BLE001
+                    defer_s = 0.5
+                self.dirty_ledger.defer(backlog, now=current_time + defer_s)
+                self.drain_publish(now=current_time)
+                return []
+            paths = backlog
             estimated_total, estimates = self._estimate_dirty_chunks(paths)
 
         # --- Tier 3: >10000 chunks — refuse, require explicit full index ---
@@ -585,6 +893,52 @@ class BackgroundSyncLoop:
                 break
         if not batch:
             batch = [paths[0]]
+        # OPEN-C: deletion-only batches inside the hot quiet window must not take
+        # the 6–8s full publish on the hot critical path. Defer as non-hot
+        # ``deletion_catchup`` until saves have been quiet.
+        mask_on = (os.environ.get("CTX_HOT_DELETE_MASK") or "1").strip().lower() not in {
+            "0",
+            "false",
+            "no",
+            "off",
+        }
+        if mask_on and batch and all(not (self.repo / p).is_file() for p in batch):
+            # Only defer when a real (on-disk) hot save is still pending — not
+            # merely because the deletion itself was marked with a hot reason.
+            from pipeline.dirty_ledger import is_hot_reason, normalize_dirty_path
+
+            snap = self.dirty_ledger.snapshot().get("paths") or {}
+            hot_present_pending = False
+            for entry in snap.values():
+                if not isinstance(entry, dict):
+                    continue
+                if not is_hot_reason(entry.get("reason")):
+                    continue
+                if str(entry.get("state") or "") not in {"queued", "due", "processing"}:
+                    continue
+                ep = str(entry.get("path") or "")
+                if ep and (self.repo / ep).is_file():
+                    hot_present_pending = True
+                    break
+            if hot_present_pending:
+                quiet_until = current_time + max(0.0, float(self.graph_catchup_quiet_s))
+                self.dirty_ledger.mark(
+                    batch, reason="deletion_catchup", now=current_time
+                )
+                self.dirty_ledger.defer(batch, now=quiet_until)
+                print(
+                    f"[keeper] defer deletion-only batch ({len(batch)}) until quiet",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                self.drain_publish(now=current_time)
+                return [
+                    {
+                        "refreshed": False,
+                        "strategy": "deletion_deferred",
+                        "files": batch[:50],
+                    }
+                ]
         batch_set = set(batch)
         deferred = [path for path in paths if path not in batch_set]
         if deferred:
@@ -593,6 +947,18 @@ class BackgroundSyncLoop:
         hot_batch = self._is_hot_batch(batch)
         marked_at = self._oldest_marked_at(batch) if hot_batch else 0.0
         queue_ms = (current_time - marked_at) * 1000 if marked_at > 0 else None
+        catchup_paths = self._catchup_paths(batch) if not hot_batch else []
+        if catchup_paths and len(catchup_paths) == len(batch):
+            started = self._start_graph_job(batch, now=current_time)
+            if started is not None:
+                self.drain_publish(now=current_time)
+                return [started]
+        if catchup_paths:
+            print(
+                f"[keeper] graph catch-up start paths={','.join(catchup_paths[:5])} batch={len(batch)}",
+                file=sys.stderr,
+                flush=True,
+            )
         self.dirty_ledger.begin(batch)
         t_sync_wall = time.perf_counter()
         try:
@@ -600,6 +966,13 @@ class BackgroundSyncLoop:
         except Exception:
             self.dirty_ledger.mark(batch, reason="retry", now=current_time)
             raise
+        if catchup_paths:
+            print(
+                f"[keeper] graph catch-up done ms={(time.perf_counter() - t_sync_wall) * 1000:.0f} "
+                f"paths={','.join(catchup_paths[:5])}",
+                file=sys.stderr,
+                flush=True,
+            )
         self.live_batches += 1
         chunk_count = int(payload.get("chunks_upserted") or 0) + int(payload.get("chunks_removed") or 0)
         if deferred:
@@ -633,7 +1006,10 @@ class BackgroundSyncLoop:
             # session store (~130 here, 0.2–2s under search load) and a new file
             # has no cached spans, so running it before the publish only delayed
             # map. Other batches keep the invalidate-then-publish order.
-            invalidate_after = hot_batch and not int(payload.get("chunks_removed") or 0)
+            # Edits (chunks removed) too: the scan cost 0.1-1.6s in front of
+            # the publish, and the file on disk had already changed, so the
+            # cached spans were stale either way until invalidation (issue 4).
+            invalidate_after = hot_batch
             if not invalidate_after:
                 t_inval = time.perf_counter()
                 self._invalidate_session_paths(batch)
@@ -810,6 +1186,8 @@ class BackgroundSyncLoop:
             "[keeper] hot sync "
             f"path={','.join(paths[:3])}{'…' if len(paths) > 3 else ''} "
             f"debounce_ms={_fmt(debounce_ms)} "
+            f"gate_ms={_fmt(stages.get('gate_ms'))} "
+            f"prep_ms={_fmt(stages.get('prep_ms'))} "
             f"slice_ms={_fmt(stages.get('slice_ms'))} "
             f"parse_ms={_fmt(stages.get('parse_ms'))} "
             f"graph_ms={_fmt(stages.get('graph_ms'))} "
@@ -821,6 +1199,7 @@ class BackgroundSyncLoop:
             f"save={_fmt(stages.get('vec_save_ms'))}) "
             f"chunkfile_ms={_fmt(stages.get('chunkfile_ms'))} "
             f"reconcile_ms={_fmt(stages.get('reconcile_ms'))} "
+            f"merkle_ms={_fmt(stages.get('merkle_ms'))} "
             f"publication_ms={_fmt(stages.get('publication_ms'))} "
             f"cards_ms={_fmt(stages.get('cards_ms'))} "
             f"sync_ms={_fmt(sync_ms)} "
@@ -837,28 +1216,188 @@ class BackgroundSyncLoop:
             flush=True,
         )
 
+    def _start_graph_job(self, batch: list[str], *, now: float) -> dict | None:
+        """Run a catch-up-only batch's graph merge in a child process (issue 6).
+
+        Returns a payload when the batch was handed off (or parked behind the
+        job already running); None means "run it inline as before".
+        """
+        from pipeline import graph_merge_worker as gmw
+
+        if not gmw.async_enabled() or self._graph_job_failures >= 2:
+            return None
+        if self._graph_job is not None:
+            # One merge at a time: each one rewrites the whole graph.
+            self.dirty_ledger.defer(batch, now=now + 1.0)
+            return {"refreshed": False, "strategy": "graph_catchup_waiting", "files": batch[:50]}
+        try:
+            ref = peek_project(self.repo)
+        except Exception:  # noqa: BLE001
+            ref = None
+        if ref is None or not (ref.store_dir / "graph.json").is_file():
+            return None
+        self.dirty_ledger.begin(batch)
+        try:
+            job = gmw.start_graph_merge(self.repo, ref.store_dir, list(batch))
+        except Exception as exc:  # noqa: BLE001
+            self._graph_job_failures += 1
+            print(f"[keeper] graph catch-up spawn failed: {exc!r}; running inline", file=sys.stderr, flush=True)
+            return None
+        self._graph_job = job
+        print(
+            f"[keeper] graph catch-up start paths={','.join(batch[:5])} batch={len(batch)} "
+            f"async worker_pid={getattr(job.proc, 'pid', None)}",
+            file=sys.stderr,
+            flush=True,
+        )
+        return {"refreshed": False, "strategy": "graph_catchup_async", "files": batch[:50]}
+
+    def _poll_graph_job(self, *, now: float) -> dict | None:
+        """Commit a finished child merge: rename + merkle/publication refresh."""
+        job = self._graph_job
+        if job is None:
+            return None
+        info = job.poll()
+        if info is None:
+            if time.monotonic() - job.started_at < self.graph_job_timeout_s:
+                return None
+            job.kill()
+            info = {"ok": False, "error": f"timeout after {self.graph_job_timeout_s:.0f}s"}
+        self._graph_job = None
+        from pipeline.dirty_ledger import normalize_dirty_path
+
+        snap = self.dirty_ledger.snapshot().get("paths") or {}
+        # A save to one of these files during the merge re-marked it; that
+        # entry (and the catch-up it queues) is newer than this job — leave it.
+        mine = [
+            p
+            for p in job.paths
+            if str((snap.get(normalize_dirty_path(p)) or {}).get("state") or "") == "processing"
+        ]
+        label = ",".join(job.paths[:5])
+        if not info.get("ok"):
+            self._graph_job_failures += 1
+            job.discard()
+            print(
+                f"[keeper] graph catch-up worker failed ({self._graph_job_failures}): "
+                f"{info.get('error')} paths={label}",
+                file=sys.stderr,
+                flush=True,
+            )
+            self.dirty_ledger.mark(mine, reason="graph_catchup", now=now + 5.0)
+            return {"refreshed": False, "strategy": "graph_catchup_failed", "error": info.get("error")}
+        if not job.graph_unchanged():
+            # Something else rewrote graph.json meanwhile; committing would drop it.
+            job.discard()
+            print(
+                f"[keeper] graph catch-up discarded: graph.json changed during merge paths={label}",
+                file=sys.stderr,
+                flush=True,
+            )
+            self.dirty_ledger.mark(mine, reason="graph_catchup", now=now)
+            return {"refreshed": False, "strategy": "graph_catchup_retry"}
+        self._graph_job_failures = 0
+        t_commit = time.perf_counter()
+        try:
+            payload = self._sync_paths(
+                list(job.paths), reason="graph_catchup", hot=False, graph_precomputed=job.out
+            )
+        except Exception as exc:  # noqa: BLE001
+            job.discard()
+            print(f"[keeper] graph catch-up commit failed: {exc!r}", file=sys.stderr, flush=True)
+            self.dirty_ledger.mark(mine, reason="graph_catchup", now=now + 2.0)
+            return {"refreshed": False, "strategy": "graph_catchup_failed", "error": repr(exc)}
+        commit_ms = (time.perf_counter() - t_commit) * 1000
+        job.discard()
+        chunk_count = int(payload.get("chunks_upserted") or 0) + int(payload.get("chunks_removed") or 0)
+        if payload.get("refreshed") and chunk_count > 0:
+            self._invalidate_session_paths(mine)
+            self._publish_or_hold(payload, paths=mine, now=now)
+        elif payload.get("error"):
+            self.dirty_ledger.mark(mine, reason="graph_catchup", now=now + 2.0)
+        else:
+            self.dirty_ledger.complete(mine, published=True)
+        self._run_vector_flush(payload)
+        self.last_result = payload
+        print(
+            f"[keeper] graph catch-up done ms={info.get('wall_ms', 0) + commit_ms:.0f} "
+            f"worker_ms={info.get('ms')} (extract={info.get('extract_ms')} merge={info.get('merge_ms')} "
+            f"export={info.get('export_ms')}) commit_ms={commit_ms:.0f} nodes={info.get('nodes')} "
+            f"paths={label}",
+            file=sys.stderr,
+            flush=True,
+        )
+        return payload
+
+    def _catchup_paths(self, paths: list[str]) -> list[str]:
+        """Paths in this batch that are queued graph catch-ups (for the log)."""
+        from pipeline.dirty_ledger import normalize_dirty_path
+
+        try:
+            snap = self.dirty_ledger.snapshot().get("paths") or {}
+        except Exception:  # noqa: BLE001
+            return []
+        return [
+            p
+            for p in paths
+            if str((snap.get(normalize_dirty_path(p)) or {}).get("reason") or "") == "graph_catchup"
+        ]
+
     def _hold_graph_catchups(self, paths: list[str], *, now: float) -> list[str]:
         """Push due graph catch-ups back until saves have been quiet for a while."""
         from pipeline.dirty_ledger import normalize_dirty_path
 
+        snap = self.dirty_ledger.snapshot().get("paths") or {}
+        # A missing file only needs a sync if it still owns chunks (the sync is
+        # what removes them); never-indexed gone paths cost a ~20s no-delta vector
+        # reconcile for nothing. A gone graph catch-up is kept: its hot sync
+        # deferred the graph, so this catch-up is what prunes the file's nodes.
+        gone = [p for p in paths if not (self.repo / p).is_file()]
+        indexed = self._indexed_subset(gone) if gone else set()
+        gone_done: list[str] = []
+        kept: list[str] = []
+        for path in paths:
+            entry = snap.get(normalize_dirty_path(path)) or {}
+            reason = str(entry.get("reason") or "")
+            is_gone = not (self.repo / path).is_file()
+            if (
+                is_gone
+                and reason != "graph_catchup"
+                and path.replace("\\", "/") not in indexed
+            ):
+                gone_done.append(path)
+            else:
+                kept.append(path)
+        if gone_done:
+            self.dirty_ledger.complete(gone_done, published=True)
+
         last_hot = self._last_hot_mark_at
         if last_hot is None:
-            return paths
+            return kept
         quiet_until = last_hot + max(0.0, float(self.graph_catchup_quiet_s))
         if now >= quiet_until:
-            return paths
+            return kept
         snap = self.dirty_ledger.snapshot().get("paths") or {}
         held = [
             p
-            for p in paths
+            for p in kept
             if str((snap.get(normalize_dirty_path(p)) or {}).get("reason") or "")
             == "graph_catchup"
         ]
         if not held:
-            return paths
+            return kept
+        last_log = float(getattr(self, "_hold_log_at", 0.0) or 0.0)
+        if now - last_log >= 30.0:
+            self._hold_log_at = now
+            print(
+                f"[keeper] holding {len(held)} graph catch-up(s) {quiet_until - now:.1f}s more: "
+                f"last hot mark {now - last_hot:.1f}s ago {getattr(self, '_last_hot_mark_info', None)}",
+                file=sys.stderr,
+                flush=True,
+            )
         self.dirty_ledger.defer(held, now=quiet_until)
         held_set = set(held)
-        return [p for p in paths if p not in held_set]
+        return [p for p in kept if p not in held_set]
 
     def _is_hot_batch(self, paths: list[str]) -> bool:
         """True when every path in the batch was marked by a save the user awaits.
@@ -901,6 +1440,26 @@ class BackgroundSyncLoop:
             from pipeline.engine import embedder_is_loaded, prewarm_embedder_async
 
             if embedder_is_loaded():
+                self._cold_defer_since = None
+                return False
+            # Never defer forever: if the load has not landed in time, sync
+            # anyway (incremental_sync loads the model itself). An embedder
+            # that never reported loaded wedged every save behind this gate.
+            try:
+                cap_s = float(os.environ.get("CTX_SYNC_COLD_DEFER_MAX_S") or 30.0)
+            except ValueError:
+                cap_s = 30.0
+            since = getattr(self, "_cold_defer_since", None)
+            if since is None:
+                self._cold_defer_since = since = now
+            if now - since >= cap_s:
+                print(
+                    f"[keeper] embedder still cold after {now - since:.0f}s — syncing "
+                    f"{len(paths)} path(s) anyway",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                self._cold_defer_since = None
                 return False
             prewarm_embedder_async(self.repo)
         except Exception as exc:  # noqa: BLE001
@@ -934,6 +1493,7 @@ class BackgroundSyncLoop:
             print("[keeper] background sync disabled (CTX_BACKGROUND_SYNC)", file=sys.stderr)
             return
         self._stop.clear()
+        self._requeue_graph_debt()
         self._thread = threading.Thread(target=self._run, name="ctx-keeper", daemon=True)
         self._thread.start()
         self.running = True
@@ -947,9 +1507,31 @@ class BackgroundSyncLoop:
             flush=True,
         )
 
+    def _requeue_graph_debt(self) -> None:
+        """Queue graph work a previous process owed; its ledger entries are gone."""
+        try:
+            ref = peek_project(self.repo)
+            if ref is None:
+                return
+            meta = json.loads((ref.store_dir / "meta.json").read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            return
+        owed = [str(p).replace("\\", "/") for p in (meta.get("graph_pending") or [])]
+        if owed:
+            self.dirty_ledger.mark(
+                owed,
+                reason="graph_catchup",
+                now=time.monotonic() + self.graph_catchup_delay_s,
+            )
+
     def stop(self) -> None:
         self._stop.set()
         self.running = False
+        job = getattr(self, "_graph_job", None)
+        if job is not None:
+            # The paths stay owed in meta.graph_pending; the next start retries.
+            self._graph_job = None
+            job.kill()
         if self in _ACTIVE_LOOPS:
             _ACTIVE_LOOPS.remove(self)
 
@@ -1129,22 +1711,37 @@ class BackgroundSyncLoop:
             return None
         return vdb
 
-    def _sync_paths(self, paths: list[str], *, reason: str, hot: bool = False) -> dict:
+    def _sync_paths(
+        self,
+        paths: list[str],
+        *,
+        reason: str,
+        hot: bool = False,
+        graph_precomputed: Path | None = None,
+    ) -> dict:
         from pipeline.incremental import incremental_sync
         from pipeline.vectordb import VectorDatabase
+
+        extra: dict = {}
+        if graph_precomputed is not None:
+            extra["graph_precomputed"] = graph_precomputed
 
         vdb = None
         if hot:
             vdb = self._hot_vdb() or VectorDatabase()
         else:
-            # Another writer is about to touch the collection on disk.
-            self._hot_vdb_cache = None
+            # OPEN-C: keep the hot collection across keeper-owned non-hot syncs so
+            # the next save does not pay a multi-second FAISS reopen. Drop only
+            # when there is no coherent cached vdb (fingerprint mismatch / miss).
+            vdb = self._hot_vdb()
+            if vdb is None:
+                self._hot_vdb_cache = None
         if vdb is not None:
-            result = incremental_sync(self.repo, force_files=paths, hot_lane=hot, vdb=vdb)
+            result = incremental_sync(self.repo, force_files=paths, hot_lane=hot, vdb=vdb, **extra)
             # Remembered now; the fingerprint is taken after the deferred save.
             self._hot_vdb_pending = vdb
         else:
-            result = incremental_sync(self.repo, force_files=paths, hot_lane=hot)
+            result = incremental_sync(self.repo, force_files=paths, hot_lane=hot, **extra)
         payload = result.to_dict()
         payload["reason"] = reason
         payload["hot_lane"] = bool(hot)
@@ -1424,12 +2021,53 @@ class BackgroundSyncLoop:
                     self._poll_now = False
                     self.poll_repo_changes(now=now)
                     next_change_poll = now + self.change_poll_ms / 1000.0
+                # The walk takes seconds on big repos and stretches an overlapping hot save past SLA.
+                try:
+                    newcomer_every = float(os.environ.get("CTX_NEWCOMER_SCAN_S") or "600")
+                except ValueError:
+                    newcomer_every = 600.0
                 if (
-                    now - self._last_newcomer_scan >= 30.0
+                    now - self._last_newcomer_scan >= max(5.0, newcomer_every)
                     and not self._locate_streak_active(now=now)
+                    and not self._hot_work_pending(now=now)
                 ):
                     self._last_newcomer_scan = now
                     self._start_newcomer_scan(now=now)
+                # Stale-while-revalidate the pack AST bundle (BUG-A). Serve-stale
+                # stays the pack request-path behavior; this quiet-window rebake
+                # keeps pack's corpus in step with edits so map's suggested seeds
+                # resolve. Gated like the newcomer scan: never mid-locate or
+                # mid-hot-save, and it self-skips when the bundle is already fresh.
+                # Re-check staleness every few seconds (cheap: one fingerprint
+                # stat; single-flight prevents pile-up). 20s made pack wait up to
+                # a fixed cadence after an edit; 5s fires promptly once the repo
+                # goes quiet (PERF-1).
+                try:
+                    ast_every = float(os.environ.get("CTX_AST_REVALIDATE_S") or "5")
+                except ValueError:
+                    ast_every = 5.0
+                # Not gated on _hot_work_pending or the full 60s locate streak:
+                # the rebake is a below-priority child in a fresh interpreter (no
+                # keeper GIL, no hot path), and an actively-edited/mapped repo is
+                # exactly when pack's bundle goes stale — a tight map loop would
+                # otherwise starve it for the whole streak. Skip only a very
+                # recent locate (default 5s) so the spawn never lands on top of an
+                # in-flight map/pack. Single-flight is enforced in the refresh.
+                try:
+                    ast_quiet_s = float(os.environ.get("CTX_AST_REVALIDATE_QUIET_S") or "5")
+                except ValueError:
+                    ast_quiet_s = 5.0
+                locate_recent = (
+                    self._last_locate_at is not None
+                    and (now - self._last_locate_at) < max(0.0, ast_quiet_s)
+                )
+                if (
+                    ast_every > 0
+                    and now - self._last_ast_revalidate >= max(5.0, ast_every)
+                    and not locate_recent
+                ):
+                    self._last_ast_revalidate = now
+                    self._start_ast_revalidate()
                 if now >= next_probe:
                     self.keeper_tick(reason="interval")
                     next_probe = now + self.interval_ms / 1000.0

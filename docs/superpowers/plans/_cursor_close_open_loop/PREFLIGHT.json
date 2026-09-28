@@ -1,0 +1,30 @@
+{
+  "ok": true,
+  "errors": [],
+  "ort": {
+    "ok": true,
+    "checks": {
+      "has_dml": true
+    },
+    "ort_version": "1.24.4",
+    "providers": [
+      "DmlExecutionProvider",
+      "CPUExecutionProvider"
+    ],
+    "profile": "dml"
+  },
+  "health": {
+    "ok": false,
+    "ms": 362.3,
+    "soft_search_ready": false,
+    "embedder_loaded": false,
+    "url": "http://127.0.0.1:8765"
+  },
+  "busy": {
+    "ok": true,
+    "active": false,
+    "exists": false,
+    "age_s": null,
+    "path": "C:\\Users\\usman\\.scubiee\\embed_prewarm.busy"
+  }
+}

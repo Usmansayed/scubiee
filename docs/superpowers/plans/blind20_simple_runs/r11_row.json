@@ -1,0 +1,74 @@
+{
+  "id": "r11",
+  "family": "fast-index-mode",
+  "task": "What does fast indexing mode change vs full index (roots, embed, depth)?",
+  "enrich_prompt": "fast index mode fast_roots embed schema meta fast=true index_repo skip depth",
+  "map": {
+    "elapsed_s": 0.8,
+    "n_cards": 10,
+    "suggested_seed": {
+      "file": "packages/pipeline/indexer.py",
+      "symbol": ""
+    },
+    "top_files": [
+      "packages/pipeline/indexer.py",
+      "tests/test_index_confirm.py",
+      "packages/pipeline/paths.py",
+      "packages/pipeline/incremental.py",
+      "packages/pipeline/repo_lifecycle.py"
+    ]
+  },
+  "arms": {
+    "composite_v1": {
+      "ok": true,
+      "engine": "composite_v1",
+      "policy": "strict",
+      "elapsed_s": 0.039,
+      "n_pack": 1,
+      "pack": [
+        {
+          "file": "packages/pipeline/indexer.py",
+          "symbol": "_schema_version",
+          "score": 1.0,
+          "loc": "packages/pipeline/indexer.py:29-33",
+          "id": "packages/pipeline/indexer.py::_schema_version"
+        }
+      ],
+      "error": null
+    },
+    "polytrace": {
+      "ok": true,
+      "engine": "polytrace",
+      "policy": "strict",
+      "elapsed_s": 0.001,
+      "n_pack": 1,
+      "pack": [
+        {
+          "file": "packages/pipeline/indexer.py",
+          "symbol": "_schema_version",
+          "score": 1.0,
+          "loc": "packages/pipeline/indexer.py:29-33",
+          "id": "packages/pipeline/indexer.py::_schema_version"
+        }
+      ],
+      "error": null
+    },
+    "ultimate": {
+      "ok": true,
+      "engine": "ultimate",
+      "policy": "strict",
+      "elapsed_s": 0.015,
+      "n_pack": 1,
+      "pack": [
+        {
+          "file": "packages/pipeline/indexer.py",
+          "symbol": "_schema_version",
+          "score": 1.0,
+          "loc": "packages/pipeline/indexer.py:29-33",
+          "id": "packages/pipeline/indexer.py::_schema_version"
+        }
+      ],
+      "error": null
+    }
+  }
+}

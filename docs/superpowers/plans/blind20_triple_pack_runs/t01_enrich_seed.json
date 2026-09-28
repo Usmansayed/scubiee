@@ -1,0 +1,50 @@
+{
+  "ok": true,
+  "elapsed_s": 25.075,
+  "seed_file": "packages/pipeline/artifact_guard.py",
+  "seed": {
+    "file": "packages/pipeline/artifact_guard.py",
+    "symbol": "atomic_write_text",
+    "id": "packages/pipeline/artifact_guard.py::atomic_write_text",
+    "loc": null
+  },
+  "chunks": [
+    {
+      "file": "packages/pipeline/artifact_guard.py",
+      "symbol": "atomic_write_text",
+      "loc": "packages/pipeline/artifact_guard.py:17-30",
+      "score": 1.0,
+      "kind": "function"
+    },
+    {
+      "file": "packages/pipeline/artifact_guard.py",
+      "symbol": "_atomic_write_text_unlocked",
+      "loc": "packages/pipeline/artifact_guard.py:33-43",
+      "score": 0.99,
+      "kind": "function"
+    },
+    {
+      "file": "packages/pipeline/store_lock.py",
+      "symbol": "store_write_lock",
+      "loc": "packages/pipeline/store_lock.py:60-103",
+      "score": 0.9405,
+      "kind": "function"
+    },
+    {
+      "file": "packages/pipeline/artifact_guard.py",
+      "symbol": "_atomic_replace",
+      "loc": "packages/pipeline/artifact_guard.py:46-61",
+      "score": 0.8598,
+      "kind": "function"
+    },
+    {
+      "file": "packages/pipeline/store_lock.py",
+      "symbol": "_held_dirs",
+      "loc": "packages/pipeline/store_lock.py:21-26",
+      "score": 0.8168,
+      "kind": "function"
+    }
+  ],
+  "n_cards": 7,
+  "error": null
+}

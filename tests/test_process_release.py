@@ -38,6 +38,9 @@ def test_release_calls_stub_then_kill(monkeypatch: pytest.MonkeyPatch) -> None:
         "pipeline.lifecycle_runtime.set_desired_mode",
         lambda *_a, **_k: None,
     )
+    monkeypatch.setattr(
+        "pipeline.process_control._wait_for_lockers_gone", lambda **_k: {"ok": True}
+    )
 
     out = release_scubiee_process_locks()
     assert order == ["stub", "kill", "disable"]

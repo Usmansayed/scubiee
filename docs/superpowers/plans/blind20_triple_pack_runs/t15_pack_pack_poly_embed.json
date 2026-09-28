@@ -1,0 +1,41 @@
+{
+  "ok": true,
+  "tool": "pack_poly_embed",
+  "engine": "poly_embed",
+  "elapsed_s": 0.138,
+  "n_pack": 1,
+  "seed": {
+    "file": "packages/pipeline/capability.py",
+    "symbol": "CapabilityCard.blob",
+    "id": "packages/pipeline/capability.py::CapabilityCard.blob"
+  },
+  "pack": [
+    {
+      "file": "packages/pipeline/capability.py",
+      "symbol": "CapabilityCard.blob",
+      "score": 1.0,
+      "loc": "packages/pipeline/capability.py:38-46",
+      "id": "packages/pipeline/capability.py::CapabilityCard.blob",
+      "chars": 246
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/pipeline/capability.py::CapabilityCard.blob",
+      "loc": "packages/pipeline/capability.py:38-46",
+      "edge": "seed",
+      "score": 1.0
+    }
+  ],
+  "error": null,
+  "seed_chunks": [
+    {
+      "file": "packages/pipeline/capability.py",
+      "symbol": "CapabilityCard.blob",
+      "loc": "packages/pipeline/capability.py:38-46",
+      "score": 1.0,
+      "kind": "method"
+    }
+  ],
+  "pack_query": "capability_cards attach CapabilityCard locate ranking search hits build cards json | seeds: packages/pipeline/capability.py::CapabilityCard.blob"
+}

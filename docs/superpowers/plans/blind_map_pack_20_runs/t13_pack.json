@@ -1,0 +1,33 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 1.705,
+  "stdout_chars": 546,
+  "stderr_tail": "",
+  "json": {
+    "ok": true,
+    "tool": "pack",
+    "seed": {
+      "id": "packages/pipeline/rules_installer.py::_templates_dir",
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": "_templates_dir"
+    },
+    "chain": [
+      {
+        "id": "packages/pipeline/rules_installer.py::_templates_dir",
+        "loc": "packages/pipeline/rules_installer.py:40-41",
+        "edge": "seed",
+        "score": 1.0
+      }
+    ],
+    "pack": [
+      {
+        "id": "packages/pipeline/rules_installer.py::_templates_dir",
+        "loc": "packages/pipeline/rules_installer.py:40-41",
+        "text": "def _templates_dir() -> Path:\n    return Path(__file__).resolve().parent / \"templates\""
+      }
+    ],
+    "cold": []
+  },
+  "stdout_preview": ""
+}

@@ -1,0 +1,66 @@
+{
+  "mcpServers": {
+    "scubiee": {
+      "command": "C:/Users/usman/.local/bin/scubiee-mcp-bridge.EXE",
+      "args": [],
+      "env": {
+        "CTX_ENGINE_URL": "http://127.0.0.1:8765",
+        "CTX_TOKEN_MODE": "savings",
+        "CTX_BACKGROUND_SYNC": "1",
+        "CTX_ALLOW_BG_FULL": "0",
+        "CTX_AUTO_INDEX": "1",
+        "CTX_SYNC_INTERVAL_MS": "300000",
+        "CTX_REGISTRATION_MODE": "automatic",
+        "CTX_MCP_SURFACE": "phase",
+        "CTX_MCP_EXPERIMENT": "hybrid",
+        "CTX_TRACE_GRAPHIFY": "1",
+        "CTX_MCP_SESSION_ISOLATE": "1",
+        "CTX_MCP_BRIDGE_MODE": "auto",
+        "CTX_ENGINE_IDLE_S": "25",
+        "CTX_ENGINE_TRANSITION_DEBOUNCE_S": "25",
+        "PYTHONUTF8": "1",
+        "CTX_SCUBIEE_BUILD": "0.3.25-1788695412",
+        "CTX_REPO": "C:/Users/usman/Downloads/context-engine",
+        "CTX_PROJECT_ID": "ce_d9cb766c3820091ed9ffbc64ef33063c",
+        "CTX_MCP_CLIENT": "kiro"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "gate",
+        "pack_context",
+        "pack_poly_embed",
+        "pack_semantic",
+        "map_context",
+        "expand_context",
+        "collect_hot_context",
+        "map",
+        "pinpoint",
+        "plate",
+        "focus",
+        "grep",
+        "glob",
+        "workspace",
+        "expand",
+        "status"
+      ],
+      "alwaysAllow": [
+        "gate",
+        "pack_context",
+        "pack_poly_embed",
+        "pack_semantic",
+        "map_context",
+        "expand_context",
+        "collect_hot_context",
+        "map",
+        "pinpoint",
+        "plate",
+        "focus",
+        "grep",
+        "glob",
+        "workspace",
+        "expand",
+        "status"
+      ]
+    }
+  }
+}

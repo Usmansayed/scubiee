@@ -1,0 +1,15 @@
+{
+  "id": "u06",
+  "family": "doctor-certify",
+  "task": "What does scubiee doctor / certify check for install health?",
+  "enrich_map_query": "cmd_doctor cmd_certify doctor certify health package accel providers install",
+  "map_ok": false,
+  "map_elapsed_s": 2.07,
+  "suggested_seed": {
+    "file": "",
+    "symbol": "",
+    "source": "missing"
+  },
+  "map_top_cards": [],
+  "stderr_tail": "use_server=not local,\n    )\n  File \"C:\\Users\\usman\\Downloads\\context-engine\\packages\\pipeline\\searcher.py\", line 144, in search_repo\n    eng = load_engine(root, base_dir=base_dir, vdb=vdb)\n  File \"C:\\Users\\usman\\Downloads\\context-engine\\packages\\pipeline\\engine.py\", line 457, in load_engine\n    raise RuntimeError(\n        \"Index publication is missing or checksum-invalid; refusing mixed generation.\"\n    )\nRuntimeError: Index publication is missing or checksum-invalid; refusing mixed generation.\n"
+}

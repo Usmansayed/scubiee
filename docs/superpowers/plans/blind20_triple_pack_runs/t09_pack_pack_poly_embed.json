@@ -1,0 +1,55 @@
+{
+  "ok": true,
+  "tool": "pack_poly_embed",
+  "engine": "poly_embed",
+  "elapsed_s": 0.258,
+  "n_pack": 1,
+  "seed": {
+    "file": "packages/pipeline/work_session.py",
+    "symbol": "_session_path",
+    "id": "packages/pipeline/work_session.py::_session_path"
+  },
+  "pack": [
+    {
+      "file": "packages/pipeline/work_session.py",
+      "symbol": "_session_path",
+      "score": 1.0,
+      "loc": "packages/pipeline/work_session.py:16-29",
+      "id": "packages/pipeline/work_session.py::_session_path",
+      "chars": 587
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/pipeline/work_session.py::_session_path",
+      "loc": "packages/pipeline/work_session.py:16-29",
+      "edge": "seed",
+      "score": 1.0
+    }
+  ],
+  "error": null,
+  "seed_chunks": [
+    {
+      "file": "packages/pipeline/work_session.py",
+      "symbol": "_session_path",
+      "loc": "packages/pipeline/work_session.py:16-29",
+      "score": 1.0,
+      "kind": "function"
+    },
+    {
+      "file": "packages/pipeline/project_id.py",
+      "symbol": "repo_runtime_dir",
+      "loc": "packages/pipeline/project_id.py:121-142",
+      "score": 1.0,
+      "kind": "function"
+    },
+    {
+      "file": "packages/pipeline/session_isolation.py",
+      "symbol": "_session_isolate_enabled",
+      "loc": "packages/pipeline/session_isolation.py:382-387",
+      "score": 1.0,
+      "kind": "function"
+    }
+  ],
+  "pack_query": "work_session touch pins files role query session_id remember recent pack heatmap | seeds: packages/pipeline/work_session.py::_session_path packages/pipeline/project_id.py::repo_runtime_dir packages/pipeline/session_isolation.py::_session_isolate_enabled packages/pipeline/session_isolation.py::default_process_session_id packages/pipeline/session_isolation.py::sanitize_session_id"
+}

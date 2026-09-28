@@ -1,0 +1,91 @@
+{
+  "ok": false,
+  "rows": [
+    {
+      "tool": "mcp_initialize",
+      "wall_ms": 5205.0,
+      "ok": true
+    },
+    {
+      "tool": "gate",
+      "wall_ms": 1344.2,
+      "ok": true,
+      "snippet": [
+        "raw"
+      ]
+    },
+    {
+      "tool": "status",
+      "wall_ms": 491.2,
+      "ok": true,
+      "agent_ready": "warming",
+      "soft": true,
+      "embedder": false
+    },
+    {
+      "tool": "map",
+      "wall_ms": 3623.7,
+      "ok": true,
+      "n_cards": 8,
+      "elapsed_ms": 3519.9,
+      "seeds": [
+        {
+          "file": "packages/pipeline/process_job.py",
+          "symbol": "hidden_run"
+        },
+        {
+          "file": "packages/pipeline/daemon.py",
+          "symbol": "ensure_daemon"
+        },
+        {
+          "file": "packages/pipeline/lifecycle_runtime.py",
+          "symbol": ""
+        }
+      ]
+    },
+    {
+      "tool": "pack_context",
+      "wall_ms": 1614.7,
+      "ok": true,
+      "elapsed_ms": 0.4,
+      "thin": false,
+      "n_cards": 8,
+      "seed": "packages/pipeline/process_job.py::hidden_run"
+    },
+    {
+      "tool": "expand_context",
+      "wall_ms": 272.6,
+      "ok": false,
+      "elapsed_ms": null,
+      "n_delta": 0
+    },
+    {
+      "tool": "collect_hot_context",
+      "wall_ms": 148.3,
+      "ok": false,
+      "elapsed_ms": null,
+      "n_bodies": 0
+    },
+    {
+      "tool": "workspace_show",
+      "wall_ms": 139.1,
+      "ok": true
+    },
+    {
+      "tool": "workspace_pin",
+      "wall_ms": 69.3,
+      "ok": true
+    },
+    {
+      "tool": "workspace_clear",
+      "wall_ms": 72.0,
+      "ok": true
+    },
+    {
+      "tool": "expand",
+      "wall_ms": null,
+      "ok": null,
+      "skipped": "no_handle_in_session"
+    }
+  ]
+}

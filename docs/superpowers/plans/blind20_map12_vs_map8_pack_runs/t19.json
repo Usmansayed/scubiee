@@ -1,0 +1,211 @@
+{
+  "id": "t19",
+  "family": "dashboard-status",
+  "task": "Where are operator dashboard status and health HTTP endpoints defined?",
+  "must_files": [
+    "packages/pipeline/dashboard_server.py",
+    "packages/pipeline/__main__.py"
+  ],
+  "must_symbols": [
+    "cmd_dashboard"
+  ],
+  "map_k12": {
+    "elapsed_s": 0.461,
+    "top_files": [
+      "packages/pipeline/__main__.py",
+      "tests/test_dashboard_api.py",
+      "tests/test_dashboard_ui_contract.py",
+      "packages/pipeline/dashboard_server.py",
+      "docs/superpowers/specs/2026-08-17-ce-operator-dashboard-design.md",
+      "fixtures/trace-lab/app/routes/health.py",
+      "packages/pipeline/server.py",
+      "docs/web-info/dashboard-and-engine.md"
+    ]
+  },
+  "map_k8": {
+    "elapsed_s": 0.321,
+    "top_files": [
+      "packages/pipeline/__main__.py",
+      "tests/test_dashboard_api.py",
+      "tests/test_dashboard_ui_contract.py",
+      "packages/pipeline/dashboard_server.py",
+      "docs/superpowers/specs/2026-08-17-ce-operator-dashboard-design.md"
+    ]
+  },
+  "chunks_k12": [
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "cmd_dashboard",
+      "kind": "function",
+      "loc": "packages/pipeline/__main__.py:923-942",
+      "start_line": 923,
+      "end_line": 942,
+      "score": 7.4
+    },
+    {
+      "file": "packages/pipeline/dashboard_server.py",
+      "symbol": "dashboard_status",
+      "kind": "function",
+      "loc": "packages/pipeline/dashboard_server.py:675-688",
+      "start_line": 675,
+      "end_line": 688,
+      "score": 6.35
+    },
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "cmd_status",
+      "kind": "function",
+      "loc": "packages/pipeline/__main__.py:772-843",
+      "start_line": 772,
+      "end_line": 843,
+      "score": 6.0
+    }
+  ],
+  "chunks_k8": [
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "cmd_dashboard",
+      "kind": "function",
+      "loc": "packages/pipeline/__main__.py:923-942",
+      "start_line": 923,
+      "end_line": 942,
+      "score": 7.4
+    },
+    {
+      "file": "packages/pipeline/dashboard_server.py",
+      "symbol": "dashboard_status",
+      "kind": "function",
+      "loc": "packages/pipeline/dashboard_server.py:675-688",
+      "start_line": 675,
+      "end_line": 688,
+      "score": 6.35
+    },
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "cmd_status",
+      "kind": "function",
+      "loc": "packages/pipeline/__main__.py:772-843",
+      "start_line": 772,
+      "end_line": 843,
+      "score": 6.0
+    }
+  ],
+  "pack": {
+    "ok": true,
+    "elapsed_s": 0.144,
+    "n_pack": 4,
+    "pack": [
+      {
+        "file": "packages/pipeline/__main__.py",
+        "symbol": "cmd_dashboard",
+        "loc": "packages/pipeline/__main__.py:923-942",
+        "id": "packages/pipeline/__main__.py::cmd_dashboard",
+        "chars": 668
+      },
+      {
+        "file": "packages/pipeline/dashboard_server.py",
+        "symbol": "dashboard_status",
+        "loc": "packages/pipeline/dashboard_server.py:675-688",
+        "id": "packages/pipeline/dashboard_server.py::dashboard_status",
+        "chars": 525
+      },
+      {
+        "file": "packages/pipeline/dashboard_server.py",
+        "symbol": "_validated_dashboard_state",
+        "loc": "packages/pipeline/dashboard_server.py:626-639",
+        "id": "packages/pipeline/dashboard_server.py::_validated_dashboard_state",
+        "chars": 455
+      },
+      {
+        "file": "packages/pipeline/dashboard_server.py",
+        "symbol": "_clear_stale_state",
+        "loc": "packages/pipeline/dashboard_server.py:642-643",
+        "id": "packages/pipeline/dashboard_server.py::_clear_stale_state",
+        "chars": 145
+      }
+    ],
+    "chain": [
+      {
+        "id": "packages/pipeline/__main__.py::cmd_dashboard",
+        "loc": "packages/pipeline/__main__.py:923-942",
+        "edge": "seed",
+        "symbol": "cmd_dashboard"
+      },
+      {
+        "id": "packages/pipeline/dashboard_server.py::dashboard_status",
+        "loc": "packages/pipeline/dashboard_server.py:675-688",
+        "edge": "calls",
+        "symbol": "dashboard_status"
+      },
+      {
+        "id": "packages/pipeline/dashboard_server.py::_validated_dashboard_state",
+        "loc": "packages/pipeline/dashboard_server.py:626-639",
+        "edge": "calls",
+        "symbol": "_validated_dashboard_state"
+      },
+      {
+        "id": "packages/pipeline/dashboard_server.py::_clear_stale_state",
+        "loc": "packages/pipeline/dashboard_server.py:642-643",
+        "edge": "calls",
+        "symbol": "_clear_stale_state"
+      },
+      {
+        "id": "packages/pipeline/dashboard_server.py::_pid_alive",
+        "loc": "packages/pipeline/dashboard_server.py:646-672",
+        "edge": "calls",
+        "symbol": "_pid_alive"
+      },
+      {
+        "id": "packages/pipeline/dashboard_server.py::start_dashboard",
+        "loc": "packages/pipeline/dashboard_server.py:719-788",
+        "edge": "calls",
+        "symbol": "start_dashboard"
+      },
+      {
+        "id": "packages/pipeline/dashboard_server.py::stop_dashboard",
+        "loc": "packages/pipeline/dashboard_server.py:791-839",
+        "edge": "calls",
+        "symbol": "stop_dashboard"
+      },
+      {
+        "id": "packages/pipeline/dashboard_server.py::_fetch_health",
+        "loc": "packages/pipeline/dashboard_server.py:562-570",
+        "edge": "calls",
+        "symbol": "_fetch_health"
+      }
+    ],
+    "seed": {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "cmd_dashboard",
+      "id": "packages/pipeline/__main__.py::cmd_dashboard"
+    },
+    "error": null
+  },
+  "scores": {
+    "map_k12": {
+      "file": 1.0,
+      "symbol": 0.0,
+      "note": "raw map cards (symbols often empty)"
+    },
+    "map_k12_chunks": {
+      "file": 1.0,
+      "symbol": 1.0,
+      "chunks": [
+        "cmd_dashboard",
+        "dashboard_status",
+        "cmd_status"
+      ]
+    },
+    "map8_pack": {
+      "file": 1.0,
+      "symbol": 1.0,
+      "n_pack": 4,
+      "chunks": [
+        "cmd_dashboard",
+        "dashboard_status",
+        "cmd_status"
+      ],
+      "elapsed_s": 0.144
+    }
+  }
+}

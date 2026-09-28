@@ -1,0 +1,212 @@
+{
+  "id": "t05",
+  "family": "engine-watchdog",
+  "task": "How does the engine watchdog keep the warm HTTP daemon alive and restart on idle?",
+  "must_files": [
+    "packages/pipeline/watchdog.py",
+    "packages/pipeline/engine.py"
+  ],
+  "must_symbols": [
+    "watchdog_loop",
+    "WarmSearchEngine"
+  ],
+  "map_k12": {
+    "elapsed_s": 0.575,
+    "top_files": [
+      "scripts/blind20_simple_map_pack.py",
+      "packages/pipeline/watchdog.py",
+      "packages/pipeline/client.py",
+      "tests/_prod_post_restart.py",
+      "packages/pipeline/diagnose.py",
+      "scripts/install_mcp_frontend.py",
+      "tests/test_daemon_process_sweep.py",
+      "packages/pipeline/daemon.py"
+    ]
+  },
+  "map_k8": {
+    "elapsed_s": 0.399,
+    "top_files": [
+      "scripts/blind20_simple_map_pack.py",
+      "packages/pipeline/watchdog.py",
+      "packages/pipeline/client.py",
+      "tests/_prod_post_restart.py",
+      "packages/pipeline/diagnose.py"
+    ]
+  },
+  "chunks_k12": [
+    {
+      "file": "packages/pipeline/watchdog.py",
+      "symbol": "is_watchdog_running",
+      "kind": "function",
+      "loc": "packages/pipeline/watchdog.py:113-121",
+      "start_line": 113,
+      "end_line": 121,
+      "score": 9.15
+    },
+    {
+      "file": "packages/pipeline/client.py",
+      "symbol": "engine_url",
+      "kind": "function",
+      "loc": "packages/pipeline/client.py:32-37",
+      "start_line": 32,
+      "end_line": 37,
+      "score": 9.5
+    },
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "cmd_engine",
+      "kind": "function",
+      "loc": "packages/pipeline/__main__.py:945-1111",
+      "start_line": 945,
+      "end_line": 1111,
+      "score": 7.2
+    }
+  ],
+  "chunks_k8": [
+    {
+      "file": "packages/pipeline/watchdog.py",
+      "symbol": "is_watchdog_running",
+      "kind": "function",
+      "loc": "packages/pipeline/watchdog.py:113-121",
+      "start_line": 113,
+      "end_line": 121,
+      "score": 9.15
+    },
+    {
+      "file": "packages/pipeline/client.py",
+      "symbol": "engine_url",
+      "kind": "function",
+      "loc": "packages/pipeline/client.py:32-37",
+      "start_line": 32,
+      "end_line": 37,
+      "score": 9.5
+    },
+    {
+      "file": "packages/pipeline/daemon.py",
+      "symbol": "force_restart_daemon",
+      "kind": "function",
+      "loc": "packages/pipeline/daemon.py:416-472",
+      "start_line": 416,
+      "end_line": 472,
+      "score": 7.2
+    }
+  ],
+  "pack": {
+    "ok": true,
+    "elapsed_s": 0.165,
+    "n_pack": 4,
+    "pack": [
+      {
+        "file": "packages/pipeline/watchdog.py",
+        "symbol": "is_watchdog_running",
+        "loc": "packages/pipeline/watchdog.py:113-121",
+        "id": "packages/pipeline/watchdog.py::is_watchdog_running",
+        "chars": 268
+      },
+      {
+        "file": "packages/pipeline/client.py",
+        "symbol": "engine_url",
+        "loc": "packages/pipeline/client.py:32-37",
+        "id": "packages/pipeline/client.py::engine_url",
+        "chars": 163
+      },
+      {
+        "file": "packages/pipeline/watchdog.py",
+        "symbol": "watchdog_pid_path",
+        "loc": "packages/pipeline/watchdog.py:33-34",
+        "id": "packages/pipeline/watchdog.py::watchdog_pid_path",
+        "chars": 68
+      },
+      {
+        "file": "packages/pipeline/watchdog.py",
+        "symbol": "_pid_alive",
+        "loc": "packages/pipeline/watchdog.py:92-110",
+        "id": "packages/pipeline/watchdog.py::_pid_alive",
+        "chars": 538
+      }
+    ],
+    "chain": [
+      {
+        "id": "packages/pipeline/watchdog.py::is_watchdog_running",
+        "loc": "packages/pipeline/watchdog.py:113-121",
+        "edge": "seed",
+        "symbol": "is_watchdog_running"
+      },
+      {
+        "id": "packages/pipeline/client.py::engine_url",
+        "loc": "packages/pipeline/client.py:32-37",
+        "edge": "seed",
+        "symbol": "engine_url"
+      },
+      {
+        "id": "packages/pipeline/watchdog.py::watchdog_pid_path",
+        "loc": "packages/pipeline/watchdog.py:33-34",
+        "edge": "calls",
+        "symbol": "watchdog_pid_path"
+      },
+      {
+        "id": "packages/pipeline/watchdog.py::_pid_alive",
+        "loc": "packages/pipeline/watchdog.py:92-110",
+        "edge": "calls",
+        "symbol": "_pid_alive"
+      },
+      {
+        "id": "packages/pipeline/client.py::EngineClient.get",
+        "loc": "packages/pipeline/client.py:87-88",
+        "edge": "calls",
+        "symbol": "EngineClient.get"
+      },
+      {
+        "id": "packages/pipeline/watchdog.py::_home",
+        "loc": "packages/pipeline/watchdog.py:27-30",
+        "edge": "calls",
+        "symbol": "_home"
+      },
+      {
+        "id": "packages/pipeline/client.py::EngineClient._request",
+        "loc": "packages/pipeline/client.py:93-167",
+        "edge": "calls",
+        "symbol": "EngineClient._request"
+      },
+      {
+        "id": "packages/pipeline/project_id.py::context_engine_home",
+        "loc": "packages/pipeline/project_id.py:108-113",
+        "edge": "calls",
+        "symbol": "context_engine_home"
+      }
+    ],
+    "seed": {
+      "file": "packages/pipeline/watchdog.py",
+      "symbol": "is_watchdog_running",
+      "id": "packages/pipeline/watchdog.py::is_watchdog_running"
+    },
+    "error": null
+  },
+  "scores": {
+    "map_k12": {
+      "file": 0.5,
+      "symbol": 0.0,
+      "note": "raw map cards (symbols often empty)"
+    },
+    "map_k12_chunks": {
+      "file": 0.5,
+      "symbol": 0.0,
+      "chunks": [
+        "is_watchdog_running",
+        "engine_url",
+        "cmd_engine"
+      ]
+    },
+    "map8_pack": {
+      "file": 0.5,
+      "symbol": 0.0,
+      "n_pack": 4,
+      "chunks": [
+        "is_watchdog_running",
+        "engine_url",
+        "force_restart_daemon"
+      ],
+      "elapsed_s": 0.165
+    }
+  }
+}

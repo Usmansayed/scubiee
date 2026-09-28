@@ -1,7 +1,7 @@
 """Attach-warm → steady locate contract.
 
 Product SLA:
-- From MCP bridge attach, reach ``warm_ready`` within ``CTX_WARM_DEADLINE_MS`` (30s).
+- From MCP bridge attach, reach ``warm_ready`` within ``CTX_WARM_DEADLINE_MS`` (default 90s).
 - After ready, map/pack stay hot while any client (incl. bridge) is registered.
 - Unload only after last client leave + disconnect debounce.
 """
@@ -16,7 +16,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-DEFAULT_WARM_DEADLINE_MS = 30_000
+# Same value as the install pin (mcp_install.server_entry) so unpinned hosts agree.
+DEFAULT_WARM_DEADLINE_MS = 90_000
+_WARM_DEADLINE_FLOOR_MS = 1000
 
 _LOCK = threading.Lock()
 _STARTED_AT: float | None = None
@@ -37,12 +39,28 @@ class WarmSnapshot:
     soft_search_ready: bool = False
 
 
-def warm_deadline_ms() -> int:
-    raw = (os.environ.get("CTX_WARM_DEADLINE_MS") or str(DEFAULT_WARM_DEADLINE_MS)).strip()
+def _env_warm_deadline_ms() -> int | None:
+    """Parsed ``CTX_WARM_DEADLINE_MS`` (unfloored), or None when unset/invalid."""
+    raw = (os.environ.get("CTX_WARM_DEADLINE_MS") or "").strip()
+    if not raw:
+        return None
     try:
-        return max(1000, int(float(raw)))
-    except ValueError:
+        return int(float(raw))
+    except (ValueError, OverflowError):
+        return None
+
+
+def warm_deadline_ms() -> int:
+    """The single warm deadline reader (status, attach, prewarm, health deadline)."""
+    parsed = _env_warm_deadline_ms()
+    if parsed is None:
         return DEFAULT_WARM_DEADLINE_MS
+    return max(_WARM_DEADLINE_FLOOR_MS, parsed)
+
+
+def warm_deadline_source() -> str:
+    """``"env"`` when ``CTX_WARM_DEADLINE_MS`` is set and parses, else ``"default"``."""
+    return "env" if _env_warm_deadline_ms() is not None else "default"
 
 
 def attach_warm_enabled() -> bool:
@@ -233,6 +251,7 @@ def warm_status_fields(
         "warm_phase": phase,
         "warm_elapsed_ms": snap.elapsed_ms,
         "warm_deadline_ms": warm_deadline_ms(),
+        "warm_deadline_source": warm_deadline_source(),
         "warm_remaining_s": warm_remaining_s(),
         "ast_hydrated": snap.ast_hydrated,
         "ast_hydrate_source": src,

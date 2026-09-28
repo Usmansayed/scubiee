@@ -1,0 +1,41 @@
+{
+  "ok": true,
+  "tool": "pack_poly_embed",
+  "engine": "poly_embed",
+  "elapsed_s": 0.161,
+  "n_pack": 1,
+  "seed": {
+    "file": "packages/pipeline/rules_installer.py",
+    "symbol": "_templates_dir",
+    "id": "packages/pipeline/rules_installer.py::_templates_dir"
+  },
+  "pack": [
+    {
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": "_templates_dir",
+      "score": 1.0,
+      "loc": "packages/pipeline/rules_installer.py:40-41",
+      "id": "packages/pipeline/rules_installer.py::_templates_dir",
+      "chars": 86
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/pipeline/rules_installer.py::_templates_dir",
+      "loc": "packages/pipeline/rules_installer.py:40-41",
+      "edge": "seed",
+      "score": 1.0
+    }
+  ],
+  "error": null,
+  "seed_chunks": [
+    {
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": "_templates_dir",
+      "loc": "packages/pipeline/rules_installer.py:40-41",
+      "score": 1.0,
+      "kind": "function"
+    }
+  ],
+  "pack_query": "write_project_gate_rules AGENTS.md GATE 1 project_id scubiee.mdc rules_installer | seeds: packages/pipeline/rules_installer.py::_templates_dir"
+}

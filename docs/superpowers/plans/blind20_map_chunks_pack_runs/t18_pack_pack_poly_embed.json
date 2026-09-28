@@ -1,0 +1,72 @@
+{
+  "ok": true,
+  "tool": "pack_poly_embed",
+  "engine": "poly_embed",
+  "elapsed_s": 0.185,
+  "n_pack": 3,
+  "seed": {
+    "file": "packages/pipeline/wipe.py",
+    "symbol": "wipe",
+    "id": "packages/pipeline/wipe.py::wipe"
+  },
+  "pack": [
+    {
+      "file": "packages/pipeline/wipe.py",
+      "symbol": "wipe",
+      "score": 1.0,
+      "loc": "packages/pipeline/wipe.py:1119-1146",
+      "id": "packages/pipeline/wipe.py::wipe",
+      "chars": 960
+    },
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "cmd_wipe",
+      "score": 1.0,
+      "loc": "packages/pipeline/__main__.py:414-505",
+      "id": "packages/pipeline/__main__.py::cmd_wipe",
+      "chars": 3185
+    },
+    {
+      "file": "packages/pipeline/wipe.py",
+      "symbol": "wipe_repo",
+      "score": 0.93,
+      "loc": "packages/pipeline/wipe.py:727-837",
+      "id": "packages/pipeline/wipe.py::wipe_repo",
+      "chars": 1855
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/pipeline/wipe.py::wipe",
+      "loc": "packages/pipeline/wipe.py:1119-1146",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/__main__.py::cmd_wipe",
+      "loc": "packages/pipeline/__main__.py:414-505",
+      "edge": "seed",
+      "score": 1.0
+    },
+    {
+      "id": "packages/pipeline/wipe.py::wipe_repo",
+      "loc": "packages/pipeline/wipe.py:727-837",
+      "edge": "seed",
+      "score": 0.93
+    },
+    {
+      "id": "packages/pipeline/wipe.py::wipe_all",
+      "loc": "packages/pipeline/wipe.py:840-1116",
+      "edge": "seed",
+      "score": 0.7467
+    },
+    {
+      "id": "packages/pipeline/wipe.py::audit_scubiee_artifacts",
+      "loc": "packages/pipeline/wipe.py:384-497",
+      "edge": "seed",
+      "score": 0.655
+    }
+  ],
+  "pack_query": "cmd_wipe wipe uninstall remove MCP rules store halt confirm scubiee state cleanup\nrelevant_chunks: packages/pipeline/wipe.py::wipe@packages/pipeline/wipe.py:1119-1146 | packages/pipeline/__main__.py::cmd_wipe@packages/pipeline/__main__.py:414-505 | packages/pipeline/rules_installer.py::remove_mcp_config@packages/pipeline/rules_installer.py:1788-1815",
+  "error": null
+}

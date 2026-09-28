@@ -1,0 +1,173 @@
+{
+  "board": "verify_ood_v2.json",
+  "n_cases": 18,
+  "elapsed_s": 7.56,
+  "summary": {
+    "composite_v1": {
+      "correct": 13,
+      "n": 18,
+      "accuracy": 0.7222,
+      "mean_f1": 0.719,
+      "mean_recall_must": 0.9583,
+      "mean_precision_hot": 0.6454,
+      "mean_must_at_10": 0.9583,
+      "failed_ids": [
+        "o11",
+        "o12",
+        "o15",
+        "o17",
+        "o18"
+      ]
+    },
+    "semantic_tracer_v1": {
+      "correct": 13,
+      "n": 18,
+      "accuracy": 0.7222,
+      "mean_f1": 0.7236,
+      "mean_recall_must": 0.9583,
+      "mean_precision_hot": 0.6505,
+      "mean_must_at_10": 0.9583,
+      "failed_ids": [
+        "o11",
+        "o12",
+        "o15",
+        "o17",
+        "o18"
+      ]
+    },
+    "semantic_tracer_fuse": {
+      "correct": 13,
+      "n": 18,
+      "accuracy": 0.7222,
+      "mean_f1": 0.7236,
+      "mean_recall_must": 0.9583,
+      "mean_precision_hot": 0.6505,
+      "mean_must_at_10": 0.9583,
+      "failed_ids": [
+        "o11",
+        "o12",
+        "o15",
+        "o17",
+        "o18"
+      ]
+    },
+    "semantic_waypoint": {
+      "correct": 13,
+      "n": 18,
+      "accuracy": 0.7222,
+      "mean_f1": 0.719,
+      "mean_recall_must": 0.9583,
+      "mean_precision_hot": 0.6454,
+      "mean_must_at_10": 0.9583,
+      "failed_ids": [
+        "o11",
+        "o12",
+        "o15",
+        "o17",
+        "o18"
+      ]
+    },
+    "semantic_meet": {
+      "correct": 13,
+      "n": 18,
+      "accuracy": 0.7222,
+      "mean_f1": 0.7207,
+      "mean_recall_must": 0.9583,
+      "mean_precision_hot": 0.6474,
+      "mean_must_at_10": 0.9583,
+      "failed_ids": [
+        "o11",
+        "o12",
+        "o15",
+        "o17",
+        "o18"
+      ]
+    },
+    "semantic_dual": {
+      "correct": 12,
+      "n": 18,
+      "accuracy": 0.6667,
+      "mean_f1": 0.7298,
+      "mean_recall_must": 0.9722,
+      "mean_precision_hot": 0.6417,
+      "mean_must_at_10": 0.9722,
+      "failed_ids": [
+        "o10",
+        "o11",
+        "o12",
+        "o15",
+        "o17",
+        "o18"
+      ]
+    },
+    "semantic_ensemble": {
+      "correct": 13,
+      "n": 18,
+      "accuracy": 0.7222,
+      "mean_f1": 0.6976,
+      "mean_recall_must": 0.9583,
+      "mean_precision_hot": 0.6143,
+      "mean_must_at_10": 0.9583,
+      "failed_ids": [
+        "o11",
+        "o12",
+        "o15",
+        "o17",
+        "o18"
+      ]
+    },
+    "poly_embed": {
+      "correct": 15,
+      "n": 18,
+      "accuracy": 0.8333,
+      "mean_f1": 0.7712,
+      "mean_recall_must": 0.9583,
+      "mean_precision_hot": 0.7111,
+      "mean_must_at_10": 0.9583,
+      "failed_ids": [
+        "o11",
+        "o17",
+        "o18"
+      ]
+    },
+    "hybrid_teleport": {
+      "correct": 4,
+      "n": 18,
+      "accuracy": 0.2222,
+      "mean_f1": 0.2657,
+      "mean_recall_must": 1.0,
+      "mean_precision_hot": 0.161,
+      "mean_must_at_10": 0.9815,
+      "failed_ids": [
+        "o02",
+        "o04",
+        "o05",
+        "o07",
+        "o08",
+        "o09",
+        "o10",
+        "o11",
+        "o12",
+        "o14",
+        "o15",
+        "o16",
+        "o17",
+        "o18"
+      ]
+    }
+  },
+  "ranked": [
+    "hybrid_teleport",
+    "semantic_dual",
+    "poly_embed",
+    "semantic_tracer_v1",
+    "semantic_tracer_fuse",
+    "semantic_meet",
+    "composite_v1",
+    "semantic_waypoint",
+    "semantic_ensemble"
+  ],
+  "best": "hybrid_teleport",
+  "ship_winners": [],
+  "note": "OOD board verify_ood_v2 \u2014 not verify_hard/verify_prod"
+}

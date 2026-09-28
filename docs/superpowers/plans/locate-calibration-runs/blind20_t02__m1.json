@@ -1,0 +1,86 @@
+{
+  "case": {
+    "id": "blind20_t02",
+    "source": "blind_map_pack_20",
+    "family": "install-cursor-surface",
+    "task": "Understand how scubiee connect wires Cursor mcp.json autoApprove and project permissions.",
+    "enrich_query": "scubiee connect install_tool write_project_tool_surface apply_permissions_to_repo_tool_surface Cursor mcp.json autoApprove permissions.json mcpAllowlist write_project_gate_rules AGENTS.md GATE",
+    "taxonomy": "exact_edit",
+    "taxonomy_confidence": "heuristic",
+    "hypothesis_policy": {
+      "lead": "scubiee_map_or_pack",
+      "next": "pack_if_seed_ok",
+      "native": "span_read_locs"
+    },
+    "must_files": [
+      "packages/pipeline/rules_installer.py",
+      "packages/pipeline/mcp_permissions.py"
+    ],
+    "must_symbols": [
+      "packages/pipeline/rules_installer.py::install_tool",
+      "packages/pipeline/rules_installer.py::write_project_tool_surface",
+      "packages/pipeline/rules_installer.py::write_project_gate_rules",
+      "packages/pipeline/mcp_permissions.py::apply_permissions_to_repo_tool_surface"
+    ],
+    "should_files": [
+      "packages/pipeline/tool_registry.py"
+    ],
+    "gold_status": "has_gold",
+    "notes": "",
+    "baseline_frozen": true
+  },
+  "M1a": {
+    "arm": "M1a_map_read",
+    "ok": true,
+    "elapsed_s": 1.439,
+    "seed": {
+      "file": "packages/pipeline/rules_installer.py",
+      "symbol": "write_project_gate_rules",
+      "start_line": 1144,
+      "loc": "packages/pipeline/rules_installer.py:1144-1209",
+      "kind": "function",
+      "role": "function",
+      "score": 16.57215563720805
+    },
+    "map_source": "cli_map",
+    "n_cards": 10,
+    "read_chars": 4392,
+    "rounds": 6,
+    "result_tokens": 3002,
+    "round_trip_tax": 15000,
+    "total_proxy": 18002,
+    "round_trip_tax_per_call": 2500,
+    "must_file": 1.0,
+    "must_sym": 0.5,
+    "file_hits": 2,
+    "file_n": 2,
+    "sym_hits": 2,
+    "sym_n": 4,
+    "case_id": "blind20_t02",
+    "taxonomy": "exact_edit"
+  },
+  "M1b": {
+    "arm": "M1b_map_pack",
+    "ok": true,
+    "elapsed_s": 1.408,
+    "seed_file": "packages/pipeline/rules_installer.py",
+    "seed_symbol": "write_project_gate_rules",
+    "seed_ok": true,
+    "map_source": "cli_map",
+    "heatmap_n": 14,
+    "read_chars": 5985,
+    "rounds": 7,
+    "result_tokens": 9371,
+    "round_trip_tax": 17500,
+    "total_proxy": 26871,
+    "round_trip_tax_per_call": 2500,
+    "must_file": 1.0,
+    "must_sym": 0.5,
+    "file_hits": 2,
+    "file_n": 2,
+    "sym_hits": 2,
+    "sym_n": 4,
+    "case_id": "blind20_t02",
+    "taxonomy": "exact_edit"
+  }
+}

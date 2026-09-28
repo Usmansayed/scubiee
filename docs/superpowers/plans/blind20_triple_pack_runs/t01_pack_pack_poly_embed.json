@@ -1,0 +1,55 @@
+{
+  "ok": true,
+  "tool": "pack_poly_embed",
+  "engine": "poly_embed",
+  "elapsed_s": 37.49,
+  "n_pack": 1,
+  "seed": {
+    "file": "packages/pipeline/artifact_guard.py",
+    "symbol": "atomic_write_text",
+    "id": "packages/pipeline/artifact_guard.py::atomic_write_text"
+  },
+  "pack": [
+    {
+      "file": "packages/pipeline/artifact_guard.py",
+      "symbol": "atomic_write_text",
+      "score": 1.0,
+      "loc": "packages/pipeline/artifact_guard.py:17-30",
+      "id": "packages/pipeline/artifact_guard.py::atomic_write_text",
+      "chars": 428
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/pipeline/artifact_guard.py::atomic_write_text",
+      "loc": "packages/pipeline/artifact_guard.py:17-30",
+      "edge": "seed",
+      "score": 1.0
+    }
+  ],
+  "error": null,
+  "seed_chunks": [
+    {
+      "file": "packages/pipeline/artifact_guard.py",
+      "symbol": "atomic_write_text",
+      "loc": "packages/pipeline/artifact_guard.py:17-30",
+      "score": 1.0,
+      "kind": "function"
+    },
+    {
+      "file": "packages/pipeline/artifact_guard.py",
+      "symbol": "_atomic_write_text_unlocked",
+      "loc": "packages/pipeline/artifact_guard.py:33-43",
+      "score": 0.99,
+      "kind": "function"
+    },
+    {
+      "file": "packages/pipeline/store_lock.py",
+      "symbol": "store_write_lock",
+      "loc": "packages/pipeline/store_lock.py:60-103",
+      "score": 0.9405,
+      "kind": "function"
+    }
+  ],
+  "pack_query": "publish FAISS index republish store checksum WarmSearchEngine serve hits after rebuild vector index publication usable | seeds: packages/pipeline/artifact_guard.py::atomic_write_text packages/pipeline/artifact_guard.py::_atomic_write_text_unlocked packages/pipeline/store_lock.py::store_write_lock packages/pipeline/artifact_guard.py::_atomic_replace packages/pipeline/store_lock.py::_held_dirs"
+}

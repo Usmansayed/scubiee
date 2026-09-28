@@ -1,0 +1,646 @@
+{
+  "id": "u06",
+  "family": "doctor-certify",
+  "task": "What does scubiee doctor / certify check for install health?",
+  "enrich_map_query": "cmd_doctor cmd_certify doctor certify health package accel providers install",
+  "map_ok": true,
+  "suggested_seed": {
+    "file": "packages/pipeline/__main__.py",
+    "symbol": "",
+    "source": "suggested_seed"
+  },
+  "resolved_seed": {
+    "file": "packages/pipeline/__main__.py",
+    "symbol": "cmd_doctor",
+    "how": "best_in_file"
+  },
+  "map_top_cards": [
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "score": 22.639313686512555
+    },
+    {
+      "file": "packages/pipeline/certify.py",
+      "symbol": "",
+      "loc": "packages/pipeline/certify.py:1-1",
+      "score": 9.755887823433934
+    },
+    {
+      "file": "tests/test_doctor_certify.py",
+      "symbol": "",
+      "loc": "tests/test_doctor_certify.py:1-1",
+      "score": 8.591048350543074
+    },
+    {
+      "file": "fixtures/trace-lab/app/routes/health.py",
+      "symbol": "",
+      "loc": "fixtures/trace-lab/app/routes/health.py:1-1",
+      "score": 7.371014541724115
+    },
+    {
+      "file": "tests/test_cross_platform_profiles.py",
+      "symbol": "",
+      "loc": "tests/test_cross_platform_profiles.py:1-1",
+      "score": 4.879151478613872
+    },
+    {
+      "file": "packages/pipeline/dashboard_ui/app.js",
+      "symbol": "",
+      "loc": "packages/pipeline/dashboard_ui/app.js:1-1",
+      "score": 3.6127027395737885
+    },
+    {
+      "file": "docs/web-info/faq.md",
+      "symbol": "",
+      "loc": "docs/web-info/faq.md:1-1",
+      "score": 2.968568040129145
+    }
+  ],
+  "arms": {
+    "composite_v1": {
+      "ok": true,
+      "elapsed_s": 0.05,
+      "n_hot": 334,
+      "n_ranked": 441,
+      "hot_ids": [
+        "packages/conductor/graphify_retriever.py::build_and_save_graph",
+        "packages/conductor/graphify_retriever.py::patch_and_save_graph",
+        "packages/enrich/__init__.py::_callable_symbols_for_file",
+        "packages/enrich/__init__.py::_read_lines",
+        "packages/enrich/__init__.py::chunk_file_from_ir",
+        "packages/enrich/__init__.py::chunk_repo_from_ir",
+        "packages/enrich/__init__.py::inject_metadata",
+        "packages/graphify/analyze.py::_node_community_map",
+        "packages/graphify/build.py::build",
+        "packages/graphify/build.py::build_merge",
+        "packages/graphify/build.py::graph_has_legacy_ids",
+        "packages/graphify/cache.py::load_cached",
+        "packages/graphify/detect.py::_shebang_interpreter",
+        "packages/graphify/export.py::_git_head",
+        "packages/graphify/export.py::_strip_diacritics",
+        "packages/graphify/export.py::to_json",
+        "packages/graphify/extract.py::_canonicalize_csharp_namespace_nodes",
+        "packages/graphify/extract.py::_check_tree_sitter_version",
+        "packages/graphify/extract.py::_extract_parallel",
+        "packages/graphify/extract.py::_extract_sequential",
+        "packages/graphify/extract.py::_file_node_id",
+        "packages/graphify/extract.py::_get_extractor",
+        "packages/graphify/extract.py::_is_cpp_header",
+        "packages/graphify/extract.py::_is_objc_header",
+        "packages/graphify/extract.py::_is_objc_source",
+        "packages/graphify/extract.py::_lang_family",
+        "packages/graphify/extract.py::_lang_is_case_insensitive",
+        "packages/graphify/extract.py::_merge_swift_extensions",
+        "packages/graphify/extract.py::_print_ast_progress",
+        "packages/graphify/extract.py::_raise_recursion_limit",
+        "packages/graphify/extract.py::_repoint_python_package_imports",
+        "packages/graphify/extract.py::_rewire_unique_stub_nodes",
+        "packages/graphify/extract.py::collect_files",
+        "packages/graphify/extract.py::extract",
+        "packages/graphify/extractors/base.py::_file_stem",
+        "packages/graphify/extractors/base.py::_make_id",
+        "packages/graphify/extractors/base.py::_read_text",
+        "packages/graphify/extractors/csharp.py::_resolve_cross_file_csharp_imports",
+        "packages/graphify/extractors/csharp.py::_resolve_csharp_type_references",
+        "packages/graphify/extractors/resolution.py::_augment_symbol_resolution_edges"
+      ],
+      "top15_ids": [
+        "packages/pipeline/__main__.py::cmd_doctor",
+        "packages/pipeline/doctor.py::apply_safe_repairs",
+        "packages/pipeline/doctor.py::doctor_repo",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/git_family.py::reconcile_git_families",
+        "packages/pipeline/doctor.py::_managed_root",
+        "packages/pipeline/repo_lifecycle.py::list_managed_repos",
+        "packages/pipeline/preflight.py::inspect_capabilities",
+        "packages/pipeline/project_id.py::resolve_project",
+        "packages/pipeline/project_id.py::index_is_usable",
+        "packages/pipeline/artifact_guard.py::validate_manifest",
+        "packages/pipeline/resources.py::get_resource_manager"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/__main__.py::cmd_doctor",
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_doctor",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 663
+        },
+        {
+          "id": "packages/pipeline/doctor.py::apply_safe_repairs",
+          "file": "packages/pipeline/doctor.py",
+          "symbol": "apply_safe_repairs",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 2176
+        },
+        {
+          "id": "packages/pipeline/doctor.py::doctor_repo",
+          "file": "packages/pipeline/doctor.py",
+          "symbol": "doctor_repo",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 3674
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::colors",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "colors",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 114
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::status_line",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "status_line",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 628
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "_ScrubGraphifyStream.write",
+          "kind": "method",
+          "score": 1.0,
+          "body_chars": 227
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "_ScrubGraphifyStream.flush",
+          "kind": "method",
+          "score": 1.0,
+          "body_chars": 56
+        },
+        {
+          "id": "packages/pipeline/git_family.py::reconcile_git_families",
+          "file": "packages/pipeline/git_family.py",
+          "symbol": "reconcile_git_families",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 5469
+        },
+        {
+          "id": "packages/pipeline/doctor.py::_managed_root",
+          "file": "packages/pipeline/doctor.py",
+          "symbol": "_managed_root",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 337
+        },
+        {
+          "id": "packages/pipeline/repo_lifecycle.py::list_managed_repos",
+          "file": "packages/pipeline/repo_lifecycle.py",
+          "symbol": "list_managed_repos",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 1454
+        },
+        {
+          "id": "packages/pipeline/preflight.py::inspect_capabilities",
+          "file": "packages/pipeline/preflight.py",
+          "symbol": "inspect_capabilities",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 1917
+        },
+        {
+          "id": "packages/pipeline/project_id.py::resolve_project",
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "resolve_project",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 5675
+        },
+        {
+          "id": "packages/pipeline/project_id.py::index_is_usable",
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "index_is_usable",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 876
+        },
+        {
+          "id": "packages/pipeline/artifact_guard.py::validate_manifest",
+          "file": "packages/pipeline/artifact_guard.py",
+          "symbol": "validate_manifest",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 1023
+        },
+        {
+          "id": "packages/pipeline/resources.py::get_resource_manager",
+          "file": "packages/pipeline/resources.py",
+          "symbol": "get_resource_manager",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 159
+        }
+      ]
+    },
+    "semantic_tracer_fuse": {
+      "ok": true,
+      "elapsed_s": 0.374,
+      "n_hot": 186,
+      "n_ranked": 398,
+      "hot_ids": [
+        "packages/enrich/__init__.py::chunk_file_from_ir",
+        "packages/pipeline/__main__.py::cmd_doctor",
+        "packages/pipeline/accel.py::load_accel",
+        "packages/pipeline/artifact_guard.py::_checksum",
+        "packages/pipeline/artifact_guard.py::atomic_write_text",
+        "packages/pipeline/artifact_guard.py::validate_manifest",
+        "packages/pipeline/branding.py::migrate_home_dir",
+        "packages/pipeline/branding.py::resolve_repo_data_dir",
+        "packages/pipeline/checkout_identity.py::_canonical_fs_id",
+        "packages/pipeline/checkout_identity.py::_current_fs_id",
+        "packages/pipeline/checkout_identity.py::_is_copy_of_registry_checkout",
+        "packages/pipeline/checkout_identity.py::_registry_entry",
+        "packages/pipeline/checkout_identity.py::_shared_git_family",
+        "packages/pipeline/checkout_identity.py::detach_registry_path",
+        "packages/pipeline/checkout_identity.py::detect_registry_copy_collisions",
+        "packages/pipeline/checkout_identity.py::fork_copied_checkout",
+        "packages/pipeline/checkout_identity.py::fs_ids_match",
+        "packages/pipeline/checkout_identity.py::reconcile_registry_copy_collisions",
+        "packages/pipeline/checkout_identity.py::resolve_checkout_project_id",
+        "packages/pipeline/chunk_merkle.py::chunk_digest",
+        "packages/pipeline/chunk_merkle.py::chunk_key",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.isatty",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+        "packages/pipeline/cli_ui.py::_init_windows_ansi",
+        "packages/pipeline/cli_ui.py::_init_windows_console",
+        "packages/pipeline/cli_ui.py::_supports_color",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/cli_ui.py::error",
+        "packages/pipeline/cli_ui.py::header",
+        "packages/pipeline/cli_ui.py::init_terminal",
+        "packages/pipeline/cli_ui.py::kv",
+        "packages/pipeline/cli_ui.py::print_doctor_summary",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/cli_ui.py::success",
+        "packages/pipeline/cli_ui.py::warn",
+        "packages/pipeline/client.py::EngineClient.get",
+        "packages/pipeline/client.py::engine_url",
+        "packages/pipeline/connect_state.py::_state_path",
+        "packages/pipeline/connect_state.py::load_connected_tools"
+      ],
+      "top15_ids": [
+        "packages/pipeline/__main__.py::cmd_doctor",
+        "packages/pipeline/doctor.py::apply_safe_repairs",
+        "packages/pipeline/doctor.py::doctor_repo",
+        "packages/pipeline/project_id.py::index_is_usable",
+        "packages/pipeline/git_family.py::reconcile_git_families",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/project_id.py::context_engine_home",
+        "packages/pipeline/project_id.py::projects_root",
+        "packages/pipeline/project_id.py::read_id_file",
+        "packages/pipeline/project_id.py::load_registry",
+        "packages/pipeline/project_id.py::git_common_dir",
+        "packages/pipeline/daemon.py::_read_lock_pid"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/__main__.py::cmd_doctor",
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_doctor",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 663
+        },
+        {
+          "id": "packages/pipeline/doctor.py::apply_safe_repairs",
+          "file": "packages/pipeline/doctor.py",
+          "symbol": "apply_safe_repairs",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 2176
+        },
+        {
+          "id": "packages/pipeline/doctor.py::doctor_repo",
+          "file": "packages/pipeline/doctor.py",
+          "symbol": "doctor_repo",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 3674
+        },
+        {
+          "id": "packages/pipeline/project_id.py::index_is_usable",
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "index_is_usable",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 876
+        },
+        {
+          "id": "packages/pipeline/git_family.py::reconcile_git_families",
+          "file": "packages/pipeline/git_family.py",
+          "symbol": "reconcile_git_families",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 5469
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::colors",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "colors",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 114
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::status_line",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "status_line",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 628
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "_ScrubGraphifyStream.write",
+          "kind": "method",
+          "score": 1.0,
+          "body_chars": 227
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "_ScrubGraphifyStream.flush",
+          "kind": "method",
+          "score": 1.0,
+          "body_chars": 56
+        },
+        {
+          "id": "packages/pipeline/project_id.py::context_engine_home",
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "context_engine_home",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 235
+        },
+        {
+          "id": "packages/pipeline/project_id.py::projects_root",
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "projects_root",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 74
+        },
+        {
+          "id": "packages/pipeline/project_id.py::read_id_file",
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "read_id_file",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 225
+        },
+        {
+          "id": "packages/pipeline/project_id.py::load_registry",
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "load_registry",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 319
+        },
+        {
+          "id": "packages/pipeline/project_id.py::git_common_dir",
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "git_common_dir",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 1312
+        },
+        {
+          "id": "packages/pipeline/daemon.py::_read_lock_pid",
+          "file": "packages/pipeline/daemon.py",
+          "symbol": "_read_lock_pid",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 405
+        }
+      ]
+    },
+    "hyb_fuse_demote_noise_plus": {
+      "ok": true,
+      "elapsed_s": 0.124,
+      "n_hot": 370,
+      "n_ranked": 398,
+      "hot_ids": [
+        "packages/conductor/graphify_retriever.py::build_and_save_graph",
+        "packages/conductor/graphify_retriever.py::patch_and_save_graph",
+        "packages/enrich/__init__.py::chunk_file_from_ir",
+        "packages/enrich/__init__.py::chunk_repo_from_ir",
+        "packages/enrich/__init__.py::inject_metadata",
+        "packages/graphify/build.py::build",
+        "packages/graphify/build.py::build_merge",
+        "packages/graphify/cache.py::_absolutize_ids_in",
+        "packages/graphify/cache.py::_absolutize_source_files_in",
+        "packages/graphify/cache.py::_resolve_prompt_fp",
+        "packages/graphify/cache.py::cache_dir",
+        "packages/graphify/cache.py::file_hash",
+        "packages/graphify/cache.py::load_cached",
+        "packages/graphify/detect.py::_is_ignored",
+        "packages/graphify/detect.py::_is_noise_dir",
+        "packages/graphify/detect.py::_resolves_under_root",
+        "packages/graphify/detect.py::_shebang_interpreter",
+        "packages/graphify/export.py::_git_head",
+        "packages/graphify/export.py::to_json",
+        "packages/graphify/extract.py::_check_tree_sitter_version",
+        "packages/graphify/extract.py::_extract_parallel",
+        "packages/graphify/extract.py::_extract_sequential",
+        "packages/graphify/extract.py::_file_node_id",
+        "packages/graphify/extract.py::_get_extractor",
+        "packages/graphify/extract.py::_is_cpp_header",
+        "packages/graphify/extract.py::_is_objc_header",
+        "packages/graphify/extract.py::_is_objc_source",
+        "packages/graphify/extract.py::_lang_family",
+        "packages/graphify/extract.py::_lang_is_case_insensitive",
+        "packages/graphify/extract.py::_merge_swift_extensions",
+        "packages/graphify/extract.py::_node_label_key",
+        "packages/graphify/extract.py::_print_ast_progress",
+        "packages/graphify/extract.py::_raise_recursion_limit",
+        "packages/graphify/extract.py::_repoint_python_package_imports",
+        "packages/graphify/extract.py::_rewire_unique_stub_nodes",
+        "packages/graphify/extract.py::_safe_extract_with_xaml_root",
+        "packages/graphify/extract.py::collect_files",
+        "packages/graphify/extract.py::extract",
+        "packages/graphify/extractors/base.py::_file_stem",
+        "packages/graphify/extractors/base.py::_make_id"
+      ],
+      "top15_ids": [
+        "packages/pipeline/__main__.py::cmd_doctor",
+        "packages/pipeline/doctor.py::doctor_repo",
+        "packages/pipeline/doctor.py::apply_safe_repairs",
+        "packages/pipeline/project_id.py::index_is_usable",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/git_family.py::reconcile_git_families",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/cli_ui.py::print_doctor_summary",
+        "packages/pipeline/doctor.py::doctor_all",
+        "packages/pipeline/doctor.py::apply_safe_repairs_all",
+        "packages/pipeline/repo_lifecycle.py::list_managed_repos",
+        "packages/pipeline/project_id.py::git_common_dir",
+        "packages/pipeline/project_id.py::mutate_registry",
+        "packages/pipeline/project_id.py::resolve_project"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/__main__.py::cmd_doctor",
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_doctor",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 663
+        },
+        {
+          "id": "packages/pipeline/doctor.py::doctor_repo",
+          "file": "packages/pipeline/doctor.py",
+          "symbol": "doctor_repo",
+          "kind": "function",
+          "score": 0.8729,
+          "body_chars": 3674
+        },
+        {
+          "id": "packages/pipeline/doctor.py::apply_safe_repairs",
+          "file": "packages/pipeline/doctor.py",
+          "symbol": "apply_safe_repairs",
+          "kind": "function",
+          "score": 0.8688,
+          "body_chars": 2176
+        },
+        {
+          "id": "packages/pipeline/project_id.py::index_is_usable",
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "index_is_usable",
+          "kind": "function",
+          "score": 0.8161,
+          "body_chars": 876
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::status_line",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "status_line",
+          "kind": "function",
+          "score": 0.8141,
+          "body_chars": 628
+        },
+        {
+          "id": "packages/pipeline/git_family.py::reconcile_git_families",
+          "file": "packages/pipeline/git_family.py",
+          "symbol": "reconcile_git_families",
+          "kind": "function",
+          "score": 0.805,
+          "body_chars": 5469
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::colors",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "colors",
+          "kind": "function",
+          "score": 0.805,
+          "body_chars": 114
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "_ScrubGraphifyStream.flush",
+          "kind": "method",
+          "score": 0.805,
+          "body_chars": 56
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::print_doctor_summary",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "print_doctor_summary",
+          "kind": "function",
+          "score": 0.7913,
+          "body_chars": 2224
+        },
+        {
+          "id": "packages/pipeline/doctor.py::doctor_all",
+          "file": "packages/pipeline/doctor.py",
+          "symbol": "doctor_all",
+          "kind": "function",
+          "score": 0.7764,
+          "body_chars": 1385
+        },
+        {
+          "id": "packages/pipeline/doctor.py::apply_safe_repairs_all",
+          "file": "packages/pipeline/doctor.py",
+          "symbol": "apply_safe_repairs_all",
+          "kind": "function",
+          "score": 0.7496,
+          "body_chars": 763
+        },
+        {
+          "id": "packages/pipeline/repo_lifecycle.py::list_managed_repos",
+          "file": "packages/pipeline/repo_lifecycle.py",
+          "symbol": "list_managed_repos",
+          "kind": "function",
+          "score": 0.7318,
+          "body_chars": 1454
+        },
+        {
+          "id": "packages/pipeline/project_id.py::git_common_dir",
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "git_common_dir",
+          "kind": "function",
+          "score": 0.7232,
+          "body_chars": 1312
+        },
+        {
+          "id": "packages/pipeline/project_id.py::mutate_registry",
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "mutate_registry",
+          "kind": "function",
+          "score": 0.7084,
+          "body_chars": 296
+        },
+        {
+          "id": "packages/pipeline/project_id.py::resolve_project",
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "resolve_project",
+          "kind": "function",
+          "score": 0.7071,
+          "body_chars": 5675
+        }
+      ]
+    },
+    "poly_embed": {
+      "ok": true,
+      "elapsed_s": 0.002,
+      "n_hot": 1,
+      "n_ranked": 1,
+      "hot_ids": [
+        "packages/pipeline/__main__.py::cmd_doctor"
+      ],
+      "top15_ids": [
+        "packages/pipeline/__main__.py::cmd_doctor"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/__main__.py::cmd_doctor",
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_doctor",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 663
+        }
+      ]
+    }
+  }
+}

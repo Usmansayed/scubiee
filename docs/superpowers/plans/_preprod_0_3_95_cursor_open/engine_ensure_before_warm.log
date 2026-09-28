@@ -1,0 +1,55 @@
+{
+  "ok": true,
+  "started": true,
+  "pid": 25676,
+  "url": "http://127.0.0.1:8765",
+  "repo": "C:\\Users\\usman\\Downloads\\context-engine",
+  "started_at": 1789512935.4541454,
+  "log": "C:\\Users\\usman\\.scubiee\\engine.log",
+  "ctx_home": "C:\\Users\\usman\\.scubiee",
+  "identity_bound": true,
+  "registry_recovery": {
+    "skipped": "agent_warm"
+  },
+  "spawn_owner": "direct",
+  "opened": {
+    "ok": true,
+    "project_id": "ce_0a779347a9061995489923aad707cb0b",
+    "root": "c:\\users\\usman\\downloads\\context-engine",
+    "primary_path": "c:\\users\\usman\\downloads\\context-engine",
+    "path": "c:\\users\\usman\\downloads\\context-engine",
+    "paths": [
+      "c:\\users\\usman\\downloads\\context-engine"
+    ],
+    "store_dir": "C:\\Users\\usman\\.scubiee\\projects\\ce_0a779347a9061995489923aad707cb0b",
+    "state": "active",
+    "paused": false,
+    "pinned": false,
+    "git_common_dir": "c:\\users\\usman\\downloads\\context-engine\\.git",
+    "initialized_at": 1789484191.1031451,
+    "last_activated_at": 1789512938.8570068,
+    "last_access_at": 1789512938.8570068,
+    "status": "activated",
+    "open": {
+      "ok": true,
+      "repo": "C:\\Users\\usman\\Downloads\\context-engine",
+      "project_id": "ce_0a779347a9061995489923aad707cb0b",
+      "warm_state": "ready",
+      "reused": true,
+      "chunks": 7042,
+      "generation": 1
+    },
+    "client": null,
+    "session_id": null,
+    "session": null,
+    "session_authored": false,
+    "runtime_shared": true
+  },
+  "watchdog": {
+    "ok": true,
+    "started": true,
+    "orphan": false,
+    "pid": 6228,
+    "log": "C:\\Users\\usman\\.scubiee\\watchdog.log"
+  }
+}

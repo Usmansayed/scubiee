@@ -145,6 +145,110 @@ def _store_cached_nodes(root: Path, fingerprint: str, nodes: dict[str, TraceNode
         pass
 
 
+# Per-file (text, parsed AST) cache keyed on (path, mtime_ns, size). Both
+# build_ast_graph and build_lsp_index read+parse every file; sharing the parse
+# within a rebake halves the parse pass, and across rebakes an unchanged file is
+# never re-parsed (PERF-1). Bounded so a huge monorepo can't grow it unbounded.
+_PARSE_CACHE: dict[str, tuple[int, int, str, "ast.AST | None"]] = {}
+_PARSE_CACHE_MAX = 20000
+
+# Disk-backed layer so a *fresh* interpreter (the background revalidate child,
+# which is respawned every rebake) inherits warm parses instead of re-parsing
+# all files cold (~5.5s of a cold rebake — PERF-1). Keyed per file on
+# (mtime_ns, size); an entry is a pickled (text, ast). Cheap files are skipped.
+_DISK_PARSE_DIR_NAME = "parse_v1"
+_DISK_PARSE_MIN_BYTES = 4096  # only worth a disk round-trip for larger files
+_parse_disk_root: "Path | None" = None
+_parse_disk_checked = False
+
+
+def set_parse_cache_root(root: Path) -> None:
+    """Point the disk parse cache at ``root/.scubiee/cache/parse_v1/``."""
+    global _parse_disk_root, _parse_disk_checked
+    _parse_disk_root = Path(root).resolve() / ".scubiee" / "cache" / _DISK_PARSE_DIR_NAME
+    _parse_disk_checked = False
+
+
+def _disk_parse_path(src: Path) -> "Path | None":
+    if _parse_disk_root is None:
+        return None
+    import hashlib
+
+    global _parse_disk_checked
+    if not _parse_disk_checked:
+        try:
+            _parse_disk_root.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            return None
+        _parse_disk_checked = True
+    h = hashlib.sha1(str(src).encode("utf-8", "replace")).hexdigest()[:20]
+    return _parse_disk_root / f"{h}.pkl"
+
+
+def read_and_parse(path: Path) -> tuple[str, "ast.AST | None"]:
+    """Return (source_text, parsed AST or None) for *path*, memoised on mtime+size.
+
+    Memory cache first (same process), then a disk cache so a freshly-spawned
+    revalidate child is still warm. A file that fails to parse caches
+    ``(text, None)`` so the SyntaxError is not re-hit. Disk read only on a miss.
+    """
+    key = str(path)
+    try:
+        st = path.stat()
+        mtime_ns, size = int(st.st_mtime_ns), int(st.st_size)
+    except OSError:
+        return "", None
+    hit = _PARSE_CACHE.get(key)
+    if hit is not None and hit[0] == mtime_ns and hit[1] == size:
+        return hit[2], hit[3]
+
+    disk = _disk_parse_path(path) if size >= _DISK_PARSE_MIN_BYTES else None
+    if disk is not None and disk.is_file():
+        try:
+            import pickle
+
+            raw = pickle.loads(disk.read_bytes())
+            if (
+                isinstance(raw, dict)
+                and raw.get("mtime_ns") == mtime_ns
+                and raw.get("size") == size
+            ):
+                text, tree = raw["text"], raw["tree"]
+                _store_parse(key, mtime_ns, size, text, tree)
+                return text, tree
+        except Exception:  # noqa: BLE001 — a bad cache entry just misses
+            pass
+
+    try:
+        text = path.read_text(encoding="utf-8-sig", errors="replace")
+    except OSError:
+        return "", None
+    try:
+        tree: "ast.AST | None" = ast.parse(text)
+    except SyntaxError:
+        tree = None
+    _store_parse(key, mtime_ns, size, text, tree)
+    if disk is not None and tree is not None:
+        try:
+            import pickle
+
+            tmp = disk.with_suffix(".pkl.tmp")
+            tmp.write_bytes(pickle.dumps(
+                {"mtime_ns": mtime_ns, "size": size, "text": text, "tree": tree},
+                protocol=pickle.HIGHEST_PROTOCOL,
+            ))
+            tmp.replace(disk)
+        except Exception:  # noqa: BLE001 — disk cache is best-effort
+            pass
+    return text, tree
+
+
+def _store_parse(key: str, mtime_ns: int, size: int, text: str, tree: "ast.AST | None") -> None:
+    if len(_PARSE_CACHE) >= _PARSE_CACHE_MAX:
+        _PARSE_CACHE.clear()
+    _PARSE_CACHE[key] = (mtime_ns, size, text, tree)
+
+
 def extract_nodes(root: Path) -> dict[str, TraceNode]:
     """One node per function, method, class, and ALL_CAPS module constant."""
     root = root.resolve()

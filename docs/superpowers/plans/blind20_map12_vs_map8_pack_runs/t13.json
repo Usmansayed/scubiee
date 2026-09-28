@@ -1,0 +1,209 @@
+{
+  "id": "t13",
+  "family": "freshness-sync",
+  "task": "How does background freshness / sync decide the index is stale and needs refresh?",
+  "must_files": [
+    "packages/pipeline/sync_loop.py",
+    "packages/pipeline/freshness.py"
+  ],
+  "must_symbols": [],
+  "map_k12": {
+    "elapsed_s": 0.39,
+    "top_files": [
+      "packages/pipeline/sync_loop.py",
+      "docs/freshness.md",
+      "packages/pipeline/freshness.py",
+      "fixtures/trace-lab/app/oauth/refresh.py",
+      "docs/reindexing/index-freshness-agent-trajectory.md",
+      "docs/research-freshness.md",
+      "tests/test_freshness.py",
+      "docs/superpowers/specs/2026-08-03-keeper-sync-lifecycle-design.md"
+    ]
+  },
+  "map_k8": {
+    "elapsed_s": 0.248,
+    "top_files": [
+      "packages/pipeline/sync_loop.py",
+      "docs/freshness.md",
+      "packages/pipeline/freshness.py",
+      "fixtures/trace-lab/app/oauth/refresh.py",
+      "docs/reindexing/index-freshness-agent-trajectory.md"
+    ]
+  },
+  "chunks_k12": [
+    {
+      "file": "packages/pipeline/sync_loop.py",
+      "symbol": "BackgroundSyncLoop.sync_once",
+      "kind": "method",
+      "loc": "packages/pipeline/sync_loop.py:713-715",
+      "start_line": 713,
+      "end_line": 715,
+      "score": 7.0
+    },
+    {
+      "file": "packages/pipeline/ce_service.py",
+      "symbol": "RuntimeManager.sync",
+      "kind": "method",
+      "loc": "packages/pipeline/ce_service.py:892-905",
+      "start_line": 892,
+      "end_line": 905,
+      "score": 9.2
+    },
+    {
+      "file": "packages/pipeline/sync_loop.py",
+      "symbol": "BackgroundSyncLoop.start",
+      "kind": "method",
+      "loc": "packages/pipeline/sync_loop.py:602-621",
+      "start_line": 602,
+      "end_line": 621,
+      "score": 6.55
+    }
+  ],
+  "chunks_k8": [
+    {
+      "file": "packages/pipeline/sync_loop.py",
+      "symbol": "BackgroundSyncLoop.sync_once",
+      "kind": "method",
+      "loc": "packages/pipeline/sync_loop.py:713-715",
+      "start_line": 713,
+      "end_line": 715,
+      "score": 7.0
+    },
+    {
+      "file": "packages/pipeline/sync_loop.py",
+      "symbol": "BackgroundSyncLoop.start",
+      "kind": "method",
+      "loc": "packages/pipeline/sync_loop.py:602-621",
+      "start_line": 602,
+      "end_line": 621,
+      "score": 6.55
+    },
+    {
+      "file": "packages/pipeline/freshness.py",
+      "symbol": "check_freshness",
+      "kind": "function",
+      "loc": "packages/pipeline/freshness.py:202-335",
+      "start_line": 202,
+      "end_line": 335,
+      "score": 6.35
+    }
+  ],
+  "pack": {
+    "ok": true,
+    "elapsed_s": 0.151,
+    "n_pack": 4,
+    "pack": [
+      {
+        "file": "packages/pipeline/sync_loop.py",
+        "symbol": "BackgroundSyncLoop.sync_once",
+        "loc": "packages/pipeline/sync_loop.py:713-715",
+        "id": "packages/pipeline/sync_loop.py::BackgroundSyncLoop.sync_once",
+        "chars": 171
+      },
+      {
+        "file": "packages/pipeline/merkle.py",
+        "symbol": "file_sha256",
+        "loc": "packages/pipeline/merkle.py:93-101",
+        "id": "packages/pipeline/merkle.py::file_sha256",
+        "chars": 252
+      },
+      {
+        "file": "packages/pipeline/merkle.py",
+        "symbol": "is_junk_rel",
+        "loc": "packages/pipeline/merkle.py:118-126",
+        "id": "packages/pipeline/merkle.py::is_junk_rel",
+        "chars": 400
+      },
+      {
+        "file": "packages/pipeline/merkle.py",
+        "symbol": "root_hash",
+        "loc": "packages/pipeline/merkle.py:181-188",
+        "id": "packages/pipeline/merkle.py::root_hash",
+        "chars": 276
+      }
+    ],
+    "chain": [
+      {
+        "id": "packages/pipeline/sync_loop.py::BackgroundSyncLoop.sync_once",
+        "loc": "packages/pipeline/sync_loop.py:713-715",
+        "edge": "seed",
+        "symbol": "BackgroundSyncLoop.sync_once"
+      },
+      {
+        "id": "packages/pipeline/merkle.py::file_sha256",
+        "loc": "packages/pipeline/merkle.py:93-101",
+        "edge": "calls",
+        "symbol": "file_sha256"
+      },
+      {
+        "id": "packages/pipeline/merkle.py::is_junk_rel",
+        "loc": "packages/pipeline/merkle.py:118-126",
+        "edge": "calls",
+        "symbol": "is_junk_rel"
+      },
+      {
+        "id": "packages/pipeline/merkle.py::root_hash",
+        "loc": "packages/pipeline/merkle.py:181-188",
+        "edge": "calls",
+        "symbol": "root_hash"
+      },
+      {
+        "id": "packages/pipeline/sync_loop.py::BackgroundSyncLoop.start",
+        "loc": "packages/pipeline/sync_loop.py:602-621",
+        "edge": "seed",
+        "symbol": "BackgroundSyncLoop.start"
+      },
+      {
+        "id": "packages/pipeline/sync_loop.py::_register_atexit",
+        "loc": "packages/pipeline/sync_loop.py:60-77",
+        "edge": "calls",
+        "symbol": "_register_atexit"
+      },
+      {
+        "id": "packages/graphify/extractors/base.py::_make_id",
+        "loc": "packages/graphify/extractors/base.py:54-55",
+        "edge": "calls",
+        "symbol": "_make_id"
+      },
+      {
+        "id": "packages/pipeline/sync_loop.py::BackgroundSyncLoop.keeper_tick",
+        "loc": "packages/pipeline/sync_loop.py:629-695",
+        "edge": "calls",
+        "symbol": "BackgroundSyncLoop.keeper_tick"
+      }
+    ],
+    "seed": {
+      "file": "packages/pipeline/sync_loop.py",
+      "symbol": "BackgroundSyncLoop.sync_once",
+      "id": "packages/pipeline/sync_loop.py::BackgroundSyncLoop.sync_once"
+    },
+    "error": null
+  },
+  "scores": {
+    "map_k12": {
+      "file": 1.0,
+      "symbol": 1.0,
+      "note": "raw map cards (symbols often empty)"
+    },
+    "map_k12_chunks": {
+      "file": 0.5,
+      "symbol": 1.0,
+      "chunks": [
+        "BackgroundSyncLoop.sync_once",
+        "RuntimeManager.sync",
+        "BackgroundSyncLoop.start"
+      ]
+    },
+    "map8_pack": {
+      "file": 1.0,
+      "symbol": 1.0,
+      "n_pack": 4,
+      "chunks": [
+        "BackgroundSyncLoop.sync_once",
+        "BackgroundSyncLoop.start",
+        "check_freshness"
+      ],
+      "elapsed_s": 0.151
+    }
+  }
+}

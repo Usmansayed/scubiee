@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "scenario": "kiro_cold_attach_steady_leave",
+  "lane": "b",
+  "live": true,
+  "repo": "C:\\Users\\usman\\Downloads\\context-engine",
+  "project_id": "ce_0a779347a9061995489923aad707cb0b",
+  "engine_url": "http://127.0.0.1:8765",
+  "phases": [],
+  "errors": [],
+  "idle_s": 120.0,
+  "kiro": {
+    "ok": true,
+    "deferred": true,
+    "hint": "Kiro MCP pins written. Lane B full auto-session is best-effort in v1; run BridgeHost (--lane a) for SLA gates, then open Kiro against this repo."
+  },
+  "note": "Kiro MCP pins written. Lane B full auto-session is best-effort in v1; run BridgeHost (--lane a) for SLA gates, then open Kiro against this repo.",
+  "elapsed_ms": 51.6
+}

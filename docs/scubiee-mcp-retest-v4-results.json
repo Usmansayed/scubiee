@@ -1,0 +1,44 @@
+[
+  {
+    "test": "glob_alias_uses_glob_param",
+    "ok": true,
+    "pattern": "packages/pipeline/*.py",
+    "source": "glob_alias"
+  },
+  {
+    "test": "glob_packages_pipeline",
+    "ok": true,
+    "count": 5
+  },
+  {
+    "test": "glob_orient_dot",
+    "ok": true,
+    "mode": "orient"
+  },
+  {
+    "test": "map_low_confidence_assessment",
+    "ok": true,
+    "confidence": "low"
+  },
+  {
+    "test": "map_duplicate_cached",
+    "ok": true,
+    "cached": true
+  },
+  {
+    "test": "map_duplicate_skips_search",
+    "ok": true,
+    "search_calls": 1
+  },
+  {
+    "test": "map_transient_should_retry",
+    "ok": true,
+    "should_retry": true,
+    "error": "Remote end closed connection without response"
+  },
+  {
+    "test": "status_has_agent_ready",
+    "ok": true,
+    "agent_ready": "warming"
+  }
+]

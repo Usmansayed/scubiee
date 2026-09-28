@@ -1,0 +1,76 @@
+{
+  "id": "u12",
+  "family": "dashboard-serve",
+  "task": "How does scubiee dashboard / serve start the local UI and engine?",
+  "enrich_map_query": "cmd_dashboard cmd_serve dashboard serve local UI engine HTTP",
+  "map_ok": true,
+  "map_elapsed_s": 9.828,
+  "suggested_seed": {
+    "file": "packages/pipeline/__main__.py",
+    "symbol": "",
+    "source": "suggested_seed"
+  },
+  "map_top_cards": [
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "score": 27.435201088124195
+    },
+    {
+      "file": "docs/web-info/dashboard-and-engine.md",
+      "symbol": "",
+      "loc": "docs/web-info/dashboard-and-engine.md:1-1",
+      "score": 8.41471936751395
+    },
+    {
+      "file": "tests/test_dashboard_ui_contract.py",
+      "symbol": "",
+      "loc": "tests/test_dashboard_ui_contract.py:1-1",
+      "score": 7.474896917979996
+    },
+    {
+      "file": "packages/pipeline/dashboard_server.py",
+      "symbol": "",
+      "loc": "packages/pipeline/dashboard_server.py:1-1",
+      "score": 6.805466356781165
+    },
+    {
+      "file": "docs/superpowers/plans/2026-08-17-ce-operator-dashboard.md",
+      "symbol": "",
+      "loc": "docs/superpowers/plans/2026-08-17-ce-operator-dashboard.md:1-1",
+      "score": 6.368331602540188
+    },
+    {
+      "file": "tests/test_dashboard_port.py",
+      "symbol": "",
+      "loc": "tests/test_dashboard_port.py:1-1",
+      "score": 5.3904256697776916
+    },
+    {
+      "file": "tests/test_dashboard_api.py",
+      "symbol": "",
+      "loc": "tests/test_dashboard_api.py:1-1",
+      "score": 5.373685087593512
+    },
+    {
+      "file": "docs/superpowers/specs/2026-08-17-ce-production-hardening-release-design.md",
+      "symbol": "",
+      "loc": "docs/superpowers/specs/2026-08-17-ce-production-hardening-release-design.md:1-1",
+      "score": 4.4722744749004635
+    },
+    {
+      "file": "packages/trace_lab/retrieve.py",
+      "symbol": "",
+      "loc": "packages/trace_lab/retrieve.py:1-1",
+      "score": 3.2577731961701435
+    },
+    {
+      "file": "packages/pipeline/settings.py",
+      "symbol": "",
+      "loc": "packages/pipeline/settings.py:1-1",
+      "score": 3.029267525145821
+    }
+  ],
+  "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+}

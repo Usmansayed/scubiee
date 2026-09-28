@@ -1,0 +1,107 @@
+﻿{
+  "root": "C:\\Users\\usman\\Downloads\\context-engine",
+  "enrolled": true,
+  "state": "active",
+  "store": "C:\\Users\\usman\\.scubiee\\projects\\ce_f4e1adced6e0dd72db51bf587464e982",
+  "collection": "context-engine_f4e1adced6e0dd72",
+  "meta": {
+    "root": "C:\\Users\\usman\\Downloads\\context-engine",
+    "project_id": "ce_f4e1adced6e0dd72db51bf587464e982",
+    "schema_version": 2,
+    "dim": 768,
+    "bits": 8,
+    "chunks": 6151,
+    "root_hash": "377f24ece3a520bcda64b560da644093dc5ec90195007a5ea58ffbd0c4f1f919",
+    "embed_model": "nomic-ai/CodeRankEmbed",
+    "embed_backend": "fastembed",
+    "fast": false,
+    "files_indexed": 911,
+    "vector_backend": "faiss+turboquant",
+    "collection": "context-engine_f4e1adced6e0dd72",
+    "vectordb_root": "C:\\Users\\usman\\.scubiee\\vectordb",
+    "git_head": "7cf34adc61987d743bdeb92fcbbcf9629f0d9236",
+    "indexed_at": 1788964872.4128222,
+    "fast_roots": null,
+    "compress_mode": "mix",
+    "compress_max_chars": 512,
+    "note": "CodeRankLLM reranker is search-time only (not used during index)"
+  },
+  "chunks": 6151,
+  "vectors": {
+    "ntotal": 6151,
+    "compressed_bytes": 4723968,
+    "fp32_bytes": 18895872,
+    "compression_ratio": 4.0,
+    "bits": 8,
+    "backend": "numpy-turboquant",
+    "name": "context-engine_f4e1adced6e0dd72",
+    "cwd": "C:\\Users\\usman\\Downloads\\context-engine",
+    "dim": 768,
+    "faiss_ntotal": 6151,
+    "live_vectors": 6151,
+    "dead_vectors": 0,
+    "payloads": 6151,
+    "path": "C:\\Users\\usman\\.scubiee\\vectordb\\collections\\context-engine_f4e1adced6e0dd72",
+    "metric": "ip"
+  },
+  "merkle_files": 910,
+  "freshness": {
+    "clean": false,
+    "root": "C:\\Users\\usman\\Downloads\\context-engine",
+    "changed_count": 6,
+    "added": [],
+    "modified": [
+      "agents.md",
+      "packages\\pipeline\\context_agent\\tools.py",
+      "packages\\pipeline\\locate_cli.py",
+      "packages\\pipeline\\mcp_locate.py",
+      "packages\\pipeline\\rules_installer.py",
+      "packages\\pipeline\\templates\\scubiee.md"
+    ],
+    "removed": [],
+    "added_truncated": false,
+    "modified_truncated": false,
+    "removed_truncated": false,
+    "git_available": true,
+    "git_dirty": [
+      "AGENTS.md",
+      "packages/pipeline/context_agent/tools.py",
+      "packages/pipeline/locate_cli.py",
+      "packages/pipeline/mcp_locate.py",
+      "packages/pipeline/rules_installer.py",
+      "packages/pipeline/templates/scubiee.md",
+      "packages/pipeline/templates/scubiee.mdc"
+    ],
+    "git_head": "7cf34adc61987d743bdeb92fcbbcf9629f0d9236",
+    "indexed_head": "7cf34adc61987d743bdeb92fcbbcf9629f0d9236",
+    "strategy": "incremental",
+    "reason": "6 files <= 40: sync before search",
+    "detection": "mtime"
+  },
+  "vectordb": {
+    "root": "C:\\Users\\usman\\.scubiee\\vectordb",
+    "collections": [
+      {
+        "name": "context-engine_f4e1adced6e0dd72",
+        "cwd": "C:\\Users\\usman\\Downloads\\context-engine",
+        "dim": 768,
+        "bits": 8,
+        "ntotal": 6151,
+        "updated_at": 1788964871.9398391
+      }
+    ]
+  },
+  "server": {
+    "ok": true,
+    "service": "scubiee",
+    "version": "0.3.30",
+    "warm": false,
+    "warm_state": "indexing",
+    "generation": 0,
+    "index_usable": false,
+    "last_sync_at": null,
+    "repo": "C:\\Users\\usman\\Downloads\\ab-arm-b",
+    "dashboard": "/dashboard",
+    "api": "/v1/*"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "engine": "composite_v1",
+  "policy": "strict",
+  "elapsed_s": 0.036,
+  "n_pack": 1,
+  "pack": [
+    {
+      "file": "packages/pipeline/memory_budget.py",
+      "symbol": "bootstrap_budget",
+      "score": 1.0,
+      "loc": "packages/pipeline/memory_budget.py:45-54",
+      "id": "packages/pipeline/memory_budget.py::bootstrap_budget"
+    }
+  ],
+  "error": null
+}

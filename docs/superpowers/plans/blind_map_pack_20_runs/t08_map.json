@@ -1,0 +1,111 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 7.332,
+  "stdout_chars": 3568,
+  "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})",
+  "json": {
+    "ok": true,
+    "tool": "map",
+    "cards": [
+      {
+        "rank": 1,
+        "file": "packages/pipeline/artifact_guard.py",
+        "score": 30.622602114902506,
+        "why": "Atomic artifact writes and checksum manifests for CE index publication.",
+        "role": "function",
+        "loc": "packages/pipeline/artifact_guard.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 2,
+        "file": "tests/test_hardening.py",
+        "score": 24.625726993660226,
+        "why": "Hardening: confirm UX, sync publish honesty, identity trust, merkle keys.",
+        "role": "test",
+        "loc": "tests/test_hardening.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 3,
+        "file": "packages/pipeline/merkle.py",
+        "score": 6.030444890652738,
+        "why": "\"\"\"Merkle-style file synchronizer (Claude Context\u2013compatible idea). SHA-256 per file \u2192 root hash over sorted (path, hash) pairs. Diff produces {added, modified, removed} for increm",
+        "role": "function",
+        "loc": "packages/pipeline/merkle.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 4,
+        "file": "docs/brand/scubiee-visual-generation-brief.md",
+        "score": 4.4981145413809545,
+        "why": "# Scubiee \u2014 visual & GitHub asset generation brief > **Purpose of this file:** Full context for another AI (ChatGPT, Kling, Midjourney, etc.) to generate **website / GitHub README ",
+        "role": "docs",
+        "loc": "docs/brand/scubiee-visual-generation-brief.md:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 5,
+        "file": "docs/publish-setup.md",
+        "score": 4.427735709494703,
+        "why": "# Publishing scubiee (PyPI + npm) End users should install with **`uv tool install scubiee`** (recommended) or `pip install scubiee`. PyPI only updates when a release is uploaded \u2014",
+        "role": "docs",
+        "loc": "docs/publish-setup.md:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 6,
+        "file": "tests/test_production_scenarios.py",
+        "score": 4.316471593945674,
+        "why": "def test_index_unusable_when_manifest_checksum_mismatches(tmp_path: Path, monkeypatch) -> None: monkeypatch.setenv(\"CTX_HOME\", str(tmp_path / \"ce-home\")) from pipeline.artifact_gua",
+        "role": "test",
+        "loc": "tests/test_production_scenarios.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 7,
+        "file": "tests/test_cli_init_repo.py",
+        "score": 4.049855993525746,
+        "why": "\ufeff\"\"\"scubiee init enrolls a repository; machine install lives on scubiee setup.\"\"\" from __future__ import annotations import argparse import json from pathlib import Path import pyt",
+        "role": "test",
+        "loc": "tests/test_cli_init_repo.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 8,
+        "file": "packages/pipeline/indexer.py",
+        "score": 4.0113069488370074,
+        "why": "def _schema_version() -> int: \"\"\"Current index schema version \u2014 stamped into meta.json on every index.\"\"\" from pipeline.migrate import SCHEMA_VERSION return SCHEMA_VERSION @datacla",
+        "role": "function",
+        "loc": "packages/pipeline/indexer.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 9,
+        "file": "tests/test_artifact_guard.py",
+        "score": 3.898074181823375,
+        "why": "def test_load_engine_refuses_checksum_invalid_manifest(tmp_path, monkeypatch) -> None: monkeypatch.setenv(\"CTX_HOME\", str(tmp_path / \"ce-home\")) from pipeline.artifact_guard import",
+        "role": "test",
+        "loc": "tests/test_artifact_guard.py:1-1",
+        "symbol": ""
+      },
+      {
+        "rank": 10,
+        "file": "packages/pipeline/project_id.py",
+        "score": 3.746465857919786,
+        "why": "def index_is_usable(store_dir: Path, *, collection_name: str | None = None) -> bool: \"\"\"True when chunks + graph.json exist and any publication manifest is valid.\"\"\" if not (store_",
+        "role": "function",
+        "loc": "packages/pipeline/project_id.py:1-1",
+        "symbol": ""
+      }
+    ],
+    "suggested_seed": {
+      "file": "packages/pipeline/artifact_guard.py",
+      "symbol": "",
+      "loc": "packages/pipeline/artifact_guard.py:1-1",
+      "score": 30.622602114902506
+    },
+    "next": "scubiee pack \"Index publication missing checksum-invalid refusing mixed generation publish merkle chunks sync init scubiee index\" --seed-file packages/pipeline/artifact_guard.py --mode lean"
+  },
+  "stdout_preview": ""
+}

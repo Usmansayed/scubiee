@@ -1,0 +1,41 @@
+{
+  "ok": true,
+  "tool": "pack_poly_embed",
+  "engine": "poly_embed",
+  "elapsed_s": 0.145,
+  "n_pack": 1,
+  "seed": {
+    "file": "packages/pipeline/sync_loop.py",
+    "symbol": "enable_session_keeper_defaults",
+    "id": "packages/pipeline/sync_loop.py::enable_session_keeper_defaults"
+  },
+  "pack": [
+    {
+      "file": "packages/pipeline/sync_loop.py",
+      "symbol": "enable_session_keeper_defaults",
+      "score": 1.0,
+      "loc": "packages/pipeline/sync_loop.py:42-48",
+      "id": "packages/pipeline/sync_loop.py::enable_session_keeper_defaults",
+      "chars": 410
+    }
+  ],
+  "chain": [
+    {
+      "id": "packages/pipeline/sync_loop.py::enable_session_keeper_defaults",
+      "loc": "packages/pipeline/sync_loop.py:42-48",
+      "edge": "seed",
+      "score": 1.0
+    }
+  ],
+  "error": null,
+  "seed_chunks": [
+    {
+      "file": "packages/pipeline/sync_loop.py",
+      "symbol": "enable_session_keeper_defaults",
+      "loc": "packages/pipeline/sync_loop.py:42-48",
+      "score": 1.0,
+      "kind": "function"
+    }
+  ],
+  "pack_query": "freshness sync background CTX_BACKGROUND_SYNC stale index checksum merkle refresh | seeds: packages/pipeline/sync_loop.py::enable_session_keeper_defaults"
+}

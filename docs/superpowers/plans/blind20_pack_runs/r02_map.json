@@ -1,0 +1,103 @@
+{
+  "ok": true,
+  "tool": "map",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/pipeline/capability.py",
+      "score": 16.833922000606492,
+      "why": "def cards_path(store_base: Path) -> Path: return store_base / \"capability_cards.json\"",
+      "role": "function",
+      "loc": "packages/pipeline/capability.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 2,
+      "file": "packages/pipeline/engine.py",
+      "score": 11.885644350535395,
+      "why": "def status(self) -> dict[str, Any]: return { \"root\": str(self.root), \"chunks\": len(self.texts), \"capability_cards\": len(self.capability.cards) if self.capability else 0, \"load_ms\":",
+      "role": "function",
+      "loc": "packages/pipeline/engine.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 3,
+      "file": "packages/pipeline/locate.py",
+      "score": 5.635230304298839,
+      "why": "def locate( query: str, *, repo: Path | str | None = None, top_k: int = 12, mode: str = \"map\", max_targets: int = 0, excerpt_chars: int = 0, graph_budget: int = 0, use_distill: boo",
+      "role": "function",
+      "loc": "packages/pipeline/locate.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 4,
+      "file": "docs/superpowers/specs/2026-08-03-capability-locate-design.md",
+      "score": 5.513655502792087,
+      "why": "# Capability locate \u2014 design **Date:** 2026-08-03 **Status:** implement **Goal:** Soft suite 10/10 + fast non-RAG locate without LLM tokens. ## Architecture ```text Query \u251c\u2500 SYMBOL",
+      "role": "docs",
+      "loc": "docs/superpowers/specs/2026-08-03-capability-locate-design.md:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 5,
+      "file": "packages/pipeline/mcp_locate.py",
+      "score": 5.158696299775212,
+      "why": "def _enrich_map_cards(cards: list[dict[str, Any]]) -> list[dict[str, Any]]: \"\"\"Slim cards: file/lines/score/why/role (+ weak_match). No per-card coaching.\"\"\" from pipeline.context_",
+      "role": "function",
+      "loc": "packages/pipeline/mcp_locate.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 6,
+      "file": "scripts/blind_map_multipack_20.py",
+      "score": 4.770982016676371,
+      "why": "def _map_top_cards(map_json: dict[str, Any] | None, k: int = 8) -> list[dict[str, Any]]: if not map_json: return [] cards = map_json.get(\"cards\") or map_json.get(\"results\") or [] o",
+      "role": "other",
+      "loc": "scripts/blind_map_multipack_20.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 7,
+      "file": "packages/pipeline/context_trace.py",
+      "score": 4.504437571508087,
+      "why": "def rank_soft_map_cards(cards: list[dict[str, Any]]) -> list[dict[str, Any]]: \"\"\"Re-rank soft map: keep coverage, but float packages/ defs above tests/docs.\"\"\" decorated: list[tupl",
+      "role": "function",
+      "loc": "packages/pipeline/context_trace.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 8,
+      "file": "packages/graphify/build.py",
+      "score": 4.406206334685117,
+      "why": "def build( extractions: list[dict], *, directed: bool = False, dedup: bool = True, dedup_llm_backend: str | None = None, root: str | Path | None = None, ) -> nx.Graph: \"\"\"Merge mul",
+      "role": "function",
+      "loc": "packages/graphify/build.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 9,
+      "file": "tests/test_mcp_exploration_regressions.py",
+      "score": 4.338138702256818,
+      "why": "def test_map_confidence_high_for_strong_hits() -> None: cards = [{\"file\": \"packages/pipeline/mcp_locate.py\", \"score\": 19.88}] conf = _assess_map_confidence(\"_assess_map_confidence ",
+      "role": "test",
+      "loc": "tests/test_mcp_exploration_regressions.py:1-1",
+      "symbol": ""
+    },
+    {
+      "rank": 10,
+      "file": "tests/test_capability_promotion.py",
+      "score": 3.995942913901664,
+      "why": "\"\"\"Capability cards must not evict the RAG window on SOFT queries. Cards are BM25 over module summaries, so scores clear a bare floor for almost any English query. Before the promo",
+      "role": "test",
+      "loc": "tests/test_capability_promotion.py:1-1",
+      "symbol": ""
+    }
+  ],
+  "suggested_seed": {
+    "file": "packages/pipeline/capability.py",
+    "symbol": "",
+    "loc": "packages/pipeline/capability.py:1-1",
+    "score": 16.833922000606492
+  },
+  "next": "scubiee pack \"capability_cards CapabilityCard build cards attach map ranking locate index capability_cards.json\" --seed-file packages/pipeline/capability.py --mode lean"
+}

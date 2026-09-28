@@ -1,0 +1,90 @@
+{
+  "ok": true,
+  "tool": "map",
+  "query": "chunk_merkle.json merkle.json incremental chunk file hash patch re-embed dirty",
+  "cards": [
+    {
+      "rank": 1,
+      "file": "packages/pipeline/chunk_merkle.py",
+      "symbol": "",
+      "score": 35.380572803910525,
+      "loc": "packages/pipeline/chunk_merkle.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 2,
+      "file": "packages/pipeline/merkle.py",
+      "symbol": "",
+      "score": 28.596668250702756,
+      "loc": "packages/pipeline/merkle.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 3,
+      "file": "tests/test_chunk_merkle.py",
+      "symbol": "",
+      "score": 14.426998717397284,
+      "loc": "tests/test_chunk_merkle.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 4,
+      "file": "packages/pipeline/incremental.py",
+      "symbol": "",
+      "score": 7.682246549139081,
+      "loc": "packages/pipeline/incremental.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 5,
+      "file": "docs/reindexing/chunk-level-incremental-indexing.md",
+      "symbol": "",
+      "score": 7.144021530764786,
+      "loc": "docs/reindexing/chunk-level-incremental-indexing.md:1-1",
+      "why": ""
+    },
+    {
+      "rank": 6,
+      "file": "packages/pipeline/hot_patch.py",
+      "symbol": "",
+      "score": 4.351457127283287,
+      "loc": "packages/pipeline/hot_patch.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 7,
+      "file": "tests/test_live_reindexing.py",
+      "symbol": "",
+      "score": 4.018424744476649,
+      "loc": "tests/test_live_reindexing.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 8,
+      "file": "scripts/bench_apple_silicon_embed.py",
+      "symbol": "",
+      "score": 3.7344348393080584,
+      "loc": "scripts/bench_apple_silicon_embed.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 9,
+      "file": "packages/pipeline/mcp_hot_reload.py",
+      "symbol": "",
+      "score": 3.599016611736475,
+      "loc": "packages/pipeline/mcp_hot_reload.py:1-1",
+      "why": ""
+    },
+    {
+      "rank": 10,
+      "file": "tests/test_project_id.py",
+      "symbol": "",
+      "score": 3.5541325486662654,
+      "loc": "tests/test_project_id.py:1-1",
+      "why": ""
+    }
+  ],
+  "suggested_seed": null,
+  "elapsed_s": 0.864,
+  "via": "search_repo(use_server=True)"
+}

@@ -1,0 +1,205 @@
+﻿{
+  "ok": true,
+  "repo": "C:\\Users\\usman\\Downloads\\context-engine",
+  "project_id": "ce_0a779347a9061995489923aad707cb0b",
+  "install": {
+    "version": "0.3.92",
+    "python": "C:\\Users\\usman\\AppData\\Roaming\\uv\\tools\\scubiee\\Scripts\\python.exe",
+    "active_binary": "C:\\Users\\usman\\.local\\bin\\scubiee",
+    "expected_binary": "C:\\Users\\usman\\AppData\\Roaming\\uv\\tools\\scubiee\\Scripts\\scubiee.exe",
+    "binaries_match": false,
+    "extra_on_path": [],
+    "multiple_installs": false,
+    "hint": "Invoked as C:\\Users\\usman\\.local\\bin\\scubiee but this Python's scubiee is C:\\Users\\usman\\AppData\\Roaming\\uv\\tools\\scubiee\\Scripts\\scubiee.exe. Call the expected binary or fix PATH."
+  },
+  "enrollment": {
+    "enrolled": true
+  },
+  "capabilities": {
+    "ok": true,
+    "require_semantic": true,
+    "capabilities": {
+      "faiss": {
+        "module": "faiss",
+        "available": true,
+        "required": true,
+        "hint": "Install the CE vector dependencies, then rerun `scubiee preflight`."
+      },
+      "rapidfuzz": {
+        "module": "rapidfuzz",
+        "available": true,
+        "required": true,
+        "hint": "Install `rapidfuzz`; graph deduplication cannot run without it."
+      },
+      "typescript_parser": {
+        "module": "tree_sitter_typescript",
+        "available": true,
+        "required": true,
+        "hint": "Install the TypeScript tree-sitter parser; CE refuses partial TS/TSX indexing."
+      },
+      "json_parser": {
+        "module": "tree_sitter_json",
+        "available": true,
+        "required": true,
+        "hint": "Install the JSON tree-sitter parser; CE refuses partial JSON indexing."
+      },
+      "embed_accel": {
+        "module": "fastembed+onnxruntime",
+        "available": true,
+        "required": true,
+        "hint": "Run `python -m pipeline setup` (or `pip install -e \".[dml]\"`) so FastEmbed uses DmlExecutionProvider at batch=16.",
+        "detail": {
+          "profile": "dml",
+          "provider": "DmlExecutionProvider",
+          "batch_size": 16,
+          "backend": "fastembed",
+          "texts_per_sec": 35.61,
+          "providers": [
+            "DmlExecutionProvider",
+            "CPUExecutionProvider"
+          ]
+        }
+      },
+      "semantic_search_st": {
+        "module": "sentence_transformers",
+        "available": false,
+        "required": false,
+        "hint": "Optional PyTorch fallback only \u2014 production path is FastEmbed+ORT."
+      }
+    },
+    "missing_required": [],
+    "accel": {
+      "ok": true,
+      "profile": "dml",
+      "provider": "DmlExecutionProvider",
+      "batch_size": 16,
+      "backend": "fastembed",
+      "texts_per_sec": 35.61,
+      "reason": "Windows discrete AMD GPU via DirectML (Intel iGPU / APU graphics use CPU instead)",
+      "fastembed": true,
+      "onnxruntime": true,
+      "providers": [
+        "DmlExecutionProvider",
+        "CPUExecutionProvider"
+      ],
+      "provider_ok": true,
+      "model_warm": true,
+      "provider_validation": {
+        "ok": true,
+        "profile": "dml",
+        "provider": "DmlExecutionProvider",
+        "available_providers": [
+          "DmlExecutionProvider",
+          "CPUExecutionProvider"
+        ],
+        "provider_available": true,
+        "model_warm": true,
+        "detail": "DmlExecutionProvider warmed cached model nomic-ai/CodeRankEmbed"
+      },
+      "sentence_transformers": false,
+      "missing": [],
+      "hint": "Run `python -m pipeline setup` (or `pip install -e \".[dml]\"`) so FastEmbed uses DmlExecutionProvider at batch=16."
+    }
+  },
+  "accel": {
+    "ok": true,
+    "profile": "dml",
+    "provider": "DmlExecutionProvider",
+    "batch_size": 16,
+    "backend": "fastembed",
+    "texts_per_sec": 35.61,
+    "reason": "Windows discrete AMD GPU via DirectML (Intel iGPU / APU graphics use CPU instead)",
+    "fastembed": true,
+    "onnxruntime": true,
+    "providers": [
+      "DmlExecutionProvider",
+      "CPUExecutionProvider"
+    ],
+    "provider_ok": true,
+    "model_warm": true,
+    "provider_validation": {
+      "ok": true,
+      "profile": "dml",
+      "provider": "DmlExecutionProvider",
+      "available_providers": [
+        "DmlExecutionProvider",
+        "CPUExecutionProvider"
+      ],
+      "provider_available": true,
+      "model_warm": true,
+      "detail": "DmlExecutionProvider warmed cached model nomic-ai/CodeRankEmbed"
+    },
+    "sentence_transformers": false,
+    "missing": [],
+    "hint": "Run `python -m pipeline setup` (or `pip install -e \".[dml]\"`) so FastEmbed uses DmlExecutionProvider at batch=16.",
+    "preferred_profile": "dml",
+    "active_profile": "dml",
+    "backup_reason": null,
+    "envelope": {
+      "tier": "standard",
+      "batch_ceiling": 16,
+      "embed_workers": 1,
+      "index_workers": 2,
+      "aggressive_unload": false,
+      "queue_limit": 2
+    },
+    "onnx_file": "onnx/model_fp16.onnx",
+    "recommended_command": "python -m pipeline serve"
+  },
+  "connect_registry": {
+    "ok": true,
+    "connected_tools": [
+      "cursor"
+    ],
+    "managed_repos": 1,
+    "enrolled_repos": 1,
+    "stale_registry_paths": [],
+    "unenrolled_managed_repos": [],
+    "warnings": []
+  },
+  "readiness": {
+    "index_usable": true,
+    "manifest": {
+      "ok": true,
+      "artifacts": [
+        "chunks.jsonl",
+        "graph.json",
+        "graph_ir.json",
+        "merkle.json",
+        "meta.json"
+      ]
+    },
+    "soft_search_ready": true,
+    "embed_profile": "dml",
+    "embed_batch": 16,
+    "embed_tps": 35.61
+  },
+  "binding": {
+    "ok": true,
+    "healthy": true,
+    "matched": true,
+    "bound_repo": "C:\\Users\\usman\\Downloads\\context-engine",
+    "repo": "C:\\Users\\usman\\Downloads\\context-engine",
+    "lock_pid": null,
+    "repair": null
+  },
+  "journal": {
+    "pending": false,
+    "paths": []
+  },
+  "git_family": {
+    "needs_reconcile": false,
+    "groups": [],
+    "duplicate_count": 0
+  },
+  "meta": {
+    "chunks": 6987,
+    "files_indexed": 1064,
+    "collection": "context-engine_0a779347a9061995",
+    "embed_model": "nomic-ai/CodeRankEmbed",
+    "project_id": "ce_0a779347a9061995489923aad707cb0b"
+  },
+  "checked_at": 1789487827.833461,
+  "repair_plan": [],
+  "repairs": []
+}

@@ -1,0 +1,10 @@
+@echo off
+set VK_ICD_FILENAMES=C:\Windows\System32\DriverStore\FileRepository\u0403196.inf_amd64_d0c41aa30f8bcfb2\B402774\amd-vulkan64.json
+set VK_LOADER_LAYERS_DISABLE=*
+set DISABLE_LAYER_AMD_SWITCHABLE_GRAPHICS_1=1
+set OLLAMA_VULKAN=1
+set OLLAMA_FLASH_ATTENTION=1
+set OLLAMA_NUM_PARALLEL=1
+set OLLAMA_DEBUG=1
+set GGML_VK_DISABLE_INTEGER_DOT_PRODUCT=1
+"C:\Users\usman\AppData\Local\Programs\Ollama\ollama.exe" serve

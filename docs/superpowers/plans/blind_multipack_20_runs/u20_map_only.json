@@ -1,0 +1,70 @@
+{
+  "id": "u20",
+  "family": "unlock-tool",
+  "task": "How does unlock_tool clear a paused or locked MCP tool permission?",
+  "enrich_map_query": "cmd_unlock_tool unlock_tool permissions paused locked mcp allowlist",
+  "map_ok": true,
+  "map_elapsed_s": 9.007,
+  "suggested_seed": {
+    "file": "packages/pipeline/__main__.py",
+    "symbol": "",
+    "source": "suggested_seed"
+  },
+  "map_top_cards": [
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "score": 27.718958073991136
+    },
+    {
+      "file": "packages/pipeline/cli_ui.py",
+      "symbol": "",
+      "loc": "packages/pipeline/cli_ui.py:1-1",
+      "score": 11.869875440789471
+    },
+    {
+      "file": "packages/pipeline/mcp_permissions.py",
+      "symbol": "",
+      "loc": "packages/pipeline/mcp_permissions.py:1-1",
+      "score": 9.340991766776721
+    },
+    {
+      "file": "tests/test_mcp_permissions.py",
+      "symbol": "",
+      "loc": "tests/test_mcp_permissions.py:1-1",
+      "score": 8.126876063442918
+    },
+    {
+      "file": "packages/pipeline/accel.py",
+      "symbol": "",
+      "loc": "packages/pipeline/accel.py:1-1",
+      "score": 4.612670179931051
+    },
+    {
+      "file": "packages/pipeline/process_control.py",
+      "symbol": "",
+      "loc": "packages/pipeline/process_control.py:1-1",
+      "score": 4.0503953833856015
+    },
+    {
+      "file": "packages/pipeline/capability.py",
+      "symbol": "",
+      "loc": "packages/pipeline/capability.py:1-1",
+      "score": 3.701001393448135
+    },
+    {
+      "file": "packages/pipeline/client.py",
+      "symbol": "",
+      "loc": "packages/pipeline/client.py:1-1",
+      "score": 3.6033041354525297
+    },
+    {
+      "file": "packages/pipeline/pause_resume.py",
+      "symbol": "",
+      "loc": "packages/pipeline/pause_resume.py:1-1",
+      "score": 2.736153087137664
+    }
+  ],
+  "stderr_tail": "[embed] plan backend=fastembed device=dml batch=16 model=nomic-ai/CodeRankEmbed accel=dml@Nonet/s\n[embed] loading FastEmbed nomic-ai/CodeRankEmbed profile=dml batch=16 providers=('DmlExecutionProvider', {'device_id': 1})\n"
+}

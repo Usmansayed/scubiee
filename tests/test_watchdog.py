@@ -307,3 +307,22 @@ def test_watchdog_status_shape(wd_home: Path):
     assert "enabled" in s
     assert "running" in s
     assert "log" in s
+
+
+def test_prewarm_progress_discriminates_slow_vs_wedged(monkeypatch) -> None:
+    """BETA-15: slow ORT load (CPU growing) is not hung; flat CPU or grace cap is."""
+    from pipeline import watchdog as wd
+
+    wd.reset_prewarm_progress()
+    samples = iter([10.0, 14.0, 14.2])
+    monkeypatch.setattr(wd, "_engine_tree_cpu_s", lambda: next(samples))
+    monkeypatch.setenv("CTX_WATCHDOG_PREWARM_GRACE_S", "180")
+    assert wd.prewarm_still_progressing(now=0.0)[0] is True  # no baseline yet
+    assert wd.prewarm_still_progressing(now=15.0) == (True, 4.0)  # burning CPU
+    assert wd.prewarm_still_progressing(now=30.0)[0] is False  # CPU flat → wedged
+
+    wd.reset_prewarm_progress()
+    monkeypatch.setattr(wd, "_engine_tree_cpu_s", lambda: 1.0)
+    assert wd.prewarm_still_progressing(now=0.0)[0] is True
+    assert wd.prewarm_still_progressing(now=200.0)[0] is False  # past grace cap
+    wd.reset_prewarm_progress()

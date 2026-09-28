@@ -1,0 +1,652 @@
+{
+  "id": "u13",
+  "family": "wipe-halt",
+  "task": "What does wipe vs halt do to runtime state and indexes?",
+  "enrich_map_query": "cmd_wipe cmd_halt wipe halt runtime index unlock stop resources",
+  "map_ok": true,
+  "suggested_seed": {
+    "file": "packages/pipeline/__main__.py",
+    "symbol": "",
+    "source": "suggested_seed"
+  },
+  "resolved_seed": {
+    "file": "packages/pipeline/__main__.py",
+    "symbol": "cmd_wipe",
+    "how": "best_in_file"
+  },
+  "map_top_cards": [
+    {
+      "file": "packages/pipeline/__main__.py",
+      "symbol": "",
+      "loc": "packages/pipeline/__main__.py:1-1",
+      "score": 22.207208209313706
+    },
+    {
+      "file": "packages/pipeline/wipe.py",
+      "symbol": "",
+      "loc": "packages/pipeline/wipe.py:1-1",
+      "score": 8.293710934955186
+    },
+    {
+      "file": "tests/test_wipe.py",
+      "symbol": "",
+      "loc": "tests/test_wipe.py:1-1",
+      "score": 7.493879893614908
+    },
+    {
+      "file": "tests/test_process_release.py",
+      "symbol": "",
+      "loc": "tests/test_process_release.py:1-1",
+      "score": 5.1203449496128055
+    },
+    {
+      "file": "tests/test_lifecycle_guard.py",
+      "symbol": "",
+      "loc": "tests/test_lifecycle_guard.py:1-1",
+      "score": 4.14971314561026
+    },
+    {
+      "file": "packages/enrich/__init__.py",
+      "symbol": "",
+      "loc": "packages/enrich/__init__.py:1-1",
+      "score": 2.6704268035297627
+    },
+    {
+      "file": "packages/graphify/extract.py",
+      "symbol": "",
+      "loc": "packages/graphify/extract.py:1-1",
+      "score": 2.501338320673012
+    },
+    {
+      "file": "packages/parse_harness/graphify_adapter.py",
+      "symbol": "",
+      "loc": "packages/parse_harness/graphify_adapter.py:1-1",
+      "score": 2.282776313722634
+    }
+  ],
+  "arms": {
+    "composite_v1": {
+      "ok": true,
+      "elapsed_s": 0.039,
+      "n_hot": 149,
+      "n_ranked": 180,
+      "hot_ids": [
+        "packages/pipeline/__main__.py::_emit_confirm_warning",
+        "packages/pipeline/__main__.py::_needs_confirm_out",
+        "packages/pipeline/__main__.py::cmd_wipe",
+        "packages/pipeline/accel.py::default_fastembed_cache_root",
+        "packages/pipeline/branding.py::migrate_home_dir",
+        "packages/pipeline/branding.py::resolve_repo_data_dir",
+        "packages/pipeline/checkout_identity.py::_current_fs_id",
+        "packages/pipeline/checkout_identity.py::_is_copy_of_registry_checkout",
+        "packages/pipeline/checkout_identity.py::_live_paths_for_project",
+        "packages/pipeline/checkout_identity.py::_registry_entry",
+        "packages/pipeline/checkout_identity.py::fs_ids_match",
+        "packages/pipeline/checkout_identity.py::remove_registry_checkout",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.isatty",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+        "packages/pipeline/cli_ui.py::_init_windows_ansi",
+        "packages/pipeline/cli_ui.py::_init_windows_console",
+        "packages/pipeline/cli_ui.py::_is_tty",
+        "packages/pipeline/cli_ui.py::_supports_color",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/cli_ui.py::confirm_action",
+        "packages/pipeline/cli_ui.py::error",
+        "packages/pipeline/cli_ui.py::init_terminal",
+        "packages/pipeline/cli_ui.py::kv",
+        "packages/pipeline/cli_ui.py::print_wipe_summary",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/cli_ui.py::success",
+        "packages/pipeline/cli_ui.py::warn",
+        "packages/pipeline/client.py::EngineClient.get",
+        "packages/pipeline/client.py::engine_url",
+        "packages/pipeline/daemon.py::_home",
+        "packages/pipeline/daemon.py::_pid_alive",
+        "packages/pipeline/daemon.py::_read_lock_pid",
+        "packages/pipeline/daemon.py::acquire_lock",
+        "packages/pipeline/daemon.py::default_host_port",
+        "packages/pipeline/daemon.py::is_running",
+        "packages/pipeline/daemon.py::lock_path",
+        "packages/pipeline/daemon.py::log_path",
+        "packages/pipeline/daemon.py::meta_path",
+        "packages/pipeline/daemon.py::pid_path"
+      ],
+      "top15_ids": [
+        "packages/pipeline/__main__.py::cmd_wipe",
+        "packages/pipeline/cli_ui.py::warn",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/wipe.py::wipe_repo",
+        "packages/pipeline/wipe.py::_context_engine_homes",
+        "packages/pipeline/process_control.py::uv_tool_root",
+        "packages/pipeline/process_control.py::kill_all_scubiee_processes",
+        "packages/pipeline/project_id.py::read_id_file",
+        "packages/pipeline/project_id.py::context_engine_home",
+        "packages/pipeline/daemon.py::is_running",
+        "packages/pipeline/project_id.py::load_registry",
+        "packages/pipeline/process_control.py::safe_terminate_pid"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/__main__.py::cmd_wipe",
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_wipe",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 3185
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::warn",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "warn",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 158
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::colors",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "colors",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 114
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "_ScrubGraphifyStream.write",
+          "kind": "method",
+          "score": 1.0,
+          "body_chars": 227
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "_ScrubGraphifyStream.flush",
+          "kind": "method",
+          "score": 1.0,
+          "body_chars": 56
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::status_line",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "status_line",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 628
+        },
+        {
+          "id": "packages/pipeline/wipe.py::wipe_repo",
+          "file": "packages/pipeline/wipe.py",
+          "symbol": "wipe_repo",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 4175
+        },
+        {
+          "id": "packages/pipeline/wipe.py::_context_engine_homes",
+          "file": "packages/pipeline/wipe.py",
+          "symbol": "_context_engine_homes",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 516
+        },
+        {
+          "id": "packages/pipeline/process_control.py::uv_tool_root",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "uv_tool_root",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 360
+        },
+        {
+          "id": "packages/pipeline/process_control.py::kill_all_scubiee_processes",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "kill_all_scubiee_processes",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 2179
+        },
+        {
+          "id": "packages/pipeline/project_id.py::read_id_file",
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "read_id_file",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 225
+        },
+        {
+          "id": "packages/pipeline/project_id.py::context_engine_home",
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "context_engine_home",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 235
+        },
+        {
+          "id": "packages/pipeline/daemon.py::is_running",
+          "file": "packages/pipeline/daemon.py",
+          "symbol": "is_running",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 61
+        },
+        {
+          "id": "packages/pipeline/project_id.py::load_registry",
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "load_registry",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 319
+        },
+        {
+          "id": "packages/pipeline/process_control.py::safe_terminate_pid",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "safe_terminate_pid",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 709
+        }
+      ]
+    },
+    "semantic_tracer_fuse": {
+      "ok": true,
+      "elapsed_s": 0.401,
+      "n_hot": 112,
+      "n_ranked": 180,
+      "hot_ids": [
+        "packages/pipeline/__main__.py::_emit_confirm_warning",
+        "packages/pipeline/__main__.py::_needs_confirm_out",
+        "packages/pipeline/__main__.py::cmd_wipe",
+        "packages/pipeline/accel.py::default_fastembed_cache_root",
+        "packages/pipeline/branding.py::migrate_home_dir",
+        "packages/pipeline/checkout_identity.py::remove_registry_checkout",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.isatty",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+        "packages/pipeline/cli_ui.py::_init_windows_ansi",
+        "packages/pipeline/cli_ui.py::_init_windows_console",
+        "packages/pipeline/cli_ui.py::_is_tty",
+        "packages/pipeline/cli_ui.py::_supports_color",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/cli_ui.py::confirm_action",
+        "packages/pipeline/cli_ui.py::error",
+        "packages/pipeline/cli_ui.py::init_terminal",
+        "packages/pipeline/cli_ui.py::kv",
+        "packages/pipeline/cli_ui.py::print_wipe_summary",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/cli_ui.py::success",
+        "packages/pipeline/cli_ui.py::warn",
+        "packages/pipeline/client.py::engine_url",
+        "packages/pipeline/daemon.py::_home",
+        "packages/pipeline/daemon.py::_pid_alive",
+        "packages/pipeline/daemon.py::_read_lock_pid",
+        "packages/pipeline/daemon.py::is_running",
+        "packages/pipeline/daemon.py::lock_path",
+        "packages/pipeline/daemon.py::pid_path",
+        "packages/pipeline/daemon.py::release_lock",
+        "packages/pipeline/daemon.py::start_daemon",
+        "packages/pipeline/daemon.py::stop_daemon",
+        "packages/pipeline/hw_track.py::resolve_moved_path",
+        "packages/pipeline/incremental.py::is_safety_pause_message",
+        "packages/pipeline/lifecycle_runtime.py::note_engine_transition",
+        "packages/pipeline/lifecycle_runtime.py::set_desired_mode",
+        "packages/pipeline/managed_repos.py::find_managed_project_by_path",
+        "packages/pipeline/pause_resume.py::is_paused",
+        "packages/pipeline/process_control.py::_cmdline_matches_ce",
+        "packages/pipeline/process_control.py::_exe_matches_scubiee"
+      ],
+      "top15_ids": [
+        "packages/pipeline/__main__.py::cmd_wipe",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/wipe.py::_context_engine_homes",
+        "packages/pipeline/process_control.py::uv_tool_root",
+        "packages/pipeline/process_control.py::kill_all_scubiee_processes",
+        "packages/pipeline/project_id.py::read_id_file",
+        "packages/pipeline/project_id.py::context_engine_home",
+        "packages/pipeline/process_control.py::safe_terminate_pid",
+        "packages/pipeline/cli_ui.py::warn",
+        "packages/pipeline/wipe.py::wipe_repo",
+        "packages/pipeline/process_control.py::_protected_process_tree_pids",
+        "packages/pipeline/process_control.py::stop_all_context_engine_processes"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/__main__.py::cmd_wipe",
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_wipe",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 3185
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::colors",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "colors",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 114
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.write",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "_ScrubGraphifyStream.write",
+          "kind": "method",
+          "score": 1.0,
+          "body_chars": 227
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "_ScrubGraphifyStream.flush",
+          "kind": "method",
+          "score": 1.0,
+          "body_chars": 56
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::status_line",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "status_line",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 628
+        },
+        {
+          "id": "packages/pipeline/wipe.py::_context_engine_homes",
+          "file": "packages/pipeline/wipe.py",
+          "symbol": "_context_engine_homes",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 516
+        },
+        {
+          "id": "packages/pipeline/process_control.py::uv_tool_root",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "uv_tool_root",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 360
+        },
+        {
+          "id": "packages/pipeline/process_control.py::kill_all_scubiee_processes",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "kill_all_scubiee_processes",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 2179
+        },
+        {
+          "id": "packages/pipeline/project_id.py::read_id_file",
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "read_id_file",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 225
+        },
+        {
+          "id": "packages/pipeline/project_id.py::context_engine_home",
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "context_engine_home",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 235
+        },
+        {
+          "id": "packages/pipeline/process_control.py::safe_terminate_pid",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "safe_terminate_pid",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 709
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::warn",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "warn",
+          "kind": "function",
+          "score": 0.9735,
+          "body_chars": 158
+        },
+        {
+          "id": "packages/pipeline/wipe.py::wipe_repo",
+          "file": "packages/pipeline/wipe.py",
+          "symbol": "wipe_repo",
+          "kind": "function",
+          "score": 0.9308,
+          "body_chars": 4175
+        },
+        {
+          "id": "packages/pipeline/process_control.py::_protected_process_tree_pids",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "_protected_process_tree_pids",
+          "kind": "function",
+          "score": 0.9237,
+          "body_chars": 534
+        },
+        {
+          "id": "packages/pipeline/process_control.py::stop_all_context_engine_processes",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "stop_all_context_engine_processes",
+          "kind": "function",
+          "score": 0.9217,
+          "body_chars": 2651
+        }
+      ]
+    },
+    "hyb_fuse_demote_noise_plus": {
+      "ok": true,
+      "elapsed_s": 0.086,
+      "n_hot": 169,
+      "n_ranked": 180,
+      "hot_ids": [
+        "packages/pipeline/__main__.py::_emit_confirm_warning",
+        "packages/pipeline/__main__.py::_needs_confirm_out",
+        "packages/pipeline/__main__.py::cmd_wipe",
+        "packages/pipeline/accel.py::default_fastembed_cache_root",
+        "packages/pipeline/artifact_guard.py::atomic_write_text",
+        "packages/pipeline/branding.py::migrate_home_dir",
+        "packages/pipeline/branding.py::resolve_repo_data_dir",
+        "packages/pipeline/checkout_identity.py::_canonical_fs_id",
+        "packages/pipeline/checkout_identity.py::_is_copy_of_registry_checkout",
+        "packages/pipeline/checkout_identity.py::_registry_entry",
+        "packages/pipeline/checkout_identity.py::_shared_git_family",
+        "packages/pipeline/checkout_identity.py::reconcile_registry_copy_collisions",
+        "packages/pipeline/checkout_identity.py::remove_registry_checkout",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.isatty",
+        "packages/pipeline/cli_ui.py::_init_windows_ansi",
+        "packages/pipeline/cli_ui.py::_init_windows_console",
+        "packages/pipeline/cli_ui.py::_is_tty",
+        "packages/pipeline/cli_ui.py::_supports_color",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/cli_ui.py::confirm_action",
+        "packages/pipeline/cli_ui.py::init_terminal",
+        "packages/pipeline/cli_ui.py::kv",
+        "packages/pipeline/cli_ui.py::print_wipe_summary",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/cli_ui.py::success",
+        "packages/pipeline/client.py::EngineClient.get",
+        "packages/pipeline/client.py::engine_url",
+        "packages/pipeline/daemon.py::_home",
+        "packages/pipeline/daemon.py::_pid_alive",
+        "packages/pipeline/daemon.py::_read_lock_pid",
+        "packages/pipeline/daemon.py::acquire_lock",
+        "packages/pipeline/daemon.py::is_running",
+        "packages/pipeline/daemon.py::pid_path",
+        "packages/pipeline/daemon.py::reconcile_managed_repositories",
+        "packages/pipeline/daemon.py::release_lock",
+        "packages/pipeline/daemon.py::start_daemon",
+        "packages/pipeline/daemon.py::stop_daemon",
+        "packages/pipeline/git_family.py::reconcile_git_families",
+        "packages/pipeline/hw_track.py::_darwin_getpath"
+      ],
+      "top15_ids": [
+        "packages/pipeline/__main__.py::cmd_wipe",
+        "packages/pipeline/wipe.py::wipe",
+        "packages/pipeline/wipe.py::wipe_repo",
+        "packages/pipeline/cli_ui.py::status_line",
+        "packages/pipeline/cli_ui.py::colors",
+        "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+        "packages/pipeline/cli_ui.py::print_wipe_summary",
+        "packages/pipeline/cli_ui.py::confirm_action",
+        "packages/pipeline/wipe.py::wipe_all",
+        "packages/pipeline/__main__.py::_emit_confirm_warning",
+        "packages/pipeline/__main__.py::_needs_confirm_out",
+        "packages/pipeline/wipe.py::_halt_scubiee_before_wipe",
+        "packages/pipeline/project_id.py::context_engine_home",
+        "packages/pipeline/wipe.py::_context_engine_homes",
+        "packages/pipeline/process_control.py::uv_tool_root"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/__main__.py::cmd_wipe",
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_wipe",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 3185
+        },
+        {
+          "id": "packages/pipeline/wipe.py::wipe",
+          "file": "packages/pipeline/wipe.py",
+          "symbol": "wipe",
+          "kind": "function",
+          "score": 0.876,
+          "body_chars": 960
+        },
+        {
+          "id": "packages/pipeline/wipe.py::wipe_repo",
+          "file": "packages/pipeline/wipe.py",
+          "symbol": "wipe_repo",
+          "kind": "function",
+          "score": 0.872,
+          "body_chars": 4175
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::status_line",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "status_line",
+          "kind": "function",
+          "score": 0.82,
+          "body_chars": 628
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::colors",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "colors",
+          "kind": "function",
+          "score": 0.805,
+          "body_chars": 114
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::_ScrubGraphifyStream.flush",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "_ScrubGraphifyStream.flush",
+          "kind": "method",
+          "score": 0.805,
+          "body_chars": 56
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::print_wipe_summary",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "print_wipe_summary",
+          "kind": "function",
+          "score": 0.8006,
+          "body_chars": 4292
+        },
+        {
+          "id": "packages/pipeline/cli_ui.py::confirm_action",
+          "file": "packages/pipeline/cli_ui.py",
+          "symbol": "confirm_action",
+          "kind": "function",
+          "score": 0.7689,
+          "body_chars": 1224
+        },
+        {
+          "id": "packages/pipeline/wipe.py::wipe_all",
+          "file": "packages/pipeline/wipe.py",
+          "symbol": "wipe_all",
+          "kind": "function",
+          "score": 0.7517,
+          "body_chars": 11233
+        },
+        {
+          "id": "packages/pipeline/__main__.py::_emit_confirm_warning",
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "_emit_confirm_warning",
+          "kind": "function",
+          "score": 0.7465,
+          "body_chars": 355
+        },
+        {
+          "id": "packages/pipeline/__main__.py::_needs_confirm_out",
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "_needs_confirm_out",
+          "kind": "function",
+          "score": 0.7318,
+          "body_chars": 702
+        },
+        {
+          "id": "packages/pipeline/wipe.py::_halt_scubiee_before_wipe",
+          "file": "packages/pipeline/wipe.py",
+          "symbol": "_halt_scubiee_before_wipe",
+          "kind": "function",
+          "score": 0.7079,
+          "body_chars": 1444
+        },
+        {
+          "id": "packages/pipeline/project_id.py::context_engine_home",
+          "file": "packages/pipeline/project_id.py",
+          "symbol": "context_engine_home",
+          "kind": "function",
+          "score": 0.7006,
+          "body_chars": 235
+        },
+        {
+          "id": "packages/pipeline/wipe.py::_context_engine_homes",
+          "file": "packages/pipeline/wipe.py",
+          "symbol": "_context_engine_homes",
+          "kind": "function",
+          "score": 0.6995,
+          "body_chars": 516
+        },
+        {
+          "id": "packages/pipeline/process_control.py::uv_tool_root",
+          "file": "packages/pipeline/process_control.py",
+          "symbol": "uv_tool_root",
+          "kind": "function",
+          "score": 0.685,
+          "body_chars": 360
+        }
+      ]
+    },
+    "poly_embed": {
+      "ok": true,
+      "elapsed_s": 0.002,
+      "n_hot": 1,
+      "n_ranked": 1,
+      "hot_ids": [
+        "packages/pipeline/__main__.py::cmd_wipe"
+      ],
+      "top15_ids": [
+        "packages/pipeline/__main__.py::cmd_wipe"
+      ],
+      "pack_like": [
+        {
+          "id": "packages/pipeline/__main__.py::cmd_wipe",
+          "file": "packages/pipeline/__main__.py",
+          "symbol": "cmd_wipe",
+          "kind": "function",
+          "score": 1.0,
+          "body_chars": 3185
+        }
+      ]
+    }
+  }
+}

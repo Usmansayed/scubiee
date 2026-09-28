@@ -1,0 +1,74 @@
+{
+  "id": "r15",
+  "family": "freshness-merkle",
+  "task": "How is freshness / clean vs dirty decided from merkle root_hash?",
+  "enrich_prompt": "freshness clean dirty merkle root_hash changed_count status sync reconcile files",
+  "map": {
+    "elapsed_s": 0.845,
+    "n_cards": 10,
+    "suggested_seed": {
+      "file": "packages/pipeline/freshness.py",
+      "symbol": ""
+    },
+    "top_files": [
+      "packages/pipeline/freshness.py",
+      "packages/pipeline/merkle.py",
+      "tests/test_root_probe.py",
+      "packages/pipeline/root_probe.py",
+      "docs/freshness.md"
+    ]
+  },
+  "arms": {
+    "composite_v1": {
+      "ok": true,
+      "engine": "composite_v1",
+      "policy": "strict",
+      "elapsed_s": 0.037,
+      "n_pack": 1,
+      "pack": [
+        {
+          "file": "packages/pipeline/freshness.py",
+          "symbol": "FreshnessReport.changed_count",
+          "score": 1.0,
+          "loc": "packages/pipeline/freshness.py:47-48",
+          "id": "packages/pipeline/freshness.py::FreshnessReport.changed_count"
+        }
+      ],
+      "error": null
+    },
+    "polytrace": {
+      "ok": true,
+      "engine": "polytrace",
+      "policy": "strict",
+      "elapsed_s": 0.001,
+      "n_pack": 1,
+      "pack": [
+        {
+          "file": "packages/pipeline/freshness.py",
+          "symbol": "FreshnessReport.changed_count",
+          "score": 1.0,
+          "loc": "packages/pipeline/freshness.py:47-48",
+          "id": "packages/pipeline/freshness.py::FreshnessReport.changed_count"
+        }
+      ],
+      "error": null
+    },
+    "ultimate": {
+      "ok": true,
+      "engine": "ultimate",
+      "policy": "strict",
+      "elapsed_s": 0.014,
+      "n_pack": 1,
+      "pack": [
+        {
+          "file": "packages/pipeline/freshness.py",
+          "symbol": "FreshnessReport.changed_count",
+          "score": 1.0,
+          "loc": "packages/pipeline/freshness.py:47-48",
+          "id": "packages/pipeline/freshness.py::FreshnessReport.changed_count"
+        }
+      ],
+      "error": null
+    }
+  }
+}

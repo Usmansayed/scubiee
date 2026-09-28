@@ -1,0 +1,132 @@
+{
+  "protocol": "blind_map_pack_v1",
+  "created": "2026-09-06",
+  "rules": [
+    "Queries authored without searching for gold context",
+    "For each: enrich map query → pick suggested_seed (+ optional top cards) → pack SAME query",
+    "Do NOT evaluate correctness in this phase"
+  ],
+  "root": "C:/Users/usman/Downloads/context-engine",
+  "cases": [
+    {
+      "id": "t01",
+      "family": "session-isolation",
+      "task": "Fix a bug where two parallel agent chats share recall/pins in one MCP process.",
+      "enrich_map_query": "session isolation require_session_id fail closed MCP shared process bucket session_store put_span work_session rematerialize pins recall per connection CTX_MCP_SESSION_ID"
+    },
+    {
+      "id": "t02",
+      "family": "install-cursor-surface",
+      "task": "Understand how scubiee connect wires Cursor mcp.json autoApprove and project permissions.",
+      "enrich_map_query": "scubiee connect install_tool write_project_tool_surface apply_permissions_to_repo_tool_surface Cursor mcp.json autoApprove permissions.json mcpAllowlist write_project_gate_rules AGENTS.md GATE"
+    },
+    {
+      "id": "t03",
+      "family": "map-pack-ladder",
+      "task": "Explain how map suggests a seed and pack builds the lean heatmap with bodies.",
+      "enrich_map_query": "map_context suggested_seed pack_context mode lean heatmap chain hot bodies cards loc rank expand_context collect_hot_context locate ladder"
+    },
+    {
+      "id": "t04",
+      "family": "composite-tracer",
+      "task": "Where does composite_v1 decide membership then rank heat with DFG boost?",
+      "enrich_map_query": "composite_v1 membership edges best_first expand apply_rank_composite DFG PASSES_DATA_TO sink demotion poly foreign slice_mask trace_lab"
+    },
+    {
+      "id": "t05",
+      "family": "embed-filter-noise",
+      "task": "How do we demote logger/analytics noise on a structural island without dropping bridges?",
+      "enrich_map_query": "apply_embed_keep_drop demote_noise_plus SITE_EFFECTS bridge names path preserve hot_floor EmbedField affinities poly_embed hybrid"
+    },
+    {
+      "id": "t06",
+      "family": "semantic-comparator",
+      "task": "How does the semantic tracer use query/seed embeddings as edge expansion priority?",
+      "enrich_map_query": "SemanticComparator semantic_best_first_expand query seed affinity trace centroid refresh hub_penalty semantic_tracer_fuse edge_sim"
+    },
+    {
+      "id": "t07",
+      "family": "cli-pack",
+      "task": "Implement or debug the scubiee pack CLI flag path for seed-file and lean mode.",
+      "enrich_map_query": "scubiee pack CLI argparse seed-file seed-symbol mode lean full policy strict broad pack_context command entry"
+    },
+    {
+      "id": "t08",
+      "family": "index-publish",
+      "task": "Index publication missing or checksum invalid — find refuse-mixed-generation and republish path.",
+      "enrich_map_query": "Index publication missing checksum-invalid refusing mixed generation publish merkle chunks sync init scubiee index"
+    },
+    {
+      "id": "t09",
+      "family": "embed-backend",
+      "task": "How does embedding choose DirectML vs CUDA vs CPU and cache coderank vectors?",
+      "enrich_map_query": "EmbedField FastEmbed CodeRankEmbed DmlExecutionProvider CUDA cache coderank.jsonl batch providers embedder progress"
+    },
+    {
+      "id": "t10",
+      "family": "gate-rules",
+      "task": "Where is the managed-repo GATE text written into AGENTS.md and steering files?",
+      "enrich_map_query": "write_project_gate_rules GATE 1 project_id AGENTS.md scubiee.md steering managed enroll"
+    },
+    {
+      "id": "t11",
+      "family": "mcp-tool-schema",
+      "task": "Add or inspect MCP tool registration for pack_context and map_context schemas.",
+      "enrich_map_query": "pack_context map_context MCP tool register FastMCP server instructions hybrid experiment CTX_MCP_EXPERIMENT"
+    },
+    {
+      "id": "t12",
+      "family": "expand-hop",
+      "task": "Missing callee hop after pack — how does expand_context direction callees with bodies work?",
+      "enrich_map_query": "expand_context direction callees callers effects broad with_bodies node id delta collect_hot_context"
+    },
+    {
+      "id": "t13",
+      "family": "permissions-allowlist",
+      "task": "Debug mcp-permissions.json allowlist merge when installing a host tool surface.",
+      "enrich_map_query": "mcp-permissions.json mcpAllowlist apply_permissions write_project_tool_surface install permissions merge allowlist"
+    },
+    {
+      "id": "t14",
+      "family": "graphify-ast",
+      "task": "How does graphify AST graph get built and fed into polytrace / composite edges?",
+      "enrich_map_query": "graphify build_graphify_graph AstTraceGraph polytrace compose_pdg edges_from_graphify call graph"
+    },
+    {
+      "id": "t15",
+      "family": "lsp-dispatch",
+      "task": "Where do LSP dispatch and override edges affect polytrace keep/drop for handlers?",
+      "enrich_map_query": "LspIndex dispatch overrides build_lsp_index polytrace used_by handle lookup registry"
+    },
+    {
+      "id": "t16",
+      "family": "session-store-files",
+      "task": "Trace persistence of session_store.json and work_session.json under .scubiee/sessions.",
+      "enrich_map_query": "session_store.json work_session.json .scubiee/sessions put_span lock rematerialize persist bucket"
+    },
+    {
+      "id": "t17",
+      "family": "status-health",
+      "task": "What does scubiee status / gate report for managed health vs locate readiness?",
+      "enrich_map_query": "scubiee status gate managed health ok chunks merkle engine server project_id enroll"
+    },
+    {
+      "id": "t18",
+      "family": "teleport-ablation",
+      "task": "Why was strict embed teleport left off by default in semantic_tracer_fuse?",
+      "enrich_map_query": "apply_strict_embed_teleport with_teleport semantic_tracer_fuse min_sem hub_penalty FN recovery must_not"
+    },
+    {
+      "id": "t19",
+      "family": "prod-eval-enrich",
+      "task": "How does production-like verify enrich a paragraph with two seed code chunks?",
+      "enrich_map_query": "_enrich_query Seed code anchors seed_chunks multi-seed merge_heatmaps prod_eval verify_prod"
+    },
+    {
+      "id": "t20",
+      "family": "hybrid-register",
+      "task": "Where are hybrid combo arms registered into compile_bundle with_embed_power?",
+      "enrich_map_query": "register_hybrid_arms HYBRID_SPECS hyb_fuse_demote_noise_plus compile_bundle with_embed_power strategies bind_hybrid_filter"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "ok": true,
+  "returncode": 0,
+  "elapsed_s": 1.674,
+  "stdout_chars": 1287,
+  "stderr_tail": "",
+  "json": {
+    "ok": true,
+    "tool": "pack",
+    "seed": {
+      "id": "packages/trace_lab/graphify_layer.py::_map_symbol",
+      "file": "packages/trace_lab/graphify_layer.py",
+      "symbol": "_map_symbol"
+    },
+    "chain": [
+      {
+        "id": "packages/trace_lab/graphify_layer.py::_map_symbol",
+        "loc": "packages/trace_lab/graphify_layer.py:34-57",
+        "edge": "seed",
+        "score": 1.0
+      }
+    ],
+    "pack": [
+      {
+        "id": "packages/trace_lab/graphify_layer.py::_map_symbol",
+        "loc": "packages/trace_lab/graphify_layer.py:34-57",
+        "text": "def _map_symbol(\n    file: str,\n    name: str,\n    line: int | None,\n    nodes: dict[str, TraceNode],\n) -> str | None:\n    file = file.replace(\"\\\\\", \"/\")\n    in_file = [n for n in nodes.values() if n.file == file]\n    if not in_file:\n        return None\n    exact = [n for n in in_file if n.symbol == name]\n    if exact:\n        return exact[0].id\n    suffix = [n for n in in_file if n.symbol.endswith(\".\" + name) or n.symbol == name]\n    if len(suffix) == 1:\n        return suffix[0].id\n    if line is not None:\n        covering = [n for n in in_file if n.start_line <= line <= n.end_line and n.kind != \"class\"]\n        if covering:\n            covering.sort(key=lambda n: (n.end_line - n.start_line, n.start_line))\n            return covering[0].id\n    if suffix:\n        return suffix[0].id\n    return None"
+      }
+    ],
+    "cold": []
+  },
+  "stdout_preview": ""
+}

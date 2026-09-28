@@ -1,0 +1,86 @@
+{
+  "pbtResults": {
+    "1. Write bug condition exploration test for the warm deadline (OPEN-B)": {
+      "status": "passed",
+      "failingExample": "seed=20260926, 19/19 cases fail as expected (bug confirmed). case=unset (CTX_WARM_DEADLINE_MS unset): warm_contract.warm_deadline_ms()=30000, runtime_controller.warm_deadline_ms()=30000, ReadySnapshot.as_status_fields().warm_deadline_ms=30000, warm_status_fields().warm_deadline_ms=30000, start_attach_warm_pipeline().deadline_ms=30000 (expected 90000 = install pin); warm_deadline_source missing on both status surfaces (expected 'default'). Same 30000 for invalid env ('', '45s', 'yh-hewxn', ...). case=pin-90000: all five numeric surfaces already report 90000; only warm_deadline_source missing (expected 'env'). Valid ints and <1000 values (floored to 1000) match numerically on unfixed code; they fail only on the missing warm_deadline_source field.",
+      "lastRunTimestamp": 1790451346126
+    },
+    "10.2 Verify bug condition exploration test now passes": {
+      "status": "passed",
+      "lastRunTimestamp": 1790455397244
+    }
+  },
+  "executionHistory": {
+    "0.1 Refresh `.kiro/settings/mcp.json` to match the Cursor Scubiee entry (APPROVED by the user)": [
+      {
+        "executionId": "ed027c94-9784-4da3-96e8-ea0ee07de9ac",
+        "chatSessionId": "sess_bdcbffae-fca7-4e00-abf2-7d8454ffa868",
+        "timestamp": 1790451172854
+      }
+    ],
+    "0.2 Capture baseline on unfixed code (for before/after comparisons)": [
+      {
+        "executionId": "ed027c94-9784-4da3-96e8-ea0ee07de9ac",
+        "chatSessionId": "sess_bdcbffae-fca7-4e00-abf2-7d8454ffa868",
+        "timestamp": 1790451183533
+      }
+    ],
+    "0. Refresh the Kiro workspace MCP entry and capture the unfixed baseline": [
+      {
+        "executionId": "ed027c94-9784-4da3-96e8-ea0ee07de9ac",
+        "chatSessionId": "sess_bdcbffae-fca7-4e00-abf2-7d8454ffa868",
+        "timestamp": 1790451183601
+      }
+    ],
+    "1. Write bug condition exploration test for the warm deadline (OPEN-B)": [
+      {
+        "executionId": "ed027c94-9784-4da3-96e8-ea0ee07de9ac",
+        "chatSessionId": "sess_bdcbffae-fca7-4e00-abf2-7d8454ffa868",
+        "timestamp": 1790451190466
+      },
+      {
+        "executionId": "ed027c94-9784-4da3-96e8-ea0ee07de9ac",
+        "chatSessionId": "sess_bdcbffae-fca7-4e00-abf2-7d8454ffa868",
+        "timestamp": 1790455218876
+      }
+    ],
+    "2. Write preservation property tests (BEFORE implementing any fix)": [
+      {
+        "executionId": "ed027c94-9784-4da3-96e8-ea0ee07de9ac",
+        "chatSessionId": "sess_bdcbffae-fca7-4e00-abf2-7d8454ffa868",
+        "timestamp": 1790451190539
+      },
+      {
+        "executionId": "ed027c94-9784-4da3-96e8-ea0ee07de9ac",
+        "chatSessionId": "sess_bdcbffae-fca7-4e00-abf2-7d8454ffa868",
+        "timestamp": 1790455218960
+      }
+    ],
+    "10.1 Implement the fix": [
+      {
+        "executionId": "ed027c94-9784-4da3-96e8-ea0ee07de9ac",
+        "chatSessionId": "sess_bdcbffae-fca7-4e00-abf2-7d8454ffa868",
+        "timestamp": 1790455235961
+      },
+      {
+        "executionId": "ed027c94-9784-4da3-96e8-ea0ee07de9ac",
+        "chatSessionId": "sess_bdcbffae-fca7-4e00-abf2-7d8454ffa868",
+        "timestamp": 1790457646925
+      }
+    ],
+    "10.2 Verify bug condition exploration test now passes": [
+      {
+        "executionId": "ed027c94-9784-4da3-96e8-ea0ee07de9ac",
+        "chatSessionId": "sess_bdcbffae-fca7-4e00-abf2-7d8454ffa868",
+        "timestamp": 1790457647024
+      }
+    ],
+    "10.3 Verify preservation tests still pass": [
+      {
+        "executionId": "ed027c94-9784-4da3-96e8-ea0ee07de9ac",
+        "chatSessionId": "sess_bdcbffae-fca7-4e00-abf2-7d8454ffa868",
+        "timestamp": 1790457647094
+      }
+    ]
+  }
+}

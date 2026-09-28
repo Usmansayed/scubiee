@@ -1,0 +1,190 @@
+{
+  "phase": "ground_truth_independent",
+  "method": "Symbol/path search after blind run frozen; not used to rewrite queries or re-pack.",
+  "cases": {
+    "t01": {
+      "must_files": [
+        "packages/pipeline/session_isolation.py",
+        "packages/pipeline/session_store.py",
+        "packages/pipeline/work_session.py"
+      ],
+      "should_files": [
+        "packages/pipeline/mcp_bridge_session.py",
+        "packages/pipeline/mcp_locate.py"
+      ],
+      "must_symbols": [
+        "packages/pipeline/session_isolation.py::effective_session_id",
+        "packages/pipeline/session_isolation.py::_session_isolate_enabled",
+        "packages/pipeline/session_store.py::put_span"
+      ]
+    },
+    "t02": {
+      "must_files": [
+        "packages/pipeline/rules_installer.py",
+        "packages/pipeline/mcp_permissions.py"
+      ],
+      "should_files": ["packages/pipeline/tool_registry.py"],
+      "must_symbols": [
+        "packages/pipeline/rules_installer.py::install_tool",
+        "packages/pipeline/rules_installer.py::write_project_tool_surface",
+        "packages/pipeline/rules_installer.py::write_project_gate_rules",
+        "packages/pipeline/mcp_permissions.py::apply_permissions_to_repo_tool_surface"
+      ]
+    },
+    "t03": {
+      "must_files": [
+        "packages/pipeline/mcp_locate.py",
+        "packages/pipeline/context_trace.py"
+      ],
+      "should_files": [],
+      "must_symbols": [
+        "packages/pipeline/mcp_locate.py::map_context_impl",
+        "packages/pipeline/mcp_locate.py::pack_context_impl"
+      ]
+    },
+    "t04": {
+      "must_files": ["packages/trace_lab/composite_v1.py"],
+      "should_files": [
+        "packages/trace_lab/engine/best_first.py"
+      ],
+      "must_symbols": [
+        "packages/trace_lab/composite_v1.py::apply_rank_composite"
+      ]
+    },
+    "t05": {
+      "must_files": [
+        "packages/trace_lab/embed_filter.py",
+        "packages/trace_lab/poly_embed.py"
+      ],
+      "should_files": ["packages/trace_lab/semantic_hybrid.py"],
+      "must_symbols": [
+        "packages/trace_lab/embed_filter.py::apply_embed_keep_drop"
+      ]
+    },
+    "t06": {
+      "must_files": [
+        "packages/trace_lab/semantic_compare.py",
+        "packages/trace_lab/engine/semantic_best_first.py",
+        "packages/trace_lab/semantic_tracer_fuse.py"
+      ],
+      "should_files": [],
+      "must_symbols": [
+        "packages/trace_lab/semantic_tracer_fuse.py::run_semantic_tracer_fuse"
+      ]
+    },
+    "t07": {
+      "must_files": [
+        "packages/pipeline/__main__.py",
+        "packages/pipeline/locate_cli.py"
+      ],
+      "should_files": [],
+      "must_symbols": [
+        "packages/pipeline/__main__.py::cmd_pack",
+        "packages/pipeline/locate_cli.py::cli_pack"
+      ]
+    },
+    "t08": {
+      "must_files": [
+        "packages/pipeline/engine.py",
+        "packages/pipeline/artifact_guard.py"
+      ],
+      "should_files": ["packages/pipeline/ce_service.py"],
+      "must_symbols": []
+    },
+    "t09": {
+      "must_files": [
+        "packages/pipeline/embedder.py",
+        "packages/pipeline/accel.py"
+      ],
+      "should_files": ["packages/trace_lab/embed_field.py"],
+      "must_symbols": []
+    },
+    "t10": {
+      "must_files": ["packages/pipeline/rules_installer.py"],
+      "should_files": ["packages/pipeline/gate_cli.py"],
+      "must_symbols": [
+        "packages/pipeline/rules_installer.py::write_project_gate_rules"
+      ]
+    },
+    "t11": {
+      "must_files": ["packages/pipeline/mcp_locate.py"],
+      "should_files": [],
+      "must_symbols": [
+        "packages/pipeline/mcp_locate.py::map_context_impl",
+        "packages/pipeline/mcp_locate.py::pack_context_impl"
+      ]
+    },
+    "t12": {
+      "must_files": ["packages/pipeline/mcp_locate.py"],
+      "should_files": ["packages/pipeline/context_trace.py"],
+      "must_symbols": [
+        "packages/pipeline/mcp_locate.py::expand_context_impl"
+      ]
+    },
+    "t13": {
+      "must_files": ["packages/pipeline/mcp_permissions.py"],
+      "should_files": ["packages/pipeline/rules_installer.py"],
+      "must_symbols": [
+        "packages/pipeline/mcp_permissions.py::apply_permissions_to_repo_tool_surface"
+      ]
+    },
+    "t14": {
+      "must_files": ["packages/trace_lab/graphify_layer.py"],
+      "should_files": ["packages/pipeline/context_trace.py"],
+      "must_symbols": []
+    },
+    "t15": {
+      "must_files": ["packages/trace_lab/lsp_index.py"],
+      "should_files": ["packages/trace_lab/polytrace.py"],
+      "must_symbols": []
+    },
+    "t16": {
+      "must_files": [
+        "packages/pipeline/session_store.py",
+        "packages/pipeline/work_session.py"
+      ],
+      "should_files": ["packages/pipeline/session_isolation.py"],
+      "must_symbols": [
+        "packages/pipeline/session_store.py::put_span"
+      ]
+    },
+    "t17": {
+      "must_files": [
+        "packages/pipeline/mcp_locate.py",
+        "packages/pipeline/gate_cli.py"
+      ],
+      "should_files": [
+        "packages/pipeline/engine.py",
+        "packages/pipeline/__main__.py"
+      ],
+      "must_symbols": []
+    },
+    "t18": {
+      "must_files": [
+        "packages/trace_lab/semantic_teleport.py",
+        "packages/trace_lab/semantic_tracer_fuse.py"
+      ],
+      "should_files": [],
+      "must_symbols": [
+        "packages/trace_lab/semantic_teleport.py::apply_strict_embed_teleport"
+      ]
+    },
+    "t19": {
+      "must_files": ["packages/trace_lab/prod_eval.py"],
+      "should_files": [],
+      "must_symbols": [
+        "packages/trace_lab/prod_eval.py::_enrich_query"
+      ]
+    },
+    "t20": {
+      "must_files": [
+        "packages/trace_lab/semantic_hybrid.py",
+        "packages/trace_lab/strategies.py"
+      ],
+      "should_files": [],
+      "must_symbols": [
+        "packages/trace_lab/semantic_hybrid.py::register_hybrid_arms"
+      ]
+    }
+  }
+}
