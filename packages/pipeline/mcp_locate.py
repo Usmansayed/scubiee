@@ -1083,6 +1083,12 @@ def _resolve_ctx_project_id() -> Path | None:
     return _registry_path_for_project_id(pid) if pid else None
 
 
+# Sentinel bound when a caller passes a project_id (or explicit root) we cannot
+# resolve to an enrolled repo. Kept out of the real repo space so it can never
+# look managed, but detectable so gate/status can say "bad id" instead of a bare
+# "0" that reads identically to a genuinely unmanaged repo (BUG-B).
+_UNRESOLVED_PROJECT = "__scubiee_unresolved_project__"
+
 _REQUEST_REPO: ContextVar[Path | None] = ContextVar("scubiee_request_repo", default=None)
 _LAST_MANAGED_REPO: Path | None = None
 
@@ -1161,7 +1167,7 @@ def _resolve_request_repo(*, root: str = "", project_id: str = "") -> Path | Non
                         return enrolled
                     # Wrong id on a real folder must not fall through to the
                     # IDE workspace and look managed.
-                    return Path("__scubiee_unresolved_project__")
+                    return Path(_UNRESOLVED_PROJECT)
                 return enrolled
             git = _git_root_walk(start)
             if git is not None:
@@ -1178,9 +1184,15 @@ def _resolve_request_repo(*, root: str = "", project_id: str = "") -> Path | Non
             return found
         # A project id the caller named and we cannot enroll must stay
         # unmanaged. Returning None would bind the IDE workspace instead.
-        return Path("__scubiee_unresolved_project__")
+        return Path(_UNRESOLVED_PROJECT)
 
     return None
+
+
+def _request_repo_unresolved() -> bool:
+    """True when the current call bound the wrong-id/unresolvable-root sentinel."""
+    bound = _REQUEST_REPO.get()
+    return bound is not None and bound.name == _UNRESOLVED_PROJECT
 
 
 def _ctx_repo_raw() -> Path | None:
@@ -1383,13 +1395,30 @@ def _managed_signal_fields(*, just_checked: bool = False) -> dict[str, Any]:
         fields["ambiguous_repos"] = True
         fields["candidates"] = candidates
     if not managed:
-        if _registry_has_enrollments():
+        if _request_repo_unresolved():
+            # Caller passed a project_id/root we could not resolve — a mistake,
+            # not an unmanaged workspace (BUG-B).
+            fields["bad_project_id"] = True
+            fields["hint"] = (
+                "project_id/root did not resolve to an enrolled repo. Recheck the "
+                "id (format ce_…) from a prior gate()/status(), or omit it to bind "
+                "the workspace."
+            )
+        elif _registry_has_enrollments():
             fields["hint"] = _locate_bind_hint()
         else:
             fields["hint"] = (
                 "Repo is not managed. Run `scubiee init .`, then pass root=<workspace> "
                 "on locate calls. Recheck gate() at a new chat or after status_ttl_s."
             )
+    try:
+        from pipeline.ignore import agent_ignore_summary
+
+        ign = agent_ignore_summary(_default_repo())
+        fields["index_skip"] = ign["index_skip"]
+        fields["index_write_hint"] = ign["index_write_hint"]
+    except Exception:  # noqa: BLE001
+        pass
     return fields
 
 
@@ -1470,6 +1499,9 @@ _STATUS_SUMMARY_KEYS = (
     "agent_ready_note",
     "search_usable",
     "index_fresh",
+    "pack_ready",
+    "ast_hydrated",
+    "warm_wait",
     "warm_ready",
     "warm_ready_map",
     "warm_phase",
@@ -1493,6 +1525,8 @@ _STATUS_SUMMARY_KEYS = (
     "status_ttl_s",
     "status_age_s",
     "stale_ctx_repo",
+    "index_skip",
+    "index_write_hint",
 )
 
 
@@ -1872,11 +1906,19 @@ def _assess_map_confidence(query: str, cards: list[dict[str, Any]]) -> dict[str,
     return {"confidence": "high", "max_score": round(max_score, 4)}
 
 
-def _map_cache_get(store: dict[str, Any], qn: str, k: int) -> list[dict[str, Any]] | None:
+def _map_cache_get(
+    store: dict[str, Any], qn: str, k: int, *, token: str | None = None
+) -> list[dict[str, Any]] | None:
+    """Session-store duplicate-query cards, only if built on index ``token``.
+
+    Entries without a token predate generation keying and are never served.
+    """
     entry = (store.get("map_cache") or {}).get(qn)
     if not isinstance(entry, dict):
         return None
     if entry.get("dense") is not True:
+        return None
+    if not token or entry.get("token") != token:
         return None
     # Accept cache when prior map had ≥k cards (or any non-empty set).
     cached_k = int(entry.get("k") or 0)
@@ -1893,12 +1935,20 @@ def _map_cache_put(
     cards: list[dict[str, Any]],
     *,
     session_id: str | None = None,
+    token: str | None = None,
 ) -> None:
     from pipeline.session_store import load_store, save_store
 
     store = load_store(repo, session_id=session_id)
     cache = store.setdefault("map_cache", {})
-    cache[qn] = {"k": k, "cards": cards, "ts": time.time(), "dense": True, "retrieve_mode": "D_channel_best"}
+    cache[qn] = {
+        "k": k,
+        "cards": cards,
+        "ts": time.time(),
+        "dense": True,
+        "retrieve_mode": "D_channel_best",
+        "token": token,
+    }
     if len(cache) > 40:
         oldest = sorted(cache.items(), key=lambda kv: float((kv[1] or {}).get("ts") or 0))[: len(cache) - 40]
         for key, _ in oldest:
@@ -2105,18 +2155,14 @@ def _slim_outline(
 
 
 # Dirs we never descend into when finding files — heavy, generated, or vendored.
-_FILES_IGNORE_DIRS = {
-    ".git", ".venv", ".venv-proof", "__pycache__", "node_modules", "out",
-    "graphify-out", ".scubiee", ".pytest_cache", ".mypy_cache",
-    ".ruff_cache", "dist", "build", ".cursor", "research", "testdata",
-    ".worktrees",
-}
+# Source of truth: pipeline.ignore.BUILTIN_IGNORE_DIRS (+ blanket hidden dirs).
+from pipeline.ignore import BUILTIN_IGNORE_DIRS, is_builtin_ignored_dir_name
+
+_FILES_IGNORE_DIRS = set(BUILTIN_IGNORE_DIRS)
 
 
 def _is_ignored_repo_dir(name: str) -> bool:
-    if name in _FILES_IGNORE_DIRS or name.startswith("."):
-        return True
-    return name.startswith("scubiee-0.")
+    return is_builtin_ignored_dir_name(name)
 
 
 def _explicit_dot_dirs_in_pattern(pattern: str) -> set[str]:
@@ -2363,7 +2409,7 @@ def _orient_repo(repo: Path, limit: int = 40) -> dict[str, Any]:
     try:
         for child in sorted(repo.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())):
             name = child.name
-            if name in _FILES_IGNORE_DIRS or name.startswith("."):
+            if _is_ignored_repo_dir(name):
                 continue
             if child.is_dir():
                 dirs.append(name + "/")
@@ -3085,6 +3131,70 @@ def _quiet_mcp_http_logs() -> None:
     for name in ("httpx", "httpcore", "httpcore.connection", "httpcore.http11"):
         logging.getLogger(name).setLevel(logging.WARNING)
     logging.getLogger("mcp.server.lowlevel.server").setLevel(logging.WARNING)
+
+
+def _await_ast_ready(tool: str, repo: Path) -> str | None:
+    """Shared bounded AST hydrate wait for pack / expand / collect (OPEN-E).
+
+    Returns ``None`` when the AST cache is ready. Otherwise returns the same
+    ``ast_warming`` error payload pack used historically, plus
+    ``empty_reason=\"ast_not_ready\"``.
+    """
+    from pipeline.context_trace import ast_cache_ready, hydrate_ast_bundle
+
+    if ast_cache_ready(repo):
+        return None
+    t_wait = time.perf_counter()
+    hyd_thread = None
+    try:
+        from pipeline.mcp_lifecycle import start_ast_hydrate_bg
+
+        hyd_thread = start_ast_hydrate_bg(repo).get("thread")
+    except Exception:  # noqa: BLE001
+        try:
+            import threading
+
+            def _bg_bake() -> None:
+                try:
+                    hydrate_ast_bundle(repo, bake_on_miss=True)
+                except Exception:  # noqa: BLE001
+                    pass
+
+            threading.Thread(
+                target=_bg_bake,
+                name=f"scubiee-{tool}-ast-bake",
+                daemon=True,
+            ).start()
+        except Exception:  # noqa: BLE001
+            pass
+    try:
+        wait_s = float(os.environ.get("CTX_MCP_PACK_AST_WAIT_S") or 10.0)
+    except ValueError:
+        wait_s = 10.0
+    deadline = time.perf_counter() + max(0.0, wait_s)
+    while not ast_cache_ready(repo) and time.perf_counter() < deadline:
+        if hyd_thread is not None and hyd_thread.is_alive():
+            hyd_thread.join(timeout=0.25)
+        else:
+            time.sleep(0.25)
+    ast_wait_ms = round((time.perf_counter() - t_wait) * 1000, 1)
+    if ast_cache_ready(repo):
+        return None
+    return _err(
+        tool,
+        "ast_warming",
+        hint=(
+            "AST bundle is still loading (waited "
+            f"{ast_wait_ms / 1000:.1f}s). Retry {tool} once "
+            "after retry_after_s; do not treat a previous map as "
+            "this pack. status.pack_ready=true means pack is usable."
+        ),
+        status="warming",
+        should_retry=True,
+        retry_after_s=3,
+        ast_wait_ms=ast_wait_ms,
+        empty_reason="ast_not_ready",
+    )
 
 
 def create_mcp(name: str = "scubiee") -> "FastMCP":
@@ -4409,12 +4519,12 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             str,
             Field(
                 description=(
-                    "Cold/new-topic flow query — denser CODE VOCABULARY 25–120 tokens "
-                    "(target ≥40: symbols/paths/APIs/errors/tech/verbs across the problem surface). "
-                    "Call 1 of incremental ladder."
+                    "REQUIRED. Cold/new-topic flow query — denser CODE VOCABULARY 25–120 "
+                    "tokens (target ≥40: symbols/paths/APIs/errors/tech/verbs across the "
+                    "problem surface). Call 1 of incremental ladder."
                 )
             ),
-        ],
+        ] = "",
         k: Annotated[int, Field(description="How many cards (default 12).")] = 12,
         response_format: Annotated[str, Field(description="json (default) or markdown.")] = "json",
         root: Annotated[str, Field(description=_BIND_ROOT_DESC)] = "",
@@ -4441,11 +4551,17 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         from pipeline.session_store import load_store
 
         qn = _norm_query(args.query)
+        # Both caches are keyed on the engine's index token (epoch:generation).
+        # Read it before any search: a publish that lands mid-search leaves the
+        # result under the older token, so the next map re-queries.
+        from pipeline.map_result_cache import current_index_token
+
+        index_token = current_index_token(repo)
         # Process-local cache first (identical query remaps after warmup).
         try:
             from pipeline.map_result_cache import get_map_cached
 
-            hit = get_map_cached(repo=str(repo), query=args.query, fingerprint="soft_v1")
+            hit = get_map_cached(repo=str(repo), query=args.query, fingerprint=index_token)
             if hit is not None and hit.get("dense") is True:
                 hit["elapsed_ms"] = round((_time.perf_counter() - _map_t0) * 1000, 1)
                 # Cache hit: the original embed/retrieve timings no longer happened
@@ -4460,7 +4576,9 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         store = load_store(repo, session_id=sid)
         thrash = store.get("locate_thrash") or {}
         duplicate = qn in (thrash.get("seen") or [])
-        cached_cards = _map_cache_get(store, qn, args.k) if duplicate else None
+        cached_cards = (
+            _map_cache_get(store, qn, args.k, token=index_token) if duplicate else None
+        )
         if duplicate and cached_cards:
             cards = _enrich_map_cards(cached_cards, query=args.query)
             conf = _assess_map_confidence(args.query, cards)
@@ -4503,6 +4621,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 "scope": "indexed_chunks",
                 "ranked_only": True,
                 "cached": True,
+                "cache": "session",
                 "session_id": sid,
                 "suggested_seed": suggested,
                 "suggested_seeds": suggested_seeds,
@@ -4605,7 +4724,9 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
         except Exception:  # noqa: BLE001
             card["suggested_seed"] = None
         try:
-            _map_cache_put(repo, qn, args.k, list(card["cards"]), session_id=sid)
+            _map_cache_put(
+                repo, qn, args.k, list(card["cards"]), session_id=sid, token=index_token
+            )
         except Exception:  # noqa: BLE001
             pass
         try:
@@ -4614,7 +4735,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             put_map_cached(
                 repo=str(repo),
                 query=args.query,
-                fingerprint="soft_v1",
+                fingerprint=index_token,
                 payload=card,
             )
         except Exception:  # noqa: BLE001
@@ -4968,6 +5089,19 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
 
             if is_paused():
                 return _paused_gate_response()
+            # A non-empty project_id / root we could not resolve is a caller
+            # mistake, not an unmanaged repo. Say so instead of a bare "0" that
+            # an agent cannot distinguish from "this folder isn't enrolled"
+            # (BUG-B). Still 0-prefixed, so "not managed → native tools" holds.
+            if _request_repo_unresolved():
+                bad = (project_id or root or "").strip()
+                return (
+                    f"0:badpid\n"
+                    f"Scubiee could not resolve project_id/root {bad!r}. Recheck the "
+                    f"id from a prior gate()/status() (format ce_…), or omit it to use "
+                    f"the workspace. Until then locate tools are unmanaged — use native "
+                    f"Read/Grep/Glob."
+                )
             try:
                 from pipeline.mcp_lifecycle import ensure_mcp_runtime
 
@@ -4992,7 +5126,18 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     hint = sess.get("hint") or (
                         "Pass a distinct session_id per chat or set CTX_MCP_SESSION_ID in MCP env."
                     )
-                    return f"{line}\n{hint}"
+                    try:
+                        from pipeline.ignore import format_gate_ignore_lines
+
+                        return f"{line}\n{hint}\n{format_gate_ignore_lines(_default_repo())}"
+                    except Exception:  # noqa: BLE001
+                        return f"{line}\n{hint}"
+                try:
+                    from pipeline.ignore import format_gate_ignore_lines
+
+                    return f"{line}\n{format_gate_ignore_lines(_default_repo())}"
+                except Exception:  # noqa: BLE001
+                    return line
             return line
 
     def status_impl(
@@ -5017,6 +5162,8 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
 
                 if is_paused():
                     return _paused_gate_response()
+                if _request_repo_unresolved():
+                    return "0:badpid"
                 return _gate_line(just_checked=True)
 
             from pipeline.pause_resume import is_paused
@@ -5080,15 +5227,17 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                     session_id=sid,
                 )
                 store = load_store(repo, session_id=sid)
-                healthy = eng.healthy()
+                # Single /health round-trip: healthy() just calls health() and reads
+                # ok, so calling both doubled the HTTP cost (360-760ms each, cold).
                 opened: dict[str, Any] = {}
                 health_payload: dict[str, Any] = {}
                 detail_s = (detail or "summary").strip().lower()
+                try:
+                    health_payload = eng.health() if hasattr(eng, "health") else {}
+                except Exception:  # noqa: BLE001
+                    health_payload = {}
+                healthy = bool(isinstance(health_payload, dict) and health_payload.get("ok"))
                 if healthy:
-                    try:
-                        health_payload = eng.health() if hasattr(eng, "health") else {}
-                    except Exception:  # noqa: BLE001
-                        health_payload = {}
                     soft_from_health = bool(
                         isinstance(health_payload, dict)
                         and health_payload.get("soft_search_ready")
@@ -5444,6 +5593,66 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 payload["index_fresh"] = bool(
                     healthy and locate_ready_now and not index_lagging
                 )
+                # pack_ready: this process holds the AST pack needs (BETA-05).
+                # agent_ready covers map; pack also needs the AST bundle.
+                try:
+                    from pipeline.context_trace import ast_cache_ready as _ast_ready
+
+                    ast_now = bool(_ast_ready(repo))
+                except Exception:  # noqa: BLE001
+                    ast_now = bool(payload.get("ast_hydrated"))
+                payload["ast_hydrated"] = ast_now
+                payload["pack_ready"] = bool(payload["search_usable"] and ast_now)
+                if payload["search_usable"] and not ast_now:
+                    if payload.get("embedder_loaded") is True:
+                        try:
+                            from pipeline.mcp_lifecycle import start_ast_hydrate_bg
+
+                            start_ast_hydrate_bg(repo)
+                        except Exception:  # noqa: BLE001
+                            pass
+                    payload["agent_ready_note"] = (
+                        str(payload.get("agent_ready_note") or "").rstrip()
+                        + " Pack AST still loading (pack_ready=false): pack_context "
+                        "waits up to ~10s for it, then returns ast_warming with "
+                        "should_retry=true."
+                    ).strip()
+                # warm_wait: one explicit "am I done warming?" contract (BETA-01/17).
+                # Soft (BM25) comes up in seconds; dense (FastEmbed/ORT) can take
+                # 60-110s on Windows DirectML. A fixed ~30s wait is not enough.
+                dense_now = payload.get("embedder_loaded") is True
+                if not healthy:
+                    stage = "engine_down"
+                elif not payload["search_usable"]:
+                    stage = "soft_loading"
+                elif not dense_now:
+                    stage = "dense_loading"
+                elif not ast_now:
+                    stage = "pack_ast_loading"
+                else:
+                    stage = "ready"
+                elapsed_ms = payload.get("warm_elapsed_ms")
+                payload["warm_wait"] = {
+                    "done": stage == "ready",
+                    "stage": stage,
+                    "wait_for": "agent_ready=yes AND embedder_loaded=true AND pack_ready=true",
+                    "soft_ready": bool(payload["search_usable"]),
+                    "dense_ready": dense_now,
+                    "pack_ready": bool(payload["pack_ready"]),
+                    "elapsed_s": (
+                        round(float(elapsed_ms) / 1000.0, 1)
+                        if isinstance(elapsed_ms, (int, float))
+                        else None
+                    ),
+                    "retry_after_s": 0 if stage == "ready" else 5,
+                    "note": (
+                        "Warm. map/pack_context run at full quality."
+                        if stage == "ready"
+                        else "Soft != dense. Re-check status after retry_after_s until "
+                        "warm_wait.done=true (cold dense load is often 60-110s on Windows "
+                        "DirectML; a fixed 30s wait is not enough)."
+                    ),
+                }
                 # Honest should_use from locate.state (managed alone is not enough).
                 signals = _managed_signal_fields(just_checked=True)
                 signals["should_use_mcp"] = bool(
@@ -5662,54 +5871,15 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             return _managed_locate_err("expand_context", repo)
         try:
             from pipeline.context_trace import (
-                ast_cache_ready,
-                hydrate_ast_bundle,
                 load_trace,
                 persist_trace,
                 run_expand_context,
             )
 
-            # Prefer disk-bundle hydrate. Never cold-bake AST on the MCP request
-            # thread — that GIL-starves the locate worker for 20s+ and Cursor
-            # often opens a second bridge while the first is wedged.
-            t_hyd = time.perf_counter()
-            hyd = hydrate_ast_bundle(repo, bake_on_miss=False)
-            hyd_ms = round((time.perf_counter() - t_hyd) * 1000, 1)
-            if not ast_cache_ready(repo):
-                try:
-                    from pipeline.mcp_lifecycle import start_ast_hydrate_bg
-
-                    start_ast_hydrate_bg(repo)
-                except Exception:  # noqa: BLE001
-                    pass
-                try:
-                    import threading
-
-                    def _bg_bake() -> None:
-                        try:
-                            hydrate_ast_bundle(repo, bake_on_miss=True)
-                        except Exception:  # noqa: BLE001
-                            pass
-
-                    threading.Thread(
-                        target=_bg_bake, name="scubiee-expand-ast-bake", daemon=True
-                    ).start()
-                except Exception:  # noqa: BLE001
-                    pass
-                from pipeline.context_trace import hydrate_status_label
-
-                return _err(
-                    "expand_context",
-                    "ast_warming",
-                    hint=(
-                        "AST bundle not ready "
-                        f"(hydrate={hydrate_status_label(hyd)}, {hyd_ms}ms). "
-                        "Background bake started — retry expand_context and "
-                        "pack_context in a few seconds. map stays available."
-                    ),
-                    status="warming",
-                    hydrate_ms=hyd_ms,
-                )
+            warming = _await_ast_ready("expand_context", Path(repo))
+            if warming is not None:
+                return warming
+            hyd_ms = 0.0
 
             prior = load_trace(repo, sid)
             # Only skip already-expanded hops — NOT the whole pack heatmap
@@ -5727,6 +5897,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                         "Pass node=file::symbol (or seed_file=/seed_symbol=), "
                         "or run map/pack_context first so a trace exists."
                     ),
+                    empty_reason="node_unresolved",
                 )
             out = run_expand_context(
                 repo,
@@ -5744,9 +5915,7 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             )
             out["session_id"] = sid
             out["hydrate_ms"] = hyd_ms
-            from pipeline.context_trace import hydrate_status_label
-
-            out["hydrate_source"] = hydrate_status_label(hyd)
+            out["hydrate_source"] = "cache"
             if out.get("ok"):
                 # merge delta into persisted cards
                 cards = list(prior.get("cards") or [])
@@ -5783,12 +5952,12 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 str,
                 Field(
                     description=(
-                        "ENRICHED pack query after map (25–120 tokens, target ≥40). "
+                        "REQUIRED. ENRICHED pack query after map (25–120 tokens, target ≥40). "
                         "Fold suggested_seeds file::symbol + hot cards + APIs/errors/paths "
                         "from the problem surface — denser and more specific than the map query."
                     )
                 ),
-            ],
+            ] = "",
             seed_file: Annotated[str, Field(description="Seed file path relative to repo.")] = "",
             seed_symbol: Annotated[
                 str, Field(description="Seed symbol (optional if seed_line set).")
@@ -5880,6 +6049,15 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
             project_id: Annotated[str, Field(description=_BIND_PID_DESC)] = "",
             session_id: Annotated[str, Field(description=_BIND_SESSION_DESC)] = "",
         ) -> str:
+            # query is REQUIRED but defaulted "" so a missing arg returns this
+            # uniform {ok:false} envelope instead of FastMCP's raw framework text
+            # that an agent cannot parse (BUG-C).
+            if not (query or "").strip():
+                return _err(
+                    tool_name,
+                    "query required",
+                    hint="Pass query= with code vocabulary (symbols/paths/APIs).",
+                )
             if not (seed_file or "").strip():
                 return _err(
                     tool_name,
@@ -5909,37 +6087,10 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 mode_n = (mode or "lean").strip().lower() or "lean"
                 want_bodies = _resolve_pack_bodies(include_bodies)
                 policy_n = (policy or "strict").strip().lower() or "strict"
-                if not ast_cache_ready(repo):
-                    # Never cold-bake AST on the pack request thread (20s+ GIL).
-                    try:
-                        from pipeline.mcp_lifecycle import start_ast_hydrate_bg
-
-                        start_ast_hydrate_bg(repo)
-                    except Exception:  # noqa: BLE001
-                        pass
-                    try:
-                        import threading
-
-                        def _bg_bake_pack() -> None:
-                            try:
-                                hydrate_ast_bundle(repo, bake_on_miss=True)
-                            except Exception:  # noqa: BLE001
-                                pass
-
-                        threading.Thread(
-                            target=_bg_bake_pack, name="scubiee-pack-ast-bake", daemon=True
-                        ).start()
-                    except Exception:  # noqa: BLE001
-                        pass
-                    return _err(
-                        tool_name,
-                        "ast_warming",
-                        hint=(
-                            "AST bundle is still loading. Retry pack_context; "
-                            "do not treat a previous map as this pack."
-                        ),
-                        status="warming",
-                    )
+                warming = _await_ast_ready(tool_name, Path(repo))
+                if warming is not None:
+                    return warming
+                ast_wait_ms: float | None = None
 
                 prior = load_trace(repo, sid)
                 # Per-tool packed ledger: pack_poly_embed / pack_semantic must not
@@ -5976,6 +6127,8 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 )
                 # A missing seed stays an error. Map cards are not a stand-in pack.
                 out["session_id"] = sid
+                if ast_wait_ms is not None:
+                    out["ast_wait_ms"] = ast_wait_ms
                 if out.get("ok"):
                     persist = out.pop("_persist", {}) or {}
                     new_ids = {str(x) for x in (persist.get("packed_ids") or []) if x}
@@ -6068,6 +6221,11 @@ def create_mcp(name: str = "scubiee") -> "FastMCP":
                 persist_trace,
                 run_collect_hot,
             )
+
+            warming = _await_ast_ready("collect_hot_context", Path(repo))
+            # Prefer wait when possible; if still cold, fall through to span-read
+            # escape (OPEN-E) rather than blocking the agent entirely.
+            _ = warming  # waited; may still be cold
 
             prior = load_trace(repo, sid)
             cards = list(prior.get("cards") or [])

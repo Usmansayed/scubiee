@@ -8,6 +8,7 @@ that pyright would answer, computed from AST + the AST graph.
 from __future__ import annotations
 
 import ast
+import re
 import textwrap
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -17,11 +18,18 @@ from trace_lab.ast_graph import AstTraceGraph, _call_name, _collect_imports
 from trace_lab.corpus import (
     iter_python_files,
     module_name_for,
+    read_and_parse,
     rel_posix,
 )
 from trace_lab.types import TraceNode
 
 _REGISTER = frozenset({"bind", "register", "subscribe", "listen", "on", "add_handler"})
+# A registration Call needs the name as an identifier followed by "(" (word
+# boundary before, so "button" does not match "on"). Used to skip the per-symbol
+# snippet parse when no such call can exist. Kept in sync with _REGISTER.
+_REGISTER_CALL_RE = re.compile(
+    r"\b(?:bind|register|subscribe|listen|on|add_handler)\s*\(",
+)
 
 
 @dataclass
@@ -83,24 +91,33 @@ def build_lsp_index(
 
     for path in iter_python_files(root):
         rel = rel_posix(root, path)
-        text = path.read_text(encoding="utf-8-sig", errors="replace")
-        try:
-            tree = ast.parse(text)
-        except SyntaxError:
+        _text, tree = read_and_parse(path)
+        if tree is None:
             continue
         imports = _collect_imports(tree, by_mod, symbols_in_file)
         _collect_inheritance(rel, tree, nodes, idx)
+        rel_syms = symbols_in_file.get(rel, {})
         for n in by_file.get(rel, []):
             if n.kind == "class":
-                continue
-            body = _parse(n.text)
-            if body is None:
                 continue
             tabled = any(m in n.text for m in ("HANDLERS", "REGISTRY", "DISPATCH", "_HANDLERS"))
             short = n.symbol.split(".")[-1]
             if tabled and short in {"lookup", "dispatch", "get_handler", "resolve_handler"}:
                 lookup_nodes.append(n.id)
-            registered.extend(_bound_callbacks(body, imports, symbols_in_file.get(rel, {})))
+            # Short-circuit: _bound_callbacks only emits when the body has a Call
+            # whose function name is a _REGISTER name (bind/register/subscribe/
+            # listen/on/add_handler). A Call needs the name as an identifier
+            # immediately followed by "(" (optionally via ``x.name(``). If no such
+            # ``name(`` appears in the source text there is no matching Call node,
+            # so the snippet parse + ast.walk is wasted. Result-identical (an
+            # absent call token cannot be an AST Call target); skips most of the
+            # ~6.4k per-symbol re-parses that dominated the AST bake.
+            if not _REGISTER_CALL_RE.search(n.text):
+                continue
+            body = _parse(n.text)
+            if body is None:
+                continue
+            registered.extend(_bound_callbacks(body, imports, rel_syms))
 
     registered = list(dict.fromkeys(registered))
     lookup_nodes = list(dict.fromkeys(lookup_nodes))

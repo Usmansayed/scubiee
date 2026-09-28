@@ -48,6 +48,27 @@ class MinHash:
         phv = np.bitwise_and((self._a * hv + self._b) % _MP, _MH)
         self.hashvalues = np.minimum(self.hashvalues, phv)
 
+    def update_batch(self, values: "list[bytes]") -> None:
+        """Hash many tokens in one vectorized pass.
+
+        ``update()`` runs a 128-wide NumPy op per token; called once per shingle
+        (~245k times on this repo) the per-call NumPy dispatch dominated dedup
+        (~2s). Hashing all shingles into one ``(k, num_perm)`` matrix and taking
+        a single column-wise min is arithmetically identical (same Mersenne-prime
+        permutation family) but amortizes the NumPy overhead across the whole set.
+        """
+        if not values:
+            return
+        # 32-bit hash of each token (same sha1[:4] little-endian as update()).
+        raw = np.frombuffer(
+            b"".join(hashlib.sha1(v).digest()[:4] for v in values),
+            dtype="<u4",
+        ).astype(np.uint64)
+        # (k, 1) * (num_perm,) -> (k, num_perm) permuted hashes, then column min.
+        phv = np.bitwise_and((raw[:, None] * self._a + self._b) % _MP, _MH)
+        batch_min = phv.min(axis=0)
+        self.hashvalues = np.minimum(self.hashvalues, batch_min)
+
 
 def _lsh_integrate(f, lo: float, hi: float, n: int = 128) -> float:
     """Numerical integration — replaces scipy.integrate.quad for LSH param search."""

@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from conductor.bm25_index import BM25Index, tokenize
+from pipeline.ignore import load_scubiee_ignore
 from pipeline.merkle import _is_ignored_dir_name, is_junk_rel
 
 _DOC_FIRST = re.compile(r"^\s*[\"']{3}(.*?)[\"']{3}", re.DOTALL)
@@ -129,6 +130,14 @@ def _path_glob_match_one(rel_n: str, glob_pat: str) -> bool:
     patt = (glob_pat or "**/*").replace("\\", "/").strip() or "**/*"
     if patt in {"*", "**", "**/*"}:
         return True
+    # Fast path for the very common ``*.ext`` / ``**/*.ext`` globs: a suffix test
+    # avoids compiling+running a regex per file (grep_ident uses ``*.py`` over
+    # ~2.3k walked files). ``*`` matches any basename, so a bare extension glob
+    # is just an endswith check.
+    if patt.startswith("**/*.") and "*" not in patt[5:] and "?" not in patt[5:]:
+        return rel_n.endswith(patt[4:])  # patt[4:] == ".ext"
+    if patt.startswith("*.") and "/" not in patt and "*" not in patt[2:] and "?" not in patt[2:]:
+        return name.endswith(patt[1:])  # patt[1:] == ".ext"
     rx = glob_to_regex(patt)
     return rx.fullmatch(rel_n) is not None or rx.fullmatch(name) is not None
 
@@ -142,18 +151,32 @@ def path_glob_match(rel: str, glob_pat: str) -> bool:
 
 
 def iter_glob_files(root: Path, glob_pat: str = "**/*") -> list[str]:
-    """Repo-relative files matching ``glob_pat``, skipping junk dirs."""
+    """Repo-relative files matching ``glob_pat``, skipping junk dirs.
+
+    Perf: load ``.scubieeignore`` once (was reloaded + re-stat'd per file — ~2s
+    over 8.8k files on this repo) and derive rel paths with string ops instead
+    of ``Path.relative_to`` (thousands of pathlib allocations).
+    """
     root = root.resolve()
+    try:
+        rules = load_scubiee_ignore(root)
+    except Exception:  # noqa: BLE001
+        rules = None
+    root_str = str(root)
+    root_prefix = root_str + os.sep
     out: list[str] = []
     for dirpath, dirnames, filenames in os_walk_safe(root):
         dirnames[:] = [d for d in dirnames if not _should_skip_glob_dir(d, glob_pat)]
+        # rel dir prefix via string slice (dirpath is always under root)
+        if dirpath == root_str:
+            rel_dir = ""
+        elif dirpath.startswith(root_prefix):
+            rel_dir = dirpath[len(root_prefix):].replace(os.sep, "/") + "/"
+        else:
+            continue
         for fname in filenames:
-            p = Path(dirpath) / fname
-            try:
-                rel = p.relative_to(root).as_posix()
-            except ValueError:
-                continue
-            if is_junk_rel(rel):
+            rel = rel_dir + fname
+            if is_junk_rel(rel, root=root, rules=rules):
                 continue
             if not path_glob_match(rel, glob_pat):
                 continue
@@ -352,7 +375,7 @@ def iter_py_files(root: Path, *, rels: Iterable[str] | None = None) -> list[str]
                 rel = p.relative_to(root).as_posix()
             except ValueError:
                 continue
-            if is_junk_rel(rel):
+            if is_junk_rel(rel, root=root):
                 continue
             out.append(rel)
     return sorted(out)
@@ -563,7 +586,11 @@ def grep_scan(
     if rg_report is not None:
         return rg_report
 
-    max_lines = int(os.environ.get("CTX_GREP_MAX_LINES", "250000"))
+    max_lines = int(os.environ.get("CTX_GREP_MAX_LINES", "2000000"))
+    # Per-file cap: one giant data file (JSON report / log) must not starve the
+    # global budget so the scan never reaches real source (was: 0 hits + silent
+    # ``scan_incomplete`` when >250k lines of harness JSON sorted before code).
+    max_lines_per_file = int(os.environ.get("CTX_GREP_MAX_LINES_PER_FILE", "60000"))
     deadline = _time.monotonic() + float(os.environ.get("CTX_GREP_TIMEOUT_S", "15"))
     try:
         rx = re.compile(pattern)
@@ -589,10 +616,15 @@ def grep_scan(
             lines = raw.decode("utf-8", errors="replace").splitlines()
         except Exception:  # noqa: BLE001
             continue
+        file_lines = 0
         for i, line in enumerate(lines, 1):
             lines_scanned += 1
+            file_lines += 1
             if lines_scanned > max_lines:
                 truncated = True
+                break
+            if file_lines > max_lines_per_file:
+                # skip the rest of this one oversized file, keep scanning others
                 break
             if _time.monotonic() > deadline:
                 truncated = True
