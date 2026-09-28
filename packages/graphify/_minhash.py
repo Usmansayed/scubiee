@@ -48,6 +48,28 @@ class MinHash:
         phv = np.bitwise_and((self._a * hv + self._b) % _MP, _MH)
         self.hashvalues = np.minimum(self.hashvalues, phv)
 
+    def update_batch(self, values: "list[bytes]") -> None:
+        """Vectorized bulk update — bit-identical to calling update() per value.
+
+        Hashes every input in one pass and folds all permutation columns with a
+        single np.minimum reduction. Avoids the per-shingle Python loop that
+        dominated dedup on large graphs. A no-op for an empty batch.
+        """
+        if not values:
+            return
+        # 32-bit sha1 prefix per value → shape (n,)
+        hv = np.fromiter(
+            (struct.unpack("<I", hashlib.sha1(v).digest()[:4])[0] for v in values),
+            dtype=np.uint64,
+            count=len(values),
+        )
+        # (num_perm, 1) * (n,) → (num_perm, n) permuted hashes, then min over axis=1.
+        phv = np.bitwise_and(
+            (self._a[:, None] * hv[None, :] + self._b[:, None]) % _MP, _MH
+        )
+        batch_min = phv.min(axis=1)
+        self.hashvalues = np.minimum(self.hashvalues, batch_min)
+
 
 def _lsh_integrate(f, lo: float, hi: float, n: int = 128) -> float:
     """Numerical integration — replaces scipy.integrate.quad for LSH param search."""
