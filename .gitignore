@@ -102,3 +102,10 @@ tools/llama-cpp/
 .zed/
 --help
 
+# ---- Laya-Code local benchmark (experiment output; not part of Scubiee) -----
+laya_bench/
+laya-code-windows-amd-benchmark.md
+_bench_*.json
+_layapath.txt
+_verify.py
+scripts/claude_sdk_harness/
