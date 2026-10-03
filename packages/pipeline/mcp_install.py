@@ -119,10 +119,12 @@ def server_entry(
         "CTX_TRACE_GRAPHIFY": "1",
         "CTX_MCP_SESSION_ISOLATE": "1",
         "CTX_MCP_BRIDGE_MODE": "shared",
-        "CTX_ENGINE_IDLE_S": "10",
+        # 80 min: keep the engine + embedder resident across normal editor breaks
+        # so a call after idle doesn't pay the ~20s dense re-warm.
+        "CTX_ENGINE_IDLE_S": "4800",
         "CTX_DISCONNECT_DEBOUNCE_S": "10",
         "CTX_ENGINE_TRANSITION_DEBOUNCE_S": "5",
-        "CTX_EMBED_IDLE_DEMOTE_S": "10",
+        "CTX_EMBED_IDLE_DEMOTE_S": "4800",
         "CTX_EMBED_PREWARM": "1",
         "CTX_TRACE_PARALLEL": "1",
         "CTX_ENGINE_SPAWN_OWNER": "supervisor",
@@ -232,11 +234,12 @@ def server_entry(
 
 
 def _merge_idle_env_max(dst_env: dict[str, str], prior_env: dict[str, Any] | None) -> None:
-    """Keep a higher *transition* debounce on reconnect; disconnect unload stays at install defaults.
+    """Keep a higher *transition* debounce on reconnect; idle knobs come from install defaults.
 
-    ``CTX_DISCONNECT_DEBOUNCE_S`` / ``CTX_ENGINE_IDLE_S`` are disconnect-unload
-    knobs (default 10s) and must not be sticky-raised from old 300s installs.
-    ``CTX_EMBED_IDLE_DEMOTE_S`` stays a short GPU demote (default 10s).
+    Only ``CTX_ENGINE_TRANSITION_DEBOUNCE_S`` is sticky-maxed here.
+    ``CTX_ENGINE_IDLE_S`` / ``CTX_EMBED_IDLE_DEMOTE_S`` are refreshed from
+    ``server_entry`` (install default 4800s = 80 min, keeping engine+embedder warm
+    across editor breaks) and are intentionally not sticky-preserved.
     """
     if not isinstance(prior_env, dict):
         return

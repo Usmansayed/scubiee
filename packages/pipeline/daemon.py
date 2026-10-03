@@ -683,9 +683,11 @@ def start_daemon(
     if not open_on_start:
         cmd.append("--no-open")
     env.setdefault("CTX_PYTHON", daemon_python())
-    env.setdefault("CTX_EMBED_IDLE_DEMOTE_S", os.environ.get("CTX_EMBED_IDLE_DEMOTE_S") or "10")
+    # 80 min idle defaults so the engine + embedder stay resident across normal
+    # editor breaks (avoids the ~20s dense re-warm on the next call).
+    env.setdefault("CTX_EMBED_IDLE_DEMOTE_S", os.environ.get("CTX_EMBED_IDLE_DEMOTE_S") or "4800")
     env.setdefault("CTX_DISCONNECT_DEBOUNCE_S", os.environ.get("CTX_DISCONNECT_DEBOUNCE_S") or "10")
-    env.setdefault("CTX_ENGINE_IDLE_S", os.environ.get("CTX_ENGINE_IDLE_S") or "120")
+    env.setdefault("CTX_ENGINE_IDLE_S", os.environ.get("CTX_ENGINE_IDLE_S") or "4800")
     env.setdefault("CTX_ENGINE_TRANSITION_DEBOUNCE_S", os.environ.get("CTX_ENGINE_TRANSITION_DEBOUNCE_S") or "5")
     env.setdefault("CTX_EMBED_PREWARM", os.environ.get("CTX_EMBED_PREWARM") or "1")
     # OpenBLAS (numpy + faiss each bundle one) commits ~30MB per logical CPU at
