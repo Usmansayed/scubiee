@@ -745,3 +745,69 @@ efficiency/startup changes validated byte- or behavior-identical against the cur
 
 **Hold:** the `CTX_GRAPH_SELECTIVE_UNION` selective-union prefilter stays flag-OFF until the
 retrieval-quality harness signs off, since it is the only change that can alter ranking.
+
+
+---
+
+## IDLE KEEPALIVE — keeping `map` fast after a break (0.3.140)
+
+The 0.3.139 work made the engine + GPU embedder stay resident for 80 min
+(`CTX_ENGINE_IDLE_S` / `CTX_EMBED_IDLE_DEMOTE_S = 4800`), which removed the ~20 s dense
+re-warm after an idle gap. But a second, smaller after-idle cost remained in the **worker
+process**, surfaced by a no-warm-gap test: the first `focus` after a few minutes idle took
+~550 ms instead of its ~90 ms warm steady.
+
+### Root cause (measured, `probe_focus_after_idle_stages.py`)
+
+`focus` resolves a bare name with a whole-repo grep. That grep's fast path depends on the
+stat-TTL (`_GREP_STAT_TTL_S = 10 s`) that lets `_text_cached_fast` skip a per-file `stat()`.
+After more than 10 s idle the TTL has expired, so the first post-idle grep re-validates every
+file: profiling showed `_grep` 377 ms, of which `_text` → `_mtime` `stat()` over **4,916 files
+= 331 ms** — a classic stat storm. (The engine stays dense, so this is purely worker-side; it
+is the ~550 ms, not the old ~20 s.)
+
+### Research basis
+
+The fix follows the established keep-warm pattern — a scheduled pinger that exercises the
+runtime during idle plus preloaded/warmed state — documented for MCP servers
+([MCP cold-start optimization](https://about.fast.io/resources/mcp-server-cold-start-optimization/))
+and serverless workloads generally
+([warm pools / pingers](https://tech-champion.com/cloud-computing/control-serverless-cold-starts-with-warm-pools-and-design/)).
+The interval choice follows the keepalive-economics result that pulse cost falls with the
+interval, so the economical choice is the largest interval that still stays under the system's
+decay/eviction window ([arXiv 2607.19214](https://arxiv.org/abs/2607.19214)) — here, comfortably
+under the stat-TTL window. *(Sources rephrased for license compliance.)*
+
+### Design (behavior-preserving)
+
+A daemon keepalive thread in `map_v3_server.main()`, gated by `CTX_MAP_WARM_INTERVAL_S`
+(default 120 s; `0` disables):
+
+- `_keepalive_tick()` — re-stamps `_TEXT_VALIDATED_AT` for every already-cached file (pure dict
+  writes, ~1 ms, **no disk I/O**) and pings `/health` to keep the HTTP opener/socket warm.
+- `_keepalive_loop(interval)` — raises the effective stat-TTL to
+  `_STAT_TTL_EFFECTIVE_S = max(10, interval × 1.5)` and stamps once immediately, then pulses on
+  the interval, skipping a pulse if a real call ran within the last interval (`_LAST_CALL_AT`,
+  set per `tools/call`). With the 120 s default → 180 s effective TTL, pulses 120 s apart, so the
+  validated window never has a gap. Each pulse physically re-stamps the whole set, so a file is
+  only ever trusted for one interval between real re-stats — edits still self-correct.
+- `_text_cached_fast` now checks `_STAT_TTL_EFFECTIVE_S` instead of the fixed 10 s.
+
+### Result (`probe_keepalive_focus.py`, source worker, 70 s idle, focus ×3)
+
+| arm | focus first-after-idle | warm steady (2nd/3rd) |
+|---|---|---|
+| control (keepalive off) | 555 ms | 91 ms |
+| **keepalive (120 s)** | **230 ms (−58%)** | 91 ms |
+
+Warm steady-state and all tool output are **byte-identical** between arms (focus 1919 c in both)
+— pure speed, no behavior change. The residual ~140 ms over warm is a stat path not fully
+covered by `_text_cached_fast`; closing it needs deeper changes to the grep's mtime handling with
+diminishing returns, so it is left as future work. `gate`/`status` stay ~4 ms and
+`find`/`related`/`graph` were already fast (and marginally improved).
+
+### Net
+
+Combined with the 0.3.139 residency change, a call after a normal editor break now pays neither
+the ~20 s dense re-warm nor the full ~550 ms stat storm — `focus` lands ~230 ms, the rest in their
+usual sub-250 ms band, with identical results.

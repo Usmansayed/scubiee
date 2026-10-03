@@ -29,8 +29,10 @@ adds only the new config logic here.
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
+import time
 
 from pipeline import map_v3_helpers as mv2
 from pipeline.map_v3_helpers import (  # noqa: F401  (reused helpers)
@@ -430,6 +432,18 @@ def main() -> int:
     # first call that arrives within ~1.5s of spawn; in practice the IDE handshake +
     # human gap lets it finish first. See scripts/perf/probe_startup*.py.
     threading.Thread(target=mv2._warm, name="map-v3-warm", daemon=True).start()
+    # Idle keepalive: a periodic cheap re-warm so the first map call after an idle
+    # gap (minutes) is still ms-fast. Keeps the worker's HTTP opener/socket live and
+    # re-stamps the grep stat-TTL so a post-idle grep skips the per-file stat storm.
+    # Interval defaults to 120s (well under any decay window; see the keepalive-
+    # economics research note in docs/perf). Set CTX_MAP_WARM_INTERVAL_S=0 to disable.
+    try:
+        _warm_interval = float(os.environ.get("CTX_MAP_WARM_INTERVAL_S") or "120")
+    except (TypeError, ValueError):
+        _warm_interval = 120.0
+    if _warm_interval > 0:
+        threading.Thread(target=mv2._keepalive_loop, args=(_warm_interval,),
+                         name="map-v3-keepalive", daemon=True).start()
     for raw in sys.stdin:
         raw = raw.strip()
         if not raw:
@@ -456,6 +470,7 @@ def main() -> int:
             if not tool:
                 _send({"jsonrpc": "2.0", "id": rid, "error": {"code": -32601, "message": "unknown tool"}})
                 continue
+            mv2._LAST_CALL_AT[0] = time.time()  # mark active so keepalive stays idle-only
             try:
                 res = tool["fn"](params.get("arguments") or {})
             except Exception as e:  # noqa: BLE001

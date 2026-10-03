@@ -88,6 +88,7 @@ from pipeline.upgrade_releases import (  # noqa: F401
     v0_3_137,
     v0_3_138,
     v0_3_139,
+    v0_3_140,
 )
 
 

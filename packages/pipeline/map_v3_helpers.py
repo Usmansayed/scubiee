@@ -354,6 +354,11 @@ def _text_lower(rel: str) -> str:
 # the cached text without re-stat'ing. Edits are still reflected within TTL, and a
 # changed file only risks a slightly stale line number for <=TTL, self-correcting.
 _GREP_STAT_TTL_S = 10.0
+# Effective stat-TTL. The idle keepalive raises this to cover its pulse interval so
+# the whole warmed set stays "validated" across an idle gap (the keepalive re-stamps
+# every file each pulse, so a file is only ever trusted for one interval between
+# physical re-stats — edits still self-correct within one keepalive interval).
+_STAT_TTL_EFFECTIVE_S = 10.0
 _TEXT_VALIDATED_AT: dict[str, float] = {}
 
 
@@ -363,7 +368,7 @@ def _text_cached_fast(rel: str) -> str:
     rel = _norm(rel)
     now = time.time()
     seen = _TEXT_VALIDATED_AT.get(rel)
-    if seen is not None and (now - seen) < _GREP_STAT_TTL_S:
+    if seen is not None and (now - seen) < _STAT_TTL_EFFECTIVE_S:
         hit = _TEXT.get(rel)
         if hit is not None:
             return hit[1]
@@ -1622,6 +1627,64 @@ def _warm() -> None:
             _TEXT_VALIDATED_AT[rel] = now
     except Exception:  # noqa: BLE001
         pass
+
+
+def _keepalive_tick() -> None:
+    """One cheap idle re-warm pulse — keeps the worker ms-fast across idle gaps.
+
+    The expensive engine/embedder residency is handled engine-side (CTX_ENGINE_IDLE_S
+    / CTX_EMBED_IDLE_DEMOTE_S). This handles the WORKER-process costs that a long idle
+    would otherwise let decay, so the first user call after a break is still warm:
+      1) keep urllib's opener + a live socket to the engine paid (tiny /health),
+      2) re-stamp the grep stat-TTL (10s) so the next grep skips the per-file stat
+         storm instead of re-stat'ing ~5k files on the first post-idle call.
+    Pure warm-touch: reads nothing new, changes no tool output. Best-effort; any
+    failure is swallowed so the pulse never disturbs a real call."""
+    try:
+        _http("/health", None, 8)  # opener/socket stays warm; also nudges engine idle timer
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        # Re-stamp the grep stat-TTL for every already-cached file so _text_cached_fast
+        # keeps skipping the per-file stat() storm right through the idle window. Pure
+        # dict writes over the warmed set — no disk I/O (files are already in _TEXT from
+        # the initial _warm), so a pulse is ~1ms, not a repo re-read.
+        now = time.time()
+        for rel in list(_TEXT.keys()):
+            _TEXT_VALIDATED_AT[rel] = now
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _keepalive_loop(interval_s: float) -> None:
+    """Daemon loop: pulse _keepalive_tick every ``interval_s`` while idle.
+    Skips the pulse if a real tool call ran within the last interval (no need to
+    warm something that's already hot, and never contend with an in-flight call)."""
+    # Extend the effective stat-TTL to cover a full pulse interval (+50% margin) so a
+    # file stamped by one pulse is still trusted when the next call lands mid-interval.
+    # Each pulse physically re-stamps the whole set, so trust never outlives one
+    # interval between actual re-stats.
+    global _STAT_TTL_EFFECTIVE_S
+    _STAT_TTL_EFFECTIVE_S = max(_GREP_STAT_TTL_S, interval_s * 1.5)
+    _keepalive_tick()  # stamp once immediately so the window is live before the first sleep
+    while True:
+        try:
+            time.sleep(interval_s)
+            # Skip if a real call touched the worker within the last interval.
+            if (time.time() - _LAST_CALL_AT[0]) < interval_s:
+                continue
+            _keepalive_tick()
+        except Exception:  # noqa: BLE001
+            # Never let the keepalive thread die on a transient error.
+            try:
+                time.sleep(interval_s)
+            except Exception:  # noqa: BLE001
+                return
+
+
+# Updated by map_v3_server on every tools/call so the keepalive loop can tell idle
+# from active (list wrapper = cheap mutable shared cell, no lock needed for a float).
+_LAST_CALL_AT: list[float] = [0.0]
 
 
 def main() -> int:
