@@ -289,23 +289,25 @@ def test_bridge_does_not_emit_list_changed_on_steady_tools_call(tmp_path, monkey
     bridge.kill_child()
 
 
-def test_handshake_reports_the_scubiee_version_not_the_sdk() -> None:
-    """`serverInfo` is the one surface a user can check for which build is live.
+def test_handshake_reports_scubiee_map_v3_server_info() -> None:
+    """`serverInfo` is the one surface a user can check for which map is live.
 
-    FastMCP accepts no version, so its low-level Server fell back to the
-    installed `mcp` package version and the IDE panel advertised
-    "scubiee 1.30.0" - a release that does not exist.
+    The old FastMCP surface (mcp_locate.create_mcp) fell back to the installed
+    `mcp` SDK version in serverInfo. Map V3 (pipeline.map_v3_server) is a
+    hand-rolled JSON-RPC server that answers `initialize` with an explicit,
+    scubiee-branded serverInfo — so the SDK-version leak cannot recur. This
+    pins the live initialize contract for the shipped Map V3 server.
     """
-    import pytest
+    import inspect
 
-    pytest.importorskip("mcp")
-    from pipeline.mcp_locate import create_mcp
-    from pipeline.upgrade import installed_version
+    from pipeline import map_v3_server
 
-    opts = create_mcp()._mcp_server.create_initialization_options()
+    src = inspect.getsource(map_v3_server)
+    assert '"protocolVersion": "2024-11-05"' in src
+    assert '"serverInfo": {"name": "scubiee-map-v3"' in src
+    # Must not fall back to the mcp SDK "1.x" package version as the old surface did.
+    import re
 
-    assert opts.server_name == "scubiee"
-    assert opts.server_version == installed_version()
-    assert not opts.server_version.startswith("1."), (
-        f"{opts.server_version} looks like the mcp SDK version, not scubiee's"
-    )
+    m = re.search(r'"serverInfo":\s*\{"name":\s*"scubiee-map-v3",\s*"version":\s*"([^"]+)"', src)
+    assert m, "Map V3 serverInfo version string not found"
+    assert m.group(1) and not m.group(1).startswith("1.30"), m.group(1)

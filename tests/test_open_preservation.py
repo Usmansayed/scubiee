@@ -106,132 +106,14 @@ def _no_live_engine(monkeypatch: pytest.MonkeyPatch) -> None:
 
 # =========================================================================== 3.6 status
 
-
-_READY_TUPLES = list(itertools.product((False, True), repeat=4))  # healthy, soft, dense, ast
-
-
-def _stage_rule(healthy: bool, soft: bool, dense: bool, ast: bool) -> str:
-    """Stage order engine_down → soft_loading → dense_loading → pack_ast_loading → ready."""
-    if not healthy:
-        return "engine_down"
-    if not soft:
-        return "soft_loading"
-    if not dense:
-        return "dense_loading"
-    if not ast:
-        return "pack_ast_loading"
-    return "ready"
-
-
-def _status_tool(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, tup: tuple[bool, bool, bool, bool]):
-    pytest.importorskip("mcp")
-    healthy, soft, dense, ast = tup
-    repo = tmp_path / "st"
-    repo.mkdir()
-    (repo / ".git").mkdir()
-    monkeypatch.setenv("CTX_REPO", str(repo))
-    monkeypatch.chdir(repo)
-
-    class FakeEng:
-        base = "http://127.0.0.1:9"
-        project_id = "ce_fakestatus"
-
-        def __init__(self, *a, **k) -> None:
-            pass
-
-        def healthy(self) -> bool:
-            return healthy
-
-        def health(self) -> dict:
-            # Real client: healthy() == health()["ok"]. status_impl now derives
-            # healthy from a single health() call, so ``ok`` must track ``healthy``
-            # (an engine that is down does not report ok:true).
-            return {
-                "ok": healthy,
-                "soft_search_ready": soft,
-                "embedder_loaded": dense,
-                "project_id": "ce_fakestatus",
-                "warm_state": "ready" if soft else "warming",
-                "chunks": 5,
-            }
-
-        def open_repo(self, *a, **k) -> dict:
-            return {
-                "ok": soft,
-                "project_id": "ce_fakestatus" if soft else None,
-                "warm_state": "ready" if soft else "warming",
-            }
-
-        def status(self, *a, **k) -> dict:
-            return {"ok": True}
-
-    from pipeline.runtime_controller import ReadySnapshot, RuntimeController
-
-    monkeypatch.setattr("pipeline.client.EngineClient", FakeEng)
-    monkeypatch.setattr("pipeline.mcp_lifecycle.ensure_mcp_runtime", lambda *a, **k: None)
-    monkeypatch.setattr("pipeline.mcp_lifecycle.start_ast_hydrate_bg", lambda *a, **k: {})
-    monkeypatch.setattr("pipeline.mcp_lifecycle.soft_ready_cached", lambda: False)
-    monkeypatch.setattr("pipeline.mcp_lifecycle.mark_soft_ready", lambda *a, **k: None)
-    monkeypatch.setattr("pipeline.context_trace.ast_cache_ready", lambda *a, **k: ast)
-    monkeypatch.setattr("pipeline.mcp_locate._is_repo_managed", lambda: True)
-    monkeypatch.setattr(
-        RuntimeController,
-        "snapshot",
-        lambda self, repo=None, **_k: ReadySnapshot(
-            state="READY" if soft else "WARMING",
-            engine_ok=healthy,
-            embedder_loaded=dense,
-            ast_ready=ast,
-            soft_search_ready=soft,
-        ),
-    )
-    from pipeline.mcp_locate import create_mcp
-
-    return create_mcp()._tool_manager._tools["status"].fn
-
-
-_WARM_WAIT_FIELDS = (
-    "done",
-    "stage",
-    "wait_for",
-    "soft_ready",
-    "dense_ready",
-    "pack_ready",
-    "elapsed_s",
-    "retry_after_s",
-    "note",
-)
-
-
-@pytest.mark.parametrize(
-    "tup", _READY_TUPLES, ids=[f"h{int(a)}s{int(b)}d{int(c)}a{int(d)}" for a, b, c, d in _READY_TUPLES]
-)
-def test_status_warm_wait_stage_and_keys_preserved(monkeypatch, tmp_path, tup):
-    fn = _status_tool(monkeypatch, tmp_path, tup)
-    out = json.loads(fn())
-    case = "h{}s{}d{}a{}".format(*[int(x) for x in tup])
-    ww = out.get("warm_wait")
-    assert isinstance(ww, dict), f"case={case}: warm_wait missing"
-    _assert_subset(_WARM_WAIT_FIELDS, ww, f"case={case} warm_wait")
-    observed = {
-        "stage": ww["stage"],
-        "done": ww["done"],
-        "soft_ready": ww["soft_ready"],
-        "dense_ready": ww["dense_ready"],
-        "pack_ready": ww["pack_ready"],
-        "retry_after_s": ww["retry_after_s"],
-        "top_pack_ready": out.get("pack_ready"),
-        "top_ast_hydrated": out.get("ast_hydrated"),
-    }
-    gold = _golden(f"status.warm_wait.{case}", observed)
-    assert observed == gold, f"case={case}: warm_wait drifted from unfixed golden"
-    assert ww["stage"] == _stage_rule(*tup), f"case={case}: stage order changed"
-    assert ww["done"] is (ww["stage"] == "ready")
-    assert isinstance(ww["note"], str) and ww["note"]
-    keys = _golden(f"status.keys.{case}", sorted(out))
-    _assert_subset(keys, out, f"case={case} status")
-    for must in ("pack_ready", "ast_hydrated", "warm_wait"):
-        assert must in out
+# NOTE: test_status_warm_wait_stage_and_keys_preserved (+ its _status_tool / _stage_rule
+# / _READY_TUPLES / _WARM_WAIT_FIELDS helpers) pinned the OLD FastMCP status tool's
+# warm_wait payload (done/stage/wait_for/soft_ready/dense_ready/pack_ready/...), served
+# via mcp_locate.create_mcp. Map V3 (pipeline.map_v3_server) ships a status tool that
+# returns a one-line health string, so that JSON warm_wait contract was retired with the
+# old surface. The runtime warm-state field contract that still ships is covered by
+# test_status_field_key_sets_are_superset below (warm_contract + ReadySnapshot). See
+# archive/old-mcp-map/ for the retired tool and its original tests.
 
 
 def _gen_status_field_cases(n: int = 12):
@@ -752,105 +634,25 @@ def test_hydrated_expand_bodies_and_collect_match_golden(trace_repo):
 
 
 def test_include_bodies_class_item_loc_clamped_text_identical(trace_repo):
-    from pipeline.context_trace import run_pack_context
-    from pipeline.mcp_response_lean import slim_locate_payload
-
-    raw = run_pack_context(
-        trace_repo,
-        "RecordService put get save_record",
-        seed_file="pkg/service.py",
-        seed_symbol="RecordService",
-        mode="lean",
-        include_bodies=True,
-        k=6,
-    )
-    assert raw.get("ok") is True
-    raw_rows = {p.get("id"): p for p in (raw.get("pack") or []) if isinstance(p, dict)}
-    cls_id = "pkg/service.py::RecordService"
-    assert cls_id in raw_rows, f"class body missing from include_bodies pack: {sorted(raw_rows)}"
-    raw_text = raw_rows[cls_id].get("text") or raw_rows[cls_id].get("body") or ""
-    slim = slim_locate_payload(dict(raw))
-    rows = {p.get("id"): p for p in (slim.get("pack") or []) if isinstance(p, dict)}
-    item = rows[cls_id]
-    obs = {
-        "loc": item.get("loc"),
-        "full_loc": item.get("full_loc"),
-        "text_sha": _sha(item.get("text") or ""),
-        "text_lines": len((item.get("text") or "").splitlines()),
-    }
-    gold = _golden("pack.include_bodies.class_item", obs)
-    assert obs == gold
-    assert item.get("full_loc"), "class item must keep full_loc"
-    assert item.get("text") == raw_text, "body text must be byte-identical (cap unset)"
-    start, end = (int(x) for x in item["loc"].rpartition(":")[2].split("-"))
-    fstart, fend = (int(x) for x in item["full_loc"].rpartition(":")[2].split("-"))
-    assert start == fstart and end < fend
+    """RETIRED: this pinned the old response-lean shaping (mcp_response_lean.slim_locate_payload)
+    that the retired pack tool used to clamp/slim loc + body for the MCP envelope. Map V3
+    (pipeline.map_v3_server) builds its own response text and does not use slim_locate_payload,
+    which was archived to archive/old-mcp-map/. The underlying engine body (run_pack_context
+    include_bodies) is still exercised by the other context_trace tests in this file.
+    """
+    pytest.skip("mcp_response_lean.slim_locate_payload retired in Map V3 migration")
 
 
 # =========================================================================== 3.1 / 3.14 MCP
 
 
-@pytest.fixture
-def mcp_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    pytest.importorskip("mcp")
-    repo = tmp_path / "er"
-    repo.mkdir()
-    (repo / ".git").mkdir()
-    monkeypatch.setenv("CTX_REPO", str(repo))
-    monkeypatch.chdir(repo)
-    monkeypatch.setenv("CTX_MCP_PACK_AST_WAIT_S", "0")
-    monkeypatch.setattr("pipeline.mcp_locate._is_repo_managed", lambda: True)
-    monkeypatch.setattr("pipeline.daemon.ensure_daemon", lambda *a, **k: {"ok": True, "skipped": True})
-    monkeypatch.setattr("pipeline.mcp_lifecycle.start_ast_hydrate_bg", lambda *a, **k: {"thread": None})
-    return repo
-
-
-def test_pack_ast_warming_payload_preserved(monkeypatch, mcp_repo):
-    """3.1: pack keeps its ast_warming contract (should_retry, retry_after_s, ast_wait_ms)."""
-    monkeypatch.setattr("pipeline.context_trace.ast_cache_ready", lambda *a, **k: False)
-    monkeypatch.setattr(
-        "pipeline.context_trace.hydrate_ast_bundle", lambda *a, **k: {"ok": False, "source": "miss", "ms": 0.0}
-    )
-    from pipeline.mcp_locate import create_mcp
-    from pipeline.mcp_ship_check import parse_tool_json, tool_fn
-
-    out = parse_tool_json(
-        tool_fn(create_mcp(name="pres-warm"), "pack_context")(query="q", seed_file="pkg/a.py", seed_symbol="f")
-    )
-    keys = _golden("mcp.pack.ast_warming.keys", sorted(out))
-    _assert_subset(keys, out, "pack ast_warming")
-    vals = {k: out.get(k) for k in ("ok", "tool", "error", "status", "should_retry", "retry_after_s")}
-    gold = _golden("mcp.pack.ast_warming.values", vals)
-    assert vals == gold
-    assert isinstance(out.get("ast_wait_ms"), (int, float))
-    assert str(out.get("hint") or "").startswith("AST bundle is still loading")
-
-
-def test_mcp_error_paths_ok_false_preserved(monkeypatch, mcp_repo):
-    """3.14: empty seed, unknown direction, unknown handle → same ok=false payloads."""
-    from pipeline.mcp_locate import create_mcp
-    from pipeline.mcp_ship_check import parse_tool_json, tool_fn
-
-    mcp = create_mcp(name="pres-err")
-    cases = {
-        "pack_empty_seed": parse_tool_json(tool_fn(mcp, "pack_context")(query="q", seed_file="", seed_symbol="")),
-        "expand_bad_direction": parse_tool_json(
-            tool_fn(mcp, "expand_context")(node="a.py::b", direction="sideways")
-        ),
-        "pack_k0": parse_tool_json(
-            tool_fn(mcp, "pack_context")(query="q", seed_file="pkg/a.py", seed_symbol="f", k=0)
-        ),
-    }
-    monkeypatch.setenv("CTX_MCP_SURFACE", "nav")
-    nav = create_mcp(name="pres-err-nav")
-    cases["nav_expand_unknown_handle"] = parse_tool_json(tool_fn(nav, "expand")(handle="h_does_not_exist"))
-    for name, out in cases.items():
-        vals = {k: out.get(k) for k in ("ok", "tool", "error")}
-        gold = _golden(f"mcp.error.{name}.values", vals)
-        assert vals == gold, name
-        keys = _golden(f"mcp.error.{name}.keys", sorted(out))
-        _assert_subset(keys, out, name)
-        assert out["ok"] is False
+# NOTE: test_pack_ast_warming_payload_preserved and test_mcp_error_paths_ok_false_preserved
+# (and their mcp_repo fixture) pinned the OLD pack_context/expand_context TOOL envelopes
+# served through mcp_locate.create_mcp + mcp_ship_check.tool_fn (both retired in the Map V3
+# migration). Map V3 ships only map/gate/status, so there is no pack_context/expand_context
+# tool surface to pin. The equivalent engine-level behavior still ships and is covered by the
+# context_trace tests in this file (test_hydrated_expand_*, test_include_bodies_*,
+# test_trace_error_paths_ok_false_preserved). See archive/old-mcp-map/ for the retired tool.
 
 
 def test_trace_error_paths_ok_false_preserved(trace_repo):

@@ -271,48 +271,34 @@ def test_init_and_index():
 
 
 def test_mcp_tools():
-    section("4. MCP tools (ship surface)")
+    section("4. MCP tools (Map V3 surface)")
     session = McpSession()
-    query = "main entry point initialization setup pack_context heatmap"
+    query = "freshness report decides sync strategy choose_strategy incremental background"
 
-    tests = [
-        ("status", {}),
-        ("map", {"query": query, "k": 8}),
-        ("workspace", {"action": "show"}),
-        ("gate", {}),
-    ]
+    def _text(r):
+        return r.get("__raw__") or ""
 
-    seed_file = "packages/pipeline/context_trace.py"
-    seed_symbol = "run_pack_context"
-    for name, args in tests:
+    def _ok(r):
+        t = _text(r)
+        return (
+            not r.get("__timeout__")
+            and not r.get("__error__")
+            and bool(t)
+            and not t.lower().startswith("error:")
+        )
+
+    for name, args in (("gate", {}), ("status", {})):
         r = session.call(name, args, timeout=45)
-        ok = not r.get("__timeout__") and not r.get("__error__")
-        if name == "map":
-            seed = r.get("suggested_seed") or {}
-            if seed.get("file"):
-                seed_file = str(seed["file"])
-            if seed.get("symbol"):
-                seed_symbol = str(seed["symbol"])
-            ok = ok and (bool(r.get("cards") or r.get("hits") or r.get("ok")))
-        check(f"{name}", ok, f"{r.get('__dt__', 0):.1f}s")
+        check(name, _ok(r), f"{r.get('__dt__', 0):.1f}s")
 
-    pack = session.call(
-        "pack_context",
-        {
-            "query": query,
-            "seed_file": seed_file,
-            "seed_symbol": seed_symbol,
-            "mode": "lean",
-        },
-        timeout=90,
-    )
-    check(
-        "pack_context",
-        not pack.get("__timeout__")
-        and not pack.get("__error__")
-        and bool(pack.get("ok") or pack.get("heatmap") or pack.get("chain")),
-        f"{pack.get('__dt__', 0):.1f}s",
-    )
+    find = session.call("map", {"config": "find", "query": query, "k": 8}, timeout=60)
+    check("map config=find", _ok(find), f"{find.get('__dt__', 0):.1f}s")
+
+    focus = session.call("map", {"config": "focus", "names": ["choose_strategy"]}, timeout=60)
+    check("map config=focus", _ok(focus), f"{focus.get('__dt__', 0):.1f}s")
+
+    graph = session.call("map", {"config": "graph", "query": query}, timeout=60)
+    check("map config=graph", _ok(graph), f"{graph.get('__dt__', 0):.1f}s")
 
     session.close()
 
@@ -364,14 +350,14 @@ def test_concurrent():
     session = McpSession()
 
     calls = [
-        ("map", {"query": "database connection pool query builder"}),
+        ("map", {"config": "find", "query": "database connection pool query builder"}),
         ("status", {}),
-        ("workspace", {"action": "show"}),
-        ("map", {"query": "error handling exception retry mechanism"}),
+        ("map", {"config": "graph", "query": "engine warm contract lifecycle"}),
+        ("map", {"config": "find", "query": "error handling exception retry mechanism"}),
         ("gate", {}),
         ("status", {}),
-        ("map", {"query": "pack_context expand_context heatmap seed"}),
-        ("workspace", {"action": "show"}),
+        ("map", {"config": "find", "query": "map v3 server tool dispatch handlers"}),
+        ("gate", {}),
     ]
 
     results = []
@@ -393,12 +379,12 @@ def test_adversarial():
     session = McpSession()
 
     cases = [
-        ("map", {"query": ""}, "empty map"),
-        ("pack_context", {"query": "x", "seed_file": "", "seed_symbol": ""}, "missing seed"),
-        ("expand_context", {"node": "..\\..\\..\\Windows\\System32\\config\\SAM"}, "path traversal"),
-        ("map", {"query": "emoji"}, "emoji query"),
+        ("map", {"config": "find", "query": ""}, "empty find query"),
+        ("map", {"config": "zzz", "query": "x"}, "unknown config"),
+        ("map", {"config": "related", "anchor": "..\\..\\..\\Windows\\System32\\config\\SAM"}, "path traversal anchor"),
+        ("map", {"config": "find", "query": "emoji"}, "emoji query"),
         ("gate", {"root": "C:\\NonExistent\\Path"}, "nonexistent path"),
-        ("map", {"query": "a" * 5000}, "huge query"),
+        ("map", {"config": "find", "query": "a" * 5000}, "huge query"),
     ]
 
     crashed = False

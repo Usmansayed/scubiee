@@ -13,7 +13,6 @@ from pipeline.context_trace import (
     pick_suggested_seed,
     resolve_seed_node,
 )
-from pipeline.mcp_response_lean import _pack_heatmap_only
 from trace_lab.composite_v1 import apply_query_aware_heat
 from trace_lab.types import TraceNode
 
@@ -153,27 +152,10 @@ def test_heatmap_is_thin_and_pack_lean_signals() -> None:
         },
     ]
     assert heatmap_is_thin(thin_cards) is True
-    lean = _pack_heatmap_only(
-        {
-            "ok": True,
-            "tool": "pack_context",
-            "seed": {"id": "a::get", "file": "a.py", "symbol": "get"},
-            "heatmap": [
-                {
-                    "id": "a::get",
-                    "loc": "a.py:1-2",
-                    "symbol": "get",
-                    "score": 0.9,
-                }
-            ],
-            "thin": True,
-            "prefer": "expand_context|Native-Read seed file",
-        },
-        tool_name="pack_context",
-    )
-    assert lean["thin"] is True
-    assert "expand" in str(lean.get("prefer") or "").lower()
-    assert "thin" in str(lean.get("next") or "").lower()
+    # NOTE: this test formerly also asserted mcp_response_lean._pack_heatmap_only's
+    # thin/prefer/next response shaping — that response-lean layer was part of the retired
+    # pack tool surface and was archived to archive/old-mcp-map/ in the Map V3 migration.
+    # The live thin-heatmap signal (context_trace.heatmap_is_thin) is still asserted above.
 
 
 def test_pick_rejects_from_dict_and_default_root() -> None:

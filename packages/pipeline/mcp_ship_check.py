@@ -1,7 +1,12 @@
-"""In-process ship-surface check: registration + gate → map → pack → expand.
+"""In-process ship-surface check for the Map V3 MCP server.
 
-Shared by ``scripts/scubiee_mcp_ship_check.py`` and pre-prod pytest.
-No MCP bridge required.
+Validates the shipped surface — one ``map`` tool with configs
+find|focus|related|graph, plus gate|status — and drives the real ladder
+(gate → map find → focus → graph) through ``pipeline.map_v3_server`` against the
+live engine. No MCP bridge required.
+
+Rewritten for the Map V3 migration: the old pack_context/expand_context/
+collect_hot_context tool ladder is retired; those tools no longer ship.
 """
 
 from __future__ import annotations
@@ -12,20 +17,17 @@ import time
 from pathlib import Path
 from typing import Any
 
-SHIP_TOOLS: frozenset[str] = frozenset(
+# Shipped Map V3 surface.
+SHIP_TOOLS: frozenset[str] = frozenset({"map", "gate", "status"})
+SHIP_CONFIGS: frozenset[str] = frozenset({"find", "focus", "related", "graph"})
+# Tools from the retired tool-layer that must NOT ship on Map V3.
+FORBIDDEN_SHIP_TOOLS: frozenset[str] = frozenset(
     {
-        "gate",
-        "map",
         "pack_context",
         "expand_context",
         "collect_hot_context",
         "workspace",
         "expand",
-        "status",
-    }
-)
-FORBIDDEN_SHIP_TOOLS: frozenset[str] = frozenset(
-    {
         "pinpoint",
         "plate",
         "focus",
@@ -38,15 +40,9 @@ FORBIDDEN_SHIP_TOOLS: frozenset[str] = frozenset(
 )
 
 DEFAULT_QUERY = (
-    "pack_context run_pack_context expand_context composite_v1 "
-    "packages/pipeline/context_trace.py lean heatmap ladder seed pick"
+    "where freshness report decides sync strategy choose_strategy "
+    "packages/pipeline/freshness.py incremental background full"
 )
-
-
-def tool_fn(mcp: Any, name: str):
-    tools = mcp._tool_manager._tools
-    tool = tools[name]
-    return getattr(tool, "fn", None) or getattr(tool, "handler", None) or tool
 
 
 def parse_tool_json(raw: Any) -> dict[str, Any]:
@@ -64,37 +60,26 @@ def parse_tool_json(raw: Any) -> dict[str, Any]:
 def ensure_ship_env(repo: Path | None = None) -> Path:
     root = Path(repo) if repo is not None else Path.cwd()
     os.environ.setdefault("CTX_REPO", str(root).replace("\\", "/"))
-    os.environ.setdefault("CTX_MCP_SURFACE", "phase")
-    os.environ["CTX_MCP_EXPERIMENT"] = "ship"
-    os.environ.setdefault("CTX_TRACE_ENGINE", "composite_v1")
     return root
 
 
-def check_phase_tool_names() -> dict[str, Any]:
-    from pipeline.mcp_locate import _phase_experiment, _phase_tool_names
+def check_registered_tools() -> dict[str, Any]:
+    """Static surface check: map_v3_server exposes exactly map/gate/status + 4 configs."""
+    from pipeline import map_v3_server
 
-    assert _phase_experiment() == "ship"
-    names = set(_phase_tool_names())
-    missing = sorted(SHIP_TOOLS - names)
-    leaked = sorted(FORBIDDEN_SHIP_TOOLS & names)
-    return {
-        "ok": not missing and not leaked,
-        "tools": sorted(names),
-        "missing": missing,
-        "leaked": leaked,
-    }
-
-
-def check_registered_tools(mcp: Any) -> dict[str, Any]:
-    registered = set(mcp._tool_manager._tools)
+    registered = set(getattr(map_v3_server, "TOOLS", {}))
+    configs = set(getattr(map_v3_server, "CONFIGS", ()))
     missing = sorted(SHIP_TOOLS - registered)
     leaked = sorted(FORBIDDEN_SHIP_TOOLS & registered)
+    missing_cfg = sorted(SHIP_CONFIGS - configs)
     return {
-        "ok": not missing and not leaked,
+        "ok": not missing and not leaked and not missing_cfg,
         "count": len(registered),
+        "tools": sorted(registered),
+        "configs": sorted(configs),
         "missing": missing,
         "leaked": leaked,
-        "tools": sorted(registered),
+        "missing_configs": missing_cfg,
     }
 
 
@@ -102,174 +87,84 @@ def run_ship_ladder(
     *,
     repo: Path | None = None,
     query: str = DEFAULT_QUERY,
-    create_mcp: Any | None = None,
 ) -> dict[str, Any]:
-    """Run registration + ladder; returns a report dict with ``ok`` bool."""
+    """Run the Map V3 surface + ladder; returns a report dict with ``ok`` bool.
+
+    Drives the tool implementations directly (gate/status/map configs) exactly as
+    the server's JSON-RPC dispatch would.
+    """
     ensure_ship_env(repo)
     report: dict[str, Any] = {"ok": False, "checks": {}, "errors": []}
     t0 = time.perf_counter()
     try:
-        from pipeline.mcp_locate import create_mcp as _create
+        from pipeline import map_v3_server as srv
 
-        factory = create_mcp or _create
-        phase = check_phase_tool_names()
-        report["checks"]["phase_tools"] = phase
-        if not phase["ok"]:
-            if phase["missing"]:
-                report["errors"].append(f"missing: {phase['missing']}")
-            if phase["leaked"]:
-                report["errors"].append(f"leaked: {phase['leaked']}")
+        # 1. Surface registration
+        reg = check_registered_tools()
+        report["checks"]["registered"] = reg
+        if not reg["ok"]:
+            if reg["missing"]:
+                report["errors"].append(f"missing tools: {reg['missing']}")
+            if reg["leaked"]:
+                report["errors"].append(f"leaked tools: {reg['leaked']}")
+            if reg["missing_configs"]:
+                report["errors"].append(f"missing configs: {reg['missing_configs']}")
 
-        mcp = factory(name="ship-check")
-        registered = check_registered_tools(mcp)
-        report["checks"]["registered"] = registered
-        if not registered["ok"]:
-            if registered["missing"]:
-                report["errors"].append(f"registered missing: {registered['missing']}")
-            if registered["leaked"]:
-                report["errors"].append(f"registered leaked: {registered['leaked']}")
+        def _call(name: str, args: dict) -> str:
+            fn = srv.TOOLS[name]["fn"]
+            return fn(args or {})
 
-        gate_out = tool_fn(mcp, "gate")()
-        gate_text = gate_out if isinstance(gate_out, str) else str(gate_out)
+        # 2. gate
+        gate_text = str(_call("gate", {}))
         report["checks"]["gate"] = {
-            "ok": "1:ce_" in gate_text or "ce_" in gate_text,
+            "ok": gate_text.strip().startswith("1") or "ce_" in gate_text,
             "preview": gate_text[:160],
         }
         if not report["checks"]["gate"]["ok"]:
             report["errors"].append(f"gate unexpected: {gate_text[:240]}")
 
-        map_json = parse_tool_json(tool_fn(mcp, "map")(query=query, k=8))
-        seed = map_json.get("suggested_seed") or {}
-        report["checks"]["map"] = {
-            "ok": bool(map_json.get("ok")),
-            "count": map_json.get("count"),
-            "seed_file": seed.get("file"),
-            "seed_symbol": seed.get("symbol"),
-        }
-        if not map_json.get("ok"):
-            report["errors"].append(f"map failed: {str(map_json)[:300]}")
+        # 3. status
+        status_text = str(_call("status", {}))
+        status_ok = any(k in status_text.lower() for k in ("ok=", "warm", "chunks"))
+        report["checks"]["status"] = {"ok": status_ok, "preview": status_text[:160]}
+        if not status_ok:
+            report["errors"].append(f"status not ok: {status_text[:240]}")
 
-        seed_file = seed.get("file") or "packages/pipeline/context_trace.py"
-        seed_symbol = seed.get("symbol") or "run_pack_context"
-        if not seed_symbol or str(seed_symbol).startswith("_"):
-            seed_file = "packages/pipeline/context_trace.py"
-            seed_symbol = "run_pack_context"
+        # 4. map find
+        find_text = str(_call("map", {"config": "find", "query": query}))
+        find_ok = len(find_text) > 150 and ("find:" in find_text or ".py" in find_text)
+        report["checks"]["map_find"] = {"ok": find_ok, "chars": len(find_text)}
+        if not find_ok:
+            report["errors"].append(f"map find failed: {find_text[:240]}")
 
-        pack_json = parse_tool_json(
-            tool_fn(mcp, "pack_context")(
-                query=query,
-                seed_file=seed_file,
-                seed_symbol=seed_symbol,
-                mode="lean",
-                policy="strict",
-            )
+        # 5. map focus (a known public symbol)
+        focus_text = str(
+            _call("map", {"config": "focus", "names": ["choose_strategy"]})
         )
-        heatmap = pack_json.get("heatmap") or []
-        report["checks"]["pack_context"] = {
-            "ok": bool(pack_json.get("ok")) and bool(heatmap or pack_json.get("chain")),
-            "engine": pack_json.get("engine"),
-            "heatmap_n": len(heatmap) if isinstance(heatmap, list) else 0,
-            "seed": (pack_json.get("seed") or {}).get("id")
-            if isinstance(pack_json.get("seed"), dict)
-            else None,
-            "bodies_present": bool(pack_json.get("pack") or pack_json.get("bodies")),
-        }
-        if not report["checks"]["pack_context"]["ok"]:
-            report["errors"].append(f"pack failed: {str(pack_json)[:300]}")
+        focus_ok = "choose_strategy" in focus_text and (
+            "wiring" in focus_text or "lines" in focus_text
+        )
+        report["checks"]["map_focus"] = {"ok": focus_ok, "chars": len(focus_text)}
+        if not focus_ok:
+            report["errors"].append(f"map focus failed: {focus_text[:240]}")
 
-        node = report["checks"]["pack_context"].get("seed")
-        if node:
-            exp_json: dict[str, Any] = {}
-            for attempt in range(4):
-                exp_json = parse_tool_json(
-                    tool_fn(mcp, "expand_context")(
-                        node=node, direction="callees", with_bodies=True, query=query
-                    )
-                )
-                if exp_json.get("ok"):
-                    break
-                err = str(exp_json.get("error") or "")
-                if err != "ast_warming" and exp_json.get("status") != "warming":
-                    break
-                time.sleep(1.5 * (attempt + 1))
-            report["checks"]["expand_context"] = {
-                "ok": bool(exp_json.get("ok")),
-                "count": exp_json.get("count"),
-                "direction": exp_json.get("direction"),
-            }
-            if not exp_json.get("ok"):
-                report["errors"].append(f"expand failed: {str(exp_json)[:300]}")
-        else:
-            report["checks"]["expand_context"] = {"ok": False, "error": "no seed id"}
-            report["errors"].append("no seed id from pack")
-
-        # Soft extras: must not crash; collect_hot needs ids or prior heatmap.
+        # 6. map graph (JSON nodes/edges, no bodies)
+        graph_text = str(_call("map", {"config": "graph", "query": query}))
         try:
-            status_raw = tool_fn(mcp, "status")()
-            status_json = parse_tool_json(status_raw)
-            # Non-empty alone is not enough — ok:false means daemon down / paused.
-            status_ok = bool(status_json.get("ok")) and not status_json.get("paused")
-            # Cursor-open: /health can flap warming while ORT holds the GIL even
-            # after map/pack already succeeded — do not fail ship on that alone.
-            map_already = bool((report.get("checks") or {}).get("map", {}).get("ok"))
-            if (
-                not status_ok
-                and map_already
-                and not status_json.get("paused")
-                and (
-                    status_json.get("warming")
-                    or status_json.get("soft_search_ready")
-                    or str(status_json.get("agent_ready") or "") in {"yes", "warming"}
-                )
-            ):
-                status_ok = True
-            report["checks"]["status"] = {
-                "ok": status_ok,
-                "preview": str(status_raw)[:120],
-                "engine_healthy": (status_json.get("engine") or {}).get("healthy")
-                if isinstance(status_json.get("engine"), dict)
-                else None,
-            }
-            if not status_ok:
-                report["errors"].append(f"status not ok: {str(status_raw)[:300]}")
-        except Exception as exc:  # noqa: BLE001
-            report["checks"]["status"] = {"ok": False, "error": str(exc)}
-            report["errors"].append(f"status: {exc}")
+            gj = json.loads(graph_text)
+            graph_ok = "nodes" in gj and "edges" in gj
+        except json.JSONDecodeError:
+            graph_ok = False
+        report["checks"]["map_graph"] = {"ok": graph_ok, "preview": graph_text[:120]}
+        if not graph_ok:
+            report["errors"].append(f"map graph failed: {graph_text[:240]}")
 
-        try:
-            ws_raw = tool_fn(mcp, "workspace")(action="show")
-            report["checks"]["workspace"] = {
-                "ok": bool(ws_raw),
-                "preview": str(ws_raw)[:120],
-            }
-            if not report["checks"]["workspace"]["ok"]:
-                report["errors"].append("workspace empty")
-        except Exception as exc:  # noqa: BLE001
-            report["checks"]["workspace"] = {"ok": False, "error": str(exc)}
-            report["errors"].append(f"workspace: {exc}")
-
-        try:
-            ids = str(node) if node else ""
-            hot_raw = (
-                tool_fn(mcp, "collect_hot_context")(ids=ids)
-                if ids
-                else tool_fn(mcp, "collect_hot_context")()
-            )
-            hot = parse_tool_json(hot_raw)
-            text = str(hot_raw).lower()
-            # Success, or graceful empty-heatmap envelope when no ids yet.
-            hot_ok = bool(hot.get("ok")) or (
-                not ids and "no session heatmap" in text
-            )
-            report["checks"]["collect_hot_context"] = {
-                "ok": hot_ok,
-                "preview": str(hot_raw)[:120],
-            }
-            if not hot_ok:
-                report["errors"].append(f"collect_hot failed: {str(hot_raw)[:200]}")
-        except Exception as exc:  # noqa: BLE001
-            report["checks"]["collect_hot_context"] = {"ok": False, "error": str(exc)}
-            report["errors"].append(f"collect_hot_context: {exc}")
+        # 7. unknown config must not crash
+        bad_text = str(_call("map", {"config": "nonsense"}))
+        bad_ok = "error" in bad_text.lower() or "must be one of" in bad_text.lower()
+        report["checks"]["map_bad_config"] = {"ok": bad_ok, "preview": bad_text[:120]}
+        if not bad_ok:
+            report["errors"].append(f"bad config not handled: {bad_text[:160]}")
     except Exception as exc:  # noqa: BLE001
         report["errors"].append(str(exc))
         report["checks"]["exception"] = {"ok": False, "error": str(exc)}

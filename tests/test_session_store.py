@@ -115,73 +115,19 @@ def test_session_ids_use_isolated_store_paths(repo: Path):
     assert a["handle"] != b["handle"]
 
 
-def test_mcp_exposes_lean_surface(monkeypatch, tmp_path: Path):
-    pytest.importorskip("mcp")
-    repo = tmp_path / "proj"
-    repo.mkdir()
-    (repo / ".git").mkdir()
-    pid = "ce_sessionstore1234567890abcdef"
-    ce = repo / ".scubiee"
-    ce.mkdir()
-    (ce / "id.json").write_text(f'{{"project_id": "{pid}"}}', encoding="utf-8")
-    from pipeline.project_id import save_registry
+def test_map_v3_exposes_shipped_tool_surface():
+    """Map V3 (pipeline.map_v3_server) ships exactly one lean tool surface.
 
-    save_registry(
-        {
-            "projects": {
-                pid: {
-                    "managed": True,
-                    "root": str(repo.resolve()),
-                    "paths": [str(repo.resolve())],
-                }
-            }
-        }
-    )
-    monkeypatch.setenv("CTX_REPO", str(repo.resolve()))
-    monkeypatch.chdir(repo)
-    monkeypatch.setenv("CTX_MCP_SURFACE", "read")
-    from pipeline.mcp_locate import create_mcp
+    The old mcp_locate server switched tool sets by CTX_MCP_SURFACE (a "read"
+    surface of {gate,search,read,status} and a "phase" surface of the 8-tool
+    pack/expand toolkit). Both were retired in the Map V3 migration. Map V3
+    exposes a single fixed surface — the four configs live under one `map`
+    tool, not as separate tools — so this pins the shipped set to {map,gate,status}.
+    See archive/old-mcp-map/ for the retired multi-surface server.
+    """
+    from pipeline.map_v3_server import CONFIGS, TOOLS
 
-    names = set(create_mcp()._tool_manager._tools)
-    # Session reuse (recall/expand) is now folded INTO read's dedupe, not a tool.
-    assert names == {"gate", "search", "read", "status"}
-
-
-def test_mcp_phase_surface_exposes_locate_toolkit(monkeypatch, tmp_path: Path):
-    pytest.importorskip("mcp")
-    repo = tmp_path / "proj"
-    repo.mkdir()
-    (repo / ".git").mkdir()
-    pid = "ce_sessionstore1234567890abcdef"
-    ce = repo / ".scubiee"
-    ce.mkdir()
-    (ce / "id.json").write_text(f'{{"project_id": "{pid}"}}', encoding="utf-8")
-    from pipeline.project_id import save_registry
-
-    save_registry(
-        {
-            "projects": {
-                pid: {
-                    "managed": True,
-                    "root": str(repo.resolve()),
-                    "paths": [str(repo.resolve())],
-                }
-            }
-        }
-    )
-    monkeypatch.setenv("CTX_REPO", str(repo.resolve()))
-    monkeypatch.chdir(repo)
-    monkeypatch.setenv("CTX_MCP_SURFACE", "phase")
-    from pipeline.mcp_locate import create_mcp
-
-    names = set(create_mcp()._tool_manager._tools)
-    assert names == {
-        "gate",
-        "map",
-        "pack_context",
-        "expand_context",
-        "collect_hot_context",
-        "workspace",
-        "expand",
-        "status",
-    }
+    assert set(TOOLS) == {"map", "gate", "status"}
+    # The capabilities the old 8-tool surface spread across tools are folded into
+    # the single map tool's configs.
+    assert set(CONFIGS) == {"find", "focus", "related", "graph"}

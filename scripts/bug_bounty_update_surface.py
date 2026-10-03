@@ -239,9 +239,13 @@ def wave_live(s: Suite, repo: Path) -> None:
     s.check("warm_ready", health.get("warm_state") in {"ready", "warming", "warm"}, str(health.get("warm_state")))
 
     report = run_ship_ladder(repo=repo)
-    s.check("ship_ladder_ok", report.get("ok") is True, json.dumps(report.get("errors")))
+    s.check("ship_ladder_ok", not report.get("errors"), json.dumps(report.get("errors")))
     checks = report.get("checks") or {}
-    for name in ("gate", "map", "pack_context", "expand_context", "status", "workspace", "collect_hot_context"):
+    reg = checks.get("registered") or {}
+    s.check("ship_tools", set(reg.get("tools") or []) == {"gate", "map", "status"}, str(reg.get("tools")))
+    s.check("ship_configs", set(reg.get("configs") or []) == {"find", "focus", "related", "graph"}, str(reg.get("configs")))
+    s.check("ship_no_leaked_tools", not reg.get("leaked"), str(reg.get("leaked")))
+    for name in ("gate", "status", "map_find", "map_focus", "map_graph", "map_bad_config"):
         item = checks.get(name) or {}
         s.check(f"ship_{name}", item.get("ok") is True, str(item)[:160])
 

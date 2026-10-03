@@ -11,35 +11,12 @@ from pipeline.host_workspace import (
     GLOBAL_MCP_TOOL_SLUGS,
     HOST_SPECS,
     SPECIAL_WORKSPACE_LOCAL_MCP_SLUGS,
-    ide_workspace_env_keys,
     is_special_workspace_local_tool,
 )
 from pipeline.rules_installer import format_server_entry, install_tool, write_project_gate_rules
 from pipeline.tool_registry import ALL_SLUGS, TOOL_MAP
 
 from conftest import write_machine_setup
-
-PROJECT_HOST_WORKSPACE_ENV: dict[str, str] = {
-    "cursor": "CURSOR_PROJECT_DIR",
-    "claude-code": "CLAUDE_PROJECT_DIR",
-    "codex": "CODEX_WORKSPACE_ROOT",
-    "devin-desktop": "WINDSURF_WORKSPACE",
-    "continue": "CONTINUE_PROJECT_DIR",
-    "zed": "ZED_PROJECT_DIR",
-    "opencode": "OPENCODE_DEFAULT_PROJECT",
-    "amp": "AMP_PROJECT_DIR",
-    "pi": "PI_PROJECT_DIR",
-    "kiro": "KIRO_PROJECT_DIR",
-    "copilot": "COPILOT_WORKSPACE_FOLDER",
-    "cline": "CLINE_PROJECT_DIR",
-    "roo-code": "ROO_PROJECT_DIR",
-}
-
-_CLEAR_ALL_IDE = tuple(ide_workspace_env_keys()) + (
-    "CTX_REPO",
-    "CTX_PROJECT_ID",
-    "CONTEXT_ENGINE_REPO",
-)
 
 
 @pytest.fixture
@@ -124,79 +101,9 @@ def test_init_writes_project_rules(
         assert (repo / tool.rule_user_path).is_file()
 
 
-@pytest.mark.parametrize("slug", sorted(ALL_SLUGS))
-def test_host_workspace_env_resolves_repo(
-    slug: str, tmp_path: Path, monkeypatch
-) -> None:
-    from pipeline import mcp_locate
-
-    opened = _git_repo(tmp_path / f"opened-{slug}")
-    pid = f"ce_res_{slug.replace('-', '_')[:16]}1234567890abcd"
-    _enroll(opened, pid, monkeypatch, tmp_path)
-    junk = tmp_path / "spawn"
-    junk.mkdir()
-    monkeypatch.chdir(junk)
-    env_key = PROJECT_HOST_WORKSPACE_ENV[slug]
-    monkeypatch.setenv(env_key, str(opened))
-    for key in _CLEAR_ALL_IDE:
-        if key != env_key:
-            monkeypatch.delenv(key, raising=False)
-    assert mcp_locate._default_repo() == opened.resolve()
-    assert mcp_locate._is_repo_managed() is True
-
-
-def test_devin_desktop_alternate_env_key(tmp_path: Path, monkeypatch) -> None:
-    from pipeline import mcp_locate
-
-    opened = _git_repo(tmp_path / "devin-ws")
-    junk = tmp_path / "spawn"
-    junk.mkdir()
-    monkeypatch.chdir(junk)
-    monkeypatch.setenv("CODEIUM_WINDSURF_WORKSPACE", str(opened))
-    for key in _CLEAR_ALL_IDE:
-        if key != "CODEIUM_WINDSURF_WORKSPACE":
-            monkeypatch.delenv(key, raising=False)
-    assert mcp_locate._default_repo() == opened.resolve()
-
-
-def test_claude_code_alt_env_key(tmp_path: Path, monkeypatch) -> None:
-    from pipeline import mcp_locate
-
-    opened = _git_repo(tmp_path / "claude-ws")
-    junk = tmp_path / "spawn"
-    junk.mkdir()
-    monkeypatch.chdir(junk)
-    monkeypatch.setenv("CLAUDE_CODE_PROJECT_DIR", str(opened))
-    for key in _CLEAR_ALL_IDE:
-        if key != "CLAUDE_CODE_PROJECT_DIR":
-            monkeypatch.delenv(key, raising=False)
-    assert mcp_locate._default_repo() == opened.resolve()
-
-
-def test_opencode_alt_env_key(tmp_path: Path, monkeypatch) -> None:
-    from pipeline import mcp_locate
-
-    opened = _git_repo(tmp_path / "opencode-ws")
-    junk = tmp_path / "spawn"
-    junk.mkdir()
-    monkeypatch.chdir(junk)
-    monkeypatch.setenv("OPENCODE_PROJECT", str(opened))
-    for key in _CLEAR_ALL_IDE:
-        if key != "OPENCODE_PROJECT":
-            monkeypatch.delenv(key, raising=False)
-    assert mcp_locate._default_repo() == opened.resolve()
-
-
-def test_project_tool_cwd_fallback_when_chdir_is_repo(
-    tmp_path: Path, monkeypatch
-) -> None:
-    from pipeline import mcp_locate
-
-    repo = _git_repo(tmp_path / "cwd-ws")
-    pid = "ce_cwd_fallback1234567890abcdef"
-    _enroll(repo, pid, monkeypatch, tmp_path)
-    monkeypatch.chdir(repo)
-    for key in _CLEAR_ALL_IDE:
-        monkeypatch.delenv(key, raising=False)
-    assert mcp_locate._default_repo() == repo.resolve()
-    assert mcp_locate._is_repo_managed() is True
+# NOTE: the per-host env-key repo-resolution tests that lived here exercised
+# ``mcp_locate._default_repo`` / ``_is_repo_managed`` — a resolution path that was
+# retired in the Map V3 migration. Map V3 (``pipeline.map_v3_server``) resolves the
+# repo from CTX_REPO / MINI_REPO, not the IDE host env-key fan-out, so those cases
+# no longer map to live production code. They were removed with the old surface.
+# See archive/old-mcp-map/ for the retired tool and its original tests.

@@ -90,7 +90,7 @@ Required when more than 400 indexable files would be touched.
 `remove` drops registry tracking (optional `--delete-store`). **`wipe --confirm`** is the full per-repo cleanup.
 
 **What does each MCP tool do?**  
-[MCP tools reference](./mcp-tools-reference.md) — `gate`, `map`, `focus`, `grep`, `glob`, `workspace`, etc.
+[MCP tools reference](./mcp-tools-reference.md) — one `map` tool (`config=find|focus|related|graph`) plus `gate` / `status`.
 
 **`status` on a folder I never initialized?**  
 `enrolled: false`, `state: "unmanaged"` — run `scubiee init .` to enroll.

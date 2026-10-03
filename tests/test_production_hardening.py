@@ -137,37 +137,9 @@ def test_patch_build_env_in_yaml(tmp_path: Path):
     assert 'CTX_SCUBIEE_BUILD: "0.3.9-99"' in text
 
 
-def test_client_for_records_admission_error(monkeypatch, tmp_path: Path):
-    from pipeline import mcp_locate
-
-    repo = tmp_path / "repo"
-    repo.mkdir()
-    captured: list[str] = []
-
-    class FakeClient:
-        def __init__(self, *args, **kwargs):
-            pass
-
-        def health(self):
-            return {"ok": True, "service": True, "soft_search_ready": False}
-
-        def healthy(self):
-            return True
-
-        def open_repo(self, *args, **kwargs):
-            raise RuntimeError("daemon unreachable")
-
-        def note_locate(self, *args, **kwargs):
-            return None
-
-    monkeypatch.setattr("pipeline.daemon.ensure_daemon", lambda *a, **k: None)
-    monkeypatch.setattr("pipeline.mcp_lifecycle.ensure_mcp_runtime", lambda *a, **k: {"ok": True})
-    monkeypatch.setattr("pipeline.mcp_lifecycle.soft_ready_cached", lambda: False)
-    monkeypatch.setattr("pipeline.client.EngineClient", FakeClient)
-    monkeypatch.setattr(mcp_locate, "_stderr", lambda msg: captured.append(msg))
-
-    client = mcp_locate._client_for(repo)
-    admission = getattr(client, "_scubiee_admission")
-    assert admission["ok"] is False
-    assert admission["error"] == "open_repo_failed"
-    assert any("admission warning" in line for line in captured)
+# NOTE: test_client_for_records_admission_error exercised mcp_locate._client_for /
+# _stderr / the per-client admission envelope — internals of the retired worker that
+# opened the repo through EngineClient before serving tools. Map V3
+# (pipeline.map_v3_server) calls the engine HTTP API directly and has no _client_for
+# admission step, so this case was retired with the old surface. See
+# archive/old-mcp-map/ for the retired tool and its original tests.

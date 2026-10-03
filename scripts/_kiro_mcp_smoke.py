@@ -80,12 +80,7 @@ def main() -> int:
         "@scubiee",
         "@scubiee/gate",
         "@scubiee/map",
-        "@scubiee/pack_context",
-        "@scubiee/expand_context",
-        "@scubiee/collect_hot_context",
         "@scubiee/status",
-        "@scubiee/workspace",
-        "@scubiee/expand",
     ]
     cfg = {
         "name": "ab_dev_with",

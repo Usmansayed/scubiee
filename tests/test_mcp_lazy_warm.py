@@ -202,27 +202,12 @@ def test_ensure_mcp_runtime_defaults_nonblocking(
     assert out.get("ok") is True
 
 
-def test_boot_mcp_worker_skips_ensure_when_lazy(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setenv("CTX_HOME", str(tmp_path))
-    monkeypatch.delenv("CTX_MCP_AUTO_WARM", raising=False)
-    import pipeline.mcp_locate as loc
-
-    ensures: list[str] = []
-    monkeypatch.setattr(
-        "pipeline.mcp_hot_reload.adopt_installed_package_on_connect",
-        lambda **k: {"ok": True, "restart_stale": k.get("restart_stale")},
-    )
-    monkeypatch.setattr(
-        "pipeline.daemon.ensure_daemon",
-        lambda *_a, **_k: ensures.append("ensure") or {"ok": True},
-    )
-    monkeypatch.setattr(loc, "_register_mcp_client", lambda repo: "mcp:x")
-    out = loc.boot_mcp_worker(tmp_path)
-    assert out.get("auto_warm") is False
-    assert ensures == []
-    assert out.get("adopt", {}).get("restart_stale") is False
+# NOTE: test_boot_mcp_worker_skips_ensure_when_lazy exercised
+# mcp_locate.boot_mcp_worker / _register_mcp_client — the retired worker's lazy-warm
+# bootstrap. Map V3 (pipeline.map_v3_server) talks to the engine over HTTP and has no
+# such worker bootstrap, so the behavior was retired with the old surface. The
+# lazy-adopt contract that still ships is covered by test_adopt_lazy_does_not_restart_daemon
+# below. See archive/old-mcp-map/ for the retired tool and its original tests.
 
 
 def test_adopt_lazy_does_not_restart_daemon(monkeypatch: pytest.MonkeyPatch) -> None:

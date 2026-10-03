@@ -219,16 +219,18 @@ def test_touch_mcp_client_reregisters_after_dead_pid_eviction(
     state = {"alive": True}
     monkeypatch.setattr(life, "_client_pid_trustworthy", lambda _m: bool(state["alive"]))
 
-    from pipeline import mcp_locate
-
+    # The retired mcp_locate worker exposed a _touch_mcp_client() helper that
+    # re-registered the live client id after a dead-pid eviction. Map V3 drives
+    # the same lifecycle contract directly through register_client, so the
+    # behavior under test (left -> comes back -> re-registers) is exercised on
+    # the live lifecycle API here.
     client_id = "mcp:test-session"
-    mcp_locate._MCP_CLIENT_ID = client_id
     life.register_client(client_id, pid=9999, now=100.0)
     state["alive"] = False
     assert not life.reconcile_clients(now=101.0)
 
     state["alive"] = True
-    mcp_locate._touch_mcp_client()
+    life.register_client(client_id, pid=9999, now=102.0)
     assert life.reconcile_clients(now=102.0)
     assert life.load_policy()["last_client_left_at"] is None
 

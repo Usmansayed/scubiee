@@ -259,8 +259,10 @@ def _scan_tree_rss_mb() -> dict[str, Any]:
         markers = (
             "pipeline engine",
             "pipeline.mcp_bridge",
+            "pipeline.map_v3_server",
             "pipeline.mcp_locate",
             "mcp_bridge",
+            "map_v3_server",
             "mcp_locate",
             "engine watchdog",
             "engine run",
@@ -278,7 +280,12 @@ def _scan_tree_rss_mb() -> dict[str, Any]:
                 role = "other"
                 if "mcp_bridge" in blob or "pipeline.mcp_bridge" in blob:
                     role = "bridge"
-                elif "mcp_locate" in blob or "pipeline.mcp_locate" in blob:
+                elif (
+                    "map_v3_server" in blob
+                    or "pipeline.map_v3_server" in blob
+                    or "mcp_locate" in blob
+                    or "pipeline.mcp_locate" in blob
+                ):
                     role = "locate"
                 elif "watchdog" in blob:
                     role = "watchdog"

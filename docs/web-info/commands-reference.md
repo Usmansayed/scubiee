@@ -159,22 +159,20 @@ After `--all --confirm`, JSON includes an **`audit`** block listing any **`remai
 
 Not CLI commands — exposed to the agent after MCP reload. **Full guide:** [MCP tools reference](./mcp-tools-reference.md).
 
-Default **`phase` / ship** surface:
+One **`map`** tool with four configs (plus `gate`/`status`):
 
 | Tool | Role |
 |------|------|
 | `gate` | Tiny managed check (~5 tokens) — prefer at session start |
-| `status` | Engine health + managed/warming flags (`detail=gate` for tiny check) |
-| `map` | Ranked overview of relevant chunks/symbols (no bodies) |
-| `pack_context` | Lean composite heatmap around a seed |
-| `expand_context` | Grow callees/callers when the pack is thin |
-| `collect_hot_context` | Optional bodies for hot ids |
-| `workspace` | Session pins / heatmap / `clear` for new topic |
-| `expand` | Re-materialize a stored span by handle |
+| `status` | Engine health one-liner (ok / warm / dense / chunks / version) |
+| `map config=find` | "Where is X?" — ranked locations + the top result's code inline |
+| `map config=focus` | A name's full body + callers/callees + sibling names, one unit |
+| `map config=related` | Given a chunk you have, the related bodies — one call |
+| `map config=graph` | Files → symbols + call edges (no bodies) — orient, then one find/focus |
 
-Exact/name → host Grep/Glob/Read. Classic MCP `focus`/`grep`/`glob` require `CTX_MCP_EXPERIMENT=classic`.
+Exact/name/path → host Grep/Glob/Read; history → `git`. The CLI mirrors the tool: `scubiee map --config find|focus|related|graph`.
 
-If `status` shows `warming: true`, retry the **tool** once after a short wait — do not poll `status()` every turn. After pause/stop use **`scubiee resume`**.
+If `status` shows the engine still warming, retry the `map` call once after a short wait — do not poll `status()` every turn. After pause/stop use **`scubiee resume`**.
 
 ---
 

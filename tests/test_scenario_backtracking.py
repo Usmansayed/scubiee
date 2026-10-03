@@ -39,11 +39,6 @@ from conftest import write_machine_setup
 PHASE_MANAGED_TOOLS = {
     "gate",
     "map",
-    "pack_context",
-    "expand_context",
-    "collect_hot_context",
-    "workspace",
-    "expand",
     "status",
 }
 
@@ -90,18 +85,19 @@ def _enroll(repo: Path, project_id: str, monkeypatch, tmp_path: Path) -> None:
 
 
 def _mcp_tools(monkeypatch) -> set[str]:
-    pytest.importorskip("mcp")
-    monkeypatch.delenv("CTX_MCP_SURFACE", raising=False)
-    from pipeline.mcp_locate import create_mcp
+    # Map V3 (pipeline.map_v3_server) ships one fixed tool surface; there is no
+    # CTX_MCP_SURFACE switching as the retired mcp_locate server had.
+    from pipeline.map_v3_server import TOOLS
 
-    return set(create_mcp(name="test-backtrack")._tool_manager._tools)
+    return set(TOOLS)
 
 
 def _instructions(monkeypatch, surface: str = "phase") -> str:
-    from pipeline.mcp_locate import _server_instructions
+    # Map V3 serves a single static instruction block (SERVER_INSTRUCTIONS) rather
+    # than the old per-surface _server_instructions(surface) function.
+    from pipeline.map_v3_server import SERVER_INSTRUCTIONS
 
-    monkeypatch.setenv("CTX_MCP_SURFACE", surface)
-    return _server_instructions(surface)
+    return SERVER_INSTRUCTIONS
 
 
 def _apply_path(
@@ -171,9 +167,11 @@ def _apply_path(
     state["tools"] = _mcp_tools(monkeypatch)
     state["instructions"] = _instructions(monkeypatch)
 
-    from pipeline.mcp_locate import _is_repo_managed
+    from pathlib import Path as _Path
 
-    state["managed"] = _is_repo_managed()
+    from pipeline.project_id import _is_enrolled
+
+    state["managed"] = _is_enrolled(_Path.cwd())
     return state
 
 
@@ -256,28 +254,23 @@ def test_scenario_path_outcome(
     state = _apply_path(path, tmp_path, monkeypatch, fake_home)
     assert state["mcp_json"]
 
+    # Map V3 serves ONE static instruction block (describes the `map` tool + its
+    # configs) regardless of gate state. The old mcp_locate server embedded
+    # gate/root guidance ("Pass root=", "Project GATE rule") INTO the per-call
+    # instructions; that coupling was retired in the Map V3 migration, so the
+    # outcome signatures here pin the tool-set and managed/gate state (the real
+    # state-machine), with the instruction block held constant across outcomes.
+    def _is_map_v3_instructions(text: str) -> bool:
+        low = text.lower()
+        return "map" in low and "find" in low and "focus" in low
+
     if path.outcome == Outcome.GATE_ONLY_NATIVE:
         assert state["tools"] == PHASE_MANAGED_TOOLS
-        assert "Pass root=" in state["instructions"]
-        assert "map(query)" not in state["instructions"]
+        assert _is_map_v3_instructions(state["instructions"])
 
     elif path.outcome == Outcome.FULL_MANAGED:
         assert state["tools"] == PHASE_MANAGED_TOOLS
-        assert (
-            "map(query)" in state["instructions"]
-            or "map →" in state["instructions"]
-            or "map(" in state["instructions"].lower()
-            or "pack_context" in state["instructions"].lower()
-        )
-        assert (
-            "Project GATE rule" in state["instructions"]
-            or "prefer Scubiee" in state["instructions"].lower()
-            or "use scubiee" in state["instructions"].lower()
-            or "pinpoint" in state["instructions"].lower()
-            or "plate" in state["instructions"].lower()
-            or "pack_context" in state["instructions"].lower()
-            or "composite" in state["instructions"].lower()
-        )
+        assert _is_map_v3_instructions(state["instructions"])
         assert state.get("managed") is True
 
     elif path.outcome == Outcome.WRONG_REPO_GATE:
@@ -320,9 +313,12 @@ def test_bound_unmanaged_pause_is_noop(tmp_path: Path, monkeypatch) -> None:
 
     tools = _mcp_tools(monkeypatch)
     text = _instructions(monkeypatch)
+    # Map V3's tool surface is fixed and stays registered even under global pause
+    # (so `scubiee resume` can bring it back). Pause no longer rewrites the MCP
+    # instruction block, so we assert the stable Map V3 instructions instead of
+    # the old gate-state-dependent text.
     assert tools == PHASE_MANAGED_TOOLS
-    assert text.startswith("GATE p.") or text.startswith("GATE 0.")
-    assert "Pass root=" in text or "scubiee resume" in text.lower() or "STOPPED" in text
+    assert "map" in text.lower() and "find" in text.lower()
 
 
 def test_backtrack_managed_then_wipe_returns_unmanaged(tmp_path: Path, monkeypatch) -> None:

@@ -118,6 +118,20 @@ def id_dir_path(root: Path) -> Path:
     return resolve_repo_data_dir(root)
 
 
+def _is_enrolled(path: Path) -> bool:
+    """True if *path* is an enrolled Scubiee checkout (has ``<data_dir>/id.json``).
+
+    Relocated here from the retired ``mcp_locate`` tool server so enrollment
+    checks have no dependency on the MCP tool layer (Map V3 migration).
+    """
+    try:
+        from pipeline.branding import DATA_DIR_NAMES
+
+        return any((path / name / "id.json").is_file() for name in DATA_DIR_NAMES)
+    except OSError:
+        return False
+
+
 def repo_runtime_dir(root: Path) -> Path:
     """Writable per-repo runtime dir (enrollment vs MCP scratch).
 
@@ -128,8 +142,6 @@ def repo_runtime_dir(root: Path) -> Path:
     """
     root = root.resolve()
     try:
-        from pipeline.mcp_locate import _is_enrolled
-
         if _is_enrolled(root):
             return id_dir_path(root)
     except Exception:  # noqa: BLE001

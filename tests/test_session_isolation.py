@@ -244,18 +244,10 @@ def test_ctx_mcp_client_overrides_detection(monkeypatch: pytest.MonkeyPatch) -> 
     assert detect_mcp_host() == "continue"
 
 
-def test_attach_gate_includes_session_context(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("CTX_MCP_SESSION_ISOLATE", "1")
-    monkeypatch.setenv("CTX_MCP_CLIENT", "copilot")
-    monkeypatch.setenv("CTX_MCP_ECHO_SESSION", "1")
-    from pipeline.mcp_locate import _attach_gate
-    from pipeline.session_isolation import bind_resolved_session, reset_resolved_session, resolve_session
-
-    info = resolve_session("parallel-task-a")
-    tok = bind_resolved_session(info)
-    try:
-        out = _attach_gate({"ok": True, "tool": "map"})
-    finally:
-        reset_resolved_session(tok)
-    assert out["session_id"] == "parallel-task-a"
-    assert out["session_source"] == "explicit"
+# NOTE: test_attach_gate_includes_session_context exercised mcp_locate._attach_gate —
+# the retired tool-response decorator that stamped session_id/session_source onto the old
+# JSON tool envelope. Map V3 (pipeline.map_v3_server) returns plain text and does not wrap
+# responses with _attach_gate, so that envelope behavior was retired with the old surface.
+# The live session-resolution contract it depended on (resolve_session /
+# bind_resolved_session) stays covered by the other tests in this file. See
+# archive/old-mcp-map/ for the retired tool and its original tests.

@@ -1149,7 +1149,7 @@ def cmd_mcp(args: argparse.Namespace) -> int:
 
     if args.path:
         os.environ["CTX_REPO"] = str(Path(args.path).resolve())
-    from pipeline.mcp_locate import main as mcp_main
+    from pipeline.map_v3_server import main as mcp_main
 
     mcp_main()
     return 0
@@ -1710,79 +1710,38 @@ def cmd_gate(args: argparse.Namespace) -> int:
 
 
 def cmd_map(args: argparse.Namespace) -> int:
-    """Soft locate via CLI (JSON). Expand the query first; then pack with same wording."""
-    from pipeline.locate_cli import cli_map, emit_cli_json
+    """Map V3 locate via CLI — the same `map` tool the MCP serves (fallback for scripts).
 
-    # Keep progress noise off stdout so agents can parse JSON reliably.
-    import contextlib
-    import io
+    One tool, four configs: find | focus | related | graph. Talks to the running
+    engine over HTTP exactly like the MCP worker (pipeline.map_v3_server), so the
+    CLI and the MCP surface never diverge.
+    """
+    import os as _os
 
-    buf = io.StringIO()
-    with contextlib.redirect_stdout(buf):
-        out = cli_map(
-            args.query,
-            path=getattr(args, "path", ".") or ".",
-            k=int(getattr(args, "k", 10) or 10),
-            local=bool(getattr(args, "local", False)),
-            wait_ready=float(getattr(args, "wait_ready", 0) or 0),
-        )
-    noise = buf.getvalue().strip()
-    if noise:
-        print(noise, file=sys.stderr)
-    # Default: slim cards + suggested_seed only (not pretty full dump).
-    emit_cli_json(out, full=bool(getattr(args, "full", False)))
-    return 0 if out.get("ok") else 1
+    # map_v3_helpers resolves the repo from CTX_REPO/MINI_REPO; honor the path arg.
+    repo = str(Path(getattr(args, "path", ".") or ".").resolve())
+    _os.environ.setdefault("CTX_REPO", repo)
+    _os.environ["MINI_REPO"] = repo
 
+    from pipeline.map_v3_server import tool_map
 
-def cmd_pack(args: argparse.Namespace) -> int:
-    """Tracer/heatmap pack via CLI (JSON). Same expanded query as map; seed from map."""
-    from pipeline.locate_cli import cli_pack, emit_cli_json
-
-    import contextlib
-    import io
-
-    buf = io.StringIO()
-    with contextlib.redirect_stdout(buf):
-        out = cli_pack(
-            args.query,
-            seed_file=args.seed_file,
-            path=getattr(args, "path", ".") or ".",
-            seed_symbol=getattr(args, "seed_symbol", "") or "",
-            seed_line=int(getattr(args, "seed_line", 0) or 0),
-            mode=getattr(args, "mode", "lean") or "lean",
-            policy=getattr(args, "policy", "strict") or "strict",
-            k=int(getattr(args, "k", 16) or 16),
-        )
-    noise = buf.getvalue().strip()
-    if noise:
-        print(noise, file=sys.stderr)
-    # Default: pack[].text + chain + cold locs only (token-saving agent view).
-    emit_cli_json(out, full=bool(getattr(args, "full", False)))
-    return 0 if out.get("ok") else 1
-
-
-def cmd_expand(args: argparse.Namespace) -> int:
-    """Expand heatmap delta via CLI (JSON). Use after lean pack if a hop is missing."""
-    from pipeline.locate_cli import cli_expand, emit_cli_json
-
-    import contextlib
-    import io
-
-    buf = io.StringIO()
-    with contextlib.redirect_stdout(buf):
-        out = cli_expand(
-            node=args.node,
-            path=getattr(args, "path", ".") or ".",
-            query=getattr(args, "query", "") or "",
-            direction=getattr(args, "direction", "callees") or "callees",
-            with_bodies=bool(getattr(args, "with_bodies", False)),
-            k=int(getattr(args, "k", 12) or 12),
-        )
-    noise = buf.getvalue().strip()
-    if noise:
-        print(noise, file=sys.stderr)
-    emit_cli_json(out, full=bool(getattr(args, "full", False)))
-    return 0 if out.get("ok") else 1
+    call: dict[str, object] = {"config": getattr(args, "config", "find") or "find"}
+    if getattr(args, "query", None):
+        call["query"] = args.query
+    if getattr(args, "names", None):
+        call["names"] = args.names
+    if getattr(args, "anchor", None):
+        call["anchor"] = args.anchor
+    if getattr(args, "targets", None):
+        call["targets"] = args.targets
+    if getattr(args, "k", None):
+        call["k"] = int(args.k)
+    text = tool_map(call)
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        print(text.encode("ascii", "replace").decode("ascii"))
+    return 0 if not str(text).startswith("error:") else 1
 
 
 def cmd_connect(args: argparse.Namespace) -> int:
@@ -2057,7 +2016,7 @@ def _write_mcp_config(repo: Path, host: str, port: int) -> None:
     root = Path(__file__).resolve().parents[2]
     entry = {
         "command": py.replace("\\", "/"),
-        "args": ["-u", "-m", "pipeline.mcp_locate"],
+        "args": ["-u", "-m", "pipeline.map_v3_server"],
         "env": {
             "PYTHONPATH": str(root / "packages").replace("\\", "/"),
             "CTX_REPO": str(repo).replace("\\", "/"),
@@ -2068,7 +2027,6 @@ def _write_mcp_config(repo: Path, host: str, port: int) -> None:
             "CTX_AUTO_INDEX": "1",
             "CTX_SYNC_INTERVAL_MS": "300000",
             "CTX_REGISTRATION_MODE": "automatic",
-            "CTX_MCP_SURFACE": "phase",
             "PYTHONUTF8": "1",
         },
     }
@@ -2430,73 +2388,35 @@ def main(argv: list[str] | None = None) -> int:
 
     p_map = sub.add_parser(
         "map",
-        help="Soft locate (CLI): cards + suggested_seed JSON — expand query first, then pack",
+        help="Map V3 locate (CLI) — the shipped `map` tool: config=find|focus|related|graph",
     )
-    p_map.add_argument("query", help="Expanded denser code-vocab query (symbols/paths/verbs; ~30–80 tokens)")
+    p_map.add_argument(
+        "--config",
+        choices=("find", "focus", "related", "graph"),
+        default="find",
+        help="find=where is X | focus=a name's code+wiring | related=related bodies | graph=orient",
+    )
+    p_map.add_argument("query", nargs="?", default="", help="find/graph: short code-vocab intent")
     p_map.add_argument("path", nargs="?", default=".", help="Repo path (default: cwd)")
-    p_map.add_argument("--k", type=int, default=10, help="Max cards (default 10)")
     p_map.add_argument(
-        "--local",
-        action="store_true",
-        help="Skip HTTP engine; in-process index only",
+        "--names",
+        nargs="*",
+        default=None,
+        help="focus: identifier(s) to center on (e.g. --names run_pack_context)",
     )
     p_map.add_argument(
-        "--full",
-        action="store_true",
-        help="Emit full debug JSON (default: slim cards + suggested_seed only)",
+        "--anchor",
+        default=None,
+        help="related: a chunk you already have (file::symbol or file:line)",
     )
     p_map.add_argument(
-        "--wait-ready",
-        type=float,
-        default=45.0,
-        metavar="SEC",
-        help="Wait up to SEC for engine health before map (0=no wait; default 45)",
+        "--targets",
+        nargs="*",
+        default=None,
+        help="(reserved) explicit file::symbol / file:line targets",
     )
+    p_map.add_argument("--k", type=int, default=None, help="find: max results")
     p_map.set_defaults(func=cmd_map)
-
-    p_pack = sub.add_parser(
-        "pack",
-        help="Tracer/heatmap pack (CLI): lean bodies JSON — same query as map + seed_file",
-    )
-    p_pack.add_argument("query", help="Expanded/refined code-vocab query (from map; add card/seed names OK)")
-    p_pack.add_argument(
-        "--seed-file",
-        required=True,
-        help="Seed file from map suggested_seed.file (or known path)",
-    )
-    p_pack.add_argument("--seed-symbol", default="", help="Optional seed symbol")
-    p_pack.add_argument("--seed-line", type=int, default=0, help="Optional seed line")
-    p_pack.add_argument("path", nargs="?", default=".", help="Repo path (default: cwd)")
-    p_pack.add_argument("--mode", choices=("lean", "full"), default="lean")
-    p_pack.add_argument("--policy", choices=("strict", "broad"), default="strict")
-    p_pack.add_argument("--k", type=int, default=16, help="Max heatmap cards")
-    p_pack.add_argument(
-        "--full",
-        action="store_true",
-        help="Emit full debug JSON (default: pack[].text + chain + cold locs only)",
-    )
-    p_pack.set_defaults(func=cmd_pack)
-
-    p_expand = sub.add_parser(
-        "expand",
-        help="Expand heatmap delta (CLI) after pack — direction=callees|callers|effects|broad",
-    )
-    p_expand.add_argument("--node", required=True, help="Heatmap node id from pack/map")
-    p_expand.add_argument("--query", default="", help="Optional; keep expanded map/pack query")
-    p_expand.add_argument(
-        "--direction",
-        default="callees",
-        help="callees|callers|effects|broad|all (default callees)",
-    )
-    p_expand.add_argument("--with-bodies", action="store_true", help="Include lean bodies for delta")
-    p_expand.add_argument("--k", type=int, default=10)
-    p_expand.add_argument("path", nargs="?", default=".", help="Repo path (default: cwd)")
-    p_expand.add_argument(
-        "--full",
-        action="store_true",
-        help="Emit full debug JSON (default: delta + pack bodies only)",
-    )
-    p_expand.set_defaults(func=cmd_expand)
 
     p_sync = sub.add_parser("sync", help="Incremental re-embed files changed since last index")
     p_sync.add_argument("path", nargs="?", default=".")

@@ -263,6 +263,7 @@ def is_context_engine_process(pid: int) -> bool:
         "pipeline.server",
         "pipeline.engine",
         "pipeline engine",  # CLI: python -m pipeline engine run
+        "pipeline.map_v3_server",
         "pipeline.mcp_locate",
         "pipeline.mcp_server",
         "pipeline.watchdog",
@@ -322,6 +323,7 @@ def _cmdline_matches_ce(cmdline: list[str] | None) -> bool:
         r"uv\tools\scubiee",
         "context-engine",
         ".scubiee",
+        "pipeline.map_v3_server",
         "pipeline.mcp_locate",
         "pipeline.mcp_server",
         "pipeline.mcp_bridge",
@@ -490,6 +492,7 @@ def _is_mcp_worker_process(proc: dict[str, Any]) -> bool:
     return (
         "scubiee-mcp" in cmdline
         or "scubiee-mcp" in exe
+        or "pipeline.map_v3_server" in cmdline
         or "pipeline.mcp_locate" in cmdline
         or "pipeline.mcp_server" in cmdline
     )

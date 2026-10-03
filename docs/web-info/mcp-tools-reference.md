@@ -1,10 +1,10 @@
 # MCP tools reference
 
-Detailed guide to Scubiee **MCP tools** — what each tool does, when to use it, and typical agent workflow.
+Detailed guide to the Scubiee **MCP tools** — what the one `map` tool's configs do, when to use each, and the typical agent workflow.
 
-These tools appear in your IDE after `scubiee connect --cursor` (or another tool) and an MCP reload. They are **not** CLI commands.
+These tools appear in your IDE after `scubiee connect --cursor` (or another tool) and an MCP reload. They are **not** CLI commands (though `scubiee map --config …` mirrors them for scripts).
 
-**Docs assume [scubiee 0.3.14](https://pypi.org/project/scubiee/0.3.14/)** · MCP server name: **`scubiee`**
+MCP server name: **`scubiee`** · worker module: **`pipeline.map_v3_server`** (Map V3)
 
 Setup: [Cursor & MCP](./cursor-mcp.md) · CLI equivalents: [Commands reference](./commands-reference.md)
 
@@ -15,68 +15,63 @@ Setup: [Cursor & MCP](./cursor-mcp.md) · CLI equivalents: [Commands reference](
 1. Machine setup: `scubiee setup --repair`
 2. Repo enrolled: `scubiee init .`
 3. IDE connected: `scubiee connect --cursor` → reload MCP
-4. At chat start: call **`gate()`** or **`status()` once** (see below)
+4. At chat start: call **`gate()`** once (see below)
 
-If `managed: false`, run `init` / `connect` in that workspace — do not keep calling Scubiee tools.
+If `gate` returns `0` (not managed), run `init` / `connect` in that workspace — do not keep calling Scubiee tools.
 
-If Scubiee is globally stopped (`scubiee stop`), MCP tools are blocked until the user runs **`scubiee resume`**.
+If Scubiee is globally stopped (`scubiee stop`), tools are blocked until the user runs **`scubiee resume`**.
 
 ---
 
-## Default tool surface: `phase` (ship)
+## The tool surface
 
-Cursor and most installs use the **`phase`** surface with **`CTX_MCP_EXPERIMENT=ship`** (default). Tools exposed:
+Scubiee ships **one locate tool, `map`**, with four configs, plus two health tools. That is the entire surface.
 
 | Tool | One-line purpose |
 |------|------------------|
 | `gate` | Tiny managed check (~5 tokens) — call once at session start |
-| `status` | Full engine health + session (or `detail=gate` for tiny check) |
-| `map` | New topic — ranked file/symbol **cards** (no bodies) |
-| `pack_context` | Lean composite heatmap around a seed (ladder step 2) |
-| `expand_context` | Grow callees/callers from a heatmap node |
-| `collect_hot_context` | Optional batched bodies for hot ids |
-| `workspace` | Session memory — pins, heatmap |
-| `expand` | Re-open a stored span by handle |
+| `status` | Engine health one-liner (ok / warm / dense / chunks / version) |
+| `map config=find` | "Where is the code for X?" — ranked locations **+ the top result's code inline** |
+| `map config=focus` | "Show me this name" — its full body + callers/callees + sibling names, one unit |
+| `map config=related` | "Given a chunk I have, what else relates?" — related bodies in one call |
+| `map config=graph` | "Orient me" — files → symbol names + call edges, **no bodies** |
 
-Exact literals / filenames → **host** Grep/Glob/Read (not Scubiee MCP on ship).
+Exact literals / filenames / known paths → **host** Grep/Glob/Read (not Scubiee). History → `git`.
 
-Opt-in: `CTX_MCP_EXPERIMENT=classic` restores MCP `focus`/`grep`/`glob`; `lab` adds pinpoint/plate/poly packs. Advanced installs may set `CTX_MCP_SURFACE` to `nav`, `search`, etc.
-
-This doc covers **`phase` / ship** (product default).
+There is no surface switching and no `CTX_MCP_SURFACE` / `CTX_MCP_EXPERIMENT` any more — the Map V3 surface is the single shipped surface.
 
 ---
 
 ## Session binding: `root` and `project_id`
 
-Most tools accept optional:
+The worker resolves the repo from `CTX_REPO` (set by `scubiee connect`). The health tools echo the managed id:
 
-| Parameter | Purpose |
-|-----------|---------|
-| `root` | Absolute or workspace path to bind this call to a specific repo |
-| `project_id` | `ce_…` id from a prior successful `status()` — avoids repeating full path |
-| `session_id` | Isolate parallel chats when MCP process is shared |
+| Signal | Meaning |
+|--------|---------|
+| `gate` → `1:ce_…` | Managed repo, bound and resolvable |
+| `gate` → `0` | Not managed — run `scubiee init .` |
+| `gate` → `p` | Globally paused — run `scubiee resume` |
 
-**Cursor multi-root:** pass `root` = that chat’s workspace path on the first `gate()` / `status()` so managed checks apply to the correct folder.
+**Cursor multi-root:** connect from the specific workspace folder so its `.kiro`/`.cursor` `mcp.json` pins `CTX_REPO` to the correct repo.
 
 ---
 
 ## Recommended agent workflow
 
 ```text
-gate() or status() once
-    ↓ managed + ok?
-map(query)          ← new topic / cold start
-    ↓ pick 1–3 cards
-focus(target, mode=outline|span|neighbors)
-    ↓ need exact string?
-grep(pattern, glob=…)
-    ↓ mid-task reorient?
-workspace(action=show)
-    ↓ new topic in same chat?
-workspace(action=clear) → map() again
+gate() once
+    ↓ managed (1:ce_…)?
+map config=find query="<short code-vocab intent>" keywords=[names you know]
+    ↓ top result is the place? EDIT it — the code is already inline, don't re-view
+    ↓ have a name and want its wiring?
+map config=focus names=[Symbol]          ← full body + callers/callees + siblings, one unit
+    ↓ have a chunk and want what relates?
+map config=related anchor="file::symbol" query="<intent>"
+    ↓ don't know where to start at all?
+map config=graph query="<intent>"        ← orient wide, THEN one find/focus
 ```
 
-**Do not** poll `status()` in a loop when `warming: true` — retry the **locate tool** once after a short wait.
+Pick **one** config, act on the first good answer, and **stop**. Don't chain configs just to look around. Don't poll `status()` in a loop while warming — retry the `map` call once after a short wait.
 
 ---
 
@@ -86,161 +81,98 @@ workspace(action=clear) → map() again
 
 **When:** Start of every chat (preferred over full `status` for token cost).
 
-**Returns:** Short line like `1:ce_<project_id>` when managed and healthy; hints when shared MCP risk.
-
-**Parameters:** `root`, `project_id`, `session_id`
+**Returns:** `1:ce_<project_id>` when managed, `0` when unmanaged, `p` when globally paused.
 
 ---
 
 ### `status`
 
-**When:** You need full health JSON, tool list, warming flags, or lifecycle guidance.
+**When:** You want engine health (is it warm / dense yet?).
 
-**Not for:** Finding code — use `map` / `grep`.
+**Returns:** one line — `ok=… warm=… dense=… phase=… chunks=… version=…`.
 
-| Parameter | Values |
-|-----------|--------|
-| `detail` | `full` (default) — engine + session · `gate` — same tiny line as `gate()` |
-| `root`, `project_id`, `session_id` | Session binding |
-
-**Key response fields:**
-
-| Field | Meaning |
-|-------|---------|
-| `managed` | This workspace is enrolled |
-| `ok` | Daemon healthy — safe to use locate tools |
-| `warming` | Managed but daemon still starting — retry locate tool once |
-| `paused` | Global stop — user must `scubiee resume` |
-| `next_action` | CLI hint when not ready |
+**Not for:** finding code — use `map`.
 
 ---
 
 ### `map`
 
-**When:** New topic, unfamiliar code, “where is X handled?”
+One tool, one required field `config`. Each config takes a few arguments.
 
-**Returns:** Ranked **cards** (paths, symbols, scores) — **no source bodies**.
+#### `config=find` — locate by concept
 
-| Parameter | Notes |
-|-----------|-------|
-| `query` | Code vocabulary, 20–60 tokens — full question style |
-| `k` | Number of cards (default 8) |
-| `response_format` | `json` or `markdown` |
+```json
+{"config": "find", "query": "where the token savings summary is computed", "keywords": ["tokens_saved", "compare_queries"]}
+```
 
-**Next step:** `focus(target=…)` on 1–3 cards. Empty map ≠ symbol absent — try rephrasing or `grep` for a known literal.
+| Argument | Default | Why |
+|----------|---------|-----|
+| `query` | required | Short code-vocab intent (~25–120 denser tokens: symbols, paths, APIs, verbs). |
+| `keywords` | `[]` | Exact names you already know; weighted in ranking. |
+| `scope` | `code` | `code` · `tests` · `docs` · `all`. |
+| `k` | 8 | Max results. |
 
----
+Returns ranked locations with line numbers; on a confident top hit, its **enclosing function/class is included inline**. If that's the place, edit it — don't call another config to view it.
 
-### `focus`
+#### `config=focus` — a name's code and wiring
 
-**When:** You have a map hit (or known path/symbol) and need code context.
+```json
+{"config": "focus", "names": ["git_dirty_files"]}
+```
 
-| Parameter | Notes |
-|-----------|-------|
-| `target` | File path, `path:line`, or symbol from a map card |
-| `mode` | `outline` · `span` (default) · `neighbors` · `call_sites` |
-| `path` | Explicit repo-relative file |
-| `budget` | `cap` (~200 lines) · `wide` (~350) · `full` (~1k) |
-| `query` | Helps pick span inside `path` |
-| `start_line` / `end_line` | Optional line range |
+| Argument | Default | Why |
+|----------|---------|-----|
+| `names` | required | Identifier(s) to center on. |
+| `anchor` | — | Or a `file::symbol` chunk you already have. |
+| `scope` | `code` | As `find`. |
 
-**Modes:**
+Returns the symbol's full body **plus** its callers/callees and the other symbol names in its file — one unit you can edit from without a follow-up call.
 
-- **outline** — symbols/structure in a file
-- **span** — source text around the target
-- **neighbors** — related imports/callers/callees
-- **call_sites** — where a function/name is referenced
+#### `config=related` — related code for a chunk you have
 
----
+```json
+{"config": "related", "anchor": "token_meter.py::compare_queries", "query": "where savings get rendered"}
+```
 
-### `grep`
+| Argument | Default | Why |
+|----------|---------|-----|
+| `anchor` | required | The chunk you already have (`file::symbol` or `file:line`). |
+| `query` | required | What relation you're after. |
+| `scope` | `code` | As `find`. |
 
-**When:** You need an **exact** string, import line, config key, or regex — not meaning-based search.
+Returns the code elsewhere that relates to the anchor and matches the query, with bodies — one call instead of a grep-and-read chain.
 
-| Parameter | Notes |
-|-----------|-------|
-| `pattern` | Literal or regex |
-| `glob` | Default `**/*` — narrow to e.g. `packages/**/*.py` |
-| `max_hits` | Default 200 |
+#### `config=graph` — orient wide
 
-**Note:** Searches **indexed** content. `truncated: true` means more matches may exist — raise `max_hits` or narrow `glob`.
+```json
+{"config": "graph", "query": "how freshness decides the sync strategy"}
+```
 
-Prefer **`map`** for “where / how / who” questions; use **`grep`** for known literals.
+| Argument | Default | Why |
+|----------|---------|-----|
+| `query` | one of these | Concept to orient around. |
+| `anchor` | one of these | Or a known `file::symbol` to center the neighborhood. |
 
----
-
-### `glob`
-
-**When:** You know a filename or path pattern, not file contents.
-
-Finds paths present in the index. Empty result with `truncated: false` usually means no indexed file matched the pattern.
-
----
-
-### `workspace`
-
-**When:** Mid-session — see what you already focused, pin a file, or reset for a new topic.
-
-| `action` | Behavior |
-|----------|----------|
-| `show` | Pins, heatmap, recent map queries, focus history |
-| `pin` | Pin a repo-relative `path` for this session |
-| `clear` | Reset session store — then `map()` for a new topic |
+Returns an abstract JSON map — files → top-level symbol names plus call edges, **no bodies**. Cheap and wide: use it to decide where to go, then make one `find`/`focus`.
 
 ---
 
-### `expand`
+## Registering a repo from the agent
 
-**When:** You have a **handle** from a prior `focus` / session and need that span again without re-searching.
-
-Pass the handle string from earlier tool output. If stale, run `map` or `focus` again.
+`scubiee init .` (CLI) is the normal path. If an MCP host exposes a register action, large repos may return a confirm-required payload — the user then runs `scubiee init . --confirm`.
 
 ---
 
-### `register_project`
+## CLI equivalent
 
-**When:** User consent to enroll a repo from the agent (alternative to CLI `scubiee init`).
+The shipped CLI mirrors the tool exactly (useful for scripts / when MCP is unavailable):
 
-| Parameter | Notes |
-|-----------|-------|
-| `path` | Repo root (default: bound workspace) |
-| `always_allow` | Skip future consent prompts |
-| `fast` | Fast index mode (`.py` under standard roots) |
-
-Large repos may return a confirm-required payload — user runs CLI `scubiee init . --confirm`.
-
----
-
-## Other MCP surfaces (advanced)
-
-Set via MCP env `CTX_MCP_SURFACE`:
-
-| Surface | Main tools | Use case |
-|---------|------------|----------|
-| `phase` | map, focus, grep, glob, workspace, … | **Default** — structured locate trajectory |
-| `nav` | search, files, read, recall, expand | Alternate sealed retrieval path |
-| `search` | search, status | Minimal semantic locate |
-| `grep` | grep only | Literal search host |
-| `read` / `rich` / `graph` | varies | Legacy / specialized hosts |
-
-Most users never change this. If your `mcp.json` sets a non-default surface, tool names in the IDE may differ from the table above.
-
----
-
-## Common response fields
-
-Many tools return JSON with:
-
-| Field | Meaning |
-|-------|---------|
-| `ok` | Call succeeded |
-| `truncated` / `has_more` | Result cap hit — not exhaustive |
-| `next` | Suggested next tool call |
-| `usage_hint` | Anti-thrash / caching advisory |
-| `g` | Compact gate line on tool responses |
-| `session_id` | Active session binding |
-
-Optional env **`CTX_MCP_LEAN_ECHO=1`** drops echoed `budget` fields only (opt-in token savings).
+```text
+scubiee map --config find  "<intent>" [--k N]
+scubiee map --config focus --names Symbol [OtherSymbol]
+scubiee map --config related --anchor "file::symbol" "<intent>"
+scubiee map --config graph "<intent>"
+```
 
 ---
 
@@ -248,11 +180,11 @@ Optional env **`CTX_MCP_LEAN_ECHO=1`** drops echoed `budget` fields only (opt-in
 
 | Symptom | Fix |
 |---------|-----|
-| All tools say unmanaged | `scubiee init .` + `scubiee connect --cursor` + reload MCP |
-| `warming: true` forever | `scubiee engine ensure . --wait 45` |
-| Tools blocked / paused | User: `scubiee resume` (global) or `scubiee activate .` (per-repo) |
+| `gate` says `0` (unmanaged) | `scubiee init .` + `scubiee connect --cursor` + reload MCP |
+| `status` warm=false forever | `scubiee engine ensure . --wait 45` |
+| Tools blocked / `gate` = `p` | User: `scubiee resume` (global) or `scubiee activate .` (per-repo) |
 | Stale hits after edits | `scubiee sync .` |
-| Wrong repo in multi-root | Pass `root=` on first `gate()` / `status()` |
+| Wrong repo in multi-root | Connect from that workspace folder so `CTX_REPO` is pinned correctly |
 
 ---
 

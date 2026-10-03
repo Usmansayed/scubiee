@@ -139,7 +139,7 @@ def _corrupt_cursor_mcp(repo: Path, *, mode: str) -> list[str]:
         env.pop("CTX_SCUBIEE_BUILD", None)
     elif mode == "legacy_command":
         entry["command"] = "python"
-        entry["args"] = ["-m", "pipeline.mcp_locate"]
+        entry["args"] = ["-m", "pipeline.map_v3_server"]
         env.pop("CTX_SCUBIEE_BUILD", None)
     mcp_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
     touched.append(str(mcp_path))
@@ -629,7 +629,7 @@ _register(
     UpgradeScenario(
         id="legacy_mcp_command",
         label="Legacy MCP command",
-        description="python -m pipeline.mcp_locate instead of scubiee-mcp-bridge",
+        description="python -m pipeline.map_v3_server instead of scubiee-mcp-bridge",
         expected_actions=("mcp_pins",),
     ),
 )

@@ -20,7 +20,7 @@ def _machine_ready() -> bool:
 
 def _repo_enrolled(root: Path) -> bool:
     try:
-        from pipeline.mcp_locate import _is_enrolled
+        from pipeline.project_id import _is_enrolled
 
         return _is_enrolled(root)
     except Exception:  # noqa: BLE001

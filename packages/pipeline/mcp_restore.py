@@ -42,6 +42,7 @@ def is_stubbed_mcp_entry(entry: dict[str, Any]) -> bool:
 _LIVE_MCP_LAUNCH_MARKERS = (
     "scubiee-mcp",
     "pipeline.mcp_bridge",
+    "pipeline.map_v3_server",
     "pipeline.mcp_locate",
     "pipeline.mcp_server",
 )

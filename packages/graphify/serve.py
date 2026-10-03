@@ -369,6 +369,26 @@ def _trigram_candidates(G: nx.Graph, needles: list[str], *, guard_frac: float = 
         return []
     needles = [s for s in needles if s]
     thresh = int(n * guard_frac)
+    # OPT (env-gated, under evaluation): when SOME needles are selective and some
+    # are not, the legacy code bails to a full-graph scan because ANY common needle
+    # trips the guard. For a multi-term soft query that means scoring all ~18k nodes
+    # (~290ms) even though a node matching ONLY a common, low-IDF needle contributes
+    # negligibly. The selective-union mode instead keeps candidates from the
+    # selective needles and drops only the non-selective ones. A/B-gated so the
+    # default remains byte-identical until the top-k equality check passes.
+    _sel_union = os.environ.get("CTX_GRAPH_SELECTIVE_UNION") == "1"
+    if _sel_union:
+        any_short = any((not _trigrams(s)) or any(len(g) < 3 for g in _trigrams(s)) for s in needles)
+        if not any_short:
+            sel_needles = []
+            for s in needles:
+                tgs = _trigrams(s)
+                present = [len(postings[g]) for g in tgs if g in postings]
+                if present and min(present) <= thresh:
+                    sel_needles.append(s)
+            if sel_needles:
+                needles = sel_needles  # score only selective-needle candidates
+            # else: fall through to legacy guard (will return None -> full scan)
     for s in needles:
         tgs = _trigrams(s)
         if not tgs or any(len(g) < 3 for g in tgs):

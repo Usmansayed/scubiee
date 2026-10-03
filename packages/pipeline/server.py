@@ -541,6 +541,7 @@ class Handler(BaseHTTPRequestHandler):
                     query,
                     top_k=int(data.get("top_k") or 8),
                     root=data.get("path") or None,
+                    lean=bool(data.get("lean")),
                 ),
             )
             return

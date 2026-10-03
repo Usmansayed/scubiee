@@ -25,16 +25,26 @@ from pipeline.branding import MCP_SERVER_NAME
 
 PermissionProfile = Literal["locate", "all"]
 
-# Phase surface (default product MCP tools) — ship locate ladder.
+# Phase surface (default product MCP tools) — Map V3 locate surface.
+# Map V3 (pipeline.map_v3_server) ships ONE semantic `map` tool (configs
+# find|focus|related|graph) plus gate/status for health. The old 8-tool surface
+# (pack_context/expand_context/collect_hot_context/workspace/expand) was retired
+# in the Map V3 migration; those names are listed in RETIRED_MAP_V3_TOOLS so
+# `connect` strips them from any pre-migration config it merges into.
 PHASE_LOCATE_TOOLS: tuple[str, ...] = (
     "gate",
     "map",
+    "status",
+)
+
+# Retired old-surface tool names — actively pruned from existing host configs on
+# connect so a pre-Map-V3 autoApprove/alwaysAllow does not keep advertising dead tools.
+RETIRED_MAP_V3_TOOLS: tuple[str, ...] = (
     "pack_context",
     "expand_context",
     "collect_hot_context",
     "workspace",
     "expand",
-    "status",
 )
 
 # Lab/classic extras (still read-only) — approved when those experiments are enabled.
@@ -160,11 +170,7 @@ for _slug in _EMBEDDED_MCP_SLUGS:
 
 
 def locate_tool_names(*, profile: PermissionProfile = "locate") -> list[str]:
-    """Tools to pre-approve for the default ship MCP surface.
-
-    Lab/classic extras are not auto-approved here — enable via
-    ``CTX_MCP_EXPERIMENT=lab|classic`` and extend host allowlists if needed.
-    """
+    """Tools to pre-approve for the Map V3 MCP surface (gate, map, status)."""
     if profile == "all":
         return list(PHASE_LOCATE_TOOLS) + list(LEGACY_LOCATE_TOOLS)
     return list(PHASE_LOCATE_TOOLS)
@@ -276,6 +282,7 @@ def _prune_stale_scubiee_allowlist_entries(
     stale_tools = {
         *PHASE_LAB_LOCATE_TOOLS,
         *PHASE_CLASSIC_LOCATE_TOOLS,
+        *RETIRED_MAP_V3_TOOLS,
     } - set(PHASE_LOCATE_TOOLS)
     stale_suffixes = {f":{t}" for t in stale_tools}
     stale_claude = {f"mcp__scubiee__{t}" for t in stale_tools} | {

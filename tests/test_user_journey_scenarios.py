@@ -23,11 +23,6 @@ from pipeline.tool_registry import TOOL_MAP
 SHIP_PHASE_TOOLS = {
     "gate",
     "map",
-    "pack_context",
-    "expand_context",
-    "collect_hot_context",
-    "workspace",
-    "expand",
     "status",
 }
 
@@ -74,18 +69,18 @@ def _enroll(repo: Path, project_id: str, monkeypatch, tmp_path: Path) -> None:
 
 
 def _mcp_tools(monkeypatch) -> set[str]:
-    pytest.importorskip("mcp")
-    monkeypatch.delenv("CTX_MCP_SURFACE", raising=False)
-    from pipeline.mcp_locate import create_mcp
+    # Map V3 (pipeline.map_v3_server) ships one fixed tool surface; no
+    # CTX_MCP_SURFACE switching as the retired mcp_locate server had.
+    from pipeline.map_v3_server import TOOLS
 
-    return set(create_mcp(name="test-scenario")._tool_manager._tools)
+    return set(TOOLS)
 
 
 def _instructions(monkeypatch, surface: str = "phase") -> str:
-    from pipeline.mcp_locate import _server_instructions
+    # Map V3 serves a single static instruction block (SERVER_INSTRUCTIONS).
+    from pipeline.map_v3_server import SERVER_INSTRUCTIONS
 
-    monkeypatch.setenv("CTX_MCP_SURFACE", surface)
-    return _server_instructions(surface)
+    return SERVER_INSTRUCTIONS
 
 
 # ---------------------------------------------------------------------------
@@ -129,12 +124,12 @@ def test_s3_spawn_unmanaged_full_tools_and_bind_first_instructions(
     tools = _mcp_tools(monkeypatch)
     assert tools == SHIP_PHASE_TOOLS
 
+    # Map V3 serves one static instruction block (no gate-state-dependent "GATE 0."
+    # / "Pass root=" variant as the old server produced for unmanaged spawns). The
+    # tools stay registered regardless of bind state.
     text = _instructions(monkeypatch)
-    assert text.startswith("GATE 0.") or text.startswith("GATE 0:r")
-    assert len(text) <= 320
-    assert "Pass root=" in text
-    assert "map(query)" not in text
-    assert "USE native" not in text
+    assert "map" in text.lower() and "find" in text.lower() and "focus" in text.lower()
+    assert "BAN native" not in text
 
 
 # ---------------------------------------------------------------------------
@@ -150,10 +145,12 @@ def test_s4_managed_repo_full_tools_and_trajectory(
 
     assert _mcp_tools(monkeypatch) == SHIP_PHASE_TOOLS
 
+    # Map V3 instructions describe the single map tool + its configs (find/focus/
+    # related/graph) and its native-tool partnership — not the old pack_context
+    # "trajectory" text. Same static block for managed and unmanaged repos.
     text = _instructions(monkeypatch)
-    assert "map" in text
-    assert "pack_context" in text.lower()
-    assert "prefer scubiee" in text.lower() or "use scubiee" in text.lower() or "native" in text.lower() or "host Grep" in text or "Scenario routing" in text or "MUST MCP" in text
+    assert "map" in text.lower() and "find" in text.lower() and "focus" in text.lower()
+    assert "native" in text.lower()
     assert "BAN native" not in text
 
 
@@ -171,9 +168,11 @@ def test_s5_init_a_open_b_b_stays_unmanaged(tmp_path: Path, monkeypatch) -> None
     monkeypatch.setenv("CTX_REPO", str(repo_b.resolve()))
     monkeypatch.chdir(repo_b)
 
-    from pipeline.mcp_locate import _is_repo_managed
+    # Enrollment is now resolved from the checkout on disk (project_id._is_enrolled),
+    # not the retired mcp_locate._is_repo_managed. Repo B has no .scubiee/id.json.
+    from pipeline.project_id import _is_enrolled
 
-    assert _is_repo_managed() is False
+    assert _is_enrolled(repo_b) is False
     assert _mcp_tools(monkeypatch) == SHIP_PHASE_TOOLS
 
 
@@ -263,21 +262,13 @@ def test_s10_disconnect_removes_global_and_project_files(
 # Scenario S11: Locate tool returns bind hint when repo not managed at runtime
 # ---------------------------------------------------------------------------
 def test_s11_map_returns_bind_hint_on_unmanaged_runtime(tmp_path: Path, monkeypatch) -> None:
-    """Tools stay registered; runtime returns bind hint without root=."""
-    pytest.importorskip("mcp")
-    repo = _git_repo(tmp_path / "unmanaged")
-    monkeypatch.setenv("CTX_REPO", str(repo.resolve()))
-    monkeypatch.chdir(repo)
-    monkeypatch.setattr("pipeline.mcp_locate._is_repo_managed", lambda: False)
-    monkeypatch.setattr("pipeline.mcp_locate._registry_has_enrollments", lambda: True)
-
-    from pipeline.mcp_locate import create_mcp
-
-    mcp = create_mcp(name="test-block")
-    assert "map" in mcp._tool_manager._tools
-    raw = mcp._tool_manager._tools["map"].fn(query="test query")
-    assert "not managed" in raw.lower()
-    assert "root=" in raw.lower() or "project_id" in raw.lower()
+    """RETIRED: the old mcp_locate map tool self-gated on _is_repo_managed /
+    _registry_has_enrollments and returned a "not managed, pass root=" hint. Map V3
+    (pipeline.map_v3_server) resolves the repo from CTX_REPO/MINI_REPO and talks to the
+    engine directly — it has no managed-state self-gate on the map tool, so this runtime
+    bind-hint behavior was retired with the old surface. See archive/old-mcp-map/.
+    """
+    pytest.skip("mcp_locate map managed-gate retired in Map V3 migration")
 
 
 # ---------------------------------------------------------------------------
@@ -286,20 +277,12 @@ def test_s11_map_returns_bind_hint_on_unmanaged_runtime(tmp_path: Path, monkeypa
 def test_s12_bare_instructions_override_managed_trajectory(
     tmp_path: Path, monkeypatch
 ) -> None:
-    repo = _git_repo(tmp_path / "managed-bare")
-    pid = "ce_scenario_bare1234567890abcdef"
-    _enroll(repo, pid, monkeypatch, tmp_path)
-    monkeypatch.setenv("CTX_MCP_BARE_INSTRUCTIONS", "1")
-
-    text = _instructions(monkeypatch)
-    assert "map(query)" not in text
-    assert (
-        "Recommended: map for meaning" in text
-        or "Recommended: pinpoint" in text
-        or "Use by scenario" in text
-        or "Ladder: map" in text
-        or "use as you prefer" in text
-    )
+    """RETIRED: CTX_MCP_BARE_INSTRUCTIONS stripped the old server's dynamic, managed-aware
+    instruction trajectory. Map V3 (pipeline.map_v3_server) serves ONE static instruction
+    block (SERVER_INSTRUCTIONS) with no bare-mode toggle, so this override behavior was
+    retired with the old surface. See archive/old-mcp-map/.
+    """
+    pytest.skip("CTX_MCP_BARE_INSTRUCTIONS override retired in Map V3 migration")
 
 
 # ---------------------------------------------------------------------------
@@ -322,9 +305,12 @@ def test_s13_rules_and_instructions_do_not_duplicate_bans(
     assert "map" in rule
     assert "map(query)" not in rule
     assert "focus budget" not in rule.lower()
-    assert "Locate trajectory" in instr or "map(query)" in instr or "Scenario routing" in instr
+    # Map V3 instructions describe the single map tool + its configs (find/focus/...),
+    # not the old pack_context/composite "Locate trajectory". The no-duplication contract
+    # is preserved: bans live in the project rule; the MCP instruction block does not repeat
+    # them (no "BAN native"), it just describes the tool.
+    assert "map" in instr.lower() and "find" in instr.lower() and "focus" in instr.lower()
     assert "BAN native" not in instr
-    assert "pack_context" in instr.lower() or "composite" in instr.lower()
 
 
 # ---------------------------------------------------------------------------
@@ -333,29 +319,12 @@ def test_s13_rules_and_instructions_do_not_duplicate_bans(
 def test_s14_live_ide_workspace_beats_stale_ctx_repo_pin(
     tmp_path: Path, monkeypatch
 ) -> None:
-    """User opened repo B in sidebar; stale CTX_REPO still points at A."""
-    from pipeline import mcp_locate
-
-    repo_a = _git_repo(tmp_path / "proj-a")
-    repo_b = _git_repo(tmp_path / "proj-b")
-    pid_a = "ce_scenario_pin1234567890abcdef"
-    _enroll(repo_a, pid_a, monkeypatch, tmp_path)
-
-    junk = tmp_path / "spawn"
-    junk.mkdir()
-    monkeypatch.chdir(junk)
-    monkeypatch.setenv("CTX_REPO", str(repo_a))
-    monkeypatch.setenv("CURSOR_PROJECT_DIR", str(repo_b))
-    for key in (
-        "WORKSPACE_FOLDER_PATHS",
-        "CLAUDE_PROJECT_DIR",
-        "CODEX_WORKSPACE_ROOT",
-        "CTX_PROJECT_ID",
-    ):
-        monkeypatch.delenv(key, raising=False)
-
-    assert mcp_locate._default_repo() == repo_b.resolve()
-    assert mcp_locate._is_repo_managed() is False
+    """RETIRED: the old mcp_locate._default_repo preferred the live IDE host env key
+    (CURSOR_PROJECT_DIR, etc.) over a stale CTX_REPO pin. Map V3 (pipeline.map_v3_server)
+    resolves strictly from CTX_REPO/MINI_REPO and does not fan out over IDE host env keys,
+    so this sidebar-wins resolution was retired with the old surface. See archive/old-mcp-map/.
+    """
+    pytest.skip("mcp_locate IDE host-env repo resolution retired in Map V3 migration")
 
 
 # ---------------------------------------------------------------------------
@@ -433,20 +402,13 @@ def test_s18_project_connect_fans_out_when_enrolled(
 def test_s19_unexpanded_workspace_token_falls_back_to_cwd(
     tmp_path: Path, monkeypatch
 ) -> None:
-    from pipeline import mcp_locate
-
-    ce_home = tmp_path / "ce-home"
-    ce_home.mkdir()
-    monkeypatch.setenv("CTX_HOME", str(ce_home))
-    live = _git_repo(tmp_path / "live-ws")
-    pid = "ce_scenario_token1234567890abcdef"
-    _enroll(live, pid, monkeypatch, tmp_path)
-    monkeypatch.setenv("CTX_REPO", "${workspaceFolder}")
-    monkeypatch.setenv("CURSOR_PROJECT_DIR", "${workspaceFolder}")
-    monkeypatch.delenv("CTX_PROJECT_ID", raising=False)
-
-    assert mcp_locate._default_repo() == live.resolve()
-    assert mcp_locate._is_repo_managed() is True
+    """RETIRED: covered the old mcp_locate._default_repo behavior where a literal,
+    unexpanded "${workspaceFolder}" in CTX_REPO/host env was ignored and resolution fell
+    back to the enrolled cwd. Map V3 (pipeline.map_v3_server) resolves from CTX_REPO/MINI_REPO
+    without the IDE host-env fan-out, so this fallback path was retired with the old surface.
+    See archive/old-mcp-map/.
+    """
+    pytest.skip("mcp_locate workspace-token repo resolution retired in Map V3 migration")
 
 
 # ---------------------------------------------------------------------------

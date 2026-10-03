@@ -1231,7 +1231,8 @@ class RuntimeManager:
             out["warm"] = warm
         return out
 
-    def search(self, query: str, *, top_k: int = 8, root: Path | str | None = None) -> dict[str, Any]:
+    def search(self, query: str, *, top_k: int = 8, root: Path | str | None = None,
+               lean: bool = False) -> dict[str, Any]:
         # Serve published generation; freshness is keeper + publish_engine.
         gate = self._gate(root)
         if gate:
@@ -1360,9 +1361,14 @@ class RuntimeManager:
         return {
             "ok": True,
             "query": q,
+            # `lean` callers (the Map V3 bridge's _search) consume only `hits`;
+            # the keeper block is ~65% of the body (sync_loop.status() ~4.4KB)
+            # and is pure wasted serialize+transfer+parse for them. Omit it (and
+            # the other discarded fields) when lean=True. Default is unchanged so
+            # every existing /v1/search consumer keeps the full contract.
             "generation": self.generation,
-            "keeper": self.sync_loop.status() if self.sync_loop else None,
-            "timings": timings,
+            "keeper": (None if lean else (self.sync_loop.status() if self.sync_loop else None)),
+            "timings": ({} if lean else timings),
             "dense": True,
             "retrieve_mode": timings.get("retrieve_mode") if isinstance(timings, dict) else None,
             "hits": [

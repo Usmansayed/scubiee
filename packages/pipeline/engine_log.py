@@ -163,7 +163,12 @@ def classify_pid(pid: int) -> str:
         return "supervisor"
     if "mcp_bridge" in cmd or "mcp-bridge" in cmd:
         return "mcp_bridge"
-    if "mcp_locate" in cmd or "scubiee-mcp" in cmd or "mcp_server" in cmd:
+    if (
+        "map_v3_server" in cmd
+        or "mcp_locate" in cmd
+        or "scubiee-mcp" in cmd
+        or "mcp_server" in cmd
+    ):
         return "mcp_worker"
     return "other"
 

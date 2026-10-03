@@ -63,16 +63,16 @@ def test_resolve_child_rejects_console_python_pin(monkeypatch, tmp_path: Path) -
     py.write_text("", encoding="utf-8")
     monkeypatch.setenv(
         "CTX_MCP_BRIDGE_SPAWN_JSON",
-        f'["{py.as_posix()}", "-u", "-m", "pipeline.mcp_locate"]',
+        f'["{py.as_posix()}", "-u", "-m", "pipeline.map_v3_server"]',
     )
     monkeypatch.setattr(
         bridge,
         "_windows_mcp_worker_command",
-        lambda: ("pythonw.exe", ["-u", "-m", "pipeline.mcp_locate"]),
+        lambda: ("pythonw.exe", ["-u", "-m", "pipeline.map_v3_server"]),
     )
     cmd, args = bridge.resolve_child_command()
     assert Path(cmd).name.lower() == "pythonw.exe"
-    assert args[-1] == "pipeline.mcp_locate"
+    assert args[-1] == "pipeline.map_v3_server"
 
 
 def test_pids_listening_uses_hidden_run() -> None:

@@ -1,15 +1,16 @@
-"""Backward-compat entry: ``python -m pipeline mcp`` → session-native locate MCP.
+"""Backward-compat entry: ``scubiee-mcp`` / ``python -m pipeline mcp`` → Map V3.
 
-The one shipped Context Engine MCP is ``pipeline.mcp_locate``
-(search / read / status). This module exists so older ``pipeline mcp``
-invocations still land on that surface.
+The one shipped Scubiee MCP map server is now ``pipeline.map_v3_server``
+(one ``map`` tool with configs find|focus|related|graph, plus gate|status).
+This module exists so the ``scubiee-mcp`` console script and older
+``pipeline mcp`` invocations still land on the shipped server.
 """
 
 from __future__ import annotations
 
-from pipeline.mcp_locate import create_mcp, main
+from pipeline.map_v3_server import main
 
-__all__ = ["create_mcp", "main"]
+__all__ = ["main"]
 
 
 if __name__ == "__main__":

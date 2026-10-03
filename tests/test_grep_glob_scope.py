@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from pipeline.capability import expand_brace_glob, grep_scan, path_glob_match
-from pipeline.mcp_locate import _find_repo_files
 
 
 def test_path_glob_match_double_star_nested() -> None:
@@ -75,25 +74,5 @@ def test_glob_and_grep_find_dotenv(tmp_path: Path) -> None:
     (tmp_path / ".env").write_text("SECRET_TOKEN=CeDotEnv9910\n", encoding="utf-8")
     (tmp_path / "plain.env").write_text("SECRET_TOKEN=CeDotEnv9910\n", encoding="utf-8")
 
-    found, truncated = _find_repo_files(tmp_path, ".env", limit=10)
-    assert ".env" in found
-    assert truncated is False
-
-    found_glob, _ = _find_repo_files(tmp_path, "**/.env", limit=10)
-    assert ".env" in found_glob
-
     report = grep_scan(tmp_path, "CeDotEnv9910", glob=".env", max_hits=10)
     assert any(h["path"] == ".env" for h in report["hits"])
-
-
-def test_glob_collects_then_slices_truncated(tmp_path: Path) -> None:
-    nested = tmp_path / "a" / "b"
-    nested.mkdir(parents=True)
-    (tmp_path / "top.md").write_text("x\n", encoding="utf-8")
-    (nested / "deep.md").write_text("x\n", encoding="utf-8")
-    found, truncated = _find_repo_files(tmp_path, "**/*.md", limit=1)
-    assert truncated is True
-    assert len(found) == 1
-    found_all, truncated_all = _find_repo_files(tmp_path, "**/*.md", limit=10)
-    assert truncated_all is False
-    assert set(found_all) == {"top.md", "a/b/deep.md"}

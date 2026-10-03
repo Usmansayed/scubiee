@@ -88,36 +88,18 @@ def test_next_action_ready(monkeypatch, tmp_path: Path) -> None:
 
 
 def test_gate_line_paused_when_globally_paused(monkeypatch) -> None:
-    from pipeline import mcp_locate as ml
+    # Gate-pause resolution moved from the retired mcp_locate tool to the neutral
+    # gate_cli layer in the Map V3 migration. Paused -> "p" is still the contract.
+    from pipeline.gate_cli import gate_line_for_root
 
     monkeypatch.setattr("pipeline.pause_resume.is_paused", lambda: True)
-    assert ml._gate_line() == "p"
+    monkeypatch.setattr("pipeline.pause_resume.is_resuming", lambda: False)
+    assert gate_line_for_root() == "p"
 
 
-def test_locate_tools_blocked_when_paused(monkeypatch, tmp_path: Path) -> None:
-    from pipeline import mcp_locate as ml
-
-    monkeypatch.setattr("pipeline.pause_resume.is_paused", lambda: True)
-    payload = ml._paused_locate_err("map")
-    import json
-
-    data = json.loads(payload)
-    assert data["paused"] is True
-    assert data["ok"] is False
-    assert data["should_use_mcp"] is False
-    assert "native" in data["hint"].lower()
-
-
-def test_backend_error_repo_paused_hint(tmp_path: Path) -> None:
-    from pipeline.mcp_locate import _backend_error
-    import json
-
-    payload = json.loads(
-        _backend_error(
-            "map",
-            tmp_path,
-            {"status": "paused", "error": "paused", "ok": False},
-            hint="",
-        )
-    )
-    assert "activate" in payload["hint"].lower()
+# NOTE: test_locate_tools_blocked_when_paused and test_backend_error_repo_paused_hint
+# asserted the mcp_locate tool's paused/backend-error RESPONSE SHAPES (_paused_locate_err,
+# _backend_error). Those response envelopes were part of the old 8-tool surface and were
+# retired in the Map V3 migration (Map V3 emits its own payloads). The live paused signal
+# is covered by test_gate_line_paused_when_globally_paused above. See
+# archive/old-mcp-map/ for the retired tool and its original tests.

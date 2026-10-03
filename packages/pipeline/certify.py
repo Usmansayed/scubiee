@@ -494,38 +494,47 @@ def certify(
         except Exception as exc:  # noqa: BLE001
             checks.append(_check(f"import_{mod.split('.')[-1]}", False, detail=str(exc)))
 
-    # MCP phase surface exists
+    # Map V3 is the shipped MCP map surface (one `map` tool + gate/status)
     try:
-        from pipeline import mcp_locate
+        from pipeline import map_v3_server
 
-        surface_default = (os.environ.get("CTX_MCP_SURFACE") or "").strip().lower()
-        # Product ships phase; shell may override for legacy trials.
-        phase_ok = "phase" in getattr(mcp_locate, "_SURFACES", set())
+        tools = set(getattr(map_v3_server, "TOOLS", {}))
+        configs = set(getattr(map_v3_server, "CONFIGS", ()))
+        surface_ok = tools == {"map", "gate", "status"} and configs == {
+            "find",
+            "focus",
+            "related",
+            "graph",
+        }
         checks.append(
             _check(
-                "mcp_phase_surface_available",
-                phase_ok,
-                detail=f"active_env={surface_default or 'unset'} default_fn={mcp_locate._active_surface()}",
+                "mcp_map_v3_surface_available",
+                surface_ok,
+                detail=f"tools={sorted(tools)} configs={sorted(configs)}",
             )
         )
     except Exception as exc:  # noqa: BLE001
-        checks.append(_check("mcp_phase_surface_available", False, detail=str(exc)))
+        checks.append(_check("mcp_map_v3_surface_available", False, detail=str(exc)))
 
-    # Install config defaults to phase
+    # Install config launches the Map V3 server (not the retired tool server)
     try:
         from pipeline.mcp_install import server_entry
 
         entry = server_entry(repo)
+        env = entry.get("env") or {}
+        spawn = str(env.get("CTX_MCP_BRIDGE_SPAWN_JSON") or "")
+        cmd_blob = f"{entry.get('command', '')} {entry.get('args', '')} {spawn}"
+        launches_map_v3 = "map_v3_server" in cmd_blob
+        no_legacy = "mcp_locate" not in cmd_blob
         checks.append(
             _check(
-                "install_mcp_phase_env",
-                entry.get("env", {}).get("CTX_MCP_SURFACE") == "phase"
-                and "PYTHONPATH" not in (entry.get("env") or {}),
-                detail=str(entry.get("env", {}).get("CTX_MCP_SURFACE")),
+                "install_mcp_launches_map_v3",
+                launches_map_v3 and no_legacy,
+                detail=f"map_v3={launches_map_v3} legacy_ref={not no_legacy}",
             )
         )
     except Exception as exc:  # noqa: BLE001
-        checks.append(_check("install_mcp_phase_env", False, detail=str(exc)))
+        checks.append(_check("install_mcp_launches_map_v3", False, detail=str(exc)))
 
     # Doctor
     try:

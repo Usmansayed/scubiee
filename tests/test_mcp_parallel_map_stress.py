@@ -10,7 +10,6 @@ Run manually:
 
 from __future__ import annotations
 
-import json
 import os
 import sys
 import time
@@ -22,13 +21,13 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-# Distinct code-vocabulary queries — avoid map_cache duplicate short-circuit.
+# Distinct code-vocabulary queries — avoid any cache duplicate short-circuit.
 PARALLEL_MAP_QUERIES: tuple[str, ...] = (
     "daemon watchdog force_restart health poll CTX_WATCHDOG",
     "session store dedup handle expand already_in_session ledger",
     "merkle incremental sync dirty journal keeper root_probe",
     "embedder CodeRank FastEmbed batch fair scheduler acquire",
-    "mcp_locate map focus phase surface SERVER_INSTRUCTIONS",
+    "map_v3_server tool_map focus find phase SERVER_INSTRUCTIONS",
     "graphify AST extract build dedup entity graph IR",
     "conductor RRF BM25 dense fusion locate search hits",
     "resource manager memory budget admission pause resume sync",
@@ -67,29 +66,41 @@ def _ensure_warm(repo: Path) -> None:
 
 
 def _map_with_retry(
-    map_fn: Callable[..., str],
+    map_fn: Callable[[dict], str],
     query: str,
-    session_id: str,
+    label: str,
 ) -> dict[str, Any]:
-    """One map call; retry once when the payload asks for it."""
-    last: dict[str, Any] = {"ok": False, "error": "no attempt"}
+    """One Map V3 map() call; retry once on a transient failure note.
+
+    Map V3 (pipeline.map_v3_server.tool_map) takes a single dict and returns
+    plain text. A result is "ok" when it comes back as non-empty text that does
+    not start with an error/failure marker.
+    """
+    last: dict[str, Any] = {"ok": False, "error": "no attempt", "label": label}
     for attempt in range(2):
-        raw = map_fn(
-            query=query,
-            k=6,
-            response_format="json",
-            session_id=session_id,
-        )
         try:
-            card = json.loads(raw)
-        except json.JSONDecodeError:
-            card = {"ok": False, "error": "invalid json", "raw": raw[:200]}
+            raw = map_fn({"config": "find", "query": query})
+        except Exception as e:  # noqa: BLE001
+            last = {"ok": False, "error": f"{type(e).__name__}: {e}", "label": label}
+            if attempt == 1:
+                return last
+            time.sleep(0.4)
+            continue
+        text = (raw or "").strip()
+        failed = (not text) or text.startswith("error:") or " failed:" in text.splitlines()[0]
+        card: dict[str, Any] = {
+            "ok": not failed,
+            "tool": "map",
+            "label": label,
+            "chars": len(text),
+            "head": text[:120],
+        }
         last = card
-        if card.get("ok"):
+        if card["ok"]:
             if attempt == 1:
                 card["retried_after_should_retry"] = True
             return card
-        if not card.get("should_retry") or attempt == 1:
+        if attempt == 1:
             return card
         time.sleep(0.4)
     return last
@@ -104,11 +115,9 @@ def _run_parallel_map_burst(
     os.environ["CTX_MCP_SURFACE"] = "phase"
     _ensure_warm(repo)
 
-    pytest.importorskip("mcp")
-    from pipeline.mcp_locate import create_mcp
+    from pipeline.map_v3_server import TOOLS
 
-    mcp = create_mcp(name="parallel-map-stress")
-    map_fn = mcp._tool_manager._tools["map"].fn
+    map_fn = TOOLS["map"]["fn"]
 
     results: list[dict[str, Any]] = []
     with ThreadPoolExecutor(max_workers=workers) as pool:
@@ -145,8 +154,8 @@ def test_parallel_map_burst_no_unhandled_drops(monkeypatch: pytest.MonkeyPatch) 
     )
 
     assert all(r.get("tool") == "map" for r in results)
-    with_cards = sum(1 for r in results if (r.get("cards") or r.get("count", 0)))
-    assert with_cards >= 6, f"expected ≥6 non-empty map results, got {with_cards}"
+    with_output = sum(1 for r in results if (r.get("chars") or 0) > 0)
+    assert with_output >= 6, f"expected ≥6 non-empty map results, got {with_output}"
 
     retried = sum(1 for r in results if r.get("retried_after_should_retry"))
     # Informational — auto-retry path exercised when daemon flickers.
@@ -186,9 +195,7 @@ def main() -> int:
     print(f"parallel_map_x8: {ok}/8 ok in {elapsed_ms:.0f}ms (retried={retried})")
     for i, r in enumerate(results):
         status = "OK" if r.get("ok") else "FAIL"
-        n = r.get("count") or len(r.get("cards") or [])
-        conf = r.get("confidence", "?")
-        print(f"  [{status}] q{i} cards={n} confidence={conf} cached={r.get('cached')}")
+        print(f"  [{status}] q{i} chars={r.get('chars', 0)} head={r.get('head', '')!r}")
         if not r.get("ok"):
             print(f"         error={r.get('error')}")
     alive = _engine_healthy(repo)

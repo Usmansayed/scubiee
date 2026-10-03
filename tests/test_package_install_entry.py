@@ -20,13 +20,13 @@ def test_server_entry_uses_module_invocation_without_source_pythonpath(
     monkeypatch.setattr("shutil.which", lambda _name: None)
     entry = server_entry(tmp_path)
     # Windows always pins pythonw -m pipeline.mcp_bridge (no console shim blinks).
-    # Other platforms fall through to direct mcp_locate when no exe is on PATH.
+    # Other platforms fall through to direct map_v3_server when no exe is on PATH.
     if os.name == "nt":
         assert entry["args"] == ["-u", "-m", "pipeline.mcp_bridge"]
         spawn = json.loads(entry["env"]["CTX_MCP_BRIDGE_SPAWN_JSON"])
-        assert spawn[-3:] == ["-u", "-m", "pipeline.mcp_locate"]
+        assert spawn[-3:] == ["-u", "-m", "pipeline.map_v3_server"]
     else:
-        assert entry["args"] == ["-u", "-m", "pipeline.mcp_locate"]
+        assert entry["args"] == ["-u", "-m", "pipeline.map_v3_server"]
     env = entry["env"]
     assert env["CTX_MCP_SURFACE"] == "phase"
     assert "PYTHONPATH" not in env

@@ -98,7 +98,7 @@ def server_entry(
     """MCP server block that works after `pip install scubiee`.
 
     Prefers ``scubiee-mcp-bridge`` (stable stdio proxy; hot-respawns workers after
-    upgrade). Falls back to ``scubiee-mcp``, then ``python -m pipeline.mcp_locate``.
+    upgrade). Falls back to ``scubiee-mcp``, then ``python -m pipeline.map_v3_server``.
     """
     import shutil
 
@@ -116,8 +116,6 @@ def server_entry(
         "CTX_AUTO_INDEX": "1",
         "CTX_SYNC_INTERVAL_MS": "300000",
         "CTX_REGISTRATION_MODE": reg_mode,
-        "CTX_MCP_SURFACE": "phase",
-        "CTX_MCP_EXPERIMENT": "ship",
         "CTX_TRACE_GRAPHIFY": "1",
         "CTX_MCP_SESSION_ISOLATE": "1",
         "CTX_MCP_BRIDGE_MODE": "shared",
@@ -199,7 +197,7 @@ def server_entry(
         # Worker children also use pythonw (bridge CREATE_NO_WINDOW alone is not enough
         # if the shim itself is a console EXE).
         env["CTX_MCP_BRIDGE_SPAWN_JSON"] = json.dumps(
-            [pyw_s, "-u", "-m", "pipeline.mcp_locate"]
+            [pyw_s, "-u", "-m", "pipeline.map_v3_server"]
         )
         return {
             "command": pyw_s,
@@ -228,7 +226,7 @@ def server_entry(
     # Fallback: raw Python interpreter + module
     return {
         "command": interpreter(),
-        "args": ["-u", "-m", "pipeline.mcp_locate"],
+        "args": ["-u", "-m", "pipeline.map_v3_server"],
         "env": env,
     }
 
@@ -362,7 +360,7 @@ def verify_mcp_json(path: Path, *, server_name: str | None = None) -> dict[str, 
     cmd_l = cmd.lower()
     uses_bridge = "mcp_bridge" in cmd_l or "scubiee-mcp-bridge" in cmd_l
     uses_worker = ("scubiee-mcp" in cmd_l and "bridge" not in cmd_l) or (
-        "pipeline.mcp_locate" in cmd_l
+        "pipeline.map_v3_server" in cmd_l
     )
     env_raw = entry.get("env")
     if not isinstance(env_raw, dict):

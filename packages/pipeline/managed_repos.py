@@ -103,7 +103,7 @@ def find_managed_project_by_path(root: Path | str) -> str | None:
                 # until enrollment has forked identity (prevents silent cross-wipe).
                 try:
                     from pipeline.checkout_identity import _is_copy_of_registry_checkout
-                    from pipeline.mcp_locate import _is_enrolled
+                    from pipeline.project_id import _is_enrolled
 
                     if _is_enrolled(Path(raw)) and _is_copy_of_registry_checkout(
                         Path(raw), str(pid)
@@ -120,7 +120,7 @@ def find_managed_project_by_path(root: Path | str) -> str | None:
 def audit_connect_registry() -> dict[str, Any]:
     """Doctor checks for connected tools + managed registry consistency."""
     from pipeline.connect_state import load_connected_tools
-    from pipeline.mcp_locate import _is_enrolled
+    from pipeline.project_id import _is_enrolled
 
     connected = load_connected_tools()
     registry_rows = iter_registry_checkout_paths()
@@ -221,8 +221,7 @@ def managed_repo_paths(*, enrolled_only: bool = False) -> list[Path]:
         When False (default for connect/disconnect fan-out), trust the global
         registry even if the user deleted the repo-local ``.scubiee/`` folder.
     """
-    from pipeline.mcp_locate import _is_enrolled
-    from pipeline.project_id import load_registry
+    from pipeline.project_id import _is_enrolled, load_registry
     from pipeline.repo_lifecycle import _entry_managed, list_managed_repos
 
     roots: list[Path] = []

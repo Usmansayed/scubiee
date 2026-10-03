@@ -82,22 +82,20 @@ When paused/stopped, follow **`scubiee resume`** (not `wake`).
 
 ---
 
-## MCP tools (default `phase` / ship surface)
+## MCP tools (the `map` surface)
 
 **Full reference:** [MCP tools reference](./mcp-tools-reference.md)
 
 | Tool | Use for |
 |------|---------|
 | `gate` | Tiny managed check at session start (~5 tokens) |
-| `status` | Health + managed flag (`detail=gate` for tiny check) |
-| `map` | Ranked overview of relevant chunks/symbols |
-| `pack_context` | Lean heatmap around a seed (ladder step 2) |
-| `expand_context` | Grow callees/callers from a heatmap node |
-| `collect_hot_context` | Optional batched bodies for hot ids |
-| `workspace` | Session pins / heatmap — `show`, `pin`, `clear` |
-| `expand` | Re-open a stored span by handle |
+| `status` | Engine health one-liner (ok / warm / dense / chunks / version) |
+| `map config=find` | "Where is X?" — ranked locations + the top result's code inline |
+| `map config=focus` | A name's full body + callers/callees + sibling names, one unit |
+| `map config=related` | Given a chunk you have, the related bodies — one call |
+| `map config=graph` | Files → symbols + call edges (no bodies) — orient, then one find/focus |
 
-Exact/name → **host** Grep/Glob/Read. Classic MCP `focus`/`grep`/`glob` are opt-in (`CTX_MCP_EXPERIMENT=classic`).
+Exact/name/path → **host** Grep/Glob/Read; history → `git`. The CLI mirrors the tool: `scubiee map --config find|focus|related|graph`.
 
 ---
 

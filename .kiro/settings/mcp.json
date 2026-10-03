@@ -15,8 +15,6 @@
         "CTX_AUTO_INDEX": "1",
         "CTX_SYNC_INTERVAL_MS": "300000",
         "CTX_REGISTRATION_MODE": "automatic",
-        "CTX_MCP_SURFACE": "phase",
-        "CTX_MCP_EXPERIMENT": "ship",
         "CTX_TRACE_GRAPHIFY": "1",
         "CTX_MCP_SESSION_ISOLATE": "1",
         "CTX_MCP_BRIDGE_MODE": "shared",
@@ -36,10 +34,10 @@
         "CTX_KEEPER_DEFER_WHILE_CLIENTS": "1",
         "CTX_WARM_DEADLINE_MS": "90000",
         "PYTHONUTF8": "1",
-        "CTX_SCUBIEE_BUILD": "0.3.132-1790603196",
+        "CTX_SCUBIEE_BUILD": "0.3.138-1791049136",
         "CTX_REPO": "C:/Users/usman/Downloads/context-engine",
         "CTX_PROJECT_ID": "ce_3536ac8e8e83bb8e4d888db37847729c",
-        "CTX_MCP_BRIDGE_SPAWN_JSON": "[\"C:/Users/usman/AppData/Roaming/uv/tools/scubiee/Scripts/pythonw.exe\", \"-u\", \"-m\", \"pipeline.mcp_locate\"]",
+        "CTX_MCP_BRIDGE_SPAWN_JSON": "[\"C:/Users/usman/AppData/Roaming/uv/tools/scubiee/Scripts/pythonw.exe\", \"-u\", \"-m\", \"pipeline.map_v3_server\"]",
         "CTX_MCP_CLIENT": "kiro"
       },
       "windowsHide": true,
@@ -47,21 +45,11 @@
       "autoApprove": [
         "gate",
         "map",
-        "pack_context",
-        "expand_context",
-        "collect_hot_context",
-        "workspace",
-        "expand",
         "status"
       ],
       "alwaysAllow": [
         "gate",
         "map",
-        "pack_context",
-        "expand_context",
-        "collect_hot_context",
-        "workspace",
-        "expand",
         "status"
       ]
     }

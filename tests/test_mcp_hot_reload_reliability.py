@@ -128,7 +128,7 @@ def test_server_entry_prefers_bridge_when_on_path(tmp_path, monkeypatch):
         assert entry["args"] == ["-u", "-m", "pipeline.mcp_bridge"]
         assert entry.get("windowsHide") is True
         spawn = json.loads(entry["env"]["CTX_MCP_BRIDGE_SPAWN_JSON"])
-        assert spawn[-1] == "pipeline.mcp_locate"
+        assert spawn[-1] == "pipeline.map_v3_server"
         assert "scubiee-mcp" not in Path(spawn[0]).name.lower()
     else:
         assert entry["command"].replace("\\", "/") == fake_bridge.replace("\\", "/")

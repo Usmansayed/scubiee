@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""In-process ship-surface check: gate → map → pack_context → expand_context.
+"""In-process ship-surface check: gate → map (find/focus/related/graph) → status.
 
-No MCP bridge required. Exit 0 only if the default ship tool set is registered
-and the ladder returns ok payloads for this repo.
+No MCP bridge required. Exit 0 only if the Map V3 ship tool set (gate/map/status)
+is registered and the ladder returns ok payloads for this repo.
 """
 
 from __future__ import annotations

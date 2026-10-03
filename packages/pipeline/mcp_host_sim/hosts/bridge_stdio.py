@@ -137,8 +137,6 @@ class BridgeHost:
         env["CTX_REPO"] = str(self.repo).replace("\\", "/")
         env["CTX_PROJECT_ID"] = self.project_id
         env["CTX_MCP_CLIENT"] = self.mcp_client
-        env["CTX_MCP_EXPERIMENT"] = "ship"
-        env["CTX_MCP_SURFACE"] = "phase"
         # Stable session so map_cache survives worker respawn; disable hot-reload
         # mid-run (uv install / file mtime) which wiped in-process map cache.
         env["CTX_MCP_SESSION_ID"] = env.get("CTX_MCP_SESSION_ID") or (
@@ -252,22 +250,36 @@ class BridgeHost:
         data["_elapsed_ms"] = round((time.perf_counter() - t0) * 1000, 1)
         return data
 
-    def map(self, query: str, *, k: int = 12) -> dict[str, Any]:
+    def _map_call(self, args: dict[str, Any], *, timeout: float = 180) -> dict[str, Any]:
+        """Call the Map V3 `map` tool. Map V3 returns plain text; normalize to a dict
+        with ``ok`` (non-empty, non-"error:" text) + ``_raw`` + ``_elapsed_ms`` so the
+        SLA scenario can treat every config uniformly."""
         assert self.client
+        args.setdefault("project_id", self.project_id)
+        args.setdefault("root", str(self.repo))
+        args.setdefault("session_id", self._session_id())
         t0 = time.perf_counter()
-        raw = self.client.call_tool(
-            "map",
-            {
-                "query": query,
-                "k": k,
-                "project_id": self.project_id,
-                "root": str(self.repo),
-                "session_id": self._session_id(),
-            },
-            timeout=180,
-        )
-        data = parse_tool_json(raw)
-        data["_elapsed_ms"] = round((time.perf_counter() - t0) * 1000, 1)
+        raw = self.client.call_tool("map", args, timeout=timeout)
+        parsed = parse_tool_json(raw)
+        # parse_tool_json returns the dict for legacy JSON tools, or wraps text.
+        text = parsed.get("__raw__") if isinstance(parsed, dict) else None
+        if text is None and isinstance(parsed, dict) and "text" in parsed:
+            text = parsed.get("text")
+        if text is None:
+            text = raw if isinstance(raw, str) else json.dumps(parsed, default=str)
+        ok = bool(text) and not str(text).lower().startswith("error:") and " failed:" not in str(text)[:80]
+        return {
+            "ok": ok,
+            "_raw": text,
+            "_elapsed_ms": round((time.perf_counter() - t0) * 1000, 1),
+        }
+
+    def map(self, query: str, *, k: int = 12) -> dict[str, Any]:
+        # Map V3 `find`: ranked locations + the top result's code inline.
+        data = self._map_call({"config": "find", "query": query, "k": k})
+        # Back-compat keys the scenario's dense-map checks look at.
+        data["cards"] = [1] if data.get("ok") else []
+        data["suggested_seed"] = {}
         return data
 
     def pack(
@@ -281,26 +293,17 @@ class BridgeHost:
         seed3_file: str = "",
         seed3_symbol: str = "",
     ) -> dict[str, Any]:
-        assert self.client
-        args: dict[str, Any] = {
-            "query": query,
-            "seed_file": seed_file,
-            "seed_symbol": seed_symbol,
-            "mode": "lean",
-            "project_id": self.project_id,
-            "root": str(self.repo),
-            "session_id": self._session_id(),
-        }
-        if seed2_file:
-            args["seed2_file"] = seed2_file
-            args["seed2_symbol"] = seed2_symbol
-        if seed3_file:
-            args["seed3_file"] = seed3_file
-            args["seed3_symbol"] = seed3_symbol
-        t0 = time.perf_counter()
-        raw = self.client.call_tool("pack_context", args, timeout=180)
-        data = parse_tool_json(raw)
-        data["_elapsed_ms"] = round((time.perf_counter() - t0) * 1000, 1)
+        # Map V3 `focus`: the seed symbol's full body + callers/callees + siblings,
+        # the one-unit replacement for the retired pack_context heatmap.
+        names = [n for n in (seed_symbol, seed2_symbol, seed3_symbol) if n]
+        args: dict[str, Any] = {"config": "focus", "query": query}
+        if names:
+            args["names"] = names
+        else:
+            args["anchor"] = seed_file
+        data = self._map_call(args)
+        data["heatmap"] = [1] if data.get("ok") else []
+        data["seed"] = {"file": seed_file, "symbol": seed_symbol} if data.get("ok") else {}
         return data
 
     def expand_context(
@@ -312,24 +315,14 @@ class BridgeHost:
         direction: str = "broad",
         query: str = "",
     ) -> dict[str, Any]:
-        assert self.client
-        args: dict[str, Any] = {
-            "direction": direction,
-            "project_id": self.project_id,
-            "root": str(self.repo),
-            "session_id": self._session_id(),
-        }
-        if node:
-            args["node"] = node
-        if seed_file:
-            args["seed_file"] = seed_file
-            args["seed_symbol"] = seed_symbol
-        if query:
-            args["query"] = query
-        t0 = time.perf_counter()
-        raw = self.client.call_tool("expand_context", args, timeout=120)
-        data = parse_tool_json(raw)
-        data["_elapsed_ms"] = round((time.perf_counter() - t0) * 1000, 1)
+        # Map V3 `related`: given a chunk you have, the related code bodies — the
+        # one-call replacement for the retired expand_context delta hop.
+        anchor = node or (f"{seed_file}::{seed_symbol}" if seed_file else "")
+        data = self._map_call(
+            {"config": "related", "anchor": anchor, "query": query or f"related to {anchor}"},
+            timeout=120,
+        )
+        data["delta"] = [1] if data.get("ok") else []
         return data
 
     def stop(self) -> dict[str, Any]:

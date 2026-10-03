@@ -120,7 +120,7 @@ def retarget_mcp_file(path: Path, keeper_pythonw: str, build_id: str) -> bool:
             if build_id:
                 env["CTX_SCUBIEE_BUILD"] = build_id
             env["CTX_MCP_BRIDGE_SPAWN_JSON"] = json.dumps(
-                [keeper_pythonw, "-u", "-m", "pipeline.mcp_locate"]
+                [keeper_pythonw, "-u", "-m", "pipeline.map_v3_server"]
             )
             changed = True
     if not changed:

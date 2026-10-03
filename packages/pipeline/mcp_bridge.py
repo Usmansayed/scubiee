@@ -52,7 +52,7 @@ def _windows_mcp_worker_command() -> tuple[str, list[str]]:
     """Always pythonw -m — never the uv console shim (visible conhost blink)."""
     from pipeline.process_job import background_python
 
-    return background_python(), ["-u", "-m", "pipeline.mcp_locate"]
+    return background_python(), ["-u", "-m", "pipeline.map_v3_server"]
 
 
 def _prefer_pythonw(cmd: str) -> str:
@@ -117,11 +117,11 @@ def resolve_child_command() -> tuple[str, list[str]]:
     if mcp_exe:
         return mcp_exe, []
 
-    return sys.executable, ["-u", "-m", "pipeline.mcp_locate"]
+    return sys.executable, ["-u", "-m", "pipeline.map_v3_server"]
 
 
 def spawn_child_process(env: dict[str, str]) -> subprocess.Popen[str]:
-    """Spawn one mcp_locate worker under this bridge (expected tree: Cursor→bridge→locate).
+    """Spawn one map_v3_server worker under this bridge (expected tree: Cursor→bridge→worker).
 
     Nested bridge→bridge / locate→locate rows in Windows process explorers are usually
     parentage display quirks of ``pythonw -m``, not a second tool server (R5/R10).
