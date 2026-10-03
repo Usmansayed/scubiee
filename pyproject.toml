@@ -82,7 +82,7 @@ scubiee-mcp = "pipeline.mcp_server:main"
 scubiee-mcp-bridge = "pipeline.mcp_bridge:main"
 
 [project.urls]
-Homepage = "https://github.com/Usmansayed/new-context-engine"
+Homepage = "https://github.com/Usmansayed/scubiee"
 
 [build-system]
 requires = ["setuptools>=68"]

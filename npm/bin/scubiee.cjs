@@ -11,7 +11,7 @@ if (!python) {
       "  macOS manual install:\n" +
       "    python3 -m venv ~/.context-engine/venv\n" +
       "    source ~/.context-engine/venv/bin/activate\n" +
-      "    pip install \"scubiee[coreml] @ git+https://github.com/Usmansayed/new-context-engine.git@v0.2.5\"\n" +
+      "    pip install \"scubiee[coreml] @ git+https://github.com/Usmansayed/scubiee.git@v0.3.139\"\n" +
       "    python -m pipeline setup"
   );
   process.exit(1);

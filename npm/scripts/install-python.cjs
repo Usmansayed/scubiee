@@ -13,7 +13,7 @@ const PKG = JSON.parse(
 const VENV_DIR = path.join(os.homedir(), ".context-engine", "venv");
 const GIT_ORIGIN =
   process.env.CTX_GIT_ORIGIN ||
-  "https://github.com/Usmansayed/new-context-engine.git";
+  "https://github.com/Usmansayed/scubiee.git";
 
 function pythonArgs(bin, args) {
   if (bin === "py") return ["-3", ...args];

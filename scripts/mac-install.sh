@@ -3,8 +3,8 @@
 set -euo pipefail
 
 VENV="${CTX_VENV:-$HOME/.context-engine/venv}"
-REPO="${CTX_GIT_ORIGIN:-https://github.com/Usmansayed/new-context-engine.git}"
-TAG="${CTX_VERSION:-v0.2.5}"
+REPO="${CTX_GIT_ORIGIN:-https://github.com/Usmansayed/scubiee.git}"
+TAG="${CTX_VERSION:-v0.3.139}"
 
 if ! command -v python3 >/dev/null 2>&1; then
   echo "Install Python 3.10+ first: brew install python@3.12" >&2
