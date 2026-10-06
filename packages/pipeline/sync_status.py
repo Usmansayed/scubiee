@@ -198,11 +198,16 @@ def derive_locate_state(
             "should_retry": True,
             "retry_after_s": 2,
         }
-    if syncing or sync_state in {"syncing", "overlay_ready", "catching_up"}:
+    if syncing or sync_state in {"syncing", "overlay_ready", "catching_up", "needs_full"}:
+        # needs_full means a change-set exceeded the auto-index cap: the current
+        # index still serves (should_use=True) but omits the oversized change,
+        # so flag it stale and point at the one-shot repair rather than looking
+        # fully ready.
+        needs_full_block = sync_state == "needs_full"
         return {
             "state": "ready",
-            "reason": "syncing_stale_ok",
-            "repair": [],
+            "reason": "needs_full_stale_ok" if needs_full_block else "syncing_stale_ok",
+            "repair": ["scubiee index . --force"] if needs_full_block else [],
             "should_use": True,
             "should_retry": False,
             "retry_after_s": 0,

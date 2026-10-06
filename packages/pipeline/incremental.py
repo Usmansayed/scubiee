@@ -836,11 +836,18 @@ def incremental_sync(
     if discover_newcomers and not force_files:
         from pipeline.merkle import SyncDiff, root_hash as _rh
 
+        # ``collect_index_relpaths`` yields posix/original-case keys, while
+        # ``old`` (load_merkle) holds canonical keys (normcase -> backslash +
+        # lowercase on Windows). Subtracting the raw sets flags EVERY indexed
+        # file as a newcomer on Windows, which doubles the chunk count and
+        # trips the auto-full-index guard so sync publishes nothing. Compare
+        # on the canonical key so only genuinely new files survive.
         newcomers = sorted(
-            collect_index_relpaths(
+            p
+            for p in collect_index_relpaths(
                 root, fast=bool(meta.get("fast")), fast_roots=meta.get("fast_roots")
             )
-            - set(old)
+            if canonical_relpath(p) not in old
         )
         if newcomers:
             added = sorted(set(report.diff.added) | set(newcomers))
@@ -1093,6 +1100,33 @@ def incremental_sync(
                         meta["graph_pending"] = left
                     else:
                         meta.pop("graph_pending", None)
+
+        # Unconditional graph_pending hygiene (BUG-3). The per-branch prune above
+        # only clears ghosts on the healthy "graph.json present + no exception"
+        # path: a full rebuild (graph.json missing) leaves graph_pruned empty, and
+        # a raising patch_and_save_graph skips the prune else-block, so a deleted
+        # file could linger in graph_pending forever. Mixed path forms (abs + rel
+        # or stray case) also accumulated as distinct entries. Normalize to posix
+        # repo-relative keys, drop anything whose file no longer exists, and dedup.
+        if meta.get("graph_pending"):
+            seen: set[str] = set()
+            kept: list[str] = []
+            for p in meta.get("graph_pending") or []:
+                rel = str(p).replace("\\", "/")
+                root_posix = root.as_posix().rstrip("/") + "/"
+                if rel.lower().startswith(root_posix.lower()):
+                    rel = rel[len(root_posix):]
+                rel = rel.strip("/")
+                if not rel or rel in seen:
+                    continue
+                if not (root / rel).is_file():
+                    continue  # ghost: file gone, drop it
+                seen.add(rel)
+                kept.append(rel)
+            if kept:
+                meta["graph_pending"] = sorted(kept)
+            else:
+                meta.pop("graph_pending", None)
         stages["graph_ms"] = (time.perf_counter() - t_graph) * 1000
 
         # A file Merkle diff decides what to parse. A chunk Merkle diff decides

@@ -1682,6 +1682,12 @@ class BackgroundSyncLoop:
         payload["probe"] = probe_meta
         payload["reason"] = reason
         self.last_result = payload
+        # Oversize refusal on the interval path must raise the needs_full flag
+        # like the hot/bulk paths do; otherwise status() only sees it via the
+        # transient last_sync.strategy and nothing escalates to a reindex.
+        if payload.get("strategy") == "explicit_full_index_required":
+            self.needs_full = True
+            payload["needs_full"] = True
         if result.refreshed:
             print(
                 f"[keeper] refreshed {len(result.files)} files in {result.ms:.0f}ms",

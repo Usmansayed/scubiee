@@ -1468,7 +1468,13 @@ class RuntimeManager:
         repo = Path(root).resolve() if root else (self.repo or Path.cwd())
         t0 = time.perf_counter()
         report = grep_scan(repo, pattern, glob=glob, max_hits=max_hits)
-        return {
+        # Loud incompleteness: a scan that ran out of budget before finishing the
+        # tree must NEVER look like "no matches". When complete=False and nothing
+        # was found, say so explicitly and tell the caller how to recover — an
+        # agent that reads count=0 as absence will reason forward from a false
+        # negative (the BUG-6 failure mode).
+        complete = bool(report.get("complete", True))
+        out: dict[str, Any] = {
             "ok": True,
             "pattern": pattern,
             "glob": glob,
@@ -1478,7 +1484,20 @@ class RuntimeManager:
             "truncated": report["truncated"],
             "has_more": report["has_more"],
             "max_hits": report["max_hits"],
+            "complete": complete,
+            "backend": report.get("backend"),
         }
+        if not complete:
+            reason = report.get("incomplete_reason") or "scan_budget"
+            out["incomplete"] = True
+            out["incomplete_reason"] = reason
+            out["note"] = (
+                "Search did not finish scanning the repository "
+                f"({reason}); count={report['count']} is a lower bound, NOT proof "
+                "the pattern is absent. Narrow the search with a `glob` "
+                "(e.g. 'packages/**/*.py' or 'src/**') and retry."
+            )
+        return out
 
     def outline(self, path: str, *, root: Path | str | None = None) -> dict[str, Any]:
         gate = self._gate(root)

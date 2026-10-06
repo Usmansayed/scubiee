@@ -219,6 +219,45 @@ def cmd_index(args: argparse.Namespace) -> int:
     out = stats.__dict__.copy()
     out["project_id"] = reg.project_id
     out["registered"] = True
+
+    # Engine handoff (BUG-4): a forced reindex rewrites the store under any
+    # engine that was serving this repo, so the live binder is now stale and the
+    # process may have been cycled. Explicitly ensure a serving engine on the
+    # fresh index instead of relying on the watchdog — which is demand-gated
+    # (won't restart a ghost engine when no client is attached) and crash-loop
+    # paused, exactly the state that left the engine DOWN after `index --force`.
+    # Non-fatal: the index already succeeded; a handoff hiccup must not fail it.
+    try:
+        from pipeline.daemon import ensure_daemon, is_running
+
+        was_running = is_running()
+        ensured = ensure_daemon(root, spawn_owner="direct", wait_s=90.0)
+        out["engine"] = {
+            "handoff": "ensure_daemon",
+            "was_running": bool(was_running),
+            "ok": bool(ensured.get("ok")),
+        }
+        # If it was already up, it is serving the pre-reindex binder — ask it to
+        # reload the freshly promoted generation so search reflects the rebuild.
+        if was_running and ensured.get("ok"):
+            try:
+                from pipeline.client import EngineClient
+
+                pub = EngineClient().publish(str(root))
+                out["engine"]["republished"] = bool(
+                    isinstance(pub, dict) and pub.get("ok", True)
+                )
+            except Exception as exc:  # noqa: BLE001
+                out["engine"]["republish_error"] = str(exc)
+    except Exception as exc:  # noqa: BLE001
+        out["engine"] = {"handoff": "ensure_daemon", "ok": False, "error": str(exc)}
+        print(
+            f"[index] note: engine handoff failed ({exc}); "
+            "run `scubiee engine start` if search is unavailable.",
+            file=sys.stderr,
+            flush=True,
+        )
+
     if sys.stdout.isatty():
         from pipeline.cli_ui import success, kv
         success("Indexed", detail=f"{out.get('chunks', 0)} chunks")
@@ -778,7 +817,21 @@ def cmd_search(args: argparse.Namespace) -> int:
                 file=sys.stderr,
             )
             return 1
-        raise
+        # Any other failure (e.g. the local engine refusing because the repo has
+        # no published index yet) must present a clean, actionable message rather
+        # than dumping an uncaught traceback at the user.
+        msg = str(exc)
+        low = msg.lower()
+        if any(s in low for s in ("index publication", "missing", "no index", "not indexed",
+                                   "checksum", "generation", "no such", "empty")):
+            hint = f"Repository is not indexed yet. Run: scubiee init {root}"
+        else:
+            hint = "Run `scubiee doctor` to diagnose, or `scubiee init .` to index this repo."
+        print(
+            json.dumps({"ok": False, "error": msg, "hint": hint, "mode": "local"}, indent=2),
+            file=sys.stderr,
+        )
+        return 1
     ms = (time.perf_counter() - t0) * 1000
     payload = {
         "latency_ms": round(ms, 1),
@@ -2388,13 +2441,13 @@ def main(argv: list[str] | None = None) -> int:
 
     p_map = sub.add_parser(
         "map",
-        help="Map V3 locate (CLI) — the shipped `map` tool: config=find|focus|related|graph",
+        help="Map V3 locate (CLI) — the shipped `map` tool: config=find|focus",
     )
     p_map.add_argument(
         "--config",
-        choices=("find", "focus", "related", "graph"),
+        choices=("find", "focus"),
         default="find",
-        help="find=where is X | focus=a name's code+wiring | related=related bodies | graph=orient",
+        help="find=where is X (also orient wide / related) | focus=a known name's code+wiring",
     )
     p_map.add_argument("query", nargs="?", default="", help="find/graph: short code-vocab intent")
     p_map.add_argument("path", nargs="?", default=".", help="Repo path (default: cwd)")

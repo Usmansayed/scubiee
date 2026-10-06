@@ -1,9 +1,10 @@
 """In-process ship-surface check for the Map V3 MCP server.
 
-Validates the shipped surface — one ``map`` tool with configs
-find|focus|related|graph, plus gate|status — and drives the real ladder
-(gate → map find → focus → graph) through ``pipeline.map_v3_server`` against the
-live engine. No MCP bridge required.
+Validates the shipped surface — one ``map`` tool with configs find|focus, plus
+gate|status — and drives the real ladder (gate → map find → focus → graph-fallback)
+through ``pipeline.map_v3_server`` against the live engine. No MCP bridge required.
+(v0.3.142 narrowed the advertised surface to find|focus; graph/related stay as hidden
+graceful fallbacks.)
 
 Rewritten for the Map V3 migration: the old pack_context/expand_context/
 collect_hot_context tool ladder is retired; those tools no longer ship.
@@ -19,7 +20,9 @@ from typing import Any
 
 # Shipped Map V3 surface.
 SHIP_TOOLS: frozenset[str] = frozenset({"map", "gate", "status"})
-SHIP_CONFIGS: frozenset[str] = frozenset({"find", "focus", "related", "graph"})
+# v0.3.142: advertised surface narrowed to find|focus. graph/related remain as hidden
+# graceful fallbacks (served, not advertised) — see map_v3_server.CONFIGS vs HANDLERS.
+SHIP_CONFIGS: frozenset[str] = frozenset({"find", "focus"})
 # Tools from the retired tool-layer that must NOT ship on Map V3.
 FORBIDDEN_SHIP_TOOLS: frozenset[str] = frozenset(
     {
@@ -148,16 +151,14 @@ def run_ship_ladder(
         if not focus_ok:
             report["errors"].append(f"map focus failed: {focus_text[:240]}")
 
-        # 6. map graph (JSON nodes/edges, no bodies)
+        # 6. dropped config (graph) must DEGRADE GRACEFULLY, not crash — it is folded
+        #    into find in v0.3.142 (hidden fallback). Any usable text is a pass; a bare
+        #    "error:"/traceback is a fail.
         graph_text = str(_call("map", {"config": "graph", "query": query}))
-        try:
-            gj = json.loads(graph_text)
-            graph_ok = "nodes" in gj and "edges" in gj
-        except json.JSONDecodeError:
-            graph_ok = False
-        report["checks"]["map_graph"] = {"ok": graph_ok, "preview": graph_text[:120]}
+        graph_ok = len(graph_text) > 60 and not graph_text.lower().startswith("error")
+        report["checks"]["map_graph_fallback"] = {"ok": graph_ok, "preview": graph_text[:120]}
         if not graph_ok:
-            report["errors"].append(f"map graph failed: {graph_text[:240]}")
+            report["errors"].append(f"graph fallback failed: {graph_text[:240]}")
 
         # 7. unknown config must not crash
         bad_text = str(_call("map", {"config": "nonsense"}))

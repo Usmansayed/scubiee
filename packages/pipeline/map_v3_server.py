@@ -1,10 +1,17 @@
 """MCP stdio bridge: map_v3 — the session-study tool shape.
 
-Four OUTPUT configs on one `map` tool, each returning a COMPLETE unit so the
+TWO OUTPUT configs on one `map` tool, each returning a COMPLETE unit so the
 agent reaches the edit/answer in the fewest calls (sessions showed cost = calls,
 and the two biggest leaks were wiring-trace chains `locate_wire->locate_wire`
 (79x) and locate-then-read round-trips `find->read` (57x)). This surface folds
-wiring INTO the body call and adds a cheap abstract graph.
+wiring INTO the body call.
+
+Surface history: v0.3.142 narrowed the advertised surface from four configs to
+TWO (find|focus). Usage mining showed find+focus = ~92% of real calls; `related`
+was ~2% (near-dead) and `graph` ~5%. Fewer tools = simpler to reason about and to
+explain. The old `related`/`graph` handlers are kept as HIDDEN graceful fallbacks
+(an agent that still passes them is served, not errored) but they are not
+advertised in the tool description, the schema enum, or the server instructions.
 
 Inputs (what you know):
   query          - semantic intent (unknown location)
@@ -13,18 +20,16 @@ Inputs (what you know):
   include_bodies - whether focus returns full source
 
 Outputs (config):
-  find    - ranked locations + clustered bodies (where is X; returns the code)
+  find    - ranked locations + clustered bodies (where is X; returns the code).
+            Also the way to ORIENT in a wide/unknown area (use a broad query) and
+            to pull code related to a chunk you hold (put its names in the query) —
+            the old graph/related jobs folded into one config.
   focus   - ONE unit: clustered bodies + one-hop wiring (callers/callees) +
             sibling symbol names. "Give me the code AND how it's wired, ready to edit."
             Collapses find->read and wire->wire into one call.
-  related - anchor + query: code RELATED to the anchor chunk, filtered by the query,
-            with bodies. "Given this chunk, what else matters for <query>?" One call.
-  graph   - abstract JSON neighborhood: nodes (files -> top-level symbol names) and
-            edges (calls between them), NO bodies. "Show me the shape to decide where
-            to go." One wide, cheap orientation call.
 
-Reuses the validated engine/fs/search/outline/body helpers from map_v2_bridge;
-adds only the new config logic here.
+Reuses the validated engine/fs/search/outline/body helpers from map_v3_helpers;
+adds only the config logic here.
 """
 from __future__ import annotations
 
@@ -46,17 +51,18 @@ PROJECT_ID = mv2.PROJECT_ID
 BUDGET = {"find": 14000, "focus": 14000, "related": 12000, "graph": 6000}
 
 SERVER_INSTRUCTIONS = (
-    "Scubiee map (v3) = semantic code retrieval. ONE tool `map`, config = find | focus | related | "
-    "graph (+ gate/status for health).\n"
-    "- find(query[,names]): ranked locations + the relevant symbols' code inline. Where is X.\n"
-    "- focus(names|anchor[,query]): ONE unit - the symbol's full code + its callers/callees + the "
-    "other symbol names in its file. Edit from this; no follow-up needed.\n"
-    "- related(anchor, query): given a chunk you already have, the code elsewhere that relates to it "
-    "and matches the query, with bodies. One call instead of a grep chain.\n"
-    "- graph(query|anchor): abstract JSON map - files -> top-level symbol names, plus call edges, NO "
-    "bodies. Cheap/wide: use to orient when you don't know where to go, THEN one focus/find.\n"
-    "map is a PARTNER to native Grep/Read: a known literal/path -> native tool. Pick ONE config, act "
-    "on it, STOP. A single-file change needs ONE call."
+    "Scubiee map = semantic code retrieval. ONE tool `map`, config = find | focus "
+    "(+ gate/status for health).\n"
+    "- find(query): you do NOT know where code lives. ONE query, ONE target -> ranked locations with "
+    "the code inline. Also use find to ORIENT in a wide/unknown area (a broad query) and to pull code "
+    "near a chunk you already hold (put its names/intent in the query).\n"
+    "- focus(names|anchor): you DO know the symbol name(s) -> that symbol's full code + its "
+    "callers/callees + sibling symbol names, in ONE unit. Edit from this; no follow-up grep.\n"
+    "DECOMPOSE: a task that needs TWO distinct things is TWO calls, not one bundled query (a broad "
+    "query mixing targets returns only the strongest and drops the other). When you already know a "
+    "name, `focus` it FIRST; do not fold a known-name or structural lookup into a semantic find.\n"
+    "map is a PARTNER to native Grep/Read: a known literal/import/path -> native tool. Act on the "
+    "first good answer and STOP; never re-search what map already returned."
 )
 
 
@@ -371,20 +377,32 @@ def cfg_graph(a: dict) -> str:
 # tool dispatch + JSON-RPC
 # ---------------------------------------------------------------------------
 
-HANDLERS = {"find": cfg_find, "focus": cfg_focus, "related": cfg_related, "graph": cfg_graph}
-CONFIGS = tuple(HANDLERS)
+# CONFIGS = the ADVERTISED surface (schema enum, instructions, docs): find|focus only.
+# HANDLERS = every handler that can still be SERVED. `related`/`graph` are kept as
+# HIDDEN graceful fallbacks (v0.3.142 narrowed the surface to two) so a client/agent
+# that still sends them is served + nudged toward find/focus, never hard-errored.
+CONFIGS = ("find", "focus")
+_HIDDEN_CONFIGS = {"related": cfg_related, "graph": cfg_graph}
+HANDLERS = {"find": cfg_find, "focus": cfg_focus, **_HIDDEN_CONFIGS}
 
 
 def tool_map(a: dict) -> str:
     cfg = str(a.get("config") or "find").strip().lower()
     try:
+        if cfg in ("find", "focus"):
+            return HANDLERS[cfg](a)
+        # Hidden/retired configs degrade gracefully to the two-config surface.
+        if cfg in ("graph",):
+            return ("note: this build advertises config=find|focus only; 'graph' is folded into a "
+                    "broad find. Serving via find.\n") + cfg_find(a)
+        if cfg in ("related",):
+            return ("note: this build advertises config=find|focus only; 'related' is folded into "
+                    "find (put the anchor's names in the query). Serving via find.\n") + cfg_find(a)
         if cfg in ("view", "open", "outline"):
-            return "note: map_v3 configs are find|focus|related|graph. For code use focus/find.\n" + cfg_find(a)
+            return "note: configs are find|focus. For code use find/focus.\n" + cfg_find(a)
         if cfg in ("refs", "around"):
             return "note: wiring is folded into `focus`. Use config=focus names=[...].\n" + cfg_focus(a)
-        if cfg not in HANDLERS:
-            return f"error: config must be one of {', '.join(CONFIGS)}"
-        return HANDLERS[cfg](a)
+        return f"error: config must be one of {', '.join(CONFIGS)}"
     except Exception as e:  # noqa: BLE001
         return f"map {cfg} failed: {type(e).__name__}: {e}"
 
@@ -399,15 +417,14 @@ def tool_status(_a: dict) -> str:
 
 TOOLS = {
     "map": {"fn": tool_map,
-            "description": ("Semantic code retrieval. config=find|focus|related|graph. "
-                            "find: where is X + code. focus: a symbol's code + callers/callees + "
-                            "siblings in one unit. related: given an anchor chunk + query, the "
-                            "related code with bodies. graph: abstract JSON map (files->symbol "
-                            "names + call edges, no bodies) to orient. Partner to native Grep/Read."),
+            "description": ("Semantic code retrieval. config=find|focus. "
+                            "find: where is X + code (also to orient a wide area with a broad query, "
+                            "and to pull code near a chunk you hold). focus: a known symbol's code + "
+                            "callers/callees + siblings in one unit. Partner to native Grep/Read."),
             "schema": {"type": "object", "properties": {
                 "config": {"type": "string", "enum": list(CONFIGS)},
-                "query": {"type": "string", "description": "semantic intent (find/related/graph)"},
-                "anchor": {"type": "string", "description": "a chunk you have: file::symbol | file:line (focus/related/graph)"},
+                "query": {"type": "string", "description": "semantic intent (find)"},
+                "anchor": {"type": "string", "description": "a chunk you have: file::symbol | file:line (focus)"},
                 "names": {"type": "array", "items": {"type": "string"}, "description": "exact identifiers (find/focus)"},
                 "include_bodies": {"type": "boolean", "description": "focus returns full source (default true)"},
                 "scope": {"type": "string", "description": "code|tests|docs|all (default code)"},

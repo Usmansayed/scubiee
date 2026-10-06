@@ -144,6 +144,16 @@ def path_glob_match(rel: str, glob_pat: str) -> bool:
 def iter_glob_files(root: Path, glob_pat: str = "**/*") -> list[str]:
     """Repo-relative files matching ``glob_pat``, skipping junk dirs."""
     root = root.resolve()
+    # Pre-load .scubieeignore rules once so grep honors user-ignored trees.
+    # Passing ``root`` into is_junk_rel per-call would reload the ignore file for
+    # every file; load the rules once and reuse (same pattern as merkle scan).
+    try:
+        from pipeline.ignore import load_scubiee_ignore, should_index_rel
+
+        _rules = load_scubiee_ignore(root)
+    except Exception:  # noqa: BLE001
+        _rules = None
+        should_index_rel = None  # type: ignore[assignment]
     out: list[str] = []
     for dirpath, dirnames, filenames in os_walk_safe(root):
         dirnames[:] = [d for d in dirnames if not _should_skip_glob_dir(d, glob_pat)]
@@ -153,12 +163,34 @@ def iter_glob_files(root: Path, glob_pat: str = "**/*") -> list[str]:
                 rel = p.relative_to(root).as_posix()
             except ValueError:
                 continue
-            if is_junk_rel(rel):
+            # Builtin junk always skipped; user .scubieeignore honored when rules
+            # loaded (keeps grep's walked set aligned with what gets indexed, so a
+            # large user-ignored tree can't exhaust the scan budget and mask real
+            # hits elsewhere — see BUG-6).
+            if _rules is not None and should_index_rel is not None:
+                if not should_index_rel(root, rel, rules=_rules):
+                    continue
+            elif is_junk_rel(rel):
                 continue
             if not path_glob_match(rel, glob_pat):
                 continue
             out.append(rel)
-    return sorted(out)
+    # Scan source roots first. A plain sorted() walk put bulk/doc/vendor trees
+    # (early alphabet) ahead of packages/ scripts/ tests/, so on a large repo the
+    # line/time budget was spent before reaching real code — grep returned a
+    # false-empty for symbols that exist (BUG-6). Order by (not-a-source-root,
+    # path) so indexable code is always within budget; ties stay deterministic.
+    try:
+        from pipeline.ignore import INDEX_WRITE_HINT_ROOTS
+
+        hint_roots = INDEX_WRITE_HINT_ROOTS
+    except Exception:  # noqa: BLE001
+        hint_roots = ("packages/", "src/", "scripts/", "tests/", "lib/", "app/")
+
+    def _priority(rel: str) -> tuple[int, str]:
+        return (0 if rel.startswith(hint_roots) else 1, rel)
+
+    return sorted(out, key=_priority)
 
 
 def _module_doc(source: str) -> str:
@@ -464,6 +496,97 @@ class CapabilityIndex:
         return (hits[0].score / (hits[1].score + 1e-9)) >= 1.12
 
 
+_RG_CACHE: list[str | None] = []
+_RG_EXCLUDE_CACHE: list[tuple[str, ...]] = []
+
+
+def _rg_exclude_dirs() -> tuple[str, ...]:
+    """Directory names rg must exclude to match the Python walker's scope.
+
+    Reuses the shared builtin ignore set (``.git``, ``.scubiee``, ``node_modules``,
+    ``.ab_workspaces``, ``.worktrees``, ``dist``, caches, …) so a nested gitignore
+    in a copied repo can't leak harness clones into results.
+    """
+    if _RG_EXCLUDE_CACHE:
+        return _RG_EXCLUDE_CACHE[0]
+    dirs: set[str] = {".git", ".scubiee"}
+    try:
+        from pipeline.ignore import BUILTIN_IGNORE_DIRS
+
+        dirs |= set(BUILTIN_IGNORE_DIRS)
+    except Exception:  # noqa: BLE001
+        dirs |= {"node_modules", "dist", "build", ".ab_workspaces", ".worktrees"}
+    result = tuple(sorted(dirs))
+    _RG_EXCLUDE_CACHE.append(result)
+    return result
+
+
+def _resolve_ripgrep() -> str | None:
+    """Locate a ripgrep binary, cached across calls.
+
+    ripgrep is the de-facto standard for code search (gitignore-aware, binary-
+    skipping, parallel I/O, ~10x grep); the pure-Python fallback is slow and
+    budget-truncates on large repos (BUG-6). ``rg`` is almost always already on
+    disk — bundled with VS Code / Kiro / Cursor — but not on PATH, so a plain
+    ``shutil.which`` misses it and the engine silently drops to the slow scan.
+    Resolve in order: explicit env override, PATH, then editor-bundled copies.
+    """
+    if _RG_CACHE:
+        return _RG_CACHE[0]
+    import shutil
+
+    found: str | None = None
+    # 1) Explicit override wins (ops / tests / custom installs).
+    for env_key in ("SCUBIEE_RG_PATH", "CTX_RG_PATH"):
+        cand = os.environ.get(env_key)
+        if cand and Path(cand).is_file():
+            found = cand
+            break
+    # 2) PATH.
+    if not found:
+        found = shutil.which("rg")
+    # 3) Editor-bundled ripgrep (@vscode/ripgrep). These ship with every modern
+    #    code editor; reuse them rather than adding a packaging dependency.
+    if not found:
+        exe = "rg.exe" if os.name == "nt" else "rg"
+        roots: list[Path] = []
+        if os.name == "nt":
+            for base_env in ("LOCALAPPDATA", "PROGRAMFILES", "PROGRAMFILES(X86)"):
+                base = os.environ.get(base_env)
+                if base:
+                    roots.append(Path(base) / "Programs")
+                    roots.append(Path(base))
+        else:
+            home = Path.home()
+            roots += [
+                home / ".vscode",
+                home / ".vscode-server",
+                Path("/usr/share"),
+                Path("/opt"),
+                Path("/Applications"),
+            ]
+        # @vscode/ripgrep (and ripgrep-universal) put the binary under bin/.
+        patterns = (
+            f"**/@vscode/ripgrep*/bin/{exe}",
+            f"**/node_modules/*ripgrep*/**/{exe}",
+        )
+        for base in roots:
+            if found:
+                break
+            try:
+                if not base.is_dir():
+                    continue
+                for pat in patterns:
+                    match = next(base.glob(pat), None)
+                    if match and match.is_file():
+                        found = str(match)
+                        break
+            except OSError:
+                continue
+    _RG_CACHE.append(found)
+    return found
+
+
 def _grep_via_rg(
     root: Path,
     pattern: str,
@@ -472,10 +595,9 @@ def _grep_via_rg(
     max_hits: int,
 ) -> dict[str, Any] | None:
     """Fast path via ripgrep when available (native-like speed and glob semantics)."""
-    import shutil
     import subprocess
 
-    rg = shutil.which("rg")
+    rg = _resolve_ripgrep()
     if not rg:
         return None
     glob_pat = (glob or "**/*").replace("\\", "/").strip() or "**/*"
@@ -486,15 +608,31 @@ def _grep_via_rg(
         "--line-number",
         "--no-heading",
         "--color=never",
-        "--hidden",
+        # NOTE: no --hidden. rg's default respects .gitignore (which already
+        # drops .ab_workspaces / dist / etc.) and skips hidden dirs — exactly the
+        # traversal pruning we want. Adding --hidden made rg descend into the
+        # 435k-file .ab_workspaces harness tree and time out even with excludes,
+        # because include/exclude globs are matched per-path, not pruned early.
+        # Match the Python fallback's 2MB per-file skip; binaries auto-skipped.
+        "--max-filesize",
+        "2M",
         "--max-count",
         str(cap + 1),
-        "-e",
-        pattern,
-        "--glob",
-        glob_pat,
-        ".",
     ]
+    # Belt-and-suspenders: pin the builtin-ignored dirs as excludes too, so a
+    # nested .gitignore inside a copied repo can't leak harness clones in.
+    for _d in _rg_exclude_dirs():
+        args += ["--glob", f"!{_d}/**"]
+    args += ["-e", pattern]
+    # Only pass a non-trivial glob as an include filter; a bare "**/*" is a
+    # no-op include that forces per-path matching across the whole tree.
+    if glob_pat not in ("**/*", "**", "*"):
+        args += ["--glob", glob_pat]
+    # Honor .scubieeignore so rg and the Python fallback agree on scope.
+    scubiee_ignore = root / ".scubieeignore"
+    if scubiee_ignore.is_file():
+        args += ["--ignore-file", str(scubiee_ignore)]
+    args.append(".")
     try:
         proc = subprocess.run(
             args,
@@ -504,7 +642,22 @@ def _grep_via_rg(
             cwd=str(root.resolve()),
             check=False,
         )
-    except (OSError, subprocess.TimeoutExpired):
+    except subprocess.TimeoutExpired:
+        # rg itself ran out of time. Do NOT fall through to the slower Python
+        # scan (it will only truncate too) and do NOT pretend the result is
+        # empty: report an explicit incomplete so the caller can narrow scope.
+        return {
+            "hits": [],
+            "truncated": True,
+            "has_more": True,
+            "complete": False,
+            "incomplete_reason": "timeout",
+            "glob": glob_pat,
+            "max_hits": cap,
+            "count": 0,
+            "backend": "rg",
+        }
+    except OSError:
         return None
     if proc.returncode not in (0, 1):
         return None
@@ -540,6 +693,9 @@ def _grep_via_rg(
         "hits": hits,
         "truncated": truncated,
         "has_more": truncated,
+        # rg scanned the whole (filtered) tree; truncation here only means the
+        # hit cap was reached, which is a complete-enough answer, not a failure.
+        "complete": True,
         "glob": glob_pat,
         "max_hits": cap,
         "count": len(hits),
@@ -571,19 +727,31 @@ def grep_scan(
         rx = re.compile(re.escape(pattern))
     hits: list[dict[str, Any]] = []
     truncated = False
+    budget_exhausted = False  # deadline/line-cap fired before the tree finished
     lines_scanned = 0
     for rel in iter_glob_files(root, glob_pat):
         if _time.monotonic() > deadline:
             truncated = True
+            budget_exhausted = True
             break
         path = root / rel
+        # Stat BEFORE reading: a multi-GB binary (model weights, .onnx/.gguf,
+        # dll/zip) must not be slurped into memory just to be size-rejected a
+        # line later. Reading them whole burned the scan deadline and returned a
+        # false-empty result (BUG-6). Skip oversize files by stat, and sniff only
+        # the first 8KB for a NUL to drop binaries cheaply.
         try:
-            raw = path.read_bytes()
+            if path.stat().st_size > 2_000_000:
+                continue
         except OSError:
             continue
-        if len(raw) > 2_000_000:
-            continue
-        if b"\0" in raw[:8192]:
+        try:
+            with path.open("rb") as fh:
+                head = fh.read(8192)
+                if b"\0" in head:
+                    continue
+                raw = head + fh.read()
+        except OSError:
             continue
         try:
             lines = raw.decode("utf-8", errors="replace").splitlines()
@@ -593,14 +761,16 @@ def grep_scan(
             lines_scanned += 1
             if lines_scanned > max_lines:
                 truncated = True
+                budget_exhausted = True
                 break
             if _time.monotonic() > deadline:
                 truncated = True
+                budget_exhausted = True
                 break
             if not rx.search(line):
                 continue
             if len(hits) >= cap:
-                truncated = True
+                truncated = True  # hit cap: more matches exist, scan was complete
                 break
             hits.append(
                 {
@@ -616,13 +786,19 @@ def grep_scan(
         "hits": hits,
         "truncated": truncated,
         "has_more": truncated,
+        # complete=False only when the scan budget (deadline/line-cap) fired
+        # before the whole tree was examined — then count=0 means "did not
+        # finish looking", NOT "pattern absent". Hitting the hit-cap is still a
+        # complete scan (more matches exist, but we looked everywhere needed).
+        "complete": not budget_exhausted,
         "glob": glob_pat,
         "max_hits": cap,
         "count": len(hits),
         "backend": "python",
     }
-    if truncated and not hits:
-        out["scan_incomplete"] = True
+    if budget_exhausted:
+        out["incomplete_reason"] = "scan_budget"
+        out["scan_incomplete"] = True  # kept for back-compat with older callers
     return out
 
 

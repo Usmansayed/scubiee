@@ -27,7 +27,7 @@ PermissionProfile = Literal["locate", "all"]
 
 # Phase surface (default product MCP tools) — Map V3 locate surface.
 # Map V3 (pipeline.map_v3_server) ships ONE semantic `map` tool (configs
-# find|focus|related|graph) plus gate/status for health. The old 8-tool surface
+# find|focus; graph/related are hidden fallbacks) plus gate/status for health. The old 8-tool surface
 # (pack_context/expand_context/collect_hot_context/workspace/expand) was retired
 # in the Map V3 migration; those names are listed in RETIRED_MAP_V3_TOOLS so
 # `connect` strips them from any pre-migration config it merges into.

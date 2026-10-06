@@ -41,17 +41,19 @@ def seed_specs_from_args(
         (seed3_file, seed3_symbol, seed3_line),
     )
     out: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, int]] = set()
     for file, symbol, line in slots:
         f = str(file or "").replace("\\", "/").strip()
         if not f:
             continue
-        out.append(
-            {
-                "file": f,
-                "symbol": str(symbol or "").strip(),
-                "line": int(line or 0),
-            }
-        )
+        sym = str(symbol or "").strip()
+        ln = int(line or 0)
+        key = (f, sym, ln)
+        if key in seen:
+            # Identical seed passed twice (e.g. seed==seed2) — map it once, not twice.
+            continue
+        seen.add(key)
+        out.append({"file": f, "symbol": sym, "line": ln})
     return out
 
 
