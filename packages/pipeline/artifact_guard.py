@@ -314,3 +314,80 @@ def heal_checksum_mismatch(store: Path, *, root: Path | None = None) -> dict[str
             "repo": str(repo),
             "repair": ["scubiee index .", "scubiee doctor"],
         }
+
+
+# Artifacts that make up a published generation (text side). The FAISS
+# collection lives outside store.base and is promoted separately.
+_PROMOTE_ARTIFACTS = (
+    "chunks.jsonl",
+    "merkle.json",
+    "chunk_merkle.json",
+    "meta.json",
+    "graph.json",
+    "graph_ir.json",
+    "capability_cards.json",
+    "bm25_cache.json",
+)
+
+
+def promote_staged_store(
+    staging: Path,
+    live: Path,
+    *,
+    extra_swap=None,
+) -> dict[str, object]:
+    """Atomically promote a fully-built staging generation onto the live store.
+
+    The engine reads fixed artifact paths directly under ``live`` (there is no
+    pointer to repoint), so a forced reindex that writes in place races a warm
+    binder that holds those files open. Instead we build the whole generation in
+    ``staging`` while the engine keeps serving ``live`` untouched, then flip under
+    a single ``store_write_lock(live)`` + the manifest fence:
+
+        invalidate manifest  (readers fail closed)
+        os.replace each artifact  staging/ -> live/   (per-file atomic)
+        extra_swap()  (e.g. FAISS collection dir rename)  — under the same lock
+        publish manifest  (readers see the new coherent generation)
+
+    ``os.replace`` is atomic per file and already has a Windows retry wrapper
+    (`_atomic_replace`) for the "reader holds dst open" case. The whole promote
+    is a few renames, so the window where readers are fenced is milliseconds,
+    not the minutes of the build+embed phase.
+    """
+    from pipeline.store_lock import store_write_lock
+
+    staging = Path(staging).resolve()
+    live = Path(live).resolve()
+    live.mkdir(parents=True, exist_ok=True)
+
+    staged_names = [n for n in _PROMOTE_ARTIFACTS if (staging / n).is_file()]
+    if not staged_names:
+        return {"ok": False, "reason": "staging_empty", "staging": str(staging)}
+
+    promoted: list[str] = []
+    with store_write_lock(live):
+        # 1) Fence readers: a half-promoted store must never validate.
+        try:
+            (live / MANIFEST_NAME).unlink(missing_ok=True)
+        except OSError:
+            pass
+        # 2) Swap the heavy external artifact (FAISS collection) first, while
+        #    fenced, so text + vectors land as one generation.
+        if extra_swap is not None:
+            extra_swap()
+        # 3) Replace each text artifact atomically.
+        for name in staged_names:
+            _atomic_replace(staging / name, live / name)
+            promoted.append(name)
+        # 4) Reseal publication over the promoted set.
+        files = [live / n for n in promoted]
+        payload = publish_manifest(live, files)
+
+    check = validate_manifest(live)
+    if not check.get("ok"):
+        return {"ok": False, "reason": "post_promote_invalid", "check": check}
+    return {
+        "ok": True,
+        "promoted": promoted,
+        "artifacts": list((payload.get("artifacts") or {}).keys()),
+    }

@@ -547,6 +547,69 @@ class VectorDatabase:
         ]
         self._write_catalog(cat)
 
+    def swap_collection(self, staging_name: str, live_name: str) -> None:
+        """Atomically replace the live collection dir with a staged one.
+
+        Blue/green promote (B3): a staged generation embeds into
+        ``staging_name`` while the engine keeps serving ``live_name``; this flips
+        the directory with a single rename so a forced reindex never leaves the
+        live collection half-written. The old live dir is swapped aside and
+        removed after the rename succeeds, so a crash mid-swap leaves either the
+        old or the new collection intact — never a torn one.
+        """
+        import os as _os
+        import shutil
+
+        src = self._collection_path(_safe_name(staging_name))
+        dst = self._collection_path(_safe_name(live_name))
+        if not (src / "meta.json").exists():
+            raise KeyError(f"staging collection not found: {staging_name}")
+        with self._db_lock:
+            # Rewrite the staged meta to carry the live name so load/cache resolve.
+            try:
+                meta = json.loads((src / "meta.json").read_text(encoding="utf-8"))
+                meta["name"] = _safe_name(live_name)
+                atomic_write_text(src / "meta.json", json.dumps(meta, indent=2) + "\n")
+            except Exception:  # noqa: BLE001
+                pass
+            self._cache.pop(_safe_name(live_name), None)
+            self._cache.pop(_safe_name(staging_name), None)
+            aside = dst.with_name(dst.name + f".old-{_os.getpid()}")
+            if dst.exists():
+                _os.replace(dst, aside)
+            try:
+                _os.replace(src, dst)
+            except OSError:
+                # Roll back the aside swap if the promote rename failed.
+                if aside.exists() and not dst.exists():
+                    _os.replace(aside, dst)
+                raise
+            if aside.exists():
+                shutil.rmtree(aside, ignore_errors=True)
+            # Catalog: drop the staging entry, point live entry at the new dir.
+            cat = self._read_catalog()
+            cols = [
+                c
+                for c in cat.get("collections") or []
+                if c.get("name") not in {_safe_name(staging_name), _safe_name(live_name)}
+            ]
+            try:
+                live_meta = json.loads((dst / "meta.json").read_text(encoding="utf-8"))
+                cols.append(
+                    {
+                        "name": _safe_name(live_name),
+                        "cwd": live_meta.get("cwd", ""),
+                        "dim": live_meta.get("dim"),
+                        "bits": live_meta.get("bits"),
+                        "ntotal": live_meta.get("ntotal"),
+                        "updated_at": live_meta.get("updated_at"),
+                    }
+                )
+            except Exception:  # noqa: BLE001
+                pass
+            cat["collections"] = cols
+            self._write_catalog(cat)
+
     def find_by_cwd(self, cwd: Path | str) -> FaissCollection | None:
         target = str(Path(cwd).resolve())
         for entry in self.list_collections():

@@ -117,6 +117,7 @@ def index_repo(
     compress_mode: str | None = None,
     compress_max_chars: int = 512,
     quiesce: bool = True,
+    staging_collection: str | None = None,
 ) -> IndexStats:
     root = root.resolve()
     from pipeline.incremental import preflight_index_scope
@@ -174,6 +175,10 @@ def index_repo(
 
     require_capabilities(require_semantic=True)
     store = PipelineStore(root, base_dir=base_dir, vdb=vdb)
+    if staging_collection:
+        # Blue/green staged build (B3): embed into a temp collection so the live
+        # one keeps serving until promote. The caller swaps it onto the live name.
+        store.collection_name = staging_collection
     if quiesce:
         try:
             from pipeline.store_lock import quiesce_background_indexing
@@ -541,3 +546,134 @@ def index_repo(
         vector_stats=col.stats(),
         store_dir=str(store.base),
     )
+
+
+def index_repo_staged(
+    root: Path,
+    *,
+    force: bool = True,
+    confirm: bool = False,
+    bits: int = 8,
+    embed_model: str | None = None,
+    fast: bool = False,
+    fast_roots: list[str] | None = None,
+    progress=None,
+    compress_mode: str | None = None,
+    compress_max_chars: int = 512,
+) -> IndexStats:
+    """Zero-downtime forced reindex (blue/green, B2+B3).
+
+    Builds a complete new generation in a sibling staging dir with a temp FAISS
+    collection — the live store and the serving engine are untouched for the
+    whole build+embed phase — then promotes text artifacts + the collection
+    atomically under one store lock + the manifest fence. If anything fails
+    before promote, the live generation is left exactly as it was.
+
+    The caller (cmd_index) still does the engine reload handoff after this
+    returns so the binder picks up the promoted generation.
+    """
+    import shutil
+
+    from pipeline.artifact_guard import promote_staged_store
+    from pipeline.vectordb import VectorDatabase
+
+    root = root.resolve()
+    # Resolve the live store to learn where to promote to.
+    live_store = PipelineStore(root)
+    live_base = live_store.base
+    live_collection = live_store.collection_name
+    vdb = VectorDatabase()  # shared collection root
+
+    staging_base = live_base.parent / f"{live_base.name}.staging-{os.getpid()}"
+    staging_collection = f"{live_collection}__staging_{os.getpid()}"
+    if staging_base.exists():
+        shutil.rmtree(staging_base, ignore_errors=True)
+    staging_base.mkdir(parents=True, exist_ok=True)
+
+    try:
+        stats = index_repo(
+            root,
+            force=force,
+            confirm=confirm,
+            bits=bits,
+            embed_model=embed_model,
+            base_dir=staging_base,
+            vdb=vdb,
+            fast=fast,
+            fast_roots=fast_roots,
+            progress=progress,
+            compress_mode=compress_mode,
+            compress_max_chars=compress_max_chars,
+            quiesce=False,  # we are not writing the live store during the build
+            staging_collection=staging_collection,
+        )
+
+        # The staged meta.json records the TEMP collection name; the live store
+        # must serve under the original name after the swap. Rewrite it in the
+        # staging dir before promote so the promoted meta is self-consistent.
+        staged_meta_path = staging_base / "meta.json"
+        if staged_meta_path.is_file():
+            try:
+                m = json.loads(staged_meta_path.read_text(encoding="utf-8"))
+                if m.get("collection") == staging_collection:
+                    m["collection"] = live_collection
+                    staged_meta_path.write_text(
+                        json.dumps(m, indent=2) + "\n", encoding="utf-8"
+                    )
+            except Exception:  # noqa: BLE001
+                pass
+
+        # Promote: swap the FAISS collection + replace text artifacts as one
+        # fenced generation. The collection swap runs inside promote's lock via
+        # the extra_swap callback so vectors and text land together.
+        def _swap_collection() -> None:
+            vdb.swap_collection(staging_collection, live_collection)
+
+        result = promote_staged_store(
+            staging_base, live_base, extra_swap=_swap_collection
+        )
+        if not result.get("ok"):
+            # Promote failed — drop the staged collection so it does not linger.
+            try:
+                vdb.drop_collection(staging_collection)
+            except Exception:  # noqa: BLE001
+                pass
+            raise RuntimeError(f"staged promote failed: {result}")
+
+        # meta.json records the live collection name; after the swap the live
+        # store serves the promoted collection under its original name.
+        return IndexStats(
+            root=stats.root,
+            added=stats.added,
+            modified=stats.modified,
+            removed=stats.removed,
+            chunks=stats.chunks,
+            embedded=stats.embedded,
+            unchanged=stats.unchanged,
+            vector_stats=stats.vector_stats,
+            store_dir=str(live_base),
+        )
+    finally:
+        # Always clean the staging dir; the collection is either promoted
+        # (renamed away) or dropped above. Retry a few times — graph build
+        # scratch (graphify-out) can still hold a handle for a beat right after
+        # promote, and ignore_errors=True would otherwise leave a stale temp dir.
+        for _attempt in range(5):
+            if not staging_base.exists():
+                break
+            shutil.rmtree(staging_base, ignore_errors=True)
+            if staging_base.exists():
+                time.sleep(0.3)
+        if staging_base.exists():
+            print(
+                f"[index] note: staging dir not fully removed: {staging_base}",
+                file=sys.stderr,
+                flush=True,
+            )
+        # Belt-and-suspenders: if a staged collection survived a mid-promote
+        # failure, drop it so it does not accumulate.
+        try:
+            if vdb.has_collection(staging_collection):
+                vdb.drop_collection(staging_collection)
+        except Exception:  # noqa: BLE001
+            pass

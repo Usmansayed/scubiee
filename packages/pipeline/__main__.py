@@ -186,18 +186,50 @@ def cmd_index(args: argparse.Namespace) -> int:
         return 1
 
     try:
-        from pipeline.indexer import IndexConfirmRequired, IndexDeferred, index_repo
-
-        stats = index_repo(
-            root,
-            force=args.force,
-            bits=args.bits,
-            embed_model=args.model,
-            fast=fast,
-            fast_roots=roots,
-            progress=bar,
-            confirm=bool(getattr(args, "confirm", False)),
+        from pipeline.indexer import (
+            IndexConfirmRequired,
+            IndexDeferred,
+            index_repo,
+            index_repo_staged,
         )
+
+        # Zero-downtime path (B2/B3): if an engine is already serving this repo,
+        # build the new generation in a staging dir + temp collection and promote
+        # atomically, so the live engine never has its store rewritten underneath
+        # it. When nothing is serving, the in-place index is simpler and cheaper.
+        import os as _os
+
+        use_stage = False
+        if _os.environ.get("CTX_INDEX_NO_STAGE", "").strip().lower() not in {"1", "true", "yes"}:
+            try:
+                from pipeline.daemon import is_running as _is_running
+
+                use_stage = bool(_is_running())
+            except Exception:  # noqa: BLE001
+                use_stage = False
+
+        if use_stage:
+            stats = index_repo_staged(
+                root,
+                force=args.force,
+                bits=args.bits,
+                embed_model=args.model,
+                fast=fast,
+                fast_roots=roots,
+                progress=bar,
+                confirm=bool(getattr(args, "confirm", False)),
+            )
+        else:
+            stats = index_repo(
+                root,
+                force=args.force,
+                bits=args.bits,
+                embed_model=args.model,
+                fast=fast,
+                fast_roots=roots,
+                progress=bar,
+                confirm=bool(getattr(args, "confirm", False)),
+            )
     except IndexConfirmRequired as exc:
         bar.fail("Safety pause (not an error)")
         return _fail_confirm(root, exc)

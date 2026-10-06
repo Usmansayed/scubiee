@@ -75,14 +75,26 @@ up, serves the old index during rebuild, switches cleanly) at a fraction of Opti
 builds on primitives (`atomic_write_text`, `publication_manifest`, `store_write_lock`,
 `publish_engine`, `ensure_daemon`) that already exist and are already tested.
 
-### Phased delivery (each independently shippable + verifiable)
-- **B1 (smallest, highest value): `cmd_index` → `ensure_daemon` handoff.** One call after a
-  successful index so the engine is explicitly restored/reloaded. This alone fixes the "engine left
-  DOWN" symptom of BUG-4 with near-zero risk. Ship + verify first.
-- **B2: stage-then-atomic-promote for the text artifacts** (chunks/merkle/meta/graph/graph_ir) via
-  the existing invalidate→replace→publish fence. Removes the torn-store window.
-- **B3: stage + atomic swap for the FAISS collection** (temp collection name, rename under lock).
-  The fiddliest; do last with its own test.
+### Phased delivery — ALL SHIPPED (0.3.143)
+- **B1 ✅ `cmd_index` → `ensure_daemon` handoff.** After a successful index, ensure a serving engine
+  (direct owner) + republish. Fixes the "engine left DOWN" symptom of BUG-4. Shipped in the first
+  0.3.143 commit.
+- **B2 ✅ stage-then-atomic-promote for text artifacts.** `index_repo_staged()` builds the whole
+  generation into `store.base.parent/<name>.staging-<pid>/`; `artifact_guard.promote_staged_store()`
+  flips it under one `store_write_lock(live)` with the invalidate→(swap)→replace→publish fence
+  (`_PROMOTE_ARTIFACTS`). The live store is untouched for the whole build+embed phase.
+- **B3 ✅ stage + atomic swap for the FAISS collection.** The staged build embeds into a temp
+  collection (`<live>__staging_<pid>`); `VectorDatabase.swap_collection()` renames the live dir
+  aside and `os.replace`s the staged dir into place (rollback on failure), run inside promote's lock
+  so text + vectors land as one generation.
+- **Wiring:** `cmd_index` uses the staged path when an engine is already serving (`is_running()`),
+  else the simpler in-place index. Escape hatch: `CTX_INDEX_NO_STAGE=1`.
+
+### Live verification (0.3.143)
+`scubiee index --force` with the engine serving, polled `/health` every 3s for the whole rebuild:
+**up=60, down=0**, `index_usable=true` throughout, grep answered on 28/30 mid-rebuild probes, then
+generation advanced 1→2 (atomic promote) and the engine reloaded (`republished: true`). Before
+B2/B3 the same test showed ~30 consecutive DOWN polls. Zero-downtime forced reindex achieved.
 
 ### Test plan
 - Unit: a staged index writes into `.staging-*`, promote leaves a valid manifest; a crash between
