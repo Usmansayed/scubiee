@@ -368,14 +368,32 @@ def filter_dirty_paths(
     root: Path | str | None,
     paths: Iterable[str],
 ) -> tuple[list[str], list[dict[str, str]]]:
-    """Split dirty paths into kept vs dropped (builtin or scubieeignore)."""
+    """Split dirty paths into kept vs dropped (builtin, scubieeignore, or outside-repo)."""
     rules = load_scubiee_ignore(root)
+    root_res: Path | None = None
+    if root is not None:
+        try:
+            root_res = Path(root).resolve()
+        except (OSError, ValueError):
+            root_res = None
     kept: list[str] = []
     dropped: list[dict[str, str]] = []
     for raw in paths:
         p = str(raw or "").replace("\\", "/").strip()
         if not p:
             continue
+        # Drop absolute paths that resolve OUTSIDE the repo root. A stray
+        # /v1/dirty or an over-eager watcher can mark a sibling/home-dir file;
+        # if it slips through, the sync batch's relative_to(root) raises and the
+        # whole batch fails forever (permanent "not in the subpath" wedge).
+        if root_res is not None:
+            cand = Path(p)
+            if cand.is_absolute():
+                try:
+                    cand.resolve().relative_to(root_res)
+                except (ValueError, OSError):
+                    dropped.append({"path": p, "reason": "outside_repo"})
+                    continue
         if builtin_ignores_rel(p):
             dropped.append({"path": p, "reason": "builtin"})
             continue

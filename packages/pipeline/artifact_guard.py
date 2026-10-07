@@ -224,6 +224,25 @@ def republish_manifest_if_coherent(store: Path) -> dict[str, object]:
                 "chunk_lines": n_lines,
             }
 
+    # graph.json / graph_ir.json must PARSE, not just exist. A truncated or
+    # corrupt-but-present graph (e.g. a kill mid-write) would otherwise pass the
+    # existence+chunk-count coherence check, get a fresh manifest sealed over it,
+    # then crash/hang load_engine's graph parse downstream. Refuse to republish a
+    # torn graph so the caller falls through to a full heal rebuild instead.
+    for _gname in ("graph.json", "graph_ir.json"):
+        _gp = store / _gname
+        if _gp.is_file():
+            try:
+                json.loads(_gp.read_text(encoding="utf-8"))
+            except Exception as exc:  # noqa: BLE001
+                return {
+                    "ok": False,
+                    "republished": False,
+                    "reason": "graph_unparseable",
+                    "artifact": _gname,
+                    "detail": str(exc)[:120],
+                }
+
     files = [store / name for name in required]
     graph_ir = store / "graph_ir.json"
     if graph_ir.is_file():

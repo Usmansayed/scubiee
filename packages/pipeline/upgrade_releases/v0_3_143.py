@@ -1,4 +1,4 @@
-"""Release 0.3.143 — sync freshness + grep correctness hardening."""
+"""Release 0.3.143 — sync freshness + grep correctness + bad-day reliability hardening."""
 
 from __future__ import annotations
 
@@ -38,8 +38,29 @@ from pipeline.upgrade_registry import release
         "orphaned its `<base>.staging-<pid>/` dir + staged collection (the finally "
         "cleanup is skipped on kill); the next index now sweeps any staging whose "
         "owner pid is dead, so they can't accumulate. The live index is never "
-        "touched by a killed staged build (no torn generation). No map surface "
-        "change (still find|focus)."
+        "touched by a killed staged build (no torn generation). (8) CORRUPT-STORE "
+        "RECOVERY: `republish_manifest_if_coherent` used to re-seal the manifest "
+        "over a present-but-corrupt graph.json (it only checked existence + chunk "
+        "count), and `graphify`'s graph loader called `sys.exit(1)` on an "
+        "unparseable graph — on an engine worker/publish thread that `SystemExit` "
+        "wedged `load_engine`, hanging the open. The republish now parses "
+        "graph.json/graph_ir.json before re-sealing (corrupt -> declines, heals "
+        "instead), and the loader raises `RuntimeError` rather than exiting; a "
+        "truncated graph now degrades to a clean mixed-generation refusal with no "
+        "hang. (9) CONCURRENT COLD-START no longer 409s: under a burst of "
+        "simultaneous first requests, the registry read (`_read_json`) could catch "
+        "the file mid atomic-replace and return empty, so admission wrongly reported "
+        "`requires_initialize` (HTTP 409) for a managed, warm repo. The read now "
+        "retries transient OSError/parse failures (mirroring the write-side R11 "
+        "retry); 180 concurrent cold calls return 200 with zero spurious 409s. "
+        "(10) OUT-OF-REPO DIRTY PATH no longer wedges sync: a dirty entry that "
+        "resolved outside the repo root made the keeper's `relative_to(root)` raise "
+        "and fail the entire bulk sub-batch on every tick — a permanent sync stall "
+        "that also blocked every legitimate edit queued behind it. Foreign paths are "
+        "now rejected at ingestion (`filter_dirty_paths`, reason `outside_repo`), "
+        "filtered defensively before parsing, and any such entry already in the "
+        "ledger is completed/drained (not re-queued) so the backlog clears. No map "
+        "surface change (still find|focus)."
     ),
 )
 def v0_3_143() -> None:

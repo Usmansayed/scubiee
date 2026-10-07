@@ -178,20 +178,37 @@ def mint_project_id(root: Path) -> str:
 
 
 def _read_json(path: Path) -> dict[str, Any]:
-    if not path.is_file():
-        return {}
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-        return data if isinstance(data, dict) else {}
-    except (OSError, json.JSONDecodeError) as exc:
-        import sys
+    # Reads retry transient failures that happen WHILE a concurrent writer is
+    # mid-``os.replace`` (R11 hardens the write side; this is the symmetric read
+    # side). On Windows an atomic replace briefly makes the target un-openable
+    # (PermissionError) or a reader can catch the file between unlink/rename
+    # (FileNotFoundError), and a half-swapped file can momentarily fail to parse.
+    # Without this, a concurrent /v1/search burst saw an empty registry and the
+    # repo was wrongly reported ``requires_initialize`` (spurious HTTP 409).
+    last_exc: BaseException | None = None
+    for attempt in range(6):
+        if not path.is_file():
+            # The file may be absent only for the sub-ms replace window. Retry a
+            # few times before concluding it genuinely does not exist.
+            if attempt == 0:
+                return {}
+            time.sleep(0.02 * (2**attempt))
+            if not path.is_file():
+                continue
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            return data if isinstance(data, dict) else {}
+        except (OSError, json.JSONDecodeError) as exc:
+            last_exc = exc
+            time.sleep(0.02 * (2**attempt))
+    import sys
 
-        print(
-            f"{LOG_PREFIX} WARNING: corrupt JSON at {path}: {exc}",
-            file=sys.stderr,
-            flush=True,
-        )
-        return {}
+    print(
+        f"{LOG_PREFIX} WARNING: corrupt JSON at {path}: {last_exc}",
+        file=sys.stderr,
+        flush=True,
+    )
+    return {}
 
 
 def _write_json(path: Path, data: dict[str, Any]) -> None:

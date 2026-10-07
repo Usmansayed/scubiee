@@ -59,11 +59,16 @@ def _load_graph(graph_path: str) -> nx.Graph:
             G.graph["_learning_overlay"] = {}
         return G
     except json.JSONDecodeError as exc:
+        # RAISE, never sys.exit: _load_graph runs inside the long-lived engine
+        # (load_engine -> _build_graph), MCP tools, conductor and trace_lab — not
+        # just a CLI. A sys.exit here raised SystemExit on a worker/publish thread
+        # and left load_engine wedged on a corrupt-but-present graph.json instead
+        # of letting the caller heal (rebuild) or surface a clean error.
         print(f"error: graph.json is corrupted ({exc}). Re-run /graphify to rebuild.", file=sys.stderr)
-        sys.exit(1)
+        raise RuntimeError(f"graph.json is corrupted at {graph_path}: {exc}") from exc
     except (ValueError, FileNotFoundError) as exc:
         print(f"error: {exc}", file=sys.stderr)
-        sys.exit(1)
+        raise RuntimeError(str(exc)) from exc
 
 
 def _communities_from_graph(G: nx.Graph) -> dict[int, list[str]]:
@@ -105,13 +110,14 @@ class _GraphContextCache:
     def _load_entry(self, resolved_path: str, key: tuple[int, int]) -> dict:
         """Build one entry for an already-resolved path and known file key.
 
-        ``_load_graph`` is also used by the CLI, where invalid input terminates
-        the process. A client-supplied ``project_path`` must instead become a
-        tool error, so the shared MCP server can continue serving other graphs.
+        ``_load_graph`` now raises RuntimeError on a bad/corrupt graph (it used to
+        ``sys.exit``). A client-supplied ``project_path`` must become a tool error
+        so the shared MCP server keeps serving other graphs. (SystemExit still
+        caught for safety in case any path re-introduces it.)
         """
         try:
             graph = _load_graph(resolved_path)
-        except SystemExit as exc:
+        except (RuntimeError, SystemExit) as exc:
             raise RuntimeError(f"could not load graph.json at {resolved_path}") from exc
         # Warm the index before exposing the graph so its first query does not
         # pay the expensive build cost.

@@ -1788,6 +1788,45 @@ class BackgroundSyncLoop:
         """
         from pipeline.incremental import incremental_sync
 
+        # Drop non-actionable paths up front and COMPLETE them in the ledger.
+        # A path is non-actionable when it can neither be indexed nor removed:
+        #   - it resolves OUTSIDE the repo root (a stray /v1/dirty, a watcher that
+        #     saw a sibling dir) — incremental_sync's relative_to(root) would have
+        #     raised and failed the whole batch; now _paths_for_files filters it so
+        #     the batch "refreshes nothing" and the OLD code re-queued it forever
+        #     (permanent catching_up wedge that also stalled every path behind it);
+        #   - it is gone from disk AND owns no chunks in the index (nothing to prune).
+        # Completing these drains the ledger instead of looping.
+        root_res = self.repo.resolve()
+
+        def _inside_repo(rel: str) -> bool:
+            cand = Path(rel)
+            try:
+                base = cand if cand.is_absolute() else (self.repo / rel)
+                base.resolve().relative_to(root_res)
+                return True
+            except (ValueError, OSError):
+                return False
+
+        foreign = [p for p in paths if not _inside_repo(p)]
+        in_repo = [p for p in paths if _inside_repo(p)]
+        gone = [p for p in in_repo if not (self.repo / p).is_file()]
+        indexed_gone = self._indexed_subset(gone) if gone else set()
+        # gone + not indexed => nothing to upsert, nothing to remove.
+        drop_now = list(foreign) + [
+            p for p in gone if p.replace("\\", "/") not in indexed_gone
+        ]
+        if drop_now:
+            self.dirty_ledger.complete(drop_now, published=True)
+            print(
+                f"[keeper] bulk drop {len(drop_now)} non-actionable path(s) "
+                f"({len(foreign)} outside-repo, {len(drop_now) - len(foreign)} gone+unindexed)",
+                file=sys.stderr,
+                flush=True,
+            )
+            drop_set = set(drop_now)
+            paths = [p for p in paths if p not in drop_set]
+
         BULK_SUB_BATCH = max(1, int(os.environ.get("CTX_BULK_SUB_BATCH", "50") or "50"))
         total_files = len(paths)
         total_upserted = 0

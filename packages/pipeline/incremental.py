@@ -355,10 +355,24 @@ class IncrementalResult:
 
 
 def _paths_for_files(root: Path, rels: list[str]) -> list[Path]:
-    out = []
+    # Keep only paths that genuinely live INSIDE root. A dirty entry can carry an
+    # absolute path from outside the repo (a stray /v1/dirty, a watcher that saw
+    # a sibling dir, a path that resolved via a symlink). On Windows ``root / r``
+    # with an absolute ``r`` silently discards root and yields the foreign path,
+    # which then exists on disk, enters the batch, and makes ``relative_to(root)``
+    # downstream raise ValueError — poisoning the WHOLE sync batch on every tick
+    # (permanent "not in the subpath" sync-wedge). Drop foreign paths here so one
+    # stray entry cannot stall sync for the real edits behind it.
+    out: list[Path] = []
+    root_res = root.resolve()
     for r in rels:
         p = root / r
-        if p.is_file():
+        try:
+            resolved = p.resolve()
+            resolved.relative_to(root_res)
+        except (ValueError, OSError):
+            continue
+        if resolved.is_file():
             out.append(p)
     return out
 
