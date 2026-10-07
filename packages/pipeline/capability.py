@@ -547,44 +547,76 @@ def _resolve_ripgrep() -> str | None:
         found = shutil.which("rg")
     # 3) Editor-bundled ripgrep (@vscode/ripgrep). These ship with every modern
     #    code editor; reuse them rather than adding a packaging dependency.
+    #
+    #    PERF: the old code globbed ``**/@vscode/ripgrep*/bin/rg`` over whole
+    #    PROGRAMFILES / LOCALAPPDATA trees. When rg is NOT on PATH, that unbounded
+    #    recursive walk took 20s+ on the very first grep (and could run for
+    #    minutes on a large Program Files) — a brutal cold first-response. Instead
+    #    probe the KNOWN install locations directly (sub-ms is_file checks), then
+    #    fall back to a DEPTH-BOUNDED glob under specific editor dirs only. Never
+    #    recurse an entire drive root.
     if not found:
-        exe = "rg.exe" if os.name == "nt" else "rg"
-        roots: list[Path] = []
-        if os.name == "nt":
-            for base_env in ("LOCALAPPDATA", "PROGRAMFILES", "PROGRAMFILES(X86)"):
-                base = os.environ.get(base_env)
-                if base:
-                    roots.append(Path(base) / "Programs")
-                    roots.append(Path(base))
-        else:
-            home = Path.home()
-            roots += [
-                home / ".vscode",
-                home / ".vscode-server",
-                Path("/usr/share"),
-                Path("/opt"),
-                Path("/Applications"),
-            ]
-        # @vscode/ripgrep (and ripgrep-universal) put the binary under bin/.
-        patterns = (
-            f"**/@vscode/ripgrep*/bin/{exe}",
-            f"**/node_modules/*ripgrep*/**/{exe}",
-        )
-        for base in roots:
-            if found:
-                break
-            try:
-                if not base.is_dir():
-                    continue
-                for pat in patterns:
-                    match = next(base.glob(pat), None)
-                    if match and match.is_file():
-                        found = str(match)
-                        break
-            except OSError:
-                continue
+        found = _resolve_editor_ripgrep()
     _RG_CACHE.append(found)
     return found
+
+
+def _resolve_editor_ripgrep() -> str | None:
+    """Find a code-editor-bundled rg without walking whole drive roots."""
+    exe = "rg.exe" if os.name == "nt" else "rg"
+    # app subpaths where editors place @vscode/ripgrep (and the kiro-agent /
+    # win32 variants). Checked as direct is_file() — effectively instant.
+    app_subpaths = (
+        f"resources/app/node_modules/@vscode/ripgrep/bin/{exe}",
+        f"resources/app/node_modules.asar.unpacked/@vscode/ripgrep/bin/{exe}",
+        f"resources/app/node_modules/@vscode/ripgrep-win32-x64/bin/{exe}",
+    )
+    editor_dirs: list[Path] = []
+    if os.name == "nt":
+        la = os.environ.get("LOCALAPPDATA")
+        pf = os.environ.get("PROGRAMFILES")
+        for base in (la, pf):
+            if not base:
+                continue
+            progs = Path(base) / "Programs"
+            for name in ("Microsoft VS Code", "Microsoft VS Code Insiders", "cursor", "Kiro", "Windsurf"):
+                editor_dirs.append(progs / name)
+                editor_dirs.append(Path(base) / name)
+    else:
+        home = Path.home()
+        editor_dirs += [
+            home / ".vscode",
+            home / ".vscode-server",
+            Path("/usr/share/code"),
+            Path("/opt/visual-studio-code"),
+            Path("/Applications/Visual Studio Code.app/Contents/Resources"),
+            Path("/Applications/Cursor.app/Contents/Resources"),
+        ]
+    # Pass 1: direct known paths (sub-ms each).
+    for d in editor_dirs:
+        for sub in app_subpaths:
+            cand = d / sub
+            try:
+                if cand.is_file():
+                    return str(cand)
+            except OSError:
+                continue
+    # Pass 2: depth-bounded glob under each editor dir only (handles version /
+    # layout drift like the kiro-agent extension path). Bounded root + the
+    # editor dir is small, so this stays well under ~100ms, not 20s.
+    for d in editor_dirs:
+        try:
+            if not d.is_dir():
+                continue
+            match = next(d.glob(f"resources/app/**/@vscode/ripgrep*/bin/{exe}"), None)
+            if match and match.is_file():
+                return str(match)
+            match = next(d.glob(f"**/@vscode/ripgrep*/bin/{exe}"), None)
+            if match and match.is_file():
+                return str(match)
+        except OSError:
+            continue
+    return None
 
 
 def _grep_via_rg(
