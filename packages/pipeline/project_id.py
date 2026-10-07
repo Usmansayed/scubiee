@@ -803,8 +803,21 @@ def collection_name_for_project(root: Path, project_id: str) -> str:
     return f"{safe}_{digest}"
 
 
-def index_is_usable(store_dir: Path, *, collection_name: str | None = None) -> bool:
-    """True when chunks + graph.json exist and any publication manifest is valid."""
+def index_is_usable(
+    store_dir: Path,
+    *,
+    collection_name: str | None = None,
+    validate: bool = True,
+) -> bool:
+    """True when chunks + graph.json exist and any publication manifest is valid.
+
+    ``validate=False`` skips the manifest checksum (``validate_manifest`` reads +
+    hashes index files — native, GIL-releasing). Running that on an HTTP
+    ``/health`` thread while a warm/publish builds the faiss store on another
+    thread raced the native allocators and segfaulted on cold start. Callers on
+    the hot /health path pass ``validate=False`` during an active warm; the warm
+    validates before it publishes.
+    """
     if not (store_dir / "chunks.jsonl").is_file():
         return False
     if not (store_dir / "graph.json").is_file():
@@ -814,11 +827,13 @@ def index_is_usable(store_dir: Path, *, collection_name: str | None = None) -> b
         return False
     # Prefer collection name from meta when present
     _ = collection_name or meta.get("collection")
-    # Fail closed when a manifest exists but is corrupt/mismatched.
-    from pipeline.artifact_guard import MANIFEST_NAME, validate_manifest
+    # Fail closed when a manifest exists but is corrupt/mismatched — unless the
+    # caller opted out of the heavy checksum to avoid racing an in-flight warm.
+    if validate:
+        from pipeline.artifact_guard import MANIFEST_NAME, validate_manifest
 
-    if (store_dir / MANIFEST_NAME).is_file():
-        report = validate_manifest(store_dir)
-        if not report.get("ok"):
-            return False
+        if (store_dir / MANIFEST_NAME).is_file():
+            report = validate_manifest(store_dir)
+            if not report.get("ok"):
+                return False
     return True

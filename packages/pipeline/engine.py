@@ -1747,19 +1747,41 @@ def load_engine(
             force=not (store.base / "capability_cards.json").exists(),
         )
 
-    with ThreadPoolExecutor(max_workers=3) as pool:
-        f_graph = pool.submit(_build_graph)
-        f_bm25 = pool.submit(_build_bm25)
-        f_cards = pool.submit(_build_cards)
-        # Chunk ids re-index the vector matrix into chunk position space, the
-        # same space files/texts/bm25/graph use. Skipping this lets dense scores
-        # land on the wrong chunk and makes tail chunks raise IndexError.
+    # Native warm builders. On macOS/Apple Silicon these native libraries
+    # (faiss/turboquant numpy-LAPACK, bm25, graphify/networkx) + MLX/Metal are
+    # NOT safe to initialize concurrently across threads: parallel init raced the
+    # native allocators and intermittently segfaulted the engine on cold start
+    # (~5-15% of starts; wild-pointer SIGSEGV whose top frame was whichever lib
+    # lost the race — turbo_quant.qr, bm25_index, graphify, or mlx_mac). Build
+    # them SEQUENTIALLY on one thread on Darwin so only one native lib
+    # initializes at a time. Other platforms keep the parallel fast path.
+    # Override: CTX_SERIAL_WARM=0 restores parallel, =1 forces serial.
+    _serial_env = os.environ.get("CTX_SERIAL_WARM", "").strip().lower()
+    _serial_warm = (
+        _serial_env in {"1", "true", "yes", "on"}
+        or (_serial_env not in {"0", "false", "no", "off"} and sys.platform == "darwin")
+    )
+    # Chunk ids re-index the vector matrix into chunk position space, the same
+    # space files/texts/bm25/graph use. Skipping this lets dense scores land on
+    # the wrong chunk and makes tail chunks raise IndexError.
+    if _serial_warm:
         dense = FaissDenseAdapter(
             col, n_chunks=len(chunks), chunk_ids=[int(c.id) for c in chunks]
         )
-        graph = f_graph.result()
-        bm25 = f_bm25.result()
-        cards = f_cards.result()
+        graph = _build_graph()
+        bm25 = _build_bm25()
+        cards = _build_cards()
+    else:
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            f_graph = pool.submit(_build_graph)
+            f_bm25 = pool.submit(_build_bm25)
+            f_cards = pool.submit(_build_cards)
+            dense = FaissDenseAdapter(
+                col, n_chunks=len(chunks), chunk_ids=[int(c.id) for c in chunks]
+            )
+            graph = f_graph.result()
+            bm25 = f_bm25.result()
+            cards = f_cards.result()
 
     conductor = MultiArchConductor(
         files=files,

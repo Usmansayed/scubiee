@@ -441,6 +441,19 @@ class CodeRankMLX:
         _require_mlx()
         import mlx.core as mx
 
+        # Workaround for ml-explore/mlx#3329: auto-fused Compiled kernels
+        # dereference a null MTLBuffer (SIGSEGV) when an input array was loaded
+        # lazily via mmap and not yet promoted to a Metal buffer — our weights
+        # load with np.load(mmap_mode="r"). Disabling compile stops the fusion so
+        # the lazy array never reaches set_input_array. Override with
+        # CTX_MLX_DISABLE_COMPILE=0.
+        if (os.environ.get("CTX_MLX_DISABLE_COMPILE", "1").strip().lower()
+                not in {"0", "false", "no", "off"}):
+            try:
+                mx.disable_compile()
+            except Exception:  # noqa: BLE001
+                pass
+
         report = require_mlx_gpu() if require_gpu else mlx_device_report()
         self.device_report = report
         apply_mlx_production_defaults()
@@ -453,26 +466,33 @@ class CodeRankMLX:
             apply_mlx_cache_limit(int(cache_mb) * 1024 * 1024)
         load_path = ensure_mlx_fp16_weights() if weights_path is None else master
         self.w: dict[str, Any] = {}
-        raw = np.load(load_path, mmap_mode="r")
-        try:
-            for key in raw.files:
-                arr = raw[key]
-                if arr.dtype.kind == "f":
-                    self.w[key] = mx.array(arr, dtype=mlx_dtype)
-                else:
-                    self.w[key] = mx.array(arr)
-        finally:
-            del raw
-        import gc
-
-        gc.collect()
-        with mlx_thread_stream():
-            mx.eval(*self.w.values())
+        # Hold the embed lock across model CONSTRUCTION (mmap mx.array + mx.eval),
+        # the same lock inference uses, so a concurrent embed_one on another
+        # thread (e.g. ce_service._eager_prewarm) can't run MLX/Metal while the
+        # model is still being built (MLX is not thread-safe across threads —
+        # ml-explore/mlx#1448). Build/inference become mutually exclusive.
+        with _MLX_EMBED_LOCK:
+            raw = np.load(load_path, mmap_mode="r")
             try:
-                mx.clear_cache()
-            except Exception:  # noqa: BLE001
-                pass
-        self.inv_freq = self.w["rotary_inv_freq"].astype(mx.float32)
+                for key in raw.files:
+                    arr = raw[key]
+                    if arr.dtype.kind == "f":
+                        self.w[key] = mx.array(arr, dtype=mlx_dtype)
+                    else:
+                        self.w[key] = mx.array(arr)
+            finally:
+                del raw
+            import gc
+
+            gc.collect()
+            with mlx_thread_stream():
+                mx.eval(*self.w.values())
+                try:
+                    mx.clear_cache()
+                except Exception:  # noqa: BLE001
+                    pass
+            self.inv_freq = self.w["rotary_inv_freq"].astype(mx.float32)
+            mx.eval(self.inv_freq)
         self._compiled = None
         self.use_fast_attn = _flag("CTX_MLX_FAST_ATTN", True)
         self.use_fast_ln = _flag("CTX_MLX_FAST_LN", True)

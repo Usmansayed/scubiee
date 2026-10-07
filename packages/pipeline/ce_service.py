@@ -450,11 +450,23 @@ class RuntimeManager:
         index_usable = soft_ok
         if not soft_ok and self.repo is not None:
             # Cold path only: binder not live yet — cheap disk peek for agents.
+            # While a warm/publish is actively loading the faiss store on the
+            # warm thread, DO NOT run validate_manifest's checksum here: that
+            # native, GIL-releasing hash raced the warm's turbo_quant/numpy.qr
+            # and segfaulted the process. Skip the checksum during warm and rely
+            # on the cheap existence check; the warm validates before publishing.
             try:
                 from pipeline.project_id import index_is_usable, peek_project
 
+                warming_now = bool(getattr(self, "warming", False)) or (
+                    self.warm_state == "warming"
+                )
                 ref = peek_project(self.repo)
-                index_usable = index_is_usable(ref.store_dir) if ref else False
+                index_usable = (
+                    index_is_usable(ref.store_dir, validate=not warming_now)
+                    if ref
+                    else False
+                )
             except Exception:  # noqa: BLE001
                 index_usable = False
         embedder_loaded = False
