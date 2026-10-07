@@ -633,14 +633,35 @@ def _grep_via_rg(
     if scubiee_ignore.is_file():
         args += ["--ignore-file", str(scubiee_ignore)]
     args.append(".")
+    # Windows: rg.exe is a console-subsystem binary. When the engine daemon
+    # (spawned CREATE_NO_WINDOW / no console) launches it WITHOUT these flags,
+    # Windows allocates a fresh console for the child — a ~3s tax per call that a
+    # normal console process never pays. CREATE_NO_WINDOW + hidden STARTUPINFO +
+    # stdin=DEVNULL makes the daemon's rg spawn as fast as a plain shell's.
+    _hidden: dict[str, Any] = {}
+    if os.name == "nt":
+        try:
+            from pipeline.process_job import windows_stdio_hidden_kwargs
+
+            _hidden = windows_stdio_hidden_kwargs()
+        except Exception:  # noqa: BLE001
+            _hidden = {"creationflags": 0x08000000}  # CREATE_NO_WINDOW
     try:
         proc = subprocess.run(
             args,
             capture_output=True,
-            text=True,
+            # Decode rg output as UTF-8 with replacement. ``text=True`` alone uses
+            # the platform default (cp1252 on Windows), which raised
+            # UnicodeDecodeError on a non-cp1252 byte in a source file — the
+            # reader thread died, proc.stdout became None, and the handler
+            # crashed (client saw "connection closed"). Code is UTF-8; decode it.
+            encoding="utf-8",
+            errors="replace",
             timeout=timeout_s,
             cwd=str(root.resolve()),
             check=False,
+            stdin=subprocess.DEVNULL,
+            **_hidden,
         )
     except subprocess.TimeoutExpired:
         # rg itself ran out of time. Do NOT fall through to the slower Python
@@ -663,7 +684,7 @@ def _grep_via_rg(
         return None
     hits: list[dict[str, Any]] = []
     root_resolved = root.resolve()
-    for line in proc.stdout.splitlines():
+    for line in (proc.stdout or "").splitlines():
         if not line.strip():
             continue
         parts = line.split(":", 2)

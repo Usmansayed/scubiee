@@ -28,7 +28,13 @@ from pipeline.upgrade_registry import release
         "budget, so count=0 is never silently read as 'absent'. (5) `scubiee index "
         "--force` now hands off to `ensure_daemon` (direct owner) after a successful "
         "rebuild so the serving engine is restored instead of being left down by the "
-        "demand-gated watchdog. No map surface change (still find|focus)."
+        "demand-gated watchdog. (6) GREP PERF: the engine spawns ripgrep with "
+        "CREATE_NO_WINDOW + hidden STARTUPINFO on Windows — a no-console daemon "
+        "spawning the console-subsystem rg.exe without it made Windows allocate a "
+        "fresh console per call (~3.3s tax); grep drops from ~3.5s to ~275ms. rg "
+        "output is now decoded UTF-8 (not platform cp1252), fixing a "
+        "UnicodeDecodeError that crashed the handler on non-cp1252 bytes. No map "
+        "surface change (still find|focus)."
     ),
 )
 def v0_3_143() -> None:
