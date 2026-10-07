@@ -33,8 +33,13 @@ from pipeline.upgrade_registry import release
         "spawning the console-subsystem rg.exe without it made Windows allocate a "
         "fresh console per call (~3.3s tax); grep drops from ~3.5s to ~275ms. rg "
         "output is now decoded UTF-8 (not platform cp1252), fixing a "
-        "UnicodeDecodeError that crashed the handler on non-cp1252 bytes. No map "
-        "surface change (still find|focus)."
+        "UnicodeDecodeError that crashed the handler on non-cp1252 bytes. (7) "
+        "Interrupted `index --force` no longer leaks: a hard-killed staged reindex "
+        "orphaned its `<base>.staging-<pid>/` dir + staged collection (the finally "
+        "cleanup is skipped on kill); the next index now sweeps any staging whose "
+        "owner pid is dead, so they can't accumulate. The live index is never "
+        "touched by a killed staged build (no torn generation). No map surface "
+        "change (still find|focus)."
     ),
 )
 def v0_3_143() -> None:

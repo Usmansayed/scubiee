@@ -548,6 +548,58 @@ def index_repo(
     )
 
 
+def _pid_alive(pid: int) -> bool:
+    """Cross-platform best-effort liveness check for a staging dir's owner pid."""
+    if pid <= 0:
+        return False
+    try:
+        if os.name == "nt":
+            import ctypes
+
+            PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+            h = ctypes.windll.kernel32.OpenProcess(
+                PROCESS_QUERY_LIMITED_INFORMATION, False, pid
+            )
+            if not h:
+                return False
+            exit_code = ctypes.c_ulong(0)
+            ctypes.windll.kernel32.GetExitCodeProcess(h, ctypes.byref(exit_code))
+            ctypes.windll.kernel32.CloseHandle(h)
+            return exit_code.value == 259  # STILL_ACTIVE
+        os.kill(pid, 0)
+        return True
+    except (OSError, Exception):  # noqa: BLE001
+        return False
+
+
+def _sweep_stale_staging(live_base: Path, live_collection: str, vdb) -> None:
+    """Remove `<base>.staging-<pid>/` dirs and `<collection>__staging_<pid>`
+    collections whose owner pid is dead (orphaned by a killed index)."""
+    import shutil as _shutil
+
+    prefix = f"{live_base.name}.staging-"
+    try:
+        for d in live_base.parent.glob(f"{live_base.name}.staging-*"):
+            if not d.is_dir():
+                continue
+            try:
+                pid = int(d.name[len(prefix):])
+            except ValueError:
+                continue
+            if pid == os.getpid() or _pid_alive(pid):
+                continue  # ours or a live concurrent index — leave it
+            _shutil.rmtree(d, ignore_errors=True)
+            # drop the matching staged collection if it survived
+            try:
+                stale_col = f"{live_collection}__staging_{pid}"
+                if vdb.has_collection(stale_col):
+                    vdb.drop_collection(stale_col)
+            except Exception:  # noqa: BLE001
+                pass
+    except OSError:
+        pass
+
+
 def index_repo_staged(
     root: Path,
     *,
@@ -583,6 +635,12 @@ def index_repo_staged(
     live_base = live_store.base
     live_collection = live_store.collection_name
     vdb = VectorDatabase()  # shared collection root
+
+    # Sweep orphaned staging artifacts from prior runs that were KILLED mid-index
+    # (a hard kill skips the finally-cleanup, leaving `<base>.staging-<pid>/` and
+    # `<collection>__staging_<pid>` behind — a slow disk leak over repeated
+    # interruptions). Any staging whose pid is no longer alive is garbage.
+    _sweep_stale_staging(live_base, live_collection, vdb)
 
     staging_base = live_base.parent / f"{live_base.name}.staging-{os.getpid()}"
     staging_collection = f"{live_collection}__staging_{os.getpid()}"
