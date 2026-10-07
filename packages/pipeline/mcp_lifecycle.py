@@ -11,8 +11,9 @@ Contract (MCP spec + transport — not Cursor-specific):
   - stdin EOF → FastMCP lifespan cleanup (portable primary signal)
   - atexit + SIGTERM/SIGINT/SIGBREAK(Windows)/SIGHUP(Unix)
   - daemon stamps ``last_client_left_at``; after ``CTX_DISCONNECT_DEBOUNCE_S``
-    (install default 4800s = 80 min, keeping engine+embedder warm across editor
-    breaks) the idle sweeper ``enter_standby(stop_engine=True)`` exits the engine
+    (install default 120s = ~2 min after the editor closes) the idle sweeper
+    ``enter_standby(stop_engine=True)`` exits the engine. While connected, the
+    engine+embedder stay warm via a policy gate (hold while clients>0), not this timer.
 
 Hosts (Cursor, Claude Code, Codex, Kiro, Copilot, Zed, Continue, …) all speak
 stdio MCP the same way. Do not special-case Cursor.

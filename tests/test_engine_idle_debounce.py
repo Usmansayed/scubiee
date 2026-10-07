@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 
-def test_default_disconnect_debounce_is_30min(monkeypatch, tmp_path):
+def test_default_disconnect_debounce_is_2min(monkeypatch, tmp_path):
     monkeypatch.setenv("CTX_HOME", str(tmp_path))
     monkeypatch.delenv("CTX_DISCONNECT_DEBOUNCE_S", raising=False)
     monkeypatch.delenv("CTX_ENGINE_IDLE_S", raising=False)
@@ -17,12 +17,13 @@ def test_default_disconnect_debounce_is_30min(monkeypatch, tmp_path):
         transition_debounce_seconds,
     )
 
-    # Default raised to 30 min so an IDE restart / short break keeps the engine
-    # + embedder warm (no cold boot on the first call after a reconnect).
-    assert DEFAULT_DISCONNECT_DEBOUNCE_S == 1800.0
-    assert DEFAULT_IDLE_S == 1800.0
+    # ~2 min: the AFTER-DISCONNECT grace. While connected the engine stays warm
+    # via a policy gate (hold while clients>0), so this short default only
+    # governs how soon the engine stops after the editor closes.
+    assert DEFAULT_DISCONNECT_DEBOUNCE_S == 120.0
+    assert DEFAULT_IDLE_S == 120.0
     assert DEFAULT_TRANSITION_DEBOUNCE_S == 5.0
-    assert idle_seconds() == 1800.0
+    assert idle_seconds() == 120.0
     assert transition_debounce_seconds() == 5.0
 
 

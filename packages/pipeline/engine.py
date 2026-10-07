@@ -1140,11 +1140,20 @@ class WarmSearchEngine:
             "on",
         }
         dense_ready = False
+        # Dense is MANDATORY: every map/search must run real FastEmbed →
+        # D_channel_best, never BM25/pseudo. The first call after a cold boot
+        # therefore BLOCKS here until the embedder finishes loading instead of
+        # bouncing the caller with a dense_embed_required retry. Default 120s
+        # covers a cold ORT/DirectML session build; the embed itself runs on the
+        # single embed worker (run_embed_infer), and this is a 50ms sleep-poll
+        # that parks only THIS request's HTTP worker (ThreadingHTTPServer) and
+        # releases the GIL each tick, so /health and other requests stay live.
+        # Set CTX_EMBED_SEARCH_WAIT_S=0 to restore the old non-blocking retry.
         try:
-            wait_raw = (os.environ.get("CTX_EMBED_SEARCH_WAIT_S") or "0").strip()
-            wait_s = max(0.0, min(30.0, float(wait_raw)))
+            wait_raw = (os.environ.get("CTX_EMBED_SEARCH_WAIT_S") or "120").strip()
+            wait_s = max(0.0, min(300.0, float(wait_raw)))
         except ValueError:
-            wait_s = 0.0
+            wait_s = 120.0
         _SEARCH_IN_FLIGHT.set()
         try:
             if not embedder_is_loaded():
@@ -1161,8 +1170,10 @@ class WarmSearchEngine:
                         "D_channel_best map/search — retry in ~3s"
                     )
             elif bool((prewarm_status() or {}).get("running")):
-                # Join brief; do not fall back to hash.
-                deadline = time.time() + min(wait_s, 5.0)
+                # Prewarm in flight — join the FULL wait window (dense is
+                # mandatory), not a 5s slice, so the first call lands dense
+                # instead of raising while the embedder is seconds from ready.
+                deadline = time.time() + wait_s
                 while time.time() < deadline and bool(
                     (prewarm_status() or {}).get("running")
                 ):

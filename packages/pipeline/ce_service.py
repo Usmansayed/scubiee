@@ -1257,17 +1257,26 @@ class RuntimeManager:
         if len(q) > max_q:
             q = q[:max_q]
         try:
-            from pipeline.engine import embedder_is_loaded, warming_response
+            from pipeline.engine import embedder_is_loaded, ensure_embedder_ready, warming_response
             from pipeline.warm_autoload import in_prewarm
 
             if in_prewarm() and not embedder_is_loaded():
-                payload = warming_response(warm_state="embed_loading")
-                payload["error"] = "dense_embed_loading"
-                payload["hint"] = (
-                    "FastEmbed/ORT still loading. Retry this same map in ~3s — "
-                    "do not poll /health and do not fall back to BM25-only."
-                )
-                return payload
+                # Dense is mandatory — BLOCK until FastEmbed finishes loading
+                # (join the in-flight prewarm) instead of bouncing the first
+                # call with a retry. Only if it truly fails to load do we fall
+                # through to the retry stub below.
+                try:
+                    ensure_embedder_ready(root or self.repo)
+                except Exception:  # noqa: BLE001
+                    pass
+                if not embedder_is_loaded():
+                    payload = warming_response(warm_state="embed_loading")
+                    payload["error"] = "dense_embed_loading"
+                    payload["hint"] = (
+                        "FastEmbed/ORT still loading. Retry this same map in ~3s — "
+                        "do not poll /health and do not fall back to BM25-only."
+                    )
+                    return payload
         except Exception:  # noqa: BLE001
             pass
         try:
@@ -1275,24 +1284,28 @@ class RuntimeManager:
             from pipeline.engine import (
                 embedder_is_loaded,
                 ensure_embed_keepalive_loop,
-                prewarm_embedder_async,
+                ensure_embedder_ready,
             )
 
             gov = get_governor()
             gov.ensure_semantic_tier()
             gov.refresh_from_hub(self.hub)
             if not embedder_is_loaded():
+                # Dense is mandatory — BLOCK until the embedder is loaded
+                # (ensure_embedder_ready joins the async prewarm or loads inline)
+                # rather than returning a retry. The first call then lands dense.
                 try:
-                    prewarm_embedder_async(root or self.repo)
+                    ensure_embedder_ready(root or self.repo)
                 except Exception:  # noqa: BLE001
                     pass
-                payload = warming_response(warm_state="embed_loading")
-                payload["error"] = "dense_embed_loading"
-                payload["hint"] = (
-                    "FastEmbed loading for dense map. Retry this same map/search "
-                    "in ~3s — do not fall back to BM25-only and do not poll /health."
-                )
-                return payload
+                if not embedder_is_loaded():
+                    payload = warming_response(warm_state="embed_loading")
+                    payload["error"] = "dense_embed_loading"
+                    payload["hint"] = (
+                        "FastEmbed loading for dense map. Retry this same map/search "
+                        "in ~3s — do not fall back to BM25-only and do not poll /health."
+                    )
+                    return payload
             try:
                 ensure_embed_keepalive_loop(root or self.repo)
             except Exception:  # noqa: BLE001

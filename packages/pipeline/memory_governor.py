@@ -74,12 +74,12 @@ def _env_float(name: str, default: float) -> float:
 def embed_idle_demote_s() -> float:
     """Seconds after MCP disconnect before unloading the embedder (default 1800s).
 
-    While any MCP/IDE client is registered, demote never fires — the model is
-    held for instant map/pack/search. Unload is disconnect-driven (same knob as
-    ``CTX_DISCONNECT_DEBOUNCE_S``): the timer only starts after the LAST client
-    leaves. The default is 30 minutes so an IDE restart, a reconnect, or a short
-    break keeps the first call warm (no cold dense/DML reload); set
-    ``CTX_EMBED_IDLE_DEMOTE_S`` lower to reclaim memory sooner on shared boxes.
+    While any MCP/IDE client is registered, demote NEVER fires — the model is
+    held for instant map/pack/search for the whole session (this is a policy
+    gate, not a timer). The unload timer only starts after the LAST client
+    leaves. Default 120s so the embedder is released ~2 min after the editor
+    closes; raise ``CTX_EMBED_IDLE_DEMOTE_S`` to hold dense longer across a
+    close/reopen, lower it to reclaim memory sooner.
     """
     raw = os.environ.get("CTX_EMBED_IDLE_DEMOTE_S")
     if raw is not None and str(raw).strip() != "":
@@ -95,7 +95,7 @@ def embed_idle_demote_s() -> float:
             return max(0.0, float(raw))
         except ValueError:
             continue
-    return 1800.0
+    return 120.0
 
 
 EMBED_IDLE_DEMOTE_S = embed_idle_demote_s()  # import-time default for docs/tests

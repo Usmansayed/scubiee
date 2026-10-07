@@ -119,16 +119,21 @@ def server_entry(
         "CTX_TRACE_GRAPHIFY": "1",
         "CTX_MCP_SESSION_ISOLATE": "1",
         "CTX_MCP_BRIDGE_MODE": "shared",
-        # 80 min: keep the engine + embedder resident across normal editor breaks
-        # so a call after idle doesn't pay the ~20s dense re-warm. All three
-        # disconnect knobs must agree — CTX_DISCONNECT_DEBOUNCE_S is read FIRST by
-        # disconnect_debounce_seconds(), so leaving it at 10s let the engine stop
-        # after 10s despite ENGINE_IDLE_S/EMBED_IDLE_DEMOTE_S=4800 (the embedder
-        # held but the process died, so the next call paid a full cold boot).
-        "CTX_ENGINE_IDLE_S": "4800",
-        "CTX_DISCONNECT_DEBOUNCE_S": "4800",
+        # DISCONNECT (after the LAST client/Kiro closes) → stop the engine +
+        # unload the embedder after ~2 min. These are the AFTER-CLOSE timers,
+        # NOT the "stay warm while connected" control. Staying warm during a
+        # session is a hard policy gate (maybe_demote_idle holds forever while
+        # clients>0) + the keepalive loop below — no timer needed. So keep the
+        # disconnect window short (120s) for a prompt shutdown after close.
+        # All three must agree: disconnect_debounce_seconds() reads
+        # CTX_DISCONNECT_DEBOUNCE_S first (engine stop), embed_idle_demote_s()
+        # reads CTX_EMBED_IDLE_DEMOTE_S first (embedder unload); keep them equal.
+        "CTX_ENGINE_IDLE_S": "120",
+        "CTX_DISCONNECT_DEBOUNCE_S": "120",
         "CTX_ENGINE_TRANSITION_DEBOUNCE_S": "5",
-        "CTX_EMBED_IDLE_DEMOTE_S": "4800",
+        "CTX_EMBED_IDLE_DEMOTE_S": "120",
+        # Warm EVERYTHING (incl dense FastEmbed/ORT) on connect so the agent's
+        # first map/search is fast — background async prewarm, does not block attach.
         "CTX_EMBED_PREWARM": "1",
         "CTX_TRACE_PARALLEL": "1",
         "CTX_ENGINE_SPAWN_OWNER": "supervisor",
