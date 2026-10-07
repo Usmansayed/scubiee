@@ -6,6 +6,9 @@ That is stale. As of **v0.3.142+**, the shipped surface is **ONE tool — `map` 
 `find` and `focus`** (plus `gate`/`status` for health). This document gives the authoritative new
 copy and exactly what to change, so the landing page and docs can be updated to match the product.
 
+**Covers both web surfaces:** section 2 = the landing page (scubiee.com), section 5b = the docs
+page (scubiee.com/docs/). Both carry the stale tool list; both are specified here.
+
 **Authoritative source (do not drift from this):** `packages/pipeline/map_v3_server.py`
 — `CONFIGS = ("find", "focus")`, `SERVER_INSTRUCTIONS`, and the `map` tool description. The old
 `related`/`graph`/`open`/`refs`/`around`/`outline`/`grep`/`glob`/`workspace` names are **not**
@@ -154,8 +157,12 @@ Glob — not Scubiee tools.
 
 ## 5. Verification checklist (before publishing)
 
-- [ ] Live site "MCP tools" section lists only `map find`, `map focus`, `gate/status` — no
+- [ ] Landing page "MCP tools" section lists only `map find`, `map focus`, `gate/status` — no
       standalone `grep`/`glob`/`workspace`.
+- [ ] Docs page intro says "one MCP tool `map` with modes find | focus" (not "search / map / focus").
+- [ ] Docs page architecture diagram line reads `gate/status · map (find | focus)` (not
+      "status, map, focus, grep, glob, workspace").
+- [ ] Docs "Facts any assistant needs" includes the one-tool-two-configs fact.
 - [ ] Every "recommended flow" reads `status → map find | map focus → edit → sync`.
 - [ ] No doc advertises `related`/`graph`/`pack`/`expand`/`refs`/`around`/`outline` as callable
       surface (hidden-fallback mention is OK in the design doc only).
@@ -163,6 +170,53 @@ Glob — not Scubiee tools.
 - [ ] Token-savings numbers (30% / 60–70%) left intact — still accurate.
 - [ ] The canonical description (section 1) matches `map_v3_server.py` `SERVER_INSTRUCTIONS`
       verbatim in spirit (find = don't-know-where + inline code; focus = known-name + wiring).
+
+---
+
+## 5b. scubiee.com/docs/ — exact changes
+
+The docs page (https://scubiee.com/docs/) has the stale multi-tool surface in **two** spots. Only
+these two change; everything else on that page (install / setup / init / connect, the four layers,
+profile table, daemon, time expectations, troubleshooting) is accurate — leave it.
+
+### 5b.1 Intro sentence
+**Current:**
+> It indexes your repository, embeds code with CodeRank (GPU when available), and exposes
+> **search / map / focus** over MCP.
+
+**New:**
+> It indexes your repository, embeds code with CodeRank (GPU when available), and exposes **one MCP
+> tool, `map`, with two modes — `find` and `focus`** (plus `gate`/`status` for health).
+
+Also, two sentences later:
+**Current:**
+> …Scubiee returns ranked locations (map) and focused code spans (focus) — not guessed filenames.
+
+**New:**
+> …Scubiee returns ranked locations (`map find`) and focused code spans with their wiring
+> (`map focus`) — not guessed filenames.
+
+### 5b.2 Architecture diagram line — REPLACE
+**Current:**
+> Scubiee MCP — **status, map, focus, grep, glob, workspace**
+
+**New:**
+> Scubiee MCP — **gate/status (health) · map (find | focus)**
+
+That's the only line in the diagram that changes. The layer below it (`Scubiee Engine — daemon +
+live re-indexing`) and everything else stays.
+
+### 5b.3 Optional clarity add (recommended, not required)
+Under the architecture diagram or "Core concepts", a one-liner prevents the old confusion:
+> **MCP surface:** one tool, `map`. Use `map find` when you don't know where the code is, `map
+> focus` when you know the symbol name. Literal search, file globbing, and known-path reads use your
+> agent's native tools — Scubiee does not duplicate them.
+
+### 5b.4 "Facts any assistant needs" section
+This section is for pasting into ChatGPT/Claude. Add one fact so an assistant doesn't recommend the
+retired tools:
+> - MCP surface is **one tool `map` with configs `find` and `focus`** (+ `gate`/`status`). There
+>   are no separate `grep`/`glob`/`workspace` MCP tools — those are the agent's native tools.
 
 ---
 
