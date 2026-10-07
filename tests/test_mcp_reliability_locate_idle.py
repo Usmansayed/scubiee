@@ -128,13 +128,15 @@ def test_merge_idle_env_max_never_clobbers_higher() -> None:
     from pipeline.mcp_install import _merge_idle_env_max, server_entry
 
     env = server_entry(None).get("env") or {}
-    assert env["CTX_DISCONNECT_DEBOUNCE_S"] == "10"
-    assert env["CTX_ENGINE_IDLE_S"] == "10"
+    # All three disconnect knobs agree at 80 min so engine + embedder stay warm
+    # across editor breaks (CTX_DISCONNECT_DEBOUNCE_S is read first).
+    assert env["CTX_DISCONNECT_DEBOUNCE_S"] == "4800"
+    assert env["CTX_ENGINE_IDLE_S"] == "4800"
 
-    dst = {"CTX_ENGINE_IDLE_S": "10", "CTX_ENGINE_TRANSITION_DEBOUNCE_S": "5"}
+    dst = {"CTX_ENGINE_IDLE_S": "4800", "CTX_ENGINE_TRANSITION_DEBOUNCE_S": "5"}
     _merge_idle_env_max(dst, {"CTX_ENGINE_IDLE_S": "900", "CTX_ENGINE_TRANSITION_DEBOUNCE_S": "120"})
     # Disconnect unload knobs are not sticky-raised from old 300s/900s; transition debounce still takes max.
-    assert dst["CTX_ENGINE_IDLE_S"] == "10"
+    assert dst["CTX_ENGINE_IDLE_S"] == "4800"
     assert dst["CTX_ENGINE_TRANSITION_DEBOUNCE_S"] == "120"
 
     dst2 = {"CTX_ENGINE_IDLE_S": "10", "CTX_ENGINE_TRANSITION_DEBOUNCE_S": "60"}

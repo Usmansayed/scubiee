@@ -21,8 +21,10 @@ POLICY_NAME = "lifecycle_policy.json"
 CLIENTS_NAME = "active_clients.json"
 # After the last MCP/IDE client disconnects, wait this long then unload RAM + stop
 # the engine. While any client is connected (Cursor/Codex/…), keep everything warm —
-# do not unload on "idle time" between tool calls.
-DEFAULT_DISCONNECT_DEBOUNCE_S = 10.0
+# do not unload on "idle time" between tool calls. 30 min so an IDE restart or a
+# short break keeps the engine + embedder resident (first call stays warm, no cold
+# boot); lower CTX_DISCONNECT_DEBOUNCE_S to reclaim RAM sooner on shared boxes.
+DEFAULT_DISCONNECT_DEBOUNCE_S = 1800.0
 # Back-compat aliases (same knob).
 DEFAULT_IDLE_S = DEFAULT_DISCONNECT_DEBOUNCE_S
 DEFAULT_TRANSITION_DEBOUNCE_S = 5.0

@@ -6,12 +6,12 @@ from pipeline import lifecycle_runtime as life
 from pipeline.memory_governor import MemoryGovernor, reset_governor_for_tests
 
 
-def test_disconnect_debounce_defaults_to_10(monkeypatch) -> None:
+def test_disconnect_debounce_defaults_to_30min(monkeypatch) -> None:
     monkeypatch.delenv("CTX_DISCONNECT_DEBOUNCE_S", raising=False)
     monkeypatch.delenv("CTX_ENGINE_IDLE_S", raising=False)
     monkeypatch.delenv("CTX_EMBED_IDLE_DEMOTE_S", raising=False)
-    assert life.disconnect_debounce_seconds() == 10.0
-    assert life.idle_seconds() == 10.0
+    assert life.disconnect_debounce_seconds() == 1800.0
+    assert life.idle_seconds() == 1800.0
 
 
 def test_unregister_does_not_demote_immediately(tmp_path, monkeypatch) -> None:

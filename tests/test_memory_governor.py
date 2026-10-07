@@ -79,12 +79,15 @@ def test_governor_does_not_smash_tree_rss_pin(monkeypatch) -> None:
     assert os.environ["CTX_CE_RSS_CAP_MB"] == "1536"
 
 
-def test_embed_idle_demote_defaults_to_ten_seconds(monkeypatch) -> None:
+def test_embed_idle_demote_defaults_to_30min(monkeypatch) -> None:
     monkeypatch.delenv("CTX_EMBED_IDLE_DEMOTE_S", raising=False)
     monkeypatch.delenv("CTX_ENGINE_IDLE_S", raising=False)
+    monkeypatch.delenv("CTX_DISCONNECT_DEBOUNCE_S", raising=False)
     from pipeline.memory_governor import embed_idle_demote_s
 
-    assert embed_idle_demote_s() == 10.0
+    # Raised from 10s so the embedder survives an IDE restart / short break and
+    # the first call after a reconnect stays warm (no cold dense/DML reload).
+    assert embed_idle_demote_s() == 1800.0
 
 
 def test_force_demote_disconnect_unloads_immediately(monkeypatch) -> None:

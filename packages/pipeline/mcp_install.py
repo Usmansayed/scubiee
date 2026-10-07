@@ -120,9 +120,13 @@ def server_entry(
         "CTX_MCP_SESSION_ISOLATE": "1",
         "CTX_MCP_BRIDGE_MODE": "shared",
         # 80 min: keep the engine + embedder resident across normal editor breaks
-        # so a call after idle doesn't pay the ~20s dense re-warm.
+        # so a call after idle doesn't pay the ~20s dense re-warm. All three
+        # disconnect knobs must agree — CTX_DISCONNECT_DEBOUNCE_S is read FIRST by
+        # disconnect_debounce_seconds(), so leaving it at 10s let the engine stop
+        # after 10s despite ENGINE_IDLE_S/EMBED_IDLE_DEMOTE_S=4800 (the embedder
+        # held but the process died, so the next call paid a full cold boot).
         "CTX_ENGINE_IDLE_S": "4800",
-        "CTX_DISCONNECT_DEBOUNCE_S": "10",
+        "CTX_DISCONNECT_DEBOUNCE_S": "4800",
         "CTX_ENGINE_TRANSITION_DEBOUNCE_S": "5",
         "CTX_EMBED_IDLE_DEMOTE_S": "4800",
         "CTX_EMBED_PREWARM": "1",
