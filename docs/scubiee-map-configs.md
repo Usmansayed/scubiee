@@ -1,21 +1,23 @@
 # Scubiee `map` configs, designed from what agents actually ask for
 
-> **Shipped surface (Map V3 — current product).** The design study below explored a
-> five-config set (`find` / `refs` / `open` / `around` / `outline`). What actually
-> ships in `pipeline.map_v3_server` is the distilled **four-config** surface:
+> **Shipped surface (current product, v0.3.142+).** The design study below explored a
+> five-config set (`find` / `refs` / `open` / `around` / `outline`); an interim build
+> shipped four. What ships **now** in `pipeline.map_v3_server` is the distilled
+> **two-config** surface — `CONFIGS = ("find", "focus")`:
 >
-> | Shipped config | Answers | Folds in the study's |
+> | Shipped config | Answers | Folds in |
 > |---|---|---|
-> | `find` | "Where is the code for this?" (ranked locations + top result's code inline) | `find` |
-> | `focus` | "Show me this name's code **and** its wiring" (full body + callers/callees + sibling names, one unit) | `open` + `around` + `refs` relations |
-> | `related` | "Given a chunk I have, what else relates?" (related bodies in one call) | `open` (multi) + `around` |
-> | `graph` | "Orient me" (files → symbol names + call edges, no bodies) | `outline` + `around`, abstracted |
+> | `find` | "Where is the code for this?" (ranked locations + the relevant code inline). Also orients a wide/unknown area (broad query) and pulls code near a chunk you already hold | the old `find` + `related` + `graph` |
+> | `focus` | "Show me this name's code **and** its wiring" (full body + callers/callees + sibling names, one unit) | the old `open` + `around` + `refs` + `outline` |
 >
 > Plus `gate` and `status` for health. There is **one** `map` tool; pick one config,
-> act on the first good answer, stop. The old pack/expand/collect tool surface and the
-> `scubiee pack|expand` CLI are retired (archived under `archive/old-mcp-map/`); the
-> CLI equivalent is `scubiee map --config find|focus|related|graph`. The research and
-> rationale below are kept as the design record that led here.
+> act on the first good answer, stop. Usage mining showed `find` + `focus` cover ~92% of
+> real map calls, so the surface was narrowed from four to two in v0.3.142; `related` and
+> `graph` remain only as **hidden graceful fallbacks** (a client that still sends them is
+> served via `find`/`focus`, never hard-errored). The old pack/expand/collect tool surface
+> and the `scubiee pack|expand` CLI are retired (archived under `archive/old-mcp-map/`);
+> the CLI equivalent is **`scubiee map --config find|focus`**. The research and rationale
+> below are kept as the design record that led here.
 
 This doc goes beyond counting tool calls. For each retrieval call it asks what the agent was trying to learn, which part of the result it used, and what it did next. The 10 recurring needs that come out of that drive a set of 5 map configs.
 

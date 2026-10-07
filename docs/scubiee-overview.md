@@ -10,7 +10,7 @@ This document explains what Scubiee is, how it is put together, and every featur
 
 Scubiee is a **local-first code-context engine**. It indexes a repository and answers "where is the code that matters for this task?" questions for an AI coding agent (Kiro, Cursor, Claude Code, etc.). It runs entirely on the developer's machine — no code leaves the box — and exposes its capabilities three ways:
 
-1. **MCP server** — the primary surface. An agent calls a small ladder of tools (`map` → `pack_context` → `expand_context` / `collect_hot_context`) to locate and materialize the hot code for a task.
+1. **MCP server** — the primary surface. An agent calls **one tool, `map`, with two configs**: `find` (don't know where the code is → ranked locations with code inline) and `focus` (know the symbol name → its body + callers/callees + siblings). Plus `gate`/`status` for health.
 2. **HTTP API** — a local engine on `127.0.0.1:8765` that does the actual retrieval, graph, and grep work. The MCP bridge and CLI are clients of it.
 3. **CLI** — `scubiee <command>` for install, indexing, lifecycle, diagnostics, and direct locate calls.
 
@@ -95,22 +95,25 @@ The AST/heatmap layer (`trace_lab`) turns ranked chunks into **cards**: `file::s
 
 ## 6. MCP tools (the primary surface)
 
-Eight tools, registered in `mcp_locate.py` via an inner `_tool(name, desc, fn)`; errors are wrapped by `_err()`. A managed-repo gate (`_is_repo_managed` → `_managed_locate_err`) fences locate tools to enrolled repos.
+**One tool — `map` — with two configs** (`find` | `focus`), plus `gate`/`status` for health,
+registered in `packages/pipeline/map_v3_server.py` (`CONFIGS = ("find", "focus")`). A managed-repo
+gate fences locate to enrolled repos. (The older eight-tool pack/expand/collect/workspace ladder in
+`mcp_locate.py` is retired — archived under `archive/old-mcp-map/`.)
 
-| Tool | Purpose | Key params |
-|---|---|---|
-| `gate` | ~5-token session gate; confirms managed status and whether to use MCP. | `project_id`, `root`, `session_id` |
-| `status` | Health / warm state / session. | `detail` = `summary` \| `full` \| `gate` |
-| `map` | Call 1 of the ladder. Ranked heatmap cards + `suggested_seeds`. No bodies. | `query` (dense code-vocab), `k` (default 12) |
-| `pack_context` | Call 2. Composite trace from seeds → heatmap (+ optional bodies). | `query`, `seed_file`/`seed_symbol`/`seed_line`, `seed2_*`, `seed3_*`, `include_bodies`, `mode`, `policy`, `k` (16), `hot_threshold` (0.65), `budget_chars`, `max_bodies` |
-| `expand_context` | Call 3. Delta cards around a node. | `node`/`seed_*`, `direction` = `callees`\|`callers`\|`effects`\|`config`\|`broad`\|`all`, `with_bodies`, `k` (10) |
-| `collect_hot_context` | Fetch code bodies for hot nodes / explicit ids. | `ids`, `threshold`, `max_chars` (8000) |
-| `workspace` | Mid-session brain: show pins/heatmap; pin a file; clear for new topic. | `action` = `show`\|`pin`\|`clear`, `path` (for pin), `root` |
-| `expand` | Re-materialize a stored span by handle. | `handle`, `max_chars` |
+| Tool | Config | Purpose | Key params |
+|---|---|---|---|
+| `gate` | — | ~5-token session gate; confirms managed status. | `project_id`, `root`, `session_id` |
+| `status` | — | Health / warm state / session. | `detail` = `summary` \| `full` \| `gate` |
+| `map` | `find` | Don't know where code is → ranked locations **with code inline**; also orients a wide area / pulls code near a chunk you hold. | `query`, `k` (default 12) |
+| `map` | `focus` | Know the symbol name(s) → full body **+ callers/callees + siblings** in one unit. | `names` (or `anchor`), `budget_chars` |
 
-Ranking is fixed on `composite_v1`; `mode` (lean/full) and `policy` (strict/broad) are accepted for compatibility but do not change ranking.
+Internally `find` runs the three-channel fusion + heatmap and inlines the top result's enclosing
+symbol; `focus` resolves the named symbol(s) and attaches wiring. Ranking is fixed on
+`composite_v1`. Literal/regex search, filename listing, and known-path reads stay with the agent's
+**native Grep/Glob/Read** — not Scubiee tools.
 
-The intended flow: `map` (locate) → `pack_context` (materialize hot ground from a seed) → `expand_context` (grow along calls/callers/effects) or `collect_hot_context` (pull bodies). Native reads are used on the `loc` spans the heatmap points to.
+The flow: `status` → `map find` (don't know where) **or** `map focus` (know the name) → edit with
+native tools → `scubiee sync` if needed. Act on the first good answer and stop.
 
 ---
 
@@ -159,10 +162,9 @@ Token mode (`token_mode: savings`) governs how aggressively the engine trims ret
 ## 10. How the pieces fit (request walkthrough)
 
 1. Agent calls `gate`/`status` → confirms the repo is managed and the engine is warm.
-2. Agent calls `map` with an enriched query → engine runs the three-channel fusion, returns ranked cards + `suggested_seeds`.
-3. Agent calls `pack_context` with a seed → `trace_lab` builds the composite trace, returns a heatmap with `loc` spans (and bodies if requested).
-4. Agent reads the `loc` spans natively, and/or calls `expand_context` to grow along the graph, or `collect_hot_context` to pull bodies.
-5. Edits land → hot BM25 lane refreshes `search`/`map` within ~1s; graph lane catches up within ~30s (or after clients disconnect) so `pack`/`expand` reflect structural changes.
+2. Agent calls `map config=find` with an intent query → engine runs the three-channel fusion, returns ranked locations and inlines the top result's enclosing symbol. (If the agent already knows the symbol name, it calls `map config=focus names=[...]` instead → the symbol's body + callers/callees + siblings in one unit.)
+3. Agent edits from the returned code with native tools; a known literal/path uses native Grep/Read directly.
+4. Edits land → hot BM25 lane refreshes `find`/`focus` within ~1s; graph lane catches up within ~30s (or after clients disconnect) so wiring in `focus` reflects structural changes.
 
 ---
 
