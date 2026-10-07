@@ -10,8 +10,9 @@ Contract (MCP spec + transport — not Cursor-specific):
 **Close** — unload by stopping the engine process (ORT does not free RSS in-process):
   - stdin EOF → FastMCP lifespan cleanup (portable primary signal)
   - atexit + SIGTERM/SIGINT/SIGBREAK(Windows)/SIGHUP(Unix)
-  - daemon stamps ``last_client_left_at``; after ``CTX_DISCONNECT_DEBOUNCE_S`` (10s)
-    idle sweeper ``enter_standby(stop_engine=True)`` exits the engine process
+  - daemon stamps ``last_client_left_at``; after ``CTX_DISCONNECT_DEBOUNCE_S``
+    (install default 4800s = 80 min, keeping engine+embedder warm across editor
+    breaks) the idle sweeper ``enter_standby(stop_engine=True)`` exits the engine
 
 Hosts (Cursor, Claude Code, Codex, Kiro, Copilot, Zed, Continue, …) all speak
 stdio MCP the same way. Do not special-case Cursor.
