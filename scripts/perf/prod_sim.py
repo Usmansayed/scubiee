@@ -33,7 +33,13 @@ from pathlib import Path
 
 BASE = "http://127.0.0.1:8765"
 REPO = Path(__file__).resolve().parents[2]
-SCUBIEE = r"C:/Users/usman/AppData/Roaming/uv/tools/scubiee/Scripts/scubiee.exe"
+# Resolve the scubiee CLI from PATH (cross-platform) with the Windows uv-tool
+# path as a fallback, so prod_sim runs unmodified on macOS/Linux too. Without
+# this the first subprocess.run([SCUBIEE, ...]) raises FileNotFoundError off
+# Windows (found during the macOS production run).
+import shutil as _shutil
+
+SCUBIEE = _shutil.which("scubiee") or r"C:/Users/usman/AppData/Roaming/uv/tools/scubiee/Scripts/scubiee.exe"
 OUT = REPO / "scripts" / "perf" / "_prodsim_report.json"
 
 # --- thresholds (what "production ready" means, per dimension) ---
