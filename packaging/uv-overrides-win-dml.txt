@@ -1,0 +1,22 @@
+# uv override file for Windows/DirectML installs.
+#
+# fastembed declares an UNBOUNDED `onnxruntime` requirement. On Windows we want
+# `onnxruntime-directml` (which provides the same `onnxruntime` import package
+# plus the DmlExecutionProvider). If both get installed they overwrite each
+# other's shared `onnxruntime/` folder and the generic wheel's DLLs win, so
+# DmlExecutionProvider silently disappears and embedding falls back to CPU.
+#
+# This override replaces every `onnxruntime` specifier in the tree with a marker
+# that is false on all platforms (`sys_platform == 'never'`), so the generic
+# wheel is EXCLUDED from the resolution entirely — only onnxruntime-directml
+# (pulled by scubiee's own win32 dependency) is installed. Technique per
+# astral-sh/uv#9073 (same class as the opencv-python / opencv-contrib-python
+# clash).
+#
+# Apply with:
+#   uv tool install --overrides packaging/uv-overrides-win-dml.txt <wheel-or-pkg>
+# or set UV_OVERRIDE to this file's path before `uv tool install`.
+#
+# WINDOWS/DML ONLY. Do not use on Linux (needs plain onnxruntime or
+# onnxruntime-gpu) or macOS (needs plain onnxruntime for CoreML/MLX).
+onnxruntime; sys_platform == 'never'
