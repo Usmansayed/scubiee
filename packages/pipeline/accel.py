@@ -927,6 +927,115 @@ def conflicting_ort_packages(profile: str) -> list[str]:
     return sorted(all_ort - {keep})
 
 
+def heal_ort_conflict(profile: str | None = None) -> dict[str, Any]:
+    """Lightweight startup self-heal for the ORT wheel conflict.
+
+    A ``uv tool install --reinstall`` (or any upgrade) can let fastembed's
+    unbounded ``onnxruntime`` requirement pull the generic CPU/Azure wheel in
+    ALONGSIDE the profile wheel (``onnxruntime-directml``). Both share the
+    ``onnxruntime`` import package; the last-installed one's native DLLs win, so
+    the GPU EP silently disappears and embedding falls back to CPU.
+
+    This heals the common case WITHOUT the full ``setup --repair`` reinstall:
+    the profile wheel's own files are still on disk, so uninstalling just the
+    conflicting generic wheel(s) and purging the stale import tree lets the
+    profile wheel's DLLs win again on the next process start. Returns a dict
+    describing what it did; never raises. No-op unless the exact broken state is
+    present (profile wheel wants a GPU EP, that EP is missing, and a conflicting
+    wheel is installed). Opt out with CTX_ORT_SELF_HEAL=0.
+    """
+    result: dict[str, Any] = {"ok": True, "healed": False, "reason": "noop"}
+    if (os.environ.get("CTX_ORT_SELF_HEAL") or "1").strip().lower() in {
+        "0", "false", "no", "off",
+    }:
+        result["reason"] = "disabled"
+        return result
+    try:
+        prof = profile
+        if prof is None:
+            saved = load_accel()
+            prof = saved.profile if saved else None
+        # Only GPU profiles can hit the clobber; cpu/coreml/mlx want generic ORT.
+        if prof not in {"dml", "cuda"}:
+            result["reason"] = "profile_not_gpu"
+            return result
+        # Already fine? Then there is nothing to heal — stay a cheap no-op.
+        if _ort_profile_ready(prof):
+            result["reason"] = "already_ready"
+            return result
+        # Which wheels conflict with this profile, and are any installed?
+        conflicts = conflicting_ort_packages(prof)
+        installed_conflicts = [p for p in conflicts if _is_installed(p)]
+        keep_pkg = {"dml": "onnxruntime-directml", "cuda": "onnxruntime-gpu"}[prof]
+        if not installed_conflicts:
+            # EP missing but no conflicting wheel — this needs a real reinstall,
+            # not something the light heal can fix. Leave it to setup --repair.
+            result.update(reason="no_conflict_wheel_needs_repair")
+            return result
+        if not _is_installed(keep_pkg):
+            # Profile wheel itself is absent — light heal cannot conjure it.
+            result.update(reason="profile_wheel_absent_needs_repair")
+            return result
+        # The exact broken state: profile wheel present, conflicting generic
+        # wheel present, GPU EP missing. On Windows the generic and profile
+        # wheels SHARE the ``onnxruntime/`` import package, so uninstalling the
+        # generic one takes the shared folder (and the profile DLLs) with it —
+        # a reinstall of the profile wheel is required. Delegate to the proven
+        # _install_ort_wheel routine (uninstall-all → purge tree → reinstall
+        # profile), which handles exactly this.
+        print(
+            f"[accel] ORT conflict self-heal: {prof} EP missing with conflicting "
+            f"wheel(s) {installed_conflicts} installed alongside {keep_pkg}; "
+            f"reconciling ORT wheels so {keep_pkg} wins.",
+            file=sys.stderr,
+            flush=True,
+        )
+        # _install_ort_wheel does the uninstall-all → purge-tree → reinstall
+        # dance. Its FINAL step is an IN-PROCESS verify that can raise even when
+        # the on-disk reconcile succeeded: the healing process already imported
+        # the old generic onnxruntime, so SessionOptions looks missing in THIS
+        # interpreter even though a fresh process will load the profile wheel's
+        # DLLs correctly (DLL/module resolution is import-time). Treat the
+        # on-disk reconcile as the success and flag restart_required; the next
+        # engine start is the authoritative check.
+        install_err: str | None = None
+        try:
+            _install_ort_wheel(prof)
+        except Exception as exc:  # noqa: BLE001
+            install_err = str(exc)
+        _purge_ort_modules()
+        ready = False
+        try:
+            ready = _ort_profile_ready(prof)
+        except Exception:  # noqa: BLE001
+            ready = False
+        result.update(
+            healed=True,
+            reason="reconciled_ort_wheels",
+            removed=installed_conflicts,
+            reinstalled=keep_pkg,
+            ep_ready_after=ready,
+            restart_required=not ready,
+        )
+        if install_err and not ready:
+            # Not a hard failure — the reconcile ran; a fresh process should see
+            # the profile EP. Record the in-process verify note for diagnostics.
+            result["inprocess_verify_note"] = install_err
+        return result
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "healed": False, "reason": "error", "error": str(exc)}
+
+
+def _is_installed(pkg: str) -> bool:
+    try:
+        importlib.metadata.version(pkg)
+        return True
+    except importlib.metadata.PackageNotFoundError:
+        return False
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def _requirement_satisfied(spec: str) -> bool:
     """True if importlib.metadata reports a version matching the PEP 508 spec."""
     try:

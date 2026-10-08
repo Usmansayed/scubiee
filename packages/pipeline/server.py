@@ -1082,6 +1082,37 @@ def run_server(
             ce._start_health_refresher()
         except Exception as exc:  # noqa: BLE001
             print(f"[engine] health refresher note: {exc}", file=sys.stderr, flush=True)
+        # ORT wheel-conflict self-heal (GPU EP silently lost after a reinstall /
+        # upgrade — fastembed's unbounded onnxruntime dep clobbers the profile
+        # wheel's DLLs). Detect + reconcile BEFORE the embedder loads, so a broken
+        # install does not first fail the warm embed. Runs on a daemon thread
+        # (the reconcile pip-installs, which is slow) and only acts when the exact
+        # broken state is present; otherwise it is a cheap no-op. The DLL fix
+        # lands on the next engine start, so it logs a restart hint. Opt out
+        # CTX_ORT_SELF_HEAL=0.
+        def _ort_self_heal() -> None:
+            try:
+                from pipeline.accel import heal_ort_conflict
+
+                out = heal_ort_conflict()
+                if out.get("healed"):
+                    print(
+                        f"[engine] ORT self-heal reconciled the GPU runtime "
+                        f"(removed {out.get('removed')}, reinstalled "
+                        f"{out.get('reinstalled')}). Restart the engine to use GPU "
+                        f"acceleration — applies automatically on next start.",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+            except Exception as exc:  # noqa: BLE001
+                print(f"[engine] ORT self-heal note: {exc}", file=sys.stderr, flush=True)
+
+        try:
+            import threading as _th
+
+            _th.Thread(target=_ort_self_heal, name="scubiee-ort-heal", daemon=True).start()
+        except Exception:  # noqa: BLE001
+            pass
         try:
             from pipeline.process_job import attach_engine_on_start
 

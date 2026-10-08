@@ -109,13 +109,39 @@ def _verify_gpu_provider(embedder: Embedder) -> None:
         if want_provider in available:
             return  # All good — GPU provider loaded
 
-        print(
-            f"[engine] WARNING: profile={profile.profile} but {want_provider} not in "
-            f"available providers {available}. Embedding is running on CPU. "
-            f"Run `scubiee setup --repair` to fix GPU acceleration.",
-            file=sys.stderr,
-            flush=True,
-        )
+        # Attempt the lightweight ORT-conflict self-heal: a reinstall/upgrade can
+        # leave the generic onnxruntime wheel clobbering the profile wheel's DLLs
+        # (fastembed's unbounded onnxruntime dep), silently dropping the GPU EP.
+        # heal_ort_conflict uninstalls just the conflicting wheel so the profile
+        # DLLs win on the next start — no full reinstall. DLL resolution is
+        # import-time, so the fix lands on the next engine restart; surface that
+        # clearly instead of only pointing at `setup --repair`.
+        healed = {"healed": False, "reason": "not_attempted"}
+        try:
+            from pipeline.accel import heal_ort_conflict
+
+            healed = heal_ort_conflict(profile.profile)
+        except Exception:  # noqa: BLE001
+            pass
+
+        if healed.get("healed"):
+            print(
+                f"[engine] {want_provider} was missing (embedding fell back to "
+                f"CPU); auto-healed the ORT wheel conflict "
+                f"(removed {healed.get('removed')}). Restart the engine to pick up "
+                f"GPU acceleration — it will apply automatically on next start.",
+                file=sys.stderr,
+                flush=True,
+            )
+        else:
+            print(
+                f"[engine] WARNING: profile={profile.profile} but {want_provider} not in "
+                f"available providers {available}. Embedding is running on CPU "
+                f"(self-heal: {healed.get('reason')}). "
+                f"Run `scubiee setup --repair` to fix GPU acceleration.",
+                file=sys.stderr,
+                flush=True,
+            )
     except Exception:  # noqa: BLE001
         pass  # Don't crash the warm-up over a diagnostic check
 
