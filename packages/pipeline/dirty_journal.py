@@ -192,6 +192,13 @@ class JournalingLedger:
             self.ledger.complete(paths, published=published)
             self._persist()
 
+    def note_barren(self, paths):
+        with self._journal_lock:
+            out = self.ledger.note_barren(paths)
+            if out:
+                self._persist()
+            return out
+
     def recover_stale_processing(self, *, max_age_s: float = 90.0, now: float | None = None) -> list[str]:
         with self._journal_lock:
             recovered = self.ledger.recover_stale_processing(max_age_s=max_age_s, now=now)

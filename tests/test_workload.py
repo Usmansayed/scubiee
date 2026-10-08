@@ -164,9 +164,50 @@ def test_removed_only_is_cheap(tmp_path):
     store = _make_store(repo)
     removed = [f"old{i}.py" for i in range(500)]
 
+    # Deletes carry only a token prune cost (0.5/path), so 500 deletes stay well
+    # under budget and silent — a pure delete is cheap even in bulk.
     pending = classify_workload([], [], removed, repo=repo, store=store, corpus_size=1000)
     assert pending.substantial is False
-    assert pending.estimated_units == 0
+    assert pending.estimated_units < 300  # 500 * 0.5 = 250, not minutes-scale
+
+
+def test_many_tiny_files_is_substantial_via_per_file_overhead(tmp_path):
+    """A large COUNT of files is minutes-scale work even when each is tiny.
+
+    Regression for the adversarial finding: 300 trivially-small offline files
+    estimated ~15s (not substantial) and stayed silent, yet genuinely took
+    ~150s to drain. The per-file overhead term makes the count register.
+    """
+    from pipeline.workload import classify_workload
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    added = []
+    for i in range(300):
+        rel = f"paste/tiny_{i}.py"
+        _write_file(repo, rel, 2)  # ~1 chunk each by content alone
+        added.append(rel)
+    store = _make_store(repo)
+
+    pending = classify_workload(added, [], [], repo=repo, store=store, corpus_size=9000)
+    assert pending.substantial is True
+    # content alone would be ~300 units (~15s); overhead lifts it minutes-scale.
+    assert pending.estimated_seconds >= 25.0
+
+
+def test_a_dozen_small_files_still_silent(tmp_path):
+    """The overhead must not over-flag ordinary small multi-file edits."""
+    from pipeline.workload import classify_workload
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    added = [f"m_{i}.py" for i in range(8)]
+    for rel in added:
+        _write_file(repo, rel, 20)
+    store = _make_store(repo)
+
+    pending = classify_workload(added, [], [], repo=repo, store=store, corpus_size=9000)
+    assert pending.substantial is False
 
 
 # ---- throughput sourcing ----------------------------------------------------
@@ -235,12 +276,16 @@ def test_modified_uses_exact_indexed_chunk_count(tmp_path):
     store = _make_store(repo)
     _persist_chunks(store, {"big.py": 40})
 
+    # 40 exact chunks + one PER_FILE_OVERHEAD_UNITS (10) = 50; the exact count
+    # still dominates the 1-line estimate (which would be ~1 + overhead).
+    from pipeline.workload import PER_FILE_OVERHEAD_UNITS
+
     units = estimate_units([], ["big.py"], [], repo=repo, store=store)
-    assert units == 40
+    assert units == 40 + int(PER_FILE_OVERHEAD_UNITS)
 
 
 def test_doc_weighting_halves_cost(tmp_path):
-    from pipeline.workload import estimate_units
+    from pipeline.workload import PER_FILE_OVERHEAD_UNITS, estimate_units
 
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -248,6 +293,9 @@ def test_doc_weighting_halves_cost(tmp_path):
     _write_file(repo, "doc.md", 250)    # ~10 chunks * 0.5
     store = _make_store(repo)
 
-    code_units = estimate_units(["code.py"], [], [], repo=repo, store=store)
-    doc_units = estimate_units(["doc.md"], [], [], repo=repo, store=store)
-    assert doc_units == pytest.approx(code_units * 0.5, abs=1)
+    # The per-file overhead (same for both) is added on top of the weighted
+    # chunk cost; subtract it to check the chunk portion halves for docs.
+    oh = int(PER_FILE_OVERHEAD_UNITS)
+    code_chunks = estimate_units(["code.py"], [], [], repo=repo, store=store) - oh
+    doc_chunks = estimate_units(["doc.md"], [], [], repo=repo, store=store) - oh
+    assert doc_chunks == pytest.approx(code_chunks * 0.5, abs=1)

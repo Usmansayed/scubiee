@@ -1855,8 +1855,25 @@ class BackgroundSyncLoop:
             try:
                 result = incremental_sync(self.repo, force_files=sub_batch, bulk=True)
             except Exception as exc:
-                # Return this sub-batch and all remaining to queue for retry.
-                self.dirty_ledger.mark(sub_batch, reason="bulk_retry", now=time.monotonic())
+                # A sub-batch that keeps RAISING (e.g. a parser that always fails
+                # on one pathological file) must not retry forever either — the
+                # same barren cap applies so a hard-failing path is quarantined
+                # instead of pinning the keeper.
+                barren_cap = max(1, int(os.environ.get("CTX_BULK_BARREN_CAP", "3") or "3"))
+                counts = self.dirty_ledger.note_barren(sub_batch)
+                quarantined = [p for p, n in counts.items() if n >= barren_cap]
+                if quarantined:
+                    self.dirty_ledger.complete(quarantined, published=True)
+                    self.needs_full = True
+                    print(
+                        f"[keeper] quarantined {len(quarantined)} path(s) that failed "
+                        f"{barren_cap}x: {exc}: {', '.join(quarantined[:5])}",
+                        file=sys.stderr, flush=True,
+                    )
+                retry = [p for p in sub_batch if p not in set(quarantined)]
+                if retry:
+                    # defer (not mark) to preserve fail_attempts across retries.
+                    self.dirty_ledger.defer(retry, now=time.monotonic())
                 remaining = paths[i + BULK_SUB_BATCH:]
                 if remaining:
                     self.dirty_ledger.mark(remaining, reason="bulk_retry", now=time.monotonic())
@@ -1884,15 +1901,50 @@ class BackgroundSyncLoop:
                 last_strategy = "explicit_full_index_required"
                 break
             else:
-                # Deferred (resource pressure) or other non-refresh — re-queue
-                # for retry rather than marking published (files weren't indexed).
-                self.dirty_ledger.mark(sub_batch, reason="bulk_deferred", now=time.monotonic())
+                # Non-refresh that is NOT a clean resource-deferral: the sub-batch
+                # produced 0 upserted / 0 removed. A genuinely deferred batch
+                # (resource pressure) should retry; but a batch that keeps
+                # refreshing NOTHING — a pathologically huge file, a parser that
+                # always fails on it, an empty-delta ghost — must not re-queue
+                # forever and pin the keeper (the infinite `bulk_deferred` loop:
+                # "0 upserted, 0 removed" every ~5 min indefinitely). Count barren
+                # attempts and QUARANTINE a path that exceeds the cap so the
+                # ledger drains. Resource-pressure deferrals do not count toward
+                # the cap (they are expected to clear).
+                resource_deferred = result.strategy == "deferred"
+                barren_cap = max(1, int(os.environ.get("CTX_BULK_BARREN_CAP", "3") or "3"))
+                quarantined: list[str] = []
+                if not resource_deferred:
+                    counts = self.dirty_ledger.note_barren(sub_batch)
+                    quarantined = [p for p, n in counts.items() if n >= barren_cap]
+                if quarantined:
+                    # Give up on these paths: complete() drains them from the
+                    # ledger so the keeper stops looping. The file simply stays
+                    # unindexed (search still serves everything else). Surface it
+                    # so the gap is visible rather than a silent spin.
+                    self.dirty_ledger.complete(quarantined, published=True)
+                    self.needs_full = True
+                    last_error = (
+                        f"{len(quarantined)} path(s) could not be indexed after "
+                        f"{barren_cap} attempts (0 chunks each) — quarantined; "
+                        f"run `scubiee index {self.repo} --force` to retry: "
+                        f"{', '.join(quarantined[:5])}"
+                    )
+                    print(f"[keeper] {last_error}", file=sys.stderr, flush=True)
+                retry = [p for p in sub_batch if p not in set(quarantined)]
+                # Re-queue the still-retrying paths with ``defer`` (NOT ``mark``):
+                # ``mark`` on a non-queued entry creates a fresh DirtyEntry and
+                # would RESET the barren counter, so the cap could never be
+                # reached. ``defer`` flips state back to queued in place and
+                # preserves ``fail_attempts``.
+                if retry:
+                    self.dirty_ledger.defer(retry, now=time.monotonic())
                 remaining = paths[i + BULK_SUB_BATCH:]
                 if remaining:
                     self.dirty_ledger.mark(remaining, reason="bulk_deferred", now=time.monotonic())
                 if result.error:
                     last_error = result.error
-                if result.strategy == "deferred":
+                if resource_deferred:
                     last_error = last_error or "resource pressure — bulk deferred"
                 break
 

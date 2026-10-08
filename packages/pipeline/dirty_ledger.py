@@ -62,6 +62,11 @@ class DirtyEntry:
     # Monotonic timestamp of the most recent mark — the moment the user's save
     # started waiting. Used to report the debounce stage of the save→map budget.
     marked_at: float = 0.0
+    # Count of sync attempts that produced NO change (0 upserted / 0 removed) for
+    # this path. A path that can never be indexed (pathologically huge file, a
+    # parser that always fails on it) would otherwise re-queue forever and pin
+    # the keeper. After a cap the keeper quarantines it (see note_barren).
+    fail_attempts: int = 0
 
 
 class DirtyLedger:
@@ -181,6 +186,22 @@ class DirtyLedger:
                 if entry is not None:
                     entry.state = state
                     entry.processing_since = 0.0
+
+    def note_barren(self, paths: Iterable[str]) -> dict[str, int]:
+        """Record that a sync attempt produced NO change for these paths.
+
+        Returns the new ``fail_attempts`` count per path. A caller uses this to
+        decide when a path has refreshed nothing too many times and should be
+        quarantined (``complete``) instead of re-queued forever.
+        """
+        out: dict[str, int] = {}
+        with self._lock:
+            for path in paths:
+                entry = self._entries.get(normalize_dirty_path(path))
+                if entry is not None:
+                    entry.fail_attempts += 1
+                    out[entry.path] = entry.fail_attempts
+        return out
 
     def recover_stale_processing(self, *, max_age_s: float = 90.0, now: float | None = None) -> list[str]:
         """Reset paths stuck in processing (crash/hang) back to queued."""

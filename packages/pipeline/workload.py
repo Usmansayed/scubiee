@@ -52,6 +52,14 @@ def substantial_fraction() -> float:
 # purpose: unmeasured must never make a big batch look small.
 DEFAULT_THROUGHPUT_CHUNKS_PER_S = float(os.environ.get("CTX_DEFAULT_EMBED_CPS") or "20")
 
+# Per-touched-file fixed overhead, in equivalent embed-units. A changed file
+# costs more than its chunk count: parse, graph participation, session-span
+# invalidation, and publish accounting all scale with the *number of files*, not
+# just total chunks. Without this, 300 tiny files estimate ~300 units (~15s) yet
+# genuinely take minutes to drain — so a big paste wrongly stayed silent. At the
+# default 20 cps this models ~0.5s of pipeline overhead per file.
+PER_FILE_OVERHEAD_UNITS = float(os.environ.get("CTX_PER_FILE_OVERHEAD_UNITS") or "10")
+
 # ---- file-type weighting ----------------------------------------------------
 
 _CODE_EXT = {
@@ -154,6 +162,7 @@ def estimate_units(
             existing_counts = {}
 
     units = 0.0
+    indexable_files = 0
     for rel in modified:
         w = file_type_weight(rel)
         if w <= 0.0:
@@ -161,15 +170,20 @@ def estimate_units(
         base = existing_counts.get(rel.replace("\\", "/"))
         base = base if base and base > 0 else _line_estimate(repo, rel)
         units += w * base
+        indexable_files += 1
     for rel in added:
         w = file_type_weight(rel)
         if w <= 0.0:
             continue
         units += w * _line_estimate(repo, rel)
-    # removed files: pruning a tombstone is ~free; count a flat tiny cost so a
-    # massive delete still registers as *some* work but never looks substantial
-    # on deletions alone.
-    units += 0.0 * len(removed)
+        indexable_files += 1
+    # Per-file pipeline overhead: a large COUNT of files is minutes-scale work
+    # even when each file is tiny (parse/graph/invalidate/publish scale per file).
+    # This is what makes a 300-file paste read as substantial, not just a few big
+    # files. Deletes are much cheaper (a tombstone prune, no embed/parse) so they
+    # carry only a token per-path cost and stay silent unless truly enormous.
+    units += PER_FILE_OVERHEAD_UNITS * indexable_files
+    units += 0.5 * len(removed)
     return int(round(units))
 
 
@@ -215,14 +229,17 @@ def classify_workload(
         reason = "offline_batch" if substantial else "incremental"
         action = None
 
-    total = len(added) + len(modified) + len(removed)
+    # total_units is the estimated embed-unit workload (what the ETA is based
+    # on), so done_units/total_units is a meaningful progress fraction the keeper
+    # can advance. (It is NOT the raw file count — a single huge file is a large
+    # unit total, and 300 tiny files is a large unit total too.)
     return PendingSummary(
         substantial=substantial,
         reason=reason,
         estimated_units=units,
         estimated_seconds=round(est_seconds, 1),
         done_units=0,
-        total_units=total,
+        total_units=units,
         search_usable=True,  # the current generation keeps serving during reconcile
         action=(action if full_reindex else None),
         detected_at=time.time(),
