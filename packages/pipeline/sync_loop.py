@@ -40,6 +40,15 @@ DEFAULT_GRAPH_CATCHUP_DELAY_S = float(os.environ.get("CTX_GRAPH_CATCHUP_DELAY_S"
 DEFAULT_GRAPH_CATCHUP_QUIET_S = float(os.environ.get("CTX_GRAPH_CATCHUP_QUIET_S", "20.0"))
 DEFAULT_LIVE_MAX_FILES = int(os.environ.get("CTX_LIVE_MAX_FILES", "200"))
 DEFAULT_LIVE_MAX_CHUNKS = int(os.environ.get("CTX_LIVE_MAX_CHUNKS", "300"))
+# A graph catch-up rewrites the WHOLE graph.json once per merge (~2-4s fixed,
+# independent of how many files are in the batch — the cost is dedup +
+# build_from_json over all nodes, not the handful of changed ones). So the
+# chunk-based live cap (tuned for the embed lane, where cost scales with chunks)
+# is exactly wrong for the catch-up lane: it slices a bulk churn into many small
+# batches, each paying the full rebuild, so N changed files cost N×rebuild and
+# index_fresh stays False for minutes. Merge all pending catch-ups in ONE
+# rebuild instead by widening the batch when the drain is catch-up-dominated.
+DEFAULT_GRAPH_CATCHUP_MAX_FILES = int(os.environ.get("CTX_GRAPH_CATCHUP_MAX_FILES", "2000"))
 DEFAULT_AUTO_FULL_INDEX_CHUNKS = int(os.environ.get("CTX_AUTO_FULL_INDEX_CHUNKS", "10000"))
 DEFAULT_BULK_REINDEX_THRESHOLD = int(os.environ.get("CTX_BULK_REINDEX_THRESHOLD", "300"))
 DEFAULT_CHANGE_POLL_MS = int(os.environ.get("CTX_CHANGE_POLL_MS", "1000"))
@@ -220,6 +229,7 @@ class BackgroundSyncLoop:
         # after it so their ~8s whole-graph merge never lands mid-burst.
         self._last_hot_mark_at: float | None = None
         self.graph_catchup_quiet_s = DEFAULT_GRAPH_CATCHUP_QUIET_S
+        self.graph_catchup_max_files = max(1, DEFAULT_GRAPH_CATCHUP_MAX_FILES)
         # Issue 6: one in-flight child-process graph merge (graph_merge_worker).
         # The keeper keeps serving saves while it runs and only commits it.
         self._graph_job: Any | None = None
@@ -898,17 +908,36 @@ class BackgroundSyncLoop:
             return [payload]
 
         # --- Tier 1: ≤300 chunks — fast live batch ---
+        # Catch-up lane widening: a drain whose paths are ALL graph catch-ups
+        # (no hot saves) merges in a single whole-graph rebuild whose cost is
+        # fixed regardless of file count, so slicing it by the chunk cap only
+        # multiplies the fixed rebuild. Take every pending catch-up in one batch
+        # (bounded by a generous file cap, not the chunk cap). Hot saves and
+        # mixed batches keep the normal chunk-bounded cap so an embed-heavy batch
+        # never balloons. Opt out: CTX_GRAPH_CATCHUP_MAX_FILES=0 restores the
+        # chunk cap for catch-ups too.
+        catchup_only = (
+            self.graph_catchup_max_files > 1
+            and not self._is_hot_batch(paths[: self.live_max_files] or paths)
+            and len(self._catchup_paths(paths)) == len(paths)
+        )
+        if catchup_only:
+            max_files = self.graph_catchup_max_files
+            max_chunks = None  # chunk cap does not bound the fixed-cost rebuild
+        else:
+            max_files = self.live_max_files
+            max_chunks = self.live_max_chunks
         batch: list[str] = []
         estimated_batch = 0
         for path in paths:
-            if len(batch) >= self.live_max_files:
+            if len(batch) >= max_files:
                 break
             estimate = estimates.get(path, 1)
-            if batch and estimated_batch + estimate > self.live_max_chunks:
+            if max_chunks is not None and batch and estimated_batch + estimate > max_chunks:
                 break
             batch.append(path)
             estimated_batch += estimate
-            if estimated_batch >= self.live_max_chunks:
+            if max_chunks is not None and estimated_batch >= max_chunks:
                 break
         if not batch:
             batch = [paths[0]]

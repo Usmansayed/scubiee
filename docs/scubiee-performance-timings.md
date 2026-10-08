@@ -146,6 +146,40 @@ Engine log confirmed the path end-to-end:
   dense); soft search is usable at ~9s. An 80-file offline paste is fully
   searchable in ~65s with honest `index_fresh=False` while it drains.
 
+## Graph catch-up — batched so bulk churn drains in one rebuild
+
+A graph catch-up rewrites the **whole** `graph.json` once per merge: `extract`
+the changed files, then `build_merge` runs `deduplicate_entities` + a full
+`build_from_json` over **every** node (18.5k nodes / 37k edges on this repo).
+Profiled in isolation on the real graph, a single-file catch-up is:
+
+```
+extract 1 file:          262ms
+deduplicate_entities:   1287ms   (over all 18,565 nodes)
+build_from_json:        2519ms   (rebuilds the whole NetworkX graph)
+other:                   195ms
+total:                  ~4002ms
+```
+
+The cost is **fixed per merge** — it scales with the whole graph, not the number
+of changed files. The keeper previously sliced catch-up batches by the chunk cap
+(`CTX_LIVE_MAX_CHUNKS=300`, tuned for the embed lane where cost *does* scale with
+chunks). So a bulk churn of N files became N chunk-capped merges, each paying the
+full ~4s rebuild, and `index_fresh` stayed False for N×4s.
+
+Fix (`sync_loop.py`): when a drain is **catch-up-only** (every pending path is a
+`graph_catchup`, no hot saves), widen the batch to `CTX_GRAPH_CATCHUP_MAX_FILES`
+(default 2000) and ignore the chunk cap — merge all pending catch-ups in ONE
+whole-graph rebuild. Hot saves and mixed batches keep the chunk-bounded cap so an
+embed-heavy batch never balloons. Verified: 120 queued catch-up paths now form a
+single batch (1 rebuild) vs the old chunk-capped 100-file slices (2+ rebuilds);
+for the 80-file bulk-offline case this collapses ~N sequential 4s rebuilds into
+one. Opt out: `CTX_GRAPH_CATCHUP_MAX_FILES=0`.
+
+(The per-merge ~4s itself — dominated by `build_from_json` rebuilding the full
+NetworkX graph — is a deeper follow-up; batching removes the N× multiplier that
+was the actual "index_fresh stays False after bulk churn" pain.)
+
 ## How to re-run
 ```
 # tool latency (warm, in-process):
