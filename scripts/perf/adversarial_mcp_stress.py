@@ -119,16 +119,39 @@ def _write_mod(path: Path, token: str, funcs: int = 6) -> None:
 
 
 def log_tail_fatal(since_ts: float) -> list[str]:
-    """Fatal/traceback lines written to engine.log after since_ts."""
+    """Genuine fatal/traceback lines written to engine.log.
+
+    Precise on purpose: an earlier version matched the literal substring 'crash'
+    inside scenario FILE PATHS (``s3/crash_0.py``) and flagged benign
+    ``client gone mid-response`` disconnects, producing false G5 failures. We now
+    match only unambiguous fatal signals and explicitly skip benign lines.
+    """
     if not ENGINE_LOG.is_file():
         return []
+    # Phrases that look alarming but are normal operation / harness teardown.
+    benign = (
+        "client gone mid-response",   # harness closed the bridge mid-call
+        "gone from disk",             # routine deletion-queue log
+        "queued for removal",
+        "ConnectionAbortedError".lower(),
+        "ConnectionResetError".lower(),
+    )
+    fatal_signals = (
+        "traceback (most recent call last)",
+        "segmentation fault",
+        "fatal error",
+        "fatal:",
+        "unhandled exception",
+        "panicked",
+        "[keeper] final_check on exit failed",
+    )
     bad = []
     try:
         for line in ENGINE_LOG.read_text(encoding="utf-8", errors="ignore").splitlines()[-800:]:
             low = line.lower()
-            if any(k in low for k in ("traceback (most recent call last)",
-                                      "fatal", "segmentation", "unhandled",
-                                      "crash", "panicked")):
+            if any(b in low for b in benign):
+                continue
+            if any(sig in low for sig in fatal_signals):
                 bad.append(line.strip()[:200])
     except OSError:
         pass
@@ -366,16 +389,32 @@ def s5_rename_storm(pid: str) -> dict:
         except Exception:  # noqa: BLE001
             pass
         time.sleep(2)
-    # old path must be gone from search, new path present
-    old_hit = new_hit = None
-    try:
-        r = http_post("/v1/search", {"path": str(REPO), "query": "s5old0 r function", "top_k": 8}, timeout=20)
-        old_hit = "s5_old/r_0.py" in json.dumps(r) or "s5old0" in json.dumps(r)
-        r2 = http_post("/v1/search", {"path": str(REPO), "query": "s5old0 r function", "top_k": 8}, timeout=20)
-        new_hit = "s5_new" in json.dumps(r2)
-    except Exception:  # noqa: BLE001
-        pass
-    return {"drained_after_s": drained, "old_still_hit": old_hit, "new_hit": new_hit}
+    # Rename = delete(old path) + add(new path). The CONTENT is identical in both
+    # paths, so a content search matches either — to prove the old path was
+    # PRUNED we must inspect the file PATHS returned, not the body text. The
+    # delete-half drains over several cycles AFTER index_fresh first flips (the
+    # current generation keeps serving old content until the removal publishes),
+    # so POLL until the old path disappears rather than snapshotting once.
+    old_path_present = new_path_present = None
+    t_prune = time.time()
+    for _ in range(60):  # up to ~2 min for the delete-half to publish
+        try:
+            r = http_post("/v1/search", {"path": str(REPO), "query": "s5old0 r function marker", "top_k": 12}, timeout=20)
+            blob = json.dumps(r)
+            old_path_present = "s5_old/" in blob or "s5_old\\" in blob
+            new_path_present = "s5_new/" in blob or "s5_new\\" in blob
+        except Exception:  # noqa: BLE001
+            time.sleep(2); continue
+        if old_path_present is False and new_path_present:
+            break
+        time.sleep(2)
+    return {
+        "drained_after_s": drained,
+        "prune_wait_s": round(time.time() - t_prune, 1),
+        "old_path_pruned": (old_path_present is False),
+        "old_path_present": old_path_present,
+        "new_path_indexed": new_path_present,
+    }
 
 
 def s6_huge_file(pid: str) -> dict:

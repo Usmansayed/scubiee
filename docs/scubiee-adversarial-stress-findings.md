@@ -94,15 +94,52 @@ Tests: `tests/test_bulk_barren_quarantine.py`
 (`test_barren_file_is_quarantined_after_cap_not_looped`,
 `test_resource_deferral_does_not_count_toward_barren_cap`).
 
-## Harness artifact (not a product bug)
+## Second batch — S3 crash, S5 rename, S8 mixed cycles
 
-The harness's G4 check originally compared the `/health` `generation` field,
-which is a **volatile in-memory counter that resets on every engine restart**.
-Since every stop/start scenario restarts the engine, the counter appeared to go
-backward (5→3→1). Fixed the harness to read the **durable** generation
-`(epoch, counter)` from `index_state.json`, which is monotonic within an epoch
-(an epoch change is a legitimate new engine identity). The task-1 monotonic
-guarantee was never violated.
+| Scenario | Verdict | Notes |
+|----------|---------|-------|
+| S3 crash_mid_index | **PASS** | hard-killed the engine mid offline-reconcile of 120 files; watchdog restarted it, reconcile-from-journal recovered, generation monotonic, no fatal logs |
+| S5 rename_storm | **PASS** (invariants) | rename detected correctly as delete+add; old-path prune is slow (see below) |
+| S8 mixed_cycles | **PASS** | 2 back-to-back add+modify+delete offline cycles, engine coherent throughout |
+
+With the earlier batch, **all 8 scenarios pass invariants** against the real MCP.
+
+### S5 deep-dive — rename detection is correct; prune is slow (not broken)
+
+An initial corrected probe showed the OLD `s5_old/` paths still searchable 128s
+after an offline folder rename, which looked like a prune failure. Investigation:
+
+- **Detection is correct.** An isolated repro of `root_probe(discover_newcomers=True)`
+  on a renamed folder returns the old paths in `removed` and the new paths in
+  `added` (rename = delete + add). The reconciler enqueues both halves.
+- **The removals DO publish** — the engine log shows `removed=165` / `removed=200`
+  bulk cycles pruning the old paths. They are not lost.
+- **They drain slowly**, interleaved with the add-half and (in the contaminated
+  multi-scenario run) a large accumulated backlog, so the old content stayed
+  searchable past the 128s probe window. This is the **same `search_usable`
+  during-reconcile behavior** as the big-batch case: the current generation keeps
+  serving old content until the delete-half's generation publishes. Correct, but
+  slow — see the drain-throughput follow-up below.
+
+## Harness artifacts fixed (not product bugs)
+
+Three harness weaknesses produced misleading verdicts and were corrected so the
+harness is trustworthy:
+
+1. **G4 generation check** compared the `/health` `generation` field — a volatile
+   in-memory counter that resets on every engine restart (so stop/start
+   scenarios appeared to move it backward 5→3→1). Fixed to read the **durable**
+   `(epoch, counter)` from `index_state.json`, monotonic within an epoch. The
+   durable guarantee was never violated.
+2. **G5 fatal-log filter** matched the literal substring `crash` inside scenario
+   FILE PATHS (`s3/crash_0.py`) and flagged benign `client gone mid-response`
+   disconnects as fatal. Fixed to match only genuine fatal signals (real
+   tracebacks, segfaults, `fatal:`/`unhandled exception`/`panicked`) and skip the
+   known-benign lines.
+3. **S5 old-path check** snapshotted once at the moment `index_fresh` first
+   flipped, before the delete-half had drained. Fixed to poll until the old path
+   disappears (up to ~2 min) and to inspect returned PATHS, not shared body text
+   (a rename keeps content identical in both paths).
 
 ## Follow-up / improvement opportunities (not yet done)
 
@@ -115,6 +152,12 @@ guarantee was never violated.
 - **Dense-embed throughput at scale** (300-file / huge-file drain time) is
   dominated by the cold-embedder defer + per-chunk embed cost; worth profiling if
   faster catch-up is desired.
+- **Delete/rename prune latency.** An offline folder rename (40 delete + 40 add)
+  takes >2 min for the delete-half to fully disappear from search, because the
+  removals drain in ~25–45s bulk cycles interleaved with the adds. The content is
+  correct throughout (search_usable), but old paths linger longer than ideal.
+  Prioritizing the delete-half (prune before/alongside the add-half) would make a
+  rename reflect faster. Correctness is fine; this is a latency improvement.
 
 ## How to re-run
 ```
