@@ -1545,8 +1545,27 @@ def tool_status(_a: dict) -> str:
         h = _http("/health", timeout=10)
     except Exception as e:  # noqa: BLE001
         return f"status: engine unreachable ({e})"
-    return (f"ok={h.get('ok')} warm={h.get('warm_ready')} dense={h.get('dense_ready')} "
+    line = (f"ok={h.get('ok')} warm={h.get('warm_ready')} dense={h.get('dense_ready')} "
             f"phase={h.get('warm_phase')} chunks={h.get('chunks')} version={h.get('version')}")
+    # Surface pending work ONLY when it is substantial (reconcile/interrupted).
+    # Small incremental catch-up stays silent; search_usable means the current
+    # index still serves while the catch-up finishes.
+    pending = h.get("pending")
+    if isinstance(pending, dict) and pending.get("substantial"):
+        state = pending.get("state") or "reconciling"
+        reason = pending.get("reason") or ""
+        secs = pending.get("estimated_seconds")
+        usable = pending.get("search_usable", True)
+        line += f" pending={state}"
+        if reason:
+            line += f"({reason})"
+        if isinstance(secs, (int, float)) and secs > 0:
+            line += f" ~{int(secs)}s"
+        line += f" search_usable={str(bool(usable)).lower()}"
+        action = pending.get("action")
+        if action:
+            line += f" action='{action}'"
+    return line
 
 
 MAP_SCHEMA = {

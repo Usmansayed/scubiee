@@ -572,6 +572,78 @@ def _pid_alive(pid: int) -> bool:
         return False
 
 
+def _begin_build_record(
+    project_id: str | None,
+    *,
+    kind: str,
+    staging_base: Path,
+    live_base: Path,
+) -> str | None:
+    """Write a durable 'index build in progress' record (spec C4). Best-effort.
+
+    Returns the build_id (or None). Any failure is swallowed so the index path
+    is unchanged — the record is a recovery aid, never a correctness dependency.
+    """
+    if not project_id:
+        return None
+    try:
+        import time as _time
+        import uuid as _uuid
+
+        from pipeline.index_state import BuildRecord, load_index_state, transition
+
+        # total_units: the existing live chunk count is a reasonable proxy for a
+        # forced full reindex (exactness is not required — this drives resume /
+        # pending signalling, not correctness).
+        total = 0
+        try:
+            prev = load_index_state(project_id)
+            total = int((prev.pending.total_units if prev.pending else 0) or 0)
+        except Exception:  # noqa: BLE001
+            total = 0
+        build_id = _uuid.uuid4().hex[:12]
+        transition(
+            project_id,
+            state="indexing",
+            build=BuildRecord(
+                build_id=build_id,
+                pid=os.getpid(),
+                kind=kind,  # type: ignore[arg-type]
+                started_at=_time.time(),
+                staging_dir=staging_base.name,
+                total_units=total,
+                done_units=0,
+                phase="parse",
+            ),
+        )
+        return build_id
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _complete_build_record(project_id: str | None, *, chunks: int = 0) -> None:
+    """Clear the build-intent record after a successful promote (spec C4).
+
+    Marks FRESH, drops the build record, and bumps the durable generation
+    counter. Best-effort; never raises into the index path.
+    """
+    if not project_id:
+        return
+    try:
+        from pipeline.index_state import load_index_state, transition
+
+        doc = load_index_state(project_id)
+        transition(
+            project_id,
+            state="fresh",
+            build=None,
+            pending=None,
+            generation_counter=int(doc.generation_counter) + 1,
+        )
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _sweep_stale_staging(live_base: Path, live_collection: str, vdb) -> None:
     """Remove `<base>.staging-<pid>/` dirs and `<collection>__staging_<pid>`
     collections whose owner pid is dead (orphaned by a killed index)."""
@@ -648,6 +720,15 @@ def index_repo_staged(
         shutil.rmtree(staging_base, ignore_errors=True)
     staging_base.mkdir(parents=True, exist_ok=True)
 
+    # Durable build-intent record (spec C4, task 2.2): mark INDEXING before any
+    # staging mutation so a crash mid-build is detectable on restart (the owner
+    # pid will be dead → INTERRUPTED → sweep + resume). Cleared only after the
+    # manifest publishes. Fully best-effort: never change index success/failure.
+    _bi_project = getattr(live_store, "project_id", None)
+    _bi_build_id = _begin_build_record(
+        _bi_project, kind="full", staging_base=staging_base, live_base=live_base
+    )
+
     try:
         stats = index_repo(
             root,
@@ -697,6 +778,11 @@ def index_repo_staged(
             except Exception:  # noqa: BLE001
                 pass
             raise RuntimeError(f"staged promote failed: {result}")
+
+        # Manifest published → clear the build-intent record and mark FRESH
+        # (spec C4). Done only AFTER promote so an interruption before this
+        # point stays detectable. Best-effort.
+        _complete_build_record(_bi_project, chunks=int(getattr(stats, "chunks", 0) or 0))
 
         # meta.json records the live collection name; after the swap the live
         # store serves the promoted collection under its original name.

@@ -156,3 +156,89 @@ python scripts/perf/scenario_sim.py            # all 5
 python scripts/perf/scenario_sim.py D2 F3      # a subset
 ```
 Report: `scripts/perf/_scenario_result.json`.
+
+---
+
+# Unified Indexing & State-Management Model — scenario matrix (spec `indexing-state-model`)
+
+Covers the design's scenario catalogue (A1–A7, B1–B2, C1–C6, D1–D4, E1–E3) for
+the unified `index_state.json` + Reconciler + classifier model. Each row maps to
+a deterministic offline unit test (`CTX_HOME` tmp, no live engine/embedder) or to
+a live case already verified in the HIGH-priority section above. Recovery cases
+run against a fabricated/copied store, never the live index.
+
+**Verdict: every scenario below is covered by a passing automated test or a
+documented live verification. 64 unified-model unit tests pass; the broader sync
++ lifecycle regression is green except the one pre-existing env failure
+(`_FakeCE.search(lean=)` in `test_open_preservation`, unrelated to this spec).**
+
+Run the unified-model suite:
+```
+$env:PYTHONPATH="packages"
+python -m pytest tests/test_index_state.py tests/test_index_state_shadow.py `
+  tests/test_index_state_recovery.py tests/test_reconciler.py tests/test_workload.py `
+  tests/test_pending_contract.py tests/test_lifecycle_index_gate.py `
+  tests/test_lane_delete_consistency.py -p no:logfire -q
+```
+
+## A — engine on, file events
+
+| Scenario | Expected outcome | Covered by | Result |
+|---|---|---|---|
+| A1 single file edit | small drift → silent `stale`; prunes/updates in one drain; no agent `pending` | `test_workload::test_a_few_small_code_files_is_not_substantial`, `test_pending_contract::test_stale_small_catchup_is_silent` | **PASS** |
+| A2 file add | new file line-estimated; silent unless batch substantial | `test_reconciler::test_detects_added_and_removed`, `test_workload::test_doc_weighting_halves_cost` | **PASS** |
+| A3 file delete | pruned within a consistent one-drain bound, independent of concurrent saves | `test_lane_delete_consistency::test_deletion_only_batch_prunes_in_one_drain` | **PASS** (delete-mask retired) |
+| A4 rename/move | old path pruned + new path indexed (= delete + add) | `test_reconciler::test_detects_added_and_removed` (add+remove in one pass) | **PASS** |
+| A5 burst of small saves | coalesced; stays silent (sub-budget) | `test_workload::test_a_few_small_code_files_is_not_substantial` | **PASS** |
+| A6 large paste / generated batch | substantial → `reconciling` + agent `pending` with ETA | `test_workload::test_massive_paste_is_substantial`, reconciler integration (600-file → 240s substantial) | **PASS** |
+| A7 revert to prior content | final content wins; no stale intermediate (merkle baseline) | live S8 revert (HIGH section) + `test_reconciler::test_idempotent_same_drift_same_result` | **PASS** |
+
+## B — client connect/disconnect
+
+| Scenario | Expected outcome | Covered by | Result |
+|---|---|---|---|
+| B1 client connects after offline edits | drift already enqueued; accurate `pending` immediately, no manual trigger | `test_reconciler` (trigger=`connect`/`start` enqueue) + `agent_pending` surfaced | **PASS** |
+| B2 last client disconnects mid-work | idle-stop blocked while `indexing`/`reconciling`/`interrupted` | `test_lifecycle_index_gate::test_reconciling_blocks_should_idle_stop_even_after_debounce` | **PASS** |
+
+## C — engine off / lifecycle
+
+| Scenario | Expected outcome | Covered by | Result |
+|---|---|---|---|
+| C1 offline single-file edit | detected on start, enqueued before write-current | `test_reconciler::test_detects_and_enqueues_modified_file` | **PASS** |
+| C2 offline folder-of-many added | ALL newcomers detected (thorough walk), not only mtime-moved dirs | `test_reconciler::test_folder_of_many_files_added_offline_all_detected` (25 files) | **PASS** |
+| C3 offline deletes | removals detected + enqueued on start | `test_reconciler::test_detects_added_and_removed` | **PASS** |
+| C4 clean tree on start | `fresh`, no enqueue, no pending | `test_reconciler::test_clean_tree_is_fresh_no_enqueue` | **PASS** |
+| C5 small offline catch-up may idle-stop | `stale` is NOT busy → engine may stop and resume next start | `test_lifecycle_index_gate::test_stale_small_catchup_does_not_block` | **PASS** |
+| C6 engine stops → next start resumes | fresh + debounce + no clients → idle-stop proceeds; state persisted | `test_lifecycle_index_gate::test_full_idle_stop_allowed_when_fresh_and_debounce_elapsed` | **PASS** |
+
+## D — substantial / bulk work surfaced
+
+| Scenario | Expected outcome | Covered by | Result |
+|---|---|---|---|
+| D1 offline batch crosses time budget | `reconciling` + substantial pending (ETA, search_usable) | `test_pending_contract::test_reconciling_substantial_is_surfaced` | **PASS** |
+| D2 big pull within caps | all searchable, no refusal, engine stable | live D2 (HIGH section) | **PASS** |
+| D3 huge pull beyond caps | refusal surfaced + `action` field; old index serves | live D3 + `test_workload::test_full_reindex_is_always_substantial`, `test_pending_contract::test_needs_full_sets_action` | **PASS** |
+| D4 corpus-fraction drift | large-fraction drift trips substantial even under budget | `test_workload::test_corpus_fraction_trips_substantial` | **PASS** |
+
+## E — crash / interruption integrity
+
+| Scenario | Expected outcome | Covered by | Result |
+|---|---|---|---|
+| E1 build-intent recorded before staging mutation | durable record present during build; cleared only after manifest publish | `test_index_state_recovery` (build record lifecycle) | **PASS** |
+| E2 dead-pid build on start | classified `interrupted`; staging swept; live generation never torn | `test_index_state_recovery` + `test_reconciler::test_interrupted_build_sets_interrupted_state` | **PASS** |
+| E3 interrupted reindex (live) | old generation intact, engine recovers, orphan staging swept | live E3 (HIGH section) | **PASS** |
+
+## Rollback / graceful-degradation (R10)
+
+| Property | Covered by | Result |
+|---|---|---|
+| `CTX_UNIFIED_STATE=0` makes reconciler a no-op | `test_reconciler::test_disabled_switch_makes_reconcile_noop` | **PASS** |
+| `CTX_UNIFIED_STATE=0` disables the idle-stop index gate | `test_lifecycle_index_gate::test_rollback_switch_disables_gate` | **PASS** |
+| `CTX_HOT_DELETE_MASK=1` restores old delete-defer | `test_lane_delete_consistency::test_mask_env_restores_old_defer_behavior` | **PASS** |
+| missing/old-version `index_state.json` → sentinel, never crash | `test_index_state` (sentinel round-trip) | **PASS** |
+
+## Deferred (environment / needs multi-GPU or macOS)
+- Dense-embed full-index scale (A6/D-tier at 12k files): single-GPU DirectML
+  contention blocks a second process — verify on multi-GPU / CI (GA note, above).
+- Full live re-run on macOS via `scripts/perf/scenario_sim.py` (owner to run on a
+  separate machine).

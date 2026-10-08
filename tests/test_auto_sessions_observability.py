@@ -254,8 +254,10 @@ def test_status_exposes_complete_repo_observability_contract(
     assert status["lifecycle"] == "active"
     assert status["sessions"][0]["session_id"] == "status-session"
     assert status["current_files"] == ["main.py", "new.py"]
-    assert status["pending"]["publish"] is True
-    assert status["pending"]["dirty_count"] == 2
+    # Raw queue depth moved to the internal/debug block; the top-level `pending`
+    # is now the agent-facing derived object (None unless substantial work owed).
+    assert status["pending_internal"]["publish"] is True
+    assert status["pending_internal"]["dirty_count"] == 2
     assert isinstance(status["scheduler_queue"]["queue_depth"], int)
     assert isinstance(status["storage_bytes"]["bytes_used"], int)
 

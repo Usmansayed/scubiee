@@ -893,14 +893,18 @@ class BackgroundSyncLoop:
                 break
         if not batch:
             batch = [paths[0]]
-        # OPEN-C: deletion-only batches inside the hot quiet window must not take
-        # the 6–8s full publish on the hot critical path. Defer as non-hot
-        # ``deletion_catchup`` until saves have been quiet.
-        mask_on = (os.environ.get("CTX_HOT_DELETE_MASK") or "1").strip().lower() not in {
-            "0",
-            "false",
-            "no",
-            "off",
+        # RETIRED (spec task 7 / R9.1): the deletion-mask hack deferred a
+        # deletion-only batch whenever an UNRELATED hot save was pending, so a
+        # delete's prune latency depended on concurrent save activity — the exact
+        # inconsistency the unified model removes. Deletions now flow through the
+        # normal batch below and prune within one consistent drain+publish bound,
+        # regardless of other pending work. Default OFF; set CTX_HOT_DELETE_MASK=1
+        # to restore the old conditional-defer behavior (rollback only).
+        mask_on = (os.environ.get("CTX_HOT_DELETE_MASK") or "0").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
         }
         if mask_on and batch and all(not (self.repo / p).is_file() for p in batch):
             # Only defer when a real (on-disk) hot save is still pending — not

@@ -779,6 +779,47 @@ def _idle_busy_reason() -> str | None:
             return f"warm_state:{warm}"
     except Exception:  # noqa: BLE001
         pass
+    # Authoritative index-state gate (unified model): a build/reconcile owes
+    # work even with zero clients, so idle-stop must not fire mid-flight. This
+    # closes the gap where offline-reconcile drift (detected on start, no client
+    # attached) could be stopped before it drains. Guarded by CTX_UNIFIED_STATE.
+    try:
+        reason = _index_state_busy_reason()
+        if reason:
+            return reason
+    except Exception:  # noqa: BLE001
+        pass
+    return None
+
+
+def _index_state_busy_reason() -> str | None:
+    """``busy:<state>`` while the durable index_state is indexing/reconciling/
+    interrupted; None otherwise. No-op when CTX_UNIFIED_STATE is off."""
+    try:
+        from pipeline.reconciler import unified_state_enabled
+
+        if not unified_state_enabled():
+            return None
+    except Exception:  # noqa: BLE001
+        return None
+    try:
+        from pipeline.ce_service import get_context_engine
+        from pipeline.index_state import BUSY_STATES, load_index_state
+        from pipeline.project_id import peek_project
+
+        ce = get_context_engine()
+        repo = getattr(ce, "repo", None)
+        if repo is None:
+            return None
+        ref = peek_project(repo)
+        pid = ref.project_id if ref else None
+        if not pid:
+            return None
+        state = str(load_index_state(pid).state or "")
+        if state in BUSY_STATES:
+            return f"index_state:{state}"
+    except Exception:  # noqa: BLE001
+        return None
     return None
 
 

@@ -46,6 +46,18 @@ from pipeline.sync_loop import (
 )
 
 
+def _agent_pending_safe(project_id: str | None):
+    """Agent-facing pending object from index_state; None/never-raises."""
+    if not project_id:
+        return None
+    try:
+        from pipeline.index_state import agent_pending
+
+        return agent_pending(project_id)
+    except Exception:  # noqa: BLE001
+        return None
+
+
 class _RuntimePublisher:
     """Keeper callback that preserves the public ``publish_engine`` identity."""
 
@@ -125,6 +137,133 @@ class RuntimeManager:
             from pipeline.index_generation import write_stamp
 
             write_stamp(runtime.project_id, runtime.generation, epoch=runtime.epoch)
+        except Exception:  # noqa: BLE001
+            pass
+        # SHADOW write of the unified index_state record (spec C1, task 1.3).
+        # Not yet authoritative — the reconciler/lifecycle do not read it yet;
+        # this only proves it tracks the live generation. Fully best-effort:
+        # any failure is swallowed so the publish path is unchanged.
+        RuntimeManager._shadow_index_state(runtime)
+
+    def _reconcile_offline(self, root: Path, *, trigger: str = "start") -> None:
+        """Run the reconciler and enqueue drift into the keeper's durable journal.
+
+        This is how changes made while the engine was off (or while no client was
+        connected) get picked up automatically — the keeper then drains them.
+        Best-effort: never raises into the warm/connect path. (spec C2, task 3.3)
+        """
+        try:
+            from pipeline.reconciler import reconcile
+
+            loop = self.sync_loop
+            if loop is None:
+                return
+
+            def _enqueue(paths: list[str], reason: str) -> None:
+                try:
+                    loop.mark_dirty(paths, reason=reason)
+                except Exception:  # noqa: BLE001
+                    pass
+                # Nudge the keeper so the enqueued drift drains promptly rather
+                # than waiting for the next interval tick.
+                try:
+                    loop.request_poll()
+                except Exception:  # noqa: BLE001
+                    pass
+
+            plan = reconcile(
+                root,
+                trigger=trigger,  # type: ignore[arg-type]
+                project_id=self.project_id,
+                enqueue=_enqueue,
+            )
+            if plan.enqueued:
+                print(
+                    f"[reconcile:{trigger}] enqueued {len(plan.enqueued)} drift path(s) "
+                    f"state={plan.index_state} for {self.project_id}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+        except Exception:  # noqa: BLE001
+            pass
+
+    @staticmethod
+    def _detect_and_mark_interrupted_build(project_id: str, store: Any) -> None:
+        """Detect a dead-pid build record → mark INTERRUPTED + sweep staging.
+
+        Detection-only (spec task 2.4): never touches the live store's served
+        generation (the manifest fence guards that); it records the interruption
+        and garbage-collects orphaned staging dirs/collections. Best-effort.
+        """
+        if not project_id:
+            return
+        try:
+            from pipeline.index_state import detect_interrupted_build, mark_interrupted
+
+            report = detect_interrupted_build(project_id)
+            if not report.interrupted:
+                return
+            mark_interrupted(project_id)
+            # Sweep the dead build's staging artifacts (reuses the indexer sweep).
+            try:
+                from pipeline.indexer import _sweep_stale_staging
+                from pipeline.vectordb import VectorDatabase
+
+                _sweep_stale_staging(store.base, store.collection_name, VectorDatabase())
+            except Exception:  # noqa: BLE001
+                pass
+            print(
+                f"[index-state] interrupted build detected for {project_id} "
+                f"(dead pid {getattr(report.build, 'pid', '?')}); swept staging, "
+                f"recovery via normal reconcile",
+                file=sys.stderr,
+                flush=True,
+            )
+        except Exception:  # noqa: BLE001
+            pass
+
+    @staticmethod
+    def _shadow_index_state(runtime: RepoRuntime | None) -> None:
+        """Record state=fresh + generation + indexed_head + merkle_root on commit."""
+        if runtime is None or not runtime.project_id:
+            return
+        try:
+            from pipeline.index_state import IndexStateDoc, write_index_state
+            from pipeline.project_id import peek_project
+            from pipeline.store import PipelineStore
+
+            indexed_head: str | None = None
+            merkle_root: str | None = None
+            try:
+                ref = peek_project(runtime.repo)
+                if ref is not None:
+                    store = PipelineStore(
+                        runtime.repo,
+                        base_dir=ref.store_dir,
+                        project_id=ref.project_id,
+                        resolve=False,
+                    )
+                    meta = store.load_meta()
+                    indexed_head = (str(meta["git_head"]) if meta.get("git_head") else None)
+                    # load_merkle() returns the file-hashes dict; the persisted
+                    # root_hash is root_hash(that dict).
+                    merkle = store.load_merkle()
+                    if merkle:
+                        from pipeline.merkle import root_hash as _root_hash
+
+                        merkle_root = _root_hash(merkle)
+            except Exception:  # noqa: BLE001
+                pass
+            write_index_state(
+                runtime.project_id,
+                IndexStateDoc(
+                    state="fresh",
+                    generation_epoch=str(runtime.epoch or ""),
+                    generation_counter=int(runtime.generation),
+                    indexed_head=indexed_head,
+                    merkle_root=merkle_root,
+                ),
+            )
         except Exception:  # noqa: BLE001
             pass
 
@@ -506,6 +645,23 @@ class RuntimeManager:
                 warm_phase = "soft"
             elif warm_phase in (None, ""):
                 warm_phase = "down"
+        # Agent-facing pending summary: present ONLY when the unified index state
+        # is actionable (reconciling / interrupted) and the work is substantial.
+        # Small incremental catch-up stays silent (no nagging per save). Derived
+        # from index_state.json; read-only; never blocks /health.
+        pending = None
+        try:
+            from pipeline.index_state import agent_pending
+            from pipeline.project_id import peek_project
+
+            _pid = None
+            if self.repo is not None:
+                _ref = peek_project(self.repo)
+                _pid = _ref.project_id if _ref else None
+            if _pid:
+                pending = agent_pending(_pid)
+        except Exception:  # noqa: BLE001
+            pending = None
         return {
             "ok": True,
             "service": "scubiee",
@@ -528,6 +684,11 @@ class RuntimeManager:
             "dense_missing": dense_missing,
             "generation": self.generation,
             "index_usable": index_usable,
+            # index_fresh: the served generation matches the working tree with no
+            # substantial pending work. search_usable stays true during a
+            # reconcile (the current generation keeps serving).
+            "index_fresh": pending is None,
+            "pending": pending,
             "last_sync_at": self.last_sync_at,
             "repo": str(self.repo) if self.repo else None,
             "dashboard": "/dashboard",
@@ -819,6 +980,11 @@ class RuntimeManager:
                     art_mtime = _store_generation_mtime(store0)
                     loaded_at = float(getattr(eng0, "loaded_at", 0.0) or 0.0)
                     if art_mtime <= 0.0 or loaded_at <= 0.0 or art_mtime <= loaded_at + 1.0:
+                        # Reconnect to an already-warm engine: still reconcile so
+                        # drift accumulated since warm (incl. offline-ish edits a
+                        # late-attaching client has not yet seen) is enqueued now
+                        # (spec R2.5). Best-effort; does not block the fast return.
+                        self._reconcile_offline(root, trigger="connect")
                         return {
                             "ok": True,
                             "repo": str(root),
@@ -843,6 +1009,12 @@ class RuntimeManager:
             self.project_id = ref.project_id
             self.repo = root
             store = PipelineStore(root, base_dir=ref.store_dir, project_id=ref.project_id)
+            # Interrupted-build detection (spec C4, task 2.4). If a prior build
+            # died (its owner pid is gone), record INTERRUPTED and sweep the
+            # orphaned staging artifacts so they don't accumulate. Detection-only
+            # here: the manifest fence below still decides serve-vs-heal, and the
+            # reconciler (task 3) owns resuming the remaining work. Best-effort.
+            self._detect_and_mark_interrupted_build(ref.project_id, store)
             if not index_is_usable(store.base):
                 # Prefer cheap manifest republish over a full reindex when the
                 # on-disk generation is still coherent (common after kill mid-sync).
@@ -905,6 +1077,11 @@ class RuntimeManager:
             self.warm_ms = (time.perf_counter() - t0) * 1000
             self.warm_state = "ready"
             self._start_keeper(root)
+            # Offline-change reconciliation (spec C2, task 3.3). Detect drift that
+            # happened while the engine was OFF and enqueue it into the keeper's
+            # durable journal BEFORE we report ready — no MCP client required.
+            # Best-effort; a failure here never fails warm.
+            self._reconcile_offline(root, trigger="start")
             try:
                 from pipeline.memory_governor import get_governor
 
@@ -1105,7 +1282,10 @@ class RuntimeManager:
             "repositories": self.hub.list_status(),
             "sessions": session_rows,
             "dirty": dirty,
-            "pending": {
+            # Internal/debug view of raw queue depth — NOT the agent-facing
+            # signal. Agents read the derived `pending` object below (and on
+            # /health), which only surfaces substantial, actionable work.
+            "pending_internal": {
                 "dirty_count": len(dirty_paths),
                 "publish": bool(
                     keeper_status.get("publish_pending")
@@ -1118,6 +1298,9 @@ class RuntimeManager:
                     else "idle"
                 ),
             },
+            # Agent-facing pending (reconciling/interrupted + substantial only);
+            # None when nothing actionable is owed. Mirrors /health.
+            "pending": _agent_pending_safe(project_id),
             "scheduler_queue": scheduler_queue,
             "current_files": current_files,
             "pause_reason": admission_pause.get("reason")
