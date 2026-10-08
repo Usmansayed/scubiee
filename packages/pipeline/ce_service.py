@@ -1265,6 +1265,16 @@ class RuntimeManager:
             except Exception:  # noqa: BLE001
                 self._reconcile_pending = False
             self.warm_state = "ready"
+            # Kick the dense prewarm RIGHT HERE — before the keeper, offline
+            # reconcile, and (crucially) the AST-bundle revalidation / graph
+            # catch-up that `_reconcile_offline` + `_start_keeper` trigger. Those
+            # can hold the CPU for 20-30s on a repo with drift; scheduling the
+            # prewarm after them (the old placement) left the ORT/DirectML session
+            # build queued behind that work, so dense-ready trailed soft-ready by
+            # ~20s even though the session build itself is only ~2.5s. The build
+            # runs on a daemon thread and releases the GIL during native ORT work,
+            # so it overlaps the AST/graph work instead of waiting for it.
+            self._kick_eager_prewarm(root)
             self._start_keeper(root)
             # Offline-change reconciliation (spec C2, task 3.3). Detect drift that
             # happened while the engine was OFF and enqueue it into the keeper's
@@ -1280,67 +1290,6 @@ class RuntimeManager:
                 gov.apply_tier("locate_only")
             except Exception:  # noqa: BLE001
                 pass
-            # Eager-but-deferred dense prewarm (warm-up latency fix): the old
-            # behavior deferred ORT load until an external trigger (client touch /
-            # keepalive / first map), which left dense-ready ~14s behind soft-ready
-            # while the /health poll storm settled. A *synchronous* load here would
-            # GIL-starve HTTP (the original concern), so instead kick the
-            # already-async prewarm on a short one-shot timer: the ORT/DirectML
-            # session starts building right after soft-ready, off the open() and
-            # HTTP critical paths. Opt out with CTX_EAGER_PREWARM=0.
-            if (os.environ.get("CTX_EAGER_PREWARM") or "1").strip().lower() not in {
-                "0", "false", "no", "off"
-            }:
-                try:
-                    from pipeline.engine import _prewarm_enabled, embedder_is_loaded
-
-                    if _prewarm_enabled() and not embedder_is_loaded():
-                        delay_s = float(os.environ.get("CTX_EAGER_PREWARM_DELAY_S") or "0.5")
-                        # Warm the ALREADY-LIVE binder's embedder in place. The old
-                        # path (prewarm_embedder_async → load_engine) re-loaded the
-                        # whole binder on a key that missed the published engine,
-                        # adding ~3.5s of redundant chunk/FAISS/graph load before the
-                        # ORT session even started. Reusing self.engine.embedder here
-                        # skips that entirely — only the ORT/DirectML session build
-                        # remains. Runs on a daemon thread so the ORT GIL hold never
-                        # blocks /health or the open() call. Opt out CTX_EAGER_PREWARM=0.
-                        live_engine = self.engine
-                        repo_for_warm = str(root)
-
-                        def _eager_prewarm() -> None:
-                            try:
-                                from pipeline.engine import (
-                                    _mark_prewarm_busy,
-                                    embedder_is_loaded as _loaded,
-                                    prewarm_embedder_async,
-                                )
-
-                                if _loaded():
-                                    return
-                                emb = getattr(live_engine, "embedder", None)
-                                if emb is not None and hasattr(emb, "embed_one"):
-                                    _mark_prewarm_busy(True)
-                                    try:
-                                        # Forces the real FastEmbed/ORT/DML session
-                                        # on the live binder — no engine reload.
-                                        emb.embed_one("scubiee prewarm", is_query=True)
-                                    finally:
-                                        _mark_prewarm_busy(False)
-                                else:
-                                    # Fallback: no live embedder handle — old path.
-                                    prewarm_embedder_async(repo_for_warm)
-                            except Exception:  # noqa: BLE001
-                                try:
-                                    from pipeline.engine import prewarm_embedder_async
-                                    prewarm_embedder_async(repo_for_warm)
-                                except Exception:  # noqa: BLE001
-                                    pass
-
-                        import threading as _th
-
-                        _th.Timer(max(0.0, delay_s), _eager_prewarm).start()
-                except Exception:  # noqa: BLE001
-                    pass
             return {
                 "ok": True,
                 "repo": str(root),
@@ -1357,6 +1306,82 @@ class RuntimeManager:
         finally:
             self.warming = False
             self.indexing = False
+
+    def _kick_eager_prewarm(self, root: Path) -> None:
+        """Start the ORT/DirectML session build off the warm critical path.
+
+        Called immediately after warm-ready (before keeper/reconcile/AST work) so
+        the dense session builds in parallel instead of queuing behind the
+        AST-bundle revalidation + graph catch-up those steps trigger. The build
+        reuses the ALREADY-LIVE binder's embedder (no engine reload) and runs on a
+        daemon thread; the ORT session build releases the GIL during native work
+        so it never blocks /health or open(). Opt out with CTX_EAGER_PREWARM=0.
+        """
+        if (os.environ.get("CTX_EAGER_PREWARM") or "1").strip().lower() in {
+            "0", "false", "no", "off"
+        }:
+            return
+        try:
+            from pipeline.engine import _prewarm_enabled, embedder_is_loaded
+
+            if not (_prewarm_enabled() and not embedder_is_loaded()):
+                return
+            delay_s = float(os.environ.get("CTX_EAGER_PREWARM_DELAY_S") or "0.1")
+            live_engine = self.engine
+            repo_for_warm = str(root)
+            # Stamp prewarm-busy NOW (synchronously, before the timer fires) so the
+            # keeper's AST-revalidate gate reliably sees a prewarm in flight and
+            # yields the GIL to the embedder build. The timer callback clears it.
+            try:
+                from pipeline.engine import _mark_prewarm_busy as _mpb
+
+                _mpb(True)
+            except Exception:  # noqa: BLE001
+                pass
+
+            def _eager_prewarm() -> None:
+                try:
+                    from pipeline.engine import (
+                        _mark_prewarm_busy,
+                        embedder_is_loaded as _loaded,
+                        prewarm_embedder_async,
+                    )
+
+                    if _loaded():
+                        # Already warm — clear the stamp we set synchronously.
+                        _mark_prewarm_busy(False)
+                        return
+                    emb = getattr(live_engine, "embedder", None)
+                    if emb is not None and hasattr(emb, "embed_one"):
+                        _mark_prewarm_busy(True)
+                        try:
+                            # Forces the real FastEmbed/ORT/DML session on the
+                            # live binder — no engine reload.
+                            emb.embed_one("scubiee prewarm", is_query=True)
+                        finally:
+                            _mark_prewarm_busy(False)
+                    else:
+                        # Fallback: no live embedder handle — old path manages its
+                        # own busy stamp via begin_prewarm/end_prewarm.
+                        _mark_prewarm_busy(False)
+                        prewarm_embedder_async(repo_for_warm)
+                except Exception:  # noqa: BLE001
+                    try:
+                        from pipeline.engine import (
+                            _mark_prewarm_busy as _mpb2,
+                            prewarm_embedder_async,
+                        )
+
+                        _mpb2(False)
+                        prewarm_embedder_async(repo_for_warm)
+                    except Exception:  # noqa: BLE001
+                        pass
+
+            import threading as _th
+
+            _th.Timer(max(0.0, delay_s), _eager_prewarm).start()
+        except Exception:  # noqa: BLE001
+            pass
 
     def shutdown(self) -> None:
         self._save_active_runtime()

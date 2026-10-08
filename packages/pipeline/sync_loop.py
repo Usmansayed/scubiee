@@ -655,6 +655,25 @@ class BackgroundSyncLoop:
         if existing is not None and existing.is_alive():
             return False
 
+        # Hold the ~20s AST rebake until dense is warm. The rebake's in-process
+        # merge/export is Python-heavy and GIL-bound; running it during the cold
+        # warm window starves the embedder prewarm thread (register/tokenizer/ORT
+        # setup), pushing dense-ready ~15-20s behind soft-ready. Dense retrieval
+        # is user-facing; the AST bundle only enriches pack's suggested seeds and
+        # is served stale meanwhile, so deferring it a few seconds is free. Once
+        # the embedder is loaded this gate is a no-op. Opt out CTX_AST_REVALIDATE_
+        # GATE_ON_EMBED=0.
+        if (os.environ.get("CTX_AST_REVALIDATE_GATE_ON_EMBED") or "1").strip().lower() not in {
+            "0", "false", "no", "off"
+        }:
+            try:
+                from pipeline.engine import embedder_is_loaded, prewarm_busy_stamp_active
+
+                if not embedder_is_loaded() and prewarm_busy_stamp_active():
+                    return False
+            except Exception:  # noqa: BLE001
+                pass
+
         def _revalidate() -> None:
             try:
                 from pipeline.context_trace import refresh_ast_bundle_if_stale
