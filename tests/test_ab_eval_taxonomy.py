@@ -6,8 +6,19 @@ import importlib.util
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "kiro_mcp_ab_dev_eval.py"
+
+# This exercises an A/B dev-eval experiment harness that was archived out of
+# scripts/ (now under archive/old-mcp-map/). Skip the whole module cleanly when
+# the script is absent instead of crashing collection and blocking the suite.
+if not SCRIPT.is_file():
+    pytest.skip(
+        "kiro_mcp_ab_dev_eval.py archived; AB-eval taxonomy test not applicable",
+        allow_module_level=True,
+    )
 
 
 def _load():

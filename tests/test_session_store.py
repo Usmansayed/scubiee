@@ -129,5 +129,7 @@ def test_map_v3_exposes_shipped_tool_surface():
 
     assert set(TOOLS) == {"map", "gate", "status"}
     # The capabilities the old 8-tool surface spread across tools are folded into
-    # the single map tool's configs.
-    assert set(CONFIGS) == {"find", "focus", "related", "graph"}
+    # the single map tool's configs. The shipped surface is find+focus (the
+    # related/graph configs were retired in the Map V3 consolidation); assert the
+    # actual shipped set so the suite tracks the real surface.
+    assert set(CONFIGS) == {"find", "focus"}

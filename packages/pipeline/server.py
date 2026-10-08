@@ -82,6 +82,16 @@ class EngineHTTPServer(ThreadingHTTPServer):
     full traceback for each, which buried real errors in engine.log.
     """
 
+    # Reap handler threads instead of leaking them under a poll storm, and send
+    # small responses immediately (TCP_NODELAY) so a /health reply is not held by
+    # Nagle's ~40ms coalescing delay (ThreadingHTTPServer sets this on 3.6+; make
+    # it explicit so an older/overridden base can't reintroduce the delay).
+    daemon_threads = True
+    disable_nagle_algorithm = True
+    # Deeper accept backlog so a burst of concurrent /health polls queues at the
+    # OS level instead of being refused/delayed while handler threads spin up.
+    request_queue_size = 128
+
     def handle_error(self, request, client_address) -> None:  # noqa: ANN001
         exc = sys.exc_info()[1]
         if isinstance(exc, _CLIENT_GONE_ERRORS):
@@ -96,6 +106,13 @@ class EngineHTTPServer(ThreadingHTTPServer):
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt: str, *args) -> None:
+        # Per-request access logging is pure overhead on the hot path: a /health
+        # poll storm wrote a stderr line (plus address_string) for every call,
+        # which can block under load. Default OFF; CTX_HTTP_ACCESS_LOG=1 restores.
+        if (os.environ.get("CTX_HTTP_ACCESS_LOG") or "0").strip().lower() not in {
+            "1", "true", "yes", "on",
+        }:
+            return
         sys.stderr.write("%s - %s\n" % (self.address_string(), fmt % args))
 
     def do_OPTIONS(self) -> None:  # noqa: N802
@@ -1058,6 +1075,13 @@ def run_server(
     )
 
     def _after_listen() -> None:
+        try:
+            # Keep /health answerable off the request path: a background thread
+            # refreshes the health snapshot + payload so no /health request ever
+            # does disk I/O (the source of the rare multi-second spike under load).
+            ce._start_health_refresher()
+        except Exception as exc:  # noqa: BLE001
+            print(f"[engine] health refresher note: {exc}", file=sys.stderr, flush=True)
         try:
             from pipeline.process_job import attach_engine_on_start
 

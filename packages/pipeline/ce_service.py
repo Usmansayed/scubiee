@@ -108,6 +108,10 @@ class RuntimeManager:
         # time; serving the last one (sub-second stale) keeps /health responsive.
         self._health_payload: dict[str, Any] | None = None
         self._health_payload_at: float = 0.0
+        # Background health refresher (keeps the snapshot+payload warm so /health
+        # requests never do disk I/O or a full recompute).
+        self._health_refresher: threading.Thread | None = None
+        self._health_refresher_stop: threading.Event | None = None
         self._admission_pauses: dict[str, dict[str, Any]] = {}
         self._lock = threading.RLock()
         self._open_bg_thread: threading.Thread | None = None
@@ -192,10 +196,26 @@ class RuntimeManager:
                 project_id=self.project_id,
                 enqueue=_enqueue,
             )
-            if plan.enqueued:
+            # Corpus-ghost sweep: files that still own chunks but are gone from
+            # disk. root_probe's removed set is merkle-vs-disk, but a file synced
+            # via the hot/dirty path may be in chunks.jsonl yet never recorded in
+            # merkle.json — so a rename/delete-while-offline of such a file is NOT
+            # in plan.removed and its old chunks would linger in search forever.
+            # chunks.jsonl-vs-disk catches them; enqueue for the normal prune.
+            # (This is the fix for the offline-rename old-path-lingers finding.)
+            ghosts: list[str] = []
+            try:
+                ghosts = [g for g in loop._corpus_ghosts() if g not in set(plan.enqueued or [])]
+                if ghosts:
+                    _enqueue(ghosts, "offline_ghost_prune")
+            except Exception:  # noqa: BLE001
+                ghosts = []
+            total = len(plan.enqueued or []) + len(ghosts)
+            if total:
                 print(
-                    f"[reconcile:{trigger}] enqueued {len(plan.enqueued)} drift path(s) "
-                    f"state={plan.index_state} for {self.project_id}",
+                    f"[reconcile:{trigger}] enqueued {len(plan.enqueued or [])} drift + "
+                    f"{len(ghosts)} ghost prune path(s) state={plan.index_state} "
+                    f"for {self.project_id}",
                     file=sys.stderr,
                     flush=True,
                 )
@@ -589,22 +609,29 @@ class RuntimeManager:
                 return {"ok": False, "error": str(exc), "generation": self.generation}
 
     def _health_disk_snapshot(self) -> dict[str, Any]:
-        """Disk-touching bits for /health, TTL-cached so the HTTP hot path never
-        blocks on disk/JSON while a heavy embed holds the GIL.
+        """Disk-touching bits for /health, served from a BACKGROUND-refreshed
+        cache so the HTTP request path does ZERO disk I/O.
 
-        Caches: project_id, cold-path index_usable, and the agent `pending`
-        object (index_state.json). Refreshed at most once per
-        ``CTX_HEALTH_CACHE_TTL_S`` (default 2s). Never raises.
+        A daemon thread (``_start_health_refresher``) recomputes the snapshot
+        every ~1s off the request path. The request path returns the last
+        snapshot unconditionally; it only does a one-time COLD bootstrap compute
+        if the refresher has not populated it yet (first call after start). This
+        is why a /health storm — even racing the keeper writing index_state.json
+        — never stalls on disk: the request never reads disk.
+
+        Caches: project_id, store_dir, cold-path index_usable, agent `pending`.
+        Never raises.
         """
-        ttl = 2.0
-        try:
-            ttl = max(0.0, float(os.environ.get("CTX_HEALTH_CACHE_TTL_S") or "2"))
-        except ValueError:
-            ttl = 2.0
-        now = time.monotonic()
         cached = self._health_cache
-        if cached and (now - self._health_cache_at) < ttl:
+        if cached:
             return cached
+        # Cold bootstrap only (refresher not yet run) — compute once inline.
+        return self._refresh_health_disk_snapshot()
+
+    def _refresh_health_disk_snapshot(self) -> dict[str, Any]:
+        """Do the actual disk reads for the health snapshot. Called by the
+        background refresher thread (off the request path) and once inline as a
+        cold bootstrap. Never raises; always publishes a snapshot."""
         snap: dict[str, Any] = {"project_id": None, "cold_index_usable": None, "pending": None}
         repo = self.repo
         if repo is not None:
@@ -624,9 +651,48 @@ class RuntimeManager:
                 snap["pending"] = agent_pending(pid)
             except Exception:  # noqa: BLE001
                 snap["pending"] = None
+        # Preserve a cold_index_usable already computed on the request path.
+        prev = self._health_cache
+        if isinstance(prev, dict) and prev.get("cold_index_usable") is not None:
+            snap["cold_index_usable"] = prev.get("cold_index_usable")
         self._health_cache = snap
-        self._health_cache_at = now
+        self._health_cache_at = time.monotonic()
         return snap
+
+    def _start_health_refresher(self) -> None:
+        """Start the background thread that keeps the health disk-snapshot and
+        full payload warm, so /health requests never touch disk or recompute.
+        Idempotent; no-op when CTX_HEALTH_REFRESHER=0 (falls back to the
+        on-request TTL cache)."""
+        if (os.environ.get("CTX_HEALTH_REFRESHER") or "1").strip().lower() in {
+            "0", "false", "no", "off",
+        }:
+            return
+        if getattr(self, "_health_refresher", None) is not None:
+            return
+        try:
+            interval = max(0.25, float(os.environ.get("CTX_HEALTH_REFRESH_S") or "1"))
+        except ValueError:
+            interval = 1.0
+
+        stop = threading.Event()
+
+        def _loop() -> None:
+            while not stop.wait(interval):
+                try:
+                    self._refresh_health_disk_snapshot()
+                    # Also pre-warm the full payload so even its recompute is off
+                    # the request path.
+                    payload = self._compute_health()
+                    self._health_payload = payload
+                    self._health_payload_at = time.monotonic()
+                except Exception:  # noqa: BLE001
+                    pass
+
+        t = threading.Thread(target=_loop, name="ce-health-refresher", daemon=True)
+        self._health_refresher = t
+        self._health_refresher_stop = stop
+        t.start()
 
     def health(self) -> dict[str, Any]:
         """Public /health. Serves the last payload when it is very fresh so the

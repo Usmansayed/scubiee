@@ -28,7 +28,9 @@ def test_server_entry_uses_module_invocation_without_source_pythonpath(
     else:
         assert entry["args"] == ["-u", "-m", "pipeline.map_v3_server"]
     env = entry["env"]
-    assert env["CTX_MCP_SURFACE"] == "phase"
+    # CTX_MCP_SURFACE was retired in 0.3.136 (the dead phase/experiment knob —
+    # `scubiee connect` no longer writes it). The entry must NOT carry it.
+    assert "CTX_MCP_SURFACE" not in env
     assert "PYTHONPATH" not in env
     assert env["CTX_REPO"] == str(tmp_path.resolve()).replace("\\", "/")
 

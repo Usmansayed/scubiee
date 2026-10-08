@@ -76,7 +76,10 @@ def test_cursor_permissions_prune_classic_lab_sticky(tmp_path: Path) -> None:
     data = json.loads(path.read_text(encoding="utf-8"))
     allow = set(data["mcpAllowlist"])
     assert "other-server:keep" in allow
-    assert "*:pack_context" in allow
+    # pack_context is a RETIRED Map V3 tool — the merge must PRUNE it (along with
+    # the other retired/classic-lab names), not keep it. Shipped surface is
+    # map/gate/status.
+    assert "*:pack_context" not in allow
     assert "*:focus" not in allow
     assert "*:grep" not in allow
     assert "*:glob" not in allow

@@ -40,7 +40,7 @@ def test_validate_daemon_binding_reports_mismatch(tmp_path: Path, monkeypatch) -
     assert "ensure" in (report.get("repair") or "")
 
 
-def test_install_mcp_defaults_to_phase_surface() -> None:
+def test_install_mcp_does_not_write_retired_surface_knob() -> None:
     import importlib.util
     from pathlib import Path
 
@@ -50,4 +50,6 @@ def test_install_mcp_defaults_to_phase_surface() -> None:
     assert spec and spec.loader
     spec.loader.exec_module(mod)
     entry = mod.server_entry()
-    assert entry["env"]["CTX_MCP_SURFACE"] == "phase"
+    # CTX_MCP_SURFACE (phase/experiment) was retired in 0.3.136 — the installer
+    # must not write the dead knob into the MCP config env.
+    assert "CTX_MCP_SURFACE" not in entry["env"]

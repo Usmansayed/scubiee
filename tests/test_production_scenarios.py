@@ -47,7 +47,9 @@ def test_certify_required_gate_passes_without_daemon(
     assert out["failed_required"] == 0
     names = {c["name"] for c in out["checks"]}
     assert "import_preflight" in names
-    assert "install_mcp_phase_env" in names
+    # install_mcp_phase_env was the retired phase-surface check (0.3.136); the
+    # install cert is now the Map V3 launch check.
+    assert "install_mcp_launches_map_v3" in names
     assert "dirty_restart_journal_replay" in names
     assert out["passed"] == sum(
         check["status"] == "passed" for check in out["checks"]

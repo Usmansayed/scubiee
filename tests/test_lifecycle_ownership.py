@@ -129,6 +129,11 @@ def test_attach_mcp_session_is_nonblocking(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(ml.atexit, "register", lambda fn: None)
 
     monkeypatch.setenv("CTX_MCP_AUTO_WARM", "1")
+    # Exercise the legacy warm_engine_for_mcp(blocking=False) path this test
+    # covers. The default attach path is RuntimeController.ensure("attach") (also
+    # non-blocking, covered by test_attach_warm_pipeline); disable it here so the
+    # legacy branch — which this test asserts — actually runs.
+    monkeypatch.setenv("CTX_MCP_ATTACH_WARM", "0")
     out = ml.attach_mcp_session(tmp_path)
     assert out["client_id"] == "mcp:fast"
     assert out.get("warm_started") is True

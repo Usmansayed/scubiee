@@ -139,13 +139,16 @@ def test_health_disk_snapshot_is_ttl_cached(tmp_path, monkeypatch):
     assert s1 is s2 is s3  # same cached object within TTL
 
 
-def test_health_cache_refreshes_after_ttl(tmp_path, monkeypatch):
+def test_health_request_path_does_no_disk_io_once_warm(tmp_path, monkeypatch):
+    """After the background refresher has populated the snapshot, /health request
+    path must NOT call peek_project (zero disk I/O) — that is what keeps it from
+    stalling under load. Regression for the ~2.6s spike."""
     monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
-    monkeypatch.setenv("CTX_HEALTH_CACHE_TTL_S", "0")  # TTL 0 => always refresh
     from pipeline.ce_service import RuntimeManager
 
     rm = RuntimeManager()
     rm.repo = tmp_path
+
     calls = {"n": 0}
     import pipeline.project_id as pj
     real_peek = pj.peek_project
@@ -155,6 +158,44 @@ def test_health_cache_refreshes_after_ttl(tmp_path, monkeypatch):
         return real_peek(repo)
 
     monkeypatch.setattr("pipeline.project_id.peek_project", counting_peek)
-    rm._health_disk_snapshot()
-    rm._health_disk_snapshot()
-    assert calls["n"] >= 2, "TTL=0 must refresh every call"
+
+    # The background refresher populates the snapshot (we call it directly here).
+    rm._refresh_health_disk_snapshot()
+    disk_calls_after_refresh = calls["n"]
+
+    # Now many request-path reads must add ZERO new peek_project calls.
+    for _ in range(50):
+        rm._health_disk_snapshot()
+    assert calls["n"] == disk_calls_after_refresh, (
+        f"request path did disk I/O: {calls['n'] - disk_calls_after_refresh} extra peek_project calls"
+    )
+
+
+def test_health_refresher_can_be_disabled(tmp_path, monkeypatch):
+    monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
+    monkeypatch.setenv("CTX_HEALTH_REFRESHER", "0")
+    from pipeline.ce_service import RuntimeManager
+
+    rm = RuntimeManager()
+    rm.repo = tmp_path
+    rm._start_health_refresher()
+    assert rm._health_refresher is None, "refresher must be a no-op when disabled"
+
+
+def test_health_refresher_starts_and_warms(tmp_path, monkeypatch):
+    monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
+    monkeypatch.setenv("CTX_HEALTH_REFRESH_S", "0.25")
+    from pipeline.ce_service import RuntimeManager
+    import time as _t
+
+    rm = RuntimeManager()
+    rm.repo = tmp_path
+    try:
+        rm._start_health_refresher()
+        assert rm._health_refresher is not None
+        # give it a tick to populate the snapshot
+        _t.sleep(0.6)
+        assert rm._health_cache, "refresher should have populated the snapshot"
+    finally:
+        if rm._health_refresher_stop is not None:
+            rm._health_refresher_stop.set()

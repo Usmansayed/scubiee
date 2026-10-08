@@ -264,9 +264,14 @@ def test_status_exposes_complete_repo_observability_contract(
 
 def test_client_injects_workspace_and_optional_session_telemetry(
     tmp_path: Path,
+    monkeypatch,
 ) -> None:
     from pipeline.client import EngineClient
 
+    # This test intercepts the request via a urllib.request.urlopen mock, so pin
+    # the client to the legacy urllib transport (default is httpx/shared_engine_http
+    # which the mock would not see).
+    monkeypatch.setenv("CTX_ENGINE_HTTP_TRANSPORT", "urllib")
     repo = _repo(tmp_path, "client")
     client = EngineClient(
         "http://example.invalid",

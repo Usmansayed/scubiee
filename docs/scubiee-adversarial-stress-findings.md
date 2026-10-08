@@ -143,21 +143,39 @@ harness is trustworthy:
 
 ## Reliability hardening — the three follow-ups, now FIXED
 
-### 1. /health stayed responsive under embed load (fixed)
-`/health` used to time out while the engine embedded a large backlog: the HTTP
-thread (ThreadingHTTPServer) contended for the GIL with the embed loop, and
-`health()` did two `peek_project` disk reads + an `index_state.json` read on the
-hot path. Fix (`ce_service.py`):
-- `_health_disk_snapshot()` TTL-caches the disk-touching bits (project ref,
-  `agent_pending`, cold `index_is_usable`) — default `CTX_HEALTH_CACHE_TTL_S=2`.
-- `health()` serves the whole last payload when <1s stale
-  (`CTX_HEALTH_PAYLOAD_TTL_S=1`), so during a GIL-held embed the handler returns
-  a prebuilt dict instead of recomputing.
-Verified under a live 150-file embed backlog: **0 timeouts over 220 polls**
-(was: full timeouts), **p50 10ms, avg 73ms**. A rare ~1-2% spike to ~2.6s
-remains — the hard floor of CPython's GIL during a native embed batch that does
-not yield; it never times out. Eliminating it entirely would need the HTTP
-server in a separate process.
+### 1. /health stayed responsive under embed load (fixed — GIL investigated, no process split needed)
+`/health` used to time out while the engine embedded a large backlog. The
+initial hypothesis was GIL starvation: the HTTP thread (ThreadingHTTPServer)
+contending with the embed loop. **That hypothesis was tested and disproved.** A
+GIL-heartbeat probe (a tight Python-level timer thread sampling its own wake
+latency) ran *through* a 9.5s DML embed batch and saw **p99 = 11ms** — the embed
+runs in native fastembed/ONNX-Runtime code that releases the GIL, so a pure
+Python HTTP handler is **not** starved. A separate `/health` process was
+therefore **not** built; it would add failure modes (a second lifecycle, IPC,
+split warm-state) for no measured benefit.
+
+The real cost was disk I/O on the hot path: `health()` did two `peek_project`
+disk reads + an `index_state.json` read per request. Fix (`ce_service.py` +
+`server.py`):
+- **Background health refresher** (`_start_health_refresher` /
+  `_refresh_health_disk_snapshot`): a daemon thread recomputes the disk-touching
+  bits (project ref, `agent_pending`, cold `index_is_usable`) and the full
+  `_compute_health()` payload every `CTX_HEALTH_REFRESH_S` (1s). The request path
+  does **zero disk I/O** once warm — it serves the prebuilt payload. Rollback:
+  `CTX_HEALTH_REFRESHER=0` (falls back to inline TTL-cached compute).
+- `_health_disk_snapshot()` TTL-caches the disk bits (`CTX_HEALTH_CACHE_TTL_S=2`)
+  and `health()` serves the last payload when <1s stale
+  (`CTX_HEALTH_PAYLOAD_TTL_S=1`) as a backstop if the refresher is disabled.
+- HTTP transport hardening on `EngineHTTPServer`: access logging gated behind
+  `CTX_HTTP_ACCESS_LOG` (default off — no per-request log formatting on the hot
+  path), `daemon_threads`, `disable_nagle_algorithm` (TCP_NODELAY), and
+  `request_queue_size=128` so connect storms queue instead of resetting.
+
+Verified on the **real MCP**: realistic 2s poll cadence **29/29 OK, 0 timeouts,
+p50 24ms**; an aggressive 0.2s connect storm held **0 timeouts, p50 19ms** with
+only a rare ~1% tail from thread churn (not GIL, not production cadence). The
+`test_health_request_path_does_no_disk_io_once_warm` test proves 0 `peek_project`
+calls across 50 reads once warm.
 
 ### 2. delete/rename prune latency (fixed)
 `_additions_before_deletions` returned `present + missing` (adds first), so a
@@ -178,9 +196,60 @@ attempts). Fix (`incremental.py`): `_oversized_file()` + a filter right after
 Verified live: `[sync] skip oversized file …/s6_huge.py (lines>25000) — not
 indexed`, skipped in ~2.8s with `parse_ms=0`, hash recorded, not re-reported.
 
-Tests: `tests/test_reliability_hardening.py` (7 — deletes-first ordering + its
+Tests: `tests/test_reliability_hardening.py` (9 — deletes-first ordering + its
 rollback, oversized detection by lines/bytes + disable, health TTL cache hit +
-refresh). 139 pass across the touched suites.
+refresh, zero-disk-IO request path, refresher payload freshness). 134 pass + 1
+skip across the touched suites after the final consolidated regression.
+
+### 4. attach-return latency when the engine is down (fixed)
+`start_attach_warm_pipeline` blocked ~1.5s on every attach when the engine was
+not running: `runtime_controller.snapshot()` always issued a `/health` HTTP probe
+that sat in the OS connect-refused backoff. Fix (`runtime_controller.py`):
+`snapshot(fast=True)` skips the health probe entirely on the attach-return path
+and reports state from the lockfile/process signals it already has. Attach-return
+dropped from ~1.5s to **~23ms**. The slower full probe is still used where a live
+health read is actually needed. (An intermediate `_probe_health(fast=)` signature
+change was reverted — it broke two ast-hydrated tests whose monkeypatch lambdas
+take only `repo`; the fix lives entirely in `snapshot`.)
+
+### 5. offline ghost prune for disappeared files (added)
+`_reconcile_offline` now runs an `offline_ghost_prune` pass: it enqueues the
+corpus "ghosts" — paths present in `chunks.jsonl` but gone from disk — that the
+merkle-diff `root_probe` can miss when a whole subtree vanishes while the engine
+was off. This closes the gap where a bulk offline delete left tombstone-less rows
+owed. Removals carry no embedding, so they drain fast (deletes-first ordering,
+follow-up #2 above).
+
+## Known-open items (documented, not launch-blocking)
+
+### Offline folder-rename: old paths linger in served search (not data loss)
+**Repro:** seed a folder online (let it go fresh), rename the folder while the
+engine is OFF, reopen. The old paths are correctly **removed from
+`chunks.jsonl` on disk** (verified `..._in_chunks_jsonl=0`), the reconcile logs
+`removed=N`, and the graph prunes the old nodes — yet `/v1/search` still returns
+the OLD paths for a while.
+
+**Root cause (as far as isolated repro took it):** the removal persists to disk
+correctly, but the **served in-memory binder** retains the stale rows.
+`_ensure_engine` (ce_service.py) returns `runtime.engine` — the *published*
+binder — not the `load_engine` cache, so a `clear_engines()` on the cache does
+not refresh what search reads. The full `_publish_runtime` reload path *does*
+rebuild a clean binder from disk and clears the staleness; a plain engine restart
+clears it too.
+
+**Why it is not fixed in this run:** a speculative `clear_engines()` in the
+removal lanes was tried and **did not** fix it (reverted both additions, verified
+the sync hot path stayed clean), because the served reference is `runtime.engine`
+not the cache. Shipping a blind binder-reload on the removal hot path at the tail
+of this hardening run carries real regression risk to the verified-good search
+path, for a narrow, self-clearing, non-data-loss edge case.
+
+**Impact / mitigation:** `index_usable` / `search_usable` hold throughout (search
+keeps serving the current generation), there is **no data loss** — the on-disk
+corpus is correct — and the stale rows clear on the next full publish or an
+engine restart. Tracked for a follow-up that reloads the published binder from
+disk after a bulk offline removal, with a focused test, rather than a hot-path
+guess.
 
 ## How to re-run
 ```

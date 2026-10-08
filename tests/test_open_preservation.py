@@ -932,7 +932,7 @@ class _FakeCE:
         self.calls.append(("locate",))
         return {"ok": True}
 
-    def search(self, query, *, top_k=8, root=None) -> dict:
+    def search(self, query, *, top_k=8, root=None, lean=False, **_kw) -> dict:
         self.calls.append(("search", query, top_k))
         return {"ok": True, "query": query, "top_k": top_k, "results": [{"file": "a.py", "score": 1.0}]}
 

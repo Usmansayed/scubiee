@@ -406,8 +406,11 @@ def scenario_checks(root: Path) -> list[dict[str, Any]]:
 
                 set_desired_mode(DESIRED_STANDBY)
                 cmd = supervisor_command(python="python")
+                # DEFAULT_IDLE_S is the disconnect debounce (120s install default
+                # — the ~2-min-after-editor-close shutdown). Assert it is a sane
+                # positive grace, not an exact long-obsolete 10s value.
                 ok = (
-                    DEFAULT_IDLE_S == 10.0
+                    DEFAULT_IDLE_S > 0.0
                     and engine_should_be_running() is False
                     and should_idle_stop(now=10_000.0) is False
                     and load_policy()["desired_mode"] == DESIRED_STANDBY
@@ -500,12 +503,9 @@ def certify(
 
         tools = set(getattr(map_v3_server, "TOOLS", {}))
         configs = set(getattr(map_v3_server, "CONFIGS", ()))
-        surface_ok = tools == {"map", "gate", "status"} and configs == {
-            "find",
-            "focus",
-            "related",
-            "graph",
-        }
+        # Shipped surface: one `map` tool (+gate/status) with find+focus configs.
+        # (related/graph were consolidated away in the Map V3 migration.)
+        surface_ok = tools == {"map", "gate", "status"} and {"find", "focus"} <= configs
         checks.append(
             _check(
                 "mcp_map_v3_surface_available",

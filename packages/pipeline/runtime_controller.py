@@ -146,7 +146,28 @@ class RuntimeController:
             return warm_deadline_ms() / 1000.0
         return max(0.0, (warm_deadline_ms() / 1000.0) - (time.time() - self._started_at))
 
-    def snapshot(self, *, repo: Path | str | None = None) -> ReadySnapshot:
+    def snapshot(self, *, repo: Path | str | None = None, fast: bool = False) -> ReadySnapshot:
+        # ``fast`` (attach-return): skip the health HTTP probe entirely. The
+        # attach path has just kicked the async warm worker and only needs to
+        # return promptly — a probe here either hits a not-yet-up engine (slow
+        # connect-refused, esp. on Windows) or a busy one, blocking the MCP
+        # attach by ~0.4–1.5s. Report the current in-memory state instead; the
+        # serve-join path (fast=False) does the real readiness wait.
+        if fast:
+            with self._lock:
+                state = self._state
+                err = self._last_error
+                ast_ready = self._ast_ready
+                elapsed = self._elapsed_ms()
+            return ReadySnapshot(
+                state=state,
+                engine_ok=state in (_STATE_READY, _STATE_DEGRADED),
+                embedder_loaded=False,
+                soft_search_ready=state == _STATE_READY,
+                ast_ready=ast_ready,
+                elapsed_ms=elapsed,
+                error=err,
+            )
         health = self._probe_health(repo)
         engine_ok = bool(health.get("ok") and health.get("service"))
         embed = bool(health.get("embedder_loaded")) if "embedder_loaded" in health else False
@@ -417,16 +438,16 @@ class RuntimeController:
 
         if reason == "attach":
             if not attach_warm_enabled():
-                return self.snapshot(repo=root)
+                return self.snapshot(repo=root, fast=True)
             with self._lock:
                 if self._attach_kicked:
-                    return self.snapshot(repo=root)
+                    return self.snapshot(repo=root, fast=True)
                 self._attach_kicked = True
                 if self._started_at is None:
                     self._started_at = time.time()
                 t = self._ensure_thread
                 if t is not None and t.is_alive():
-                    return self.snapshot(repo=root)
+                    return self.snapshot(repo=root, fast=True)
                 # Never block attach/stdio on ensure_daemon — that paid 2–7s into
                 # first Cursor map when engine open raced duplicate processes.
                 t = threading.Thread(
@@ -444,7 +465,7 @@ class RuntimeController:
                 mark_warm_start(root, now=self._started_at)
             except Exception:  # noqa: BLE001
                 pass
-            return self.snapshot(repo=root)
+            return self.snapshot(repo=root, fast=True)
 
         # serve
         snap = self.snapshot(repo=root)

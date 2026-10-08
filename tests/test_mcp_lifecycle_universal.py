@@ -23,7 +23,11 @@ def test_warm_engine_for_mcp_waits_for_embedder(monkeypatch, tmp_path: Path) -> 
             if path == "/v1/client/register":
                 return {"ok": True, "prewarm": {"ok": True, "embedder_loaded": True}}
             if path == "/v1/embed/prewarm":
-                assert body and (body.get("wait") or body.get("sync"))
+                # The blocking warm posts a NON-blocking prewarm (wait/sync=False)
+                # on purpose — it must never park HTTP+GIL on ORT load; the
+                # embedder loads in the background and readiness is reported via
+                # already_warm/embedder_loaded. Assert the body shape only.
+                assert body is not None and "path" in body
                 return {"ok": True, "already_warm": True, "embedder_loaded": True}
             return {"ok": True}
 
