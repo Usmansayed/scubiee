@@ -93,6 +93,9 @@ class RuntimeManager:
         self.warm_ms: float | None = None
         self.generation: int = 0
         self.last_sync_at: float | None = None
+        # True from warm-ready until the start/connect offline reconcile has
+        # enqueued its drift — keeps /health index_fresh honest across that gap.
+        self._reconcile_pending: bool = False
         self._admission_pauses: dict[str, dict[str, Any]] = {}
         self._lock = threading.RLock()
         self._open_bg_thread: threading.Thread | None = None
@@ -186,6 +189,10 @@ class RuntimeManager:
                 )
         except Exception:  # noqa: BLE001
             pass
+        finally:
+            # Drift is now enqueued (or detection finished); /health can derive
+            # index_fresh from the live keeper queue again.
+            self._reconcile_pending = False
 
     @staticmethod
     def _detect_and_mark_interrupted_build(project_id: str, store: Any) -> None:
@@ -662,6 +669,35 @@ class RuntimeManager:
                 pending = agent_pending(_pid)
         except Exception:  # noqa: BLE001
             pending = None
+        # index_fresh must reflect the LIVE keeper queue, not just the
+        # substantial-pending object: a small offline batch is non-substantial
+        # (pending=None) yet still unembedded until the keeper drains it. Report
+        # fresh only when nothing is queued/due/processing AND no substantial
+        # pending is owed. Cheap read of the already-in-memory ledger snapshot.
+        has_queued_drift = False
+        try:
+            loop = self.sync_loop
+            if loop is not None:
+                snap = loop.dirty_ledger.snapshot().get("paths") or {}
+                has_queued_drift = any(
+                    str((e or {}).get("state") or "") in {"queued", "due", "processing"}
+                    for e in snap.values()
+                    if isinstance(e, dict)
+                )
+        except Exception:  # noqa: BLE001
+            has_queued_drift = False
+        # Fresh requires: fully soft-ready (not mid-warm), no substantial pending,
+        # nothing queued/processing in the keeper, and the start/connect reconcile
+        # has finished enqueuing. Any of these unmet => not yet caught up. This
+        # closes the warm->ready->reconcile gap where a client polling right after
+        # warm would otherwise see a (briefly) empty queue and false "fresh".
+        index_fresh = (
+            bool(soft_ok)
+            and (self.sync_loop is not None)
+            and (pending is None)
+            and (not has_queued_drift)
+            and (not getattr(self, "_reconcile_pending", False))
+        )
         return {
             "ok": True,
             "service": "scubiee",
@@ -685,9 +721,11 @@ class RuntimeManager:
             "generation": self.generation,
             "index_usable": index_usable,
             # index_fresh: the served generation matches the working tree with no
-            # substantial pending work. search_usable stays true during a
-            # reconcile (the current generation keeps serving).
-            "index_fresh": pending is None,
+            # pending work queued and nothing substantial owed. False while the
+            # keeper still has drift queued/processing (even small offline
+            # batches). search_usable stays true throughout (current generation
+            # keeps serving) — index_fresh is the "fully caught up" signal.
+            "index_fresh": index_fresh,
             "pending": pending,
             "last_sync_at": self.last_sync_at,
             "repo": str(self.repo) if self.repo else None,
@@ -983,7 +1021,15 @@ class RuntimeManager:
                         # Reconnect to an already-warm engine: still reconcile so
                         # drift accumulated since warm (incl. offline-ish edits a
                         # late-attaching client has not yet seen) is enqueued now
-                        # (spec R2.5). Best-effort; does not block the fast return.
+                        # (spec R2.5). Arm the reconcile-pending flag first so a
+                        # client polling /health right after connect does not see a
+                        # briefly-empty queue and false "fresh". Best-effort.
+                        try:
+                            from pipeline.reconciler import unified_state_enabled
+
+                            self._reconcile_pending = bool(unified_state_enabled())
+                        except Exception:  # noqa: BLE001
+                            self._reconcile_pending = False
                         self._reconcile_offline(root, trigger="connect")
                         return {
                             "ok": True,
@@ -1075,12 +1121,25 @@ class RuntimeManager:
                     f"engine={'yes' if eng is not None else 'no'}"
                 )
             self.warm_ms = (time.perf_counter() - t0) * 1000
+            # Arm a reconcile-pending flag BEFORE reporting ready so /health never
+            # reports index_fresh=true in the gap between warm-ready and the
+            # offline-drift enqueue below. The thorough reconcile walk takes a few
+            # seconds; without this flag a client polling /health immediately after
+            # warm sees a (briefly) empty keeper queue and false "fresh". Cleared
+            # inside _reconcile_offline once drift is enqueued (keeper then keeps
+            # it non-fresh via the live queue). Guarded by the unified switch.
+            try:
+                from pipeline.reconciler import unified_state_enabled
+
+                self._reconcile_pending = bool(unified_state_enabled())
+            except Exception:  # noqa: BLE001
+                self._reconcile_pending = False
             self.warm_state = "ready"
             self._start_keeper(root)
             # Offline-change reconciliation (spec C2, task 3.3). Detect drift that
             # happened while the engine was OFF and enqueue it into the keeper's
-            # durable journal BEFORE we report ready — no MCP client required.
-            # Best-effort; a failure here never fails warm.
+            # durable journal — no MCP client required. Best-effort; a failure
+            # here never fails warm. Clears the reconcile-pending flag when done.
             self._reconcile_offline(root, trigger="start")
             try:
                 from pipeline.memory_governor import get_governor

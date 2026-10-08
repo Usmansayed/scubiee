@@ -1,0 +1,113 @@
+{
+  "repo": "C:\\Users\\usman\\Downloads\\context-engine",
+  "project_id": "ce_b867ad869c948914bf7c8e8640a2a5e3",
+  "cycles": 3,
+  "files_per_cycle": 30,
+  "passed": 3,
+  "failed": 0,
+  "verdict": "PASS",
+  "results": [
+    {
+      "cycle": 1,
+      "files": 30,
+      "steps": {
+        "open": {
+          "ok": true,
+          "warm_ms": 4455,
+          "gate": "1:ce_b867ad869c948914bf7c8e8640a2a5e3"
+        },
+        "close": {
+          "engine_down": true,
+          "down_after_s": 2.0
+        },
+        "offline_edits": {
+          "added": 30,
+          "modified": 1,
+          "removed": 0
+        },
+        "reopen": {
+          "ok": true,
+          "warm_ms": 1682
+        },
+        "verify": {
+          "index_fresh_after_s": 103.2,
+          "searchable_after_s": 26.8,
+          "busy_pending_observed": false,
+          "pending_transitions": [
+            null
+          ],
+          "total_wait_s": 103.2
+        }
+      },
+      "pass": true
+    },
+    {
+      "cycle": 2,
+      "files": 30,
+      "steps": {
+        "open": {
+          "ok": true,
+          "warm_ms": 1988,
+          "gate": "1:ce_b867ad869c948914bf7c8e8640a2a5e3"
+        },
+        "close": {
+          "engine_down": true,
+          "down_after_s": 2.0
+        },
+        "offline_edits": {
+          "added": 30,
+          "modified": 1,
+          "removed": 30
+        },
+        "reopen": {
+          "ok": true,
+          "warm_ms": 1661
+        },
+        "verify": {
+          "index_fresh_after_s": 103.3,
+          "searchable_after_s": 26.8,
+          "busy_pending_observed": false,
+          "pending_transitions": [
+            null
+          ],
+          "total_wait_s": 103.3
+        }
+      },
+      "pass": true
+    },
+    {
+      "cycle": 3,
+      "files": 30,
+      "steps": {
+        "open": {
+          "ok": true,
+          "warm_ms": 1677,
+          "gate": "1:ce_b867ad869c948914bf7c8e8640a2a5e3"
+        },
+        "close": {
+          "engine_down": true,
+          "down_after_s": 2.0
+        },
+        "offline_edits": {
+          "added": 30,
+          "modified": 1,
+          "removed": 30
+        },
+        "reopen": {
+          "ok": true,
+          "warm_ms": 1691
+        },
+        "verify": {
+          "index_fresh_after_s": 128.4,
+          "searchable_after_s": 130.2,
+          "busy_pending_observed": false,
+          "pending_transitions": [
+            null
+          ],
+          "total_wait_s": 130.2
+        }
+      },
+      "pass": true
+    }
+  ]
+}
