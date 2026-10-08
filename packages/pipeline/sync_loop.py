@@ -1421,7 +1421,15 @@ class BackgroundSyncLoop:
         return True
 
     def _additions_before_deletions(self, paths: list[str]) -> list[str]:
-        """Index files that still exist before a backlog of deletions."""
+        """Order a drain so DELETIONS go first, then additions.
+
+        A deleted/renamed-away file carries no embedding — pruning it is a cheap
+        slice + vector delete + publish, versus an add that pays the full ORT
+        embed. Draining deletes FIRST makes a rename's old path disappear from
+        search almost immediately instead of waiting behind the embed-heavy
+        add-half (the prune-latency finding). The name is kept for call-site
+        stability; set CTX_DELETES_FIRST=0 to restore the old adds-first order.
+        """
         present: list[str] = []
         missing: list[str] = []
         for path in paths:
@@ -1429,7 +1437,10 @@ class BackgroundSyncLoop:
                 present.append(path)
             else:
                 missing.append(path)
-        return present + missing
+        deletes_first = (os.environ.get("CTX_DELETES_FIRST") or "1").strip().lower() not in {
+            "0", "false", "no", "off",
+        }
+        return (missing + present) if deletes_first else (present + missing)
 
     def _defer_cold_embedder(self, paths: list[str], *, now: float) -> bool:
         """Leave the batch queued while FastEmbed is still loading.

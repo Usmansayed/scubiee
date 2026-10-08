@@ -96,6 +96,18 @@ class RuntimeManager:
         # True from warm-ready until the start/connect offline reconcile has
         # enqueued its drift — keeps /health index_fresh honest across that gap.
         self._reconcile_pending: bool = False
+        # /health must never do disk I/O on the hot path (it is served on a
+        # ThreadingHTTPServer thread that contends for the GIL with a heavy embed
+        # loop). Cache the disk-touching bits — project ref, index_state pending,
+        # index_is_usable — behind a short TTL so a storm of /health polls during
+        # a big embed is answered purely from in-memory flags + this cache.
+        self._health_cache: dict[str, Any] = {}
+        self._health_cache_at: float = 0.0
+        # Full last /health payload + its monotonic timestamp. Under a GIL-held
+        # embed the HTTP thread may not get scheduled to build a fresh payload in
+        # time; serving the last one (sub-second stale) keeps /health responsive.
+        self._health_payload: dict[str, Any] | None = None
+        self._health_payload_at: float = 0.0
         self._admission_pauses: dict[str, dict[str, Any]] = {}
         self._lock = threading.RLock()
         self._open_bg_thread: threading.Thread | None = None
@@ -576,10 +588,74 @@ class RuntimeManager:
                 self._save_active_runtime()
                 return {"ok": False, "error": str(exc), "generation": self.generation}
 
+    def _health_disk_snapshot(self) -> dict[str, Any]:
+        """Disk-touching bits for /health, TTL-cached so the HTTP hot path never
+        blocks on disk/JSON while a heavy embed holds the GIL.
+
+        Caches: project_id, cold-path index_usable, and the agent `pending`
+        object (index_state.json). Refreshed at most once per
+        ``CTX_HEALTH_CACHE_TTL_S`` (default 2s). Never raises.
+        """
+        ttl = 2.0
+        try:
+            ttl = max(0.0, float(os.environ.get("CTX_HEALTH_CACHE_TTL_S") or "2"))
+        except ValueError:
+            ttl = 2.0
+        now = time.monotonic()
+        cached = self._health_cache
+        if cached and (now - self._health_cache_at) < ttl:
+            return cached
+        snap: dict[str, Any] = {"project_id": None, "cold_index_usable": None, "pending": None}
+        repo = self.repo
+        if repo is not None:
+            try:
+                from pipeline.project_id import peek_project
+
+                ref = peek_project(repo)
+                snap["project_id"] = ref.project_id if ref else None
+                snap["_store_dir"] = str(ref.store_dir) if ref else None
+            except Exception:  # noqa: BLE001
+                pass
+        pid = snap.get("project_id")
+        if pid:
+            try:
+                from pipeline.index_state import agent_pending
+
+                snap["pending"] = agent_pending(pid)
+            except Exception:  # noqa: BLE001
+                snap["pending"] = None
+        self._health_cache = snap
+        self._health_cache_at = now
+        return snap
+
     def health(self) -> dict[str, Any]:
+        """Public /health. Serves the last payload when it is very fresh so the
+        HTTP thread does the minimum GIL-requiring work during a heavy embed.
+
+        A full recompute is cheap (in-memory flags + TTL disk cache), but under a
+        GIL-held native embed even cheap Python waits to be scheduled. Returning a
+        <1s-stale cached payload keeps /health snappy; set CTX_HEALTH_PAYLOAD_TTL_S
+        to tune (default 1s, 0 = always recompute)."""
+        try:
+            ttl = max(0.0, float(os.environ.get("CTX_HEALTH_PAYLOAD_TTL_S") or "1"))
+        except ValueError:
+            ttl = 1.0
+        cached = self._health_payload
+        if cached is not None and ttl > 0 and (time.monotonic() - self._health_payload_at) < ttl:
+            return cached
+        payload = self._compute_health()
+        self._health_payload = payload
+        self._health_payload_at = time.monotonic()
+        return payload
+
+    def _compute_health(self) -> dict[str, Any]:
         # Soft readiness must stay in-memory and lock-free. Disk peek + ORT
         # status under concurrent DML embed was starving /health for 3s+ and
-        # flipping soft_search_ready during Cursor settle (false flaps).
+        # flipping soft_search_ready during Cursor settle (false flaps). The
+        # disk-touching parts (project ref, index_state pending, index_usable)
+        # come from a short-TTL cache so a /health storm during a big embed is
+        # answered from in-memory flags + cache, never a fresh disk read.
+        hsnap = self._health_disk_snapshot()
         n_chunks = 0
         try:
             eng = self.engine
@@ -595,26 +671,27 @@ class RuntimeManager:
         soft_ok = bool(warm_bool)
         index_usable = soft_ok
         if not soft_ok and self.repo is not None:
-            # Cold path only: binder not live yet — cheap disk peek for agents.
-            # While a warm/publish is actively loading the faiss store on the
-            # warm thread, DO NOT run validate_manifest's checksum here: that
-            # native, GIL-releasing hash raced the warm's turbo_quant/numpy.qr
-            # and segfaulted the process. Skip the checksum during warm and rely
-            # on the cheap existence check; the warm validates before publishing.
-            try:
-                from pipeline.project_id import index_is_usable, peek_project
+            # Cold path only: binder not live yet — serve a cheap disk peek for
+            # agents, but from the TTL cache (computed off the hot path) so a
+            # /health storm during warm does not re-stat the store each call.
+            cold = self._health_cache.get("cold_index_usable")
+            if cold is None:
+                try:
+                    from pipeline.project_id import index_is_usable
 
-                warming_now = bool(getattr(self, "warming", False)) or (
-                    self.warm_state == "warming"
-                )
-                ref = peek_project(self.repo)
-                index_usable = (
-                    index_is_usable(ref.store_dir, validate=not warming_now)
-                    if ref
-                    else False
-                )
-            except Exception:  # noqa: BLE001
-                index_usable = False
+                    warming_now = bool(getattr(self, "warming", False)) or (
+                        self.warm_state == "warming"
+                    )
+                    store_dir = hsnap.get("_store_dir")
+                    cold = (
+                        index_is_usable(Path(store_dir), validate=not warming_now)
+                        if store_dir
+                        else False
+                    )
+                    self._health_cache["cold_index_usable"] = bool(cold)
+                except Exception:  # noqa: BLE001
+                    cold = False
+            index_usable = bool(cold)
         embedder_loaded = False
         prewarm_busy = False
         try:
@@ -652,23 +729,10 @@ class RuntimeManager:
                 warm_phase = "soft"
             elif warm_phase in (None, ""):
                 warm_phase = "down"
-        # Agent-facing pending summary: present ONLY when the unified index state
-        # is actionable (reconciling / interrupted) and the work is substantial.
-        # Small incremental catch-up stays silent (no nagging per save). Derived
-        # from index_state.json; read-only; never blocks /health.
-        pending = None
-        try:
-            from pipeline.index_state import agent_pending
-            from pipeline.project_id import peek_project
-
-            _pid = None
-            if self.repo is not None:
-                _ref = peek_project(self.repo)
-                _pid = _ref.project_id if _ref else None
-            if _pid:
-                pending = agent_pending(_pid)
-        except Exception:  # noqa: BLE001
-            pending = None
+        # Agent-facing pending summary (reconciling/interrupted + substantial
+        # only) comes from the TTL-cached disk snapshot — never a fresh
+        # index_state.json read on the /health hot path.
+        pending = hsnap.get("pending")
         # index_fresh must reflect the LIVE keeper queue, not just the
         # substantial-pending object: a small offline batch is non-substantial
         # (pending=None) yet still unembedded until the keeper drains it. Report

@@ -262,6 +262,46 @@ def is_safety_pause_message(msg: str | None) -> bool:
 
 AUTO_FULL_INDEX_CHUNKS = int(os.environ.get("CTX_AUTO_FULL_INDEX_CHUNKS", "10000"))
 
+# A single pathologically large source file (e.g. generated code, a minified
+# bundle, a 36k-line monolith) can take minutes to AST-walk + chunk and produce
+# thousands of tiny chunks — enough to wedge the keeper or blow the embed budget.
+# Skip files above these caps BEFORE the expensive parse. 0 disables a cap.
+# Defaults are generous (real hand-written source is well under them): ~25k lines
+# or ~2 MB. A skipped file still has its hash recorded (handled, not re-reported).
+MAX_FILE_LINES = int(os.environ.get("CTX_MAX_FILE_LINES", "25000"))
+MAX_FILE_BYTES = int(os.environ.get("CTX_MAX_FILE_BYTES", str(2_000_000)))
+
+
+def _oversized_file(path: Path) -> str | None:
+    """Return a reason string if ``path`` exceeds a size/line cap, else None.
+
+    Cheap: a single ``stat`` for bytes, and only counts lines (a scan, no decode
+    into memory) when the byte cap is disabled or the file is near the line cap
+    by bytes. Any error → treat as not-oversized (fail open, let parse try)."""
+    try:
+        if MAX_FILE_BYTES > 0:
+            size = path.stat().st_size
+            if size > MAX_FILE_BYTES:
+                return f"bytes={size}>{MAX_FILE_BYTES}"
+        if MAX_FILE_LINES > 0:
+            # Only pay the line scan when bytes alone did not already decide and
+            # the file is big enough that lines could plausibly exceed the cap
+            # (avg >=1 byte/line, so size < lines can never trip it).
+            try:
+                size = path.stat().st_size
+            except OSError:
+                size = 0
+            if size >= MAX_FILE_LINES:
+                lines = 0
+                with path.open("rb") as fh:
+                    for _ in fh:
+                        lines += 1
+                        if lines > MAX_FILE_LINES:
+                            return f"lines>{MAX_FILE_LINES}"
+    except OSError:
+        return None
+    return None
+
 # Chunks re-embedded per sync when chunks.jsonl and the vector store disagree.
 # Bounded so one keeper tick cannot turn into a full reindex.
 VECTOR_BACKFILL_CAP = int(os.environ.get("CTX_VECTOR_BACKFILL_CAP", "2000"))
@@ -969,13 +1009,41 @@ def incremental_sync(
         # the graph stage, and the write stage re-reads it further down.
         named_delta = bool(force_files) and kept_lines is not None
 
-        paths = _paths_for_files(root, changed)
         new_records: list[ChunkRecord] = []
         graph_error: str | None = None
         matrix = None
         embedder = None
         warnings: list[str] = []
         raw: dict = {"nodes": [], "edges": [], "hyperedges": []}
+
+        paths = _paths_for_files(root, changed)
+        # Pre-parse size guard: drop pathologically large files BEFORE extract()
+        # so they never burn minutes on the AST walk + chunking. They stay in
+        # ``touch``/``touch_set`` so the no-delta branch below records their disk
+        # hash (handled — root_probe won't re-report them) and clears any stale
+        # chunk-merkle entry. The file simply stays unindexed; a warning surfaces.
+        if paths and (MAX_FILE_LINES > 0 or MAX_FILE_BYTES > 0):
+            kept_paths: list[Path] = []
+            skipped_oversized: list[str] = []
+            for p in paths:
+                why = _oversized_file(p)
+                if why is None:
+                    kept_paths.append(p)
+                else:
+                    rel_sk = p.relative_to(root).as_posix()
+                    skipped_oversized.append(rel_sk)
+                    print(
+                        f"[sync] skip oversized file {rel_sk} ({why}) — not indexed; "
+                        f"raise CTX_MAX_FILE_LINES/CTX_MAX_FILE_BYTES to include it",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+            if skipped_oversized:
+                paths = kept_paths
+                warnings.append(
+                    f"skipped {len(skipped_oversized)} oversized file(s): "
+                    + ", ".join(skipped_oversized[:5])
+                )
 
         t_parse = time.perf_counter()
         if paths:

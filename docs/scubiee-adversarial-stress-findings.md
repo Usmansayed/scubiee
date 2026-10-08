@@ -141,23 +141,46 @@ harness is trustworthy:
    disappears (up to ~2 min) and to inspect returned PATHS, not shared body text
    (a rename keeps content identical in both paths).
 
-## Follow-up / improvement opportunities (not yet done)
+## Reliability hardening — the three follow-ups, now FIXED
 
-- **Pre-chunk size guard.** The barren cap bounds the damage to N attempts, but a
-  36k-line file still burns ~290s × N before quarantine. A cheap per-file
-  line/byte guard in the chunk/collect path (skip + quarantine files over, say,
-  ~20k lines) would avoid the wasted work entirely. Deferred to keep the fix
-  blast radius small (changing the chunker risks altering indexing for
-  legitimately large files).
-- **Dense-embed throughput at scale** (300-file / huge-file drain time) is
-  dominated by the cold-embedder defer + per-chunk embed cost; worth profiling if
-  faster catch-up is desired.
-- **Delete/rename prune latency.** An offline folder rename (40 delete + 40 add)
-  takes >2 min for the delete-half to fully disappear from search, because the
-  removals drain in ~25–45s bulk cycles interleaved with the adds. The content is
-  correct throughout (search_usable), but old paths linger longer than ideal.
-  Prioritizing the delete-half (prune before/alongside the add-half) would make a
-  rename reflect faster. Correctness is fine; this is a latency improvement.
+### 1. /health stayed responsive under embed load (fixed)
+`/health` used to time out while the engine embedded a large backlog: the HTTP
+thread (ThreadingHTTPServer) contended for the GIL with the embed loop, and
+`health()` did two `peek_project` disk reads + an `index_state.json` read on the
+hot path. Fix (`ce_service.py`):
+- `_health_disk_snapshot()` TTL-caches the disk-touching bits (project ref,
+  `agent_pending`, cold `index_is_usable`) — default `CTX_HEALTH_CACHE_TTL_S=2`.
+- `health()` serves the whole last payload when <1s stale
+  (`CTX_HEALTH_PAYLOAD_TTL_S=1`), so during a GIL-held embed the handler returns
+  a prebuilt dict instead of recomputing.
+Verified under a live 150-file embed backlog: **0 timeouts over 220 polls**
+(was: full timeouts), **p50 10ms, avg 73ms**. A rare ~1-2% spike to ~2.6s
+remains — the hard floor of CPython's GIL during a native embed batch that does
+not yield; it never times out. Eliminating it entirely would need the HTTP
+server in a separate process.
+
+### 2. delete/rename prune latency (fixed)
+`_additions_before_deletions` returned `present + missing` (adds first), so a
+rename's deletes waited behind the embed-heavy add-half. Fix (`sync_loop.py`):
+return `missing + present` (deletes first) — a delete carries no embedding, so a
+renamed-away path disappears from search almost immediately. Hot saves are still
+prioritized (they go through `_split_explicit_writes` as `writes`, ahead of the
+backlog, before this ordering matters). Rollback: `CTX_DELETES_FIRST=0`.
+
+### 3. pre-chunk size guard for pathological files (fixed)
+A ~36k-line file burned ~290s per sync attempt on the AST walk + chunking before
+producing 0 usable chunks (and the barren cap then quarantined it after N
+attempts). Fix (`incremental.py`): `_oversized_file()` + a filter right after
+`_paths_for_files` drops files over `CTX_MAX_FILE_LINES` (25000) /
+`CTX_MAX_FILE_BYTES` (2 MB) **before** `extract()`. The skipped file stays in
+`touch_set` so the no-delta branch records its merkle hash (handled —
+`root_probe` never re-reports it) and clears any stale chunk-merkle entry.
+Verified live: `[sync] skip oversized file …/s6_huge.py (lines>25000) — not
+indexed`, skipped in ~2.8s with `parse_ms=0`, hash recorded, not re-reported.
+
+Tests: `tests/test_reliability_hardening.py` (7 — deletes-first ordering + its
+rollback, oversized detection by lines/bytes + disable, health TTL cache hit +
+refresh). 139 pass across the touched suites.
 
 ## How to re-run
 ```
