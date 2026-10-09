@@ -69,22 +69,28 @@ allocation. Proven by isolation: **FastEmbed→faiss indexed 4/4 clean; MLX→fa
 crashed ~1/3.** (Consistent with known MLX native-memory issues, e.g.
 ml-explore/mlx #3329 and #1332 — content rephrased for licensing compliance.)
 
-**Fix (`indexer.py`).** The one-time **index build uses the FastEmbed/ONNX path
-on Darwin** (same `nomic-ai/CodeRankEmbed` model, 768-dim vectors — just CPU/
-CoreML instead of Metal), eliminating the MLX→faiss heap race entirely. The
-**live query engine keeps MLX** for fast searches — only the batch index build
-switches. Override with `CTX_INDEX_EMBED_BACKEND=mlx` (not recommended on Apple
-Silicon until the upstream MLX heap issue is resolved). A defensive
-`mlx_mac.quiesce_mlx()` (synchronize + clear Metal cache under the embed lock)
-is also called before the vector write for any path that still uses MLX.
+**Fix (`indexer.py` + `mlx_mac.py`) — MLX stays the index backend.** The crash is
+fixed **on the MLX path**, not by swapping embedders. Before the faiss/
+`turbo_quant` vector write, `mlx_mac.quiesce_mlx()` runs on the main thread under
+the embed lock: `mx.synchronize()` (flush all in-flight GPU work) → `clear_cache()`
+→ a momentary `set_cache_limit(0)` drain → a final `synchronize()`. This releases
+MLX's transient Metal buffers back to the OS so the process heap is clean before
+numpy-LAPACK / faiss runs, removing the native-allocator race.
 
-Trade-off: on a large repo the index build is a few seconds–minutes slower on
-FastEmbed than MLX (a one-time cost; the first run also pays a one-time ONNX
-model download). Queries are unaffected (still MLX). Crash-free wins.
+> **Reverted — no FastEmbed swap.** An earlier revision defaulted the whole index
+> build to FastEmbed/ONNX on Darwin whenever MLX would be used. That was rolled
+> back: MLX is the chosen Apple-Silicon accelerator and the index build must stay
+> on it. Splitting the embedder (FastEmbed index vectors vs MLX query vectors)
+> reversed a deliberate architecture decision and is a silent correctness risk.
+> `CTX_INDEX_EMBED_BACKEND` remains an **explicit opt-in escape hatch** (e.g.
+> `=fastembed`/`=cpu`) but is OFF by default — the default on Apple Silicon is MLX.
+> See `docs/scubiee-macos-handoff-mlx-not-fastembed.md`.
 
-**Verification.** 8 consecutive clean `connect`→`init` runs: **8/8 `ok=true`,
-7 chunks, zero crashes** (one run was slow at 131s — a one-time FastEmbed ONNX
-download, not a crash). Index loads correctly (engine warm, 7 chunks).
+**Open on macOS (for the Mac agent to verify):** confirm that `quiesce_mlx()`
+alone makes the MLX index build crash-free — run a clean first `init` ≥20× on
+MLX (no FastEmbed swap) and expect 0 crashes at "Writing index". If it still
+crashes, escalate the root cause to the owner before any backend workaround; do
+not re-introduce the silent swap.
 
 ---
 
@@ -96,24 +102,30 @@ download, not a crash). Index loads correctly (engine warm, 7 chunks).
 - `packages/pipeline/repo_lifecycle.py` — set/clear the hold around the index
   block in `initialize_repo`.
 - `packages/pipeline/__main__.py` — bounded post-index `ensure_daemon` handoff.
-- `packages/pipeline/indexer.py` — index build uses FastEmbed on Darwin/MLX;
-  `quiesce_mlx` before the vector write.
+- `packages/pipeline/indexer.py` — `quiesce_mlx()` before the vector write; index
+  build stays on MLX (FastEmbed swap reverted; `CTX_INDEX_EMBED_BACKEND` is an
+  opt-in escape hatch only).
 - `packages/pipeline/mlx_mac.py` — `quiesce_mlx()` helper (synchronize + clear
   Metal cache under the embed lock).
 - `tests/test_connect_then_init.py` — 5 regression tests (store-hold gating,
   self-expiry, enter_standby no-op, index-backend selection + override).
 
 New env knobs (safe defaults): `CTX_STORE_HOLD_S` (180), `CTX_INIT_HANDOFF_WAIT_S`
-(20), `CTX_INDEX_EMBED_BACKEND` (auto→fastembed on Darwin/MLX), `CTX_MLX_QUIESCE`
-(1).
+(20), `CTX_INDEX_EMBED_BACKEND` (unset → MLX stays the index backend on Apple
+Silicon; opt-in escape hatch only), `CTX_MLX_QUIESCE` (1).
 
 ---
 
 ## Status
 
-- **connect → init on macOS: fixed and reliable** — no deadlock, no index-write
-  segfault across repeated runs. The supported order (`init` → `connect`) also
+- **Deadlock (Bug A): fixed and verified** — the store-hold removes the
+  connect→init supervisor race; the supported order (`init` → `connect`) also
   continues to work.
+- **Index-write segfault (Bug B): fix is `quiesce_mlx()` on the MLX path; the
+  earlier FastEmbed swap was reverted.** The MLX-only crash-free claim must be
+  re-verified on Apple Silicon with the swap gone (≥20 clean first-inits) — see
+  the "Open on macOS" note above and
+  `docs/scubiee-macos-handoff-mlx-not-fastembed.md`.
 - **Known separate item (not this fix):** the LIVE engine's MLX *warm* path can
   still hit the pre-existing warm-start segfault class (the `CTX_SERIAL_WARM`
   territory) under heavy churn; it is independent of index/connect ordering and

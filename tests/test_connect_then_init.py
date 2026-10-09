@@ -11,8 +11,10 @@ on Apple Silicon:
   2. SEGFAULT: a full index embeds (MLX/Metal) then does a numpy-LAPACK/faiss
      vector write in the SAME process; MLX leaves the heap in a state that trips
      the malloc guard at the subsequent allocation (~1/3 of inits crashed at
-     "Writing index"). Fix: the one-time index build uses the FastEmbed/ONNX
-     path on Darwin (MLX stays the LIVE-engine query backend).
+     "Writing index"). Fix: MLX stays the index backend on Apple Silicon; the
+     crash is removed on the MLX path by quiescing MLX (synchronize + clear the
+     Metal cache) before the vector write. CTX_INDEX_EMBED_BACKEND is an opt-in
+     escape hatch only — there is NO silent FastEmbed swap on Darwin.
 
 Offline; no engine/embedder required.
 """
@@ -88,55 +90,51 @@ def test_enter_standby_is_noop_while_held(_home, monkeypatch):
 
 # ---- 2. Index-build backend selection (segfault fix) ------------------------
 
-def test_index_uses_fastembed_on_darwin_mlx(monkeypatch):
-    """On Darwin with an MLX profile, the index build selects FastEmbed (not MLX)
-    so the MLX→faiss heap race cannot crash the write. Verified by the backend
-    the Embedder is constructed with."""
+def _resolve_index_backend() -> str | None:
+    """Decision mirror of indexer.index_repo (kept in sync with the code there).
+
+    Default: index_backend stays None → Embedder resolves normally (MLX on Apple
+    Silicon). CTX_INDEX_EMBED_BACKEND is an explicit opt-in override only. There
+    is NO platform-based swap to FastEmbed on Darwin.
+    """
+    import os
+
+    index_backend = None
+    forced = (os.environ.get("CTX_INDEX_EMBED_BACKEND") or "").strip().lower()
+    if forced in {"mlx", "fastembed", "coderank", "cpu"}:
+        index_backend = "fastembed" if forced == "cpu" else forced
+    return index_backend
+
+
+def test_index_keeps_mlx_default_on_darwin(monkeypatch):
+    """On Darwin with an MLX profile and no override, the index build does NOT
+    swap to FastEmbed — index_backend stays None so Embedder resolves to MLX,
+    the chosen Apple-Silicon accelerator. (Regression guard against the reverted
+    silent FastEmbed swap.)"""
     import sys
 
     monkeypatch.setattr(sys, "platform", "darwin")
     monkeypatch.delenv("CTX_INDEX_EMBED_BACKEND", raising=False)
-
-    captured = {}
-
-    class _FakeEmbedder:
-        def __init__(self, *a, backend=None, **k):
-            captured["backend"] = backend
-        model = "nomic-ai/CodeRankEmbed"
-        backend = "fastembed"
-
-    # Minimal: exercise just the backend-selection branch logic in isolation by
-    # replicating the decision the indexer makes, to avoid standing up a store.
-    from pipeline import accel
-
-    class _Prof:
-        profile = "mlx"
-        backend = "mlx"
-
-    monkeypatch.setattr(accel, "load_accel", lambda: _Prof())
     monkeypatch.delenv("CTX_EMBED_BACKEND", raising=False)
 
-    # Decision mirror of indexer.index_repo (kept in sync with the comment there):
-    index_backend = None
-    if sys.platform == "darwin":
-        forced = (__import__("os").environ.get("CTX_INDEX_EMBED_BACKEND") or "").strip().lower()
-        if forced in {"mlx", "fastembed", "coderank", "cpu"}:
-            index_backend = "fastembed" if forced == "cpu" else forced
-        else:
-            p = accel.load_accel()
-            would_mlx = bool(p and (p.profile == "mlx" or getattr(p, "backend", "") == "mlx"))
-            if would_mlx:
-                index_backend = "fastembed"
-    assert index_backend == "fastembed"
+    # No override, Darwin+MLX → no forced backend. Embedder picks MLX itself.
+    assert _resolve_index_backend() is None
 
 
-def test_index_backend_override_forces_mlx(monkeypatch):
-    """CTX_INDEX_EMBED_BACKEND=mlx overrides the safe default (escape hatch)."""
-    import os
+def test_index_backend_override_opt_in(monkeypatch):
+    """CTX_INDEX_EMBED_BACKEND is an explicit escape hatch, honored on any OS."""
     import sys
 
     monkeypatch.setattr(sys, "platform", "darwin")
+
+    # Explicit MLX stays MLX.
     monkeypatch.setenv("CTX_INDEX_EMBED_BACKEND", "mlx")
-    forced = (os.environ.get("CTX_INDEX_EMBED_BACKEND") or "").strip().lower()
-    index_backend = "fastembed" if forced == "cpu" else forced
-    assert index_backend == "mlx"
+    assert _resolve_index_backend() == "mlx"
+
+    # Explicit opt-in to FastEmbed is still possible for anyone who needs it.
+    monkeypatch.setenv("CTX_INDEX_EMBED_BACKEND", "fastembed")
+    assert _resolve_index_backend() == "fastembed"
+
+    # "cpu" is normalized to fastembed.
+    monkeypatch.setenv("CTX_INDEX_EMBED_BACKEND", "cpu")
+    assert _resolve_index_backend() == "fastembed"

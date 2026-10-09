@@ -345,36 +345,21 @@ def index_repo(
         except Exception:
             batch = 16 if fast else 32
     batch = min(batch, mem_budget.embed_batch_ceiling)
-    # macOS/MLX index-build safety: a FULL index embeds a batch and then does a
-    # heavy numpy-LAPACK / faiss vector write in the SAME process. MLX's Metal
-    # allocator leaves the process heap in a state that intermittently trips the
-    # malloc guard (SIGTRAP) at the subsequent np.zeros/QR in turbo_quant —
-    # init crashes ~1/3 of the time at "Writing index". Proven: FastEmbed→faiss
-    # is 100% stable; MLX→faiss is not. So the one-time index build uses the ORT
-    # FastEmbed path on Darwin (same CodeRankEmbed model + 768-dim vectors, just
-    # CPU/CoreML instead of Metal — a few seconds slower on a big repo, but
-    # crash-free). The LIVE engine keeps MLX for fast queries. Override with
-    # CTX_INDEX_EMBED_BACKEND=mlx to force MLX during index (not recommended on
-    # Apple Silicon until the MLX heap issue is fixed upstream).
+    # Index-build embedder backend. The default is whatever Embedder resolves
+    # normally — i.e. MLX on Apple Silicon (the chosen accelerator). We do NOT
+    # silently swap to FastEmbed on Darwin: that split the embedder (FastEmbed
+    # index vectors vs MLX query vectors) and reversed a deliberate architecture
+    # choice. The MLX index-write crash (MLX's Metal allocator leaving the heap
+    # dirty before the numpy-LAPACK / faiss write in turbo_quant) is addressed on
+    # the MLX path itself via mlx_mac.quiesce_mlx() before store.upsert_vectors.
+    #
+    # CTX_INDEX_EMBED_BACKEND remains an explicit escape hatch (e.g. "fastembed"
+    # or "cpu") for anyone who needs to force a non-MLX index build, but it is
+    # OFF by default — MLX stays the index backend on Apple Silicon.
     index_backend: str | None = None
-    if sys.platform == "darwin":
-        _forced = (os.environ.get("CTX_INDEX_EMBED_BACKEND") or "").strip().lower()
-        if _forced in {"mlx", "fastembed", "coderank", "cpu"}:
-            index_backend = "fastembed" if _forced == "cpu" else _forced
-        else:
-            # Default: if we'd otherwise use MLX, build the index on FastEmbed.
-            try:
-                from pipeline.accel import load_accel
-
-                _p = load_accel()
-                _would_mlx = (
-                    os.environ.get("CTX_EMBED_BACKEND", "").strip().lower() == "mlx"
-                    or bool(_p and (_p.profile == "mlx" or getattr(_p, "backend", "") == "mlx"))
-                )
-            except Exception:  # noqa: BLE001
-                _would_mlx = False
-            if _would_mlx:
-                index_backend = "fastembed"
+    _forced = (os.environ.get("CTX_INDEX_EMBED_BACKEND") or "").strip().lower()
+    if _forced in {"mlx", "fastembed", "coderank", "cpu"}:
+        index_backend = "fastembed" if _forced == "cpu" else _forced
     embedder = Embedder(
         model=model,
         cache_path=store.embed_cache,
