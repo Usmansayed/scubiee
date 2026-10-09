@@ -59,10 +59,14 @@ the code ever disagree, the code wins.
 
 ## macOS
 
-- **[`scubiee-macos-handoff-0.3.144.md`](scubiee-macos-handoff-0.3.144.md)** — the
-  current handoff: step-by-step plan for a macOS agent to repeat the v0.3.144
-  reliability + perf verification on MLX/Metal, find/fix Mac-specific bugs, and
+- **[`scubiee-macos-handoff-0.3.145.md`](scubiee-macos-handoff-0.3.145.md)** — the
+  current handoff: step-by-step plan for a macOS agent to repeat the v0.3.145
+  reliability + perf verification on MLX/Metal (now also covering the
+  connect-once/init-auto-applies hardening), find/fix Mac-specific bugs, and
   report. **This supersedes the older mac test plans in the archive.**
+- **[`scubiee-macos-findings-0.3.144.md`](scubiee-macos-findings-0.3.144.md)** —
+  the completed Apple-Silicon (M5) findings from the 0.3.144 pass: four Mac bugs
+  found, root-caused, and fixed. Historical record of what the Mac run verified.
 - **[`scubiee-macos-warm-segfault-fix.md`](scubiee-macos-warm-segfault-fix.md)** —
   the macOS warm-start SIGSEGV root cause + fix (serialized native warm build).
 

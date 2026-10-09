@@ -1,11 +1,11 @@
-# Scubiee macOS Handoff — v0.3.144 reliability + perf verification
+# Scubiee macOS Handoff — v0.3.145 reliability + perf verification
 
 **You are:** an autonomous coding agent running on a **macOS** machine (Apple
 Silicon preferred; note Intel if that's what you have), with the Scubiee
 `@scubiee/*` MCP tools connected and a terminal.
 
 **Your job:** repeat — on macOS — the production-hardening verification that was
-done on Windows/DirectML for **v0.3.144**, find any macOS-specific bugs, **fix
+done on Windows/DirectML for **v0.3.145**, find any macOS-specific bugs, **fix
 them**, and write a findings/handoff doc. macOS is the one tier that has NOT been
 tested with the new work. You are the gate before macOS can be called launch-ready.
 
@@ -14,13 +14,13 @@ edit code, rebuild, commit on a branch. Do **not** push or open PRs without bein
 asked. Do **not** run destructive commands (`scubiee wipe`, `remove`, `halt`,
 force deletes) except in the dedicated teardown step on throwaway data.
 
-**Deliverable:** `docs/scubiee-macos-findings-0.3.144.md` (template in §12). Log
+**Deliverable:** `docs/scubiee-macos-findings-0.3.145.md` (template in §12). Log
 every check with the exact command, observed output, and PASS / FAIL / OBS, plus
 a bug register and an honest verdict.
 
 ---
 
-## 0. Context — what changed in 0.3.144 and why macOS matters
+## 0. Context — what changed in 0.3.145 and why macOS matters
 
 Scubiee is a local AI code-context engine + MCP server. It indexes a repo and
 answers "where is the relevant code?" through three surfaces:
@@ -31,7 +31,7 @@ answers "where is the relevant code?" through three surfaces:
 - **HTTP engine** on `127.0.0.1:8765`.
 - **CLI** — `scubiee <cmd>`.
 
-The Windows pass for 0.3.144 landed these changes. **Each is a macOS risk because
+The Windows pass for 0.3.145 landed these changes. **Each is a macOS risk because
 the embedder/accel and process-lifecycle layers are genuinely different on Mac:**
 
 1. **Cold-start perf fix** — dense-ready used to trail soft-ready by ~15s because
@@ -54,6 +54,15 @@ the embedder/accel and process-lifecycle layers are genuinely different on Mac:*
 5. **In-engine ORT self-heal is detect-only** — the engine never runs pip against
    its own live site-packages (that corrupted installs on Windows). It only
    detects a broken accelerator and logs "run `scubiee setup --repair`".
+6. **Connect-once / init-auto-applies hardening (new in 0.3.145 — platform-
+   agnostic, so verify on Mac)** — `scubiee connect <tool>` records the tool in
+   `~/.scubiee/connected_tools.json` once per machine; every subsequent `init`
+   auto-restores and re-applies all saved tools to the repo. This path was made
+   crash-safe (atomic write + `.bak` self-heal so a torn primary never silently
+   resets to `[]`) and resilient (per-tool isolation on apply, so one failing
+   tool can't block the others). **Pure Python + filesystem; should behave
+   identically on Mac — confirm the state file, backup, and self-heal all work on
+   the macOS home path, and that connect→init→reconnect round-trips cleanly.**
 
 Reference docs: `docs/scubiee-performance-timings.md` (the Windows numbers you're
 comparing against), `docs/scubiee-overview.md` (architecture),
@@ -79,10 +88,10 @@ is **MLX (Metal)**; on Intel it's **CPU** (CoreML/FastEmbed).
 
 ---
 
-## 2. Install v0.3.144
+## 2. Install v0.3.145
 
 You have two options. **Prefer building from this checkout** so you test exactly
-the code with the new fixes (0.3.144 may not be on PyPI yet).
+the code with the new fixes (0.3.145 may not be on PyPI yet).
 
 ### Option A — build + install from the checkout (recommended)
 ```bash
@@ -91,16 +100,16 @@ cd /path/to/context-engine
 PYTHONPATH=packages python3 -m build --wheel --outdir dist_prod
 # Stop any running engine, then install the wheel as a uv tool:
 scubiee engine stop 2>/dev/null || true
-uv tool install --force --reinstall dist_prod/scubiee-0.3.144-py3-none-any.whl
+uv tool install --force --reinstall dist_prod/scubiee-0.3.145-py3-none-any.whl
 ```
 
 > **Do NOT use the Windows override file** `packaging/uv-overrides-win-dml.txt` on
 > macOS — it excludes `onnxruntime`, which macOS actually needs. The Windows
 > conflict (`onnxruntime-directml`) does not exist on Mac.
 
-### Option B — from PyPI if 0.3.144 is published
+### Option B — from PyPI if 0.3.145 is published
 ```bash
-uv tool install --force "scubiee==0.3.144"
+uv tool install --force "scubiee==0.3.145"
 ```
 
 Then verify:
@@ -112,7 +121,7 @@ curl -s http://127.0.0.1:8765/health | python3 -m json.tool | grep -E 'version|w
 ```
 
 Checks:
-- **[ ] PASS/FAIL** installed version is **0.3.144** (`/health` `version`).
+- **[ ] PASS/FAIL** installed version is **0.3.145** (`/health` `version`).
 - **[ ] PASS/FAIL** after restarting your IDE, the `@scubiee/*` MCP tools are
   callable; `gate` returns `1:<project_id>`; `status` reports warm + dense.
 - **[ ] OBS** any macOS install friction (Gatekeeper, quarantine, codesign,
@@ -157,7 +166,7 @@ and sanity-check that results are relevant (not scrambled).
 
 ---
 
-## 4. Cold-start + warm sequence timing (new 0.3.144 fix — verify on Mac)
+## 4. Cold-start + warm sequence timing (new 0.3.144 fix — verify on Mac, still relevant in 0.3.145)
 
 The Windows fix made dense-ready trail soft-ready by only ~2-9s instead of ~15s.
 Verify the same ordering holds with the MLX warm path.
@@ -234,7 +243,7 @@ Checks:
 
 ---
 
-## 6. /health under embed load (new 0.3.144 fix)
+## 6. /health under embed load (new 0.3.144 fix, still shipped in 0.3.145)
 
 Confirm the background health refresher keeps `/health` responsive while the
 engine embeds a backlog.
@@ -309,7 +318,7 @@ Windows run). Put test files under `scripts/perf/_mac_scratch/` so cleanup is ea
    _(Windows ~1.5s — deletes carry no embed.)_
 4. **Live rename**: create+index `_mac_ren_old.py`, rename to `_mac_ren_new.py`;
    confirm new path searchable and old path drops. _(Windows: new ~2.2s, old ~4.2s.)_
-5. **Bulk/offline + graph-catchup batching (new 0.3.144 fix)**: `scubiee engine
+5. **Bulk/offline + graph-catchup batching (new 0.3.144 fix, still shipped in 0.3.145)**: `scubiee engine
    stop`, create ~80 small files under the scratch dir, `scubiee engine start`,
    then watch `~/.scubiee/engine.log` for the reconcile + graph catch-up.
    - **[ ] PASS/FAIL** the offline reconcile enqueues the batch (`[reconcile:start]
@@ -369,7 +378,7 @@ PYTHONPATH=packages python3 -m pytest tests/ -q
 
 ---
 
-## 12. Deliverable — `docs/scubiee-macos-findings-0.3.144.md`
+## 12. Deliverable — `docs/scubiee-macos-findings-0.3.145.md`
 
 Include:
 1. **Environment**: macOS version, chip, Apple Silicon vs Intel, backend used,
@@ -379,7 +388,7 @@ Include:
    robustness), §9.5 (graph-catchup batching) — the highest-risk new areas.
 3. **Bug register** (table): ID, severity (BUG/ISSUE/OBS/OK), area, summary,
    root cause, fix (commit SHA if fixed), status.
-4. **Cross-platform comparison**: for each 0.3.144 fix (cold-start, health-under-
+4. **Cross-platform comparison**: for each fix (cold-start, health-under-
    load, graph-catchup batching, ORT/accel robustness, detect-only self-heal),
    state whether macOS behaves the same / better / worse, with numbers.
 5. **macOS-only findings**: MLX/Metal/CoreML behavior, launchd lifecycle,
@@ -414,7 +423,7 @@ Leave the engine healthy+warm or stopped cleanly — note which in the findings.
 
 ## Appendix — key facts
 
-- **Version:** 0.3.144. **Engine:** `127.0.0.1:8765`.
+- **Version:** 0.3.145. **Engine:** `127.0.0.1:8765`.
 - **Shipped MCP tools:** `map` (config `find`|`focus`), `gate`, `status`. Others
   retired.
 - **Retrieval:** graph + BM25 + dense (CodeRankEmbed, 768-dim) fused; FAISS.

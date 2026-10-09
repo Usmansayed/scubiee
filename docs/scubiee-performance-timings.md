@@ -17,13 +17,15 @@ Two measurement planes:
 | Signal | Cold first call | Warm steady-state | After 65s idle (connected) |
 |--------|-----------------|-------------------|----------------------------|
 | `gate` / `status` (`/health`) | n/a (up at ~9s) | **p50 2ms, p99 92ms** | p50 2ms (unchanged) |
-| `map find` | **2321ms** (first query after warm) | **~200–250ms** (p50 ~220ms) | **310ms** (≈steady) |
+| `map find` | **2321ms** (first query after warm) | **~200–600ms** (p50 ~220ms quiet, ~500–600ms under concurrent sync load) | **310ms** (≈steady) |
 | `map focus` | 92ms | **79–92ms** | ~90ms |
 
 Notes:
 - The first `find` after a fresh warm pays a **one-time ~2.1s** cost (query-embed
-  path warmup + AST/file cache fill). Every subsequent find is ~220ms. `focus`
-  has no dense step so it is fast from the first call.
+  path warmup + AST/file cache fill). Subsequent finds are ~220ms on a quiet
+  engine; expect ~500–600ms when the engine is concurrently indexing/syncing
+  (the dense search contends with background embed work). `focus` has no dense
+  step so it is fast from the first call.
 - `find` warm latency is dominated by the engine dense search (`_http` ≈
   175–200ms/call); the map-server assembly around it is small.
 - `graph`/`related` fold into `find` on the shipped `{find, focus}` surface.
@@ -135,7 +137,7 @@ Engine log confirmed the path end-to-end:
 
 ## Takeaways
 
-- **Warm tool latency is production-grade**: `find` ~220ms, `focus` <100ms,
+- **Warm tool latency is production-grade**: `find` ~220ms quiet (~500–600ms under concurrent sync), `focus` <100ms,
   `gate`/`status` ~2ms. The only >1s tool cost is the one-time first-find after a
   cold warm (~2.3s), which is unavoidable query-embed warmup.
 - **No idle penalty while connected** — the engine holds warm for the whole

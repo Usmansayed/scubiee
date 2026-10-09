@@ -61,7 +61,7 @@ prewarm immediately after soft-ready (before the keeper/reconcile/AST work) and
 during the cold window — this cut dense-behind-soft from ~15s to ~2–9s. The
 watchdog also pre-warms in the background so an agent arriving after the machine
 has settled sees a warm engine immediately. (macOS/MLX warm timing is verified
-separately — see `scubiee-macos-handoff-0.3.144.md`.)
+separately — see `scubiee-macos-handoff-0.3.145.md`.)
 
 ### Idle / standby
 The engine stays warm (embedder resident) for the whole time a client is
