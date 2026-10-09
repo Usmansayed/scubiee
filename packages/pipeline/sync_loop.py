@@ -1152,19 +1152,60 @@ class BackgroundSyncLoop:
         return raw not in {"0", "false", "no", "off"}
 
     def _split_explicit_writes(self, paths: list[str]) -> tuple[list[str], list[str]]:
-        """Files marked by a save, ahead of a disk-poll backlog."""
+        """Files marked by a save, ahead of a disk-poll backlog.
+
+        A hot-reason path that still exists on disk is an edit the user awaits →
+        the write lane. A hot-reason path that is GONE from disk but still owns
+        chunks is a DELETE the user awaits: prune it on the same prompt write
+        lane (incremental_sync(force_files=...) slices its chunks into
+        removed_ids and parses nothing → a cheap, embed-free net removal).
+        Before this, a dirty-marked delete failed the ``is_file()`` guard and
+        fell to the backlog, where it was only pruned by the slow periodic
+        corpus-ghost reconcile (minutes) — the delete/rename-eviction latency
+        gap seen on macOS. Opt out with CTX_HOT_DELETE_PRUNE=0.
+        """
         from pipeline.dirty_ledger import HOT_SYNC_REASONS, normalize_dirty_path
 
+        hot_delete = (os.environ.get("CTX_HOT_DELETE_PRUNE") or "1").strip().lower() not in {
+            "0", "false", "no", "off",
+        }
+        # Only an EXPLICIT delete (an IDE/agent save or a /v1/dirty the user
+        # awaits) earns the prompt write lane. Passive disk-poll discovery
+        # (``watch``/``disk_save``) of a vanished file keeps the deferred
+        # backlog ordering so a real on-disk ADDITION in the same drain is still
+        # synced ahead of a deletion backlog (test_live_reindexing contract).
+        EXPLICIT_DELETE_REASONS = {
+            "write", "changed_file", "editor_save", "probe_write", "after_kiro_write",
+        }
         snap = self.dirty_ledger.snapshot().get("paths") or {}
         writes: list[str] = []
         backlog: list[str] = []
+        gone_hot: list[str] = []
         for path in paths:
             entry = snap.get(normalize_dirty_path(path)) or {}
             reason = str(entry.get("reason") or "")
             if reason in HOT_SYNC_REASONS and (self.repo / path).is_file():
                 writes.append(path)
+            elif (
+                hot_delete
+                and reason in EXPLICIT_DELETE_REASONS
+                and not (self.repo / path).is_file()
+            ):
+                # Gone on disk + explicit-delete reason: candidate prompt-prune
+                # (only if it still owns chunks — a never-indexed gone path is a
+                # no-op the backlog/ghost sweep drains cheaply).
+                gone_hot.append(path)
             else:
                 backlog.append(path)
+        if gone_hot:
+            indexed_gone = self._indexed_subset(gone_hot)
+            # Append gone deletes AFTER on-disk writes so a competing addition
+            # is never preempted by a prune within the same batch.
+            for path in gone_hot:
+                if path.replace("\\", "/") in indexed_gone:
+                    writes.append(path)
+                else:
+                    backlog.append(path)
         return writes, backlog
 
     def _run_vector_flush(self, payload: dict | None = None) -> None:

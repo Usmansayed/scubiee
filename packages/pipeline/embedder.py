@@ -291,18 +291,22 @@ class Embedder:
             self.device = "gpu"
             self._mlx_device_report = report
             default_batch = max(1, int((self._accel.batch_size if self._accel else 32) or 32))
-            print("[embed] backend=mlx", file=sys.stderr, flush=True)
-            print("[embed] device=gpu", file=sys.stderr, flush=True)
-            print(
-                f"[embed] metal={'true' if report.get('metal_available') else 'false'}",
-                file=sys.stderr,
-                flush=True,
-            )
-            print(
-                f"[embed] mlx_device={report.get('default_device')}",
-                file=sys.stderr,
-                flush=True,
-            )
+            # Honor quiet mode: when a progress bar drives updates (quiet=True)
+            # the MLX construction banner must not spam stderr, mirroring the
+            # `plan` banner guard below.
+            if not self.quiet:
+                print("[embed] backend=mlx", file=sys.stderr, flush=True)
+                print("[embed] device=gpu", file=sys.stderr, flush=True)
+                print(
+                    f"[embed] metal={'true' if report.get('metal_available') else 'false'}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                print(
+                    f"[embed] mlx_device={report.get('default_device')}",
+                    file=sys.stderr,
+                    flush=True,
+                )
         elif self.backend == "fastembed" and self._accel:
             self.device = self._accel.profile
             # Honor hardware-tuned batch (DML-safe 16, CUDA 32, CPU 8) — never invent 64+.

@@ -112,3 +112,55 @@ def test_mask_env_restores_old_defer_behavior(tmp_path, monkeypatch):
     # save settled). The assertion only guards that enabling the env does not
     # crash and still routes a deletion either way.
     assert isinstance(out2, list)
+
+
+def test_gone_but_indexed_path_routes_to_write_lane(tmp_path, monkeypatch):
+    """MAC-144-4: a dirty-marked DELETE (file gone on disk) that still owns
+    chunks must be routed to the prompt write lane, not the slow backlog.
+
+    Before the fix ``_split_explicit_writes`` required ``is_file()`` and dropped
+    every gone path to the backlog, so a delete only pruned on the periodic
+    corpus-ghost sweep (minutes). Now a gone+indexed hot path joins ``writes``.
+    """
+    monkeypatch.setenv("CTX_HOT_DELETE_PRUNE", "1")
+    loop = _loop(tmp_path, monkeypatch)
+
+    # "gone.py" does not exist on disk; pretend it still owns chunks.
+    monkeypatch.setattr(loop, "_indexed_subset", lambda paths: {p.replace("\\", "/") for p in paths})
+
+    t0 = time.monotonic()
+    loop.dirty_ledger.mark(["pkg/gone.py"], reason="changed_file", now=t0)
+    writes, backlog = loop._split_explicit_writes(["pkg/gone.py"])
+
+    assert "pkg/gone.py" in writes, "gone+indexed delete should route to the write lane"
+    assert "pkg/gone.py" not in backlog
+
+
+def test_gone_unindexed_path_stays_in_backlog(tmp_path, monkeypatch):
+    """A gone path that owns NO chunks is a no-op — it must NOT be promoted to
+    the write lane (nothing to prune); the backlog/ghost drain handles it cheaply."""
+    monkeypatch.setenv("CTX_HOT_DELETE_PRUNE", "1")
+    loop = _loop(tmp_path, monkeypatch)
+    monkeypatch.setattr(loop, "_indexed_subset", lambda paths: set())  # owns nothing
+
+    t0 = time.monotonic()
+    loop.dirty_ledger.mark(["pkg/never_indexed.py"], reason="changed_file", now=t0)
+    writes, backlog = loop._split_explicit_writes(["pkg/never_indexed.py"])
+
+    assert "pkg/never_indexed.py" not in writes
+    assert "pkg/never_indexed.py" in backlog
+
+
+def test_hot_delete_prune_env_off_restores_old_backlog_routing(tmp_path, monkeypatch):
+    """Rollback switch: CTX_HOT_DELETE_PRUNE=0 sends gone paths to the backlog
+    exactly as before the fix (even if they own chunks)."""
+    monkeypatch.setenv("CTX_HOT_DELETE_PRUNE", "0")
+    loop = _loop(tmp_path, monkeypatch)
+    monkeypatch.setattr(loop, "_indexed_subset", lambda paths: {p.replace("\\", "/") for p in paths})
+
+    t0 = time.monotonic()
+    loop.dirty_ledger.mark(["pkg/gone.py"], reason="changed_file", now=t0)
+    writes, backlog = loop._split_explicit_writes(["pkg/gone.py"])
+
+    assert "pkg/gone.py" in backlog
+    assert "pkg/gone.py" not in writes

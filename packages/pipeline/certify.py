@@ -524,13 +524,27 @@ def certify(
         env = entry.get("env") or {}
         spawn = str(env.get("CTX_MCP_BRIDGE_SPAWN_JSON") or "")
         cmd_blob = f"{entry.get('command', '')} {entry.get('args', '')} {spawn}"
-        launches_map_v3 = "map_v3_server" in cmd_blob
+        # Direct reference (Windows spawn-JSON path, or raw-module fallback).
+        direct_map_v3 = "map_v3_server" in cmd_blob
+        # Bridge path (default on macOS/Linux when scubiee-mcp-bridge is on PATH):
+        # the entry is just the bridge shim with no spawn-JSON, and the bridge
+        # resolves its child to pipeline.map_v3_server by default
+        # (mcp_bridge.resolve_child_command) — never the retired mcp_locate.
+        # The bare `scubiee-mcp` console script is also a Map V3 shim
+        # (pipeline.mcp_server re-exports map_v3_server.main).
+        via_bridge = "mcp_bridge" in cmd_blob or "scubiee-mcp-bridge" in cmd_blob
+        via_mcp_shim = "scubiee-mcp" in cmd_blob and "mcp_locate" not in cmd_blob
+        launches_map_v3 = direct_map_v3 or via_bridge or via_mcp_shim
         no_legacy = "mcp_locate" not in cmd_blob
         checks.append(
             _check(
                 "install_mcp_launches_map_v3",
                 launches_map_v3 and no_legacy,
-                detail=f"map_v3={launches_map_v3} legacy_ref={not no_legacy}",
+                detail=(
+                    f"map_v3={launches_map_v3} "
+                    f"(direct={direct_map_v3} bridge={via_bridge} shim={via_mcp_shim}) "
+                    f"legacy_ref={not no_legacy}"
+                ),
             )
         )
     except Exception as exc:  # noqa: BLE001

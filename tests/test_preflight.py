@@ -27,17 +27,18 @@ def test_preflight_reports_required_parser_and_accel_dependencies(
     monkeypatch.delenv("CTX_MLX", raising=False)
     # Without a persisted profile, missing packages collapse to ``not_configured``.
     # Stub an installed CPU plan so the finder-driven package gaps are asserted.
-    monkeypatch.setattr(
-        accel,
-        "load_accel",
-        lambda: AccelProfile(
-            profile="cpu",
-            provider="CPUExecutionProvider",
-            backend="fastembed",
-            batch_size=16,
-            reason="pytest stub",
-        ),
+    # ``inspect_accel`` resolves the live profile via ``resolve_runtime`` (NOT
+    # ``load_accel``); on a real Apple-Silicon host that returns an MLX profile,
+    # so we must stub ``resolve_runtime`` to pin the simulated CPU plan.
+    _cpu_profile = AccelProfile(
+        profile="cpu",
+        provider="CPUExecutionProvider",
+        backend="fastembed",
+        batch_size=16,
+        reason="pytest stub",
     )
+    monkeypatch.setattr(accel, "load_accel", lambda: _cpu_profile)
+    monkeypatch.setattr(accel, "resolve_runtime", lambda *_a, **_k: _cpu_profile)
     monkeypatch.setattr(
         "pipeline.preflight.validate_provider",
         lambda *_a, **_k: ProviderValidation(
@@ -170,6 +171,9 @@ def test_explicit_installed_cpu_profile_remains_valid(
         reason="explicit installed CPU profile",
     )
     monkeypatch.setattr(accel, "load_accel", lambda: installed)
+    # inspect_accel uses resolve_runtime(); pin it so a real Apple-Silicon host
+    # doesn't resolve to a live MLX profile and mask the explicit-CPU scenario.
+    monkeypatch.setattr(accel, "resolve_runtime", lambda *_a, **_k: installed)
     monkeypatch.delenv("CTX_EMBED_BACKEND", raising=False)
     monkeypatch.delenv("CTX_MLX", raising=False)
     monkeypatch.setattr(

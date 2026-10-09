@@ -207,9 +207,22 @@ def test_stale_dml_accel_json_from_old_install_demotes_on_resolve(
     assert on_disk["profile"] == "cpu"
 
 
+def _force_non_apple_host(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Pin the live host to non-Apple so the CPU-demotion path is exercised.
+
+    ``_fallback_to_cpu_profile`` reads the real ``platform.system``/``machine``
+    (not just the profile's ``detected`` dict); on a real Apple-Silicon runner a
+    synthetic Windows/DML profile would otherwise take the "keep MLX" branch.
+    """
+    monkeypatch.setattr("pipeline.accel.platform.system", lambda: "Windows")
+    monkeypatch.setattr("pipeline.accel.platform.machine", lambda: "AMD64")
+    monkeypatch.setattr("pipeline.accel._is_apple_silicon", lambda *_a, **_k: False)
+
+
 def test_calibration_timeout_on_fake_dml_falls_back_then_light_cpu(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    _force_non_apple_host(monkeypatch)
     profile = AccelProfile(
         profile="dml",
         provider="DmlExecutionProvider",

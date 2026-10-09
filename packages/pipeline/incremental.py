@@ -943,7 +943,24 @@ def incremental_sync(
                 error=_confirm_hint(n, max_touch=max_touch),
             )
 
-    changed = sorted(set(report.diff.changed_files) | set(force_files or []))
+    # force_files may arrive ABSOLUTE (e.g. a /v1/dirty on a deleted path routed
+    # through the hot write lane). chunks.jsonl + the file Merkle store keys
+    # RELATIVE to root, so an absolute entry matches nothing in _slice_chunk_file
+    # / _patch_file_merkle and a DELETE prunes zero chunks (the delete and
+    # rename-old-eviction latency gap). Relativize here, at the single source
+    # that feeds changed/removed/touch/touch_set, so every downstream matcher
+    # agrees. resolve().relative_to keeps symlinked/.. paths on the stored key.
+    def _rel_force(f: str) -> str:
+        p = str(f).replace("\\", "/")
+        cand = Path(p)
+        if cand.is_absolute():
+            try:
+                return cand.resolve().relative_to(root.resolve()).as_posix()
+            except (ValueError, OSError):
+                return p.strip("/")
+        return p
+
+    changed = sorted(set(report.diff.changed_files) | {_rel_force(f) for f in (force_files or [])})
     if not hot_lane and graph_precomputed is None:
         # Catch up on graph work a previous hot save deferred. Re-parsing these
         # files is cheap (the chunk Merkle finds no delta, so nothing re-embeds);

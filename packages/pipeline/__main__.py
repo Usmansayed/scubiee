@@ -2477,8 +2477,17 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_map.add_argument(
         "--config",
-        choices=("find", "focus"),
+        # Advertised surface is find|focus, but accept the hidden fallbacks
+        # (related/graph/view/refs/open/around/outline) so the CLI matches the
+        # MCP `map` tool, which degrades them gracefully (emits a "folded into
+        # find/focus" note and serves via find) instead of hard-erroring. Keeps
+        # the documented "CLI and MCP surface never diverge" contract.
+        choices=(
+            "find", "focus",
+            "related", "graph", "view", "refs", "open", "around", "outline",
+        ),
         default="find",
+        metavar="{find,focus}",
         help="find=where is X (also orient wide / related) | focus=a known name's code+wiring",
     )
     p_map.add_argument("query", nargs="?", default="", help="find/graph: short code-vocab intent")

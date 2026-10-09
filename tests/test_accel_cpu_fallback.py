@@ -31,7 +31,22 @@ def test_run_with_timeout_returns_value() -> None:
     assert _run_with_timeout(lambda: 42, 2.0, label="fast") == 42
 
 
-def test_fallback_to_cpu_mutates_profile() -> None:
+def _force_non_apple_host(monkeypatch) -> None:
+    """Make the host look like non-Apple-Silicon hardware.
+
+    ``_fallback_to_cpu_profile`` inspects the *live* host (``platform.system`` /
+    ``platform.machine``) in addition to the profile's ``detected`` dict, so on a
+    real Apple-Silicon machine a synthetic Windows/DML profile would still take
+    the "keep MLX" branch. These generic (non-Apple) fallback tests must pin the
+    host to a non-Apple identity to exercise the CPU-demotion path they target.
+    """
+    monkeypatch.setattr("pipeline.accel.platform.system", lambda: "Windows")
+    monkeypatch.setattr("pipeline.accel.platform.machine", lambda: "AMD64")
+    monkeypatch.setattr("pipeline.accel._is_apple_silicon", lambda *_a, **_k: False)
+
+
+def test_fallback_to_cpu_mutates_profile(monkeypatch) -> None:
+    _force_non_apple_host(monkeypatch)
     profile = AccelProfile(
         profile="dml",
         provider="DmlExecutionProvider",
@@ -218,6 +233,7 @@ def test_cpu_calibrate_uses_light_corpus(monkeypatch) -> None:
 
 
 def test_gpu_probe_timeout_falls_back_to_cpu(monkeypatch) -> None:
+    _force_non_apple_host(monkeypatch)
     profile = AccelProfile(
         profile="dml",
         provider="DmlExecutionProvider",
