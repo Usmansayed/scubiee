@@ -59,6 +59,12 @@ the code ever disagree, the code wins.
 
 ## macOS
 
+- **[`scubiee-macos-changelog-0.3.146.md`](scubiee-macos-changelog-0.3.146.md)** —
+  what changed in 0.3.146: the one fix (pin `requires-python>=3.11`) that kills the
+  intermittent MLX init heap-corruption crash, plus the kept MLX hygiene changes.
+- **[`scubiee-macos-python-pin-fix-0.3.146.md`](scubiee-macos-python-pin-fix-0.3.146.md)** —
+  root-cause writeup: the init crash was a Python-3.10/numpy-2.2.6 ABI mismatch,
+  not an MLX bug; proven by 8/8 crash on 3.10 vs 20/20 clean on 3.12.
 - **[`scubiee-macos-handoff-0.3.145.md`](scubiee-macos-handoff-0.3.145.md)** — the
   current handoff: step-by-step plan for a macOS agent to repeat the v0.3.145
   reliability + perf verification on MLX/Metal (now also covering the
