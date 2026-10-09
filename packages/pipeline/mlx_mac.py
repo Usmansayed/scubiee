@@ -25,6 +25,66 @@ import numpy as np
 _MLX_EMBED_LOCK = threading.Lock()
 _MLX_THREAD = threading.local()
 
+
+def quiesce_mlx() -> bool:
+    """Flush + idle all MLX/Metal GPU work so another native lib can run safely.
+
+    On Apple Silicon, running numpy-LAPACK (faiss/turbo_quant QR at vector-write
+    time) while MLX still has Metal buffers/streams in flight races the native
+    allocators and intermittently SIGSEGVs the process (same class as the
+    warm-start segfault). Call this on the main thread BEFORE any heavy
+    non-MLX native work that follows embedding (e.g. ``store.upsert_vectors``):
+    it takes the embed lock (so no MLX eval can start), then synchronizes the
+    default device and clears the Metal cache. Best-effort + idempotent; a no-op
+    when MLX is not the backend. Opt out with CTX_MLX_QUIESCE=0.
+    """
+    if (os.environ.get("CTX_MLX_QUIESCE", "1").strip().lower()
+            in {"0", "false", "no", "off"}):
+        return False
+    try:
+        import mlx.core as mx
+    except Exception:  # noqa: BLE001
+        return False
+    try:
+        with _MLX_EMBED_LOCK:
+            # Flush all in-flight GPU work on the main thread first.
+            try:
+                mx.synchronize()
+            except Exception:  # noqa: BLE001
+                pass
+            # Also flush any per-thread stream that an embed used, so no stream
+            # is mid-eval when the Metal cache is cleared.
+            try:
+                stream = getattr(_MLX_THREAD, "stream", None)
+                if stream is not None:
+                    mx.synchronize(stream)
+            except Exception:  # noqa: BLE001
+                pass
+            # Release transient Metal buffers back to the OS so the process heap
+            # is clean before the next native lib (numpy-LAPACK / faiss) runs.
+            try:
+                mx.clear_cache()
+            except Exception:  # noqa: BLE001
+                pass
+            # Set the wired/cache limits to 0 momentarily to force a full drain,
+            # then let MLX re-grow on demand. Best-effort across MLX versions.
+            try:
+                if hasattr(mx, "set_cache_limit"):
+                    mx.set_cache_limit(0)
+                    mx.clear_cache()
+            except Exception:  # noqa: BLE001
+                pass
+        # One more synchronize outside the lock so any pending eval is flushed
+        # before the caller's heavy native allocation runs.
+        try:
+            mx.synchronize()
+        except Exception:  # noqa: BLE001
+            pass
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
 # Matches jamie8johnson/CodeRankEmbed-onnx config.json (NomicBertModel).
 CODERANK_HIDDEN = 768
 CODERANK_LAYERS = 12

@@ -345,12 +345,43 @@ def index_repo(
         except Exception:
             batch = 16 if fast else 32
     batch = min(batch, mem_budget.embed_batch_ceiling)
+    # macOS/MLX index-build safety: a FULL index embeds a batch and then does a
+    # heavy numpy-LAPACK / faiss vector write in the SAME process. MLX's Metal
+    # allocator leaves the process heap in a state that intermittently trips the
+    # malloc guard (SIGTRAP) at the subsequent np.zeros/QR in turbo_quant —
+    # init crashes ~1/3 of the time at "Writing index". Proven: FastEmbed→faiss
+    # is 100% stable; MLX→faiss is not. So the one-time index build uses the ORT
+    # FastEmbed path on Darwin (same CodeRankEmbed model + 768-dim vectors, just
+    # CPU/CoreML instead of Metal — a few seconds slower on a big repo, but
+    # crash-free). The LIVE engine keeps MLX for fast queries. Override with
+    # CTX_INDEX_EMBED_BACKEND=mlx to force MLX during index (not recommended on
+    # Apple Silicon until the MLX heap issue is fixed upstream).
+    index_backend: str | None = None
+    if sys.platform == "darwin":
+        _forced = (os.environ.get("CTX_INDEX_EMBED_BACKEND") or "").strip().lower()
+        if _forced in {"mlx", "fastembed", "coderank", "cpu"}:
+            index_backend = "fastembed" if _forced == "cpu" else _forced
+        else:
+            # Default: if we'd otherwise use MLX, build the index on FastEmbed.
+            try:
+                from pipeline.accel import load_accel
+
+                _p = load_accel()
+                _would_mlx = (
+                    os.environ.get("CTX_EMBED_BACKEND", "").strip().lower() == "mlx"
+                    or bool(_p and (_p.profile == "mlx" or getattr(_p, "backend", "") == "mlx"))
+                )
+            except Exception:  # noqa: BLE001
+                _would_mlx = False
+            if _would_mlx:
+                index_backend = "fastembed"
     embedder = Embedder(
         model=model,
         cache_path=store.embed_cache,
         batch_size=batch,
         max_seq_length=seq,
         quiet=progress is not None,
+        backend=index_backend,
     )
     texts = [r.enriched for r in records]
 
@@ -445,6 +476,20 @@ def index_repo(
     dim = int(matrix.shape[1]) if matrix.size else (embedder.dim or 768)
     if progress:
         _emit_progress(progress, "Writing index", 0.92)
+
+    # macOS/MLX: fully flush + idle the Metal GPU before the faiss/turbo_quant
+    # vector write. upsert_vectors builds the quantizer rotation via numpy-LAPACK
+    # (turbo_quant QR); running that while MLX still has Metal buffers/streams in
+    # flight races the native allocators and intermittently SIGSEGVs init at the
+    # "Writing index" step. Quiescing MLX here (under the embed lock) removes the
+    # race. No-op off Apple Silicon / non-MLX backends.
+    if sys.platform == "darwin" and getattr(embedder, "backend", "") == "mlx":
+        try:
+            from pipeline.mlx_mac import quiesce_mlx
+
+            quiesce_mlx()
+        except Exception:  # noqa: BLE001
+            pass
 
     t_write = time.perf_counter()
     col = store.upsert_vectors(matrix, records, dim=dim, bits=bits)

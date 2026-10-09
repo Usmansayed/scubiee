@@ -420,7 +420,19 @@ def watchdog_loop(*, stop_after: float | None = None) -> None:
                     )
                     _log(f"sleep/wake reconcile failed: {exc}")
             last_tick = monotonic_now
-            from pipeline.lifecycle_runtime import engine_should_be_running
+            from pipeline.lifecycle_runtime import (
+                engine_should_be_running,
+                store_hold_active,
+            )
+
+            # An outside writer (init/index) holds the store lock: do NOTHING
+            # this tick — no health probe, no hang detection, no force-restart,
+            # no idle-stop. Checked FIRST so no later branch can touch the
+            # engine while it is being rebuilt. Bounded + self-expiring.
+            if store_hold_active():
+                fails = 0
+                time.sleep(interval)
+                continue
 
             if _health_ok():
                 hung = False

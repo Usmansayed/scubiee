@@ -199,6 +199,68 @@ def upgrade_in_progress(*, now: float | None = None) -> bool:
     return True
 
 
+# --- Store-rebuild hold --------------------------------------------------------
+# An OUTSIDE writer (`scubiee init` / `index`) that holds the exclusive store
+# write-lock must not have the supervisor respawn (or idle-stop) the engine
+# underneath it — that race wedged `init` when a supervisor started by
+# `connect` kept cycling the engine while init tried to take the lock. This is
+# a bounded, SELF-EXPIRING deadline (like the upgrade flag) so a crashed init
+# can never leave the engine permanently refused: once the deadline passes the
+# hold is ignored. It is distinct from `pause` (which tears down MCP) and from
+# `desired_mode=STANDBY` (whose idle path itself emits stop_daemon churn): the
+# hold makes `engine_should_be_running()` return False, so the watchdog's gate
+# is a complete NO-OP (neither start nor stop) for the window.
+
+def store_hold_active(*, now: float | None = None) -> bool:
+    """True while a bounded store-rebuild hold is in effect (auto-clears when stale)."""
+    data = load_transition()
+    until = data.get("store_hold_until")
+    if not until:
+        return False
+    current = time.time() if now is None else now
+    try:
+        if current < float(until):
+            return True
+    except (TypeError, ValueError):
+        return False
+    # Deadline passed — clear the stale hold so the engine can run again.
+    clear_store_hold(reason="stale_timeout")
+    return False
+
+
+def begin_store_hold(*, seconds: float | None = None, now: float | None = None) -> dict[str, Any]:
+    """Tell the supervisor to leave the engine untouched for a bounded window.
+
+    Default window = store_write_lock timeout (120s) + margin, overridable with
+    CTX_STORE_HOLD_S. Idempotent: extends the deadline.
+    """
+    current = time.time() if now is None else now
+    if seconds is None:
+        try:
+            seconds = float(os.environ.get("CTX_STORE_HOLD_S") or 180.0)
+        except ValueError:
+            seconds = 180.0
+    seconds = max(1.0, float(seconds))
+    data = load_transition()
+    data["store_hold_until"] = current + seconds
+    data["store_hold_started_at"] = current
+    saved = save_transition(data)
+    return {"ok": True, "action": "store_hold_begin", "until": data["store_hold_until"], "transition": saved}
+
+
+def clear_store_hold(*, reason: str = "done") -> dict[str, Any]:
+    """Release the store-rebuild hold so normal supervisor policy resumes."""
+    data = load_transition()
+    if not data.get("store_hold_until") and not data.get("store_hold_started_at"):
+        return {"ok": True, "action": "store_hold_not_set"}
+    data.pop("store_hold_until", None)
+    data.pop("store_hold_started_at", None)
+    data["last_store_hold_cleared_at"] = time.time()
+    data["last_store_hold_clear_reason"] = str(reason or "done")
+    saved = save_transition(data)
+    return {"ok": True, "action": "store_hold_clear", "reason": reason, "transition": saved}
+
+
 def abort_upgrade_transition(
     *,
     reason: str = "aborted",
@@ -976,6 +1038,12 @@ def enforce_mcp_warm_contract(*, now: float | None = None) -> dict[str, Any]:
 def engine_should_be_running() -> bool:
     from pipeline.pause_resume import is_paused
 
+    # An outside writer (init/index) holding the store lock → supervisor must
+    # not start OR stop the engine for the bounded hold window. Checked FIRST
+    # (before pause/desired_mode/start_request) so it fully no-ops the watchdog
+    # tick. Self-expires, so a crashed writer can never pin the engine off.
+    if store_hold_active():
+        return False
     if is_paused():
         return False
     if load_policy().get("desired_mode") == DESIRED_RUN:
@@ -1409,6 +1477,11 @@ def install_supervisor_signals() -> None:
 
 def enter_standby(*, stop_engine: bool = True) -> dict[str, Any]:
     """Disconnect/idle: stop the fat engine process (ORT RSS only drops on exit)."""
+    # Never stop the engine out from under an outside writer holding the store
+    # lock (init/index). The hold is bounded + self-expiring, so this cannot
+    # pin the engine permanently. Guards every enter_standby caller at once.
+    if stop_engine and store_hold_active():
+        return {"ok": True, "action": "store_hold_skip_standby"}
     policy = set_desired_mode(DESIRED_STANDBY)
     try:
         from pipeline.memory_governor import get_governor
@@ -1677,7 +1750,11 @@ def run_supervisor(*, logon: bool = False) -> None:
     from pipeline.watchdog import watchdog_loop
 
     install_supervisor_signals()
-    if logon and (not engine_should_be_running() or should_idle_stop()):
+    # A store-rebuild hold means an outside writer (init/index) owns the store
+    # lock; the supervisor must leave the engine exactly as-is. Do NOT enter
+    # standby here — enter_standby → stop_daemon would race the writer (the
+    # connect→init wedge). The watchdog loop below also no-ops while held.
+    if logon and not store_hold_active() and (not engine_should_be_running() or should_idle_stop()):
         enter_standby(stop_engine=True)
     attach_supervisor_job()
     watchdog_loop()

@@ -1518,7 +1518,17 @@ def cmd_init(args: argparse.Namespace) -> int:
         try:
             from pipeline.daemon import ensure_daemon
 
-            out["daemon"] = ensure_daemon(root)
+            # Bounded post-index handoff: the index is already durable on disk,
+            # so a slow engine warm (or a supervisor concurrently bringing the
+            # engine up) must NOT block init from returning. Cap the wait; the
+            # engine warms on first use / via the supervisor regardless. Without
+            # this cap, init could sit on the default open_wait indefinitely
+            # when a connect-started supervisor was racing the handoff.
+            try:
+                _init_handoff_wait = float(os.environ.get("CTX_INIT_HANDOFF_WAIT_S") or 20.0)
+            except ValueError:
+                _init_handoff_wait = 20.0
+            out["daemon"] = ensure_daemon(root, wait_s=_init_handoff_wait)
         except Exception as exc:  # noqa: BLE001
             out["daemon"] = {"ok": False, "error": str(exc)}
 

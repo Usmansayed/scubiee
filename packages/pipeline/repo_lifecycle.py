@@ -35,6 +35,18 @@ def _root(root: Path | str) -> Path:
     return Path(root).resolve()
 
 
+def _release_store_hold(was_set: bool) -> None:
+    """Clear the supervisor store-rebuild hold (best-effort, idempotent)."""
+    if not was_set:
+        return
+    try:
+        from pipeline.lifecycle_runtime import clear_store_hold
+
+        clear_store_hold(reason="init_done")
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _is_too_broad(root: Path) -> bool:
     """Refuse home directories, filesystem roots, and common system paths."""
     resolved = root.resolve()
@@ -375,10 +387,28 @@ def initialize_repo(
     chunks = 0
     sync_data: dict[str, Any] | None = None
     already_initialized = False
+    store_hold_set = False
     if index:
         try:
             from pipeline.store_lock import quiesce_background_indexing
 
+            # Hold the supervisor OFF for the rebuild window so a supervisor
+            # started by `connect` cannot respawn/idle-stop the engine while we
+            # take the exclusive store lock (the connect→init wedge). Bounded +
+            # self-expiring; cleared in the finally below. Skipped inside the
+            # engine/watchdog (CTX_SCUBIEE_ROLE) — a daemon must not pin itself off.
+            import os as _os_hold
+
+            if (_os_hold.environ.get("CTX_SCUBIEE_ROLE") or "").strip().lower() not in {
+                "engine", "watchdog",
+            }:
+                try:
+                    from pipeline.lifecycle_runtime import begin_store_hold
+
+                    begin_store_hold()
+                    store_hold_set = True
+                except Exception:  # noqa: BLE001
+                    store_hold_set = False
             quiesce_background_indexing(store_dir=store_dir)
         except Exception:  # noqa: BLE001
             pass
@@ -450,6 +480,10 @@ def initialize_repo(
                 reconciled=reconciled,
                 error=str(exc),
             )
+        finally:
+            # Index work done (or raised/returned) — release the hold so the
+            # supervisor resumes normal keep-warm/idle policy immediately.
+            _release_store_hold(store_hold_set)
 
     entry = _update(ref_pid, last_access_at=time.time())
     try:
