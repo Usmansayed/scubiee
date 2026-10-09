@@ -1633,21 +1633,38 @@ def apply_connected_tools_to_repo(
         report["rules"] = rules
         return report
 
+    # Resilient fan-out: one tool's failure (even an unexpected raise) must never
+    # block the OTHER connected tools from being applied on init. Isolate each.
+    applied: list[str] = []
     for slug in slugs:
         tool = get_tool(slug)
         if not tool:
             continue
-        sub = write_project_tool_surface(root, tool, dry_run=False)
+        try:
+            sub = write_project_tool_surface(root, tool, dry_run=False)
+        except Exception as exc:  # noqa: BLE001
+            report["ok"] = False
+            report["errors"].append(f"{slug}: apply raised: {exc}")
+            continue
         report["mcp_paths"].extend(sub.get("mcp_paths") or [])
-        if not sub.get("ok", True):
+        if sub.get("ok", True):
+            applied.append(slug)
+        else:
             report["ok"] = False
             report["errors"].extend(sub.get("errors") or [])
+    report["applied_tools"] = applied
 
-    rules = write_project_gate_rules(root, slugs=slugs, dry_run=False)
-    report["rules"] = rules
-    if not rules.get("ok", True):
+    # Gate rules are written for the tools that actually applied; isolate too so a
+    # rules error cannot drop the MCP configs we just wrote.
+    try:
+        rules = write_project_gate_rules(root, slugs=slugs, dry_run=False)
+        report["rules"] = rules
+        if not rules.get("ok", True):
+            report["ok"] = False
+            report["errors"].extend(rules.get("errors") or [])
+    except Exception as exc:  # noqa: BLE001
         report["ok"] = False
-        report["errors"].extend(rules.get("errors") or [])
+        report["errors"].append(f"gate rules raised: {exc}")
     return report
 
 

@@ -329,3 +329,116 @@ def test_connect_then_init_is_universal_across_tools(
         if paths and not any(p.is_file() for p in paths):
             missing.append(slug)
     assert not missing, f"init did not apply MCP for: {missing}"
+
+
+# ---------------------------------------------------------------------------
+# Reliability hardening: the connect-once promise must survive corruption,
+# partial writes, bad slugs, and per-tool failures.
+# ---------------------------------------------------------------------------
+
+def _ce_home(tmp_path: Path, monkeypatch) -> Path:
+    home = tmp_path / "ce-home"
+    home.mkdir(exist_ok=True)
+    write_machine_setup(home)
+    monkeypatch.setenv("CTX_HOME", str(home))
+    return home
+
+
+def test_connected_tools_atomic_write_and_bak_recovery(tmp_path: Path, monkeypatch) -> None:
+    """A torn/corrupt primary must self-heal from the .bak snapshot, not reset
+    the user's connections to empty (that would silently break connect-once)."""
+    from pipeline import connect_state as cs
+
+    _ce_home(tmp_path, monkeypatch)
+    cs.save_connected_tools(["cursor", "kiro"])
+    cs.save_connected_tools(["cursor", "kiro", "codex"])  # .bak now = [cursor,kiro]
+    assert cs.load_connected_tools() == ["cursor", "kiro", "codex"]
+
+    # Simulate an interrupted write: truncated JSON in the primary file.
+    cs._state_path().write_text('{"slugs": ["cur', encoding="utf-8")
+    recovered = cs.load_connected_tools()
+    assert recovered == ["cursor", "kiro"], recovered  # recovered from .bak
+    # Primary was healed back to valid JSON.
+    assert json.loads(cs._state_path().read_text(encoding="utf-8"))["slugs"] == [
+        "cursor",
+        "kiro",
+    ]
+
+
+def test_connected_tools_corrupt_both_is_empty_not_crash(tmp_path: Path, monkeypatch) -> None:
+    from pipeline import connect_state as cs
+
+    _ce_home(tmp_path, monkeypatch)
+    cs._state_path().write_text("not json at all", encoding="utf-8")
+    cs._backup_path().write_text("also broken {", encoding="utf-8")
+    assert cs.load_connected_tools() == []  # safe-empty, never raises
+
+
+def test_connected_tools_empty_primary_is_honored(tmp_path: Path, monkeypatch) -> None:
+    """A genuinely-empty primary must NOT be overridden by a stale .bak."""
+    from pipeline import connect_state as cs
+
+    _ce_home(tmp_path, monkeypatch)
+    cs.save_connected_tools(["cursor"])
+    cs.save_connected_tools([])  # user disconnected everything
+    assert cs.load_connected_tools() == []
+
+
+def test_add_remove_canonicalizes_alias_and_dedups(tmp_path: Path, monkeypatch) -> None:
+    from pipeline import connect_state as cs
+
+    _ce_home(tmp_path, monkeypatch)
+    # windsurf is an alias for devin-desktop; both forms must collapse to one.
+    cs.add_connected_tool("windsurf")
+    cs.add_connected_tool("devin-desktop")
+    assert cs.load_connected_tools() == ["devin-desktop"]
+    cs.remove_connected_tool("windsurf")
+    assert cs.load_connected_tools() == []
+
+
+def test_init_apply_isolates_a_failing_tool(tmp_path: Path, monkeypatch) -> None:
+    """If one connected tool's apply raises, the others must still be applied."""
+    import pipeline.rules_installer as ri
+
+    repo = _git_repo(tmp_path / "proj")
+    pid = "ce_isolate1234567890abcdef00"
+    _enroll(repo, pid, monkeypatch, tmp_path)
+    _ce_home(tmp_path, monkeypatch)
+    save_connected_tools(["cursor", "kiro"])
+
+    real = ri.write_project_tool_surface
+
+    def flaky(root, tool, *, dry_run=False):
+        if tool.slug == "cursor":
+            raise RuntimeError("boom: simulated cursor failure")
+        return real(root, tool, dry_run=dry_run)
+
+    monkeypatch.setattr(ri, "write_project_tool_surface", flaky)
+
+    report = ri.apply_connected_tools_to_repo(repo)
+    # The failing tool is recorded as an error but does NOT abort the apply:
+    assert any("cursor" in e for e in report["errors"]), report["errors"]
+    # kiro still got applied.
+    assert "kiro" in report.get("applied_tools", [])
+    assert (repo / ".kiro" / "settings" / "mcp.json").is_file()
+
+
+def test_double_init_is_idempotent(tmp_path: Path, monkeypatch) -> None:
+    """Running init twice must not corrupt or duplicate the applied config."""
+    repo = _git_repo(tmp_path / "proj")
+    pid = "ce_idem1234567890abcdef0000"
+    _enroll(repo, pid, monkeypatch, tmp_path)
+    _ce_home(tmp_path, monkeypatch)
+    save_connected_tools(["cursor"])
+
+    r1 = apply_connected_tools_to_repo(repo)
+    assert r1["ok"], r1
+    mcp = repo / ".cursor" / "mcp.json"
+    first = mcp.read_text(encoding="utf-8")
+    r2 = apply_connected_tools_to_repo(repo)
+    assert r2["ok"], r2
+    second = mcp.read_text(encoding="utf-8")
+    # Single scubiee server entry, stable across re-apply.
+    data = json.loads(second)
+    assert list(data["mcpServers"].keys()) == ["scubiee"]
+    assert json.loads(first)["mcpServers"].keys() == data["mcpServers"].keys()
