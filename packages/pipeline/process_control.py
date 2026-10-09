@@ -1022,6 +1022,7 @@ def remove_tool_shims() -> dict[str, Any]:
     )
     removed: list[str] = []
     failed: list[str] = []
+    deferred: list[str] = []
     for name in names:
         shim = local_bin / name
         if not shim.exists():
@@ -1030,8 +1031,23 @@ def remove_tool_shims() -> dict[str, Any]:
             shim.unlink(missing_ok=True)
             removed.append(str(shim))
         except OSError:
-            failed.append(str(shim))
-    return {"removed": removed, "failed": failed, "ok": not failed}
+            # On Windows the shim for the *running* CLI (scubiee.exe) is locked
+            # and cannot be unlinked — leaving a dead shim on PATH that errors
+            # with "Failed to canonicalize script path". A running .exe CAN be
+            # renamed, which frees the original path immediately; we then
+            # schedule the renamed file for deletion after this process exits.
+            try:
+                trash = shim.with_name(f"{shim.name}.trash-{os.getpid()}")
+                shim.rename(trash)
+                _schedule_delete_after_exit(trash, os.getpid())
+                removed.append(str(shim))
+                deferred.append(str(shim))
+            except OSError:
+                failed.append(str(shim))
+    out: dict[str, Any] = {"removed": removed, "failed": failed, "ok": not failed}
+    if deferred:
+        out["deferred"] = deferred
+    return out
 
 
 _ACCESS_DENIED_HINT = (
