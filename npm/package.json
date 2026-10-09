@@ -1,6 +1,6 @@
 {
   "name": "scubiee",
-  "version": "0.3.144",
+  "version": "0.3.145",
   "description": "Scubiee — one-command install. Wraps the Python package and runs scubiee setup.",
   "license": "Apache-2.0",
   "bin": {
