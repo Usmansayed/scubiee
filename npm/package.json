@@ -2,7 +2,7 @@
   "name": "scubiee",
   "version": "0.3.144",
   "description": "Scubiee — one-command install. Wraps the Python package and runs scubiee setup.",
-  "license": "UNLICENSED",
+  "license": "Apache-2.0",
   "bin": {
     "scubiee": "bin/scubiee.cjs"
   },
