@@ -1,6 +1,6 @@
 # Scubiee — System Overview
 
-_Version 0.3.144 · Local AI code-context engine + MCP server · Windows (DirectML GPU), macOS (MLX/Metal), CPU fallback_
+_Version 0.3.146 · Local AI code-context engine + MCP server · Windows (DirectML GPU), macOS (MLX/Metal), CPU fallback_
 
 This document explains what Scubiee is, how it is put together, and every feature/surface it exposes. It is written as a reference for anyone testing, extending, or operating the system.
 
@@ -48,13 +48,13 @@ Scubiee runs as a set of cooperating local processes:
 - **Keeper** — the background sync worker that watches the repo for changes and keeps the index fresh across the two lanes.
 - **MCP bridge** — the per-agent process that exposes the MCP tools (`map` with `find`/`focus`, plus `gate`/`status`) and forwards to the engine over HTTP.
 
-### Warm-up phases (Windows/DirectML cold start, v0.3.144)
+### Warm-up phases (Windows/DirectML cold start, v0.3.146)
 1. **Cold** — engine process not up. Watchdog/autostart brings it up.
 2. **Soft-ready** (~9s) — BM25 + graph loaded; `map find`/`focus` usable. `soft_search_ready: true`.
 3. **Dense-ready** (~14s) — embedder ONNX/DirectML session built; full hybrid ranking available. `embedder_loaded: true`, `dense_ready: true`, `warm_phase: dense`.
 
 The ORT/DirectML session build itself is only ~2.5s; the rest of the cold-start
-time is the engine load + the first query-embed warmup. v0.3.144 kicks the dense
+time is the engine load + the first query-embed warmup. v0.3.146 kicks the dense
 prewarm immediately after soft-ready (before the keeper/reconcile/AST work) and
 **gates the ~20s AST-bundle revalidation on `embedder_loaded`**
 (`CTX_AST_REVALIDATE_GATE_ON_EMBED`, default on) so it can't starve the embedder
@@ -99,7 +99,7 @@ The AST/heatmap layer (`trace_lab`) turns ranked chunks into **cards**: `file::s
 1. **Hot lane** — append-only BM25 delta (`HotDelta`, `hot_lane=True`). Sub-second; keeps `search`/`map` fresh almost immediately after an edit.
 2. **Graph catch-up lane** — rebuilds AST/graph edges. Each catch-up rewrites the
    whole `graph.json` (fixed ~2–4s cost regardless of how many files changed), so
-   v0.3.144 **batches a catch-up-only drain into one rebuild** instead of one per
+   v0.3.146 **batches a catch-up-only drain into one rebuild** instead of one per
    file (`CTX_GRAPH_CATCHUP_MAX_FILES`, default 2000) — bulk churn no longer keeps
    `index_fresh` false for minutes. The lane is still deferred while clients are
    connected. This is why `map focus` wiring (graph-dependent) can lag the hot

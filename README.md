@@ -224,7 +224,7 @@ Issues and pull requests are welcome. Please run `scubiee certify` before openin
 
 <p align="center">
   <a href="https://pypi.org/project/scubiee/"><b>PyPI: scubiee</b></a> ·
-  Latest release: <b>0.3.144</b>
+  Latest release: <b>0.3.146</b>
 </p>
 
 ## License

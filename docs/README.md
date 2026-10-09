@@ -1,6 +1,6 @@
 # Scubiee docs
 
-**Current version: 0.3.144** · Local AI code-context engine + MCP server ·
+**Current version: 0.3.146** · Local AI code-context engine + MCP server ·
 Windows (DirectML GPU), macOS (MLX/Metal), CPU fallback.
 
 This index points at the **current, authoritative** docs. Historical material
@@ -42,7 +42,7 @@ the code ever disagree, the code wins.
 - **[`scubiee-action-matrix.md`](scubiee-action-matrix.md)** — operational
   guardrails for command sequences (e.g. the two different stop commands).
 
-## Performance & reliability (v0.3.144 verification)
+## Performance & reliability (v0.3.146 verification)
 
 - **[`scubiee-performance-timings.md`](scubiee-performance-timings.md)** — measured
   tool-latency, cold-start, idle-recovery, and all sync-type timings on

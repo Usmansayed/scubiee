@@ -1,6 +1,6 @@
 # Scubiee performance & sync timings — live measurement
 
-Measured against the **live 0.3.144 engine** on Windows + DirectML (DML), real
+Measured against the **live 0.3.146 engine** on Windows + DirectML (DML), real
 MCP surface, after `scubiee setup --repair` restored `DmlExecutionProvider`
 (ORT 1.24.4). Engine: `http://127.0.0.1:8765`, project
 `ce_b867ad869c948914bf7c8e8640a2a5e3`, ~8925 chunks.

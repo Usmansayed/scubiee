@@ -62,10 +62,10 @@ The port is **not fixed** — always use `scubiee dashboard --status` to get the
 
 **Cause (fixed in 0.2.82):** On Windows, process group creation made the spawned PID differ from the PID reported in health JSON.
 
-**Fix:** Upgrade to **scubiee 0.3.144+** and retry:
+**Fix:** Upgrade to **scubiee 0.3.146+** and retry:
 
 ```bash
-uv tool install --force scubiee==0.3.144 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.3.146 --index-url https://pypi.org/simple --refresh
 scubiee dashboard --no-open
 scubiee dashboard --status
 ```

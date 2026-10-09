@@ -136,7 +136,7 @@ Add:
 >   are no separate `grep` / `glob` / `workspace` MCP tools — those are the agent's native tools.
 
 ### 2.4 Leave unchanged (verified accurate against the repo)
-- "You need Python 3.10+ … install from PyPI", "model downloads once (~270 MB)".
+- "You need Python 3.11+ … install from PyPI", "model downloads once (~270 MB)".
 - The **four layers** table (Install / Machine setup / Repo enrollment / IDE wiring) and all
   commands (`uv tool install scubiee`, `scubiee setup --repair`, `scubiee init .`,
   `scubiee connect --cursor`). Verified: these match the CLI.
