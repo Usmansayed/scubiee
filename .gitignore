@@ -109,3 +109,20 @@ _bench_*.json
 _layapath.txt
 _verify.py
 scripts/claude_sdk_harness/
+
+# ---- Root scratch captures (CLI/log/bench dumps; never publish) -------------
+/--help
+/kiro-*.log
+/kiro-*.txt
+/kiro-surface.log
+/setup-repair*.log
+/status-now.json
+/warm-map.json
+/_bench_*.json
+/_verify.py
+/_layapath.txt
+/.mcp.json
+laya_bench/
+graphify-out/
+dist_prod/
+dist_release/
