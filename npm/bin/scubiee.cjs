@@ -7,7 +7,7 @@ const { preferredPython, pythonArgs } = require("../scripts/install-python.cjs")
 const python = preferredPython();
 if (!python) {
   console.error(
-    "scubiee: Python 3.10+ is required.\n" +
+    "scubiee: Python 3.11+ is required.\n" +
       "  macOS manual install:\n" +
       "    python3 -m venv ~/.context-engine/venv\n" +
       "    source ~/.context-engine/venv/bin/activate\n" +

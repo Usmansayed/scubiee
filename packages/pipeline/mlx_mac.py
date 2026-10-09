@@ -47,39 +47,24 @@ def quiesce_mlx() -> bool:
         return False
     try:
         with _MLX_EMBED_LOCK:
-            # Flush all in-flight GPU work on the main thread first.
+            # ONLY flush in-flight GPU work so no MLX eval is mid-stream when the
+            # caller's numpy/faiss allocation runs. We deliberately do NOT call
+            # clear_cache() / set_cache_limit(0) here: that residency-set churn
+            # (wire/unwire + destroy-bursts) is itself a documented trigger of
+            # Metal/kernel memory instability on Apple Silicon (mlx#3186-class;
+            # the "sync+clear_cache penalty box" seen in the wild). The actual
+            # safety comes from embed output being an OWNED numpy copy detached
+            # from MLX memory (see CodeRankMLX.embed_ids). Keep this a pure flush.
             try:
                 mx.synchronize()
             except Exception:  # noqa: BLE001
                 pass
-            # Also flush any per-thread stream that an embed used, so no stream
-            # is mid-eval when the Metal cache is cleared.
             try:
                 stream = getattr(_MLX_THREAD, "stream", None)
                 if stream is not None:
                     mx.synchronize(stream)
             except Exception:  # noqa: BLE001
                 pass
-            # Release transient Metal buffers back to the OS so the process heap
-            # is clean before the next native lib (numpy-LAPACK / faiss) runs.
-            try:
-                mx.clear_cache()
-            except Exception:  # noqa: BLE001
-                pass
-            # Set the wired/cache limits to 0 momentarily to force a full drain,
-            # then let MLX re-grow on demand. Best-effort across MLX versions.
-            try:
-                if hasattr(mx, "set_cache_limit"):
-                    mx.set_cache_limit(0)
-                    mx.clear_cache()
-            except Exception:  # noqa: BLE001
-                pass
-        # One more synchronize outside the lock so any pending eval is flushed
-        # before the caller's heavy native allocation runs.
-        try:
-            mx.synchronize()
-        except Exception:  # noqa: BLE001
-            pass
         return True
     except Exception:  # noqa: BLE001
         return False
@@ -663,7 +648,13 @@ class CodeRankMLX:
                     normed = _l2_normalize(pooled)
                     mx.eval(normed)
                     t_norm = time.perf_counter()
-                    out = np.asarray(normed, dtype=np.float32)
+                    # OWNED copy, fully detached from MLX's Metal-backed buffer.
+                    # np.asarray(mlx_array) can alias MLX memory on unified-memory
+                    # Apple Silicon; a later faiss/numpy op (or MLX buffer reuse)
+                    # then reads freed/reused memory → latent heap corruption that
+                    # SIGBUS/SIGSEGVs at a random later allocation. np.array(copy=True)
+                    # materializes an independent host buffer before MLX moves on.
+                    out = np.array(np.asarray(normed, dtype=np.float32), copy=True)
                     del tokens, pooled, normed, ids, mask
                 else:
                     normed = _l2_normalize(
@@ -673,12 +664,15 @@ class CodeRankMLX:
                     t_infer = time.perf_counter()
                     t_pool = t_infer
                     t_norm = t_infer
-                    out = np.asarray(normed, dtype=np.float32)
+                    out = np.array(np.asarray(normed, dtype=np.float32), copy=True)
                     del normed, ids, mask
-                # Release transient Metal activation buffers; keep weights loaded.
+                # Flush pending GPU work. We no longer clear_cache() per batch:
+                # the synchronize()+clear_cache() residency churn is a documented
+                # Apple-Silicon Metal/kernel instability trigger (mlx#3186-class;
+                # the sync+clear_cache "penalty box"). Let MLX manage its own
+                # cache; cap RAM via batch size + CTX_MLX_CACHE, not destroy-bursts.
                 try:
                     mx.synchronize()
-                    mx.clear_cache()
                 except Exception:  # noqa: BLE001
                     pass
         if timings is not None:
@@ -724,11 +718,11 @@ class CodeRankMLX:
                 mask = mx.array(np.asarray(attention_mask, dtype=np.float32))
                 out = self._compiled(ids, mask)
                 mx.eval(out)
-                arr = np.asarray(out, dtype=np.float32)
-                # Release transient Metal activation buffers; keep weights loaded.
+                # Owned copy (see embed_ids rationale): detach from MLX memory.
+                arr = np.array(np.asarray(out, dtype=np.float32), copy=True)
+                # Flush only; no clear_cache churn (see embed_ids rationale).
                 try:
                     mx.synchronize()
-                    mx.clear_cache()
                 except Exception:  # noqa: BLE001
                     pass
                 return arr

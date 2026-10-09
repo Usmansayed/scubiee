@@ -40,7 +40,7 @@ function findPython() {
   if (process.platform === "win32") candidates.push("py", "python", "python3");
   else candidates.push("python3", "python");
   const snippet =
-    "import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)";
+    "import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)";
   for (const bin of candidates) {
     const probe = spawnSync(bin, pythonArgs(bin, ["-c", snippet]), {
       encoding: "utf8",
@@ -250,7 +250,7 @@ function main() {
   let python = preferredPython();
   if (!python) {
     console.error(
-      "[scubiee] Python 3.10+ not found.\n" +
+      "[scubiee] Python 3.11+ not found.\n" +
         "  Recommended: install uv (https://docs.astral.sh/uv/) then\n" +
         "    uv tool install scubiee\n" +
         "    scubiee setup\n" +
