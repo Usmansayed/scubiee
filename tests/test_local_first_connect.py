@@ -270,3 +270,62 @@ def test_init_reapplies_connected_tools_after_id_json_removed(
     assert report["ok"]
     assert not report.get("skipped")
     assert (repo / ".cursor" / "rules" / "scubiee.mdc").is_file()
+
+
+def test_connect_first_notice_when_no_repo_enrolled(
+    fake_home: Path, tmp_path: Path, monkeypatch
+) -> None:
+    """Connect with zero enrolled repos must surface an actionable notice, not a
+    silent no-op: the tool is recorded machine-wide and `init` will apply it."""
+    home = tmp_path / "ce-home"
+    home.mkdir()
+    write_machine_setup(home)
+    monkeypatch.setenv("CTX_HOME", str(home))
+    save_connected_tools([])
+
+    report = install_tool(TOOL_MAP["cursor"])
+    assert report["ok"], report
+    # Recorded machine-wide even though nothing was applied locally.
+    assert "cursor" in report["connected_tools"]
+    assert report["project_fan_out"]["repos"] == 0
+    assert report.get("repos_applied") == 0
+    # The actionable notice is present and points at init.
+    notice = (report.get("notice") or "").lower()
+    assert notice, "connect-first should surface a notice"
+    assert "init" in notice
+    assert "machine" in notice
+
+
+def test_connect_then_init_is_universal_across_tools(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """connect-once (record) then init (apply) must work for every supported tool,
+    not just cursor — the project MCP file lands for each connected slug."""
+    from pipeline.tool_registry import ALL_SLUGS, TOOL_MAP as TM
+    from pipeline.tool_registry import resolve_mcp_project_paths
+
+    repo = _git_repo(tmp_path / "proj")
+    pid = "ce_universal1234567890abcdef"
+    _enroll(repo, pid, monkeypatch, tmp_path)
+    home = tmp_path / "ce-home"
+    home.mkdir(exist_ok=True)
+    write_machine_setup(home)
+    monkeypatch.setenv("CTX_HOME", str(home))
+
+    # Record EVERY tool machine-wide (connect once).
+    save_connected_tools(list(ALL_SLUGS))
+
+    # A single init must apply all of them.
+    report = apply_connected_tools_to_repo(repo)
+    assert report["ok"], report
+    assert not report.get("skipped"), report
+    assert sorted(report["connected_tools"]) == sorted(ALL_SLUGS)
+
+    # Every tool's project MCP path should now exist under the repo.
+    missing = []
+    for slug in ALL_SLUGS:
+        tool = TM[slug]
+        paths = resolve_mcp_project_paths(tool, repo)
+        if paths and not any(p.is_file() for p in paths):
+            missing.append(slug)
+    assert not missing, f"init did not apply MCP for: {missing}"

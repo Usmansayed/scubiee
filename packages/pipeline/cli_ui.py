@@ -502,7 +502,14 @@ def print_connect_summary(
         else:
             warn(f"{action} {ok_count}/{total} tools", detail=f"{total - ok_count} failed", stream=s)
 
-    if not dry_run and action == "Connected" and ok_count > 0:
+    # "Restart your IDE to pick up MCP" only makes sense once config was actually
+    # written to at least one enrolled repo. On a connect-first machine with no
+    # enrolled repo, nothing was applied yet — the per-tool notice ("run init")
+    # is the right next step, so skip the restart hint to avoid misdirection.
+    applied_somewhere = any(
+        r.get("ok") and int(r.get("repos_applied") or 0) > 0 for r in results
+    )
+    if not dry_run and action == "Connected" and ok_count > 0 and applied_somewhere:
         info(connect_restart_hint(results), stream=s)
 
     seen_notices: set[str] = set()

@@ -1719,6 +1719,18 @@ def install_tool(
     report["connected_tools"] = add_connected_tool(tool.slug)
     report["rule_written"] = None
     report["rule_skipped"] = "project rules written on enrolled repos"
+    # Connect-first UX: the tool is now saved machine-wide, but if no repo is
+    # enrolled yet the fan-out wrote nothing locally — connect would otherwise
+    # look like a silent no-op. Tell the user it's recorded and that `init`
+    # applies it (and auto-applies on every future init — connect once).
+    repos_written = int((fan or {}).get("repos") or 0)
+    report["repos_applied"] = repos_written
+    if repos_written == 0:
+        report["notice"] = (
+            f"Saved {tool.name} for this machine. No repo is enrolled yet — run "
+            f"`scubiee init .` in a project and it will be applied automatically "
+            f"(every future init re-applies your connected tools; connect once)."
+        )
     return report
 
 
