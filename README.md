@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://pypi.org/project/scubiee/"><img src="https://img.shields.io/pypi/v/scubiee?style=flat&color=C4783A" alt="PyPI version"></a>
-  <a href="https://pypi.org/project/scubiee/"><img src="https://img.shields.io/badge/python-3.10%2B-3776AB?style=flat" alt="Python 3.10+"></a>
+  <a href="https://pypi.org/project/scubiee/"><img src="https://img.shields.io/badge/python-3.11%2B-3776AB?style=flat" alt="Python 3.11+"></a>
   <img src="https://img.shields.io/badge/OS-macOS%20%7C%20Windows%20%7C%20Linux-14B8A6?style=flat" alt="Supported OS">
   <br>
   <img src="https://img.shields.io/badge/MCP-compatible-8A2BE2?style=flat" alt="MCP compatible">
@@ -48,7 +48,7 @@ repo — ranked discovery and deep symbol focus — without uploading a single l
 
 ## Quick start
 
-**Prerequisite:** Python 3.10+. We recommend [uv](https://docs.astral.sh/uv/) as the installer.
+**Prerequisite:** Python 3.11+. We recommend [uv](https://docs.astral.sh/uv/) as the installer.
 
 ```bash
 # 1. Install
