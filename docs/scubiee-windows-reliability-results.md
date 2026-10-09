@@ -67,7 +67,7 @@ Harness: `scripts/perf/_win_midsession_stress.py`.
 
 **No crashes, no dropped connections, no 5xx.** The 16 timeouts all occur in the
 **DirectML/ORT embedder prewarm window** (~first 5-15s) — the known GIL-contention
-behavior already documented in `docs/scubiee-production-readiness-report.md`
+behavior already documented in `docs/archive/qa-bug-reports/scubiee-production-readiness-report.md`
 (the native ORT session build holds the GIL; concurrent `/v1/*` calls stall until
 it finishes, then recover). This is a *transient warm-window latency* condition,
 recoverable with client retry — **not** an engine drop or crash. The engine was

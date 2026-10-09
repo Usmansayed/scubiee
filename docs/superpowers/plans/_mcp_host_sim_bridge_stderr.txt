@@ -1,14 +1,5 @@
 [scubiee-bridge] warm-anchor HTTP register deferred: workspace path is required for Scubiee requests
 [scubiee-bridge] runtime attach state=STARTING warm_ready=False deadline_ms=90000
 [scubiee-bridge] ready (mode=shared, sessions<=8)
-[scubiee-bridge] spawned worker session=__shared__ gen=1 pid=6316
-Win32 exception occurred releasing IUnknown at 0x0000027966679940
-Win32 exception occurred releasing IUnknown at 0x00000279666F9BC0
-Win32 exception occurred releasing IUnknown at 0x00000279666FA940
-Win32 exception occurred releasing IUnknown at 0x00000279666F9EC0
-Win32 exception occurred releasing IUnknown at 0x0000027966FEAC80
-[scubiee-bridge child __shared__] [scubiee] mcp attached host-agnostic client_id=mcp:cursor@proc-25672 warm_started=1 deferred=True auto_warm=0 open=None
-[scubiee-bridge child __shared__] [scubiee] surface=phase tools=gate,map,pack_context,expand_context,collect_hot_context,workspace,expand,status repo=C:\Users\usman\Downloads\context-engine token_mode=savings
-[scubiee-bridge child __shared__] <unknown>:6: SyntaxWarning: invalid escape sequence '\.'
-[scubiee-bridge child __shared__] [scubiee] pack-graph prewarm ok=1 edges=build ms=3905.7
+[scubiee-bridge] spawned worker session=__shared__ gen=1 pid=18676
 [scubiee-bridge] stdin EOF / host disconnected — shutting down workers
