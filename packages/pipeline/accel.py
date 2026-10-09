@@ -1321,6 +1321,12 @@ def _install_ort_wheel(profile: str, progress: Any | None = None) -> None:
         )
     except subprocess.CalledProcessError:
         _purge_ort_modules()
+        # no_deps: force-reinstalling ONLY the ORT wheel. Its deps (numpy etc.)
+        # are already satisfied by the scubiee base install; pulling them again
+        # under --force-reinstall makes pip try to uninstall the existing numpy,
+        # which fails hard ("Cannot uninstall numpy None / no RECORD file") on
+        # some pip/venv layouts and wedges the whole setup. The ORT wheel alone
+        # is all this step needs.
         pip_install(
             [spec],
             progress=progress,
@@ -1328,6 +1334,7 @@ def _install_ort_wheel(profile: str, progress: Any | None = None) -> None:
             end_pct=54,
             phase="Installing GPU/CPU engine",
             force_reinstall=True,
+            no_deps=True,
         )
     _purge_ort_modules()
     if _ort_profile_ready(profile):
@@ -1335,6 +1342,8 @@ def _install_ort_wheel(profile: str, progress: Any | None = None) -> None:
             progress.set(55, "GPU/CPU engine ready")
         return
     remove_stale_ort_tree()
+    # no_deps: same reasoning as above — reinstall just the ORT wheel, never
+    # churn numpy (avoids the "Cannot uninstall numpy None" RECORD failure).
     pip_install(
         [spec],
         progress=progress,
@@ -1343,6 +1352,7 @@ def _install_ort_wheel(profile: str, progress: Any | None = None) -> None:
         phase="Retrying GPU/CPU engine",
         force_reinstall=True,
         upgrade=True,
+        no_deps=True,
     )
     _purge_ort_modules()
     if not _ort_session_ok():
