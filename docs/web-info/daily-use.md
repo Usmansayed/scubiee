@@ -2,7 +2,7 @@
 
 Once `scubiee setup --repair`, `scubiee init .`, and `scubiee connect --…` are done, these are the commands you use day to day.
 
-**Docs assume [scubiee 0.3.14](https://pypi.org/project/scubiee/0.3.14/).** Install/debug: [Install & debug](./install-and-debug.md).
+**Docs assume [scubiee 0.3.144](https://pypi.org/project/scubiee/0.3.144/).** Install/debug: [Install & debug](./install-and-debug.md).
 
 ---
 

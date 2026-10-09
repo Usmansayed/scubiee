@@ -3,7 +3,7 @@
 Symptom → cause → fix. Start with `scubiee doctor .` and `scubiee preflight .`.  
 Shareable report: `scubiee diagnose --no-tests --desktop` → `Desktop/scubiee-diagnose.json`.
 
-**Full install / upgrade / Access-denied playbook:** [Install & debug](./install-and-debug.md) (docs assume **[0.3.14](https://pypi.org/project/scubiee/0.3.14/)**).
+**Full install / upgrade / Access-denied playbook:** [Install & debug](./install-and-debug.md) (docs assume **[0.3.144](https://pypi.org/project/scubiee/0.3.144/)**).
 
 **Need explanations (why + verify)?** **[Complete fix guide](../../web-info/complete-fix-guide.md)** · **[Error codes](../../web-info/error-codes-reference.md)** · **[How everything works](../../web-info/how-everything-works.md)**
 
@@ -83,7 +83,7 @@ scubiee init .
 
 ```powershell
 scubiee unlock-tool
-uv tool install --force scubiee==0.3.13 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.3.144 --index-url https://pypi.org/simple --refresh
 scubiee setup --repair
 scubiee connect --cursor
 ```
@@ -93,7 +93,7 @@ scubiee connect --cursor
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/uninstall-uv-scubiee.ps1
 # or:
-powershell -ExecutionPolicy Bypass -File scripts/repair-uv-scubiee.ps1 0.3.13
+powershell -ExecutionPolicy Bypass -File scripts/repair-uv-scubiee.ps1 0.3.144
 scubiee setup --repair
 ```
 

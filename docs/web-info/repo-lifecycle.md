@@ -2,7 +2,7 @@
 
 How Scubiee **enrolls**, **pauses**, **activates**, **removes**, and **wipes** a repository — and what data is kept or deleted at each step.
 
-**Docs assume [scubiee 0.3.14](https://pypi.org/project/scubiee/0.3.14/)** (published on PyPI).
+**Docs assume [scubiee 0.3.144](https://pypi.org/project/scubiee/0.3.144/)** (published on PyPI).
 
 ---
 

@@ -2,7 +2,7 @@
 
 Complete operator guide for **installing**, **upgrading**, and **fixing** Scubiee when something goes wrong.
 
-**Current release:** [scubiee 0.3.14](https://pypi.org/project/scubiee/0.3.14/) — live on PyPI (`uv tool install scubiee==0.3.14`).
+**Current release:** [scubiee 0.3.144](https://pypi.org/project/scubiee/0.3.144/) — live on PyPI (`uv tool install scubiee==0.3.144`).
 
 **Detailed explanations:** [web-info complete fix guide](../../web-info/complete-fix-guide.md) · [how everything works](../../web-info/how-everything-works.md)
 
@@ -24,7 +24,7 @@ Complete operator guide for **installing**, **upgrading**, and **fixing** Scubie
 
 ```powershell
 # 1. CLI (pin version + PyPI)
-uv tool install --force scubiee==0.3.13 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.3.144 --index-url https://pypi.org/simple --refresh
 uv tool update-shell
 # open a NEW terminal, then:
 
@@ -44,7 +44,7 @@ scubiee connect --cursor
 ### macOS / Linux
 
 ```bash
-uv tool install --force scubiee==0.3.13 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.3.144 --index-url https://pypi.org/simple --refresh
 uv tool update-shell
 # new shell:
 scubiee setup --repair
@@ -57,7 +57,7 @@ scubiee connect --cursor
 ### Alternative: pip
 
 ```bash
-pip install -U scubiee==0.3.13
+pip install -U scubiee==0.3.144
 scubiee setup --repair
 ```
 
@@ -66,7 +66,7 @@ Prefer **uv tool install** on Windows — clearer upgrades and fewer PATH collis
 ### Verify
 
 ```bash
-scubiee --version          # should print 0.3.13 and the uv-tool Python path
+scubiee --version          # should print 0.3.144 and the uv-tool Python path
 scubiee setup --status
 scubiee doctor .
 scubiee diagnose --no-tests --desktop   # → Desktop/scubiee-diagnose.json
@@ -82,7 +82,7 @@ The MCP server key in `mcp.json` is **`scubiee`**.
 
 | Step | Command | Scope | Writes |
 |------|---------|-------|--------|
-| Install | `uv tool install scubiee==0.3.13` | Machine | CLI + uv tool env |
+| Install | `uv tool install scubiee==0.3.144` | Machine | CLI + uv tool env |
 | Setup | `scubiee setup --repair` | Machine | ORT/FastEmbed extras, model, `~/.scubiee/accel.json` |
 | Init | `scubiee init .` | **This repo** | Index + `.scubiee/id.json` — **not** MCP |
 | Connect | `scubiee connect --cursor` | IDE | MCP + agent rules |
@@ -103,12 +103,12 @@ The MCP server key in `mcp.json` is **`scubiee`**.
 scubiee upgrade
 # or pin explicitly:
 scubiee unlock-tool          # Windows if Access denied / half-broken tool dir
-uv tool install --force scubiee==0.3.13 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.3.144 --index-url https://pypi.org/simple --refresh
 scubiee setup --repair
 scubiee connect --cursor     # refresh MCP + rules after every bump
 ```
 
-If `uv` briefly says “no version 0.3.13” right after a release, wait a few minutes or use `--refresh`. The [project page / files](https://pypi.org/project/scubiee/#files) are authoritative.
+If `uv` briefly says “no version 0.3.144” right after a release, wait a few minutes or use `--refresh`. The [project page / files](https://pypi.org/project/scubiee/#files) are authoritative.
 
 After upgrade: **always** `setup --repair` if FastEmbed/ORT look missing, then **`connect`** again.
 
@@ -132,7 +132,7 @@ Later: `No module named 'pipeline'` or `uv trampoline failed to canonicalize scr
 
 ```powershell
 scubiee unlock-tool
-uv tool install --force scubiee==0.3.13 --index-url https://pypi.org/simple --refresh
+uv tool install --force scubiee==0.3.144 --index-url https://pypi.org/simple --refresh
 scubiee setup --repair
 scubiee connect --cursor
 ```
@@ -145,7 +145,7 @@ scubiee connect --cursor
 # From a clone that has the scripts, or download them:
 powershell -ExecutionPolicy Bypass -File scripts/uninstall-uv-scubiee.ps1
 # or repair + reinstall:
-powershell -ExecutionPolicy Bypass -File scripts/repair-uv-scubiee.ps1 0.3.13
+powershell -ExecutionPolicy Bypass -File scripts/repair-uv-scubiee.ps1 0.3.144
 scubiee setup --repair
 scubiee connect --cursor
 ```
