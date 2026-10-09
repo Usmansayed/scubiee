@@ -3,199 +3,231 @@
 </p>
 
 <p align="center">
-  <a href="https://pypi.org/project/scubiee/"><img src="https://img.shields.io/pypi/v/scubiee?style=flat&color=C4783A" alt="PyPI"></a>
+  <a href="https://pypi.org/project/scubiee/"><img src="https://img.shields.io/pypi/v/scubiee?style=flat&color=C4783A" alt="PyPI version"></a>
   <a href="https://pypi.org/project/scubiee/"><img src="https://img.shields.io/badge/python-3.10%2B-3776AB?style=flat" alt="Python 3.10+"></a>
-  <img src="https://img.shields.io/badge/OS-macOS%2C%20Windows%2C%20Linux-14B8A6?style=flat" alt="OS">
+  <img src="https://img.shields.io/badge/OS-macOS%20%7C%20Windows%20%7C%20Linux-14B8A6?style=flat" alt="Supported OS">
   <br>
-  <img src="https://img.shields.io/badge/MCP-compatible-8A2BE2?style=flat" alt="MCP">
-  <img src="https://img.shields.io/badge/privacy-local%20first-2ea44f?style=flat" alt="Local first">
+  <img src="https://img.shields.io/badge/MCP-compatible-8A2BE2?style=flat" alt="MCP compatible">
+  <img src="https://img.shields.io/badge/privacy-local--first-2ea44f?style=flat" alt="Local first">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=flat" alt="License"></a>
 </p>
 
 <p align="center">
-  <b>Local context engine for AI coding tools.</b><br>
-  Index your repository on your machine. Agents search by meaning - <code>map</code> · <code>focus</code> · <code>grep</code> - instead of grepping blindly through files.
+  <b>A local code-context engine for AI coding agents.</b><br>
+  Index your repository on your own machine, and let agents find code by <i>meaning</i> —
+  so they read the few spans that matter instead of grepping blindly through files.
+</p>
+
+<p align="center">
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#what-your-agent-gets">What your agent gets</a> ·
+  <a href="#how-it-works">How it works</a> ·
+  <a href="#documentation">Docs</a>
 </p>
 
 ---
 
-Type `scubiee connect` once and your AI coding assistant gets a **local index** of the repo - ranked discovery, deep focus, and exact search - without uploading code to a vendor.
+Run `scubiee connect` once and your AI assistant gets a **local, always-fresh index** of your
+repo — ranked discovery and deep symbol focus — without uploading a single line of code.
 
-- **Fully local.** Tree-sitter + embeddings on disk. Code never leaves the machine. The only network step is a one-time model download at setup (~270 MB).
-- **Built for agents.** MCP tools `map` · `focus` · `grep` in Cursor, Claude Code, Copilot, Kiro, and more.
-- **Not a cloud RAG.** A real local engine with live Merkle sync. Index once, stay fresh as you edit and pull.
+- **Local-first.** Tree-sitter parsing + on-disk embeddings. Code never leaves your machine; the
+  only network step is a one-time model download (~270 MB) during setup.
+- **Built for agents.** Ships as an [MCP](https://modelcontextprotocol.io) server — works in
+  Cursor, Claude Code, Copilot, Kiro, and other MCP clients.
+- **A real engine, not cloud RAG.** A local daemon with live Merkle sync keeps the index current
+  as you edit and pull — index once, stay fresh.
 
 <p align="center">
-  <img src="visuals/image.png" alt="Scubiee map, focus, and grep" width="900">
+  <img src="visuals/image.png" alt="Scubiee map find and focus against a local index" width="900">
 </p>
 <p align="center">
-  <em>Ranked map hits, focused spans, exact grep - all against a local index.</em>
+  <em>Ranked <code>map find</code> hits and focused symbol spans — all against a local index.</em>
 </p>
 
 ---
 
-## Install
+## Quick start
 
-Requires **Python 3.10+**. Recommended installer: [uv](https://docs.astral.sh/uv/).
+**Prerequisite:** Python 3.10+. We recommend [uv](https://docs.astral.sh/uv/) as the installer.
 
 ```bash
+# 1. Install
 uv tool install scubiee
+
+# 2. Set up once per machine (downloads the model, picks CUDA / DirectML / MLX / CPU)
+scubiee setup
+
+# 3. Index a repo (run inside the repository)
+cd /path/to/your/repo
+scubiee init .
+
+# 4. Connect your IDE, then reload MCP in the IDE
+scubiee connect --cursor
 ```
 
+> `init` indexes the repo; `connect` wires up the assistant. You need **both**, then reload MCP
+> (Cursor: Settings → MCP → refresh). Other clients: `--claude-code`, `--copilot`, `--kiro`,
+> `--all`. See [getting started](docs/web-info/getting-started.md).
+
 <details>
-<summary>Or with pip</summary>
+<summary>Prefer pip?</summary>
 
 ```bash
 pip install -U scubiee
 ```
 
+On **Windows with a GPU**, install so DirectML isn't clobbered on upgrade — see
+[Windows / DirectML install](docs/scubiee-install-windows-dml.md).
+
 </details>
 
 ---
 
-## Setup (once per machine)
+## What your agent gets
 
-Downloads the embedding model and picks CUDA / DirectML / MLX / CPU for your hardware.
+One MCP tool — **`map`** — with two configs. The agent picks one by what it knows, acts on the
+first good answer, and stops.
 
-```bash
-scubiee setup
-```
+| `map` config | Use when | Returns |
+|---|---|---|
+| **`find`** | You don't know where the code lives | Ranked locations **with the top result's code inline** — usually no follow-up read |
+| **`focus`** | You know the symbol name(s) | The symbol's full body **+ callers/callees + sibling names**, in one unit |
+| **`gate` / `status`** | At session start | A tiny managed-repo check + engine health |
 
----
+Scubiee is a **locate layer**, not a replacement for your editor. Exact string / path lookups stay
+on the host's native **Grep / Glob / Read**, and history stays on **git** — a one-line grep is
+faster and more precise than a semantic search for a known string. The CLI mirrors the tool:
+`scubiee map --config find|focus`.
 
-## Index a repo
-
-Parses and embeds the project into `~/.scubiee`. Run this inside the repository you want agents to understand.
-
-```bash
-cd /path/to/your/repo
-scubiee init .
-```
-
----
-
-## Connect your IDE
-
-Wires MCP + agent rules so the assistant can call Scubiee. Then **reload MCP** in the IDE (Cursor: Settings → MCP → refresh).
-
-```bash
-scubiee connect --cursor
-```
-
-Other tools: `--claude-code`, `--copilot`, `--kiro`, `--all`, and more - see [getting started](docs/web-info/getting-started.md).
-
-`init` indexes. `connect` attaches the assistant. You need both.
-
----
-
-## What agents get
-
-One tool, **`map`**, with four configs — pick one by what you know, act on the first good answer, stop:
-
-| `map` config | Answers |
-|------|------|
-| **`find`** | "Where is the code for X?" — ranked locations **plus the top result's code inline** |
-| **`focus`** | "Show me this name" — the symbol's full body + callers/callees + sibling names, one unit |
-| **`related`** | "Given a chunk I have, what else relates?" — related bodies in one call |
-| **`graph`** | "Orient me" — files → symbols + call edges, no bodies; then one `find`/`focus` |
-| **`gate` / `status`** | Tiny managed check + engine health at session start |
-
-Exact string/name/path lookup stays on **host** Grep/Glob/Read; history on `git`. The CLI mirrors the tool: `scubiee map --config find|focus|related|graph`.
+→ Full tool reference: [MCP tools](docs/web-info/mcp-tools-reference.md) ·
+[the two configs, in depth](docs/scubiee-map-configs.md)
 
 ---
 
 ## How it works
 
 ```text
-  setup (once)  →  init (per repo)  →  connect (per IDE)
-       │                 │                    │
-       ▼                 ▼                    ▼
-  download model    parse + embed         MCP + rules
-                    ~/.scubiee            reload IDE
+  setup (once)   →   init (per repo)   →   connect (per IDE)
+      │                   │                      │
+      ▼                   ▼                      ▼
+  download model     parse + embed          MCP + agent rules
+                     → ~/.scubiee           → reload IDE
+
+
+  AI coding tool  ──MCP──►  Scubiee daemon (localhost)  ──►  local index (~/.scubiee)
 ```
 
-```text
-  AI coding tool  ──MCP──►  Scubiee (localhost)  ──►  ~/.scubiee
-```
+A small local daemon serves retrieval over three fused channels — a code **graph**
+(calls/imports/defines), **BM25** lexical match, and **dense** embeddings (CodeRankEmbed, FAISS).
+Background sync keeps enrolled repos fresh with a Merkle diff, so edits show up in seconds without
+a full reindex. Everything — indexing, embedding, retrieval — runs on your machine.
 
-A small local daemon serves search. Background sync keeps enrolled repos fresh. Indexing and retrieval stay on your machine.
+→ Architecture deep-dive: [how everything works](web-info/how-everything-works.md) ·
+[system overview](docs/scubiee-overview.md)
 
 ---
 
-## Day-to-day
-
-After a big pull or refactor, refresh the index:
+## Everyday commands
 
 ```bash
-scubiee sync .
+scubiee sync .            # refresh the index after a big pull or refactor
+scubiee status .          # enrollment + engine health
+scubiee search "auth middleware" .   # search from the terminal, no IDE needed
+scubiee doctor .          # diagnose setup / accelerator issues
+scubiee upgrade           # update the package and rebind MCP
 ```
 
-Check enrollment and health:
-
-```bash
-scubiee status .
-scubiee doctor .
-```
-
-Search from the terminal (no IDE required):
-
-```bash
-scubiee search "auth middleware" .
-```
-
-Upgrade the package and rebind MCP:
-
-```bash
-scubiee upgrade
-```
-
-Lifecycle (pause / stop / wipe) is covered in [repo lifecycle](docs/web-info/repo-lifecycle.md). Full flag list: [complete CLI reference](web-info/complete-cli-reference.md).
+Pause / stop / wipe and the full lifecycle are in [repo lifecycle](docs/web-info/repo-lifecycle.md).
+Every command and flag: [commands reference](docs/web-info/commands-reference.md).
 
 ---
 
 ## Privacy
 
-- **Code** stays on disk - parsed and embedded locally; nothing leaves for search.
-- **Model** downloads once during `setup` (~270 MB). After that, indexing is offline.
-- Data lives under `~/.scubiee` and `<repo>/.scubiee`.
+- **Your code** is parsed and embedded locally and stays on disk — nothing is sent anywhere for
+  search.
+- **The model** downloads once during `scubiee setup` (~270 MB); after that, indexing works offline.
+- Data lives under `~/.scubiee` (engine state) and `<repo>/.scubiee` (per-repo index).
 
 ---
 
-## Docs
+## Documentation
 
 | | |
-|--|--|
-| Getting started | [docs/web-info/getting-started.md](docs/web-info/getting-started.md) |
-| Install & debug | [docs/web-info/install-and-debug.md](docs/web-info/install-and-debug.md) |
-| MCP tools | [docs/web-info/mcp-tools-reference.md](docs/web-info/mcp-tools-reference.md) |
-| Troubleshooting | [docs/web-info/troubleshooting.md](docs/web-info/troubleshooting.md) |
-| How everything works | [web-info/how-everything-works.md](web-info/how-everything-works.md) |
+|---|---|
+| **Getting started** | [docs/web-info/getting-started.md](docs/web-info/getting-started.md) |
+| **Install & debug** | [docs/web-info/install-and-debug.md](docs/web-info/install-and-debug.md) |
+| **MCP tools reference** | [docs/web-info/mcp-tools-reference.md](docs/web-info/mcp-tools-reference.md) |
+| **Troubleshooting** | [docs/web-info/troubleshooting.md](docs/web-info/troubleshooting.md) |
+| **System overview** | [docs/scubiee-overview.md](docs/scubiee-overview.md) |
+| **Full docs index** | [docs/README.md](docs/README.md) |
 
 ---
 
 ## FAQ
 
-**Does `init` connect Cursor?**  
-No. `init` indexes. `connect` writes MCP and rules. Then reload MCP.
+<details>
+<summary><b>Does <code>init</code> connect my IDE?</b></summary>
 
-**Does my code get uploaded?**  
-No. Only the embedding model downloads during setup.
+No. `init` indexes the repo; `connect` writes the MCP config and agent rules. Run both, then reload
+MCP in the IDE.
+</details>
 
-**Agent says `managed: false`?**  
-Run `init` and `connect` in that project, then reload MCP. For Kiro / Copilot / Cline / Roo, run `connect` inside each repo.
+<details>
+<summary><b>Does my code get uploaded anywhere?</b></summary>
 
-**Windows "Access denied" on upgrade?**  
-`scubiee unlock-tool`, then retry. Quitting the IDE helps.
+No. Only the embedding model downloads (once, during `setup`). Parsing, embedding, and search all
+run locally.
+</details>
 
-**Need a support bundle?**  
-`scubiee diagnose --no-tests --desktop` - attach the Desktop JSON and a tail of `~/.scubiee/engine.log`.
+<details>
+<summary><b>My agent says <code>managed: false</code>.</b></summary>
+
+Run `scubiee init .` and `scubiee connect` inside that repo, then reload MCP. For Kiro / Copilot /
+Cline / Roo, run `connect` inside each repo.
+</details>
+
+<details>
+<summary><b>Windows: GPU acceleration stopped working after an upgrade.</b></summary>
+
+Run `scubiee setup --repair`. To prevent it recurring, install with the DirectML override — see
+[Windows / DirectML install](docs/scubiee-install-windows-dml.md).
+</details>
+
+<details>
+<summary><b>Windows: "Access denied" during upgrade.</b></summary>
+
+Run `scubiee unlock-tool`, then retry. Quitting the IDE first helps.
+</details>
+
+<details>
+<summary><b>How do I file a bug with context?</b></summary>
+
+`scubiee diagnose --no-tests --desktop` — attach the Desktop JSON plus a tail of
+`~/.scubiee/engine.log`.
+</details>
 
 ---
 
-**PyPI:** [scubiee](https://pypi.org/project/scubiee/) · **Release:** 0.3.15 · Contributors: `uv pip install -e .` then `scubiee setup`
+## Contributing
+
+```bash
+git clone https://github.com/Usmansayed/scubiee
+cd scubiee
+uv pip install -e .
+scubiee setup
+```
+
+Issues and pull requests are welcome. Please run `scubiee certify` before opening a PR.
+
+---
+
+<p align="center">
+  <a href="https://pypi.org/project/scubiee/"><b>PyPI: scubiee</b></a> ·
+  Latest release: <b>0.3.144</b>
+</p>
 
 ## License
 
-Copyright 2026 Usman Sayed
-
+Copyright © 2026 Usman Sayed.
 Licensed under the [Apache License, Version 2.0](LICENSE).
