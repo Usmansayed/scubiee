@@ -25,20 +25,22 @@ If Scubiee is globally stopped (`scubiee stop`), tools are blocked until the use
 
 ## The tool surface
 
-Scubiee ships **one locate tool, `map`**, with four configs, plus two health tools. That is the entire surface.
+Scubiee ships **one locate tool, `map`**, with two configs (`find` | `focus`), plus two health tools. That is the entire surface.
 
 | Tool | One-line purpose |
 |------|------------------|
 | `gate` | Tiny managed check (~5 tokens) — call once at session start |
 | `status` | Engine health one-liner (ok / warm / dense / chunks / version) |
-| `map config=find` | "Where is the code for X?" — ranked locations **+ the top result's code inline** |
+| `map config=find` | "Where is the code for X?" — ranked locations **+ the top result's code inline**. Also orients a wide/unknown area and pulls code near a chunk you hold (put its names in the query). |
 | `map config=focus` | "Show me this name" — its full body + callers/callees + sibling names, one unit |
-| `map config=related` | "Given a chunk I have, what else relates?" — related bodies in one call |
-| `map config=graph` | "Orient me" — files → symbol names + call edges, **no bodies** |
 
 Exact literals / filenames / known paths → **host** Grep/Glob/Read (not Scubiee). History → `git`.
 
-There is no surface switching and no `CTX_MCP_SURFACE` / `CTX_MCP_EXPERIMENT` any more — the Map V3 surface is the single shipped surface.
+The surface was narrowed from four configs to two in v0.3.142 — the old `related`
+and `graph` configs are folded into `find` (passing a config of `related`/`graph`
+still works and degrades to `find` with a note). There is no surface switching and
+no `CTX_MCP_SURFACE` / `CTX_MCP_EXPERIMENT` — Map V3 (`find`/`focus`) is the single
+shipped surface.
 
 ---
 
@@ -61,17 +63,18 @@ The worker resolves the repo from `CTX_REPO` (set by `scubiee connect`). The hea
 ```text
 gate() once
     ↓ managed (1:ce_…)?
-map config=find query="<short code-vocab intent>" keywords=[names you know]
+map config=find query="<short code-vocab intent>"
     ↓ top result is the place? EDIT it — the code is already inline, don't re-view
+    ↓ don't know where to start? use a broad find query to orient, THEN a focused one
     ↓ have a name and want its wiring?
 map config=focus names=[Symbol]          ← full body + callers/callees + siblings, one unit
-    ↓ have a chunk and want what relates?
-map config=related anchor="file::symbol" query="<intent>"
-    ↓ don't know where to start at all?
-map config=graph query="<intent>"        ← orient wide, THEN one find/focus
 ```
 
-Pick **one** config, act on the first good answer, and **stop**. Don't chain configs just to look around. Don't poll `status()` in a loop while warming — retry the `map` call once after a short wait.
+Pick **one** config by what you know (`find` when you don't know where, `focus`
+when you know the name), act on the first good answer, and **stop**. A broad
+`find` query orients a wide area and pulls code near a chunk you already hold —
+that is what the old `related`/`graph` configs did. Don't poll `status()` in a
+loop while warming — retry the `map` call once after a short wait.
 
 ---
 
@@ -128,32 +131,12 @@ Returns ranked locations with line numbers; on a confident top hit, its **enclos
 
 Returns the symbol's full body **plus** its callers/callees and the other symbol names in its file — one unit you can edit from without a follow-up call.
 
-#### `config=related` — related code for a chunk you have
-
-```json
-{"config": "related", "anchor": "token_meter.py::compare_queries", "query": "where savings get rendered"}
-```
-
-| Argument | Default | Why |
-|----------|---------|-----|
-| `anchor` | required | The chunk you already have (`file::symbol` or `file:line`). |
-| `query` | required | What relation you're after. |
-| `scope` | `code` | As `find`. |
-
-Returns the code elsewhere that relates to the anchor and matches the query, with bodies — one call instead of a grep-and-read chain.
-
-#### `config=graph` — orient wide
-
-```json
-{"config": "graph", "query": "how freshness decides the sync strategy"}
-```
-
-| Argument | Default | Why |
-|----------|---------|-----|
-| `query` | one of these | Concept to orient around. |
-| `anchor` | one of these | Or a known `file::symbol` to center the neighborhood. |
-
-Returns an abstract JSON map — files → top-level symbol names plus call edges, **no bodies**. Cheap and wide: use it to decide where to go, then make one `find`/`focus`.
+> **Retired configs.** Earlier versions had separate `related` (related code for a
+> chunk you hold) and `graph` (orient wide) configs. As of v0.3.142 both fold into
+> **`find`**: to find code related to a chunk, put that chunk's names/intent in the
+> `find` query; to orient a wide/unknown area, use a broad `find` query first, then
+> a focused `find`/`focus`. Passing `config=related`/`graph` still works and
+> degrades to `find` with a note.
 
 ---
 
@@ -170,9 +153,12 @@ The shipped CLI mirrors the tool exactly (useful for scripts / when MCP is unava
 ```text
 scubiee map --config find  "<intent>" [--k N]
 scubiee map --config focus --names Symbol [OtherSymbol]
-scubiee map --config related --anchor "file::symbol" "<intent>"
-scubiee map --config graph "<intent>"
+scubiee map --config focus --anchor "file::symbol"   # center on a chunk you have
 ```
+
+The CLI advertises `--config find|focus` only (matching the tool). To find code
+related to a chunk, put its names in a `find` query; to orient wide, use a broad
+`find` query first.
 
 ---
 

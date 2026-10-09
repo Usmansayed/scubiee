@@ -159,18 +159,16 @@ After `--all --confirm`, JSON includes an **`audit`** block listing any **`remai
 
 Not CLI commands — exposed to the agent after MCP reload. **Full guide:** [MCP tools reference](./mcp-tools-reference.md).
 
-One **`map`** tool with four configs (plus `gate`/`status`):
+One **`map`** tool with two configs (`find` | `focus`), plus `gate`/`status`:
 
 | Tool | Role |
 |------|------|
 | `gate` | Tiny managed check (~5 tokens) — prefer at session start |
 | `status` | Engine health one-liner (ok / warm / dense / chunks / version) |
-| `map config=find` | "Where is X?" — ranked locations + the top result's code inline |
+| `map config=find` | "Where is X?" — ranked locations + the top result's code inline. Also orients a wide area and pulls code near a chunk you hold (put its names in the query). |
 | `map config=focus` | A name's full body + callers/callees + sibling names, one unit |
-| `map config=related` | Given a chunk you have, the related bodies — one call |
-| `map config=graph` | Files → symbols + call edges (no bodies) — orient, then one find/focus |
 
-Exact/name/path → host Grep/Glob/Read; history → `git`. The CLI mirrors the tool: `scubiee map --config find|focus|related|graph`.
+Exact/name/path → host Grep/Glob/Read; history → `git`. The CLI mirrors the tool: `scubiee map --config find|focus`. (The old `related`/`graph` configs were folded into `find` in v0.3.142.)
 
 If `status` shows the engine still warming, retry the `map` call once after a short wait — do not poll `status()` every turn. After pause/stop use **`scubiee resume`**.
 

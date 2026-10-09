@@ -90,12 +90,10 @@ When paused/stopped, follow **`scubiee resume`** (not `wake`).
 |------|---------|
 | `gate` | Tiny managed check at session start (~5 tokens) |
 | `status` | Engine health one-liner (ok / warm / dense / chunks / version) |
-| `map config=find` | "Where is X?" — ranked locations + the top result's code inline |
+| `map config=find` | "Where is X?" — ranked locations + the top result's code inline. Also orients a wide area / pulls code near a chunk you hold (put its names in the query). |
 | `map config=focus` | A name's full body + callers/callees + sibling names, one unit |
-| `map config=related` | Given a chunk you have, the related bodies — one call |
-| `map config=graph` | Files → symbols + call edges (no bodies) — orient, then one find/focus |
 
-Exact/name/path → **host** Grep/Glob/Read; history → `git`. The CLI mirrors the tool: `scubiee map --config find|focus|related|graph`.
+Exact/name/path → **host** Grep/Glob/Read; history → `git`. The CLI mirrors the tool: `scubiee map --config find|focus`. (The old `related`/`graph` configs folded into `find` in v0.3.142.)
 
 ---
 
