@@ -22,8 +22,40 @@ import numpy as np
 # MLX ≥0.31 made GPU streams thread-local. Keeper / HTTP worker threads must
 # create their own stream; weights loaded on the main thread still evaluate if
 # we bind a per-thread stream and serialize embeds.
-_MLX_EMBED_LOCK = threading.Lock()
+_MLX_EMBED_LOCK = threading.RLock()
 _MLX_THREAD = threading.local()
+
+
+def mlx_native_guard():
+    """Serialize a heavy non-MLX native op (e.g. numpy-LAPACK ``qr`` in
+    turbo_quant, run via Accelerate on macOS) against MLX/Metal work.
+
+    MLX Metal kernels and the Accelerate BLAS/LAPACK that numpy uses on Apple
+    Silicon are not safe to run truly concurrently on different threads: a warm
+    build's turbo_quant ``qr`` racing a prewarm MLX ``embed_one`` intermittently
+    SIGSEGVs the engine on a fresh init (observed on real repos; the faulting
+    frame alternates between numpy ``qr``, MLX model construction, and a
+    concurrent ``import fastembed`` — all symptoms of one cross-thread native
+    race). This returns a context manager that takes the shared embed lock (so
+    no MLX embed can run concurrently) and flushes any in-flight GPU work first.
+    It is a cheap no-op semantically when MLX is not the backend — the lock is
+    simply uncontended. Reentrant: the lock is an RLock.
+    """
+    return _MlxNativeGuard()
+
+
+class _MlxNativeGuard:
+    def __enter__(self):
+        _MLX_EMBED_LOCK.acquire()
+        try:
+            quiesce_mlx()
+        except Exception:  # noqa: BLE001
+            pass
+        return self
+
+    def __exit__(self, *exc):
+        _MLX_EMBED_LOCK.release()
+        return False
 
 
 def quiesce_mlx() -> bool:
@@ -516,8 +548,19 @@ class CodeRankMLX:
         # thread (e.g. ce_service._eager_prewarm) can't run MLX/Metal while the
         # model is still being built (MLX is not thread-safe across threads —
         # ml-explore/mlx#1448). Build/inference become mutually exclusive.
+        import gc
+
         with _MLX_EMBED_LOCK:
             raw = np.load(load_path, mmap_mode="r")
+            # Disable the cyclic GC for the mmap->MLX conversion loop. A GC pass
+            # firing MID-loop can collect a just-superseded mmap view while MLX
+            # is still turning the previous array into a Metal buffer; on
+            # Apple Silicon unified memory that races the allocators and SIGSEGVs
+            # during construction (observed: "Garbage-collecting" in the faulting
+            # frame on a fresh init, ~1/3 of the time). We re-enable + collect
+            # once, after the loop, under the same lock.
+            _gc_was_enabled = gc.isenabled()
+            gc.disable()
             try:
                 for key in raw.files:
                     arr = raw[key]
@@ -527,7 +570,8 @@ class CodeRankMLX:
                         self.w[key] = mx.array(arr)
             finally:
                 del raw
-            import gc
+                if _gc_was_enabled:
+                    gc.enable()
 
             gc.collect()
             with mlx_thread_stream():

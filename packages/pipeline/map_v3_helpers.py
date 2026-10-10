@@ -1138,10 +1138,23 @@ def _resolve_symbol_name(name: str) -> dict | None:
             if key not in seen_lines:
                 seen_lines.add(key)
                 hits.append(h)
-    # prefer packages/ code, then shortest path (most canonical)
-    hits = [h for h in hits if _kind_of(_norm(h.get("path"))) == "code"]
-    hits.sort(key=lambda h: (0 if _norm(h.get("path")).startswith("packages/") else 1,
-                             len(_norm(h.get("path")))))
+    # Rank candidates: real code first, then tests, then docs/other — but do NOT
+    # drop tests. A symbol that lives ONLY in a test file (a test class/helper
+    # like CacheTest, or Go's *_test.go helpers) must still resolve by bare name;
+    # hard-filtering to kind=="code" made focus report "could not resolve" for
+    # every test-only symbol. Keep the code-first preference via the sort key.
+    _kind_rank = {"code": 0, "tests": 1, "docs": 2, "other": 3}
+
+    def _rank(h: dict) -> tuple:
+        rel = _norm(h.get("path"))
+        return (
+            _kind_rank.get(_kind_of(rel), 3),
+            0 if rel.startswith("packages/") else 1,
+            len(rel),
+        )
+
+    hits = [h for h in hits if _kind_of(_norm(h.get("path"))) in _kind_rank]
+    hits.sort(key=_rank)
     # A hit confirms ONLY when the file's (now multi-language) outline agrees that
     # a symbol with this leaf name actually encloses that line — this is what
     # makes resolution correct across languages, not just a lucky grep.
@@ -1160,8 +1173,38 @@ def _resolve_symbol_name(name: str) -> dict | None:
                 return {"file": rel, "symbol": s["symbol"], "start": int(s["line"]),
                         "end": int(s.get("end_line") or s["line"]),
                         "note": "(resolved bare name via outline)"}
-    # fall back to semantic search's best enclosing symbol
-    for sh in _search(ident, top_k=8):
+    # Plain-identifier fallback: the keyword/decl patterns miss some real
+    # definition shapes (C `struct __attribute__((packed)) Name`, Rust `mod x;`,
+    # macro-wrapped decls). Grep for the bare word, then let each file's outline
+    # confirm — the outline is authoritative, so this adds recall without false
+    # positives. Ranked code-first, tests included (same as above).
+    try:
+        plain_hits, _ = _grep(r"\b" + esc + r"\b", max_hits=80, scope="code")
+    except Exception:  # noqa: BLE001
+        plain_hits = []
+    seen_files: set = set()
+    plain_rels = []
+    for h in sorted(plain_hits, key=_rank):
+        rel = _norm(h.get("path"))
+        if rel not in seen_files:
+            seen_files.add(rel)
+            plain_rels.append(rel)
+    for rel in plain_rels[:20]:
+        for s in _outline(rel):
+            if str(s.get("symbol") or "").split(".")[-1] == ident:
+                return {"file": rel, "symbol": s["symbol"], "start": int(s["line"]),
+                        "end": int(s.get("end_line") or s["line"]),
+                        "note": "(resolved bare name via outline scan)"}
+    # fall back to semantic search's best enclosing symbol. Guard the engine
+    # call: _search hits /v1/search over HTTP, which raises if the engine is
+    # down or still warming. Bare-name resolution must degrade to None in that
+    # case (the grep+outline passes above are engine-free), never propagate an
+    # exception up through focus.
+    try:
+        sem_hits = _search(ident, top_k=8)
+    except Exception:  # noqa: BLE001
+        sem_hits = []
+    for sh in sem_hits:
         rel = _norm(sh.get("path") or sh.get("file"))
         enc = _enclosing(rel, int(sh.get("start_line") or 1))
         if enc and str(enc["symbol"]).split(".")[-1] == ident:

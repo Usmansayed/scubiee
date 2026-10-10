@@ -119,10 +119,30 @@ def _random_orthogonal(dim: int, seed: int) -> np.ndarray:
     return q
 
 
+def _mlx_native_guard():
+    """Serialize this numpy-LAPACK ``qr`` against MLX/Metal work on Apple Silicon.
+
+    The 768×768 ``qr`` runs through Accelerate; if it executes on the warm thread
+    while a prewarm MLX ``embed_one`` runs on another, the two native allocators
+    race and intermittently SIGSEGV the engine on a fresh init. Taking the shared
+    MLX embed lock (via mlx_mac) makes them mutually exclusive. No-op/uncontended
+    off Apple-Silicon-MLX, and never fatal if the import is unavailable.
+    """
+    try:
+        from pipeline.mlx_mac import mlx_native_guard
+
+        return mlx_native_guard()
+    except Exception:  # noqa: BLE001
+        import contextlib
+
+        return contextlib.nullcontext()
+
+
 def _random_orthogonal_uncached(dim: int, seed: int) -> np.ndarray:
     rng = np.random.default_rng(seed)
     g = rng.normal(size=(dim, dim)).astype(np.float64)
-    q, _ = np.linalg.qr(g)
+    with _mlx_native_guard():
+        q, _ = np.linalg.qr(g)
     # Fix signs for determinism
     s = np.sign(np.diag(q))
     s[s == 0] = 1

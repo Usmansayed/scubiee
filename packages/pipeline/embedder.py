@@ -161,6 +161,20 @@ def _accel_wants_fastembed() -> bool:
         return True
 
 
+def _runtime_is_mlx() -> bool:
+    """True when the resolved accelerator profile is MLX. Cheap: reads the saved
+    profile only, never imports fastembed/torch (which is unsafe to do on a
+    worker thread while a live MLX Metal context is active)."""
+    try:
+        from pipeline.accel import resolve_runtime
+
+        prof = resolve_runtime()
+        return (str(getattr(prof, "profile", "") or "") == "mlx"
+                or str(getattr(prof, "backend", "") or "") == "mlx")
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def _fastembed_available() -> bool:
     try:
         import fastembed  # noqa: F401
@@ -188,6 +202,16 @@ def _choose_backend(model: str, backend: str | None) -> str:
                 chosen = "ollama"
             elif _accel_wants_fastembed():
                 chosen = "fastembed"
+            elif _runtime_is_mlx():
+                # MLX machine: choose MLX directly. Do NOT probe
+                # _fastembed_available() here — that does `import fastembed`
+                # (pulling numpy.typing/torch), and when this runs on a worker
+                # thread while the eager-prewarm MLX embed holds a live Metal
+                # context on another thread, the concurrent heavy native import
+                # segfaults the engine on a fresh init (MLX is not thread-safe,
+                # ml-explore/mlx#1448). The accel re-check below would flip
+                # "fastembed" to "mlx" anyway, so the import was pure risk.
+                chosen = "mlx"
             elif _fastembed_available():
                 chosen = "fastembed"
             else:
