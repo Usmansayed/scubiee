@@ -36,15 +36,18 @@ from typing import Any
 
 
 class _Lang:
-    __slots__ = ("module", "fn", "classes", "functions", "methods_in_class")
+    __slots__ = ("module", "fn", "classes", "functions", "methods_in_class", "js_family")
 
-    def __init__(self, module, fn, classes, functions, methods_in_class=None):
+    def __init__(self, module, fn, classes, functions, methods_in_class=None, js_family=False):
         self.module = module
         self.fn = fn
         self.classes = frozenset(classes)
         self.functions = frozenset(functions)
         # node types that, inside a class/impl/interface body, are methods
         self.methods_in_class = frozenset(methods_in_class or functions)
+        # JS/TS: also surface `const f = () => ...` / `const f = function(){}`
+        # and class-field arrows `f = () => ...` as functions/methods.
+        self.js_family = js_family
 
 
 # JS/TS share one shape; .tsx needs the JSX-aware grammar factory.
@@ -73,14 +76,14 @@ _LANGS: dict[str, _Lang] = {
                  ("class_definition",), ("function_definition",)),
     ".pyi": _Lang("tree_sitter_python", "language",
                   ("class_definition",), ("function_definition",)),
-    ".js": _Lang("tree_sitter_javascript", "language", _JS_CLASSES, _JS_FUNCS),
-    ".jsx": _Lang("tree_sitter_javascript", "language", _JS_CLASSES, _JS_FUNCS),
-    ".mjs": _Lang("tree_sitter_javascript", "language", _JS_CLASSES, _JS_FUNCS),
-    ".cjs": _Lang("tree_sitter_javascript", "language", _JS_CLASSES, _JS_FUNCS),
-    ".ts": _Lang("tree_sitter_typescript", "language_typescript", _TS_CLASSES, _TS_FUNCS),
-    ".mts": _Lang("tree_sitter_typescript", "language_typescript", _TS_CLASSES, _TS_FUNCS),
-    ".cts": _Lang("tree_sitter_typescript", "language_typescript", _TS_CLASSES, _TS_FUNCS),
-    ".tsx": _Lang("tree_sitter_typescript", "language_tsx", _TS_CLASSES, _TS_FUNCS),
+    ".js": _Lang("tree_sitter_javascript", "language", _JS_CLASSES, _JS_FUNCS, js_family=True),
+    ".jsx": _Lang("tree_sitter_javascript", "language", _JS_CLASSES, _JS_FUNCS, js_family=True),
+    ".mjs": _Lang("tree_sitter_javascript", "language", _JS_CLASSES, _JS_FUNCS, js_family=True),
+    ".cjs": _Lang("tree_sitter_javascript", "language", _JS_CLASSES, _JS_FUNCS, js_family=True),
+    ".ts": _Lang("tree_sitter_typescript", "language_typescript", _TS_CLASSES, _TS_FUNCS, js_family=True),
+    ".mts": _Lang("tree_sitter_typescript", "language_typescript", _TS_CLASSES, _TS_FUNCS, js_family=True),
+    ".cts": _Lang("tree_sitter_typescript", "language_typescript", _TS_CLASSES, _TS_FUNCS, js_family=True),
+    ".tsx": _Lang("tree_sitter_typescript", "language_tsx", _TS_CLASSES, _TS_FUNCS, js_family=True),
     ".go": _Lang("tree_sitter_go", "language",
                  ("type_declaration", "type_spec"),
                  ("function_declaration", "method_declaration")),
@@ -214,6 +217,39 @@ def _name_of(node, source: bytes) -> str | None:
     return None
 
 
+# JS/TS node types that may bind a name to a function value.
+_JS_VALUE_DECL_TYPES = frozenset({
+    "lexical_declaration",       # const/let f = ...
+    "variable_declaration",      # var f = ...
+    "variable_declarator",       # f = ...  (reached by descent)
+    "public_field_definition",   # class field: f = () => ...
+    "field_definition",
+})
+_JS_FUNC_VALUE_TYPES = frozenset({"arrow_function", "function_expression", "function"})
+
+
+def _js_declared_function(node, source: bytes):
+    """If `node` binds a name to an arrow/function value, return (name, func_node);
+    otherwise (None, None). Handles `const f = () => {}`, `let f = function(){}`,
+    and class-field arrows `f = () => {}`."""
+    t = node.type
+    if t in ("lexical_declaration", "variable_declaration"):
+        # may hold several declarators; the first function-valued one wins for
+        # the outline label (focus resolves by name, so one entry per name).
+        for ch in node.children:
+            if ch.type == "variable_declarator":
+                nm, fn = _js_declared_function(ch, source)
+                if nm and fn is not None:
+                    return nm, fn
+        return None, None
+    if t in ("variable_declarator", "public_field_definition", "field_definition"):
+        name_node = node.child_by_field_name("name")
+        val = node.child_by_field_name("value")
+        if name_node is not None and val is not None and val.type in _JS_FUNC_VALUE_TYPES:
+            return _text(name_node, source).split("::")[-1], val
+    return None, None
+
+
 def _go_receiver_type(node, source: bytes) -> str | None:
     """For a Go `method_declaration`, return the receiver type name (the `T` in
     `func (r *T) M()`), so the method is labelled `T.M`."""
@@ -301,6 +337,15 @@ def _ts_outline(ext: str, source_text: str) -> list[dict[str, Any]]:
                     emit(child, label, kind)
                     # nested functions/classes inside a function body are rare in
                     # the target languages and add noise; stop here.
+                else:
+                    walk(child, prefix, in_type)
+            elif lang.js_family and t in _JS_VALUE_DECL_TYPES:
+                # `const f = () => {}` / `const f = function(){}` and class-field
+                # arrows `f = () => {}` — extremely common in JS/TS. Emit the
+                # bound name as a function (or method inside a class body).
+                vname, vfunc = _js_declared_function(child, source)
+                if vname and vfunc is not None:
+                    emit(vfunc, f"{prefix}{vname}", "method" if in_type else "function")
                 else:
                     walk(child, prefix, in_type)
             else:

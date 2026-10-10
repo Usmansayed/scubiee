@@ -96,6 +96,36 @@ def test_outline_finds_symbols(ext, src, expected):
         assert s["kind"] in ("class", "function", "method")
 
 
+ARROW_CASES = [
+    (".ts",
+     "export const makeHelper = (n: number) => n + 1;\n"
+     "const plain = function (x) { return x; };\n"
+     "export function reg() { return 1; }\n"
+     "export class C {\n  field = (x) => x;\n  method() { return 2; }\n}\n",
+     {"makeHelper", "plain", "reg", "C", "field", "method"}),
+    (".tsx",
+     "export const Panel = () => null;\n"
+     "export function Other() { return null; }\n",
+     {"Panel", "Other"}),
+    (".js",
+     "export const h = (n) => n + 1;\n"
+     "const g = function () { return 0; };\n",
+     {"h", "g"}),
+]
+
+
+@pytest.mark.parametrize("ext,src,expected", ARROW_CASES, ids=[c[0] for c in ARROW_CASES])
+def test_outline_finds_arrow_and_function_expressions(ext, src, expected):
+    """const f = () => ... / const f = function(){} / class-field arrows are the
+    dominant function form in modern JS/TS and must be focus-resolvable."""
+    if not _has_grammar(ext):
+        pytest.skip(f"grammar for {ext} not installed")
+    syms = M.outline_text(ext, src)
+    leaves = {s["symbol"].split(".")[-1] for s in syms}
+    missing = expected - leaves
+    assert not missing, f"{ext}: arrow/function-expr outline missing {missing}; got {leaves}"
+
+
 @pytest.mark.parametrize("ext", [".ts", ".go", ".rs", ".java", ".rb"])
 def test_outline_handles_bom(ext):
     if not _has_grammar(ext):
