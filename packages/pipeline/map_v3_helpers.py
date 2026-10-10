@@ -419,14 +419,40 @@ def _outline(rel: str) -> list[dict]:
     suf = Path(rel).suffix.lower()
     if suf in (".py", ".pyi"):
         syms = _py_outline(rel)
+    elif _lang_outline_supports(suf):
+        # Tree-sitter outline for TS/JS/Go/Rust/Java/C/C++/Ruby/C# etc. — the
+        # same grammars Scubiee indexes with. Without this, focus could resolve
+        # symbols ONLY in Python (the engine /v1/outline is Python-AST-only and
+        # reports language_unsupported for everything else).
+        try:
+            from pipeline.map_lang_outline import outline_text
+            syms = outline_text(suf, _text(rel))
+        except Exception:  # noqa: BLE001
+            syms = []
+        if not syms:
+            # grammar missing or parse failed -> fall back to the engine route
+            # (also Python-only, but harmless) so behavior is never worse.
+            try:
+                r = _http("/v1/outline", {"file": rel, "root": str(REPO)}, timeout=30)
+                syms = [s for s in (r.get("symbols") or []) if s.get("line")]
+            except Exception:  # noqa: BLE001
+                syms = []
     elif suf in SOURCE_EXT:
-        try:  # engine route kept as the path for other languages
+        try:  # engine route for any supported ext without a bundled grammar
             r = _http("/v1/outline", {"file": rel, "root": str(REPO)}, timeout=30)
             syms = [s for s in (r.get("symbols") or []) if s.get("line")]
         except Exception:  # noqa: BLE001
             syms = []
     _OUTLINE[rel] = (m, syms)
     return syms
+
+
+def _lang_outline_supports(suf: str) -> bool:
+    try:
+        from pipeline.map_lang_outline import supports
+        return supports(suf)
+    except Exception:  # noqa: BLE001
+        return False
 
 
 _NONCODE: dict[str, tuple[float, dict[int, list[tuple[int, int]]]]] = {}
@@ -1089,21 +1115,51 @@ def _resolve_symbol_name(name: str) -> dict | None:
     ident = name.split(".")[-1].strip()
     if not ident or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", ident):
         return None
-    pat = r"^\s*(?:async\s+)?(?:def|class|function|func|fn)\s+" + re.escape(ident) + r"\b"
-    try:
-        hits, _ = _grep(pat, max_hits=50, scope="code")
-    except Exception:  # noqa: BLE001
-        hits = []
+    esc = re.escape(ident)
+    # Keyword-led definitions (Python def/class, JS/TS function/class, Go func,
+    # Rust fn/struct/enum/trait/impl, Ruby def/class/module, Kotlin fun, etc.).
+    kw = (r"^\s*(?:(?:pub|public|private|protected|internal|static|final|async|"
+          r"export|default|abstract|override|open|suspend|inline|const)\s+)*"
+          r"(?:def|class|function|func|fn|struct|enum|trait|impl|interface|module|"
+          r"type|object|record|val|var|fun)\s+" + esc + r"\b")
+    # Keyword-LESS definitions: Java/C/C++/C# methods `... NAME(` where NAME is
+    # immediately followed by `(` (declaration), and type-y `... NAME {`.
+    nodecl = r"\b" + esc + r"\s*[(<]"
+    patterns = [kw, nodecl]
+    hits: list[dict] = []
+    seen_lines: set = set()
+    for pat in patterns:
+        try:
+            hs, _ = _grep(pat, max_hits=60, scope="code")
+        except Exception:  # noqa: BLE001
+            hs = []
+        for h in hs:
+            key = (_norm(h.get("path")), int(h.get("line") or 0))
+            if key not in seen_lines:
+                seen_lines.add(key)
+                hits.append(h)
     # prefer packages/ code, then shortest path (most canonical)
     hits = [h for h in hits if _kind_of(_norm(h.get("path"))) == "code"]
     hits.sort(key=lambda h: (0 if _norm(h.get("path")).startswith("packages/") else 1,
                              len(_norm(h.get("path")))))
+    # A hit confirms ONLY when the file's (now multi-language) outline agrees that
+    # a symbol with this leaf name actually encloses that line — this is what
+    # makes resolution correct across languages, not just a lucky grep.
     for h in hits:
         rel = _norm(h.get("path"))
         enc = _enclosing(rel, int(h.get("line") or 1))
         if enc and str(enc["symbol"]).split(".")[-1] == ident:
             return {"file": rel, "symbol": enc["symbol"], "start": enc["line"],
                     "end": enc["end_line"], "note": "(resolved bare name to its definition)"}
+    # Direct outline scan: for languages/shapes the grep patterns above miss, ask
+    # each candidate file's outline directly for a symbol with this leaf name.
+    for h in hits[:12]:
+        rel = _norm(h.get("path"))
+        for s in _outline(rel):
+            if str(s.get("symbol") or "").split(".")[-1] == ident:
+                return {"file": rel, "symbol": s["symbol"], "start": int(s["line"]),
+                        "end": int(s.get("end_line") or s["line"]),
+                        "note": "(resolved bare name via outline)"}
     # fall back to semantic search's best enclosing symbol
     for sh in _search(ident, top_k=8):
         rel = _norm(sh.get("path") or sh.get("file"))
