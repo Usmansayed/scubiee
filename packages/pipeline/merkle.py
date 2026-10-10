@@ -35,12 +35,25 @@ DEFAULT_EXTENSIONS = {
     ".tsx",
     ".js",
     ".jsx",
+    # ES-module / CommonJS and .mts/.cts variants route to the JS/TS extractors
+    # (graphify._DISPATCH) and have bundled grammars; without them, standard
+    # Node ESM/CJS and per-file-module TS were indexed as nothing — find/focus
+    # could not see them at all.
+    ".mjs",
+    ".cjs",
+    ".mts",
+    ".cts",
     ".go",
     ".rs",
     ".java",
     ".kt",
     ".cs",
     ".cpp",
+    # .cc/.cxx are the dominant C++ source extensions in large codebases
+    # (Google/Chromium/LLVM style); they route to extract_cpp with a bundled
+    # grammar, so excluding them left those projects' sources unindexed.
+    ".cc",
+    ".cxx",
     ".c",
     ".h",
     ".hpp",
