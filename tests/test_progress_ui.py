@@ -1,4 +1,4 @@
-﻿"""Install/setup shows one in-place 0–100% bar instead of a log dump."""
+"""Install/setup shows one in-place 0–100% bar instead of a log dump."""
 
 from __future__ import annotations
 

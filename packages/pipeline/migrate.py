@@ -1,4 +1,4 @@
-﻿"""Data migration detection and execution for Context Engine version upgrades.
+"""Data migration detection and execution for Context Engine version upgrades.
 
 When the index schema, embedding model, or graph format changes between versions,
 this module detects stale data and provides a guided path to bring it current.

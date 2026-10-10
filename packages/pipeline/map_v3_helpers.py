@@ -383,7 +383,12 @@ def _py_outline(rel: str) -> list[dict]:
     local: no HTTP round-trip per file."""
     import ast
     try:
-        tree = ast.parse(_text(rel))
+        # Strip a leading UTF-8 BOM: _text() reads as plain utf-8, so a BOM
+        # survives as U+FEFF at offset 0, which ast.parse rejects
+        # ("invalid non-printable character U+FEFF") -> empty outline -> focus
+        # cannot resolve ANY symbol in that file while find still works. Dropping
+        # the single BOM char keeps every line number identical.
+        tree = ast.parse(_text(rel).lstrip("\ufeff"))
     except (SyntaxError, ValueError):
         return []
     out: list[dict] = []

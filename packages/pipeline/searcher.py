@@ -1,4 +1,4 @@
-﻿"""Search using FAISS collection dense + BM25 + Graphify → Conductor D_rerank."""
+"""Search using FAISS collection dense + BM25 + Graphify → Conductor D_rerank."""
 
 from __future__ import annotations
 

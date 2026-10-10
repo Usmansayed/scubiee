@@ -1,4 +1,4 @@
-﻿"""Explicit runtime capability checks for Context Engine.
+"""Explicit runtime capability checks for Context Engine.
 
 No caller may interpret a missing parser or semantic backend as a successful,
 empty search/index. Accel inspection reads the saved profile, checks the exact

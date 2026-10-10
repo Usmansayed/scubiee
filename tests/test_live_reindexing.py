@@ -1,4 +1,4 @@
-﻿"""Live reindexing ingress and safety controls without an embedding model."""
+"""Live reindexing ingress and safety controls without an embedding model."""
 
 from __future__ import annotations
 

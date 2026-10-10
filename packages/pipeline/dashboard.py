@@ -1,4 +1,4 @@
-﻿"""Minimal Context Engine settings dashboard (HTML + JSON API)."""
+"""Minimal Context Engine settings dashboard (HTML + JSON API)."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-﻿"""CodeRankEmbed on Apple Silicon via MLX (Metal GPU).
+"""CodeRankEmbed on Apple Silicon via MLX (Metal GPU).
 
 Selectable embedding backend. Weights are converted from the existing CodeRank
 ONNX initializers into ``~/.scubiee/mlx/`` — the FastEmbed / ONNX caches

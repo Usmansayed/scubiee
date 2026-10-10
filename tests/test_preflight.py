@@ -1,4 +1,4 @@
-﻿"""Dependency preflight must make degraded CE operation explicit."""
+"""Dependency preflight must make degraded CE operation explicit."""
 
 from __future__ import annotations
 

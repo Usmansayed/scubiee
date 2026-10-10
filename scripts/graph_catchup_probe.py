@@ -1,4 +1,4 @@
-﻿"""Issue 6: a save that lands while another file's graph catch-up runs.
+"""Issue 6: a save that lands while another file's graph catch-up runs.
 
 Per round: save file A and wait until it is searchable; wait for the keeper's
 ``[keeper] graph catch-up start paths=<A>`` line in engine.log (it comes after

@@ -1,4 +1,4 @@
-﻿"""Doctor exit codes and repair classification."""
+"""Doctor exit codes and repair classification."""
 
 from __future__ import annotations
 

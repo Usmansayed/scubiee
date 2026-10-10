@@ -1,4 +1,4 @@
-﻿"""Doctor / certify CLI contract tests."""
+"""Doctor / certify CLI contract tests."""
 
 from __future__ import annotations
 

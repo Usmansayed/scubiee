@@ -1,4 +1,4 @@
-﻿"""Operator diagnostics: capabilities, liveness vs readiness, repair actions."""
+"""Operator diagnostics: capabilities, liveness vs readiness, repair actions."""
 
 from __future__ import annotations
 
