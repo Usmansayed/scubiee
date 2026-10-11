@@ -122,10 +122,10 @@ Yes after setup. HuggingFace is only needed once for the model download.
 ## Windows
 
 **Access denied on upgrade/reinstall?**  
-`scubiee unlock-tool` → reinstall → `setup --repair`. **Not** Admin/reboot. See [Install & debug](./install-and-debug.md) / [Windows](./windows.md).
+`scubiee unlock-tool` → reinstall → `scubiee setup --repair`. **Not** Admin/reboot. See [Install & debug](./install-and-debug.md) / [Windows](./windows.md).
 
 **`No module named 'pipeline'`?**  
-Half-deleted uv tool env — unlock or `scripts/uninstall-uv-scubiee.ps1` / `repair-uv-scubiee.ps1`, then reinstall.
+Half-deleted uv tool env — `scubiee unlock-tool`, then `uv tool install --force scubiee`.
 
 **AMD discrete GPU?**  
 Yes via DirectML (`dml`). Verify with `scubiee setup --status`.

@@ -160,7 +160,7 @@ Details: [Windows guide](./windows.md) · [Uninstall on Windows](./uninstall-win
 
 **Cause:** Half-deleted uv tool env (install interrupted by locks).
 
-**Fix:** Same as Access denied → `unlock-tool` (if possible) or `scripts/uninstall-uv-scubiee.ps1` / `repair-uv-scubiee.ps1` → reinstall → `setup --repair`.
+**Fix:** Same as Access denied → `scubiee unlock-tool`, then `uv tool install --force scubiee`, then `scubiee setup --repair`.
 
 ---
 

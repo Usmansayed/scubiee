@@ -181,7 +181,7 @@ Conflicting/partial ORT install. Quit Cursor, `scubiee stop`, delete leftover `o
 
 ### faiss `cannot import name 'class_wrappers'`
 
-Incomplete `faiss-cpu` extract (Windows uv). Run `scripts/repair-uv-scubiee.ps1` or see [Windows guide](./windows.md).
+Incomplete `faiss-cpu` extract (Windows uv). Run `scubiee unlock-tool`, then `uv tool install --force scubiee`, or see [Windows guide](./windows.md).
 
 ---
 
