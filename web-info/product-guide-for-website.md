@@ -1,6 +1,6 @@
 # Scubiee — Product guide for website & marketing docs
 
-> **Version:** [0.3.14](https://pypi.org/project/scubiee/0.3.14/) (published on PyPI)  
+> **Package:** [Scubiee on PyPI](https://pypi.org/project/scubiee/)
 > **Audience:** website copywriters, product marketers, technical writers, and anyone drafting public-facing Scubiee pages.  
 > **Operator docs (end users):** [`../docs/web-info/README.md`](../docs/web-info/README.md)  
 > **Short marketing snippets:** [`website-content.md`](./website-content.md)  
@@ -56,7 +56,7 @@ Your code **never leaves your machine** for search and retrieval. The only netwo
 Scubiee turns your repository into continuously maintained, AI-ready context — semantic search, graph-aware retrieval, and live re-indexing — entirely on your hardware.
 
 **Elevator pitch (3 sentences):**  
-AI coding assistants are good at editing files you point them to, but bad at finding the *right* files in a large codebase. Scubiee indexes your repo locally, keeps it fresh as you code, and gives Cursor, Claude Code, Copilot, and other tools MCP-powered **map**, **focus**, and **grep** capabilities so agents search by meaning—not random grepping. Setup takes minutes; everything stays offline after the initial model download.
+AI coding assistants are good at editing files you point them to, but bad at finding the *right* files in a large codebase. Scubiee indexes your repo locally, keeps it fresh as you code, and gives Cursor, Claude Code, Copilot, and other tools one MCP tool, **map** (`find` or `focus`), so agents search by meaning—not random grepping. Setup takes minutes; everything stays offline after the initial model download.
 
 ---
 
@@ -83,7 +83,7 @@ Scubiee addresses discovery and freshness **locally**, as a layer **under** the 
 
 ## The solution in one paragraph
 
-Scubiee runs a **local daemon** on your machine that maintains an **index** of each enrolled repository: parsed code structure, text chunks, embedding vectors, and graph relationships (imports, calls). A thin **MCP server** connects your AI tool to that daemon. When the agent asks “where is billing handled?”, Scubiee returns **ranked locations** (`map`) and **focused code spans** (`focus`) from the index—not from guessing filenames. When you edit or pull changes, **incremental sync** updates the index in the background. One **`scubiee connect`** command wires MCP configs and agent rules for Cursor, Copilot, Kiro, and other supported tools.
+Scubiee runs a **local daemon** on your machine that maintains an **index** of each enrolled repository: parsed code structure, text chunks, embedding vectors, and graph relationships (imports, calls). A thin **MCP server** connects your AI tool to that daemon. When the agent asks “where is billing handled?”, Scubiee returns **ranked locations** (`map` config `find`) or a **known symbol's span** (`map` config `focus`) from the index—not from guessing filenames. When you edit or pull changes, **incremental sync** updates the index in the background. One **`scubiee connect`** command wires MCP configs and agent rules for Cursor, Copilot, Kiro, and other supported tools.
 
 ---
 
@@ -148,7 +148,7 @@ Explain these clearly on the **How it works** and **Docs** pages.
 
 A local HTTP service (default `http://127.0.0.1:8765`) that:
 
-- Serves search, grep, and index operations to MCP and CLI.
+- Serves search and index operations to the MCP server and the CLI.
 - Runs **background sync** for enrolled repos.
 - Respects **resource limits** (RAM admission, embed batching).
 - Is restarted by a lightweight **watchdog** if it crashes.
@@ -159,7 +159,7 @@ A local HTTP service (default `http://127.0.0.1:8765`) that:
 
 ### 5. MCP (Model Context Protocol)
 
-Standard protocol for AI tools to call external capabilities. Scubiee registers as server name **`scubiee`** with tools like `map`, `focus`, `grep`. The agent calls these instead of (or before) naive file grepping.
+Standard protocol for AI tools to call external capabilities. Scubiee registers as server name **`scubiee`** with three tools: **`map`** (configs `find` and `focus`), **`gate`**, and **`status`**. Exact text and path lookups stay on the host IDE's Grep, Glob, and Read.
 
 ---
 
@@ -183,7 +183,7 @@ Use this as the **Getting started** page narrative.
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
 │  STEP 1 — INSTALL (once)                                        │
-│  uv tool install scubiee==0.3.14                                │
+│  uv tool install scubiee                                        │
 └────────────────────────────┬────────────────────────────────────┘
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
@@ -211,7 +211,7 @@ Use this as the **Getting started** page narrative.
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  STEP 5 — DAILY USE                                             │
-│  Agent: gate() → map("auth middleware") → focus(target)         │
+│  Agent: gate() → map config=find or config=focus                │
 │  You:  scubiee sync . after git pull                            │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -235,7 +235,7 @@ Use this as the **Getting started** page narrative.
 │  Your AI IDE         │  Cursor, Copilot, Kiro, Claude Code, …
 │  (MCP client)        │
 └──────────┬───────────┘
-           │  MCP stdio  (tools: map, focus, grep, …)
+           │  MCP stdio  (tools: map, gate, status)
            ▼
 ┌──────────────────────┐
 │  scubiee-mcp         │  Thin adapter; session + repo binding
@@ -279,12 +279,12 @@ Use these as **feature cards** or expandable sections.
 - Search by **meaning**, not exact text: “session validation middleware” finds relevant handlers even without those exact words.
 - Powered by **CodeRankEmbed** + **FAISS** vector index.
 - CLI: `scubiee search "query" .`
-- MCP: `map(query)` for overview, `focus(target)` for code bodies.
+- MCP: `map` `config=find` returns ranked locations. The top symbol's full code is inlined only when confidence is high or medium and that hit is a symbol; low confidence may be locations and matching lines without the body. `config=focus`, when the name resolves, includes the body by default (`include_bodies=false` omits it), caller hits when found, same-file callees, and sibling names when other top-level symbols exist. An unresolved name is an error.
 
 ### Graph-aware retrieval
 
 - Understands **imports, callers, callees**, and file structure—not isolated text blobs.
-- `focus(mode=neighbors)` and `focus(mode=call_sites)` expose relationships.
+- `map` `config=focus`, when the symbol resolves, includes the body by default and reports caller hits when found, same-file callees, and sibling names when available. There is no `mode` parameter.
 - Helps agents follow real code flow instead of random adjacent files.
 
 ### Live incremental indexing
@@ -296,7 +296,7 @@ Use these as **feature cards** or expandable sections.
 ### Hybrid retrieval
 
 - Combines **dense vectors**, **lexical** match, and **graph** signals.
-- Exact literals still available via MCP `grep` and CLI search modes.
+- Exact text and path lookups use the host IDE's Grep, Glob, and Read, not an MCP tool.
 
 ### Multi-tool MCP connectivity
 
@@ -356,18 +356,14 @@ Default **`phase` / ship** surface (Cursor and most installs). Full reference: [
 |------|---------------------|------------------------|
 | **`gate`** | Tiny “is this repo ready?” check | (automatic at chat start) |
 | **`status`** | Full health: managed, warming, paused | “Can I use Scubiee in this workspace?” |
-| **`map`** | Ranked map of where to look | “Where is OAuth handled?” |
-| **`pack_context`** | Lean heatmap around a seed | “Pack context for this function” |
-| **`expand_context`** | Grow callees/callers | “Who calls this?” |
-| **`collect_hot_context`** | Optional batched bodies | “Pull bodies for these hot ids” |
-| **`workspace`** | Session memory — pins, heatmap | “What did we already look at?” |
-| **`expand`** | Re-open a previous code span | (follow-up without re-searching) |
+| **`map`** `config=find` | Ranked locations. Top symbol's code inline only on high or medium confidence | “Where is OAuth handled?” |
+| **`map`** `config=focus` | Resolved symbol's body by default, plus callers, same-file callees, and siblings when available | “Show `charge` and what calls it” |
 
-Exact/name lookup stays on the host (Grep/Glob/Read). Classic MCP `focus`/`grep`/`glob` are opt-in only.
+`focus` is a configuration of `map`, not a separate tool. Exact text and path lookups stay on the host IDE's Grep, Glob, and Read.
 
 **Recommended agent flow (for docs page):**
 
-`gate()` → `map(query)` → `focus(target)` → edit → `scubiee sync` if needed
+`gate()` once → `map` with `config=find` or `config=focus` → edit → `scubiee sync` if needed
 
 **Anti-patterns to document:**
 
@@ -468,7 +464,7 @@ Full guide: [`../docs/web-info/repo-lifecycle.md`](../docs/web-info/repo-lifecyc
 
 ```bash
 # Install (recommended)
-uv tool install --force scubiee==0.3.14 --index-url https://pypi.org/simple --refresh
+uv tool install scubiee
 
 # One-time machine setup
 scubiee setup --repair
@@ -616,7 +612,7 @@ Use as testimonial placeholders or case-study outlines.
 | `scubiee activate` (per-repo unpause) | `scubiee resume` for per-repo |
 | Managed / unmanaged | “Indexed” alone (ambiguous) |
 
-**Version in copy:** Pin **`0.3.14`** in install examples until the next release bump.
+**Version in copy:** Install examples use unpinned `uv tool install scubiee` (do not pin `scubiee==0.3.14`).
 
 ---
 
