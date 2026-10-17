@@ -484,10 +484,18 @@ def _noncode_spans(rel: str) -> dict[int, list[tuple[int, int]]]:
             if hasattr(token, nm):
                 noncode.add(getattr(token, nm))
         try:
-            for tok in tokenize.generate_tokens(io.StringIO(_text(rel)).readline):
+            # A file with NUL bytes makes the C tokenizer raise SyntaxError
+            # ("source code cannot contain null bytes"), which surfaces as a
+            # SystemError from _make — NOT one of the tokenize/Syntax errors, so
+            # it escaped the guard and crashed find for any query whose results
+            # touched such a file. Strip NULs first, and catch broadly: this pass
+            # is a best-effort string/comment mask; on any tokenizer failure we
+            # just return no spans (treat the file as all code), never crash.
+            text = _text(rel).replace("\x00", "")
+            for tok in tokenize.generate_tokens(io.StringIO(text).readline):
                 if tok.type in noncode:
                     add(tok.start[0], tok.start[1], tok.end[0], tok.end[1])
-        except (tokenize.TokenError, IndentationError, SyntaxError):
+        except Exception:  # noqa: BLE001 — best-effort mask, never fatal
             pass
     else:
         for i, line in enumerate(src, 1):

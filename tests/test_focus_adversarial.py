@@ -90,3 +90,25 @@ def test_hostile_targets_degrade_not_crash(repo, bad):
 def test_junk_still_returns_none(repo):
     for junk in ("123abc", "!!!", "", "   "):
         assert H._resolve_symbol_name(junk) is None
+
+
+def test_noncode_spans_survives_null_bytes(tmp_path, monkeypatch):
+    # A source file containing NUL bytes made the C tokenizer raise a SystemError
+    # that escaped the guard and crashed find for ANY query whose results touched
+    # the file. _noncode_spans must degrade to [] spans, never raise.
+    monkeypatch.setattr(H, "REPO", tmp_path)
+    H._NONCODE.clear(); H._LINES.clear(); H._TEXT.clear()
+    (tmp_path / "nul.py").write_bytes(b"def before():\n    pass\n\x00\x00\ndef after():\n    pass\n")
+    spans = H._noncode_spans("nul.py")  # must not raise
+    assert isinstance(spans, dict)
+    # _code_text (what find calls) must also survive
+    txt = H._code_text("nul.py", 1, 5)
+    assert isinstance(txt, str)
+
+
+def test_find_survives_regex_metachar_queries(repo):
+    # Natural-language queries with regex metachars / SQL / parens must not crash
+    # find (they are not patterns; find is semantic).
+    for q in ["SELECT * FROM t; DROP TABLE u;--", "(((((", ".*.*.*", "[a-z]+$", "\\n\\t"]:
+        out = S.cfg_find({"query": q})
+        assert isinstance(out, str)
