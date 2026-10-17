@@ -1996,7 +1996,19 @@ def uninstall_tool(
     repo: Path | str | None = None,
     all_workspaces: bool = True,
 ) -> dict[str, Any]:
-    from pipeline.connect_state import load_connected_tools, remove_connected_tool
+    # connect_state may already be gone when this runs late in a `wipe` (the
+    # package is being uninstalled). The valuable work here is removing the
+    # tool's MCP config + rules from disk — that must NOT fail just because the
+    # machine-wide connect-state module can no longer be imported. Degrade to
+    # no-op state helpers if the module is missing.
+    try:
+        from pipeline.connect_state import load_connected_tools, remove_connected_tool
+    except Exception:  # noqa: BLE001
+        def load_connected_tools() -> list[str]:  # type: ignore[misc]
+            return []
+
+        def remove_connected_tool(_slug: str) -> list[str]:  # type: ignore[misc]
+            return []
 
     target_repo = _connect_repo(repo)
     project_paths = resolve_mcp_project_paths(tool, target_repo)

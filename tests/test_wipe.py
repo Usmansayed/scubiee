@@ -810,3 +810,28 @@ def test_wipe_all_package_removes_mcp_bridge_shims(tmp_path: Path, monkeypatch) 
     assert out["ok"] is True
     for name in ("scubiee", "scubiee-mcp", "scubiee-mcp-bridge"):
         assert not (bin_dir / name).exists(), name
+
+
+def test_uninstall_tool_survives_missing_connect_state(monkeypatch, tmp_path):
+    """Late in a `wipe`, the scubiee package is being uninstalled, so a lazy
+    `import pipeline.connect_state` can fail with ModuleNotFoundError. The
+    tool's MCP-config/rule removal must still run — not abort with
+    '✗ MCP configs removed  No module named pipeline.connect_state'.
+    """
+    import builtins
+
+    from pipeline.rules_installer import uninstall_tool
+    from pipeline.tool_registry import get_tool
+
+    real_import = builtins.__import__
+
+    def blocked(name, *a, **k):
+        if name == "pipeline.connect_state" or name.endswith(".connect_state"):
+            raise ModuleNotFoundError("No module named 'pipeline.connect_state'")
+        return real_import(name, *a, **k)
+
+    monkeypatch.setattr(builtins, "__import__", blocked)
+    tool = get_tool("cursor")
+    # Must not raise despite connect_state being unimportable.
+    report = uninstall_tool(tool, dry_run=True, repo=str(tmp_path))
+    assert report["ok"] is True

@@ -518,17 +518,46 @@ def cmd_wipe(args: argparse.Namespace) -> int:
     confirmed = bool(getattr(args, "confirm", False))
     is_tty = sys.stdout.isatty()
 
+    # Pre-flight: on Windows a running IDE (Cursor/Kiro/Claude) holds the MCP
+    # bridge/worker, which locks files AND keeps `pipeline` importable mid-wipe.
+    # If we detect that, warn in the confirm prompt UP FRONT so the user can quit
+    # the IDE first — instead of discovering leftover files only after the wipe.
+    def _ide_lock_warning() -> list[str]:
+        try:
+            from pipeline.process_control import enumerate_scubiee_processes
+
+            procs = enumerate_scubiee_processes(exclude_self=True)
+            mcp = [
+                p for p in procs
+                if "mcp" in str(p.get("cmdline", "")).lower()
+                or "mcp" in os.path.basename(str(p.get("exe", ""))).lower()
+            ]
+            if mcp:
+                return [
+                    f"An IDE is still holding {len(mcp)} Scubiee MCP process(es). "
+                    "For a fully clean wipe, QUIT Cursor/Kiro/Claude first so file "
+                    "locks release — otherwise some files may remain and you'll "
+                    "need to re-run wipe.",
+                ]
+        except Exception:  # noqa: BLE001
+            pass
+        return []
+
     # Interactive confirmation for --all without --confirm
     if bool(getattr(args, "all", False)) and not confirmed and is_tty:
         from pipeline.cli_ui import confirm_action
 
-        if not confirm_action(
-            "Wipe ALL Scubiee data?",
-            details=[
-                "Stubs MCP, kills processes, unlocks files, deletes everything.",
-                "Cursor/Claude can stay open. This cannot be undone.",
-            ],
-        ):
+        details = [
+            "Stubs MCP, kills processes, unlocks files, deletes everything.",
+            "This cannot be undone.",
+        ]
+        ide_warn = _ide_lock_warning()
+        if ide_warn:
+            details = ide_warn + details
+        else:
+            details.append("Cursor/Claude can stay open.")
+
+        if not confirm_action("Wipe ALL Scubiee data?", details=details):
             print("  Cancelled.\n", file=sys.stderr)
             return 0
         confirmed = True
