@@ -2314,6 +2314,26 @@ def main(argv: list[str] | None = None) -> int:
             pass
         return 0
 
+    # Friendly first-run hint: bare `scubiee` with no subcommand on a terminal
+    # should point newcomers at the getting-started path instead of dumping the
+    # dense argparse usage wall + "the following arguments are required: cmd".
+    if not raw and (sys.stdout.isatty() or sys.stderr.isatty()):
+        try:
+            from pipeline.cli_ui import info, kv
+        except Exception:  # noqa: BLE001
+            info = kv = None  # type: ignore[assignment]
+        if info is not None and kv is not None:
+            sys.stderr.write("\n")
+            info("Scubiee - local AI code context engine", stream=sys.stderr)
+            sys.stderr.write("\n")
+            kv("1. scubiee setup", "set up this machine once (downloads the model)", stream=sys.stderr)
+            kv("2. scubiee init .", "index a repo (run inside the repository)", stream=sys.stderr)
+            kv("3. scubiee connect --cursor", "wire up your IDE (or --claude-code, --kiro, --all)", stream=sys.stderr)
+            sys.stderr.write("\n")
+            info("See all commands with `scubiee --help`.", stream=sys.stderr)
+            sys.stderr.write("\n")
+            return 1
+
     if not _argv_skips_ctx_home_guard(argv):
         from pipeline.ctx_home_guard import enforce_ctx_home_or_exit
 

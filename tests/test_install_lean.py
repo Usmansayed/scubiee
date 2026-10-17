@@ -92,6 +92,49 @@ def test_apply_lean_uninstalls_older_and_rewrites_mcp(tmp_path: Path) -> None:
     assert report["mcp_rewritten"] == [str(mcp)]
 
 
+def test_apply_lean_never_uninstalls_running_interpreter() -> None:
+    """The pip copy the current process runs from must NEVER be scrubbed.
+
+    Regression for the Windows self-corruption bug: when a uv-tool copy is the
+    keeper on a version tie but the live process is the pip copy, scrubbing it
+    mid-command renames `pipeline` -> `~ipeline` and breaks the running CLI.
+    """
+    import sys
+
+    running_pip = Install(
+        prefix=str(Path(sys.executable).parent),
+        python=sys.executable,
+        version="0.3.151",
+        kind="pip",
+    )
+    uv = Install(
+        prefix="C:/uv/scubiee",
+        python="C:/uv/scubiee/Scripts/python.exe",
+        version="0.3.151",  # tie -> uv-tool chosen as keeper
+        kind="uv-tool",
+    )
+    calls: list[str] = []
+
+    def _fake_uninstall(python: str) -> dict:
+        calls.append(python)
+        return {"ok": True, "python": python}
+
+    report = apply_lean(
+        installs=[running_pip, uv],
+        uninstall=_fake_uninstall,
+        mcp_paths=[],
+        build_id="0.3.151-test",
+    )
+    # The running interpreter must not have been handed to uninstall.
+    assert calls == []
+    assert report["keeper"]["kind"] == "uv-tool"
+    skipped = [r for r in report["removed"] if r.get("reason") == "running_interpreter"]
+    assert len(skipped) == 1
+    assert skipped[0]["python"] == sys.executable
+    # Skipping the live interpreter is not a failure.
+    assert report["ok"] is True
+
+
 def test_retarget_leaves_keeper_command(tmp_path: Path) -> None:
     mcp = tmp_path / "mcp.json"
     cmd = "C:/uv/scubiee/Scripts/pythonw.exe"

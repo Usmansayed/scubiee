@@ -2585,13 +2585,26 @@ def _ensure_coderank_int8(progress: Any | None = None) -> Path | None:
         print("[accel] Quantizing CodeRank to INT8 for CPU inference...", file=sys.stderr, flush=True)
 
     try:
+        import logging as _logging
+
         from onnxruntime.quantization import QuantType, quantize_dynamic
 
-        quantize_dynamic(
-            str(source),
-            str(int8_path),
-            weight_type=QuantType.QInt8,
-        )
+        # onnxruntime's quantizer logs a benign "consider pre-processing before
+        # quantization" advisory to the ROOT logger, which otherwise leaks as a
+        # raw `WARNING:root:...` line into our clean setup progress UI. Silence
+        # the root logger for just this call — the advice does not apply to our
+        # dynamic weight-only quantization and we never want users to see it.
+        _root = _logging.getLogger()
+        _prev_level = _root.level
+        _root.setLevel(_logging.ERROR)
+        try:
+            quantize_dynamic(
+                str(source),
+                str(int8_path),
+                weight_type=QuantType.QInt8,
+            )
+        finally:
+            _root.setLevel(_prev_level)
         size_mb = int8_path.stat().st_size / 1024 / 1024
         if progress is None:
             print(f"[accel] INT8 model ready ({size_mb:.0f} MB)", file=sys.stderr, flush=True)

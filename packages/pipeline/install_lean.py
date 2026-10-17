@@ -381,10 +381,21 @@ def _uninstall(python: str) -> dict[str, Any]:
 
 
 def uninstall_pip_copies() -> list[dict[str, Any]]:
-    """Uninstall pip/conda copies. Leaves the uv tool install for wipe/upgrade."""
+    """Uninstall pip/conda copies. Leaves the uv tool install for wipe/upgrade.
+
+    Never uninstalls the interpreter this process is running from: scrubbing the
+    live interpreter's own package on Windows corrupts it mid-command (the files
+    are locked, leaving a half-renamed `~name` dir). Consolidation of the current
+    install happens only after re-exec into the keeper.
+    """
     rows: list[dict[str, Any]] = []
     for item in discover_installs():
         if item.kind == "uv-tool":
+            continue
+        if _same_prefix(item.python, sys.executable):
+            rows.append(
+                {"python": item.python, "skipped": True, "reason": "running_interpreter"}
+            )
             continue
         rows.append(_uninstall(item.python))
     return rows
@@ -421,6 +432,18 @@ def apply_lean(
     do_uninstall = uninstall or _uninstall
     for item in found:
         if _same_prefix(item.python, keeper.python):
+            continue
+        # NEVER uninstall the interpreter this very process is running from.
+        # On Windows the live interpreter locks its own package files, so a
+        # `pip uninstall` mid-command leaves the package half-renamed (`~name`)
+        # and unimportable — breaking the running command (and every later one)
+        # with a cryptic `No module named 'pipeline'`. If the current process is
+        # not the keeper, the consolidation happens after we re-exec into the
+        # keeper (see maybe_reexec_newer_uv); scrubbing it here is never safe.
+        if _same_prefix(item.python, sys.executable):
+            removed.append(
+                {"python": item.python, "skipped": True, "reason": "running_interpreter"}
+            )
             continue
         if version_key(item.version) > version_key(keeper.version):
             continue
