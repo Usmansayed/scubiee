@@ -59,6 +59,13 @@ the code ever disagree, the code wins.
 
 ## macOS
 
+- **[`scubiee-macos-handoff-0.3.148.md`](scubiee-macos-handoff-0.3.148.md)** —
+  the current handoff: everything validated on Apple Silicon/MLX for the
+  0.3.146→0.3.148 work (critical init-crash fix, multi-language focus/find, every
+  CLI/MCP command, exhaustive sync lanes, response times), plus an explicit list
+  of what is NOT yet covered (first-run setup, publish credentials, Intel/Windows/
+  Linux, 100k+ repos). **Start here.**
+
 - **[`scubiee-macos-changelog-0.3.146.md`](scubiee-macos-changelog-0.3.146.md)** —
   what changed in 0.3.146: the one fix (pin `requires-python>=3.11`) that kills the
   intermittent MLX init heap-corruption crash, plus the kept MLX hygiene changes.
