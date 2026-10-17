@@ -132,3 +132,46 @@ def test_indexer_skips_ide_dotdirs_like_merkle(tmp_path):
     found = {p.relative_to(tmp_path).as_posix() for p in collect_index_paths(tmp_path)}
     assert "packages/pkg/mod.py" in found
     assert not any(p.startswith(".") for p in found)
+
+
+def test_binary_and_non_utf8_files_excluded(tmp_path):
+    """A file with a source extension but binary / non-UTF-8 bytes must NOT be
+    collected — it would otherwise reach the strict-utf-8 extractor and abort
+    indexing for the WHOLE repo (bug-bounty finding #6)."""
+    # good, decodable source files — must be kept
+    (tmp_path / "good.py").write_text("def ok():\n    return 1\n", encoding="utf-8")
+    (tmp_path / "cjk.py").write_text("def \u540d\u524d():\n    return 1\n", encoding="utf-8")
+    (tmp_path / "bom.py").write_bytes(b"\xef\xbb\xbfdef bom():\n    return 1\n")
+    # hostile files with a .py extension — must be excluded
+    (tmp_path / "binary.py").write_bytes(bytes(range(256)) * 50)        # NUL bytes
+    (tmp_path / "badenc.py").write_bytes(b"\xff\xfe\x80\x81def x(): pass")  # invalid utf-8
+    (tmp_path / "empty.py").write_bytes(b"")                            # empty is fine
+
+    found = {
+        p.relative_to(tmp_path).as_posix()
+        for p in collect_index_paths(tmp_path)
+    }
+    # decodable text is indexed
+    assert "good.py" in found
+    assert "cjk.py" in found
+    assert "bom.py" in found
+    assert "empty.py" in found
+    # binary / non-utf-8 is excluded so it can't abort the whole index
+    assert "binary.py" not in found
+    assert "badenc.py" not in found
+
+
+def test_is_probably_text_classifies_correctly(tmp_path):
+    from pipeline.paths import _is_probably_text
+
+    cases = {
+        "a.py": (b"def ok(): return 1", True),
+        "nul.py": (bytes(range(256)) * 10, False),
+        "bad.py": (b"\xff\xfe\x80\x81x", False),
+        "empty.py": (b"", True),
+        "bom.py": (b"\xef\xbb\xbfdef f(): pass", True),
+    }
+    for name, (data, expected) in cases.items():
+        p = tmp_path / name
+        p.write_bytes(data)
+        assert _is_probably_text(p) is expected, name

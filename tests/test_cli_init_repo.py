@@ -224,3 +224,31 @@ def test_init_accepts_fast_roots(tmp_path: Path, monkeypatch):
     assert rc == 0
     assert captured.get("fast") is True
     assert captured.get("fast_roots") == ["src", "packages"]
+
+
+def test_init_bad_path_returns_clean_error_not_traceback(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    """A bad path (typo / a file instead of a dir) must produce a CLEAN JSON
+    error and exit 1 — never re-raise a raw Python traceback at the user
+    (bug-bounty finding #2). Non-TTY (capsys) is the path that used to `raise`.
+    """
+    repo = tmp_path / "app"
+    repo.mkdir()
+    monkeypatch.setattr("pipeline.accel.load_accel", lambda: object())
+
+    def boom(*_a, **_k):
+        # the real trigger: resolve_project raises this on a nonexistent path
+        raise FileNotFoundError("not a directory: C:\\nope\\typo")
+
+    monkeypatch.setattr("pipeline.repo_lifecycle.initialize_repo", boom)
+
+    rc = cli.cmd_init(
+        argparse.Namespace(path=str(repo), no_index=False, allow_once=False)
+    )
+    out = capsys.readouterr().out
+    # clean structured error, exit 1, and the message carried through
+    assert rc == 1
+    payload = json.loads(out)
+    assert payload["ok"] is False
+    assert "not a directory" in payload["error"]

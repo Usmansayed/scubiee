@@ -1489,11 +1489,17 @@ def cmd_init(args: argparse.Namespace) -> int:
             return _fail_confirm(root, exc)
         return _fail_confirm(root, exc) if not is_tty else 2
     except Exception as exc:  # noqa: BLE001
+        # A bad path (typo, a file instead of a dir) or any init failure must be
+        # a CLEAN error, never a raw Python traceback dumped at the user. The
+        # non-TTY branch used to re-raise, which surfaced the full stack trace
+        # on a common mistake like `scubiee init C:\typo`. Emit a structured
+        # error (matching the out.get("error") convention) and exit 1 instead.
         if is_tty:
             bar.fail(f"Init failed: {str(exc)[:80]}", hint="Run: scubiee init .")
         else:
             bar.fail(str(exc))
-            raise
+            print(json.dumps({"ok": False, "root": str(root), "error": str(exc)},
+                             indent=2, default=str))
         return 1
     finally:
         # Restore stderr and env vars
