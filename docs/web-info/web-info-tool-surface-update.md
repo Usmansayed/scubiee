@@ -164,6 +164,7 @@ Glob — not Scubiee tools.
       "status, map, focus, grep, glob, workspace").
 - [ ] Docs "Facts any assistant needs" includes the one-tool-two-configs fact.
 - [ ] Every "recommended flow" reads `status → map find | map focus → edit → sync`.
+- [ ] Docs page says **Python 3.11+** everywhere (not 3.10+) — matches `requires-python >=3.11`.
 - [ ] No doc advertises `related`/`graph`/`pack`/`expand`/`refs`/`around`/`outline` as callable
       surface (hidden-fallback mention is OK in the design doc only).
 - [ ] CLI references say `scubiee map --config find|focus`.
@@ -175,9 +176,24 @@ Glob — not Scubiee tools.
 
 ## 5b. scubiee.com/docs/ — exact changes
 
-The docs page (https://scubiee.com/docs/) has the stale multi-tool surface in **two** spots. Only
-these two change; everything else on that page (install / setup / init / connect, the four layers,
-profile table, daemon, time expectations, troubleshooting) is accurate — leave it.
+The docs page (https://scubiee.com/docs/) has the stale multi-tool surface plus a stale Python
+version. The surface fixes are below; everything else on that page (install / setup / init /
+connect, the four layers, profile table, daemon, time expectations, troubleshooting) is accurate —
+leave it.
+
+### 5b.0 Python version — REPLACE (added for v0.3.146+)
+The install floor was raised to **Python 3.11** in v0.3.146 (`requires-python = ">=3.11"`), which
+killed a Python-3.10/numpy-2.2 ABI crash at index time. A user on 3.10 is now refused at install.
+The docs page says "Python 3.10+" in the intro (and the "Facts any assistant needs" wording implies
+it). Change **every** "Python 3.10+" → **"Python 3.11+"**.
+
+**Current:**
+> …Scubiee is a local context engine … You need **Python 3.10+**. You do not need to clone the
+> GitHub repo — install from PyPI.
+
+**New:**
+> …Scubiee is a local context engine … You need **Python 3.11+**. You do not need to clone the
+> GitHub repo — install from PyPI.
 
 ### 5b.1 Intro sentence
 **Current:**
