@@ -148,16 +148,30 @@ def cfg_find(a: dict) -> str:
 
 
 def _resolve_one(target: str) -> dict | None:
-    """Resolve a single name / file::symbol / file:line to a located symbol."""
+    """Resolve a single name / file::symbol / file:line / file:a-b to a located
+    symbol OR an explicit span."""
     loc = _locate_target(str(target))
     if "error" in loc:
         if "::" not in str(target) and ":" not in str(target):
             loc = _resolve_symbol_name(str(target))
         else:
             loc = None
-    if not loc or not loc.get("symbol"):
+    if not loc:
         return None
-    return loc
+    if loc.get("symbol"):
+        return loc
+    # A `file:a-b` range target has no enclosing symbol but IS a valid span the
+    # caller asked for explicitly. Accept it as a span loc (focus prints the
+    # lines) instead of rejecting it as unresolved — _locate_target already set
+    # start/end for an explicit range. (A bare `file` with start=None is still
+    # rejected: there's nothing to show.)
+    if loc.get("start") is not None and loc.get("end") is not None:
+        # Give the span a label so the fuzzy-check and body rendering (which do
+        # str(loc["symbol"])) stay correct instead of printing "None".
+        if not loc.get("symbol"):
+            loc["symbol"] = f"L{loc['start']}-{loc['end']}"
+        return loc
+    return None
 
 
 def cfg_focus(a: dict) -> str:

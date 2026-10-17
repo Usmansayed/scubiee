@@ -586,9 +586,19 @@ def _enclosing(rel: str, line: int) -> dict | None:
     return best
 
 
+def _safe_is_file(p: Path) -> bool:
+    """Path.is_file() but never raises. An over-long or otherwise invalid path
+    (e.g. a 5000-char junk target -> ENAMETOOLONG) makes os.stat raise OSError on
+    some platforms; that must mean "no such file here", not crash the resolver."""
+    try:
+        return p.is_file()
+    except (OSError, ValueError):
+        return False
+
+
 def _resolve_file(given: str) -> tuple[str | None, list[str]]:
     g = _norm(given)
-    if g and _abs(g).is_file():
+    if g and _safe_is_file(_abs(g)):
         return g, []
     files = _repo_files()
     cands = [f for f in files if f.endswith("/" + g) or f == g]
@@ -1107,24 +1117,50 @@ def _parse_target(t: str) -> tuple[str, str | None, int | None, int | None]:
     return t, None, None, None
 
 
+def _is_unicode_identifier(ident: str) -> bool:
+    """True for a non-ASCII but otherwise valid identifier (Python/Go/etc. allow
+    Unicode letters: αβ, École, méthode). Uses str.isidentifier() as the base
+    check, also accepting a leading `$` / `$` anywhere (JS/TS). Guards against
+    names that are pure punctuation or contain whitespace."""
+    if not ident or ident.isspace():
+        return False
+    probe = ident.replace("$", "_")  # treat $ as an id char for the check
+    return probe.isidentifier()
+
+
 def _resolve_symbol_name(name: str) -> dict | None:
     """Find where a BARE symbol name (no file path) is defined, so relation kinds
     like `refs kind=callers names=["git_dirty_files"]` work without the caller
     knowing the file. Prefer a real def site in code/packages; fall back to the
     top semantic hit's enclosing symbol."""
     ident = name.split(".")[-1].strip()
-    if not ident or not re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", ident):
+    # Accept any identifier that is valid in SOME supported language, not just
+    # ASCII: Python/Go/etc. allow Unicode letters (αβ, École), and JS/TS allow
+    # `$` (RxJS `data$`, jQuery `$el`, generated code). Previously the ASCII-only
+    # gate made focus report "could not resolve" for every such symbol even
+    # though the outline extracted it. Guard only against obvious non-identifiers
+    # (empty, whitespace, leading digit, punctuation-only).
+    if not ident or ident[0].isdigit():
+        return None
+    _ascii_ident = re.match(r"^[A-Za-z_$][A-Za-z0-9_$]*$", ident) is not None
+    if not _ascii_ident and not _is_unicode_identifier(ident):
         return None
     esc = re.escape(ident)
+    # `$` and Unicode letters are not \w, so a trailing/leading `\b` fails to
+    # anchor names like `data$` or `École`. Use lookarounds that treat `$` and
+    # any identifier char as part of the token. Outline confirmation below is
+    # authoritative, so the grep only needs to surface candidate lines.
+    lb = r"(?<![\w$])"
+    rb = r"(?![\w$])"
     # Keyword-led definitions (Python def/class, JS/TS function/class, Go func,
     # Rust fn/struct/enum/trait/impl, Ruby def/class/module, Kotlin fun, etc.).
     kw = (r"^\s*(?:(?:pub|public|private|protected|internal|static|final|async|"
           r"export|default|abstract|override|open|suspend|inline|const)\s+)*"
           r"(?:def|class|function|func|fn|struct|enum|trait|impl|interface|module|"
-          r"type|object|record|val|var|fun)\s+" + esc + r"\b")
+          r"type|object|record|val|var|fun)\s+" + esc + rb)
     # Keyword-LESS definitions: Java/C/C++/C# methods `... NAME(` where NAME is
     # immediately followed by `(` (declaration), and type-y `... NAME {`.
-    nodecl = r"\b" + esc + r"\s*[(<]"
+    nodecl = lb + esc + r"\s*[(<]"
     patterns = [kw, nodecl]
     hits: list[dict] = []
     seen_lines: set = set()
@@ -1179,7 +1215,7 @@ def _resolve_symbol_name(name: str) -> dict | None:
     # confirm — the outline is authoritative, so this adds recall without false
     # positives. Ranked code-first, tests included (same as above).
     try:
-        plain_hits, _ = _grep(r"\b" + esc + r"\b", max_hits=80, scope="code")
+        plain_hits, _ = _grep(lb + esc + rb, max_hits=80, scope="code")
     except Exception:  # noqa: BLE001
         plain_hits = []
     seen_files: set = set()
