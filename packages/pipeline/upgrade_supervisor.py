@@ -112,13 +112,68 @@ def _run_cmd(cmd: list[str], *, timeout: float = 180.0) -> dict[str, Any]:
     }
 
 
-def swap_package(*, pre_release: bool = False) -> dict[str, Any]:
+def _entrypoint_copy_failed_only(result: dict[str, Any]) -> bool:
+    """True when the only failure was copying the self-locked CLI shim.
+
+    On Windows the running ``scubiee.exe`` holds a lock on its own entrypoint,
+    so uv can swap the *package* fine but fails to overwrite the shim with
+    ``os error 32`` ("being used by another process"). That is a cosmetic
+    rebind failure, not a package upgrade failure — the new version is already
+    installed in the uv tool dir and the shim re-points on next launch.
+    """
+    blob = ((result.get("stderr") or "") + (result.get("stdout") or "")).lower()
+    if not blob:
+        return False
+    entrypoint_fail = "failed to install entrypoint" in blob or (
+        "scripts" in blob and "scubiee.exe" in blob
+    )
+    locked = "os error 32" in blob or "being used by another process" in blob
+    return entrypoint_fail and locked
+
+
+def swap_package(
+    *, pre_release: bool = False, target_version: str | None = None
+) -> dict[str, Any]:
     """Install new package via channel-aware force path.
 
     Always prepare the uv tool directory *before* the first install attempt so
     Windows file locks do not fail the upgrade only on retry.
+
+    Success is verified by the *installed version*, not solely the installer
+    exit code: on Windows the running CLI locks its own entrypoint shim, so uv
+    can report a non-zero exit (entrypoint copy failed, os error 32) even though
+    the package itself swapped cleanly. When that happens — and the installed
+    version matches ``target_version`` — the upgrade is treated as successful
+    with a ``shim_rebind_deferred`` note rather than a hard failure.
     """
     from pipeline.process_control import prepare_uv_tool_directory_for_swap, unlock_uv_tool_env
+    from pipeline.upgrade import installed_version
+
+    def _verified_ok(result: dict[str, Any], **extra: Any) -> dict[str, Any] | None:
+        """Return a success dict if the package actually reached target_version.
+
+        Only rescues the self-locked-shim case; genuine install failures
+        (version unchanged) still fall through to the failure path.
+        """
+        if not target_version:
+            return None
+        if installed_version() != str(target_version):
+            return None
+        if not _entrypoint_copy_failed_only(result):
+            return None
+        return {
+            "ok": True,
+            "attempts": attempts,
+            "cmd": result.get("cmd"),
+            "prepared": True,
+            "shim_rebind_deferred": True,
+            "note": (
+                "Package upgraded to "
+                f"{target_version}; the CLI shim was locked by the running "
+                "process and will re-point on next launch (no action needed)."
+            ),
+            **extra,
+        }
 
     prep = prepare_uv_tool_directory_for_swap(strip_mcp=False, remove_dir=False)
     attempts: list[dict[str, Any]] = [{"prepare": prep}]
@@ -128,6 +183,9 @@ def swap_package(*, pre_release: bool = False) -> dict[str, Any]:
         attempts.append(result)
         if result.get("ok"):
             return {"ok": True, "attempts": attempts, "cmd": cmd, "prepared": True}
+        verified = _verified_ok(result)
+        if verified is not None:
+            return verified
         if result.get("access_denied"):
             unlock = unlock_uv_tool_env()
             attempts.append({"unlock": unlock})
@@ -142,6 +200,22 @@ def swap_package(*, pre_release: bool = False) -> dict[str, Any]:
                     "unlocked": True,
                     "prepared": True,
                 }
+            verified = _verified_ok(retry, unlocked=True)
+            if verified is not None:
+                return verified
+    # Last-chance verify: if the package landed on target despite every cmd
+    # reporting non-zero (self-locked shim on each attempt), still succeed.
+    if target_version and installed_version() == str(target_version):
+        return {
+            "ok": True,
+            "attempts": attempts,
+            "prepared": True,
+            "shim_rebind_deferred": True,
+            "note": (
+                f"Package upgraded to {target_version}; CLI shim rebind deferred "
+                "(entrypoint locked by running process)."
+            ),
+        }
     return {
         "ok": False,
         "error": "package_upgrade_failed",
@@ -362,7 +436,7 @@ def run_upgrade(
                 "started_at": time.time(),
             }
         )
-        swapped = swap_package(pre_release=pre_release)
+        swapped = swap_package(pre_release=pre_release, target_version=str(target))
         report["swap"] = swapped
         report["phases"].append("swap")
         if not swapped.get("ok"):

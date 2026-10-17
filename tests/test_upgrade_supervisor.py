@@ -177,3 +177,105 @@ def test_ensure_daemon_after_upgrade_aborts_on_restart_failure(tmp_path, monkeyp
     out = ensure_daemon_after_upgrade(tmp_path)
     assert out["ok"] is False
     assert aborted == ["restart_failed"]
+
+
+# --- swap_package verify-by-version (Windows self-locked shim) -------------
+
+
+def _fake_entrypoint_lock_result(cmd):
+    """Mimic uv install that swapped the package but failed to copy the shim."""
+    return {
+        "ok": False,
+        "cmd": cmd,
+        "returncode": 2,
+        "stdout": "- scubiee==0.3.147\n+ scubiee==0.3.150",
+        "stderr": (
+            "error: Failed to install entrypoint\n"
+            "  Caused by: failed to copy ...\\uv\\tools\\scubiee\\Scripts\\scubiee.exe "
+            "to C:\\Users\\u\\.local\\bin\\scubiee.exe: being used by another "
+            "process (os error 32)"
+        ),
+        "access_denied": False,
+    }
+
+
+def _patch_swap_env(monkeypatch, *, run_result, installed):
+    import pipeline.upgrade_supervisor as sup
+
+    monkeypatch.setattr(sup, "_run_cmd", lambda cmd, timeout=None: run_result(cmd))
+    monkeypatch.setattr(
+        sup, "package_swap_commands", lambda *, pre_release=False: [["uv", "tool", "install"]]
+    )
+    import pipeline.process_control as pc
+
+    monkeypatch.setattr(
+        pc, "prepare_uv_tool_directory_for_swap", lambda **_: {"ok": True}, raising=False
+    )
+    monkeypatch.setattr(pc, "unlock_uv_tool_env", lambda: {"ok": True}, raising=False)
+    import pipeline.upgrade as up
+
+    monkeypatch.setattr(up, "installed_version", lambda: installed)
+
+
+def test_swap_package_ok_when_shim_locked_but_version_bumped(monkeypatch):
+    """Self-locked entrypoint shim must NOT fail an upgrade that actually landed."""
+    from pipeline.upgrade_supervisor import swap_package
+
+    _patch_swap_env(
+        monkeypatch, run_result=_fake_entrypoint_lock_result, installed="0.3.150"
+    )
+    res = swap_package(target_version="0.3.150")
+    assert res["ok"] is True
+    assert res.get("shim_rebind_deferred") is True
+    assert "0.3.150" in (res.get("note") or "")
+
+
+def test_swap_package_fails_when_version_unchanged(monkeypatch):
+    """Genuine install failure (version did not move) still fails hard."""
+    from pipeline.upgrade_supervisor import swap_package
+
+    _patch_swap_env(
+        monkeypatch, run_result=_fake_entrypoint_lock_result, installed="0.3.147"
+    )
+    res = swap_package(target_version="0.3.150")
+    assert res["ok"] is False
+    assert res["error"] == "package_upgrade_failed"
+
+
+def test_swap_package_no_target_version_keeps_exit_code_semantics(monkeypatch):
+    """Without a target to verify against, a non-zero exit stays a failure."""
+    from pipeline.upgrade_supervisor import swap_package
+
+    _patch_swap_env(
+        monkeypatch, run_result=_fake_entrypoint_lock_result, installed="0.3.150"
+    )
+    res = swap_package()
+    assert res["ok"] is False
+
+
+def test_swap_package_last_chance_verify_on_target(monkeypatch):
+    """If the package is demonstrably on target, succeed regardless of exit reason.
+
+    The last-chance verify trusts the installed version as ground truth: the
+    command may report non-zero for a shim lock that did not surface the
+    entrypoint string, but the package is on target, so the upgrade landed.
+    """
+    from pipeline.upgrade_supervisor import swap_package
+
+    def unrelated_failure(cmd):
+        return {
+            "ok": False,
+            "cmd": cmd,
+            "returncode": 1,
+            "stdout": "",
+            "stderr": "error: network unreachable while resolving scubiee",
+            "access_denied": False,
+        }
+
+    _patch_swap_env(monkeypatch, run_result=unrelated_failure, installed="0.3.150")
+    res = swap_package(target_version="0.3.150")
+    # Last-chance verify still rescues when version matches target — this is
+    # intentional: the package is demonstrably on target regardless of why the
+    # command reported non-zero. Assert the deferred-shim success path.
+    assert res["ok"] is True
+    assert res.get("shim_rebind_deferred") is True

@@ -2101,6 +2101,13 @@ def cmd_upgrade(args: argparse.Namespace) -> int:
                 success(f"On latest package ({new}); post-upgrade steps done", stream=sys.stderr)
             else:
                 success(f"Upgraded {old} → {new}", stream=sys.stderr)
+            swap = result.get("swap") or {}
+            if isinstance(swap, dict) and swap.get("shim_rebind_deferred"):
+                info(
+                    "CLI launcher was locked by the running process; it re-points "
+                    "to the new version automatically on next run (no action needed).",
+                    stream=sys.stderr,
+                )
             plan = result.get("plan") or {}
             for action in plan.get("actions") or []:
                 if action.get("action") == "skip":
