@@ -106,6 +106,35 @@ def test_noncode_spans_survives_null_bytes(tmp_path, monkeypatch):
     assert isinstance(txt, str)
 
 
+def test_lines_caps_huge_file(tmp_path, monkeypatch):
+    # A pathological huge file in a /v1/search hit must not be slurped whole into
+    # memory by the locate helpers. _lines caps the text at _MAX_FILE_BYTES so
+    # _noncode_spans/_code_text/_numbered stay bounded (never OOM, never stall).
+    monkeypatch.setattr(H, "REPO", tmp_path)
+    H._NONCODE.clear(); H._LINES.clear(); H._TEXT.clear()
+    big = "x = 1\n" * 600_000  # ~3.6 MB, well over the 2 MB cap
+    (tmp_path / "huge.py").write_text(big, encoding="utf-8")
+    lines = H._lines("huge.py")
+    assert sum(len(ln) + 1 for ln in lines) <= H._MAX_FILE_BYTES + 10
+    # downstream helpers stay safe on the capped content
+    assert isinstance(H._noncode_spans("huge.py"), dict)
+    assert isinstance(H._code_text("huge.py", 1, 50), str)
+
+
+def test_lines_caps_pathological_long_line(tmp_path, monkeypatch):
+    # One enormous single physical line (minified bundle / data blob) must be
+    # truncated so the per-line string/comment regex in _noncode_spans cannot go
+    # super-linear and stall find.
+    monkeypatch.setattr(H, "REPO", tmp_path)
+    H._NONCODE.clear(); H._LINES.clear(); H._TEXT.clear()
+    # unterminated triple-quote-ish blob on one line, way over the line cap
+    (tmp_path / "blob.js").write_text('const x = "' + ("a" * 500_000), encoding="utf-8")
+    lines = H._lines("blob.js")
+    assert all(len(ln) <= H._MAX_LINE_CHARS for ln in lines)
+    # the non-.py regex branch must return promptly and not raise
+    assert isinstance(H._noncode_spans("blob.js"), dict)
+
+
 def test_find_survives_regex_metachar_queries(repo):
     # Natural-language queries with regex metachars / SQL / parens must not crash
     # find (they are not patterns; find is semantic).

@@ -311,6 +311,21 @@ def _mtime(rel: str) -> float:
         return 0.0
 
 
+# Hard cap on in-memory file text for the locate helpers. Mirrors _grep's 2 MB
+# whole-file skip, but applies to the SINGLE read point (_lines) that every
+# non-grep consumer (_noncode_spans, _code_text, _numbered, _match_lines,
+# _uses_in_code) goes through. Without it, a pathological file in a /v1/search
+# hit (hundreds of MB, or one giant single line) would be slurped whole into
+# three cached copies and could stall the string/comment regex pass for seconds
+# on an unterminated-literal long line. A code file big enough to exceed this is
+# almost certainly generated/minified/vendored and not worth masking precisely;
+# truncating keeps find responsive and never crashes.
+_MAX_FILE_BYTES = 2_000_000
+# A single physical line this long (minified bundle, data blob) is also capped so
+# the per-line regex in _noncode_spans can't go super-linear on it.
+_MAX_LINE_CHARS = 200_000
+
+
 def _lines(rel: str) -> list[str]:
     rel = _norm(rel)
     m = _mtime(rel)
@@ -321,7 +336,13 @@ def _lines(rel: str) -> list[str]:
         text = _abs(rel).read_text(encoding="utf-8", errors="replace")
     except OSError:
         text = ""
+    # Cap pathological files so the locate helpers stay bounded (see note above).
+    if len(text) > _MAX_FILE_BYTES:
+        text = text[:_MAX_FILE_BYTES]
     lines = text.splitlines()
+    if any(len(ln) > _MAX_LINE_CHARS for ln in lines):
+        lines = [ln[:_MAX_LINE_CHARS] for ln in lines]
+        text = "\n".join(lines)
     _LINES[rel] = (m, lines)
     _TEXT[rel] = (m, text)
     return lines
