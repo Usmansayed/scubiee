@@ -726,7 +726,18 @@ class RuntimeManager:
         try:
             eng = self.engine
             if eng is not None:
-                n_chunks = len(getattr(eng, "texts", None) or [])
+                # Subtract tombstones: a hot-sync delete blanks the chunk slot in
+                # place and bumps engine._tombstones rather than shrinking
+                # engine.texts, so raw len(texts) drifts ABOVE the true count
+                # across incremental deletes (e.g. /health showed 23 while
+                # meta.json/chunks.jsonl held 12). engine.status() already
+                # subtracts tombstones; /health must match it. A full re-index
+                # rebuilds the binder (tombstones=0) and both agree again.
+                n_chunks = len(getattr(eng, "texts", None) or []) - int(
+                    getattr(eng, "_tombstones", 0) or 0
+                )
+                if n_chunks < 0:
+                    n_chunks = 0
         except Exception:  # noqa: BLE001
             n_chunks = 0
         binder_live = self.engine is not None and n_chunks > 0
@@ -995,7 +1006,8 @@ class RuntimeManager:
                 "ok": True,
                 "generation": runtime.generation,
                 "last_sync_at": runtime.last_sync_at,
-                "chunks": len(engine.texts),
+                # tombstone-adjusted (match /health + engine.status())
+                "chunks": max(0, len(engine.texts) - int(getattr(engine, "_tombstones", 0) or 0)),
                 "publish": "full",
                 "publish_ms": round(publish_ms, 1),
                 "payload": payload,
@@ -1086,7 +1098,8 @@ class RuntimeManager:
             "ok": True,
             "generation": runtime.generation,
             "last_sync_at": runtime.last_sync_at,
-            "chunks": len(engine.texts),
+            # tombstone-adjusted (match /health + engine.status())
+            "chunks": max(0, len(engine.texts) - int(getattr(engine, "_tombstones", 0) or 0)),
             "publish": "patch",
             "publish_ms": round(publish_ms, 1),
             "appended": info["appended"],

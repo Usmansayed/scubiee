@@ -1720,3 +1720,39 @@ def test_once_flush_writes_exactly_once(tmp_path: Path):
     assert flush() is True
     assert flush() is False
     assert calls == ["c"]
+
+
+def test_chunk_count_subtracts_tombstones_after_a_delete():
+    """After a hot-sync delete, the live chunk count must reflect the removal.
+
+    Deletes are tombstoned in place (slot blanked, engine._tombstones bumped) so
+    len(engine.texts) never shrinks. /health used to report raw len(texts), which
+    drifted ABOVE the true count across incremental deletes (observed: /health=23
+    while meta.json/chunks.jsonl held 12). The count must subtract tombstones —
+    engine.status() already does; /health and the publish returns must match it.
+    """
+    import numpy as np
+
+    engine, dim = _fake_binder(n_chunks=6, dim=8)
+    n0 = len(engine.chunks)
+    assert engine.status()["chunks"] == n0
+
+    # modify-style delta: remove id 1 (a shifted/removed chunk), add one new.
+    new = ChunkRecord(
+        id=500, file="pkg/added.py", start_line=1, end_line=2,
+        symbol="added", text="def added(): return 1", enriched="def added(): return 1",
+    )
+    vec = np.zeros((1, dim), dtype=np.float32)
+    vec[0, 0] = 1.0
+    engine.apply_chunk_delta(
+        [new], vec, base_chunk_count=n0 - 1, removed_ids=[1], embedded_ids=[500],
+    )
+
+    # len(texts) grew (append) and kept the tombstoned slot, so it is NOT the
+    # true count; status()/the tombstone-adjusted value is: n0 + 1 added - 1 removed.
+    assert engine._tombstones >= 1
+    tomb_adjusted = len(engine.texts) - int(getattr(engine, "_tombstones", 0))
+    assert tomb_adjusted == n0  # 6 + 1 - 1
+    assert engine.status()["chunks"] == n0
+    # raw len(texts) is strictly larger (the drift /health used to report)
+    assert len(engine.texts) > tomb_adjusted
