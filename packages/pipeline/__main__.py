@@ -1842,9 +1842,9 @@ def cmd_gate(args: argparse.Namespace) -> int:
 def cmd_map(args: argparse.Namespace) -> int:
     """Map V3 locate via CLI — the same `map` tool the MCP serves (fallback for scripts).
 
-    One tool, four configs: find | focus | related | graph. Talks to the running
-    engine over HTTP exactly like the MCP worker (pipeline.map_v3_server), so the
-    CLI and the MCP surface never diverge.
+    One tool, two configs: find | focus. Talks to the running engine over HTTP
+    exactly like the MCP worker (pipeline.map_v3_server), so the CLI and the MCP
+    surface never diverge.
     """
     import os as _os
 
@@ -1867,6 +1867,26 @@ def cmd_map(args: argparse.Namespace) -> int:
     _os.environ.setdefault("CTX_REPO", repo)
     _os.environ["MINI_REPO"] = repo
 
+    # Engine-reachability pre-check. `map` needs a running engine; unlike
+    # `search`/`sync` (which auto-start or degrade), tool_map would otherwise
+    # return a raw "RuntimeError: engine /v1/search failed: URLError <WinError
+    # 10061>" with exit 0, and some config+arg combos retry/block. A fast /health
+    # probe up front gives a friendly message, a correct exit code, and avoids a
+    # slow/hung call when the engine is down.
+    from pipeline.client import EngineClient
+
+    try:
+        engine_up = EngineClient(timeout=2.0).healthy()
+    except Exception:  # noqa: BLE001
+        engine_up = False
+    if not engine_up:
+        print(
+            "map: engine not running — start it with `scubiee engine start` "
+            "(or just retry; your IDE's MCP client keeps it warm).",
+            file=sys.stderr,
+        )
+        return 1
+
     from pipeline.map_v3_server import tool_map
 
     call: dict[str, object] = {"config": getattr(args, "config", "find") or "find"}
@@ -1880,12 +1900,22 @@ def cmd_map(args: argparse.Namespace) -> int:
         call["targets"] = args.targets
     if getattr(args, "k", None):
         call["k"] = int(args.k)
-    text = tool_map(call)
+    text = str(tool_map(call))
     try:
         print(text)
     except UnicodeEncodeError:
         print(text.encode("ascii", "replace").decode("ascii"))
-    return 0 if not str(text).startswith("error:") else 1
+    # Non-zero on an OPERATIONAL failure (bad input, engine error, unresolved
+    # target) — not on a valid empty result. "find: no confident match" is a
+    # successful search that found nothing, so it stays exit 0. The old check
+    # (`startswith("error:")`) missed the "<config> failed: …" engine-error form.
+    low = text.lower()
+    failed = (
+        low.startswith("error:")
+        or (low.startswith("map ") and " failed:" in low[:40])
+        or low.startswith("focus: could not resolve")
+    )
+    return 1 if failed else 0
 
 
 def cmd_connect(args: argparse.Namespace) -> int:
@@ -2980,7 +3010,35 @@ def main(argv: list[str] | None = None) -> int:
     except Exception:  # noqa: BLE001
         pass
 
-    return int(args.func(args))
+    # Top-level safety net: NO command should ever dump a raw Python traceback
+    # at the user. Each cmd_* should still emit its own friendly error; this
+    # catches anything that slips through (e.g. a bad path reaching
+    # resolve_project -> FileNotFoundError) and turns it into a clean one-line
+    # error + exit 1. Set CTX_DEBUG=1 (or SCUBIEE_DEBUG=1) to get the full
+    # traceback for debugging. KeyboardInterrupt / SystemExit pass through.
+    try:
+        return int(args.func(args))
+    except KeyboardInterrupt:
+        print("\n  Cancelled.", file=sys.stderr)
+        return 130
+    except SystemExit:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        import os as _os
+
+        if _os.environ.get("CTX_DEBUG") or _os.environ.get("SCUBIEE_DEBUG"):
+            raise
+        cmd = getattr(args, "cmd", None) or "command"
+        msg = str(exc).strip() or type(exc).__name__
+        print(f"[scubiee] {cmd} failed: {msg}", file=sys.stderr)
+        print("  (set CTX_DEBUG=1 for the full traceback)", file=sys.stderr)
+        if not sys.stdout.isatty():
+            print(
+                json.dumps(
+                    {"ok": False, "command": cmd, "error": msg}, indent=2, default=str
+                )
+            )
+        return 1
 
 
 if __name__ == "__main__":
