@@ -156,10 +156,13 @@ def audit_connect_registry() -> dict[str, Any]:
         warnings.append(
             {
                 "id": "stale_registry_path",
+                "project_id": str(row.get("project_id") or ""),
+                "path": str(row.get("path") or ""),
                 "detail": (
                     f"Registry path missing: {row['path']} "
                     f"(project {row['project_id']}) — move repo and re-run "
-                    "`scubiee init`, or remove stale registry entry"
+                    "`scubiee init`, or run `scubiee doctor --fix` to prune the "
+                    "stale entry once it has been gone past the retention window"
                 ),
             }
         )
@@ -192,9 +195,17 @@ def audit_connect_registry() -> dict[str, Any]:
     except Exception:  # noqa: BLE001
         pass
 
+    # `stale_registry_path` is ADVISORY, not a health failure: it fires whenever a
+    # user deleted/moved a repo folder without `scubiee remove` (or the repo lives
+    # on a currently-unmounted drive). It says nothing about whether the user's
+    # actual working repo is healthy, so it must not force doctor `ok=False` /
+    # a non-zero exit — the same way an unbound daemon is non-blocking. We still
+    # emit the warning so the user can clean up (and `scubiee doctor --fix`
+    # prunes genuinely-gone entries, retention-guarded). The genuinely-broken
+    # states (tools connected but nothing indexed; a copied checkout sharing an
+    # identity) stay blocking.
     blocking = {
         "connected_tools_no_managed_repos",
-        "stale_registry_path",
         "shared_id_copy_collision",
     }
     ok = not any(item.get("id") in blocking for item in warnings)

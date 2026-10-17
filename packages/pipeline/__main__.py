@@ -1813,8 +1813,22 @@ def cmd_map(args: argparse.Namespace) -> int:
     """
     import os as _os
 
+    # argparse ambiguity: `map --names foo .` makes --names (nargs="*") greedily
+    # swallow the trailing `.` path positional too, so it was treated as a second
+    # symbol and reported "could not resolve: .". A symbol name is never a real
+    # directory. `path` defaults to ".", so we can't rely on it being unset —
+    # detect dir-like entries in `names` directly, pull them out, and use the
+    # last as the repo path.
+    names = list(getattr(args, "names", None) or [])
+    path_arg = getattr(args, "path", None) or "."
+    if names:
+        dir_like = [n for n in names if n in (".", "..") or Path(n).is_dir()]
+        if dir_like:
+            path_arg = dir_like[-1]
+            names = [n for n in names if n not in dir_like]
+
     # map_v3_helpers resolves the repo from CTX_REPO/MINI_REPO; honor the path arg.
-    repo = str(Path(getattr(args, "path", ".") or ".").resolve())
+    repo = str(Path(path_arg or ".").resolve())
     _os.environ.setdefault("CTX_REPO", repo)
     _os.environ["MINI_REPO"] = repo
 
@@ -1823,8 +1837,8 @@ def cmd_map(args: argparse.Namespace) -> int:
     call: dict[str, object] = {"config": getattr(args, "config", "find") or "find"}
     if getattr(args, "query", None):
         call["query"] = args.query
-    if getattr(args, "names", None):
-        call["names"] = args.names
+    if names:
+        call["names"] = names
     if getattr(args, "anchor", None):
         call["anchor"] = args.anchor
     if getattr(args, "targets", None):

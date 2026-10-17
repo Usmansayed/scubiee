@@ -51,11 +51,19 @@ def test_audit_warns_stale_registry_path(tmp_path: Path, monkeypatch) -> None:
     )
 
     audit = audit_connect_registry()
-    assert audit["ok"] is False
+    # A stale registry path is ADVISORY, not a health failure: it must still be
+    # detected and warned (so the user can clean it up / `doctor --fix` can prune
+    # it), but it must NOT force ok=False — it says nothing about whether the
+    # user's actual working repo is healthy, and firing on a temporarily
+    # unmounted drive would be a false alarm.
+    assert audit["ok"] is True
     assert len(audit["stale_registry_paths"]) == 1
     assert audit["stale_registry_paths"][0]["path"] == str(missing)
     ids = {item["id"] for item in audit["warnings"]}
     assert "stale_registry_path" in ids
+    # the warning carries the project_id structurally so --fix can prune it
+    stale_warn = next(w for w in audit["warnings"] if w["id"] == "stale_registry_path")
+    assert stale_warn.get("project_id") == pid
 
 
 def test_audit_warns_unenrolled_managed_repo(tmp_path: Path, monkeypatch) -> None:
@@ -277,3 +285,65 @@ def test_apply_safe_repairs_runs_copy_collision_reconcile(
         item for item in repaired.get("applied") or [] if item.get("id") == "fork_copy_collisions"
     ]
     assert fork_actions
+
+
+def test_doctor_fix_prunes_long_gone_stale_entry(tmp_path: Path, monkeypatch) -> None:
+    """`scubiee doctor --fix` prunes a registry entry whose repo has been gone
+    from disk past the retention window — via forget_repo, which enforces it."""
+    import time
+
+    from pipeline.doctor import apply_safe_repairs_all
+    from pipeline.project_id import load_registry
+
+    home = tmp_path / "ce-home"
+    home.mkdir()
+    monkeypatch.setenv("CTX_HOME", str(home))
+    # a short retention so the test doesn't wait 24h
+    monkeypatch.setenv("CTX_HOME", str(home))
+    missing = tmp_path / "long-gone"
+    pid = "ce_prune1234567890abcdef0"
+    # missing_since far in the past -> retention elapsed -> forget allowed
+    save_registry({
+        "projects": {
+            pid: {
+                "managed": True,
+                "root": str(missing),
+                "paths": [str(missing)],
+                "missing_since": time.time() - 90000,  # >24h ago
+            }
+        }
+    })
+    out = apply_safe_repairs_all()
+    # entry should be gone from the registry
+    reg = load_registry()
+    assert pid not in (reg.get("projects") or {}), "long-gone entry must be pruned by --fix"
+
+
+def test_doctor_fix_keeps_recently_missing_entry(tmp_path: Path, monkeypatch) -> None:
+    """A repo missing for LESS than the retention window (e.g. an unmounted
+    drive) must NOT be pruned by --fix — retention is the unmounted-drive guard."""
+    import time
+
+    from pipeline.doctor import apply_safe_repairs_all
+    from pipeline.project_id import load_registry
+
+    home = tmp_path / "ce-home"
+    home.mkdir()
+    monkeypatch.setenv("CTX_HOME", str(home))
+    missing = tmp_path / "maybe-unmounted"
+    pid = "ce_keep12345678901234abcd"
+    save_registry({
+        "projects": {
+            pid: {
+                "managed": True,
+                "root": str(missing),
+                "paths": [str(missing)],
+                "missing_since": time.time() - 5,  # just went missing
+            }
+        }
+    })
+    apply_safe_repairs_all()
+    reg = load_registry()
+    assert pid in (reg.get("projects") or {}), (
+        "a freshly-missing repo (possible unmounted drive) must be retained"
+    )

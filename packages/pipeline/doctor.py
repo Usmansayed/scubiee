@@ -167,7 +167,17 @@ def plan_repairs(
         detail = str(warning.get("detail") or wid)
         if wid == "unenrolled_managed_repo":
             actions.append({"id": "reenroll_repo", "kind": "manual", "detail": detail})
-        elif wid in ("stale_registry_path", "connected_tools_no_managed_repos"):
+        elif wid == "stale_registry_path":
+            # Safe to auto-prune: forget_repo enforces the missing-since retention
+            # window, so a repo on a temporarily-unmounted drive is NOT removed
+            # until it has been gone long enough (default 24h). Carry the
+            # project_id/path so apply_safe_repairs doesn't parse the message.
+            actions.append({
+                "id": wid, "kind": "safe", "detail": detail,
+                "project_id": str(warning.get("project_id") or ""),
+                "path": str(warning.get("path") or ""),
+            })
+        elif wid == "connected_tools_no_managed_repos":
             actions.append({"id": wid, "kind": "manual", "detail": detail})
         elif wid == "shared_id_copy_collision":
             actions.append(
@@ -198,6 +208,17 @@ def doctor_repo(root: Path | str | None = None) -> dict[str, Any]:
             "enrolled": False,
             "reason": str(exc),
             "repair": "scubiee init .",
+        }
+    except (FileNotFoundError, NotADirectoryError, OSError) as exc:
+        # The repo path no longer exists on disk (a stale registry entry or a
+        # deleted/unmounted repo). A diagnostic must never crash on this —
+        # report it as unenrolled with a path-missing reason so doctor_all /
+        # --fix can still complete and surface/prune the stale entry.
+        ref = None
+        enrollment = {
+            "enrolled": False,
+            "reason": f"path missing on disk: {exc}",
+            "repair": "scubiee init . (if moved) or `scubiee doctor --fix` to prune",
         }
 
     if ref is None:
@@ -271,8 +292,14 @@ def doctor_repo(root: Path | str | None = None) -> dict[str, Any]:
     planned = plan_repairs(report=report)
     report["repair_plan"] = planned
     report["repairs"] = [item["detail"] for item in planned]
-    # An unbound daemon is operational guidance, not index corruption.
-    blocking = [item for item in planned if item.get("id") != "bind_daemon"]
+    # These repairs are operational guidance about OTHER/removed repos or an
+    # unbound daemon — none indicate the current repo's index is unhealthy, so
+    # they must not force ok=False:
+    #   bind_daemon         — daemon just needs reopening for this workspace
+    #   stale_registry_path — a different, deleted/moved repo's leftover entry
+    #                         (advisory; `doctor --fix` prunes it, retention-safe)
+    _non_blocking = {"bind_daemon", "stale_registry_path"}
+    blocking = [item for item in planned if item.get("id") not in _non_blocking]
     report["ok"] = bool(
         caps.get("ok")
         and usable
@@ -332,6 +359,22 @@ def apply_safe_repairs(root: Path | str | None = None) -> dict[str, Any]:
             manual.append(action)
             continue
         action_id = action.get("id")
+        # Repairs that operate on the live checkout need the dir to exist. When
+        # the repo is gone from disk (stale/unmounted), running them crashes
+        # (ensure_daemon -> client ValueError, initialize/sync -> FileNotFound).
+        # Skip those to manual; only registry-level repairs (stale prune) run.
+        _path_dependent = {
+            "bind_daemon", "initialize_index", "replay_dirty_journal",
+            "reconcile_git_family",
+        }
+        try:
+            _repo_live = repo.is_dir()
+        except OSError:
+            _repo_live = False
+        if action_id in _path_dependent and not _repo_live:
+            manual.append({**action, "kind": "manual",
+                           "detail": str(action.get("detail", "")) + " (repo not on disk; skipped)"})
+            continue
         if action_id == "bind_daemon":
             from pipeline.daemon import ensure_daemon
 
@@ -356,6 +399,26 @@ def apply_safe_repairs(root: Path | str | None = None) -> dict[str, Any]:
             from pipeline.checkout_identity import reconcile_registry_copy_collisions
 
             result = reconcile_registry_copy_collisions()
+        elif action_id == "stale_registry_path":
+            # Prune a registry entry whose repo is gone from disk — but only
+            # through forget_repo, which refuses unless the path has been missing
+            # past the retention window (protects an unmounted-drive repo). If
+            # retention hasn't elapsed, surface it as a still-manual note rather
+            # than forcing a removal.
+            from pipeline.repo_lifecycle import forget_repo
+
+            pid = str(action.get("project_id") or "")
+            if not pid:
+                manual.append({**action, "kind": "manual"})
+                continue
+            result = forget_repo(pid, confirm=pid)
+            if not result.get("ok"):
+                manual.append({
+                    **action, "kind": "manual",
+                    "detail": action.get("detail", "")
+                    + f" (not pruned yet: {result.get('error')})",
+                })
+                continue
         else:
             manual.append({**action, "kind": "manual"})
             continue
