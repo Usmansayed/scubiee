@@ -1275,31 +1275,63 @@ def _register_windows(cmd: list[str], *, runner: Any) -> dict[str, Any]:
     }
 
 
-def _register_darwin(cmd: list[str], *, runner: Any) -> dict[str, Any]:
+def _launch_agent_loaded(runner: Any, target: str) -> bool:
+    probe = runner(
+        ["launchctl", "print", target],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return getattr(probe, "returncode", 1) == 0
+
+
+def _register_darwin(
+    cmd: list[str],
+    *,
+    runner: Any,
+    sleep: Any = time.sleep,
+    bootout_wait_s: float = 5.0,
+) -> dict[str, Any]:
     plist = launch_agent_plist_path()
     plist.parent.mkdir(parents=True, exist_ok=True)
     plist.write_text(_launch_agent_plist(cmd), encoding="utf-8")
     domain = f"gui/{_session_uid()}"
-    runner(
-        ["launchctl", "bootout", f"{domain}/{LAUNCH_AGENT_LABEL}"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    loaded = runner(
-        ["launchctl", "bootstrap", domain, str(plist)],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    target = f"{domain}/{LAUNCH_AGENT_LABEL}"
+    if _launch_agent_loaded(runner, target):
+        runner(
+            ["launchctl", "bootout", target],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        # bootout returns before launchd finishes tearing down a running
+        # KeepAlive job; bootstrapping meanwhile fails with "5: Input/output
+        # error" and the agent ends up unloaded once the teardown completes.
+        deadline = time.monotonic() + bootout_wait_s
+        while _launch_agent_loaded(runner, target) and time.monotonic() < deadline:
+            sleep(0.1)
+    loaded = None
+    for attempt in range(3):
+        if attempt:
+            sleep(0.5)
+        loaded = runner(
+            ["launchctl", "bootstrap", domain, str(plist)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if getattr(loaded, "returncode", 1) == 0:
+            break
     if getattr(loaded, "returncode", 1) != 0:
+        # Legacy ``load`` exits 0 even when it prints "Load failed", so only
+        # the ``print`` probe below decides success.
         loaded = runner(
             ["launchctl", "load", "-w", str(plist)],
             capture_output=True,
             text=True,
             check=False,
         )
-    ok = getattr(loaded, "returncode", 1) == 0
+    ok = _launch_agent_loaded(runner, target)
     return {
         "ok": ok,
         "platform": "darwin",

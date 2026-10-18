@@ -261,9 +261,14 @@ def test_darwin_register_writes_launch_agent_and_bootstraps(
     monkeypatch.setattr(life, "_session_uid", lambda: 501)
     monkeypatch.setattr(life, "_user_home", lambda: tmp_path)
     seen: list[list[str]] = []
+    state = {"loaded": False}
 
     def fake_run(cmd, **_kwargs):
         seen.append(list(cmd))
+        if cmd[1] == "print":
+            return SimpleNamespace(returncode=0 if state["loaded"] else 113, stdout="", stderr="")
+        if cmd[1] == "bootstrap":
+            state["loaded"] = True
         return SimpleNamespace(returncode=0, stdout="", stderr="")
 
     result = life.register_logon_autostart(
@@ -283,6 +288,61 @@ def test_darwin_register_writes_launch_agent_and_bootstraps(
     assert "launchctl" in joined
     assert "bootstrap" in joined
     assert "gui/501" in joined
+
+
+def test_darwin_reregister_waits_for_async_bootout(tmp_path: Path, monkeypatch) -> None:
+    """Re-running setup while the agent is loaded must leave it loaded.
+
+    Real launchd (macOS 26): bootout returns while the KeepAlive job is still
+    being torn down, bootstrap then fails with EIO, and legacy ``load -w``
+    exits 0 despite printing "Load failed".
+    """
+    monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
+    monkeypatch.setattr(life, "_session_uid", lambda: 501)
+    monkeypatch.setattr(life, "_user_home", lambda: tmp_path)
+    state = {"loaded": True, "teardown_polls": 0}
+
+    def fake_run(cmd, **_kwargs):
+        verb = cmd[1]
+        if verb == "print":
+            if state["teardown_polls"]:
+                state["teardown_polls"] -= 1
+                if not state["teardown_polls"]:
+                    state["loaded"] = False
+            return SimpleNamespace(returncode=0 if state["loaded"] else 113, stdout="", stderr="")
+        if verb == "bootout":
+            state["teardown_polls"] = 3
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+        if verb == "bootstrap":
+            if state["loaded"]:
+                return SimpleNamespace(returncode=5, stdout="", stderr="Bootstrap failed: 5: Input/output error")
+            state["loaded"] = True
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+        if verb == "load":
+            return SimpleNamespace(returncode=0, stdout="", stderr="Load failed: 5: Input/output error")
+        raise AssertionError(cmd)
+
+    result = life._register_darwin(["py", "-m", "pipeline"], runner=fake_run, sleep=lambda _s: None)
+    if state["teardown_polls"]:
+        state["loaded"] = False  # launchd finishes the bootout after we return
+    assert result["ok"] is True
+    assert state["loaded"] is True
+
+
+def test_darwin_register_reports_failure_when_agent_not_loaded(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("CTX_HOME", str(tmp_path / "ce-home"))
+    monkeypatch.setattr(life, "_session_uid", lambda: 501)
+    monkeypatch.setattr(life, "_user_home", lambda: tmp_path)
+
+    def fake_run(cmd, **_kwargs):
+        if cmd[1] == "print":
+            return SimpleNamespace(returncode=113, stdout="", stderr="")
+        if cmd[1] == "bootstrap":
+            return SimpleNamespace(returncode=5, stdout="", stderr="Bootstrap failed: 5: Input/output error")
+        return SimpleNamespace(returncode=0, stdout="", stderr="Load failed: 5: Input/output error")
+
+    result = life._register_darwin(["py"], runner=fake_run, sleep=lambda _s: None)
+    assert result["ok"] is False
 
 
 def test_darwin_unregister_bootout_and_removes_plist(
