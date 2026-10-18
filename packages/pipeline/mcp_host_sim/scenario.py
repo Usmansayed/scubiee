@@ -21,9 +21,16 @@ LOCATE_BUDGET_MS = 1000.0
 STATUS_BUDGET_MS = 3000.0
 # First dense map after the 40s warmup may still pay locate-worker wrap.
 FIRST_MAP_BUDGET_MS = 3000.0
-# Leave → debounce (10s) → idle window (default 15s) → stop. Health-polling during
-# this wait would itself reset activity and prevent unload (seen as UNLOAD_TIMEOUT).
-UNLOAD_BUDGET_S = 35.0
+# Leave → disconnect debounce (default 120s) → standby stop, plus headroom for the
+# watchdog (15s interval) to kill an engine whose self-shutdown stalls. Health-polling
+# during this wait would itself reset activity and prevent unload (seen as UNLOAD_TIMEOUT).
+UNLOAD_HEADROOM_S = 35.0
+
+
+def unload_budget_s() -> float:
+    from pipeline.lifecycle_runtime import disconnect_debounce_seconds
+
+    return disconnect_debounce_seconds() + UNLOAD_HEADROOM_S
 DEFAULT_IDLE_S = 120.0
 
 MAP_QUERY = (
@@ -1135,7 +1142,7 @@ def run_scenario(
 
         from pipeline.lifecycle_runtime import load_clients, reconcile_clients
 
-        deadline = left_at + UNLOAD_BUDGET_S
+        deadline = left_at + unload_budget_s()
         last: dict[str, Any] = {}
         while time.time() < deadline:
             try:
@@ -1177,7 +1184,7 @@ def run_scenario(
             "waited_s": round(time.time() - left_at, 2),
         }
 
-    phase("unload", _unload, budget_ms=UNLOAD_BUDGET_S * 1000)
+    phase("unload", _unload, budget_ms=unload_budget_s() * 1000)
 
     report["ok"] = all(p.get("ok") for p in report["phases"]) and not report["errors"]
     # Recompute ok from phases only
