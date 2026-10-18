@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import sys
 from pathlib import Path
 
 from pipeline import accel, env_guard
@@ -9,7 +10,7 @@ from pipeline import accel, env_guard
 def test_extra_scubiee_on_path(tmp_path: Path, monkeypatch) -> None:
     fake_scripts = tmp_path / "Python312" / "Scripts"
     fake_scripts.mkdir(parents=True)
-    extra = fake_scripts / "scubiee.exe"
+    extra = fake_scripts / ("scubiee.exe" if sys.platform == "win32" else "scubiee")
     extra.write_bytes(b"")
     ours = env_guard.expected_scubiee_exe()
     monkeypatch.setenv("PATH", str(fake_scripts) + os_pathsep() + str(ours.parent))
@@ -37,12 +38,14 @@ def test_warn_extra_scubiee_silent_when_only_ours(monkeypatch) -> None:
     assert buf.getvalue() == ""
 
 
-def test_expected_scubiee_exe_windows_scripts_layout() -> None:
+def test_expected_scubiee_exe_windows_scripts_layout(monkeypatch) -> None:
+    monkeypatch.setattr(env_guard.sys, "platform", "win32")
     uv_py = Path("C:/Users/me/AppData/Roaming/uv/tools/scubiee/Scripts/python.exe")
     assert env_guard.expected_scubiee_exe(uv_py) == uv_py.parent / "scubiee.exe"
 
 
-def test_expected_scubiee_exe_windows_root_python_layout() -> None:
+def test_expected_scubiee_exe_windows_root_python_layout(monkeypatch) -> None:
+    monkeypatch.setattr(env_guard.sys, "platform", "win32")
     py = Path("C:/Python312/python.exe")
     assert env_guard.expected_scubiee_exe(py) == py.parent / "Scripts" / "scubiee.exe"
 
