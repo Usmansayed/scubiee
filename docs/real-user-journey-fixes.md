@@ -12,6 +12,8 @@ root cause, the patch, and how it was verified.
 | 4 | `init` time estimate far too low on CPU ("~1 min", took 5 min) | fixed |
 | 5 | `resume` prints nothing for ~90 s (engine silently failed to start) | fixed |
 | 6 | `connect --cursor` / `resume` report paths that were never written (`/.cursor/mcp.json`, global rule) | fixed |
+| 10 | `wipe --all` hangs when run from the home folder; ~2 min even when it works | fixed |
+| 11 | `map focus` by bare name takes ~1.3 s (was ~0.2 s); fails the release battery | fixed |
 | 7 | Re-running `init` prints "already indexed" on top of an uncleared "Starting…" line | open |
 | 8 | `scubiee` with no arguments prints a raw argparse error (exit 2) | open |
 | 9 | `scubiee --version` on a fresh machine prints "Engine stopped" | open |
@@ -289,3 +291,134 @@ top-level list and the per-repo lists, so a real path could appear twice.
   Before: `/.cursor/mcp.json` and `/root/.cursor/rules/scubiee.mdc`, neither of
   which existed. After: no missing paths and nothing outside the repo
   (`ALL_OK True`).
+
+## 10. `wipe --all` hangs from the home folder and is slow even when it works
+
+**Symptom.** On a real Windows laptop, `scubiee wipe --all --confirm` run from
+`C:\Users\usman` was still going after ~15 min. A `py-spy` stack showed it in
+`_discover_repo_id_dirs` → `Path.rglob(".scubiee")`. A rerun from an empty
+folder finished, but took 112 s.
+
+**Root cause.**
+
+- `wipe_all` cleaned every registered repo, then also treated the folder it was
+  run from as a repo and called `rglob(".scubiee")` on it. From the home folder,
+  that walks all of Downloads, every `node_modules` and `.venv`. Even inside this
+  repo, the old search took 114 s.
+- Fixed overhead of 12.8 s, measured with nothing running: seven unconditional
+  sleeps (1.0 s × 3 in `stop_all_context_engine_processes`, a 1.5 s MCP settle,
+  0.2 s × 3 in `stop_watchdog`); 12 engine health checks at ~0.36 s each (on
+  Windows a closed localhost port waits out the connect timeout instead of
+  refusing); and the full stop-all pass run three times. `stop_processes_under`
+  also slept its full grace period with nothing to kill.
+- The remaining time went to deleting `~/.scubiee` and the model cache file by
+  file.
+
+**Fix.**
+
+- The current folder is added only if it is a real repo (`.git` or `.scubiee`)
+  and not home, an ancestor of home, or a drive root. `_discover_repo_id_dirs`
+  is now a pruned `os.walk`: it skips `node_modules`, `.git`, `.venv`, caches and
+  build output, stops at depth 4 and 5,000 folders, and never returns the
+  machine home. Registered repos are still wiped by path.
+- Sleeps run only after something was actually terminated. The MCP settle runs
+  only if a Scubiee process is alive. `stop_daemon` / `kill_all_engine_daemons`
+  reuse the last health answer. `kill_all_scubiee_processes` takes a fast path
+  when nothing is running (no Scubiee process, no engine port listener, nothing
+  under the uv tool folder).
+- From the CLI, `~/.scubiee`, the vector DB and model caches are renamed aside
+  (`<name>.trash-<pid>`, instant) and deleted by one detached cleaner after the
+  CLI exits. The original paths are free immediately, so a reinstall can start
+  right away. If the rename fails (a locked file), it falls back to the in-place
+  delete.
+
+**Verification.**
+
+- New `tests/test_wipe_speed.py` (11 tests): home/ancestor/drive roots are never
+  walked; dependency trees are skipped; the depth cap holds; the machine home is
+  never returned; only real repos are added as targets; rename-aside; the
+  scheduled delete runs after the waited process exits; kill-all fast path and
+  full path; no idle sleeps. 43 wipe/stop/hardening tests pass. Two existing
+  tests were updated to match (the test repo got a `.git`; the bridge test pins
+  "something is running").
+- Windows, this laptop (read-only search timing):
+
+  | Search root | Before | After |
+  |---|---|---|
+  | `C:\Users\usman` (home) | still running after 120 s (hung ~15 min in practice) | **0.00 s** |
+  | `context-engine` repo | 114.3 s | **0.23 s** (same `.scubiee` found) |
+  | fixed overhead, nothing running | 12.8 s | **1.83 s** |
+
+- Live (`vm/run.ps1 wipe_speed_check.sh`): a home seeded with a 300,000-file
+  `node_modules`, then setup → init → connect → `wipe --all` from `/root`:
+
+  | Step | Before (PyPI 0.3.154) | After |
+  |------|------|-------|
+  | `wipe --all` from home | rc 0, 8.9 s | rc 0, **3.8 s** (rerun with the depth cap: **3.9 s**) |
+  | right after wipe | — | `~/.scubiee`, model cache, repo `.scubiee` gone; `scubiee` not on PATH |
+  | background delete | — | trash drained in **0.2 s** |
+  | reinstall + `scubiee setup` right after | — | rc 0 (0.1 s install, setup ready) |
+
+  On Linux the old walk over 300k files costs seconds, not hours. The hang is a
+  Windows effect (NTFS plus antivirus on every directory read), and the Windows
+  timings above cover it.
+
+---
+
+## 11. `map focus` by bare name takes ~1.3 s and fails the release battery
+
+**Found by:** the `mcp_host_sim` Lane A release battery on Windows. `pack_first`
+(a `map focus names=[enforce_mcp_warm_contract]`) took 1,322 ms against a 1 s
+budget. The same call by `file::symbol` took 24 ms.
+
+**Root cause.** Commit `7dd2a85` (Unicode/`$` identifiers in focus) changed the
+bare-name resolution patterns in `_resolve_symbol_name` from `\b` to the
+lookarounds `(?<![\w$])` / `(?![\w$])`. The grep prefilter
+(`_pattern_prefilter` in `map_v3_helpers.py`) gives up on any pattern that
+contains `[`, so every bare-name lookup ran the full regex over all ~4,900
+"code" files (28.5 MB; 3,820 of them under the gitignored `testdata/`). The
+keyword-led definition pattern was slow for a second reason: its prefilter ORs
+every identifier (`pub`, `type`, `var`, `fun`, ...), so almost every file passed.
+
+**Fix (`packages/pipeline/map_v3_helpers.py`).**
+
+- Character classes are blanked before group handling: a class matches one
+  unknown character and never holds required text.
+- Identifiers outside every group are ANDed when the pattern has no top-level
+  `|` — each is a literal the match must contain. Alternations stay OR.
+
+The prefilter is still only a necessary condition, so grep results cannot change.
+
+**Verification.**
+
+- New `tests/test_map_grep_prefilter.py` (13 tests): lookaround/class patterns
+  get a prefilter, the definition pattern requires the name, top-level
+  alternation stays OR, and no real match is ever rejected.
+- Equivalence on the real repo: grep with vs without the prefilter, 17
+  identifiers (incl. `x`, `get`, `data$`, `École`) × 4 patterns × 2 scopes =
+  136 pairs, **0 mismatches**.
+
+  | Measurement | Before | After |
+  |------|------|-------|
+  | bare-word grep (lookaround) | 644 ms | 24 ms |
+  | `_resolve_symbol_name` | 1,270 ms | 77 ms |
+  | `map focus` bare name, through the MCP bridge | 1,291–1,326 ms | 112–124 ms |
+
+- Release batteries on the laptop (fixed wheel installed with `uv tool install`):
+
+  | Battery | Result |
+  |------|------|
+  | `mcp_host_sim --lane a --live --settle-s 35` (with 120 s idle), 2 runs | ok, exit 0 both runs |
+  | `warm_contract_acceptance.py` | 6/6 checks pass |
+  | `scubiee_mcp_ship_check.py` | ok, 0 errors |
+
+**Harness fixes found on the way** (`packages/pipeline/mcp_host_sim/`): Map V3
+returns plain text, so the bridge host reads `dense_ready` from engine `/health`,
+and the scenario ignores the non-dict placeholder card when picking the pack seed.
+
+**Known margin.** `map find` with a new query is ~260–600 ms steady state but
+800–1,000 ms in the first minute after the engine starts, and it spikes while
+the engine hot-syncs a changed file. Lane A's `map_second` passed at 962–979 ms
+against a 1 s budget. Run the battery with `--out-dir` outside the repo: by
+default it writes its report into `docs/superpowers/plans/`, so the next run
+starts by re-indexing that report, right when the locate calls are timed.

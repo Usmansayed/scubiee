@@ -156,6 +156,7 @@ _GREP_EXT = SOURCE_EXT | DOC_EXT | {".json", ".toml", ".yaml", ".yml"}
 
 _ESCAPE_SEQ_RE = re.compile(r"\\.")  # \b \s \w \( etc. — drop before literal scan
 _LITERAL_GROUPS_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]{2,}")
+_CHAR_CLASS_RE = re.compile(r"\[\^?\]?[^\]]*\]")
 
 
 def _pattern_prefilter(pattern: str):
@@ -174,9 +175,22 @@ def _pattern_prefilter(pattern: str):
     # Escape-strip FIRST so escaped literals like "\(" and classes like "\s" become
     # spaces and are not mistaken for regex group syntax or required text.
     stripped = _ESCAPE_SEQ_RE.sub(" ", body)
+    # A char class matches exactly one unknown char and holds no required text;
+    # blank it before group handling (it may contain parens, e.g. "[(<]").
+    stripped = _CHAR_CLASS_RE.sub(" ", stripped)
     # Drop OPTIONAL groups entirely — "(?:async )?" / "(group)?" are not required,
     # so their contents must not count as required idents.
     stripped = re.sub(r"\((?:\?:)?[^()]*\)\s*\?", " ", stripped)
+    # Text outside every group: with no top-level "|", each identifier there is a
+    # literal the match must contain, so those can be ANDed (see keep below).
+    top, depth = [], 0
+    for ch in stripped:
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth = max(0, depth - 1)
+        top.append(ch if depth == 0 and ch not in "()" else " ")
+    top_text = "".join(top)
     # Neutralise group *syntax* (parens, "?:") but KEEP the identifiers inside an
     # alternation so they contribute to the OR requirement below.
     stripped = stripped.replace("(?:", " ").replace("(", " ").replace(")", " ")
@@ -192,13 +206,22 @@ def _pattern_prefilter(pattern: str):
     if not req:
         return None
     uniq = list(dict.fromkeys((i.lower() if ci else i) for i in req))
-    # OR semantics everywhere: the predicate is only ever a *necessary* condition
-    # (if the regex matches, at least one of its fixed identifiers is present), so
-    # requiring "any ident present" never over-filters. The only shapes that reach
-    # here are plain literals, word-boundary idents, "NAME\s*\(", "def NAME", and
-    # single/alternation groups — all satisfy this. Anything riskier bailed above.
-    def keep(t: str) -> bool:
-        return any(u in t for u in uniq)
+    must: list[str] = []
+    if "|" not in top_text:
+        must = list(dict.fromkeys(
+            (i.lower() if ci else i) for i in _LITERAL_GROUPS_RE.findall(top_text)
+            if i.lower() not in noise))
+    # The predicate is only ever a *necessary* condition. Top-level literals are
+    # each required (AND); otherwise at least one fixed identifier must be present
+    # (OR), which covers alternation groups. The only shapes that reach here are
+    # plain literals, word-boundary idents, "NAME\s*\(", "def NAME", lookarounds
+    # and alternation groups — all satisfy this. Anything riskier bailed above.
+    if must:
+        def keep(t: str) -> bool:
+            return all(m in t for m in must)
+    else:
+        def keep(t: str) -> bool:
+            return any(u in t for u in uniq)
 
     return (keep, ci)
 
