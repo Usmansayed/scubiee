@@ -25,6 +25,7 @@ used until a real measurement exists so an unmeasured engine never UNDER-flags.
 
 from __future__ import annotations
 
+import json
 import os
 import time
 from pathlib import Path
@@ -125,6 +126,81 @@ def record_embed_throughput(store: Any, *, chunks: int, seconds: float) -> None:
         store.save_meta(meta)
     except Exception:  # noqa: BLE001
         pass
+
+
+# ---- full-index (init) estimate ----------------------------------------------
+
+# Indexable bytes per embedded chunk (pallets/flask 646, psf/requests 734).
+BYTES_PER_CHUNK = 690.0
+# Scan / parse / link / write / engine start, outside the embed stage.
+INIT_BASE_OVERHEAD_S = 10.0
+INIT_PER_FILE_OVERHEAD_S = 0.08
+_MIN_THROUGHPUT_SAMPLE_CHUNKS = 64
+
+
+def _throughput_path() -> Path:
+    from pipeline.project_id import context_engine_home
+
+    return context_engine_home() / "embed_throughput.json"
+
+
+def record_machine_embed_cps(*, chunks: int, seconds: float) -> None:
+    """Fold a real index's fresh (uncached) embed rate into this machine's average."""
+    if chunks < _MIN_THROUGHPUT_SAMPLE_CHUNKS or seconds <= 0.0:
+        return
+    sample = float(chunks) / float(seconds)
+    path = _throughput_path()
+    try:
+        if not path.parent.is_dir():
+            return
+        try:
+            prev = float(json.loads(path.read_text(encoding="utf-8")).get("cps") or 0.0)
+        except (OSError, ValueError, AttributeError):
+            prev = 0.0
+        cps = sample if prev <= 0.0 else 0.5 * sample + 0.5 * prev
+        path.write_text(
+            json.dumps({"cps": round(cps, 3), "updated_at": time.time()}) + "\n",
+            encoding="utf-8",
+        )
+    except OSError:
+        pass
+
+
+def machine_embed_cps() -> tuple[float | None, str]:
+    """(chunks/sec, source). ``measured`` from real indexes; ``calibrated`` from setup.
+
+    Setup's calibration embeds single-threaded, so it is a lower bound on speed.
+    """
+    try:
+        cps = float(json.loads(_throughput_path().read_text(encoding="utf-8")).get("cps") or 0.0)
+        if cps > 0.0:
+            return cps, "measured"
+    except (OSError, ValueError, AttributeError):
+        pass
+    try:
+        from pipeline.accel import load_accel
+
+        profile = load_accel()
+        tps = float(getattr(profile, "texts_per_sec", None) or 0.0)
+        if tps > 0.0:
+            return tps, "calibrated"
+    except Exception:  # noqa: BLE001
+        pass
+    return None, "none"
+
+
+def estimate_init_seconds(n_files: int, total_bytes: int) -> tuple[float, float] | None:
+    """Wall-clock (low, high) seconds for a full index, or None if speed is unknown."""
+    cps, source = machine_embed_cps()
+    if not cps:
+        return None
+    n = max(0, int(n_files))
+    chunks = max(float(n), float(total_bytes) / BYTES_PER_CHUNK)
+    overhead = INIT_BASE_OVERHEAD_S + INIT_PER_FILE_OVERHEAD_S * n
+    embed = chunks / cps
+    # Calibration is a single-threaded lower bound: the real run is up to ~2x faster.
+    lo_k, hi_k = (0.8, 1.25) if source == "measured" else (0.5, 1.05)
+    return overhead + embed * lo_k, overhead + embed * hi_k
 
 
 # ---- unit estimation --------------------------------------------------------

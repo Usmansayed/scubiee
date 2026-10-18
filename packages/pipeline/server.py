@@ -584,8 +584,24 @@ class Handler(BaseHTTPRequestHandler):
             # marks indexed dirty files and drain_due publishes them after
             # the 1s debounce.
             loop = ce.sync_loop
-            if loop is not None:
-                loop.request_poll()
+            seq = loop.request_poll() if loop is not None else None
+            if loop is not None and data.get("wait"):
+                # Only waits on a condition; the keeper thread does the work.
+                try:
+                    wait_s = float(data.get("timeout_s") or 90.0)
+                except (TypeError, ValueError):
+                    wait_s = 90.0
+                wait_s = min(max(wait_s, 1.0), 110.0)
+                t0 = time.perf_counter()
+                settled = loop.wait_settled(seq, timeout=wait_s)
+                _json(
+                    self,
+                    200,
+                    loop.settle_report(
+                        seq, settled=settled, waited_ms=(time.perf_counter() - t0) * 1000
+                    ),
+                )
+                return
             _json(
                 self,
                 200,

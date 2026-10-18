@@ -329,7 +329,8 @@ def test_init_progress_done_replaces_partial_bar() -> None:
     from pipeline.cli_ui import InitProgress
 
     bar = InitProgress(stream=buf)
-    bar._bar(0.08, "Parsing")
+    bar.stage("parse", total=10)
+    bar.update(3, 10)
     bar.done(3652)
     text = buf.getvalue()
     assert "Indexed" in text
@@ -350,19 +351,30 @@ def test_init_progress_strips_graphify_noise_from_label() -> None:
     assert "Parsing" in text or "Working" in text
 
 
-def test_init_progress_parse_pulse_advances_off_8_percent() -> None:
+def test_init_progress_pulse_never_fakes_progress() -> None:
+    """Liveness pulses must not creep the bar; only measured counts move it."""
     buf = io.StringIO()
     buf.isatty = lambda: True  # type: ignore[method-assign]
     from pipeline.cli_ui import InitProgress
 
     bar = InitProgress(stream=buf)
     bar.set(8, "Parsing code")
+    before = bar.snapshot().fraction
     for _ in range(20):
         bar.pulse("Parsing code", until=40)
+    snap = bar.snapshot()
+    assert snap.fraction == before
+    assert snap.percent is None
     last = buf.getvalue().split("\r")[-1]
-    assert bar._pct > 0.08
     assert "Parsing" in last
-    assert f"{bar._pct:.0%}" in last
+    assert "%" not in last
+
+    bar.update(50, 100)
+    snap = bar.snapshot()
+    assert snap.fraction > before
+    assert snap.percent is not None
+    assert f"{snap.percent}%" in buf.getvalue().split("\r")[-1]
+    bar.done(1)
 
 
 def test_format_index_eta_matches_observed_throughput() -> None:

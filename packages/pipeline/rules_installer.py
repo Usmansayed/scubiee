@@ -1672,27 +1672,44 @@ def apply_connected_tools_to_repo(
 # Public installer
 # ---------------------------------------------------------------------------
 
+def _summarize_fan_out_paths(report: dict[str, Any], fan: dict[str, Any]) -> None:
+    mcp_paths: list[str] = []
+    rule_paths: list[str] = []
+    for sub in fan.get("reports") or []:
+        for p in sub.get("mcp_paths") or sub.get("would_write_mcp") or []:
+            if p not in mcp_paths:
+                mcp_paths.append(p)
+        for p in (sub.get("rules") or {}).get("written") or []:
+            if p not in rule_paths:
+                rule_paths.append(p)
+    report["mcp_paths"] = mcp_paths
+    report["mcp_path"] = mcp_paths[0] if mcp_paths else None
+    report["rule_paths"] = rule_paths
+    report["rule_path"] = rule_paths[0] if rule_paths else None
+
+
 def install_tool(
     tool: ToolDef,
     *,
     dry_run: bool = False,
     repo: Path | str | None = None,
 ) -> dict[str, Any]:
-    """Record connected tool, clean legacy global MCP, fan-out project files."""
-    from pipeline.connect_state import add_connected_tool, load_connected_tools
+    """Record connected tool, clean legacy global MCP, fan-out project files.
 
-    project_paths = resolve_mcp_project_paths(tool, Path.cwd())
-    rule_paths = resolve_rule_user_paths(tool)
-    primary_rule = rule_paths[0] if rule_paths else None
+    ``mcp_path(s)`` / ``rule_path(s)`` list only files the fan-out wrote (or
+    would write, on dry-run) in enrolled repos — never cwd- or home-derived
+    guesses, which pointed at files that do not exist.
+    """
+    from pipeline.connect_state import add_connected_tool, load_connected_tools
 
     report: dict[str, Any] = {
         "tool": tool.name,
         "slug": tool.slug,
         "mcp_schema": tool.mcp_schema,
         "scope": "project-local",
-        "mcp_path": str(project_paths[0]) if project_paths else None,
-        "mcp_paths": [str(p) for p in project_paths],
-        "rule_path": str(primary_rule) if primary_rule else None,
+        "mcp_path": None,
+        "mcp_paths": [],
+        "rule_path": None,
         "rule_paths": [],
         "dry_run": dry_run,
         "ok": True,
@@ -1711,6 +1728,7 @@ def install_tool(
         report["project_fan_out"] = fan_out_tool_to_enrolled_repos(
             tool, dry_run=True
         )
+        _summarize_fan_out_paths(report, report["project_fan_out"])
         report["connected_tools"] = load_connected_tools()
         return report
 
@@ -1727,6 +1745,7 @@ def install_tool(
 
     fan = fan_out_tool_to_enrolled_repos(tool, dry_run=False)
     report["project_fan_out"] = fan
+    _summarize_fan_out_paths(report, fan)
     if not fan.get("ok", True):
         report["ok"] = False
         for sub in fan.get("reports") or []:

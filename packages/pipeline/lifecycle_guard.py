@@ -50,9 +50,11 @@ def lifecycle_axes() -> dict[str, Any]:
 
 def paused_blocks_command(cmd: str | None, argv: list[str] | None = None) -> str | None:
     """Return a block message when globally stopped and the command is not allowed."""
-    from pipeline.pause_resume import is_paused
+    from pipeline.pause_resume import is_stopped
 
-    if not is_paused():
+    # Mid-resume, resume() itself spawns `engine run`; refusing it there made
+    # resume wait out the whole health timeout.
+    if not is_stopped():
         return None
     args = list(argv or [])
     if any(flag in args for flag in ("-h", "--help")):
@@ -82,9 +84,9 @@ def paused_blocks_command(cmd: str | None, argv: list[str] | None = None) -> str
 
 def guard_engine_action(action: str) -> dict[str, Any] | None:
     """Block engine actions that conflict with global stop. Return error payload or None."""
-    from pipeline.pause_resume import is_paused
+    from pipeline.pause_resume import is_stopped
 
-    if not is_paused():
+    if not is_stopped():
         return None
     if action in _ENGINE_READONLY:
         return None

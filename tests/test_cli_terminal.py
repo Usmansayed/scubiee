@@ -76,6 +76,18 @@ def test_wipe_progress_non_tty_emits_lines() -> None:
     assert "%" in text
 
 
+@pytest.mark.parametrize(
+    ("models", "package", "steps"),
+    [(False, False, 3), (True, False, 4), (True, True, 6)],
+)
+def test_wipe_progress_all_plan_matches_steps(models, package, steps) -> None:
+    from pipeline.cli_ui import WipeProgress
+
+    progress = WipeProgress(stream=io.StringIO())
+    progress.configure(scope="all", models=models, package=package)
+    assert progress._phase_count == steps
+
+
 def test_wipe_progress_tty_uses_carriage_return(monkeypatch: pytest.MonkeyPatch) -> None:
     from pipeline.cli_ui import WipeProgress
 

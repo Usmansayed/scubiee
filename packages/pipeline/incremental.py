@@ -105,6 +105,26 @@ class IndexConfirmRequired(Exception):
                 ),
                 "hint": str(self),
             }
+        if self.kind == "broad_over_cap":
+            # --confirm was already given on a broad root that is still over the
+            # cap. Do NOT tell the user to "re-run with --confirm" (they did) —
+            # the real next step is --roots or --force.
+            return {
+                "ok": False,
+                "status": "warning",
+                "warning": "broad_over_cap",
+                "needs_force": True,
+                "needs_confirm": False,
+                "root": str(root.resolve()),
+                "max_touch": self.max_touch,
+                "message": str(self),
+                "action": (
+                    "Narrow the scope — run inside a project folder, or "
+                    "`scubiee init . --roots <dir>`. To index this entire broad "
+                    "path anyway, add --force."
+                ),
+                "hint": str(self),
+            }
         if self.kind == "broad_root" or (self.n_files == 0 and broad):
             return {
                 "ok": False,
@@ -189,9 +209,61 @@ def preflight_index_scope(
             kind="broad_root",
             message=_broad_root_hint(root, broad, 0),
         )
-    n = len(collect_index_relpaths(root, fast=fast, fast_roots=fast_roots))
+    # On a BROAD root (home dir / drive root), `--confirm` acknowledges the
+    # broad-path warning but must NOT also waive the file-count cap: a home dir
+    # is routinely hundreds of thousands of files. Do a FAST, BOUNDED check
+    # BEFORE the full count — the full `collect_index_relpaths` walks the whole
+    # tree and reads 8 KB of every candidate just to count, which on a broad
+    # root is minutes of silent work (the "init looks hung for 20 minutes"
+    # trap). `exceeds_index_cap` early-exits the moment it passes the cap, so we
+    # refuse in well under a second instead of enumerating 400k files. Still
+    # require explicit `--force` to go above the cap on a broad root.
+    if broad and confirm and not force:
+        from pipeline.paths import exceeds_index_cap
+
+        cap = max_index_touch()
+        if exceeds_index_cap(root, cap):
+            raise IndexConfirmRequired(
+                cap + 1,
+                max_touch=cap,
+                kind="broad_over_cap",
+                message=(
+                    f"Safety pause: more than {cap:,} indexable files under this "
+                    "broad path. --confirm acknowledged the broad folder, but this "
+                    "many files would take a very long time and is almost never "
+                    "intended. Narrow the scope — `scubiee init . --roots <dir>` — "
+                    "or, if you truly mean it, add --force."
+                ),
+            )
+        # Under cap on a broad root: safe to do the precise count.
+        return _remember_scope(root, collect_index_relpaths(root, fast=fast, fast_roots=fast_roots))
+
+    n = _remember_scope(root, collect_index_relpaths(root, fast=fast, fast_roots=fast_roots))
     require_index_confirm(n, confirm=confirm, force=force)
     return n
+
+
+_LAST_SCOPE: tuple[Path, set[str]] | None = None
+
+
+def _remember_scope(root: Path, rels: set[str]) -> int:
+    global _LAST_SCOPE
+    _LAST_SCOPE = (root, rels)
+    return len(rels)
+
+
+def scope_bytes(root: Path) -> int | None:
+    """Total size of the files the last ``preflight_index_scope(root)`` counted."""
+    if _LAST_SCOPE is None or _LAST_SCOPE[0] != Path(root).resolve():
+        return None
+    base, rels = _LAST_SCOPE
+    total = 0
+    for rel in rels:
+        try:
+            total += (base / rel).stat().st_size
+        except OSError:
+            continue
+    return total
 
 
 def max_index_touch() -> int:

@@ -209,7 +209,9 @@ def note_stop(
                 sys.stderr.flush()
                 continue
             home = _home()
-            home.mkdir(parents=True, exist_ok=True)
+            if not home.is_dir():
+                # A wiped (or never-created) home must stay gone.
+                continue
             with open(home / name, "a", encoding="utf-8") as fh:
                 fh.write(line)
         except Exception:  # noqa: BLE001

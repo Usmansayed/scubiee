@@ -413,11 +413,12 @@ def initialize_repo(
         except Exception:  # noqa: BLE001
             pass
         try:
-            from pipeline.incremental import preflight_index_scope
-
             if index_is_usable(store_dir):
                 from pipeline.incremental import incremental_sync
 
+                _begin = getattr(progress, "stage", None)
+                if callable(_begin):
+                    _begin("sync", label="Checking for changes")
                 sync = incremental_sync(
                     root, base_dir=store_dir, confirm=confirm
                 )
@@ -438,13 +439,6 @@ def initialize_repo(
                     not sync.refreshed and sync.strategy == "none"
                 )
             else:
-                preflight_index_scope(
-                    root,
-                    fast=fast,
-                    fast_roots=fast_roots,
-                    confirm=confirm,
-                    force=force,
-                )
                 from pipeline.indexer import index_repo
 
                 stats = index_repo(

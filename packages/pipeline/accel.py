@@ -2426,6 +2426,78 @@ def _restore_env(prev: dict[str, str | None]) -> None:
             os.environ[name] = value
 
 
+_CODERANK_DOWNLOAD_FILES = (
+    "config.json",
+    "tokenizer.json",
+    "tokenizer_config.json",
+    "special_tokens_map.json",
+    "vocab.txt",
+)
+
+
+def _coderank_download_total_bytes() -> int | None:
+    """Expected download size from Hub metadata (one request); None when offline."""
+    try:
+        from huggingface_hub import HfApi
+
+        infos = HfApi().get_paths_info(
+            CODERANK_HF_ONNX, [*_CODERANK_DOWNLOAD_FILES, CODERANK_FP32_ONNX_FILE]
+        )
+        total = sum(int(getattr(i, "size", 0) or 0) for i in infos)
+        return total or None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _dir_bytes(path: Path) -> int:
+    total = 0
+    try:
+        for p in path.rglob("*"):
+            try:
+                if p.is_file() and not p.is_symlink():
+                    total += p.stat().st_size
+            except OSError:
+                continue
+    except OSError:
+        pass
+    return total
+
+
+def _watch_download_bytes(cache_root: Path, progress: Any) -> Callable[[], None]:
+    """Report real downloaded bytes from the Hub cache dir. Returns a stop function."""
+    import threading
+
+    stop = threading.Event()
+    update = getattr(progress, "update", None)
+    if not callable(update):
+        return stop.set
+    repo_dir = Path(cache_root) / ("models--" + CODERANK_HF_ONNX.replace("/", "--"))
+
+    def _run() -> None:
+        baseline = _dir_bytes(repo_dir)
+        total = _coderank_download_total_bytes()
+        while not stop.wait(0.5):
+            on_disk = _dir_bytes(repo_dir)
+            # With a known total, bytes already on disk (resumed partials) count;
+            # without one, only show what this run has fetched.
+            done = min(on_disk, total) if total else max(0, on_disk - baseline)
+            if stop.is_set():
+                return
+            try:
+                update(done, total, label="Downloading model", unit="bytes")
+            except Exception:  # noqa: BLE001
+                return
+
+    thread = threading.Thread(target=_run, name="scubiee-download-watch", daemon=True)
+    thread.start()
+
+    def _stop() -> None:
+        stop.set()
+        thread.join(timeout=5.0)
+
+    return _stop
+
+
 def _download_coderank_source_onnx(cache_root: Path) -> Path:
     from huggingface_hub import snapshot_download
     from huggingface_hub.utils import disable_progress_bars, enable_progress_bars
@@ -2509,25 +2581,17 @@ def ensure_coderank_fp16_onnx(progress: Any | None = None) -> Path:
             progress.set(70, "Embedding model ready (cached)")
         return found
 
-    import threading as _thr
-    _dl_stop = _thr.Event()
-    def _dl_pulse():
-        i = 0
-        while not _dl_stop.wait(2.0):
-            i += 1
-            if progress is not None:
-                # Increment pct from 58 toward 63 so the progress bar fills up.
-                # Each tick adds 1 to pct (capped at 63 to leave room for convert step).
-                pct = 58 + min(i, 5)
-                progress.set(pct, f"Downloading model\u2026 ({int(i*2)}s)")
+    _dl_stop = None
     if progress is not None:
         progress.set(58, "Downloading model\u2026")
-        _dl_thread = _thr.Thread(target=_dl_pulse, daemon=True)
-        _dl_thread.start()
+        _dl_stop = _watch_download_bytes(cache_root, progress)
     else:
         print("[accel] Downloading CodeRank weights (~500 MB)...", file=sys.stderr, flush=True)
-    fp32 = _download_coderank_source_onnx(cache_root)
-    _dl_stop.set()
+    try:
+        fp32 = _download_coderank_source_onnx(cache_root)
+    finally:
+        if _dl_stop is not None:
+            _dl_stop()
     if progress is not None:
         progress.set(64, "Converting to FP16\u2026")
     else:

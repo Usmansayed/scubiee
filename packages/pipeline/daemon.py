@@ -1021,7 +1021,7 @@ def stop_daemon(*, reason: str | None = None, audit: str | None = None) -> dict[
     while time.time() < deadline and is_running():
         time.sleep(0.2)
     still_running = is_running()
-    if not still_running:
+    if not still_running and _home().is_dir():
         try:
             note_engine_transition("stop", reason=stop_reason)
         except Exception:  # noqa: BLE001

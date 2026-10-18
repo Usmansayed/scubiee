@@ -9,7 +9,9 @@ from typing import Any
 
 
 def current_python() -> Path:
-    return Path(sys.executable).resolve()
+    # No resolve(): a venv / uv tool ``bin/python`` is a symlink to the base
+    # interpreter, and following it loses which environment we are running in.
+    return Path(sys.executable).absolute()
 
 
 def expected_scubiee_exe(python: Path | None = None) -> Path:

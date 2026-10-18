@@ -785,6 +785,8 @@ class Embedder:
                 rows.append(self.embed_one(t, is_query=is_query))
                 if progress and (i + 1) % 25 == 0:
                     progress(i + 1, len(texts))
+            if progress:
+                progress(len(texts), len(texts))
             self.flush_cache()
             return np.stack(rows, axis=0)
 
@@ -805,6 +807,9 @@ class Embedder:
         bs = max(1, int(self.batch_size))
         t_all = time.perf_counter()
         done_new = 0
+        n_cached = len(texts) - len(pending_text)
+        if progress:
+            progress(n_cached, len(texts))
         # Adaptive batching via Resource Manager
         try:
             from pipeline.resources import get_resource_manager, resources_disabled
@@ -914,7 +919,7 @@ class Embedder:
             else:
                 gpu_tok_total += real_tok
             if progress:
-                progress(min(start + bs, len(pending_text)), len(texts))
+                progress(n_cached + min(start + bs, len(pending_text)), len(texts))
             if not progress and (
                 start == 0
                 or (start // max(bs, 1)) % 5 == 0

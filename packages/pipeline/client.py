@@ -298,8 +298,20 @@ class EngineClient:
     def locate(self, query: str, *, top_k: int = 5, path: str = "") -> dict[str, Any]:
         return self.post("/v1/locate", {"query": query, "top_k": top_k, "path": path})
 
-    def sync(self, path: str = "", *, confirm: bool = False) -> dict[str, Any]:
-        return self.post("/v1/sync", {"path": path, "confirm": bool(confirm)})
+    def sync(
+        self,
+        path: str = "",
+        *,
+        confirm: bool = False,
+        wait: bool = False,
+        timeout_s: float = 90.0,
+    ) -> dict[str, Any]:
+        """``wait=True`` returns only after the change is indexed (or ``timeout_s``)."""
+        body: dict[str, Any] = {"path": path, "confirm": bool(confirm)}
+        if wait:
+            body["wait"] = True
+            body["timeout_s"] = timeout_s
+        return self.post("/v1/sync", body)
 
     def publish(self, path: str = "", *, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         """Reload the daemon's in-memory search engine after an external sync/index."""

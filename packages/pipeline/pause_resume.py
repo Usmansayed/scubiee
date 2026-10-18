@@ -73,6 +73,11 @@ def is_resuming() -> bool:
         return False
 
 
+def is_stopped() -> bool:
+    """Stopped and not mid-resume — the state that must refuse engine starts."""
+    return is_paused() and not is_resuming()
+
+
 def _load_state() -> dict[str, Any]:
     path = _state_path()
     if not path.is_file():
@@ -494,6 +499,15 @@ def resume(*, ensure_engine: bool = True) -> dict[str, Any]:
                 report["engine"] = ensure_daemon(repo)
         except Exception as exc:  # noqa: BLE001
             report["engine_error"] = str(exc)
+        engine = report.get("engine")
+        if report.get("engine_error") or (
+            isinstance(engine, dict) and engine.get("ok") is False and not engine.get("skipped")
+        ):
+            report["ok"] = False
+            report["hint"] = (
+                "MCP and rules are restored, but the engine did not start. "
+                "Check ~/.scubiee/engine.log or run `scubiee doctor .`"
+            )
 
         try:
             from pipeline.watchdog import start_watchdog
@@ -567,11 +581,4 @@ def _enable_mcp_for_tool(tool: ToolDef) -> list[str]:
     from pipeline.rules_installer import install_tool
 
     report = install_tool(tool)
-    enabled: list[str] = []
-    for path in report.get("mcp_paths") or []:
-        enabled.append(str(path))
-    fan = report.get("project_fan_out") or {}
-    for sub in fan.get("reports") or []:
-        for p in sub.get("mcp_paths") or []:
-            enabled.append(str(p))
-    return enabled
+    return [str(p) for p in report.get("mcp_paths") or []]

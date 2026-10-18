@@ -1036,7 +1036,7 @@ def enforce_mcp_warm_contract(*, now: float | None = None) -> dict[str, Any]:
 
 
 def engine_should_be_running() -> bool:
-    from pipeline.pause_resume import is_paused
+    from pipeline.pause_resume import is_stopped
 
     # An outside writer (init/index) holding the store lock → supervisor must
     # not start OR stop the engine for the bounded hold window. Checked FIRST
@@ -1044,7 +1044,7 @@ def engine_should_be_running() -> bool:
     # tick. Self-expires, so a crashed writer can never pin the engine off.
     if store_hold_active():
         return False
-    if is_paused():
+    if is_stopped():
         return False
     if load_policy().get("desired_mode") == DESIRED_RUN:
         return True

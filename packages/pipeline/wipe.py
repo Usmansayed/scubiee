@@ -917,7 +917,11 @@ def wipe_all(
         repo_targets.append(target)
 
     repo_actions: list[dict[str, Any]] = []
-    for repo_root in repo_targets:
+    for i, repo_root in enumerate(repo_targets):
+        if progress is not None:
+            progress.step_update(
+                f"Removing repository data ({i}/{len(repo_targets)})"
+            )
         try:
             repo_actions.append(
                 {
@@ -928,7 +932,6 @@ def wipe_all(
                         rule=True,
                         halt_first=False,
                         restart_engine=False,
-                        progress=progress,
                     ),
                 }
             )

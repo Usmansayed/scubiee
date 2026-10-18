@@ -209,6 +209,15 @@ class BackgroundSyncLoop:
         )
         self._stop = threading.Event()
         self._poll_now = False
+        # Explicit sync requests: each request_poll() gets a sequence number;
+        # a sequence is "settled" once a poll that ran after it has had all its
+        # dirty work drained and published.
+        self._settle_cv = threading.Condition()
+        self._poll_seq = 0
+        self._polled_seq = 0
+        self._settled_seq = 0
+        self._last_poll_paths: list[str] = []
+        self._polled_paths: dict[int, list[str]] = {}
         self._last_newcomer_scan = 0.0
         self._last_ast_revalidate = 0.0
         self._ast_revalidate_thread: threading.Thread | None = None
@@ -431,6 +440,7 @@ class BackgroundSyncLoop:
         from pipeline.root_probe import root_probe
 
         current_time = time.monotonic() if now is None else now
+        self._last_poll_paths = []
         # Indexed files plus folders whose mtime moved; the full newcomer walk
         # was the 7–9s stall. Skipping the poll while a client is registered
         # hid every save.
@@ -465,6 +475,7 @@ class BackgroundSyncLoop:
         )
         if not paths:
             return []
+        self._last_poll_paths = paths
         # Do not re-mark already queued/processing paths — that would slide the
         # rewrite debounce forever while the file remains dirty on disk.
         snap = self.dirty_ledger.snapshot().get("paths") or {}
@@ -522,9 +533,95 @@ class BackgroundSyncLoop:
         self._poll_store_cache = store
         return store
 
-    def request_poll(self) -> None:
-        """Ask the keeper thread to probe on its next tick. Does not touch disk."""
+    def request_poll(self) -> int:
+        """Ask the keeper thread to probe on its next tick. Does not touch disk.
+
+        Returns a sequence number for :meth:`wait_settled`.
+        """
+        with self._settle_cv:
+            self._poll_seq += 1
+            seq = self._poll_seq
         self._poll_now = True
+        return seq
+
+    def _pending_entries(self) -> list[tuple[str, dict]]:
+        paths = self.dirty_ledger.snapshot().get("paths") or {}
+        return [
+            (key, entry)
+            for key, entry in paths.items()
+            if isinstance(entry, dict)
+            and str(entry.get("state") or "") in {"queued", "due", "processing"}
+        ]
+
+    def _note_polled(self, seq: int) -> None:
+        """Record that a poll covering requests up to ``seq`` has run."""
+        # The periodic poll may have queued an edit just before this one ran
+        # (its folder watch then no longer reports it), so in-flight paths
+        # belong to this request too.
+        changed = set(self._last_poll_paths)
+        changed.update(
+            key for key, entry in self._pending_entries()
+            if str(entry.get("reason") or "") != "graph_catchup"
+        )
+        with self._settle_cv:
+            self._polled_paths[seq] = sorted(changed)
+            for old in sorted(self._polled_paths)[:-16]:
+                self._polled_paths.pop(old, None)
+            self._polled_seq = max(self._polled_seq, seq)
+
+    def _sync_work_pending(self) -> bool:
+        """Work that keeps a just-edited file out of search results.
+
+        ``graph_catchup`` is excluded: it runs after the chunks are already
+        published and is deliberately held back ~30s for a quiet repo.
+        """
+        if self._syncing or self._pending_publish is not None:
+            return True
+        return any(
+            str(entry.get("reason") or "") != "graph_catchup"
+            for _key, entry in self._pending_entries()
+        )
+
+    def _settle_if_idle(self) -> None:
+        if self._polled_seq <= self._settled_seq or self._sync_work_pending():
+            return
+        with self._settle_cv:
+            self._settled_seq = max(self._settled_seq, self._polled_seq)
+            self._settle_cv.notify_all()
+
+    def wait_settled(self, seq: int, *, timeout: float) -> bool:
+        """Block until request ``seq`` is polled, drained, and published."""
+        with self._settle_cv:
+            return self._settle_cv.wait_for(
+                lambda: self._settled_seq >= seq or self._stop.is_set(),
+                timeout=max(0.0, timeout),
+            ) and self._settled_seq >= seq
+
+    def settle_report(self, seq: int, *, settled: bool, waited_ms: float = 0.0) -> dict:
+        with self._settle_cv:
+            covering = [k for k in self._polled_paths if k >= seq]
+            changed = self._polled_paths.get(min(covering), []) if covering else []
+        out: dict[str, Any] = {
+            "ok": settled and not self.needs_full,
+            "strategy": "live" if settled else "deferred",
+            "refreshed": settled and bool(changed),
+            "files_synced": len(changed) if settled else 0,
+            "files": changed[:50] if settled else [],
+            "settled": settled,
+            "waited_ms": round(waited_ms, 1),
+            "graph_pending": sum(
+                1 for _key, entry in self._pending_entries()
+                if str(entry.get("reason") or "") == "graph_catchup"
+            ),
+            "error": None,
+        }
+        if not settled:
+            out["error"] = "sync_timeout"
+            out["hint"] = "Still indexing in the background; search catches up when it finishes."
+        elif self.needs_full:
+            out["error"] = "needs_full"
+            out["hint"] = "Too many changes for a live sync. Run: scubiee init ."
+        return out
 
     def _hot_work_pending(self, *, now: float | None = None) -> bool:
         """True when a hot save is in flight or was marked very recently.
@@ -1631,6 +1728,8 @@ class BackgroundSyncLoop:
     def stop(self) -> None:
         self._stop.set()
         self.running = False
+        with self._settle_cv:
+            self._settle_cv.notify_all()
         job = getattr(self, "_graph_job", None)
         if job is not None:
             # The paths stay owed in meta.graph_pending; the next start retries.
@@ -2220,7 +2319,9 @@ class BackgroundSyncLoop:
                 self.check_time_gap(now=now)
                 if self._poll_now or now >= next_change_poll:
                     self._poll_now = False
+                    polled_seq = self._poll_seq
                     self.poll_repo_changes(now=now)
+                    self._note_polled(polled_seq)
                     next_change_poll = now + self.change_poll_ms / 1000.0
                 # The walk takes seconds on big repos and stretches an overlapping hot save past SLA.
                 try:
@@ -2274,6 +2375,7 @@ class BackgroundSyncLoop:
                     next_probe = now + self.interval_ms / 1000.0
                 self.drain_due(now=now)
                 self.drain_publish(now=now)
+                self._settle_if_idle()
             except Exception as exc:  # noqa: BLE001
                 print(f"[keeper] error: {exc}", file=sys.stderr, flush=True)
             if self._stop.wait(0.25):

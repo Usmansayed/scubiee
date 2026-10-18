@@ -4377,6 +4377,8 @@ def _extract_parallel(
     max_workers: int | None,
     total_files: int,
     cache_location: Path | None = None,
+    *,
+    on_done: Callable[[int], None] | None = None,
 ) -> bool:
     """Extract uncached files in parallel using ProcessPoolExecutor.
 
@@ -4447,6 +4449,8 @@ def _extract_parallel(
                         file=sys.stderr, flush=True,
                     )
                 done_count += 1
+                if on_done is not None:
+                    on_done(done_count)
                 if (
                     total_files >= _PROGRESS_INTERVAL
                     and done_count % _PROGRESS_INTERVAL == 0
@@ -4487,10 +4491,14 @@ def _extract_sequential(
     root: Path,
     total_files: int,
     cache_location: Path | None = None,
+    *,
+    on_done: Callable[[int], None] | None = None,
 ) -> None:
     """Extract uncached files sequentially (fallback for small batches)."""
     _PROGRESS_INTERVAL = 100
     for work_idx, (idx, path) in enumerate(uncached_work):
+        if on_done is not None and work_idx:
+            on_done(work_idx)
         if (
             total_files >= _PROGRESS_INTERVAL
             and work_idx % _PROGRESS_INTERVAL == 0
@@ -4510,6 +4518,8 @@ def _extract_sequential(
         if not bypass_cache and "error" not in result and result.get("nodes"):
             save_cached(path, result, root, cache_root=cache_location)
         per_file[idx] = result
+    if on_done is not None:
+        on_done(len(uncached_work))
     if total_files >= _PROGRESS_INTERVAL:
         # Consistent denominator with the intermediate lines (#1693).
         _done = len(uncached_work)
@@ -4526,6 +4536,7 @@ def extract(
     root: Path | None = None,
     parallel: bool = True,
     max_workers: int | None = None,
+    progress: Callable[[int, int], None] | None = None,
 ) -> dict:
     """Extract AST nodes and edges from a list of code files.
 
@@ -4548,6 +4559,9 @@ def extract(
             use ProcessPoolExecutor for multi-core extraction.
         max_workers: max subprocess count. Defaults to cpu_count (or the
             value of GRAPHIFY_MAX_WORKERS if set), bounded by len(uncached_work).
+        progress: optional ``(files_done, files_total)`` callback for per-file
+            extraction progress (cached/skipped files count as done up front).
+            Cross-file resolution runs after it reports ``total``.
     """
     paths = [Path(p) for p in paths]
     anchor_root = Path(root) if root is not None else None
@@ -4609,15 +4623,29 @@ def extract(
                 continue
         uncached_work.append((i, path))
 
+    already_done = total - len(uncached_work)
+    on_done: Callable[[int], None] | None = None
+    if progress is not None:
+        def on_done(n: int) -> None:
+            try:
+                progress(already_done + n, total)
+            except Exception:  # noqa: BLE001
+                pass
+
+        on_done(0)
+
     # Phase 2: extract uncached files (parallel or sequential)
     if uncached_work:
         ran_parallel = False
         if parallel and len(uncached_work) >= _PARALLEL_THRESHOLD:
             ran_parallel = _extract_parallel(
-                uncached_work, per_file, root, max_workers, total, cache_location
+                uncached_work, per_file, root, max_workers, total, cache_location,
+                on_done=on_done,
             )
         if not ran_parallel:
-            _extract_sequential(uncached_work, per_file, root, total, cache_location)
+            _extract_sequential(
+                uncached_work, per_file, root, total, cache_location, on_done=on_done
+            )
 
     # Fill any remaining None slots (shouldn't happen, but defensive)
     for i in range(total):

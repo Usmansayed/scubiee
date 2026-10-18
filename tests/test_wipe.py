@@ -288,6 +288,53 @@ def test_wipe_all_runs_final_kill_after_cleanup(tmp_path: Path, monkeypatch) -> 
     assert calls == ["halt", "final_kill"]
 
 
+def test_wipe_all_keeps_one_progress_plan(tmp_path: Path, monkeypatch) -> None:
+    home = tmp_path / "ce-home"
+    home.mkdir()
+    monkeypatch.setenv("CTX_HOME", str(home))
+    fake_user = tmp_path / "fake-user"
+    fake_user.mkdir()
+    monkeypatch.setattr(Path, "home", lambda: fake_user)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    monkeypatch.chdir(repo)
+
+    monkeypatch.setattr(
+        "pipeline.wipe._halt_scubiee_before_wipe",
+        lambda **kw: {"ok": True, "scope": "all", "actions": {}, "remaining_processes": []},
+    )
+    monkeypatch.setattr(
+        "pipeline.process_control.kill_all_scubiee_processes",
+        lambda **kw: {"ok": True, "remaining": [], "remaining_pids": []},
+    )
+    monkeypatch.setattr(
+        "pipeline.wipe.audit_scubiee_artifacts",
+        lambda **kw: {"clean": True, "remaining": []},
+    )
+    seen_progress: list[object] = []
+
+    def _wipe_repo(*a, **k):
+        seen_progress.append(k.get("progress"))
+        return {"ok": True, "scope": "repo", "root": str(repo), "actions": []}
+
+    monkeypatch.setattr("pipeline.wipe.wipe_repo", _wipe_repo)
+
+    class _Recorder:
+        def __init__(self) -> None:
+            self.configures: list[dict] = []
+
+        def configure(self, **kw):
+            self.configures.append(kw)
+
+        def __getattr__(self, name):
+            return lambda *a, **k: None
+
+    rec = _Recorder()
+    wipe_all(yes=True, models=False, package=False, repo=repo, progress=rec)
+    assert [c["scope"] for c in rec.configures] == ["all"]
+    assert seen_progress and all(p is None for p in seen_progress)
+
+
 def test_wipe_all_requires_yes(tmp_path: Path, monkeypatch) -> None:
     home = tmp_path / "ce-home"
     home.mkdir()

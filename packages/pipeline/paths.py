@@ -139,3 +139,32 @@ def collect_index_relpaths(
         p.relative_to(root).as_posix()
         for p in collect_index_paths(root, fast=fast, fast_roots=fast_roots)
     }
+
+
+def exceeds_index_cap(root: Path, cap: int) -> bool:
+    """Fast, bounded check: does *root* hold MORE than *cap* indexable files?
+
+    The full ``collect_index_relpaths`` materialises every candidate path AND
+    reads the first 8 KB of each (the text sniff) just to produce a count — on a
+    broad root (home dir, drive root) that is hundreds of thousands of files and
+    minutes of silent work (the "init looks hung" trap). This does a pruned
+    ``os.walk`` that skips builtin-ignored dirs (``node_modules``, ``.venv``,
+    ``.git``, dotdirs, …) and returns ``True`` as soon as the extension-matching
+    count exceeds *cap* — no per-file content read, early exit. Approximate by
+    design: it may slightly over-count vs the full filter (it skips the text
+    sniff and custom ``.scubieeignore``), but for a "is this absurdly large?"
+    gate that is exactly right and bounded.
+    """
+    from pipeline.ignore import is_builtin_ignored_dir_name
+
+    root = root.resolve()
+    n = 0
+    for dirpath, dirnames, filenames in os.walk(root):
+        # Prune ignored dirs in place so os.walk never descends into them.
+        dirnames[:] = [d for d in dirnames if not is_builtin_ignored_dir_name(d)]
+        for fn in filenames:
+            if Path(fn).suffix.lower() in DEFAULT_EXTENSIONS:
+                n += 1
+                if n > cap:
+                    return True
+    return False

@@ -604,8 +604,11 @@ def cmd_wipe(args: argparse.Namespace) -> int:
         progress=progress,
     )
 
-    if progress is not None and not _needs_confirm_out(out):
-        progress.finish("Wipe complete" if out.get("ok") else "Wipe finished with warnings")
+    if progress is not None:
+        if _needs_confirm_out(out):
+            progress.finish()
+        else:
+            progress.finish("Wipe complete" if out.get("ok") else "Wipe finished with warnings")
 
     if is_tty:
         if _needs_confirm_out(out):
@@ -1003,7 +1006,13 @@ def cmd_sync(args: argparse.Namespace) -> int:
 
         client = EngineClient(workspace_path=root)
         if client.healthy():
-            out = client.sync(str(root), confirm=confirm)
+            if sys.stderr.isatty():
+                from pipeline.cli_ui import Spinner
+
+                with Spinner("Syncing changes", stream=sys.stderr):
+                    out = client.sync(str(root), confirm=confirm, wait=True)
+            else:
+                out = client.sync(str(root), confirm=confirm, wait=True)
             used_daemon = True
     except Exception as exc:  # noqa: BLE001
         print(f"[sync] daemon path unavailable ({exc}); local sync", file=sys.stderr)
@@ -1029,6 +1038,9 @@ def cmd_sync(args: argparse.Namespace) -> int:
             if err == "requires_initialize":
                 warn("Repository not initialized", stream=sys.stderr)
                 info("Run: scubiee init .", stream=sys.stderr)
+            elif out.get("hint"):
+                warn(f"Sync not finished: {err}", stream=sys.stderr)
+                info(out["hint"], stream=sys.stderr)
             else:
                 error(f"Sync failed: {err}", stream=sys.stderr)
         else:
@@ -1397,20 +1409,41 @@ def cmd_init(args: argparse.Namespace) -> int:
     n_files = 0
     prompted_header = False
     if not bool(getattr(args, "no_index", False)) and not repeat_init:
-        from pipeline.incremental import IndexConfirmRequired, preflight_index_scope
-        from pipeline.cli_ui import branded_header, confirm_action, format_index_eta
+        from pipeline.incremental import IndexConfirmRequired, preflight_index_scope, scope_bytes
+        from pipeline.cli_ui import Spinner, branded_header, confirm_action, format_index_eta
 
+        if is_tty:
+            branded_header("init", stream=sys.stderr)
+            prompted_header = True
         try:
-            n_files = preflight_index_scope(
-                root,
-                fast=fast,
-                fast_roots=roots,
-                confirm=bool(getattr(args, "confirm", False)),
-            )
+            with Spinner("Analysing repository size", stream=sys.stderr):
+                n_files = preflight_index_scope(
+                    root,
+                    fast=fast,
+                    fast_roots=roots,
+                    confirm=bool(getattr(args, "confirm", False)),
+                )
         except IndexConfirmRequired as exc:
+            # A broad root (home/drive) that is ALSO over the file cap even
+            # though --confirm was given is a HARD STOP, not a re-promptable
+            # pause: proceeding would index hundreds of thousands of files (the
+            # "looks hung" trap the user hit). Do not fall through to the y/n
+            # prompt + auto-proceed — require --roots or --force.
+            if getattr(exc, "kind", "") == "broad_over_cap":
+                if is_tty:
+                    from pipeline.cli_ui import InitProgress
+                    _b = InitProgress()
+                    _b.fail(
+                        "Too many files under this broad path",
+                        hint=(
+                            "Narrow the scope: `scubiee init . --roots <dir>` "
+                            "(run inside a project folder), or add --force to "
+                            "index everything anyway."
+                        ),
+                    )
+                    return 2
+                return _fail_confirm(root, exc)
             if is_tty:
-                branded_header("init", stream=sys.stderr)
-                prompted_header = True
                 n_files = int(getattr(exc, "n_files", 0) or 0)
                 if getattr(exc, "kind", "") == "broad_root":
                     message = str(exc)
@@ -1419,7 +1452,7 @@ def cmd_init(args: argparse.Namespace) -> int:
                 else:
                     message = (
                         f"This repository has {n_files:,} files "
-                        f"(est. {format_index_eta(n_files)})"
+                        f"(est. {format_index_eta(n_files, scope_bytes(root))})"
                     )
                     details = [
                         "This looks unintentionally large. Prefer a project folder, "
@@ -1443,9 +1476,7 @@ def cmd_init(args: argparse.Namespace) -> int:
             # Every interactive init: show size + time and get y/n.
             # --confirm skips the prompt for scripts.
             if is_tty and not bool(getattr(args, "confirm", False)):
-                branded_header("init", stream=sys.stderr)
-                prompted_header = True
-                eta = format_index_eta(n_files) if n_files else "~1 min"
+                eta = format_index_eta(n_files, scope_bytes(root)) if n_files else "~1 min"
                 confirmed = confirm_action(
                     f"This repository has {n_files:,} files (est. {eta})",
                     default=True,
@@ -1462,22 +1493,22 @@ def cmd_init(args: argparse.Namespace) -> int:
         args.confirm = True
 
     # --- Run init ---
+    from pipeline.cli_ui import InitProgress
+
+    bar = InitProgress()
     if is_tty:
-        from pipeline.cli_ui import InitProgress
-        bar = InitProgress()
         if not prompted_header:
             bar.start()
         # Scope was already shown in the y/n prompt when interactive.
         if n_files and not prompted_header:
             bar.announce_scope(n_files)
     else:
-        bar = _progress_bar("Initializing repository…")
+        sys.stderr.write("Initializing repository…\n")
+        sys.stderr.flush()
 
     from pipeline.repo_lifecycle import initialize_repo
 
-    # Show progress bar immediately so user doesn't see a frozen terminal
-    if is_tty:
-        bar._bar(0.0, "Starting…")
+    bar.stage("prepare")
 
     # Silence graphify/index logs so they cannot break the in-place bar
     # (Windows consoles merge stdout+stderr onto one line).
@@ -1563,6 +1594,7 @@ def cmd_init(args: argparse.Namespace) -> int:
                 _init_handoff_wait = float(os.environ.get("CTX_INIT_HANDOFF_WAIT_S") or 20.0)
             except ValueError:
                 _init_handoff_wait = 20.0
+            bar.stage("engine")
             out["daemon"] = ensure_daemon(root, wait_s=_init_handoff_wait)
         except Exception as exc:  # noqa: BLE001
             out["daemon"] = {"ok": False, "error": str(exc)}
@@ -2162,13 +2194,25 @@ def cmd_global_resume(args: argparse.Namespace) -> int:
     is_tty = sys.stdout.isatty()
 
     # Always call resume(): already-active still heals sticky GATE p rule files.
-    result = resume()
+    if is_tty:
+        from pipeline.cli_ui import Spinner
+
+        with Spinner("Resuming Scubiee", stream=sys.stderr):
+            result = resume()
+    else:
+        result = resume()
     already = bool(result.get("already_active")) and not is_paused()
 
     if is_tty:
         from pipeline.cli_ui import success, warn
         sys.stderr.write("\n")
-        if result.get("ok") and already:
+        if not result.get("ok") and not is_paused():
+            warn(
+                "Resumed, but the engine did not start",
+                detail=str(result.get("hint") or ""),
+                stream=sys.stderr,
+            )
+        elif result.get("ok") and already:
             success("Already active", stream=sys.stderr)
         elif result.get("ok"):
             success("Resumed", stream=sys.stderr)

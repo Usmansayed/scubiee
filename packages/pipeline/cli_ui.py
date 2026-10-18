@@ -15,6 +15,7 @@ import sys
 import time
 from typing import IO, Any, TextIO
 
+from pipeline.progress import ProgressModel, ProgressRenderer, Stage, clean_label
 from pipeline.tool_registry import connect_restart_hint
 
 # ── Color support ─────────────────────────────────────────────────────────────
@@ -315,15 +316,26 @@ def format_count(n: int) -> str:
     return f"{n:,}"
 
 
-def format_index_eta(n_files: int) -> str:
-    """Wall-clock range from observed ~0.45–0.55s per indexable file.
+def format_index_eta(n_files: int, total_bytes: int | None = None) -> str:
+    """Wall-clock range for a full index.
 
-    446 files on a typical GPU box takes ~3–4 min, not the old 1 min
-    (~600 files/min) estimate.
+    With ``total_bytes`` the range comes from this machine's embed speed
+    (``workload.estimate_init_seconds``); otherwise from the per-file average
+    (~0.45–0.55s per file on a typical GPU box).
     """
     n = max(0, int(n_files))
-    lo_s = max(20, int(round(n * 0.45)))
-    hi_s = max(lo_s, int(round(n * 0.55)))
+    est = None
+    if total_bytes is not None:
+        from pipeline.workload import estimate_init_seconds
+
+        est = estimate_init_seconds(n, int(total_bytes))
+    if est is not None:
+        lo_s, hi_s = est
+        if hi_s < 60:
+            return "<1 min"
+    else:
+        lo_s = max(20, int(round(n * 0.45)))
+        hi_s = max(lo_s, int(round(n * 0.55)))
     lo_m = max(1, int(round(lo_s / 60)))
     hi_m = max(lo_m, int(round(hi_s / 60)))
     if lo_m == hi_m:
@@ -337,6 +349,10 @@ def _clean_progress_label(label: str) -> str:
     first = re.sub(r"(?i)\bgraphify\b", "", first)
     first = re.sub(r"\s{2,}", " ", first).strip(" -·|:;") or "Working"
     return first[:48]
+
+
+def _step_label(label: str) -> str:
+    return clean_label(_clean_progress_label(label))
 
 
 class _ScrubGraphifyStream:
@@ -658,6 +674,30 @@ def confirm_action(
         return default
     return answer in ("y", "yes")
 
+# ── Spinner (indeterminate wait) ─────────────────────────────────────────────
+
+class Spinner:
+    """In-place animated line for silent work of unknown length.
+
+    Usage: ``with Spinner("Analysing repository size"): count()``.
+    No-op on non-TTY streams. The wrapped work must not write to the same
+    stream while the spinner is running.
+    """
+
+    def __init__(self, message: str, *, stream: IO[str] | TextIO | None = None):
+        self.stream = stream or sys.stderr
+        self._model = ProgressModel()
+        self._model.milestone(0.0, message)
+        self._r = ProgressRenderer(self._model, self.stream, bar="none")
+
+    def __enter__(self) -> "Spinner":
+        if self._r.tty:
+            self._r.activate()
+        return self
+
+    def __exit__(self, *_exc) -> None:
+        self._r.stop()
+
 # ── Setup progress (phased output) ───────────────────────────────────────────
 
 class SetupProgress:
@@ -670,25 +710,31 @@ class SetupProgress:
     """
 
     def __init__(self, stream=None):
-        self.stream = stream or sys.stderr
-        self.c = colors(self.stream)
-        self._tty = _is_tty(self.stream)
+        self._model = ProgressModel()
+        self._r = ProgressRenderer(self._model, stream or sys.stderr, bar="stage", width=20)
+        self.c = colors(self._r.stream)
         self._last_phase = ""
         self._last_key = ""
-        self._line_open = False
-        self._last_line_len = 0
-        self._non_tty_last_emit = ""
         self._last_step_finish_msg = ""
+
+    @property
+    def stream(self):
+        return self._r.stream
+
+    @stream.setter
+    def stream(self, value):
+        self._r.stream = value
+        self.c = colors(value)
+
+    @property
+    def _tty(self) -> bool:
+        return self._r.tty
 
     def start(self, notice=None):
         branded_header("setup", stream=self.stream)
 
     def _clear_line(self):
-        if self._tty and self._line_open:
-            pad = " " * self._last_line_len
-            self.stream.write("\r" + pad + "\r")
-        self._line_open = False
-        self._last_line_len = 0
+        self._r.deactivate()
 
     def step_done(self, message, detail=""):
         self._clear_line()
@@ -697,61 +743,40 @@ class SetupProgress:
         self.stream.flush()
 
     def step_active(self, message):
-        self._clear_line()
-        if self._tty:
-            line = f"  {ICON_RUN} {message}"
-            self.stream.write(f"  {self.c.blue}{ICON_RUN}{self.c.reset} {message}")
-            self.stream.flush()
-            self._line_open = True
-            self._last_line_len = len(line)
-        else:
-            if message != self._non_tty_last_emit:
-                self.stream.write(f"  {ICON_RUN} {message}\n")
-                self.stream.flush()
-                self._non_tty_last_emit = message
+        """Start a new step: spinner + label + elapsed clock until it finishes."""
+        self._model.milestone(0.0, message)
+        self._r.activate()
 
     def step_update(self, message):
-        if not self._tty:
-            return
-        line = f"  {ICON_RUN} {message}"
-        pad = max(0, self._last_line_len - len(line))
-        self.stream.write(f"\r  {self.c.blue}{ICON_RUN}{self.c.reset} {message}{' ' * pad}")
-        self.stream.flush()
-        self._last_line_len = max(self._last_line_len, len(line))
-        self._line_open = True
+        self._model.set_label(message)
+        self._r.activate()
+
+    def update(self, done, total=None, *, label=None, unit="count"):
+        """Measured work in the current step (e.g. download bytes) — real bar + %."""
+        if label and _step_label(label) != self._model.snapshot().label:
+            self._model.milestone(0.0, _step_label(label))
+        self._model.update(done, total, unit=unit)
+        self._r.activate()
 
     def step_finish(self, message, detail=""):
         # Dedup: skip if same message was already finished
         if message == self._last_step_finish_msg:
             return
         self._last_step_finish_msg = message
+        self._clear_line()
         detail_str = f"  {self.c.muted}{detail}{self.c.reset}" if detail else ""
-        if self._tty:
-            plain = f"  {ICON_OK} {message}" + (f"  {detail}" if detail else "")
-            pad = max(0, self._last_line_len - len(plain))
-            self.stream.write(
-                f"\r  {self.c.green}{ICON_OK}{self.c.reset} {message}{detail_str}{' ' * pad}\n"
-            )
-        else:
-            self.stream.write(f"  {ICON_OK} {message}{detail_str}\n")
+        self.stream.write(f"  {self.c.green}{ICON_OK}{self.c.reset} {message}{detail_str}\n")
         self.stream.flush()
-        self._line_open = False
-        self._last_line_len = 0
-        self._non_tty_last_emit = ""
 
     def finish(self, message):
-        self._clear_line()
+        self._r.stop()
         self.stream.write(f"\n  {self.c.green}{ICON_OK}{self.c.reset} {self.c.bold}{message}{self.c.reset}\n\n")
         self.stream.flush()
 
     def fail(self, message):
-        if self._tty:
-            pad = max(0, self._last_line_len - (len(message) + 4))
-            self.stream.write(f"\r  {self.c.red}{ICON_FAIL}{self.c.reset} {message}{' ' * pad}\n\n")
-        else:
-            self.stream.write(f"  {ICON_FAIL} {message}\n\n")
+        self._r.stop()
+        self.stream.write(f"  {self.c.red}{ICON_FAIL}{self.c.reset} {message}\n\n")
         self.stream.flush()
-        self._line_open = False
 
     # ── Adapter for the old progress_ui.InstallProgress interface ─────────
     # Sub-steps of "getting the model ready" collapse onto ONE active line
@@ -764,15 +789,13 @@ class SetupProgress:
         phase_key = phase.lower().split("(")[0].strip()
         phase_lower = phase.lower()
 
-        # Model step keys use the progress bar — allow repeated calls with
-        # different pct values (don't dedup on phase text for these).
+        # Model prep sub-steps share one live line. Their pct values are fixed
+        # milestones, not measurements, so they get a spinner + label; real
+        # byte counts arrive through update() and draw a true bar.
         if any(key in phase_lower for key in self._MODEL_STEP_KEYS):
-            # Progress bar for model prep (pct 56-85 maps to 0-100%)
-            bar_width = 20
-            frac = max(0.05, min(1.0, (pct - 56) / (85 - 56))) if pct > 56 else 0.05
-            filled = int(bar_width * frac)
-            bar = "\u2588" * filled + "\u2591" * (bar_width - filled)
-            self.step_update(f"[{bar}] {frac:.0%}  Preparing model")
+            label = _step_label(phase)
+            if label != self._model.snapshot().label:
+                self.step_active(label)
             self._last_phase = phase
             self._last_key = phase_key
             return
@@ -838,15 +861,13 @@ class SetupProgress:
         if pct >= 90:
             self.step_done(phase)
         else:
-            self.step_update(phase)
+            self.step_active(phase)
 
     def pulse(self, phase, *, until):
         self.set(until, phase)
 
     def notice(self, message):
-        self._clear_line()
-        self.stream.write(f"  {self.c.muted}{message}{self.c.reset}\n")
-        self.stream.flush()
+        self._r.write_above(f"  {self.c.muted}{message}{self.c.reset}\n")
 
 # ── Additional command summaries ─────────────────────────────────────────────
 
@@ -1193,20 +1214,60 @@ def print_wipe_summary(data: dict[str, Any], *, stream: IO[str] | TextIO | None 
 
 # ── Init progress helper ──────────────────────────────────────────────────────
 
-class InitProgress:
-    """Single progress bar for the entire init process.
+# Weights = measured share of init wall time (61- and 239-file repos: scan
+# 4-7%, parse 2-3%, link 16-17%, embed 68-76%). Keep in sync with
+# scripts/progress_live_trace.py output when the pipeline changes.
+INIT_STAGES = (
+    Stage("prepare", "Preparing", 1),
+    Stage("scan", "Scanning files", 5),
+    Stage("parse", "Parsing code", 4),
+    Stage("link", "Linking symbols", 16),
+    Stage("chunk", "Building chunks", 2),
+    Stage("embed", "Embedding", 68),
+    Stage("write", "Writing index", 3),
+    Stage("engine", "Starting engine", 1),
+)
 
-    Shows: [????????????????????] 40%  Embedding
-    The bar fills as phases progress, text on right shows current phase.
+# Legacy ``set(pct, phase)`` text -> stage key. The pct is ignored: position
+# comes from the stage plan plus measured counts.
+_INIT_PHASE_KEYS = (
+    ("scanning", "scan"),
+    ("parsing", "parse"),
+    ("linking", "link"),
+    ("building", "chunk"),
+    ("chunk", "chunk"),
+    ("embedding", "embed"),
+    ("writing", "write"),
+    ("daemon", "engine"),
+    ("engine", "engine"),
+)
+_COUNT_RE = re.compile(r"(\d+)/(\d+)")
+
+
+class InitProgress:
+    """Overall init bar on the shared progress engine.
+
+    Stage weights approximate each phase's share of wall time; parse, chunk and
+    embed report real counts, the rest animate with a spinner + clock.
     """
 
     def __init__(self, stream=None):
-        self.stream = stream or sys.stderr
-        self.c = colors(self.stream)
-        self._tty = _is_tty(self.stream)
-        self._last_line_len = 0
-        self._pct = 0.0
-        self._parse_pulse = 0.0
+        self._model = ProgressModel(INIT_STAGES)
+        self._r = ProgressRenderer(self._model, stream or sys.stderr, idle_label="Starting")
+        self.c = colors(self._r.stream)
+
+    @property
+    def stream(self):
+        return self._r.stream
+
+    @stream.setter
+    def stream(self, value):
+        self._r.stream = value
+        self.c = colors(value)
+
+    @property
+    def _tty(self) -> bool:
+        return self._r.tty
 
     def start(self):
         branded_header("init", stream=self.stream)
@@ -1215,54 +1276,31 @@ class InitProgress:
         eta = format_index_eta(n_files)
         info(f"{n_files:,} files  ·  {eta}", stream=self.stream)
 
-    def _bar(self, pct: float, label: str):
-        """Render one in-place line. Graphify/other logs must not share this stream."""
-        bar_width = 24
-        pct = max(0.0, min(1.0, pct))
-        self._pct = pct
-        label = _clean_progress_label(label)
-        filled = int(bar_width * pct)
-        bar = "\u2588" * filled + "\u2591" * (bar_width - filled)
-        if pct > 0:
-            msg = f"[{bar}] {pct:.0%}  {label}"
-        else:
-            msg = f"[{bar}]  {label}"
-        if self._tty:
-            line = f"  {msg}"
-            pad = max(0, self._last_line_len - len(line))
-            self.stream.write(f"\r  {msg}{' ' * pad}")
-            self.stream.flush()
-            self._last_line_len = max(self._last_line_len, len(line))
-        # Non-TTY: only print at key milestones
-        elif pct in (0, 1.0) or label != getattr(self, '_last_label', ''):
-            self.stream.write(f"  {msg}\n")
-            self.stream.flush()
-            self._last_label = label
+    def stage(self, key: str, *, label: str | None = None, total: int | None = None):
+        self._model.begin(key, label=label, total=total)
+        self._r.activate()
+
+    def update(self, done: int, total: int | None = None, *, label: str | None = None):
+        self._model.update(done, total, label=label)
+        self._r.refresh()
 
     def indexing(self, current: int = 0, total: int = 0):
-        """Called during embed phase with chunk counts."""
         if total > 0:
-            pct = current / total
-            # Map embed progress (0-100%) to bar range 40%-90%
-            bar_pct = 0.40 + 0.50 * pct
-            self._bar(bar_pct, f"Embedding  {current:,}/{total:,}")
+            self.stage("embed", total=total)
+            self.update(current, total)
         else:
-            self._bar(0.05, "Parsing")
+            self.stage("parse")
+
+    def snapshot(self):
+        return self._model.snapshot()
 
     def done(self, chunks: int):
-        """Finish the bar at 100% then print the success line."""
-        self._bar(1.0, "Done")
-        if self._tty:
-            # Overwrite bar with final success line
-            msg = f"{self.c.green}{ICON_OK}{self.c.reset} Indexed  {self.c.muted}{chunks:,} chunks{self.c.reset}"
-            pad = max(0, self._last_line_len - len(f"  {ICON_OK} Indexed  {chunks:,} chunks"))
-            self.stream.write(f"\r  {msg}{' ' * pad}\n")
-        else:
-            self.stream.write(f"  {ICON_OK} Indexed  {chunks:,} chunks\n")
-        self.stream.flush()
-        self._last_line_len = 0
+        self._model.complete("Done")
+        self._r.stop()
+        success("Indexed", detail=f"{chunks:,} chunks", stream=self.stream)
 
     def already_initialized(self, chunks: int):
+        self._r.stop()
         success(
             "Codebase already indexed",
             detail=f"{chunks:,} chunks",
@@ -1270,70 +1308,52 @@ class InitProgress:
         )
 
     def index_updated(self, chunks: int, *, files: int = 0):
+        self._r.stop()
         detail = f"{files} file(s) updated" if files else "incremental sync"
         if chunks:
             detail = f"{detail}, {chunks:,} chunks"
         success("Index updated", detail=detail, stream=self.stream)
 
     def daemon_started(self):
+        self._r.stop()
         success("Daemon started", stream=self.stream)
 
-    def finish(self):
-        self.stream.write(f"\n  {self.c.green}{ICON_OK}{self.c.reset} {self.c.bold}Ready{self.c.reset}\n\n")
+    def finish(self, message: str = "Ready"):
+        self._r.stop()
+        self.stream.write(f"\n  {self.c.green}{ICON_OK}{self.c.reset} {self.c.bold}{message}{self.c.reset}\n\n")
         self.stream.flush()
 
     def fail(self, message: str, *, hint: str = ""):
-        if self._tty:
-            pad = max(0, self._last_line_len - (len(message) + 4))
-            self.stream.write(f"\r  {self.c.red}{ICON_FAIL}{self.c.reset} {message}{' ' * pad}\n")
-        else:
-            self.stream.write(f"  {ICON_FAIL} {message}\n")
+        self._r.stop()
+        self.stream.write(f"  {self.c.red}{ICON_FAIL}{self.c.reset} {message}\n")
         if hint:
             self.stream.write(f"\n    {self.c.muted}{hint}{self.c.reset}\n")
         self.stream.write("\n")
         self.stream.flush()
-        self._last_line_len = 0
 
     def cancelled(self):
+        self._r.stop()
         self.stream.write("  Cancelled.\n\n")
         self.stream.flush()
 
-    # Adapter for pipeline progress_ui interface
     def set(self, pct, phase):
-        phase_lower = phase.lower()
-        # Map internal phases to clean labels + bar percentage
-        if "scanning" in phase_lower:
-            self._bar(0.03, "Scanning")
-        elif "parsing" in phase_lower:
-            if self._parse_pulse < 0.08:
-                self._parse_pulse = 0.08
-            self._bar(self._parse_pulse, "Parsing")
-        elif "building" in phase_lower or "chunk" in phase_lower:
-            self._parse_pulse = 0.35
-            self._bar(0.35, "Chunking")
-        elif "embedding" in phase_lower:
-            import re as _re
-            m = _re.search(r"(\d+)/(\d+)", phase)
-            if m:
-                done, total = int(m.group(1)), int(m.group(2))
-                bar_pct = 0.40 + 0.50 * (done / max(total, 1))
-                self._bar(bar_pct, f"Embedding  {done:,}/{total:,}")
-            else:
-                self._bar(0.40, "Embedding")
-        elif "writing" in phase_lower:
-            self._bar(0.92, "Writing index")
-        elif "daemon" in phase_lower:
-            pass  # handled by daemon_started()
+        text = _clean_progress_label(str(phase))
+        lower = text.lower()
+        key = next((k for needle, k in _INIT_PHASE_KEYS if needle in lower), None)
+        if key is None:
+            self._model.set_label(text)
+            self._r.refresh()
+            return
+        self.stage(key)
+        m = _COUNT_RE.search(text)
+        if m:
+            self.update(int(m.group(1)), int(m.group(2)))
 
     def pulse(self, phase, *, until=100):
-        if "parsing" in str(phase).lower():
-            self._parse_pulse = min(0.35, max(self._parse_pulse, 0.08) + 0.005)
-            self._bar(self._parse_pulse, "Parsing")
-            return
         self.set(until, phase)
 
     def notice(self, msg):
-        warn(msg, stream=self.stream)
+        self._r.write_above(f"  {self.c.yellow}{ICON_WARN}{self.c.reset} {msg}\n")
 
 
 # ── Wipe progress (single bar) ────────────────────────────────────────────────
@@ -1341,22 +1361,36 @@ class InitProgress:
 class WipeProgress:
     """Single progress bar for wipe — label + % update in place; checkmarks stack above."""
 
-    _BAR_WIDTH = 24
     _INDENT = 2
 
     def __init__(self, stream: IO[str] | TextIO | None = None):
-        self.stream = stream or sys.stderr
-        self.c = colors(self.stream)
-        self._tty = _is_tty(self.stream)
         self._phase_idx = 0
         self._phase_count = 1
-        self._phase_sub = 0.0
-        self._phase_start = 0.0
-        self._active_label = ""
-        self._last_line_len = 0
-        self._line_open = False
         self._finished_messages: set[str] = set()
         self._scope = "all"
+        self._r: ProgressRenderer | None = None
+        self._build(stream or sys.stderr)
+
+    def _build(self, stream: IO[str] | TextIO) -> None:
+        if self._r is not None:
+            self._r.stop()
+        stages = [Stage(str(i), "", 1.0) for i in range(max(1, self._phase_count))]
+        self._model = ProgressModel(stages)
+        self._r = ProgressRenderer(self._model, stream, idle_label="Working")
+        self.c = colors(stream)
+
+    @property
+    def stream(self):
+        return self._r.stream
+
+    @stream.setter
+    def stream(self, value):
+        self._r.stream = value
+        self.c = colors(value)
+
+    @property
+    def _tty(self) -> bool:
+        return self._r.tty
 
     def configure(
         self,
@@ -1371,94 +1405,49 @@ class WipeProgress:
         if scope == "repo":
             self._phase_count = sum([halt_first, True, restart_engine])
         else:
-            n = 6
-            if models:
-                n += 1
-            if package:
-                n += 1
-            self._phase_count = max(n, 1)
+            # Mirrors the step_active calls in wipe.wipe_all.
+            self._phase_count = 3 + int(models) + 2 * int(package)
+        self._build(self.stream)
 
     def start(self) -> None:
         branded_header("wipe", stream=self.stream)
 
-    def _pct(self) -> float:
-        if self._phase_count <= 0:
-            return 1.0
-        step = 1.0 / self._phase_count
-        return min(1.0, self._phase_idx * step + step * self._phase_sub)
-
-    def _bar_text(self) -> str:
-        pct = self._pct()
-        filled = int(self._BAR_WIDTH * pct)
-        bar = "\u2588" * filled + "\u2591" * (self._BAR_WIDTH - filled)
-        elapsed = int(time.monotonic() - self._phase_start) if self._phase_start else 0
-        elapsed_str = f"  {elapsed}s" if elapsed >= 2 else ""
-        label = self._active_label or "Working\u2026"
-        return f"[{bar}] {pct:.0%}  {label}{elapsed_str}"
-
-    def _render_bar(self) -> None:
-        pad = " " * self._INDENT
-        line = f"{pad}{self._bar_text()}"
-
-        if not self._tty:
-            if line != getattr(self, "_non_tty_last", ""):
-                self.stream.write(f"{line}\n")
-                self.stream.flush()
-                self._non_tty_last = line  # type: ignore[attr-defined]
-            return
-
-        if not self._line_open:
-            self.stream.write(line)
-        else:
-            pad_erase = max(0, self._last_line_len - len(line))
-            self.stream.write(f"\r{line}{' ' * pad_erase}")
-        self.stream.flush()
-        self._last_line_len = len(line)
-        self._line_open = True
+    def _stage_key(self) -> str:
+        return str(min(self._phase_idx, self._phase_count - 1))
 
     def step_active(self, message: str) -> None:
-        self._active_label = message
-        self._phase_sub = 0.05
-        self._phase_start = time.monotonic()
-        self._render_bar()
+        self._model.begin(self._stage_key(), label=message)
+        self._r.activate()
 
     def step_update(self, message: str) -> None:
-        self._active_label = message
         match = re.search(r"\((\d+)/(\d+)\)", message)
         if match:
-            cur, total = int(match.group(1)), max(int(match.group(2)), 1)
-            self._phase_sub = min(1.0, cur / total)
-        self._render_bar()
+            label = (message[: match.start()] + message[match.end():]).strip()
+            self._model.update(int(match.group(1)), max(int(match.group(2)), 1), label=label)
+        else:
+            self._model.set_label(message)
+        self._r.activate()
 
     def step_finish(self, message: str, detail: str = "") -> None:
         if message in self._finished_messages:
             return
         self._finished_messages.add(message)
         self._phase_idx += 1
-        self._phase_sub = 0.0
         detail_str = f"  {self.c.muted}{detail}{self.c.reset}" if detail else ""
         pad = " " * self._INDENT
-        check = f"{pad}{self.c.green}{ICON_OK}{self.c.reset} {message}{detail_str}"
-
-        if self._tty and self._line_open:
-            self.stream.write(f"\033[1A\033[K{check}\n")
-            self._line_open = False
+        check = f"{pad}{self.c.green}{ICON_OK}{self.c.reset} {message}{detail_str}\n"
+        if self._phase_idx < self._phase_count:
+            self._model.begin(self._stage_key())
+            self._r.write_above(check)
         else:
-            self.stream.write(f"{check}\n")
+            self._r.deactivate()
+            self.stream.write(check)
             self.stream.flush()
-
-        self._phase_start = 0.0
 
     def finish(self, message: str = "") -> None:
         pad = " " * self._INDENT
-        if self._line_open and self._tty:
-            self._active_label = message or "Done"
-            self._phase_idx = self._phase_count
-            self._phase_sub = 1.0
-            self._render_bar()
-            erase = " " * self._last_line_len
-            self.stream.write(f"\r{erase}\r")
-            self._line_open = False
+        self._model.complete(message or "Done")
+        self._r.stop()
         if message:
             self.stream.write(
                 f"{pad}{self.c.green}{ICON_OK}{self.c.reset} {self.c.bold}{message}{self.c.reset}\n\n"

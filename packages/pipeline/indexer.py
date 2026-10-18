@@ -91,6 +91,41 @@ def _emit_progress(progress, phase: str, frac: float) -> None:
         progress(phase, frac)
 
 
+# Fallback overall fractions for progress sinks without the stage protocol.
+_STAGE_FALLBACK = {
+    "scan": ("Scanning files", 0.01, 0.06),
+    "parse": ("Parsing code", 0.06, 0.10),
+    "link": ("Linking symbols", 0.10, 0.26),
+    "chunk": ("Building chunks", 0.26, 0.28),
+    "embed": ("Embedding", 0.28, 0.96),
+    "write": ("Writing index", 0.96, 0.99),
+}
+
+
+def _stage(progress, key: str, total: int | None = None) -> None:
+    """Enter an index stage on a stage-aware sink (InitProgress), else legacy set()."""
+    if progress is None:
+        return
+    begin = getattr(progress, "stage", None)
+    if callable(begin):
+        begin(key, total=total)
+        return
+    label, lo, _hi = _STAGE_FALLBACK[key]
+    _emit_progress(progress, label, lo)
+
+
+def _advance(progress, key: str, done: int, total: int) -> None:
+    """Measured work inside the current stage."""
+    if progress is None:
+        return
+    update = getattr(progress, "update", None)
+    if callable(update) and callable(getattr(progress, "stage", None)):
+        update(done, total)
+        return
+    label, lo, hi = _STAGE_FALLBACK[key]
+    _emit_progress(progress, f"{label} {done}/{total}", lo + (hi - lo) * done / max(total, 1))
+
+
 def count_indexable_files(
     root: Path,
     *,
@@ -122,6 +157,7 @@ def index_repo(
     root = root.resolve()
     from pipeline.incremental import preflight_index_scope
 
+    _stage(progress, "scan")
     preflight_index_scope(
         root,
         fast=fast,
@@ -237,33 +273,25 @@ def index_repo(
     require_index_confirm(len(new_hashes), confirm=confirm, force=force)
 
     paths = _collect_paths(root, fast=fast, fast_roots=roots)
-    if progress:
-        _emit_progress(progress, "Scanning files", 0.05)
-    if progress:
-        _emit_progress(progress, "Parsing code", 0.08)
+    _stage(progress, "parse", total=len(paths))
     t0 = time.perf_counter()
     previous_quiet = os.environ.get("GRAPHIFY_QUIET")
+    # Keep GRAPHIFY_QUIET=1 for the rest of the index run (build_and_save_graph
+    # also emits "[graphify] Deduplicated" messages). Restore only at the end.
     os.environ["GRAPHIFY_QUIET"] = "1"
-    pulse_stop = None
-    pulse_thread = None
-    if hasattr(progress, "pulse"):
-        import threading
 
-        pulse_stop = threading.Event()
+    def _on_parsed(done: int, total: int) -> None:
+        _advance(progress, "parse", done, total)
+        if total and done >= total:
+            _stage(progress, "link")
 
-        def _pulse_parse() -> None:
-            while not pulse_stop.wait(0.2):
-                progress.pulse("Parsing code", until=40)
-
-        pulse_thread = threading.Thread(target=_pulse_parse, daemon=True)
-        pulse_thread.start()
-    try:
-        raw = extract(paths, root=root, cache_root=store.base)
-    finally:
-        if pulse_stop is not None:
-            pulse_stop.set()
-        # Keep GRAPHIFY_QUIET=1 for the rest of the index run (build_and_save_graph
-        # also emits "[graphify] Deduplicated" messages). Restore only at the end.
+    raw = extract(
+        paths,
+        root=root,
+        cache_root=store.base,
+        progress=_on_parsed if progress is not None else None,
+    )
+    _stage(progress, "link")
     elapsed_ms = (time.perf_counter() - t0) * 1000
     parse_s = elapsed_ms / 1000.0
     if not quiet:
@@ -278,8 +306,7 @@ def index_repo(
     store.graph_path.write_text(ir.canonical_json(), encoding="utf-8")
     build_and_save_graph(raw, root, store.base / "graph.json")
 
-    if progress:
-        _emit_progress(progress, "Building chunks", 0.42)
+    _stage(progress, "chunk")
 
     t_chunk = time.perf_counter()
     code_chunks = chunk_repo_from_ir(ir, root)
@@ -292,7 +319,10 @@ def index_repo(
     records: list[ChunkRecord] = []
     from pipeline.chunk_compress import compress_chunk
 
+    n_code_chunks = len(code_chunks)
     for i, ch in enumerate(code_chunks):
+        if i % 250 == 0:
+            _advance(progress, "chunk", i, n_code_chunks)
         enriched = inject_metadata(ch, ir)
         body = enriched.enriched
         if cmode:
@@ -319,8 +349,7 @@ def index_repo(
             flush=True,
         )
 
-    if progress:
-        _emit_progress(progress, "Embedding", 0.50)
+    _stage(progress, "embed", total=len(records))
 
     model = embed_model or "nomic-ai/CodeRankEmbed"
     # Fast defaults: short seq. Batch: prefer env; else DML-safe 16 (128 OOMs/hangs RX 6500M).
@@ -396,14 +425,13 @@ def index_repo(
     t_embed = time.perf_counter()
     try:
         _chunks_reported = {"n": 0}
+        _cached = {"n": None}
 
         def emb_prog(done: int, total: int) -> None:
-            if progress:
-                _emit_progress(
-                    progress,
-                    f"Embedding {done}/{total}",
-                    0.50 + 0.38 * done / max(total, 1),
-                )
+            if _cached["n"] is None:
+                # The embedder's first report is the cache-hit count.
+                _cached["n"] = done
+            _advance(progress, "embed", done, total)
             # Write checkpoint every _checkpoint_interval chunks for resume
             if done - _chunks_reported["n"] >= _checkpoint_interval or done >= total:
                 _chunks_reported["n"] = done
@@ -422,8 +450,6 @@ def index_repo(
                     pass  # Non-fatal: checkpoint is best-effort
 
         matrix = embedder.embed_many(texts, progress=emb_prog)
-        if progress:
-            _emit_progress(progress, "Embedding", 0.88)
     except CapabilityError:
         raise
     except Exception as exc:  # noqa: BLE001
@@ -441,6 +467,11 @@ def index_repo(
     except OSError:
         pass
     embed_s = time.perf_counter() - t_embed
+    from pipeline.workload import record_machine_embed_cps
+
+    record_machine_embed_cps(
+        chunks=len(records) - int(_cached["n"] or 0), seconds=embed_s
+    )
     if not quiet:
         print(
             f"[index] embed phase {embed_s:.1f}s for {len(records)} chunks "
@@ -459,8 +490,7 @@ def index_repo(
         )
 
     dim = int(matrix.shape[1]) if matrix.size else (embedder.dim or 768)
-    if progress:
-        _emit_progress(progress, "Writing index", 0.92)
+    _stage(progress, "write")
 
     # macOS/MLX: fully flush + idle the Metal GPU before the faiss/turbo_quant
     # vector write. upsert_vectors builds the quantizer rotation via numpy-LAPACK

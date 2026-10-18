@@ -60,6 +60,36 @@ def test_uv_tool_shim_not_counted_as_duplicate(monkeypatch) -> None:
     )
     assert env_guard.extra_scubiee_on_path() == []
 
+
+def test_symlinked_venv_python_is_not_resolved_to_base(tmp_path: Path, monkeypatch) -> None:
+    """Linux uv tool layout: tool python -> /usr/local/bin/python3.12, ~/.local/bin/scubiee -> tool bin."""
+    import os
+    import sys
+
+    import pytest
+
+    base = tmp_path / "usr-local-bin"
+    tool_bin = tmp_path / "uv" / "tools" / "scubiee" / "bin"
+    shim_dir = tmp_path / "home" / ".local" / "bin"
+    for d in (base, tool_bin, shim_dir):
+        d.mkdir(parents=True)
+    (base / "python3.12").write_bytes(b"")
+    (tool_bin / "scubiee").write_bytes(b"")
+    try:
+        os.symlink(base / "python3.12", tool_bin / "python")
+        os.symlink(tool_bin / "scubiee", shim_dir / "scubiee")
+    except OSError:
+        pytest.skip("symlinks not permitted")
+    monkeypatch.setattr(env_guard.sys, "platform", "linux")
+    monkeypatch.setattr(sys, "executable", str(tool_bin / "python"))
+    monkeypatch.setenv("PATH", str(shim_dir))
+
+    assert env_guard.expected_scubiee_exe() == tool_bin / "scubiee"
+    assert env_guard.extra_scubiee_on_path() == []
+    report = env_guard.install_identity_report()
+    assert report["multiple_installs"] is False
+
+
 def test_remove_stale_ort_tree(tmp_path: Path, monkeypatch) -> None:
     leftover = tmp_path / "onnxruntime"
     (leftover / "capi").mkdir(parents=True)

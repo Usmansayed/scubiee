@@ -175,3 +175,25 @@ def test_is_probably_text_classifies_correctly(tmp_path):
         p = tmp_path / name
         p.write_bytes(data)
         assert _is_probably_text(p) is expected, name
+
+
+def test_exceeds_index_cap_early_exits_over_limit(tmp_path: Path) -> None:
+    """Bounded cap check returns True past the cap without materialising all files."""
+    from pipeline.paths import exceeds_index_cap
+
+    for i in range(30):
+        _write(tmp_path, f"src/f{i}.py")
+    assert exceeds_index_cap(tmp_path, 10) is True
+    assert exceeds_index_cap(tmp_path, 100) is False
+
+
+def test_exceeds_index_cap_skips_ignored_dirs(tmp_path: Path) -> None:
+    """node_modules / .git / .venv must not count toward the cap."""
+    from pipeline.paths import exceeds_index_cap
+
+    _write(tmp_path, "src/real.py")
+    for i in range(50):
+        _write(tmp_path, f"node_modules/pkg/j{i}.py")
+        _write(tmp_path, f".venv/lib/v{i}.py")
+    # Only src/real.py counts → nowhere near a cap of 10.
+    assert exceeds_index_cap(tmp_path, 10) is False

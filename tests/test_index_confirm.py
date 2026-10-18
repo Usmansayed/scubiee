@@ -79,6 +79,69 @@ def test_broad_home_allows_explicit_confirm(monkeypatch, tmp_path: Path) -> None
     assert preflight_index_scope(home, confirm=True) == 1
 
 
+def test_broad_home_confirm_still_caps_huge_tree(monkeypatch, tmp_path: Path) -> None:
+    """`--confirm` on a home/drive root must NOT also waive the file-count cap.
+
+    Regression for the "looks hung for 20 minutes" trap: `scubiee init --confirm`
+    on the home dir used to silently index hundreds of thousands of files
+    (AppData, caches, node_modules, …). Now a broad root above the cap still
+    stops and demands `--force`; only a genuinely small home passes on --confirm.
+    """
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setattr("pipeline.incremental.Path.home", lambda: home)
+    # The broad-root path uses the FAST bounded check, not the full count.
+    monkeypatch.setattr("pipeline.paths.exceeds_index_cap", lambda root, cap: True)
+    # The full count must NOT be called on the over-cap broad path (that's the
+    # whole point — it's what hangs). Make it blow up if reached.
+    def _boom(*a, **k):
+        raise AssertionError("full count must not run on over-cap broad root")
+    monkeypatch.setattr("pipeline.incremental.collect_index_relpaths", _boom)
+    # confirm alone is NOT enough on a broad root above the cap.
+    with pytest.raises(IndexConfirmRequired) as exc:
+        preflight_index_scope(home, confirm=True, force=False)
+    assert exc.value.kind == "broad_over_cap"
+    # The message must point at --force/--roots, NOT tell them to re-pass --confirm.
+    msg = str(exc.value)
+    assert "--force" in msg and "--roots" in msg
+    # --force is the explicit "I really mean it" escape and skips the gate.
+    monkeypatch.setattr(
+        "pipeline.incremental.collect_index_relpaths",
+        lambda *a, **k: {f"f{i}.py" for i in range(DEFAULT_MAX_TOUCH + 5)},
+    )
+    assert preflight_index_scope(home, confirm=True, force=True) == DEFAULT_MAX_TOUCH + 5
+
+
+def test_broad_home_confirm_under_cap_counts_precisely(monkeypatch, tmp_path: Path) -> None:
+    """A broad root UNDER the cap on --confirm still returns the precise count."""
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setattr("pipeline.incremental.Path.home", lambda: home)
+    monkeypatch.setattr("pipeline.paths.exceeds_index_cap", lambda root, cap: False)
+    monkeypatch.setattr(
+        "pipeline.incremental.collect_index_relpaths",
+        lambda *a, **k: {"a.py", "b.py", "c.py"},
+    )
+    assert preflight_index_scope(home, confirm=True, force=False) == 3
+
+
+def test_normal_project_confirm_still_waives_cap(tmp_path: Path) -> None:
+    """A non-broad project path keeps the old behaviour: --confirm waives the cap."""
+    import pipeline.incremental as inc
+
+    proj = tmp_path / "bigproj"
+    proj.mkdir()
+    orig = inc.collect_index_relpaths
+    try:
+        inc.collect_index_relpaths = lambda *a, **k: {
+            f"f{i}.py" for i in range(DEFAULT_MAX_TOUCH + 5)
+        }
+        # Not a broad root → confirm waives the cap as before (no raise).
+        assert inc.preflight_index_scope(proj, confirm=True) == DEFAULT_MAX_TOUCH + 5
+    finally:
+        inc.collect_index_relpaths = orig
+
+
 def test_index_file_hashes_skip_testdata(tmp_path: Path) -> None:
     from pipeline.indexer import _index_file_hashes
     from pipeline.ignore import clear_ignore_cache
