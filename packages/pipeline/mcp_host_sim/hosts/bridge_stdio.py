@@ -280,7 +280,21 @@ class BridgeHost:
         # Back-compat keys the scenario's dense-map checks look at.
         data["cards"] = [1] if data.get("ok") else []
         data["suggested_seed"] = {}
+        # Map V3 text carries no retrieve_mode/source, so the placeholder card
+        # could never prove dense. Use the engine's own dense_ready, read after
+        # the timed call; fails closed while the embedder is not loaded.
+        data["dense"] = bool(self._engine_health().get("dense_ready")) if data.get("ok") else False
         return data
+
+    def _engine_health(self) -> dict[str, Any]:
+        import urllib.request
+
+        try:
+            with urllib.request.urlopen(f"{self.engine_url}/health", timeout=3.0) as resp:
+                body = json.loads(resp.read().decode("utf-8") or "{}")
+            return body if isinstance(body, dict) else {}
+        except Exception:  # noqa: BLE001
+            return {}
 
     def pack(
         self,

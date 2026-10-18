@@ -919,6 +919,8 @@ def run_scenario(
             return report
 
     seed = (m1.get("evidence") or {}).get("top") or {}
+    if not isinstance(seed, dict):
+        seed = {}
     seed_file = str(seed.get("file") or "packages/pipeline/lifecycle_runtime.py")
     seed_symbol = str(seed.get("symbol") or "enforce_mcp_warm_contract")
 
