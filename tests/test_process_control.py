@@ -29,6 +29,28 @@ def test_uv_tool_root_none_for_conda() -> None:
     assert process_control.uv_tool_root(py) is None
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX symlinked venv layout")
+def test_uv_tool_root_survives_symlinked_tool_python(tmp_path: Path, monkeypatch) -> None:
+    """macOS: tools/scubiee/bin/python -> uv/python/cpython-3.11.../bin/python3.11.
+
+    Resolving first dropped the tools segment, so ``wipe --all`` ran
+    ``uv pip uninstall`` and left the 553 MB tool venv behind with a clean audit.
+    """
+    base = tmp_path / "uv" / "python" / "cpython-3.11.16-macos-aarch64-none" / "bin"
+    tool = tmp_path / "uv" / "tools" / "scubiee"
+    base.mkdir(parents=True)
+    (tool / "bin").mkdir(parents=True)
+    (base / "python3.11").write_bytes(b"")
+    (tool / "uv-receipt.toml").write_text("", encoding="utf-8")
+    os.symlink(base / "python3.11", tool / "bin" / "python")
+
+    py = tool / "bin" / "python"
+    assert process_control.uv_tool_root(py) == tool
+    assert process_control.is_uv_tool_install(py) is True
+    monkeypatch.setattr(process_control.sys, "executable", str(py))
+    assert process_control._running_from_uv_tool(tool) is True
+
+
 def test_is_uv_tool_install_checks_receipt(tmp_path: Path, monkeypatch) -> None:
     root = tmp_path / "uv" / "tools" / "scubiee"
     scripts = root / "Scripts"

@@ -15,11 +15,14 @@ from pipeline.project_id import context_engine_home
 
 def uv_tool_root(python: Path | None = None) -> Path | None:
     """Return ``.../uv/tools/scubiee`` when *python* is a uv tool interpreter."""
-    py = (python or Path(sys.executable)).resolve()
-    parts = py.parts
-    for i, part in enumerate(parts):
-        if part == "tools" and i + 1 < len(parts):
-            return Path(*parts[: i + 2])
+    raw = Path(python or sys.executable)
+    # On macOS/Linux the tool's ``bin/python`` is a symlink to a uv-managed or
+    # system interpreter; resolving it first loses the ``tools/<name>`` segment.
+    for py in (raw.absolute(), raw.resolve()):
+        parts = py.parts
+        for i, part in enumerate(parts):
+            if part == "tools" and i + 1 < len(parts):
+                return Path(*parts[: i + 2])
     return None
 
 
@@ -33,10 +36,13 @@ def is_uv_tool_install(python: Path | None = None) -> bool:
 def _exe_under_root(exe: str | None, root: Path) -> bool:
     if not exe:
         return False
+    roots = {str(root.absolute()).lower(), str(root.resolve()).lower()}
+    candidates = [str(Path(exe).absolute()).lower()]
     try:
-        return str(Path(exe).resolve()).lower().startswith(str(root.resolve()).lower())
+        candidates.append(str(Path(exe).resolve()).lower())
     except OSError:
-        return str(exe).lower().startswith(str(root.resolve()).lower())
+        pass
+    return any(c.startswith(r) for c in candidates for r in roots)
 
 
 def processes_under(root: Path) -> list[int]:
