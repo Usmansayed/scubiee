@@ -296,7 +296,7 @@ def test_wipe_all_keeps_one_progress_plan(tmp_path: Path, monkeypatch) -> None:
     fake_user.mkdir()
     monkeypatch.setattr(Path, "home", lambda: fake_user)
     repo = tmp_path / "repo"
-    repo.mkdir()
+    (repo / ".git").mkdir(parents=True)
     monkeypatch.chdir(repo)
 
     monkeypatch.setattr(

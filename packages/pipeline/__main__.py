@@ -602,6 +602,7 @@ def cmd_wipe(args: argparse.Namespace) -> int:
         package=package,
         path=getattr(args, "path", None) or ".",
         progress=progress,
+        background_delete=True,
     )
 
     if progress is not None:

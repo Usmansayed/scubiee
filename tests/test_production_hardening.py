@@ -17,6 +17,7 @@ def test_kill_all_scubiee_processes_excludes_bridge(monkeypatch):
     monkeypatch.setattr(process_control, "stop_engine_worker_processes", lambda: {"ok": True})
     monkeypatch.setattr(process_control, "stop_all_context_engine_processes", lambda: {"ok": True})
     monkeypatch.setattr(process_control, "uv_tool_root", lambda: None)
+    monkeypatch.setattr(process_control, "_anything_scubiee_running", lambda **_k: True)
 
     calls: list[int] = []
 

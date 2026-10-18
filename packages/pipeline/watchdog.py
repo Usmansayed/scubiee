@@ -882,7 +882,8 @@ def stop_watchdog(*, reason: str = "stop_watchdog") -> dict[str, Any]:
             pid = int(path.read_text(encoding="utf-8").strip())
         except Exception:  # noqa: BLE001
             pid = None
-    if pid and _pid_alive(pid):
+    killed = bool(pid and _pid_alive(pid))
+    if killed:
         try:
             if os.name == "nt":
                 from pipeline.process_job import taskkill_silent
@@ -899,5 +900,6 @@ def stop_watchdog(*, reason: str = "stop_watchdog") -> dict[str, Any]:
         path.unlink(missing_ok=True)
     except Exception:  # noqa: BLE001
         pass
-    time.sleep(0.2)
-    return {"ok": True, "stopped_pid": pid, "running": is_watchdog_running()}
+    if killed:
+        time.sleep(0.2)
+    return {"ok": True, "stopped_pid": pid, "killed": killed, "running": is_watchdog_running()}

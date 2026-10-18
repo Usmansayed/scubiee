@@ -201,7 +201,7 @@ def stop_processes_under(
             killed.append(pid)
         except OSError:
             failed.append(pid)
-    if grace_s:
+    if grace_s and (killed or failed):
         time.sleep(min(grace_s, 2.0))
     remaining = [
         p for p in processes_under(root) if p not in skip and not _pid_is_protected(p)
@@ -598,6 +598,29 @@ def reap_orphaned_mcp_processes(*, keep_pids: set[int] | None = None) -> dict[st
     }
 
 
+def _anything_scubiee_running(*, exclude_self: bool = True) -> bool:
+    """Cheap pre-check so repeated kill passes skip ~3s of sleeps/probes when idle."""
+    try:
+        if enumerate_scubiee_processes(exclude_self=exclude_self):
+            return True
+        from pipeline.daemon import default_host_port
+
+        _host, port = default_host_port()
+        protected = _protected_process_tree_pids() if exclude_self else set()
+        if any(pid not in protected for pid in pids_listening_on_port(int(port))):
+            return True
+        root = uv_tool_root()
+        if root is not None and root.exists():
+            if any(
+                pid not in protected and not _pid_is_protected(pid)
+                for pid in processes_under(root)
+            ):
+                return True
+    except Exception:  # noqa: BLE001
+        return True
+    return False
+
+
 def kill_all_scubiee_processes(
     *,
     exclude_self: bool = True,
@@ -610,6 +633,25 @@ def kill_all_scubiee_processes(
     so IDE MCP sessions survive upgrade quiesce and hot-reload can respawn workers.
     """
     actions: dict[str, Any] = {"exclude_bridge": exclude_bridge}
+    if not _anything_scubiee_running(exclude_self=exclude_self):
+        try:
+            from pipeline.daemon import release_lock
+
+            release_lock()
+        except Exception:  # noqa: BLE001
+            pass
+        actions.update(
+            {
+                "fast_path": "nothing_running",
+                "killed_rounds": [],
+                "skipped_bridge_pids": [],
+                "remaining": [],
+                "remaining_pids": [],
+                "ok": True,
+                "self_pid": os.getpid(),
+            }
+        )
+        return actions
     actions["stop_engine_workers"] = stop_engine_worker_processes()
     actions["stop_all"] = stop_all_context_engine_processes()
 
@@ -853,28 +895,22 @@ def kill_all_engine_daemons(*, port: int = 8765, wait_s: float = 5.0) -> dict[st
     except Exception:  # noqa: BLE001
         pass
 
+    # A closed loopback port on Windows costs the full connect timeout (~0.35s)
+    # per ``is_running()`` — check once per iteration and reuse the last answer.
     deadline = time.time() + max(0.5, float(wait_s))
-    while time.time() < deadline:
-        still = enumerate_engine_run_pids(port=port)
-        healthy = False
+    while True:
+        still_pids = enumerate_engine_run_pids(port=port)
         try:
-            healthy = is_running()
+            still_healthy = is_running()
         except Exception:  # noqa: BLE001
-            healthy = False
-        if not still and not healthy:
+            still_healthy = False
+        if (not still_pids and not still_healthy) or time.time() >= deadline:
             break
-        for pid in still:
+        for pid in still_pids:
             if pid not in killed:
                 safe_terminate_pid(pid, grace_s=0.3, reason="engine_sweep_retry")
                 killed.append(pid)
         time.sleep(0.25)
-
-    still_pids = enumerate_engine_run_pids(port=port)
-    still_healthy = False
-    try:
-        still_healthy = is_running()
-    except Exception:  # noqa: BLE001
-        still_healthy = False
     return {
         "ok": not still_pids and not still_healthy,
         "killed": sorted(set(killed)),
@@ -984,7 +1020,12 @@ def stop_all_context_engine_processes(*, ctx_home: Path | None = None) -> dict[s
                     extra_failed.append(pid)
             except (psutil.NoSuchProcess, psutil.AccessDenied, TypeError, ValueError):
                 extra_failed.append(int(info.get("pid") or 0))
-    time.sleep(1.0)
+    terminated_any = bool(extra_killed) or any(
+        isinstance(actions.get(key), dict) and actions[key].get("killed")
+        for key in ("stop_watchdog", "stop_daemon", "stop_uv_tool_processes")
+    )
+    if terminated_any:
+        time.sleep(1.0)
     actions["extra_killed"] = sorted(set(extra_killed))
     actions["extra_failed"] = sorted(set(x for x in extra_failed if x))
     remaining = enumerate_scubiee_processes(exclude_self=True)
@@ -1392,8 +1433,12 @@ def release_scubiee_process_locks(
 
     report["mcp_stub"] = stub_mcp_commands_to_noop(project=project)
     wait = _MCP_STUB_SETTLE_S if settle_s is None else max(0.0, settle_s)
-    if wait:
+    # The settle only lets a host drop a live Scubiee MCP child; with none
+    # running there is nothing to respawn from in-memory config.
+    if wait and enumerate_scubiee_processes(exclude_self=True):
         time.sleep(wait)
+    else:
+        report["settle_skipped"] = "no_scubiee_processes"
 
     try:
         from pipeline.lifecycle_runtime import DESIRED_STANDBY, set_desired_mode
@@ -1557,6 +1602,50 @@ def _schedule_delete_after_exit(path: Path, wait_pid: int) -> dict[str, Any]:
         "path": path_s,
         "wait_pid": wait_pid,
     }
+
+
+def schedule_delete_paths_after_exit(paths: list[Path], wait_pid: int) -> dict[str, Any]:
+    """One detached cleaner that waits for *wait_pid*, then deletes plain data dirs."""
+    path_strs = [str(p) for p in paths]
+    if not path_strs:
+        return {"ok": True, "scheduled": False, "paths": []}
+    try:
+        if os.name == "nt":
+            lits = ",".join("'" + s.replace("'", "''") + "'" for s in path_strs)
+            ps = (
+                f"Wait-Process -Id {int(wait_pid)} -ErrorAction SilentlyContinue; "
+                f"Remove-Item -LiteralPath {lits} -Recurse -Force -ErrorAction SilentlyContinue"
+            )
+            from pipeline.process_job import hidden_popen
+
+            hidden_popen(
+                ["powershell", "-NoProfile", "-WindowStyle", "Hidden",
+                 "-ExecutionPolicy", "Bypass", "-Command", ps],
+                close_fds=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL,
+            )
+            waiter = "powershell"
+        else:
+            import shlex
+
+            targets = " ".join(shlex.quote(s) for s in path_strs)
+            script = (
+                f"while kill -0 {int(wait_pid)} 2>/dev/null; do sleep 0.2; done; "
+                f"rm -rf {targets}"
+            )
+            subprocess.Popen(
+                ["/bin/sh", "-c", script],
+                start_new_session=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL,
+            )
+            waiter = "sh"
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "scheduled": False, "paths": path_strs, "error": str(exc)}
+    return {"ok": True, "scheduled": True, "waiter": waiter, "paths": path_strs, "wait_pid": wait_pid}
 
 
 def force_remove_uv_tool_dir(

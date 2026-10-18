@@ -1018,9 +1018,10 @@ def stop_daemon(*, reason: str | None = None, audit: str | None = None) -> dict[
     killed.extend(sweep.get("killed") or [])
     release_lock()
     deadline = time.time() + 5.0
-    while time.time() < deadline and is_running():
-        time.sleep(0.2)
     still_running = is_running()
+    while still_running and time.time() < deadline:
+        time.sleep(0.2)
+        still_running = is_running()
     if not still_running and _home().is_dir():
         try:
             note_engine_transition("stop", reason=stop_reason)

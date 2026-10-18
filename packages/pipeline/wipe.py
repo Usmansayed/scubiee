@@ -67,6 +67,25 @@ def _rm_tree(path: Path) -> dict[str, Any]:
         }
 
 
+def _rm_tree_background(path: Path, trash: list[Path]) -> dict[str, Any]:
+    """Rename *path* aside (instant) and queue the real delete for after exit.
+
+    Deleting ~/.scubiee + model caches file-by-file is most of a slow wipe on
+    Windows; once renamed the original path is free for an immediate reinstall.
+    """
+    if not path.exists():
+        return {"path": str(path), "removed": False, "missing": True}
+    if path.is_dir() and not path.is_symlink():
+        aside = path.with_name(f"{path.name}.trash-{os.getpid()}")
+        try:
+            path.rename(aside)
+        except OSError:
+            return _rm_tree(path)
+        trash.append(aside)
+        return {"path": str(path), "removed": True, "deferred_to": str(aside)}
+    return _rm_tree(path)
+
+
 def _drop_mcp_server(path: Path, *, name: str | None = None) -> dict[str, Any]:
     names = (name,) if name else MCP_SERVER_NAMES
     if not path.is_file():
@@ -251,30 +270,84 @@ def _vectordb_roots() -> list[Path]:
     return [root]
 
 
+# Never descended while looking for nested repo ``.scubiee`` dirs — dependency
+# trees and caches hold none and can be millions of entries.
+_ID_SCAN_SKIP_DIRS = frozenset(
+    {
+        ".git", ".hg", ".svn", "node_modules", ".venv", "venv", "env",
+        "__pycache__", "site-packages", ".tox", ".nox", ".mypy_cache",
+        ".pytest_cache", ".ruff_cache", ".cache", ".gradle", ".next",
+        ".nuxt", "target", "dist", "build", ".idea", ".vscode",
+    }
+)
+_ID_SCAN_MAX_DIRS = 5_000
+# Registered checkouts are wiped by path; this walk only catches unregistered
+# nested checkouts, which sit near the top. Deep build/output trees made an
+# uncapped walk take 10s+ on Windows even with the skip list.
+_ID_SCAN_MAX_DEPTH = 4
+
+
+def _path_key(path: Path) -> str:
+    try:
+        key = str(path.resolve())
+    except OSError:
+        key = str(path)
+    return key.lower() if os.name == "nt" else key
+
+
+def _is_broad_root(root: Path) -> bool:
+    """Home, an ancestor of home, or a drive/filesystem root — never a repo."""
+    try:
+        root = root.resolve()
+        home = Path.home().resolve()
+    except OSError:
+        return True
+    if root == Path(root.anchor):
+        return True
+    return root == home or root in home.parents
+
+
+def _looks_like_repo(root: Path) -> bool:
+    if _is_broad_root(root) or not root.is_dir():
+        return False
+    if (root / ".git").exists():
+        return True
+    return any((root / name).is_dir() for name in DATA_DIR_NAMES)
+
+
 def _discover_repo_id_dirs(root: Path) -> list[Path]:
-    """Every repo-local ``.scubiee`` directory under ``root`` (includes nested checkouts)."""
+    """Every repo-local ``.scubiee`` directory under ``root`` (includes nested checkouts).
+
+    Bounded: skips dependency/cache trees and refuses home / drive roots, where
+    an unbounded walk took hours and the only ``.scubiee`` is the machine home.
+    """
     root = root.resolve()
-    if not root.is_dir():
+    if not root.is_dir() or _is_broad_root(root):
         return []
+    names = set(DATA_DIR_NAMES)
+    machine_homes = {_path_key(h) for h in _context_engine_homes()}
     found: list[Path] = []
     seen: set[str] = set()
-    for name in DATA_DIR_NAMES:
-        try:
-            for path in root.rglob(name):
-                if path.name != name or not path.is_dir():
-                    continue
-                try:
-                    key = str(path.resolve())
-                except OSError:
-                    continue
-                if os.name == "nt":
-                    key = key.lower()
-                if key in seen:
-                    continue
-                seen.add(key)
-                found.append(path)
-        except OSError:
-            continue
+    scanned = 0
+    root_depth = len(root.parts)
+    for dirpath, dirnames, _files in os.walk(root):
+        scanned += 1
+        if scanned > _ID_SCAN_MAX_DIRS:
+            break
+        at_max_depth = len(Path(dirpath).parts) - root_depth >= _ID_SCAN_MAX_DEPTH
+        keep: list[str] = []
+        for d in dirnames:
+            if d in names:
+                path = Path(dirpath) / d
+                key = _path_key(path)
+                if key not in seen and key not in machine_homes and not path.is_symlink():
+                    seen.add(key)
+                    found.append(path)
+                continue
+            if d in _ID_SCAN_SKIP_DIRS or at_max_depth:
+                continue
+            keep.append(d)
+        dirnames[:] = keep
     return sorted(found, key=lambda p: len(str(p)), reverse=True)
 
 
@@ -844,8 +917,14 @@ def wipe_all(
     package: bool | None = None,
     repo: Path | str | None = None,
     progress: Any | None = None,
+    background_delete: bool = False,
 ) -> dict[str, Any]:
-    """Nuclear wipe: daemon, home, MCP, rules, and optionally models / pip package."""
+    """Nuclear wipe: daemon, home, MCP, rules, and optionally models / pip package.
+
+    ``background_delete``: rename home/vectordb/model dirs aside and delete them
+    after this process exits (CLI only — callers that inspect disk right after
+    should leave it off).
+    """
     homes = _context_engine_homes()
     home = homes[0]
     plan = {
@@ -913,7 +992,7 @@ def wipe_all(
         seen_repo.add(key)
         repo_targets.append(candidate)
     target_key = str(target).lower() if os.name == "nt" else str(target)
-    if target_key not in seen_repo:
+    if target_key not in seen_repo and _looks_like_repo(target):
         repo_targets.append(target)
 
     repo_actions: list[dict[str, Any]] = []
@@ -953,11 +1032,17 @@ def wipe_all(
     for steering_path in _kiro_steering_paths(Path.home()):
         actions.append({"kiro_user_steering": _rm_tree(steering_path)})
 
-    for ctx_home in homes:
-        actions.append({f"ctx_home:{ctx_home.name}": _rm_tree(ctx_home)})
+    trash: list[Path] = []
 
-    for vroot in _vectordb_roots():
-        actions.append({f"vectordb:{vroot.name}": _rm_tree(vroot)})
+    def remove_dir(path: Path) -> dict[str, Any]:
+        return _rm_tree_background(path, trash) if background_delete else _rm_tree(path)
+
+    vroots = _vectordb_roots()
+    for ctx_home in homes:
+        actions.append({f"ctx_home:{ctx_home.name}": remove_dir(ctx_home)})
+
+    for vroot in vroots:
+        actions.append({f"vectordb:{vroot.name}": remove_dir(vroot)})
 
     if progress is not None:
         progress.step_finish("MCP, rules, and home removed")
@@ -967,10 +1052,19 @@ def wipe_all(
         if progress is not None:
             progress.step_active("Removing model caches")
         for d in _coderank_model_dirs():
-            model_removed.append(_rm_tree(d))
+            model_removed.append(remove_dir(d))
         actions.append({"models": model_removed})
         if progress is not None:
             progress.step_finish("Model caches removed")
+
+    if trash:
+        from pipeline.process_control import schedule_delete_paths_after_exit
+
+        scheduled = schedule_delete_paths_after_exit(trash, os.getpid())
+        if not scheduled.get("ok"):
+            for aside in trash:
+                shutil.rmtree(aside, ignore_errors=True)
+        actions.append({"background_delete": scheduled})
 
     pkg_out: dict[str, Any] | None = None
     if package:
@@ -1151,9 +1245,17 @@ def wipe(
     package: bool | None = None,
     path: Path | str | None = None,
     progress: Any | None = None,
+    background_delete: bool = False,
 ) -> dict[str, Any]:
     if all:
-        return wipe_all(yes=yes, models=models, package=package, repo=path, progress=progress)
+        return wipe_all(
+            yes=yes,
+            models=models,
+            package=package,
+            repo=path,
+            progress=progress,
+            background_delete=background_delete,
+        )
     root = Path(path).resolve() if path else Path.cwd().resolve()
     if not yes:
         return {
