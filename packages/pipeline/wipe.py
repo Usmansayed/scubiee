@@ -652,14 +652,19 @@ def _prepare_machine_for_full_wipe(*, repo: Path | None = None) -> dict[str, Any
     except Exception as exc:  # noqa: BLE001
         actions["process_release"] = {"ok": False, "error": str(exc)}
 
-    try:
-        from pipeline.process_control import is_uv_tool_install, unlock_uv_tool_env, uv_tool_root
+    # Windows only: there the running python.exe locks the tool dir, so the
+    # rename fails and the wipe keeps running from it. On POSIX the rename
+    # succeeds and every later lazy ``pipeline`` import fails; the package step
+    # at the end moves the tool dir aside instead.
+    if os.name == "nt":
+        try:
+            from pipeline.process_control import is_uv_tool_install, unlock_uv_tool_env, uv_tool_root
 
-        tool_root = uv_tool_root()
-        if tool_root is not None and (is_uv_tool_install() or tool_root.exists()):
-            actions["unlock_tool"] = unlock_uv_tool_env(project=target)
-    except Exception as exc:  # noqa: BLE001
-        actions["unlock_tool"] = {"ok": False, "error": str(exc)}
+            tool_root = uv_tool_root()
+            if tool_root is not None and (is_uv_tool_install() or tool_root.exists()):
+                actions["unlock_tool"] = unlock_uv_tool_env(project=target)
+        except Exception as exc:  # noqa: BLE001
+            actions["unlock_tool"] = {"ok": False, "error": str(exc)}
 
     try:
         from pipeline.rules_installer import uninstall_tools

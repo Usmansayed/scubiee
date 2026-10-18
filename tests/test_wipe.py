@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sys
 import tempfile
 from pathlib import Path
 
@@ -909,3 +910,29 @@ def test_wipe_all_prompt_warns_when_ide_holds_mcp(monkeypatch: pytest.MonkeyPatc
     rc = cli.cmd_wipe(argparse.Namespace(all=True, confirm=False))
     assert rc == 0
     assert any("holding 1 Scubiee MCP" in d for d in seen["details"])
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX tool-dir semantics")
+def test_full_wipe_prep_keeps_running_tool_dir_on_posix(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Renaming the live tool dir up front breaks every later lazy import."""
+    import pipeline.process_control as pc
+    import pipeline.wipe as wipe_mod
+
+    unlocked: list[object] = []
+    monkeypatch.setattr(pc, "release_scubiee_process_locks", lambda **_k: {"ok": True})
+    monkeypatch.setattr(pc, "kill_all_scubiee_processes", lambda **_k: {"ok": True})
+    monkeypatch.setattr(pc, "uv_tool_root", lambda *_a: tmp_path)
+    monkeypatch.setattr(pc, "is_uv_tool_install", lambda *_a: True)
+    monkeypatch.setattr(pc, "unlock_uv_tool_env", lambda **k: unlocked.append(k) or {"ok": True})
+    monkeypatch.setattr(
+        "pipeline.rules_installer.uninstall_tools", lambda *_a, **_k: {"ok": True}
+    )
+    monkeypatch.setattr(
+        "pipeline.lifecycle_runtime.unregister_logon_autostart", lambda: {"ok": True}
+    )
+
+    actions = wipe_mod._prepare_machine_for_full_wipe(repo=tmp_path)
+    assert unlocked == []
+    assert "unlock_tool" not in actions
