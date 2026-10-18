@@ -882,3 +882,30 @@ def test_uninstall_tool_survives_missing_connect_state(monkeypatch, tmp_path):
     # Must not raise despite connect_state being unimportable.
     report = uninstall_tool(tool, dry_run=True, repo=str(tmp_path))
     assert report["ok"] is True
+
+
+def test_wipe_all_prompt_warns_when_ide_holds_mcp(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A non-MCP process listed first must not hide the IDE-lock warning."""
+    import argparse
+    import sys
+
+    import pipeline.__main__ as cli
+
+    procs = [
+        {"pid": 1, "exe": "/usr/bin/python3.11", "cmdline": "python -m pipeline engine watchdog"},
+        {"pid": 2, "exe": "/usr/bin/python3.11", "cmdline": "python ~/.local/bin/scubiee-mcp-bridge"},
+    ]
+    monkeypatch.setattr(
+        "pipeline.process_control.enumerate_scubiee_processes", lambda **_k: procs
+    )
+    monkeypatch.setattr(sys.stdout, "isatty", lambda: True)
+    seen: dict[str, list[str]] = {}
+
+    def fake_confirm(_msg, details=None, **_k):
+        seen["details"] = list(details or [])
+        return False
+
+    monkeypatch.setattr("pipeline.cli_ui.confirm_action", fake_confirm)
+    rc = cli.cmd_wipe(argparse.Namespace(all=True, confirm=False))
+    assert rc == 0
+    assert any("holding 1 Scubiee MCP" in d for d in seen["details"])
