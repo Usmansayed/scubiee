@@ -316,7 +316,13 @@ def format_count(n: int) -> str:
     return f"{n:,}"
 
 
-def format_index_eta(n_files: int, total_bytes: int | None = None) -> str:
+def format_index_eta(
+    n_files: int,
+    total_bytes: int | None = None,
+    *,
+    doc_files: int = 0,
+    doc_bytes: int = 0,
+) -> str:
     """Wall-clock range for a full index.
 
     With ``total_bytes`` the range comes from this machine's embed speed
@@ -328,7 +334,9 @@ def format_index_eta(n_files: int, total_bytes: int | None = None) -> str:
     if total_bytes is not None:
         from pipeline.workload import estimate_init_seconds
 
-        est = estimate_init_seconds(n, int(total_bytes))
+        est = estimate_init_seconds(
+            n, int(total_bytes), doc_files=doc_files, doc_bytes=doc_bytes
+        )
     if est is not None:
         lo_s, hi_s = est
         if hi_s < 60:

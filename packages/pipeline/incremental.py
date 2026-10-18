@@ -266,6 +266,26 @@ def scope_bytes(root: Path) -> int | None:
     return total
 
 
+def scope_doc_split(root: Path) -> tuple[int, int]:
+    """(doc files, doc bytes) within the last ``preflight_index_scope(root)``."""
+    if _LAST_SCOPE is None or _LAST_SCOPE[0] != Path(root).resolve():
+        return 0, 0
+    from pipeline.workload import _DOC_EXT
+
+    base, rels = _LAST_SCOPE
+    files = 0
+    total = 0
+    for rel in rels:
+        if Path(rel).suffix.lower() not in _DOC_EXT:
+            continue
+        files += 1
+        try:
+            total += (base / rel).stat().st_size
+        except OSError:
+            continue
+    return files, total
+
+
 def max_index_touch() -> int:
     return int(os.environ.get("CTX_INCREMENTAL_MAX_TOUCH", str(DEFAULT_MAX_TOUCH)))
 

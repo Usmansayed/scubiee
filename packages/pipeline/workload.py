@@ -130,12 +130,17 @@ def record_embed_throughput(store: Any, *, chunks: int, seconds: float) -> None:
 
 # ---- full-index (init) estimate ----------------------------------------------
 
-# Indexable bytes per embedded chunk (pallets/flask 646, psf/requests 734).
+# Indexable code bytes per embedded chunk (pallets/flask 646, psf/requests 734,
+# fastapi .py 732). Doc files have no symbols to split on, so each one is a
+# single chunk however large (fastapi: 1,698 .md files -> 1,698 chunks).
 BYTES_PER_CHUNK = 690.0
 # Scan / parse / link / write / engine start, outside the embed stage.
 INIT_BASE_OVERHEAD_S = 10.0
+# Unmeasured default (8-CPU Linux container); Apple Silicon measures ~0.01s.
 INIT_PER_FILE_OVERHEAD_S = 0.08
 _MIN_THROUGHPUT_SAMPLE_CHUNKS = 64
+# Fixed costs swamp the per-file share on small repos.
+_MIN_OVERHEAD_SAMPLE_FILES = 200
 
 
 def _throughput_path() -> Path:
@@ -144,26 +149,50 @@ def _throughput_path() -> Path:
     return context_engine_home() / "embed_throughput.json"
 
 
-def record_machine_embed_cps(*, chunks: int, seconds: float) -> None:
-    """Fold a real index's fresh (uncached) embed rate into this machine's average."""
-    if chunks < _MIN_THROUGHPUT_SAMPLE_CHUNKS or seconds <= 0.0:
-        return
-    sample = float(chunks) / float(seconds)
+def _fold_machine_sample(key: str, sample: float, digits: int) -> None:
     path = _throughput_path()
     try:
         if not path.parent.is_dir():
             return
         try:
-            prev = float(json.loads(path.read_text(encoding="utf-8")).get("cps") or 0.0)
-        except (OSError, ValueError, AttributeError):
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(data, dict):
+                data = {}
+        except (OSError, ValueError):
+            data = {}
+        try:
+            prev = float(data.get(key) or 0.0)
+        except (TypeError, ValueError):
             prev = 0.0
-        cps = sample if prev <= 0.0 else 0.5 * sample + 0.5 * prev
-        path.write_text(
-            json.dumps({"cps": round(cps, 3), "updated_at": time.time()}) + "\n",
-            encoding="utf-8",
-        )
+        data[key] = round(sample if prev <= 0.0 else 0.5 * sample + 0.5 * prev, digits)
+        data["updated_at"] = time.time()
+        path.write_text(json.dumps(data) + "\n", encoding="utf-8")
     except OSError:
         pass
+
+
+def record_machine_embed_cps(*, chunks: int, seconds: float) -> None:
+    """Fold a real index's fresh (uncached) embed rate into this machine's average."""
+    if chunks < _MIN_THROUGHPUT_SAMPLE_CHUNKS or seconds <= 0.0:
+        return
+    _fold_machine_sample("cps", float(chunks) / float(seconds), 3)
+
+
+def record_machine_index_overhead(*, files: int, seconds: float) -> None:
+    """Fold a real index's non-embed time (parse/link/chunk/write) per file."""
+    if files < _MIN_OVERHEAD_SAMPLE_FILES or seconds <= 0.0:
+        return
+    _fold_machine_sample("per_file_s", float(seconds) / float(files), 4)
+
+
+def machine_per_file_overhead_s() -> float:
+    try:
+        v = float(json.loads(_throughput_path().read_text(encoding="utf-8")).get("per_file_s") or 0.0)
+        if v > 0.0:
+            return v
+    except (OSError, ValueError, AttributeError, TypeError):
+        pass
+    return INIT_PER_FILE_OVERHEAD_S
 
 
 def machine_embed_cps() -> tuple[float | None, str]:
@@ -189,14 +218,22 @@ def machine_embed_cps() -> tuple[float | None, str]:
     return None, "none"
 
 
-def estimate_init_seconds(n_files: int, total_bytes: int) -> tuple[float, float] | None:
+def estimate_init_seconds(
+    n_files: int,
+    total_bytes: int,
+    *,
+    doc_files: int = 0,
+    doc_bytes: int = 0,
+) -> tuple[float, float] | None:
     """Wall-clock (low, high) seconds for a full index, or None if speed is unknown."""
     cps, source = machine_embed_cps()
     if not cps:
         return None
     n = max(0, int(n_files))
-    chunks = max(float(n), float(total_bytes) / BYTES_PER_CHUNK)
-    overhead = INIT_BASE_OVERHEAD_S + INIT_PER_FILE_OVERHEAD_S * n
+    docs = min(n, max(0, int(doc_files)))
+    code_bytes = max(0, int(total_bytes) - max(0, int(doc_bytes)))
+    chunks = max(float(n), docs + code_bytes / BYTES_PER_CHUNK)
+    overhead = INIT_BASE_OVERHEAD_S + machine_per_file_overhead_s() * n
     embed = chunks / cps
     # Calibration is a single-threaded lower bound: the real run is up to ~2x faster.
     lo_k, hi_k = (0.8, 1.25) if source == "measured" else (0.5, 1.05)

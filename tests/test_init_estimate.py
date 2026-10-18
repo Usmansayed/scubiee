@@ -92,6 +92,69 @@ def test_format_index_eta_uses_bytes_when_given(home, monkeypatch) -> None:
     assert "min" in eta
 
 
+# tiangolo/fastapi on an Apple M5 (MLX): 2,873 files (1,699 .md), 16.8 MB, of
+# which 12.6 MB is docs; 7,435 chunks in 132 s wall at ~72 chunk/s, with ~29 s
+# of non-embed time. The byte-only model said ~8–11 min.
+FASTAPI = dict(files=2873, nbytes=16_834_616, doc_files=1699, doc_bytes=12_627_873, wall_s=132.1)
+
+
+def test_docs_count_one_chunk_each(home, monkeypatch) -> None:
+    from pipeline.workload import estimate_init_seconds, record_machine_embed_cps
+
+    _calibrated(monkeypatch, None)
+    record_machine_embed_cps(chunks=1000, seconds=1000 / 72.0)
+    with_docs = estimate_init_seconds(
+        FASTAPI["files"], FASTAPI["nbytes"],
+        doc_files=FASTAPI["doc_files"], doc_bytes=FASTAPI["doc_bytes"],
+    )
+    bytes_only = estimate_init_seconds(FASTAPI["files"], FASTAPI["nbytes"])
+    assert with_docs[1] < bytes_only[0]
+
+
+def test_measured_overhead_brackets_fastapi_on_apple_silicon(home, monkeypatch) -> None:
+    from pipeline.workload import (
+        estimate_init_seconds,
+        record_machine_embed_cps,
+        record_machine_index_overhead,
+    )
+
+    _calibrated(monkeypatch, None)
+    record_machine_embed_cps(chunks=1000, seconds=1000 / 72.0)
+    record_machine_index_overhead(files=2873, seconds=29.0)
+    lo, hi = estimate_init_seconds(
+        FASTAPI["files"], FASTAPI["nbytes"],
+        doc_files=FASTAPI["doc_files"], doc_bytes=FASTAPI["doc_bytes"],
+    )
+    assert lo <= FASTAPI["wall_s"] <= hi
+
+
+def test_overhead_and_cps_share_the_file(home, monkeypatch) -> None:
+    from pipeline.workload import (
+        machine_embed_cps,
+        machine_per_file_overhead_s,
+        record_machine_embed_cps,
+        record_machine_index_overhead,
+        INIT_PER_FILE_OVERHEAD_S,
+    )
+
+    _calibrated(monkeypatch, None)
+    record_machine_index_overhead(files=50, seconds=10.0)
+    assert machine_per_file_overhead_s() == INIT_PER_FILE_OVERHEAD_S
+    record_machine_index_overhead(files=1000, seconds=10.0)
+    record_machine_embed_cps(chunks=1000, seconds=10.0)
+    assert machine_per_file_overhead_s() == pytest.approx(0.01)
+    assert machine_embed_cps() == (pytest.approx(100.0), "measured")
+
+
+def test_scope_doc_split(tmp_path: Path) -> None:
+    from pipeline.incremental import preflight_index_scope, scope_doc_split
+
+    (tmp_path / "a.py").write_bytes(b"x = 1\n" * 100)
+    (tmp_path / "README.md").write_bytes(b"# hi\n" * 10)
+    preflight_index_scope(tmp_path, confirm=True)
+    assert scope_doc_split(tmp_path) == (1, 50)
+
+
 def test_preflight_remembers_scope_bytes(tmp_path: Path) -> None:
     from pipeline.incremental import preflight_index_scope, scope_bytes
 

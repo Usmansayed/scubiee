@@ -570,6 +570,9 @@ def index_repo(
             pass
 
     wall_s = time.perf_counter() - wall_start
+    from pipeline.workload import record_machine_index_overhead
+
+    record_machine_index_overhead(files=len(paths), seconds=wall_s - embed_s)
     compute = mlx_compute_summary(stats.get("timings_s"))
     rss_peak = process_rss_peak_mb()
     if not quiet:

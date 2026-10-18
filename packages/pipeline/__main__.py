@@ -1410,8 +1410,19 @@ def cmd_init(args: argparse.Namespace) -> int:
     n_files = 0
     prompted_header = False
     if not bool(getattr(args, "no_index", False)) and not repeat_init:
-        from pipeline.incremental import IndexConfirmRequired, preflight_index_scope, scope_bytes
+        from pipeline.incremental import (
+            IndexConfirmRequired,
+            preflight_index_scope,
+            scope_bytes,
+            scope_doc_split,
+        )
         from pipeline.cli_ui import Spinner, branded_header, confirm_action, format_index_eta
+
+        def _scope_eta(n: int) -> str:
+            doc_files, doc_bytes = scope_doc_split(root)
+            return format_index_eta(
+                n, scope_bytes(root), doc_files=doc_files, doc_bytes=doc_bytes
+            )
 
         if is_tty:
             branded_header("init", stream=sys.stderr)
@@ -1453,7 +1464,7 @@ def cmd_init(args: argparse.Namespace) -> int:
                 else:
                     message = (
                         f"This repository has {n_files:,} files "
-                        f"(est. {format_index_eta(n_files, scope_bytes(root))})"
+                        f"(est. {_scope_eta(n_files)})"
                     )
                     details = [
                         "This looks unintentionally large. Prefer a project folder, "
@@ -1477,7 +1488,7 @@ def cmd_init(args: argparse.Namespace) -> int:
             # Every interactive init: show size + time and get y/n.
             # --confirm skips the prompt for scripts.
             if is_tty and not bool(getattr(args, "confirm", False)):
-                eta = format_index_eta(n_files, scope_bytes(root)) if n_files else "~1 min"
+                eta = _scope_eta(n_files) if n_files else "~1 min"
                 confirmed = confirm_action(
                     f"This repository has {n_files:,} files (est. {eta})",
                     default=True,
