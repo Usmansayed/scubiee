@@ -281,6 +281,28 @@ def test_setup_download_env_disables_hub_symlinks(monkeypatch: pytest.MonkeyPatc
         accel._restore_env(prev)
 
 
+def test_coderank_download_bypasses_xet_so_byte_progress_moves(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    hub = pytest.importorskip("huggingface_hub")
+    from huggingface_hub import constants as hub_constants
+
+    monkeypatch.delenv("HF_HUB_DISABLE_XET", raising=False)
+    monkeypatch.setattr(hub_constants, "HF_HUB_DISABLE_XET", False, raising=False)
+    seen: dict[str, object] = {}
+
+    def fake_snapshot_download(**_kwargs):
+        seen["env"] = os.environ.get("HF_HUB_DISABLE_XET")
+        seen["const"] = hub_constants.HF_HUB_DISABLE_XET
+
+    monkeypatch.setattr(hub, "snapshot_download", fake_snapshot_download)
+    with pytest.raises(RuntimeError, match="did not download completely"):
+        accel._download_coderank_source_onnx(tmp_path)
+    assert seen == {"env": "1", "const": True}
+    assert os.environ.get("HF_HUB_DISABLE_XET") is None
+    assert hub_constants.HF_HUB_DISABLE_XET is False
+
+
 def test_format_setup_error_covers_win1314_and_trampoline() -> None:
     msg1314 = accel.format_setup_error(
         OSError(1314, "A required privilege is not held by the client")

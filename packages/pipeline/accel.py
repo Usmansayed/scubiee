@@ -2402,10 +2402,15 @@ def _setup_download_env() -> dict[str, str | None]:
         "HF_HUB_DISABLE_SYMLINKS",
         "HF_HUB_DISABLE_SYMLINKS_WARNING",
         "HF_HUB_DISABLE_TELEMETRY",
+        "HF_HUB_DISABLE_XET",
         "TQDM_DISABLE",
     )
     prev = {name: os.environ.get(name) for name in names}
     os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
+    # hf_xet assembles the whole file only when the transfer ends, so the
+    # on-disk byte watcher would sit at ~0% for minutes. Plain HTTP streams
+    # into blobs/*.incomplete at the same speed.
+    os.environ["HF_HUB_DISABLE_XET"] = "1"
     # Always disable hub symlinks during Scubiee model ensure — safe on all OSes,
     # required on locked-down Windows (no SeCreateSymbolicLinkPrivilege).
     os.environ["HF_HUB_DISABLE_SYMLINKS"] = "1"
@@ -2518,6 +2523,12 @@ def _download_coderank_source_onnx(cache_root: Path) -> Path:
 
     prev = _setup_download_env()
     disable_progress_bars()
+    # huggingface_hub reads HF_HUB_DISABLE_XET once at import time.
+    from huggingface_hub import constants as hub_constants
+
+    prev_xet = getattr(hub_constants, "HF_HUB_DISABLE_XET", None)
+    if prev_xet is not None:
+        hub_constants.HF_HUB_DISABLE_XET = True
     try:
         try:
             _once()
@@ -2531,6 +2542,8 @@ def _download_coderank_source_onnx(cache_root: Path) -> Path:
             else:
                 raise
     finally:
+        if prev_xet is not None:
+            hub_constants.HF_HUB_DISABLE_XET = prev_xet
         enable_progress_bars()
         _restore_env(prev)
     for snap in list_coderank_snapshot_dirs(cache_root):
