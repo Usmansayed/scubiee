@@ -1805,28 +1805,30 @@ def _remove_mcp_json_keyed(
     except MCPConfigMergeError as exc:
         _record_mcp_skip(warnings, path, str(exc))
         return False
-    servers = data.get(key)
-    if not isinstance(servers, dict):
-        return False
+    # Older builds wrote some tools under the other common key; the wipe audit
+    # checks both, so removal must too.
     removed = False
-    for name in MCP_SERVER_NAMES:
-        if name in servers:
-            del servers[name]
-            removed = True
-    removed = strip_legacy_mcp_keys(servers) or removed
+    for k in dict.fromkeys((key, "mcpServers", "servers")):
+        servers = data.get(k)
+        if not isinstance(servers, dict):
+            continue
+        hit = False
+        for name in MCP_SERVER_NAMES:
+            if name in servers:
+                del servers[name]
+                hit = True
+        hit = strip_legacy_mcp_keys(servers) or hit
+        if hit and not servers:
+            data.pop(k, None)
+        removed = removed or hit
     if not removed:
         return False
-    if servers:
-        data[key] = servers
+    if set(data.keys()) <= {"$schema"}:
+        data.clear()
+    if data:
         _write_json(path, data)
     else:
-        data.pop(key, None)
-        if set(data.keys()) <= {"$schema"}:
-            data.clear()
-        if data:
-            _write_json(path, data)
-        else:
-            path.unlink()
+        path.unlink()
     return True
 
 

@@ -65,3 +65,18 @@ def test_tool_disconnect_removes_legacy_entry_from_global_configs(tmp_path: Path
     cfg.write_text(json.dumps({"mcpServers": {"context-engine": THEIRS}}))
     assert remove_mcp_config(tool, cfg, schema="claude", key="mcpServers") is False
     assert json.loads(cfg.read_text()) == {"mcpServers": {"context-engine": THEIRS}}
+
+
+def test_tool_disconnect_also_cleans_the_other_server_key(tmp_path: Path) -> None:
+    from pipeline.rules_installer import remove_mcp_config
+    from pipeline.tool_registry import get_tool
+    from pipeline.wipe import _mcp_has_context_engine
+
+    cfg = tmp_path / "mcp.json"
+    cfg.write_text(
+        json.dumps({"servers": {}, "mcpServers": {"context-engine": OURS, "acme": THEIRS}})
+    )
+    assert _mcp_has_context_engine(cfg) is True
+    assert remove_mcp_config(get_tool("copilot"), cfg, schema="vscode", key="servers") is True
+    assert json.loads(cfg.read_text()) == {"servers": {}, "mcpServers": {"acme": THEIRS}}
+    assert _mcp_has_context_engine(cfg) is False
