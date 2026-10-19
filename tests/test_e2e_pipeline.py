@@ -31,10 +31,14 @@ def test_full_pipeline_stores_in_faiss_collection(
         return np.ones((len(texts), 768), dtype=np.float32)
 
     monkeypatch.setattr("pipeline.embedder.Embedder.embed_many", _fake_embed_many)
-    monkeypatch.setattr(
-        "pipeline.embedder.Embedder.embed_one",
-        lambda self, text, is_query=False: np.ones(768, dtype=np.float32),
-    )
+    class _FakeQueryEmbedder:
+        backend = "fake"
+        dim = 768
+
+        def embed_one(self, text, is_query=False):
+            return np.ones(768, dtype=np.float32)
+
+    monkeypatch.setattr("pipeline.engine.get_embedder", lambda *a, **k: _FakeQueryEmbedder())
     monkeypatch.setattr("pipeline.engine.embedder_is_loaded", lambda: True)
     monkeypatch.delenv("CTX_SEARCH_URL", raising=False)
     monkeypatch.delenv("CTX_ENGINE_URL", raising=False)
