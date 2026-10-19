@@ -295,3 +295,21 @@ def test_interrupted_upgrade_marker_is_reported_then_cleared_once_moot(tmp_path,
     landed = interrupted_upgrade(installed_version="0.3.155")
     assert landed is not None and landed["cleared"] is True
     assert not dirty_marker_path().exists()
+
+
+def test_failed_same_version_upgrade_marker_goes_stale(tmp_path, monkeypatch) -> None:
+    import os
+    import time
+
+    monkeypatch.setenv("CTX_HOME", str(tmp_path))
+    from pipeline.upgrade_supervisor import dirty_marker_path, interrupted_upgrade, write_dirty_marker
+
+    write_dirty_marker({"phase": "rebind", "old_version": "0.3.155", "target_version": "0.3.155"})
+    fresh = interrupted_upgrade(installed_version="0.3.155")
+    assert fresh is not None and fresh["cleared"] is False
+
+    two_hours_ago = time.time() - 7200
+    os.utime(dirty_marker_path(), (two_hours_ago, two_hours_ago))
+    stale = interrupted_upgrade(installed_version="0.3.155")
+    assert stale is not None and stale["cleared"] is True
+    assert not dirty_marker_path().exists()

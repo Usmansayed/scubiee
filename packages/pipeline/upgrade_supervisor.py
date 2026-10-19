@@ -62,6 +62,9 @@ def load_dirty_marker() -> dict[str, Any] | None:
     return data if isinstance(data, dict) else None
 
 
+STALE_MARKER_S = 3600.0
+
+
 def interrupted_upgrade(*, installed_version: str | None = None) -> dict[str, Any] | None:
     """Report an upgrade that never reached commit; clear the marker once it is moot.
 
@@ -82,7 +85,14 @@ def interrupted_upgrade(*, installed_version: str | None = None) -> dict[str, An
             installed_version = None
     old = str(marker.get("old_version") or "")
     target = str(marker.get("target_version") or "")
-    if installed_version and installed_version != old:
+    try:
+        age_s = time.time() - dirty_marker_path().stat().st_mtime
+    except OSError:
+        age_s = 0.0
+    # A same-version run (heal/reinstall) that failed leaves installed == old
+    # == target forever; no upgrade is still running an hour later.
+    moot = installed_version != old or (installed_version == target and age_s > STALE_MARKER_S)
+    if installed_version and moot:
         clear_dirty_marker()
         return {"cleared": True, "phase": marker.get("phase"), "installed": installed_version}
     return {
