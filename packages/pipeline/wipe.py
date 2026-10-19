@@ -17,8 +17,10 @@ from typing import Any
 
 from pipeline.branding import (
     DATA_DIR_NAMES,
+    LEGACY_MCP_SERVER_NAMES,
     MARKER_START,
     MCP_SERVER_NAMES,
+    is_legacy_scubiee_entry,
 )
 from pipeline.project_id import context_engine_home
 
@@ -107,6 +109,11 @@ def _drop_mcp_server(path: Path, *, name: str | None = None) -> dict[str, Any]:
                 continue
             servers.pop(n, None)
             removed_names.append(n)
+        if name is None:
+            for legacy in LEGACY_MCP_SERVER_NAMES:
+                if is_legacy_scubiee_entry(servers.get(legacy)):
+                    servers.pop(legacy, None)
+                    removed_names.append(legacy)
         if servers:
             data[key] = servers
         else:
@@ -430,6 +437,10 @@ def _mcp_has_context_engine(path: Path, *, name: str | None = None) -> bool:
     for key in ("mcpServers", "servers", "mcp", "context_servers", "amp.mcpServers"):
         servers = data.get(key)
         if isinstance(servers, dict) and any(n in servers for n in names):
+            return True
+        if isinstance(servers, dict) and name is None and any(
+            is_legacy_scubiee_entry(servers.get(n)) for n in LEGACY_MCP_SERVER_NAMES
+        ):
             return True
         if isinstance(servers, list):
             for item in servers:
