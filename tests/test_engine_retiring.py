@@ -194,3 +194,23 @@ def test_start_reports_engine_still_shutting_down(
     assert out["ok"] is False
     assert not out.get("already_running")
     assert out["retiring"]["pid"] == engine_proc.pid
+
+
+def test_engine_stopping_itself_returns_at_once(home, monkeypatch: pytest.MonkeyPatch) -> None:
+    import os
+
+    import pipeline.daemon as d
+    import pipeline.process_control as pc
+
+    d.acquire_lock(os.getpid(), url="http://127.0.0.1:1", repo=None)
+
+    def _no_sweep(**_k):
+        raise AssertionError("the engine cannot sweep its own pid off the port")
+
+    monkeypatch.setattr(pc, "kill_all_engine_daemons", _no_sweep)
+    t0 = time.monotonic()
+    out = d.stop_daemon(reason="idle_standby")
+    assert time.monotonic() - t0 < 1.0
+    assert out["self_retire"] is True and out["killed"] == []
+    assert d._read_lock_pid() == os.getpid()
+    assert d.retiring_engine() is None

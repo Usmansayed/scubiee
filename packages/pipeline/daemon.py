@@ -1127,6 +1127,19 @@ def _stop_daemon(*, stop_reason: str, why: str) -> dict[str, Any]:
         note_stop("engine", _read_lock_pid(), reason=f"stop_daemon:{why}", method="http_shutdown+kill")
     except Exception:  # noqa: BLE001
         pass
+    if _read_lock_pid() == os.getpid():
+        # Idle standby runs inside the engine. Its own pid is protected from
+        # kill and never leaves :8765, so the shutdown/sweep/poll below only
+        # burned ~10s with the port held; the sweeper exits via _retire_self.
+        return {
+            "ok": False,
+            "running": True,
+            "self_retire": True,
+            "killed": [],
+            "skipped_pids": [],
+            "sweep": None,
+            "stop_reason": stop_reason,
+        }
     # Short timeout — shutdown is best-effort; pid/sweep handle hard stop.
     client = EngineClient(timeout=3.0)
     try:
