@@ -31,6 +31,11 @@ def test_full_pipeline_stores_in_faiss_collection(
         return np.ones((len(texts), 768), dtype=np.float32)
 
     monkeypatch.setattr("pipeline.embedder.Embedder.embed_many", _fake_embed_many)
+    monkeypatch.setattr(
+        "pipeline.embedder.Embedder.embed_one",
+        lambda self, text, is_query=False: np.ones(768, dtype=np.float32),
+    )
+    monkeypatch.setattr("pipeline.engine.embedder_is_loaded", lambda: True)
     monkeypatch.delenv("CTX_SEARCH_URL", raising=False)
     monkeypatch.delenv("CTX_ENGINE_URL", raising=False)
     vdb_root = tmp_path / "vectordb"
@@ -77,3 +82,35 @@ def test_full_pipeline_stores_in_faiss_collection(
     direct = col2.search(q, top_k=1)
     assert len(direct) == 1
     assert direct[0][0] in set(range(stats.chunks))
+
+
+@pytest.mark.skipif(not MINI.exists(), reason="mini-repo fixture missing")
+def test_search_checks_freshness_against_the_engines_own_store(
+    tmp_path: Path, cpu_accel_profile: Path, monkeypatch: pytest.MonkeyPatch
+):
+    del cpu_accel_profile
+    import numpy as np
+
+    import pipeline.incremental as incremental
+    from pipeline.engine import load_engine
+
+    monkeypatch.setattr(
+        "pipeline.embedder.Embedder.embed_many",
+        lambda self, texts, progress=None: np.ones((len(texts), 768), dtype=np.float32),
+    )
+    vdb = VectorDatabase(root=tmp_path / "vectordb")
+    index_base = tmp_path / "indexes" / "mini"
+    index_repo(MINI, force=True, bits=4, base_dir=index_base, vdb=vdb)
+    eng = load_engine(MINI, base_dir=index_base, vdb=vdb, force_reload=True)
+
+    seen: list[dict] = []
+
+    def _gate(root, **kwargs):
+        seen.append(kwargs)
+        raise RuntimeError("stop after gate")
+
+    monkeypatch.setattr(incremental, "ensure_fresh_for_search", _gate)
+    with pytest.raises(RuntimeError, match="stop after gate"):
+        eng.search("login validatePassword")
+    assert seen and Path(seen[0]["base_dir"]) == index_base.resolve()
+    assert seen[0]["vdb"] is vdb

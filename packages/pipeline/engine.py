@@ -1050,6 +1050,11 @@ class WarmSearchEngine:
             )
         return out
 
+    def _reload(self) -> "WarmSearchEngine":
+        return load_engine(
+            self.root, base_dir=self.store.base, vdb=self.store.vdb, force_reload=True
+        )
+
     def search(
         self,
         query: str,
@@ -1063,16 +1068,19 @@ class WarmSearchEngine:
             gen = _store_generation_mtime(self.store)
             if gen > self.loaded_at + 0.05:
                 clear_engines()
-                fresh = load_engine(self.root, force_reload=True)
+                fresh = self._reload()
                 return fresh.search(query, top_k=top_k, skip_freshness=False)
 
             from pipeline.incremental import ensure_fresh_for_search
 
-            gate = ensure_fresh_for_search(self.root) or {}
+            gate = (
+                ensure_fresh_for_search(self.root, base_dir=self.store.base, vdb=self.store.vdb)
+                or {}
+            )
             sync = gate.get("sync") or {}
             if sync.get("refreshed"):
                 clear_engines()
-                fresh = load_engine(self.root, force_reload=True)
+                fresh = self._reload()
                 return fresh.search(query, top_k=top_k, skip_freshness=True)
 
             # Cursor-style: while dense lags, hot-patch BM25 from disk (no embed wait)
