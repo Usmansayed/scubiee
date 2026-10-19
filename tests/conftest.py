@@ -33,6 +33,14 @@ class _HostOs(type(os)):
 # "cannot instantiate 'WindowsPath' on your system". Pathlib keeps the host OS.
 sys.modules[Path.__module__].os = _HostOs()
 
+# pytest.ini's ``pythonpath = packages`` only reaches this process. Tests that
+# spawn ``python -m pipeline...`` children (often with cwd=tmp_path) need the
+# absolute path in the environment, or they import an installed or stale copy.
+_PACKAGES = str(Path(__file__).resolve().parent.parent / "packages")
+_pp = os.environ.get("PYTHONPATH", "")
+if _PACKAGES not in _pp.split(os.pathsep):
+    os.environ["PYTHONPATH"] = os.pathsep.join(p for p in (_PACKAGES, _pp) if p)
+
 # Env keys written by ``apply_index_memory_budget`` / similar without always
 # going through monkeypatch — clear between tests so ResourceManager ceilings
 # and refuse logic stay deterministic in the full suite.

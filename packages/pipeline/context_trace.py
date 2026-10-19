@@ -2169,8 +2169,15 @@ def finalize_suggested_seed(
         return out
     sym = str(out.get("symbol") or "").strip()
     loc = str(out.get("loc") or "").strip()
-    # Map cards already carry file + symbol + loc; skip the full AST graph load.
-    if file and sym and ":" in loc and not is_weak_seed_symbol(sym, query=query):
+    # Map cards already carry file + symbol + loc; skip the full AST graph load
+    # unless the query names the file stem but not this symbol.
+    if (
+        file
+        and sym
+        and ":" in loc
+        and not is_weak_seed_symbol(sym, query=query)
+        and (not load_repo or _card_symbol_fits_query(sym, file, query))
+    ):
         return out
     if not load_repo:
         if not sym:
@@ -2199,6 +2206,14 @@ def finalize_suggested_seed(
     out["role"] = card_role(node.file, node.kind)
     out.pop("seed_incomplete", None)
     return out
+
+
+def _card_symbol_fits_query(sym: str, file: str, query: str) -> bool:
+    """Same keep-rule as step 2 of ``_pick_best_node_in_file``."""
+    ql = (query or "").lower()
+    low = sym.rsplit(".", 1)[-1].lower()
+    stem = file.rsplit("/", 1)[-1].rsplit(".", 1)[0].lower()
+    return low in ql or not (stem and _token_in_query(stem, ql))
 
 
 def _pick_best_node_in_file(

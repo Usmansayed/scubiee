@@ -91,7 +91,7 @@ def light_seed_heatmap(node_id: str, graph: AstTraceGraph, *, hops: int = 1) -> 
         for nid, sc in sorted(scores.items(), key=lambda kv: -kv[1])
     ]
     return Heatmap(
-        strategy="light_seed",
+        strategy="multi_seed_light",
         cells=cells,
         extra={"seed": node_id, "hops": hops},
     )
@@ -116,10 +116,13 @@ def merge_seed_heatmaps(
 
     best: dict[str, HeatCell] = {}
     hits: dict[str, int] = {}
+    totals: dict[str, float] = {}
     for hm in maps:
         seen_in_map: set[str] = set()
         for cell in hm.cells:
             nid = cell.node_id
+            if nid not in seen_in_map:
+                totals[nid] = totals.get(nid, 0.0) + float(cell.score)
             seen_in_map.add(nid)
             prev = best.get(nid)
             if prev is None or cell.score > prev.score:
@@ -133,12 +136,15 @@ def merge_seed_heatmaps(
         for nid in seen_in_map:
             hits[nid] = hits.get(nid, 0) + 1
 
-    # Agreement boost: nodes on multiple seed islands rise without drowning seed1.
+    # Agreement boost: a corridor node scores the sum of its islands, so it
+    # outranks single-island side nodes, but stays just under the weakest seed.
+    seed_scores = [best[s].score for s in seed_ids if s in best]
+    ceiling = 0.99 * min(seed_scores) if seed_scores else 1.0
     for nid, n_hit in hits.items():
         if n_hit < 2:
             continue
         cell = best[nid]
-        boosted = min(1.0, float(cell.score) * (1.0 + 0.15 * (n_hit - 1)))
+        boosted = max(float(cell.score), min(ceiling, totals[nid]))
         best[nid] = HeatCell(
             node_id=nid,
             score=round(boosted, 4),

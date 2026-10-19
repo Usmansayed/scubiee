@@ -306,6 +306,7 @@ def poly_trace(
         return _cells(scores, why, paths)
 
     hop_cap = _HOP.get(intent, 6)
+    seed_fac = faction_of(seed_file)
     heap: list[tuple[float, int, str]] = [(-1.0, 0, seed)]
     seen: set[str] = set()
     while heap:
@@ -323,6 +324,10 @@ def poly_trace(
             if dst is None or _skip_node(dst, seed=seed):
                 continue
             if not _allow(intent, rel, dst, case.query, seed_file):
+                continue
+            # Allied factions are the seed's direct dependencies only; past the
+            # first hop the slice stays in the seed's own faction.
+            if hop >= 1 and faction_of(dst.file) != seed_fac:
                 continue
             incoming = scores[uid] * weight * (0.97**hop)
             if incoming < 0.12:

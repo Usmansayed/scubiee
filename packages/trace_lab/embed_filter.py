@@ -247,6 +247,9 @@ def apply_embed_keep_drop(
     def is_noise_nid(nid: str) -> bool:
         if nid == seed or nid not in nodes:
             return False
+        # A side effect the query asks about ("where does X write the log") is the answer.
+        if intent == "site" and not is_foreign(nodes[nid], case.query, seed_file):
+            return False
         short = _short(nid)
         if short in _SITE_EFFECTS:
             return True
