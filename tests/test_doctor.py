@@ -78,7 +78,28 @@ def test_published_journal_entries_are_not_pending(tmp_path, monkeypatch) -> Non
             "todo.py": {"path": "todo.py", "state": "queued"},
         }},
     )
-    assert _journal_pending("ce_doctor_journal") == {"pending": True, "paths": ["todo.py"]}
+    pending = _journal_pending("ce_doctor_journal")
+    assert pending["pending"] is True and pending["paths"] == ["todo.py"]
+    assert 0 <= pending["age_s"] < 60
 
     save_dirty_journal("ce_doctor_journal", {"paths": {"done.md": {"path": "done.md", "state": "published"}}})
-    assert _journal_pending("ce_doctor_journal") == {"pending": False, "paths": []}
+    cleared = _journal_pending("ce_doctor_journal")
+    assert cleared["pending"] is False and cleared["paths"] == []
+
+
+def test_pending_journal_is_only_a_repair_when_a_bound_engine_is_stuck() -> None:
+    from pipeline.doctor import JOURNAL_STUCK_AFTER_S, _journal_status, plan_repairs
+
+    bound, unbound = {"ok": True}, {"ok": False}
+    assert _journal_status({"pending": False}, bound) == "clear"
+    assert _journal_status({"pending": True, "age_s": 2.0}, bound) == "syncing"
+    assert _journal_status({"pending": True, "age_s": 2.0}, unbound) == "replays_on_engine_start"
+    assert _journal_status({"pending": True, "age_s": JOURNAL_STUCK_AFTER_S + 1}, bound) == "stuck"
+
+    def ids(status: str) -> list[str]:
+        report = {"readiness": {"index_usable": True}, "journal": {"pending": True, "status": status}}
+        return [item["id"] for item in plan_repairs(report=report)]
+
+    assert "replay_dirty_journal" not in ids("syncing")
+    assert "replay_dirty_journal" not in ids("replays_on_engine_start")
+    assert "replay_dirty_journal" in ids("stuck")

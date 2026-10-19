@@ -67,7 +67,33 @@ def _journal_pending(project_id: str) -> dict[str, Any]:
         for path, entry in paths.items()
         if not (isinstance(entry, dict) and entry.get("state") == "published")
     )
-    return {"pending": bool(pending), "paths": pending}
+    out: dict[str, Any] = {"pending": bool(pending), "paths": pending}
+    try:
+        out["age_s"] = round(max(0.0, time.time() - float(document.get("saved_at"))), 1)
+    except (TypeError, ValueError):
+        pass
+    return out
+
+
+# A bound engine drains its ledger within seconds; older pending entries are stuck.
+JOURNAL_STUCK_AFTER_S = 300.0
+
+
+def _journal_status(journal: dict[str, Any], binding: dict[str, Any]) -> str:
+    """clear | syncing | replays_on_engine_start | stuck.
+
+    Every keeper start restores the ledger from this journal, so pending paths
+    with no engine bound are replayed automatically; only a bound engine that
+    has not drained them for minutes needs a repair.
+    """
+    if not journal.get("pending"):
+        return "clear"
+    if binding.get("ok") is not True:
+        return "replays_on_engine_start"
+    age = journal.get("age_s")
+    if isinstance(age, (int, float)) and age < JOURNAL_STUCK_AFTER_S:
+        return "syncing"
+    return "stuck"
 
 
 def _managed_root(entry: dict[str, Any]) -> Path | None:
@@ -153,7 +179,7 @@ def plan_repairs(
             }
         )
     journal = report.get("journal") or {}
-    if journal.get("pending"):
+    if journal.get("pending") and journal.get("status", "stuck") == "stuck":
         actions.append(
             {
                 "id": "replay_dirty_journal",
@@ -262,6 +288,7 @@ def doctor_repo(root: Path | str | None = None) -> dict[str, Any]:
         binding = validate_daemon_binding(repo)
     except Exception as exc:  # noqa: BLE001
         binding = {"ok": False, "error": str(exc)}
+    journal["status"] = _journal_status(journal, binding)
 
     accel = {
         **(caps.get("accel") or {}),
