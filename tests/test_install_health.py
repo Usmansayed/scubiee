@@ -31,6 +31,16 @@ def test_version_only_accepts_common_aliases() -> None:
     assert not _version_only(["index"])
 
 
+def test_version_prints_only_the_version(capsys, monkeypatch) -> None:
+    from pipeline import __main__ as cli
+
+    monkeypatch.setattr("pipeline.daemon.is_running", lambda: False)
+    assert cli.main(["--version"]) == 0
+    out, err = capsys.readouterr()
+    assert out.startswith("scubiee ") and out.count("\n") == 1
+    assert err == ""
+
+
 def test_requires_faiss_guard_skips_setup_and_wipe() -> None:
     from pipeline.__main__ import _requires_faiss_guard
 

@@ -123,7 +123,8 @@ def describe_state() -> str:
     if axes.get("global_stop"):
         return "globally stopped (scubiee stop) - run scubiee resume"
     if not axes.get("engine_running"):
-        return "engine stopped (scubiee engine stop) - run scubiee engine start or use MCP"
+        # Usually idle standby, not `scubiee engine stop`; both recover the same way.
+        return "engine idle - it starts on the first MCP request (or run scubiee engine start)"
     if not axes.get("repo_enrolled"):
         return "repo not enrolled - run scubiee init ."
     if not axes.get("cursor_connected"):

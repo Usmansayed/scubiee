@@ -74,7 +74,9 @@ def test_describe_state_distinguishes_global_vs_engine(ce_home: Path, monkeypatc
 
     monkeypatch.setattr("pipeline.daemon.is_running", lambda: False)
     _save_state({"paused": False})
-    assert "engine stop" in describe_state()
+    engine_msg = describe_state()
+    assert "engine idle" in engine_msg and "engine start" in engine_msg
+    assert "globally" not in engine_msg
 
     _save_state({"paused": True})
     assert "globally stopped" in describe_state()

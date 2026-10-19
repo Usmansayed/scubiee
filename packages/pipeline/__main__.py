@@ -2372,12 +2372,6 @@ def main(argv: list[str] | None = None) -> int:
             print(f"scubiee {pkg_version('scubiee')}")
         except Exception:  # noqa: BLE001
             print("scubiee unknown")
-        try:
-            from pipeline.lifecycle_guard import emit_lifecycle_notice
-
-            emit_lifecycle_notice()
-        except Exception:  # noqa: BLE001
-            pass
         return 0
 
     # Friendly first-run hint: bare `scubiee` with no subcommand on a terminal
