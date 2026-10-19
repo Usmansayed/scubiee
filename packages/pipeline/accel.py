@@ -2481,17 +2481,23 @@ def _watch_download_bytes(cache_root: Path, progress: Any) -> Callable[[], None]
     def _run() -> None:
         baseline = _dir_bytes(repo_dir)
         total = _coderank_download_total_bytes()
-        while not stop.wait(0.5):
+
+        def _emit() -> bool:
             on_disk = _dir_bytes(repo_dir)
             # With a known total, bytes already on disk (resumed partials) count;
             # without one, only show what this run has fetched.
             done = min(on_disk, total) if total else max(0, on_disk - baseline)
-            if stop.is_set():
-                return
             try:
                 update(done, total, label="Downloading model", unit="bytes")
+                return True
             except Exception:  # noqa: BLE001
+                return False
+
+        while not stop.wait(0.5):
+            if not _emit():
                 return
+        # The last 0.5 s tick usually lands just short of the end (99%).
+        _emit()
 
     thread = threading.Thread(target=_run, name="scubiee-download-watch", daemon=True)
     thread.start()

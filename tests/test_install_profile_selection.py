@@ -303,6 +303,22 @@ def test_coderank_download_bypasses_xet_so_byte_progress_moves(
     assert hub_constants.HF_HUB_DISABLE_XET is False
 
 
+def test_download_watcher_reports_final_bytes_on_stop(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    repo_dir = tmp_path / ("models--" + accel.CODERANK_HF_ONNX.replace("/", "--"))
+    repo_dir.mkdir()
+    monkeypatch.setattr(accel, "_coderank_download_total_bytes", lambda: 1000)
+    seen: list[tuple[int, int]] = []
+
+    class P:
+        def update(self, done, total, **_k):
+            seen.append((done, total))
+
+    stop = accel._watch_download_bytes(tmp_path, P())
+    (repo_dir / "blob").write_bytes(b"x" * 1000)
+    stop()
+    assert seen and seen[-1] == (1000, 1000)
+
+
 def test_format_setup_error_covers_win1314_and_trampoline() -> None:
     msg1314 = accel.format_setup_error(
         OSError(1314, "A required privilege is not held by the client")
