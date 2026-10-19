@@ -78,6 +78,7 @@ visuals/*.mp4
 
 # ---- Local model weights / vendored binaries (huge; never commit) -----------
 models/
+!fixtures/**/models/
 tools/llama-cpp/
 
 # ---- Derived embedding + trace caches (regenerated; hundreds of MB) ---------
