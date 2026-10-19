@@ -50,3 +50,18 @@ def test_claude_json_legacy_entry_removed_keeps_other_keys(tmp_path: Path) -> No
     cfg.write_text(json.dumps({"numStartups": 3, "mcpServers": {"context-engine": OURS}}))
     assert _drop_mcp_server(cfg)["removed"] is True
     assert json.loads(cfg.read_text()) == {"numStartups": 3}
+
+
+def test_tool_disconnect_removes_legacy_entry_from_global_configs(tmp_path: Path) -> None:
+    from pipeline.rules_installer import remove_mcp_config
+    from pipeline.tool_registry import get_tool
+
+    tool = get_tool("copilot")
+    cfg = tmp_path / "mcp-config.json"
+    cfg.write_text(json.dumps({"mcpServers": {"context-engine": OURS, "figma": {"url": "x"}}}))
+    assert remove_mcp_config(tool, cfg, schema="claude", key="mcpServers") is True
+    assert json.loads(cfg.read_text()) == {"mcpServers": {"figma": {"url": "x"}}}
+
+    cfg.write_text(json.dumps({"mcpServers": {"context-engine": THEIRS}}))
+    assert remove_mcp_config(tool, cfg, schema="claude", key="mcpServers") is False
+    assert json.loads(cfg.read_text()) == {"mcpServers": {"context-engine": THEIRS}}

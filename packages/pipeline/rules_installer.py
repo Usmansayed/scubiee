@@ -889,12 +889,14 @@ def _remove_mcp_opencode(
         if name in mcp:
             del mcp[name]
             removed = True
+    removed = strip_legacy_mcp_keys(mcp) or removed
     servers = mcp.get("servers")
     if isinstance(servers, dict):
         for name in MCP_SERVER_NAMES:
             if name in servers:
                 del servers[name]
                 removed = True
+        removed = strip_legacy_mcp_keys(servers) or removed
         if not servers:
             mcp.pop("servers", None)
     if not removed:
@@ -1811,6 +1813,7 @@ def _remove_mcp_json_keyed(
         if name in servers:
             del servers[name]
             removed = True
+    removed = strip_legacy_mcp_keys(servers) or removed
     if not removed:
         return False
     if servers:
@@ -1847,6 +1850,7 @@ def _remove_mcp_amp(
         if name in servers:
             del servers[name]
             removed = True
+    removed = strip_legacy_mcp_keys(servers) or removed
     if not removed:
         return False
     if not servers:
