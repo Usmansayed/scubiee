@@ -349,6 +349,9 @@ def cmd_test(args: argparse.Namespace) -> int:
         external_client_available=bool(getattr(args, "clients", False)),
     )
     print(json.dumps(report, indent=2, default=str))
+    if report.get("status") == "unavailable":
+        print(f"[scubiee] {report.get('hint')}", file=sys.stderr)
+        return 2
     return 0 if report.get("ok") else 1
 
 

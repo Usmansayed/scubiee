@@ -33,6 +33,7 @@ class RegistrationResult:
     always_allow: bool = False
     error: str | None = None
     mode: str = "automatic"
+    hint: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -173,6 +174,20 @@ def register_project(
 
         reconcile_git_families(prefer_root=root)
         ref = resolve_project(root)
+        from pipeline.repo_lifecycle import NEVER_INDEX, NEVER_INDEX_HINT
+
+        if _project_entry(ref.project_id).get("lifecycle_state") == NEVER_INDEX:
+            return RegistrationResult(
+                ok=False,
+                project_id=ref.project_id,
+                root=str(root),
+                store_dir=str(ref.store_dir),
+                already_registered=already,
+                indexed=False,
+                error=NEVER_INDEX,
+                mode=mode,
+                hint=NEVER_INDEX_HINT,
+            )
         mark_registered(ref.project_id, root, always_allow=always_allow)
 
         indexed = False

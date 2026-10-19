@@ -123,6 +123,16 @@ def build_test_plan(tier: str, *, root: Path) -> TestPlan:
     )
 
 
+def _unavailable_reason(plan: TestPlan, root: Path) -> str | None:
+    if not any((root / target.split("::", 1)[0]).exists() for target in plan.pytest_targets):
+        return "test_files_not_found"
+    import importlib.util
+
+    if importlib.util.find_spec("pytest") is None:
+        return "pytest_not_installed"
+    return None
+
+
 def run_plan(
     plan: TestPlan,
     *,
@@ -135,6 +145,20 @@ def run_plan(
             "ok": True,
             "status": "skipped",
             "reason": "external_client_unavailable",
+            "plan": asdict(plan),
+        }
+    missing = _unavailable_reason(plan, root)
+    if missing:
+        return {
+            "ok": False,
+            "status": "unavailable",
+            "reason": missing,
+            "hint": (
+                "`scubiee test` runs Scubiee's own test suite from a source checkout "
+                "(git clone https://github.com/Usmansayed/scubiee, then run it there "
+                "with pytest installed). To check this install, run `scubiee doctor` "
+                "or `scubiee diagnose`."
+            ),
             "plan": asdict(plan),
         }
     started = time.perf_counter()

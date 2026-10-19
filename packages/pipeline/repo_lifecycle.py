@@ -31,6 +31,10 @@ ACTIVE = "active"
 PAUSED = "paused"
 NEVER_INDEX = "never_index"
 UNMANAGED = "unmanaged"
+NEVER_INDEX_HINT = (
+    "Indexing is turned off for this repository (scubiee never-index). "
+    "To turn it back on: scubiee remove . && scubiee init ."
+)
 
 
 def _root(root: Path | str) -> Path:
@@ -309,6 +313,7 @@ def initialize_repo(
             indexed=False,
             reconciled=False,
             error=NEVER_INDEX,
+            hint=NEVER_INDEX_HINT,
         )
 
     # Serialize init so concurrent calls on the same folder wait instead of racing.
@@ -527,6 +532,7 @@ def activate_repo(root: Path) -> dict[str, Any]:
             ok=False,
             status=NEVER_INDEX,
             error=NEVER_INDEX,
+            hint=NEVER_INDEX_HINT,
         )
     if entry.get("lifecycle_state") == PAUSED:
         now = time.time()
@@ -584,6 +590,7 @@ def resume_repo(root: Path) -> dict[str, Any]:
             ok=False,
             status=NEVER_INDEX,
             error=NEVER_INDEX,
+            hint=NEVER_INDEX_HINT,
         )
     _update(project_id, lifecycle_state=ACTIVE, pause_reason=None)
     return activate_repo(root)
@@ -604,7 +611,7 @@ def sync_now_repo(root: Path, *, confirm: bool = False) -> dict[str, Any]:
             hint="Repository is paused — run `scubiee activate .` before sync-now.",
         )
     if state == NEVER_INDEX:
-        return _result(project_id, entry, ok=False, error="never_index")
+        return _result(project_id, entry, ok=False, error="never_index", hint=NEVER_INDEX_HINT)
     from pipeline.incremental import incremental_sync
 
     result = incremental_sync(
@@ -628,7 +635,7 @@ def rebuild_repo(root: Path) -> dict[str, Any]:
     if not project_id or state == UNMANAGED:
         return {"ok": False, "root": str(root), "state": state, "error": "unmanaged"}
     if state == NEVER_INDEX:
-        return _result(project_id, entry, ok=False, error="never_index")
+        return _result(project_id, entry, ok=False, error="never_index", hint=NEVER_INDEX_HINT)
     from pipeline.indexer import index_repo
 
     try:
