@@ -835,6 +835,40 @@ def ensure_embed_keepalive_loop(root: Path | str | None = None) -> dict[str, Any
     return {"ok": True, "started": True, **embed_keepalive_status()}
 
 
+def publish_dense_phase() -> None:
+    """Publish ``warm_phase=dense`` once a dense query has actually run in this engine.
+
+    The embedder can load outside ``prewarm_embedder`` (first lazy embed from a
+    search or sync); the phase file then stayed ``down``/``soft`` and MCP attach
+    loops polling it for ``dense`` waited out their deadline on a warm engine.
+    """
+    try:
+        from pipeline import warm_autoload
+
+        if warm_autoload._PHASE == warm_autoload.PHASE_DENSE or not _model_session_loaded():
+            return
+        warm_autoload.end_prewarm(ok=True)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _model_session_loaded() -> bool:
+    """True when a registered embedder holds a live model session (not just a lazy shell)."""
+    with _LOCK:
+        embs = list(_EMBEDDERS.values())
+    for e in embs:
+        backend = str(getattr(e, "backend", "") or "")
+        if backend == "fastembed":
+            if getattr(e, "_fe_model", None) is not None:
+                return True
+        elif backend == "mlx":
+            if getattr(e, "_mlx_model", None) is not None:
+                return True
+        else:
+            return True
+    return False
+
+
 def prewarm_embedder_async(root: Path | str | None = None) -> dict[str, Any]:
     """Background FastEmbed load so the next map/search is not a ~30s cold start.
 
@@ -856,6 +890,7 @@ def prewarm_embedder_async(root: Path | str | None = None) -> dict[str, Any]:
                 _mark_prime_done(True, prime)
             except Exception as exc:  # noqa: BLE001
                 _mark_prime_done(True, {"ok": False, "error": str(exc)})
+        publish_dense_phase()
         return {"ok": True, "already_warm": True, **prewarm_status()}
     with _PREWARM_LOCK:
         already_running = bool(_PREWARM_STATE.get("running"))

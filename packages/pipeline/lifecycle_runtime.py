@@ -470,14 +470,9 @@ def _pid_alive(pid: int) -> bool:
         return False
     try:
         if os.name == "nt":
-            import ctypes
+            from pipeline.daemon import win_pid_state
 
-            kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
-            handle = kernel32.OpenProcess(0x1000, False, pid)
-            if handle:
-                kernel32.CloseHandle(handle)
-                return True
-            return False
+            return win_pid_state(pid) == "running"
         os.kill(pid, 0)
         from pipeline.daemon import pid_is_zombie
 

@@ -545,6 +545,12 @@ def activate_repo(root: Path) -> dict[str, Any]:
         )
         return _result(project_id, entry, status="activated")
     now = time.time()
+    if (
+        entry.get("lifecycle_state") == ACTIVE
+        and entry.get("pause_reason") is None
+        and _recently_stamped(entry, now)
+    ):
+        return _result(project_id, entry, status="activated")
     entry = _update(
         project_id,
         lifecycle_state=ACTIVE,
@@ -553,6 +559,20 @@ def activate_repo(root: Path) -> dict[str, Any]:
         pause_reason=None,
     )
     return _result(project_id, entry, status="activated")
+
+
+# Every map/search admits the repo; rewriting the registry (cross-process lock)
+# per call stalled /v1/search by up to ~1.2s on Windows. Recency consumers
+# (storage_policy, git_family) work at day scale.
+_ACCESS_STAMP_MIN_S = 60.0
+
+
+def _recently_stamped(entry: dict[str, Any], now: float) -> bool:
+    try:
+        last = float(entry.get("last_access_at") or 0.0)
+    except (TypeError, ValueError):
+        return False
+    return 0.0 <= now - last < _ACCESS_STAMP_MIN_S
 
 
 def pause_repo(root: Path, *, reason: str | None = None) -> dict[str, Any]:

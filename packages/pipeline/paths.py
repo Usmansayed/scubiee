@@ -101,6 +101,31 @@ def index_rel_ok(
     return _is_probably_text(root / rel)
 
 
+def index_dir_pruner(root: Path, rules: IgnoreRules):
+    """Return ``prune(dir) -> bool``: True when no file under *dir* can pass ``should_index_rel``.
+
+    Builtin denials are never negatable. Custom ``.scubieeignore`` matches cover
+    every descendant, but a ``!`` rule may re-include one, so custom pruning is
+    only applied when the rules contain no negation.
+    """
+    from pipeline.ignore import _custom_matches, builtin_ignores_rel
+
+    root_s = str(root)
+    prefix_len = len(root_s.rstrip("\\/")) + 1
+    custom_ok = bool(rules.patterns) and not any(p.negated for p in rules.patterns)
+
+    def prune(d: Path) -> bool:
+        s = str(d)
+        if not s.startswith(root_s) or len(s) <= prefix_len:
+            return False
+        rel = s[prefix_len:].replace("\\", "/")
+        if builtin_ignores_rel(rel + "/_"):
+            return True
+        return custom_ok and _custom_matches(rules, rel, is_dir=True) is True
+
+    return prune
+
+
 def collect_index_paths(
     root: Path,
     *,
@@ -118,7 +143,11 @@ def collect_index_paths(
     root = root.resolve()
     if rules is None:
         rules = load_scubiee_ignore(root)
-    paths = collect_files(under if under is not None else root, root=root)
+    paths = collect_files(
+        under if under is not None else root,
+        root=root,
+        prune_dir=index_dir_pruner(root, rules),
+    )
     roots = fast_roots_from_env(list(fast_roots) if fast_roots else None)
     return [
         p

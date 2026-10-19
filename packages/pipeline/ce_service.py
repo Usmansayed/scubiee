@@ -1793,6 +1793,12 @@ class RuntimeManager:
                 "Retry this same map after the embedder is dense — do not use BM25-only."
             )
             return payload
+        try:
+            from pipeline.engine import publish_dense_phase
+
+            publish_dense_phase()
+        except Exception:  # noqa: BLE001
+            pass
         return {
             "ok": True,
             "query": q,

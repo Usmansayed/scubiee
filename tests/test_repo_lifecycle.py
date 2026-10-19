@@ -370,6 +370,43 @@ def test_never_index_takes_precedence(ce_home: Path, tmp_path: Path) -> None:
     assert managed_state(repo) == "never_index"
 
 
+def test_activate_hot_path_skips_registry_write_when_recently_stamped(
+    ce_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import pipeline.repo_lifecycle as lc
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    pid = initialize_repo(repo, index=False)["project_id"]
+    activate_repo(repo)
+    stamped = load_registry()["projects"][pid]["last_access_at"]
+
+    writes: list[dict] = []
+    real_update = lc._update
+    monkeypatch.setattr(lc, "_update", lambda p, **v: writes.append(v) or real_update(p, **v))
+    again = activate_repo(repo)
+    assert again["status"] == "activated"
+    assert again["last_access_at"] == stamped
+    assert writes == []
+
+    monkeypatch.setattr(lc.time, "time", lambda: stamped + lc._ACCESS_STAMP_MIN_S + 1)
+    activate_repo(repo)
+    assert len(writes) == 1
+    assert load_registry()["projects"][pid]["last_access_at"] == stamped + lc._ACCESS_STAMP_MIN_S + 1
+
+
+def test_activate_after_pause_always_writes(ce_home: Path, tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    pid = initialize_repo(repo, index=False)["project_id"]
+    activate_repo(repo)
+    pause_repo(repo, reason="maintenance")
+    assert activate_repo(repo)["state"] == "active"
+    entry = load_registry()["projects"][pid]
+    assert entry["lifecycle_state"] == "active"
+    assert entry["pause_reason"] is None
+
+
 def test_activate_unmanaged_requires_initialize_without_persisting(
     ce_home: Path, tmp_path: Path
 ) -> None:

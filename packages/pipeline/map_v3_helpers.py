@@ -165,7 +165,10 @@ def _recover_engine() -> dict:
         try:
             from pipeline.daemon import ensure_daemon
 
-            out = ensure_daemon(REPO, force_if_hung=False, open_wait=True)
+            # open_wait=False: the retried request itself loads the index and
+            # blocks on the embedder; waiting for the full warm (offline
+            # reconcile, drift walk, sync) added ~20s to recovery on Windows.
+            out = ensure_daemon(REPO, force_if_hung=False, open_wait=False)
         except Exception as exc:  # noqa: BLE001
             return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
         if not out.get("ok"):

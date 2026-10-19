@@ -244,14 +244,7 @@ def _pid_alive(pid: int) -> bool:
         return False
     try:
         if os.name == "nt":
-            import ctypes
-
-            kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
-            handle = kernel32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
-            if handle:
-                kernel32.CloseHandle(handle)
-                return True
-            return False
+            return win_pid_state(pid) == "running"
         os.kill(pid, 0)
         return not pid_is_zombie(pid)
     except OSError:
@@ -260,10 +253,38 @@ def _pid_alive(pid: int) -> bool:
         return False
 
 
+def win_pid_state(pid: int) -> str:
+    """Windows: ``running`` | ``exited`` | ``gone``.
+
+    An exited process keeps its pid and stays openable while any handle to it is
+    open (e.g. the spawner's Popen), so OpenProcess success alone is not "alive".
+    """
+    import ctypes
+
+    kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+    handle = kernel32.OpenProcess(0x1000, False, int(pid))  # PROCESS_QUERY_LIMITED_INFORMATION
+    if not handle:
+        return "gone"
+    try:
+        code = ctypes.c_ulong(0)
+        if not kernel32.GetExitCodeProcess(handle, ctypes.byref(code)):
+            return "running"
+        return "running" if code.value == 259 else "exited"  # STILL_ACTIVE
+    finally:
+        kernel32.CloseHandle(handle)
+
+
 def pid_is_zombie(pid: int) -> bool:
-    """POSIX: an exited process nobody reaped still answers kill(pid, 0)."""
+    """An exited process that still answers liveness probes.
+
+    POSIX: nobody reaped it, so kill(pid, 0) succeeds. Windows: a handle keeps
+    the process object, so OpenProcess succeeds.
+    """
     if os.name == "nt":
-        return False
+        try:
+            return win_pid_state(pid) == "exited"
+        except Exception:  # noqa: BLE001
+            return False
     try:
         import psutil
 

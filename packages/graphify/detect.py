@@ -1069,6 +1069,30 @@ def _match_anchored_ignore_pattern(path: str, pattern: str) -> bool:
     return _matches(0, 0)
 
 
+_nc = lru_cache(maxsize=65536)(os.path.normcase)
+
+
+@lru_cache(maxsize=1024)
+def _anchor_prefix(anchor_s: str) -> tuple[str, str]:
+    nc = os.path.normcase(anchor_s)
+    return nc, (nc if nc.endswith(os.sep) else nc + os.sep)
+
+
+def _rel_under_anchor(target_s: str, target_nc: str, anchor: Path) -> str | None:
+    """``str(target.relative_to(anchor))`` with ``/`` separators, or None when outside.
+
+    String prefix test on normcased paths — same containment answer as
+    ``Path.relative_to`` (case-insensitive on Windows) without building every
+    ancestor ``Path``; normcase keeps length, so the slice preserves case.
+    """
+    anchor_nc, prefix = _anchor_prefix(str(anchor))
+    if target_nc == anchor_nc:
+        return "."
+    if not target_nc.startswith(prefix):
+        return None
+    return target_s[len(prefix):].replace(os.sep, "/")
+
+
 def _is_ignored(
     path: Path,
     root: Path,
@@ -1096,18 +1120,22 @@ def _is_ignored(
         """Apply last-match-wins to a single target path."""
         if _cache is not None and target in _cache:
             return _cache[target]
+        target_s = str(target)
+        target_nc = os.path.normcase(target_s)
         def _matches(rel: str, p: str, path_relative: bool) -> bool:
             if path_relative:
                 return _match_anchored_ignore_pattern(rel, p)
+            # fnmatch.fnmatch(n, p) == fnmatchcase(normcase(n), normcase(p)); memoised.
             parts = rel.split("/")
-            if fnmatch.fnmatch(rel, p):
+            p_nc = _nc(p)
+            if fnmatch.fnmatchcase(_nc(rel), p_nc):
                 return True
-            if fnmatch.fnmatch(target.name, p):
+            if fnmatch.fnmatchcase(_nc(target.name), p_nc):
                 return True
             for i, part in enumerate(parts):
-                if fnmatch.fnmatch(part, p):
+                if fnmatch.fnmatchcase(_nc(part), p_nc):
                     return True
-                if fnmatch.fnmatch("/".join(parts[:i + 1]), p):
+                if fnmatch.fnmatchcase(_nc("/".join(parts[:i + 1])), p_nc):
                     return True
             return False
 
@@ -1127,9 +1155,8 @@ def _is_ignored(
             # (detect() returned 0 files). The anchor dir itself is exempt — an
             # ignore file governs its directory's contents, not the directory.
             matched = False
-            try:
-                rel_anchor = str(target.relative_to(anchor)).replace(os.sep, "/")
-            except ValueError:
+            rel_anchor = _rel_under_anchor(target_s, target_nc, anchor)
+            if rel_anchor is None:
                 continue  # target outside this pattern's anchor: cannot match
             if rel_anchor != ".":
                 matched = _matches(rel_anchor, p, path_relative=path_relative)

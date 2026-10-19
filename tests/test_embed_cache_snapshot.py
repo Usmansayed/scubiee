@@ -67,6 +67,27 @@ def test_snapshot_rows_win_over_duplicate_log_rows(tmp_path: Path) -> None:
     assert np.allclose(restarted.cache["d:k"], [1.0, 1.0])
 
 
+def test_replay_skips_known_rows_by_key_only(tmp_path: Path) -> None:
+    cache = tmp_path / "embed_cache.jsonl"
+    weird = 'd:path\\with "quotes" — ünïcode'
+    rows = [
+        json.dumps({"key": weird, "embedding": [5.0]}),
+        json.dumps({"key": "d:known", "embedding": [7.0]}),
+        '{"key": "d:broken", "embedding": [1.0',
+        json.dumps({"embedding": [3.0], "key": "d:reordered"}),
+        json.dumps({"key": "d:fresh", "embedding": [2.0]}),
+    ]
+    cache.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    emb = _bare_embedder(cache)
+    emb.cache = {weird: [1.0], "d:known": [1.0]}
+    emb._replay_cache_log(skip_known=True)
+    assert emb.cache[weird] == [1.0]
+    assert emb.cache["d:known"] == [1.0]
+    assert emb.cache["d:fresh"] == [2.0]
+    assert emb.cache["d:reordered"] == [3.0]
+    assert "d:broken" not in emb.cache
+
+
 def test_log_only_cache_still_loads(tmp_path: Path) -> None:
     cache = tmp_path / "embed_cache.jsonl"
     cache.write_text(

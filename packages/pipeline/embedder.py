@@ -419,9 +419,22 @@ class Embedder:
         assert self.cache_path is not None
         if not self.cache_path.exists():
             return
+        # Rows are written as json.dumps({"key": ..., "embedding": [...]}): when
+        # the .npz already holds most keys, decode only the leading key so the
+        # ~16 KB embedding of a known row is never parsed (full replay of a
+        # 150 MB log was seconds of GIL-bound startup work).
+        key_prefix = '{"key": '
+        decoder = json.JSONDecoder()
         for line in self.cache_path.read_text(encoding="utf-8").splitlines():
             if not line.strip():
                 continue
+            if skip_known and line.startswith(key_prefix):
+                try:
+                    known_key, _end = decoder.raw_decode(line, len(key_prefix))
+                except json.JSONDecodeError:
+                    known_key = None
+                if known_key is not None and str(known_key) in self.cache:
+                    continue
             try:
                 row = json.loads(line)
             except json.JSONDecodeError:
@@ -533,6 +546,13 @@ class Embedder:
             warm = pad_embed_batch(warm, warm_bs)
         list(self._fe_model.embed(warm, batch_size=warm_bs, parallel=None))
         _diag(f"[embed] FastEmbed ready in {(time.perf_counter()-t0)*1000:.0f}ms")
+        if (os.environ.get("CTX_SCUBIEE_ROLE") or "").strip().lower() == "engine":
+            try:
+                from pipeline.engine import publish_dense_phase
+
+                publish_dense_phase()
+            except Exception:  # noqa: BLE001
+                pass
         return self._fe_model
 
     def _ensure_coderank(self):
