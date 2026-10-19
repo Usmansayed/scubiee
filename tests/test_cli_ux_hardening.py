@@ -77,9 +77,14 @@ def _map_args(**over):
 
 
 def test_map_engine_down_friendly_message_and_exit1(monkeypatch, capsys):
-    """Engine down → friendly 'engine not running' message + exit 1, NOT a raw
+    """Engine down and it cannot be started → friendly message + exit 1, NOT a raw
     RuntimeError/URLError/WinError leak, NOT exit 0, and no engine call (no hang)."""
     monkeypatch.setattr("pipeline.client.EngineClient.healthy", lambda self: False)
+    monkeypatch.setattr(
+        "pipeline.daemon.ensure_daemon",
+        lambda *a, **k: {"ok": False, "error": "spawn failed"},
+    )
+    monkeypatch.setattr(cli, "_engine_process_alive", lambda: False)
 
     called = {"tool_map": False}
 
@@ -93,12 +98,80 @@ def test_map_engine_down_friendly_message_and_exit1(monkeypatch, capsys):
     out = capsys.readouterr()
     assert rc == 1
     assert "engine not running" in out.err.lower()
+    assert "could not start the engine" in out.err
     assert "scubiee engine start" in out.err
     # no raw internals leaked
     for leak in ("RuntimeError", "URLError", "WinError", "Traceback"):
         assert leak not in (out.out + out.err)
     # must NOT have called the engine path (prevents the hang)
     assert called["tool_map"] is False
+
+
+def test_map_engine_down_starts_engine_then_runs(monkeypatch, capsys):
+    """A stopped engine (or one still warming) is started/attached, then map runs."""
+    monkeypatch.setattr("pipeline.client.EngineClient.healthy", lambda self: False)
+    seen: dict = {}
+
+    def _ensure(repo, **kw):
+        seen["repo"], seen["kw"] = repo, kw
+        return {"ok": True, "started": True}
+
+    monkeypatch.setattr("pipeline.daemon.ensure_daemon", _ensure)
+    monkeypatch.setattr("pipeline.map_v3_server.tool_map", lambda _c: "find: 1 results  confidence: high")
+
+    rc = cli.cmd_map(_map_args())
+    out = capsys.readouterr()
+    assert rc == 0
+    assert "starting it" in out.err
+    assert seen["kw"] == {"force_if_hung": False, "open_wait": False}
+    assert "find: 1 results" in out.out
+
+
+def test_map_waits_for_warming_engine_instead_of_failing(monkeypatch, capsys):
+    """Right after `engine start` the process is alive but /health and open time
+    out; map waits for it to answer instead of exiting 1."""
+    answers = iter([False, False, False, True])
+    monkeypatch.setattr("pipeline.client.EngineClient.healthy", lambda self: next(answers))
+    monkeypatch.setattr(
+        "pipeline.daemon.ensure_daemon",
+        lambda *a, **k: {"ok": False, "error": "Scubiee unreachable: timed out"},
+    )
+    monkeypatch.setattr(cli, "_engine_process_alive", lambda: True)
+    monkeypatch.setattr(cli.time, "sleep", lambda _s: None)
+    monkeypatch.setattr("pipeline.map_v3_server.tool_map", lambda _c: "find: 1 results  confidence: high")
+
+    rc = cli.cmd_map(_map_args())
+    out = capsys.readouterr()
+    assert rc == 0
+    assert "still warming" in out.err
+    assert "could not start" not in out.err
+
+
+def test_map_warming_engine_that_dies_reports_failure(monkeypatch, capsys):
+    monkeypatch.setattr("pipeline.client.EngineClient.healthy", lambda self: False)
+    monkeypatch.setattr(
+        "pipeline.daemon.ensure_daemon",
+        lambda *a, **k: {"ok": False, "error": "Scubiee unreachable: timed out"},
+    )
+    alive = iter([True, False])
+    monkeypatch.setattr(cli, "_engine_process_alive", lambda: next(alive, False))
+    monkeypatch.setattr(cli.time, "sleep", lambda _s: None)
+
+    rc = cli.cmd_map(_map_args())
+    assert rc == 1
+    assert "could not start the engine" in capsys.readouterr().err
+
+
+def test_engine_port_follows_ctx_engine_url(monkeypatch):
+    """`engine start`/`setup` must bind the port clients will dial, not a hard 8765."""
+    from pipeline.daemon import default_host_port
+
+    monkeypatch.setenv("CTX_ENGINE_URL", "http://127.0.0.1:18799")
+    unset = argparse.Namespace(host=None, port=None)
+    assert cli._engine_host_port(unset) == ("127.0.0.1", 18799)
+    assert cli._engine_host_port(argparse.Namespace(host=None, port=9001)) == ("127.0.0.1", 9001)
+    monkeypatch.delenv("CTX_ENGINE_URL")
+    assert cli._engine_host_port(unset) == default_host_port()
 
 
 def test_map_exit_code_failure_vs_empty(monkeypatch):

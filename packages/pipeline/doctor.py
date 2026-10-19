@@ -170,7 +170,7 @@ def plan_repairs(
                 ),
             }
         )
-    elif not readiness.get("index_usable"):
+    elif not readiness.get("index_usable") and manifest.get("reason") != "publication_updating":
         actions.append(
             {
                 "id": "initialize_index",
@@ -289,6 +289,11 @@ def doctor_repo(root: Path | str | None = None) -> dict[str, Any]:
     except Exception as exc:  # noqa: BLE001
         binding = {"ok": False, "error": str(exc)}
     journal["status"] = _journal_status(journal, binding)
+    if ref is not None and manifest.get("reason") == "checksum_mismatch":
+        manifest = _settle_checksum_mismatch(store.base, manifest, journal)
+        if manifest.get("ok"):
+            usable = index_is_usable(store.base, collection_name=collection)
+    updating = manifest.get("reason") == "publication_updating"
 
     accel = {
         **(caps.get("accel") or {}),
@@ -344,13 +349,51 @@ def doctor_repo(root: Path | str | None = None) -> dict[str, Any]:
     blocking = [item for item in planned if item.get("id") not in _non_blocking]
     report["ok"] = bool(
         caps.get("ok")
-        and usable
+        and (usable or updating)
         and manifest.get("ok") is not False
         and not git_family.get("needs_reconcile")
         and connect_registry.get("ok", True)
         and not blocking
     )
     return report
+
+
+def _settle_checksum_mismatch(
+    store_base: Path, manifest: dict[str, Any], journal: dict[str, Any]
+) -> dict[str, Any]:
+    """Tell a live incremental publish apart from real corruption.
+
+    Incremental sync rewrites graph.json/chunks first and re-stamps the manifest
+    only after embedding, so a read inside that window sees a checksum mismatch.
+    """
+    if journal.get("status") == "syncing":
+        return {"ok": None, "reason": "publication_updating", "observed": manifest}
+    time.sleep(1.5)
+    again = validate_manifest(store_base)
+    if again.get("ok"):
+        return again
+    if again.get("reason") != "checksum_mismatch":
+        return manifest
+    if _written_after_publish(store_base, again):
+        return {"ok": None, "reason": "publication_updating", "observed": again}
+    return again
+
+
+_PUBLISH_WINDOW_S = 120.0
+
+
+def _written_after_publish(store_base: Path, report: dict[str, Any]) -> bool:
+    """A mid-sync artifact is newer than the manifest and was written moments ago;
+    a crashed or corrupted publish leaves it stale."""
+    if not report.get("artifact"):
+        return False
+    try:
+        artifact = Path(store_base) / str(report["artifact"])
+        written = artifact.stat().st_mtime
+        published = (Path(store_base) / MANIFEST_NAME).stat().st_mtime
+    except OSError:
+        return False
+    return written > published and time.time() - written < _PUBLISH_WINDOW_S
 
 
 def doctor_all() -> dict[str, Any]:

@@ -1076,11 +1076,20 @@ def _notify_daemon_publish(root: Path, payload: dict | None = None) -> dict:
         return {"ok": False, "error": str(exc)}
 
 
+def _engine_host_port(args: argparse.Namespace) -> tuple[str, int]:
+    """Explicit --host/--port win; otherwise CTX_ENGINE_URL, then 127.0.0.1:8765."""
+    from pipeline.daemon import default_host_port
+
+    host, port = default_host_port()
+    return (getattr(args, "host", None) or host, int(getattr(args, "port", None) or port))
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     """Alias for Scubiee daemon (foreground)."""
     from pipeline.server import run_server
 
-    run_server(Path(args.path).resolve(), host=args.host, port=args.port)
+    host, port = _engine_host_port(args)
+    run_server(Path(args.path).resolve(), host=host, port=port)
     return 0
 
 
@@ -1149,10 +1158,11 @@ def cmd_engine(args: argparse.Namespace) -> int:
     if action == "run":
         from pipeline.server import run_server
 
+        host, port = _engine_host_port(args)
         run_server(
             Path(args.path).resolve(),
-            host=args.host,
-            port=args.port,
+            host=host,
+            port=port,
             open_on_start=not args.no_open,
         )
         return 0
@@ -1174,10 +1184,11 @@ def cmd_engine(args: argparse.Namespace) -> int:
         # Explicit start always means the user wants the engine running — do
         # not inherit a leftover standby from a prior `engine stop`.
         set_desired_mode(DESIRED_RUN)
+        host, port = _engine_host_port(args)
         result = start_daemon(
             Path(args.path).resolve() if args.path else None,
-            host=args.host,
-            port=args.port,
+            host=host,
+            port=port,
             wait_s=float(args.wait),
         )
         # Start watchdog if daemon is usable (health may race past wait timeout)
@@ -1761,8 +1772,7 @@ def cmd_setup(args: argparse.Namespace) -> int:
 
         repo = Path(args.repo or args.index_path or ".").resolve()
         os.environ["CTX_REPO"] = str(repo)
-        host = args.host
-        port = int(args.port)
+        host, port = _engine_host_port(args)
         os.environ["CTX_ENGINE_URL"] = f"http://{host}:{port}"
 
         bar.set(94, "Registering logon supervisor")
@@ -1887,6 +1897,31 @@ def cmd_gate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _engine_process_alive() -> bool:
+    try:
+        from pipeline.daemon import _pid_alive, _read_lock_pid
+
+        pid = _read_lock_pid()
+        return pid is not None and _pid_alive(pid)
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _wait_engine_healthy(wait_s: float) -> bool:
+    from pipeline.client import EngineClient
+
+    deadline = time.monotonic() + max(0.0, wait_s)
+    while True:
+        try:
+            if EngineClient(timeout=5.0).healthy():
+                return True
+        except Exception:  # noqa: BLE001
+            pass
+        if time.monotonic() >= deadline or not _engine_process_alive():
+            return False
+        time.sleep(1.0)
+
+
 def cmd_map(args: argparse.Namespace) -> int:
     """Map V3 locate via CLI — the same `map` tool the MCP serves (fallback for scripts).
 
@@ -1915,12 +1950,10 @@ def cmd_map(args: argparse.Namespace) -> int:
     _os.environ.setdefault("CTX_REPO", repo)
     _os.environ["MINI_REPO"] = repo
 
-    # Engine-reachability pre-check. `map` needs a running engine; unlike
-    # `search`/`sync` (which auto-start or degrade), tool_map would otherwise
-    # return a raw "RuntimeError: engine /v1/search failed: URLError <WinError
-    # 10061>" with exit 0, and some config+arg combos retry/block. A fast /health
-    # probe up front gives a friendly message, a correct exit code, and avoids a
-    # slow/hung call when the engine is down.
+    # Engine-reachability pre-check. `map` needs a running engine; without one,
+    # tool_map would return a raw "engine /v1/search failed: URLError" with exit
+    # 0. A /health miss also happens while a just-started engine is warming, so
+    # start-or-attach (same path as the MCP bridge) instead of bailing out.
     from pipeline.client import EngineClient
 
     try:
@@ -1928,12 +1961,22 @@ def cmd_map(args: argparse.Namespace) -> int:
     except Exception:  # noqa: BLE001
         engine_up = False
     if not engine_up:
-        print(
-            "map: engine not running — start it with `scubiee engine start` "
-            "(or just retry; your IDE's MCP client keeps it warm).",
-            file=sys.stderr,
-        )
-        return 1
+        print("map: engine not running - starting it...", file=sys.stderr, flush=True)
+        try:
+            from pipeline.daemon import ensure_daemon
+
+            started = ensure_daemon(repo, force_if_hung=False, open_wait=False)
+        except Exception as exc:  # noqa: BLE001
+            started = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+        if not started.get("ok") and _engine_process_alive():
+            print("map: engine is still warming - waiting for it...", file=sys.stderr, flush=True)
+            if _wait_engine_healthy(float(os.environ.get("CTX_MAP_ENGINE_WAIT_S") or "90")):
+                started = {"ok": True}
+        if not started.get("ok"):
+            detail = started.get("error") or started.get("reason") or "unknown"
+            hint = started.get("hint") or "run `scubiee engine start`"
+            print(f"map: could not start the engine ({detail}) - {hint}", file=sys.stderr)
+            return 1
 
     from pipeline.map_v3_server import tool_map
 
@@ -2325,16 +2368,17 @@ def _engine_run_fast(argv: list[str]) -> int:
 
     parser = argparse.ArgumentParser(prog="scubiee engine run")
     parser.add_argument("path", nargs="?", default=".")
-    parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--host", default=None)
+    parser.add_argument("--port", type=int, default=None)
     parser.add_argument("--no-open", action="store_true")
     args = parser.parse_args(argv)
     from pipeline.server import run_server
 
+    host, port = _engine_host_port(args)
     run_server(
         Path(args.path).resolve(),
-        host=args.host,
-        port=args.port,
+        host=host,
+        port=port,
         open_on_start=not args.no_open,
     )
     return 0
@@ -2702,8 +2746,8 @@ def main(argv: list[str] | None = None) -> int:
 
     p_serve = sub.add_parser("serve", help="Alias: run Scubiee HTTP daemon (foreground)")
     p_serve.add_argument("path", nargs="?", default=".")
-    p_serve.add_argument("--host", default="127.0.0.1")
-    p_serve.add_argument("--port", type=int, default=8765)
+    p_serve.add_argument("--host", default=None)
+    p_serve.add_argument("--port", type=int, default=None)
     p_serve.set_defaults(func=cmd_serve)
 
     p_dashboard = sub.add_parser(
@@ -2739,8 +2783,8 @@ def main(argv: list[str] | None = None) -> int:
         help="Daemon action (supervisor = logon loop; watchdog = in-session sidecar)",
     )
     p_eng.add_argument("path", nargs="?", default=".", help="Default repo for open")
-    p_eng.add_argument("--host", default="127.0.0.1")
-    p_eng.add_argument("--port", type=int, default=8765)
+    p_eng.add_argument("--host", default=None)
+    p_eng.add_argument("--port", type=int, default=None)
     p_eng.add_argument("--wait", type=float, default=90.0, help="Health wait seconds (start)")
     p_eng.add_argument("--no-open", action="store_true", help="run: do not open repo on start")
     p_eng.add_argument(
@@ -2824,8 +2868,8 @@ def main(argv: list[str] | None = None) -> int:
         help="Default repo for engine + MCP (default: cwd)",
     )
     p_setup.add_argument("--register", action="store_true", help="Register --repo after start")
-    p_setup.add_argument("--host", default="127.0.0.1")
-    p_setup.add_argument("--port", type=int, default=8765)
+    p_setup.add_argument("--host", default=None)
+    p_setup.add_argument("--port", type=int, default=None)
     p_setup.add_argument("--wait", type=float, default=120.0)
     p_setup.add_argument("--status", action="store_true", help="Print saved preferred profile")
     p_setup.set_defaults(func=cmd_setup)
