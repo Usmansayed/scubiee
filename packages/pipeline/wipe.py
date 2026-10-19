@@ -638,7 +638,7 @@ def _restart_engine_after_repo_wipe(repo: Path) -> dict[str, Any]:
 
 def _prepared_label(halt: dict[str, Any]) -> str:
     unlocked = "unlock_tool" in (halt.get("actions") or {})
-    return "Prepared machine (stub MCP, kill" + (", unlock)" if unlocked else ")")
+    return "Prepared machine (stub MCP, stop processes" + (", unlock tool)" if unlocked else ")")
 
 
 def _prepare_machine_for_full_wipe(*, repo: Path | None = None) -> dict[str, Any]:
