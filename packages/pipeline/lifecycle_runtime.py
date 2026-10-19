@@ -1811,7 +1811,7 @@ def run_supervisor(*, logon: bool = False) -> None:
     if logon and not store_hold_active() and (not engine_should_be_running() or should_idle_stop()):
         enter_standby(stop_engine=True)
     attach_supervisor_job()
-    watchdog_loop()
+    watchdog_loop(wait_for_lock=True)
 
 
 def install_session_runtime() -> dict[str, Any]:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+import time
 from pathlib import Path
 from unittest.mock import patch
 
@@ -80,6 +81,55 @@ def test_stop_watchdog_clears_pid(wd_home: Path):
     out = stop_watchdog()
     assert out["ok"] is True
     assert not watchdog_pid_path().is_file()
+
+
+def test_second_sidecar_loop_exits_and_leaves_holder_pid(wd_home: Path, monkeypatch: pytest.MonkeyPatch):
+    import os
+
+    from pipeline import watchdog as wd
+
+    held = wd._acquire_loop_lock(wait=False, poll_s=0.05)
+    assert held is not None
+    try:
+        wd.watchdog_pid_path().write_text("424242", encoding="utf-8")
+        ran: list[bool] = []
+        monkeypatch.setattr(wd, "_watchdog_loop_locked", lambda **_k: ran.append(True))
+        wd.watchdog_loop(stop_after=0.2)
+        assert ran == []
+        assert wd.watchdog_pid_path().read_text(encoding="utf-8") == "424242"
+    finally:
+        os.close(held)
+
+
+def test_supervisor_loop_waits_then_takes_over(wd_home: Path, monkeypatch: pytest.MonkeyPatch):
+    import os
+    import threading
+
+    from pipeline import watchdog as wd
+
+    held = wd._acquire_loop_lock(wait=False, poll_s=0.05)
+    assert held is not None
+    ran = threading.Event()
+    monkeypatch.setattr(wd, "_watchdog_loop_locked", lambda **_k: ran.set())
+    t = threading.Thread(target=lambda: wd.watchdog_loop(stop_after=0.2, wait_for_lock=True), daemon=True)
+    t.start()
+    time.sleep(0.3)
+    assert not ran.is_set()
+    os.close(held)
+    t.join(timeout=5)
+    assert ran.is_set()
+    assert wd._acquire_loop_lock(wait=False, poll_s=0.05) is not None
+
+
+def test_logon_supervisor_waits_for_watchdog_lock(monkeypatch: pytest.MonkeyPatch):
+    from pipeline import lifecycle_runtime as lr
+
+    seen: dict = {}
+    monkeypatch.setattr(lr, "install_supervisor_signals", lambda: None)
+    monkeypatch.setattr(lr, "store_hold_active", lambda: True)
+    monkeypatch.setattr("pipeline.watchdog.watchdog_loop", lambda **k: seen.update(k))
+    lr.run_supervisor(logon=True)
+    assert seen.get("wait_for_lock") is True
 
 
 def test_loop_restarts_after_two_fails(wd_home: Path, monkeypatch: pytest.MonkeyPatch):

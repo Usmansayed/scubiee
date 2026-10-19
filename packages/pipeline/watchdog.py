@@ -43,6 +43,48 @@ def watchdog_log_path() -> Path:
     return _home() / "watchdog.log"
 
 
+def watchdog_lock_path() -> Path:
+    return _home() / "watchdog.lock"
+
+
+def _try_lock_fd(fd: int) -> bool:
+    try:
+        if sys.platform == "win32":
+            import msvcrt
+
+            os.lseek(fd, 0, os.SEEK_SET)
+            msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return True
+    except OSError:
+        return False
+
+
+def _acquire_loop_lock(*, wait: bool, poll_s: float) -> int | None:
+    """Single-instance guard for ``watchdog_loop``.
+
+    The logon supervisor and the engine's sidecar both run this loop and can be
+    spawned in the same second; the pid file alone cannot arbitrate that. The
+    OS releases the lock when the holder dies, however it dies.
+    """
+    _home().mkdir(parents=True, exist_ok=True)
+    fd = os.open(str(watchdog_lock_path()), os.O_CREAT | os.O_RDWR)
+    announced = False
+    while True:
+        if _try_lock_fd(fd):
+            return fd
+        if not wait:
+            os.close(fd)
+            return None
+        if not announced:
+            _log(f"pid={os.getpid()} waiting: another watchdog loop holds the lock")
+            announced = True
+        time.sleep(poll_s)
+
+
 def watchdog_state_path() -> Path:
     return _home() / "watchdog-state.json"
 
@@ -373,10 +415,31 @@ def prewarm_still_progressing(*, now: float | None = None) -> tuple[bool, float 
     return delta >= min_cpu_s, round(delta, 2)
 
 
-def watchdog_loop(*, stop_after: float | None = None) -> None:
-    """Blocking poll loop (runs in the watchdog child process)."""
+def watchdog_loop(*, stop_after: float | None = None, wait_for_lock: bool = False) -> None:
+    """Blocking poll loop (runs in the watchdog child process).
+
+    ``wait_for_lock`` is for the logon supervisor: exiting would make launchd /
+    the logon task respawn it in a tight loop, so it waits and takes over when
+    the current holder exits. Sidecars exit instead.
+    """
     interval = float(os.environ.get("CTX_WATCHDOG_INTERVAL_S", str(DEFAULT_INTERVAL_S)))
     interval = max(0.5, interval)
+    lock_fd = _acquire_loop_lock(wait=wait_for_lock, poll_s=interval)
+    if lock_fd is None:
+        _log(f"pid={os.getpid()} exiting: another watchdog loop is already running")
+        return
+    try:
+        _watchdog_loop_locked(interval=interval, stop_after=stop_after)
+    finally:
+        try:
+            from pipeline.store_lock import _release_fd
+
+            _release_fd(lock_fd)
+        finally:
+            os.close(lock_fd)
+
+
+def _watchdog_loop_locked(*, interval: float, stop_after: float | None) -> None:
     _home().mkdir(parents=True, exist_ok=True)
     watchdog_pid_path().write_text(str(os.getpid()), encoding="utf-8")
     try:
@@ -863,7 +926,10 @@ def start_watchdog(*, orphan: bool = False) -> dict[str, Any]:
         log_f.close()
     except Exception:  # noqa: BLE001
         pass
-    watchdog_pid_path().write_text(str(proc.pid), encoding="utf-8")
+    # A loop that won the lock meanwhile owns the pid file; this child will exit.
+    current = discover_watchdog_pid()
+    if current is None or current == proc.pid or not _pid_alive(current):
+        watchdog_pid_path().write_text(str(proc.pid), encoding="utf-8")
     time.sleep(0.3)
     return {
         "ok": True,
