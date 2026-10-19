@@ -279,3 +279,19 @@ def test_swap_package_last_chance_verify_on_target(monkeypatch):
     # command reported non-zero. Assert the deferred-shim success path.
     assert res["ok"] is True
     assert res.get("shim_rebind_deferred") is True
+
+
+def test_interrupted_upgrade_marker_is_reported_then_cleared_once_moot(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("CTX_HOME", str(tmp_path))
+    from pipeline.upgrade_supervisor import dirty_marker_path, interrupted_upgrade, write_dirty_marker
+
+    assert interrupted_upgrade(installed_version="0.3.144") is None
+
+    write_dirty_marker({"phase": "swap", "old_version": "0.3.144", "target_version": "0.3.145"})
+    stuck = interrupted_upgrade(installed_version="0.3.144")
+    assert stuck is not None and stuck["cleared"] is False and stuck["phase"] == "swap"
+    assert dirty_marker_path().is_file()
+
+    landed = interrupted_upgrade(installed_version="0.3.155")
+    assert landed is not None and landed["cleared"] is True
+    assert not dirty_marker_path().exists()

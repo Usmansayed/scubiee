@@ -62,6 +62,39 @@ def load_dirty_marker() -> dict[str, Any] | None:
     return data if isinstance(data, dict) else None
 
 
+def interrupted_upgrade(*, installed_version: str | None = None) -> dict[str, Any] | None:
+    """Report an upgrade that never reached commit; clear the marker once it is moot.
+
+    The marker is only removed on a fully committed upgrade, so a failed or
+    killed one left it behind forever with nothing reading it. Once the
+    installed package is the marker's target (or a later reinstall replaced
+    it) the breadcrumb is stale.
+    """
+    marker = load_dirty_marker()
+    if marker is None:
+        return None
+    if installed_version is None:
+        try:
+            from importlib.metadata import version as pkg_version
+
+            installed_version = pkg_version("scubiee")
+        except Exception:  # noqa: BLE001
+            installed_version = None
+    old = str(marker.get("old_version") or "")
+    target = str(marker.get("target_version") or "")
+    if installed_version and installed_version != old:
+        clear_dirty_marker()
+        return {"cleared": True, "phase": marker.get("phase"), "installed": installed_version}
+    return {
+        "cleared": False,
+        "phase": marker.get("phase"),
+        "old_version": old or None,
+        "target_version": target or None,
+        "started_at": marker.get("started_at"),
+        "hint": "A previous `scubiee upgrade` stopped mid-way; re-run `scubiee upgrade`.",
+    }
+
+
 def _revision_dir(revision_id: str) -> Path:
     return _home() / "upgrade" / revision_id
 

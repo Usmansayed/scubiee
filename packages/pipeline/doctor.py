@@ -261,6 +261,12 @@ def doctor_repo(root: Path | str | None = None) -> dict[str, Any]:
     from pipeline.env_guard import install_identity_report
 
     install = install_identity_report()
+    try:
+        from pipeline.upgrade_supervisor import interrupted_upgrade
+
+        install["interrupted_upgrade"] = interrupted_upgrade(installed_version=install.get("version"))
+    except Exception:  # noqa: BLE001
+        pass
     git_family = detect_git_family_duplicates()
     report: dict[str, Any] = {
         "ok": False,
