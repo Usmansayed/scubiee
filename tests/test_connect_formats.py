@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -278,4 +279,9 @@ def test_legacy_global_paths_include_devin_cascade(fake_home: Path) -> None:
     tool = TOOL_MAP["devin-desktop"]
     paths = [str(p) for p, _s, _k in resolve_mcp_legacy_global_paths(tool)]
     assert str(fake_home / ".codeium" / "windsurf" / "mcp_config.json") in paths
-    assert str(fake_home / "AppData" / "Roaming" / "devin" / "mcp_config.json") in paths
+    user_mcp = (
+        fake_home / "AppData" / "Roaming" / "devin"
+        if os.name == "nt"
+        else fake_home / ".config" / "devin"
+    )
+    assert str(user_mcp / "mcp_config.json") in paths

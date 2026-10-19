@@ -5,6 +5,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+import pytest
+
 from pipeline.diagnose import resolve_diagnose_output_path
 
 
@@ -15,6 +17,7 @@ def test_desktop_flag_writes_home_desktop(tmp_path: Path, monkeypatch) -> None:
     assert (tmp_path / "Desktop").is_dir()
 
 
+@pytest.mark.skipif(os.name != "nt", reason="PowerShell path literal; backslash is not a separator on POSIX")
 def test_powershell_env_literal_is_expanded(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("USERPROFILE", str(tmp_path))
     raw = r"$env:USERPROFILE\Desktop\scubiee-diagnose.json"
