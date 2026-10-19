@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 from pathlib import Path
 
@@ -98,6 +99,10 @@ def test_dir_watch_finds_new_files_without_a_repo_walk(tmp_path: Path):
     store.save_meta({"fast": False, "git_head": None})
     (tmp_path / "old").mkdir()
     (tmp_path / "old" / "stale.py").write_text("S=1\n", encoding="utf-8")
+    # An old unindexed tree: on APFS/ext4 writing stale.py just bumped old/ past
+    # the root's mtime, so backdate it (NTFS only hid that via lazy dir entries).
+    long_ago = time.time_ns() - 3600 * 1_000_000_000
+    os.utime(tmp_path / "old", ns=(long_ago, long_ago))
     watch = DirWatch()
     first = root_probe(tmp_path, base_dir=store.base, discover_newcomers=False, dir_watch=watch)
     assert first.clean

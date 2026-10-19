@@ -15,6 +15,24 @@ from pathlib import Path
 
 import pytest
 
+
+class _HostOs(type(os)):
+    """``os`` as pathlib sees it: the real module, but ``name`` never lies."""
+
+    def __init__(self) -> None:
+        super().__init__("os")
+        self.__dict__["name"] = os.name
+
+    def __getattr__(self, attr: str):
+        return getattr(os, attr)
+
+
+# Tests simulate Windows with ``monkeypatch.setattr(os, "name", "nt")`` to reach
+# ``os.name == "nt"`` branches. ``Path()`` reads that same global, so on POSIX
+# every path built mid-test (and pytest's own failure report) raised
+# "cannot instantiate 'WindowsPath' on your system". Pathlib keeps the host OS.
+sys.modules[Path.__module__].os = _HostOs()
+
 # Env keys written by ``apply_index_memory_budget`` / similar without always
 # going through monkeypatch — clear between tests so ResourceManager ceilings
 # and refuse logic stay deterministic in the full suite.
