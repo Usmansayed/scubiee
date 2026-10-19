@@ -665,6 +665,15 @@ def _pid_alive(pid: int) -> bool:
             return exit_code.value == still_active
         finally:
             kernel32.CloseHandle(handle)
+    # An exited child we spawned stays a zombie until reaped, and kill(pid, 0)
+    # succeeds on zombies — stop_dashboard then waited 5s and reported failure.
+    try:
+        if os.waitpid(pid, os.WNOHANG)[0] == pid:
+            return False
+    except ChildProcessError:
+        pass
+    except OSError:
+        pass
     try:
         os.kill(pid, 0)
     except (OSError, ProcessLookupError):
