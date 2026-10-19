@@ -7,6 +7,7 @@ import os
 import signal
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -252,9 +253,21 @@ def _pid_alive(pid: int) -> bool:
                 return True
             return False
         os.kill(pid, 0)
-        return True
+        return not pid_is_zombie(pid)
     except OSError:
         return False
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def pid_is_zombie(pid: int) -> bool:
+    """POSIX: an exited process nobody reaped still answers kill(pid, 0)."""
+    if os.name == "nt":
+        return False
+    try:
+        import psutil
+
+        return psutil.Process(pid).status() == psutil.STATUS_ZOMBIE
     except Exception:  # noqa: BLE001
         return False
 
@@ -1025,6 +1038,10 @@ def _spawn_engine_child(cmd: list[str], env: dict[str, str]) -> int:
         log_f.close()
     except Exception:  # noqa: BLE001
         pass
+    if os.name != "nt":
+        # A long-lived spawner (MCP bridge, supervisor) must reap the engine, or a
+        # crashed engine stays a zombie that kill(pid, 0) reports as alive.
+        threading.Thread(target=proc.wait, name="scubiee-engine-reaper", daemon=True).start()
     return int(proc.pid)
 
 

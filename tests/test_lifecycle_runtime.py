@@ -387,8 +387,17 @@ def test_supervisor_exit_handler_stops_engine(monkeypatch) -> None:
         return {"ok": True}
 
     monkeypatch.setattr(life, "enter_standby", fake_standby)
+    monkeypatch.setattr("pipeline.watchdog.mcp_or_client_demand", lambda: (0, False))
     life.handle_supervisor_exit()
     assert stopped == [True]
+
+
+def test_supervisor_exit_keeps_engine_while_an_ide_is_attached(monkeypatch) -> None:
+    stopped: list[bool] = []
+    monkeypatch.setattr(life, "enter_standby", lambda **k: stopped.append(True) or {"ok": True})
+    monkeypatch.setattr("pipeline.watchdog.mcp_or_client_demand", lambda: (1, True))
+    life.handle_supervisor_exit()
+    assert stopped == []
 
 
 def test_ensure_supervisor_on_darwin_kickstarts_agent_not_orphan(

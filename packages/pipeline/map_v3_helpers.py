@@ -29,6 +29,7 @@ import json
 import os
 import re
 import sys
+import threading
 import time
 import urllib.request
 from pathlib import Path
@@ -115,15 +116,67 @@ def _http(path: str, payload: dict | None = None, timeout: float = 90.0) -> dict
     headers = {} if payload is None else {"Content-Type": "application/json"}
     last = None
     opener = _opener()
-    for _ in range(2):  # retry once: cold bridges sometimes drop the first request
+    recovered: dict | None = None
+    attempt = 0
+    while attempt < 2:  # retry once: cold bridges sometimes drop the first request
+        attempt += 1
         try:
             req = urllib.request.Request(url, data=data, headers=headers)
             with opener.open(req, timeout=timeout) as resp:
                 return json.loads(resp.read().decode("utf-8", "replace"))
         except Exception as e:  # noqa: BLE001
             last = e
+            # Only real tool requests restart a stopped/crashed engine; the
+            # /health warm and keepalive pulses must not, or idle unload never happens.
+            if path != "/health" and recovered is None and _engine_refused(e):
+                recovered = _recover_engine()
+                if recovered.get("ok"):
+                    attempt = 0
+                    continue
+                break
             time.sleep(0.3)
+    if recovered is not None and not recovered.get("ok"):
+        hint = recovered.get("hint") or "run `scubiee engine ensure .`"
+        raise RuntimeError(
+            f"engine not running and could not be started "
+            f"({recovered.get('error') or recovered.get('reason') or 'unknown'}) — {hint}"
+        )
     raise RuntimeError(f"engine {path} failed: {type(last).__name__}: {last}")
+
+
+_RECOVER_LOCK = threading.Lock()
+
+
+def _engine_refused(exc: BaseException) -> bool:
+    reason = getattr(exc, "reason", exc)
+    return isinstance(reason, (ConnectionRefusedError, ConnectionResetError))
+
+
+def _recover_engine() -> dict:
+    """Start the engine for this repo (one caller at a time) and wait until it serves."""
+    with _RECOVER_LOCK:
+        try:
+            from pipeline.client import EngineClient
+
+            if EngineClient(timeout=2.0).healthy():
+                return {"ok": True, "already_running": True}
+        except Exception:  # noqa: BLE001
+            pass
+        try:
+            from pipeline.daemon import ensure_daemon
+
+            out = ensure_daemon(REPO, force_if_hung=False, open_wait=True)
+        except Exception as exc:  # noqa: BLE001
+            return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+        if not out.get("ok"):
+            opened = out.get("opened") if isinstance(out.get("opened"), dict) else {}
+            return {
+                "ok": False,
+                "error": out.get("error") or opened.get("error"),
+                "reason": out.get("reason"),
+                "hint": out.get("hint") or opened.get("hint"),
+            }
+        return out
 
 
 def _search(query: str, top_k: int) -> list[dict]:

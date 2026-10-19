@@ -479,7 +479,9 @@ def _pid_alive(pid: int) -> bool:
                 return True
             return False
         os.kill(pid, 0)
-        return True
+        from pipeline.daemon import pid_is_zombie
+
+        return not pid_is_zombie(pid)
     except OSError:
         return False
     except Exception:  # noqa: BLE001
@@ -1490,7 +1492,18 @@ def handle_supervisor_exit(signum: int | None = None, frame: Any = None) -> None
     """Logoff / Ctrl+C / launchd stop: engine must not outlive the session."""
     del frame
     try:
-        enter_standby(stop_engine=True)
+        # setup/connect re-register the LaunchAgent, which SIGTERMs the supervisor
+        # while an IDE is still attached; the engine's idle path retires it later.
+        from pipeline.watchdog import mcp_or_client_demand
+
+        _clients, demand = mcp_or_client_demand()
+    except Exception:  # noqa: BLE001
+        demand = False
+    try:
+        if demand:
+            _lifecycle_log("supervisor_exit_keep_engine", reason="mcp_client_attached")
+        else:
+            enter_standby(stop_engine=True)
     except Exception:  # noqa: BLE001
         pass
     if signum is not None:

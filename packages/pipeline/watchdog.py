@@ -161,7 +161,9 @@ def _pid_alive(pid: int) -> bool:
                 return True
             return False
         os.kill(pid, 0)
-        return True
+        from pipeline.daemon import pid_is_zombie
+
+        return not pid_is_zombie(pid)
     except OSError:
         return False
     except Exception:  # noqa: BLE001
