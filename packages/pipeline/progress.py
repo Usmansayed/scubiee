@@ -119,6 +119,7 @@ class ProgressModel:
         self._stage_t0 = clock()
         self._rate_t0 = self._stage_t0
         self._rate_d0 = 0.0
+        self._progress_t = self._stage_t0
         self._high = 0.0
         self._complete = False
 
@@ -134,6 +135,7 @@ class ProgressModel:
         self._stage_t0 = now
         self._rate_t0 = now
         self._rate_d0 = 0.0
+        self._progress_t = now
 
     def begin(
         self,
@@ -204,7 +206,9 @@ class ProgressModel:
                 self._total = float(total)
             if label:
                 self._label = clean_label(label)
-            self._done = max(self._done, float(done))
+            if float(done) > self._done:
+                self._done = float(done)
+                self._progress_t = self._clock()
             self._bump()
 
     def complete(self, label: str | None = None) -> None:
@@ -228,12 +232,16 @@ class ProgressModel:
         frac = self._stage_frac()
         if frac is None or frac >= 1.0:
             return None
-        elapsed = now - self._rate_t0
         progressed = self._done - self._rate_d0
-        if elapsed < _ETA_MIN_ELAPSED_S or progressed <= 0:
+        measured = self._progress_t - self._rate_t0
+        if now - self._rate_t0 < _ETA_MIN_ELAPSED_S or progressed <= 0 or measured <= 0:
             return None
-        rate = progressed / elapsed
-        return (float(self._total or 0) - self._done) / rate
+        # Rate up to the last real progress, counted down since then. A stall that
+        # outlives the estimate (last batch, post-embed write) means the estimate
+        # was wrong: show elapsed time instead of a countdown pinned at "~5s".
+        eta = (float(self._total or 0) - self._done) / (progressed / measured)
+        left = eta - (now - self._progress_t)
+        return left if left > 0 else None
 
     def snapshot(self) -> Snapshot:
         with self._lock:
@@ -461,7 +469,8 @@ class ProgressRenderer:
                 extras.append(format_eta(snap.eta_s))
             if not snap.measurable and snap.step and snap.steps:
                 extras.append(f"step {snap.step}/{snap.steps}")
-            if not snap.measurable and snap.stage_elapsed >= _ELAPSED_MIN_S and self.tty:
+            no_eta = not snap.measurable or snap.eta_s is None
+            if no_eta and snap.stage_elapsed >= _ELAPSED_MIN_S and self.tty:
                 extras.append(format_clock(snap.stage_elapsed))
         if extras:
             parts.append(("\u00b7 " + " \u00b7 ".join(extras), muted))

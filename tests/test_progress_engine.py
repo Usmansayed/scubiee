@@ -96,6 +96,33 @@ def test_eta_from_measured_rate() -> None:
     assert eta == pytest.approx(30.0)
 
 
+def test_eta_counts_down_between_updates() -> None:
+    clock = _Clock()
+    m = ProgressModel(_plan(), clock=clock)
+    m.begin("b", total=100)
+    clock.t = 10.0
+    m.update(25)
+    clock.t = 20.0
+    assert m.snapshot().eta_s == pytest.approx(20.0)
+
+
+def test_stall_past_the_estimate_drops_the_countdown() -> None:
+    """990/1000 then a long tail: never pin "~5s left" for the whole stall."""
+    clock = _Clock()
+    m = ProgressModel(_plan(), clock=clock)
+    r = ProgressRenderer(m, _TTY(), color=False)
+    m.begin("b", total=1000)
+    clock.t = 60.0
+    m.update(990)
+    assert m.snapshot().eta_s == pytest.approx(60.0 / 990 * 10)
+    clock.t = 90.0
+    snap = m.snapshot()
+    assert snap.eta_s is None
+    plain, _ = r.compose(snap, spinner="⠋")
+    assert "left" not in plain
+    assert "1m30s" in plain
+
+
 def test_unknown_stage_key_only_relabels() -> None:
     m = ProgressModel(_plan())
     m.begin("a")
