@@ -1342,6 +1342,8 @@ def incremental_sync(
         truly_removed: list[int] = []
         for record in existing:
             file = record.file.replace("\\", "/")
+            if file not in touch_set:
+                continue
             key = chunk_key(record)
             replacement = next(
                 (item for item in new_by_file.get(file, []) if chunk_key(item) == key),

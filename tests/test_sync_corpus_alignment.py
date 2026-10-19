@@ -238,6 +238,28 @@ def _hot_lane_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     return repo, base, vdb, store, graph
 
 
+def test_local_full_corpus_sync_counts_only_touched_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``scubiee sync`` with no engine diffs the whole corpus; untouched chunks are not removals."""
+    from pipeline.merkle import file_sha256
+
+    repo, base, vdb, store, _graph = _hot_lane_repo(tmp_path, monkeypatch)
+    store.save_merkle({"pkg/keep.py": file_sha256(repo / "pkg" / "keep.py")})
+    (repo / "pkg" / "added.py").write_text("def added():\n    return 2\n", encoding="utf-8")
+
+    result = incremental_sync(repo, base_dir=base, vdb=vdb)
+
+    assert result.error is None, result.error
+    assert result.chunks_upserted >= 1
+    assert result.chunks_removed == 0
+    assert 10 in {c.id for c in store.load_chunks()}
+
+    again = incremental_sync(repo, base_dir=base, vdb=vdb)
+    assert again.refreshed is False
+    assert again.chunks_removed == 0
+
+
 def test_hot_lane_sync_defers_the_graph_and_hands_back_an_append_only_delta(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
