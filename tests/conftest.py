@@ -165,6 +165,20 @@ _GUARDED_MCP_CONFIGS = [
 ]
 
 
+def _every_tool_global_mcp_config() -> list[Path]:
+    try:
+        from pipeline.tool_registry import TOOLS, resolve_mcp_legacy_global_paths
+
+        return [p for tool in TOOLS for p, _s, _k in resolve_mcp_legacy_global_paths(tool)]
+    except Exception:  # noqa: BLE001
+        return []
+
+
+_GUARDED_MCP_CONFIGS += [
+    p for p in _every_tool_global_mcp_config() if p not in _GUARDED_MCP_CONFIGS
+]
+
+
 @pytest.fixture(autouse=True)
 def _never_touch_the_developers_mcp_configs(request: pytest.FixtureRequest):
     """Restore real MCP configs a test rewrote.
