@@ -53,12 +53,15 @@ def test_windows_hidden_spawn_does_not_use_detached_process():
     )
 
     flags = windows_hidden_creationflags()
+    kwargs = hidden_popen_kwargs()
+    if os.name != "nt":
+        assert flags == 0
+        assert kwargs == {"start_new_session": True}
+        return
     assert flags & CREATE_NO_WINDOW
     # Hidden helpers (watchdog) stay non-DETACHED; engine uses DETACHED separately.
     assert not flags & int(getattr(subprocess, "DETACHED_PROCESS", 0x8))
-    kwargs = hidden_popen_kwargs()
-    if os.name == "nt":
-        assert kwargs["creationflags"] == flags
+    assert kwargs["creationflags"] == flags
 
 
 def test_watchdog_disabled(wd_home: Path, monkeypatch: pytest.MonkeyPatch):

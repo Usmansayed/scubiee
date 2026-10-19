@@ -855,7 +855,7 @@ def start_watchdog(*, orphan: bool = False) -> dict[str, Any]:
 
         # Soft flags: CREATE_NO_WINDOW only — DETACHED flashes consoles.
         kwargs.update(engine_popen_kwargs(soft=True))
-    elif sys.platform != "darwin":
+    else:
         kwargs["start_new_session"] = True
 
     proc = subprocess.Popen(cmd, **kwargs)  # noqa: S603

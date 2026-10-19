@@ -198,10 +198,10 @@ def engine_popen_kwargs(*, soft: bool | None = None) -> dict[str, Any]:
         if si is not None:
             out["startupinfo"] = si
         return out
-    kwargs: dict[str, Any] = {"close_fds": True}
-    if sys.platform != "darwin":
-        kwargs["start_new_session"] = True
-    return kwargs
+    # Own session on every POSIX host, macOS included: in the spawner's process
+    # group, a terminal close or a host killing the MCP server's group takes
+    # the engine down with it.
+    return {"close_fds": True, "start_new_session": True}
 
 
 def hidden_popen_kwargs() -> dict[str, Any]:
@@ -212,10 +212,7 @@ def hidden_popen_kwargs() -> dict[str, Any]:
         if si is not None:
             out["startupinfo"] = si
         return out
-    kwargs: dict[str, Any] = {}
-    if sys.platform != "darwin":
-        kwargs["start_new_session"] = True
-    return kwargs
+    return {"start_new_session": True}
 
 
 def attach_mcp_kill_job() -> dict[str, Any]:

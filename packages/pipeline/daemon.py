@@ -957,7 +957,7 @@ def _spawn_engine_child(cmd: list[str], env: dict[str, str]) -> int:
         from pipeline.process_job import CREATE_BREAKAWAY_FROM_JOB, engine_popen_kwargs
 
         kwargs.update(engine_popen_kwargs())
-    elif sys.platform != "darwin":
+    else:
         kwargs["start_new_session"] = True
 
     proc = None
