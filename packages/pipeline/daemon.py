@@ -73,13 +73,13 @@ def note_engine_retiring(
     ``stopper_pid`` is the process running ``stop_daemon``; it clears the
     marker when its sweep is done. The engine's own note keeps that stopper.
     """
-    if not pid and not stopper_pid:
+    if (not pid and not stopper_pid) or not _home().is_dir():
+        # No home means no lock and no engine to wait on; stop must not create it.
         return
     existing = _load_retiring() or {}
     if stopper_pid is None and existing.get("stopper_pid"):
         stopper_pid = int(existing["stopper_pid"])
     try:
-        _home().mkdir(parents=True, exist_ok=True)
         payload = {
             "pid": int(pid or 0),
             "stopper_pid": int(stopper_pid or 0),

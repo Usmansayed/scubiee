@@ -50,6 +50,7 @@ _LEAKY_CTX_KEYS = (
     "CTX_CPU_EMBED_THREADS",
     "CTX_EMBED_BATCH",
     "CTX_RM_DISABLE",
+    "CTX_EMBED_LOG",
 )
 
 

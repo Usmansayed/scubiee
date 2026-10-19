@@ -16,6 +16,7 @@ import pytest
 @pytest.fixture
 def home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     ce_home = tmp_path / "ce-home"
+    ce_home.mkdir()
     monkeypatch.setenv("CTX_HOME", str(ce_home))
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
