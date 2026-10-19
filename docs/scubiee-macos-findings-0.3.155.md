@@ -161,20 +161,42 @@ verified by both branch-build wipes above.
 | M6 | med | wipe UX | IDE-lock pre-flight warning never shown | `os` not imported in `__main__.py`; bare `except` hid the `NameError` | fedc7b4 | fixed, verified live |
 | M7 | high | wipe | with M5 fixed, `wipe --all` exits 1 (`No module named 'pipeline.process_job'`) | the early tool-dir unlock renames the live venv on POSIX (on Windows it fails, which is harmless), so later lazy imports break | 89a8c3c — early unlock is Windows-only; the package step moves the dir aside last | fixed, verified live ×2 |
 
-Observations (not fixed):
+Follow-up pass: every observation was root-caused, and all but OBS-5 and OBS-12 were fixed with a regression test (each test fails without its fix). Each fix is one commit.
 
-- OBS-1: the `python -c` identity report gives `active_binary: /private/tmp/-c` (low).
-- OBS-2: on PyPI run 1, the engine's own shutdown stalled about 9 s before the watchdog kill at +129 s. It wasn't seen again.
-- OBS-3: `engine start` during the standby-retire window returns `already_running`, and then the engine exits. Reproduced 3/3. Low, because CLI-only engines retire by design.
-- OBS-4: `sync`'s `chunks_removed` counter is misleading (see §5).
-- OBS-5: a single hot-sync wall spike of 1,166 ms against 98 ms engine time; not reproduced.
-- OBS-6: `[embed]` lines in piped output when stderr is merged.
-- OBS-7: the ETA sticks at "~5s left".
-- OBS-8: the host-sim writes `docs/superpowers/plans/_mcp_host_sim_bridge_stderr.txt`, a tracked file, despite `--out-dir`.
-- OBS-9: the wipe progress label still says "Prepared machine (stub MCP, kill, unlock)" on POSIX, where no unlock runs any more.
-- OBS-10: a stale `upgrade.in_progress.json` from 0.3.144 was found in `~/.scubiee`.
-- OBS-11: the handoff should grep `contextengine`, not `scubiee`, in `launchctl list`.
-- OBS-12: TCC prompts can't be verified from logs in this environment.
+| ID | Summary | Root cause | Fix | Live evidence |
+|---|---|---|---|---|
+| OBS-1 | `python -c` identity gives `active_binary: /private/tmp/-c` | `argv[0]` of `-c`/`-m`/`.py` was taken as the launcher path | 849a780 | `binaries_match` false → true |
+| OBS-2 | engine's own shutdown stalls ~9–10 s | idle standby runs inside the engine; `stop_daemon` then POSTed `/v1/shutdown` to itself, tried to kill its own protected pid, swept `:8765` 5 s and polled 5 s before `_retire_self` exited — port held by a half-retired engine | e8de254 — self-targeted stop returns at once | `standby_stop` → exit 10.3 s → 0.2–0.5 s (3/3); host-sim `unload` 131.8 s → 120.2 / 121.4 s (debounce is 120 s) |
+| OBS-3 | `engine start` during standby-retire returns `already_running`, then the engine exits | start adopted an engine that was mid-retire; the stopper's port sweep then killed the new spawn and `start` waited 90 s | f4516da — stopper-scoped `engine.retiring` marker, start waits it out, standby aborts if a start lands after its decision, fast-fail when the spawn dies | lost the engine 4/5 (PyPI) → 0/5 |
+| OBS-4 | `sync` reports `chunks_removed` for every untouched chunk | a local full-corpus sync counted all of `truly_removed`, not just touched files | 169bbf6 | 664 → 1, no-op sync 0.25 s, index intact |
+| OBS-5 | one hot-sync wall spike, 1,166 ms vs 98 ms engine | not reproduced — see below | none (no defect found) | 132 hot-sync queries, worst gap 173 ms |
+| OBS-6 | `[embed]` lines in piped CLI output | embedder diagnostics printed unconditionally to stderr | 99a1d0b — `CTX_EMBED_LOG`, off for CLI commands, on in the engine | 0 lines piped, 17 in `engine.log` |
+| OBS-7 | ETA sticks at "~5s left" | ETA was measured from the last render, not the last progress | 2dd3066 | counts down; switches to elapsed time on a stall |
+| OBS-8 | host-sim rewrites a tracked stderr file despite `--out-dir` | `BridgeHost` hard-coded the docs path | 61c926a | stderr lands in `--out-dir`; tracked file md5 unchanged across 2 live runs |
+| OBS-9 | wipe label says "unlock" on POSIX | fixed string | 34026dc, 936daae, 831679a — label, JSON hint and step/summary wording | TTY wipe: no "unlock" anywhere, one consistent label |
+| OBS-10 | stale `upgrade.in_progress.json` from 0.3.144 | marker written every phase, cleared only on commit, never read | 7360ea6 — `doctor` reports an interrupted upgrade and clears the marker once the installed version moved on | planted 0.3.144 marker → `cleared: True`, file gone |
+| OBS-11 | handoff greps `scubiee` in `launchctl list` | label is `com.contextengine.supervisor` | handoff doc updated | — |
+| OBS-12 | TCC prompts can't be verified from logs | environment limit | — | still needs a manual desktop check |
+
+New Mac bug found during the follow-up:
+
+| ID | Sev | Summary | Root cause | Fix | Live evidence |
+|---|---|---|---|---|---|
+| M8 | med | engine and watchdog die with their spawner's process group | darwin was excluded from `start_new_session`, so closing the terminal that ran `init`/`engine start`, Ctrl-C there, or a host killing the MCP server's group took the warm engine down | 8fcdb50 | SIGHUP to the spawner's group: PyPI engine died 3/3, branch survived 3/3 (health 200) |
+| M9 | med | graph catch-up worker segfaults (`rc=-11`, empty log, no result) | `preexec_fn=os.nice(10)` makes CPython run Python and every registered at-fork hook in the forked child of a multithreaded process before `exec`; on macOS that child crashed, so graph catch-up after a save silently failed | 9efa45e — the worker renices itself (`--nice 10`) | crash 3/3 in the a–g test context before, 0/3 after |
+| M10 | low | `stop_dashboard` reports failure after a clean stop | the dashboard is a `Popen` child; after `/api/shutdown` it is a zombie until reaped and `kill(pid, 0)` succeeds on zombies, so a process that started and stopped it waited 5 s and got `ok: False` | bcb4a12 — reap an exited child with `WNOHANG` first | `ps` showed `Z`, `stop_ok` false 2/2 → true 26/26, 0.4–0.9 s instead of 5 s |
+
+OBS-5 detail: two harnesses (warmed and cold-start, 30 functions appended to a tracked file per trial) ran 132 queries during hot syncs. No query came close to 1 s; the largest wall-minus-engine gap was 173 ms. Instrumenting request admission (`admit` → `activate_repo`, outside the engine's timer) gave p50 0.8 ms, p90 12.9 ms, max 71.5 ms; the remaining ≤150 ms is the HTTP thread waiting on the GIL while the sync thread parses and hashes, inherent to in-process sync. The original spike most likely coincided with an outside registry writer; no code change is warranted.
+
+Pre-existing macOS test failures (fail identically on PyPI 0.3.155), fixed in 80e2598 / 8fcdb50:
+
+- `test_engine_lifecycle_audit`, `test_watchdog_lifecycle_contract`: INTERNALERROR. `monkeypatch.setattr(os, "name", "nt")` also flipped pathlib to `WindowsPath`, so every `Path()` mid-test, and pytest's own failure report, raised. `tests/conftest.py` now pins pathlib to the host OS.
+- `test_lifecycle_ownership`, `test_process_job`: these asserted the POSIX own-session contract that darwin violated (M8), so the code was wrong, not the tests.
+- `test_watchdog`: asserted Windows creation flags on POSIX; now checks each platform's contract.
+- `test_root_probe::test_dir_watch_finds_new_files_without_a_repo_walk`: relied on NTFS's lazy folder-entry mtimes to treat `old/` as untouched; the test now backdates the old tree.
+- `test_graph_catchup_async::test_start_graph_merge_runs_a_real_child_process` (order-dependent): M9.
+- `test_dashboard_api::test_background_server_reuses_pid_and_stops`: M10.
+- `test_connect_formats` (Devin `AppData` path) and `test_diagnose_output_path` (PowerShell literal): Windows-only expectations; now platform-aware (d37fd47).
 
 ## 5. Unit tests
 
@@ -195,6 +217,21 @@ New regression tests:
 
 The new POSIX full-wipe test fails without 89a8c3c.
 
+After the follow-up pass, the **whole** suite (`pytest tests`, default markers) on macOS gives
+1968 passed, 24 skipped, 12 failed. All 12 also fail on the branch's starting point (95255278),
+and none are Mac-specific:
+
+- 11 locate-quality corpus tests (`test_polytrace` ×4, `test_trace_lab` ×2, `test_multi_seed_v1` ×2,
+  `test_locate_quality_combo`, `test_vague_prompts`, `test_verify_board`): the same tests fail in
+  the repo's Windows full-pytest logs (`docs/architecture/_full_pytest_post_kiro.txt`).
+- `test_e2e_pipeline::test_full_pipeline_stores_in_faiss_collection` (0 hits with fake all-ones
+  embeddings): listed as a known "FAISS/pipeline env" failure in the Windows 0.3.89 pre-prod battery.
+
+The baseline also failed `test_connect_formats`, `test_diagnose_output_path` and `test_dashboard_api`
+on macOS; those are fixed (d37fd47, bcb4a12). One early full run segfaulted the pytest process
+itself; it did not recur across the next 4 full runs, and the only reproducible segfault (M9) was
+in a child process.
+
 ## 6. Verdict
 
 **PyPI 0.3.155 is not fully correct on macOS.** Search, warm-up and lifecycle are fast and
@@ -210,12 +247,30 @@ reference. However, three high-severity Mac/POSIX bugs ship in it:
 build. Two live `wipe --all` runs exit 0 in about 4.5 s with a clean audit and nothing left
 behind, and reinstall plus `setup` works immediately.
 
+**Follow-up pass (17 more commits, f4516da…d37fd47): every observation is resolved** (OBS-5 and
+OBS-12 have no code defect), plus three Mac bugs found along the way (M8 process group, M9 graph
+worker segfault, M10 dashboard zombie). Final live battery on the final build:
+
+| Check | Run 1 | Run 2 |
+|---|---|---|
+| Lane A `auto_warm` / `settle` (ms) | 4329 / 3422 | 2129 / 1216 |
+| `map_first` / `map_second` (ms) | 157.9 / 217.4 | 123.8 / 161.9 |
+| `pack_first` / `expand_first` (ms) | 25.4 / 150.6 | 24.6 / 100.4 |
+| post-idle `map` / `pack` (ms) | 185.0 / 24.1 | 160.5 / 24.0 |
+| `idle_hold` / `unload` (s) | 120.3 / 121.2 | 120.3 / 120.9 |
+| all 15 phases ok | yes | yes |
+
+`unload` was 131.7–131.9 s before the OBS-2 fix: the 120 s disconnect debounce plus the 10 s self-kill stall.
+warm_contract 6/6 (`warm_ready` 331.5 ms, first map 105.6 ms, map after idle 109.6 ms).
+ship_check ok, 7/7 checks, 333.9 ms. The bridge stderr went to `--out-dir`; the tracked file was unchanged.
+A live TTY `wipe --all` took 4.51 s with a clean audit and consistent labels.
+
 Mac-only follow-ups:
 
 - A listener check via `lsof` (psutil `net_connections` needs root on macOS). Port 8765 was verified free with `lsof` in every wipe.
 - A manual TCC prompt check on a desktop session.
-- Trim the POSIX unlock wording (OBS-9).
 
-**Machine state left:** branch build at 89a8c3c installed via `uv tool install`, `setup` done,
-`com.contextengine.supervisor` loaded, `doctor` clean, this repo re-indexed, and Cursor, Kiro and
-Copilot reconnected under the new project id. Throwaway repos (`/tmp/scu_*`) and `/tmp/hostsim` removed.
+**Machine state left:** final branch build installed via `uv tool install`, `setup` done,
+`com.contextengine.supervisor` loaded, `doctor` ok (`binaries_match: true`, no interrupted upgrade),
+this repo re-indexed (8906 chunks), and Cursor, Kiro and Copilot reconnected. Throwaway dirs
+(`/tmp/scu_*`, `/tmp/hostsim*`) removed.

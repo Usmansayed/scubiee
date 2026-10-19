@@ -118,7 +118,7 @@ ls -d ~/.scubiee* ~/.local/share/uv/tools/scubiee 2>&1
 sleep 3; ls -d ~/.scubiee.trash-* ~/.cache/*trash-* 2>/dev/null || echo "trash drained"
 pgrep -fl "scubiee|pipeline\.(mcp_bridge|engine|server)" || echo "no procs"
 command -v scubiee || echo "scubiee gone"
-launchctl list | grep -i scubiee || echo "no launchd job"
+launchctl list | grep -i contextengine || echo "no launchd job"   # label: com.contextengine.supervisor
 ```
 - **[ ] PASS/FAIL** exit 0, final JSON `"audit": {"clean": true}`, `"next": "Machine is clean…"`.
 - **[ ] PASS/FAIL** wall time — Windows was 11.6 s from an empty folder, Linux 3.8 s
