@@ -73,6 +73,21 @@ def extra_scubiee_on_path() -> list[Path]:
     return extras
 
 
+def _invoked_launcher() -> Path | None:
+    """The launcher file this process started through; None under ``python -c`` / ``-m``."""
+    arg0 = sys.argv[0] if sys.argv else ""
+    if not arg0 or arg0 in {"-c", "-m", "-"}:
+        return None
+    path = Path(arg0)
+    if path.suffix == ".py":
+        return None
+    try:
+        path = path.resolve()
+    except OSError:
+        return None
+    return path if path.is_file() else None
+
+
 def install_identity_report() -> dict[str, Any]:
     """Structured install identity for doctor and --version --verbose."""
     try:
@@ -83,10 +98,8 @@ def install_identity_report() -> dict[str, Any]:
         ver = "unknown"
     py = current_python()
     expected = expected_scubiee_exe(py)
-    try:
-        invoked = Path(sys.argv[0]).resolve()
-    except OSError:
-        invoked = expected
+    # Run as ``python -c`` / ``python -m pipeline``: this interpreter is the install.
+    invoked = _invoked_launcher() or expected
     extras = extra_scubiee_on_path()
     same_binary = False
     try:

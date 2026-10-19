@@ -4,6 +4,8 @@ import io
 import sys
 from pathlib import Path
 
+import pytest
+
 from pipeline import accel, env_guard
 
 
@@ -91,6 +93,27 @@ def test_symlinked_venv_python_is_not_resolved_to_base(tmp_path: Path, monkeypat
     assert env_guard.extra_scubiee_on_path() == []
     report = env_guard.install_identity_report()
     assert report["multiple_installs"] is False
+
+
+@pytest.mark.parametrize("arg0", ["-c", "", "/x/site-packages/pipeline/__main__.py"])
+def test_identity_under_python_c_or_m_is_this_interpreter(monkeypatch, arg0: str) -> None:
+    monkeypatch.setattr(env_guard.sys, "argv", [arg0])
+    monkeypatch.setattr(env_guard, "extra_scubiee_on_path", lambda: [])
+    report = env_guard.install_identity_report()
+    assert report["active_binary"] == report["expected_binary"]
+    assert report["binaries_match"] is True
+    assert report["hint"] is None
+
+
+def test_identity_flags_a_different_launcher(tmp_path: Path, monkeypatch) -> None:
+    other = tmp_path / "other" / "scubiee"
+    other.parent.mkdir()
+    other.write_bytes(b"")
+    monkeypatch.setattr(env_guard.sys, "argv", [str(other)])
+    monkeypatch.setattr(env_guard, "extra_scubiee_on_path", lambda: [])
+    report = env_guard.install_identity_report()
+    assert report["active_binary"] == str(other.resolve())
+    assert report["binaries_match"] is False
 
 
 def test_remove_stale_ort_tree(tmp_path: Path, monkeypatch) -> None:
