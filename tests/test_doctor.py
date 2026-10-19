@@ -64,3 +64,21 @@ def test_doctor_ok_when_only_daemon_unbound(tmp_path: Path, monkeypatch) -> None
     report = doctor_repo(repo)
     assert report["ok"] is True
     assert any(item.get("id") == "bind_daemon" for item in report["repair_plan"])
+
+
+def test_published_journal_entries_are_not_pending(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("CTX_HOME", str(tmp_path))
+    from pipeline.dirty_journal import save_dirty_journal
+    from pipeline.doctor import _journal_pending
+
+    save_dirty_journal(
+        "ce_doctor_journal",
+        {"paths": {
+            "done.md": {"path": "done.md", "state": "published"},
+            "todo.py": {"path": "todo.py", "state": "queued"},
+        }},
+    )
+    assert _journal_pending("ce_doctor_journal") == {"pending": True, "paths": ["todo.py"]}
+
+    save_dirty_journal("ce_doctor_journal", {"paths": {"done.md": {"path": "done.md", "state": "published"}}})
+    assert _journal_pending("ce_doctor_journal") == {"pending": False, "paths": []}

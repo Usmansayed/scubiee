@@ -58,7 +58,16 @@ def _journal_pending(project_id: str) -> dict[str, Any]:
         return {"pending": False, "document": document}
     snapshot = document.get("snapshot") or {}
     paths = snapshot.get("paths") if isinstance(snapshot, dict) else {}
-    return {"pending": bool(paths), "paths": sorted(paths) if isinstance(paths, dict) else []}
+    if not isinstance(paths, dict):
+        return {"pending": False, "paths": []}
+    # Published entries linger in the ledger until the next restore drops them;
+    # they are done, and counting them failed doctor right after every sync.
+    pending = sorted(
+        path
+        for path, entry in paths.items()
+        if not (isinstance(entry, dict) and entry.get("state") == "published")
+    )
+    return {"pending": bool(pending), "paths": pending}
 
 
 def _managed_root(entry: dict[str, Any]) -> Path | None:
