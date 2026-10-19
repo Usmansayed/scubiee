@@ -459,10 +459,9 @@ def main() -> int:
     import threading
     # Warm in the background so the user's first map call pays neither the whole-repo
     # file walk/read nor urllib's one-time ~350ms first-request init (the throwaway
-    # /health inside _warm pre-pays it process-wide). The warm thread races only a
-    # first call that arrives within ~1.5s of spawn; in practice the IDE handshake +
-    # human gap lets it finish first. See scripts/perf/probe_startup*.py.
-    threading.Thread(target=mv2._warm, name="map-v3-warm", daemon=True).start()
+    # /health inside _warm pre-pays it process-wide). A call arriving mid-warm (~2s
+    # after spawn) pauses the warm via call_active() and skips find's callers grep.
+    mv2.start_warm()
     # Idle keepalive: a periodic cheap re-warm so the first map call after an idle
     # gap (minutes) is still ms-fast. Keeps the worker's HTTP opener/socket live and
     # re-stamps the grep stat-TTL so a post-idle grep skips the per-file stat storm.
@@ -503,7 +502,8 @@ def main() -> int:
                 continue
             mv2._LAST_CALL_AT[0] = time.time()  # mark active so keepalive stays idle-only
             try:
-                res = tool["fn"](params.get("arguments") or {})
+                with mv2.call_active():
+                    res = tool["fn"](params.get("arguments") or {})
             except Exception as e:  # noqa: BLE001
                 res = f"error: {type(e).__name__}: {e}"
             _send({"jsonrpc": "2.0", "id": rid, "result": {"content": [{"type": "text", "text": res}]}})

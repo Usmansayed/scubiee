@@ -24,6 +24,7 @@ a confidence level (find), and suggestions instead of empty results.
 """
 from __future__ import annotations
 
+import contextlib
 import difflib
 import json
 import os
@@ -98,15 +99,19 @@ _OPENER = None
 
 
 def _opener():
-    """Lazily built opener with an EMPTY ProxyHandler. The engine is always loopback
-    (127.0.0.1), so proxies are never wanted; an empty ProxyHandler skips urllib's
-    default proxy lookup (on Windows that reads WinINET registry settings). Built once
-    on the first request (not at import) so the ~350ms one-time urllib opener-init cost
-    stays off the worker spawn / initialize critical path and is hidden by the
-    background _warm thread. See scripts/perf/probe_proxy_ab.py / probe_firstcall.py."""
+    """Plain-HTTP opener for the loopback engine. Assembled by hand because
+    build_opener() always adds an HTTPSHandler, whose default SSL context loads the
+    Windows certificate store (~320ms) on the first request of every worker. No
+    ProxyHandler either: proxies never apply to 127.0.0.1, and the default one reads
+    the WinINET registry."""
     global _OPENER
     if _OPENER is None:
-        _OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        op = urllib.request.OpenerDirector()
+        for h in (urllib.request.UnknownHandler(), urllib.request.HTTPHandler(),
+                  urllib.request.HTTPDefaultErrorHandler(), urllib.request.HTTPRedirectHandler(),
+                  urllib.request.HTTPErrorProcessor()):
+            op.add_handler(h)
+        _OPENER = op
     return _OPENER
 
 
@@ -632,34 +637,45 @@ def _code_text(rel: str, a: int, b: int) -> str:
     return "\n".join(out)
 
 
+_FILES_LOCK = threading.Lock()
+
+
+def _walk_repo() -> list[str]:
+    # os.scandir recursion instead of os.walk + relpath/join per file: the
+    # dirent type is read from the directory entry (no extra stat), and the
+    # relative path is a slice of the already-known absolute path. Output is
+    # byte-identical to the old walk (same _norm, same sort) — see
+    # scripts/perf/probe_repowalk_ab.py — at roughly half the time (~290ms→~130ms
+    # for ~8k files), which shrinks the first-call/warm-thread startup tax.
+    root = str(REPO)
+    base = len(root) + 1
+    out: list[str] = []
+    stack = [root]
+    while stack:
+        d = stack.pop()
+        try:
+            with os.scandir(d) as it:
+                for e in it:
+                    if e.is_dir(follow_symlinks=False):
+                        nm = e.name
+                        if nm in SKIP_DIRS or nm.startswith(".venv"):
+                            continue
+                        stack.append(e.path)
+                    else:
+                        out.append(_norm(e.path[base:]))
+        except OSError:
+            continue
+    return sorted(out)
+
+
 def _repo_files() -> list[str]:
     global _FILES
     if _FILES is None:
-        # os.scandir recursion instead of os.walk + relpath/join per file: the
-        # dirent type is read from the directory entry (no extra stat), and the
-        # relative path is a slice of the already-known absolute path. Output is
-        # byte-identical to the old walk (same _norm, same sort) — see
-        # scripts/perf/probe_repowalk_ab.py — at roughly half the time (~290ms→~130ms
-        # for ~8k files), which shrinks the first-call/warm-thread startup tax.
-        root = str(REPO)
-        base = len(root) + 1
-        out: list[str] = []
-        stack = [root]
-        while stack:
-            d = stack.pop()
-            try:
-                with os.scandir(d) as it:
-                    for e in it:
-                        if e.is_dir(follow_symlinks=False):
-                            nm = e.name
-                            if nm in SKIP_DIRS or nm.startswith(".venv"):
-                                continue
-                            stack.append(e.path)
-                        else:
-                            out.append(_norm(e.path[base:]))
-            except OSError:
-                continue
-        _FILES = sorted(out)
+        # The warm thread and a first call can both arrive here with no list yet;
+        # the lock makes the second wait for the first walk instead of walking again.
+        with _FILES_LOCK:
+            if _FILES is None:
+                _FILES = _walk_repo()
     return _FILES
 
 
@@ -1001,10 +1017,15 @@ def _append_connections(out: "Out", c: dict) -> None:
     name = str(sym).split(".")[-1]
     # callers: other code that calls this name (not its own body, not defs)
     callers = []
-    try:
-        hits, _ = _grep(rf"\b{re.escape(name)}\s*\(", max_hits=60, scope="code")
-    except Exception:  # noqa: BLE001
-        hits = []
+    hits = []
+    # Before the warm thread has cached the repo text, this grep would read every
+    # code file from disk on the call path (~2s on a ~5k-file repo); the callers line
+    # is a convenience, so a find that lands mid-warm answers without it.
+    if not _warm_pending():
+        try:
+            hits, _ = _grep(rf"\b{re.escape(name)}\s*\(", max_hits=60, scope="code")
+        except Exception:  # noqa: BLE001
+            hits = []
     for h in hits:
         hrel, ln = _norm(h.get("path")), int(h.get("line") or 0)
         if hrel == rel and c["start"] <= ln <= c["end"]:
@@ -1866,6 +1887,35 @@ def _send(obj: dict) -> None:
     sys.stdout.flush()
 
 
+_WARM_STARTED = threading.Event()
+_WARM_DONE = threading.Event()
+# Set while no tool call is running. The warm loop is pure-Python file reading
+# that holds the GIL; running it alongside a call slowed that call's engine
+# round-trip ~7x (100ms -> 775ms), so the warm waits for each call to finish.
+_CALL_IDLE = threading.Event()
+_CALL_IDLE.set()
+
+
+@contextlib.contextmanager
+def call_active():
+    _CALL_IDLE.clear()
+    try:
+        yield
+    finally:
+        _CALL_IDLE.set()
+
+
+def _warm_pending() -> bool:
+    return _WARM_STARTED.is_set() and not _WARM_DONE.is_set()
+
+
+def start_warm() -> threading.Thread:
+    _WARM_STARTED.set()
+    t = threading.Thread(target=_warm, name="map-v3-warm", daemon=True)
+    t.start()
+    return t
+
+
 def _warm() -> None:
     """Load the file list and source text in the background so the first
     find/refs call doesn't pay for walking and reading the whole repo.
@@ -1885,6 +1935,7 @@ def _warm() -> None:
         warmed = []
         for f in _repo_files():
             if Path(f).suffix.lower() in _GREP_EXT and _kind_of(f) in ("code", "tests"):
+                _CALL_IDLE.wait()
                 _lines(f)
                 warmed.append(_norm(f))
         # Stamp at the END so the whole warmed set shares one fresh validation time
@@ -1894,6 +1945,8 @@ def _warm() -> None:
             _TEXT_VALIDATED_AT[rel] = now
     except Exception:  # noqa: BLE001
         pass
+    finally:
+        _WARM_DONE.set()
 
 
 def _keepalive_tick() -> None:
