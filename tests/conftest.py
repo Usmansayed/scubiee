@@ -257,6 +257,31 @@ def _never_kill_the_developers_processes(monkeypatch: pytest.MonkeyPatch):
     yield blocked
 
 
+@pytest.fixture(autouse=True)
+def _never_touch_the_developers_autostart(monkeypatch: pytest.MonkeyPatch):
+    """Real ``launchctl``/``schtasks`` calls never leave the test process.
+
+    The plist path follows the isolated home, but the launchd label does not:
+    wipe tests ran ``launchctl bootout gui/<uid>/com.contextengine.supervisor``
+    and unloaded the developer's live LaunchAgent on every run. Tests that
+    exercise registration pass their own ``runner``, which bypasses this.
+    """
+    import subprocess
+
+    blocked: list[list[str]] = []
+    real_run = subprocess.run
+
+    def _run(args, *a, **k):
+        argv = [str(x) for x in args] if isinstance(args, (list, tuple)) else str(args).split()
+        if argv and os.path.basename(argv[0]).lower() in {"launchctl", "schtasks", "schtasks.exe"}:
+            blocked.append(argv)
+            return subprocess.CompletedProcess(argv, 1, stdout="", stderr="blocked by test guard")
+        return real_run(args, *a, **k)
+
+    monkeypatch.setattr(subprocess, "run", _run)
+    yield blocked
+
+
 def write_machine_setup(home: Path) -> Path:
     """Minimal ``accel.json`` so ``require_machine_setup()`` passes in tests."""
     home.mkdir(parents=True, exist_ok=True)
