@@ -59,3 +59,24 @@ def test_never_index_refusals_explain_how_to_undo(never_indexed: Path) -> None:
     for out in (activate_repo(never_indexed), rebuild_repo(never_indexed), sync_now_repo(never_indexed)):
         assert out["ok"] is False and out["error"] == "never_index"
         assert "scubiee init ." in out["hint"]
+
+
+def test_engine_ensure_surfaces_the_engine_refusal_reason(tmp_path: Path, monkeypatch) -> None:
+    import pipeline.daemon as daemon
+
+    class _Client:
+        def __init__(self, *a, **k) -> None:
+            pass
+
+        def open_repo(self, path, wait=True):
+            return {"ok": False, "error": "never_index", "hint": "scubiee remove . && scubiee init ."}
+
+        def get(self, path):
+            return {"repo": None}
+
+    monkeypatch.setattr(daemon, "EngineClient", _Client)
+    monkeypatch.setattr(daemon, "bind_engine_identity_to_listener", lambda **k: None)
+    out = daemon._ensure_already_running(tmp_path, open_wait=False)
+    assert out["ok"] is False
+    assert out["error"] == "never_index"
+    assert out["hint"] == "scubiee remove . && scubiee init ."

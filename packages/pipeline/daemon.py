@@ -1339,6 +1339,10 @@ def _ensure_already_running(
         "opened": opened,
         "error": None if matched else "running daemon did not bind requested repository",
     }
+    if not matched and isinstance(opened, dict) and opened.get("error"):
+        out["error"] = str(opened["error"])
+        if opened.get("hint"):
+            out["hint"] = opened["hint"]
     if version_adopt is not None:
         out["version_adopt"] = version_adopt
         if version_adopt.get("action") == "restarted":
