@@ -21,7 +21,7 @@ reinstalled from PyPI and smoke-tested.
 
 | Version | Commit | What shipped |
 |---|---|---|
-| 0.3.156–0.3.157 | 76a7d07, 17f9d3a | `doctor` no longer fails on finished (published) journal entries |
+| 0.3.157 | 76a7d07, 17f9d3a | `doctor` no longer fails on finished (published) journal entries |
 | 0.3.158 | e919f90, 88f73fd | `setup` model download bar no longer sits at 0% under hf_xet (M14) |
 | 0.3.159 | 646c513 | Watchdog single instance, `remove`, `doctor`, CLI messages, download bar at 100% (M15–M23) |
 | 0.3.160 | df68210 | `wipe`/`disconnect` remove legacy `context-engine` entries from every tool's MCP config (M24) |
