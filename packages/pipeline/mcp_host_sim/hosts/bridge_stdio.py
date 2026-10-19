@@ -107,8 +107,14 @@ class BridgeHost:
         engine_url: str,
         env_extra: dict[str, str] | None = None,
         mcp_client: str = "cursor",
+        stderr_path: Path | None = None,
     ) -> None:
         self.repo = Path(repo).resolve()
+        self.stderr_path = (
+            Path(stderr_path)
+            if stderr_path is not None
+            else self.repo / "docs" / "superpowers" / "plans" / "_mcp_host_sim_bridge_stderr.txt"
+        )
         self.project_id = project_id
         self.engine_url = engine_url.rstrip("/")
         self.env_extra = dict(env_extra or {})
@@ -178,7 +184,7 @@ class BridgeHost:
         creationflags = 0
         if os.name == "nt":
             creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-        err_path = self.repo / "docs" / "superpowers" / "plans" / "_mcp_host_sim_bridge_stderr.txt"
+        err_path = self.stderr_path
         try:
             err_path.parent.mkdir(parents=True, exist_ok=True)
             self._stderr_file = open(err_path, "w", encoding="utf-8", errors="replace")

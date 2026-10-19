@@ -61,3 +61,15 @@ def test_observatory_tick_shape(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     assert "engine" in tick
     assert "clients" in tick
     assert "running" in tick["engine"]
+
+
+def test_bridge_stderr_follows_out_dir(tmp_path: Path) -> None:
+    from pipeline.mcp_host_sim.hosts.bridge_stdio import BridgeHost
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    default = BridgeHost(repo=repo, project_id="ce_x", engine_url="http://127.0.0.1:1")
+    assert default.stderr_path == repo.resolve() / "docs" / "superpowers" / "plans" / "_mcp_host_sim_bridge_stderr.txt"
+    out = tmp_path / "out" / "_mcp_host_sim_bridge_stderr.txt"
+    routed = BridgeHost(repo=repo, project_id="ce_x", engine_url="http://127.0.0.1:1", stderr_path=out)
+    assert routed.stderr_path == out

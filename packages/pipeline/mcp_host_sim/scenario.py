@@ -149,6 +149,7 @@ def run_scenario(
         project_id=project_id,
         engine_url=url,
         mcp_client=client_slug,
+        stderr_path=(Path(out_dir) / "_mcp_host_sim_bridge_stderr.txt") if out_dir else None,
     )
 
     def phase(name: str, fn, *, budget_ms: float | None = None) -> dict[str, Any]:
