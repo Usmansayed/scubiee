@@ -27,6 +27,17 @@ CODERANK_MODEL = "nomic-ai/CodeRankEmbed"
 DEFAULT_MODEL = os.environ.get("CTX_EMBED_MODEL", CODERANK_MODEL)
 
 
+def _diag_on() -> bool:
+    """``[embed]`` load/throughput diagnostics: on for the engine log, off for CLI front-ends."""
+    raw = (os.environ.get("CTX_EMBED_LOG") or "1").strip().lower()
+    return raw not in {"0", "false", "no", "off"}
+
+
+def _diag(message: str) -> None:
+    if _diag_on():
+        print(message, file=sys.stderr, flush=True)
+
+
 def text_key(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
@@ -318,7 +329,7 @@ class Embedder:
             # Honor quiet mode: when a progress bar drives updates (quiet=True)
             # the MLX construction banner must not spam stderr, mirroring the
             # `plan` banner guard below.
-            if not self.quiet:
+            if not self.quiet and _diag_on():
                 print("[embed] backend=mlx", file=sys.stderr, flush=True)
                 print("[embed] device=gpu", file=sys.stderr, flush=True)
                 print(
@@ -348,7 +359,7 @@ class Embedder:
         else:
             self.batch_size = default_batch
 
-        if not self.quiet:
+        if not self.quiet and _diag_on():
             print(
                 f"[embed] plan backend={self.backend} device={self.device} "
                 f"batch={self.batch_size} model={self.model}"
@@ -487,11 +498,9 @@ class Embedder:
             from pipeline.coreml_mac import coreml_model_name
 
             model_name = coreml_model_name(model_name)
-        print(
+        _diag(
             f"[embed] loading FastEmbed {model_name} profile={prof.profile} "
-            f"batch={self.batch_size} providers={providers[0] if providers else '?'}",
-            file=sys.stderr,
-            flush=True,
+            f"batch={self.batch_size} providers={providers[0] if providers else '?'}"
         )
         t0 = time.perf_counter()
         # CPU-only profiles use the thread budget from memory_budget (20% for
@@ -523,11 +532,7 @@ class Embedder:
             warm_bs = static_embed_batch_size(prof, self.batch_size)
             warm = pad_embed_batch(warm, warm_bs)
         list(self._fe_model.embed(warm, batch_size=warm_bs, parallel=None))
-        print(
-            f"[embed] FastEmbed ready in {(time.perf_counter()-t0)*1000:.0f}ms",
-            file=sys.stderr,
-            flush=True,
-        )
+        _diag(f"[embed] FastEmbed ready in {(time.perf_counter()-t0)*1000:.0f}ms")
         return self._fe_model
 
     def _ensure_coderank(self):
@@ -535,11 +540,9 @@ class Embedder:
             return self._st_model
         from sentence_transformers import SentenceTransformer
 
-        print(
+        _diag(
             f"[embed] loading ST {self.model} on {self.device} "
-            f"(batch={self.batch_size}, seq={self.max_seq_length})",
-            file=sys.stderr,
-            flush=True,
+            f"(batch={self.batch_size}, seq={self.max_seq_length})"
         )
         t0 = time.perf_counter()
         self._st_model = SentenceTransformer(
@@ -551,11 +554,7 @@ class Embedder:
             self._st_model.max_seq_length = int(self.max_seq_length)
         except Exception:  # noqa: BLE001
             pass
-        print(
-            f"[embed] model ready in {(time.perf_counter()-t0)*1000:.0f}ms device={self.device}",
-            file=sys.stderr,
-            flush=True,
-        )
+        _diag(f"[embed] model ready in {(time.perf_counter()-t0)*1000:.0f}ms device={self.device}")
         return self._st_model
 
     def _ensure_mlx(self):
@@ -576,11 +575,7 @@ class Embedder:
         from pipeline.mlx_mac import resolve_embed_dtype
 
         dtype = resolve_embed_dtype()
-        print(
-            f"[embed] loading MLX CodeRankEmbed dtype={dtype} device={report.get('default_device')}",
-            file=sys.stderr,
-            flush=True,
-        )
+        _diag(f"[embed] loading MLX CodeRankEmbed dtype={dtype} device={report.get('default_device')}")
         t0 = time.perf_counter()
         with mlx_thread_stream():
             model = CodeRankMLX(dtype=dtype, require_gpu=True)
@@ -589,11 +584,9 @@ class Embedder:
         _MLX_THREAD.tokenizer = tok
         self._mlx_model = model
         self._mlx_tokenizer = tok
-        print(
+        _diag(
             f"[embed] MLX ready in {(time.perf_counter() - t0) * 1000:.0f}ms "
-            f"metal={bool(report.get('metal_available'))}",
-            file=sys.stderr,
-            flush=True,
+            f"metal={bool(report.get('metal_available'))}"
         )
         return self._mlx_model
 
@@ -920,7 +913,7 @@ class Embedder:
                 gpu_tok_total += real_tok
             if progress:
                 progress(n_cached + min(start + bs, len(pending_text)), len(texts))
-            if not progress and (
+            if not progress and _diag_on() and (
                 start == 0
                 or (start // max(bs, 1)) % 5 == 0
                 or start + bs >= len(pending_text)
@@ -978,7 +971,7 @@ class Embedder:
             "backend": self.backend,
             "timings_s": {k: round(v, 4) for k, v in (self._mlx_timings or {}).items()},
         }
-        if not progress:
+        if not progress and _diag_on():
             print(
                 f"[embed] done: {self._last_stats['embedded']} new / {self._last_stats['cached']} cached "
                 f"in {elapsed:.1f}s ({self._last_stats['chunk_per_s']:.2f} chunk/s, "

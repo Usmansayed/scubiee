@@ -775,6 +775,7 @@ def start_daemon(
     env["CTX_ENGINE_URL"] = f"http://{host}:{port}"
     env["PYTHONUTF8"] = "1"
     env["CTX_SCUBIEE_ROLE"] = "engine"
+    env["CTX_EMBED_LOG"] = "1"
     env.setdefault("CTX_REPO", repo_s)
     # Always propagate isolated home for sims / multi-instance
     if os.environ.get("CTX_HOME"):

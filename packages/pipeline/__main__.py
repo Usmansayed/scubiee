@@ -2337,10 +2337,19 @@ def _engine_run_fast(argv: list[str]) -> int:
     return 0
 
 
+# User-facing commands whose own progress UI reports embedding; the embedder's
+# load/throughput lines are engine-log diagnostics there (CTX_EMBED_LOG=1 restores).
+_QUIET_EMBED_COMMANDS = frozenset(
+    {"init", "index", "sync", "sync-now", "rebuild", "setup", "upgrade", "connect", "resume", "activate", "search"}
+)
+
+
 def main(argv: list[str] | None = None) -> int:
     raw = list(argv) if argv is not None else sys.argv[1:]
     if len(raw) >= 2 and raw[0] == "engine" and raw[1] == "run":
         return _engine_run_fast(raw[2:])
+    if raw and raw[0] in _QUIET_EMBED_COMMANDS:
+        os.environ.setdefault("CTX_EMBED_LOG", "0")
 
     if sys.stdout.isatty() or sys.stderr.isatty():
         from pipeline.cli_ui import init_terminal, install_graphify_brand_scrubbers
