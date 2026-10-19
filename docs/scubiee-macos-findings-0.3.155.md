@@ -188,6 +188,15 @@ New Mac bug found during the follow-up:
 | M12 | low | same-version upgrade marker reported as interrupted forever | a failed same-version run (installed == old == target) never satisfied the OBS-10 "version moved on" rule | marker older than 1 h with installed == target is stale | regression test; live `scubiee upgrade` commits and clears |
 | M13 | low | `doctor` fails (`replay dirty journal`) right after every sync | the dirty journal keeps `published` entries until the next restore drops them, and doctor counted them as pending | doctor ignores `published` entries, as the restore path already does | regression test; live doctor ok after sync |
 | M14 | med | `setup` "Downloading model" bar sits at 0% (926 KB / 523 MB, ~47m left) for minutes, then jumps to done | huggingface_hub 1.x downloads via hf_xet, which writes the 548 MB blob only when the transfer ends; the bar polls bytes in the cache dir (measured: 0.9 MB for 164 s, then 548.7 MB at 166.7 s) | the CodeRank download sets `HF_HUB_DISABLE_XET` (env + `constants`, restored after) so HTTP streams into `blobs/*.incomplete` | regression test; real download through the setup watcher: 0→100% steadily, longest stall 5.6 s, 179.8 s total (xet 166.7 s, same network bound) |
+| M15 | low | download bar ends at 99% | the byte watcher stopped without a final sample | c2c3f8d — emit once more after stop | regression test; live `setup` ends at 100% |
+| M16 | high | two watchdog loops after `stop` (supervisor killed, sidecar orphaned) | the logon supervisor and the engine's sidecar both ran `watchdog_loop`; `stop_watchdog` killed whichever pid file won | 1e20801 — `~/.scubiee/watchdog.lock` (flock); a sidecar exits if held, the supervisor waits and takes over | 3 regression tests; live sweep: one supervisor, one engine, no orphan |
+| M17 | high | `remove` leaves `id.json`, and the running keeper re-enrolls the repo under a new id (4-chunk store) | missing `id_file_path` import raised a swallowed `NameError`; the keeper kept polling, AST-revalidating and draining a repo it no longer owned | fa70aba, 01e055b — import fixed; keeper loop idles while the repo is unmanaged/paused/never-index | 5 regression tests; live: `id.json` gone and `list` empty 20 s after an edit |
+| M18 | med | `doctor` fails (`replay dirty journal`) after `rebuild`/`upgrade`/`connect` | journal entries in flight, or waiting for an idle engine (which replays them on start), counted as stuck | 3d3731a — journal `status`: clear / syncing / replays_on_engine_start / stuck (bound engine, >5 min) | regression test; live doctor ok ×3 |
+| M19 | med | `scubiee test` outside a source checkout crashes (`No module named pytest`) | ran pytest unconditionally | a02ad6f — exits 2 with a hint | regression tests; live rc 2 + hint |
+| M20 | med | `register` / `engine ensure` on a never-index repo report ok or a generic bind error | no lifecycle check in `register_project`; ensure dropped the engine's refusal | a02ad6f, b94ae97 — `never_index` error + how-to-undo hint | regression tests; live rc 1 with hint |
+| M21 | low | `--version` prints an "Engine stopped" line; wipe misses legacy `context-engine` MCP entries | lifecycle notice on every command; legacy name not in the strip list | 6cc848c, f10354d | regression tests |
+| M22 | low | a `WarmSearchEngine` on an explicit store syncs and reloads the default store, returning nothing | freshness gate and reload passed only the root | fdb1851 | regression test; `test_e2e_pipeline` passes |
+| M23 | low | 4 trace-lab quality tests always failed | `fixtures/trace-lab/app/models/user.py` was never committed (`models/` ignore for weights) | 16e9221 — un-ignore fixture `models/` dirs | 11 → 7 failing |
 | M10 | low | `stop_dashboard` reports failure after a clean stop | the dashboard is a `Popen` child; after `/api/shutdown` it is a zombie until reaped and `kill(pid, 0)` succeeds on zombies, so a process that started and stopped it waited 5 s and got `ok: False` | bcb4a12 — reap an exited child with `WNOHANG` first | `ps` showed `Z`, `stop_ok` false 2/2 → true 26/26, 0.4–0.9 s instead of 5 s |
 
 OBS-5 detail: two harnesses (warmed and cold-start, 30 functions appended to a tracked file per trial) ran 132 queries during hot syncs. No query came close to 1 s; the largest wall-minus-engine gap was 173 ms. Instrumenting request admission (`admit` → `activate_repo`, outside the engine's timer) gave p50 0.8 ms, p90 12.9 ms, max 71.5 ms; the remaining ≤150 ms is the HTTP thread waiting on the GIL while the sync thread parses and hashes, inherent to in-process sync. The original spike most likely coincided with an outside registry writer; no code change is warranted.
@@ -278,3 +287,30 @@ Mac-only follow-ups:
 `com.contextengine.supervisor` loaded, `doctor` ok (`binaries_match: true`, no interrupted upgrade),
 this repo re-indexed (8906 chunks), and Cursor, Kiro and Copilot reconnected. Throwaway dirs
 (`/tmp/scu_*`, `/tmp/hostsim*`) removed.
+
+## 7. 0.3.159 pass (fresh-machine command sweep)
+
+A wipe → install → `setup` → `init` → every CLI command sweep on 0.3.158 (psf/requests clone,
+~50 commands, plus a pty `setup`) found M15–M21; fixing the suite baseline found M22–M23.
+The same sweep on the final 0.3.159 build: every command returns the expected rc and output,
+`doctor` ok after `rebuild`/`upgrade`, `remove` stays removed, one supervisor + one engine,
+no tracebacks in `engine.log` / `watchdog.log`.
+
+Full suite: 1993 passed, 24 skipped, 7 failed. The 7 are locate-quality thresholds in
+`trace_lab` (polytrace F1 0.944 < 0.95, vague-prompt F1 0.864 < 0.90, verify board 18/20,
+two multi-seed and two polytrace edge cases). `test_multi_seed_v1.py` came from the original
+package while `multi_seed.py` is a reconstruction (a26af37), so the two disagree on ranking;
+retuning needs a product decision, not a blind constant change.
+
+Live battery on the installed 0.3.159 build (this repo, 8948 chunks):
+
+| Check | Result |
+|---|---|
+| Lane A `auto_warm` / `settle` (ms) | 2173.8 / 1478.5 |
+| `map_first` / `map_second` (ms) | 136.7 / 217.4 |
+| `pack_first` / `expand_first` (ms) | 25.8 / 138.3 |
+| post-idle `map` / `pack` (ms) | 227.2 / 25.2 |
+| `idle_hold` / `unload` (s) | 120.2 / 121.3 |
+| all 15 phases ok | yes |
+| warm_contract | 6/6 (warm 340.5 ms, first map 125.9 ms, map after idle 111.4 ms) |
+| ship_check | ok, 346.7 ms, `errors: []` |
