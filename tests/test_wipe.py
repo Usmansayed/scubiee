@@ -938,6 +938,33 @@ def test_full_wipe_prep_keeps_running_tool_dir_on_posix(
     assert "unlock_tool" not in actions
 
 
+@pytest.mark.parametrize("package, expect_unlock", [(True, True), (False, False)])
+def test_full_wipe_prep_unlocks_tool_dir_only_when_removing_package(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, package: bool, expect_unlock: bool
+) -> None:
+    """Unlock force-removes the uv tool dir; `wipe --all --keep-package` must keep it."""
+    import pipeline.process_control as pc
+    import pipeline.wipe as wipe_mod
+
+    unlocked: list[object] = []
+    monkeypatch.setattr(wipe_mod.os, "name", "nt")
+    monkeypatch.setattr(pc, "release_scubiee_process_locks", lambda **_k: {"ok": True})
+    monkeypatch.setattr(pc, "kill_all_scubiee_processes", lambda **_k: {"ok": True})
+    monkeypatch.setattr(pc, "uv_tool_root", lambda *_a: tmp_path)
+    monkeypatch.setattr(pc, "is_uv_tool_install", lambda *_a: True)
+    monkeypatch.setattr(pc, "unlock_uv_tool_env", lambda **k: unlocked.append(k) or {"ok": True})
+    monkeypatch.setattr(
+        "pipeline.rules_installer.uninstall_tools", lambda *_a, **_k: {"ok": True}
+    )
+    monkeypatch.setattr(
+        "pipeline.lifecycle_runtime.unregister_logon_autostart", lambda: {"ok": True}
+    )
+
+    report = wipe_mod._prepare_machine_for_full_wipe(repo=tmp_path, package=package)
+    assert bool(unlocked) is expect_unlock
+    assert ("unlock_tool" in report["actions"]) is expect_unlock
+
+
 def test_prepared_label_names_unlock_only_when_it_ran() -> None:
     from pipeline.wipe import _prepared_label
 

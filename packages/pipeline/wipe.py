@@ -652,7 +652,9 @@ def _prepared_label(halt: dict[str, Any]) -> str:
     return "Prepared machine (stub MCP, stop processes" + (", unlock tool)" if unlocked else ")")
 
 
-def _prepare_machine_for_full_wipe(*, repo: Path | None = None) -> dict[str, Any]:
+def _prepare_machine_for_full_wipe(
+    *, repo: Path | None = None, package: bool = True
+) -> dict[str, Any]:
     """One-shot prep for ``wipe --all`` — no separate halt/unlock commands needed.
 
     Order: stub MCP → kill processes → unlock uv tool dir → disconnect MCP →
@@ -671,8 +673,9 @@ def _prepare_machine_for_full_wipe(*, repo: Path | None = None) -> dict[str, Any
     # Windows only: there the running python.exe locks the tool dir, so the
     # rename fails and the wipe keeps running from it. On POSIX the rename
     # succeeds and every later lazy ``pipeline`` import fails; the package step
-    # at the end moves the tool dir aside instead.
-    if os.name == "nt":
+    # at the end moves the tool dir aside instead. Unlocking removes the tool
+    # dir, so --keep-package must skip it.
+    if os.name == "nt" and package:
         try:
             from pipeline.process_control import is_uv_tool_install, unlock_uv_tool_env, uv_tool_root
 
@@ -742,6 +745,7 @@ def _halt_scubiee_before_wipe(
     *,
     scope: str,
     repo: Path | None = None,
+    package: bool = True,
 ) -> dict[str, Any]:
     """Kill/disable everything that can respawn or lock files during wipe.
 
@@ -749,7 +753,7 @@ def _halt_scubiee_before_wipe(
     Repo wipe: engine stop only — MCP stays; caller restarts engine after wipe.
     """
     if scope == "all":
-        return _prepare_machine_for_full_wipe(repo=repo)
+        return _prepare_machine_for_full_wipe(repo=repo, package=package)
 
     actions: dict[str, Any] = {}
     target = (repo or Path.cwd()).resolve()
@@ -994,7 +998,7 @@ def wipe_all(
     if progress is not None:
         progress.configure(scope="all", models=models, package=bool(package))
         progress.step_active("Preparing (stub MCP, stop processes)")
-    halt = _halt_scubiee_before_wipe(scope="all", repo=target)
+    halt = _halt_scubiee_before_wipe(scope="all", repo=target, package=bool(package))
     actions.append({"halt": halt})
     for key, val in (halt.get("actions") or {}).items():
         actions.append({key: val})

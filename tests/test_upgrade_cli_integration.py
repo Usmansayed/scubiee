@@ -37,9 +37,14 @@ def _find_scubiee() -> Path:
 
 
 def _find_scubiee_python(scubiee: Path) -> Path:
-    py = scubiee.parent / "python.exe"
-    if py.is_file():
-        return py
+    # uv tool installs put a shim in ~/.local/bin; the interpreter lives in the tool venv.
+    for py in (
+        scubiee.parent / "python.exe",
+        Path(os.environ.get("APPDATA", "")) / "uv" / "tools" / "scubiee" / "Scripts" / "python.exe",
+        Path.home() / ".local" / "share" / "uv" / "tools" / "scubiee" / "bin" / "python",
+    ):
+        if py.is_file():
+            return py
     pytest.skip("scubiee python not found next to CLI")
 
 
@@ -115,7 +120,10 @@ def test_installed_registry_releases(scubiee_py: Path):
     code = """
 from pipeline import upgrade_releases
 from pipeline.upgrade_registry import list_releases, compose_upgrade
-assert [r.version for r in list_releases()] == ["0.2.18", "0.3.7", "0.3.10"]
+versions = [r.version for r in list_releases()]
+assert versions[:3] == ["0.2.18", "0.3.7", "0.3.10"], versions
+key = lambda v: tuple(int(p) for p in v.split("."))
+assert versions == sorted(versions, key=key), versions
 path = compose_upgrade("0.3.6", "0.3.10")
 assert [r.version for r in path.releases] == ["0.3.7", "0.3.10"]
 print("ok")

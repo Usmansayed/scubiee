@@ -70,6 +70,15 @@ def parse(stdout):
         return {"_raw": stdout}
 
 
+def tool_results(stdout):
+    """connect/disconnect print a list, or {"tools": [...], "supervisor": ...} when
+    the session runtime was touched."""
+    data = parse(stdout)
+    if isinstance(data, dict) and isinstance(data.get("tools"), list):
+        return data["tools"]
+    return data if isinstance(data, list) else []
+
+
 def connected_slugs():
     """Tools the operator had connected before this suite ran."""
     state = Path.home() / ".scubiee" / "connected_tools.json"
@@ -309,7 +318,7 @@ def test_connect_disconnect():
     original = connected_slugs()
 
     code, out, _ = run("connect", "--all", "--dry-run")
-    results = parse(out) if isinstance(parse(out), list) else []
+    results = tool_results(out)
     check("connect --all --dry-run", code == 0 and len(results) >= 10,
           f"{len(results)} tools")
 
@@ -322,13 +331,13 @@ def test_connect_disconnect():
 
     # Real connect
     code, out, _ = run("connect", "--all")
-    results = parse(out) if isinstance(parse(out), list) else []
+    results = tool_results(out)
     ok_count = sum(1 for r in results if isinstance(r, dict) and r.get("ok"))
     check(f"connect --all: {ok_count}/{len(results)} ok", ok_count >= 10)
 
     # Disconnect
     code, out, _ = run("disconnect", "--all")
-    results = parse(out) if isinstance(parse(out), list) else []
+    results = tool_results(out)
     ok_count = sum(1 for r in results if isinstance(r, dict) and r.get("ok"))
     check(f"disconnect --all: {ok_count}/{len(results)} ok", ok_count >= 10)
 
@@ -336,7 +345,7 @@ def test_connect_disconnect():
     # machine, so a bare disconnect would leave their IDE without Scubiee.
     if original:
         code, out, _ = run("connect", *(f"--{slug}" for slug in original))
-        results = parse(out) if isinstance(parse(out), list) else []
+        results = tool_results(out)
         ok_count = sum(1 for r in results if isinstance(r, dict) and r.get("ok"))
         check(
             f"restored {ok_count}/{len(original)} pre-test connections",

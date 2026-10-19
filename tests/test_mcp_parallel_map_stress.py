@@ -20,6 +20,17 @@ from typing import Any, Callable
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+REAL_HOME = Path.home() / ".scubiee"
+
+
+@pytest.fixture(autouse=True)
+def _real_scubiee_home(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Enrollment and the warm engine live in the real home, not pytest's isolated one."""
+    monkeypatch.setenv("CTX_HOME", str(REAL_HOME))
+    monkeypatch.setenv("CTX_TRUST_ID_FILE", "1")
+    monkeypatch.delenv("CTX_ALLOW_TEST_HOME", raising=False)
+    monkeypatch.delenv("CTX_ENGINE_URL", raising=False)
+    monkeypatch.delenv("CTX_SEARCH_URL", raising=False)
 
 # Distinct code-vocabulary queries — avoid any cache duplicate short-circuit.
 PARALLEL_MAP_QUERIES: tuple[str, ...] = (

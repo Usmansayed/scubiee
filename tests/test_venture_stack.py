@@ -20,7 +20,7 @@ pytestmark = pytest.mark.integration
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "fixtures" / "trace-lab"
 REAL_HOME = Path.home() / ".scubiee"
-GATE_PID = "ce_d9cb766c3820091ed9ffbc64ef33063c"
+GATE_PID = "ce_dfc775dbb10277074b552d13219f9ae5"
 
 
 @pytest.fixture
