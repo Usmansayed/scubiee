@@ -181,7 +181,7 @@ class BackgroundSyncLoop:
         wake_gap_ms: int = DEFAULT_WAKE_GAP_MS,
     ):
         self.repo = repo.resolve()
-        from pipeline.repo_lifecycle import _project
+        from pipeline.repo_lifecycle import _entry_managed, _project
 
         pid, _entry = _project(self.repo)
         if not pid:
@@ -189,6 +189,8 @@ class BackgroundSyncLoop:
                 f"keeper requires an enrolled repo (run `scubiee init .`): {self.repo}"
             )
         self.project_id = pid
+        self._enrolled_at_start = _entry_managed(_entry)
+        self._lifecycle_note: str | None = None
         self.interval_ms = max(1000, interval_ms)
         self.on_refresh = on_refresh
         self.locate_streak_ms = max(0, locate_streak_ms)
@@ -882,6 +884,9 @@ class BackgroundSyncLoop:
         return self.reconcile(reason="sleep_wake")
 
     def drain_due(self, *, now: float | None = None) -> list[dict]:
+        blocked = self._lifecycle_blocks_sync()
+        if blocked:
+            return [{"refreshed": False, "strategy": "lifecycle_blocked", "reason": blocked}]
         current_time = time.monotonic() if now is None else now
         recovered = self.dirty_ledger.recover_stale_processing(now=current_time)
         if recovered:
@@ -1738,9 +1743,39 @@ class BackgroundSyncLoop:
         if self in _ACTIVE_LOOPS:
             _ACTIVE_LOOPS.remove(self)
 
+    def _lifecycle_blocks_sync(self) -> str | None:
+        """Lifecycle state that forbids background sync, else None.
+
+        After `scubiee remove` the store resolve no longer trusts id.json and
+        mints a fresh project id, so syncing a removed repo re-enrolls it with a
+        store holding only the dirty files.
+        """
+        try:
+            from pipeline.repo_lifecycle import NEVER_INDEX, PAUSED, UNMANAGED, managed_state
+
+            state = managed_state(self.repo)
+        except Exception:  # noqa: BLE001
+            return None
+        blocked = state in {PAUSED, NEVER_INDEX} or (
+            state == UNMANAGED and getattr(self, "_enrolled_at_start", False)
+        )
+        if not blocked:
+            self._lifecycle_note = None
+            return None
+        if getattr(self, "_lifecycle_note", None) != state:
+            print(f"[keeper] background sync off — repo is {state}", file=sys.stderr, flush=True)
+        self._lifecycle_note = state
+        return state
+
     def keeper_tick(self, *, reason: str = "interval") -> dict:
         """Root probe first; incremental sync only when dirty. No embed on clean."""
         from pipeline.root_probe import root_probe
+
+        blocked = self._lifecycle_blocks_sync()
+        if blocked:
+            out = {"refreshed": False, "strategy": "lifecycle_blocked", "reason": blocked}
+            self.last_result = out
+            return out
 
         # Yield entirely while agents are mid-locate (warm map p95 — R6).
         if reason in {"interval", "test"} and self._locate_streak_active():

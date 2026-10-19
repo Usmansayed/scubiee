@@ -11,6 +11,8 @@ from typing import Any
 from pipeline.project_id import (
     RegistryConflictError,
     find_id_by_path,
+    id_dir_path,
+    id_file_path,
     git_common_dir,
     index_is_usable,
     load_registry,
@@ -689,7 +691,7 @@ def remove_repo(root: Path, *, delete_store: bool = False) -> dict[str, Any]:
         id_d = id_dir_path(root)
         if id_d.is_dir() and not any(id_d.iterdir()):
             shutil.rmtree(id_d, ignore_errors=True)
-    except Exception:
+    except OSError:
         pass
     return {
         "ok": True,
