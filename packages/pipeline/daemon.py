@@ -40,6 +40,123 @@ def start_request_path() -> Path:
     return _home() / "engine.start_request"
 
 
+def retiring_path() -> Path:
+    return _home() / "engine.retiring"
+
+
+# A retiring engine keeps its pid (and so ``is_running()``) for the length of
+# its shutdown — 2–10 s normally — and ``stop_daemon`` keeps sweeping the port
+# for a few seconds after that, killing any engine it finds there. Starters must
+# wait out both. Past this age the marker is ignored so a recycled pid can
+# never block a start.
+RETIRING_MARKER_MAX_AGE_S = 60.0
+RETIRING_WAIT_S = 20.0
+
+
+def _load_retiring(now: float | None = None) -> dict[str, Any] | None:
+    try:
+        data = json.loads(retiring_path().read_text(encoding="utf-8"))
+        at = float(data.get("at") or 0.0)
+    except (OSError, ValueError, TypeError, AttributeError):
+        return None
+    current = time.time() if now is None else now
+    if current - at > RETIRING_MARKER_MAX_AGE_S:
+        return None
+    return data
+
+
+def note_engine_retiring(
+    pid: int | None, *, reason: str = "", stopper_pid: int | None = None
+) -> None:
+    """Record that ``pid`` is shutting down so starters wait instead of adopting it.
+
+    ``stopper_pid`` is the process running ``stop_daemon``; it clears the
+    marker when its sweep is done. The engine's own note keeps that stopper.
+    """
+    if not pid and not stopper_pid:
+        return
+    existing = _load_retiring() or {}
+    if stopper_pid is None and existing.get("stopper_pid"):
+        stopper_pid = int(existing["stopper_pid"])
+    try:
+        _home().mkdir(parents=True, exist_ok=True)
+        payload = {
+            "pid": int(pid or 0),
+            "stopper_pid": int(stopper_pid or 0),
+            "reason": reason,
+            "at": time.time(),
+        }
+        retiring_path().write_text(json.dumps(payload) + "\n", encoding="utf-8")
+    except OSError:
+        pass
+
+
+def clear_engine_retiring(*, stopper_pid: int) -> None:
+    data = _load_retiring(now=0.0)
+    if data is not None and int(data.get("stopper_pid") or 0) == stopper_pid:
+        try:
+            retiring_path().unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
+def _pid_running(pid: int) -> bool:
+    """Like ``_pid_alive`` but an exited child its parent has not reaped is dead."""
+    if not _pid_alive(pid):
+        return False
+    try:
+        import psutil
+
+        return psutil.Process(pid).status() != psutil.STATUS_ZOMBIE
+    except Exception:  # noqa: BLE001
+        return _pid_alive(pid)
+
+
+def retiring_engine(*, now: float | None = None) -> dict[str, int] | None:
+    """``{"pid", "stopper_pid"}`` while an engine stop is still in progress, else None."""
+    data = _load_retiring(now)
+    if data is None:
+        return None
+    try:
+        pid = int(data.get("pid") or 0)
+        stopper = int(data.get("stopper_pid") or 0)
+    except (TypeError, ValueError):
+        return None
+    lock_pid = _read_lock_pid()
+    engine_retiring = (
+        pid > 0 and (lock_pid is None or lock_pid == pid) and _pid_running(pid)
+    )
+    stopping = stopper > 0 and stopper != os.getpid() and _pid_running(stopper)
+    if not engine_retiring and not stopping:
+        return None
+    return {"pid": pid, "stopper_pid": stopper}
+
+
+def retiring_engine_pid(*, now: float | None = None) -> int | None:
+    state = retiring_engine(now=now)
+    return state["pid"] if state else None
+
+
+def wait_for_retiring_engine(timeout_s: float = RETIRING_WAIT_S) -> dict[str, Any] | None:
+    """Block until an in-flight engine stop has finished. None when none was running."""
+    state = retiring_engine()
+    if state is None:
+        return None
+    started = time.time()
+    deadline = started + max(0.0, timeout_s)
+    while time.time() < deadline and retiring_engine() is not None:
+        time.sleep(0.2)
+    exited = retiring_engine() is None
+    pid = state["pid"]
+    if exited and pid and _read_lock_pid() == pid and not _pid_running(pid):
+        release_lock()
+    return {
+        **state,
+        "exited": exited,
+        "waited_ms": round((time.time() - started) * 1000.0, 1),
+    }
+
+
 # MCP stamps a start request, then the orphan watchdog should pick it up
 # within the supervisor cooldown (~20s) plus engine boot. Older leftovers
 # from a killed reconnect storm must not keep cold-starting the engine.
@@ -556,6 +673,15 @@ def start_daemon(
     ``force=True`` (used by ``force_restart_daemon``) skips the hung-lock refuse
     path so a fresh worker can bind after a kill sweep.
     """
+    retired = None if force else wait_for_retiring_engine(min(RETIRING_WAIT_S, max(wait_s, 1.0)))
+    if retired is not None and not retired.get("exited"):
+        return {
+            "ok": False,
+            "error": f"engine pid {retired['pid']} is still shutting down",
+            "retiring": retired,
+            "hint": "retry in a few seconds, or: scubiee engine stop",
+            "url": engine_url(),
+        }
     # Guard: detect conflicting scubiee installations sharing ~/.scubiee
     from pipeline.install_guard import check_install_conflict, write_install_marker
 
@@ -957,6 +1083,16 @@ def _after_spawn(
                 **meta,
                 "registry_recovery": {"skipped": "agent_warm"},
             }
+        if os.name != "nt" and not _pid_running(spawned_pid) and not client.healthy():
+            if _read_lock_pid() == spawned_pid:
+                release_lock()
+            return {
+                "ok": False,
+                "error": f"engine pid {spawned_pid} exited during startup",
+                "exited": True,
+                **meta,
+                "hint": f"Check {log_path()} or run: scubiee engine run .  (foreground)",
+            }
         time.sleep(0.4)
     return {
         "ok": False,
@@ -968,13 +1104,21 @@ def _after_spawn(
 
 def stop_daemon(*, reason: str | None = None, audit: str | None = None) -> dict[str, Any]:
     """Stop the engine. ``reason`` is the lifecycle transition; ``audit`` names the caller path."""
-    from pipeline.lifecycle_runtime import (
-        TRANSITION_REASON_USER,
-        note_engine_transition,
-    )
+    from pipeline.lifecycle_runtime import TRANSITION_REASON_USER
 
     stop_reason = str(reason or TRANSITION_REASON_USER)
     why = f"{audit}:{stop_reason}" if audit else stop_reason
+    me = os.getpid()
+    note_engine_retiring(_read_lock_pid(), reason=f"stop_daemon:{why}", stopper_pid=me)
+    try:
+        return _stop_daemon(stop_reason=stop_reason, why=why)
+    finally:
+        clear_engine_retiring(stopper_pid=me)
+
+
+def _stop_daemon(*, stop_reason: str, why: str) -> dict[str, Any]:
+    from pipeline.lifecycle_runtime import note_engine_transition
+
     host, port = default_host_port()
     try:
         from pipeline.engine_log import note_stop
@@ -1259,6 +1403,7 @@ def ensure_daemon(
     except Exception:  # noqa: BLE001
         pass
     version_adopt: dict[str, Any] | None = None
+    wait_for_retiring_engine(min(RETIRING_WAIT_S, health_wait))
     if is_running():
         # Version mismatch check: restart if daemon is running old code
         try:

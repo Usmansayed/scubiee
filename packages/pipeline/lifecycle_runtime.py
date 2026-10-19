@@ -1507,6 +1507,18 @@ def install_supervisor_signals() -> None:
         signal.signal(sighup, handle_supervisor_exit)
 
 
+def _started_since(at: float) -> bool:
+    """A start or interactive use landed after ``at`` (it wins over a pending standby)."""
+    try:
+        last_start = load_transition().get("last_start_at")
+        if last_start is not None and float(last_start) >= at:
+            return True
+        last_activity = load_policy().get("last_activity")
+        return last_activity is not None and float(last_activity) >= at
+    except (TypeError, ValueError):
+        return False
+
+
 def enter_standby(*, stop_engine: bool = True) -> dict[str, Any]:
     """Disconnect/idle: stop the fat engine process (ORT RSS only drops on exit)."""
     # Never stop the engine out from under an outside writer holding the store
@@ -1514,6 +1526,7 @@ def enter_standby(*, stop_engine: bool = True) -> dict[str, Any]:
     # pin the engine permanently. Guards every enter_standby caller at once.
     if stop_engine and store_hold_active():
         return {"ok": True, "action": "store_hold_skip_standby"}
+    decided_at = time.time()
     policy = set_desired_mode(DESIRED_STANDBY)
     try:
         from pipeline.memory_governor import get_governor
@@ -1525,6 +1538,15 @@ def enter_standby(*, stop_engine: bool = True) -> dict[str, Any]:
     stopped = None
     if stop_engine:
         from pipeline.daemon import stop_daemon
+
+        if _started_since(decided_at):
+            _lifecycle_log("standby_abort", reason="start_after_standby_decision")
+            return {
+                "ok": True,
+                "action": "start_won_standby",
+                "policy": set_desired_mode(DESIRED_RUN),
+                "engine": None,
+            }
 
         _lifecycle_log("standby_stop", reason="idle_standby")
         stopped = stop_daemon(reason="idle_standby")

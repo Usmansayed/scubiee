@@ -787,6 +787,7 @@ class Handler(BaseHTTPRequestHandler):
                 file=sys.stderr,
                 flush=True,
             )
+            _note_retiring(f"http_shutdown:{reason}")
             ce.shutdown()
             _json(self, 200, {"ok": True, "shutdown": True})
             # stop server from another thread, then hard-exit (ORT RSS).
@@ -822,6 +823,15 @@ def _register_httpd(server: ThreadingHTTPServer) -> None:
     _HTTPD = server
 
 
+def _note_retiring(reason: str) -> None:
+    try:
+        from pipeline.daemon import note_engine_retiring
+
+        note_engine_retiring(os.getpid(), reason=reason)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _retire_self() -> bool:
     """Stop serving from inside the engine and exit the process.
 
@@ -830,6 +840,7 @@ def _retire_self() -> bool:
     held. ``os._exit`` is the RAM contract.
     """
     server = _HTTPD
+    _note_retiring("retire_self_idle_standby")
 
     def _die() -> None:
         try:
