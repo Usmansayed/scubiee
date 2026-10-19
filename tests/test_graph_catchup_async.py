@@ -438,3 +438,25 @@ def test_avoid_tombstoned_ids_only_touches_clashing_records() -> None:
     assert [r.id for r in recs] == [8, 4, 9]
     assert stages["id_remap"] == 2.0
     assert _avoid_tombstoned_ids(SimpleNamespace(ids=[]), recs, None) == 0
+
+
+def test_worker_spawn_runs_no_python_between_fork_and_exec(graph_repo, monkeypatch) -> None:
+    import os
+    import subprocess
+
+    repo, store, _graph = graph_repo
+    seen: dict = {}
+
+    class _Proc:
+        def poll(self):
+            return 0
+
+    def _popen(cmd, **kwargs):
+        seen.update(cmd=cmd, kwargs=kwargs)
+        return _Proc()
+
+    monkeypatch.setattr(subprocess, "Popen", _popen)
+    gmw.start_graph_merge(repo, store, ["pkg/b.py"])
+    assert "preexec_fn" not in seen["kwargs"]
+    if os.name != "nt":
+        assert seen["cmd"][-2:] == ["--nice", "10"]

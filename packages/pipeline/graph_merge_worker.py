@@ -191,11 +191,14 @@ def start_graph_merge(
     except OSError:
         kwargs["stdout"] = subprocess.DEVNULL
         kwargs["stderr"] = subprocess.DEVNULL
+    # Below-normal so the save the user is waiting on wins every core fight.
     if os.name == "nt":
-        # Below-normal so the save the user is waiting on wins every core fight.
         kwargs["creationflags"] = BELOW_NORMAL_PRIORITY_CLASS | CREATE_NO_WINDOW
     else:
-        kwargs["preexec_fn"] = lambda: os.nice(10)  # noqa: PLW0108
+        # The worker renices itself. preexec_fn would run Python (and every
+        # at-fork hook) between fork and exec of the multithreaded engine,
+        # which segfaulted the child (rc=-11) on macOS.
+        cmd += ["--nice", "10"]
     job.proc = subprocess.Popen(cmd, **kwargs)
     return job
 
@@ -252,7 +255,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", required=True)
     ap.add_argument("--result", required=True)
     ap.add_argument("--paths-file", required=True)
+    ap.add_argument("--nice", type=int, default=0)
     args = ap.parse_args(argv)
+    if args.nice and hasattr(os, "nice"):
+        try:
+            os.nice(args.nice)
+        except OSError:
+            pass
     try:
         info = _run(args)
         rc = 0
