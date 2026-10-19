@@ -47,6 +47,31 @@ def test_keeper_stops_syncing_a_removed_repo(enrolled: Path, monkeypatch: pytest
     assert not (enrolled / ".scubiee" / "id.json").exists()
 
 
+def test_keeper_loop_does_no_background_work_for_a_removed_repo(
+    enrolled: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import threading
+
+    from pipeline.repo_lifecycle import remove_repo
+    from pipeline.sync_loop import BackgroundSyncLoop
+
+    monkeypatch.setenv("CTX_SYNC_INITIAL_DELAY_MS", "0")
+    monkeypatch.setenv("CTX_AST_REVALIDATE_S", "0.01")
+    loop = BackgroundSyncLoop(enrolled)
+    calls: list[str] = []
+    for name in ("poll_repo_changes", "_start_ast_revalidate", "_start_newcomer_scan", "keeper_tick", "drain_due"):
+        monkeypatch.setattr(loop, name, lambda *_a, _n=name, **_k: calls.append(_n))
+    remove_repo(enrolled)
+    t = threading.Thread(target=loop._run, daemon=True)
+    t.start()
+    import time
+
+    time.sleep(0.6)
+    loop._stop.set()
+    t.join(timeout=5)
+    assert calls == []
+
+
 def test_keeper_stops_syncing_a_paused_repo(enrolled: Path) -> None:
     from pipeline.repo_lifecycle import activate_repo, pause_repo
     from pipeline.sync_loop import BackgroundSyncLoop

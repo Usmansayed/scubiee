@@ -2348,9 +2348,20 @@ class BackgroundSyncLoop:
             return
         next_probe = time.monotonic()
         next_change_poll = time.monotonic()
+        next_lifecycle_check = 0.0
+        lifecycle_blocked: str | None = None
         while not self._stop.is_set():
             try:
                 now = time.monotonic()
+                # Gate the whole tick: the AST rebake child resolves identity with
+                # bind=True and would re-mint a removed repo before drain_due runs.
+                if now >= next_lifecycle_check:
+                    lifecycle_blocked = self._lifecycle_blocks_sync()
+                    next_lifecycle_check = now + 1.0
+                if lifecycle_blocked:
+                    if self._stop.wait(1.0):
+                        break
+                    continue
                 self.check_time_gap(now=now)
                 if self._poll_now or now >= next_change_poll:
                     self._poll_now = False
