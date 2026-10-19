@@ -636,6 +636,11 @@ def _restart_engine_after_repo_wipe(repo: Path) -> dict[str, Any]:
         return {"ok": False, "error": str(exc)}
 
 
+def _prepared_label(halt: dict[str, Any]) -> str:
+    unlocked = "unlock_tool" in (halt.get("actions") or {})
+    return "Prepared machine (stub MCP, kill" + (", unlock)" if unlocked else ")")
+
+
 def _prepare_machine_for_full_wipe(*, repo: Path | None = None) -> dict[str, Any]:
     """One-shot prep for ``wipe --all`` — no separate halt/unlock commands needed.
 
@@ -835,7 +840,7 @@ def wipe_repo(
         if not halt.get("ok"):
             out["halt_warning"] = "Engine may not have stopped cleanly before wipe."
         if progress is not None:
-            progress.step_finish("Prepared machine (stub MCP, kill, unlock)")
+            progress.step_finish(_prepared_label(halt))
 
     if progress is not None:
         progress.step_active("Removing repository data")
@@ -983,7 +988,7 @@ def wipe_all(
     for key, val in (halt.get("actions") or {}).items():
         actions.append({key: val})
     if progress is not None:
-        progress.step_finish("Prepared machine (stub MCP, kill, unlock)")
+        progress.step_finish(_prepared_label(halt))
 
     if progress is not None:
         progress.step_active("Removing repository data")

@@ -1113,7 +1113,7 @@ def print_wipe_summary(data: dict[str, Any], *, stream: IO[str] | TextIO | None 
 
     # Map action keys to human-readable labels
     step_map = {
-        "halt": "Prepared machine (stub MCP, kill, unlock)",
+        "halt": "Prepared machine (stub MCP, stop processes)",
         "process_release": "MCP stubbed + processes stopped",
         "unlock_tool": "uv tool directory unlocked",
         "kill_all": "Scubiee processes killed",

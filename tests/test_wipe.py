@@ -936,3 +936,10 @@ def test_full_wipe_prep_keeps_running_tool_dir_on_posix(
     actions = wipe_mod._prepare_machine_for_full_wipe(repo=tmp_path)
     assert unlocked == []
     assert "unlock_tool" not in actions
+
+
+def test_prepared_label_names_unlock_only_when_it_ran() -> None:
+    from pipeline.wipe import _prepared_label
+
+    assert "unlock" not in _prepared_label({"actions": {"kill_all": {"ok": True}}})
+    assert "unlock" in _prepared_label({"actions": {"unlock_tool": {"ok": True}}})
