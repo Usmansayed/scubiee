@@ -164,3 +164,20 @@ def test_running_from_uv_tool_uses_sys_executable(tmp_path: Path, monkeypatch) -
     assert process_control._running_from_uv_tool(root, other) is True
     monkeypatch.setattr(process_control.sys, "executable", str(other))
     assert process_control._running_from_uv_tool(root, tool_py) is False
+
+
+def test_rename_aside_hint_does_not_promise_an_unlock_on_posix(tmp_path, monkeypatch) -> None:
+    import os
+
+    import pipeline.process_control as pc
+
+    root = tmp_path / "scubiee"
+    root.mkdir()
+    monkeypatch.setattr(pc, "uv_tool_root", lambda *_a, **_k: root)
+    monkeypatch.setattr(pc, "_running_from_uv_tool", lambda *_a, **_k: True)
+    monkeypatch.setattr(pc, "_schedule_delete_after_exit", lambda *_a, **_k: {"ok": True})
+    monkeypatch.setattr(pc, "remove_tool_shims", lambda: {"ok": True})
+    out = pc.force_remove_uv_tool_dir(stop_first=False)
+    assert not root.exists() and out["renamed_to"]
+    if os.name != "nt":
+        assert "Unlock" not in out["hint"] and "path is free now" in out["hint"]

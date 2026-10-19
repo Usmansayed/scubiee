@@ -1694,8 +1694,9 @@ def force_remove_uv_tool_dir(
             "stop": stop,
             "shims": shims,
             "hint": (
-                "Unlock finishes after this process exits. Then reinstall: "
-                "uv tool install --force scubiee --index-url https://pypi.org/simple"
+                ("Unlock finishes after this process exits. Then reinstall: " if os.name == "nt" or rename_err else
+                 "The old package is deleted after this process exits; the path is free now. Reinstall: ")
+                + "uv tool install --force scubiee --index-url https://pypi.org/simple"
             ),
         }
 
