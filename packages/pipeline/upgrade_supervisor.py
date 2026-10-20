@@ -6,8 +6,10 @@ Phases: DETECT → PLAN → SNAPSHOT → QUIESCE → SWAP → MIGRATE → REBIND
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
+import sys
 import time
 import uuid
 from pathlib import Path
@@ -351,6 +353,59 @@ def rebind_mcp_and_rules() -> dict[str, Any]:
     return report
 
 
+_REBIND_MARKER = "__SCUBIEE_REBIND_JSON__"
+
+
+def rebind_in_fresh_process(*, timeout_s: float = 180.0) -> dict[str, Any]:
+    """Run ``rebind_mcp_and_rules`` in a new interpreter.
+
+    After a swap this process still holds the OLD template/registry modules in
+    ``sys.modules``; only a fresh interpreter writes the new version's MCP
+    entries and GATE rules. Falls back to in-process on any launch failure.
+    """
+    import pipeline
+
+    pkg_parent = str(Path(pipeline.__file__).resolve().parent.parent)
+    env = dict(os.environ)
+    env["PYTHONPATH"] = os.pathsep.join(
+        p for p in (pkg_parent, env.get("PYTHONPATH", "")) if p
+    )
+    code = (
+        "import json\n"
+        "from pipeline.upgrade_supervisor import rebind_mcp_and_rules\n"
+        f"print({_REBIND_MARKER!r} + json.dumps(rebind_mcp_and_rules(), default=str), flush=True)\n"
+    )
+    kwargs: dict[str, Any] = {}
+    if os.name == "nt":
+        kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+    fallback_reason = ""
+    try:
+        proc = subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=timeout_s,
+            env=env,
+            **kwargs,
+        )
+        for line in reversed((proc.stdout or "").splitlines()):
+            if line.startswith(_REBIND_MARKER):
+                result = json.loads(line[len(_REBIND_MARKER):])
+                result["fresh_process"] = True
+                return result
+        fallback_reason = (
+            f"rc={proc.returncode}: {(proc.stderr or '').strip()[-300:]}"
+        )
+    except Exception as exc:  # noqa: BLE001
+        fallback_reason = str(exc)
+    result = rebind_mcp_and_rules()
+    result["fresh_process"] = False
+    result["fresh_process_error"] = fallback_reason
+    return result
+
+
 def maybe_setup_repair() -> dict[str, Any]:
     """Best-effort accel repair (force reinstall packages / refresh profile)."""
     try:
@@ -609,14 +664,13 @@ def run_upgrade(
 
         report["mcp_hot_reload"] = nudge_mcp_hot_reload(new_version)
 
-    need_rebind = plan.needs("mcp_pins") or plan.needs("gate_rules")
-    # Quiesce always stubs MCP when need_swap — must rewrite live pins even if
-    # pin-format stamps look current (otherwise Cursor/other hosts stay "off").
-    must_rebind = connect and (need_rebind or need_swap)
-    if must_rebind:
+    # Always rebind on connect: writers skip identical content, so this is a
+    # no-op unless the installed version renders different MCP entries / GATE
+    # rules — no hand-bumped format stamp needed for template changes.
+    if connect:
         from pipeline.upgrade_manifest import GATE_RULES_FORMAT, MCP_PIN_FORMAT
 
-        rebound = rebind_mcp_and_rules()
+        rebound = rebind_in_fresh_process() if need_swap else rebind_mcp_and_rules()
         report["rebind"] = rebound
         if rebound.get("ok"):
             record_component_applied(
@@ -637,16 +691,9 @@ def run_upgrade(
                 "Run `scubiee connect --cursor` (and other tools) manually."
             )
             return report
-    else:
-        if not connect:
-            skip_reason = "connect disabled"
-        elif not need_rebind:
-            skip_reason = "mcp_pins and gate_rules already current"
-        else:
-            skip_reason = "not needed"
-        report["rebind"] = {"ok": True, "skipped": True, "reason": skip_reason}
-        # Still heal stub/disabled pins left by a prior failed upgrade/unlock.
-        if connect:
+        if rebound.get("skipped"):
+            # No connected tools to rebind — still heal stub/disabled pins left
+            # by quiesce or a prior failed upgrade/unlock.
             try:
                 from pipeline.mcp_restore import heal_mcp_pins_if_stubbed
 
@@ -655,6 +702,8 @@ def run_upgrade(
                     report["mcp_heal"] = healed
             except Exception as exc:  # noqa: BLE001
                 report["mcp_heal"] = {"ok": False, "error": str(exc)}
+    else:
+        report["rebind"] = {"ok": True, "skipped": True, "reason": "connect disabled"}
     report["phases"].append("rebind")
 
     # HEALTH

@@ -726,10 +726,22 @@ def _server_entry_for_tool(tool: ToolDef, repo: Path | str | None = None) -> dic
 # MCP writers
 # ---------------------------------------------------------------------------
 
+def _write_text_if_changed(path: Path, text: str) -> bool:
+    """Write only when content differs — an identical rewrite still makes hosts
+    reload MCP config (and restart the server) on every upgrade."""
+    try:
+        if path.is_file() and path.read_text(encoding="utf-8") == text:
+            return False
+    except (OSError, UnicodeDecodeError):
+        pass
+    path.write_text(text, encoding="utf-8")
+    return True
+
+
 def _write_json(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
-    _validate_json_file(path)
+    if _write_text_if_changed(path, json.dumps(data, indent=2) + "\n"):
+        _validate_json_file(path)
 
 
 def _write_mcp_json_keyed(path: Path, key: str, entry: dict[str, Any]) -> None:
@@ -1063,8 +1075,8 @@ def _write_mcp_toml(path: Path, entry: dict[str, Any]) -> None:
         for k, v in env.items():
             lines.append(f"{k} = {_toml_quoted(str(v))}")
     lines.append("")
-    path.write_text("\n".join(lines), encoding="utf-8")
-    _validate_toml_file(path)
+    if _write_text_if_changed(path, "\n".join(lines)):
+        _validate_toml_file(path)
 
 
 def _write_mcp_continue_yaml(path: Path, entry: dict[str, Any]) -> None:
@@ -1097,8 +1109,8 @@ def _write_mcp_continue_yaml(path: Path, entry: dict[str, Any]) -> None:
         for k, v in entry["env"].items():
             new_lines.append(f'      {k}: "{v}"')
     new_lines.append("")
-    path.write_text("\n".join(new_lines), encoding="utf-8")
-    _validate_continue_yaml_file(path)
+    if _write_text_if_changed(path, "\n".join(new_lines)):
+        _validate_continue_yaml_file(path)
 
 
 def _is_continue_project_mcp(path: Path) -> bool:
@@ -1136,7 +1148,7 @@ def _write_continue_project_mcp(path: Path, entry: dict[str, Any]) -> None:
         for k, v in entry["env"].items():
             lines.append(f'      {k}: "{v}"')
     lines.append("")
-    path.write_text("\n".join(lines), encoding="utf-8")
+    _write_text_if_changed(path, "\n".join(lines))
     if _SERVER_NAME not in path.read_text(encoding="utf-8"):
         raise MCPConfigMergeError(
             f"wrote Continue project MCP to {path} but {_SERVER_NAME} entry is missing"
