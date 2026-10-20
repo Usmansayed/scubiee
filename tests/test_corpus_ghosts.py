@@ -69,11 +69,17 @@ def test_mark_dirty_prune_bypasses_filter_but_not_outside_paths(tmp_path):
     )
     BackgroundSyncLoop.mark_dirty(
         fake,
-        ["static/app.min.js", "Node_Modules/x.js", str(tmp_path.parent / "outside.py"), "../up.py"],
+        [
+            "static/app.min.js",
+            "Node_Modules/x.js",
+            str(tmp_path.parent / "outside.py"),
+            "../up.py",
+            str(tmp_path / "pkg" / "inside.py"),
+        ],
         reason="ignored_prune",
         prune=True,
     )
-    assert marked == ["static/app.min.js", "Node_Modules/x.js"]
+    assert marked == ["static/app.min.js", "Node_Modules/x.js", "pkg/inside.py"]
     marked.clear()
     BackgroundSyncLoop.mark_dirty(fake, ["static/app.min.js", "Node_Modules/x.js"], reason="write")
     assert marked == []

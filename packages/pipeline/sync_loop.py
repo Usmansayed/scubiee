@@ -444,10 +444,19 @@ class BackgroundSyncLoop:
         if prune:
             # Indexed files the ignore rules now refuse: the filter would drop them,
             # yet the sync has to see them to delete their chunks.
-            kept = [
-                p for p in (str(x).replace("\\", "/").strip("/") for x in paths)
-                if p and not Path(p).is_absolute() and ".." not in p.split("/")
-            ]
+            # Absolute paths are checked before stripping "/": on POSIX "/a/b" would
+            # otherwise turn into the repo-relative "a/b".
+            kept = []
+            for x in paths:
+                raw = str(x).replace("\\", "/")
+                if Path(raw).is_absolute():
+                    try:
+                        raw = Path(raw).resolve().relative_to(Path(self.repo).resolve()).as_posix()
+                    except (OSError, ValueError):
+                        continue
+                p = raw.strip("/")
+                if p and p != "." and ".." not in p.split("/"):
+                    kept.append(p)
         else:
             kept, _dropped = filter_dirty_paths(self.repo, paths)
         if not kept:
