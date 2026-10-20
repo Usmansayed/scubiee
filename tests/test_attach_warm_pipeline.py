@@ -354,6 +354,7 @@ def test_attach_worker_skips_open_when_soft_ready(monkeypatch, tmp_path):
     RuntimeController.reset_for_tests()
     rt = RuntimeController.get()
     opens: list[str] = []
+    monkeypatch.setattr(rt, "_spawn_engine", lambda *_a, **_k: None)
     monkeypatch.setattr(
         rt,
         "_probe_health",
