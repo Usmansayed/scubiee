@@ -162,6 +162,30 @@ def count_chunks_per_file(chunks_path: Path) -> dict[str, int]:
     return counts
 
 
+def _corpus_files(repo: Path) -> set[str]:
+    """Every file that owns at least one chunk in the repo's chunks.jsonl."""
+    from pipeline.project_id import peek_project
+
+    ref = peek_project(repo)
+    if ref is None:
+        return set()
+    path = ref.store_dir / "chunks.jsonl"
+    if not path.is_file():
+        return set()
+    seen: set[str] = set()
+    with path.open("r", encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            if '"file"' not in line:
+                continue
+            try:
+                rel = str(json.loads(line).get("file") or "").replace("\\", "/")
+            except ValueError:
+                continue
+            if rel:
+                seen.add(rel)
+    return seen
+
+
 class BackgroundSyncLoop:
     """Periodic root-probe + incremental_sync; final_check on stop/cwd/exit."""
 
@@ -410,13 +434,22 @@ class BackgroundSyncLoop:
         *,
         reason: str = "write",
         now: float | None = None,
+        prune: bool = False,
     ) -> None:
         # An edit ends the locate streak: process+publish freshness beats mid-thought
         # stability once the agent has changed disk.
         from pipeline.dirty_ledger import HOT_SYNC_REASONS
         from pipeline.ignore import filter_dirty_paths
 
-        kept, _dropped = filter_dirty_paths(self.repo, paths)
+        if prune:
+            # Indexed files the ignore rules now refuse: the filter would drop them,
+            # yet the sync has to see them to delete their chunks.
+            kept = [
+                p for p in (str(x).replace("\\", "/").strip("/") for x in paths)
+                if p and not Path(p).is_absolute() and ".." not in p.split("/")
+            ]
+        else:
+            kept, _dropped = filter_dirty_paths(self.repo, paths)
         if not kept:
             return
         if str(reason) in HOT_SYNC_REASONS or str(reason) == "disk_poll":
@@ -701,28 +734,30 @@ class BackgroundSyncLoop:
         file that is gone. Marking it dirty lets the normal slice drop its chunks.
         """
         try:
-            from pipeline.project_id import peek_project
-
-            ref = peek_project(self.repo)
-            if ref is None:
-                return []
-            path = ref.store_dir / "chunks.jsonl"
-            if not path.is_file():
-                return []
-            seen: set[str] = set()
-            with path.open("r", encoding="utf-8", errors="replace") as fh:
-                for line in fh:
-                    if '"file"' not in line:
-                        continue
-                    try:
-                        rel = str(json.loads(line).get("file") or "").replace("\\", "/")
-                    except ValueError:
-                        continue
-                    if rel:
-                        seen.add(rel)
-            return sorted(rel for rel in seen if not (self.repo / rel).exists())
+            return sorted(rel for rel in _corpus_files(self.repo) if not (self.repo / rel).exists())
         except Exception as exc:  # noqa: BLE001
             print(f"[keeper] ghost scan failed: {exc}", file=sys.stderr, flush=True)
+            return []
+
+    def _corpus_unindexable(self) -> list[str]:
+        """Files chunks.jsonl still serves that the ignore rules now refuse.
+
+        A file indexed before a rule existed (an upgrade added it, or a folder
+        later became a virtualenv) keeps its chunks: the Merkle is filtered
+        through the same rules on load, so no diff ever reports it.
+        """
+        try:
+            from pipeline.ignore import load_scubiee_ignore
+            from pipeline.paths import index_rel_ok
+
+            rules = load_scubiee_ignore(self.repo)
+            return sorted(
+                rel
+                for rel in _corpus_files(self.repo)
+                if (self.repo / rel).is_file() and not index_rel_ok(self.repo, rel, rules=rules)
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(f"[keeper] ignored-file scan failed: {exc}", file=sys.stderr, flush=True)
             return []
 
     def _start_newcomer_scan(self, *, now: float | None = None) -> bool:

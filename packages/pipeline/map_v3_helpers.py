@@ -647,6 +647,8 @@ def _walk_repo() -> list[str]:
     # byte-identical to the old walk (same _norm, same sort) — see
     # scripts/perf/probe_repowalk_ab.py — at roughly half the time (~290ms→~130ms
     # for ~8k files), which shrinks the first-call/warm-thread startup tax.
+    from pipeline.ignore import is_builtin_ignored_dir_name
+
     root = str(REPO)
     base = len(root) + 1
     out: list[str] = []
@@ -658,7 +660,12 @@ def _walk_repo() -> list[str]:
                 for e in it:
                     if e.is_dir(follow_symlinks=False):
                         nm = e.name
-                        if nm in SKIP_DIRS or nm.startswith(".venv"):
+                        low = nm.lower()
+                        if (
+                            low in SKIP_DIRS
+                            or low.startswith(".venv")
+                            or (not low.startswith(".") and is_builtin_ignored_dir_name(nm))
+                        ):
                             continue
                         stack.append(e.path)
                     else:

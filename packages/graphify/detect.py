@@ -826,6 +826,9 @@ _SKIP_FILES = {
 _JS_SNAPSHOT_TEST_ROOTS = frozenset({"__tests__", "__test__"})
 
 
+_VENV_NAME_RE = re.compile(r"venv(?:[\d._-].*)?")
+
+
 def _has_venv_markers(d: "Path") -> bool:
     """True only when *d* has actual virtualenv/conda structure on disk.
 
@@ -851,10 +854,17 @@ def _has_venv_markers(d: "Path") -> bool:
 
 def _is_noise_dir(part: str, parent: "Path | None" = None) -> bool:
     """Return True if this directory name looks like a venv, cache, or dep dir."""
+    if part in ("build", "out") and parent is not None:
+        # A Python package that happens to be called build/out is source.
+        try:
+            if (parent / part / "__init__.py").is_file():
+                return False
+        except OSError:
+            pass
     if part in _SKIP_DIRS:
         return True
-    # Custom venv dir names: .venv-proof, .venv-cuda, venv311, etc.
-    if part.startswith(".venv") or (part.startswith("venv") and part != "venv"):
+    # Custom venv dir names: .venv-proof, .venv-cuda, venv311, venv-3.12 — not venvtools.
+    if part.startswith(".venv") or _VENV_NAME_RE.fullmatch(part.lower()):
         return True
     if part in ("env", ".env") or part.endswith("_env"):
         # Ambiguous: a real venv OR a real source dir. Prune only on actual venv

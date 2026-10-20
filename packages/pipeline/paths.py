@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import os
+import time
 from pathlib import Path
+from typing import Any
 
+from graphify.detect import _is_ignored, _load_graphifyignore
 from graphify.extract import collect_files
 from pipeline.ignore import (
     INDEX_WRITE_HINT_ROOTS,
@@ -56,27 +59,51 @@ def _is_probably_text(abs_path: Path) -> bool:
     ``data.py``) or non-UTF-8 legacy encoding. The index extractor reads with a
     STRICT utf-8 decode, so a single such file used to raise and fail the entire
     ``init``. Excluding it at collection keeps one bad file from blocking the
-    whole project index. Best-effort: on any read error we keep the file (the
-    downstream path is itself guarded), never crash here.
+    whole project index. One-line minified blobs are rejected too. Best-effort:
+    on any read error we keep the file (the downstream path is itself guarded).
     """
-    try:
-        with open(abs_path, "rb") as fh:
-            head = fh.read(_TEXT_SNIFF_BYTES)
-    except OSError:
-        return True  # can't probe — let the (guarded) downstream decide
-    if not head:
-        return True  # empty file is fine
-    if b"\x00" in head:
-        return False  # NUL byte => binary
-    try:
-        head.decode("utf-8")
-    except UnicodeDecodeError as exc:
-        # A multibyte char may be split at the 8KB boundary; only reject when the
-        # failure is NOT merely a truncated trailing sequence.
-        if exc.reason == "unexpected end of data" and exc.start >= len(head) - 4:
-            return True
+    from pipeline.ignore import content_indexable
+
+    return content_indexable(abs_path)
+
+
+# Root-level .gitignore/.graphifyignore (+ .git/info/exclude), the same set the
+# full-index walker (graphify ``collect_files``) applies. Reloaded every few
+# seconds so an edited .gitignore takes effect without a restart.
+_GITIGNORE_TTL_S = 5.0
+_gitignore_cache: dict[str, tuple[float, Path, list, dict]] = {}
+
+
+def clear_gitignore_cache() -> None:
+    _gitignore_cache.clear()
+
+
+def gitignored(root: Path, rel: str) -> bool:
+    """True if *rel* is excluded by the repo's .gitignore/.graphifyignore.
+
+    Folder-only patterns (``build/``) match only folders that exist, so a file
+    under a deleted folder is not reported ignored and its removal is still seen.
+    """
+    key = str(root)
+    now = time.monotonic()
+    hit = _gitignore_cache.get(key)
+    if hit is None or now - hit[0] >= _GITIGNORE_TTL_S:
+        try:
+            res = Path(root).resolve()
+            patterns: list[Any] = _load_graphifyignore(res)
+        except OSError:
+            return False
+        if len(_gitignore_cache) > 16:
+            _gitignore_cache.clear()
+        hit = (now, res, patterns, {})
+        _gitignore_cache[key] = hit
+    _, res, patterns, memo = hit
+    if not patterns:
         return False
-    return True
+    try:
+        return _is_ignored(res / rel, res, patterns, _cache=memo)
+    except (OSError, ValueError):
+        return False
 
 
 def index_rel_ok(
@@ -86,11 +113,17 @@ def index_rel_ok(
     rules: IgnoreRules,
     fast: bool = False,
     roots: tuple[str, ...] = (),
+    gitignore: bool = True,
 ) -> bool:
-    """True if the file at posix *rel* belongs in the index."""
+    """True if the file at posix *rel* belongs in the index.
+
+    ``gitignore=False`` only for callers whose walk already applied it.
+    """
     if Path(rel).suffix.lower() not in DEFAULT_EXTENSIONS:
         return False
     if not should_index_rel(root, rel, rules=rules):
+        return False
+    if gitignore and gitignored(root, rel):
         return False
     # Prefix-anchored: matching a root anywhere in the path pulls in
     # vendored or copied trees (e.g. testdata/<copy>/packages/...).
@@ -119,7 +152,7 @@ def index_dir_pruner(root: Path, rules: IgnoreRules):
         if not s.startswith(root_s) or len(s) <= prefix_len:
             return False
         rel = s[prefix_len:].replace("\\", "/")
-        if builtin_ignores_rel(rel + "/_"):
+        if builtin_ignores_rel(rel + "/_", root):
             return True
         return custom_ok and _custom_matches(rules, rel, is_dir=True) is True
 
@@ -152,7 +185,9 @@ def collect_index_paths(
     return [
         p
         for p in paths
-        if index_rel_ok(root, p.relative_to(root).as_posix(), rules=rules, fast=fast, roots=roots)
+        if index_rel_ok(
+            root, p.relative_to(root).as_posix(), rules=rules, fast=fast, roots=roots, gitignore=False
+        )
     ]
 
 

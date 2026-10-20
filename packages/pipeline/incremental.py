@@ -632,7 +632,29 @@ def _upsert_named_vectors(
     return None
 
 
-def _patch_file_merkle(store: PipelineStore, root: Path, old: dict[str, str], touch: list[str]) -> None:
+def _unindexable(root: Path, rels: list[str]) -> set[str]:
+    """Existing files in *rels* that the collector would refuse (ignored dir,
+    minified, binary, unsupported extension). Their chunks must be dropped and
+    their hash left out of the Merkle, or the scan and the poll disagree."""
+    from pipeline.ignore import load_scubiee_ignore
+    from pipeline.paths import index_rel_ok
+
+    rules = load_scubiee_ignore(root)
+    out: set[str] = set()
+    for rel in rels:
+        rel_posix = rel.replace("\\", "/")
+        if (root / rel_posix).is_file() and not index_rel_ok(root, rel_posix, rules=rules):
+            out.add(rel)
+    return out
+
+
+def _patch_file_merkle(
+    store: PipelineStore,
+    root: Path,
+    old: dict[str, str],
+    touch: list[str],
+    skip: set[str] | frozenset[str] = frozenset(),
+) -> None:
     """Update the file Merkle for the paths we just processed.
 
     ``load_merkle`` returns *canonical* keys — and ``canonical_relpath`` ends in
@@ -650,7 +672,7 @@ def _patch_file_merkle(store: PipelineStore, root: Path, old: dict[str, str], to
         for key in {canonical, rel_posix, rel}:
             hashes.pop(key, None)
         path = root / rel_posix
-        if path.is_file():
+        if rel not in skip and path.is_file():
             hashes[canonical] = file_sha256(path)
     try:
         prev_mtimes = store.load_mtimes()
@@ -1065,6 +1087,13 @@ def incremental_sync(
         if owed:
             changed = sorted(set(changed) | set(owed))
     removed = list(report.diff.removed)
+    # A named dirty path skips the collector, so it can name a file under
+    # Node_Modules/, a custom venv, or a minified bundle. Drop those (and prune
+    # any chunks they already have) instead of indexing them.
+    unindexable = _unindexable(root, changed)
+    if unindexable:
+        changed = [c for c in changed if c not in unindexable]
+        removed = sorted(set(removed) | unindexable)
     # Soft auto-cap — larger than this needs an explicit --confirm (not --force/--fast).
     max_touch = int(os.environ.get("CTX_INCREMENTAL_MAX_TOUCH", str(DEFAULT_MAX_TOUCH)))
     touch_n = len(changed) + len(removed)
@@ -1397,7 +1426,7 @@ def incremental_sync(
                     # checksums meta.json.
                     if meta.get("graph_pending") != store.load_meta().get("graph_pending"):
                         store.save_meta(meta)
-                    _patch_file_merkle(store, root, old, touch)
+                    _patch_file_merkle(store, root, old, touch, unindexable)
                     chunk_merkle = store.load_chunk_merkle()
                     for file in touch_set:
                         recs = new_by_file.get(file, [])
@@ -1510,7 +1539,7 @@ def incremental_sync(
                 warnings.append(f"vector_reconcile: {bf_exc}")
             stages["reconcile_ms"] = (time.perf_counter() - t_reconcile) * 1000
             t_after_reconcile = time.perf_counter()
-            _patch_file_merkle(store, root, old, touch)
+            _patch_file_merkle(store, root, old, touch, unindexable)
             chunk_merkle = store.load_chunk_merkle()
             for file in touch_set:
                 recs = new_by_file.get(file, [])

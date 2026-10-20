@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import os
 import re
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
@@ -37,6 +38,7 @@ BUILTIN_IGNORE_DIRS: frozenset[str] = frozenset(
         # Virtualenvs
         ".venv",
         "venv",
+        "venvs",
         ".tox",
         ".nox",
         ".pixi",
@@ -133,35 +135,177 @@ def normalize_rel(rel: str) -> str:
     return s.strip("/")
 
 
+# venv, venv2, venv-3.12, venv_old, venv.bak — but not venvtools/ or venvironment/.
+_VENV_NAME_RE = re.compile(r"venv(?:[\d._-].*)?")
+
+# Minified bundles: never hand-written source, often one multi-MB line.
+_MINIFIED_SUFFIXES: tuple[str, ...] = (".min.js", ".min.mjs", ".min.cjs")
+
+# Ordinary words that PascalCase ecosystems use for real source (.NET ``Build/``,
+# ``Vendor/``): matched with exact case only. Every other builtin name is
+# unambiguous junk and matches case-insensitively (``Node_Modules`` on Windows).
+_EXACT_CASE_DIRS: frozenset[str] = frozenset(
+    {"vendor", "dist", "build", "out", "target", "coverage", "lcov-report", "storybook-static", "graphify-out"}
+)
+
+# Build-output names that are also legitimate Python package names
+# (``src/build/compiler.py``). Kept when the folder holds ``__init__.py``.
+_PACKAGE_EXEMPT_DIRS: frozenset[str] = frozenset({"build", "out"})
+
+# Folder-content verdicts (venv marker / package marker / on-disk name) are cached:
+# the walkers ask once per file. A negative answer expires fast so a folder caught
+# half-created (venv before pyvenv.cfg, dist/ mid-rebuild) is re-checked.
+_DIR_FLAG_TTL_S = 30.0
+_DIR_FLAG_NEG_TTL_S = 2.0
+
+
+def _flag_ttl(value: Any) -> float:
+    return _DIR_FLAG_TTL_S if value else _DIR_FLAG_NEG_TTL_S
+_dir_flags: dict[tuple[str, str], tuple[float, Any]] = {}
+
+
 def is_builtin_ignored_dir_name(name: str) -> bool:
-    """True if this path segment is a builtin-ignored directory name."""
+    """True if this path segment is a builtin-ignored directory name (case-insensitive)."""
     if not name or name in {".", ".."}:
         return False
     if name in BUILTIN_IGNORE_DIRS:
         return True
-    if name.startswith(".venv") or name.startswith("venv"):
+    low = name.lower()
+    if low in BUILTIN_IGNORE_DIRS and low not in _EXACT_CASE_DIRS:
         return True
-    if name.endswith("_venv") or name.endswith(".egg-info"):
+    if _VENV_NAME_RE.fullmatch(low):
+        return True
+    if low.endswith("_venv") or low.endswith(".egg-info"):
         return True
     # Unpacked old releases (scubiee-0.2.61/) duplicate packages/ and serve stale code.
-    if name.startswith("scubiee-0."):
+    if low.startswith("scubiee-0."):
         return True
     # Blanket hidden dirs except allowlisted source trees (.github).
-    if name.startswith(".") and name not in _DOTDIR_INDEX_ALLOWLIST:
+    if low.startswith(".") and low not in _DOTDIR_INDEX_ALLOWLIST:
         return True
     return False
 
 
-def builtin_ignores_rel(rel: str) -> bool:
-    """True if *rel* is denied by builtin rules (parents or markers)."""
-    norm_slash = "/" + normalize_rel(rel) + "/"
-    if any(m in norm_slash for m in BUILTIN_PATH_MARKERS):
+def is_minified_name(rel: str) -> bool:
+    return normalize_rel(rel).lower().endswith(_MINIFIED_SUFFIXES)
+
+
+# A file this big whose first 8 KB holds no line break is a minified/generated
+# blob; hand-written source never has an 8 KB first line.
+_SNIFF_BYTES = 8192
+_ONE_LINE_MIN_BYTES = 50_000
+
+
+def content_indexable(abs_path: Path) -> bool:
+    """True unless the file is binary, non-UTF-8, or a one-line minified blob.
+
+    Best-effort: an unreadable file is kept (the downstream reader is guarded).
+    """
+    try:
+        with open(abs_path, "rb") as fh:
+            head = fh.read(_SNIFF_BYTES)
+            size = os.fstat(fh.fileno()).st_size
+    except OSError:
         return True
-    parts = normalize_rel(rel).split("/")
+    if not head:
+        return True
+    if b"\x00" in head:
+        return False
+    try:
+        head.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        # A multibyte char may be split at the boundary; only that is tolerated.
+        if not (exc.reason == "unexpected end of data" and exc.start >= len(head) - 4):
+            return False
+    if size >= _ONE_LINE_MIN_BYTES and b"\n" not in head and b"\r" not in head:
+        return False
+    return True
+
+
+def _dir_flag(kind: str, root: Path | str, parts: list[str]) -> bool:
+    key = (kind, f"{root}|{'/'.join(parts)}")
+    now = time.monotonic()
+    hit = _dir_flags.get(key)
+    if hit is not None and now - hit[0] < _flag_ttl(hit[1]):
+        return hit[1]
+    path = Path(root, *parts)
+    try:
+        if kind == "env":
+            # Only interpreters write these: a venv's pyvenv.cfg, a conda env's conda-meta/.
+            val = (path / "pyvenv.cfg").is_file() or (path / "conda-meta").is_dir()
+        else:
+            val = (path / "__init__.py").is_file()
+    except OSError:
+        val = False
+    if len(_dir_flags) > 50_000:
+        _dir_flags.clear()
+    _dir_flags[key] = (now, val)
+    return val
+
+
+def _disk_dir_name(root: Path | str, parts: list[str]) -> str | None:
+    """On-disk spelling of the folder ``parts`` (None if it does not exist).
+
+    Merkle keys are lower-cased on Windows, so ``build`` in a key may be a
+    ``Build/`` source folder; only the directory listing knows.
+    """
+    key = ("name", f"{root}|{'/'.join(parts)}")
+    now = time.monotonic()
+    hit = _dir_flags.get(key)
+    if hit is not None and now - hit[0] < _flag_ttl(hit[1]):
+        return hit[1]
+    want = parts[-1].lower()
+    name: str | None = None
+    try:
+        with os.scandir(Path(root, *parts[:-1])) as it:
+            for entry in it:
+                if entry.name.lower() == want and entry.is_dir():
+                    name = entry.name
+                    break
+    except OSError:
+        name = None
+    if len(_dir_flags) > 50_000:
+        _dir_flags.clear()
+    _dir_flags[key] = (now, name)
+    return name
+
+
+def _dir_ignored(root: Path | str | None, parts: list[str]) -> bool:
+    """True if the directory ``parts`` (or any ancestor) is builtin-ignored.
+
+    Without a root this is name-only. With a root it also looks inside folders:
+    an environment marker ignores the tree whatever it is called, a build/out
+    folder that is a Python package stays indexed, and exact-case names are
+    checked against the real folder name (a deleted folder is not ignored, so
+    its files' removal is still seen).
+    """
+    for i, seg in enumerate(parts):
+        if not seg:
+            continue
+        if is_builtin_ignored_dir_name(seg):
+            if root is not None and seg.lower() in _EXACT_CASE_DIRS:
+                real = _disk_dir_name(root, parts[: i + 1])
+                if real is None or real not in BUILTIN_IGNORE_DIRS:
+                    continue
+                if real in _PACKAGE_EXEMPT_DIRS and _dir_flag("pkg", root, parts[: i + 1]):
+                    continue
+            return True
+        if root is not None and _dir_flag("env", root, parts[: i + 1]):
+            return True
+    return False
+
+
+def builtin_ignores_rel(rel: str, root: Path | str | None = None) -> bool:
+    """True if *rel* is denied by builtin rules (parents or markers)."""
+    norm = normalize_rel(rel)
+    low_slash = "/" + norm.lower() + "/"
+    if any(m in low_slash for m in BUILTIN_PATH_MARKERS):
+        return True
+    parts = norm.split("/")
     if not parts or parts == [""]:
         return False
     # Parents only (filename may be e.g. testdata_util.py)
-    return any(is_builtin_ignored_dir_name(p) for p in parts[:-1])
+    return _dir_ignored(root, parts[:-1])
 
 
 @dataclass(frozen=True)
@@ -294,7 +438,11 @@ def load_scubiee_ignore(root: Path | str | None) -> IgnoreRules:
 
 
 def clear_ignore_cache() -> None:
+    from pipeline.paths import clear_gitignore_cache
+
     _cache.clear()
+    _dir_flags.clear()
+    clear_gitignore_cache()
 
 
 def _path_or_ancestor_matches(pat: _Pattern, path: str) -> bool:
@@ -346,11 +494,14 @@ def should_index_rel(
     """True if *rel* may be indexed / dirtied / searched into the corpus."""
     if not str(rel or "").strip():
         return False
-    if builtin_ignores_rel(rel):
+    if builtin_ignores_rel(rel, root):
+        return False
+    if is_dir:
+        if _dir_ignored(root, normalize_rel(rel).split("/")):
+            return False
+    elif is_minified_name(rel):
         return False
     name = normalize_rel(rel).split("/")[-1]
-    if is_dir and is_builtin_ignored_dir_name(name):
-        return False
     # File whose sole segment is a builtin dir name (e.g. walking into node_modules)
     if not is_dir and "/" not in normalize_rel(rel) and is_builtin_ignored_dir_name(name):
         # Allow regular files at root named oddly; dir names only matter as dirs.
@@ -386,18 +537,19 @@ def filter_dirty_paths(
         # /v1/dirty or an over-eager watcher can mark a sibling/home-dir file;
         # if it slips through, the sync batch's relative_to(root) raises and the
         # whole batch fails forever (permanent "not in the subpath" wedge).
+        rel = p
         if root_res is not None:
             cand = Path(p)
             if cand.is_absolute():
                 try:
-                    cand.resolve().relative_to(root_res)
+                    rel = cand.resolve().relative_to(root_res).as_posix()
                 except (ValueError, OSError):
                     dropped.append({"path": p, "reason": "outside_repo"})
                     continue
-        if builtin_ignores_rel(p):
+        if builtin_ignores_rel(rel, root_res) or is_minified_name(rel):
             dropped.append({"path": p, "reason": "builtin"})
             continue
-        custom = _custom_matches(rules, p)
+        custom = _custom_matches(rules, rel)
         if custom is True:
             dropped.append({"path": p, "reason": "scubieeignore"})
             continue

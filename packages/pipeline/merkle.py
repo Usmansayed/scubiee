@@ -18,6 +18,7 @@ from pipeline.artifact_guard import atomic_write_text
 from pipeline.ignore import (
     BUILTIN_IGNORE_DIRS,
     BUILTIN_PATH_MARKERS,
+    content_indexable,
     is_builtin_ignored_dir_name,
     load_scubiee_ignore,
     should_index_rel,
@@ -151,6 +152,8 @@ def scan_file_hashes(
     extensions: set[str] | None = None,
 ) -> dict[str, str]:
     """Hash indexable files. Never descends into venv/node_modules/etc."""
+    from pipeline.paths import gitignored
+
     root = root.resolve()
     exts = extensions or DEFAULT_EXTENSIONS
     rules = load_scubiee_ignore(root)
@@ -179,7 +182,11 @@ def scan_file_hashes(
                 rel = path.relative_to(root)
             except ValueError:
                 continue
-            if _should_skip(rel, exts, root=root):
+            if (
+                _should_skip(rel, exts, root=root)
+                or gitignored(root, rel.as_posix())
+                or not content_indexable(path)
+            ):
                 continue
             out[canonical_relpath(rel.as_posix())] = _sha256_file(path)
     return out

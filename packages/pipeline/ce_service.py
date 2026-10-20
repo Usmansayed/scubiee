@@ -210,11 +210,20 @@ class RuntimeManager:
                     _enqueue(ghosts, "offline_ghost_prune")
             except Exception:  # noqa: BLE001
                 ghosts = []
-            total = len(plan.enqueued or []) + len(ghosts)
+            ignored: list[str] = []
+            try:
+                ignored = loop._corpus_unindexable()
+                if ignored:
+                    loop.mark_dirty(ignored, reason="ignored_prune", prune=True)
+                    loop.request_poll()
+            except Exception:  # noqa: BLE001
+                ignored = []
+            total = len(plan.enqueued or []) + len(ghosts) + len(ignored)
             if total:
                 print(
                     f"[reconcile:{trigger}] enqueued {len(plan.enqueued or [])} drift + "
-                    f"{len(ghosts)} ghost prune path(s) state={plan.index_state} "
+                    f"{len(ghosts)} ghost prune + {len(ignored)} ignored prune path(s) "
+                    f"state={plan.index_state} "
                     f"for {self.project_id}",
                     file=sys.stderr,
                     flush=True,

@@ -38,6 +38,47 @@ def test_corpus_ghosts_lists_only_files_missing_on_disk(tmp_path, monkeypatch):
     assert loop_cls._corpus_ghosts(fake) == ["pkg/gone_windows.py", "pkg/zz_disksave_1.py"]
 
 
+def test_corpus_unindexable_lists_indexed_files_now_ignored(tmp_path, monkeypatch):
+    fake, repo, loop_cls = _loop_with_store(
+        tmp_path,
+        monkeypatch,
+        [
+            {"id": 0, "file": "pkg/live.py", "text": "x"},
+            {"id": 1, "file": "static/app.min.js", "text": "y"},
+            {"id": 2, "file": "tools_env/Lib/mod.py", "text": "z"},
+            {"id": 3, "file": "pkg/gone.py", "text": "w"},
+        ],
+    )
+    (repo / "pkg" / "live.py").write_text("x = 1\n", encoding="utf-8")
+    (repo / "static").mkdir()
+    (repo / "static" / "app.min.js").write_text("var a=1;\n", encoding="utf-8")
+    (repo / "tools_env" / "Lib").mkdir(parents=True)
+    (repo / "tools_env" / "pyvenv.cfg").write_text("home = x\n", encoding="utf-8")
+    (repo / "tools_env" / "Lib" / "mod.py").write_text("x = 1\n", encoding="utf-8")
+    assert loop_cls._corpus_unindexable(fake) == ["static/app.min.js", "tools_env/Lib/mod.py"]
+
+
+def test_mark_dirty_prune_bypasses_filter_but_not_outside_paths(tmp_path):
+    from pipeline.sync_loop import BackgroundSyncLoop
+
+    marked: list = []
+    fake = SimpleNamespace(
+        repo=tmp_path,
+        dirty_ledger=SimpleNamespace(mark=lambda paths, **kw: marked.extend(paths)),
+        _last_locate_at=None,
+    )
+    BackgroundSyncLoop.mark_dirty(
+        fake,
+        ["static/app.min.js", "Node_Modules/x.js", str(tmp_path.parent / "outside.py"), "../up.py"],
+        reason="ignored_prune",
+        prune=True,
+    )
+    assert marked == ["static/app.min.js", "Node_Modules/x.js"]
+    marked.clear()
+    BackgroundSyncLoop.mark_dirty(fake, ["static/app.min.js", "Node_Modules/x.js"], reason="write")
+    assert marked == []
+
+
 def test_newcomer_scan_queues_ghosts_for_removal(tmp_path, monkeypatch):
     fake, repo, loop_cls = _loop_with_store(
         tmp_path, monkeypatch, [{"id": 0, "file": "pkg/ghost.py", "text": "x"}]
