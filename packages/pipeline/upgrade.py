@@ -198,6 +198,7 @@ def do_upgrade(
     repair: bool = False,
     reindex: bool = False,
     skip_package: bool = False,
+    pypi: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Run the version-aware upgrade supervisor (one-command upgrade).
 
@@ -213,6 +214,7 @@ def do_upgrade(
         repair=repair,
         reindex=reindex,
         skip_package=skip_package,
+        pypi=pypi,
     )
     # Compatibility keys for existing CLI/TTY formatting
     if "daemon" in report and "daemon_restart" not in report:

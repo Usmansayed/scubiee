@@ -432,8 +432,14 @@ def run_upgrade(
     repair: bool = False,
     reindex: bool = False,
     skip_package: bool = False,
+    pypi: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Execute the upgrade supervisor pipeline."""
+    """Execute the upgrade supervisor pipeline.
+
+    ``pypi`` is the caller's version check. Pass the one ``skip_package`` was
+    derived from: PyPI's CDN can answer two back-to-back checks differently
+    right after a release, and a second check here then disagreed with it.
+    """
     from pipeline.upgrade import (
         _save_update_check,
         check_pypi_version,
@@ -451,7 +457,8 @@ def run_upgrade(
     }
 
     # DETECT
-    pypi = check_pypi_version(force=True)
+    if pypi is None:
+        pypi = check_pypi_version(force=True)
     report["pypi"] = pypi
     target = pypi.get("latest") or old_version
     if skip_package:

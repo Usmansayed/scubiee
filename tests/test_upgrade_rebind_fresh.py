@@ -182,6 +182,27 @@ def test_upgrade_fails_when_the_swap_leaves_the_old_version(tmp_path, monkeypatc
     assert "fresh" not in calls
 
 
+def test_upgrade_uses_the_callers_pypi_check(tmp_path, monkeypatch):
+    from pipeline import upgrade
+
+    sup, _calls = _mock_upgrade(monkeypatch, tmp_path, swap=True)
+    monkeypatch.setattr(
+        upgrade,
+        "check_pypi_version",
+        lambda force=False, timeout=5.0: pytest.fail("second PyPI check"),
+    )
+    seen = {"current": "0.3.6", "latest": "0.3.7", "update_available": True}
+    swapped: list[str | None] = []
+    monkeypatch.setattr(
+        sup,
+        "swap_package",
+        lambda pre_release=False, target_version=None: swapped.append(target_version) or {"ok": True},
+    )
+    report = sup.run_upgrade(connect=False, pypi=seen)
+    assert report["target_version"] == "0.3.7"
+    assert swapped == ["0.3.7"]
+
+
 def test_swap_command_pins_target_and_refreshes_index():
     from pipeline.upgrade_platform import package_swap_commands
 

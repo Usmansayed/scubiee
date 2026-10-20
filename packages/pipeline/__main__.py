@@ -2181,6 +2181,7 @@ def cmd_upgrade(args: argparse.Namespace) -> int:
         repair=repair,
         reindex=reindex,
         skip_package=skip_package,
+        pypi=None if pypi.get("error") else pypi,
     )
 
     if sys.stdout.isatty():
