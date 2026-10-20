@@ -32,6 +32,7 @@ import re
 import sys
 import threading
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -129,6 +130,12 @@ def _http(path: str, payload: dict | None = None, timeout: float = 90.0) -> dict
             req = urllib.request.Request(url, data=data, headers=headers)
             with opener.open(req, timeout=timeout) as resp:
                 return json.loads(resp.read().decode("utf-8", "replace"))
+        except urllib.error.HTTPError as e:
+            if e.code >= 500:
+                last = e
+                time.sleep(0.3)
+                continue
+            raise RuntimeError(_engine_refusal_message(path, e)) from None
         except Exception as e:  # noqa: BLE001
             last = e
             # Only real tool requests restart a stopped/crashed engine; the
@@ -147,6 +154,23 @@ def _http(path: str, payload: dict | None = None, timeout: float = 90.0) -> dict
             f"({recovered.get('error') or recovered.get('reason') or 'unknown'}) — {hint}"
         )
     raise RuntimeError(f"engine {path} failed: {type(last).__name__}: {last}")
+
+
+def _engine_refusal_message(path: str, exc: urllib.error.HTTPError) -> str:
+    """The engine answers 4xx with a JSON reason; show it, not 'HTTP Error 409: Conflict'."""
+    body: dict = {}
+    try:
+        parsed = json.loads(exc.read().decode("utf-8", "replace") or "{}")
+        if isinstance(parsed, dict):
+            body = parsed
+    except Exception:  # noqa: BLE001
+        pass
+    reason = str(body.get("error") or body.get("status") or exc.reason or "").strip()
+    if reason == "requires_initialize":
+        root = body.get("root") or "this repo"
+        return f"{root} is not enrolled with Scubiee (requires_initialize) — run `scubiee init .` in it first"
+    hint = f" — {body['hint']}" if body.get("hint") else ""
+    return f"engine {path} refused the request (HTTP {exc.code}: {reason or 'no reason given'}){hint}"
 
 
 _RECOVER_LOCK = threading.Lock()

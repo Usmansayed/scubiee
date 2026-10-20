@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -87,6 +88,45 @@ def test_health_pulse_never_starts_the_engine(monkeypatch) -> None:
     with pytest.raises(RuntimeError):
         mv2._http("/health", None, 1)
     assert started == []
+
+
+def _http_error(code: int, body: dict):
+    import io
+    import urllib.error
+
+    return urllib.error.HTTPError(
+        "http://127.0.0.1:8765/v1/search", code, "Conflict", {}, io.BytesIO(json.dumps(body).encode())
+    )
+
+
+def test_unenrolled_repo_says_run_init(monkeypatch):
+    import pipeline.map_v3_helpers as mv2
+
+    calls = []
+
+    class _Opener:
+        def open(self, req, timeout):
+            calls.append(req.full_url)
+            raise _http_error(409, {"ok": False, "root": "/tmp/x", "error": "requires_initialize"})
+
+    monkeypatch.setattr(mv2, "_opener", lambda: _Opener())
+    with pytest.raises(RuntimeError) as err:
+        mv2._http("/v1/search", {"query": "q"})
+    assert "/tmp/x is not enrolled" in str(err.value) and "scubiee init ." in str(err.value)
+    assert len(calls) == 1
+
+
+def test_engine_refusal_shows_reason_and_hint(monkeypatch):
+    import pipeline.map_v3_helpers as mv2
+
+    class _Opener:
+        def open(self, req, timeout):
+            raise _http_error(409, {"error": "repo_paused", "hint": "scubiee resume"})
+
+    monkeypatch.setattr(mv2, "_opener", lambda: _Opener())
+    with pytest.raises(RuntimeError) as err:
+        mv2._http("/v1/search", {"query": "q"})
+    assert "HTTP 409: repo_paused" in str(err.value) and "scubiee resume" in str(err.value)
 
 
 def test_unstartable_engine_reports_why(monkeypatch) -> None:
