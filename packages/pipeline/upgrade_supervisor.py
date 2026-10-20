@@ -222,7 +222,7 @@ def swap_package(
 
     prep = prepare_uv_tool_directory_for_swap(strip_mcp=False, remove_dir=False)
     attempts: list[dict[str, Any]] = [{"prepare": prep}]
-    cmds = package_swap_commands(pre_release=pre_release)
+    cmds = package_swap_commands(pre_release=pre_release, target_version=target_version)
     for cmd in cmds:
         result = _run_cmd(cmd)
         attempts.append(result)
@@ -552,11 +552,17 @@ def run_upgrade(
     # wrappers can patch one function — avoid raw importlib.metadata here).
     new_version = installed_version()
     report["new_version"] = new_version
-    if need_swap and new_version == old_version:
+    if need_swap and new_version == old_version and str(target) != str(old_version):
+        report["ok"] = False
+        report["error"] = "package_not_updated"
         report["warning"] = (
-            "Package command succeeded but version unchanged — "
-            "uv may not have bumped; retry with unlock-tool if needed."
+            f"Package command succeeded but {old_version} is still installed (wanted {target})."
         )
+        report["hint"] = (
+            "PyPI can lag a few minutes after a release — run `scubiee upgrade` again shortly."
+        )
+        report["mcp_restore"] = _restore_mcp_after_failed_upgrade()
+        return report
 
     # MIGRATE schema
     if plan.needs("index_schema"):

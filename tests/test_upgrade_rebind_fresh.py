@@ -166,6 +166,32 @@ def test_upgrade_always_rebinds_without_format_bump(tmp_path, monkeypatch, swap,
     assert not report["rebind"].get("skipped")
 
 
+def test_upgrade_fails_when_the_swap_leaves_the_old_version(tmp_path, monkeypatch):
+    from pipeline import upgrade
+
+    sup, calls = _mock_upgrade(monkeypatch, tmp_path, swap=True)
+    monkeypatch.setattr(
+        upgrade,
+        "check_pypi_version",
+        lambda force=False, timeout=5.0: {"current": "0.3.6", "latest": "0.3.7", "update_available": True},
+    )
+    report = sup.run_upgrade(connect=True)
+    assert report["ok"] is False, report
+    assert report["error"] == "package_not_updated"
+    assert "upgrade" in report["hint"]
+    assert "fresh" not in calls
+
+
+def test_swap_command_pins_target_and_refreshes_index():
+    from pipeline.upgrade_platform import package_swap_commands
+
+    (cmd,) = package_swap_commands(target_version="0.3.170")
+    assert "scubiee==0.3.170" in cmd
+    assert cmd[cmd.index("--refresh-package") + 1] == "scubiee"
+    (bare,) = package_swap_commands()
+    assert "scubiee" in bare and not any(a.startswith("scubiee==") for a in bare)
+
+
 def test_upgrade_no_connect_skips_rebind(tmp_path, monkeypatch):
     sup, calls = _mock_upgrade(monkeypatch, tmp_path, swap=False)
     report = sup.run_upgrade(connect=False, skip_package=True)

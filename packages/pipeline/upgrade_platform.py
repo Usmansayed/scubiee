@@ -315,13 +315,24 @@ def health_check(*, timeout: float = 5.0, retries: int = 1, pause_s: float = 1.0
     return last
 
 
-def package_swap_commands(*, pre_release: bool = False) -> list[list[str]]:
-    """Return ordered install commands for the active platform/channel."""
+def package_swap_commands(
+    *, pre_release: bool = False, target_version: str | None = None
+) -> list[list[str]]:
+    """Return ordered install commands for the active platform/channel.
+
+    The target is pinned and the scubiee index entry refreshed: right after a
+    release uv's cached PyPI index still lists the old version, and an unpinned
+    install quietly reinstalls it.
+    """
     import shutil
 
     uv = shutil.which("uv") or "uv"
-    spec = "scubiee" if pre_release else "scubiee"
-    force = [uv, "tool", "install", "--force", spec, "--index-url", "https://pypi.org/simple"]
+    spec = f"scubiee=={target_version}" if target_version else "scubiee"
+    force = [
+        uv, "tool", "install", "--force", spec,
+        "--index-url", "https://pypi.org/simple",
+        "--refresh-package", "scubiee",
+    ]
     if pre_release:
         force.append("--pre")
     return [force]

@@ -204,7 +204,7 @@ def _patch_swap_env(monkeypatch, *, run_result, installed):
 
     monkeypatch.setattr(sup, "_run_cmd", lambda cmd, timeout=None: run_result(cmd))
     monkeypatch.setattr(
-        sup, "package_swap_commands", lambda *, pre_release=False: [["uv", "tool", "install"]]
+        sup, "package_swap_commands", lambda **_k: [["uv", "tool", "install"]]
     )
     import pipeline.process_control as pc
 
