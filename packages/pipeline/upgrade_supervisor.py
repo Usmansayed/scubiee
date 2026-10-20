@@ -263,13 +263,33 @@ def swap_package(
         }
     return {
         "ok": False,
-        "error": "package_upgrade_failed",
         "attempts": attempts,
         "prepared": True,
-        "hint": (
-            "Windows file lock on uv tool dir. Quit Cursor MCP, run "
-            "`scubiee unlock-tool`, then retry. Admin will not help."
-        ),
+        **_swap_failure_reason(attempts, target_version),
+    }
+
+
+def _swap_failure_reason(attempts: list[dict[str, Any]], target_version: str | None) -> dict[str, str]:
+    stderr = " ".join(str(a.get("stderr") or "") for a in attempts)
+    if "there is no version of scubiee" in stderr or "No solution found" in stderr:
+        return {
+            "error": "release_not_on_index_yet",
+            "hint": (
+                f"PyPI has not served scubiee {target_version or 'latest'} to installers yet "
+                "(it can lag a few minutes after a release). Retry `scubiee upgrade` shortly."
+            ),
+        }
+    if os.name == "nt" or any(a.get("access_denied") for a in attempts):
+        return {
+            "error": "package_upgrade_failed",
+            "hint": (
+                "Windows file lock on uv tool dir. Quit Cursor MCP, run "
+                "`scubiee unlock-tool`, then retry. Admin will not help."
+            ),
+        }
+    return {
+        "error": "package_upgrade_failed",
+        "hint": "`uv tool install` failed; see swap.attempts[].stderr, then retry `scubiee upgrade`.",
     }
 
 

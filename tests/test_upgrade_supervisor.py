@@ -242,6 +242,30 @@ def test_swap_package_fails_when_version_unchanged(monkeypatch):
     assert res["error"] == "package_upgrade_failed"
 
 
+def test_swap_package_says_release_not_on_index_yet(monkeypatch):
+    from pipeline.upgrade_supervisor import swap_package
+
+    def _unresolvable(cmd):
+        return {
+            "ok": False,
+            "cmd": cmd,
+            "returncode": 1,
+            "stdout": "",
+            "stderr": (
+                "  x No solution found when resolving dependencies:\n"
+                "  `-> Because there is no version of scubiee==0.3.172 and you require\n"
+                "      scubiee==0.3.172, we can conclude that your requirements are unsatisfiable."
+            ),
+            "access_denied": False,
+        }
+
+    _patch_swap_env(monkeypatch, run_result=_unresolvable, installed="0.3.171")
+    res = swap_package(target_version="0.3.172")
+    assert res["ok"] is False
+    assert res["error"] == "release_not_on_index_yet"
+    assert "0.3.172" in res["hint"] and "unlock-tool" not in res["hint"]
+
+
 def test_swap_package_no_target_version_keeps_exit_code_semantics(monkeypatch):
     """Without a target to verify against, a non-zero exit stays a failure."""
     from pipeline.upgrade_supervisor import swap_package
