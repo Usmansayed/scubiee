@@ -4,9 +4,10 @@ Run against `docs/scubiee-macos-handoff-0.3.169.md` on branch
 `macos-validate-0.3.169` (from `upstream/main` 3a84d80).
 
 **Verdict: GO for 0.3.169 on macOS.** §3, §4, §5 and §6 all pass, and §7 has
-no high-severity finding. This pass found five bugs (M28–M32), all medium or
-low. Each is fixed on this branch with regression tests and verified live.
-None blocks 0.3.169; they belong in the next release.
+no high-severity finding. This pass found six bugs (M28–M33), all medium or
+low. Each is fixed with regression tests and verified live. None blocks
+0.3.169. M28–M32 shipped in 0.3.170–0.3.172; M33 is on main for the next
+release.
 
 ## 1. Environment
 
@@ -195,7 +196,8 @@ env from `.cursor/mcp.json` (MCP initialize, `notifications/initialized`,
 | M29 | med | engine / CLI | With the default engine running, `CTX_ENGINE_URL=…:8799 scubiee engine start` reported ok/already_running for 8799 (nothing there), and `scubiee map` hung ~93 s, then failed | `is_running()` trusts the lock's live pid without comparing its recorded URL; `engine start` also forced `ok=True` whenever any engine pid was alive | 57e6c8b: `engine_running_elsewhere()` makes start/ensure refuse with `engine_on_other_url` (running URL + hint), checked **after** waiting for a retiring engine; `engine start` exits 1; `map` reports it at once | 6 new tests (fail on old code). Live: `engine start` exit 1 with reason; `map` exit 1 in **0.07 s** (was 93 s); default engine untouched; plain port switch still works |
 | M30 | low | map UX | `scubiee map` in a repo that is not enrolled printed `RuntimeError: engine /v1/search failed: HTTPError: HTTP Error 409: Conflict` | `_http` discarded the engine's JSON body (`error: requires_initialize`) and retried 4xx | ce8e097: 4xx raises the engine's reason + hint, and `requires_initialize` says "`<root>` is not enrolled with Scubiee — run `scubiee init .`". No retry on 4xx; 5xx still retried | 2 new tests. Live: the new message after a wipe un-enrolled the scratch repo |
 | M31 | med | upgrade | Minutes after 0.3.170 was published, `scubiee upgrade` planned 0.3.169 → 0.3.170 but reinstalled 0.3.169, and the report still said ok / "Upgrade complete" | the swap ran an unpinned `uv tool install --force scubiee`, which resolved from uv's cached PyPI index (still 0.3.169 ~10 min later); an unchanged version was only a warning | c7c71d0: install `scubiee==<target>` with `--refresh-package scubiee`; an unchanged version fails with `package_not_updated` + retry hint | 2 new tests (fail on old code). Live, with uv's cache still resolving 0.3.169: fix build 0.3.169.1 → **0.3.170** in 13.8 s, rebind fresh, health 0.3.170/0.3.170 |
-| M32 | med | upgrade | Right after 0.3.171 was published, `scubiee upgrade` saw `latest 0.3.171, update_available: true` yet targeted the installed version, did nothing and reported ok | the CLI checked PyPI first (a stale CDN node still said 0.3.170, so `skip_package=True`), then `run_upgrade` checked again; `skip_package` overrode the second, newer answer. PyPI's project JSON is CDN-cached (`max-age=900`) | e11ee7b: the CLI passes its check into `run_upgrade`, so one answer decides both | new test; live in §10 |
+| M32 | med | upgrade | Right after 0.3.171 was published, `scubiee upgrade` saw `latest 0.3.171, update_available: true` yet targeted the installed version, did nothing and reported ok | the CLI checked PyPI first (a stale CDN node still said 0.3.170, so `skip_package=True`), then `run_upgrade` checked again; `skip_package` overrode the second, newer answer. PyPI's project JSON is CDN-cached (`max-age=900`) | e11ee7b: the CLI passes its check into `run_upgrade`, so one answer decides both | new test. Live, with uv's cache still resolving 0.3.171: 0.3.171.1 → **0.3.172** in 6.5 s, rebind fresh, health 0.3.172/0.3.172 |
+| M33 | low | upgrade UX | An upgrade run seconds after 0.3.172 was published failed (correctly, thanks to M31) but said "Windows file lock on uv tool dir… Admin will not help" on macOS | `swap_package` returned the Windows hint for every failed `uv tool install` | `swap_package` reads uv's stderr: "no version of scubiee" / "No solution found" → `release_not_on_index_yet` + "retry shortly"; Windows/access-denied keeps the file-lock hint; anything else points at `swap.attempts[].stderr` | new test; on main, ships in the next release |
 
 ### Observations (not bugs)
 
@@ -208,6 +210,23 @@ env from `.cursor/mcp.json` (MCP initialize, `notifications/initialized`,
 - **Agent tool lists don't refresh in-session.** After a reload, Cursor's
   bridge was up at once, but an agent's tool list only refreshes on its next
   turn. The MCP checks above therefore use the stdio driver.
+- **The full suite left an engine running.**
+  `test_attach_worker_skips_open_when_soft_ready` did not stub
+  `RuntimeController._spawn_engine`, so every full run left a real
+  `engine run … --port 18765` and its watchdog behind. The test now stubs it,
+  and the suite leaves no processes behind.
+- **Two caches lag right after a release.** uv's cached simple index and
+  PyPI's project JSON (CDN, `max-age=900`) can both serve the previous
+  version for several minutes. M31–M33 make `scubiee upgrade` either install
+  the real target or fail and tell the user to retry.
+
+### Live battery on PyPI 0.3.172 (final)
+
+| Check | Result |
+|---|---|
+| Lane A, `--settle-s 35` | **15/15 ok**: map_first 127.4 ms, map_second 173.2 ms, pack 25.8 ms, expand 106.3 ms, post_idle_map 200.5 ms, post_idle_pack 24.8 ms, settle_join 219 ms |
+| warm_contract | **0 failed**: warm-ready 931 ms, first map 82.6 ms, after idle 112.5 ms |
+| ship_check | **ok**, errors [], 418 ms, dense, version 0.3.172 |
 
 ## 8. Go / no-go
 
@@ -220,13 +239,12 @@ env from `.cursor/mcp.json` (MCP initialize, `notifications/initialized`,
 | §7 regressions | no high-severity finding (M29 medium, fixed) |
 
 - **0.3.169 is production-ready on macOS.**
-- M28–M30 shipped in 0.3.170. M31 (found while verifying the 0.3.170 release) shipped in 0.3.171, and M32 (found verifying 0.3.171) ships in 0.3.172. It lives in the *installed* version's upgrade code, so it takes effect from upgrades run on 0.3.171 onward. On 0.3.170 or older, if `scubiee upgrade` reports the old version, rerun it after a few minutes.
-- **Full suite with all fixes:** 2,098 passed, 0 failed.
+- M28–M30 shipped in 0.3.170. M31 (found while verifying the 0.3.170 release) shipped in 0.3.171, and M32 (found verifying 0.3.171) shipped in 0.3.172. M33 (found verifying 0.3.172) is on main for the next release. These live in the *installed* version's upgrade code, so they take effect from upgrades run on the fixed version onward. On 0.3.170 or older, if `scubiee upgrade` reports the old version, rerun it after a few minutes.
+- **Full suite with all fixes (incl. M33):** 2,102 passed, 25 skipped, 0 failed.
 
 ## 9. State left behind
 
-- Installed: wheel built from this branch, reporting 0.3.169 (includes M28–M30).
-  Reinstall `scubiee==0.3.169` from PyPI for the plain release build.
+- Installed: `scubiee==0.3.172` from PyPI, supervisor running.
 - `setup` done, this repo enrolled (9,087 chunks), Cursor connected, engine
   running on 8765.
 - `/tmp/scu_ign` (scratch repo) is no longer enrolled after the keep-package
