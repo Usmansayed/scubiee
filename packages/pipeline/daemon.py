@@ -293,6 +293,46 @@ def pid_is_zombie(pid: int) -> bool:
         return False
 
 
+def _url_endpoint(url: str) -> tuple[str, int | None]:
+    from urllib.parse import urlparse
+
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower()
+    if host in {"localhost", "::1"}:
+        host = "127.0.0.1"
+    return host, parsed.port
+
+
+def engine_running_elsewhere() -> dict[str, Any] | None:
+    """A live engine whose lock records a URL other than ``engine_url()``.
+
+    One engine serves the machine (one lock); with ``CTX_ENGINE_URL`` pointing
+    elsewhere, the lock's live pid must not count as "running" for that URL.
+    """
+    path = lock_path()
+    if not path.is_file():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        pid = int(data.get("pid") or 0)
+        recorded = str(data.get("url") or "").strip()
+    except Exception:  # noqa: BLE001
+        return None
+    if not pid or not recorded or not _pid_alive(pid):
+        return None
+    wanted = engine_url()
+    if _url_endpoint(recorded) == _url_endpoint(wanted):
+        return None
+    return {
+        "ok": False,
+        "reason": "engine_on_other_url",
+        "error": f"an engine (pid {pid}) is already running at {recorded}, not {wanted}",
+        "hint": "stop it first (`scubiee engine stop`) or unset CTX_ENGINE_URL to use it",
+        "running_url": recorded,
+        "url": wanted,
+    }
+
+
 def _read_lock_pid() -> int | None:
     path = lock_path()
     if not path.is_file():
@@ -716,6 +756,10 @@ def start_daemon(
             "hint": "retry in a few seconds, or: scubiee engine stop",
             "url": engine_url(),
         }
+    if not force:
+        elsewhere = engine_running_elsewhere()
+        if elsewhere is not None:
+            return elsewhere
     # Guard: detect conflicting scubiee installations sharing ~/.scubiee
     from pipeline.install_guard import check_install_conflict, write_install_marker
 
@@ -1460,6 +1504,9 @@ def ensure_daemon(
         pass
     version_adopt: dict[str, Any] | None = None
     wait_for_retiring_engine(min(RETIRING_WAIT_S, health_wait))
+    elsewhere = engine_running_elsewhere()
+    if elsewhere is not None:
+        return elsewhere
     if is_running():
         # Version mismatch check: restart if daemon is running old code
         try:

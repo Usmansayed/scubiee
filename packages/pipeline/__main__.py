@@ -1195,7 +1195,7 @@ def cmd_engine(args: argparse.Namespace) -> int:
         from pipeline.daemon import is_running as _ir
 
         wd: dict
-        if result.get("ok") or _ir():
+        if result.get("ok") or (_ir() and result.get("reason") != "engine_on_other_url"):
             note_activity()
             wd = start_watchdog()
             result["ok"] = True
@@ -1968,7 +1968,11 @@ def cmd_map(args: argparse.Namespace) -> int:
             started = ensure_daemon(repo, force_if_hung=False, open_wait=False)
         except Exception as exc:  # noqa: BLE001
             started = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
-        if not started.get("ok") and _engine_process_alive():
+        if (
+            not started.get("ok")
+            and started.get("reason") != "engine_on_other_url"
+            and _engine_process_alive()
+        ):
             print("map: engine is still warming - waiting for it...", file=sys.stderr, flush=True)
             if _wait_engine_healthy(float(os.environ.get("CTX_MAP_ENGINE_WAIT_S") or "90")):
                 started = {"ok": True}
