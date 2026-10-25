@@ -8,6 +8,7 @@
 | A **reproducible bug** | Open a [bug report](https://github.com/Usmansayed/scubiee/issues/new?template=bug_report.yml). |
 | A **feature idea** | Open a [feature request](https://github.com/Usmansayed/scubiee/issues/new?template=feature_request.yml). |
 | A **security vulnerability** | **Do not open a public issue.** Report it privately as described in [SECURITY.md](SECURITY.md). |
+| A **private matter** that doesn't fit a public issue (partnerships, press, conduct reports) | Email [team@scubiee.com](mailto:team@scubiee.com). |
 
 Useful starting points:
 

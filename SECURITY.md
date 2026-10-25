@@ -26,7 +26,8 @@ public GitHub issue, discussion, or pull request.
 - **Preferred:** GitHub private vulnerability reporting — open the repository's
   [Security tab](https://github.com/Usmansayed/scubiee/security) and choose
   **Report a vulnerability**.
-- **Alternative:** email [ADD SECURITY CONTACT EMAIL].
+- **Alternative:** email [team@scubiee.com](mailto:team@scubiee.com) with "Security" in the
+  subject line.
 
 Please include, where safe:
 
