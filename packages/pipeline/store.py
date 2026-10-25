@@ -31,6 +31,33 @@ class ChunkRecord:
     enriched: str
 
 
+def embed_hash(chunk: ChunkRecord) -> str:
+    """Hash of the exact embedder input; equals the embed-cache key of the chunk."""
+    return hashlib.sha256(("d:" + chunk.enriched).encode("utf-8")).hexdigest()
+
+
+_FRESH = object()
+
+
+def vector_payload(chunk: ChunkRecord, *, ehash: Any = _FRESH) -> dict[str, Any]:
+    """Vector payload; ``ehash`` names the text the stored vector was embedded from.
+
+    Default: the vector was just embedded from ``chunk.enriched``. Pass the old
+    payload's value when a vector is reused, or ``None`` when that is unknown.
+    """
+    payload: dict[str, Any] = {
+        "file": chunk.file,
+        "start_line": chunk.start_line,
+        "end_line": chunk.end_line,
+        "symbol": chunk.symbol,
+        "chunk_id": chunk.id,
+    }
+    value = embed_hash(chunk) if ehash is _FRESH else ehash
+    if value:
+        payload["ehash"] = str(value)
+    return payload
+
+
 class PipelineStore:
     def __init__(
         self,
@@ -191,16 +218,7 @@ class PipelineStore:
             description=f"code chunks for {self.root}",
             overwrite=True,
         )
-        payloads = [
-            {
-                "file": c.file,
-                "start_line": c.start_line,
-                "end_line": c.end_line,
-                "symbol": c.symbol,
-                "chunk_id": c.id,
-            }
-            for c in chunks
-        ]
+        payloads = [vector_payload(c) for c in chunks]
         col.replace_all(vectors, [c.id for c in chunks], payloads)
         self.vdb.save_collection(col.name)
         return col

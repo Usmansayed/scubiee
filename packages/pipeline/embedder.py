@@ -42,6 +42,273 @@ def text_key(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+# Cache rows that no live chunk references (old chunk text, recent queries).
+# Keys are hashes, so queries cannot be told apart from stale chunks; keeping
+# the newest few hundred covers repeated searches and quick edit/undo cycles.
+CACHE_KEEP_EXTRA = int(os.environ.get("CTX_EMBED_CACHE_KEEP_EXTRA", "1024") or "1024")
+CACHE_LOG_COMPACT_BYTES = int(
+    float(os.environ.get("CTX_EMBED_LOG_COMPACT_MB", "8") or "8") * 1024 * 1024
+)
+_CACHE_THREAD_LOCK = threading.RLock()
+
+
+class _CacheFileLock:
+    """Cross-process lock beside ``embed_cache.jsonl``; ``acquired`` may be false."""
+
+    def __init__(self, cache_path: Path, timeout_s: float) -> None:
+        self.path = Path(cache_path).with_suffix(".lock")
+        self.timeout_s = timeout_s
+        self.fd: int | None = None
+        self.acquired = False
+        self._thread_held = False
+
+    def __enter__(self) -> "_CacheFileLock":
+        deadline = time.monotonic() + max(0.0, self.timeout_s)
+        if not _CACHE_THREAD_LOCK.acquire(timeout=max(0.0, self.timeout_s)):
+            return self
+        self._thread_held = True
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            self.fd = os.open(str(self.path), os.O_CREAT | os.O_RDWR)
+        except OSError:
+            self.fd = None
+            return self
+        while True:
+            try:
+                if sys.platform == "win32":
+                    import msvcrt
+
+                    os.lseek(self.fd, 0, os.SEEK_SET)
+                    msvcrt.locking(self.fd, msvcrt.LK_NBLCK, 1)
+                else:
+                    import fcntl
+
+                    fcntl.flock(self.fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                self.acquired = True
+                return self
+            except OSError:
+                if time.monotonic() >= deadline:
+                    return self
+                time.sleep(0.05)
+
+    def __exit__(self, *exc: object) -> None:
+        try:
+            if self.fd is not None:
+                if self.acquired:
+                    try:
+                        if sys.platform == "win32":
+                            import msvcrt
+
+                            os.lseek(self.fd, 0, os.SEEK_SET)
+                            msvcrt.locking(self.fd, msvcrt.LK_UNLCK, 1)
+                        else:
+                            import fcntl
+
+                            fcntl.flock(self.fd, fcntl.LOCK_UN)
+                    except OSError:
+                        pass
+                os.close(self.fd)
+        finally:
+            self.fd = None
+            self.acquired = False
+            if self._thread_held:
+                self._thread_held = False
+                _CACHE_THREAD_LOCK.release()
+
+
+def _file_sig(path: Path) -> tuple[int, int] | None:
+    try:
+        st = path.stat()
+    except OSError:
+        return None
+    return (int(st.st_mtime_ns), int(st.st_size))
+
+
+def _read_cache_npz(npz: Path) -> tuple[list[str], np.ndarray] | None:
+    try:
+        with np.load(npz, allow_pickle=True) as data:
+            keys = [str(k) for k in data["keys"].tolist()]
+            vecs = np.ascontiguousarray(data["vecs"], dtype=np.float32)
+    except Exception:  # noqa: BLE001
+        return None
+    if vecs.ndim != 2 or vecs.shape[0] != len(keys):
+        return None
+    return keys, vecs
+
+
+def _iter_cache_log(log: Path, known: dict[str, np.ndarray] | None = None):
+    """Yield ``(key, float32 vector)`` rows of the append log, skipping known keys.
+
+    Rows are written as json.dumps({"key": ..., "embedding": [...]}): for a
+    known key only the leading key is decoded, so its ~16 KB embedding is never
+    parsed (full replay of a 150 MB log was seconds of GIL-bound startup work).
+    """
+    try:
+        text = log.read_text(encoding="utf-8")
+    except OSError:
+        return
+    key_prefix = '{"key": '
+    decoder = json.JSONDecoder()
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        if known is not None and line.startswith(key_prefix):
+            try:
+                known_key, _end = decoder.raw_decode(line, len(key_prefix))
+            except json.JSONDecodeError:
+                known_key = None
+            if known_key is not None and str(known_key) in known:
+                continue
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        key = row.get("key")
+        emb = row.get("embedding")
+        if key is None or emb is None:
+            continue
+        try:
+            vec = np.asarray(emb, dtype=np.float32)
+        except (TypeError, ValueError):
+            continue
+        if vec.ndim != 1 or vec.size == 0:
+            continue
+        yield str(key), vec
+
+
+def _write_npz_atomic(npz: Path, keys: list[str], vecs: np.ndarray) -> bool:
+    tmp = npz.with_name(f"{npz.stem}.{os.getpid()}.{threading.get_ident()}.tmp.npz")
+    try:
+        # Uncompressed: float32 embeddings deflate by only a few percent, and
+        # the compressed write cost ~1.5 s per snapshot at 10k rows.
+        np.savez(tmp, keys=np.asarray(keys, dtype=str), vecs=vecs)
+        for attempt in range(5):
+            try:
+                os.replace(tmp, npz)
+                return True
+            except PermissionError:
+                # Windows: another process is mid-read of the snapshot.
+                time.sleep(0.1 * (attempt + 1))
+        return False
+    except Exception:  # noqa: BLE001
+        return False
+    finally:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+
+
+def _select_keep(
+    keys: list[str], live_keys: set[str] | None, keep_extra: int
+) -> list[str]:
+    if live_keys is None:
+        return keys
+    extra = [k for k in keys if k not in live_keys]
+    keep_tail = set(extra[-keep_extra:]) if keep_extra > 0 else set()
+    return [k for k in keys if k in live_keys or k in keep_tail]
+
+
+def write_cache_snapshot(
+    cache_path: Path,
+    cache: dict[str, np.ndarray],
+    *,
+    npz_sig: tuple[int, int] | None = None,
+    live_keys: set[str] | None = None,
+    keep_extra: int = CACHE_KEEP_EXTRA,
+    lock_timeout_s: float = 10.0,
+) -> tuple[int, int] | None:
+    """Merge on-disk rows into *cache*, optionally prune, snapshot, truncate the log.
+
+    Other processes share these files, so rows they wrote (snapshot changed
+    since *npz_sig*, or appended to the log) are merged in before the snapshot
+    replaces theirs. The log is truncated only after the snapshot is safely
+    in place, and appends hold the same lock, so no row is dropped. Returns
+    the new snapshot signature, or ``None`` when nothing was written.
+    """
+    cache_path = Path(cache_path)
+    npz = cache_path.with_suffix(".npz")
+    with _CacheFileLock(cache_path, lock_timeout_s) as lock:
+        if not lock.acquired:
+            return None
+        disk_sig = _file_sig(npz)
+        if disk_sig is not None and disk_sig != npz_sig:
+            loaded = _read_cache_npz(npz)
+            if loaded is not None:
+                disk_keys, disk_vecs = loaded
+                for i, k in enumerate(disk_keys):
+                    if k not in cache:
+                        cache[k] = disk_vecs[i]
+        if cache_path.exists():
+            for k, vec in _iter_cache_log(cache_path, known=cache):
+                cache[k] = vec
+        if not cache:
+            return None
+        items = list(cache.items())
+        seen_keys = [k for k, _v in items]
+        dims = {int(np.asarray(v).shape[-1]) for _k, v in items}
+        if len(dims) != 1:
+            # Mixed dimensions (model switch mid-cache): keep the majority dim.
+            counts: dict[int, int] = {}
+            for _k, v in items:
+                d = int(np.asarray(v).shape[-1])
+                counts[d] = counts.get(d, 0) + 1
+            best = max(counts, key=lambda d: counts[d])
+            items = [(k, v) for k, v in items if int(np.asarray(v).shape[-1]) == best]
+        keys = _select_keep([k for k, _v in items], live_keys, keep_extra)
+        keep = set(keys)
+        by_key = dict(items)
+        vecs = np.ascontiguousarray(
+            np.stack([np.asarray(by_key[k], dtype=np.float32) for k in keys], axis=0)
+            if keys
+            else np.zeros((0, len(next(iter(by_key.values())))), dtype=np.float32)
+        )
+        if not _write_npz_atomic(npz, keys, vecs):
+            return None
+        try:
+            with cache_path.open("w", encoding="utf-8"):
+                pass
+        except OSError:
+            pass
+        # Only rows this snapshot saw: a row another thread added meanwhile is
+        # not in the snapshot yet and must stay in RAM (its log append follows).
+        for k in seen_keys:
+            if k not in keep:
+                cache.pop(k, None)
+        # Re-point rows at the one contiguous block so merged/old arrays free.
+        for i, k in enumerate(keys):
+            cache[k] = vecs[i]
+        return _file_sig(npz)
+
+
+def cache_needs_compaction(
+    cache_path: Path,
+    live_keys: set[str] | None = None,
+    *,
+    keep_extra: int = CACHE_KEEP_EXTRA,
+    log_bytes: int = CACHE_LOG_COMPACT_BYTES,
+) -> bool:
+    """Cheap check: big append log, or many snapshot rows no live chunk uses."""
+    cache_path = Path(cache_path)
+    try:
+        if cache_path.exists() and cache_path.stat().st_size > max(0, log_bytes):
+            return True
+    except OSError:
+        pass
+    if live_keys is None:
+        return False
+    npz = cache_path.with_suffix(".npz")
+    if not npz.exists():
+        return False
+    try:
+        with np.load(npz, allow_pickle=True) as data:
+            keys = data["keys"].tolist()
+    except Exception:  # noqa: BLE001
+        return False
+    dead = sum(1 for k in keys if str(k) not in live_keys)
+    return dead > max(64, int(keep_extra * 1.5))
+
+
 _ORT_ARENA_PATCHED = False
 
 
@@ -283,14 +550,15 @@ class Embedder:
         self.max_seq_length = max_seq_length
         self.dim = dim
         self.cache_path = cache_path
-        self.cache: dict[str, list[float]] = {}
+        self.cache: dict[str, np.ndarray] = {}
+        self._npz_sig: tuple[int, int] | None = None
         self._st_model = None
         self._fe_model = None
         self._mlx_model = None
         self._mlx_tokenizer = None
         self._mlx_timings: dict[str, float] = {}
         self._cpu_backup_model = None
-        self._cache_dirty: list[tuple[str, list[float]]] = []
+        self._cache_dirty: list[tuple[str, np.ndarray]] = []
         self.cache_flush_every = max(32, int(cache_flush_every))
         self._last_stats: dict = {}
 
@@ -396,12 +664,15 @@ class Embedder:
         assert self.cache_path is not None
         npz = self.cache_path.with_suffix(".npz")
         if npz.exists():
-            try:
-                data = np.load(npz, allow_pickle=True)
-                keys = data["keys"].tolist()
-                vecs = data["vecs"]
+            sig = _file_sig(npz)
+            loaded = _read_cache_npz(npz)
+            if loaded is not None:
+                keys, vecs = loaded
+                # Row views of one float32 block: ~3 KB per 768-d row instead of
+                # ~25 KB as a list of Python floats.
                 for i, k in enumerate(keys):
-                    self.cache[str(k)] = vecs[i].astype(np.float32).tolist()
+                    self.cache[k] = vecs[i]
+                self._npz_sig = sig
                 # The .npz is a snapshot; the .jsonl is the append log. Small
                 # batches no longer rewrite the snapshot, so rows appended after
                 # it would be lost on restart unless the log tail is replayed.
@@ -411,43 +682,18 @@ class Embedder:
                 ):
                     self._replay_cache_log(skip_known=True)
                 return
-            except Exception:  # noqa: BLE001
-                pass
         self._replay_cache_log(skip_known=False)
 
     def _replay_cache_log(self, *, skip_known: bool) -> None:
         assert self.cache_path is not None
         if not self.cache_path.exists():
             return
-        # Rows are written as json.dumps({"key": ..., "embedding": [...]}): when
-        # the .npz already holds most keys, decode only the leading key so the
-        # ~16 KB embedding of a known row is never parsed (full replay of a
-        # 150 MB log was seconds of GIL-bound startup work).
-        key_prefix = '{"key": '
-        decoder = json.JSONDecoder()
-        for line in self.cache_path.read_text(encoding="utf-8").splitlines():
-            if not line.strip():
+        for key, vec in _iter_cache_log(self.cache_path, self.cache if skip_known else None):
+            if skip_known and key in self.cache:
                 continue
-            if skip_known and line.startswith(key_prefix):
-                try:
-                    known_key, _end = decoder.raw_decode(line, len(key_prefix))
-                except json.JSONDecodeError:
-                    known_key = None
-                if known_key is not None and str(known_key) in self.cache:
-                    continue
-            try:
-                row = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            key = row.get("key")
-            emb = row.get("embedding")
-            if key is None or emb is None:
-                continue
-            if skip_known and str(key) in self.cache:
-                continue
-            self.cache[str(key)] = emb
+            self.cache[key] = vec
 
-    def _queue_cache(self, key: str, emb: list[float]) -> None:
+    def _queue_cache(self, key: str, emb) -> None:
         if not self.cache_path:
             return
         self._cache_dirty.append((key, emb))
@@ -458,19 +704,43 @@ class Embedder:
         if not self.cache_path or not self._cache_dirty:
             return
         self.cache_path.parent.mkdir(parents=True, exist_ok=True)
-        with self.cache_path.open("a", encoding="utf-8") as f:
-            for key, emb in self._cache_dirty:
-                f.write(json.dumps({"key": key, "embedding": emb}) + "\n")
-        self._cache_dirty.clear()
+        rows, self._cache_dirty = self._cache_dirty, []
+        text = "".join(
+            json.dumps({"key": key, "embedding": np.asarray(emb, dtype=np.float32).tolist()})
+            + "\n"
+            for key, emb in rows
+        )
+        # Same lock as the snapshot's log truncation; on timeout append anyway
+        # (worst case a later restart misses the row and re-embeds it).
+        with _CacheFileLock(self.cache_path, 5.0):
+            with self.cache_path.open("a", encoding="utf-8") as f:
+                f.write(text)
 
-    def save_cache_npz(self) -> Path | None:
+    def save_cache_npz(
+        self,
+        *,
+        live_keys: set[str] | None = None,
+        keep_extra: int = CACHE_KEEP_EXTRA,
+    ) -> Path | None:
+        """Snapshot the cache to ``.npz`` and empty the append log.
+
+        With *live_keys*, rows outside it are dropped except the newest
+        *keep_extra* (recent queries and just-replaced chunk text).
+        """
         if not self.cache_path or not self.cache:
             return None
-        npz = self.cache_path.with_suffix(".npz")
-        keys = list(self.cache.keys())
-        vecs = np.asarray([self.cache[k] for k in keys], dtype=np.float32)
-        np.savez_compressed(npz, keys=np.asarray(keys, dtype=object), vecs=vecs)
-        return npz
+        self.flush_cache()
+        sig = write_cache_snapshot(
+            self.cache_path,
+            self.cache,
+            npz_sig=getattr(self, "_npz_sig", None),
+            live_keys=live_keys,
+            keep_extra=keep_extra,
+        )
+        if sig is None:
+            return None
+        self._npz_sig = sig
+        return self.cache_path.with_suffix(".npz")
 
     def _ensure_fastembed(self):
         if self._fe_model is not None:
@@ -765,22 +1035,22 @@ class Embedder:
         payload = self.format_query(text) if is_query else text
         key = text_key(("q:" if is_query else "d:") + payload)
         if key in self.cache:
-            vec = np.asarray(self.cache[key], dtype=np.float32)
+            # Callers may normalize in place; never hand out the cached row.
+            vec = np.array(self.cache[key], dtype=np.float32, copy=True)
             if self.dim is None:
                 self.dim = int(vec.shape[0])
             return vec
         if self.backend in {"coderank", "fastembed", "mlx"}:
             arr = self._encode_batch([payload])
-            emb = arr[0].astype(np.float32).tolist()
+            vec = np.array(arr[0], dtype=np.float32, copy=True)
         else:
-            emb = self._ollama_embed(payload)
-        self.cache[key] = emb
-        self._queue_cache(key, emb)
+            vec = np.asarray(self._ollama_embed(payload), dtype=np.float32)
+        self.cache[key] = vec
+        self._queue_cache(key, vec)
         self.flush_cache()
-        vec = np.asarray(emb, dtype=np.float32)
         if self.dim is None:
             self.dim = int(vec.shape[0])
-        return vec
+        return vec.copy()
 
     def embed_many(
         self,
@@ -899,13 +1169,12 @@ class Embedder:
             idxs = pending_idx[start : start + bs]
             arr = self._encode_batch(batch)
             for j, idx in enumerate(idxs):
-                vec = arr[j].astype(np.float32)
+                vec = np.array(arr[j], dtype=np.float32, copy=True)
                 encoded[idx] = vec
                 if not skip_cache:
                     key = text_key(("q:" if is_query else "d:") + batch[j])
-                    emb = vec.tolist()
-                    self.cache[key] = emb
-                    self._queue_cache(key, emb)
+                    self.cache[key] = vec
+                    self._queue_cache(key, vec)
             done_new += len(batch)
             batch_ms = (time.perf_counter() - t_batch) * 1000
             rate = len(batch) / max(batch_ms / 1000.0, 1e-6)

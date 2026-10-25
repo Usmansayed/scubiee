@@ -248,12 +248,71 @@ class FaissCollection:
             self.ids = []
             self.payloads = {}
             self.index = self._new_index()
+            # A fresh in-RAM index replaces any mmap view; leaving the flag set
+            # makes add() re-read the old faiss.index and append on top of it.
+            self._index_viewed = False
             self.meta.dead_ids = []
             if len(ids) == 0:
                 self.meta.ntotal = 0
                 self.meta.updated_at = time.time()
                 return 0
             return self.add(vectors, ids, payloads)
+
+    def update_vectors(
+        self,
+        vectors: np.ndarray,
+        ids: list[int],
+        payloads: list[dict[str, Any]] | None = None,
+    ) -> int:
+        """Overwrite the vectors of existing live ids in place.
+
+        ``add`` on an existing id deletes and compacts the whole collection
+        (seconds at 10k rows); a repair of a few hundred drifted rows only
+        needs their TurboQuant rows re-quantized and those FAISS rows swapped.
+        Unknown or tombstoned ids are skipped.
+        """
+        with self._lock:
+            vectors = np.asarray(vectors, dtype=np.float32)
+            if vectors.ndim == 1:
+                vectors = vectors.reshape(1, -1)
+            id_list = [int(i) for i in ids]
+            if vectors.shape[0] != len(id_list):
+                raise ValueError(
+                    f"vectors/ids length mismatch: vectors={vectors.shape[0]} ids={len(id_list)}"
+                )
+            if vectors.shape[1] != self.meta.dim:
+                raise ValueError(f"dim mismatch: got {vectors.shape[1]} expected {self.meta.dim}")
+            if payloads is not None and len(payloads) != len(id_list):
+                raise ValueError("payloads/ids length mismatch")
+            dead = set(self.meta.dead_ids)
+            row_of = {vid: row for row, vid in enumerate(self.ids) if vid not in dead}
+            picks: dict[int, int] = {}
+            for pos, vid in enumerate(id_list):
+                if vid in row_of:
+                    picks[vid] = pos
+            if not picks:
+                return 0
+            upd_ids = list(picks)
+            positions = [picks[vid] for vid in upd_ids]
+            rows = [row_of[vid] for vid in upd_ids]
+            self.compressed.replace_rows(rows, vectors[positions])
+            if payloads is not None:
+                for vid, pos in zip(upd_ids, positions, strict=True):
+                    self.payloads[vid] = dict(payloads[pos])
+            self._own_index_storage()
+            mat = np.array(self.compressed.take_float32(rows), dtype=np.float32, copy=True)
+            faiss.normalize_L2(mat)
+            id_arr = np.asarray(upd_ids, dtype=np.int64)
+            try:
+                removed = int(self.index.remove_ids(id_arr))
+                if removed != len(upd_ids):
+                    raise RuntimeError("remove_ids count mismatch")
+                self.index.add_with_ids(mat, id_arr)
+            except (RecursionError, RuntimeError, AttributeError):
+                self._rebuild_faiss_from_compressed()
+            self.meta.ntotal = max(0, len(self.ids) - len(self.meta.dead_ids))
+            self.meta.updated_at = time.time()
+            return len(upd_ids)
 
     def delete(self, ids: list[int]) -> int:
         """Logically delete vectors without assuming FAISS releases OS memory."""
@@ -304,6 +363,7 @@ class FaissCollection:
             self.ids = []
             self.payloads = {}
             self.index = self._new_index()
+            self._index_viewed = False
             self.meta.dead_ids = []
             if new_ids:
                 self.add(mat, new_ids, new_payloads)
@@ -391,13 +451,24 @@ class FaissCollection:
         index_path = path / "faiss.index"
         if index_path.exists() and col.ids:
             col.index, col._index_viewed = _open_faiss_index(index_path)
-            # Integrity: the serialized index contains live rows only.
-            if int(col.index.ntotal) != col.live_count:
+            # Integrity: the serialized index contains each live id exactly once.
+            if not col._index_ids_match_live():
                 col._rebuild_faiss_from_compressed()
         else:
             col._rebuild_faiss_from_compressed()
         col.meta.ntotal = col.live_count
         return col
+
+    def _index_ids_match_live(self) -> bool:
+        if int(self.index.ntotal) != self.live_count:
+            return False
+        try:
+            index_ids = faiss.vector_to_array(self.index.id_map)
+        except Exception:  # noqa: BLE001
+            return True
+        dead = set(self.meta.dead_ids)
+        live = np.asarray([i for i in self.ids if i not in dead], dtype=np.int64)
+        return bool(np.array_equal(np.sort(index_ids), np.sort(live)))
 
     def stats(self) -> dict[str, Any]:
         s = self.compressed.memory_stats()

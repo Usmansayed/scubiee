@@ -11,6 +11,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT / "packages") not in sys.path:
     sys.path.insert(0, str(ROOT / "packages"))
@@ -26,7 +28,7 @@ from pipeline.embedder import Embedder
 from pipeline.freshness import check_freshness
 from pipeline.merkle import canonical_relpath, file_sha256
 from pipeline.paths import collect_index_paths, collect_index_relpaths
-from pipeline.store import ChunkRecord, PipelineStore
+from pipeline.store import ChunkRecord, PipelineStore, embed_hash, vector_payload
 from pipeline.store_lock import store_write_lock
 from pipeline.vectordb import VectorDatabase
 
@@ -397,6 +399,14 @@ def _oversized_file(path: Path) -> str | None:
 # Chunks re-embedded per sync when chunks.jsonl and the vector store disagree.
 # Bounded so one keeper tick cannot turn into a full reindex.
 VECTOR_BACKFILL_CAP = int(os.environ.get("CTX_VECTOR_BACKFILL_CAP", "2000"))
+# Drifted vectors (embedded from older chunk text) re-embedded per reconcile.
+# Mostly embed-cache hits; the hot lane only fixes what a save just touched.
+VECTOR_DRIFT_CAP = int(os.environ.get("CTX_VECTOR_DRIFT_CAP", "128"))
+VECTOR_DRIFT_HOT_CAP = int(os.environ.get("CTX_VECTOR_DRIFT_HOT_CAP", "16"))
+# A legacy payload (no ehash) is trusted when its stored TurboQuant vector and
+# the cached embedding of the current text agree this closely (8-bit TQ round
+# trip measured >= 0.9965 cosine).
+DRIFT_VERIFY_COSINE = 0.99
 
 
 @dataclass
@@ -610,16 +620,7 @@ def _upsert_named_vectors(
             compact()
     if embed_records and matrix is not None:
         _avoid_tombstoned_ids(col, embed_records, stages)
-        payloads = [
-            {
-                "file": c.file,
-                "start_line": c.start_line,
-                "end_line": c.end_line,
-                "symbol": c.symbol,
-                "chunk_id": c.id,
-            }
-            for c in embed_records
-        ]
+        payloads = [vector_payload(c) for c in embed_records]
         col.add(matrix, [c.id for c in embed_records], payloads)
     t_save = time.perf_counter()
     if stages is not None:
@@ -776,6 +777,8 @@ def reconcile_vector_store(
     *,
     meta: dict | None = None,
     cap: int = VECTOR_BACKFILL_CAP,
+    drift_cap: int | None = None,
+    hot: bool = False,
 ) -> dict[str, int]:
     """Make the vector collection agree with ``chunks.jsonl``, both directions.
 
@@ -791,9 +794,25 @@ def reconcile_vector_store(
       rankable-looking, and it is what made the two stores disagree on length in
       the first place.
 
-    Returns ``{"missing": n, "embedded": k, "stale": m, "dropped": m}``.
+    * A vector embedded from older text of a chunk. Chunk diffs reuse a vector
+      while the first 512 chars and the chunk key are unchanged, so edits further
+      down (or a duplicate symbol name) leave it describing old text. The
+      payload ``ehash`` records the text a vector came from; a mismatch with the
+      chunk's current ``enriched`` is re-embedded here ("fast now, exact soon").
+
+    Returns ``{"missing", "embedded", "stale", "dropped", "drifted", "repaired",
+    "verified"}``. ``embedded``/``dropped`` change the id set; ``repaired``
+    only rewrites vectors of ids the engine already holds.
     """
-    empty = {"missing": 0, "embedded": 0, "stale": 0, "dropped": 0}
+    empty = {
+        "missing": 0,
+        "embedded": 0,
+        "stale": 0,
+        "dropped": 0,
+        "drifted": 0,
+        "repaired": 0,
+        "verified": 0,
+    }
     col = store.get_collection()
     meta_obj = getattr(col, "meta", None)
     if col is None or getattr(col, "ids", None) is None or meta_obj is None:
@@ -806,7 +825,16 @@ def reconcile_vector_store(
     corpus = {int(c.id) for c in chunks}
     orphans = [c for c in chunks if int(c.id) not in live]
     stale = sorted(live - corpus)
-    if not orphans and not stale:
+    hashes = {int(c.id): embed_hash(c) for c in chunks}
+    drifted, verified = _find_drifted(
+        store, col, chunks, live, hashes, include_legacy=not hot
+    )
+    if not hot:
+        try:
+            _maintain_embed_cache(store, set(hashes.values()))
+        except Exception as exc:  # noqa: BLE001
+            print(f"[sync] embed cache maintenance skipped: {exc}", file=sys.stderr, flush=True)
+    if not orphans and not stale and not drifted and not verified:
         return dict(empty)
 
     dropped = 0
@@ -819,8 +847,9 @@ def reconcile_vector_store(
                 compact()
 
     batch: list[ChunkRecord] = []
-    if orphans:
-        batch = orphans[: max(1, int(cap))]
+    repair: list[ChunkRecord] = []
+    embedder = None
+    if orphans or drifted:
         meta = meta if meta is not None else store.load_meta()
         model = str(meta.get("embed_model") or "nomic-ai/CodeRankEmbed")
         try:
@@ -835,23 +864,29 @@ def reconcile_vector_store(
                 max_seq_length=256 if meta.get("fast") else 512,
                 dim=meta.get("dim"),
             )
+    if orphans:
+        batch = orphans[: max(1, int(cap))]
         matrix = embedder.embed_many([c.enriched for c in batch])
-        payloads = [
-            {
-                "file": c.file,
-                "start_line": c.start_line,
-                "end_line": c.end_line,
-                "symbol": c.symbol,
-                "chunk_id": c.id,
-            }
-            for c in batch
-        ]
+        payloads = [vector_payload(c) for c in batch]
         col.add(matrix, [int(c.id) for c in batch], payloads)
+
+    repaired = 0
+    if drifted:
+        limit = VECTOR_DRIFT_HOT_CAP if hot else (drift_cap if drift_cap is not None else VECTOR_DRIFT_CAP)
+        repair = drifted[: max(1, int(limit))]
+        matrix = embedder.embed_many([c.enriched for c in repair])
+        repaired = int(
+            col.update_vectors(
+                matrix, [int(c.id) for c in repair], [vector_payload(c) for c in repair]
+            )
+            or 0
+        )
 
     store.vdb.save_collection(col.name)
     print(
         f"[sync] vector reconcile embedded={len(batch)} missing={len(orphans)} "
-        f"dropped={dropped} stale={len(stale)}",
+        f"dropped={dropped} stale={len(stale)} drifted={len(drifted)} "
+        f"repaired={repaired} verified={verified}",
         file=sys.stderr,
         flush=True,
     )
@@ -860,7 +895,130 @@ def reconcile_vector_store(
         "embedded": len(batch),
         "stale": len(stale),
         "dropped": dropped,
+        "drifted": len(drifted),
+        "repaired": repaired,
+        "verified": verified,
     }
+
+
+def _find_drifted(
+    store: PipelineStore,
+    col,
+    chunks: list[ChunkRecord],
+    live: set[int],
+    hashes: dict[int, str],
+    *,
+    include_legacy: bool = True,
+) -> tuple[list[ChunkRecord], int]:
+    """Live chunks whose stored vector was embedded from other text.
+
+    Payloads written by this build carry ``ehash``; a mismatch is drift. Older
+    payloads have none: one pass compares the stored vector with the embed
+    cache's vector for the current text, stamps ``ehash`` on matches (no
+    re-embed) and treats the rest as drifted. Returns ``(drifted, verified)``.
+    """
+    payloads = getattr(col, "payloads", None)
+    if not isinstance(payloads, dict) or not callable(getattr(col, "update_vectors", None)):
+        return [], 0
+    known: list[ChunkRecord] = []
+    legacy: list[ChunkRecord] = []
+    for c in chunks:
+        cid = int(c.id)
+        if cid not in live:
+            continue
+        stored = (payloads.get(cid) or {}).get("ehash")
+        if stored is None:
+            legacy.append(c)
+        elif stored != hashes[cid]:
+            known.append(c)
+    if not legacy or not include_legacy:
+        return known, 0
+
+    cache = _embed_cache_view(store, {hashes[int(c.id)] for c in legacy})
+    compressed = getattr(col, "compressed", None)
+    take = getattr(compressed, "take_float32", None)
+    row_of = {int(vid): row for row, vid in enumerate(col.ids)}
+    candidates = [c for c in legacy if hashes[int(c.id)] in cache and int(c.id) in row_of]
+    matched: set[int] = set()
+    if candidates and callable(take):
+        stored_mat = np.asarray(
+            take([row_of[int(c.id)] for c in candidates]), dtype=np.float32
+        )
+        fresh_mat = np.stack(
+            [np.asarray(cache[hashes[int(c.id)]], dtype=np.float32) for c in candidates]
+        )
+        if stored_mat.shape == fresh_mat.shape:
+            sn = np.linalg.norm(stored_mat, axis=1)
+            fn = np.linalg.norm(fresh_mat, axis=1)
+            cos = (stored_mat * fresh_mat).sum(axis=1) / np.maximum(sn * fn, 1e-12)
+            for c, score in zip(candidates, cos, strict=True):
+                if float(score) >= DRIFT_VERIFY_COSINE:
+                    matched.add(int(c.id))
+    for c in legacy:
+        cid = int(c.id)
+        if cid in matched:
+            payload = dict(payloads.get(cid) or {})
+            payload["ehash"] = hashes[cid]
+            payloads[cid] = payload
+    drifted = known + [c for c in legacy if int(c.id) not in matched]
+    return drifted, len(matched)
+
+
+def _embed_cache_view(store: PipelineStore, wanted: set[str]) -> dict[str, np.ndarray]:
+    """Cached vectors for *wanted* keys: the live embedder's dict, else the files."""
+    try:
+        from pipeline.engine import _EMBEDDERS, _LOCK
+
+        with _LOCK:
+            embedders = list(_EMBEDDERS.values())
+        for emb in embedders:
+            if getattr(emb, "cache_path", None) == store.embed_cache:
+                cache = getattr(emb, "cache", None)
+                if isinstance(cache, dict) and cache:
+                    return {k: cache[k] for k in wanted if k in cache}
+    except Exception:  # noqa: BLE001
+        pass
+    from pipeline.embedder import _iter_cache_log, _read_cache_npz
+
+    out: dict[str, np.ndarray] = {}
+    loaded = _read_cache_npz(store.embed_cache.with_suffix(".npz"))
+    if loaded is not None:
+        keys, vecs = loaded
+        for i, k in enumerate(keys):
+            if k in wanted:
+                out[k] = vecs[i]
+    if store.embed_cache.exists():
+        for k, vec in _iter_cache_log(store.embed_cache, known=out):
+            if k in wanted:
+                out[k] = vec
+    return out
+
+
+def _maintain_embed_cache(store: PipelineStore, live_keys: set[str]) -> bool:
+    """Snapshot + prune the embed cache when its log or dead rows grew large."""
+    from pipeline.embedder import cache_needs_compaction, write_cache_snapshot
+
+    path = store.embed_cache
+    if not cache_needs_compaction(path, live_keys):
+        return False
+    try:
+        from pipeline.engine import _EMBEDDERS, _LOCK
+
+        with _LOCK:
+            embedders = [e for e in _EMBEDDERS.values() if getattr(e, "cache_path", None) == path]
+    except Exception:  # noqa: BLE001
+        embedders = []
+    t0 = time.perf_counter()
+    if embedders:
+        ok = embedders[0].save_cache_npz(live_keys=live_keys) is not None
+    else:
+        ok = write_cache_snapshot(path, {}, live_keys=live_keys) is not None
+    print(
+        f"[sync] embed cache compacted ok={ok} ms={(time.perf_counter() - t0) * 1000:.0f}",
+        file=sys.stderr,
+        flush=True,
+    )
+    return ok
 
 
 def _patch_capability_cards(root: Path, store: PipelineStore, touch: list[str]) -> None:
@@ -1442,7 +1600,7 @@ def incremental_sync(
                     warnings.append(f"no_delta_merkle: {merkle_exc}")
             t_nd_reconcile = time.perf_counter()
             try:
-                fixed = reconcile_vector_store(store, meta=meta)
+                fixed = reconcile_vector_store(store, meta=meta, hot=hot_lane)
                 backfilled = int(fixed.get("embedded") or 0) + int(
                     fixed.get("dropped") or 0
                 )
@@ -1617,17 +1775,13 @@ def incremental_sync(
                     old_id = old_by_file_chunk.get(key)
                     if old_id is not None and int(old_id) in id_to_row:
                         rows.append(old_mat[id_to_row[int(old_id)]])
+                        # The reused vector still describes the text it was
+                        # embedded from; reconcile re-embeds when that drifted.
+                        old_ehash = (col.payloads.get(int(old_id)) or {}).get("ehash")
+                        payloads.append(vector_payload(c, ehash=old_ehash))
                     else:
                         rows.append(None)  # type: ignore
-                    payloads.append(
-                        {
-                            "file": c.file,
-                            "start_line": c.start_line,
-                            "end_line": c.end_line,
-                            "symbol": c.symbol,
-                            "chunk_id": c.id,
-                        }
-                    )
+                        payloads.append(vector_payload(c))
                 # Fill changed/new chunks from the smaller embedding batch.
                 new_map = {
                     (r.file.replace("\\", "/"), chunk_key(r), chunk_digest(r)): j

@@ -263,6 +263,23 @@ class CompressedEmbeddingStore:
             self._norms = np.concatenate([self._norms, new_norms], axis=0)
             self._codes = np.vstack([self._codes, new_codes])
 
+    def replace_rows(self, rows: np.ndarray | list[int], vectors: np.ndarray) -> None:
+        """Re-quantize *vectors* into existing row positions (ids keep their rows)."""
+        idx = np.asarray(rows, dtype=np.int64).reshape(-1)
+        if idx.size == 0:
+            return
+        if idx.min() < 0 or idx.max() >= self.ntotal:
+            raise IndexError("replace_rows: row out of range")
+        blob = self.codec.quantize(np.asarray(vectors, dtype=np.float32).reshape(idx.size, -1))
+        new_norms = np.asarray(blob["norms"], dtype=np.float32).reshape(-1)
+        new_codes = np.asarray(blob["codes"], dtype=np.uint8).reshape(idx.size, -1)
+        norms = self._norms.copy()
+        codes = self._codes.copy()
+        norms[idx] = new_norms
+        codes[idx] = new_codes
+        self._norms = norms
+        self._codes = codes
+
     def remove_last(self, count: int) -> None:
         if count <= 0:
             return
@@ -295,6 +312,21 @@ class CompressedEmbeddingStore:
             "norms": np.asarray(self._norms[start:stop], dtype=np.float32),
             "codes": np.asarray(self._codes[start:stop], dtype=np.uint8),
             "n": stop - start,
+        }
+        return self.codec.dequantize(blob)
+
+    def take_float32(self, rows: np.ndarray | list[int]) -> np.ndarray:
+        """Dequantize an arbitrary set of rows (same values as ``to_float32()[rows]``)."""
+        idx = np.asarray(rows, dtype=np.int64).reshape(-1)
+        if idx.size == 0:
+            return np.zeros((0, self.dim), dtype=np.float32)
+        blob = {
+            "dim": self.dim,
+            "bits": self.bits,
+            "seed": self.seed,
+            "norms": np.asarray(self._norms[idx], dtype=np.float32),
+            "codes": np.asarray(self._codes[idx], dtype=np.uint8),
+            "n": int(idx.size),
         }
         return self.codec.dequantize(blob)
 
