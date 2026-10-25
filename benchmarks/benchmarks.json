@@ -1,0 +1,55 @@
+{
+  "headline": {
+    "claim": "Scubiee saves coding agents 30%+ of their tokens on average",
+    "per_task_median_saved_pct": 32,
+    "per_task_mean_saved_pct": 39,
+    "tasks_counted": 11
+  },
+  "claude_code": {
+    "agent": "Claude Code (Claude Sonnet) via Claude Agent SDK",
+    "unit": "tokens per task run (input + output + cache reads + cache writes)",
+    "groups": [
+      {"name": "All multi-file dev tasks", "tasks": 9, "runs_with": 31, "runs_without": 36, "without": 730980, "with": 287629, "saved_pct": 61, "x_cheaper": 2.54},
+      {"name": "Hard cross-module changes", "tasks": 5, "runs_with": 17, "runs_without": 17, "without": 939252, "with": 316681, "saved_pct": 66, "x_cheaper": 2.97},
+      {"name": "Simpler single-file changes", "tasks": 4, "runs_with": 14, "runs_without": 19, "without": 544631, "with": 252351, "saved_pct": 54, "x_cheaper": 2.16}
+    ],
+    "tasks": [
+      {"name": "New sync-strategy tier", "category": "hard", "without": 2596365, "with": 435092, "saved_pct": 83},
+      {"name": "Add importers alias to expand", "category": "hard", "without": 426064, "with": 163621, "saved_pct": 62},
+      {"name": "Unify CPU-thread budget", "category": "hard", "without": 775718, "with": 404388, "saved_pct": 48},
+      {"name": "Net chunk delta in sync result", "category": "hard", "without": 355826, "with": 243153, "saved_pct": 32},
+      {"name": "Consistent safety-pause check", "category": "hard", "without": 119612, "with": 95810, "saved_pct": 20},
+      {"name": "Surface dirty count in timings", "category": "hard", "without": 305615, "with": 269546, "saved_pct": 12},
+      {"name": "Root-hash fingerprint", "category": "two-file", "without": 275726, "with": 222343, "saved_pct": 19},
+      {"name": "Total-changed field", "category": "two-file", "without": 211608, "with": 226242, "saved_pct": -7}
+    ],
+    "behavior_hard_tasks": {
+      "tool_calls": {"without": 18.4, "with": 9.5},
+      "grep_searches": {"without": 7.2, "with": 1.3},
+      "file_reads": {"without": 6.6, "with": 2.6},
+      "worst_single_run_tokens": {"without": 2145920, "with": 578000}
+    }
+  },
+  "kiro": {
+    "agent": "Kiro CLI v2.23.1 (headless, model auto)",
+    "unit": "Kiro credits per task run",
+    "tasks": [
+      {"name": "Sync severity roll-up", "type": "integration", "runs_per_arm": 3, "without": 4.31, "with": 1.08, "saved_pct": 75, "x_cheaper": 4.0},
+      {"name": "New health CLI command", "type": "long two-turn feature build", "runs_per_arm": 4, "without": 11.24, "with": 4.01, "saved_pct": 64, "x_cheaper": 2.8, "wall_time_s": {"without": 310, "with": 205}},
+      {"name": "Unify token estimate", "type": "cross-module edit", "runs_per_arm": 4, "without": 3.70, "with": 2.85, "saved_pct": 23, "median_saved_pct": 40}
+    ],
+    "average": {"without": 6.42, "with": 2.65, "saved_pct_per_task": 54}
+  },
+  "methodology": [
+    "Same prompt, model, permissions and byte-identical starting code in both arms; only Scubiee differs",
+    "Every run graded by hidden deterministic tests the agent never sees",
+    "Claude Code: shell disabled in both arms; $4 cap per run (understates the no-Scubiee cost)",
+    "Real changes to a 130+ module Python codebase"
+  ],
+  "limits": [
+    "Internal benchmark on one codebase, not third-party",
+    "2-5 runs per task per arm; individual percentages are not tight estimates",
+    "Small or zero saving on trivial exact-name edits",
+    "Kiro credits and Claude Code tokens are different units"
+  ]
+}

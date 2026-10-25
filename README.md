@@ -104,6 +104,21 @@ faster and more precise than a semantic search for a known string. The CLI mirro
 
 ---
 
+## Benchmarks
+
+Measured A/B runs, same agent and task with and without Scubiee: **30%+ fewer tokens on
+average** (median 32%, mean 39% per task).
+
+| Agent | Tasks | Without Scubiee | With Scubiee | Saved |
+|---|---|---:|---:|---:|
+| Claude Code | All multi-file dev tasks | 730,980 tokens | **287,629 tokens** | **61%** |
+| Claude Code | Hard cross-module changes | 939,252 tokens | **316,681 tokens** | **66%** |
+| Kiro CLI | Three dev tasks | 6.42 credits | **2.65 credits** | **54%** |
+
+→ Per-task results and methodology: [benchmarks/](benchmarks/README.md)
+
+---
+
 ## How it works
 
 ```text
