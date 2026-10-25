@@ -1,0 +1,24 @@
+# Lightweight PR check: the package builds, its metadata is valid, and every module compiles.
+
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -U build twine
+      - run: python -m compileall -q packages
+      - run: python -m build
+      - run: twine check dist/*

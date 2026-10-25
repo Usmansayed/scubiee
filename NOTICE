@@ -1,0 +1,20 @@
+Scubiee
+Copyright 2026 Usman Sayed
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+-------------------------------------------------------------------------------
+
+This product includes a modified copy of Graphify (packages/graphify/),
+https://github.com/Graphify-Labs/graphify, which carries the following notice:
+
+  Graphify
+  Copyright 2026 Safi Shamsi and the Graphify contributors.
+
+  This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+  Portions of this software were contributed under the MIT License prior to the
+  relicensing and remain available under those terms. The original MIT license
+  text is retained in LICENSE-MIT.
+
+The Graphify MIT license text is included at packages/graphify/LICENSE-MIT.

@@ -19,10 +19,12 @@
 </p>
 
 <p align="center">
+  <a href="https://scubiee.com">Website</a> ·
   <a href="#quick-start">Quick start</a> ·
   <a href="#what-your-agent-gets">What your agent gets</a> ·
   <a href="#how-it-works">How it works</a> ·
-  <a href="#documentation">Docs</a>
+  <a href="#documentation">Docs</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a>
 </p>
 
 ---
@@ -43,6 +45,24 @@ repo — ranked discovery and deep symbol focus — without uploading a single l
 <p align="center">
   <em>Ranked <code>map find</code> hits and focused symbol spans — all against a local index.</em>
 </p>
+
+---
+
+## Features
+
+- **Semantic and structural code search** through one MCP tool, `map` (`find` / `focus`), plus a
+  terminal command (`scubiee search`).
+- **Fused retrieval** over a code graph (calls / imports / definitions), BM25 lexical match, and
+  dense embeddings stored in FAISS.
+- **Tree-sitter parsing** for Python, JavaScript, TypeScript, Go, Rust, Java, C, C++, C#, Ruby,
+  and JSON.
+- **Live sync** — a background daemon diffs the repo (Merkle tree) and re-indexes only what
+  changed.
+- **One-command MCP setup** for Cursor, Claude Code, Codex, Copilot, Kiro, Windsurf, Cline,
+  Roo Code, Continue, Zed, OpenCode, Amp, Devin Desktop, and Pi (`scubiee connect --<tool>` or
+  `--all`).
+- **Hardware acceleration** picked automatically at setup: CUDA, DirectML, Apple MLX, or CPU.
+- Runs on **Windows, macOS, and Linux** with Python 3.11+.
 
 ---
 
@@ -115,6 +135,9 @@ average** (median 32%, mean 39% per task).
 | Claude Code | Hard cross-module changes | 939,252 tokens | **316,681 tokens** | **66%** |
 | Kiro CLI | Three dev tasks | 6.42 credits | **2.65 credits** | **54%** |
 
+These are internal benchmarks on one codebase, not a guarantee: savings vary by task — small or
+none on simple exact-name edits, largest on changes that span several modules.
+
 → Per-task results and methodology: [benchmarks/](benchmarks/README.md)
 
 ---
@@ -166,6 +189,27 @@ Every command and flag: [commands reference](docs/web-info/commands-reference.md
 
 ---
 
+## Configuration
+
+Scubiee works without any configuration file or API key. The optional knobs are:
+
+- **`.scubieeignore`** in a repo root — gitignore-style patterns for files Scubiee should not
+  index (dependency trees and git-ignored files are already skipped).
+- **Environment variables** (all optional):
+
+| Variable | Effect |
+|---|---|
+| `CTX_HOME` | Engine state directory (default `~/.scubiee`) |
+| `CTX_ENGINE_URL` | Local engine URL (default `http://127.0.0.1:8765`) |
+| `CTX_INCREMENTAL_MAX_TOUCH` | Changed-file count before a sync asks for `--confirm` (default `400`) |
+| `CTX_COMPRESS=off` | Disable pre-embed chunk compression |
+| `CTX_WATCHDOG=0` | Disable the engine watchdog |
+| `CTX_MLX=0` | Use the non-MLX embedding path on macOS |
+
+→ Full list of files, paths, and variables: [data and files reference](web-info/data-and-files-reference.md)
+
+---
+
 ## Documentation
 
 | | |
@@ -176,6 +220,8 @@ Every command and flag: [commands reference](docs/web-info/commands-reference.md
 | **Troubleshooting** | [docs/web-info/troubleshooting.md](docs/web-info/troubleshooting.md) |
 | **System overview** | [docs/scubiee-overview.md](docs/scubiee-overview.md) |
 | **Full docs index** | [docs/README.md](docs/README.md) |
+| **Changelog** | [CHANGELOG.md](CHANGELOG.md) |
+| **Website** | [scubiee.com](https://scubiee.com) |
 
 ---
 
@@ -226,23 +272,27 @@ Run `scubiee unlock-tool`, then retry. Quitting the IDE first helps.
 
 ## Contributing
 
-```bash
-git clone https://github.com/Usmansayed/scubiee
-cd scubiee
-uv pip install -e .
-scubiee setup
-```
+Issues and pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) covers the development
+setup, tests, and how to open a good pull request. Questions and help: [SUPPORT.md](SUPPORT.md).
+Please follow the [code of conduct](CODE_OF_CONDUCT.md).
 
-Issues and pull requests are welcome. Please run `scubiee certify` before opening a PR.
+## Security
+
+Please **do not** report vulnerabilities in public issues. Use GitHub's private vulnerability
+reporting as described in [SECURITY.md](SECURITY.md).
 
 ---
 
 <p align="center">
+  <a href="https://scubiee.com"><b>scubiee.com</b></a> ·
   <a href="https://pypi.org/project/scubiee/"><b>PyPI: scubiee</b></a> ·
-  Latest release: <b>0.3.146</b>
+  <a href="CHANGELOG.md"><b>Changelog</b></a>
 </p>
 
 ## License
 
 Copyright © 2026 Usman Sayed.
 Licensed under the [Apache License, Version 2.0](LICENSE).
+
+Scubiee bundles a modified copy of [Graphify](https://github.com/Graphify-Labs/graphify)
+(Apache-2.0, with portions under MIT) in `packages/graphify/`; see [NOTICE](NOTICE).

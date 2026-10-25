@@ -127,3 +127,11 @@ laya_bench/
 graphify-out/
 dist_prod/
 dist_release/
+
+# ---- Versioned release builds / local env backups / scratch -----------------
+dist_*/
+scubiee-0.*/
+.venv.*/
+.tmp_*/
+.coverage
+htmlcov/
